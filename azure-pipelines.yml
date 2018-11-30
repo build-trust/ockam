@@ -1,0 +1,15 @@
+# This file configures an azure build pipeline
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/
+
+name: $(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  - master
+  - develop
+  - feature/*
+
+pool:
+  vmImage: 'Ubuntu 16.04'
+
+steps:
+  - script: echo "hello ockam"
