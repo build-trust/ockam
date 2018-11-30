@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+##
+## This script is used build this project.
+##
+## USAGE:
+##
+## ./build COMMAND [ARGS]
+##
+[[ "${TRACE}" ]] && set -x
+
+# Set Bash Options.
+#
+# -e option will cause the script to exit immediately when a command fails.
+#
+# -o pipefail option sets the exit code of a pipeline to that of the rightmost command to exit with a
+# non-zero status, or zero if all commands of the pipeline exit successfully.
+set -eo pipefail
+
+# Extract and print help
+help() {
+	if [[ "$#" = 0 ]]; then
+		# Extract all lines in this file that start with a double ##,
+		# Concatenate them and display as help.
+		# Lines starting with a single # are not included.
+		grep "^##" "${BASH_SOURCE[0]}" | sed "s/^##//" | sed "s/^##//"
+	else
+		# If an argument is passed, look for help just for that command
+		# Must start with '##	command' and end in '####'
+		echo -e "\\n"
+		grep "^##" "${BASH_SOURCE[0]}" | sed -nE "/^##	${1}/,/^####/p" | sed "s/^##//" | sed "s/^##//"
+	fi
+}
+
+# Build and run a tool image that is defined in the Dockerfile, as a stage, in the same directory as this script
+# The image that is built is tagged as ockam/tool/TOOLNAME:latest
+# The image is run with the currect directory mounted at /project
+run_tool() {
+	# The first argument to this function should be the name of the tool to run
+	# All remaining arguments are teated as arguments to the image run.
+	local toolname="$1"
+	shift
+
+	local imagename="ockam/tool/$toolname:latest"
+	local projectdir="/project"
+	local o buildkit
+
+	# Docker Buildkit improves the proformance of docker image builds.
+	# Docker Buildkit is enabled by default, set DOCKER_BUILDKIT=0 to disable
+	buildkit='1'
+	[ -n "$DOCKER_BUILDKIT" ] && buildkit="$DOCKER_BUILDKIT"
+
+	if [[ "$TRACE" ]]; then
+		DOCKER_BUILDKIT=$buildkit docker build --target "$toolname" --tag "$imagename" .
+	else
+		o=$(DOCKER_BUILDKIT=$buildkit docker build --quiet --target "$toolname" --tag "$imagename" . 2>&1) || echo "$o"
+	fi
+
+	if [[ "$TRACE" ]] || ! [[ "$OCKAM_TOOL_QUIET" ]]; then
+		docker run --rm --volume "$(pwd):$projectdir" "$imagename" "$@"
+	else
+		o=$(docker run --rm --volume "$(pwd):$projectdir" "$imagename" "$@" 2>&1) || echo "$o"
+	fi
+}
+
+lint() {
+	OCKAM_TOOL_QUIET=1
+	if [[ "$#" = 0 ]]; then
+		# if no args, then run all linters
+		run_tool eclint
+		run_tool commitlint
+		run_tool shellcheck
+	else
+		for var in "$@"; do
+			run_tool "$var"
+		done
+	fi
+	OCKAM_TOOL_QUIET=0
+}
+
+##
+## COMMANDS:
+##
+case "$1" in
+##
+##	lint [LINTERS]		Run linters.
+##
+##				Runs all linters by default - eclint, commitlint & shellcheck.
+##				Optionally, you may pass in exactly which linters to run as
+##				argumnents.
+##
+##				Examples:
+##					./build lint
+##					./build lint editorconfig commit
+##
+####
+lint) shift; lint "$@";;
+##
+##	run TOOL [TOOLARGS]	Run a build tool.
+##
+##				Build and run a tool image that is defined in the multi-stage
+##				Dockerfile as a stage
+##
+##				Examples:
+##					./build run shellcheck
+##
+##				The above example would build and run the image
+##				'ockam/tool/shellcheck:latest' based on the Dockerfile
+##				stage 'shellcheck'
+##
+####
+run) shift; run_tool "$@";;
+##
+##	help [COMMAND]		Display help.
+##
+##				Displays all help by default.
+##				Optionally, you may pass in a specific command to see help about
+##				just that command.
+##
+##				Examples:
+##					./build help
+##					./build help lint
+##
+####
+help) shift; help "$@";;
+# If the command is unknown, print help and exit with exit code 1
+*) help; exit 1;;
+esac
+##
+##
+## TRACING:
+##
+## If the TRACE environment variable is truthy turn on tracing using the
+## bash -x option. This is useful when debugging this script.
+##
+## TRACE=1 ./build
+##

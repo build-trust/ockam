@@ -12,4 +12,6 @@ pool:
   vmImage: 'Ubuntu 16.04'
 
 steps:
-  - script: echo "hello ockam"
+  # 'Ubuntu 16.04' image doesn't support docker buildkit
+  # DOCKER_BUILDKIT=0 tells the build script to not use it
+  - script: DOCKER_BUILDKIT=0 TRACE=1 ./build lint
