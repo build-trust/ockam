@@ -1,0 +1,18 @@
+# This .editorconfig file specifies conventions for character set, spacing, indentation etc.
+# followed by the source code in this project.
+#
+# When contributing code, please use an editor that supports .editorconfig
+# https://editorconfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = tab
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.yml]
+indent_style = space

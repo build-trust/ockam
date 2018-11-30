@@ -1,0 +1,9 @@
+# This file tells Git to only store LF in git.
+#
+# On Windows, Git will process all text files and
+# make sure that CRLF is replaced with LF when writing that file to
+# the object database and turn all LF back into CRLF when writing out
+# into the working directory.
+#
+# git-scm.com/docs/gitattributes#_end_of_line_conversion
+* text=auto
