@@ -38,3 +38,36 @@ FROM koalaman/shellcheck:v0.5.0@sha256:b8a2b097586f88578d45ac9c052d7c396fe651a12
 WORKDIR /project
 ENTRYPOINT ["/bin/shellcheck"]
 CMD ["-a", "build"]
+
+# An image with Golang v1.11.2 and git.
+# It sets /project as the working directory and runs Go as its entrypoint
+#
+# DOCKER_BUILDKIT=1 docker build --target go --tag ockam/tool/go:latest .
+# docker run --rm --volume "$(pwd):/project" ockam/tool/go:latest
+FROM golang:1.11.2-alpine3.8@sha256:692eff58ac23cafc7cb099793feb00406146d187cd3ba0226809317952a9cf37 as go
+ENV GOOS=linux GOARCH=amd64
+RUN apk update && apk add git
+WORKDIR /project
+ENTRYPOINT ["go"]
+
+# An image that invokes gometalinter in the /project directory
+#
+# DOCKER_BUILDKIT=1 docker build --target gometalinter --tag ockam/tool/gometalinter:latest .
+# docker run --rm --volume "$(pwd):/project" ockam/tool/gometalinter:latest
+#
+# gometalinter doesn't support go modules yet, the /entrypoint script below tries to make project
+# as if it was following the pre-1.11 GOPATH setup.
+FROM go as gometalinter
+RUN wget https://raw.githubusercontent.com/alecthomas/gometalinter/v2.0.11/scripts/install.sh \
+		&& chmod u+x install.sh && ./install.sh -b /usr/local/bin v2.0.11 \
+		&& mkdir -p /go/src/github.com/ockam-network/ockam \
+		&& echo "#!/bin/sh" > /entrypoint \
+		&& echo "cp -r /project/* /go/src/github.com/ockam-network/ockam/" >> /entrypoint \
+		&& echo "rm -rf /go/src/github.com/ockam-network/ockam/vendor" >> /entrypoint \
+		&& echo "cp -r /project/vendor/* /go/src/" >> /entrypoint \
+		&& echo "exec gometalinter \"\$@\"" >> /entrypoint \
+		&& chmod +x /entrypoint
+WORKDIR /go/src/github.com/ockam-network/ockam
+ENV GO111MODULE=off
+ENTRYPOINT ["/entrypoint"]
+CMD ["--vendor", "--enable-all", "--line-length=120", "./..."]

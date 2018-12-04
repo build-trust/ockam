@@ -4,7 +4,7 @@
 ##
 ## USAGE:
 ##
-## ./build COMMAND [ARGS]
+## ./build [COMMAND] [ARGS]
 ##
 [[ "${TRACE}" ]] && set -x
 
@@ -15,6 +15,15 @@
 # -o pipefail option sets the exit code of a pipeline to that of the rightmost command to exit with a
 # non-zero status, or zero if all commands of the pipeline exit successfully.
 set -eo pipefail
+
+# The name of this package.
+PKG_NAME=ockam
+
+# The version of this package, scraped from ockam.go file.
+PKG_VERSION="$(awk -F\" '/version :=/ { print $2; exit }' < ockam.go)"
+
+# The build directory used for this project.
+PKG_BUILDDIR=".build"
 
 # Extract and print help
 help() {
@@ -33,7 +42,7 @@ help() {
 
 # Build and run a tool image that is defined in the Dockerfile, as a stage, in the same directory as this script
 # The image that is built is tagged as ockam/tool/TOOLNAME:latest
-# The image is run with the currect directory mounted at /project
+# The image is run with the current directory mounted at /project
 run_tool() {
 	# The first argument to this function should be the name of the tool to run
 	# All remaining arguments are teated as arguments to the image run.
@@ -55,13 +64,19 @@ run_tool() {
 		o=$(DOCKER_BUILDKIT=$buildkit docker build --quiet --target "$toolname" --tag "$imagename" . 2>&1) || echo "$o"
 	fi
 
+	case "$toolname" in
+		go) envs="--env GOOS --env GOARCH";;
+		*) envs="";;
+	esac
+
 	if [[ "$TRACE" ]] || ! [[ "$OCKAM_TOOL_QUIET" ]]; then
-		docker run --rm --volume "$(pwd):$projectdir" "$imagename" "$@"
+		docker run $envs --rm --volume "$(pwd):$projectdir" "$imagename" "$@"
 	else
-		o=$(docker run --rm --volume "$(pwd):$projectdir" "$imagename" "$@" 2>&1) || echo "$o"
+		o=$(docker run $envs --rm --volume "$(pwd):$projectdir" "$imagename" "$@" 2>&1) || echo "$o"
 	fi
 }
 
+# Run linter tools
 lint() {
 	OCKAM_TOOL_QUIET=1
 	if [[ "$#" = 0 ]]; then
@@ -69,6 +84,7 @@ lint() {
 		run_tool eclint
 		run_tool commitlint
 		run_tool shellcheck
+		run_tool gometalinter
 	else
 		for var in "$@"; do
 			run_tool "$var"
@@ -77,23 +93,174 @@ lint() {
 	OCKAM_TOOL_QUIET=0
 }
 
+# If GOOS is not explicitly set try to guess it
+guess_goos() {
+	if [[ -z "$GOOS" ]]; then
+		uname -s | tr '[:upper:]' '[:lower:]'
+	else
+		echo "$GOOS"
+	fi
+}
+
+# If GOARCH is not explicitly set try to guess it
+guess_goarch() {
+	if [[ -z "$GOARCH" ]]; then
+		#
+		case $(uname -m) in
+			amd64|x86_64) echo "amd64";;
+			i386|i686) echo "386";;
+			arm) echo "arm";;
+			*) echo "GOARCH must be set"; exit 1;;
+		esac
+	else
+		echo "$GOARCH"
+	fi
+}
+
+# Compile "client/command_line/main.go" to the ockam binary
+binary() {
+	local os arch target
+
+	# try to guess GOOS/GOARCH, this could fail.
+	os=$(guess_goos)
+	arch=$(guess_goarch)
+
+	# if vendor directory doesn't exist, vendor the dependencies based on go mod.
+	if [ ! -d "vendor" ]; then
+		run_tool go mod vendor
+	fi
+
+	target="$PKG_BUILDDIR/${PKG_NAME}_${PKG_VERSION}_${os}_${arch}"
+	echo -n "Building $target ... "
+
+	# make the build directory exists
+	mkdir -p "$PKG_BUILDDIR"
+
+	# -mod=vendor uses the vendor directory.
+	# -ldflags="-s -w" strips debug info.
+	# -o "$target" outputs the binary at the target path
+	GOOS=$os GOARCH=$arch run_tool go build -mod=vendor -ldflags="-s -w" -o "$target" "client/command_line/main.go"
+	echo "Done."
+}
+
+# Run tests
+test() {
+	run_tool go test -v -mod=vendor -cover ./...
+}
+
+# build ockam binaries for multiple GOOS/GOARCH combination
+release() {
+	local platforms=(
+		"linux/amd64"
+		"linux/arm64"
+		"darwin/amd64"
+		"windows/amd64"
+	)
+
+	for platform in "${platforms[@]}"; do
+		GOOS="${platform%/*}" GOARCH="${platform#*/}" binary
+	done
+}
+
+# Try to guess the current GOOS/GOARCH and then copy .build/ockam_VERSION_GOOS_GOARCH to
+# /usr/local/bin/ockam
+install() {
+	local os arch target
+	os=$(guess_goos)
+	arch=$(guess_goarch)
+	target="$PKG_BUILDDIR/${PKG_NAME}_${PKG_VERSION}_${os}_${arch}"
+
+	cp "$target" "/usr/local/bin/${PKG_NAME}"
+}
+
+# Remove the /usr/local/bin/ockam file, if present.
+uninstall() {
+	rm -f "/usr/local/bin/${PKG_NAME}"
+}
+
+# Cleanup, delete the package build directory
+clean() {
+	rm -rf "$PKG_BUILDDIR"
+}
+
+## If no command is specified then the script runs the following commands in sequence:
+##	clean, lint, test, release
+if [[ "$#" == 0 ]]; then
+	clean && lint && test && release && exit 0
+fi
+
+##
+## Optionally, you may specify one of the below commands to run.
 ##
 ## COMMANDS:
 ##
 case "$1" in
+##	binary			Build the ockam binary for the current GOOS/GOARCH.
 ##
+##				If GOOS or GOARCH is not set, this script will try to guess
+##				using `uname`.
+##
+##				Examples:
+##					./build binary
+##					GOOS=windows GOARCH=amd64 ./build binary
+##
+####
+binary) shift; binary;;
+##	clean			Remove the project build directory.
+##
+##				Examples:
+##					./build clean
+##
+####
+clean) shift; clean;;
+##
+##	help [COMMAND]		Display help.
+##
+##				Displays all help by default.
+##
+##				Optionally, you may pass in a specific command to see help
+##				about just that command.
+##
+##				Examples:
+##					./build help
+##					./build help lint
+##
+####
+help) shift; help "$@";;
+##	install			Copy ockam binary to /usr/local/bin/ockam.
+##
+##				Examples:
+##					./build install
+##
+####
+install) shift; install;;
 ##	lint [LINTERS]		Run linters.
 ##
-##				Runs all linters by default - eclint, commitlint & shellcheck.
+##				Runs all linters by default:
+##					eclint, commitlint, shellcheck & gometalinter
+##
 ##				Optionally, you may pass in exactly which linters to run as
-##				argumnents.
+##				arguments.
 ##
 ##				Examples:
 ##					./build lint
-##					./build lint editorconfig commit
+##					./build lint shellcheck gometalinter
 ##
 ####
 lint) shift; lint "$@";;
+##	release			Build the ockam binaries for release.
+##
+##				Builds for the following GOOS/GOARCH platforms:
+##					"linux/amd64"
+##					"linux/arm64"
+##					"darwin/amd64"
+##					"windows/amd64"
+##
+##				Examples:
+##					./build release
+##
+####
+release) shift; release;;
 ##
 ##	run TOOL [TOOLARGS]	Run a build tool.
 ##
@@ -109,19 +276,20 @@ lint) shift; lint "$@";;
 ##
 ####
 run) shift; run_tool "$@";;
-##
-##	help [COMMAND]		Display help.
-##
-##				Displays all help by default.
-##				Optionally, you may pass in a specific command to see help about
-##				just that command.
+##	test			Run tests.
 ##
 ##				Examples:
-##					./build help
-##					./build help lint
+##					./build test
 ##
 ####
-help) shift; help "$@";;
+test) shift; test;;
+##	uninstall		Remove ockam binary from /usr/local/bin/ockam.
+##
+##				Examples:
+##					./build uninstall
+##
+####
+uninstall) shift; uninstall;;
 # If the command is unknown, print help and exit with exit code 1
 *) help; exit 1;;
 esac
