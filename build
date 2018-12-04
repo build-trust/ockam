@@ -76,8 +76,16 @@ run_tool() {
 	fi
 }
 
+# if vendor directory doesn't exist, vendor the dependencies based on go mod.
+ensure_vendored() {
+	if [ ! -d "vendor" ]; then
+		run_tool go mod vendor
+	fi
+}
+
 # Run linter tools
 lint() {
+	ensure_vendored
 	OCKAM_TOOL_QUIET=1
 	if [[ "$#" = 0 ]]; then
 		# if no args, then run all linters
@@ -125,10 +133,7 @@ binary() {
 	os=$(guess_goos)
 	arch=$(guess_goarch)
 
-	# if vendor directory doesn't exist, vendor the dependencies based on go mod.
-	if [ ! -d "vendor" ]; then
-		run_tool go mod vendor
-	fi
+	ensure_vendored
 
 	target="$PKG_BUILDDIR/${PKG_NAME}_${PKG_VERSION}_${os}_${arch}"
 	echo -n "Building $target ... "
