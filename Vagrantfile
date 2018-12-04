@@ -5,7 +5,12 @@ Vagrant.configure("2") do |config|
 	config.vm.box = "debian/contrib-stretch64"
 
 	config.vm.provider "virtualbox" do |v|
-		v.default_nic_type = "Am79C973"
+		if Vagrant.version?(">= 2.2.2")
+			# If vagrant version is >= 2.2.2, override default nic type so it doesn't use the
+			# Virtualbox default E1000 NIC types which have known vulnerabilities.
+			v.default_nic_type = "virtio"
+		end
+
 		v.memory = 1024
 		v.cpus = 2
 	end
