@@ -136,6 +136,11 @@ binary() {
 	ensure_vendored
 
 	target="$PKG_BUILDDIR/${PKG_NAME}_${PKG_VERSION}_${os}_${arch}"
+
+	if [[ "$os" = "windows" ]]; then
+		target+='.exe'
+	fi
+
 	echo -n "Building $target ... "
 
 	# make the build directory exists
