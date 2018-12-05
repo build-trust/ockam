@@ -180,12 +180,22 @@ install() {
 	arch=$(guess_goarch)
 	target="$PKG_BUILDDIR/${PKG_NAME}_${PKG_VERSION}_${os}_${arch}"
 
-	cp "$target" "/usr/local/bin/${PKG_NAME}"
+	if [[ -d "/usr/local/bin" ]]; then
+		cp "$target" "/usr/local/bin/${PKG_NAME}"
+	else
+		"Error: install command is only supported if /usr/local/bin directory exists."
+		exit 1
+	fi
 }
 
 # Remove the /usr/local/bin/ockam file, if present.
 uninstall() {
-	rm -f "/usr/local/bin/${PKG_NAME}"
+	if [[ -d "/usr/local/bin" ]]; then
+		rm -f "/usr/local/bin/${PKG_NAME}"
+	else
+		"Error: uninstall command is only supported if /usr/local/bin directory exists."
+		exit 1
+	fi
 }
 
 # Cleanup, delete the package build directory
