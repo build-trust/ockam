@@ -1,7 +1,7 @@
 
-# An image with node v10.13.0 and git for use by other node based tool images as a base stage.
+# An image with node v10.14.1 and git for use by other node based tool images as a base stage.
 # Also sets the working directory to /project.
-FROM node:10.13.0-alpine@sha256:22c8219b21f86dfd7398ce1f62c48a022fecdcf0ad7bf3b0681131bd04a023a2 as node
+FROM node:10.14.1-alpine@sha256:35fcf0a48f57bef4bafa0f844f62edb659d036364a1d086995efe5b43ca0c4af as node
 RUN apk update && apk add git
 WORKDIR /project
 ENTRYPOINT ["node"]
