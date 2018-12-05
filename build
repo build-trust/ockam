@@ -44,6 +44,12 @@ help() {
 # The image that is built is tagged as ockam/tool/TOOLNAME:latest
 # The image is run with the current directory mounted at /project
 run_tool() {
+	local interactive
+	if [ "$1" == "--interactive" ] || [ "$1" == "-i" ]; then
+		interactive="-it"
+		shift
+	fi
+
 	# The first argument to this function should be the name of the tool to run
 	# All remaining arguments are teated as arguments to the image run.
 	local toolname="$1"
@@ -69,8 +75,8 @@ run_tool() {
 		*) envs="";;
 	esac
 
-	if [[ "$TRACE" ]] || ! [[ "$OCKAM_TOOL_QUIET" ]]; then
-		docker run $envs --rm --volume "$(pwd):$projectdir" "$imagename" "$@"
+	if [[ "$TRACE" ]] || ! [[ "$OCKAM_TOOL_QUIET" ]] || [[ "$interactive" ]]; then
+		docker run $envs $interactive --rm --volume "$(pwd):$projectdir" "$imagename" "$@"
 	else
 		o=$(docker run $envs --rm --volume "$(pwd):$projectdir" "$imagename" "$@" 2>&1) || echo "$o"
 	fi
@@ -215,98 +221,102 @@ fi
 ## COMMANDS:
 ##
 case "$1" in
-##	binary			Build the ockam binary for the current GOOS/GOARCH.
+##	binary				Build the ockam binary for the current GOOS/GOARCH.
 ##
-##				If GOOS or GOARCH is not set, this script will try to guess
-##				using `uname`.
+##					If GOOS or GOARCH is not set, this script will try to guess
+##					using `uname`.
 ##
-##				Examples:
-##					./build binary
-##					GOOS=windows GOARCH=amd64 ./build binary
+##					Examples:
+##						./build binary
+##						GOOS=windows GOARCH=amd64 ./build binary
 ##
 ####
 binary) shift; binary;;
-##	clean			Remove the project build directory.
+##	clean				Remove the project build directory.
 ##
-##				Examples:
-##					./build clean
+##					Examples:
+##						./build clean
 ##
 ####
 clean) shift; clean;;
 ##
-##	help [COMMAND]		Display help.
+##	help [COMMAND]			Display help.
 ##
-##				Displays all help by default.
+##					Displays all help by default.
 ##
-##				Optionally, you may pass in a specific command to see help
-##				about just that command.
+##					Optionally, you may pass in a specific command to see help
+##					about just that command.
 ##
-##				Examples:
-##					./build help
-##					./build help lint
+##					Examples:
+##						./build help
+##						./build help lint
 ##
 ####
 help) shift; help "$@";;
-##	install			Copy ockam binary to /usr/local/bin/ockam.
+##	install				Copy ockam binary to /usr/local/bin/ockam.
 ##
-##				Examples:
-##					./build install
+##					Examples:
+##						./build install
 ##
 ####
 install) shift; install;;
-##	lint [LINTERS]		Run linters.
+##	lint [LINTERS]			Run linters.
 ##
-##				Runs all linters by default:
-##					eclint, commitlint, shellcheck & gometalinter
+##					Runs all linters by default:
+##						eclint, commitlint, shellcheck & gometalinter
 ##
-##				Optionally, you may pass in exactly which linters to run as
-##				arguments.
+##					Optionally, you may pass in exactly which linters to run as
+##					arguments.
 ##
-##				Examples:
-##					./build lint
-##					./build lint shellcheck gometalinter
+##					Examples:
+##						./build lint
+##						./build lint shellcheck gometalinter
 ##
 ####
 lint) shift; lint "$@";;
-##	release			Build the ockam binaries for release.
+##	release				Build the ockam binaries for release.
 ##
-##				Builds for the following GOOS/GOARCH platforms:
-##					"linux/amd64"
-##					"linux/arm64"
-##					"darwin/amd64"
-##					"windows/amd64"
+##					Builds for the following GOOS/GOARCH platforms:
+##						"linux/amd64"
+##						"linux/arm64"
+##						"darwin/amd64"
+##						"windows/amd64"
 ##
-##				Examples:
-##					./build release
+##					Examples:
+##						./build release
 ##
 ####
 release) shift; release;;
 ##
-##	run TOOL [TOOLARGS]	Run a build tool.
+##	run [OPTIONS] TOOL [ARGS]	Run a build tool.
 ##
-##				Build and run a tool image that is defined in the multi-stage
-##				Dockerfile as a stage
+##					Build and run a tool image that is defined in the multi-stage
+##					Dockerfile as a stage
 ##
-##				Examples:
-##					./build run shellcheck
+##					OPTIONS:
+##					 -i | --interactive	Run the image in interactive mode
 ##
-##				The above example would build and run the image
-##				'ockam/tool/shellcheck:latest' based on the Dockerfile
-##				stage 'shellcheck'
+##					Examples:
+##						./build run --interactive go
+##						./build run -i go
+##
+##					The above example would build and run the image
+##					'ockam/tool/go:latest' based on the Dockerfile
+##					stage 'go' with '-it' options set for 'docker run'
 ##
 ####
 run) shift; run_tool "$@";;
-##	test			Run tests.
+##	test				Run tests.
 ##
-##				Examples:
-##					./build test
+##					Examples:
+##						./build test
 ##
 ####
 test) shift; test;;
-##	uninstall		Remove ockam binary from /usr/local/bin/ockam.
+##	uninstall			Remove ockam binary from /usr/local/bin/ockam.
 ##
-##				Examples:
-##					./build uninstall
+##					Examples:
+##						./build uninstall
 ##
 ####
 uninstall) shift; uninstall;;
