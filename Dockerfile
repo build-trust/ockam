@@ -2,7 +2,7 @@
 # An image with node v10.14.1 and git for use by other node based tool images as a base stage.
 # Also sets the working directory to /project.
 FROM node:10.14.1-alpine@sha256:35fcf0a48f57bef4bafa0f844f62edb659d036364a1d086995efe5b43ca0c4af as node
-RUN apk update && apk add git
+RUN apk --update add --no-cache git
 WORKDIR /project
 ENTRYPOINT ["node"]
 
@@ -46,7 +46,7 @@ CMD ["-a", "build"]
 # docker run --rm --volume "$(pwd):/project" ockam/tool/go:latest
 FROM golang:1.11.2-alpine3.8@sha256:692eff58ac23cafc7cb099793feb00406146d187cd3ba0226809317952a9cf37 as go
 ENV GOOS=linux GOARCH=amd64
-RUN apk update && apk add git
+RUN apk --update add --no-cache git
 WORKDIR /project
 ENTRYPOINT ["go"]
 
