@@ -45,7 +45,7 @@ CMD ["-a", "build"]
 # DOCKER_BUILDKIT=1 docker build --target go --tag ockam/tool/go:latest .
 # docker run --rm --volume "$(pwd):/project" ockam/tool/go:latest
 FROM golang:1.11.2-alpine3.8@sha256:692eff58ac23cafc7cb099793feb00406146d187cd3ba0226809317952a9cf37 as go
-ENV GOOS=linux GOARCH=amd64
+ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 RUN apk --update add --no-cache git
 WORKDIR /project
 ENTRYPOINT ["go"]
