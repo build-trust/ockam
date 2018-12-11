@@ -131,7 +131,7 @@ guess_goarch() {
 	fi
 }
 
-# Compile "client/command_line/main.go" to the ockam binary
+# Compile "cmd/ockam/main.go" to the ockam binary
 binary() {
 	local os arch target
 
@@ -155,7 +155,7 @@ binary() {
 	# -mod=vendor uses the vendor directory.
 	# -ldflags="-s -w" strips debug info.
 	# -o "$target" outputs the binary at the target path
-	GOOS=$os GOARCH=$arch run_tool go build -mod=vendor -ldflags="-s -w" -o "$target" "client/command_line/main.go"
+	GOOS=$os GOARCH=$arch run_tool go build -mod=vendor -ldflags="-s -w" -o "$target" "cmd/ockam/main.go"
 	echo "Done."
 }
 
