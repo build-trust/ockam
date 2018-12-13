@@ -19,7 +19,7 @@ type FailNower interface {
 // Assert is a test helper that checks if the actual value is equal to the expected value.
 // The test fails if the two values are not deeply equal.
 //
-// The first argument is a value that implementes the FailNower interface, this is typically testing.T
+// The first argument is a value that implements the FailNower interface, this is typically testing.T
 // The second argument is the expected value as expected by the test
 // The third argument is the actual value observed by the test
 // The fourth argument is the message string to display if the assertion fails, this may be a format string
