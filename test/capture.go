@@ -17,8 +17,8 @@ import (
 // is that the calling tests would fail if the desired output is not present in the
 // returned strings
 func Capture(f func()) (string, string) {
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
+	rOut, wOut, _ := os.Pipe() // nolint: errcheck, gosec
+	rErr, wErr, _ := os.Pipe() // nolint: errcheck, gosec
 
 	stdout := os.Stdout
 	os.Stdout = wOut
@@ -30,14 +30,14 @@ func Capture(f func()) (string, string) {
 
 	f()
 
-	_ = wOut.Close()
-	_ = wErr.Close()
+	_ = wOut.Close() // nolint: errcheck, gosec
+	_ = wErr.Close() // nolint: errcheck, gosec
 
 	var outBuf bytes.Buffer
 	var errBuf bytes.Buffer
 
-	_, _ = io.Copy(&outBuf, rOut)
-	_, _ = io.Copy(&errBuf, rErr)
+	_, _ = io.Copy(&outBuf, rOut) // nolint: errcheck, gosec
+	_, _ = io.Copy(&errBuf, rErr) // nolint: errcheck, gosec
 
 	return outBuf.String(), errBuf.String()
 }
