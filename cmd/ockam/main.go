@@ -12,6 +12,12 @@ func main() {
 	conf, err := newConfig()
 	ifErrorThenExit(err)
 
+	// if config file does not exist, assume this is the first invocation of this program
+	// on the users machine
+	if !configFileExists() {
+		firstRun(conf)
+	}
+
 	fmt.Printf("%+v\n", conf)
 }
 
