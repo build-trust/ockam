@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/ockam-network/ockam"
+	"github.com/ockam-network/ockam"
 	_ "github.com/pkg/errors"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {
@@ -18,7 +19,14 @@ func main() {
 		firstRun(conf)
 	}
 
-	fmt.Printf("%+v\n", conf)
+	app := kingpin.New("ockam", "A Command Line Interface to the Ockam.")
+	app.Version(ockam.Version())
+	app.HelpFlag.Short('h')
+
+	attachClaimCommand(app, conf)
+	attachEntityCommand(app, conf)
+
+	kingpin.MustParse(app.Parse(os.Args[1:]))
 }
 
 // ifErrorThenExit checks if the provided error is nil
