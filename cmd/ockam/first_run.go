@@ -2,10 +2,16 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 )
+
+const reqURL = "http://localhost:8080/upload"
 
 func firstRun(c *config) {
 	fmt.Print(welcomeMessage)
@@ -19,6 +25,8 @@ func firstRun(c *config) {
 
 	err := c.save()
 	ifErrorThenExit(err)
+
+	uploadUserInfo(c)
 }
 
 func ask(prompt string) string {
@@ -28,6 +36,17 @@ func ask(prompt string) string {
 	ifErrorThenExit(err)
 
 	return strings.TrimSpace(input)
+}
+
+// We don't want errors in this function to interrupt users, so ignore them
+// nolint: errcheck, gosec
+func uploadUserInfo(c *config) {
+	marshalled, _ := json.Marshal(c)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	_, _ = client.Post(reqURL, "application/json", bytes.NewBuffer(marshalled))
 }
 
 const welcomeMessage = `
