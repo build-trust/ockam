@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 ##
-## This script is used build this project.
+## This script is used to build ockam code.
+##
+## The most common use is to run it with no arguments, for example:
+##	./build
+##
+## This will run the clean, lint, test, release commands in sequence
+## and place the resulting binaries in the .build directory.
+##
+## On Linux and OSX you can run:
+##	./build install
+##
+## This will copy the operating system specific built binary
+## from .build/ to /usr/local/bin/ockam
 ##
 ## USAGE:
 ##
@@ -209,8 +221,6 @@ clean() {
 	rm -rf "$PKG_BUILDDIR"
 }
 
-## If no command is specified then the script runs the following commands in sequence:
-##	clean, lint, test, release
 if [[ "$#" == 0 ]]; then
 	clean && lint && test && release && exit 0
 fi
