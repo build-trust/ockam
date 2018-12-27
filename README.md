@@ -9,5 +9,11 @@
 <a href="https://join.slack.com/t/ockam-community/shared_invite/enQtNDk5Nzk2NDA2NDcxLWMzMzJlZjQzOTZjYWY0YmNkNWE1NmI1M2YyYzlkNjk4NDYyYzU0OWE0YTI4ZjcwNDBjNmQ4NzZjZTMzYmY3NDA"><img alt="Discuss Ockam" src="https://img.shields.io/badge/slack-discuss-E01563.svg?logo=slack&style=flat-square"></a>
 </p>
 
-## Team
-* Logan Jager
+## Contributors
+
+* [Brian Schroeder](https://github.com/bts)
+* [Brett Nitschke](https://github.com/BrettNitschke)
+* [Logan Jager](https://github.com/jagtek)
+* [Matthew Gregory](https://github.com/mattgreg)
+* [Mrinal Wadhwa](https://github.com/mrinalwadhwa)
+* [Rolf Kaiser](https://github.com/rkaiser0324)
