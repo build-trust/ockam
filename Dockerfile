@@ -71,3 +71,16 @@ WORKDIR /go/src/github.com/ockam-network/ockam
 ENV GO111MODULE=off
 ENTRYPOINT ["/entrypoint"]
 CMD ["--vendor", "--enable-all", "--line-length=120", "./..."]
+
+# An image with goreleaser v0.95.2
+#
+# DOCKER_BUILDKIT=1 docker build --target goreleaser --tag ockam/tool/goreleaser:latest .
+# docker run --rm --volume "$(pwd):/project" ockam/tool/goreleaser:latest
+FROM go as goreleaser
+RUN wget https://github.com/goreleaser/goreleaser/releases/download/v0.95.2/goreleaser_Linux_x86_64.tar.gz \
+		&& echo "a04f626fb853de48dde78d92ee08cdc188593a9ea9919fa56953703b8a8423bf  goreleaser_Linux_x86_64.tar.gz" | \
+			sha256sum -c - \
+		&& tar xvf goreleaser_Linux_x86_64.tar.gz \
+		&& chmod u+x goreleaser \
+		&& cp goreleaser /usr/local/bin/
+ENTRYPOINT ["goreleaser"]

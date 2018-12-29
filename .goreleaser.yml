@@ -1,0 +1,35 @@
+dist: .build
+before:
+  hooks:
+    - go mod vendor
+builds:
+  - main: ./cmd/ockam/
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - 386
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - 6
+      - 7
+archive:
+  replacements:
+    amd64: x86_64
+    386: i386
+    darwin: macOS
+  wrap_in_directory: true
+  format_overrides:
+    - goos: windows
+      format: zip
+  files:
+    - LICENSE
+    - NOTICE
+    - README.md
