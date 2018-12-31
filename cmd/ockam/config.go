@@ -7,13 +7,16 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/ockam-network/ockam"
 )
 
 type config struct {
-	UserName         string `json:"userName"`
-	UserEmail        string `json:"userEmail"`
-	UserOrganization string `json:"userOrganization"`
-	UserReason       string `json:"userReason"`
+	UserName         string       `json:"userName"`
+	UserEmail        string       `json:"userEmail"`
+	UserOrganization string       `json:"userOrganization"`
+	UserReason       string       `json:"userReason"`
+	Logger           ockam.Logger `json:"-"`
 }
 
 // save turns the config to json and stores it to disk at configFilePath() with 0644 permissions.

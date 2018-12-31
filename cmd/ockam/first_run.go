@@ -16,24 +16,24 @@ const reqURL = "http://localhost:8080/upload"
 func firstRun(c *config) {
 	fmt.Print(welcomeMessage)
 
-	c.UserName = ask("\nWhat is your full name?\n> ")
-	c.UserEmail = ask("\nWhat is your email address?\n> ")
-	c.UserOrganization = ask("\nWhere do you work?\n> ")
-	c.UserReason = ask("\nWhy are you interested in Ockam?\n> ")
+	c.UserName = ask(c, "\nWhat is your full name?\n> ")
+	c.UserEmail = ask(c, "\nWhat is your email address?\n> ")
+	c.UserOrganization = ask(c, "\nWhere do you work?\n> ")
+	c.UserReason = ask(c, "\nWhy are you interested in Ockam?\n> ")
 
 	fmt.Print("\nThank you.\n\n")
 
 	err := c.save()
-	ifErrorThenExit(err)
+	ifErrorThenExit(c.Logger, err)
 
 	uploadUserInfo(c)
 }
 
-func ask(prompt string) string {
+func ask(c *config, prompt string) string {
 	fmt.Print(prompt)
 
 	input, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	ifErrorThenExit(err)
+	ifErrorThenExit(c.Logger, err)
 
 	return strings.TrimSpace(input)
 }

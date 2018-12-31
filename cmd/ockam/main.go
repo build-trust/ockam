@@ -1,17 +1,24 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ockam-network/ockam"
+	"github.com/ockam-network/ockam/log"
 	_ "github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {
+	logger := log.New(
+		log.Level(log.Notice),
+		log.Formatter(&log.ConsoleFormatter{Colored: true}),
+	)
+
 	conf, err := newConfig()
-	ifErrorThenExit(err)
+	ifErrorThenExit(logger, err)
+
+	conf.Logger = logger
 
 	// if config file does not exist, assume this is the first invocation of this program
 	// on the users machine
@@ -32,9 +39,9 @@ func main() {
 // ifErrorThenExit checks if the provided error is nil
 // if the error is not nil then it prints the error on stderr and calls
 // os.Exit with exit status code 1 to exit the program.
-func ifErrorThenExit(err error) {
+func ifErrorThenExit(logger ockam.Logger, err error) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%+v\n", err) // nolint: errcheck
+		logger.Error("%+v", err)
 		os.Exit(1)
 	}
 }
