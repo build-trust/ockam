@@ -7,5 +7,6 @@ require (
 	github.com/ockam-network/did v0.1.3
 	github.com/pkg/errors v0.8.0
 	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc
+		github.com/tendermint/go-amino v0.14.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
