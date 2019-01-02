@@ -43,28 +43,23 @@ issue description, please include:
 If you have a new idea about how Ockam can be more useful, please create a feature request as a Github [issue](https://github.com/ockam-network/ockam/issues/new). Explain
 the feature in detail, why it would be useful and how it will impact the Ockam codebase and community.
 
-## Contribute Code
-### Development Environment
+## Contribute code
 
+### Build environments
 The primary way to build Ockam code is by using the included `./build` bash script. This script requires recent
-versions of Bash and Docker installed on your development machine.
+versions of Bash and Docker (or Docker Toolbox) installed on your development machine.
 
-Optionally, you can also work with Vagrant and Virtualbox installed on your development machine to create
-a Debian virtual machine that includes Docker and Bash.
-
-The `Vagrantfile` to create this virtual machine is included, run:
+Alternatively, if you have Vagrant and Virtualbox installed on your development machine, you can create
+a Debian virtual machine that includes Docker and Bash.  The `Vagrantfile` to create this virtual machine is included; just run:
 
 ```
 vagrant up && vagrant ssh
 ```
 
-to work inside the Debian VM.
+to work inside the Debian virtual machine.
 
-### Build
-
-The primary way to build Ockam code is by using the included `./build` bash script.
-
-The build script in turn uses Docker's multistage builds to create several tool images that always run the build
+### Building
+`./build` uses Docker's multistage builds to create several tool images that always run the build
 in a predictable, pinned environment and deliver reproducible builds.
 
 To run a full build, run:
@@ -73,11 +68,11 @@ To run a full build, run:
 ./build
 ```
 
-This will download any dependencies in the `vendor` directory, create a `.build` directly and place compiled
-binaries in that folder.
+This will download any dependencies to `/vendor` and create `/.build`, placing compiled
+binaries in it.
 
-On OSX or Linux you can also run `./build install` to place your operating system specific `ockam` binary
-in system path.
+On OSX or Linux you can also run `./build install` to place your operating system-specific `ockam` binary
+in the system path.
 
 You can then run:
 
@@ -85,23 +80,22 @@ You can then run:
 ockam --version
 ```
 
-To see verbose output about what the build script is doing prefix `TRACE=1` before any build command, for example:
+To see verbose output for what the build script is doing, prefix `TRACE=1` before any build command.  For example:
 
 ```
 TRACE=1 ./build
 ```
 
-For more options see `./build help`
+For more options see `./build help`.
 
 ### Lint
-
 To run code linters, run:
 
 ```
 ./build lint
 ```
 
-This will run all linters by default. Which includes eclint, commitlint, shellcheck and gometalinter.
+By default this will run all linters (namely, eclint, commitlint, shellcheck, and gometalinter).
 
 For more options see `./build help lint`
 
@@ -112,18 +106,18 @@ To run tests and display test coverage, run:
 ./build test
 ```
 
-### Project Conventions
+### Project conventions
 
-#### Spacing and Indentation
+#### Spacing and indentation
 Our spacing conventions are specified in our [editorconfig](.editorconfig) file and are enforced by `eclint` during
 builds. Any files that do not comply will cause the build to fail. The easiest way to follow the conventions is to use
 an [editorconfig plugin for your code editor](https://editorconfig.org/), most popular editors have one.
 
-#### Code Format
+#### Code format
 All Go code must be formatted using [gofmt](https://golang.org/cmd/gofmt/). This is enforced by `gometalinter` during
 builds. Any files that do not comply will cause the build to fail.
 
-#### Commit Messages
+#### Commit messages
 All commit messages must follow
 [Conventional Commits v1.0.0-beta.2](https://www.conventionalcommits.org/en/v1.0.0-beta.2/#summary). This is enforced
 using `commitlint` during build. The exact rules that are enforced are specified in the
@@ -140,17 +134,21 @@ Allowed, type values:
 * `style:` Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
 * `test:` Adding missing tests or correcting existing tests
 
-#### Git Workflow
+In addition, commit messages should be described in
+[imperative mood](https://git.kernel.org/pub/scm/git/git.git/tree/Documentation/SubmittingPatches?id=HEAD#n135), with the
+first word in lowercase and the total length of the first line being no longer than 50 characters.
+
+#### Git workflow
 We try to avoid noisy merge commits as much as possible and follow a
 [rebase workflow](https://www.themoderncoder.com/a-better-git-workflow-with-rebase/) against our develop branch.
 Please ensure that your pull requests can be rebased onto develop. See section below
 [on pull requests](#send-a-pull-request).
 
-#### Signed Commits
+#### Signed commits
 We only include [GPG Signed Commits](https://help.github.com/articles/signing-commits/). Please ensure that all
 commits included in a pull request are signed with your GPG key.
 
-### Error Handling
+### Error handling
 When dealing with errors returned within the code:
 
 * Import `github.com/pkg/errors`
@@ -162,10 +160,9 @@ add a stack trace to the error.
 * never call `panic()`
 
 ### Effective Go
-
 Use Go programming best practices defined in [Effective Go](https://golang.org/doc/effective_go.html)
 
-### Send a Pull Request
+### Send a pull request
 When creating a pull request:
 
 * Create a feature/bugfix branch from `ockam-network/ockam`’s **develop** branch.
@@ -177,7 +174,7 @@ When creating a pull request:
 that are called when you invoke `./build`.
 * Makes sure the build succeeds `./build` with no linter warnings or test failures.
 
-## Code of Conduct
+## Code of conduct
 All Ockam community interactions follow our [Code of Conduct](CODE_OF_CONDUCT.md). Please be polite and respectful
 to all.
 

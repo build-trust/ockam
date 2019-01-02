@@ -263,7 +263,8 @@ clean) shift; clean;;
 ##
 ####
 help) shift; help "$@";;
-##	install				Copy ockam binary to /usr/local/bin/ockam.
+##	install				Copy ockam binary to /usr/local/bin/ockam, for OSX
+##					or Linux environments.
 ##
 ##					Examples:
 ##						./build install
