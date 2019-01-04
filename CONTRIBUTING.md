@@ -140,13 +140,14 @@ first word in lowercase and the total length of the first line being no longer t
 
 #### Git workflow
 We try to avoid noisy merge commits as much as possible and follow a
-[rebase workflow](https://www.themoderncoder.com/a-better-git-workflow-with-rebase/) against our develop branch.
-Please ensure that your pull requests can be rebased onto develop. See section below
-[on pull requests](#send-a-pull-request).
+[rebase workflow](https://www.themoderncoder.com/a-better-git-workflow-with-rebase/) against our "develop" branch, so please ensure that your pull requests can be rebased onto this branch. Also, see the section below regarding
+[pull requests](#send-a-pull-request).
 
 #### Signed commits
-We only include [GPG Signed Commits](https://help.github.com/articles/signing-commits/). Please ensure that all
-commits included in a pull request are signed with your GPG key.
+We only include [GPG Signed Commits](https://help.github.com/articles/signing-commits/). All commits included in a pull
+request must be signed with your GPG key, and your public key must be published somewhere we can easily verify, preferably on [Keybase](https://keybase.io).
+
+In addition, we recommend that you don't store your private key on your development machine. Instead, use hardware-based key storage like [Yubikey](https://www.yubico.com/products/yubikey-hardware) or [Kryptonite](https://krypt.co/why_kryptonite_/).
 
 ### Error handling
 When dealing with errors returned within the code:
