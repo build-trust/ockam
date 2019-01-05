@@ -1,7 +1,10 @@
 package chain
 
 import (
+	"fmt"
+
 	"github.com/ockam-network/ockam"
+	"github.com/ockam-network/ockam/claim"
 )
 
 // Chain represents a local instace of the ockam blockchain that is maintained by
@@ -59,4 +62,40 @@ func (c *Chain) Sync() error {
 // LatestBlock returns the latest block in the chain
 func (c *Chain) LatestBlock() ockam.Block {
 	return c.trustedNode.LatestBlock()
+}
+
+// Register is
+func (c *Chain) Register(e ockam.Entity) (ockam.Claim, error) {
+	cl, err := claim.New(
+		claim.Data{"id": e.ID().String()},
+		claim.Issuer(e),
+		claim.Subject(e),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.Submit(cl)
+	if err != nil {
+		return nil, err
+	}
+
+	return cl, nil
+}
+
+// Submit is
+func (c *Chain) Submit(cl ockam.Claim) error {
+	bin, err := cl.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	tx, err := c.trustedNode.Submit(bin)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(tx)
+
+	return err
 }

@@ -2,6 +2,7 @@
 package node
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -103,7 +104,6 @@ type Tx struct {
 
 // Node is
 type Node struct {
-	chainID         string
 	chain           ockam.Chain
 	peers           []Peer
 	peerDiscoverers []ockam.NodeDiscoverer
@@ -166,6 +166,13 @@ func (n *Node) Peers() []ockam.Node {
 		peers = append(peers, peer.(ockam.Node))
 	}
 	return peers
+}
+
+// Submit is
+func (n *Node) Submit(b []byte) ([]byte, error) {
+	p := n.peers[rand.Intn(len(n.peers))]
+	fmt.Println(p)
+	return p.Submit(b)
 }
 
 // Sync returns

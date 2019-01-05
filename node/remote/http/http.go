@@ -13,7 +13,6 @@ import (
 type Node struct {
 	ip           string
 	port         int
-	chainID      string
 	chain        ockam.Chain
 	peers        []ockam.Node
 	latestCommit *node.Commit
@@ -76,6 +75,11 @@ func (n *Node) Chain() ockam.Chain {
 // LatestCommit returns
 func (n *Node) LatestCommit() *node.Commit {
 	return n.latestCommit
+}
+
+// Submit is
+func (n *Node) Submit(b []byte) ([]byte, error) {
+	return n.BroadcastTxSync(string(b[:]))
 }
 
 type block struct {

@@ -47,10 +47,12 @@ func (n *Node) Commit(height string) (*node.Commit, error) {
 // BroadcastTxSync broadcasts a transaction
 func (n *Node) BroadcastTxSync(tx string) ([]byte, error) {
 	r := new(BroadcastTxSyncResponse)
+	fmt.Println(fmt.Sprintf("/broadcast_tx_sync?tx=\"%s\"", tx))
 	err := n.Call(fmt.Sprintf("/broadcast_tx_sync?tx=\"%s\"", tx), &r)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	fmt.Println((&r.Result).Hash)
 	return []byte((&r.Result).Hash), nil
 }
 
