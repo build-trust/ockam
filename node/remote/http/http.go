@@ -3,14 +3,19 @@
 package http
 
 import (
+	"encoding/hex"
+	"encoding/json"
+
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
+	"github.com/ockam-network/ockam/claim"
 	"github.com/ockam-network/ockam/node"
 	"github.com/pkg/errors"
 )
 
 // Node represent a remote node
 type Node struct {
+	id           string
 	ip           string
 	port         int
 	chain        ockam.Chain
@@ -46,6 +51,11 @@ func Port(port int) Option {
 	}
 }
 
+// ID is
+func (n *Node) ID() string {
+	return n.id
+}
+
 // Sync returns
 func (n *Node) Sync() error {
 
@@ -75,11 +85,6 @@ func (n *Node) Chain() ockam.Chain {
 // LatestCommit returns
 func (n *Node) LatestCommit() *node.Commit {
 	return n.latestCommit
-}
-
-// Submit is
-func (n *Node) Submit(b []byte) ([]byte, error) {
-	return n.BroadcastTxSync(string(b[:]))
 }
 
 type block struct {
@@ -117,4 +122,39 @@ func (n *Node) getLatestCommit() (*node.Commit, error) {
 		return nil, errors.WithStack(err)
 	}
 	return &r.Result, nil
+}
+
+// Register is
+func (n *Node) Register(e ockam.Entity) (ockam.Claim, error) {
+	cl, err := claim.New(
+		claim.Data{"id": e.ID().String()},
+		claim.Issuer(e),
+		claim.Subject(e),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = n.Submit(cl)
+	if err != nil {
+		return nil, err
+	}
+
+	return cl, nil
+}
+
+// Submit is
+func (n *Node) Submit(cl ockam.Claim) error {
+	b, err := json.Marshal(cl.Data())
+	if err != nil {
+		return err
+	}
+
+	s := hex.EncodeToString(b) // base?
+	_, err = n.BroadcastTxSync(cl.ID() + "=" + s)
+	if err != nil {
+		return err
+	}
+
+	return err
 }

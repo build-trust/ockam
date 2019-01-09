@@ -18,18 +18,15 @@ type Chain interface {
 	ID() string
 	Sync() error
 	LatestBlock() Block
-
 	Register(Entity) (Claim, error)
 	Submit(Claim) error
 }
 
 // Node represents a node connected to a network of other peer nodes
 type Node interface {
-	Sync() error
+	Chain
 	Peers() []Node
 	Chain() Chain
-	LatestBlock() Block
-	Submit(b []byte) ([]byte, error)
 }
 
 // NodeDiscoverer provides the means to discover other nodes on in a network

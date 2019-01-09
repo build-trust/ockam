@@ -2,12 +2,12 @@
 package node
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
+	"github.com/ockam-network/ockam/random"
 	"github.com/pkg/errors"
 )
 
@@ -104,6 +104,7 @@ type Tx struct {
 
 // Node is
 type Node struct {
+	id              string
 	chain           ockam.Chain
 	peers           []Peer
 	peerDiscoverers []ockam.NodeDiscoverer
@@ -121,6 +122,12 @@ func New(options ...Option) (*Node, error) {
 		option(n)
 	}
 
+	s, err := random.GenerateAlphaNumericString(31)
+	if err != nil {
+		return nil, err
+	}
+	n.id = s
+
 	return n, nil
 }
 
@@ -136,29 +143,6 @@ func (n *Node) Chain() ockam.Chain {
 	return n.chain
 }
 
-type block struct {
-	height string
-	hash   string
-}
-
-// LatestBlock returns
-func (n *Node) LatestBlock() ockam.Block {
-	return &block{
-		height: n.latestCommit.SignedHeader.Header.Height,
-		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash,
-	}
-}
-
-// Height is
-func (b *block) Height() string {
-	return b.height
-}
-
-// Hash is
-func (b *block) Hash() string {
-	return b.hash
-}
-
 // Peers returns the list of peer nodes that this node is aware of
 func (n *Node) Peers() []ockam.Node {
 	var peers []ockam.Node
@@ -168,11 +152,9 @@ func (n *Node) Peers() []ockam.Node {
 	return peers
 }
 
-// Submit is
-func (n *Node) Submit(b []byte) ([]byte, error) {
-	p := n.peers[rand.Intn(len(n.peers))]
-	fmt.Println(p)
-	return p.Submit(b)
+// ID returns the identifier of the chain
+func (n *Node) ID() string {
+	return n.id
 }
 
 // Sync returns
@@ -209,6 +191,30 @@ func (n *Node) Sync() error {
 	return nil
 }
 
+// LatestBlock returns
+func (n *Node) LatestBlock() ockam.Block {
+	return &block{
+		height: n.latestCommit.SignedHeader.Header.Height,
+		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash,
+	}
+}
+
+// Register is
+func (n *Node) Register(e ockam.Entity) (ockam.Claim, error) {
+	// pick a random peer
+	p := n.peers[rand.Intn(len(n.peers))]
+	// register the entity to that peer
+	return p.Register(e)
+}
+
+// Submit is
+func (n *Node) Submit(c ockam.Claim) error {
+	// pick a random peer
+	p := n.peers[rand.Intn(len(n.peers))]
+	// submit the claim to that peet
+	return p.Submit(c)
+}
+
 func (n *Node) discoverPeers() error {
 	peers := n.peers
 
@@ -225,4 +231,19 @@ func (n *Node) discoverPeers() error {
 
 	n.peers = peers
 	return nil
+}
+
+type block struct {
+	height string
+	hash   string
+}
+
+// Height is
+func (b *block) Height() string {
+	return b.height
+}
+
+// Hash is
+func (b *block) Hash() string {
+	return b.hash
 }
