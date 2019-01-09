@@ -1,19 +1,14 @@
 package ed25519
 
-import (
-	"time"
-
-	"github.com/ockam-network/ockam"
-)
-
 // Signature is
 type Signature struct {
 	t              string
-	creator        ockam.PublicKey
-	created        time.Time
+	creator        string
+	created        string
 	domain         string
-	nonce          []byte
+	nonce          string
 	signatureValue []byte
+	signedValue    []byte
 }
 
 // Type is
@@ -23,23 +18,23 @@ func (s *Signature) Type() string {
 }
 
 // Creator is
-func (s *Signature) Creator() ockam.PublicKey {
+func (s *Signature) Creator() string {
 	return s.creator
 }
 
 // Created is
-func (s *Signature) Created() time.Time {
+func (s *Signature) Created() string {
 	return s.created
 }
 
 // Domain is
 func (s *Signature) Domain() string {
-	return s.domain
+	return "ockam"
 }
 
 // Nonce is
 // https://web-payments.org/vocabs/security#nonce
-func (s *Signature) Nonce() []byte {
+func (s *Signature) Nonce() string {
 	return s.nonce
 }
 
@@ -47,4 +42,8 @@ func (s *Signature) Nonce() []byte {
 // https://web-payments.org/vocabs/security#signatureValue
 func (s *Signature) SignatureValue() []byte {
 	return s.signatureValue
+}
+
+func (s *Signature) SignedValue() []byte {
+	return s.signedValue
 }

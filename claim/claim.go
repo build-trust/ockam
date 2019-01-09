@@ -1,9 +1,9 @@
 package claim
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/random"
@@ -14,10 +14,13 @@ type Data map[string]interface{}
 
 // Claim is
 type Claim struct {
-	id      string
-	data    Data
-	issuer  ockam.Entity
-	subject ockam.Entity
+	nonce      string
+	id         string
+	data       Data
+	_type      string
+	issuer     ockam.Entity
+	subject    ockam.Entity
+	signatures []ockam.Signature
 }
 
 // Option is
@@ -31,15 +34,16 @@ func New(data Data, options ...Option) (*Claim, error) {
 		option(c)
 	}
 
-	s, err := random.GenerateAlphaNumericString(31)
+	nonce, err := random.GenerateAlphaNumericString(10)
 	if err != nil {
 		return nil, err
 	}
+	c.nonce = nonce
 
 	if c.issuer != nil {
-		c.id = c.issuer.ID().String() + "/claim/" + s
+		c.id = c.issuer.ID().String() + "/claim/" + nonce
 	} else {
-		c.id = s
+		c.id = nonce
 	}
 
 	return c, nil
@@ -49,6 +53,13 @@ func New(data Data, options ...Option) (*Claim, error) {
 func ID(id string) Option {
 	return func(c *Claim) {
 		c.id = id
+	}
+}
+
+// Type is
+func Type(t string) Option {
+	return func(c *Claim) {
+		c._type = t
 	}
 }
 
@@ -71,9 +82,19 @@ func (c *Claim) ID() string {
 	return c.id
 }
 
-// SetID sets the claim's ID
-func (c *Claim) SetID(id string) {
-	c.id = id
+// Nonce returns the claim's Nonce
+func (c *Claim) Nonce() string {
+	return c.nonce
+}
+
+// Type returns the claim's Type
+func (c *Claim) Type() string {
+	return c._type
+}
+
+// SetType sets the claim's Type
+func (c *Claim) SetType(t string) {
+	c._type = t
 }
 
 // Issuer returns the claim's Issuer entity
@@ -119,15 +140,44 @@ func (c *Claim) Signatures() []ockam.Signature {
 }
 
 // AddSignature is
-func (c *Claim) AddSignature(ockam.Signature) {
+func (c *Claim) AddSignature(s ockam.Signature) {
+	c.signatures = append(c.signatures, s)
 }
 
-// MarshalBinary is
-func (c Claim) MarshalBinary() ([]byte, error) {
-	b, err := json.Marshal(c.data)
-	if err != nil {
-		return nil, err
+// MarshalJSON is
+func (c *Claim) MarshalJSON() ([]byte, error) {
+	type j struct {
+		Context    []string                 `json:"@context"`
+		ID         string                   `json:"id"`
+		Type       []string                 `json:"type"`
+		Issuer     string                   `json:"issuer"`
+		Issued     string                   `json:"issued"`
+		Claim      map[string]interface{}   `json:"claim"`
+		Signatures []map[string]interface{} `json:"signatures,omitempty"`
 	}
-	s := hex.EncodeToString(b)
-	return []byte(c.id + "=" + s), nil
+
+	vc := &j{
+		Context: []string{"https://w3id.org/identity/v1", "https://w3id.org/security/v1"},
+		ID:      c.ID(),
+		Type:    []string{c.Type()},
+		Issuer:  c.Issuer().ID().String(),
+		Issued:  time.Now().UTC().Format("2006-01-02"),
+	}
+
+	vc.Claim = c.Data()
+	vc.Claim["id"] = c.Subject().ID().String()
+
+	for _, s := range c.signatures {
+		sj := map[string]interface{}{
+			"type":           s.Type(),
+			"created":        s.Created(),
+			"creator":        s.Creator(),
+			"domain":         s.Domain(),
+			"nonce":          s.Nonce(),
+			"signatureValue": s.SignatureValue(),
+		}
+		vc.Signatures = append(vc.Signatures, sj)
+	}
+
+	return json.Marshal(vc)
 }

@@ -30,14 +30,21 @@ func main() {
 	exitOnError(err)
 
 	// create a new ockam entity to represent a temperature sensor
-	temperatureSensor, err := entity.New(entity.Signer(signer))
+	temperatureSensor, err := entity.New(
+		entity.Attributes{
+			"name":         "Temperature Sensor",
+			"manufacturer": "Element 14",
+			"model":        "Raspberry Pi 3 Model B+",
+		},
+		entity.Signer(signer),
+	)
 	exitOnError(err)
 
 	// register the ockam
 	registrationClaim, err := ockamChain.Register(temperatureSensor)
 	exitOnError(err)
 
-	fmt.Printf("registrationClaim - %s\n", registrationClaim)
+	fmt.Printf("registrationClaim - %s\n", registrationClaim.ID())
 }
 
 func exitOnError(err error) {

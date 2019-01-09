@@ -3,8 +3,11 @@
 package http
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
@@ -126,14 +129,20 @@ func (n *Node) getLatestCommit() (*node.Commit, error) {
 
 // Register is
 func (n *Node) Register(e ockam.Entity) (ockam.Claim, error) {
+	doc := entityToDIDDocument(e)
 	cl, err := claim.New(
-		claim.Data{"id": e.ID().String()},
+		doc,
+		claim.Type("EntityRegistrationClaim"),
 		claim.Issuer(e),
 		claim.Subject(e),
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	d := cl.Data()
+	d["registrationClaim"] = cl.ID()
+	cl.SetData(d)
 
 	err = n.Submit(cl)
 	if err != nil {
@@ -143,14 +152,62 @@ func (n *Node) Register(e ockam.Entity) (ockam.Claim, error) {
 	return cl, nil
 }
 
+func entityToDIDDocument(e ockam.Entity) map[string]interface{} {
+	doc := map[string]interface{}{
+		"id":             e.ID().String(),
+		"publicKey":      []map[string]interface{}{},
+		"authentication": []map[string]interface{}{},
+	}
+
+	for _, k := range e.PublicKeys() {
+		pk := map[string]interface{}{
+			"id":   e.ID().String() + k.Label(),
+			"type": k.Type(),
+		}
+
+		auth := map[string]interface{}{
+			"type":      strings.Replace(k.Type(), "VerificationKey", "SignatureAuthentication", 1),
+			"publicKey": e.ID().String() + k.Label(),
+		}
+
+		switch k.Encoding() {
+		case "Pem":
+			pk["publicKeyPem"] = k.Value()
+		case "Hex":
+			pk["publicKeyHex"] = k.Value()
+		case "Base58":
+			pk["publicKeyBase58"] = k.Value()
+		}
+
+		doc["publicKey"] = append(doc["publicKey"].([]map[string]interface{}), pk)
+		doc["authentication"] = append(doc["authentication"].([]map[string]interface{}), auth)
+	}
+
+	for ak, av := range e.Attributes() {
+		doc[ak] = av
+	}
+
+	return doc
+}
+
 // Submit is
 func (n *Node) Submit(cl ockam.Claim) error {
-	b, err := json.Marshal(cl.Data())
+
+	cl.Issuer().Signers()[0].Sign(cl)
+
+	claimJSON, err := cl.MarshalJSON()
 	if err != nil {
 		return err
 	}
 
-	s := hex.EncodeToString(b) // base?
+	var prettyJSON bytes.Buffer
+	json.Indent(&prettyJSON, claimJSON, "", "\t")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s", string(prettyJSON.Bytes()))
+
+	s := hex.EncodeToString(claimJSON) // base?
 	_, err = n.BroadcastTxSync(cl.ID() + "=" + s)
 	if err != nil {
 		return err

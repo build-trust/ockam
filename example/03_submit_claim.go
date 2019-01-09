@@ -31,7 +31,10 @@ func main() {
 	exitOnError(err)
 
 	// create a new ockam entity to represent a temperature sensor
-	temperatureSensor, err := entity.New(entity.Signer(signer))
+	temperatureSensor, err := entity.New(
+		entity.Attributes{"name": "Temperature Sensor"},
+		entity.Signer(signer),
+	)
 	exitOnError(err)
 
 	// create a temperature claim with this new sensor entity as both the issuer and the subject of the claim

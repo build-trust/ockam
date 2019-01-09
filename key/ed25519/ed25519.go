@@ -4,13 +4,14 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/hex"
+	"encoding/json"
 	"hash"
 	"time"
 
 	"github.com/ockam-network/did"
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/entity"
-	"github.com/ockam-network/ockam/random"
+	"github.com/piprate/json-gold/ld"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ed25519"
 )
@@ -41,25 +42,41 @@ func (k *Ed25519) PublicKey() ockam.PublicKey {
 
 // Sign is
 func (k *Ed25519) Sign(c ockam.Claim) error {
-	binary, err := c.MarshalBinary()
+	claimJSON, err := c.MarshalJSON()
 	if err != nil {
 		return err
 	}
 
-	k.hasher.Write(binary)
+	var claimMap map[string]interface{}
+	err = json.Unmarshal(claimJSON, &claimMap)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	delete(claimMap, "signatures")
+
+	proc := ld.NewJsonLdProcessor()
+	options := ld.NewJsonLdOptions("")
+	options.Format = "application/nquads"
+	options.Algorithm = "URDNA2015"
+
+	canonicalized, err := proc.Normalize(claimMap, options)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	toSign := []byte(canonicalized.(string))
+
+	k.hasher.Write(toSign)
 	signature := ed25519.Sign(k.private, k.hasher.Sum(nil))
-
-	nonce, err := random.GenerateBytes(20)
-	if err != nil {
-		return err
-	}
 
 	s := &Signature{
 		t:              "Ed25519Signature2018",
-		creator:        k.PublicKey(),
-		created:        time.Now(),
-		nonce:          nonce,
+		creator:        c.Issuer().ID().String() + k.PublicKey().Label(),
+		created:        time.Now().UTC().Format(time.RFC3339),
+		nonce:          c.Nonce(),
 		signatureValue: signature,
+		signedValue:    toSign,
 	}
 
 	c.AddSignature(s)

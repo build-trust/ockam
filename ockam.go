@@ -1,8 +1,7 @@
 package ockam
 
 import (
-	"encoding"
-	"time"
+	"encoding/json"
 
 	"github.com/ockam-network/did"
 )
@@ -55,22 +54,28 @@ type Signature interface {
 	// Type
 	// https://w3c-ccg.github.io/ld-cryptosuite-registry/#ed25519signature2018
 	Type() string
-	Creator() PublicKey
-	Created() time.Time
+	Creator() string
+	Created() string
 	Domain() string
 
 	// Nonce
 	// https://web-payments.org/vocabs/security#nonce
-	Nonce() []byte
+	Nonce() string
 
 	// SignatureValue
 	// https://web-payments.org/vocabs/security#signatureValue
 	SignatureValue() []byte
+
+	SignedValue() []byte
 }
 
 // Claim is
 type Claim interface {
 	ID() string
+	Nonce() string
+
+	Type() string
+	SetType(string)
 
 	Issuer() Entity
 	SetIssuer(Entity)
@@ -84,7 +89,7 @@ type Claim interface {
 	Signatures() []Signature
 	AddSignature(Signature)
 
-	encoding.BinaryMarshaler
+	json.Marshaler
 }
 
 // Entity represents and Ockam entity
@@ -92,6 +97,7 @@ type Entity interface {
 	ID() *did.DID
 	PublicKeys() []PublicKey
 	Signers() []Signer
+	Attributes() map[string]interface{}
 }
 
 // Signer is
