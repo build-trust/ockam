@@ -52,7 +52,7 @@ func uploadUserInfo(c *config) {
 const welcomeMessage = `
 Welcome to Ockam.
 
-This message apears when you run the ockam command for the first time.
+This message appears when you run the ockam command for the first time.
 
 The ockam command connects to the Ockam Testnet, which is maintained by the
 Ockam team. For current status of the Testnet see https://ockam.network
