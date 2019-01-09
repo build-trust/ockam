@@ -11,15 +11,15 @@ import (
 	"time"
 )
 
-const reqURL = "http://localhost:8080/upload"
+const reqURL = "https://ockam.network/upload"
 
 func firstRun(c *config) {
 	fmt.Print(welcomeMessage)
 
-	c.UserName = ask(c, "\nWhat is your full name?\n> ")
-	c.UserEmail = ask(c, "\nWhat is your email address?\n> ")
-	c.UserOrganization = ask(c, "\nWhere do you work?\n> ")
-	c.UserReason = ask(c, "\nWhy are you interested in Ockam?\n> ")
+	c.UserName = ask(c, "Name: ")
+	c.UserEmail = ask(c, "Email: ")
+	c.UserOrganization = ask(c, "Organization: ")
+	c.UserReason = ask(c, "Your use case or interest in Ockam: ")
 
 	fmt.Print("\nThank you.\n\n")
 
@@ -50,10 +50,18 @@ func uploadUserInfo(c *config) {
 }
 
 const welcomeMessage = `
-Welcome to Ockam!
+Welcome to Ockam.
 
-It looks like this is the first time you’ve run the ockam command.
+This message apears when you run the ockam command for the first time.
 
-Ockam is in early development, please help us improve by
-answering a few quick questions.
+The ockam command connects to the Ockam Testnet, which is maintained by the
+Ockam team. For current status of the Testnet see https://ockam.network
+
+Please join The Ockam Community on Slack for questions and support
+https://bit.ly/2CXw4PD
+
+If your application requires a production network, please contact the
+Ockam team at hello@ockam.io
+
+For us to better support you with information and updates, please provide:
 `
