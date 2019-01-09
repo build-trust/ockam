@@ -10,11 +10,11 @@ import (
 	"github.com/ockam-network/ockam/node/remote/http"
 )
 
-// This example shows how a device can connect to the Ockam Network.
+// This example shows how a device can connect to the Ockam Testnet.
 
 func main() {
-	// create a local ockam node and give it a way to find peers on the ockam network
-	ockamNode, err := node.New(node.PeerDiscoverer(http.Discoverer("seeds.ockam.network", 26657)))
+	// create a local ockam node and give it a way to find peers on the ockam test network
+	ockamNode, err := node.New(node.PeerDiscoverer(http.Discoverer("test.ockam.network", 26657)))
 	exitOnError(err)
 
 	// ask the local node to find peers and sync with network state

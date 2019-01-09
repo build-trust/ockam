@@ -13,8 +13,8 @@ import (
 )
 
 func main() {
-	// create a local ockam node and give it a way to find peers on the ockam network
-	ockamNode, err := node.New(node.PeerDiscoverer(http.Discoverer("seeds.ockam.network", 26657)))
+	// create a local ockam node and give it a way to find peers on the ockam test network
+	ockamNode, err := node.New(node.PeerDiscoverer(http.Discoverer("test.ockam.network", 26657)))
 	exitOnError(err)
 
 	// ask the node to find peers and sync with network state
