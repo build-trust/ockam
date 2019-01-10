@@ -25,39 +25,15 @@ the Ockam Network.
 
 In the near future, we plan to add `ockam` packages for other programming languages.
 
-## Command Line
+## Table of Contents
 
-The simplest way to get started is to download the latest `ockam` command for your operating system. You can get it
-from our [release bundles](https://github.com/ockam-network/ockam/releases) or using this simple
-[script](godownloader-ockam.sh):
-
-```
-curl -L https://git.io/fhZgf | sh
-```
-
-This will download the command to `./bin/ockam` in your current directory. The binary is self contained, so if you
-wish to you can copy it to somewhere more convenient in your system path, for example:
-
-```
-cp ./bin/ockam /usr/local/bin/
-```
-
-Once the command is in you path, you can run:
-
-```
-ockam --version
-```
-
-Next you may call:
-```
-ockam register
-```
-which will generate a unique ockam [decentralized identity](https://github.com/w3c-ccg/did-primer) for
-your computer and register it on the Ockam TestNet.
+- [Get the Golang package](#go-package)
+- [Write your first Hello Ockam program](#hello-ockam)
+- [Register an Entity](#register-an-entity)
 
 ## Go Package
 
-You can add the ockam Go package to your project just like any other Go package, by calling `go get`:
+You can add the ockam Golang package to your project using `go get`:
 ```
 go get github.com/ockam-network/ockam
 ```
@@ -86,12 +62,23 @@ ockamChain := ockamNode.Chain()
 fmt.Printf("Chain ID: %s\n", ockamChain.ID())
 ```
 
-*Note:* The Ockam Testnet is provided and maintained by the Ockam team to help you build and experiment with
-applications that interact with Ockam. The TestNet has no service level gauruntees, may have intermittent availability,
+A runnable version of the above example can be found in the [example directory](example/01_hello_ockam.go).
+You may run it by calling:
+```
+go run -mod=vendor example/01_hello_ockam.go
+```
+
+**Note:** The Ockam Testnet is provided and maintained by the Ockam team to help you build and experiment with
+applications that interact with Ockam. The TestNet has no service level guarantees, may have intermittent availability,
 may be down for maintenance, and may be restarted at anytime. If your application needs a production ready network,
 please email the Ockam team at hello@ockam.io
 
 ## Register an Entity
+
+In Ockam, things are modeled as entities. Each `Entity` has a [DID](https://w3c-ccg.github.io/did-primer/) that
+begins with `did:ockam:` and uses the `ockam` DID method.
+
+An example ockam DID, looks like this: `did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5`
 
 ```go
 // create a new ed25519 signer
@@ -122,8 +109,22 @@ if err != nil {
 fmt.Printf("registrationClaim - %s\n", registrationClaim.ID())
 ```
 
-This [verifiable](https://www.w3.org/TR/verifiable-claims-data-model/) registration claim embeds the
+A runnable version of the above example can be found in the [example directory](example/02_register_entity.go).
+You may run it by calling:
+```
+go run -mod=vendor example/02_register_entity.go
+```
+
+The above program generates a new `ed25519` signer, then creates a new entity and assigns it that signer, it also
+adds some attributes to the entity, like its manufacturers name.
+
+Finally the code above, as part of the `Register` method generates an `EntityRegistrationClaim`.  This
+[verifiable](https://www.w3.org/TR/verifiable-claims-data-model/) registration claim embeds the
 [DID Document](https://w3c-ccg.github.io/did-spec/#dfn-did-document) that represents this newly created entity.
+
+The claim is then cryprographically signed using the entity's siner and then subitted to the network.
+
+An example `EntityRegistrationClaim` claim looks like this:
 
 ```
 {
@@ -172,8 +173,9 @@ This [verifiable](https://www.w3.org/TR/verifiable-claims-data-model/) registrat
 
 ## Submit a Claim
 
-Submit a claim with some custom data:
+Once an entity is registered, it can make signed verifiable claims about itself or other entities.
 
+Here is some code to create and submit a new signed claim that includes a temperature reading:
 ```go
 // create a temperature claim with this new sensor entity as both the issuer and the subject of the claim
 temperatureClaim, err := claim.New(
@@ -193,6 +195,8 @@ if err != nil {
 
 fmt.Printf("Submitted - " + temperatureClaim.ID())
 ```
+
+Th above code generates a claim of the following form:
 
 ```
 {
@@ -223,9 +227,39 @@ fmt.Printf("Submitted - " + temperatureClaim.ID())
 }
 ```
 
+## Command Line
+
+The `ockam` command is a useful tool to interact with the Ockam Network. You can install the commad for your
+operating system from our [release bundles](https://github.com/ockam-network/ockam/releases) or using this simple
+[script](godownloader-ockam.sh):
+
+```
+curl -L https://git.io/fhZgf | sh
+```
+
+This will download the command to `./bin/ockam` in your current directory. The binary is self contained, so if you
+wish to you can copy it to somewhere more convenient in your system path, for example:
+
+```
+cp ./bin/ockam /usr/local/bin/
+```
+
+Once the command is in you path, you can run:
+
+```
+ockam --version
+```
+
+Next you may call:
+```
+ockam register
+```
+which will generate a unique ockam [decentralized identity](https://github.com/w3c-ccg/did-primer) for
+your computer and register that identity on the Ockam TestNet.
+
 ## Build
 
-The build and run ockam code:
+To build and run ockam from source:
 
 ```
 ./build && ./build install && ockam --version
@@ -233,8 +267,9 @@ The build and run ockam code:
 
 This requires recent versions of Bash and Docker installed on your development machine.
 
-You may also work within a Vagrant and Virtualbox environment, see details on that and other build tools in the
-[Contributing Guide](CONTRIBUTING.md#contribute-code)
+You may also work within a Vagrant and Virtualbox environment, a Vagrnatfile is included. Our
+[Contributing Guide](CONTRIBUTING.md#contribute-code) has more details on how to build and contribute to Ockam.
+
 
 ## Contributing to Ockam
 
@@ -265,3 +300,8 @@ You may also work within a Vagrant and Virtualbox environment, see details on th
 * [Matthew Gregory](https://github.com/mattgreg)
 * [Mrinal Wadhwa](https://github.com/mrinalwadhwa)
 * [Rolf Kaiser](https://github.com/rkaiser0324)
+
+## License and attributions
+
+This code is licensed under the terms of the [Apache License 2.0](LICENSE)
+This code depends on other open source packages, attributions for those packages are in the [NOTICE](NOTICE) file
