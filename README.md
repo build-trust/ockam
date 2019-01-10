@@ -20,8 +20,8 @@ to connected devices.
 
 This repository contains:
 1. The `ockam` command line program for simple interactions with the Ockam Network.
-2. The `github.com/ockam-network/ockam` Go package to develop Go applications that programatically interact with the
-   Ockam Network.
+2. The `github.com/ockam-network/ockam` Go package to develop Go applications that programatically interact with
+the Ockam Network.
 
 In the near future, we plan to add `ockam` packages for other programming languages.
 

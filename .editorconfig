@@ -19,3 +19,7 @@ indent_style = space
 
 [NOTICE]
 indent_style = space
+
+[godownloader-ockam.sh]
+indent_style = none
+indent_size = none
