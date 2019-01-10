@@ -125,3 +125,7 @@ func defaultConfigHome(operatingSystem string) string {
 		return strings.Join(path, "/")
 	}
 }
+
+func dataHome() string {
+	return filepath.Join(configHome(), "data")
+}

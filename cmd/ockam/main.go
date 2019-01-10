@@ -32,6 +32,7 @@ func main() {
 
 	attachClaimCommand(app, conf)
 	attachEntityCommand(app, conf)
+	attachRegisterCommand(app, conf)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 }
