@@ -3,10 +3,7 @@
 package http
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/ockam-network/ockam"
@@ -200,12 +197,12 @@ func (n *Node) Submit(cl ockam.Claim) error {
 		return err
 	}
 
-	var prettyJSON bytes.Buffer
-	json.Indent(&prettyJSON, claimJSON, "", "\t")
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s", string(prettyJSON.Bytes()))
+	// var prettyJSON bytes.Buffer
+	// json.Indent(&prettyJSON, claimJSON, "", "\t")
+	// if err != nil {
+	// 	return err
+	// }
+	// fmt.Printf("%s", string(prettyJSON.Bytes()))
 
 	s := hex.EncodeToString(claimJSON) // base?
 	_, err = n.BroadcastTxSync(cl.ID() + "=" + s)
