@@ -40,6 +40,11 @@ func (k *Ed25519) PublicKey() ockam.PublicKey {
 	return k.public
 }
 
+// PrivateKey is
+func (k *Ed25519) PrivateKey() []byte {
+	return k.private
+}
+
 // Sign is
 func (k *Ed25519) Sign(c ockam.Claim) error {
 	claimJSON, err := c.MarshalJSON()
