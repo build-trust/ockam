@@ -25,11 +25,13 @@ the Ockam Network.
 
 In the near future, we plan to add `ockam` packages for other programming languages.
 
-## Table of Contents
-
 - [Get the Golang package](#go-package)
 - [Write your first Hello Ockam program](#hello-ockam)
 - [Register an Entity](#register-an-entity)
+- [Submit a Claim](#submit-a-claim)
+- [Contribute to Ockam](#contributing-to-ockam)
+- [Contributors](#contributors)
+- [License and attributions](license-and-attributions)
 
 ## Go Package
 
@@ -115,14 +117,14 @@ You may run it by calling:
 go run -mod=vendor example/02_register_entity.go
 ```
 
-The above program generates a new `ed25519` signer, then creates a new entity and assigns it that signer, it also
-adds some attributes to the entity, like its manufacturers name.
+The above program generates a new `ed25519` signer, then creates a new entity and assigns it that signer. The above
+code also adds some attributes to the entity, like its manufacturer's name.
 
 Finally the code above, as part of the `Register` method generates an `EntityRegistrationClaim`.  This
 [verifiable](https://www.w3.org/TR/verifiable-claims-data-model/) registration claim embeds the
 [DID Document](https://w3c-ccg.github.io/did-spec/#dfn-did-document) that represents this newly created entity.
 
-The claim is then cryprographically signed using the entity's siner and then subitted to the network.
+The claim is then cryprographically signed using the entity's signer and then subitted to the network.
 
 An example `EntityRegistrationClaim` claim looks like this:
 
@@ -196,7 +198,13 @@ if err != nil {
 fmt.Printf("Submitted - " + temperatureClaim.ID())
 ```
 
-Th above code generates a claim of the following form:
+A runnable version of the above example can be found in the [example directory](example/03_submit_claim.go).
+You may run it by calling:
+```
+go run -mod=vendor example/03_submit_claim.go
+```
+
+The above code generates a signed claim of the following form:
 
 ```
 {
@@ -270,7 +278,6 @@ This requires recent versions of Bash and Docker installed on your development m
 You may also work within a Vagrant and Virtualbox environment, a Vagrnatfile is included. Our
 [Contributing Guide](CONTRIBUTING.md#contribute-code) has more details on how to build and contribute to Ockam.
 
-
 ## Contributing to Ockam
 
 - [Ask a question](CONTRIBUTING.md#ask-a-question)
@@ -304,4 +311,5 @@ You may also work within a Vagrant and Virtualbox environment, a Vagrnatfile is 
 ## License and attributions
 
 This code is licensed under the terms of the [Apache License 2.0](LICENSE)
+
 This code depends on other open source packages, attributions for those packages are in the [NOTICE](NOTICE) file
