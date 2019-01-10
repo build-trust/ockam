@@ -29,9 +29,11 @@ In the near future, we plan to add `ockam` packages for other programming langua
 - [Write your first Hello Ockam program](#hello-ockam)
 - [Register an Entity](#register-an-entity)
 - [Submit a Claim](#submit-a-claim)
+- [Use the Ockam Command](#commmand-line)
+- [Build the source code](#build)
 - [Contribute to Ockam](#contributing-to-ockam)
 - [Contributors](#contributors)
-- [License and attributions](license-and-attributions)
+- [License and attributions](#license-and-attributions)
 
 ## Go Package
 
