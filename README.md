@@ -9,6 +9,10 @@
 <a href="https://join.slack.com/t/ockam-community/shared_invite/enQtNDk5Nzk2NDA2NDcxLWMzMzJlZjQzOTZjYWY0YmNkNWE1NmI1M2YyYzlkNjk4NDYyYzU0OWE0YTI4ZjcwNDBjNmQ4NzZjZTMzYmY3NDA"><img alt="Discuss Ockam" src="https://img.shields.io/badge/slack-discuss-E01563.svg?logo=slack&style=flat-square"></a>
 </p>
 
+<h1 align="center">
+	<img width="900" alt="ockam register" src="register.gif">
+</h1>
+
 ## Build and Run
 
 The simplest way to build and run ockam code is:
