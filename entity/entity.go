@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"strconv"
-
 	"github.com/ockam-network/did"
 	"github.com/ockam-network/ockam"
 )
@@ -17,15 +15,15 @@ type Entity struct {
 	attributes Attributes
 }
 
-// Option is
-type Option func(*Entity)
-
-// New creates
-func New(attributes Attributes, options ...Option) (*Entity, error) {
-	e := &Entity{attributes: attributes}
+// New creates an initialized Entity{} object with a valid id attribute
+// and returns the Entity{} pointer and an error if present
+func New(options ...Option) (*Entity, error) {
+	e := &Entity{}
 
 	for _, option := range options {
-		option(e)
+		if err := option(e); err != nil {
+			return e, err
+		}
 	}
 
 	if e.id == nil {
@@ -35,22 +33,6 @@ func New(attributes Attributes, options ...Option) (*Entity, error) {
 	}
 
 	return e, nil
-}
-
-// ID is
-func ID(did *did.DID) Option {
-	return func(e *Entity) {
-		e.id = did
-	}
-}
-
-// Signer is
-func Signer(s ockam.Signer) Option {
-	return func(e *Entity) {
-		// s.PublicKey().SetOwner(e)
-		s.PublicKey().SetLabel("#key-" + strconv.Itoa(len(e.signers)+1))
-		e.signers = append(e.signers, s)
-	}
 }
 
 // ID is

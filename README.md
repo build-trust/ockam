@@ -93,12 +93,12 @@ if err != nil {
 
 // create a new ockam entity to represent a temperature sensor
 temperatureSensor, err := entity.New(
-	entity.Attributes{
+	entity.OptionAttributes(map[string]string{
 		"name":         "Temperature Sensor",
 		"manufacturer": "Element 14",
 		"model":        "Raspberry Pi 3 Model B+",
-	},
-	entity.Signer(signer),
+	}),
+	entity.OptionSigner(signer),
 )
 if err != nil {
 	log.Fatal(err)
