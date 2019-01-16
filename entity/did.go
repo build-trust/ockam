@@ -7,7 +7,12 @@ import (
 )
 
 // NewDID creates a new DID from a public key, the DID method is set to ockam
-func NewDID(publicKey []byte) *did.DID {
+// and returns an error if a nil type is passed as publicKey
+func NewDID(publicKey []byte) (*did.DID, error) {
+	if publicKey == nil {
+		return nil, ErrorNilTypeNotAllowed
+	}
+
 	//hash the public key
 	hash := sha3.Sum256(publicKey)
 	buf := hash[:]
@@ -24,5 +29,5 @@ func NewDID(publicKey []byte) *did.DID {
 	id := base58.Encode(buf)
 
 	// return a DID with Method: "ockam"
-	return &did.DID{Method: "ockam", ID: id}
+	return &did.DID{Method: "ockam", ID: id}, nil
 }
