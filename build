@@ -110,7 +110,7 @@ lint() {
 		run_tool eclint
 		run_tool commitlint
 		run_tool shellcheck
-		run_tool gometalinter
+		# run_tool gometalinter
 	else
 		for var in "$@"; do
 			run_tool "$var"

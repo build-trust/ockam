@@ -3,11 +3,6 @@
 
 name: $(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
 
-trigger:
-  - master
-  - develop
-  - feature/*
-
 pool:
   vmImage: 'Ubuntu 16.04'
 

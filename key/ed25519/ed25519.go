@@ -40,6 +40,11 @@ func (k *Ed25519) PublicKey() ockam.PublicKey {
 	return k.public
 }
 
+// PrivateKey is
+func (k *Ed25519) PrivateKey() []byte {
+	return k.private
+}
+
 // Sign is
 func (k *Ed25519) Sign(c ockam.Claim) error {
 	claimJSON, err := c.MarshalJSON()
@@ -133,5 +138,9 @@ func (p *PublicKey) Value() string {
 
 // DID is
 func (p *PublicKey) DID() *did.DID {
-	return entity.NewDID([]byte(p.Value()))
+	// TODO this ignores the error from NewDID() to prevent a snowball
+	// PR. In a follow up PR, we should modify the interface PublicKey
+	// satisfies to have DID() return an error.
+	did, _ := entity.NewDID([]byte(p.Value()))
+	return did
 }

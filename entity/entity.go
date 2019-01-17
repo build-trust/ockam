@@ -3,9 +3,15 @@ package entity
 import (
 	"strconv"
 
+	"github.com/pkg/errors"
+
 	"github.com/ockam-network/did"
 	"github.com/ockam-network/ockam"
 )
+
+// ErrorNilTypeNotAllowed is an error type to be returned
+// for any option whose passed in value requires a non-nil value
+var ErrorNilTypeNotAllowed = errors.New("can not pass nil value to option")
 
 // Attributes is
 type Attributes map[string]interface{}
@@ -18,14 +24,17 @@ type Entity struct {
 }
 
 // Option is
-type Option func(*Entity)
+type Option func(*Entity) error
 
-// New creates
+// New accepts an Attribute{} type and any number of functional
+// Option{} types and returns an initialized Entity{} and error
 func New(attributes Attributes, options ...Option) (*Entity, error) {
 	e := &Entity{attributes: attributes}
 
 	for _, option := range options {
-		option(e)
+		if err := option(e); err != nil {
+			return e, err
+		}
 	}
 
 	if e.id == nil {
@@ -37,19 +46,29 @@ func New(attributes Attributes, options ...Option) (*Entity, error) {
 	return e, nil
 }
 
-// ID is
+// ID is a functional option to configure a distributed ID
+// attribute on a new Entity{} type
 func ID(did *did.DID) Option {
-	return func(e *Entity) {
+	return func(e *Entity) error {
+		if did == nil {
+			return ErrorNilTypeNotAllowed
+		}
 		e.id = did
+		return nil
 	}
 }
 
-// Signer is
+// Signer is a functional option to set a ockem.Signer{}
+// attribute on a new Entity{} type
 func Signer(s ockam.Signer) Option {
-	return func(e *Entity) {
+	return func(e *Entity) error {
+		if s == nil {
+			return ErrorNilTypeNotAllowed
+		}
 		// s.PublicKey().SetOwner(e)
 		s.PublicKey().SetLabel("#key-" + strconv.Itoa(len(e.signers)+1))
 		e.signers = append(e.signers, s)
+		return nil
 	}
 }
 

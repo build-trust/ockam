@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"time"
 
-	cmn "github.com/ockam-network/ockam/dynamic/common"
+	cmn "github.com/ockam-network/ockam/node/dynamic/common"
 )
 
 // StatusResponse is

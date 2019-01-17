@@ -9,9 +9,267 @@
 <a href="https://join.slack.com/t/ockam-community/shared_invite/enQtNDk5Nzk2NDA2NDcxLWMzMzJlZjQzOTZjYWY0YmNkNWE1NmI1M2YyYzlkNjk4NDYyYzU0OWE0YTI4ZjcwNDBjNmQ4NzZjZTMzYmY3NDA"><img alt="Discuss Ockam" src="https://img.shields.io/badge/slack-discuss-E01563.svg?logo=slack&style=flat-square"></a>
 </p>
 
-## Build and Run
+<h1 align="center">
+	<img width="900" alt="ockam register" src="register.gif">
+</h1>
 
-The simplest way to build and run ockam code is:
+## Overview
+
+[Ockam](ockam.io) is a decentralized and open platform for easily adding identity, trust and interoperability
+to connected devices.
+
+This repository contains:
+1. The `ockam` command line program for simple interactions with the Ockam Network.
+2. The `github.com/ockam-network/ockam` Go package to develop Go applications that programatically interact with
+the Ockam Network.
+
+In the near future, we plan to add `ockam` packages for other programming languages.
+
+- [Get the Golang package](#go-package)
+- [Write your first Hello Ockam program](#hello-ockam)
+- [Register an Entity](#register-an-entity)
+- [Submit a Claim](#submit-a-claim)
+- [Use the Ockam Command](#commmand-line)
+- [Build the source code](#build)
+- [Contribute to Ockam](#contributing-to-ockam)
+- [Contributors](#contributors)
+- [License and attributions](#license-and-attributions)
+
+## Go Package
+
+You can add the ockam Golang package to your project using `go get`:
+```
+go get github.com/ockam-network/ockam
+```
+
+We require Go version `1.11+`.
+
+## Hello Ockam
+
+Here is some simple Go code to connect with the Ockam TestNet:
+
+```go
+// create a lightweight local ockam node and give it a way to find peers on the ockam test network
+ockamNode, err := node.New(node.PeerDiscoverer(http.Discoverer("test.ockam.network", 26657)))
+if err != nil {
+	log.Fatal(err)
+}
+
+// ask the local node to find peers and sync with network state
+err = ockamNode.Sync()
+if err != nil {
+	log.Fatal(err)
+}
+
+// print the id of the chain that the network is maintaining.
+ockamChain := ockamNode.Chain()
+fmt.Printf("Chain ID: %s\n", ockamChain.ID())
+```
+
+A runnable version of the above example can be found in the [example directory](example/01_hello_ockam.go).
+You may run it by calling:
+```
+go run -mod=vendor example/01_hello_ockam.go
+```
+
+**Note:** The Ockam Testnet is provided and maintained by the Ockam team to help you build and experiment with
+applications that interact with Ockam. The TestNet has no service level guarantees, may have intermittent availability,
+may be down for maintenance, and may be restarted at anytime. If your application needs a production ready network,
+please email the Ockam team at hello@ockam.io
+
+## Register an Entity
+
+In Ockam, things are modeled as entities. Each `Entity` has a [DID](https://w3c-ccg.github.io/did-primer/) that
+begins with `did:ockam:` and uses the `ockam` DID method.
+
+An example ockam DID, looks like this: `did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5`
+
+```go
+// create a new ed25519 signer
+signer, err := ed25519.New()
+if err != nil {
+	log.Fatal(err)
+}
+
+// create a new ockam entity to represent a temperature sensor
+temperatureSensor, err := entity.New(
+	entity.Attributes{
+		"name":         "Temperature Sensor",
+		"manufacturer": "Element 14",
+		"model":        "Raspberry Pi 3 Model B+",
+	},
+	entity.Signer(signer),
+)
+if err != nil {
+	log.Fatal(err)
+}
+
+// register the entity by creating a signed registration claim
+registrationClaim, err := ockamChain.Register(temperatureSensor)
+if err != nil {
+	log.Fatal(err)
+}
+
+fmt.Printf("registrationClaim - %s\n", registrationClaim.ID())
+```
+
+A runnable version of the above example can be found in the [example directory](example/02_register_entity.go).
+You may run it by calling:
+```
+go run -mod=vendor example/02_register_entity.go
+```
+
+The above program generates a new `ed25519` signer, then creates a new entity and assigns it that signer. The above
+code also adds some attributes to the entity, like its manufacturer's name.
+
+Finally the code above, as part of the `Register` method generates an `EntityRegistrationClaim`.  This
+[verifiable](https://www.w3.org/TR/verifiable-claims-data-model/) registration claim embeds the
+[DID Document](https://w3c-ccg.github.io/did-spec/#dfn-did-document) that represents this newly created entity.
+
+The claim is then cryprographically signed using the entity's signer and then subitted to the network.
+
+An example `EntityRegistrationClaim` claim looks like this:
+
+```
+{
+	"@context": [
+		"https://w3id.org/identity/v1",
+		"https://w3id.org/security/v1"
+	],
+	"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5/claim/1brpf2pkh6",
+	"type": [
+		"EntityRegistrationClaim"
+	],
+	"issuer": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5",
+	"issued": "2019-01-10",
+	"claim": {
+		"authentication": [
+			{
+				"publicKey": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
+				"type": "Ed25519SignatureAuthentication2018"
+			}
+		],
+		"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5",
+		"manufacturer": "Element 14",
+		"model": "Raspberry Pi 3 Model B+",
+		"name": "Temperature Sensor",
+		"publicKey": [
+			{
+				"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
+				"publicKeyHex": "3c93f446990ecd3ce64bcf9a5f949423d2e348948ee3aeb1c78924490f6b50f9",
+				"type": "Ed25519VerificationKey2018"
+			}
+		],
+		"registrationClaim": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5/claim/1brpf2pkh6"
+	},
+	"signatures": [
+		{
+			"created": "2019-01-10T07:53:25Z",
+			"creator": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
+			"domain": "ockam",
+			"nonce": "1brpf2pkh6",
+			"signatureValue": "4v3cTB5u0/nA/xxrGU3gQ38IaP1MJJ7tQyPQtBtZmVLE36M96d2XRo0ArFyxQV2CsDMtP57n/vnvZWN88Du+Bg==",
+			"type": "Ed25519Signature2018"
+		}
+	]
+}
+```
+
+## Submit a Claim
+
+Once an entity is registered, it can make signed verifiable claims about itself or other entities.
+
+Here is some code to create and submit a new signed claim that includes a temperature reading:
+```go
+// create a temperature claim with this new sensor entity as both the issuer and the subject of the claim
+temperatureClaim, err := claim.New(
+	claim.Data{"temperature": 100},
+	claim.Issuer(temperatureSensor),
+	claim.Subject(temperatureSensor),
+)
+if err != nil {
+	log.Fatal(err)
+}
+
+// submit the claim to be
+err = ockamChain.Submit(temperatureClaim)
+if err != nil {
+	log.Fatal(err)
+}
+
+fmt.Printf("Submitted - " + temperatureClaim.ID())
+```
+
+A runnable version of the above example can be found in the [example directory](example/03_submit_claim.go).
+You may run it by calling:
+```
+go run -mod=vendor example/03_submit_claim.go
+```
+
+The above code generates a signed claim of the following form:
+
+```
+{
+	"@context": [
+		"https://w3id.org/identity/v1",
+		"https://w3id.org/security/v1"
+	],
+	"id": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC/claim/iu5aczbwnt",
+	"type": [
+		""
+	],
+	"issuer": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC",
+	"issued": "2019-01-10",
+	"claim": {
+		"id": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC",
+		"temperature": 100
+	},
+	"signatures": [
+		{
+			"created": "2019-01-10T08:00:31Z",
+			"creator": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC#key-1",
+			"domain": "ockam",
+			"nonce": "iu5aczbwnt",
+			"signatureValue": "UpCPc/Z6bGwUXfgNgRFxpQU2kSt8HBoe8E94JyvlAKG1yBNBfqb4oUKdPZPHOQH37JtiIFap9eGS4qMBP35DDA==",
+			"type": "Ed25519Signature2018"
+		}
+	]
+}
+```
+
+## Command Line
+
+The `ockam` command is a useful tool to interact with the Ockam Network. You can install the commad for your
+operating system from our [release bundles](https://github.com/ockam-network/ockam/releases) or using this simple
+[script](godownloader-ockam.sh):
+
+```
+curl -L https://git.io/fhZgf | sh
+```
+
+This will download the command to `./bin/ockam` in your current directory. The binary is self contained, so if you
+wish to you can copy it to somewhere more convenient in your system path, for example:
+
+```
+cp ./bin/ockam /usr/local/bin/
+```
+
+Once the command is in you path, you can run:
+
+```
+ockam --version
+```
+
+Next you may call:
+```
+ockam register
+```
+which will generate a unique ockam [decentralized identity](https://github.com/w3c-ccg/did-primer) for
+your computer and register that identity on the Ockam TestNet.
+
+## Build
+
+To build and run ockam from source:
 
 ```
 ./build && ./build install && ockam --version
@@ -19,8 +277,8 @@ The simplest way to build and run ockam code is:
 
 This requires recent versions of Bash and Docker installed on your development machine.
 
-You may also work within a Vagrant and Virtualbox environment, see details on that and other build tools in the
-[Contributing Guide](CONTRIBUTING.md#contribute-code)
+You may also work within a Vagrant and Virtualbox environment, a Vagrnatfile is included. Our
+[Contributing Guide](CONTRIBUTING.md#contribute-code) has more details on how to build and contribute to Ockam.
 
 ## Contributing to Ockam
 
@@ -51,3 +309,9 @@ You may also work within a Vagrant and Virtualbox environment, see details on th
 * [Matthew Gregory](https://github.com/mattgreg)
 * [Mrinal Wadhwa](https://github.com/mrinalwadhwa)
 * [Rolf Kaiser](https://github.com/rkaiser0324)
+
+## License and attributions
+
+This code is licensed under the terms of the [Apache License 2.0](LICENSE)
+
+This code depends on other open source packages, attributions for those packages are in the [NOTICE](NOTICE) file
