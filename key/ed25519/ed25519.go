@@ -137,10 +137,6 @@ func (p *PublicKey) Value() string {
 }
 
 // DID is
-func (p *PublicKey) DID() *did.DID {
-	// TODO this ignores the error from NewDID() to prevent a snowball
-	// PR. In a follow up PR, we should modify the interface PublicKey
-	// satisfies to have DID() return an error.
-	did, _ := entity.NewDID([]byte(p.Value()))
-	return did
+func (p *PublicKey) DID() (*did.DID, error) {
+	return entity.NewDID([]byte(p.Value()))
 }

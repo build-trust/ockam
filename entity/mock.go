@@ -18,7 +18,7 @@ func (k mockPublicKey) SetOwner(e ockam.Entity) { return }
 func (k mockPublicKey) Type() string            { return "" }
 func (k mockPublicKey) Encoding() string        { return "" }
 func (k mockPublicKey) Value() string           { return "" }
-func (k mockPublicKey) DID() *did.DID           { return &did.DID{} }
+func (k mockPublicKey) DID() (*did.DID, error)  { return &did.DID{}, nil }
 
 type mockSigner struct{}
 

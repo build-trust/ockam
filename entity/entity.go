@@ -39,7 +39,12 @@ func New(attributes Attributes, options ...Option) (*Entity, error) {
 
 	if e.id == nil {
 		if len(e.signers) > 0 {
-			e.id = e.signers[0].PublicKey().DID()
+			id, err := e.signers[0].PublicKey().DID()
+			if err != nil {
+				return e, err
+			}
+
+			e.id = id
 		}
 	}
 

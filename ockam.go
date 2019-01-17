@@ -45,7 +45,7 @@ type PublicKey interface {
 	Encoding() string
 	Value() string
 
-	DID() *did.DID
+	DID() (*did.DID, error)
 }
 
 // Signature is
