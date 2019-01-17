@@ -8,13 +8,15 @@ import (
 	"time"
 
 	"github.com/ockam-network/ockam/node"
+
+	"github.com/ockam-network/ockam/node/types"
 	"github.com/pkg/errors"
 )
 
 // CommitResponse is
 type CommitResponse struct {
-	Error  interface{} `json:"error"`
-	Result node.Commit `json:"result"`
+	Error  interface{}  `json:"error"`
+	Result types.Commit `json:"result"`
 }
 
 // TxResponse is
@@ -35,7 +37,7 @@ type BroadcastTxSyncResponse struct {
 }
 
 // Commit fetches the the commit at the provided height
-func (n *Node) Commit(height string) (*node.Commit, error) {
+func (n *Node) Commit(height string) (*types.Commit, error) {
 	r := new(CommitResponse)
 	err := n.Call(fmt.Sprintf("/commit?height=%s", height), &r)
 	if err != nil {

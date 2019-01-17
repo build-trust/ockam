@@ -9,7 +9,7 @@ import (
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
 	"github.com/ockam-network/ockam/claim"
-	"github.com/ockam-network/ockam/node"
+	"github.com/ockam-network/ockam/node/types"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +20,7 @@ type Node struct {
 	port         int
 	chain        ockam.Chain
 	peers        []ockam.Node
-	latestCommit *node.Commit
+	latestCommit *types.Commit
 }
 
 // Option is
@@ -83,7 +83,7 @@ func (n *Node) Chain() ockam.Chain {
 }
 
 // LatestCommit returns
-func (n *Node) LatestCommit() *node.Commit {
+func (n *Node) LatestCommit() *types.Commit {
 	return n.latestCommit
 }
 
@@ -106,7 +106,7 @@ func (b *block) Hash() string {
 func (n *Node) LatestBlock() ockam.Block {
 	return &block{
 		height: n.latestCommit.SignedHeader.Header.Height,
-		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash,
+		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash.String(),
 	}
 }
 
@@ -115,7 +115,7 @@ func (n *Node) Peers() []ockam.Node {
 	return n.peers
 }
 
-func (n *Node) getLatestCommit() (*node.Commit, error) {
+func (n *Node) getLatestCommit() (*types.Commit, error) {
 	r := new(CommitResponse)
 	err := n.Call("/commit", &r)
 	if err != nil {
