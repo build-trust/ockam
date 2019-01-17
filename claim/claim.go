@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/random"
 )
@@ -28,6 +30,10 @@ type Option func(*Claim)
 
 // New returns a new Claim
 func New(data Data, options ...Option) (*Claim, error) {
+	if data == nil {
+		return nil, errors.New("data can not be nil, must pass a valid Data{}")
+	}
+
 	c := &Claim{data: data}
 
 	for _, option := range options {
