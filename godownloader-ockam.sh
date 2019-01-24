@@ -407,4 +407,47 @@ CHECKSUM=${PROJECT_NAME}_${VERSION}_checksums.txt
 CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
 
-execute
+first_run() {
+
+cat <<EOF
+
+Thank you for downloading Ockam.
+
+The ockam command connects to the Ockam Testnet, which is maintained by the
+Ockam team. For current status of the Testnet see https://ockam.network
+
+Please join The Ockam Community on Slack for questions and support
+https://bit.ly/2CXw4PD
+
+If your application requires a production network, please contact the
+Ockam team at hello@ockam.io
+
+EOF
+
+
+if command -v curl > /dev/null 2>&1; then
+cat <<EOF
+For us to better support you with information and updates, please let us
+know how we can get in touch and a little about your interest in Ockam.
+EOF
+
+printf "\nName (Optional): "
+read name </dev/tty
+printf "Email (Optional): "
+read email </dev/tty
+printf "Organization (Optional): "
+read org </dev/tty
+printf "Your use case or interest in Ockam (Optional): "
+read use </dev/tty
+
+curl -H "Content-Type: application/json" -X POST https://ockam.network/upload -d "{
+  \"UserName\": \"$name\",
+  \"UserEmail\": \"$email\",
+  \"UserOrganization\": \"$org\",
+  \"UserReason\": \"$use\"
+}"
+fi
+}
+
+# execute && first_run
+first_run
