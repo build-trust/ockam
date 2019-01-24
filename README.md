@@ -117,7 +117,8 @@ The above code is in the [example directory](example/02_register_entity.go); you
 go run -mod=vendor example/02_register_entity.go
 ```
 
-This generates a new `ed25519` signer, then creates a new entity and assigns it that signer. It also adds some attributes to the entity (e.g., its manufacturer's name).
+This generates a new `ed25519` signer, then creates a new entity and assigns it that signer. It also adds some
+attributes to the entity (e.g., its manufacturer's name).
 
 The code above, as part of the `Register` method, lastly generates an `EntityRegistrationClaim`.  This
 [verifiable](https://www.w3.org/TR/verifiable-claims-data-model/) registration claim embeds the
@@ -238,13 +239,14 @@ This generates a signed claim of the following form:
 The `ockam` command is a useful tool to interact with the Ockam Network. You can install it for your
 operating system from our [release bundles](https://github.com/ockam-network/ockam/releases).
 
- If you are on Mac or Linux, you can also use this simple
+If you are on Mac or Linux, you can also use this simple
 [downloader script](godownloader-ockam.sh):
 
 ```
 curl -L https://git.io/fhZgf | sh
 ```
-This will download the binary to `./bin/ockam` in your current directory. It is self-contained, so you can copy it to somewhere more convenient in your system path, for example:
+This will download the binary to `./bin/ockam` in your current directory. It is self-contained, so you can copy it to
+somewhere more convenient in your system path, for example:
 
 ```
 cp ./bin/ockam /usr/local/bin/
@@ -265,7 +267,8 @@ your computer and register that identity on the Ockam TestNet.
 
 ## Building
 
-If you have recent versions of Bash and Docker installed on your machine, you can build and run the Ockam binary from source via:
+If you have recent versions of Bash and Docker installed on your machine, you can build and run the Ockam binary from
+source via:
 
 ```
 ./build && ./build install && ockam --version
