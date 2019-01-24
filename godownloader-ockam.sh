@@ -449,5 +449,4 @@ curl -H "Content-Type: application/json" -X POST https://ockam.network/upload -d
 fi
 }
 
-# execute && first_run
-first_run
+execute && first_run
