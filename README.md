@@ -308,6 +308,7 @@ For more details on how to build and contribute to Ockam, see our
 * [Matthew Gregory](https://github.com/mattgreg)
 * [Mrinal Wadhwa](https://github.com/mrinalwadhwa)
 * [Rolf Kaiser](https://github.com/rkaiser0324)
+* [Jeff Malnick](https://github.com/malnick)
 
 ## License and attributions
 
