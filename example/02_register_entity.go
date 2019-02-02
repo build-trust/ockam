@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -44,7 +46,13 @@ func main() {
 	registrationClaim, err := ockamChain.Register(temperatureSensor)
 	exitOnError(err)
 
-	fmt.Printf("registrationClaim - %s\n", registrationClaim.ID())
+	// turn the claim into json so we can print it
+	claimJson, err := registrationClaim.MarshalJSON()
+	exitOnError(err)
+
+	// print the claim
+	err = printJson(claimJson)
+	exitOnError(err)
 }
 
 func exitOnError(err error) {
@@ -52,4 +60,14 @@ func exitOnError(err error) {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		os.Exit(1)
 	}
+}
+
+func printJson(j []byte) error {
+	var prettyJSON bytes.Buffer
+	err := json.Indent(&prettyJSON, j, "", "\t")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s", string(prettyJSON.Bytes()))
+	return nil
 }
