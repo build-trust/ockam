@@ -83,7 +83,7 @@ run_tool() {
 	fi
 
 	case "$toolname" in
-		go) envs="--env GOOS --env GOARCH";;
+		go) envs="--env GOOS --env GOARCH --env CGO_ENABLED";;
 		*) envs="";;
 	esac
 
@@ -167,26 +167,28 @@ binary() {
 	# -mod=vendor uses the vendor directory.
 	# -ldflags="-s -w" strips debug info.
 	# -o "$target" outputs the binary at the target path
-	GOOS=$os GOARCH=$arch run_tool go build -mod=vendor -ldflags="-s -w" -o "$target" cmd/ockam/*.go
+	GOOS=$os GOARCH=$arch CGO_ENABLED=$CGO_ENABLED run_tool go build -mod=vendor -ldflags="-s -w" -o "$target" cmd/ockam/*.go
 	echo "Done."
 }
 
 # Run tests
 test() {
 	run_tool go test -v -mod=vendor -cover ./...
+	run_tool go-with-softhsm test -v -mod=vendor -cover -tags=softhsm ./key/pkcs11
 }
 
 # build ockam binaries for multiple GOOS/GOARCH combination
 release() {
 	local platforms=(
-		"linux/amd64"
-		"linux/arm64"
-		"darwin/amd64"
-		"windows/amd64"
+		"linux/amd64/1"
+		"linux/arm64/0"
+		"darwin/amd64/0"
+		"windows/amd64/0"
 	)
 
 	for platform in "${platforms[@]}"; do
-		GOOS="${platform%/*}" GOARCH="${platform#*/}" binary
+		IFS='/' read -r -a p <<< "$platform"
+		GOOS="${p[0]}" GOARCH="${p[1]}" CGO_ENABLED="${p[2]}" binary
 	done
 }
 
