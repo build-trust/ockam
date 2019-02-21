@@ -5,6 +5,8 @@ require (
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
+	github.com/letsencrypt/pkcs11key v2.0.1-0.20170608213348-396559074696+incompatible
+	github.com/miekg/pkcs11 v0.0.0-20181204074848-79c216b7cb4d // indirect
 	github.com/mr-tron/base58 v1.1.0
 	github.com/ockam-network/did v0.1.3
 	github.com/piprate/json-gold v0.1.1
