@@ -7,6 +7,12 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf h1:+RRA9JqSOZFfKrOeqr2z77+8R2RKyh8PG66dcu1V0ck=
 github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf/go.mod h1:HP5RmnzzSNb993RKQDq4+1A4ia9nllfqcQFTQJedwGI=
+github.com/letsencrypt/pkcs11key v2.0.0+incompatible h1:zYbII8Qh9OY9zYhS8nvIZVojd8tP756M1W1C3r7Uoq0=
+github.com/letsencrypt/pkcs11key v2.0.0+incompatible/go.mod h1:iGYXKqDXt0cpBthCHdr9ZdsQwyGlYFh/+8xa4WzIQ34=
+github.com/letsencrypt/pkcs11key v2.0.1-0.20170608213348-396559074696+incompatible h1:GfzE+uq7odDW7nOmp1QWuilLEK7kJf8i84XcIfk3mKA=
+github.com/letsencrypt/pkcs11key v2.0.1-0.20170608213348-396559074696+incompatible/go.mod h1:iGYXKqDXt0cpBthCHdr9ZdsQwyGlYFh/+8xa4WzIQ34=
+github.com/miekg/pkcs11 v0.0.0-20181204074848-79c216b7cb4d h1:VT1D8wjIhSIm3ueg21QNwxz3xUQPN9+7O7B1leXDlAo=
+github.com/miekg/pkcs11 v0.0.0-20181204074848-79c216b7cb4d/go.mod h1:WCBAbTOdfhHhz7YXujeZMF7owC4tPb1naKFsgfUISjo=
 github.com/mr-tron/base58 v1.1.0 h1:Y51FGVJ91WBqCEabAi5OPUz38eAx8DakuAm5svLcsfQ=
 github.com/mr-tron/base58 v1.1.0/go.mod h1:xcD2VGqlgYjBdcBLw+TuYLr8afG+Hj8g2eTVqeSzSU8=
 github.com/ockam-network/did v0.1.3 h1:qJGdccOV4bLfsS/eFM+Aj+CdCRJKNMxbmJevQclw44k=

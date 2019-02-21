@@ -142,7 +142,7 @@ func (c *Claim) SetData(data map[string]interface{}) {
 
 // Signatures is
 func (c *Claim) Signatures() []ockam.Signature {
-	return nil
+	return c.signatures
 }
 
 // AddSignature is
