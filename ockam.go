@@ -136,6 +136,6 @@ type CommitStore interface {
 
 // Version returns the current version of Ockam
 func Version() string {
-	version := "0.2.7"
+	version := "0.3.0"
 	return version
 }
