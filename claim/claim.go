@@ -21,6 +21,7 @@ type Claim struct {
 	data       Data
 	_type      string
 	issuer     ockam.Entity
+	issued     string
 	subject    ockam.Entity
 	signatures []ockam.Signature
 }
@@ -73,6 +74,13 @@ func Type(t string) Option {
 func Issuer(e ockam.Entity) Option {
 	return func(c *Claim) {
 		c.issuer = e
+	}
+}
+
+//Issued is
+func Issued(s string) Option {
+	return func(c *Claim) {
+		c.issued = s
 	}
 }
 

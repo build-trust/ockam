@@ -77,6 +77,20 @@ func Signer(s ockam.Signer) Option {
 	}
 }
 
+func SignerArray(signers []ockam.Signer) Option {
+	return func(e *Entity) error {
+		if signers == nil {
+			return ErrorNilTypeNotAllowed
+		}
+
+		for _, s := range signers {
+			s.PublicKey().SetLabel("#key-" + strconv.Itoa(len(e.signers)+1))
+			e.signers = append(e.signers, s)
+		}
+		return nil
+	}
+}
+
 // ID is
 func (e *Entity) ID() *did.DID {
 	return e.id

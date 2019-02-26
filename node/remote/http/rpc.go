@@ -34,6 +34,18 @@ type BroadcastTxSyncResponse struct {
 	Error interface{} `json:"error"`
 }
 
+type ABCIQueryResponse struct {
+	Result struct {
+		Response struct {
+			Log   string `json:"log"`
+			Index string `json:"index"`
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"response"`
+	} `json:"result"`
+	Error interface{} `json:"error"`
+}
+
 // Commit fetches the the commit at the provided height
 func (n *Node) Commit(height string) (*node.Commit, error) {
 	r := new(CommitResponse)
@@ -64,6 +76,17 @@ func (n *Node) Tx(hash []byte) (*node.Tx, error) {
 		return nil, errors.WithStack(err)
 	}
 	return &r.Result, nil
+}
+
+//ABCI query fetches a value from the KV store from the key
+func (n *Node) ABCIQuery(key string) (string, error) {
+	r := new(ABCIQueryResponse)
+	err := n.Call(fmt.Sprintf("/abci_query?data=\"%s\"&prove=true", key), &r) //abci query does not currently return proof, but included for future use
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return r.Result.Response.Value, nil
 }
 
 // Call makes an RPC call

@@ -68,3 +68,11 @@ func (c *Chain) Register(e ockam.Entity) (ockam.Claim, error) {
 func (c *Chain) Submit(claim ockam.Claim) error {
 	return c.trustedNode.Submit(claim)
 }
+
+func (c *Chain) FetchClaim(key string) ([]byte, ockam.Claim, error) {
+	return c.trustedNode.FetchClaim(key)
+}
+
+func (c *Chain) FetchEntity(key string) ([]byte, ockam.Entity, error) {
+	return c.trustedNode.FetchEntity(key)
+}

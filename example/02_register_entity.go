@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ockam-network/ockam/entity"
 	"github.com/ockam-network/ockam/key/ed25519"
@@ -46,12 +47,15 @@ func main() {
 	registrationClaim, err := ockamChain.Register(temperatureSensor)
 	exitOnError(err)
 
-	// turn the claim into json so we can print it
-	claimJson, err := registrationClaim.MarshalJSON()
+	fmt.Printf("registrationClaim - %s\n", registrationClaim.ID())
+
+	did := registrationClaim.Issuer().ID().String()
+	time.Sleep(5 * time.Second)
+
+	bytes, _, err := ockamChain.FetchEntity(did)
 	exitOnError(err)
 
-	// print the claim
-	err = printJson(claimJson)
+	err = printJson(bytes)
 	exitOnError(err)
 }
 

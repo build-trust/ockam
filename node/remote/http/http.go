@@ -3,12 +3,19 @@
 package http
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
 
+	"github.com/ockam-network/ockam/entity"
+
+	"github.com/ockam-network/did"
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
 	"github.com/ockam-network/ockam/claim"
+	"github.com/ockam-network/ockam/key/ed25519"
 	"github.com/ockam-network/ockam/node"
 	"github.com/pkg/errors"
 )
@@ -211,4 +218,156 @@ func (n *Node) Submit(cl ockam.Claim) error {
 	}
 
 	return err
+}
+
+func (n *Node) FetchEntity(key string) ([]byte, ockam.Entity, error) {
+	value, err := n.ABCIQuery(key)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	decoded, err := decodeValue(value)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	//for printing/debugging
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, decoded, "", "\t")
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	//to construct an entity, we need a DID, a signer(s) and attributes
+	//first unmarshal doc into map
+	var m map[string]interface{}
+	err = json.Unmarshal(decoded, &m)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	//did is the id field
+	id, err := did.Parse(m["id"].(string))
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	//loop through publicKeys, creating a signer for each
+	//currently, ed25519 is only key supported
+	//TODO add check for key type here
+	var signers []ockam.Signer
+	publicKeys := m["publicKey"].([]interface{})
+	for _, k := range publicKeys {
+		key := k.(map[string]interface{})
+		signer, err := ed25519.NewWithExistingKey(key["publicKeyHex"].(string))
+		if err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
+		signers = append(signers, signer)
+	}
+
+	//collect the attributes
+	var attributes = make(map[string]interface{})
+	for k, v := range m {
+		if k != "publicKey" && k != "id" && k != "authentication" && k != "registrationClaim" {
+			attributes[k] = v
+		}
+	}
+
+	ent, err := entity.New(attributes, entity.ID(id), entity.SignerArray(signers))
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	return prettyJSON.Bytes(), ent, nil
+
+}
+
+func (n *Node) FetchClaim(key string) ([]byte, ockam.Claim, error) {
+	value, err := n.ABCIQuery(key)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	decoded, err := decodeValue(value)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, decoded, "", "\t")
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	//unmarshal into map so we can access fields to create claim
+	var m map[string]interface{}
+	err = json.Unmarshal(decoded, &m)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	//get the type
+	typeArray := m["type"].([]interface{})
+	t := typeArray[0].(string)
+
+	//get the subject from the claim field
+	claimMap := m["claim"].(map[string]interface{})
+
+	var empty map[string]interface{}
+	subject, err := did.Parse(claimMap["id"].(string))
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+	subjectEntity, err := entity.New(empty, entity.ID(subject))
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	//get issuer from issuer field
+	issuer, err := did.Parse(m["issuer"].(string))
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+	issuerEntity, err := entity.New(empty, entity.ID(issuer))
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	cl, err := claim.New(
+		claimMap,
+		claim.Issuer(issuerEntity),
+		claim.Subject(subjectEntity),
+		claim.Type(t),
+		claim.ID(m["id"].(string)),
+		claim.Issued(m["issued"].(string)),
+	)
+
+	signatures := m["signatures"].([]interface{})
+	for _, s := range signatures {
+		sig := s.(map[string]interface{})
+		if sig["type"].(string) == "Ed25519Signature2018" { //Todo: add support for other sig types, consider switch statement
+			signature := ed25519.AssembleSignature(
+				sig["type"].(string),
+				sig["creator"].(string),
+				sig["created"].(string),
+				sig["domain"].(string),
+				sig["nonce"].(string),
+				[]byte(sig["signatureValue"].(string)))
+			cl.AddSignature(signature)
+		}
+	}
+
+	return prettyJSON.Bytes(), cl, err
+}
+
+//value is base64 and hex encoded
+//decode base64, then hex
+func decodeValue(value string) ([]byte, error) {
+	hexValue, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return hex.DecodeString(string(hexValue))
 }

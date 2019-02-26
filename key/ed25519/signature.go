@@ -47,3 +47,17 @@ func (s *Signature) SignatureValue() []byte {
 func (s *Signature) SignedValue() []byte {
 	return s.signedValue
 }
+
+//AssembleSignature is used for converting map[string]interface{} to Signature in FetchClaim()
+func AssembleSignature(t, creator, created, domain, nonce string, signatureValue []byte) *Signature {
+	sig := &Signature{
+		t:              t,
+		creator:        creator,
+		created:        created,
+		domain:         domain,
+		nonce:          nonce,
+		signatureValue: signatureValue,
+	}
+
+	return sig
+}

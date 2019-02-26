@@ -35,6 +35,19 @@ func New() (*Ed25519, error) {
 	return &Ed25519{public: public, private: private, hasher: sha512.New()}, nil
 }
 
+//NewWithExistingKey is used for entities fetched from chain
+//The signer returned here can verify signatures, but not sign
+func NewWithExistingKey(pubKey string) (*Ed25519, error) {
+	pubKeyBytes, err := hex.DecodeString(pubKey)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	public := &PublicKey{ed25519Public: pubKeyBytes}
+
+	return &Ed25519{public: public, private: nil, hasher: sha512.New()}, nil
+}
+
 // PublicKey is
 func (k *Ed25519) PublicKey() ockam.PublicKey {
 	return k.public

@@ -215,6 +215,18 @@ func (n *Node) Submit(c ockam.Claim) error {
 	return p.Submit(c)
 }
 
+func (n *Node) FetchClaim(key string) ([]byte, ockam.Claim, error) {
+	p := n.peers[rand.Intn(len(n.peers))]
+
+	return p.FetchClaim(key)
+}
+
+func (n *Node) FetchEntity(key string) ([]byte, ockam.Entity, error) {
+	p := n.peers[rand.Intn(len(n.peers))]
+
+	return p.FetchEntity(key)
+}
+
 func (n *Node) discoverPeers() error {
 	peers := n.peers
 

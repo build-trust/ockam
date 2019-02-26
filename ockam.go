@@ -19,6 +19,8 @@ type Chain interface {
 	LatestBlock() Block
 	Register(Entity) (Claim, error)
 	Submit(Claim) error
+	FetchClaim(string) ([]byte, Claim, error)
+	FetchEntity(string) ([]byte, Entity, error)
 }
 
 // Node represents a node connected to a network of other peer nodes

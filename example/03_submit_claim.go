@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ockam-network/ockam/claim"
 	"github.com/ockam-network/ockam/entity"
@@ -51,12 +52,14 @@ func main() {
 	err = ockamChain.Submit(temperatureClaim)
 	exitOnError(err)
 
-	// turn the claim that we just submitted into json so we can print it
-	claimJson, err := temperatureClaim.MarshalJSON()
+	fmt.Printf("Submitted - %s\n", temperatureClaim.ID())
+	time.Sleep(5 * time.Second)
+
+	bytes, _, err := ockamChain.FetchClaim(temperatureClaim.ID())
 	exitOnError(err)
 
-	// print the claim
-	err = printJson(claimJson)
+	fmt.Println("Fetched claim:")
+	err = printJson(bytes)
 	exitOnError(err)
 }
 
