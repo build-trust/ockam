@@ -78,6 +78,8 @@ please email the Ockam team at hello@ockam.io
 
 ## Register an Entity
 
+<img width="900" alt="ockam register" src="document/diagram/register.jpeg">
+
 In Ockam, things are modeled as entities. Each `Entity` has a [DID](https://w3c-ccg.github.io/did-primer/) that
 begins with `did:ockam:` and uses the `ockam` DID method.
 
@@ -174,6 +176,8 @@ An example `EntityRegistrationClaim` claim looks like this:
 ```
 
 ## Submit a Claim
+
+<img width="900" alt="ockam register" src="document/diagram/claim.jpeg">
 
 Once an entity is registered, it can make signed, verifiable claims about itself or other entities.
 
