@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/ockam-network/ockam/node"
+
+	// "github.com/ockam-network/ockam/node/types"
 	"github.com/pkg/errors"
 )
 
@@ -42,6 +44,16 @@ type ABCIQueryResponse struct {
 			Key   string `json:"key"`
 			Value string `json:"value"`
 		} `json:"response"`
+	}
+}
+
+// ValidatorsResponse is
+type ValidatorsResponse struct {
+	Jsonrpc string `json:"jsonrpc"`
+	ID      string `json:"id"`
+	Result  struct {
+		BlockHeight string `json:"block_height"`
+		Validators  []*node.Validator
 	} `json:"result"`
 	Error interface{} `json:"error"`
 }
@@ -78,7 +90,17 @@ func (n *Node) Tx(hash []byte) (*node.Tx, error) {
 	return &r.Result, nil
 }
 
-//ABCI query fetches a value from the KV store from the key
+// Validators fetches the validator set at the provided height
+func (n *Node) Validators(height string) ([]*node.Validator, error) {
+	r := new(ValidatorsResponse)
+	err := n.Call(fmt.Sprintf("/validators?height=%s", height), &r)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return r.Result.Validators, nil
+}
+
+// ABCIQuery fetches a value from the KV store from the key
 func (n *Node) ABCIQuery(key string) (string, error) {
 	r := new(ABCIQueryResponse)
 	err := n.Call(fmt.Sprintf("/abci_query?data=\"%s\"&prove=true", key), &r) //abci query does not currently return proof, but included for future use

@@ -1,4 +1,4 @@
-package common
+package node
 
 import (
 	"encoding/hex"

@@ -1,4 +1,4 @@
-package types
+package node
 
 // ValidatorsResponse is
 type ValidatorsResponse struct {
@@ -13,13 +13,8 @@ type ValidatorsResponse struct {
 
 // Validator is
 type Validator struct {
-	Address     []byte `json:"address"`
-	PubKey      PubKey `json:"pub_key"`
-	VotingPower int64  `json:"voting_power,string"`
-	Accum       string `json:"accum"`
-}
-
-func (v *Validator) Copy() *Validator {
-	vCopy := *v
-	return &vCopy
+	Address     HexBytes `json:"address"`
+	PubKey      PubKey   `json:"pub_key"`
+	VotingPower int64    `json:"voting_power,string"`
+	Accum       string   `json:"accum"`
 }

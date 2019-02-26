@@ -2,11 +2,14 @@
 package node
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
+
+	// "github.com/ockam-network/ockam/node/types"
 	"github.com/ockam-network/ockam/random"
 	"github.com/pkg/errors"
 )
@@ -21,64 +24,7 @@ func init() {
 type Peer interface {
 	ockam.Node
 	LatestCommit() *Commit
-}
-
-// Commit is
-type Commit struct {
-	SignedHeader struct {
-		Header struct {
-			ChainID     string    `json:"chain_id"`
-			Height      string    `json:"height"`
-			Time        time.Time `json:"time"`
-			NumTxs      string    `json:"num_txs"`
-			TotalTxs    string    `json:"total_txs"`
-			LastBlockID struct {
-				Hash  string `json:"hash"`
-				Parts struct {
-					Total string `json:"total"`
-					Hash  string `json:"hash"`
-				} `json:"parts"`
-			} `json:"last_block_id"`
-			LastCommitHash     string `json:"last_commit_hash"`
-			DataHash           string `json:"data_hash"`
-			ValidatorsHash     string `json:"validators_hash"`
-			NextValidatorsHash string `json:"next_validators_hash"`
-			ConsensusHash      string `json:"consensus_hash"`
-			AppHash            string `json:"app_hash"`
-			LastResultsHash    string `json:"last_results_hash"`
-			EvidenceHash       string `json:"evidence_hash"`
-			ProposerAddress    string `json:"proposer_address"`
-		} `json:"header"`
-		Commit struct {
-			BlockID struct {
-				Hash  string `json:"hash"`
-				Parts struct {
-					Total string `json:"total"`
-					Hash  string `json:"hash"`
-				} `json:"parts"`
-			} `json:"block_id"`
-			Precommits []Precommit `json:"precommits"`
-		} `json:"commit"`
-	} `json:"signed_header"`
-	Canonical bool `json:"canonical"`
-}
-
-// Precommit is
-type Precommit struct {
-	Type      int       `json:"type"`
-	Height    string    `json:"height"`
-	Round     string    `json:"round"`
-	Timestamp time.Time `json:"timestamp"`
-	BlockID   struct {
-		Hash  string `json:"hash"`
-		Parts struct {
-			Total string `json:"total"`
-			Hash  string `json:"hash"`
-		} `json:"parts"`
-	} `json:"block_id"`
-	ValidatorAddress string `json:"validator_address"`
-	ValidatorIndex   string `json:"validator_index"`
-	Signature        string `json:"signature"`
+	FullCommit(height string) (*FullCommit, error)
 }
 
 // Tx is
@@ -109,6 +55,7 @@ type Node struct {
 	peers           []Peer
 	peerDiscoverers []ockam.NodeDiscoverer
 	latestCommit    *Commit
+	verifier        *Verifier
 }
 
 // Option is
@@ -127,6 +74,10 @@ func New(options ...Option) (*Node, error) {
 		return nil, err
 	}
 	n.id = s
+
+	// if n.verifier == nil {
+	// 	n.verifier = NewVerifier(NewMemCommitStore())
+	// }
 
 	return n, nil
 }
@@ -180,6 +131,29 @@ func (n *Node) Sync() error {
 	// get the latest commit from the se
 	n.latestCommit = selectedPeer.LatestCommit()
 
+	if n.verifier != nil {
+		err := Initialize(selectedPeer, n.verifier.store)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		_, err = n.verifier.GetLastTrusted()
+		if err != nil {
+			fmt.Println(err)
+		}
+		// fmt.Println("Last Trusted: ", last.Height)
+		_, err = n.verifier.Verify(n.latestCommit, selectedPeer)
+		if err != nil {
+			fmt.Println(err)
+		}
+		// fmt.Println("Is Verified: ", isVerified)
+		_, err = n.verifier.GetLastTrusted()
+		if err != nil {
+			fmt.Println(err)
+		}
+		// fmt.Println("Last Trusted: ", last.Height)
+
+	}
 	if n.chain == nil {
 		c, err := chain.New(chain.TrustedNode(n), chain.ID(n.latestCommit.SignedHeader.Header.ChainID))
 		if err != nil {
@@ -195,7 +169,7 @@ func (n *Node) Sync() error {
 func (n *Node) LatestBlock() ockam.Block {
 	return &block{
 		height: n.latestCommit.SignedHeader.Header.Height,
-		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash,
+		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash.String(),
 	}
 }
 

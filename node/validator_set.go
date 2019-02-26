@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"bytes"
@@ -73,7 +73,7 @@ func (vals *ValidatorSet) TotalVotingPower() int64 {
 	return vals.totalVotingPower
 }
 
-func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
+func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *NestedCommit) error {
 	if vals.Size() != len(commit.Precommits) {
 		return errors.Errorf("Invalid commit -- wrong set size: %v vs %v", vals.Size(), len(commit.Precommits))
 	}
@@ -123,7 +123,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		talliedVotingPower, (vals.TotalVotingPower()*2/3 + 1))
 }
 
-func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID string, blockID BlockID, height int64, commit *Commit) error {
+func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID string, blockID BlockID, height int64, commit *NestedCommit) error {
 	oldVals := vals
 	//commit must be a valid commit for new set
 	err := newSet.VerifyCommit(chainID, blockID, height, commit)

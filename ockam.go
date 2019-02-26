@@ -122,6 +122,18 @@ type Logger interface {
 	WithFields(fields Fields) Logger
 }
 
+type Store interface {
+	Put(key, value interface{}) error
+	Get(key interface{}) (value interface{}, err error)
+	Delete(key interface{}) error
+}
+
+type CommitStore interface {
+	Store
+	GetLastTrusted() (interface{}, error)
+	StoreLastTrusted(lastTrusted interface{}) error
+}
+
 // Version returns the current version of Ockam
 func Version() string {
 	version := "0.2.7"

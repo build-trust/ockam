@@ -84,6 +84,26 @@ func (n *Node) Sync() error {
 	return nil
 }
 
+func (n *Node) FullCommit(height string) (*node.FullCommit, error) {
+	validators, err := n.Validators(height)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	commit, err := n.Commit(height)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	fc, err := node.MakeFullCommit(validators, commit)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return fc, nil
+
+}
+
 // Chain is
 func (n *Node) Chain() ockam.Chain {
 	return n.chain
@@ -113,7 +133,7 @@ func (b *block) Hash() string {
 func (n *Node) LatestBlock() ockam.Block {
 	return &block{
 		height: n.latestCommit.SignedHeader.Header.Height,
-		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash,
+		hash:   n.latestCommit.SignedHeader.Commit.BlockID.Hash.String(),
 	}
 }
 
