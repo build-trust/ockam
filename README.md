@@ -29,6 +29,7 @@ the Ockam Network.  In the near future, we will be adding `ockam` packages for o
 - [Write your first Hello Ockam program](#hello-ockam)
 - [Register an Entity](#register-an-entity)
 - [Submit a Claim](#submit-a-claim)
+- [Authentication](#authentication)
 - [Use the Ockam Command](#commmand-line)
 - [Build the source code](#build)
 - [Contribute to Ockam](#contributing-to-ockam)
@@ -237,6 +238,12 @@ This generates a signed claim of the following form:
 	]
 }
 ```
+
+## Authentication
+
+<img width="900" alt="ockam register" src="document/diagram/device-service-auth.jpeg">
+
+<img width="900" alt="ockam register" src="document/diagram/device-device-auth.jpeg">
 
 ## Command Line
 
