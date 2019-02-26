@@ -241,7 +241,14 @@ This generates a signed claim of the following form:
 
 ## Authentication
 
+:construction: *This feature is under construction.*
+
+DID based authentication enables a device to establish a mutually authenticated channel of communication with a
+service. This channel can be used to reliably deliver signed data, firmware and new configuration.
+
 <img width="900" alt="ockam register" src="document/diagram/device-service-auth.jpeg">
+
+DID based authentication also enables a device to establish a mutually authenticated channel with another device.
 
 <img width="900" alt="ockam register" src="document/diagram/device-device-auth.jpeg">
 
