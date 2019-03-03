@@ -34,11 +34,12 @@ func main() {
 	// a yubihsm-connector process
 	// for more information see https://developers.yubico.com/YubiHSM2/Usage_Guides/YubiHSM_quick_start_tutorial.html
 	signer, err := pkcs11.New(
+
 		// install YubiHSM2 https://developers.yubico.com/YubiHSM2/Releases/
 		pkcs11.ModulePath("/usr/lib/x86_64-linux-gnu/pkcs11/yubihsm_pkcs11.so"),
 		pkcs11.PublicKey(pubKey),
 		// returned from running `pkcs11-tool --list-slots --module=/usr/lib/x86_64-linux-gnu/pkcs11/yubihsm_pkcs11.so`
-		pkcs11.TokenLabel("PIV Card Holder pin (PIV_II)"))
+		pkcs11.TokenLabel("02"))
 	exitOnError(err)
 
 	// create a new ockam entity to represent a temperature sensor

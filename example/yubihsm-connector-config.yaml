@@ -1,0 +1,21 @@
+# Certificate (X.509)
+cert: ""
+
+# Certificate key
+key: ""
+
+# Listening address. Defaults to "localhost:12345".
+listen: localhost:12345
+
+# Device serial in case of multiple devices
+serial: "9579404"
+
+# Log to syslog/eventlog. Defaults to "false".
+syslog: false
+
+# Use to enable host header filtering. Default to "false".
+# Use this if there is an absolute need to use a web browser on the host where the YubiHSM 2 is installed to connect to untrusted web sites on the Internet.
+enable-host-whitelist: false
+
+# Default list for the host header filter
+host-whitelist: localhost,localhost.,127.0.0.1,[::1]
