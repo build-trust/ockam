@@ -9,28 +9,33 @@
 <a href="https://join.slack.com/t/ockam-community/shared_invite/enQtNDk5Nzk2NDA2NDcxLWMzMzJlZjQzOTZjYWY0YmNkNWE1NmI1M2YyYzlkNjk4NDYyYzU0OWE0YTI4ZjcwNDBjNmQ4NzZjZTMzYmY3NDA"><img alt="Discuss Ockam" src="https://img.shields.io/badge/slack-discuss-E01563.svg?logo=slack&style=flat-square"></a>
 </p>
 
-<h1 align="center">
-	<img width="900" alt="ockam register" src="register.gif">
-</h1>
+## Introduction
 
-## Overview
+[Ockam](https://www.ockam.io) is a collection of tools to help you create more secure, trustworthy and interoperable systems of connected devices.
 
-[Ockam](ockam.io) is a decentralized and open platform for easily adding identity, trust and interoperability
-to connected devices.
+Current features include:
 
-This repository contains:
-1. The `ockam` command line program for simple interactions with the Ockam Network.
-2. The `github.com/ockam-network/ockam` Golang package to develop Go applications that programmatically interact with
-the Ockam Network.  In the near future, we will be adding `ockam` packages for other programming languages as well.
+* Unique, globally resolvable and cryptographically provable identifiers for each entity (device, service, asset, etc.) in a system.
+* Decentralized Key Management using Decentralized Identifiers (or DIDs) and Ockam Blockchain's Decentralized PKI.
+* Cryptographically Signed/Encrypted data flow between entities using Verifiable Claims.
+
+Based on the above foundational features were are working on adding:
+
+* Secure mutually authenticated communication channels between entities.
+* Cryptographically Signed/Encrypted bulk data exchange (for firmware, etc.)
+* Automated metadata discovery (to discover service endpoints and other on-boarding configuration)
+
+and more.
 
 ## Contents
 
 - [Get the Golang package](#go-package)
+- [Ockam Blockchain Network](#ockam-blockchain-network)
 - [Write your first Hello Ockam program](#hello-ockam)
 - [Register an Entity](#register-an-entity)
 - [Submit a Claim](#submit-a-claim)
 - [Authentication](#authentication)
-- [Use the Ockam Command](#commmand-line)
+- [Use the Ockam Command Line](#commmand-line)
 - [Build the source code](#build)
 - [Contribute to Ockam](#contributing-to-ockam)
 - [Contributors](#contributors)
@@ -38,10 +43,20 @@ the Ockam Network.  In the near future, we will be adding `ockam` packages for o
 
 ## Go Package
 
+This repository includes a Golang package that can be used to build Go programs (device firmware or a backend service) that act as light nodes on the Ockam Blockchain Network.
+
 With Go version `1.11+` installed, add the ockam Golang package to your project using `go get`:
 ```
 go get github.com/ockam-network/ockam
 ```
+
+## Ockam Blockchain Network
+
+The Ockam Blockchain Network stores Entity Documents and Claims. The [network is tuned for IoT](https://medium.com/ockam/ockam-is-tuned-for-iot-c2f04cae019a), designed for high throughput, low latency, fast finality, efficiency for low power devices, and ease of use.
+
+Ockam maintains a [TestNet](https://ockam.network/) to help you build and experiment with applications. The Ockam TestNet has no service level guarantees, may have intermittent availability, may be down for maintenance, and may be restarted at anytime.
+
+If your application needs a production-ready network, please email the Ockam team at hello@ockam.io.
 
 ## Hello Ockam
 
@@ -69,13 +84,6 @@ The above code is in the [example directory](example/01_hello_ockam.go); you may
 ```
 go run -mod=vendor example/01_hello_ockam.go
 ```
-
-### The Ockam TestNet
-
-The Ockam TestNet is provided and maintained by the Ockam team to help you build and experiment with
-applications that interact with Ockam. The TestNet has no service level guarantees, may have intermittent availability,
-may be down for maintenance, and may be restarted at anytime. If your application needs a production-ready network,
-please email the Ockam team at hello@ockam.io
 
 ## Register an Entity
 
@@ -194,7 +202,7 @@ if err != nil {
 	log.Fatal(err)
 }
 
-// submit the claim to be
+// submit the claim
 err = ockamChain.Submit(temperatureClaim)
 if err != nil {
 	log.Fatal(err)
@@ -283,6 +291,12 @@ ockam register
 which will generate a unique Ockam [decentralized identity](https://github.com/w3c-ccg/did-primer) for
 your computer and register that identity on the Ockam TestNet.
 
+Here's an example running on a Raspberry Pi:
+
+<h1 align="center">
+	<img width="900" alt="ockam register" src="register.gif">
+</h1>
+
 ## Building
 
 If you have recent versions of Bash and Docker installed on your machine, you can build and run the Ockam binary from
@@ -322,14 +336,14 @@ For more details on how to build and contribute to Ockam, see our
 
 * [Brian Schroeder](https://github.com/bts)
 * [Brett Nitschke](https://github.com/BrettNitschke)
+* [Jeff Malnick](https://github.com/malnick)
 * [Logan Jager](https://github.com/jagtek)
 * [Matthew Gregory](https://github.com/mattgreg)
 * [Mrinal Wadhwa](https://github.com/mrinalwadhwa)
 * [Rolf Kaiser](https://github.com/rkaiser0324)
-* [Jeff Malnick](https://github.com/malnick)
 
 ## License and attributions
 
 This code is licensed under the terms of the [Apache License 2.0](LICENSE)
 
-This code depends on other open source packages, attributions for those packages are in the [NOTICE](NOTICE) file.
+This code depends on other open source packages; attributions for those packages are in the [NOTICE](NOTICE) file.
