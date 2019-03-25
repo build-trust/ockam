@@ -16,6 +16,7 @@ import (
 	"github.com/ockam-network/ockam/chain"
 	"github.com/ockam-network/ockam/claim"
 	"github.com/ockam-network/ockam/key/ed25519"
+	"github.com/ockam-network/ockam/key/rsa"
 	"github.com/ockam-network/ockam/node"
 	"github.com/pkg/errors"
 )
@@ -251,6 +252,10 @@ func (n *Node) FetchEntity(key string) ([]byte, ockam.Entity, error) {
 		return nil, nil, errors.WithStack(err)
 	}
 
+	if len(decoded) == 0 {
+		return nil, nil, errors.New("does not exist")
+	}
+
 	//for printing/debugging
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, decoded, "", "\t")
@@ -273,16 +278,39 @@ func (n *Node) FetchEntity(key string) ([]byte, ockam.Entity, error) {
 	}
 
 	//loop through publicKeys, creating a signer for each
-	//currently, ed25519 is only key supported
-	//TODO add check for key type here
 	var signers []ockam.Signer
 	publicKeys := m["publicKey"].([]interface{})
 	for _, k := range publicKeys {
 		key := k.(map[string]interface{})
-		signer, err := ed25519.NewWithExistingKey(key["publicKeyHex"].(string))
+
+		publicKeyHex := key["publicKeyHex"].(string)
+		keyType := key["type"].(string)
+
+		var publicKey []byte
+		publicKey, err = hex.DecodeString(publicKeyHex)
 		if err != nil {
 			return nil, nil, errors.WithStack(err)
 		}
+
+		var signer ockam.Signer
+
+		switch keyType {
+		case "RSAVerificationKey2018":
+			signer, err = rsa.New(rsa.PublicKey(publicKey))
+			if err != nil {
+				return nil, nil, errors.WithStack(err)
+			}
+		case "Ed25519VerificationKey2018":
+			signer, err = ed25519.New(ed25519.PublicKey(publicKey))
+			if err != nil {
+				return nil, nil, errors.WithStack(err)
+			}
+		default:
+			if err != nil {
+				return nil, nil, errors.New("unkwon key type")
+			}
+		}
+
 		signers = append(signers, signer)
 	}
 
@@ -368,6 +396,17 @@ func (n *Node) FetchClaim(key string) ([]byte, ockam.Claim, error) {
 		sig := s.(map[string]interface{})
 		if sig["type"].(string) == "Ed25519Signature2018" { //Todo: add support for other sig types, consider switch statement
 			signature := ed25519.AssembleSignature(
+				sig["type"].(string),
+				sig["creator"].(string),
+				sig["created"].(string),
+				sig["domain"].(string),
+				sig["nonce"].(string),
+				[]byte(sig["signatureValue"].(string)))
+			cl.AddSignature(signature)
+		}
+
+		if sig["type"].(string) == "RSASignature2018" {
+			signature := rsa.AssembleSignature(
 				sig["type"].(string),
 				sig["creator"].(string),
 				sig["created"].(string),

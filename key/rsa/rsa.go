@@ -1,8 +1,12 @@
-package ed25519
+package rsa
 
 import (
+	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"hash"
@@ -13,34 +17,34 @@ import (
 	"github.com/ockam-network/ockam/entity"
 	"github.com/piprate/json-gold/ld"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ed25519"
 )
 
-// Ed25519 is
-type Ed25519 struct {
+// RSA is
+type RSA struct {
 	public  *publicKey
-	private ed25519.PrivateKey
+	private *rsa.PrivateKey
 	hasher  hash.Hash
+	bits    int
 }
 
 // Option is
-type Option func(*Ed25519)
+type Option func(*RSA)
 
 // New returns
-func New(options ...Option) (*Ed25519, error) {
-	s := &Ed25519{}
+func New(options ...Option) (*RSA, error) {
+	s := &RSA{bits: 2048}
 
 	for _, option := range options {
 		option(s)
 	}
 
 	if s.public == nil && s.private == nil {
-		public, private, err := ed25519.GenerateKey(rand.Reader)
+		private, err := rsa.GenerateKey(rand.Reader, s.bits)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 
-		s.public = &publicKey{ed25519Public: public}
+		s.public = &publicKey{rsaPublic: &private.PublicKey}
 		s.private = private
 	}
 
@@ -53,30 +57,32 @@ func New(options ...Option) (*Ed25519, error) {
 
 // PublicKey is
 func PublicKey(public []byte) Option {
-	return func(s *Ed25519) {
-		s.public = &publicKey{ed25519Public: public}
+	return func(s *RSA) {
+		public, _ := x509.ParsePKCS1PublicKey(public)
+		s.public = &publicKey{rsaPublic: public}
 	}
 }
 
 // PrivateKey is
 func PrivateKey(private []byte) Option {
-	return func(s *Ed25519) {
-		s.private = private
+	return func(s *RSA) {
+		p, _ := x509.ParsePKCS1PrivateKey(private)
+		s.private = p
 	}
 }
 
 // PublicKey is
-func (k *Ed25519) PublicKey() ockam.PublicKey {
+func (k *RSA) PublicKey() ockam.PublicKey {
 	return k.public
 }
 
 // PrivateKey is
-func (k *Ed25519) PrivateKey() []byte {
-	return k.private
+func (k *RSA) PrivateKey() []byte {
+	return x509.MarshalPKCS1PrivateKey(k.private)
 }
 
 // Sign is
-func (k *Ed25519) Sign(c ockam.Claim) error {
+func (k *RSA) Sign(c ockam.Claim) error {
 	claimJSON, err := c.MarshalJSON()
 	if err != nil {
 		return err
@@ -102,11 +108,14 @@ func (k *Ed25519) Sign(c ockam.Claim) error {
 
 	toSign := []byte(canonicalized.(string))
 
-	k.hasher.Write(toSign)
-	signature := ed25519.Sign(k.private, k.hasher.Sum(nil))
+	hashed := sha256.Sum256(toSign)
+	signature, err := rsa.SignPKCS1v15(rand.Reader, k.private, crypto.SHA256, hashed[:])
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
 	s := &Signature{
-		t:              "Ed25519Signature2018",
+		t:              "RSASignature2018",
 		creator:        c.Issuer().ID().String() + k.PublicKey().Label(),
 		created:        time.Now().UTC().Format(time.RFC3339),
 		nonce:          c.Nonce(),
@@ -119,16 +128,15 @@ func (k *Ed25519) Sign(c ockam.Claim) error {
 }
 
 // SignatureType is
-func (k *Ed25519) SignatureType() string {
+func (k *RSA) SignatureType() string {
 	return ""
 }
 
-// publicKey is
 type publicKey struct {
 	label string
 	owner ockam.Entity
 
-	ed25519Public ed25519.PublicKey
+	rsaPublic *rsa.PublicKey
 }
 
 // Label is
@@ -153,7 +161,7 @@ func (p *publicKey) SetOwner(o ockam.Entity) {
 
 // Type is
 func (p *publicKey) Type() string {
-	return "Ed25519VerificationKey2018"
+	return "RSAVerificationKey2018"
 }
 
 // Encoding is
@@ -163,7 +171,7 @@ func (p *publicKey) Encoding() string {
 
 // Value is
 func (p *publicKey) Value() string {
-	return hex.EncodeToString(p.ed25519Public)
+	return hex.EncodeToString(x509.MarshalPKCS1PublicKey(p.rsaPublic))
 }
 
 // DID is
