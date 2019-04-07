@@ -336,6 +336,7 @@ For more details on how to build and contribute to Ockam, see our
 
 * [Brian Schroeder](https://github.com/bts)
 * [Brett Nitschke](https://github.com/BrettNitschke)
+* [Carlos Flores](https://github.com/carlosflrs)
 * [Jeff Malnick](https://github.com/malnick)
 * [Logan Jager](https://github.com/jagtek)
 * [Matthew Gregory](https://github.com/mattgreg)
