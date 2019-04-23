@@ -134,6 +134,22 @@ type CommitStore interface {
 	StoreLastTrusted(lastTrusted interface{}) error
 }
 
+// Cryptographer is
+type Cryptographer interface {
+	GenerateKeyPair() (publicKey []byte, secretKey []byte, err error)
+
+	AnonymousEncrypt(unencrypted []byte, recipientPublicKey []byte) (encrypted []byte, err error)
+	AnonymousDecrypt(encrypted []byte, recipientSecretKey []byte) (unencrypted []byte, err error)
+
+	Sign(message []byte, secretKey []byte) (signed []byte, err error)
+	VerifySignature(signed []byte, signerPublicKey []byte) (ok bool, message []byte, err error)
+
+	AuthenticatedEncrypt(unencrypted []byte, senderSecretKey []byte, recipientPublicKey []byte, nonce []byte) (
+		encrypted []byte, err error)
+	AuthenticatedDecrypt(encrypted []byte, recipientSecretKey []byte, senderPublicKey []byte, nonce []byte) (
+		unencrypted []byte, err error)
+}
+
 // Version returns the current version of Ockam
 func Version() string {
 	version := "0.3.0"
