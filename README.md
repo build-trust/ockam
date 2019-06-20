@@ -11,37 +11,36 @@
 
 ## Introduction
 
-[Ockam](https://www.ockam.io) is a collection of tools to help you create more secure, trustworthy and interoperable systems of connected devices.
+[Ockam](https://www.ockam.io) is a collection of tools to help you establish secure connections and trustful exchange of information within connected systems.
 
-Current features include:
+To understand the key ideas behind Ockam, please read our short concept papers of on:
+1. [Why we're focusing on the connectivity and messaging layer?](document/concept/0001-secure-connectivity-and-messaging)
+2. [What exactly does trust mean within connected systems?](document/concept/0002-trust-architecture)
+3. [What are the minimum criteria for establishing trust?](document/concept/0003-minimum-criteria-for-trust)
 
-* Unique, globally resolvable and cryptographically provable identifiers for each entity (device, service, asset, etc.) in a system.
-* Decentralized Key Management using Decentralized Identifiers (or DIDs) and Ockam Blockchain's Decentralized PKI.
-* Cryptographically Signed/Encrypted data flow between entities using Verifiable Claims.
+Ockam's core features include:
 
-Based on the above foundational features were are working on adding:
+### Secure Identity & Credential Management
 
-* Secure mutually authenticated communication channels between entities.
-* Cryptographically Signed/Encrypted bulk data exchange (for firmware, etc.)
-* Automated metadata discovery (to discover service endpoints and other on-boarding configuration)
+* [Decentralized Identifiers](document/concept/0004-decentalized-identifiers): Cryptographically provable, decentralized identifiers (DIDs) for each device to ensure data integrity and protect against identity spoofing.
 
-and more.
+* [Device And Service Registry](document/concept/0005-entity-registry): Ockam Blockchain based registry for discovering public keys, protocols, endpoints and other metadata about a device or a service.
 
-## Contents
+* [Hardware Vault And Cryptography](document/concept/0006-hardware-vault-and-cryptography): Safely store private keys and credentials in hardware and easily leverage cryptographic modules or enclaves to sign device or service generated data.
 
-- [Get the Golang package](#go-package)
-- [Ockam Blockchain Network](#ockam-blockchain-network)
-- [Write your first Hello Ockam program](#hello-ockam)
-- [Register an Entity](#register-an-entity)
-- [Submit a Claim](#submit-a-claim)
-- [Authentication](#authentication)
-- [Use the Ockam Command Line](#commmand-line)
-- [Build the source code](#build)
-- [Contribute to Ockam](#contributing-to-ockam)
-- [Contributors](#contributors)
-- [License and attributions](#license-and-attributions)
+* [Key And Credential Management](document/concept/0007-key-and-credential-management): Easily setup, rotate, revoke keys and other credentials without complex and brittle PKI.
 
-## Go Package
+### Secure Connectivity & Messaging
+
+* [Trustful Communication](document/concept/0008-trustful-communication): Use Verifiable Credentials and Peer-to-peer Mutual Authentication to establish trust: device-to-device or device-to-service.
+
+* [End-To-End Encrypted Messaging](document/concept/0009-end-to-end-encrypted-messaging): Secure, efficient and scalable end-to-end encrypted messaging to protect against tampering, replay, snooping and man-in-the-middle attacks.
+
+* [Trusted Twins](document/concept/0010-trusted-twins): Cloud based, persistent, mutually trusted twin of each device so applications can interact with device state and enqueue messages even when a device is offline.
+
+* [Ockam Blockchain Network](document/concept/0011-blockchain-network): A fast finality, safety favouring, light client friendly, and horizontally scalable blockchain network that is optimized for connected devices.
+
+## Install
 
 This repository includes a Golang package that can be used to build Go programs (device firmware or a backend service) that act as light nodes on the Ockam Blockchain Network.
 
@@ -50,268 +49,13 @@ With Go version `1.11+` installed, add the ockam Golang package to your project 
 go get github.com/ockam-network/ockam
 ```
 
-## Ockam Blockchain Network
-
-The Ockam Blockchain Network stores Entity Documents and Claims. The [network is tuned for IoT](https://medium.com/ockam/ockam-is-tuned-for-iot-c2f04cae019a), designed for high throughput, low latency, fast finality, efficiency for low power devices, and ease of use.
-
-Ockam maintains a [TestNet](https://ockam.network/) to help you build and experiment with applications. The Ockam TestNet has no service level guarantees, may have intermittent availability, may be down for maintenance, and may be restarted at anytime.
-
-If your application needs a production-ready network, please email the Ockam team at hello@ockam.io.
-
-## Hello Ockam
-
-Here is some simple Go code to connect with the Ockam TestNet:
-
-```go
-// create a lightweight local ockam node and give it a way to find peers on the ockam test network
-ockamNode, err := node.New(node.PeerDiscoverer(http.Discoverer("test.ockam.network", 26657)))
-if err != nil {
-	log.Fatal(err)
-}
-
-// ask the local node to find peers and sync with network state
-err = ockamNode.Sync()
-if err != nil {
-	log.Fatal(err)
-}
-
-// print the id of the chain that the network is maintaining.
-ockamChain := ockamNode.Chain()
-fmt.Printf("Chain ID: %s\n", ockamChain.ID())
-```
-
-The above code is in the [example directory](example/01_hello_ockam.go); you may run it by calling:
-```
-go run -mod=vendor example/01_hello_ockam.go
-```
-
-## Register an Entity
-
-<img width="900" alt="ockam register" src="document/diagram/register.jpeg">
-
-In Ockam, things are modeled as entities. Each `Entity` has a [DID](https://w3c-ccg.github.io/did-primer/) that
-begins with `did:ockam:` and uses the `ockam` DID method.
-
-An example Ockam DID looks like this: `did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5`
-
-```go
-// create a new ed25519 signer
-signer, err := ed25519.New()
-if err != nil {
-	log.Fatal(err)
-}
-
-// create a new ockam entity to represent a temperature sensor
-temperatureSensor, err := entity.New(
-	entity.Attributes{
-		"name":         "Temperature Sensor",
-		"manufacturer": "Element 14",
-		"model":        "Raspberry Pi 3 Model B+",
-	},
-	entity.Signer(signer),
-)
-if err != nil {
-	log.Fatal(err)
-}
-
-// register the entity by creating a signed registration claim
-registrationClaim, err := ockamChain.Register(temperatureSensor)
-if err != nil {
-	log.Fatal(err)
-}
-
-fmt.Printf("registrationClaim - %s\n", registrationClaim.ID())
-```
-
-The above code is in the [example directory](example/02_register_entity.go); you may run it by calling:
-```
-go run -mod=vendor example/02_register_entity.go
-```
-
-This generates a new `ed25519` signer, then creates a new entity and assigns it that signer. It also adds some
-attributes to the entity (e.g., its manufacturer's name).
-
-The code above, as part of the `Register` method, lastly generates an `EntityRegistrationClaim`.  This
-[verifiable](https://www.w3.org/TR/verifiable-claims-data-model/) registration claim embeds the
-[DID Document](https://w3c-ccg.github.io/did-spec/#dfn-did-document) that represents this newly-created entity.
-
-The claim is cryptographically signed using the entity's signer and then submitted to the network.
-
-An example `EntityRegistrationClaim` claim looks like this:
+Once you have the `ockam` package, copy an example from the [example directory](example/) and run it using `go run`.
 
 ```
-{
-	"@context": [
-		"https://w3id.org/identity/v1",
-		"https://w3id.org/security/v1"
-	],
-	"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5/claim/1brpf2pkh6",
-	"type": [
-		"EntityRegistrationClaim"
-	],
-	"issuer": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5",
-	"issued": "2019-01-10",
-	"claim": {
-		"authentication": [
-			{
-				"publicKey": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
-				"type": "Ed25519SignatureAuthentication2018"
-			}
-		],
-		"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5",
-		"manufacturer": "Element 14",
-		"model": "Raspberry Pi 3 Model B+",
-		"name": "Temperature Sensor",
-		"publicKey": [
-			{
-				"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
-				"publicKeyHex": "3c93f446990ecd3ce64bcf9a5f949423d2e348948ee3aeb1c78924490f6b50f9",
-				"type": "Ed25519VerificationKey2018"
-			}
-		],
-		"registrationClaim": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5/claim/1brpf2pkh6"
-	},
-	"signatures": [
-		{
-			"created": "2019-01-10T07:53:25Z",
-			"creator": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
-			"domain": "ockam",
-			"nonce": "1brpf2pkh6",
-			"signatureValue": "4v3cTB5u0/nA/xxrGU3gQ38IaP1MJJ7tQyPQtBtZmVLE36M96d2XRo0ArFyxQV2CsDMtP57n/vnvZWN88Du+Bg==",
-			"type": "Ed25519Signature2018"
-		}
-	]
-}
+go run example/01_hello_ockam.go
 ```
 
-## Submit a Claim
-
-<img width="900" alt="ockam register" src="document/diagram/claim.jpeg">
-
-Once an entity is registered, it can make signed, verifiable claims about itself or other entities.
-
-This will create and submit a new signed claim that includes a temperature reading:
-```go
-// create a temperature claim with this new sensor entity as both the issuer and the subject of the claim
-temperatureClaim, err := claim.New(
-	claim.Data{"temperature": 100},
-	claim.Issuer(temperatureSensor),
-	claim.Subject(temperatureSensor),
-)
-if err != nil {
-	log.Fatal(err)
-}
-
-// submit the claim
-err = ockamChain.Submit(temperatureClaim)
-if err != nil {
-	log.Fatal(err)
-}
-
-fmt.Printf("Submitted - " + temperatureClaim.ID())
-```
-
-The above code is in the [example directory](example/03_submit_claim.go); you may run it by calling:
-```
-go run -mod=vendor example/03_submit_claim.go
-```
-
-This generates a signed claim of the following form:
-
-```
-{
-	"@context": [
-		"https://w3id.org/identity/v1",
-		"https://w3id.org/security/v1"
-	],
-	"id": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC/claim/iu5aczbwnt",
-	"type": [
-		""
-	],
-	"issuer": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC",
-	"issued": "2019-01-10",
-	"claim": {
-		"id": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC",
-		"temperature": 100
-	},
-	"signatures": [
-		{
-			"created": "2019-01-10T08:00:31Z",
-			"creator": "did:ockam:2PdDcphFfkW5eU1C1mFB1i9H8ZsgC#key-1",
-			"domain": "ockam",
-			"nonce": "iu5aczbwnt",
-			"signatureValue": "UpCPc/Z6bGwUXfgNgRFxpQU2kSt8HBoe8E94JyvlAKG1yBNBfqb4oUKdPZPHOQH37JtiIFap9eGS4qMBP35DDA==",
-			"type": "Ed25519Signature2018"
-		}
-	]
-}
-```
-
-## Authentication
-
-:construction: *This feature is under construction.*
-
-DID based authentication enables a device to establish a mutually authenticated channel of communication with a
-service. This channel can be used to reliably deliver signed data, firmware and new configuration.
-
-<img width="900" alt="ockam register" src="document/diagram/device-service-auth.jpeg">
-
-DID based authentication also enables a device to establish a mutually authenticated channel with another device.
-
-<img width="900" alt="ockam register" src="document/diagram/device-device-auth.jpeg">
-
-## Command Line
-
-The `ockam` command is a useful tool to interact with the Ockam Network. You can install it for your
-operating system from our [release bundles](https://github.com/ockam-network/ockam/releases).
-
-If you are on Mac or Linux, you can also use this simple
-[downloader script](godownloader-ockam.sh):
-
-```
-curl -L https://git.io/fhZgf | sh
-```
-This will download the binary to `./bin/ockam` in your current directory. It is self-contained, so you can copy it to
-somewhere more convenient in your system path, for example:
-
-```
-cp ./bin/ockam /usr/local/bin/
-```
-
-Once the command is in your path, you can run:
-
-```
-ockam --version
-```
-
-Next you can run:
-```
-ockam register
-```
-which will generate a unique Ockam [decentralized identity](https://github.com/w3c-ccg/did-primer) for
-your computer and register that identity on the Ockam TestNet.
-
-Here's an example running on a Raspberry Pi:
-
-<h1 align="center">
-	<img width="900" alt="ockam register" src="register.gif">
-</h1>
-
-## Building
-
-If you have recent versions of Bash and Docker installed on your machine, you can build and run the Ockam binary from
-source via:
-
-```
-./build && ./build install && ockam --version
-```
-
-A `Vagrantfile` is also provided if you wish to work within a Vagrant and Virtualbox environment.
-
-For more details on how to build and contribute to Ockam, see our
-[Contributing Guide](CONTRIBUTING.md#contribute-code).
-
-## Contributing to Ockam
+## Contribute
 
 - [Ask a question](CONTRIBUTING.md#ask-a-question)
 - [Report an issue or a bug](CONTRIBUTING.md#report-an-issue-or-a-bug)
