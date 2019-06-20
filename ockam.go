@@ -152,6 +152,6 @@ type Cryptographer interface {
 
 // Version returns the current version of Ockam
 func Version() string {
-	version := "0.3.0"
+	version := "0.3.2"
 	return version
 }
