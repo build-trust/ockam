@@ -1,4 +1,4 @@
-# Decentralized Identifiers
+		# Decentralized Identifiers
 As we noted above, Identification and Authenticity are critical components in establishing data integrity. Decentralized Identifier (DID) is a new type of identifier (standard under development at W3C) that can prove its authenticity unlike a MAC address, IP address or UUID.
 
 DIDs are fully under the control of the DID subject (entity) and this control can be cryptographically proven.
@@ -10,20 +10,20 @@ A DID is also a URL that resolves to a DID document. DID documents allow an Enti
 
 ```
 {
-  "id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5"
-  "publicKey": [
-    {
-      "id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
-      "publicKeyHex": "3c93f446990ecd3ce64bcf9a5f949423d2e348948ee3aeb1c78924490f6b50f9",
-      "type": "Ed25519VerificationKey2018"
-    }
-  ],
-  "authentication": [
-    {
-      "publicKey": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
-      "type": "Ed25519SignatureAuthentication2018"
-    }
-  ]
+	"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5"
+	"publicKey": [
+		{
+			"id": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
+			"publicKeyHex": "3c93f446990ecd3ce64bcf9a5f949423d2e348948ee3aeb1c78924490f6b50f9",
+			"type": "Ed25519VerificationKey2018"
+		}
+	],
+	"authentication": [
+		{
+			"publicKey": "did:ockam:2QyqWz4xWB5o4Pr9G9fcZjXTE2ej5#key-1",
+			"type": "Ed25519SignatureAuthentication2018"
+		}
+	]
 }
 ```
 
