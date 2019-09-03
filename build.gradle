@@ -1,0 +1,6 @@
+
+task build {
+  doLast {
+    println "Succeeded."
+  }
+}
