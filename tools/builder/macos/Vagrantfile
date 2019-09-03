@@ -1,0 +1,22 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "_ockam_macinbox"
+  config.vm.boot_timeout = 10000
+
+  # https://github.com/bacongravy/macinbox/issues/37
+  config.vm.synced_folder "_xcode_installer", "/xcode_installer", type: :rsync, rsync__chown: false
+
+  config.vm.provision "shell", inline: <<-SCRIPT
+    cd /tmp
+
+    xip -x /xcode_installer/Xcode_11_Beta_7.xip
+    sudo mv Xcode-beta.app /Applications/
+    sudo xcode-select --switch /Applications/Xcode-Beta.app/Contents/Developer
+    sudo xcodebuild -license accept
+    sudo rm -rf /xcode_installer
+
+    VAGRANT_GID=$(id -u vagrant)
+    sudo dscl . -create /Groups/vagrant
+    sudo dscl . -create /Groups/vagrant PrimaryGroupID $VAGRANT_GID
+    sudo dscl . -create /Users/vagrant PrimaryGroupID $VAGRANT_GID
+  SCRIPT
+end
