@@ -1,3 +1,4 @@
 .gradle
 .vagrant
 .envrc
+.builder

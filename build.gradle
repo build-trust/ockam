@@ -1,4 +1,64 @@
 
+def macosBuilder = 'builder-macos'
+def macosBuilderGroup = 'macOS Builder'
+
+def adaptForOs(String... command) {
+  def newCommand = []
+  if (System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')) {
+    newCommand = ['cmd', '/c']
+  }
+  newCommand.addAll(command)
+  return newCommand
+}
+
+task stopMacosBuilder {
+  group = macosBuilderGroup
+  description = 'Stop and destroy the macOS builder virtual machine.'
+
+  doLast {
+    exec {
+      ignoreExitValue true
+      commandLine adaptForOs('vagrant', 'destroy', '--force', macosBuilder)
+    }
+    delete ".builder/macos.ssh-config"
+  }
+}
+
+task startMacosBuilder {
+  group = macosBuilderGroup
+  description = 'Start the macOS builder virtual machine.'
+
+  onlyIf {
+    def output = new ByteArrayOutputStream()
+    exec {
+      commandLine adaptForOs('vagrant', 'status', macosBuilder)
+      standardOutput = output
+    }
+    !output.toString().tokenize().contains('running')
+  }
+  doLast {
+    exec {
+      commandLine adaptForOs('vagrant', 'up', macosBuilder)
+    }
+    exec {
+      standardOutput = new FileOutputStream(".builder/macos.ssh-config")
+      commandLine adaptForOs('vagrant', 'ssh-config', macosBuilder)
+    }
+  }
+}
+
+task syncHostToMacosBuilder {
+  group = macosBuilderGroup
+  description = 'Sync file from host machine to macOS builder virtual machine.'
+
+  dependsOn startMacosBuilder
+  doLast {
+    exec {
+      commandLine adaptForOs('vagrant', 'rsync', macosBuilder)
+    }
+  }
+}
+
 task build {
   doLast {
     println "Succeeded."
