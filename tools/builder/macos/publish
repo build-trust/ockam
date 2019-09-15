@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-box_path="_build/$(cat _build/productVersion)-$(cat _build/buildVersion).virtualbox.box"
+box_path="_build/macos-$(cat _build/productVersion)-$(cat _build/buildVersion).virtualbox.box"
 sha256="$(cat $box_path.SHA-256)"
 
 container="boxes-private"

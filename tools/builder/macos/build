@@ -16,9 +16,9 @@ then
   exit 1
 fi
 
-if [ ! -f "_xcode_installer/Xcode_11_Beta_7.xip" ]
+if [ ! -f "_xcode_installer/Xcode_11_GM_Seed.xip" ]
 then
-  echo "Xcode installer must be present at: _xcode_installer/Xcode_11_Beta_7.xip"
+  echo "Xcode installer must be present at: _xcode_installer/Xcode_11_GM_Seed.xip"
   exit 1
 fi
 
@@ -42,7 +42,7 @@ vagrant ssh -c "sw_vers -productVersion" | tr -d '\r' > _build/productVersion
 vagrant ssh -c "sw_vers -buildVersion" | tr -d '\r' > _build/buildVersion
 
 # Package the VM as our final builder
-box_path="_build/$(cat _build/productVersion)-$(cat _build/buildVersion).virtualbox.box"
+box_path="_build/macos-$(cat _build/productVersion)-$(cat _build/buildVersion).virtualbox.box"
 vagrant package --output "$box_path"
 shasum -a 256 "$box_path" | cut -d' ' -f1 | xargs echo -n > "$box_path.SHA-256"
 
