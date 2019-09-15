@@ -1,0 +1,25 @@
+#!/bin/sh -eux
+
+path="$1"
+url="$2"
+sha256="$3"
+
+curl --silent --show-error --location --compressed --output "$sha256" "$url"
+echo "$sha256  $sha256" | sha256sum -c -
+
+file=$(basename "$url")
+case "$file" in
+  *.tar.*) mkdir -p "$path"
+           tar -xf "$sha256" -C "$path" --strip-components=1
+           rm "$sha256"
+           ;;
+    *.zip) temp=$(mktemp -d)
+           unzip -d "$temp" "$sha256"
+           mkdir -p "$path"
+           mv "$temp"/*/* "$path" # "$temp"/*/* has the same effect as tar's --strip-components=1
+           rm -rf "$temp"
+           rm "$sha256"
+           ;;
+        *) mv "$sha256" "$path"
+           ;;
+esac

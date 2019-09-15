@@ -2,6 +2,9 @@
 def macosBuilder = 'builder-macos'
 def macosBuilderGroup = 'macOS Builder'
 
+def debianBuilder = 'builder-debian'
+def debianBuilderGroup = 'Debian Builder'
+
 def adaptForOs(String... command) {
   def newCommand = []
   if (System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')) {
@@ -9,6 +12,54 @@ def adaptForOs(String... command) {
   }
   newCommand.addAll(command)
   return newCommand
+}
+
+task stopDebianBuilder {
+  group = debianBuilderGroup
+  description = 'Stop and destroy the Debian builder virtual machine.'
+
+  doLast {
+    exec {
+      ignoreExitValue true
+      commandLine adaptForOs('vagrant', 'destroy', '--force', debianBuilder)
+    }
+    delete ".builder/debain.ssh-config"
+  }
+}
+
+task startDebianBuilder {
+  group = debianBuilderGroup
+  description = 'Start the Debian builder virtual machine.'
+
+  onlyIf {
+    def output = new ByteArrayOutputStream()
+    exec {
+      commandLine adaptForOs('vagrant', 'status', debianBuilder)
+      standardOutput = output
+    }
+    !output.toString().tokenize().contains('running')
+  }
+  doLast {
+    exec {
+      commandLine adaptForOs('vagrant', 'up', debianBuilder)
+    }
+    exec {
+      standardOutput = new FileOutputStream(".builder/debain.ssh-config")
+      commandLine adaptForOs('vagrant', 'ssh-config', debianBuilder)
+    }
+  }
+}
+
+task syncHostToDebianBuilder {
+  group = debianBuilderGroup
+  description = 'Sync file from host machine to Debian builder virtual machine.'
+
+  dependsOn startDebianBuilder
+  doLast {
+    exec {
+      commandLine adaptForOs('vagrant', 'rsync', debianBuilder)
+    }
+  }
 }
 
 task stopMacosBuilder {

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+vagrant box remove --all "ockam-network/builder-debian"

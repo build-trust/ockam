@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+[ "$TRACE" ] && set -x
+
+packer build debian-9.9.0-amd64.json
+
+box_path="_build/debian-9.9.0-amd64.virtualbox.box"
+shasum -a 256 "$box_path" | cut -d' ' -f1 | xargs echo -n > "$box_path.SHA-256"
+
+echo "$box_path"
+cat "$box_path.SHA-256"
