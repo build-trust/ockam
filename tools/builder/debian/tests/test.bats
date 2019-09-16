@@ -84,23 +84,17 @@ o="$(mix --version | grep Mix)"
 [ "$e" == "$o" ]
 }
 
-@test "has openjdk 1.8.0_212" {
-e='openjdk version "1.8.0_212"
-OpenJDK Runtime Environment (AdoptOpenJDK)(build 1.8.0_212-b04)
-OpenJDK 64-Bit Server VM (AdoptOpenJDK)(build 25.212-b04, mixed mode)'
+@test "has openjdk 11.0.4" {
+e='openjdk version "11.0.4" 2019-07-16
+OpenJDK Runtime Environment AdoptOpenJDK (build 11.0.4+11)
+OpenJDK 64-Bit Server VM AdoptOpenJDK (build 11.0.4+11, mixed mode)'
 o="$(java -version 2>&1)"
 [ "$e" == "$o" ]
 }
 
-@test "has javac 1.8.0_212" {
-e='javac 1.8.0_212'
+@test "has javac 11.0.4" {
+e='javac 11.0.4'
 o="$(javac -version 2>&1)"
-[ "$e" == "$o" ]
-}
-
-@test "has gradle 5.5.1" {
-e='Gradle 5.5.1'
-o="$(gradle --version | grep ^Gradle)"
 [ "$e" == "$o" ]
 }
 
