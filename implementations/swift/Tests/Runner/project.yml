@@ -1,0 +1,36 @@
+name: Runner
+configFiles:
+  Debug: Configurations/Project-Debug.xcconfig
+  Release: Configurations/Project-Release.xcconfig
+targets:
+  Runner:
+    type: application
+    platform: iOS
+    sources: Runner
+    configFiles:
+      Debug: Configurations/Runner-Debug.xcconfig
+      Release: Configurations/Runner-Release.xcconfig
+    dependencies:
+      - target: Ockam
+  RunnerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: RunnerTests
+    configFiles:
+      Debug: Configurations/RunnerTests-Debug.xcconfig
+      Release: Configurations/RunnerTests-Release.xcconfig
+    dependencies:
+      - target: Runner
+  RunnerUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: RunnerUITests
+    configFiles:
+      Debug: Configurations/RunnerUITests-Debug.xcconfig
+      Release: Configurations/RunnerUITests-Release.xcconfig
+    dependencies:
+      - target: Runner
+  Ockam:
+    type: library.static
+    platform: iOS
+    sources: ../../Sources

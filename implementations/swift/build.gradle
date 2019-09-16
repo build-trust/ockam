@@ -1,0 +1,41 @@
+
+import groovy.json.JsonSlurper
+
+def jsonSlurper = new JsonSlurper()
+def ockamHome = project.hasProperty('ockamHome') ?: "${System.properties['user.home']}/.ockam"
+
+def ockamConfigFile = new File("${ockamHome}/config.json")
+def ockamConfig
+
+if(ockamConfigFile.exists() && ockamConfigFile.canRead()) {
+  ockamConfig = jsonSlurper.parse(ockamConfigFile)
+}
+
+def macosBuilder(String command) {
+  command = 'cd /vagrant/implementations/swift && ' + command
+  return ['vagrant', 'ssh',  'builder-macos', '-c', command]
+}
+
+def ordered(String... dependencyPaths) {
+  def dependencies = dependencyPaths.collect { tasks.getByPath(it) }
+  for (int i = 0; i < dependencies.size() - 1; i++) {
+    dependencies[i + 1].mustRunAfter(dependencies[i])
+  }
+  return dependencies
+}
+
+task buildSwiftPackage {
+  dependsOn gradle.includedBuild('ockam').task(':syncHostToMacosBuilder')
+  doLast {
+    exec {
+      workingDir "../.."
+      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToke
+      commandLine macosBuilder('swift build')
+    }
+  }
+}
+
+task build {
+  dependsOn ordered(':buildSwiftPackage', ':Tests:Runner:build')
+}

@@ -2,3 +2,4 @@
 .vagrant
 .envrc
 .builder
+.apple-codesign

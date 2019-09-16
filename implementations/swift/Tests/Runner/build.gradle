@@ -1,0 +1,116 @@
+
+import groovy.json.JsonSlurper
+
+def jsonSlurper = new JsonSlurper()
+def ockamHome = project.hasProperty('ockamHome') ?: "${System.properties['user.home']}/.ockam"
+
+def ockamConfigFile = new File("${ockamHome}/config.json")
+def ockamConfig
+
+if(ockamConfigFile.exists() && ockamConfigFile.canRead()) {
+  ockamConfig = jsonSlurper.parse(ockamConfigFile)
+}
+
+def macosBuilder(String command) {
+  command = 'cd /vagrant/implementations/swift/Tests/Runner && ' + command
+  return ['vagrant', 'ssh',  'builder-macos', '-c', command]
+}
+
+def ordered(String... dependencyPaths) {
+  def dependencies = dependencyPaths.collect { tasks.getByPath(it) }
+  for (int i = 0; i < dependencies.size() - 1; i++) {
+    dependencies[i + 1].mustRunAfter(dependencies[i])
+  }
+  return dependencies
+}
+
+task syncBuildToHost {
+  onlyIf { !file('.build').exists() }
+  doLast {
+    exec {
+      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToken
+      workingDir "../../../.."
+      commandLine 'rsync',
+        '--delete', '-v', '--stats', '--progress',
+        '-r', '-a',
+        '-e', "ssh -F .builder/macos.ssh-config",
+        'builder-macos:/vagrant/implementations/swift/Tests/Runner/.build', 'implementations/swift/Tests/Runner/'
+    }
+  }
+}
+
+task doBuild {
+  dependsOn gradle.includedBuild('ockam').task(':syncHostToMacosBuilder')
+  onlyIf { !file('.build').exists() }
+  doLast {
+    exec {
+      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToke
+      workingDir "../../../.."
+      commandLine macosBuilder("""
+        security create-keychain -p vagrant Vagrant.keychain
+        security list-keychains -d user -s Vagrant.keychain
+
+        security import /vagrant/.apple-codesign/certificates/${ockamConfig.appleCodesignCertName} \
+          -k Vagrant.keychain \
+          -P "${ockamConfig.appleCodesignCertPassword}" \
+          -T "/usr/bin/codesign"
+        security set-key-partition-list -S apple-tool:,apple: -s -k vagrant Vagrant.keychain
+        security set-keychain-settings Vagrant.keychain
+        security unlock-keychain -p vagrant Vagrant.keychain
+        security find-identity -v -p codesigning Vagrant.keychain
+
+        mkdir -p "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
+        cp /vagrant/.apple-codesign/profiles/${ockamConfig.appleCodesignProfileName} \
+          "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
+
+        rm -rf Runner.xcodeproj
+        xcodegen generate
+
+        rm -rf .build
+        xcodebuild build-for-testing -project Runner.xcodeproj \
+          -scheme Runner -derivedDataPath .build/ios -destination 'generic/platform=iOS'
+
+        xcodebuild build-for-testing -project Runner.xcodeproj \
+          -scheme Runner -derivedDataPath .build/ios-simulator -destination 'generic/platform=iOS Simulator'
+      """)
+    }
+  }
+}
+
+task clean {
+  doLast {
+    delete '.build'
+  }
+}
+
+task build {
+  dependsOn ordered(':Tests:Runner:clean', ':Tests:Runner:doBuild', ':Tests:Runner:syncBuildToHost')
+}
+
+task test {
+  dependsOn build
+}
+
+ockamConfig.testInventory.each { item ->
+  if(item.type == "iOS Simulator") {
+    test.doLast {
+      exec {
+        commandLine 'xcodebuild', 'test-without-building',
+          '-xctestrun', '.build/ios-simulator/Build/Products/Runner_iphonesimulator13.0-x86_64.xctestrun',
+          '-destination', "platform=iOS Simulator,id=${item.id}"
+      }
+    }
+  }
+
+  if(item.type == "iOS") {
+    test.doLast {
+      exec {
+        commandLine 'xcodebuild', 'test-without-building',
+          '-xctestrun', '.build/ios/Build/Products/Runner_iphoneos13.0-arm64e.xctestrun',
+          '-destination', "platform=iOS,id=${item.id}"
+      }
+    }
+  }
+}
