@@ -1,0 +1,33 @@
+
+def debianBuilder(String command) {
+  command = 'cd /vagrant/implementations/c/test && ' + command
+  return ['vagrant', 'ssh',  'builder-debian', '-c', command]
+}
+
+task build {
+  dependsOn gradle.includedBuild('ockam').task(':syncHostToDebianBuilder')
+  doLast {
+    exec {
+      workingDir "../../.."
+      commandLine debianBuilder("""
+      mkdir -p _build/x86_64-unknown-linux-gnu
+      cd _build/x86_64-unknown-linux-gnu
+      cmake ../.. -DCMAKE_INSTALL_PREFIX=./_install
+      make
+      make install
+      """)
+    }
+  }
+}
+
+task test {
+  dependsOn build
+  doLast {
+    exec {
+      workingDir "../../.."
+      commandLine debianBuilder("""
+      ./_build/x86_64-unknown-linux-gnu/_install/bin/test_ockam
+      """)
+    }
+  }
+}
