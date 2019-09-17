@@ -1,0 +1,28 @@
+
+def debianBuilder(String command) {
+  command = 'cd /vagrant/implementations/rust && ' + command
+  return ['vagrant', 'ssh',  'builder-debian', '-c', command]
+}
+
+task build {
+  dependsOn gradle.includedBuild('ockam').task(':syncHostToDebianBuilder')
+  doLast {
+    exec {
+      workingDir "../.."
+      commandLine debianBuilder("""
+      cargo build
+      """)
+    }
+  }
+}
+
+task test {
+  doLast {
+    exec {
+      workingDir "../.."
+      commandLine debianBuilder("""
+      cargo test
+      """)
+    }
+  }
+}
