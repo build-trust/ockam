@@ -19,8 +19,6 @@ fi
 EOF
 
 mkdir -p /home/vagrant/.ssh
-chown -R vagrant /home/vagrant
-chmod -R go-rwsx /home/vagrant/.ssh
 
 # Add vagrant insecure public key
 # https://raw.githubusercontent.com/mitchellh/vagrant/master/keys/vagrant.pub
@@ -31,3 +29,6 @@ SIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbA
 3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jl
 qm8tehUc9c9WhQ== vagrant insecure public key
 EOF
+
+chown -R vagrant:vagrant /home/vagrant/.ssh
+chmod -R go-rwsx /home/vagrant/.ssh

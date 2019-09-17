@@ -4,11 +4,13 @@ Vagrant.configure("2") do |config|
     config.vm.box = "ockam-network/builder-debian"
 
     boxes_url = "https://ockam.blob.core.windows.net/boxes"
-    sha256 = "de1f3933df25b501e30e829074398e6b1364d31c17e50d33ea3cd779dd2b21ba"
+    sha256 = "5f529cd919a9b3d83adc991b0460997892c004d5ad46131c2da3f7c6e66234ab"
     config.vm.box_url = "#{boxes_url}/builder/debian/#{sha256}.box"
     config.vm.box_download_checksum = sha256
     config.vm.box_download_checksum_type = "sha256"
     config.vm.box_check_update = false
+
+    config.ssh.insert_key = false
 
     config.vm.provider :virtualbox do |vbox|
       vbox.name = "builder-debian"
