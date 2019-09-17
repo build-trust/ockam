@@ -1,0 +1,30 @@
+
+def debianBuilder(String command) {
+  command = 'cd /vagrant/implementations/elixir && ' + command
+  return ['vagrant', 'ssh',  'builder-debian', '-c', command]
+}
+
+task build {
+  dependsOn gradle.includedBuild('ockam').task(':syncHostToDebianBuilder')
+  doLast {
+    exec {
+      workingDir "../.."
+      commandLine debianBuilder("""
+      make
+      mix compile
+      """)
+    }
+  }
+}
+
+task test {
+  dependsOn build
+  doLast {
+    exec {
+      workingDir "../.."
+      commandLine debianBuilder("""
+      mix test
+      """)
+    }
+  }
+}
