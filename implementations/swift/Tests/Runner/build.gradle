@@ -1,14 +1,6 @@
 
-import groovy.json.JsonSlurper
-
-def jsonSlurper = new JsonSlurper()
-def ockamHome = project.hasProperty('ockamHome') ?: "${System.properties['user.home']}/.ockam"
-
-def ockamConfigFile = new File("${ockamHome}/config.json")
-def ockamConfig
-
-if(ockamConfigFile.exists() && ockamConfigFile.canRead()) {
-  ockamConfig = jsonSlurper.parse(ockamConfigFile)
+plugins {
+  id 'network.ockam.gradle.configuration' version '1.0.0'
 }
 
 def macosBuilder(String command) {
@@ -28,8 +20,8 @@ task syncBuildToHost {
   onlyIf { !file('.build').exists() }
   doLast {
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToken
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
       workingDir "../../../.."
       commandLine 'rsync',
         '--delete', '-v', '--stats', '--progress',
@@ -45,16 +37,16 @@ task doBuild {
   onlyIf { !file('.build').exists() }
   doLast {
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToke
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToke
       workingDir "../../../.."
       commandLine macosBuilder("""
         security create-keychain -p vagrant Vagrant.keychain
         security list-keychains -d user -s Vagrant.keychain
 
-        security import /vagrant/.apple-codesign/certificates/${ockamConfig.appleCodesignCertName} \
+        security import /vagrant/.apple-codesign/certificates/${configuration.appleCodesignCertName} \
           -k Vagrant.keychain \
-          -P "${ockamConfig.appleCodesignCertPassword}" \
+          -P "${configuration.appleCodesignCertPassword}" \
           -T "/usr/bin/codesign"
         security set-key-partition-list -S apple-tool:,apple: -s -k vagrant Vagrant.keychain
         security set-keychain-settings Vagrant.keychain
@@ -62,7 +54,7 @@ task doBuild {
         security find-identity -v -p codesigning Vagrant.keychain
 
         mkdir -p "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
-        cp /vagrant/.apple-codesign/profiles/${ockamConfig.appleCodesignProfileName} \
+        cp /vagrant/.apple-codesign/profiles/${configuration.appleCodesignProfileName} \
           "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
 
         rm -rf Runner.xcodeproj
@@ -93,7 +85,7 @@ task test {
   dependsOn build
 }
 
-ockamConfig.testInventory.each { item ->
+configuration.testInventory.each { item ->
   if(item.type == "iOS Simulator") {
     test.doLast {
       exec {

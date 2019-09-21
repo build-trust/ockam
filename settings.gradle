@@ -1,1 +1,3 @@
 rootProject.name = 'ockam'
+
+includeBuild 'tools/gradle/plugins/configuration'

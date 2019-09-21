@@ -1,14 +1,5 @@
-
-import groovy.json.JsonSlurper
-
-def jsonSlurper = new JsonSlurper()
-def ockamHome = project.hasProperty('ockamHome') ?: "${System.properties['user.home']}/.ockam"
-
-def ockamConfigFile = new File("${ockamHome}/config.json")
-def ockamConfig
-
-if(ockamConfigFile.exists() && ockamConfigFile.canRead()) {
-  ockamConfig = jsonSlurper.parse(ockamConfigFile)
+plugins {
+  id 'network.ockam.gradle.configuration' version '1.0.0'
 }
 
 def macosBuilder = 'builder-macos'
@@ -92,8 +83,8 @@ task stopMacosBuilder {
 
   doLast {
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToken
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
       ignoreExitValue true
       commandLine adaptForOs('vagrant', 'destroy', '--force', macosBuilder)
     }
@@ -109,8 +100,8 @@ task startMacosBuilder {
   onlyIf {
     def output = new ByteArrayOutputStream()
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToken
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
       commandLine adaptForOs('vagrant', 'status', macosBuilder)
       standardOutput = output
     }
@@ -118,13 +109,13 @@ task startMacosBuilder {
   }
   doLast {
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToken
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
       commandLine adaptForOs('vagrant', 'up', macosBuilder)
     }
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToken
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
       standardOutput = new FileOutputStream(".builder/macos.ssh-config")
       commandLine adaptForOs('vagrant', 'ssh-config', macosBuilder)
     }
@@ -138,8 +129,8 @@ task syncHostToMacosBuilder {
   dependsOn startMacosBuilder
   doLast {
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToken
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
       commandLine adaptForOs('vagrant', 'rsync', macosBuilder)
     }
   }

@@ -1,14 +1,6 @@
 
-import groovy.json.JsonSlurper
-
-def jsonSlurper = new JsonSlurper()
-def ockamHome = project.hasProperty('ockamHome') ?: "${System.properties['user.home']}/.ockam"
-
-def ockamConfigFile = new File("${ockamHome}/config.json")
-def ockamConfig
-
-if(ockamConfigFile.exists() && ockamConfigFile.canRead()) {
-  ockamConfig = jsonSlurper.parse(ockamConfigFile)
+plugins {
+  id 'network.ockam.gradle.configuration' version '1.0.0'
 }
 
 def macosBuilder(String command) {
@@ -29,8 +21,8 @@ task buildSwiftPackage {
   doLast {
     exec {
       workingDir "../.."
-      environment OCKAM_USE_MACOS_BUILDER: ockamConfig.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: ockamConfig.privateBoxesSharedAccessToke
+      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
+                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToke
       commandLine macosBuilder('swift build')
     }
   }

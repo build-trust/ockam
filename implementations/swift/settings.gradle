@@ -1,3 +1,4 @@
 includeBuild '../..'
+includeBuild 'tools/gradle/plugins/configuration'
 
 include ':Tests:Runner'
