@@ -14,8 +14,15 @@ indent_style = space
 trim_trailing_whitespace = true
 insert_final_newline = true
 
+
+[*.c, *.h]
+indent_style = space
+indent_size = 4
+
+
 [Makefile]
-indent_style = tab
+indent_style = space
+indent_size = 4
 
 [*.go]
 indent_style = tab

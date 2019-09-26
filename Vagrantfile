@@ -12,6 +12,9 @@ Vagrant.configure("2") do |config|
 
     config.ssh.insert_key = false # TODO: fix this
     config.ssh.keep_alive = true
+    config.vm.provision "shell", privileged: true, inline: <<-SCRIPT
+      echo 'export OCKAM_C_BASE=/vagrant/implementations/c' > /etc/profile.d/ockam.sh
+    SCRIPT
 
     config.vm.provider :virtualbox do |vbox|
       vbox.name = "builder-debian"
