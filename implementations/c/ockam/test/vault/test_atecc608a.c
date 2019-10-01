@@ -19,7 +19,6 @@
 
 #include <vault/inc/ockam_err.h>
 #include <vault/inc/ockam_vault.h>
-#include <vault/inc/ockam_vault_port.h>
 
 /*
  ********************************************************************************************************
@@ -83,10 +82,10 @@ void main (void)
     uint8_t rand_num[32];
 
 
-    err = ockam_vault_port_init(0);
-    err = ockam_vault_port_random(&rand_num);
+    err = ockam_vault_init(0);
+    err = ockam_vault_random(&rand_num, 32);
 
-    printf("Random number: %32u", rand_num);
+    printf("Random number: %u", &rand_num[0]);
 
     return;
 }

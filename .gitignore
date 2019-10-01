@@ -3,3 +3,8 @@
 .envrc
 .builder
 .apple-codesign
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+*.a
