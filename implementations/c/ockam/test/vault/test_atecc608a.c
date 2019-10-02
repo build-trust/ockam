@@ -1,5 +1,5 @@
 /**
- ********************************************************************************************************
+********************************************************************************************************
  * @file        test.atecc608a.c
  * @author      Mark Mulrooney <mark@ockam.io>
  * @copyright   Copyright (c) 2019, Ockam Inc.
@@ -69,9 +69,9 @@
  *                                             main()
  * @brief   Main point of entry
 
- * @param  
+ * @param   None
  * 
- * @return
+ * @return  None
  * 
  ********************************************************************************************************
  */
@@ -79,13 +79,28 @@
 void main (void)
 {
     OCKAM_ERR err;
+    uint8_t i;
     uint8_t rand_num[32];
 
 
     err = ockam_vault_init(0);
-    err = ockam_vault_random(&rand_num, 32);
+    if(err != OCKAM_ERR_NONE) {
+        printf("Error: Ockam Vauilt Init failed\r\n");
+    }
 
-    printf("Random number: %u", &rand_num[0]);
+    err = ockam_vault_random(&rand_num, 32);
+    if(err != OCKAM_ERR_NONE) {
+        printf("Error: Ockam Vault Random failed\r\n");
+    }
+
+    printf("Random Number Generation Output:\r\n");
+
+    for(i = 1; i <= 32; i++) {
+        printf("%02X ", rand_num[i-1]);
+        if(i % 8 == 0) {
+            printf("\r\n");
+        }
+    }
 
     return;
 }

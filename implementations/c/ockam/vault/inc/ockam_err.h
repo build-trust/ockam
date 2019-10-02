@@ -34,6 +34,7 @@ typedef enum {
     OCKAM_ERR_VAULT_UNINITIALIZED                   = 0x0101,   /*!< Vault needs to be initialized */
     OCKAM_ERR_VAULT_ALREADY_INIT                    = 0x0102,   /*!< Vault is already initialized */
     OCKAM_ERR_VAULT_SIZE_MISMATCH                   = 0x0103,   /*!< Specified size is invalid for the call */
+    OCKAM_ERR_VAULT_HW_INIT_FAIL                    = 0x0104,   /*!< Hardware failed to initialize */
 } OCKAM_ERR;
 
 
