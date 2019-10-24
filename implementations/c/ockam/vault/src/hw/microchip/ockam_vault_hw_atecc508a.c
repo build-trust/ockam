@@ -28,6 +28,8 @@
 
 #include <ockam_vault_hw_microchip.h>
 
+#include <config/ockam_vault_cfg.h>
+
 
 /*
  ********************************************************************************************************
@@ -79,16 +81,6 @@
  *                                               CONSTANTS                                              *
  ********************************************************************************************************
  */
-
-const OCKAM_VAULT_CFG_FN_s ockam_vault_cfg_fn =
-{
-    .init       = OCKAM_VAULT_CFG_FN_BOTH,
-    .random     = OCKAM_VAULT_CFG_FN_HW,
-    .key        = OCKAM_VAULT_CFG_FN_HW,
-    .ecdh       = OCKAM_VAULT_CFG_FN_HW,
-    .hkdf       = OCKAM_VAULT_CFG_FN_HW,
-    .aes_gcm    = OCKAM_VAULT_CFG_FN_CRYPTO
-};
 
 
 /*
@@ -171,6 +163,7 @@ static VAULT_ATECC508A_CFG_DATA_s *g_atecc508a_cfg_data;
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC508A)
 OCKAM_ERR ockam_vault_hw_init(void *p_arg)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
@@ -221,6 +214,7 @@ OCKAM_ERR ockam_vault_hw_init(void *p_arg)
 
     return ret_val;
 }
+#endif
 
 
 /**
@@ -234,10 +228,12 @@ OCKAM_ERR ockam_vault_hw_init(void *p_arg)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC508A)
 OCKAM_ERR ockam_vault_hw_free (void)
 {
    return OCKAM_ERR_NONE; 
 }
+#endif
 
 
 /**
@@ -256,6 +252,7 @@ OCKAM_ERR ockam_vault_hw_free (void)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC508A)
 OCKAM_ERR ockam_vault_hw_random(uint8_t *p_rand_num, uint32_t rand_num_size)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
@@ -272,6 +269,7 @@ OCKAM_ERR ockam_vault_hw_random(uint8_t *p_rand_num, uint32_t rand_num_size)
 
     return ret_val;
 }
+#endif
 
 
 /**
@@ -287,6 +285,7 @@ OCKAM_ERR ockam_vault_hw_random(uint8_t *p_rand_num, uint32_t rand_num_size)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC508A)
 OCKAM_ERR ockam_vault_hw_key_gen(OCKAM_VAULT_KEY_e key_type)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
@@ -311,6 +310,7 @@ OCKAM_ERR ockam_vault_hw_key_gen(OCKAM_VAULT_KEY_e key_type)
 
     return ret_val;
 }
+#endif
 
 
 /**
@@ -331,6 +331,7 @@ OCKAM_ERR ockam_vault_hw_key_gen(OCKAM_VAULT_KEY_e key_type)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC508A)
 OCKAM_ERR ockam_vault_hw_key_get_pub(OCKAM_VAULT_KEY_e key_type,
                                      uint8_t *p_pub_key,
                                      uint32_t pub_key_size)
@@ -378,6 +379,7 @@ OCKAM_ERR ockam_vault_hw_key_get_pub(OCKAM_VAULT_KEY_e key_type,
 
     return ret_val;
 }
+#endif
 
 
 
@@ -402,6 +404,7 @@ OCKAM_ERR ockam_vault_hw_key_get_pub(OCKAM_VAULT_KEY_e key_type,
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC508A)
 OCKAM_ERR ockam_vault_hw_ecdh(OCKAM_VAULT_KEY_e key_type,
                               uint8_t *p_pub_key,
                               uint32_t pub_key_size,
@@ -456,4 +459,5 @@ OCKAM_ERR ockam_vault_hw_ecdh(OCKAM_VAULT_KEY_e key_type,
 
     return ret_val;
 }
+#endif
 

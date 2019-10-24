@@ -120,6 +120,7 @@ ATCAIfaceCfg cfg_ateccx08a_i2c_coral = {                        /*!< Configurati
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC608A)
 OCKAM_ERR ockam_vault_init(void *p_arg)
 {
     ATCA_STATUS status;
@@ -158,6 +159,7 @@ OCKAM_ERR ockam_vault_init(void *p_arg)
 
     return ret_val;
 }
+#endif
 
 
 /**
@@ -171,11 +173,12 @@ OCKAM_ERR ockam_vault_init(void *p_arg)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC608A)
 void ockam_vault_hw_free (void)
 {
    return OCKAM_ERR_NONE; 
 }
-
+#endif
 
 /**
  ********************************************************************************************************
@@ -193,6 +196,7 @@ void ockam_vault_hw_free (void)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC608A)
 OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num, uint32_t rand_num_size)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
@@ -218,6 +222,7 @@ OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num, uint32_t rand_num_size)
 
     return ret_val;
 }
+#endif
 
 
 /**
@@ -233,6 +238,7 @@ OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num, uint32_t rand_num_size)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC608A)
 OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
@@ -255,6 +261,7 @@ OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type)
 
     return ret_val;
 }
+#endif
 
 
 /**
@@ -275,6 +282,7 @@ OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type)
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC608A)
 OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type,
                                   uint8_t *p_pub_key,
                                   uint32_t pub_key_size)
@@ -327,6 +335,7 @@ OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type,
 
     return ret_val;
 }
+#endif
 
 
 
@@ -351,6 +360,7 @@ OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type,
  ********************************************************************************************************
  */
 
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_HW_MICROCHIP_ATECC608A)
 OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
                            uint8_t *p_pub_key,
                            uint32_t pub_key_size,
@@ -411,5 +421,6 @@ OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
 
     return ret_val;
 }
+#endif
 
 

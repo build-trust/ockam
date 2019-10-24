@@ -24,7 +24,7 @@ set(TEST_INC ${TEST_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib/hal)
 
 include_directories(${TEST_INC})
 
-link_directories(${VAULT_DIR} ${COMMON_DIR} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib)
+link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 
 add_executable(test_atecc508a test_atecc508a.c)
 target_link_libraries(test_atecc508a ockam_vault)

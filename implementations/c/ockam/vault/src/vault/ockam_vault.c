@@ -19,6 +19,8 @@
 
 #include <common/inc/ockam_kal.h>
 
+#include <config/ockam_vault_cfg.h>
+
 
 /*
  ********************************************************************************************************
@@ -105,28 +107,25 @@ OCKAM_ERR ockam_vault_init(OCKAM_VAULT_CFG_s *p_cfg)
             break;
         }
 
-        if((ockam_vault_cfg_fn.init == OCKAM_VAULT_CFG_FN_HW) ||
-           (ockam_vault_cfg_fn.init == OCKAM_VAULT_CFG_FN_BOTH)) {
 
-            ret_val = ockam_vault_hw_init(p_cfg->p_hw);         /* Initialize the hw code if needed                     */
-
-            if(ret_val != OCKAM_ERR_NONE) {
-                break;
-            }
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_CFG_HW)
+        ret_val = ockam_vault_hw_init(p_cfg->p_hw);         /* Initialize the hw code if needed                     */
+        if(ret_val != OCKAM_ERR_NONE) {
+            break;
         }
+#endif
 
-        if((ockam_vault_cfg_fn.init == OCKAM_VAULT_CFG_FN_CRYPTO) ||
-           (ockam_vault_cfg_fn.init == OCKAM_VAULT_CFG_FN_BOTH)) {
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_CFG_CRYPTO)
+        ret_val = ockam_vault_crypto_init(p_cfg->p_crypto);     /* Initialize the crypto lib code if needed             */
 
-            ret_val = ockam_vault_crypto_init(p_cfg->p_crypto); /* Initialize the crypto lib code if needed             */
-
-            if(ret_val != OCKAM_ERR_NONE) {                     /* If the crypto lib fails, free the hw if necessary    */
-                if(ockam_vault_cfg_fn.init == OCKAM_VAULT_CFG_FN_BOTH) {
-                    ockam_vault_hw_free();
-                }
-                break;
+        if(ret_val != OCKAM_ERR_NONE) {                         /* If the crypto lib fails, free the hw if necessary    */
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_CFG_HW)
+                ockam_vault_hw_free();
+#endif
             }
+            break;
         }
+#endif
 
         g_vault_state = VAULT_STATE_IDLE;                       /* Set the vault state to idle so it can be used        */
     } while(0);
@@ -176,15 +175,15 @@ OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num, uint32_t rand_num_size)
             break;
         }
 
-        if(ockam_vault_cfg_fn.random == OCKAM_VAULT_CFG_FN_HW) { 
-            ret_val = ockam_vault_hw_random(p_rand_num,         /* Get a random number from hardware                    */
+#if(OCKAM_VAULT_CFG_RAND & OCKAM_VAULT_CFG_HW)
+        ret_val = ockam_vault_hw_random(p_rand_num,             /* Get a random number from hardware                    */
+                                        rand_num_size);
+#elif(OCKAM_VAULT_CFG_RAND & OCKAM_VAULT_CFG_CRYPTO)
+        ret_val = ockam_vault_crypto_random(p_rand_num,         /* Get a random number from the crypto lib              */
                                             rand_num_size);
-        } else if(ockam_vault_cfg_fn.random == OCKAM_VAULT_CFG_FN_CRYPTO) {
-            ret_val = ockam_vault_crypto_random(p_rand_num,     /* Get a random number from the crypto lib              */
-                                                rand_num_size);
-        } else {
-            ret_val = OCKAM_ERR_INVALID_CFG;
-        }
+#else
+#error "Ockam Vault: Random function not specified"
+#endif
     } while(0);
 
     t_ret_val = ockam_kal_mutex_unlock(&g_vault_mutex, 0);      /* Unlock the mutex after all vault operations finish   */
@@ -234,17 +233,17 @@ OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type, uint8_t *p_key_pub, ui
             break;
         }
 
-        if(ockam_vault_cfg_fn.key == OCKAM_VAULT_CFG_FN_HW) {
-            ret_val = ockam_vault_hw_key_gen(key_type,          /* Generate a key in hardware                           */
+#if(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_HW)
+        ret_val = ockam_vault_hw_key_gen(key_type,              /* Generate a key in hardware                           */
+                                         p_key_pub,
+                                         key_pub_size);
+#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_CRYPTO)
+        ret_val = ockam_vault_crypto_key_gen(key_type,          /* Generate a key using the crypto lib                  */
                                              p_key_pub,
                                              key_pub_size);
-        } else if(ockam_vault_cfg_fn.key == OCKAM_VAULT_CFG_FN_CRYPTO) {
-            ret_val = ockam_vault_crypto_key_gen(key_type,      /* Generate a key using the crypto lib                  */
-                                                 p_key_pub,
-                                                 key_pub_size);
-        } else {
-            ret_val = OCKAM_ERR_INVALID_CFG;
-        }
+#else
+#error "Ockam Vault: Key Gen Function Missing"
+#endif
     } while(0);
 
     t_ret_val = ockam_kal_mutex_unlock(&g_vault_mutex, 0);      /* Unlock the mutex after all vault operations finish   */
@@ -295,17 +294,17 @@ OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type, uint8_t *p_key_pub
             break;
         }
 
-        if(ockam_vault_cfg_fn.key == OCKAM_VAULT_CFG_FN_HW) {
-            ret_val = ockam_vault_hw_key_get_pub(key_type,      /* Get a public key from hardware                       */
+#if(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_HW)
+        ret_val = ockam_vault_hw_key_get_pub(key_type,          /* Get a public key from hardware                       */
+                                             p_key_pub,
+                                             key_pub_size);
+#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_CRYPTO)
+        ret_val = ockam_vault_crypto_key_get_pub(key_type,      /* Get a public key from the crypto lib                 */
                                                  p_key_pub,
                                                  key_pub_size);
-        } else if(ockam_vault_cfg_fn.key == OCKAM_VAULT_CFG_FN_CRYPTO) {
-            ret_val = ockam_vault_crypto_key_get_pub(key_type,  /* Get a public key from the crypto lib                 */
-                                                     p_key_pub,
-                                                     key_pub_size);
-        } else {
-            ret_val = OCKAM_ERR_INVALID_CFG;
-        }
+#else
+#error "Ockam Vault: Key Get Pub Function Missing"
+#endif
     } while(0);
 
     t_ret_val = ockam_kal_mutex_unlock(&g_vault_mutex, 0);      /* Unlock the mutex after all vault operations finish   */
@@ -364,21 +363,21 @@ OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
             break;
         }
 
-        if(ockam_vault_cfg_fn.ecdh == OCKAM_VAULT_CFG_FN_HW) {
-            ret_val = ockam_vault_hw_ecdh(key_type,             /* Perform an ECDH operation in hardware                */
+#if(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_HW)
+        ret_val = ockam_vault_hw_ecdh(key_type,                 /* Perform an ECDH operation in hardware                */
+                                      p_key_pub,
+                                      key_pub_size,
+                                      p_pms,
+                                      pms_size);
+#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_CRYPTO)
+        ret_val = ockam_vault_crypto_ecdh(key_type,             /* Perform an ECDH operation in the crypto library      */
                                           p_key_pub,
                                           key_pub_size,
                                           p_pms,
                                           pms_size);
-        } else if(ockam_vault_cfg_fn.ecdh == OCKAM_VAULT_CFG_FN_CRYPTO) {
-            ret_val = ockam_vault_crypto_ecdh(key_type,         /* Perform an ECDH operation in the crypto library      */
-                                              p_key_pub,
-                                              key_pub_size,
-                                              p_pms,
-                                              pms_size);
-        } else {
-            ret_val = OCKAM_ERR_INVALID_CFG;
-        }
+#else
+#error "Ockam Vault: ECDH Function missing"
+#endif
     } while(0);
 
     t_ret_val = ockam_kal_mutex_unlock(&g_vault_mutex, 0);      /* Unlock the mutex after all vault operations finish   */
