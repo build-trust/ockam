@@ -1,14 +1,14 @@
 /**
  ********************************************************************************************************
- * @file        ockam_vault.h
+ * @file        ockam_vault_hw_microchip.h
  * @author      Mark Mulrooney <mark@ockam.io>
  * @copyright   Copyright (c) 2019, Ockam Inc.
  * @brief   
  ********************************************************************************************************
  */
 
-#ifndef OCKAM_VAULT_H_
-#define OCKAM_VAULT_H_
+#ifndef OCKAM_VAULT_MICROCHIP_H_
+#define OCKAM_VAULT_MICROCHIP_H_
 
 /*
  ********************************************************************************************************
@@ -16,8 +16,10 @@
  ********************************************************************************************************
  */
 
-#include <common/inc/ockam_def.h>
-#include <common/inc/ockam_err.h>
+#include <cryptoauthlib/lib/cryptoauthlib.h>
+#include <cryptoauthlib/lib/atca_cfgs.h>
+#include <cryptoauthlib/lib/atca_iface.h>
+#include <cryptoauthlib/lib/atca_device.h>
 
 
 /*
@@ -32,30 +34,18 @@
  ********************************************************************************************************
  */
 
-/**
- *******************************************************************************
- * @enum    OCKAM_VAULT_KEY_e
- * @brief   Key types
- *******************************************************************************
- */
-typedef enum {
-    OCKAM_VAULT_KEY_STATIC  = 0,                                /*!< Static key                                         */
-    OCKAM_VAULT_KEY_EPHEMERAL,                                  /*!< Ephemeral key                                      */
-    MAX_OCKAM_VAULT_KEY                                         /*!< Total number of key types supported                */
-} OCKAM_VAULT_KEY_e;
-
 
 /**
  *******************************************************************************
- * @enum    OCKAM_VAULT_CFG_FN_e
+ * @enum    VAULT_MICROCHIP_IFACE_e
  * @brief   
  *******************************************************************************
  */
 typedef enum {
-    OCKAM_VAULT_CFG_FN_HW,                                      /*!<  Vault operation is performed on the hardware port */
-    OCKAM_VAULT_CFG_FN_CRYPTO,                                  /*!<  Vault operation is performed in the crypto lib    */
-    OCKAM_VAULT_CFG_FN_BOTH                                     /*!<  Vault operation is performed on port and crypto   */
-} OCKAM_VAULT_CFG_FN_e;
+    VAULT_MICROCHIP_IFACE_I2C           = 0x00,                 /*!< I2C Interface                                      */
+    VAULT_MICROCHIP_IFACE_SW,                                   /*!< Single Wire Interface                              */
+    VAULT_MICROCHIP_IFACE_HID,                                  /*!< USB Interface                                      */
+} VAULT_MICROCHIP_IFACE_e;
 
 
 /*
@@ -64,35 +54,20 @@ typedef enum {
  ********************************************************************************************************
  */
 
-
 /**
  *******************************************************************************
- * @struct  OCKAM_VAULT_CFG_s
- * @brief   
- *******************************************************************************
- */
-
-typedef struct {
-    OCKAM_VAULT_CFG_FN_e init;                                  /*!<  Vault Init Functions Config                       */
-    OCKAM_VAULT_CFG_FN_e random;                                /*!<  Vault Random Function Config                      */
-    OCKAM_VAULT_CFG_FN_e key;                                   /*!<  Vault Key Functions Config                        */
-    OCKAM_VAULT_CFG_FN_e ecdh;                                  /*!<  Vault ECDH Functions Config                       */
-    OCKAM_VAULT_CFG_FN_e hkdf;                                  /*!<  Vault HDKF Functions Config                       */
-    OCKAM_VAULT_CFG_FN_e aes_gcm;                               /*!<  Vault AES GMC Functions Config                    */
-} OCKAM_VAULT_CFG_FN_s;
-
-
-
-/**
- *******************************************************************************
- * @struct  OCKAM_VAULT_CFG_s
+ * @struct  VAULT_MICROCHIP_CFG_s
  * @brief   
  *******************************************************************************
  */
 typedef struct {
-    void* p_hw;                                                 /*!<  Hardware specific configuration                   */
-    void* p_crypto;                                             /*!<  Crypto Library specific configuration             */
-} OCKAM_VAULT_CFG_s;
+    VAULT_MICROCHIP_IFACE_e iface;                              /*!<  */
+    ATCAIfaceCfg *iface_cfg;                                    /*!<  */
+    uint8_t static_key_slot;                                    /*!<  */
+#if(VAULT_MICROCHIP_IO_KEY_EN == DEF_TRUE)
+    uint8_t io_key[32];
+#endif
+} VAULT_MICROCHIP_CFG_s;
 
 
 /*
@@ -107,9 +82,6 @@ typedef struct {
  ********************************************************************************************************
  */
 
-extern const OCKAM_VAULT_CFG_FN_s ockam_vault_cfg_fn;
-
-
 /*
  ********************************************************************************************************
  *                                           GLOBAL FUNCTIONS                                           *
@@ -123,23 +95,5 @@ extern const OCKAM_VAULT_CFG_FN_s ockam_vault_cfg_fn;
  */
 
 
-OCKAM_ERR ockam_vault_init(OCKAM_VAULT_CFG_s *p_cfg);
-
-OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num,
-                             uint32_t rand_num_size);
-
-OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type,
-                              uint8_t *p_key_pub,
-                              uint32_t key_pub_size);
-
-OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type,
-                                  uint8_t *p_pub_key,
-                                  uint32_t pub_key_size);
-
-OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
-                           uint8_t *p_pub_key,
-                           uint32_t pub_key_size,
-                           uint8_t *p_pms,
-                           uint32_t pms_size);
-
 #endif
+

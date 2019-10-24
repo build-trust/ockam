@@ -1,11 +1,15 @@
 /**
  ********************************************************************************************************
- * @file        ockam_vault_hal_freertos.c
+ * @file        ockam_vault_crypto.h
  * @author      Mark Mulrooney <mark@ockam.io>
  * @copyright   Copyright (c) 2019, Ockam Inc.
  * @brief   
  ********************************************************************************************************
  */
+
+#ifndef OCKAM_VAULT_CRYPTO_H_
+#define OCKAM_VAULT_CRYPTO_H_
+
 
 /*
  ********************************************************************************************************
@@ -13,7 +17,9 @@
  ********************************************************************************************************
  */
 
-#include <vault/inc/ockam_err.h>
+#include <common/inc/ockam_def.h>
+#include <common/inc/ockam_err.h>
+
 
 /*
  ********************************************************************************************************
@@ -57,74 +63,34 @@
  ********************************************************************************************************
  */
 
-
-
-/**
- ********************************************************************************************************
- *                                          ockam_vault_hal_mutex_init()
- *
- * @brief   Initialize a mutex
- *
- * @param   p_mutex The Mutex object to initialize
- * 
- * @return  OCKAM_ERR_NONE on success.
- *
- ********************************************************************************************************
- */
-
-OCKAM_ERR ockam_vault_hal_mutex_init(OCKAM_VAULT_HAL_MUTEX *p_mutex)
-{
-    return OCKAM_ERR_NONE;
-}
-
-
-/**
- ********************************************************************************************************
- *                                          ockam_vault_hal_mutex_lock()
- *
- * @brief   Lock the specified mutex
- *
- * @param   p_mutex     The mutex to lock.
- *
- * @param   opt         Options to pass into the mutex lock .
- *
- * @param   timeout_ms  The maximum amount of time to wait for the mutex.
- * 
- * @return  OCKAM_ERR_NONE when mutex is acquired.
- *
- ********************************************************************************************************
- */
-
-OCKAM_ERR ockam_vault_hal_mutex_lock(OCKAM_VAULT_HAL_MUTEX *p_mutex,
-                                     OCKAM_VAULT_HAL_OPT opt,
-                                     uint32_t timeout_ms)
-{
-    return OCKAM_ERR_NONE;
-}
-
-
-
-/**
- ********************************************************************************************************
- *                                          ockam_vault_hal_mutex_unlock()
- *
- * @brief   Free the specified mutex
- *
- * @param   p_mutex The mutex object to release.
- *
- * @param   opt     Options to pass to the mutex unlock.
- * 
- * @return  OCKAM_ERR_NONE after the mutex is freed.
- *
- ********************************************************************************************************
- */
-
-OCKAM_ERR ockam_vault_hal_mutex_unlock (OCKAM_VAULT_HAL_MUTEX *p_mutex,
-                                         OCKAM_VAULT_HAL_OPT opt)
-{
-    return OCAKM_ERR_NONE;
-}
-
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 
+OCKAM_ERR ockam_vault_crypto_init(void *p_arg);
+
+OCKAM_ERR ockam_vault_crypto_free(void);
+
+OCKAM_ERR ockam_vault_crypto_random(uint8_t *p_rand_num,
+                                  uint32_t rand_num_size);
+
+OCKAM_ERR ockam_vault_crypto_key_gen(OCKAM_VAULT_KEY_e key_type,
+                                     uint8_t *p_pub_key,
+                                     uint32_t pub_key_size);
+
+OCKAM_ERR ockam_vault_crypto_key_get_pub(OCKAM_VAULT_KEY_e key_type,
+                                       uint8_t *p_pub_key,
+                                       uint32_t pub_key_size);
+
+OCKAM_ERR ockam_vault_crypto_ecdh(OCKAM_VAULT_KEY_e key_type,
+                                uint8_t *p_pub_key,
+                                uint32_t pub_key_size,
+                                uint8_t *p_pms,
+                                uint32_t pms_size);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

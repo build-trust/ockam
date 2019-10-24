@@ -12,6 +12,6 @@ option(OCKAM_TEST_VAULT "Build Test for Vault" ON)
 ###############
 
 if(OCKAM_TEST_VAULT)
-add_subdirectory("vault/")
+add_subdirectory("vault/" "_build")
 endif()
 

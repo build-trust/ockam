@@ -7,7 +7,9 @@ project(ockam_vault)
 
 set(VAULT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(OCKAM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
-set(VAULT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(VAULT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/vault)
+set(VAULT_HW_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/hw)
+set(VAULT_CRYPTO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/crypto)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../third-party/)
 
 message( ${CMAKE_CURRENT_SOURCE_DIR} )
@@ -19,12 +21,8 @@ message( ${CMAKE_CURRENT_SOURCE_DIR} )
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 # Vault Hardware Build Options
-option(VAULT_HW_ATECC508A "Vault Hardware: Microchip ATECC508A" OFF)
-option(VAULT_HW_ATECC608A "Vault Hardware: Microchip ATECC608A" ON)
-
-# Vault Platform Build Options
-option(VAULT_HAL_LINUX "Vault HAL: Linux" ON)
-option(VAULT_HAL_FREERTOS "Vault HAL: FreeRTOS" OFF)
+option(VAULT_HW_ATECC508A "Vault Hardware: Microchip ATECC508A" ON)
+option(VAULT_HW_ATECC608A "Vault Hardware: Microchip ATECC608A" OFF)
 
 # Vault Interface Options
 option(VAULT_IFACE_I2C "Vault IFace: I2C" ON)
@@ -44,20 +42,43 @@ set(VAULT_SRC)
 set(VAULT_LIB)
 
 
-########################
-# Device Specific Code #
-########################
+###################
+# Vault Interface #
+###################
+
+set(VAULT_SRC ${VAULT_SRC} ${VAULT_SRC_DIR}/ockam_vault.c)
+
+
+####################
+# HW Specific Code #
+####################
 
 # ATECC508A Specific Config 
 if(VAULT_HW_ATECC508A)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_SRC_DIR}/microchip/vault_atecc508a.c)
+set(VAULT_SRC ${VAULT_SRC} ${VAULT_HW_SRC_DIR}/microchip/ockam_vault_hw_atecc508a.c)
 set(VAULT_HW_VENDOR_MICROCHIP TRUE)
 endif()
 
 # ATECC608A Specific Config 
 if(VAULT_HW_ATECC608A)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_SRC_DIR}/microchip/vault_atecc608a.c)
+set(VAULT_SRC ${VAULT_SRC} ${VAULT_HW_SRC_DIR}/microchip/ockam_vault_hw_atecc608a.c)
 set(VAULT_HW_VENDOR_MICROCHIP TRUE)
+endif()
+
+########################
+# Crypto Specific Code #
+########################
+
+# mbedTLS Specific Config
+if(VAULT_CRYPTO_MBEDTLS)
+set(VAULT_SRC ${VAULT_SRC} ${VAULT_CRYPT_SRC_DIR}/mbedtls/ockam_vault_crypto_mbedtls.c)
+set(VAULT_CRYPTO_MBEDTLS TRUE)
+endif()
+ 
+# LibSodiumSpecific Config
+if(VAULT_CRYPTO_MBEDTLS)
+set(VAULT_SRC ${VAULT_SRC} ${VAULT_CRYPT_SRC_DIR}/mbedtls/ockam_vault_crypto_libsodium.c)
+set(VAULT_CRYPTO_LIB_SODIUM TRUE)
 endif()
 
 
@@ -67,24 +88,10 @@ endif()
 
 # For Microchip Hardware, add cryptoauthlib
 if(VAULT_HW_VENDOR_MICROCHIP)
+set(VAULT_INC ${VAULT_INC} ${VAULT_HW_SRC_DIR}/microchip/)
 set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/)
 set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib)
 set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib/hal)
-endif()
-
-
-####################
-# HAL Library Code #
-####################
-
-if(VAULT_HAL_LINUX)
-add_definitions(-DVAULT_HAL_LINUX)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_DIR}/hal/ockam_vault_hal_linux.c)
-endif()
-
-if(VAULT_HAL_FREERTOS)
-add_definitions(-DVAULT_HAL_FREERTOS)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_DIR}/hal/ockam_vault_hal_freertos.c)
 endif()
 
 

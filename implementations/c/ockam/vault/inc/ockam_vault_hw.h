@@ -1,14 +1,15 @@
 /**
  ********************************************************************************************************
- * @file        ockam_vault_hal.h
+ * @file        ockam_vault_hw.h
  * @author      Mark Mulrooney <mark@ockam.io>
  * @copyright   Copyright (c) 2019, Ockam Inc.
  * @brief   
  ********************************************************************************************************
  */
 
-#ifndef OCKAM_VAULT_HAL_H_
-#define OCKAM_VAULT_HAL_H_
+#ifndef OCKAM_VAULT_HW_H_
+#define OCKAM_VAULT_HW_H_
+
 
 /*
  ********************************************************************************************************
@@ -16,21 +17,9 @@
  ********************************************************************************************************
  */
 
-#include <stdlib.h>
-#include <stdint.h>
+#include <common/inc/ockam_def.h>
+#include <common/inc/ockam_err.h>
 
-#include <vault/inc/ockam_err.h>
-
-
-/*
- ********************************************************************************************************
- *                                                EXTERN                                                *
- ********************************************************************************************************
- */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*
  ********************************************************************************************************
@@ -44,40 +33,11 @@ extern "C" {
  ********************************************************************************************************
  */
 
-
-/**
- *******************************************************************************
- * @enum    OCKAM_VAULT_HAL_OPT
- * @brief   Options when making OS calls
- *******************************************************************************
- */
-
-typedef enum {
-    OCKAM_VAULT_HAL_OPT_NONE              = 0x00,               /*!< No option specified                                */
-    OCKAM_VAULT_HAL_OPT_BLOCKING          = 0x00,               /*!< Make a blocking call (default)                     */
-    OCKAM_VAULT_HAL_OPT_NON_BLOCKING      = 0x01,               /*!< Make a non-blocking call                           */
-    OCKAM_VAULT_HAL_OPT_NO_SCHED          = 0x02,               /*!< Don't run the scheduler                            */
-} OCKAM_VAULT_HAL_OPT;
-
-
 /*
  ********************************************************************************************************
  *                                               DATA TYPES                                             *
  ********************************************************************************************************
  */
-
-
-/**
- *******************************************************************************
- * @struct  OCKAM_VAULT_HAL_MUTEX
- * @brief   Hardware abstraction layer mutex
- *******************************************************************************
- */
-
-typedef struct {
-    void *mutex_ptr;                                            /*!< Void* for the mutex                                */
-} OCKAM_VAULT_HAL_MUTEX;
-
 
 /*
  ********************************************************************************************************
@@ -103,22 +63,31 @@ typedef struct {
  ********************************************************************************************************
  */
 
-
-OCKAM_ERR  ockam_vault_hal_mutex_init   (OCKAM_VAULT_HAL_MUTEX *p_mutex);
-
-OCKAM_ERR  ockam_vault_hal_mutex_lock   (OCKAM_VAULT_HAL_MUTEX *p_mutex,
-                                         OCKAM_VAULT_HAL_OPT    opt, 
-                                         uint32_t               timeout_ms);
-
-OCKAM_ERR  ockam_vault_hal_mutex_unlock (OCKAM_VAULT_HAL_MUTEX *p_mutex,
-                                         OCKAM_VAULT_HAL_OPT opt);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
-/*
- ********************************************************************************************************
- *                                                EXTERN                                                *
- ********************************************************************************************************
- */
+OCKAM_ERR ockam_vault_hw_init(void *p_arg);
+
+OCKAM_ERR ockam_vault_hw_free(void);
+
+OCKAM_ERR ockam_vault_hw_random(uint8_t *p_rand_num,
+                                uint32_t rand_num_size);
+
+OCKAM_ERR ockam_vault_hw_key_gen(OCKAM_VAULT_KEY_e key_type,
+                                 uint8_t *p_pub_key,
+                                 uint32_t pub_key_size);
+
+OCKAM_ERR ockam_vault_hw_key_get_pub(OCKAM_VAULT_KEY_e key_type,
+                                     uint8_t *p_pub_key,
+                                     uint32_t pub_key_size);
+
+OCKAM_ERR ockam_vault_hw_ecdh(OCKAM_VAULT_KEY_e key_type,
+                              uint8_t *p_pub_key,
+                              uint32_t pub_key_size,
+                              uint8_t *p_pms,
+                              uint32_t pms_size);
 
 #ifdef __cplusplus
 }

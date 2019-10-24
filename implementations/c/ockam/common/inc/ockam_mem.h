@@ -1,11 +1,27 @@
 /**
-********************************************************************************************************
- * @file        test.atecc608a.c
+ ********************************************************************************************************
+ * @file        ockam_mem.h
  * @author      Mark Mulrooney <mark@ockam.io>
  * @copyright   Copyright (c) 2019, Ockam Inc.
  * @brief   
  ********************************************************************************************************
  */
+
+#ifndef OCKAM_MEM_H_
+#define OCKAM_MEM_H_
+
+
+/*
+ ********************************************************************************************************
+ * @defgroup    OCKAM_MEM OCKAM_MEM_API
+ * @ingroup     OCKAM
+ * @brief       OCKAM_MEM_API
+ *
+ * @addtogroup  OCKAM_MEM
+ * @{
+ ********************************************************************************************************
+ */
+
 
 /*
  ********************************************************************************************************
@@ -13,12 +29,8 @@
  ********************************************************************************************************
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <common/inc/ockam_def.h>
 
-#include <vault/inc/ockam_err.h>
-#include <vault/inc/ockam_vault.h>
 
 /*
  ********************************************************************************************************
@@ -62,46 +74,25 @@
  ********************************************************************************************************
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+OCKAM_ERR ockam_mem_init(void* p_buf);
+
+OCKAM_ERR ockam_mem_alloc(void* p_buf, uint32_t size);
+
+OCKAM_ERR ockam_mem_free(void* p_buf);
 
 
-/**
+#ifdef __cplusplus
+}
+#endif
+
+/*
  ********************************************************************************************************
- *                                             main()
- * @brief   Main point of entry
-
- * @param   None
- * 
- * @return  None
- * 
+ * @}
  ********************************************************************************************************
  */
 
-void main (void)
-{
-    OCKAM_ERR err;
-    uint8_t i;
-    uint8_t rand_num[32];
-
-
-    err = ockam_vault_init(0);
-    if(err != OCKAM_ERR_NONE) {
-        printf("Error: Ockam Vauilt Init failed\r\n");
-    }
-
-    err = ockam_vault_random(&rand_num, 32);
-    if(err != OCKAM_ERR_NONE) {
-        printf("Error: Ockam Vault Random failed\r\n");
-    }
-
-    printf("Random Number Generation Output:\r\n");
-
-    for(i = 1; i <= 32; i++) {
-        printf("%02X ", rand_num[i-1]);
-        if(i % 8 == 0) {
-            printf("\r\n");
-        }
-    }
-
-    return;
-}
-
+#endif
