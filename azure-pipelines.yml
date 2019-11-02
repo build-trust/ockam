@@ -3,8 +3,7 @@
 
 name: $(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
 
-pool:
-  vmImage: 'Ubuntu 16.04'
+pool: 'OckamHosted'
 
 steps:
   - script: ./gradlew build
