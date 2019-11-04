@@ -1,28 +1,33 @@
 
-def debianBuilder(String command) {
-  command = 'cd /vagrant/implementations/rust && ' + command
-  return ['vagrant', 'ssh',  'builder-debian', '-c', command]
+plugins {
+  id 'network.ockam.gradle.host' version '1.0.0'
+  id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
 task build {
-  dependsOn gradle.includedBuild('ockam').task(':syncHostToDebianBuilder')
+  onlyIf { host.debianBuilder.enabled }
   doLast {
-    exec {
-      workingDir "../.."
-      commandLine debianBuilder("""
-      cargo build
-      """)
+    builderExec 'debian', {
+      script '''
+        cargo build
+      '''
     }
   }
 }
 
 task test {
+  onlyIf { host.debianBuilder.enabled }
   doLast {
-    exec {
-      workingDir "../.."
-      commandLine debianBuilder("""
-      cargo test
-      """)
+    builderExec 'debian', {
+      script '''
+        cargo test
+      '''
     }
+  }
+}
+
+task clean {
+  doLast {
+    delete 'target'
   }
 }

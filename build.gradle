@@ -1,143 +1,31 @@
-plugins {
-  id 'network.ockam.gradle.configuration' version '1.0.0'
-}
 
-def macosBuilder = 'builder-macos'
-def macosBuilderGroup = 'macOS Builder'
+['build', 'test', 'clean'].each { t ->
+  task "${t}" {
+    group 'Ockam'
+    def implementationTasks = ['c', 'elixir', 'go', 'javascript', 'rust', 'swift'].stream().map { impl ->
+      tasks.create("${t}${impl.capitalize()}") {
+        group impl.capitalize()
+        doLast {
+          exec {
+            workingDir "implementations/${impl}"
+            commandLine '../../gradlew', '-q', "${t}"
+          }
+        }
+      }
+    }.toArray()
 
-def debianBuilder = 'builder-debian'
-def debianBuilderGroup = 'Debian Builder'
-
-def adaptForOs(String... command) {
-  def newCommand = []
-  if (System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')) {
-    newCommand = ['cmd', '/c']
-  }
-  newCommand.addAll(command)
-  return newCommand
-}
-
-task stopDebianBuilder {
-  group = debianBuilderGroup
-  description = 'Stop and destroy the Debian builder virtual machine.'
-
-  doLast {
-    exec {
-      ignoreExitValue true
-      commandLine adaptForOs('vagrant', 'destroy', '--force', debianBuilder)
+    for (int i = 0; i < implementationTasks.length - 1; i++) {
+      implementationTasks.getAt(i + 1).mustRunAfter(implementationTasks.getAt(i))
     }
-    delete ".builder/debain.ssh-config"
+
+    dependsOn implementationTasks
   }
 }
 
-task startDebianBuilder {
-  group = debianBuilderGroup
-  description = 'Start the Debian builder virtual machine.'
-
-  onlyIf {
-    def output = new ByteArrayOutputStream()
-    exec {
-      commandLine adaptForOs('vagrant', 'status', debianBuilder)
-      standardOutput = output
-    }
-    !output.toString().tokenize().contains('running')
+clean.doLast {
+  exec {
+    commandLine 'vagrant', 'destroy', '-f'
+    ignoreExitValue true
   }
-  doLast {
-    exec {
-      commandLine adaptForOs('vagrant', 'up', debianBuilder)
-    }
-    exec {
-      standardOutput = new FileOutputStream(".builder/debain.ssh-config")
-      commandLine adaptForOs('vagrant', 'ssh-config', debianBuilder)
-    }
-  }
-}
-
-task syncHostToDebianBuilder {
-  group = debianBuilderGroup
-  description = 'Sync file from host machine to Debian builder virtual machine.'
-
-  dependsOn startDebianBuilder
-  doLast {
-    exec {
-      commandLine adaptForOs('vagrant', 'rsync', debianBuilder)
-    }
-  }
-}
-
-task cloneAppleCodeSign {
-  group = macosBuilderGroup
-  description = 'Clone .apple-codesign repo'
-
-  onlyIf { !file('.apple-codesign').exists() }
-  doLast {
-    exec {
-      commandLine 'git', 'clone', 'git@github.com:ockam-network/apple-codesign.git', '.apple-codesign'
-    }
-  }
-}
-
-task stopMacosBuilder {
-  group = macosBuilderGroup
-  description = 'Stop and destroy the macOS builder virtual machine.'
-
-  doLast {
-    exec {
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
-      ignoreExitValue true
-      commandLine adaptForOs('vagrant', 'destroy', '--force', macosBuilder)
-    }
-    delete ".builder/macos.ssh-config"
-  }
-}
-
-task startMacosBuilder {
-  group = macosBuilderGroup
-  description = 'Start the macOS builder virtual machine.'
-
-  dependsOn cloneAppleCodeSign
-  onlyIf {
-    def output = new ByteArrayOutputStream()
-    exec {
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
-      commandLine adaptForOs('vagrant', 'status', macosBuilder)
-      standardOutput = output
-    }
-    !output.toString().tokenize().contains('running')
-  }
-  doLast {
-    exec {
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
-      commandLine adaptForOs('vagrant', 'up', macosBuilder)
-    }
-    exec {
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
-      standardOutput = new FileOutputStream(".builder/macos.ssh-config")
-      commandLine adaptForOs('vagrant', 'ssh-config', macosBuilder)
-    }
-  }
-}
-
-task syncHostToMacosBuilder {
-  group = macosBuilderGroup
-  description = 'Sync file from host machine to macOS builder virtual machine.'
-
-  dependsOn startMacosBuilder
-  doLast {
-    exec {
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
-      commandLine adaptForOs('vagrant', 'rsync', macosBuilder)
-    }
-  }
-}
-
-task build {
-  doLast {
-    println "Succeeded."
-  }
+  delete '.builder'
 }

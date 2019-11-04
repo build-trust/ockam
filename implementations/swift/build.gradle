@@ -1,33 +1,26 @@
 
 plugins {
-  id 'network.ockam.gradle.configuration' version '1.0.0'
+  id 'network.ockam.gradle.host' version '1.0.0'
+  id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
-def macosBuilder(String command) {
-  command = 'cd /vagrant/implementations/swift && ' + command
-  return ['vagrant', 'ssh',  'builder-macos', '-c', command]
-}
-
-def ordered(String... dependencyPaths) {
-  def dependencies = dependencyPaths.collect { tasks.getByPath(it) }
-  for (int i = 0; i < dependencies.size() - 1; i++) {
-    dependencies[i + 1].mustRunAfter(dependencies[i])
-  }
-  return dependencies
-}
-
-task buildSwiftPackage {
-  dependsOn gradle.includedBuild('ockam').task(':syncHostToMacosBuilder')
+task build {
+  onlyIf { host.macosBuilder.enabled }
   doLast {
-    exec {
-      workingDir "../.."
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToke
-      commandLine macosBuilder('swift build')
+    builderExec 'macos', {
+      script '''
+        swift build
+      '''
     }
   }
 }
 
-task build {
-  dependsOn ordered(':buildSwiftPackage', ':Tests:Runner:build')
+task test {
+  dependsOn gradle.includedBuild('Swift_Tests_Runner').task(':test')
+}
+
+task clean {
+  doLast {
+    delete '.build'
+  }
 }

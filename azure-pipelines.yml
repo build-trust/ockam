@@ -7,3 +7,5 @@ pool: 'OckamHosted'
 
 steps:
   - script: ./gradlew build
+  - script: ./gradlew test
+  - script: ./gradlew clean

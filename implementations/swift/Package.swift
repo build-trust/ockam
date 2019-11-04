@@ -18,8 +18,5 @@ let package = Package(
         .target(
             name: "Ockam",
             dependencies: []),
-        .testTarget(
-            name: "OckamTests",
-            dependencies: ["Ockam"]),
     ]
 )

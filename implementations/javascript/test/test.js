@@ -1,8 +1,9 @@
 const assert = require('assert');
 const generate = require('..');
 
-function test(hours, minutes, seconds, expected) {
-  assert.equal(generate(), "a key");
+function test(value, message) {
+  assert.ok(value, message);
+  console.log(`\u001B[32m✓\u001B[39m ${message}`);
 }
 
-test()
+test(generate() === "a key", "key is generated")

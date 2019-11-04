@@ -1,91 +1,63 @@
 
 plugins {
-  id 'network.ockam.gradle.configuration' version '1.0.0'
+  id 'network.ockam.gradle.host' version '1.0.0'
+  id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
-def macosBuilder(String command) {
-  command = 'cd /vagrant/implementations/swift/Tests/Runner && ' + command
-  return ['vagrant', 'ssh',  'builder-macos', '-c', command]
-}
+task cloneAppleCodeSignRepo {
+  description = 'Clone .apple-codesign repo'
 
-def ordered(String... dependencyPaths) {
-  def dependencies = dependencyPaths.collect { tasks.getByPath(it) }
-  for (int i = 0; i < dependencies.size() - 1; i++) {
-    dependencies[i + 1].mustRunAfter(dependencies[i])
-  }
-  return dependencies
-}
-
-task syncBuildToHost {
-  onlyIf { !file('.build').exists() }
+  onlyIf { host.macosBuilder.enabled && !file('.apple-codesign').exists() }
   doLast {
     exec {
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToken
-      workingDir "../../../.."
-      commandLine 'rsync',
-        '--delete', '-v', '--stats', '--progress',
-        '-r', '-a',
-        '-e', "ssh -F .builder/macos.ssh-config",
-        'builder-macos:/vagrant/implementations/swift/Tests/Runner/.build', 'implementations/swift/Tests/Runner/'
+      commandLine 'git', 'clone', 'git@github.com:ockam-network/apple-codesign.git', '.apple-codesign'
     }
-  }
-}
-
-task doBuild {
-  dependsOn gradle.includedBuild('ockam').task(':syncHostToMacosBuilder')
-  onlyIf { !file('.build').exists() }
-  doLast {
-    exec {
-      environment OCKAM_USE_MACOS_BUILDER: configuration.useMacosBuilder,
-                  OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN: configuration.privateBoxesSharedAccessToke
-      workingDir "../../../.."
-      commandLine macosBuilder("""
-        security create-keychain -p vagrant Vagrant.keychain
-        security list-keychains -d user -s Vagrant.keychain
-
-        security import /vagrant/.apple-codesign/certificates/${configuration.appleCodesignCertName} \
-          -k Vagrant.keychain \
-          -P "${configuration.appleCodesignCertPassword}" \
-          -T "/usr/bin/codesign"
-        security set-key-partition-list -S apple-tool:,apple: -s -k vagrant Vagrant.keychain
-        security set-keychain-settings Vagrant.keychain
-        security unlock-keychain -p vagrant Vagrant.keychain
-        security find-identity -v -p codesigning Vagrant.keychain
-
-        mkdir -p "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
-        cp /vagrant/.apple-codesign/profiles/${configuration.appleCodesignProfileName} \
-          "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
-
-        rm -rf Runner.xcodeproj
-        xcodegen generate
-
-        rm -rf .build
-        xcodebuild build-for-testing -project Runner.xcodeproj \
-          -scheme Runner -derivedDataPath .build/ios -destination 'generic/platform=iOS'
-
-        xcodebuild build-for-testing -project Runner.xcodeproj \
-          -scheme Runner -derivedDataPath .build/ios-simulator -destination 'generic/platform=iOS Simulator'
-      """)
-    }
-  }
-}
-
-task clean {
-  doLast {
-    delete '.build'
   }
 }
 
 task build {
-  dependsOn ordered(':Tests:Runner:clean', ':Tests:Runner:doBuild', ':Tests:Runner:syncBuildToHost')
+  dependsOn cloneAppleCodeSignRepo
+  onlyIf { host.macosBuilder.enabled }
+  doLast {
+    builderExec 'macos', {
+      script """
+security create-keychain -p vagrant Vagrant.keychain
+security list-keychains -d user -s Vagrant.keychain
+
+security import \
+  /vagrant/implementations/swift/Tests/Runner/.apple-codesign/certificates/${host.macosBuilder.appleCodesign.certName} \
+  -k Vagrant.keychain \
+  -P "${host.macosBuilder.appleCodesign.certPassword}" \
+  -T "/usr/bin/codesign"
+security set-key-partition-list -S apple-tool:,apple: -s -k vagrant Vagrant.keychain
+security set-keychain-settings Vagrant.keychain
+security unlock-keychain -p vagrant Vagrant.keychain
+security find-identity -v -p codesigning Vagrant.keychain
+
+mkdir -p "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
+cp /vagrant/implementations/swift/Tests/Runner/.apple-codesign/profiles/${host.macosBuilder.appleCodesign.profileName} \
+  "/Users/vagrant/Library/MobileDevice/Provisioning Profiles/"
+
+rm -rf Runner.xcodeproj
+xcodegen generate
+
+rm -rf .build
+xcodebuild build-for-testing -project Runner.xcodeproj \
+  -scheme Runner -derivedDataPath .build/ios -destination 'generic/platform=iOS'
+
+xcodebuild build-for-testing -project Runner.xcodeproj \
+  -scheme Runner -derivedDataPath .build/ios-simulator -destination 'generic/platform=iOS Simulator'
+"""
+    }
+  }
 }
 
 task test {
   dependsOn build
+  onlyIf { file('.build').exists() }
 }
 
-configuration.testInventory.each { item ->
+host.testInventory.each { item ->
   if(item.type == "iOS Simulator") {
     test.doLast {
       exec {
@@ -104,5 +76,15 @@ configuration.testInventory.each { item ->
           '-destination', "platform=iOS,id=${item.id}"
       }
     }
+  }
+}
+
+build.mustRunAfter(cloneAppleCodeSignRepo)
+test.mustRunAfter(build)
+
+task clean {
+  doLast {
+    delete '.build'
+    delete 'Runner.xcodeproj'
   }
 }

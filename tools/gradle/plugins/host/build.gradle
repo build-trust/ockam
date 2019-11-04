@@ -3,14 +3,14 @@ plugins {
   id 'java-gradle-plugin'
 }
 
-group = 'network.ockam.gradle.configuration'
+group = 'network.ockam.gradle.host'
 version = '1.0.0'
 
 gradlePlugin {
   plugins {
-    dependencyVerificationPlugin {
+    buildersPlugin {
       id = project.group
-      implementationClass = 'network.ockam.gradle.configuration.ConfigurationPlugin'
+      implementationClass = 'network.ockam.gradle.host.HostPlugin'
     }
   }
 }

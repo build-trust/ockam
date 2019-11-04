@@ -1,9 +1,9 @@
 {
   "name": "ockam",
   "description": "Ockam",
-  "main": ".build/ockam.cjs.js",
-  "module": ".build/ockam.esm.js",
-  "browser": ".build/ockam.umd.js",
+  "main": "build/ockam.cjs.js",
+  "module": "build/ockam.esm.js",
+  "browser": "build/ockam.umd.js",
   "dependencies": {},
   "devDependencies": {
     "rollup": "1.21.4",
@@ -13,11 +13,10 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "test": "node test/test.js",
-    "pretest": "npm run build"
+    "test": "node test/test.js"
   },
   "files": [
-    "dist"
+    "build"
   ],
   "license": "Apache-2.0",
   "repository": {}

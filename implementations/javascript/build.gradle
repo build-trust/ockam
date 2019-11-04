@@ -1,29 +1,35 @@
 
-def debianBuilder(String command) {
-  command = 'cd /vagrant/implementations/javascript && ' + command
-  return ['vagrant', 'ssh',  'builder-debian', '-c', command]
+plugins {
+  id 'network.ockam.gradle.host' version '1.0.0'
+  id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
 task build {
-  dependsOn gradle.includedBuild('ockam').task(':syncHostToDebianBuilder')
+  onlyIf { host.debianBuilder.enabled }
   doLast {
-    exec {
-      workingDir "../.."
-      commandLine debianBuilder("""
-      npm install && npm run build
-      """)
+    builderExec 'debian', {
+      script '''
+        npm install
+        npm run build
+      '''
     }
   }
 }
 
 task test {
-  dependsOn build
+  onlyIf { host.debianBuilder.enabled }
   doLast {
-    exec {
-      workingDir "../.."
-      commandLine debianBuilder("""
-      npm run test
-      """)
+    builderExec 'debian', {
+      script '''
+        npm run test
+      '''
     }
+  }
+}
+
+task clean {
+  doLast {
+    delete 'build'
+    delete 'node_modules'
   }
 }

@@ -195,7 +195,7 @@ class RunnerTests: XCTestCase {
         using: SHA256.self,
         salt: protocolSalt,
         sharedInfo: bobPrivateKey.publicKey.rawRepresentation + alicePrivateKey.publicKey.rawRepresentation,
-        outputByteCount: 16
+        outputByteCount: 32
       )
       print("aliceDerivedKey: ", aliceDerivedKey.dataRepresentation.hexEncodedString())
 
@@ -206,7 +206,7 @@ class RunnerTests: XCTestCase {
         using: SHA256.self,
         salt: protocolSalt,
         sharedInfo: bobPrivateKey.publicKey.rawRepresentation + alicePrivateKey.publicKey.rawRepresentation,
-        outputByteCount: 16
+        outputByteCount: 32
       )
       print("bobDerivedKey: ", bobDerivedKey.dataRepresentation.hexEncodedString())
 
