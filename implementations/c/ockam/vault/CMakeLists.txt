@@ -9,7 +9,7 @@ set(VAULT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(OCKAM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(VAULT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/vault)
 set(VAULT_HW_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/hw)
-set(VAULT_CRYPTO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/crypto)
+set(VAULT_SW_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/sw)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../third-party/)
 
 message( ${CMAKE_CURRENT_SOURCE_DIR} )
@@ -23,6 +23,10 @@ set(CMAKE_VERBOSE_MAKEFILE TRUE)
 # Vault Hardware Build Options
 option(VAULT_HW_ATECC508A "Vault Hardware: Microchip ATECC508A" ON)
 option(VAULT_HW_ATECC608A "Vault Hardware: Microchip ATECC608A" OFF)
+
+# Vault Software Build Options
+option(VAULT_SW_MBEDTLS "Vault Software: mbed TLS" ON)
+option(VAULT_SW_LIBSODIUM "Vault Software: mbed TLS" OFF)
 
 # Vault Interface Options
 option(VAULT_IFACE_I2C "Vault IFace: I2C" ON)
@@ -55,30 +59,28 @@ set(VAULT_SRC ${VAULT_SRC} ${VAULT_SRC_DIR}/ockam_vault.c)
 
 # ATECC508A Specific Config 
 if(VAULT_HW_ATECC508A)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_HW_SRC_DIR}/microchip/ockam_vault_hw_atecc508a.c)
-set(VAULT_HW_VENDOR_MICROCHIP TRUE)
+    set(VAULT_SRC ${VAULT_SRC} ${VAULT_HW_SRC_DIR}/microchip/ockam_vault_hw_atecc508a.c)
+    set(VAULT_HW_VENDOR_MICROCHIP TRUE)
 endif()
 
 # ATECC608A Specific Config 
 if(VAULT_HW_ATECC608A)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_HW_SRC_DIR}/microchip/ockam_vault_hw_atecc608a.c)
-set(VAULT_HW_VENDOR_MICROCHIP TRUE)
+    set(VAULT_SRC ${VAULT_SRC} ${VAULT_HW_SRC_DIR}/microchip/ockam_vault_hw_atecc608a.c)
+    set(VAULT_HW_VENDOR_MICROCHIP TRUE)
 endif()
 
-########################
-# Crypto Specific Code #
-########################
+####################
+# SW Specific Code #
+####################
 
 # mbedTLS Specific Config
-if(VAULT_CRYPTO_MBEDTLS)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_CRYPT_SRC_DIR}/mbedtls/ockam_vault_crypto_mbedtls.c)
-set(VAULT_CRYPTO_MBEDTLS TRUE)
+if(VAULT_SW_MBEDTLS)
+    set(VAULT_SRC ${VAULT_SRC} ${VAULT_SW_SRC_DIR}/mbedtls/ockam_vault_sw_mbedtls.c)
 endif()
- 
+
 # LibSodiumSpecific Config
-if(VAULT_CRYPTO_MBEDTLS)
-set(VAULT_SRC ${VAULT_SRC} ${VAULT_CRYPT_SRC_DIR}/mbedtls/ockam_vault_crypto_libsodium.c)
-set(VAULT_CRYPTO_LIB_SODIUM TRUE)
+if(VAULT_SW_LIBSODIUM)
+    set(VAULT_SRC ${VAULT_SRC} ${VAULT_SW_SRC_DIR}/mbedtls/ockam_vault_sw_libsodium.c)
 endif()
 
 
@@ -88,10 +90,25 @@ endif()
 
 # For Microchip Hardware, add cryptoauthlib
 if(VAULT_HW_VENDOR_MICROCHIP)
-set(VAULT_INC ${VAULT_INC} ${VAULT_HW_SRC_DIR}/microchip/)
-set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/)
-set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib)
-set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib/hal)
+    set(VAULT_INC ${VAULT_INC} ${VAULT_HW_SRC_DIR}/microchip/)
+    set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/)
+    set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib)
+    set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib/hal)
+
+    if(VAULT_IFACE_I2C)
+        set(ATCA_HAL_I2C TRUE)
+    endif()
+    add_subdirectory(${THIRD_PARTY_DIR}/microchip/cryptoauthlib cryptoauthlib)
+endif()
+
+# For mbed TLS, add the library
+if(VAULT_SW_MBEDTLS)
+    set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/arm/mbedtls/include)
+    set(VAULT_INC ${VAULT_INC} ${THIRD_PARTY_DIR}/arm/mbedtls/crypto/include)
+
+    set(ENABLE_TESTING OFF CACHE BOOL "Build libfoo shared library")
+    set(ENABLE_PROGRAMS OFF CACHE BOOL "Build libfoo shared library")
+    add_subdirectory(${THIRD_PARTY_DIR}/arm/mbedtls mbedtls)
 endif()
 
 
@@ -100,15 +117,15 @@ endif()
 ####################
 
 if(VAULT_IFACE_I2C)
-add_definitions(-DVAULT_IFACE_I2C)
+    add_definitions(-DVAULT_IFACE_I2C)
 endif()
 
 if(VAULT_IFACE_SPI)
-add_definitions(-DVAULT_IFACE_SPI)
+    add_definitions(-DVAULT_IFACE_SPI)
 endif()
 
 if(VAULT_IFACE_UART)
-add_definitions(-DVAULT_IFACE_UART)
+    add_definitions(-DVAULT_IFACE_UART)
 endif()
 
 
@@ -121,11 +138,7 @@ endif()
 add_library(ockam_vault ${VAULT_SRC})
 
 # Set the include directories
-#target_include_directories(ockam_vault PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> PRIVATE ${VAULT_INC})
 target_include_directories(ockam_vault PUBLIC ${VAULT_INC})
 
 # Set the target
 set_property(TARGET ockam_vault PROPERTY C_STANDARD 99)
-
-# Add any extra libs
-target_link_libraries(ockam_vault ${VAULT_LIBS})

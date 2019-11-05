@@ -18,7 +18,6 @@
 #include <common/inc/ockam_kal.h>
 
 #include <vault/inc/ockam_vault.h>
-#include <vault/inc/ockam_vault_crypto.h>
 
 #include <cryptoauthlib/lib/cryptoauthlib.h>
 #include <cryptoauthlib/lib/atca_cfgs.h>

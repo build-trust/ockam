@@ -89,6 +89,14 @@ OCKAM_ERR ockam_vault_hw_ecdh(OCKAM_VAULT_KEY_e key_type,
                               uint8_t *p_pms,
                               uint32_t pms_size);
 
+OCKAM_ERR ockam_vault_hw_hkdf(uint8_t *p_salt,
+                              uint32_t salt_size,
+                              uint8_t *p_ikm,
+                              uint32_t ikm_size,
+                              uint8_t *p_info,
+                              uint32_t info_size,
+                              uint8_t *p_out,
+                              uint32_t out_size);
 #ifdef __cplusplus
 }
 #endif

@@ -15,11 +15,11 @@
 
 #include <vault/inc/ockam_vault.h>
 #include <vault/inc/ockam_vault_hw.h>
-#include <vault/inc/ockam_vault_crypto.h>
+#include <vault/inc/ockam_vault_sw.h>
 
 #include <common/inc/ockam_kal.h>
 
-#include <config/ockam_vault_cfg.h>
+#include <ockam_vault_cfg.h>
 
 
 /*
@@ -82,7 +82,7 @@ static VAULT_STATE_e g_vault_state = VAULT_STATE_UNINIT;
  *
  * @brief   Initialize the Ockam Vault
  *
- * @param   p_cfg   Configuration values for the hardware and/or crypto library
+ * @param   p_cfg   Configuration values for the hardware and/or software library
  * 
  * @return  OCKAM_ERR_NONE if initialized successfully. OCKAM_ERR_VAULT_ALREADY_INIT if already
  *          initialized. Other errors if specific chip fails init.
@@ -109,20 +109,19 @@ OCKAM_ERR ockam_vault_init(OCKAM_VAULT_CFG_s *p_cfg)
 
 
 #if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_CFG_HW)
-        ret_val = ockam_vault_hw_init(p_cfg->p_hw);         /* Initialize the hw code if needed                     */
+        ret_val = ockam_vault_hw_init(p_cfg->p_hw);             /* Initialize the hw code if needed                     */
         if(ret_val != OCKAM_ERR_NONE) {
             break;
         }
 #endif
 
-#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_CFG_CRYPTO)
-        ret_val = ockam_vault_crypto_init(p_cfg->p_crypto);     /* Initialize the crypto lib code if needed             */
+#if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_CFG_SW)
+        ret_val = ockam_vault_sw_init(p_cfg->p_sw);             /* Initialize the software lib code if needed           */
 
-        if(ret_val != OCKAM_ERR_NONE) {                         /* If the crypto lib fails, free the hw if necessary    */
+        if(ret_val != OCKAM_ERR_NONE) {                         /* If the software lib fails, free the hw if necessary  */
 #if(OCKAM_VAULT_CFG_INIT & OCKAM_VAULT_CFG_HW)
-                ockam_vault_hw_free();
+            ockam_vault_hw_free();
 #endif
-            }
             break;
         }
 #endif
@@ -171,16 +170,16 @@ OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num, uint32_t rand_num_size)
         }
 
         if(g_vault_state != VAULT_STATE_IDLE) {                 /* Ensure vault is in an idle state before continuing   */
-            ret_val = OCKAM_ERR_INVALID_STATE;
+            ret_val = OCKAM_ERR_VAULT_UNINITIALIZED;
             break;
         }
 
 #if(OCKAM_VAULT_CFG_RAND & OCKAM_VAULT_CFG_HW)
         ret_val = ockam_vault_hw_random(p_rand_num,             /* Get a random number from hardware                    */
                                         rand_num_size);
-#elif(OCKAM_VAULT_CFG_RAND & OCKAM_VAULT_CFG_CRYPTO)
-        ret_val = ockam_vault_crypto_random(p_rand_num,         /* Get a random number from the crypto lib              */
-                                            rand_num_size);
+#elif(OCKAM_VAULT_CFG_RAND & OCKAM_VAULT_CFG_SW)
+        ret_val = ockam_vault_sw_random(p_rand_num,             /* Get a random number from the sw lib              */
+                                        rand_num_size);
 #else
 #error "Ockam Vault: Random function not specified"
 #endif
@@ -229,7 +228,7 @@ OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type, uint8_t *p_key_pub, ui
         }
 
         if(g_vault_state != VAULT_STATE_IDLE) {                 /* Ensure vault is in an idle state before continuing   */
-            ret_val = OCKAM_ERR_INVALID_STATE;
+            ret_val = OCKAM_ERR_VAULT_UNINITIALIZED;
             break;
         }
 
@@ -237,8 +236,8 @@ OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type, uint8_t *p_key_pub, ui
         ret_val = ockam_vault_hw_key_gen(key_type,              /* Generate a key in hardware                           */
                                          p_key_pub,
                                          key_pub_size);
-#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_CRYPTO)
-        ret_val = ockam_vault_crypto_key_gen(key_type,          /* Generate a key using the crypto lib                  */
+#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_SW)
+        ret_val = ockam_vault_sw_key_gen(key_type,              /* Generate a key using the software lib                */
                                              p_key_pub,
                                              key_pub_size);
 #else
@@ -290,7 +289,7 @@ OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type, uint8_t *p_key_pub
         }
 
         if(g_vault_state != VAULT_STATE_IDLE) {                 /* Ensure vault is in an idle state before continuing   */
-            ret_val = OCKAM_ERR_INVALID_STATE;
+            ret_val = OCKAM_ERR_VAULT_UNINITIALIZED;
             break;
         }
 
@@ -298,8 +297,8 @@ OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type, uint8_t *p_key_pub
         ret_val = ockam_vault_hw_key_get_pub(key_type,          /* Get a public key from hardware                       */
                                              p_key_pub,
                                              key_pub_size);
-#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_CRYPTO)
-        ret_val = ockam_vault_crypto_key_get_pub(key_type,      /* Get a public key from the crypto lib                 */
+#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_SW)
+        ret_val = ockam_vault_sw_key_get_pub(key_type,          /* Get a public key from the software lib               */
                                                  p_key_pub,
                                                  key_pub_size);
 #else
@@ -359,7 +358,7 @@ OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
         }
 
         if(g_vault_state != VAULT_STATE_IDLE) {                 /* Ensure vault is in an idle state before continuing   */
-            ret_val = OCKAM_ERR_INVALID_STATE;
+            ret_val = OCKAM_ERR_VAULT_UNINITIALIZED;
             break;
         }
 
@@ -369,8 +368,8 @@ OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
                                       key_pub_size,
                                       p_pms,
                                       pms_size);
-#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_CRYPTO)
-        ret_val = ockam_vault_crypto_ecdh(key_type,             /* Perform an ECDH operation in the crypto library      */
+#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_SW)
+        ret_val = ockam_vault_sw_ecdh(key_type,                 /* Perform an ECDH operation in the software library    */
                                           p_key_pub,
                                           key_pub_size,
                                           p_pms,
@@ -388,4 +387,83 @@ OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
     return ret_val;
 }
 
+
+/**
+ ********************************************************************************************************
+ *                                          ockam_vault_hkdf()
+ *
+ * @brief   Perform HKDF operation on the input key material and optional salt and info. Place the
+ *          result in the output buffer.
+ *
+ * @param   p_salt[in]          Buffer for the Ockam salt value
+ *
+ * @param   salt_size[in]       Size of the Ockam salt value
+ *
+ * @param   p_ikm[in]           Buffer with the input key material for HKDF
+ *
+ * @param   ikm_size[in]        Size of the input key material
+ *
+ * @param   p_info[in]          Buffer with the optional context specific info. Can be 0.
+ *
+ * @param   info_size[in]       Size of the optional context specific info.
+ *
+ * @param   p_out[out]          Buffer for the output of the HKDF operation
+ *
+ * @param   out_size[in]        Size of the HKDF output buffer
+ *
+ * @return  OCKAM_ERR_NONE if successful.
+ *
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_hkdf(uint8_t *p_salt,
+                           uint32_t salt_size,
+                           uint8_t *p_ikm,
+                           uint32_t ikm_size,
+                           uint8_t *p_info,
+                           uint32_t info_size,
+                           uint8_t *p_out,
+                           uint32_t out_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    OCKAM_ERR t_ret_val = OCKAM_ERR_NONE;
+
+
+    do {
+        if((p_ikm == OCKAM_NULL) || (p_out == OCKAM_NULL)) {    /* Ensure the input key material and output buffers     */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* are not null. Salt and Info are optional.            */
+        }
+
+        ret_val = ockam_kal_mutex_lock(&g_vault_mutex, 0, 0);   /* Lock the mutex before checking the state or          */
+        if(ret_val != OCKAM_ERR_NONE) {                         /* performing the HKDF operation                        */
+            break;
+        }
+
+        if(g_vault_state != VAULT_STATE_IDLE) {                 /* Ensure vault is in an idle state before continuing   */
+            ret_val = OCKAM_ERR_VAULT_UNINITIALIZED;
+            break;
+        }
+
+#if(OCKAM_VAULT_CFG_HKDF & OCKAM_VAULT_CFG_HW)
+        ret_val = ockam_vault_hw_hkdf(p_salt, salt_size,        /* Perform an HKDF operation in hardware                */
+                                      p_ikm, ikm_size,
+                                      p_info, info_size,
+                                      p_out, out_size);
+#elif(OCKAM_VAULT_CFG_HKDF & OCKAM_VAULT_CFG_SW)
+        ret_val = ockam_vault_sw_hkdf(p_salt, salt_size,        /* Perform an HKDF operation in the software library    */
+                                      p_ikm, ikm_size,
+                                      p_info, info_size,
+                                      p_out, out_size);
+#else
+#error "Ockam Vault: HKDF Function missing"
+#endif
+    } while(0);
+
+    t_ret_val = ockam_kal_mutex_unlock(&g_vault_mutex, 0);      /* Unlock the mutex after all vault operations finish   */
+    if(ret_val == OCKAM_ERR_NONE) {                             /* Don't overwrite ret_val if there was an error before */
+        ret_val = t_ret_val;                                    /* the mutex unlock                                     */
+    }
+
+    return ret_val;
+}
 

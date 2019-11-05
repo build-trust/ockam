@@ -19,7 +19,6 @@
 #include <common/inc/ockam_mem.h>
 
 #include <vault/inc/ockam_vault.h>
-#include <vault/inc/ockam_vault_crypto.h>
 
 #include <cryptoauthlib/lib/cryptoauthlib.h>
 #include <cryptoauthlib/lib/atca_cfgs.h>
@@ -28,7 +27,7 @@
 
 #include <ockam_vault_hw_microchip.h>
 
-#include <config/ockam_vault_cfg.h>
+#include <ockam_vault_cfg.h>
 
 
 /*
@@ -186,7 +185,7 @@ OCKAM_ERR ockam_vault_hw_init(void *p_arg)
                 break;
             }
         } else {                                                /* Single-wire or HID is not supported at this time     */
-            ret_val = OCKAM_ERR_VAULT_UNSUPPORTED_IFACE;
+            ret_val = OCKAM_ERR_VAULT_HW_UNSUPPORTED_IFACE;
             break;
         }
 
@@ -358,7 +357,7 @@ OCKAM_ERR ockam_vault_hw_key_get_pub(OCKAM_VAULT_KEY_e key_type,
                                       p_pub_key);
 
                 if(status != ATCA_SUCCESS) {
-                    ret_val = OCKAM_ERR_VAULT_KEY_FAIL;
+                    ret_val = OCKAM_ERR_VAULT_HW_KEY_FAIL;
                 }
                 break;
 
@@ -367,7 +366,7 @@ OCKAM_ERR ockam_vault_hw_key_get_pub(OCKAM_VAULT_KEY_e key_type,
                                        p_pub_key);
 
                 if(status != ATCA_SUCCESS) {
-                    ret_val = OCKAM_ERR_VAULT_KEY_FAIL;
+                    ret_val = OCKAM_ERR_VAULT_HW_KEY_FAIL;
                 }
                 break;
 
@@ -438,7 +437,7 @@ OCKAM_ERR ockam_vault_hw_ecdh(OCKAM_VAULT_KEY_e key_type,
                                     p_pub_key,
                                     p_pms);
                 if(status != ATCA_SUCCESS) {
-                    ret_val = OCKAM_ERR_VAULT_ECDH_FAIL;
+                    ret_val = OCKAM_ERR_VAULT_HW_ECDH_FAIL;
                 }
                 break;
 
@@ -447,7 +446,7 @@ OCKAM_ERR ockam_vault_hw_ecdh(OCKAM_VAULT_KEY_e key_type,
                 status = atcab_ecdh_tempkey(p_pub_key,
                                             p_pms);
                 if(status != ATCA_SUCCESS) {
-                    ret_val = OCKAM_ERR_VAULT_ECDH_FAIL;
+                    ret_val = OCKAM_ERR_VAULT_HW_ECDH_FAIL;
                 }
                 break;
 

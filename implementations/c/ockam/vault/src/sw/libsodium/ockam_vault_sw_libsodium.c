@@ -1,6 +1,6 @@
 /**
  ********************************************************************************************************
- * @file        ockam_vault_crypto_libsodium.c
+ * @file        ockam_vault_sw_libsodium.c
  * @author      Mark Mulrooney <mark@ockam.io>
  * @copyright   Copyright (c) 2019, Ockam Inc.
  * @brief   
@@ -14,7 +14,7 @@
  */
 
 #include <vault/inc/ockam_vault.h>
-#include <vault/inc/ockam_vault_crypto.h>
+#include <vault/inc/ockam_vault_sw.h>
 
 #include <common/inc/ockam_def.h>
 #include <common/inc/ockam_err.h>
@@ -66,7 +66,7 @@
 
 /**
  ********************************************************************************************************
- *                                         ockam_vault_crypto_init()
+ *                                         ockam_vault_sw_init()
  *
  * @brief   Initialize libsodium for crypto operations
  *
@@ -78,7 +78,7 @@
  ********************************************************************************************************
  */
 
-OCKAM_ERR ockam_vault_crypto_init(void *p_arg)
+OCKAM_ERR ockam_vault_sw_init(void *p_arg)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
 
@@ -92,7 +92,7 @@ OCKAM_ERR ockam_vault_crypto_init(void *p_arg)
 
 /**
  ********************************************************************************************************
- *                                        ockam_vault_crypto_random()
+ *                                        ockam_vault_sw_random()
  *
  * @brief   Generate and return a random number
  *
@@ -106,7 +106,7 @@ OCKAM_ERR ockam_vault_crypto_init(void *p_arg)
  ********************************************************************************************************
  */
 
-OCKAM_ERR ockam_vault_crypto_random(uint8_t *p_rand_num, uint32_t rand_num_size)
+OCKAM_ERR ockam_vault_sw_random(uint8_t *p_rand_num, uint32_t rand_num_size)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
 
@@ -120,7 +120,7 @@ OCKAM_ERR ockam_vault_crypto_random(uint8_t *p_rand_num, uint32_t rand_num_size)
 
 /**
  ********************************************************************************************************
- *                                        ockam_vault_crypto_key_gen()
+ *                                        ockam_vault_sw_key_gen()
  *
  * @brief   Generate an keypair using libsodium
  *
@@ -131,7 +131,7 @@ OCKAM_ERR ockam_vault_crypto_random(uint8_t *p_rand_num, uint32_t rand_num_size)
  ********************************************************************************************************
  */
 
-OCKAM_ERR ockam_vault_crypto_key_gen(OCKAM_VAULT_KEY_e key_type)
+OCKAM_ERR ockam_vault_sw_key_gen(OCKAM_VAULT_KEY_e key_type)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
 
@@ -155,7 +155,7 @@ OCKAM_ERR ockam_vault_crypto_key_gen(OCKAM_VAULT_KEY_e key_type)
 
 /**
  ********************************************************************************************************
- *                                        ockam_vault_crypto_key_get_pub()
+ *                                        ockam_vault_sw_key_get_pub()
  *
  * @brief   Get a public key the generated key
  *
@@ -171,9 +171,9 @@ OCKAM_ERR ockam_vault_crypto_key_gen(OCKAM_VAULT_KEY_e key_type)
  ********************************************************************************************************
  */
 
-OCKAM_ERR ockam_vault_crypto_key_get_pub(OCKAM_VAULT_KEY_e key_type,
-                                         uint8_t *p_pub_key,
-                                         uint32_t pub_key_size)
+OCKAM_ERR ockam_vault_sw_key_get_pub(OCKAM_VAULT_KEY_e key_type,
+                                     uint8_t *p_pub_key,
+                                     uint32_t pub_key_size)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
 
@@ -207,7 +207,7 @@ OCKAM_ERR ockam_vault_crypto_key_get_pub(OCKAM_VAULT_KEY_e key_type,
 
 /**
  ********************************************************************************************************
- *                                        ockam_vault_crypto_ecdh()
+ *                                        ockam_vault_sw_ecdh()
  *
  * @brief   Perform ECDH using the specified key
  *
@@ -226,7 +226,7 @@ OCKAM_ERR ockam_vault_crypto_key_get_pub(OCKAM_VAULT_KEY_e key_type,
  ********************************************************************************************************
  */
 
-OCKAM_ERR ockam_vault_crypto_ecdh(OCKAM_VAULT_KEY_e key_type,
+OCKAM_ERR ockam_vault_sw_ecdh(OCKAM_VAULT_KEY_e key_type,
                               uint8_t *p_pub_key,
                               uint32_t pub_key_size,
                               uint8_t *p_pms,

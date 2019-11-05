@@ -85,7 +85,7 @@ VAULT_MICROCHIP_CFG_s atecc508a_cfg = {
 OCKAM_VAULT_CFG_s vault_cfg =
 {
     .p_hw                       = &atecc508a_cfg,
-    .p_crypto                   = 0
+    .p_sw                       = 0
 };
 
 

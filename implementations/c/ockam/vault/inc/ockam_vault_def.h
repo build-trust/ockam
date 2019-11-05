@@ -18,7 +18,7 @@
  */
 
 #define OCKAM_VAULT_CFG_HW                      0x0001000
-#define OCKAM_VAULT_CFG_CRYPTO                  0x0002000
+#define OCKAM_VAULT_CFG_SW                      0x0002000
 
 
 /*
@@ -46,7 +46,7 @@
  ********************************************************************************************************
  */
 
-#define OCKAM_VAULT_CRYPTO_MBEDTLS              (OCKAM_VAULT_CRYPTO | 0x00000001)
+#define OCKAM_VAULT_SW_MBEDTLS                  (OCKAM_VAULT_CFG_SW | 0x00000001)
 
 
 #endif
