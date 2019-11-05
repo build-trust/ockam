@@ -24,7 +24,9 @@
 
 clean.doLast {
   exec {
-    commandLine 'vagrant', 'destroy', '-f'
+    commandLine 'bash', '-c', """
+      vagrant global-status | grep builder- | cut -d \' \' -f 1 | while read -r line; do vagrant destroy -f \$line; done
+    """
     ignoreExitValue true
   }
   delete '.builder'
