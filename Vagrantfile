@@ -11,6 +11,7 @@ Vagrant.configure("2") do |config|
     config.vm.box_check_update = false
 
     config.ssh.insert_key = false # TODO: fix this
+    config.ssh.keep_alive = true
 
     config.vm.provider :virtualbox do |vbox|
       vbox.name = "builder-debian"
@@ -32,6 +33,8 @@ Vagrant.configure("2") do |config|
     config.vm.box_download_checksum = sha256
     config.vm.box_download_checksum_type = 'sha256'
     config.vm.box_check_update = false
+
+    config.ssh.keep_alive = true
 
     config.vm.provider :virtualbox do |vbox|
       vbox.name = "builder-macos"
