@@ -10,17 +10,34 @@ set(VAULT_HW_ATECC508A TRUE)
 set(VAULT_SW_MBEDTLS TRUE)
 set(VAULT_IFACE_I2C TRUE)
 
+# KAL Build Option
+set(KAL_LINUX TRUE)
+
+# Log Build Option
+set(LOG_LINUX TRUE)
+
+# Mem Build Option
+set(MEM_STDLIB TRUE)
+
 # Compiler Build Options
-#set(CMAKE_VERBOSE_MAKEFILE TRUE)
+set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 ###########################
 # Set directory locations #
 ###########################
 
-set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(OCKAM_DIR ${TEST_DIR}/../../../ockam)
-set(VAULT_DIR ${OCKAM_DIR}/vault)
-set(COMMON_DIR ${OCKAM_DIR}/common)
+set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/source)
+set(TEST_CFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/config)
+
+set(OCKAM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+set(OCKAM_SRC_DIR ${OCKAM_DIR}/source)
+set(OCKAM_INC_DIR ${OCKAM_DIR}/include)
+
+set(VAULT_SRC_DIR ${OCKAM_SRC_DIR}/vault)
+set(KAL_SRC_DIR ${OCKAM_SRC_DIR}/kal)
+set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
+set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/mem)
+
 set(THIRD_PARTY_DIR ${OCKAM_DIR}/third-party)
 
 
@@ -28,9 +45,8 @@ set(THIRD_PARTY_DIR ${OCKAM_DIR}/third-party)
 # Set include directories #
 ###########################
 
-set(TEST_INC cfg)
-set(TEST_INC ${TEST_INC} ${OCKAM_DIR})
-set(TEST_INC ${TEST_INC} ${OCKAM_DIR}/vault/src/hw/microchip)
+set(TEST_INC ${TEST_CFG_DIR})
+set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
 set(TEST_INC ${TEST_INC} ${THIRD_PARTY_DIR}/microchip)
 set(TEST_INC ${TEST_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib)
 set(TEST_INC ${TEST_INC} ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib/hal)
@@ -42,8 +58,10 @@ include_directories(${TEST_INC})
 # Set the desired modules #
 ###########################
 
-add_subdirectory(${VAULT_DIR} vault)
-add_subdirectory(${COMMON_DIR} common)
+add_subdirectory(${VAULT_SRC_DIR} vault)
+add_subdirectory(${KAL_SRC_DIR} kal)
+add_subdirectory(${LOG_SRC_DIR} log)
+add_subdirectory(${MEM_SRC_DIR} mem)
 
 
 #########################################
@@ -52,9 +70,12 @@ add_subdirectory(${COMMON_DIR} common)
 
 link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 
-add_executable(test_atecc508a src/test_atecc508a.c)
+add_executable(test_atecc508a ${TEST_SRC_DIR}/test_atecc508a.c)
+
 target_link_libraries(test_atecc508a ockam_vault)
-target_link_libraries(test_atecc508a ockam_common)
+target_link_libraries(test_atecc508a ockam_kal)
+target_link_libraries(test_atecc508a ockam_log)
+target_link_libraries(test_atecc508a ockam_mem)
 target_link_libraries(test_atecc508a cryptoauth)
 target_link_libraries(test_atecc508a mbedtls)
 

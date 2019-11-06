@@ -1,6 +1,0 @@
-[submodule "implementations/c/ockam/third-party/microchip/cryptoauthlib"]
-	path = implementations/c/ockam/third-party/microchip/cryptoauthlib
-	url = https://github.com/MicrochipTech/cryptoauthlib.git
-[submodule "implementations/c/ockam/third-party/arm/mbedtls"]
-	path = implementations/c/ockam/third-party/arm/mbedtls
-	url = https://github.com/ARMmbed/mbedtls.git
