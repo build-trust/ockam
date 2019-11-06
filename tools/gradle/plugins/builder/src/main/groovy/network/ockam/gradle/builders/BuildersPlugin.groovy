@@ -155,7 +155,7 @@ class BuildersPlugin implements Plugin<Project> {
   }
 
   static syncHost(Project project, String builderName) {
-    def vagrantfileDir = project.host.vagrantfileDir.toString()
+    def vDir = project.host.vagrantfileDir.toString()
     project.exec {
       workingDir project.host.vagrantfileDir
       commandLine adaptCommandForOs('rsync',
@@ -165,7 +165,7 @@ class BuildersPlugin implements Plugin<Project> {
         '--exclude', '.builder',
         '--delete', '-v', //'--stats', // '--progress',
         '-r', '-a',
-        '-e', "ssh -o ServerAliveInterval=5 -F ${vagrantfileDir}/.builder/${builderName}.ssh-config",
+        '-e', "ssh -o ServerAliveInterval=5 ServerAliveCountMax=1000 -F ${vDir}/.builder/${builderName}.ssh-config",
         "builder-${builderName}:/vagrant/", '.')
     }
   }
