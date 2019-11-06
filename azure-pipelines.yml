@@ -6,7 +6,12 @@ name: $(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
 pool: 'OckamHosted'
 
 steps:
-  - script: ./gradlew clean
+  - script: |
+      vagrant global-status | grep builder- | awk '{ print $1 }' | xargs -I {} vagrant destroy -f {}
+      VBoxManage unregistervm --delete "builder-macos"
+      VBoxManage unregistervm --delete "builder-debian"
+      vagrant global-status --prune
+    continueOnError: true
     displayName: Clean
 
   - script: ./gradlew build
