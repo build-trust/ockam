@@ -35,6 +35,10 @@ Vagrant.configure("2") do |config|
     config.vm.box_check_update = false
 
     config.ssh.keep_alive = true
+    config.vm.provision "shell", privileged: true, inline: <<-SCRIPT
+      echo -e "\nClientAliveInterval 5\nClientAliveCountMax 1000\n" >> /etc/ssh/sshd_config
+      launchctl kickstart -k system/com.openssh.sshd
+    SCRIPT
 
     config.vm.provider :virtualbox do |vbox|
       vbox.name = "builder-macos"
