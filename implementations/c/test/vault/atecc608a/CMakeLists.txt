@@ -1,17 +1,14 @@
 cmake_minimum_required(VERSION 3.13)
-project(test_atecc508a)
+project(test_atecc608a)
 
 #################
 # Build Options #
 #################
 
 # Vault Hardware Build Options
-set(VAULT_HW_ATECC508A TRUE)
-set(VAULT_SW_MBEDTLS TRUE)
+set(VAULT_HW_ATECC608A TRUE)
 set(VAULT_IFACE_I2C TRUE)
 
-# Compiler Build Options
-#set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 ###########################
 # Set directory locations #
@@ -22,6 +19,8 @@ set(OCKAM_DIR ${TEST_DIR}/../../../ockam)
 set(VAULT_DIR ${OCKAM_DIR}/vault)
 set(COMMON_DIR ${OCKAM_DIR}/common)
 set(THIRD_PARTY_DIR ${OCKAM_DIR}/third-party)
+
+set(LIB_DIR ${VAULT_DIR}/ ${THIRD_PARTY_DIR}/microchip/cryptoauthlib/lib/)
 
 
 ###########################
@@ -52,10 +51,9 @@ add_subdirectory(${COMMON_DIR} common)
 
 link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 
-add_executable(test_atecc508a src/test_atecc508a.c)
-target_link_libraries(test_atecc508a ockam_vault)
-target_link_libraries(test_atecc508a ockam_common)
-target_link_libraries(test_atecc508a cryptoauth)
-target_link_libraries(test_atecc508a mbedtls)
+add_executable(test_atecc608a src/test_atecc608a.c)
+target_link_libraries(test_atecc608a ockam_vault)
+target_link_libraries(test_atecc608a ockam_common)
+target_link_libraries(test_atecc608a cryptoauth)
 
-install(TARGETS test_atecc508a DESTINATION bin)
+install(TARGETS test_atecc608a DESTINATION bin)

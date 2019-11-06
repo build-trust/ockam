@@ -21,17 +21,17 @@ message( ${CMAKE_CURRENT_SOURCE_DIR} )
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 # Vault Hardware Build Options
-option(VAULT_HW_ATECC508A "Vault Hardware: Microchip ATECC508A" ON)
-option(VAULT_HW_ATECC608A "Vault Hardware: Microchip ATECC608A" OFF)
+option(VAULT_HW_ATECC508A "Vault Hardware: Microchip ATECC508A")
+option(VAULT_HW_ATECC608A "Vault Hardware: Microchip ATECC608A")
 
 # Vault Software Build Options
-option(VAULT_SW_MBEDTLS "Vault Software: mbed TLS" ON)
-option(VAULT_SW_LIBSODIUM "Vault Software: mbed TLS" OFF)
+option(VAULT_SW_MBEDTLS "Vault Software: mbed TLS")
+option(VAULT_SW_LIBSODIUM "Vault Software: mbed TLS")
 
 # Vault Interface Options
-option(VAULT_IFACE_I2C "Vault IFace: I2C" ON)
-option(VAULT_IFACE_SPI "Vault IFace: SPI" OFF)
-option(VAULT_IFACE_UART "Vault IFace: UART" OFF)
+option(VAULT_IFACE_I2C "Vault IFace: I2C")
+option(VAULT_IFACE_SPI "Vault IFace: SPI")
+option(VAULT_IFACE_UART "Vault IFace: UART")
 
 
 #################
