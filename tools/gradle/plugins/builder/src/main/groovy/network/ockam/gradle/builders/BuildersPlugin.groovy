@@ -165,7 +165,7 @@ class BuildersPlugin implements Plugin<Project> {
         '--exclude', '.builder',
         '--delete', '-v', //'--stats', // '--progress',
         '-r', '-a',
-        '-e', "ssh -o ServerAliveInterval=5 ServerAliveCountMax=1000 -F ${vDir}/.builder/${builderName}.ssh-config",
+        '-e', "ssh -o ServerAliveInterval=5 -o ServerAliveCountMax=1000 -F ${vDir}/.builder/${builderName}.ssh-config",
         "builder-${builderName}:/vagrant/", '.')
     }
   }
