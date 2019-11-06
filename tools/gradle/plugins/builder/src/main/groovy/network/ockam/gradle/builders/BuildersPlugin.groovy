@@ -156,7 +156,7 @@ class BuildersPlugin implements Plugin<Project> {
 
   static syncHost(Project project, String builderName) {
     def vDir = project.host.vagrantfileDir.toString()
-    project.exec {
+    def result = project.exec {
       workingDir project.host.vagrantfileDir
       commandLine adaptCommandForOs('rsync',
         '--exclude', '.git',
@@ -167,6 +167,10 @@ class BuildersPlugin implements Plugin<Project> {
         '-r', '-a',
         '-e', "ssh -o ServerAliveInterval=5 -o ServerAliveCountMax=1000 -F ${vDir}/.builder/${builderName}.ssh-config",
         "builder-${builderName}:/vagrant/", '.')
+      ignoreExitValue true
+    }
+    if (result.getExitValue() != 0) {
+      syncHost(project, builderName)
     }
   }
 }
