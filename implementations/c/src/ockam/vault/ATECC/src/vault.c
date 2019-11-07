@@ -8,7 +8,7 @@ struct ockam_vault_t {
 ockam_vault_t ockam_vault_init() {
   ockam_vault_t vault;
   vault = malloc(sizeof(ockam_vault_t));
-  vault->n = 50;
+  vault->n = 60;
   return vault;
 }
 
