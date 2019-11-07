@@ -4,25 +4,12 @@ plugins {
   id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
-task x {
-    doLast {
-        builderExec 'debian', {
-            script '''
-                git submodule update --init --recursive
-                mkdir -p _build/
-                cd _build/
-                cmake .. 
-                make
-                '''
-        }
-    }
-}
-
 task build {
   onlyIf { host.debianBuilder.enabled }
   doLast {
     builderExec 'debian', {
       script '''
+        git submodule update --init --recursive
         mkdir -p _build/
         cd _build/
         cmake .. 
