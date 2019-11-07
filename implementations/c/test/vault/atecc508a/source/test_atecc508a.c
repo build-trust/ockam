@@ -21,6 +21,7 @@
 #include <ockam_err.h>
 
 #include <vault/ockam_vault.h>
+#include <vault/ockam_vault_hw_microchip.h>
 
 #include <cryptoauthlib/lib/cryptoauthlib.h>
 #include <cryptoauthlib/lib/atca_cfgs.h>
