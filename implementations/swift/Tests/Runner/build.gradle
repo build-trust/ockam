@@ -85,6 +85,7 @@ test.mustRunAfter(build)
 task clean {
   doLast {
     delete '.build'
+    delete '.apple-codesign'
     delete 'Runner.xcodeproj'
   }
 }
