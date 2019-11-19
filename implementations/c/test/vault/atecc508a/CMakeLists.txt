@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.13)
 # Path & Compiler Options #
 ###########################
 
-include($ENV{OCKAM_BASE}/implementations/c/tools/cmake/path.cmake)
+include($ENV{OCKAM_C_BASE}/tools/cmake/path.cmake)
 include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
 
 ###########
