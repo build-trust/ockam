@@ -89,6 +89,7 @@ if(VAULT_HW_VENDOR_MICROCHIP)
 
     if(VAULT_IFACE_I2C)
         set(ATCA_HAL_I2C ON CACHE BOOL "")
+        set(ATCA_BUILD_SHARED_LIBS OFF CACHE BOOL "")
     endif()
     add_subdirectory(${THIRD_PARTY_DIR}/microchip/cryptoauthlib cryptoauthlib)
 endif()

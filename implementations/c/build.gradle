@@ -4,7 +4,17 @@ plugins {
   id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
+
+task getDependencies {
+    doLast {
+        exec {
+          commandLine 'git', 'submodule', 'update', '--init', '--recursive'
+        }
+    }
+}
+
 task build {
+  dependsOn getDependencies 
   onlyIf { host.debianBuilder.enabled }
   dependsOn gradle.includedBuild('testatecc508a').task(':build')
 }

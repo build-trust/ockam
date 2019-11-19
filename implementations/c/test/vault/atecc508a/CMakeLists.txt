@@ -1,5 +1,37 @@
 cmake_minimum_required(VERSION 3.13)
+
+###########################
+# Path & Compiler Options #
+###########################
+
+include($ENV{OCKAM_BASE}/implementations/c/tools/cmake/path.cmake)
+include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
+
+###########
+# Project #
+###########
+
 project(test_atecc508a)
+
+
+###########################
+# Set directory locations #
+###########################
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/source)
+set(TEST_CFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/config)
+
+set(OCKAM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+set(OCKAM_SRC_DIR ${OCKAM_DIR}/source)
+set(OCKAM_INC_DIR ${OCKAM_DIR}/include)
+
+set(VAULT_SRC_DIR ${OCKAM_SRC_DIR}/vault)
+set(KAL_SRC_DIR ${OCKAM_SRC_DIR}/kal)
+set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
+set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/mem)
+
+set(THIRD_PARTY_DIR ${OCKAM_DIR}/third-party)
+
 
 #################
 # Build Options #
@@ -21,24 +53,6 @@ set(MEM_STDLIB TRUE)
 
 # Compiler Build Options
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
-
-###########################
-# Set directory locations #
-###########################
-
-set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/source)
-set(TEST_CFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/config)
-
-set(OCKAM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
-set(OCKAM_SRC_DIR ${OCKAM_DIR}/source)
-set(OCKAM_INC_DIR ${OCKAM_DIR}/include)
-
-set(VAULT_SRC_DIR ${OCKAM_SRC_DIR}/vault)
-set(KAL_SRC_DIR ${OCKAM_SRC_DIR}/kal)
-set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
-set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/mem)
-
-set(THIRD_PARTY_DIR ${OCKAM_DIR}/third-party)
 
 
 ###########################
