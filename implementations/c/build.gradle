@@ -6,7 +6,7 @@ plugins {
 
 
 task getDependencies {
-    doLast {
+    doFirst {
         exec {
           commandLine 'git', 'submodule', 'update', '--init', '--recursive'
         }
