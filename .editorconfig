@@ -16,7 +16,7 @@ insert_final_newline = true
 
 
 [*.c, *.h]
-indent_style = space
+indent_style = tab
 indent_size = 4
 
 
