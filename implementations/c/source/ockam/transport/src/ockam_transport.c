@@ -1,0 +1,257 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "ockam_transport.h"
+#include "transport.h"
+#include "errlog.h"
+
+///////////////////////////////////////////////////////////////////////////////
+//
+//				Client Side
+//
+///////////////////////////////////////////////////////////////////////////////
+
+/*
+	Initializes one transport client connection instance
+ */
+OCKAM_ERROR ockam_xp_init_tcp_client( OCKAM_CONNECTION_HANDLE* p_handle,
+                                      OCKAM_DEVICE_RECORD* p_ockam_device ) {
+    OCKAM_ERROR		status			= OCKAM_SUCCESS;
+    TCP_CLIENT*		p_client		= NULL;
+
+	// Allocate memory for connection data and init to 0
+    p_client = (TCP_CLIENT*)malloc(sizeof(TCP_CLIENT));
+    if( NULL == p_client ) {
+        log_error("failed to allocate memory");
+        status = OCKAM_ERR_MALLOC;
+        goto exit_block;
+    }
+    memset(p_client, 0, sizeof(*p_client));
+
+    // Get the host IP address and port
+    memcpy( &p_client->server_ockam_address, &p_ockam_device->host_address, sizeof(p_client->server_ockam_address));
+    p_client->server_port = p_ockam_device->host_port;
+    p_client->server_port = p_ockam_device->host_port;
+
+	// Construct the server address for connection
+    p_client->server_ip_address.sin_family = AF_INET;
+	if( 1 != inet_pton( AF_INET,
+            &p_client->server_ockam_address.ip_address[0],
+            &p_client->server_ip_address.sin_addr )) {
+        log_error("inet_pton failed in ockam_xp_init_tcp_client");
+        status = OCKAM_ERR_INIT_CLIENT;
+    }
+    p_client->server_ip_address.sin_port = htons(p_client->server_port );
+
+exit_block:
+	if( OCKAM_SUCCESS != status ){
+		if(NULL != p_client) free(p_client);
+        p_client = NULL;
+	}
+	*p_handle = (OCKAM_CONNECTION_HANDLE)p_client;
+	return status;
+ }
+
+ /*
+ 	Sends a buffer to the server.
+  */
+ OCKAM_ERROR ockam_xp_send(OCKAM_CONNECTION_HANDLE handle,
+  	void* buffer, unsigned int length, unsigned int* p_bytes_sent
+	) {
+
+    TCP_CLIENT*			    p_client = (TCP_CLIENT*)handle;
+    OCKAM_ERROR				status = OCKAM_SUCCESS;
+    ssize_t					bytes_sent = 0;
+
+     // Initialize the socket
+     p_client->socket = socket(AF_INET, SOCK_STREAM, 0);
+     if( -1 == p_client->socket ) {
+         log_error(("socket failed in ockam_xp_init_tcp_client"));
+         status = OCKAM_ERR_INIT_CLIENT;
+         goto exit_block;
+     }
+
+     // Try to connect
+    if(connect(p_client->socket,
+        (struct sockaddr*)&p_client->server_ip_address,
+        sizeof(p_client->server_ip_address)) < 0
+    ){
+        log_error("connect failed in ockam_xp_send");
+        status = OCKAM_ERR_SENDER;
+        goto exit_block;
+    }
+
+	// Send the buffer
+	bytes_sent = send(p_client->socket, buffer, length, 0);
+	if(bytes_sent < 0) {
+		status = OCKAM_ERR_SENDER;
+		goto exit_block;
+	}
+	printf("Sent %ld bytes out of %d, %s\n", bytes_sent, length, (char*)buffer);
+	*p_bytes_sent = bytes_sent;
+
+exit_block:
+    if(-1 != p_client->socket) close(p_client->socket);
+	return status;
+}
+
+/*
+	Closes client connection and frees resources
+ */
+OCKAM_ERROR ockam_xp_uninit_client( OCKAM_CONNECTION_HANDLE handle ) {
+	TCP_CLIENT*			p_tcp	= NULL;
+
+	if( NULL != handle ) p_tcp = (TCP_CLIENT*)handle;
+	else goto exit_block;
+
+	free( p_tcp );
+
+exit_block:
+	return OCKAM_SUCCESS;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+//				Server Side
+//
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ *  ockam_xp_init_tcp_server
+ *
+ * @param p_handle This will receive the connection handle
+ * @param p_ockam_device Pointer to Ockam device record
+ * @return If successful, OCKAM_SUCCESS. Otherwise see ockam_transport.h for error codes.
+ */
+OCKAM_ERROR ockam_xp_init_tcp_server( OCKAM_CONNECTION_HANDLE* p_handle,
+		OCKAM_DEVICE_RECORD* p_ockam_device ) {
+
+	OCKAM_ERROR				status			= OCKAM_SUCCESS;
+   	TCP_SERVER*	            p_server		= NULL;
+   	struct addrinfo*        p_addrinfo      = NULL;
+	char                    hostname[MAX_HOST_NAME_LENGTH];
+	int                     in_status;
+
+	// Allocate memory for connection data and init to 0
+    p_server = (TCP_SERVER*)malloc(sizeof(TCP_SERVER));
+	if( NULL == p_server ) {
+	   log_error("failed to allocate memory in ockam_xp_init_tcp_server");
+	   status = OCKAM_ERR_MALLOC;
+	   goto exit_block;
+	}
+	memset(p_server, 0, sizeof(*p_server));
+
+	// Record port
+    p_server->port_listen = p_ockam_device->host_port;
+
+    // Initialize listener socket
+    p_server->socket_listen = socket(AF_INET, SOCK_STREAM, 0);
+    if( -1 == p_server->socket_listen) {
+        log_error("failed to create listen socket in ockam_xp_init_tcp_server");
+        status = OCKAM_ERR_INIT_SERVER;
+        goto exit_block;
+    }
+
+	// Bind the socket
+	p_server->socket_address_listen.sin_family = AF_INET;
+	p_server->socket_address_listen.sin_port = htons(p_server->port_listen);
+	in_status = inet_pton( AF_INET,
+			&p_ockam_device->host_address.ip_address[0],
+			&p_server->socket_address_listen.sin_addr.s_addr);
+	if(1 != in_status){
+		log_error(("inet_pton failed in ockam_xp_init_tcp_server"));
+		status = OCKAM_ERR_INIT_SERVER;
+		goto exit_block;
+	}
+
+	if( 0 != bind(p_server->socket_listen,
+	              (struct sockaddr*)&p_server->socket_address_listen,
+	              sizeof(p_server->socket_address_listen))
+			) {
+		log_error("bind failed in ockam_xp_receive");
+		status = OCKAM_ERR_RECEIVER;
+		goto exit_block;
+	}
+	// #revisit - this is for test feedback
+	char address_buffer[80];
+	char* p_addr_buffer = NULL;
+	p_addr_buffer = inet_ntop(AF_INET, &p_server->socket_address_listen.sin_addr, &address_buffer[0], 80);
+	printf("Listen address %s\n", p_addr_buffer);
+	//
+
+exit_block:
+	if( OCKAM_SUCCESS != status ){
+		if( NULL != p_server ) free(p_server);
+        p_server = NULL;
+	}
+	*p_handle = (OCKAM_CONNECTION_HANDLE)p_server;
+	return status;
+}
+
+/*
+	For now, each receive call listens, accepts a connection, receives
+	the buffer, and tears everything down again.
+ */
+OCKAM_ERROR ockam_xp_receive( OCKAM_CONNECTION_HANDLE handle,
+	void* p_buffer, unsigned int length, unsigned int* p_bytes_received
+) {
+	OCKAM_ERROR				status			= OCKAM_SUCCESS;
+    TCP_SERVER*	            p_server		= NULL;
+    int                     bytes_read      = 0;
+
+    if(NULL == handle) {
+        status = OCKAM_ERR_INVALID_HANDLE;
+        goto exit_block;
+    }
+    p_server = (TCP_SERVER*)handle;
+
+    // Listen and accept
+    if(0 != listen(p_server->socket_listen, MAX_CONNECTIONS)) {
+        log_error(("Listen failed"));
+        status = OCKAM_ERR_RECEIVER;
+        goto exit_block;
+    }
+    do {
+	    p_server->connection.socket = accept(p_server->socket_listen, NULL, 0);
+	    if (-1 == p_server->connection.socket) {
+		    log_error("accept failed");
+		    goto exit_block;
+	    }
+
+	    // Read a buffer
+	    p_server->connection.transmission.p_buffer = p_buffer;
+	    p_server->connection.transmission.size_buffer = length;
+	    bytes_read = recv(p_server->connection.socket,
+	                      p_server->connection.transmission.p_buffer,
+	                      p_server->connection.transmission.size_buffer, 0);
+	    p_server->connection.transmission.bytes_transmitted = bytes_read;
+	    *p_bytes_received = p_server->connection.transmission.bytes_transmitted;
+
+	    // Cleanup
+	    shutdown(p_server->connection.socket, SHUT_RDWR);
+	    close(p_server->connection.socket);
+	    printf("%s\n", (char*)p_server->connection.transmission.p_buffer);
+    } while(*(char*)(p_server->connection.transmission.p_buffer) != 'q');
+	shutdown(p_server->socket_listen, SHUT_RDWR);
+    close(p_server->socket_listen);
+
+exit_block:
+    // End with a clean slate
+    memset(&p_server->connection, 0, sizeof(p_server->connection));
+    memset(&p_server->socket_address_listen, 0, sizeof(p_server->socket_address_listen));
+    return status;
+}
+
+OCKAM_ERROR ockam_xp_uninit_server( OCKAM_CONNECTION_HANDLE handle ) {
+    TCP_SERVER*	        p_server	= NULL;
+
+	if( NULL != handle ) p_server = (TCP_SERVER*)handle;
+	else goto exit_block;
+
+	if(0 != p_server->socket_listen ) close( p_server->socket_listen );
+	free( p_server );
+
+exit_block:
+	return OCKAM_SUCCESS;	
+}
