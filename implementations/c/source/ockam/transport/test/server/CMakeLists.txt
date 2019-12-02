@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
+###########################
+# Set directory locations #
+###########################
+
+set(SERVER_TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(OCKAM_INC_DIR ${OCKAM_C_BASE}/include)
 set(CMAKE_C_FLAGS "-std=c99 -g")
 
 # set the project name

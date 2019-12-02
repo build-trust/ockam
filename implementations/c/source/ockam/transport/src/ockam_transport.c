@@ -1,9 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include "ockam_transport.h"
-#include "transport.h"
 #include "errlog.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -88,6 +86,8 @@ exit_block:
 		status = OCKAM_ERR_SENDER;
 		goto exit_block;
 	}
+
+	//
 	printf("Sent %ld bytes out of %d, %s\n", bytes_sent, length, (char*)buffer);
 	*p_bytes_sent = bytes_sent;
 
@@ -175,10 +175,9 @@ OCKAM_ERROR ockam_xp_init_tcp_server( OCKAM_CONNECTION_HANDLE* p_handle,
 	}
 	// #revisit - this is for test feedback
 	char address_buffer[80];
-	char* p_addr_buffer = NULL;
+	const char* p_addr_buffer = NULL;
 	p_addr_buffer = inet_ntop(AF_INET, &p_server->socket_address_listen.sin_addr, &address_buffer[0], 80);
 	printf("Listen address %s\n", p_addr_buffer);
-	//
 
 exit_block:
 	if( OCKAM_SUCCESS != status ){
@@ -189,9 +188,13 @@ exit_block:
 	return status;
 }
 
-/*
-	For now, each receive call listens, accepts a connection, receives
-	the buffer, and tears everything down again.
+/**
+ *
+ * @param handle
+ * @param p_buffer
+ * @param length
+ * @param p_bytes_received
+ * @return
  */
 OCKAM_ERROR ockam_xp_receive( OCKAM_CONNECTION_HANDLE handle,
 	void* p_buffer, unsigned int length, unsigned int* p_bytes_received
@@ -243,6 +246,12 @@ exit_block:
     return status;
 }
 
+/**
+ * ockam_xp_uninit_server
+ *
+ * @param handle
+ * @return
+ */
 OCKAM_ERROR ockam_xp_uninit_server( OCKAM_CONNECTION_HANDLE handle ) {
     TCP_SERVER*	        p_server	= NULL;
 
