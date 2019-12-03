@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "ockam_transport.h"
+#include "transport.h"
 #include "errlog.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -92,7 +92,9 @@ exit_block:
 	*p_bytes_sent = bytes_sent;
 
 exit_block:
-    if(-1 != p_client->socket) close(p_client->socket);
+    if(-1 != p_client->socket){
+    	close(p_client->socket);
+    }
 	return status;
 }
 
