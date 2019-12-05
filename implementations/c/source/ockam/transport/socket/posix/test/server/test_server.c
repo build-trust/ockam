@@ -1,15 +1,16 @@
 #include <stdio.h>
 
 #include "transport.h"
+#include "error.h"
 #include "errlog.h"
 
 #define SERV_TCP_PORT 8000
 
-OCKAM_ERROR ockam_get_device_record(
+OCKAM_ERR ockam_get_device_record(
         OCKAM_ID id,
         OCKAM_DEVICE_RECORD* p_ockam_device) {
 
-    OCKAM_ERROR status		= OCKAM_SUCCESS;
+    OCKAM_ERR status		= OCKAM_ERR_NONE;
     FILE*       address_file;
     char        listen_address[100];
     int         bytes_read = 0;
@@ -18,7 +19,7 @@ OCKAM_ERROR ockam_get_device_record(
     address_file = fopen("ipaddress.txt", "r");
     if(NULL == address_file) {
         printf("Create a file called \"ipaddress.txt\" containing the IP address to listen on, in nnn.nnn.nnn.nnn format\n");
-        status = OCKAM_ERR_INIT_SERVER;
+        status = OCKAM_ERR_INVALID_PARAM;
         goto exit_block;
     }
     fscanf(address_file, "%[^\n]", &listen_address[0]);
@@ -35,7 +36,7 @@ OCKAM_ERROR ockam_get_device_record(
 
 int main(int argc, char* argv[]) {
 	OCKAM_CONNECTION_HANDLE		h_connection = NULL;
-	OCKAM_ERROR					error = 0;
+	OCKAM_ERR					error = 0;
 	OCKAM_DEVICE_RECORD			device;
 	char						buffer[128];
 	unsigned int                bytes_received = 0;
@@ -44,19 +45,19 @@ int main(int argc, char* argv[]) {
 
 		// Get server device record
 		error = ockam_get_device_record( 101, &device );
-		if( OCKAM_SUCCESS != error ) {
+		if( OCKAM_ERR_NONE != error ) {
 			log_error("failed ockam_get_device_record");
 			goto exit_block;
 		}
 
 		error = ockam_xp_init_tcp_server(&h_connection, &device);
-		if( OCKAM_SUCCESS != error ) {
-			log_error("failed ockam_xp_init_tcp_connection");
+		if( OCKAM_ERR_NONE != error ) {
+			log_error("failed ockam_xp_init_IP_CONNECTION");
 			goto exit_block;
 		}
 
 		error = ockam_xp_receive(h_connection, &buffer[0], sizeof(buffer), &bytes_received);
-		if (OCKAM_SUCCESS != error) {
+		if (OCKAM_ERR_NONE != error) {
 			log_error("failed ockam_xp_receive");
 			goto exit_block;
 		}

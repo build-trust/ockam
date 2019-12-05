@@ -56,7 +56,18 @@ typedef enum {
     OCKAM_ERR_VAULT_SW_KEY_FAIL                       = 0x0302, /*!< Key failure in software                          */
     OCKAM_ERR_VAULT_SW_ECDH_FAIL                      = 0x0303, /*!< ECDH failed to complete successfully             */
     OCKAM_ERR_VAULT_SW_HKDF_FAIL                      = 0x0304, /*!< HKDF failed to complete successfully             */
-    OCKAM_ERR_VAULT_SW_AES_FAIL                       = 0x0305  /*!< AES failed to complete successfully              */
+    OCKAM_ERR_VAULT_SW_AES_FAIL                       = 0x0305, /*!< AES failed to complete successfully              */
+
+	OCKAM_ERR_TRANSPORT_BASE                          = 0x5000,
+//	OCKAM_ERR_TRANSPORT_INIT_SOCKET                   = 0x0400, /*!< Failed to create socket, likely low resources    */
+	OCKAM_ERR_TRANSPORT_INIT_SOCKET                   = OCKAM_ERR_TRANSPORT_BASE+1, /*!< Failed to create socket, likely low resources    */
+	OCKAM_ERR_TRANSPORT_CONNECT                       = 0x0401, /*!< Failed to connect, check server address    	  */
+	OCKAM_ERR_TRANSPORT_SEND                          = 0x0402, /*!< Failed to send data						      */
+	OCKAM_ERR_TRANSPORT_SERVER_INIT                   = 0x0403, /*!< Server initialization failed					  */
+	OCKAM_ERR_TRANSPORT_RECEIVE                       = 0x0404, /*!< Receive buffer failed							  */
+	OCKAM_ERR_TRANSPORT_HANDLE                        = 0x0405, /*!< Invalid connection handle						  */
+	OCKAM_ERR_TRANSPORT_ADDRESS                       = 0x0406  /*!< Bad IP address									  */
+
 } OCKAM_ERR;
 
 

@@ -12,10 +12,9 @@ set(CMAKE_C_FLAGS "-std=c99 -g")
 project(test_client)
 
 # Get the headers
-#include_directories( $ENV{OCKAM_C_BASE}/include/ockam/
-#        $ENV{OCKAM_C_BASE}/source/ockam/transport/include/)
 include_directories( ${OCKAM_INC_DIR}
-        $ENV{OCKAM_C_BASE}/source/ockam/transport/include/)
+        $ENV{OCKAM_C_BASE}/source/ockam/transport/include/
+        $ENV{OCKAM_C_BASE}/source/ockam/transport/socket/posix/include/)
 
 # Add the source files
 file(GLOB SOURCES "./*.c" "../*.c"
