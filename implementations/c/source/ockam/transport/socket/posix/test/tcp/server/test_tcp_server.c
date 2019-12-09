@@ -43,30 +43,28 @@ int main(int argc, char* argv[]) {
 
 	init_err_log(stdout);
 
-		// Get server device record
-		error = ockam_get_device_record( 101, &device );
-		if( OCKAM_ERR_NONE != error ) {
-			log_error("failed ockam_get_device_record");
-			goto exit_block;
-		}
+	// Get server device record
+	error = ockam_get_device_record( 101, &device );
+	if( OCKAM_ERR_NONE != error ) {
+		log_error("failed ockam_get_device_record");
+		goto exit_block;
+	}
 
-		error = ockam_xp_init_tcp_server(&h_connection, &device);
-		if( OCKAM_ERR_NONE != error ) {
-			log_error("failed ockam_xp_init_IP_CONNECTION");
-			goto exit_block;
-		}
+	error = ockam_init_posix_socket_tcp_server(&h_connection, &device);
+	if( OCKAM_ERR_NONE != error ) {
+		log_error("failed ockam_xp_init_IP_CONNECTION");
+		goto exit_block;
+	}
 
-		error = ockam_xp_receive(h_connection, &buffer[0], sizeof(buffer), &bytes_received);
-		if (OCKAM_ERR_NONE != error) {
-			log_error("failed ockam_xp_receive");
-			goto exit_block;
-		}
+	error = ockam_receive(h_connection, &buffer[0], sizeof(buffer), &bytes_received);
+	if (OCKAM_ERR_NONE != error) {
+		log_error("failed ockam_xp_receive");
+		goto exit_block;
+	}
 
-		printf("%d Bytes, %s\n", bytes_received, buffer);
-		if( NULL != h_connection ) ockam_xp_uninit_server( h_connection );
-		h_connection = NULL;
+	printf("%d Bytes, %s\n", bytes_received, buffer);
 
 exit_block:
-	if( NULL != h_connection ) ockam_xp_uninit_server( h_connection );
+	if( NULL != h_connection ) ockam_uninit_connection( h_connection );
 	return 0;
 }

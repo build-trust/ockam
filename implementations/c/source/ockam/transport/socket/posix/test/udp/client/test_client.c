@@ -5,7 +5,7 @@
 #include "error.h"
 #include "errlog.h"
 
-#define SERV_TCP_PORT 8000
+#define SERV_UDP_PORT 5000
 static char* g_host_ip_addr = "192.168.0.78";
 
 
@@ -16,7 +16,7 @@ OCKAM_ERR ockam_get_device_record(
     memset( p_ockam_device, 0, sizeof( *p_ockam_device));
 
     strcpy( &p_ockam_device->host_address.ip_address[0], g_host_ip_addr );
-    p_ockam_device->host_port = SERV_TCP_PORT;
+    p_ockam_device->host_port = SERV_UDP_PORT;
 
     exit_block:
     return status;
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
         goto exit_block;
     }
 
-	error = ockam_xp_init_tcp_client( &h_connection, &ockam_device );
+	error = ockam_init_posix_socket_udp_client( &h_connection, &ockam_device );
 	if(OCKAM_ERR_NONE != error) {
 		log_error("ockam_xp_init_client failed");
 		goto exit_block;
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
 		getline(&p_buffer, &buffer_size, stdin);
 		buffer_size = strlen(p_buffer)+1;
 		printf("sending %s\n", p_buffer);
-		error = ockam_xp_send(h_connection, (void *) p_buffer, buffer_size, &bytes_sent);
+		error = ockam_send(h_connection, (void *) p_buffer, buffer_size, &bytes_sent);
 		if (OCKAM_ERR_NONE != error) {
 			log_error("ockam_xp_send failed");
 			goto exit_block;
@@ -61,6 +61,8 @@ int main(int argc, char* argv[]) {
 	} while('q' != buffer[0]);
 
 exit_block:
-	if(NULL != h_connection) ockam_xp_uninit_client(h_connection);
+	if(NULL != h_connection) {
+		ockam_uninit_connection(h_connection);
+	}
 	return 0;
 }

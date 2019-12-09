@@ -86,40 +86,6 @@ struct sockaddr_in {
 
 // There is one transmission buffer per client send/receive. Since one client
 //
-typedef struct {
-	void*                       p_buffer;
-	unsigned long               size_buffer;
-	unsigned long               bytes_sent;
-} TCP_TRANSMIT_SEND;
-
-typedef struct {
-	void*                       p_buffer;
-	unsigned long               size_buffer;
-	unsigned long               bytes_received;
-} TCP_TRANSMIT_RECEIVE;
-
-typedef struct {
-	int                         socket;
-	struct sockaddr_in          socket_address;
-	TCP_TRANSMIT_RECEIVE        receive_transmission;
-	TCP_TRANSMIT_SEND           send_transmission;
-} TCP_CONNECTION;
-
-typedef struct {
-	int                         socket_listen;
-	int                         port_listen;
-	struct sockaddr_in          socket_address_listen;
-	TCP_CONNECTION              connection;
-} TCP_SERVER;
-
-typedef struct {
-	OCKAM_INTERNET_ADDRESS      server_ockam_address;
-	int                         socket;
-	int                         server_port;
-	struct sockaddr_in          server_ip_address;
-	TCP_CONNECTION              connection;
-} TCP_CLIENT;
-
 /*
  ********************************************************************************************************
  *                                          FUNCTION PROTOTYPES                                         *
@@ -133,7 +99,7 @@ typedef struct {
  * @param p_ockam_device - (in) Pointer to Ockam device record of TCP host
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_xp_init_tcp_client( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
 
 /**
  * ockam_xp_init_tcp_server - Initializes a TCP server connection. If completed successfully,
@@ -142,7 +108,25 @@ OCKAM_ERR ockam_xp_init_tcp_client( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEV
  * @param p_ockam_device - (in) Pointer to device record of this (host) device
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_xp_init_tcp_server( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+
+/**
+ * ockam_xp_init_udp_client - Initializes a UDP client connection. If completed successfully,
+ * 							ockam_xp_uninit_server must be called to free resources before exiting.
+ * @param p_handle - (out) A non-NULL value will be returned upon success
+ * @param p_ockam_device - (in) Pointer to device record of this (host) device
+ * @return - OCKAM_SUCCESS or an error code
+ */
+OCKAM_ERR ockam_init_posix_socket_udp_client( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+
+/**
+ * ockam_xp_init_udp_server - Initializes a UDP server connection. If completed successfully,
+ * 							ockam_xp_uninit_server must be called to free resources before exiting.
+ * @param p_handle - (out) A non-NULL value will be returned upon success
+ * @param p_ockam_device - (in) Pointer to device record of this (host) device
+ * @return - OCKAM_SUCCESS or an error code
+ */
+OCKAM_ERR ockam_init_posix_socket_udp_server( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
 
 /**
  * ockam_xp_send - Sends a buffer to the host server (blocking)
@@ -152,7 +136,7 @@ OCKAM_ERR ockam_xp_init_tcp_server( OCKAM_CONNECTION_HANDLE* p_handle, OCKAM_DEV
  * @param p_bytes_sent - (out) Number of bytes successfully sent
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_xp_send(OCKAM_CONNECTION_HANDLE handle,
+OCKAM_ERR ockam_send(OCKAM_CONNECTION_HANDLE handle,
 		void* buffer, unsigned int length, unsigned int* p_bytes_sent);
 
 /**
@@ -163,21 +147,28 @@ OCKAM_ERR ockam_xp_send(OCKAM_CONNECTION_HANDLE handle,
  * @param p_bytes_received  - (out) Number of bytes received
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_xp_receive( OCKAM_CONNECTION_HANDLE handle,
+OCKAM_ERR ockam_receive( OCKAM_CONNECTION_HANDLE handle,
 	void* buffer, unsigned int length, unsigned int* p_bytes_received );
 
 /**
- * ockam_xp_uninit_client - Closes client connection and frees resources
+ * ockam_uninit_connection - Closes connection and frees resources
  * @param handle - Handle of connection
  * @return  - OCKAM_SUCCESS or error
  */
-OCKAM_ERR ockam_xp_uninit_client( OCKAM_CONNECTION_HANDLE handle );
+OCKAM_ERR ockam_uninit_connection( OCKAM_CONNECTION_HANDLE handle );
+
+/**
+ * ockam_uninit_posix_tcp_server - Closes server connection and frees resources
+ * @param handle - Handle of connection
+ * @return  - OCKAM_SUCCESS or error
+ */
+OCKAM_ERR ockam_uninit_posix_tcp_server( OCKAM_CONNECTION_HANDLE handle );
 
 /**
  * ockam_xp_uninit_server - Closes server connection and frees resources
  * @param handle - Handle of connection
  * @return  - OCKAM_SUCCESS or error
  */
-OCKAM_ERR ockam_xp_uninit_server( OCKAM_CONNECTION_HANDLE handle );
+OCKAM_ERR ockam_uninit_posix_socket_udp_server( OCKAM_CONNECTION_HANDLE handle );
 
 #endif
