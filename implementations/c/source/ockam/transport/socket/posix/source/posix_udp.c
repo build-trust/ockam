@@ -5,22 +5,20 @@
 #include "error.h"
 #include "errlog.h"
 
-///////////////////////////////////////////////////////////////////////////////
-//
-//				Client Side
-//
-///////////////////////////////////////////////////////////////////////////////
-
-/*
-	Initializes one transport client connection instance
+/**
+ * ockam_init_posix_socket_udp - Initialize a posix UDP socket
+ * @param p_handle
+ * @param p_ockam_device
+ * @return
  */
-OCKAM_ERR ockam_init_posix_socket_udp_client( OCKAM_CONNECTION_HANDLE* p_handle,
-                                      OCKAM_DEVICE_RECORD* p_ockam_device ) {
-    OCKAM_ERR		status			= OCKAM_ERR_NONE;
-    TCP_CLIENT*		p_client		= NULL;
+OCKAM_ERR ockam_init_posix_socket_udp_client( OCKAM_TRANSPORT_HANDLE* p_handle,
+                                      OCKAM_DEVICE_RECORD* p_ockam_device )
+{
+    OCKAM_ERR		            status			= OCKAM_ERR_NONE;
+    TRANSPORT_POSIX_UDP*		p_client		= NULL;
 
 	// Allocate memory for connection data and init to 0
-    p_client = (TCP_CLIENT*)malloc(sizeof(TCP_CLIENT));
+    p_client = (TRANSPORT_POSIX_UDP*)malloc(sizeof(TRANSPORT_POSIX_UDP));
     if( NULL == p_client ) {
         log_error("failed to allocate memory");
         status = OCKAM_ERR_MEM_INSUFFICIENT;
@@ -29,14 +27,12 @@ OCKAM_ERR ockam_init_posix_socket_udp_client( OCKAM_CONNECTION_HANDLE* p_handle,
     memset(p_client, 0, sizeof(*p_client));
     p_client->type = POSIX_UDP_CLIENT;
 
-    // Get the host IP address and port
-    memcpy( &p_client->server_ockam_address, &p_ockam_device->host_address, sizeof(p_client->server_ockam_address));
-    p_client->server_port = p_ockam_device->host_port;
+    p_client->port = p_ockam_device->host_port;
 
 	// Construct the server address for connection
 	status = make_socket_address(
-			&p_client->server_ockam_address.ip_address[0],
-			p_client->server_port,
+			&p_ockam_device->host_address.ip_address[0],
+			p_ockam_device->host_port,
 			&p_client->server_ip_address );
 	if( OCKAM_ERR_NONE != status ) {
         log_error("make_socket_address failed in ockam_xp_init_tcp_client");
@@ -50,18 +46,22 @@ exit_block:
 			p_client = NULL;
 		}
 	}
-	*p_handle = (OCKAM_CONNECTION_HANDLE)p_client;
+	*p_handle = (OCKAM_TRANSPORT_HANDLE)p_client;
 	return status;
  }
 
- /*
- 	Sends a buffer to the server.
+ /**
+  * posix_socket_udp_send
+  * @param handle
+  * @param buffer
+  * @param length
+  * @param p_bytes_sent
+  * @return
   */
- OCKAM_ERR posix_socket_udp_send(OCKAM_CONNECTION_HANDLE handle,
-  	void* buffer, unsigned int length, unsigned int* p_bytes_sent
-	) {
-
-    UDP_CLIENT*			    p_client = (UDP_CLIENT*)handle;
+ OCKAM_ERR posix_socket_udp_send(OCKAM_TRANSPORT_HANDLE handle,
+  	void* buffer, unsigned int length, unsigned int* p_bytes_sent )
+{
+ 	TRANSPORT_POSIX_UDP*	p_client = (TRANSPORT_POSIX_UDP*)handle;
     OCKAM_ERR				status = OCKAM_ERR_NONE;
     ssize_t					bytes_sent = 0;
 
@@ -94,33 +94,6 @@ exit_block:
 	return status;
 }
 
-/*
-	Closes client connection and frees resources
- */
-OCKAM_ERR uninit_posix_socket_udp_client( OCKAM_CONNECTION_HANDLE handle ) {
-	UDP_CLIENT*			p_udp	= NULL;
-
-	if( NULL != handle ){
-		p_udp = (UDP_CLIENT*)handle;
-	} else {
-		goto exit_block;
-	}
-
-	free( p_udp );
-
-exit_block:
-	return OCKAM_ERR_NONE;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-//				Server Side
-//
-///////////////////////////////////////////////////////////////////////////////
-
-
-
-
 /**
  *  ockam_init_posix_socket_udp_server
  *
@@ -128,16 +101,14 @@ exit_block:
  * @param p_ockam_device Pointer to Ockam device record
  * @return If successful, OCKAM_ERR_NONE. Otherwise see ockam_transport.h for error codes.
  */
-OCKAM_ERR ockam_init_posix_socket_udp_server( OCKAM_CONNECTION_HANDLE* p_handle,
-                                    OCKAM_DEVICE_RECORD* p_ockam_device ) {
-
+OCKAM_ERR ockam_init_posix_socket_udp_server( OCKAM_TRANSPORT_HANDLE* p_handle,
+                                    OCKAM_DEVICE_RECORD* p_ockam_device )
+{
 	OCKAM_ERR				status			= OCKAM_ERR_NONE;
-	UDP_SERVER*	            p_server		= NULL;
-	char                    hostname[MAX_HOST_NAME_LENGTH];
-	int                     in_status;
+	TRANSPORT_POSIX_UDP*	        p_server		= NULL;
 
 	// Allocate memory for connection data and init to 0
-	p_server = (UDP_SERVER*)malloc(sizeof(UDP_SERVER));
+	p_server = (TRANSPORT_POSIX_UDP*)malloc(sizeof(TRANSPORT_POSIX_UDP));
 	if( NULL == p_server ) {
 		log_error("failed to allocate memory in ockam_init_posix_socket_udp_server");
 		status = OCKAM_ERR_MEM_INSUFFICIENT;
@@ -167,11 +138,12 @@ OCKAM_ERR ockam_init_posix_socket_udp_server( OCKAM_CONNECTION_HANDLE* p_handle,
 	}
 
 	// Bind address to socket
-	if( 0 != bind(p_server->socket,
-	              (struct sockaddr*)&p_server->socket_in_address,
-	              sizeof(p_server->socket_in_address))
+	if ( 0 != bind( p_server->socket,
+	                ( struct sockaddr * ) &p_server->socket_in_address,
+	                sizeof( p_server->socket_in_address ))
 			) {
-		log_error("bind failed in ockam_init_posix_socket_udp_server");
+		printf( "Errno: %d\n", errno);
+		log_error( "bind failed in ockam_init_posix_socket_udp_server" );
 		status = OCKAM_ERR_TRANSPORT_RECEIVE;
 		goto exit_block;
 	}
@@ -188,9 +160,10 @@ exit_block:
 			p_server = NULL;
 		}
 	}
-	*p_handle = (OCKAM_CONNECTION_HANDLE)p_server;
+	*p_handle = (OCKAM_TRANSPORT_HANDLE)p_server;
 	return status;
 }
+
 /**
  *
  * @param handle
@@ -199,17 +172,18 @@ exit_block:
  * @param p_bytes_received
  * @return
  */
-OCKAM_ERR posix_socket_udp_receive( OCKAM_CONNECTION_HANDLE handle,
-                            void* p_buffer, unsigned int length, unsigned int* p_bytes_received) {
+OCKAM_ERR posix_socket_udp_receive( OCKAM_TRANSPORT_HANDLE handle,
+                            void* p_buffer, unsigned int length, unsigned int* p_bytes_received)
+{
 	OCKAM_ERR				status			= OCKAM_ERR_NONE;
-	UDP_SERVER*	            p_server		= NULL;
+	TRANSPORT_POSIX_UDP*	p_server		= NULL;
 	socklen_t               address_length  = 0;
 
 	if(NULL == handle) {
 		status = OCKAM_ERR_TRANSPORT_HANDLE;
 		goto exit_block;
 	}
-	p_server = (UDP_SERVER*)handle;
+	p_server = (TRANSPORT_POSIX_UDP*)handle;
 
 	p_server->receive_transmission.p_buffer = p_buffer;
 	p_server->receive_transmission.size_buffer = length;
@@ -220,8 +194,6 @@ OCKAM_ERR posix_socket_udp_receive( OCKAM_CONNECTION_HANDLE handle,
 			p_server->receive_transmission.p_buffer,
 			p_server->receive_transmission.size_buffer,
 			0, NULL, 0);
-//			( struct sockaddr *)&p_server->receive_transmission.sender_address,
-//			&address_length );
 	printf( "Received %s\n", (char*)p_server->receive_transmission.p_buffer );
 	*p_bytes_received = p_server->receive_transmission.bytes_received;
 
@@ -229,19 +201,25 @@ exit_block:
 	return status;
 }
 
-OCKAM_ERR ockam_uninit_posix_socket_udp_server( OCKAM_CONNECTION_HANDLE handle ) {
-    UDP_SERVER*	        p_server	= NULL;
+/**
+* uninit_posix_socket_udp_client - Shuts down a UDP transport instance, frees resources
+* @param handle - (in) Handle to an intialized transport instance
+* @return - OCKAM_NO_ERR on success
+*/
+OCKAM_ERR uninit_posix_socket_udp( OCKAM_TRANSPORT_HANDLE handle )
+{
+	TRANSPORT_POSIX_UDP*    p_transport 	= NULL;
 
 	if( NULL != handle ){
-		p_server = (UDP_SERVER*)handle;
+		p_transport = (TRANSPORT_POSIX_UDP*)handle;
 	} else {
 		goto exit_block;
 	}
 
-	if(0 != p_server->socket ) {
-		close( p_server->socket );
+	if(0 != p_transport->socket ) {
+		close( p_transport->socket );
 	}
-	free( p_server );
+	free( p_transport );
 
 exit_block:
 	return OCKAM_ERR_NONE;

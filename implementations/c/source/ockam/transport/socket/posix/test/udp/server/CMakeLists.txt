@@ -9,18 +9,15 @@ set(OCKAM_INC_DIR $ENV{OCKAM_C_BASE}/include/ockam/)
 set(CMAKE_C_FLAGS "-std=c99 -g")
 
 # set the project name
-project(test_udp_server)
+project(test_server)
 
 # Get the headers
-#include_directories( $ENV{OCKAM_C_BASE}/include/ockam/
-#        $ENV{OCKAM_C_BASE}/source/ockam/transport/include/)
 include_directories( ${OCKAM_INC_DIR}
         $ENV{OCKAM_C_BASE}/source/ockam/transport/include/
         $ENV{OCKAM_C_BASE}/source/ockam/transport/socket/posix/include/)
 
 # Add the source files
-file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../*.c"
+file(GLOB SOURCES "./*.c" "../../*.c"
         $ENV{OCKAM_C_BASE}/source/ockam/transport/socket/posix/source/*.c)
 
-add_executable(test_udp_server ${SOURCES})
+add_executable(test_server ${SOURCES})

@@ -24,7 +24,7 @@ OCKAM_ERR ockam_get_device_record(
 
 
 int main(int argc, char* argv[]) {
-	OCKAM_CONNECTION_HANDLE		h_connection = NULL;
+	OCKAM_TRANSPORT_HANDLE		h_connection = NULL;
 	OCKAM_ERR					error = 0;
 	OCKAM_DEVICE_RECORD			ockam_device;
 	char                        buffer[80];
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 
 exit_block:
 	if(NULL != h_connection) {
-		ockam_uninit_connection(h_connection);
+		ockam_uninit_transport(h_connection);
 	}
 	return 0;
 }

@@ -35,7 +35,7 @@ OCKAM_ERR ockam_get_device_record(
 }
 
 int main(int argc, char* argv[]) {
-	OCKAM_CONNECTION_HANDLE		h_connection = NULL;
+	OCKAM_TRANSPORT_HANDLE		h_transport = NULL;
 	OCKAM_ERR					error = 0;
 	OCKAM_DEVICE_RECORD			device;
 	char						buffer[128];
@@ -50,13 +50,13 @@ int main(int argc, char* argv[]) {
 		goto exit_block;
 	}
 
-	error = ockam_init_posix_socket_tcp_server(&h_connection, &device);
+	error = ockam_init_posix_socket_tcp_server(&h_transport, &device);
 	if( OCKAM_ERR_NONE != error ) {
 		log_error("failed ockam_xp_init_IP_CONNECTION");
 		goto exit_block;
 	}
 
-	error = ockam_receive(h_connection, &buffer[0], sizeof(buffer), &bytes_received);
+	error = ockam_receive(h_transport, &buffer[0], sizeof(buffer), &bytes_received);
 	if (OCKAM_ERR_NONE != error) {
 		log_error("failed ockam_xp_receive");
 		goto exit_block;
@@ -65,6 +65,6 @@ int main(int argc, char* argv[]) {
 	printf("%d Bytes, %s\n", bytes_received, buffer);
 
 exit_block:
-	if( NULL != h_connection ) ockam_uninit_connection( h_connection );
+	if( NULL != h_transport ) ockam_uninit_transport( h_transport );
 	return 0;
 }

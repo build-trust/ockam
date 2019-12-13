@@ -24,7 +24,7 @@ OCKAM_ERR ockam_get_device_record(
 
 
 int main(int argc, char* argv[]) {
-	OCKAM_CONNECTION_HANDLE		h_connection = NULL;
+	OCKAM_TRANSPORT_HANDLE		h_transport = NULL;
 	OCKAM_ERR					error = 0;
 	OCKAM_DEVICE_RECORD			ockam_device;
 	char                        buffer[80];
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
         goto exit_block;
     }
 
-	error = ockam_init_posix_socket_tcp_client( &h_connection, &ockam_device );
+	error = ockam_init_posix_socket_tcp_client( &h_transport, &ockam_device );
 	if(OCKAM_ERR_NONE != error) {
 		log_error("ockam_xp_init_client failed");
 		goto exit_block;
@@ -53,16 +53,17 @@ int main(int argc, char* argv[]) {
 		getline(&p_buffer, &buffer_size, stdin);
 		buffer_size = strlen(p_buffer)+1;
 		printf("sending %s\n", p_buffer);
-		error = ockam_send(h_connection, (void *) p_buffer, buffer_size, &bytes_sent);
+		error = ockam_send(h_transport, (void *) p_buffer, buffer_size, &bytes_sent);
 		if (OCKAM_ERR_NONE != error) {
 			log_error("ockam_xp_send failed");
 			goto exit_block;
 		}
+		printf("Sent %d bytes: %s\n", bytes_sent, p_buffer);
 	} while('q' != buffer[0]);
 
 exit_block:
-	if(NULL != h_connection) {
-		ockam_uninit_connection(h_connection);
+	if(NULL != h_transport) {
+		ockam_uninit_transport(h_transport);
 	}
 	return 0;
 }
