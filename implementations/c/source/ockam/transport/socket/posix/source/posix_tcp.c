@@ -11,8 +11,8 @@
  * @param p_ockam_device - (in) pointer to initialized device record
  * @return - OCKAM_ERR_NONE if successful
  */
-OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_TRANSPORT_HANDLE* p_handle,
-                                      OCKAM_DEVICE_RECORD* p_ockam_device )
+OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_INTERNET_ADDRESS* p_address,
+                                              OCKAM_TRANSPORT* p_handle )
 {
     OCKAM_ERR		                status			= OCKAM_ERR_NONE;
     TRANSPORT_POSIX_TCP_CLIENT*		p_client		= NULL;
@@ -28,13 +28,12 @@ OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_TRANSPORT_HANDLE* p_handle,
     p_client->type = POSIX_TCP_CLIENT;
 
     // Get the host IP address and port
-    memcpy( &p_client->server_ockam_address, &p_ockam_device->host_address, sizeof(p_client->server_ockam_address));
-    p_client->server_port = p_ockam_device->host_port;
+    memcpy( &p_client->server_ockam_address, p_address, sizeof(*p_address) );
 
 	// Construct the server address for connection
 	status = make_socket_address(
 			&p_client->server_ockam_address.ip_address[0],
-			p_client->server_port,
+			p_client->server_ockam_address.port,
 			&p_client->server_ip_address );
 	if( OCKAM_ERR_NONE != status ) {
         log_error("make_socket_address failed in ockam_xp_init_tcp_client");
@@ -48,7 +47,7 @@ exit_block:
 			p_client = NULL;
 		}
 	}
-	*p_handle = (OCKAM_TRANSPORT_HANDLE)p_client;
+	*p_handle = (OCKAM_TRANSPORT)p_client;
 	return status;
  }
 
@@ -60,7 +59,7 @@ exit_block:
   * @param p_bytes_sent
   * @return
   */
- OCKAM_ERR posix_socket_tcp_send(OCKAM_TRANSPORT_HANDLE handle,
+ OCKAM_ERR posix_socket_tcp_send(OCKAM_TRANSPORT handle,
   	void* buffer, unsigned int length, unsigned int* p_bytes_sent
 	)
 {
@@ -106,7 +105,7 @@ exit_block:
  * @param handle
  * @return
  */
-OCKAM_ERR uninit_posix_socket_tcp_client( OCKAM_TRANSPORT_HANDLE handle )
+OCKAM_ERR uninit_posix_socket_tcp_client( OCKAM_TRANSPORT handle )
 {
 	TRANSPORT_POSIX_TCP_CLIENT*			p_tcp	= NULL;
 
@@ -133,8 +132,8 @@ exit_block:
  * @param p_ockam_device Pointer to Ockam device record
  * @return If successful, OCKAM_ERR_NONE. Otherwise see ockam_transport.h for error codes.
  */
-OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE* p_handle,
-		OCKAM_DEVICE_RECORD* p_ockam_device )
+OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_INTERNET_ADDRESS *p_address,
+		OCKAM_TRANSPORT* p_transport )
 {
 	OCKAM_ERR				        status			= OCKAM_ERR_NONE;
    	TRANSPORT_POSIX_TCP_SERVER*	    p_server		= NULL;
@@ -150,7 +149,7 @@ OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE* p_handle,
 	p_server->type = POSIX_TCP_SERVER;
 
 	// Record port
-    p_server->port_listen = p_ockam_device->host_port;
+    p_server->port_listen = p_address->port;
 
     // Initialize listener socket
     p_server->socket_listen = socket(AF_INET, SOCK_STREAM, 0);
@@ -161,8 +160,8 @@ OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE* p_handle,
     }
 
     // Form the network-friendly address
-    status = make_socket_address(p_ockam_device->host_address.ip_address,
-    		p_ockam_device->host_port,
+    status = make_socket_address(p_address->ip_address,
+    		p_address->port,
     		&p_server->socket_in_address_listen);
     if( OCKAM_ERR_NONE != status ){
     	log_error("make_socket_address failed");
@@ -178,14 +177,14 @@ OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE* p_handle,
 		goto exit_block;
 	}
 	// #revisit - this is for test feedback
-	printf("Listen address %s\n", p_ockam_device->host_address.ip_address);
+	printf("Listen address %s\n", p_address->ip_address);
 
 exit_block:
 	if( OCKAM_ERR_NONE != status ){
 		if( NULL != p_server ) free(p_server);
         p_server = NULL;
 	}
-	*p_handle = (OCKAM_TRANSPORT_HANDLE)p_server;
+	*p_transport = (OCKAM_TRANSPORT)p_server;
 	return status;
 }
 
@@ -197,7 +196,7 @@ exit_block:
  * @param p_bytes_received
  * @return
  */
-OCKAM_ERR posix_socket_tcp_receive( OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR posix_socket_tcp_receive( OCKAM_TRANSPORT handle,
 	void* p_buffer, unsigned int length, unsigned int* p_bytes_received) {
 	OCKAM_ERR				status			= OCKAM_ERR_NONE;
     TRANSPORT_POSIX_TCP_SERVER*	            p_server		= NULL;
@@ -252,7 +251,7 @@ exit_block:
  * @param handle
  * @return
  */
-OCKAM_ERR uninit_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE handle ) {
+OCKAM_ERR uninit_posix_socket_tcp_server( OCKAM_TRANSPORT handle ) {
     TRANSPORT_POSIX_TCP_SERVER*	        p_server	= NULL;
 
 	if( NULL != handle ) p_server = (TRANSPORT_POSIX_TCP_SERVER*)handle;

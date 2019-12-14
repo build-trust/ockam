@@ -95,7 +95,7 @@ typedef struct {
 typedef struct {
 	SOCKET_TYPE                 type;
 	int                         socket_listen;
-	int                         port_listen;
+	in_port_t                   port_listen;
 	struct sockaddr_in          socket_in_address_listen;
 	TCP_CONNECTION              connection;     // #revisit, there can be many connections
 } TRANSPORT_POSIX_TCP_SERVER;
@@ -104,7 +104,6 @@ typedef struct {
 	SOCKET_TYPE                 type;
 	OCKAM_INTERNET_ADDRESS      server_ockam_address;
 	int                         socket;
-	int                         server_port;
 	struct sockaddr_in          server_ip_address;
 	TCP_CONNECTION              connection;
 } TRANSPORT_POSIX_TCP_CLIENT;
@@ -112,7 +111,7 @@ typedef struct {
 typedef struct {
 	SOCKET_TYPE                 type;
 	int                         socket;
-	int                         port;
+	in_port_t                   port;
 	struct sockaddr_in          socket_in_address;
 	struct sockaddr_in          server_ip_address;
 	UDP_TRANSMIT_RECEIVE        receive_transmission;
@@ -143,7 +142,7 @@ OCKAM_ERR make_socket_address( char* p_ip_address, in_port_t port,
  * @param p_bytes_sent - (out) Number of bytes successfully sent
  * @return - OCKAM_NO_ERR on success
  * */
-OCKAM_ERR posix_socket_tcp_send(OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR posix_socket_tcp_send(OCKAM_TRANSPORT handle,
                                 void* p_buffer, unsigned int length, unsigned int* p_bytes_sent );
 
 /**
@@ -154,7 +153,7 @@ OCKAM_ERR posix_socket_tcp_send(OCKAM_TRANSPORT_HANDLE handle,
  * @param p_bytes_sent - (out) Number of bytes successfully sent
  * @return - OCKAM_NO_ERR on success
  * */
-OCKAM_ERR posix_socket_udp_send(OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR posix_socket_udp_send(OCKAM_TRANSPORT handle,
                                 void* p_buffer, unsigned int length, unsigned int* p_bytes_sent );
 
 /**
@@ -165,7 +164,7 @@ OCKAM_ERR posix_socket_udp_send(OCKAM_TRANSPORT_HANDLE handle,
  * @param p_bytes_received  - (out) Number of bytes received
  * @return - OCKAM_NO_ERR on success
  */
-OCKAM_ERR posix_socket_tcp_receive( OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR posix_socket_tcp_receive( OCKAM_TRANSPORT handle,
                                     void* p_buffer, unsigned int length,
                                     unsigned int* p_bytes_received );
 
@@ -177,7 +176,7 @@ OCKAM_ERR posix_socket_tcp_receive( OCKAM_TRANSPORT_HANDLE handle,
  * @param p_bytes_received  - (out) Number of bytes received
  * @return - OCKAM_NO_ERR on success
  */
-OCKAM_ERR posix_socket_udp_receive( OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR posix_socket_udp_receive( OCKAM_TRANSPORT handle,
                                     void* p_buffer, unsigned int length,
                                     unsigned int* p_bytes_received );
 
@@ -186,20 +185,20 @@ OCKAM_ERR posix_socket_udp_receive( OCKAM_TRANSPORT_HANDLE handle,
  * @param handle - (in) Handle to an intialized transport instance
  * @return - OCKAM_NO_ERR on success
  */
-OCKAM_ERR uninit_posix_socket_tcp_client( OCKAM_TRANSPORT_HANDLE handle );
+OCKAM_ERR uninit_posix_socket_tcp_client( OCKAM_TRANSPORT handle );
 
 /**
  * uninit_posix_socket_udp_client - Shuts down a UDP transport instance, frees resources
  * @param handle - (in) Handle to an intialized transport instance
  * @return - OCKAM_NO_ERR on success
  */
-OCKAM_ERR uninit_posix_socket_udp( OCKAM_TRANSPORT_HANDLE handle );
+OCKAM_ERR uninit_posix_socket_udp( OCKAM_TRANSPORT handle );
 
 /**
  * ockam_uninit_posix_tcp_server - Closes server connection and frees resources
  * @param handle - Handle of connection
  * @return  - OCKAM_SUCCESS or error
  */
-OCKAM_ERR uninit_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE handle );
+OCKAM_ERR uninit_posix_socket_tcp_server( OCKAM_TRANSPORT handle );
 
 #endif

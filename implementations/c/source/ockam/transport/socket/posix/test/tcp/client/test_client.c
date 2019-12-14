@@ -5,28 +5,41 @@
 #include "error.h"
 #include "errlog.h"
 
-#define SERV_TCP_PORT 8000
-static char* g_host_ip_addr = "192.168.0.78";
+OCKAM_ERR get_ip_info( OCKAM_INTERNET_ADDRESS* p_address )
+{
 
+	OCKAM_ERR   status		= OCKAM_ERR_NONE;
+	FILE*       address_file;
+	char        listen_address[100];
+	char        port_str[8];
+	unsigned    port = 0;
 
-OCKAM_ERR ockam_get_device_record(
-        OCKAM_DEVICE_RECORD* p_ockam_device) {
+	// Read the IP address to bind to
+	address_file = fopen("ipaddress.txt", "r");
+	if(NULL == address_file) {
+		printf("Create a file called \"ipaddress.txt\" with the IP address to listen on," \
+			"in nnn.nnn.nnn.nnn format and port number\n");
+		status = OCKAM_ERR_INVALID_PARAM;
+		goto exit_block;
+	}
+	fscanf(address_file, "%s\n", &listen_address[0]);
+	fscanf(address_file, "%s\n", &port_str[0]);
+	port = strtoul( &port_str[0], NULL, 0 );
+	fclose(address_file);
 
-    OCKAM_ERR status		= OCKAM_ERR_NONE;
-    memset( p_ockam_device, 0, sizeof( *p_ockam_device));
+	memset( p_address, 0, sizeof( *p_address));
 
-    strcpy( &p_ockam_device->host_address.ip_address[0], g_host_ip_addr );
-    p_ockam_device->host_port = SERV_TCP_PORT;
+	strcpy( &p_address->ip_address[0], &listen_address[0] );
+	p_address->port = port;
 
-    exit_block:
-    return status;
+exit_block:
+	return status;
 }
 
-
 int main(int argc, char* argv[]) {
-	OCKAM_TRANSPORT_HANDLE		h_transport = NULL;
+	OCKAM_TRANSPORT     		h_transport = NULL;
 	OCKAM_ERR					error = 0;
-	OCKAM_DEVICE_RECORD			ockam_device;
+	OCKAM_INTERNET_ADDRESS	    address;
 	char                        buffer[80];
 	char*                       p_buffer = &buffer[0];
 	unsigned long               buffer_size;
@@ -34,13 +47,13 @@ int main(int argc, char* argv[]) {
 
 	init_err_log(stdout);
 
-	error = ockam_get_device_record( &ockam_device);
+	error = get_ip_info( &address);
     if( OCKAM_ERR_NONE != error ) {
         log_error("failed ockam_get_device_record");
         goto exit_block;
     }
 
-	error = ockam_init_posix_socket_tcp_client( &h_transport, &ockam_device );
+	error = ockam_init_posix_socket_tcp_client( &address, &h_transport );
 	if(OCKAM_ERR_NONE != error) {
 		log_error("ockam_xp_init_client failed");
 		goto exit_block;

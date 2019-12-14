@@ -13,7 +13,7 @@
  * @param p_bytes_sent - (out) Number of bytes successfully sent
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_send(OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR ockam_send(OCKAM_TRANSPORT handle,
                      void* p_buffer, unsigned int length, unsigned int* p_bytes_sent) {
 
 	SOCKET_TYPE*        p_type          = (SOCKET_TYPE*)handle;
@@ -47,7 +47,7 @@ OCKAM_ERR ockam_send(OCKAM_TRANSPORT_HANDLE handle,
  * @param p_bytes_received  - (out) Number of bytes received
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_receive( OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR ockam_receive( OCKAM_TRANSPORT handle,
 		void* p_buffer, unsigned int length, unsigned int* p_bytes_received)
 {
 	SOCKET_TYPE*        p_type          = (SOCKET_TYPE*)handle;
@@ -79,7 +79,7 @@ OCKAM_ERR ockam_receive( OCKAM_TRANSPORT_HANDLE handle,
  * @param handle - Handle of initialized transport instance
  * @return  - OCKAM_SUCCESS or error
  */
-OCKAM_ERR ockam_uninit_transport( OCKAM_TRANSPORT_HANDLE handle )
+OCKAM_ERR ockam_uninit_transport( OCKAM_TRANSPORT handle )
 {
 	SOCKET_TYPE*        p_type          = (SOCKET_TYPE*)handle;
 	OCKAM_ERR           status          = OCKAM_ERR_NONE;
