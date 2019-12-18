@@ -34,16 +34,12 @@
  *                                        PUBLIC DATA TYPES                                             *
  ********************************************************************************************************
  */
-/*
- * Placeholder for official Ockam ID #revisit
- */
-typedef	unsigned long	OCKAM_ID;
 
 /**
  * OCKAM_TRANSPORT_HANDLE represents a communication channel between two entities. Virtually every
  * calls into the transport library takes an OCKAM_TRANSPORT_HANDLE as an argument.
  */
-typedef	void*			OCKAM_TRANSPORT_HANDLE;
+typedef	void*			OCKAM_TRANSPORT;
 
 /**
  * OCKAM_INTERNET_ADDRESS - User-friendly internet addresses, includes terminating NULL
@@ -51,6 +47,7 @@ typedef	void*			OCKAM_TRANSPORT_HANDLE;
 typedef struct {
 	char					dns_name[MAX_DNS_NAME_LENGTH];			// "www.name.ext"
 	char					ip_address[MAX_DNS_ADDRESS_LENGTH]; 	//"xxx.xxx.xxx.xxx"
+	in_port_t               port;
 } OCKAM_INTERNET_ADDRESS;
 
 /*
@@ -75,7 +72,7 @@ typedef struct {
  * @param p_ockam_device - (in) Pointer to Ockam device record of TCP host
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_TRANSPORT_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_INTERNET_ADDRESS* p_address, OCKAM_TRANSPORT* p_handle );
 
 /**
  * ockam_init_posix_socket_tcp_server - Initializes a TCP server connection. If completed successfully,
@@ -84,7 +81,7 @@ OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_TRANSPORT_HANDLE* p_handle, 
  * @param p_ockam_device - (in) Pointer to device record of this (host) device
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_INTERNET_ADDRESS* p_address, OCKAM_TRANSPORT* p_handle );
 
 /**
  * ockam_init_posix_socket_udp_server - Initializes a UDP  connection. If completed successfully,
@@ -93,7 +90,8 @@ OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_TRANSPORT_HANDLE* p_handle, 
  * @param p_ockam_device - (in) Pointer to device record of this (host) device
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_init_posix_socket_udp_server( OCKAM_TRANSPORT_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+
+OCKAM_ERR ockam_init_posix_socket_udp_server( OCKAM_INTERNET_ADDRESS* p_address, OCKAM_TRANSPORT* p_handle );
 
 /**
  * ockam_init_posix_socket_udp - Initializes a UDP  connection. If completed successfully,
@@ -102,7 +100,7 @@ OCKAM_ERR ockam_init_posix_socket_udp_server( OCKAM_TRANSPORT_HANDLE* p_handle, 
  * @param p_ockam_device - (in) Pointer to device record of this (host) device
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_init_posix_socket_udp_client( OCKAM_TRANSPORT_HANDLE* p_handle, OCKAM_DEVICE_RECORD* p_ockam_device );
+OCKAM_ERR ockam_init_posix_socket_udp_client( OCKAM_INTERNET_ADDRESS* p_address, OCKAM_TRANSPORT* p_handle );
 
 /**
  * ockam_send - Sends a buffer to the host server (blocking)
@@ -112,7 +110,7 @@ OCKAM_ERR ockam_init_posix_socket_udp_client( OCKAM_TRANSPORT_HANDLE* p_handle, 
  * @param p_bytes_sent - (out) Number of bytes successfully sent
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_send(OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR ockam_send(OCKAM_TRANSPORT transport,
 		void* buffer, unsigned int length, unsigned int* p_bytes_sent);
 
 /**
@@ -123,7 +121,7 @@ OCKAM_ERR ockam_send(OCKAM_TRANSPORT_HANDLE handle,
  * @param p_bytes_received  - (out) Number of bytes received
  * @return - OCKAM_SUCCESS or an error code
  */
-OCKAM_ERR ockam_receive( OCKAM_TRANSPORT_HANDLE handle,
+OCKAM_ERR ockam_receive( OCKAM_TRANSPORT transport,
 	void* buffer, unsigned int length, unsigned int* p_bytes_received );
 
 /**
@@ -131,6 +129,14 @@ OCKAM_ERR ockam_receive( OCKAM_TRANSPORT_HANDLE handle,
  * @param handle - Handle of initialized transport instance
  * @return  - OCKAM_SUCCESS or error
  */
-OCKAM_ERR ockam_uninit_transport( OCKAM_TRANSPORT_HANDLE handle );
+OCKAM_ERR ockam_uninit_transport( OCKAM_TRANSPORT transport );
+//
+//typedef struct OCKAM_MESSAGE {
+//	void*           bytes;
+//	unsigned        length;
+//};
+//
+//length = getlength( struct OCKAM_MESSAGE* );
+
 
 #endif

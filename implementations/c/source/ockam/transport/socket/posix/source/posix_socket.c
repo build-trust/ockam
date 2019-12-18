@@ -129,7 +129,7 @@ OCKAM_ERR make_socket_address( char* p_ip_address, in_port_t port, struct sockad
 		status = OCKAM_ERR_TRANSPORT_ADDRESS;
 		goto exit_block;
 	}
-	p_socket_address->sin_len = sizeof( *p_socket_address );
+//	p_socket_address->sin_len = sizeof( *p_socket_address );
 
 exit_block:
 	return status;

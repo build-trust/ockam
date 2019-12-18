@@ -97,7 +97,7 @@ typedef struct {
 	int                         socket_listen;
 	in_port_t                   port_listen;
 	struct sockaddr_in          socket_in_address_listen;
-	TCP_CONNECTION              connection;     // #revisit, there can be many connections
+	TCP_CONNECTION*             p_connection;     // #revisit, there can be many connections
 } TRANSPORT_POSIX_TCP_SERVER;
 
 typedef struct {
