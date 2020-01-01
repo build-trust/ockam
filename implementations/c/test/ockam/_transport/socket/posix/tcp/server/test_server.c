@@ -35,12 +35,18 @@ exit_block:
 	return status;
 }
 
+#define BUFFER_SIZE 128
+
 int main(int argc, char* argv[]) {
 	OCKAM_TRANSPORT		        transport = NULL;
 	OCKAM_ERR					error = 0;
 	OCKAM_INTERNET_ADDRESS		address;
-	char						buffer[128];
+	char						recv_buffer[BUFFER_SIZE];
+	char                        send_buffer[BUFFER_SIZE];
+	char*                       p_send_buffer = &send_buffer[0];
+	size_t                      bytes_input = 0;
 	unsigned int                bytes_received = 0;
+	unsigned int                bytes_sent = 0;
 
 	init_err_log(stdout);
 
@@ -57,13 +63,34 @@ int main(int argc, char* argv[]) {
 		goto exit_block;
 	}
 
-	error = ockam_receive(transport, &buffer[0], sizeof(buffer), &bytes_received);
-	if (OCKAM_ERR_NONE != error) {
-		log_error("failed ockam_xp_receive");
-		goto exit_block;
-	}
+	do {
+		// Receive a buffer
+		error = ockam_receive(transport, &recv_buffer[0], sizeof(recv_buffer), &bytes_received);
+		if (OCKAM_ERR_NONE != error) {
+			if( OCKAM_ERR_TRANSPORT_CLOSED == error ) {
+				printf("client closed connection\n");
+			} else {
+				log_error("failed ockam_xp_receive");
+			}
+			goto exit_block;
+		}
+		printf("%d Bytes, %s\n", bytes_received, recv_buffer);
 
-	printf("%d Bytes, %s\n", bytes_received, buffer);
+		// Send a buffer
+		printf("What to send? ");
+		bytes_input = 80;
+		getline(&p_send_buffer, &bytes_input, stdin);
+		bytes_input = strlen(p_send_buffer)+1;
+		printf("sending %s\n", p_send_buffer);
+		error = ockam_send(transport, (void *) p_send_buffer, bytes_input, &bytes_sent);
+		if (OCKAM_ERR_NONE != error) {
+			log_error("ockam_xp_send failed");
+			goto exit_block;
+		}
+		printf("Sent %d bytes: %s\n", bytes_sent, p_send_buffer);
+
+	} while( 'q' != recv_buffer[0] );
+
 
 exit_block:
 	if( NULL != transport ) ockam_uninit_transport( transport );

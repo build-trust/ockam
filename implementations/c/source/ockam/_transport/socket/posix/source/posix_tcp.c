@@ -40,6 +40,24 @@ OCKAM_ERR ockam_init_posix_socket_tcp_client( OCKAM_INTERNET_ADDRESS* p_address,
         status = OCKAM_ERR_INVALID_PARAM;
     }
 
+	// Initialize the socket
+	p_client->socket = socket(AF_INET, SOCK_STREAM, 0);
+	if( -1 == p_client->socket ) {
+		log_error(("socket failed in ockam_xp_init_tcp_client"));
+		status = OCKAM_ERR_TRANSPORT_INIT_SOCKET;
+		goto exit_block;
+	}
+
+	// Try to connect
+	if(connect(p_client->socket,
+	           (struct sockaddr*)&p_client->server_ip_address,
+	           sizeof(p_client->server_ip_address)) < 0
+			){
+		log_error("connect failed in ockam_xp_send");
+		status = OCKAM_ERR_TRANSPORT_CONNECT;
+		goto exit_block;
+	}
+
 exit_block:
 	if( OCKAM_ERR_NONE != status ){
 		if(NULL != p_client) {
@@ -67,24 +85,6 @@ exit_block:
     OCKAM_ERR				        status = OCKAM_ERR_NONE;
     ssize_t					        bytes_sent = 0;
 
-     // Initialize the socket
-     p_client->socket = socket(AF_INET, SOCK_STREAM, 0);
-     if( -1 == p_client->socket ) {
-         log_error(("socket failed in ockam_xp_init_tcp_client"));
-         status = OCKAM_ERR_TRANSPORT_INIT_SOCKET;
-         goto exit_block;
-     }
-
-     // Try to connect
-    if(connect(p_client->socket,
-        (struct sockaddr*)&p_client->server_ip_address,
-        sizeof(p_client->server_ip_address)) < 0
-    ){
-        log_error("connect failed in ockam_xp_send");
-        status = OCKAM_ERR_TRANSPORT_CONNECT;
-        goto exit_block;
-    }
-
 	// Send the buffer
 	bytes_sent = send(p_client->socket, buffer, length, 0);
 	if(bytes_sent < 0) {
@@ -94,9 +94,6 @@ exit_block:
 	*p_bytes_sent = bytes_sent;
 
 exit_block:
-    if(-1 != p_client->socket){
-    	close(p_client->socket);
-    }
 	return status;
 }
 
@@ -176,8 +173,20 @@ OCKAM_ERR ockam_init_posix_socket_tcp_server( OCKAM_INTERNET_ADDRESS *p_address,
 		status = OCKAM_ERR_TRANSPORT_RECEIVE;
 		goto exit_block;
 	}
-	// #revisit - this is for test feedback
-	printf("Listen address %s\n", p_address->ip_address);
+
+	// Now listen and wait for a connection
+	// Listen and accept
+	if(0 != listen(p_server->socket_listen, 1)) {   // #revisit when multiple connections implemented
+		log_error(("Listen failed"));
+		status = OCKAM_ERR_TRANSPORT_SERVER_INIT;
+		goto exit_block;
+	}
+	p_server->connection.socket = accept(p_server->socket_listen, NULL, 0);
+	if (-1 == p_server->connection.socket) {
+		log_error("accept failed");
+		goto exit_block;
+	}
+
 
 exit_block:
 	if( OCKAM_ERR_NONE != status ){
@@ -197,10 +206,11 @@ exit_block:
  * @return
  */
 OCKAM_ERR posix_socket_tcp_receive( OCKAM_TRANSPORT handle,
-	void* p_buffer, unsigned int length, unsigned int* p_bytes_received) {
-	OCKAM_ERR				status			= OCKAM_ERR_NONE;
-    TRANSPORT_POSIX_TCP_SERVER*	            p_server		= NULL;
-    int                     bytes_read      = 0;
+	void* p_buffer, unsigned int length, unsigned int* p_bytes_received)
+{
+	OCKAM_ERR status			                = OCKAM_ERR_NONE;
+    TRANSPORT_POSIX_TCP_SERVER*	 p_server		= NULL;
+    int bytes_read                              = 0;
 
     if(NULL == handle) {
         status = OCKAM_ERR_TRANSPORT_HANDLE;
@@ -208,40 +218,21 @@ OCKAM_ERR posix_socket_tcp_receive( OCKAM_TRANSPORT handle,
     }
     p_server = (TRANSPORT_POSIX_TCP_SERVER*)handle;
 
-    // Listen and accept
-    if(0 != listen(p_server->socket_listen, 1)) {   // #revisit when multiple connections implemented
-        log_error(("Listen failed"));
-        status = OCKAM_ERR_TRANSPORT_SERVER_INIT;
-        goto exit_block;
+    // Read a buffer
+    p_server->connection.receive_transmission.p_buffer = p_buffer;
+    p_server->connection.receive_transmission.size_buffer = length;
+    bytes_read = recv(p_server->connection.socket,
+                      p_server->connection.receive_transmission.p_buffer,
+                      p_server->connection.receive_transmission.size_buffer, 0);
+    if( -1 == bytes_read ) {
+    	log_error( "recv failed in posix_socket_tcp_receive\n" );
+    	printf( "errno: %d\n", errno );
     }
-    do {
-	    p_server->connection.socket = accept(p_server->socket_listen, NULL, 0);
-	    if (-1 == p_server->connection.socket) {
-		    log_error("accept failed");
-		    goto exit_block;
-	    }
-
-	    // Read a buffer
-	    p_server->connection.receive_transmission.p_buffer = p_buffer;
-	    p_server->connection.receive_transmission.size_buffer = length;
-	    bytes_read = recv(p_server->connection.socket,
-	                      p_server->connection.receive_transmission.p_buffer,
-	                      p_server->connection.receive_transmission.size_buffer, 0);
-	    p_server->connection.receive_transmission.bytes_received = bytes_read;
-	    *p_bytes_received = p_server->connection.receive_transmission.bytes_received;
-
-	    // Cleanup
-	    shutdown(p_server->connection.socket, SHUT_RDWR);
-	    close(p_server->connection.socket);
-	    printf("%s\n", (char*)p_server->connection.receive_transmission.p_buffer);
-    } while(*(char*)(p_server->connection.receive_transmission.p_buffer) != 'q');
-	shutdown(p_server->socket_listen, SHUT_RDWR);
-    close(p_server->socket_listen);
+    p_server->connection.receive_transmission.bytes_received = bytes_read;
+    *p_bytes_received = bytes_read;
+    if(0 == bytes_read) status = OCKAM_ERR_TRANSPORT_CLOSED;
 
 exit_block:
-    // End with a clean slate
-    memset(&p_server->connection, 0, sizeof(p_server->connection));
-    memset(&p_server->socket_in_address_listen, 0, sizeof(p_server->socket_in_address_listen));
     return status;
 }
 
@@ -256,6 +247,9 @@ OCKAM_ERR uninit_posix_socket_tcp_server( OCKAM_TRANSPORT handle ) {
 
 	if( NULL != handle ) p_server = (TRANSPORT_POSIX_TCP_SERVER*)handle;
 	else goto exit_block;
+
+	shutdown(p_server->socket_listen, SHUT_RDWR);
+	close(p_server->socket_listen);
 
 	if(0 != p_server->socket_listen ) close( p_server->socket_listen );
 	free( p_server );
