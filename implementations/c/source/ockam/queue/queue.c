@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include "queue.h"
-#include "error.h"
-#include "syslog.h"
+#include "ockam/queue.h"
+#include "ockam/error.h"
+#include "ockam/syslog.h"
 
 typedef struct {
 	uint16_t            max_size;

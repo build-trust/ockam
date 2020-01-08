@@ -18,9 +18,9 @@
 #include <errno.h>
 #include <time.h>
 #include <pthread.h>
-#include "transport.h"
+#include "ockam/transport.h"
 #include "syslog.h"
-#include "queue.h"
+#include "ockam/queue.h"
 
 #define MAX_QUEUE_SIZE          512
 

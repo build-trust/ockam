@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "syslog.h"
+#include "ockam/syslog.h"
 
 FILE* g_err_log = NULL;
 

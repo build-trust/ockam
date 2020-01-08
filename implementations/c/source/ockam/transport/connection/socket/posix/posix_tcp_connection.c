@@ -1,27 +1,39 @@
-//
-// Created by Robin Budd on 191227.
+/**
+ ********************************************************************************************************
+ * @file        connection.h
+ * @brief       Defines the different connection types.
+ ********************************************************************************************************
+ */
+/*
+ ********************************************************************************************************
+ *                                             INCLUDE FILES                                            *
+ ********************************************************************************************************
+ */
+
 #include <unistd.h>
-#include <pthread.h>
-#include "syslog.h"
-#include "queue.h"
-#include "error.h"
-#include "transport.h"
+#include "ockam/syslog.h"
+#include "ockam/error.h"
+#include "ockam/transport.h"
 #include "connection.h"
 #include "posix_socket.h"
 
-/**
- * Globals
+/*
+ ********************************************************************************************************
+ *                                             Globals                                                  *
+ ********************************************************************************************************
  */
 
+/**
+ * g_tcp_connection_interface is the function table for TCP connection types. The first element in
+ * all connection types must point to the connection interface (function table) for the type.
+ */
 CONNECTION_INTERFACE  g_tcp_connection_interface = { 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
-/**
- * Threads
- */
 
-
-/**
- *  Forward Declarations
+/*
+ ********************************************************************************************************
+ *                               Forward function prototype declarations                                *
+ ********************************************************************************************************
  */
 OCKAM_ERR posix_tcp_listen_blocking( OCKAM_TRANSPORT_CONNECTION listener,
                                      OCKAM_LISTEN_ADDRESS* p_address,
@@ -29,35 +41,39 @@ OCKAM_ERR posix_tcp_listen_blocking( OCKAM_TRANSPORT_CONNECTION listener,
 OCKAM_ERR posix_tcp_listen_non_blocking( void* address, uint16_t max_connections, LISTEN_CALLBACK cb, void* cb_context );
 OCKAM_ERR posix_tcp_connect_blocking( void* address, OCKAM_TRANSPORT_CONNECTION* connection );
 OCKAM_ERR posix_tcp_connect_non_blocking( void* address, OCKAM_TRANSPORT_CONNECTION* connection );
-OCKAM_ERR posix_tcp_read_blocking( OCKAM_TRANSPORT_CONNECTION connection,
+OCKAM_ERR posix_tcp_receive_blocking( OCKAM_TRANSPORT_CONNECTION connection,
 		void* buffer, uint16_t length, uint16_t* bytes_received);
-OCKAM_ERR posix_tcp_read_non_blocking();
-OCKAM_ERR posix_tcp_write_blocking();
-OCKAM_ERR posix_tcp_write_non_blocking();
+OCKAM_ERR posix_tcp_receive_non_blocking();
+OCKAM_ERR posix_tcp_send_blocking( OCKAM_TRANSPORT_CONNECTION connection, void* buffer, uint16_t length );
+OCKAM_ERR posix_tcp_send_non_blocking();
 OCKAM_ERR posix_tcp_uninitialize( OCKAM_TRANSPORT_CONNECTION connection );
 
 
+/*
+ ********************************************************************************************************
+ *                                        Global Functions                                              *
+ ********************************************************************************************************
+ */
 OCKAM_ERR ockam_init_posix_tcp_connection( OCKAM_TRANSPORT_CONNECTION* connection )
 {
 	OCKAM_ERR               status = OCKAM_ERR_NONE;
 	CONNECTION*             p_connection = NULL;
-	POSIX_SOCKET*           p_socket;
 
 	// If first time, fill out the interface for this connection type
 	if( 0 == g_tcp_connection_interface.is_initialized ) {
-		// Fill out the right function pointers for this connection type
 		g_tcp_connection_interface.listen_blocking = posix_tcp_listen_blocking;
 		g_tcp_connection_interface.listen_non_blocking = posix_tcp_listen_non_blocking;
 		g_tcp_connection_interface.connect_blocking = posix_tcp_connect_blocking;
 		g_tcp_connection_interface.connect_non_blocking = posix_tcp_connect_non_blocking;
-		g_tcp_connection_interface.read_blocking = posix_tcp_read_blocking;
-		g_tcp_connection_interface.read_non_blocking = posix_tcp_read_non_blocking;
-		g_tcp_connection_interface.write_blocking = posix_tcp_write_blocking;
-		g_tcp_connection_interface.write_non_blocking = posix_tcp_write_non_blocking;
+		g_tcp_connection_interface.receive_blocking = posix_tcp_receive_blocking;
+		g_tcp_connection_interface.receive_non_blocking = posix_tcp_receive_non_blocking;
+		g_tcp_connection_interface.send_blocking = posix_tcp_send_blocking;
+		g_tcp_connection_interface.send_non_blocking = posix_tcp_send_non_blocking;
 		g_tcp_connection_interface.uninitialize = posix_tcp_uninitialize;
 		g_tcp_connection_interface.is_initialized = 1;
 	}
 
+	// Allocate the memory, zero it out, and set the pointer to the interface
 	p_connection = (CONNECTION*)malloc( sizeof( CONNECTION ) );
 	if( NULL == p_connection ) {
 		status = OCKAM_ERR_MEM_INSUFFICIENT;
@@ -67,30 +83,23 @@ OCKAM_ERR ockam_init_posix_tcp_connection( OCKAM_TRANSPORT_CONNECTION* connectio
 	memset( p_connection, 0, sizeof( CONNECTION ));
 	p_connection->p_interface = &g_tcp_connection_interface;
 
-	// Initialize the read/write queues
-	p_socket = &p_connection->type.posix_socket;
-	status = init_queue( MAX_PENDING_READS, NULL, &p_socket->p_read_q );
-	if( OCKAM_ERR_NONE != status ) {
-		status = OCKAM_ERR_MEM_INSUFFICIENT;
-		log_error( status, "queue init failed in ockam_init_posix_tcp_transport" );
-		goto exit_block;
-	}
-	status = init_queue( MAX_PENDING_WRITES, NULL, &p_socket->p_write_q );
-	if( OCKAM_ERR_NONE != status ) {
-		status = OCKAM_ERR_MEM_INSUFFICIENT;
-		log_error( status, "queue init failed in ockam_init_posix_tcp_transport" );
-		goto exit_block;
-	}
-
 	*connection = p_connection;
 
 exit_block:
+	if( OCKAM_ERR_NONE != status ) {
+		if( NULL != p_connection ) free( p_connection );
+	}
 	return status;
 }
 
+/*
+ ********************************************************************************************************
+ *                                        Local Functions                                               *
+ ********************************************************************************************************
+ */
 OCKAM_ERR posix_tcp_listen_blocking( OCKAM_TRANSPORT_CONNECTION listener,
 		OCKAM_LISTEN_ADDRESS* p_address,
-		OCKAM_TRANSPORT_CONNECTION* connection )
+		OCKAM_TRANSPORT_CONNECTION* p_new_connection )
 {
 	OCKAM_TRANSPORT_CONNECTION      new_connection = NULL;
 	OCKAM_ERR                       status = OCKAM_ERR_NONE;
@@ -140,12 +149,14 @@ OCKAM_ERR posix_tcp_listen_blocking( OCKAM_TRANSPORT_CONNECTION listener,
 	}
 	p_new_socket = &(( CONNECTION* )new_connection)->type.posix_socket;
 
-	// Listen and wait for connection
+	// Listen
 	if(0 != listen(p_socket->socket, 1)) {   // #revisit when multiple connections implemented
 		status = OCKAM_ERR_TRANSPORT_SERVER_INIT;
 		log_error( status, "Listen failed" );
 		goto exit_block;
 	}
+
+	// Wait for the connection
 	p_new_socket->socket = accept( p_socket->socket, NULL, 0);
 	if (-1 == p_new_socket->socket) {
 		status = OCKAM_ERR_TRANSPORT_ACCEPT;
@@ -154,7 +165,8 @@ OCKAM_ERR posix_tcp_listen_blocking( OCKAM_TRANSPORT_CONNECTION listener,
 	}
 	p_new_socket->is_connected = 1;
 
-	*connection = new_connection;
+	// It all worked. Copy the new connection to the caller's variable.
+	*p_new_connection = new_connection;
 
 exit_block:
 	if( OCKAM_ERR_NONE != status ) {
@@ -192,7 +204,6 @@ OCKAM_ERR posix_tcp_connect_blocking( void* address, OCKAM_TRANSPORT_CONNECTION*
 		goto exit_block;
 	}
 
-
 	// Try to connect
 	if(connect(p_socket->socket,
 	           (struct sockaddr*)&p_socket->socket_address,
@@ -222,50 +233,132 @@ exit_block:
 	return status;
 }
 
-OCKAM_ERR posix_tcp_read_blocking( OCKAM_TRANSPORT_CONNECTION connection,
-                                   void* buffer, uint16_t length, uint16_t* bytes_received)
+OCKAM_ERR posix_tcp_receive_blocking( OCKAM_TRANSPORT_CONNECTION connection,
+                                   void* buffer, uint16_t length, uint16_t* p_bytes_received)
 {
 	OCKAM_ERR                       status = OCKAM_ERR_NONE;
 	CONNECTION*                     p_connection = (CONNECTION*)connection;
-	POSIX_SOCKET*                   p_socket = NULL;
+	POSIX_TCP_SOCKET*               p_tcp = NULL;
+	TRANSMISSION*                   p_transmission;
+	ssize_t                         bytes_read = 0;
 
 	if( NULL == connection ) {
 		status = OCKAM_ERR_INVALID_PARAM;
-		log_error(status, "connection must not be NULL in posix_tcp_read_blocking");
+		log_error(status, "connection must not be NULL in posix_tcp_receive_blocking");
 	}
 
-	p_socket = &p_connection->type.posix_socket;
+	p_tcp = &p_connection->type.posix_tcp_socket;
+	p_transmission = &p_tcp->posix_socket.receive_transmission;
 
-	if( 0 == p_socket->is_connected ) {
-		status = OCKEM_ERR_TRANSPORT_NOT_CONNECTED;
-		log_error( status, "connection not established in posix_tcp_read_blocking");
+	if( 1 != p_tcp->posix_socket.is_connected ) {
+		status = OCKAM_ERR_TRANSPORT_NOT_CONNECTED;
+		log_error( status, "tcp socket must be connected for read operation" );
 		goto exit_block;
 	}
 
+	// Read the metadata buffer
+	bytes_read = recv( p_tcp->posix_socket.socket, &p_tcp->receive_meta, sizeof( p_tcp->receive_meta), 0 );
+	if( sizeof( p_tcp->receive_meta ) != bytes_read ) {
+		status = OCKAM_ERR_TRANSPORT_RECEIVE;
+		log_error( status, "failed to read metadata buffer" );
+		goto exit_block;
+	}
 
+	// Fix endian-ness
+	p_tcp->receive_meta.next_packet_length = ntohs( p_tcp->receive_meta.next_packet_length );
+	p_tcp->receive_meta.this_packet_length = ntohs( p_tcp->receive_meta.this_packet_length );
+
+	// Sanity check that what we got was a metadata packet
+	if( p_tcp->receive_meta.this_packet_length != bytes_read ) {
+		status = OCKAM_ERR_TRANSPORT_RECEIVE;
+		log_error( status, "expected metadata packet in posix_tcp_receive_blocking");
+		goto exit_block;
+	}
+
+	// Verify the receive buffer is big enough
+	if( length < p_tcp->receive_meta.next_packet_length ) {
+		status = OCKAM_ERR_TRANSPORT_BUFFER_TOO_SMALL;
+		log_error( status, "supplied receive buffer too small");
+		goto exit_block;
+	}
+
+	// Read the actual data
+	p_transmission->p_buffer = buffer;
+	p_transmission->buffer_size = p_tcp->receive_meta.next_packet_length;
+	bytes_read = recv(p_tcp->posix_socket.socket,
+	                  p_transmission->p_buffer,
+	                  p_transmission->buffer_size, 0);
+	if( -1 == bytes_read ) {
+		status = OCKAM_ERR_TRANSPORT_RECEIVE;
+		log_error( status, "recv failed in posix_tcp_receive_blocking\n" );
+	}
+	p_transmission->bytes_transmitted = bytes_read;
+	*p_bytes_received = bytes_read;
 
 exit_block:
 	return status;
 }
 
-OCKAM_ERR posix_tcp_read_non_blocking()
+OCKAM_ERR posix_tcp_receive_non_blocking()
 {
 	OCKAM_ERR                       status = OCKAM_ERR_NONE;
 exit_block:
 	return status;
 }
-OCKAM_ERR posix_tcp_write_blocking()
+OCKAM_ERR posix_tcp_send_blocking( OCKAM_TRANSPORT_CONNECTION connection,
+                                    void* buffer, uint16_t length )
+{
+	OCKAM_ERR                       status = OCKAM_ERR_NONE;
+	CONNECTION*                     p_connection = (CONNECTION*)connection;
+	POSIX_TCP_SOCKET*               p_tcp = NULL;
+	TRANSMISSION*                   p_transmission;
+	ssize_t                         bytes_sent = 0;
+
+	if( NULL == connection ) {
+		status = OCKAM_ERR_INVALID_PARAM;
+		log_error(status, "connection must not be NULL in posix_tcp_send_blocking");
+	}
+
+	p_tcp = &p_connection->type.posix_tcp_socket;
+	p_transmission = &p_tcp->posix_socket.receive_transmission;
+
+	if( 1 != p_tcp->posix_socket.is_connected ) {
+		status = OCKAM_ERR_TRANSPORT_NOT_CONNECTED;
+		log_error( status, "tcp socket must be connected for write operation" );
+		goto exit_block;
+	}
+
+	// send the meta
+	p_tcp->send_meta.this_packet_length = htons( (uint16_t)sizeof( p_tcp->send_meta ));
+	p_tcp->send_meta.next_packet_length = htons( length );
+
+	bytes_sent = send( p_tcp->posix_socket.socket, &p_tcp->send_meta, sizeof( p_tcp->send_meta ), 0 );
+	if( bytes_sent != sizeof( p_tcp->send_meta ) ) {
+		status = OCKAM_ERR_TRANSPORT_SEND;
+		log_error( status, "error sending buffer in posix_tcp_send_blocking");
+		goto exit_block;
+	}
+
+	p_transmission->p_buffer = buffer;
+	p_transmission->buffer_size = length;
+	bytes_sent = send( p_tcp->posix_socket.socket, p_transmission->p_buffer, p_transmission->buffer_size, 0 );
+	if( bytes_sent !=  p_transmission->buffer_size ) {
+		status = OCKAM_ERR_TRANSPORT_SEND;
+		log_error( status, "error sending buffer in posix_tcp_send_blocking");
+		goto exit_block;
+	}
+
+exit_block:
+	return status;
+}
+
+OCKAM_ERR posix_tcp_send_non_blocking()
 {
 	OCKAM_ERR                       status = OCKAM_ERR_NONE;
 exit_block:
 	return status;
 }
-OCKAM_ERR posix_tcp_write_non_blocking()
-{
-	OCKAM_ERR                       status = OCKAM_ERR_NONE;
-exit_block:
-	return status;
-}
+
 OCKAM_ERR posix_tcp_uninitialize( OCKAM_TRANSPORT_CONNECTION connection )
 {
 	OCKAM_ERR                   status = OCKAM_ERR_NONE;
@@ -280,8 +373,9 @@ OCKAM_ERR posix_tcp_uninitialize( OCKAM_TRANSPORT_CONNECTION connection )
 
 	p_socket = &p_connection->type.posix_socket;
 
-	// Close sockets and free memory
+	// Close socket and free memory
 	if( p_socket->socket > 0 ) close( p_socket->socket );
+
 	free( p_connection );
 
 exit_block:
