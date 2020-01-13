@@ -14,9 +14,11 @@
 #include <ockam/define.h>
 #include <ockam/error.h>
 #include <ockam/kal.h>
+#include <ockam/memory.h>
 #include <ockam/vault.h>
 #include <ockam/vault/host.h>
 
+#include "mbedtls/ecp.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/md.h"
@@ -35,6 +37,10 @@
  *                                                DEFINES                                               *
  ********************************************************************************************************
  */
+
+#define MBEDCRYPTO_KEY_CURVE25519_STATIC            0u
+#define MBEDCRYPTO_KEY_CURVE25519_EPHEMERAL         1u
+#define MBEDCRYPTO_KEY_CURVE25519_TOTAL             2u
 
 
 /*
@@ -63,6 +69,13 @@
  *                                            GLOBAL VARIABLES                                          *
  ********************************************************************************************************
  */
+
+uint32_t g_mbedcrypto_str_len = 23;
+char *g_mbedcrypto_str = "ockam_mbedcrypto_string";
+
+mbedtls_entropy_context g_entropy;
+mbedtls_ctr_drbg_context g_ctr_drbg;
+mbedtls_ecp_keypair g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_TOTAL];
 
 
 /*
@@ -98,6 +111,23 @@
 OCKAM_ERR ockam_vault_host_init(void *p_arg)
 {
     OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    int mbed_ret = 0;
+
+
+    do {
+        mbedtls_entropy_init(&g_entropy);                       /* Initialize the entropy before CTR DRBG. Both inits */
+        mbedtls_ctr_drbg_init(&g_ctr_drbg);                     /* have no return value.                              */
+
+        mbed_ret = mbedtls_ctr_drbg_seed(&g_ctr_drbg,           /* Seed the CTR DRBG using exisitng entropy and the   */
+                                         mbedtls_entropy_func,  /* personalization string                             */
+                                         &g_entropy,
+                                         (const unsigned char*) g_mbedcrypto_str,
+                                         g_mbedcrypto_str_len);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_INIT_FAIL;
+            break;
+        }
+    } while(0);
 
     return ret_val;
 }
@@ -115,7 +145,30 @@ OCKAM_ERR ockam_vault_host_init(void *p_arg)
  */
 
 #if(OCKAM_VAULT_CFG_RAND == OCKAM_VAULT_HOST_MBEDCRYPTO)
-#error "Error: OCKAM_VAULT_CFG_RAND invalid for MBEDCRYPTO"
+
+/*
+ ********************************************************************************************************
+ *                                        ockam_vault_tpm_random()
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_host_random(uint8_t *p_rand_num, uint32_t rand_num_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    int mbed_ret = 0;
+
+    mbed_ret = mbedtls_ctr_drbg_random(&g_ctr_drbg,
+                                       p_rand_num,
+                                       rand_num_size);
+    if(mbed_ret != 0) {
+        ret_val = OCKAM_ERR_VAULT_HOST_RAND_FAIL;
+    }
+
+
+    return ret_val;
+}
+
+
 #endif                                                          /* OCKAM_VAULT_CFG_RAND                               */
 
 
@@ -128,7 +181,171 @@ OCKAM_ERR ockam_vault_host_init(void *p_arg)
  */
 
 #if(OCKAM_VAULT_CFG_KEY_ECDH == OCKAM_VAULT_HOST_MBEDCRYPTO)
-#error "Error: OCKAM_VAULT_CFG_KEY_ECHD invalid for MBEDCRYPTO"
+
+/*
+ ********************************************************************************************************
+ *                                     ockam_vault_host_key_gen()
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_host_key_gen(OCKAM_VAULT_KEY_e key_type)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    int mbed_ret = 0;
+    mbedtls_ecp_keypair *p_key = 0;
+
+
+    do {
+        if(key_type == OCKAM_VAULT_KEY_STATIC) {                /* Set the keypair data based on the desired key      */
+            p_key = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_STATIC];
+        } else if(key_type == OCKAM_VAULT_KEY_EPHEMERAL) {
+            p_key = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_EPHEMERAL];
+        } else {
+            ret_val = OCKAM_ERR_INVALID_PARAM;
+            break;
+        }
+
+        mbedtls_ecp_keypair_init(p_key);                        /* Always initialize the keypair first                */
+
+                                                                /* Generate the keypair on Curve25519                 */
+        mbed_ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_CURVE25519,
+                                       p_key,
+                                       mbedtls_ctr_drbg_random,
+                                       &g_ctr_drbg);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecp_check_pubkey(&(p_key->grp),      /* Check that generated public key lies on the curve  */
+                                            &(p_key->Q));
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecp_check_privkey(&(p_key->grp),     /* Check that the generated private key is valid      */
+                                             &(p_key->d));
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+    } while(0);
+
+    return ret_val;
+}
+
+
+/*
+ ********************************************************************************************************
+ *                                      ockam_vault_host_key_get_pub()
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_host_key_get_pub(OCKAM_VAULT_KEY_e key_type,
+                                       uint8_t *p_pub_key,
+                                       uint32_t pub_key_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    int mbed_ret = 0;
+    mbedtls_ecp_keypair *p_key = 0;
+    size_t olen = 0;
+
+
+    do {
+        if(key_type == OCKAM_VAULT_KEY_STATIC) {                /* Set the keypair data based on the desired key      */
+            p_key = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_STATIC];
+        } else if(key_type == OCKAM_VAULT_KEY_EPHEMERAL) {
+            p_key = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_EPHEMERAL];
+        } else {
+            ret_val = OCKAM_ERR_INVALID_PARAM;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecp_point_write_binary(&(p_key->grp),
+                                                  &(p_key->Q),
+                                                  MBEDTLS_ECP_PF_UNCOMPRESSED,
+                                                  &olen,
+                                                  p_pub_key,
+                                                  pub_key_size);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+    } while(0);
+
+    return ret_val;
+}
+
+
+/**
+ ********************************************************************************************************
+ *                                      ockam_vault_host_ecdh()
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_host_ecdh(OCKAM_VAULT_KEY_e key_type,
+                                uint8_t *p_pub_key, uint32_t pub_key_size,
+                                uint8_t *p_pms, uint32_t pms_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    int mbed_ret = 0;
+
+    mbedtls_ecp_keypair *p_key = 0;
+    mbedtls_mpi pms;
+    mbedtls_ecp_point pub_key;
+
+
+    do {
+        mbedtls_mpi_init(&pms);
+        mbedtls_ecp_point_init(&pub_key);
+
+
+        if(key_type == OCKAM_VAULT_KEY_STATIC) {                /* Set the keypair data based on the desired key      */
+            p_key = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_STATIC];
+        } else if(key_type == OCKAM_VAULT_KEY_EPHEMERAL) {
+            p_key = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_EPHEMERAL];
+        } else {
+            ret_val = OCKAM_ERR_INVALID_PARAM;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecp_point_read_binary(&(p_key->grp), /* Write the received public key to the ECDH context  */
+                                                 &pub_key,
+                                                 p_pub_key,
+                                                 pub_key_size);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_ECDH_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecdh_compute_shared(&(p_key->grp),   /* Generate the shared secret                         */
+                                               &pms,
+                                               &pub_key,
+                                               &(p_key->d),
+                                               mbedtls_ctr_drbg_random,
+                                               &g_ctr_drbg);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_ECDH_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_mpi_write_binary(&pms,               /* Write the generated PMS to the PMS buffer          */
+                                            p_pms,
+                                            pms_size);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_ECDH_FAIL;
+            break;
+        }
+
+    } while(0);
+
+
+
+    return ret_val;
+}
+
+
 #endif                                                          /* OCKAM_VAULT_CFG_KEY_ECDH                           */
 
 

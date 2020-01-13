@@ -84,7 +84,8 @@ VAULT_MICROCHIP_CFG_s atecc508a_cfg = {
 OCKAM_VAULT_CFG_s vault_cfg =
 {
     .p_tpm                       = &atecc508a_cfg,
-    .p_host                      = 0
+    .p_host                      = 0,
+    OCKAM_VAULT_EC_P256
 };
 
 
@@ -146,7 +147,7 @@ void main (void)
     /* Key Generation & ECDH */
     /* --------------------- */
 
-    test_vault_key_ecdh();
+    test_vault_key_ecdh(vault_cfg.ec);
 
     /* -----*/
     /* HKDF */

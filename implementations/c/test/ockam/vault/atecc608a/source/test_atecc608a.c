@@ -82,7 +82,8 @@ VAULT_MICROCHIP_CFG_s atecc608a_cfg = {
 OCKAM_VAULT_CFG_s vault_cfg =
 {
     .p_tpm                       = &atecc608a_cfg,
-    .p_host                      = 0
+    .p_host                      = 0,
+    OCKAM_VAULT_EC_P256
 };
 
 
@@ -135,12 +136,6 @@ void main (void)
         return;
     }
 
-
-    err = ockam_vault_init((void*) &vault_cfg);                 /* Initialize Vault                                   */
-    if(err != OCKAM_ERR_NONE) {
-        printf("Error: Ockam Vauilt Init failed\r\n");
-    }
-
     /* ------------------------ */
     /* Random Number Generation */
     /* ------------------------ */
@@ -151,7 +146,7 @@ void main (void)
     /* Key Generation & ECDH */
     /* --------------------- */
 
-    test_vault_key_ecdh();
+    test_vault_key_ecdh(vault_cfg.ec);
 
     /* -----*/
     /* HKDF */

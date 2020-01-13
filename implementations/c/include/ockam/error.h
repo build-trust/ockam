@@ -60,10 +60,11 @@ typedef enum {
     OCKAM_ERR_VAULT_TPM_AES_GCM_DECRYPT_INVALID       = 0x020B, /*!< AES GCM tag invalid for decryption               */
 
     OCKAM_ERR_VAULT_HOST_INIT_FAIL                    = 0x0301, /*!< Host software library failed to initialize       */
-    OCKAM_ERR_VAULT_HOST_KEY_FAIL                     = 0x0302, /*!< Key failure in software                          */
-    OCKAM_ERR_VAULT_HOST_ECDH_FAIL                    = 0x0303, /*!< ECDH failed to complete successfully             */
-    OCKAM_ERR_VAULT_HOST_HKDF_FAIL                    = 0x0304, /*!< HKDF failed to complete successfully             */
-    OCKAM_ERR_VAULT_HOST_AES_FAIL                     = 0x0305  /*!< AES failed to complete successfully              */
+    OCKAM_ERR_VAULT_HOST_RAND_FAIL                    = 0x0302, /*!< Random number failed to generate on host         */
+    OCKAM_ERR_VAULT_HOST_KEY_FAIL                     = 0x0303, /*!< Key failure in software                          */
+    OCKAM_ERR_VAULT_HOST_ECDH_FAIL                    = 0x0304, /*!< ECDH failed to complete successfully             */
+    OCKAM_ERR_VAULT_HOST_HKDF_FAIL                    = 0x0305, /*!< HKDF failed to complete successfully             */
+    OCKAM_ERR_VAULT_HOST_AES_FAIL                     = 0x0306  /*!< AES failed to complete successfully              */
 } OCKAM_ERR;
 
 

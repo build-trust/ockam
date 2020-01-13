@@ -25,7 +25,6 @@
  */
 
 #define TEST_VAULT_PMS_SIZE                         32u
-#define TEST_VAULT_PUB_KEY_SIZE                     64u
 
 
 /*
@@ -62,15 +61,11 @@ typedef enum {
 
 void test_vault_key_ecdh_print(OCKAM_LOG_e level, char *p_str);
 
-
 /*
  ********************************************************************************************************
  *                                            GLOBAL VARIABLES                                          *
  ********************************************************************************************************
  */
-
-uint8_t g_pub_key[TEST_VAULT_PUB_KEY_SIZE * TOTAL_TEST_VAULT_PUB_KEY];
-
 
 /*
  ********************************************************************************************************
@@ -84,16 +79,45 @@ uint8_t g_pub_key[TEST_VAULT_PUB_KEY_SIZE * TOTAL_TEST_VAULT_PUB_KEY];
  ********************************************************************************************************
  */
 
-void test_vault_key_ecdh()
+void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec)
 {
     OCKAM_ERR err = OCKAM_ERR_NONE;
     uint8_t i = 0;
+    uint32_t key_size = 0;
+    uint8_t *p_pub_key = 0;
+    uint8_t *p_key_static = 0;
+    uint8_t *p_key_ephemeral = 0;
     uint8_t pms_static[TEST_VAULT_PMS_SIZE];
     uint8_t pms_ephemeral[TEST_VAULT_PMS_SIZE];
 
-    uint8_t *p_key_static = &g_pub_key[TEST_VAULT_PUB_KEY_STATIC * TEST_VAULT_PUB_KEY_SIZE];
-    uint8_t *p_key_ephemeral = &g_pub_key[TEST_VAULT_PUB_KEY_EPHEMERAL * TEST_VAULT_PUB_KEY_SIZE];
 
+    /* ----------- */
+    /* Key Buffers */
+    /* ----------- */
+
+    switch(ec) {
+        case OCKAM_VAULT_EC_P256:
+            key_size = 64;
+            break;
+
+        case OCKAM_VAULT_EC_CURVE25519:
+            key_size = 32;
+            break;
+
+        default:
+            break;
+    }
+
+    err = ockam_mem_alloc(&p_pub_key,
+                          (key_size * TOTAL_TEST_VAULT_PUB_KEY));
+    if(err != OCKAM_ERR_NONE) {
+        test_vault_key_ecdh_print(OCKAM_LOG_ERROR,
+                                  "Unable to allocate key buffers");
+        return;
+    }
+
+    p_key_static = p_pub_key + (key_size * TEST_VAULT_PUB_KEY_STATIC);
+    p_key_ephemeral = p_pub_key + (key_size * TEST_VAULT_PUB_KEY_EPHEMERAL);
 
     /* -------------- */
     /* Key Generation */
@@ -123,7 +147,7 @@ void test_vault_key_ecdh()
 
     err = ockam_vault_key_get_pub(OCKAM_VAULT_KEY_STATIC,       /* Get the static public key                          */
                                   p_key_static,
-                                  TEST_VAULT_PUB_KEY_SIZE);
+                                  key_size);
     if(err != OCKAM_ERR_NONE) {
         test_vault_key_ecdh_print(OCKAM_LOG_ERROR,
                                   "Get Static Public Key Failed");
@@ -134,12 +158,12 @@ void test_vault_key_ecdh()
                                "KEY ECDH",
                                "Public Static Key",
                                p_key_static,
-                               TEST_VAULT_PUB_KEY_SIZE);
+                               key_size);
     }
 
     err = ockam_vault_key_get_pub(OCKAM_VAULT_KEY_EPHEMERAL,    /* Get the ephemrmal public key                       */
                                   p_key_ephemeral,
-                                  TEST_VAULT_PUB_KEY_SIZE);
+                                  key_size);
     if(err != OCKAM_ERR_NONE) {
         test_vault_key_ecdh_print(OCKAM_LOG_ERROR,
                                   "Get Ephemeral Public Key Failed");
@@ -150,7 +174,7 @@ void test_vault_key_ecdh()
                                "KEY ECDH",
                                "Public Ephemeral Key",
                                p_key_ephemeral,
-                               TEST_VAULT_PUB_KEY_SIZE);
+                               key_size);
     }
 
     /* ----------------- */
@@ -159,7 +183,7 @@ void test_vault_key_ecdh()
 
     err = ockam_vault_ecdh(OCKAM_VAULT_KEY_STATIC,              /* Calculate ECDH with static private/ephemeral pub   */
                            p_key_ephemeral,
-                           TEST_VAULT_PUB_KEY_SIZE,
+                           key_size,
                            &pms_static[0],
                            TEST_VAULT_PMS_SIZE);
     if(err != OCKAM_ERR_NONE) {
@@ -172,12 +196,12 @@ void test_vault_key_ecdh()
                                "KEY ECDH",
                                "ECDH: Ephemeral Public/Static Private",
                                p_key_ephemeral,
-                               TEST_VAULT_PUB_KEY_SIZE);
+                               key_size);
     }
 
     err = ockam_vault_ecdh(OCKAM_VAULT_KEY_EPHEMERAL,          /* Calculate ECDH with static private/ephemeral pub    */
                            p_key_static,
-                           TEST_VAULT_PUB_KEY_SIZE,
+                           key_size,
                            &pms_ephemeral[0],
                            TEST_VAULT_PMS_SIZE);
     if(err != OCKAM_ERR_NONE) {

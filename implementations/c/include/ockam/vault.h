@@ -58,6 +58,17 @@ typedef enum {
 } OCKAM_VAULT_AES_GCM_MODE_e;
 
 
+/**
+ *******************************************************************************
+ * @enum    OCKAM_VAULT_EC_e
+ * @brief   The elliptic curve vault will support
+ *******************************************************************************
+ */
+typedef enum {
+    OCKAM_VAULT_EC_P256 = 0,                                   /*!< NIST P-256/SECP256R1                             */
+    OCKAM_VAULT_EC_CURVE25519                                  /*!< Curve 25519                                      */
+} OCKAM_VAULT_EC_e;
+
 
 /*
  ********************************************************************************************************
@@ -74,6 +85,7 @@ typedef enum {
 typedef struct {
     void* p_tpm;                                                /*!<  TPM specific configuration                      */
     void* p_host;                                               /*!<  Host software library specific configuration    */
+    OCKAM_VAULT_EC_e ec;                                        /*!< The type of EC Key supported by vault            */
 } OCKAM_VAULT_CFG_s;
 
 

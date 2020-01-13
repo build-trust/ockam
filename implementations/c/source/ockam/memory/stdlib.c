@@ -209,3 +209,41 @@ OCKAM_ERR ockam_mem_copy(void* p_target,
     return ret_val;
 }
 
+
+/**
+ ********************************************************************************************************
+ *                                          ockam_mem_set()
+ *
+ * @brief   Set the memory buffer to the specified value
+ *
+ * @param   p_target[in]    Buffer address to write data to
+ *
+ * @param   value[in]       Value to set to the memory buffer
+ *
+ * @param   num             The number of bytes to set to the value
+ *
+ * @return  OCKAM_ERR_NONE on success.
+ *
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_mem_set(void* p_target,
+                        uint8_t value,
+                        uint32_t num)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+
+
+    do {
+        if(p_target == 0) {                                     /* Target MUST be a valid buffer                      */
+            ret_val = OCKAM_ERR_INVALID_PARAM;
+            break;
+        }
+
+        memset(p_target, value, num);
+
+    } while(0);
+
+    return ret_val;
+}
+
