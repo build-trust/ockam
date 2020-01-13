@@ -15,16 +15,16 @@ set(OCKAM_INC_DIR ${OCKAM_C_BASE}/include)
 #################
 
 # Mem Build Options
-option(MEM_MALLOC "MEM: Malloc")
+option(MEM_STDLIB "MEM: stdlib")
 
 
 ####################
 # Mem Library Code #
 ####################
 
-if(MEM_MALLOC)
-    add_definitions(-DMEM_MALLOC)
-    set(MEM_SRC ${MEM_SRC_DIR}/malloc.c)
+if(MEM_STDLIB)
+    add_definitions(-DMEM_STDLIB)
+    set(MEM_SRC ${MEM_SRC_DIR}/stdlib.c)
 endif()
 
 

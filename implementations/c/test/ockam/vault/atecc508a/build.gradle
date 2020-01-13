@@ -1,0 +1,36 @@
+
+plugins {
+  id 'network.ockam.gradle.host' version '1.0.0'
+  id 'network.ockam.gradle.builders' version '1.0.0'
+}
+
+task build {
+  onlyIf { host.debianBuilder.enabled }
+  doLast {
+    builderExec 'debian', {
+      script '''
+        mkdir -p _build/
+        cd _build/
+        cmake .. 
+        make
+      '''
+    }
+  }
+}
+
+task test {
+  onlyIf { host.debianBuilder.enabled }
+  //doLast {
+  //  builderExec 'debian', {
+  //    script '''
+  //      ./_build/x86_64-unknown-linux-gnu/_install/bin/test_ockam
+  //    '''
+  //  }
+  //}
+}
+
+task clean {
+  doLast {
+    delete '_build'
+  }
+}

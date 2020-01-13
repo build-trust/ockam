@@ -8,3 +8,6 @@
     path = implementations/c/tools/toolchains/raspberrypi/tools
     url = https://github.com/raspberrypi/tools.git
     ignore = dirty
+[submodule "implementations/c/third-party/arm/mbed-crypto"]
+    path = implementations/c/third-party/arm/mbed-crypto
+    url = https://github.com/ARMmbed/mbed-crypto.git

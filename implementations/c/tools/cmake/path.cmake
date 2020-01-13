@@ -1,3 +1,3 @@
-
 set(OCKAM_C_BASE $ENV{OCKAM_C_BASE})
-set(OCKAM_C_TOOLS_BASE $ENV{OCKAM_C_BASE}/tools)
+set(OCKAM_C_TOOLS_BASE ${OCKAM_C_BASE}/tools)
+set(OCKAM_C_CMAKE_THIRD_PARTY} ${OCKAM_C_BASE}/tools/cmake/third-party)
