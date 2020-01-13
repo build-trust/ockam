@@ -61,6 +61,7 @@ typedef enum {
 
 void test_vault_key_ecdh_print(OCKAM_LOG_e level, char *p_str);
 
+
 /*
  ********************************************************************************************************
  *                                            GLOBAL VARIABLES                                          *

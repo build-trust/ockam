@@ -189,6 +189,31 @@ OCKAM_ERR ockam_vault_tpm_ecdh(OCKAM_VAULT_KEY_e key_type,
 
 /**
  ********************************************************************************************************
+ *                                   ockam_vault_tpm_sha256()
+ *
+ * @brief   Perform a SHA256 operation on the message passed in using the TPM
+ *
+ * @param   p_msg[in]       The message to run through SHA256
+ *
+ * @param   msg_size[in]    The size of the message to be run through SHA256
+ *
+ * @param   p_digest[out]   Buffer to place the resulting SHA256 digest in
+ *
+ * @param   digest_size[in] The size of the digest buffer
+ *
+ * @return  OCKAM_ERR_NONE on success
+ *
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_tpm_sha256(uint8_t *p_msg,
+                                 uint16_t msg_size,
+                                 uint8_t *p_digest,
+                                 uint8_t digest_size);
+
+
+/**
+ ********************************************************************************************************
  *                                       ockam_vault_tpm_hkdf()
  *
  * @brief   Perform HKDF in the TPM

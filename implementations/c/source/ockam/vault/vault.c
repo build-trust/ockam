@@ -32,6 +32,9 @@
  ********************************************************************************************************
  */
 
+#define VAULT_SHA256_DIGEST_SIZE                    32u         /* Size of the resulting SHA256 operation             */
+
+
 /*
  ********************************************************************************************************
  *                                               CONSTANTS                                              *
@@ -360,6 +363,67 @@ OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
                                         pms_size);
 #else
 #error "Ockam Vault: ECDH Function missing"
+#endif
+    } while(0);
+
+    t_ret_val = ockam_kal_mutex_unlock(&g_vault_mutex, 0);      /* Unlock the mutex after all vault operations finish */
+    if(ret_val == OCKAM_ERR_NONE) {                             /* Don't overwrite ret_val if there was an error      */
+        ret_val = t_ret_val;                                    /* before the mutex unlock                            */
+    }
+
+    return ret_val;
+}
+
+
+/**
+ ********************************************************************************************************
+ *                                          ockam_vault_sha256()
+ *
+ * @brief   Perform a SHA256 operation on the message passed in.
+ *
+ * @param   p_msg[in]       The message to run through SHA256
+ *
+ * @param   msg_size[in]    The size of the message to be run through SHA256
+ *
+ * @param   p_digest[out]   Buffer to place the resulting SHA256 digest in
+ *
+ * @param   digest_size[in] The size of the digest buffer
+ *
+ * @return  OCKAM_ERR_NONE on success
+ *
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_sha256(uint8_t *p_msg, uint16_t msg_size,
+                             uint8_t *p_digest, uint8_t digest_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    OCKAM_ERR t_ret_val = OCKAM_ERR_NONE;
+
+    do {
+        ret_val = ockam_kal_mutex_lock(&g_vault_mutex, 0, 0);   /* Lock the mutex before checking the state or        */
+        if(ret_val != OCKAM_ERR_NONE) {                         /* performing the SHA256 operation                    */
+            break;
+        }
+
+        if(g_vault_state != VAULT_STATE_IDLE) {                 /* Ensure vault is in an idle state before continuing */
+            ret_val = OCKAM_ERR_VAULT_UNINITIALIZED;
+            break;
+        }
+
+        if(digest_size != VAULT_SHA256_DIGEST_SIZE) {           /* Digest buffer must always be 32 bytes              */
+            ret_val = OCKAM_ERR_INVALID_SIZE;
+            break;
+        }
+
+#if(OCKAM_VAULT_CFG_SHA256 & OCKAM_VAULT_CFG_TPM)
+        ret_val = ockam_vault_tpm_sha256(p_msg, msg_size,       /* Perform SHA256 operation in the TPM                */
+                                         p_digest, digest_size);
+#elif(OCKAM_VAULT_CFG_SHA256 & OCKAM_VAULT_CFG_HOST)
+        ret_val = ockam_vault_host_sha256(p_msg, msg_size,      /* Perform SHA256 operation in the host library       */
+                                          p_digest, digest_size);
+#else
+#error "Ockam Vault: SHA256 Function missing"
 #endif
     } while(0);
 

@@ -116,29 +116,24 @@ typedef struct {
 
 OCKAM_ERR ockam_vault_init(OCKAM_VAULT_CFG_s *p_cfg);
 
-OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num,
-                             uint32_t rand_num_size);
+OCKAM_ERR ockam_vault_random(uint8_t *p_rand_num, uint32_t rand_num_size);
 
 OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type);
 
 OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type,
-                                  uint8_t *p_pub_key,
-                                  uint32_t pub_key_size);
+                                  uint8_t *p_pub_key, uint32_t pub_key_size);
 
 OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
-                           uint8_t *p_pub_key,
-                           uint32_t pub_key_size,
-                           uint8_t *p_pms,
-                           uint32_t pms_size);
+                           uint8_t *p_pub_key, uint32_t pub_key_size,
+                           uint8_t *p_pms, uint32_t pms_size);
 
-OCKAM_ERR ockam_vault_hkdf(uint8_t *p_salt,
-                           uint32_t salt_size,
-                           uint8_t *p_ikm,
-                           uint32_t ikm_size,
-                           uint8_t *p_info,
-                           uint32_t info_size,
-                           uint8_t *p_out,
-                           uint32_t out_size);
+OCKAM_ERR ockam_vault_sha256(uint8_t *p_msg, uint16_t msg_size,
+                             uint8_t *p_digest, uint8_t digest_size);
+
+OCKAM_ERR ockam_vault_hkdf(uint8_t *p_salt, uint32_t salt_size,
+                           uint8_t *p_ikm, uint32_t ikm_size,
+                           uint8_t *p_info, uint32_t info_size,
+                           uint8_t *p_out, uint32_t out_size);
 
 OCKAM_ERR ockam_vault_aes_gcm(OCKAM_VAULT_AES_GCM_MODE_e mode,
                               uint8_t *p_key, uint32_t key_size,

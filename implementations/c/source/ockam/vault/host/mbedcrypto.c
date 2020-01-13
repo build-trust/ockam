@@ -24,6 +24,7 @@
 #include "mbedtls/md.h"
 #include "mbedtls/hkdf.h"
 #include "mbedtls/gcm.h"
+#include "mbedtls/sha256.h"
 
 #if !defined(OCKAM_VAULT_CONFIG_FILE)
 #error "Error: Ockam Vault Config File Missing"
@@ -41,6 +42,8 @@
 #define MBEDCRYPTO_KEY_CURVE25519_STATIC            0u
 #define MBEDCRYPTO_KEY_CURVE25519_EPHEMERAL         1u
 #define MBEDCRYPTO_KEY_CURVE25519_TOTAL             2u
+
+#define MBEDCRYPTO_SHA256_IS224                     0u          /* Used to specify SHA256 rather than SHA224          */
 
 
 /*
@@ -347,6 +350,67 @@ OCKAM_ERR ockam_vault_host_ecdh(OCKAM_VAULT_KEY_e key_type,
 
 
 #endif                                                          /* OCKAM_VAULT_CFG_KEY_ECDH                           */
+
+
+/*
+ ********************************************************************************************************
+ ********************************************************************************************************
+ *                                        OCKAM_VAULT_CFG_SHA256
+ ********************************************************************************************************
+ ********************************************************************************************************
+ */
+
+#if(OCKAM_VAULT_CFG_SHA256 == OCKAM_VAULT_HOST_MBEDCRYPTO)
+
+
+/**
+ ********************************************************************************************************
+ *                                    ockam_vault_host_sha256()
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_host_sha256(uint8_t *p_msg, uint16_t msg_size,
+                                  uint8_t *p_digest, uint8_t digest_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    int mbed_ret = 0;
+    mbedtls_sha256_context sha256_ctx;
+
+
+    do {
+        mbedtls_sha256_init(&sha256_ctx);                       /* SHA256 context structure must be inited before use */
+
+
+        mbed_ret = mbedtls_sha256_starts_ret(&sha256_ctx,       /* Configure for SHA256 rather than SHA224            */
+                                             MBEDCRYPTO_SHA256_IS224);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_SHA256_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_sha256_update_ret(&sha256_ctx,       /* Add the message to the SHA256 context              */
+                                             p_msg,
+                                             msg_size);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_SHA256_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_sha256_finish_ret(&sha256_ctx,       /* Complete SHA256 hash and output to digest buffer   */
+                                             p_digest);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_SHA256_FAIL;
+            break;
+        }
+    } while(0);
+
+    mbedtls_sha256_free(&sha256_ctx);                           /* Always clear the SHA256 context when finished      */
+
+    return ret_val;
+}
+
+
+#endif                                                          /* OCKAM_VAULT_CFG_SHA256                             */
 
 
 /**

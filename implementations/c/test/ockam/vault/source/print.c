@@ -56,7 +56,7 @@ char *g_log_level_str[MAX_OCKAM_LOG] =
     "FATAL",
 };
 
-OCKAM_LOG_e g_log_level = OCKAM_LOG_INFO;                       /* Only print log statements at info or higher            */
+OCKAM_LOG_e g_log_level = OCKAM_LOG_INFO;                       /* Only print log statements at info or higher        */
 
 
 /*

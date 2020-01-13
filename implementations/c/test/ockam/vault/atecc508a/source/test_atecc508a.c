@@ -149,6 +149,12 @@ void main (void)
 
     test_vault_key_ecdh(vault_cfg.ec);
 
+    /* ------ */
+    /* SHA256 */
+    /* ------ */
+
+    test_vault_sha256();
+
     /* -----*/
     /* HKDF */
     /* -----*/

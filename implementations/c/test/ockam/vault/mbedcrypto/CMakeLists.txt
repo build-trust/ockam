@@ -84,6 +84,7 @@ set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/hkdf.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/key_ecdh.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/print.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/random.c)
+set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/sha256.c)
 
 ###########################
 # Set the desired modules #

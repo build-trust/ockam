@@ -31,6 +31,8 @@
 
 #define OCKAM_VAULT_CFG_KEY_ECDH           
 
+#define OCKAM_VAULT_CFG_SHA256             
+
 #define OCKAM_VAULT_CFG_HKDF               
 
 #define OCKAM_VAULT_CFG_AES_GCM            
