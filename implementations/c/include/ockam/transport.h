@@ -135,7 +135,6 @@ OCKAM_ERR ockam_send_blocking( OCKAM_TRANSPORT_CONNECTION connection, void* p_bu
  * @param connection (in) - initialized and connected OCKAM_TRANSPORT_CONNECTION instance
  * @param p_buffer (in) - receive buffer, must be large enough for sender's data
  * @param size (in) - size of buffer
- * @param p_bytes_received (out) number of bytes received
  * @return OCKAM_ERR_NONE if successful
  */
 OCKAM_ERR ockam_receive_blocking( OCKAM_TRANSPORT_CONNECTION connection,

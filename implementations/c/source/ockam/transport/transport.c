@@ -17,7 +17,7 @@
 
 #include <stdio.h>
 #include "ockam/transport.h"
-#include "connection.h"
+#include "./include/connection.h"
 #include "ockam/error.h"
 #include "ockam/syslog.h"
 

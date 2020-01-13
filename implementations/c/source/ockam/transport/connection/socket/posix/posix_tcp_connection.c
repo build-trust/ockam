@@ -14,8 +14,8 @@
 #include "ockam/syslog.h"
 #include "ockam/error.h"
 #include "ockam/transport.h"
-#include "connection.h"
-#include "posix_socket.h"
+#include "../../../include/connection.h"
+#include "../../../include/posix_socket.h"
 
 /*
  ********************************************************************************************************
@@ -42,7 +42,7 @@ OCKAM_ERR posix_tcp_listen_non_blocking( void* address, uint16_t max_connections
 OCKAM_ERR posix_tcp_connect_blocking( void* address, OCKAM_TRANSPORT_CONNECTION* connection );
 OCKAM_ERR posix_tcp_connect_non_blocking( void* address, OCKAM_TRANSPORT_CONNECTION* connection );
 OCKAM_ERR posix_tcp_receive_blocking( OCKAM_TRANSPORT_CONNECTION connection,
-		void* buffer, uint16_t length, uint16_t* bytes_received);
+		void* buffer, uint16_t length, uint16_t* p_bytes_received);
 OCKAM_ERR posix_tcp_receive_non_blocking();
 OCKAM_ERR posix_tcp_send_blocking( OCKAM_TRANSPORT_CONNECTION connection, void* buffer, uint16_t length );
 OCKAM_ERR posix_tcp_send_non_blocking();
@@ -137,6 +137,7 @@ OCKAM_ERR posix_tcp_listen_blocking( OCKAM_TRANSPORT_CONNECTION listener,
 	              sizeof(p_socket->socket_address))
 			) {
 		status = OCKAM_ERR_TRANSPORT_RECEIVE;
+		printf("errno: %d\n", errno);
 		log_error( status, "bind failed in ockam_xp_receive");
 		goto exit_block;
 	}

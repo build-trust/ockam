@@ -1,4 +1,4 @@
-#include "server.h"
+#include "../include/server.h"
 
 /*
  * 1. Initialization. Allocate the structs. X
