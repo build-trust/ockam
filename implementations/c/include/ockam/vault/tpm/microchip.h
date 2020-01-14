@@ -1,24 +1,12 @@
 /**
  ********************************************************************************************************
- * @file    memory.h
- * @brief   Generic memory functions for the Ockam Library
+ * @file        microchip.h
+ * @brief
  ********************************************************************************************************
  */
 
-#ifndef OCKAM_MEMORY_H_
-#define OCKAM_MEMORY_H_
-
-
-/*
- ********************************************************************************************************
- * @defgroup    OCKAM_MEMORY OCKAM_MEMORY_API
- * @ingroup     OCKAM
- * @brief       OCKAM_MEMORY_API
- *
- * @addtogroup  OCKAM_MEMORY
- * @{
- ********************************************************************************************************
- */
+#ifndef OCKAM_VAULT_MICROCHIP_H_
+#define OCKAM_VAULT_MICROCHIP_H_
 
 
 /*
@@ -27,7 +15,10 @@
  ********************************************************************************************************
  */
 
-#include <ockam/define.h>
+#include <cryptoauthlib/lib/cryptoauthlib.h>
+#include <cryptoauthlib/lib/atca_cfgs.h>
+#include <cryptoauthlib/lib/atca_iface.h>
+#include <cryptoauthlib/lib/atca_device.h>
 
 
 /*
@@ -42,11 +33,41 @@
  ********************************************************************************************************
  */
 
+
+/**
+ *******************************************************************************
+ * @enum    VAULT_MICROCHIP_IFACE_e
+ * @brief
+ *******************************************************************************
+ */
+typedef enum {
+    VAULT_MICROCHIP_IFACE_I2C           = 0x00,                 /*!< I2C Interface                                      */
+    VAULT_MICROCHIP_IFACE_SW,                                   /*!< Single Wire Interface                              */
+    VAULT_MICROCHIP_IFACE_HID,                                  /*!< USB Interface                                      */
+} VAULT_MICROCHIP_IFACE_e;
+
+
 /*
  ********************************************************************************************************
  *                                               DATA TYPES                                             *
  ********************************************************************************************************
  */
+
+/**
+ *******************************************************************************
+ * @struct  VAULT_MICROCHIP_CFG_s
+ * @brief
+ *******************************************************************************
+ */
+typedef struct {
+    VAULT_MICROCHIP_IFACE_e iface;                              /*!<  */
+    ATCAIfaceCfg *iface_cfg;                                    /*!<  */
+    uint8_t static_key_slot;                                    /*!<  */
+#if(VAULT_MICROCHIP_IO_KEY_EN == DEF_TRUE)
+    uint8_t io_key[32];
+#endif
+} VAULT_MICROCHIP_CFG_s;
+
 
 /*
  ********************************************************************************************************
@@ -72,28 +93,6 @@
  ********************************************************************************************************
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-OCKAM_ERR ockam_mem_init(void* p_buf);
-
-OCKAM_ERR ockam_mem_alloc(void** p_buf, uint32_t size);
-
-OCKAM_ERR ockam_mem_free(void* p_buf);
-
-OCKAM_ERR ockam_mem_copy(void* p_target, void* p_source, uint32_t length);
-
-OCKAM_ERR ockam_mem_set(void* p_target, uint8_t value, uint32_t num);
-
-#ifdef __cplusplus
-}
-#endif
-
-/*
- ********************************************************************************************************
- * @}
- ********************************************************************************************************
- */
 
 #endif
+

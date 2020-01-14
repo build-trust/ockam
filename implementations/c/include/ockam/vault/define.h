@@ -1,55 +1,50 @@
 /**
  ********************************************************************************************************
  * @file    define.h
- * @brief   Ockam defines
+ * @brief   Vault configuration define values
  ********************************************************************************************************
  */
 
-#ifndef OCKAM_DEFINE_H_
-#define OCKAM_DEFINE_H_
+#ifndef OCKAM_VAULT_DEFINE_H_
+#define OCKAM_VAULT_DEFINE_H_
 
 
 /*
  ********************************************************************************************************
- * @defgroup    OCKAM_DEFINE OCKAM_DEFINE_API
- * @ingroup     OCKAM
- * @brief       OCKAM Defines
- *
- * @addtogroup  OCKAM_DEFINE
- * @{
+ *                                             Vault Defines                                            *
  ********************************************************************************************************
  */
 
-/*
- ********************************************************************************************************
- *                                                INCLUDES                                              *
- ********************************************************************************************************
- */
-
-//TODO make this configurable?
-#include <stdio.h>
-#include <stdint.h>
+#define OCKAM_VAULT_CFG_TPM                     0x0001000
+#define OCKAM_VAULT_CFG_HOST                    0x0002000
 
 
 /*
  ********************************************************************************************************
- *                                                DEFINES                                               *
+ *                                            Hardware Mfgs                                             *
  ********************************************************************************************************
  */
 
-#define OCKAM_NULL                                  0u
-
-#define OCKAM_FALSE                                 0u
-#define OCKAM_TRUE                                  1u
-
-#define OCKAM_FAIL                                  0u
-#define OCKAM_OK                                    1u
+#define OCKAM_VAULT_CFG_TPM_MICROCHIP           0x00000100
 
 
 /*
  ********************************************************************************************************
- * @}
+ *                                            Hardware Parts                                            *
  ********************************************************************************************************
  */
+
+#define OCKAM_VAULT_TPM_MICROCHIP_ATECC508A      (OCKAM_VAULT_CFG_TPM | OCKAM_VAULT_CFG_TPM_MICROCHIP | 0x00000001)
+#define OCKAM_VAULT_TPM_MICROCHIP_ATECC608A      (OCKAM_VAULT_CFG_TPM | OCKAM_VAULT_CFG_TPM_MICROCHIP | 0x00000002)
+
+
+/*
+ ********************************************************************************************************
+ *                                            Crypto Libraries                                          *
+ ********************************************************************************************************
+ */
+
+#define OCKAM_VAULT_HOST_MBEDCRYPTO               (OCKAM_VAULT_CFG_HOST | 0x00000001)
+
 
 #endif

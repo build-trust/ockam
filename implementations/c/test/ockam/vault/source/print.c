@@ -1,7 +1,7 @@
 /**
  ********************************************************************************************************
- * @file        malloc.c
- * @brief   
+ * @file    print.c
+ * @brief   Print functions for Ockam Vault tests
  ********************************************************************************************************
  */
 
@@ -11,12 +11,10 @@
  ********************************************************************************************************
  */
 
-#include <stdlib.h>
+#include <stdio.h>
 
-#include <ockam/define.h>
-#include <ockam/error.h>
-#include <ockam/kal.h>
-#include <ockam/memory.h>
+#include <ockam/log.h>
+#include <test_vault.h>
 
 
 /*
@@ -49,14 +47,23 @@
  ********************************************************************************************************
  */
 
+char *g_log_level_str[MAX_OCKAM_LOG] =
+{
+    "DEBUG",
+    "INFO",
+    "WARN",
+    "ERROR",
+    "FATAL",
+};
+
+OCKAM_LOG_e g_log_level = OCKAM_LOG_INFO;                       /* Only print log statements at info or higher        */
+
+
 /*
  ********************************************************************************************************
  *                                           GLOBAL FUNCTIONS                                           *
  ********************************************************************************************************
  */
-
-OCKAM_KAL_MUTEX g_ockam_mem_mutex;
-
 
 /*
  ********************************************************************************************************
@@ -68,106 +75,78 @@ OCKAM_KAL_MUTEX g_ockam_mem_mutex;
 
 /**
  ********************************************************************************************************
- *                                          ockam_mem_init()
+ *                                          test_vault_print()
  *
- * @brief   Initialize the Ockam Memory functions
+ * @brief   Print a formated test message
  *
- * @param   p_buf[in]   The buffer to use as a chunk of memory to allocate from
- * 
- * @return  OCKAM_ERR_NONE on success.
- * 
+ * @param   level       The level at which the associated message is tied to
+ *
+ * @param   p_module    The vault module that the message came from
+ *
+ * @param   test_case   The test case number associated with the message
+ *
+ * @param   p_msg       The message to be printed
+ *
  ********************************************************************************************************
  */
 
-OCKAM_ERR ockam_mem_init(void* p_buf)
+void test_vault_print(OCKAM_LOG_e level, char* p_module, uint32_t test_case, char* p_msg)
 {
-    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
 
-
-    do {
-        if(p_buf == OCKAM_NULL) {                               /* Ensure the buffer pointer is not null              */
-            ret_val = OCKAM_ERR_INVALID_PARAM;
-            break;
+    if(level >= g_log_level) {
+        if(test_case == TEST_VAULT_NO_TEST_CASE) {
+            printf("%-10s : %5s : %s\n",
+                   p_module,
+                   g_log_level_str[level],
+                   p_msg);
+        } else {
+            printf("%-10s : %5s : Test Case %02d : %s\n",
+                    p_module,
+                    g_log_level_str[level],
+                    test_case,
+                    p_msg);
         }
-
-        ret_val = ockam_kal_mutex_init(&g_ockam_mem_mutex);     /* Create a memory mutex                              */
-        if(ret_val != OCKAM_ERR_NONE) {
-            break;
-        }
-
-
-    } while(0);
-
-    return ret_val;
+    }
 }
 
 
 /**
  ********************************************************************************************************
- *                                          ockam_mem_alloc()
+ *                                        test_vault_print_array()
  *
- * @brief   Allocate the specified amount of memory
+ * @brief   Handy function to print out array values in hex
  *
- * @param   p_buf[out]  The pointer to place the address of the allocated memory in. 
+ * @param   level       The level at which to log to
  *
- * @param   size[in]    The number of bytes to allocate
- * 
- * @return  OCKAM_ERR_NONE on success. OCKAM_ERR_MEM_INSUFFICIENT when not enough space.
- * 
+ * @param   p_module    The module printing the array
+ *
+ * @param   p_label     Label to print before printing the array
+ *
+ * @param   p_array     Array pointer to print
+ *
+ * @param   size        Size of the array to print
+ *
  ********************************************************************************************************
  */
 
-OCKAM_ERR ockam_mem_alloc(void* p_buf, uint32_t size)
+void test_vault_print_array(OCKAM_LOG_e level, char* p_module, char* p_label, uint8_t* p_array, uint32_t size)
 {
-    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+	uint32_t i;
 
+    if(level >= g_log_level) {
+        printf("%s : %5s : %s\n",
+                p_module,
+                g_log_level_str[level],
+                p_label);
 
-    do {
-        if(size == 0) {                                         /* Ensure the requested size is >0                    */
-            ret_val = OCKAM_ERR_INVALID_SIZE;
-            break;
+	    for(i = 1; i <= size; i++) {
+            printf("%02X ", *p_array);
+            p_array++;
+            if(i % 8 == 0) {
+                printf("\n");
+            }
         }
-
-        p_buf = malloc(size);                                   /* Attempt to malloc                                  */
-
-        if(p_buf == OCKAM_NULL) {                               /* Check if we got a buffer                           */
-            ret_val = OCKAM_ERR_MEM_UNAVAIL;
-            break;
-        }
-    } while(0);
-
-    return ret_val;
-}
-
-
-/**
- ********************************************************************************************************
- *                                          ockam_mem_free()
- *
- * @brief   Free the specified memory buffer
- *
- * @param   p_buf[in]   Buffer address to free
- *
- * @return  OCKAM_ERR_NONE on success. OCKAM_ERR_MEM_INVALID_PTR if not a managed buffer.
- * 
- ********************************************************************************************************
- */
-
-OCKAM_ERR ockam_mem_free(void* p_buf)
-{
-    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
-
-
-    do {
-        if(p_buf == OCKAM_NULL) {                               /* Ensure the buffer point is not null                */
-            ret_val = OCKAM_ERR_INVALID_PARAM;
-            break;
-        }
-
-        free(p_buf);                                            /* Free the buffer                                    */
-
-    } while(0);
-
-    return ret_val;
+	    printf("\n");
+    }
 }
 

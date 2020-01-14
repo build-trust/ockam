@@ -1,25 +1,9 @@
 /**
- ********************************************************************************************************
- * @file    memory.h
- * @brief   Generic memory functions for the Ockam Library
- ********************************************************************************************************
- */
-
-#ifndef OCKAM_MEMORY_H_
-#define OCKAM_MEMORY_H_
-
-
-/*
- ********************************************************************************************************
- * @defgroup    OCKAM_MEMORY OCKAM_MEMORY_API
- * @ingroup     OCKAM
- * @brief       OCKAM_MEMORY_API
- *
- * @addtogroup  OCKAM_MEMORY
- * @{
+********************************************************************************************************
+ * @file        test_atecc508a.c
+ * @brief
  ********************************************************************************************************
  */
-
 
 /*
  ********************************************************************************************************
@@ -27,7 +11,15 @@
  ********************************************************************************************************
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
 #include <ockam/define.h>
+#include <ockam/error.h>
+#include <ockam/vault.h>
+
+#include <test_vault.h>
 
 
 /*
@@ -60,6 +52,14 @@
  ********************************************************************************************************
  */
 
+OCKAM_VAULT_CFG_s vault_cfg =
+{
+    .p_tpm                       = 0,
+    .p_host                      = 0,
+    OCKAM_VAULT_EC_CURVE25519
+};
+
+
 /*
  ********************************************************************************************************
  *                                           GLOBAL FUNCTIONS                                           *
@@ -72,28 +72,66 @@
  ********************************************************************************************************
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-OCKAM_ERR ockam_mem_init(void* p_buf);
-
-OCKAM_ERR ockam_mem_alloc(void** p_buf, uint32_t size);
-
-OCKAM_ERR ockam_mem_free(void* p_buf);
-
-OCKAM_ERR ockam_mem_copy(void* p_target, void* p_source, uint32_t length);
-
-OCKAM_ERR ockam_mem_set(void* p_target, uint8_t value, uint32_t num);
-
-#ifdef __cplusplus
-}
-#endif
-
-/*
+/**
  ********************************************************************************************************
- * @}
+ *                                             main()
+ *
+ * @brief   Main point of entry for mbedcrypto test
+ *
  ********************************************************************************************************
  */
 
-#endif
+void main (void)
+{
+    OCKAM_ERR err;
+    uint8_t i;
+
+
+    /* ---------- */
+    /* Vault Init */
+    /* ---------- */
+
+    err = ockam_vault_init((void*) &vault_cfg);                 /* Initialize vault                                   */
+
+    if(err != OCKAM_ERR_NONE) {                                 /* Ensure it initialized before proceeding, otherwise */
+        test_vault_print(OCKAM_LOG_ERROR,                       /* don't bother trying to run any other tests         */
+                         "MBEDCRYPTO",
+                          0,
+                         "Error: Ockam Vault Init failed");
+        return;
+    }
+
+    /* ------------------------ */
+    /* Random Number Generation */
+    /* ------------------------ */
+
+    test_vault_random();
+
+    /* --------------------- */
+    /* Key Generation & ECDH */
+    /* --------------------- */
+
+    test_vault_key_ecdh(vault_cfg.ec);
+
+    /* ------ */
+    /* SHA256 */
+    /* ------ */
+
+    test_vault_sha256();
+
+    /* -----*/
+    /* HKDF */
+    /* -----*/
+
+    test_vault_hkdf();
+
+    /* -------------------- */
+    /* AES GCM Calculations */
+    /* -------------------- */
+
+    test_vault_aes_gcm();
+
+    return;
+}
+

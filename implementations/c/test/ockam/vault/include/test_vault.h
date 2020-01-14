@@ -1,25 +1,9 @@
 /**
  ********************************************************************************************************
- * @file    memory.h
- * @brief   Generic memory functions for the Ockam Library
+ * @file    test_vault.h
+ * @brief   Common test functions for vault
  ********************************************************************************************************
  */
-
-#ifndef OCKAM_MEMORY_H_
-#define OCKAM_MEMORY_H_
-
-
-/*
- ********************************************************************************************************
- * @defgroup    OCKAM_MEMORY OCKAM_MEMORY_API
- * @ingroup     OCKAM
- * @brief       OCKAM_MEMORY_API
- *
- * @addtogroup  OCKAM_MEMORY
- * @{
- ********************************************************************************************************
- */
-
 
 /*
  ********************************************************************************************************
@@ -27,7 +11,10 @@
  ********************************************************************************************************
  */
 
-#include <ockam/define.h>
+#include <stdint.h>
+
+#include <ockam/log.h>
+#include <ockam/vault.h>
 
 
 /*
@@ -35,6 +22,9 @@
  *                                                DEFINES                                               *
  ********************************************************************************************************
  */
+
+#define TEST_VAULT_NO_TEST_CASE                     0xFF
+
 
 /*
  ********************************************************************************************************
@@ -72,28 +62,12 @@
  ********************************************************************************************************
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+void test_vault_random(void);
+void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec);
+void test_vault_sha256(void);
+void test_vault_hkdf(void);
+void test_vault_aes_gcm(void);
 
-OCKAM_ERR ockam_mem_init(void* p_buf);
+void test_vault_print(OCKAM_LOG_e level, char* p_module, uint32_t test_case, char* p_msg);
+void test_vault_print_array(OCKAM_LOG_e level, char* p_module, char* p_label, uint8_t* p_array, uint32_t size);
 
-OCKAM_ERR ockam_mem_alloc(void** p_buf, uint32_t size);
-
-OCKAM_ERR ockam_mem_free(void* p_buf);
-
-OCKAM_ERR ockam_mem_copy(void* p_target, void* p_source, uint32_t length);
-
-OCKAM_ERR ockam_mem_set(void* p_target, uint8_t value, uint32_t num);
-
-#ifdef __cplusplus
-}
-#endif
-
-/*
- ********************************************************************************************************
- * @}
- ********************************************************************************************************
- */
-
-#endif

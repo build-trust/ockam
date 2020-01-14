@@ -1,25 +1,9 @@
 /**
  ********************************************************************************************************
- * @file    memory.h
- * @brief   Generic memory functions for the Ockam Library
+ * @file    random.c
+ * @brief   Ockam Vault common tests for random
  ********************************************************************************************************
  */
-
-#ifndef OCKAM_MEMORY_H_
-#define OCKAM_MEMORY_H_
-
-
-/*
- ********************************************************************************************************
- * @defgroup    OCKAM_MEMORY OCKAM_MEMORY_API
- * @ingroup     OCKAM
- * @brief       OCKAM_MEMORY_API
- *
- * @addtogroup  OCKAM_MEMORY
- * @{
- ********************************************************************************************************
- */
-
 
 /*
  ********************************************************************************************************
@@ -27,14 +11,19 @@
  ********************************************************************************************************
  */
 
-#include <ockam/define.h>
+#include <ockam/error.h>
+#include <ockam/log.h>
+#include <ockam/vault.h>
 
+#include <test_vault.h>
 
 /*
  ********************************************************************************************************
  *                                                DEFINES                                               *
  ********************************************************************************************************
  */
+
+#define TEST_VAULT_RAND_NUM_SIZE                    32u
 
 /*
  ********************************************************************************************************
@@ -60,6 +49,9 @@
  ********************************************************************************************************
  */
 
+uint8_t g_rand_num[TEST_VAULT_RAND_NUM_SIZE] = {0};
+
+
 /*
  ********************************************************************************************************
  *                                           GLOBAL FUNCTIONS                                           *
@@ -72,28 +64,38 @@
  ********************************************************************************************************
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-OCKAM_ERR ockam_mem_init(void* p_buf);
-
-OCKAM_ERR ockam_mem_alloc(void** p_buf, uint32_t size);
-
-OCKAM_ERR ockam_mem_free(void* p_buf);
-
-OCKAM_ERR ockam_mem_copy(void* p_target, void* p_source, uint32_t length);
-
-OCKAM_ERR ockam_mem_set(void* p_target, uint8_t value, uint32_t num);
-
-#ifdef __cplusplus
-}
-#endif
-
-/*
+/**
  ********************************************************************************************************
- * @}
+ *                                          test_vault_random()
+ *
+ * @brief   Ensure the specified ockam vault random function can generate a number
+ *
  ********************************************************************************************************
  */
 
-#endif
+void test_vault_random()
+{
+    OCKAM_ERR err = OCKAM_ERR_NONE;
+
+
+    err = ockam_vault_random((uint8_t*) &g_rand_num,            /* Generate a random number                           */
+                             TEST_VAULT_RAND_NUM_SIZE);
+    if(err != OCKAM_ERR_NONE) {
+        test_vault_print(OCKAM_LOG_ERROR,
+                         "RANDOM",
+                         TEST_VAULT_NO_TEST_CASE,
+                         "Random number generation failed");
+    }
+
+    test_vault_print(OCKAM_LOG_INFO,
+                     "RANDOM",
+                     TEST_VAULT_NO_TEST_CASE,
+                     "Random Number Generation Success");
+    test_vault_print_array(OCKAM_LOG_DEBUG,
+                           "RANDOM",
+                           "Random Number Generation",
+                            &g_rand_num[0],
+                            TEST_VAULT_RAND_NUM_SIZE);
+}
+
