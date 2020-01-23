@@ -63,7 +63,7 @@
  */
 
 void test_vault_random(void);
-void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec);
+void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys);
 void test_vault_sha256(void);
 void test_vault_hkdf(void);
 void test_vault_aes_gcm(void);

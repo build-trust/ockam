@@ -309,6 +309,62 @@ OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type, uint8_t *p_key_pub
 
 /**
  ********************************************************************************************************
+ *                                          ockam_vault_key_write()
+ *
+ * @brief   Write a private key to the Ockam Vault. Should typically be used for testing only.
+ *
+ * @param   key_type[in]        OCKAM_VAULT_KEY_STATIC if requesting static public key
+ *                              OCKAM_VAULT_KEY_EPHEMERAL if requesting the ephemeral public key
+ *
+ * @param   p_key_priv[out]     Buffer containing the uncompressed, big endian private key
+ *
+ * @param   key_priv_size[in]   Size of the private key to write
+ *
+ * @return  OCKAM_ERR_NONE if successful.
+ *
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_key_write(OCKAM_VAULT_KEY_e key_type,
+                                uint8_t *p_key_priv, uint32_t key_priv_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    OCKAM_ERR t_ret_val = OCKAM_ERR_NONE;
+
+
+    do {
+        ret_val = ockam_kal_mutex_lock(&g_vault_mutex, 0, 0);   /* Lock the mutex before checking the state or        */
+        if(ret_val != OCKAM_ERR_NONE) {                         /* performing the key write operation                 */
+            break;
+        }
+
+        if(g_vault_state != VAULT_STATE_IDLE) {                 /* Ensure vault is in an idle state before continuing */
+            ret_val = OCKAM_ERR_VAULT_UNINITIALIZED;
+            break;
+        }
+
+#if(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_TPM)
+        ret_val = OCKAM_ERR_UNIMPLEMENTED;
+#elif(OCKAM_VAULT_CFG_KEY_ECDH & OCKAM_VAULT_CFG_HOST)
+        ret_val = ockam_vault_host_key_write(key_type,          /* Perform the key write operation in the host library*/
+                                             p_key_priv,
+                                             key_priv_size);
+#else
+#error "Ockam Vault: Key Write Function missing"
+#endif
+    } while(0);
+
+    t_ret_val = ockam_kal_mutex_unlock(&g_vault_mutex, 0);      /* Unlock the mutex after all vault operations finish */
+    if(ret_val == OCKAM_ERR_NONE) {                             /* Don't overwrite ret_val if there was an error      */
+        ret_val = t_ret_val;                                    /* before the mutex unlock                            */
+    }
+
+    return ret_val;
+}
+
+
+/**
+ ********************************************************************************************************
  *                                          ockam_vault_ecdh()
  *
  * @brief   Perform ECDH using the specified key

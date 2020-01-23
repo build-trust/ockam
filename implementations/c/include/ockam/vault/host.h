@@ -158,6 +158,28 @@ OCKAM_ERR ockam_vault_host_key_get_pub(OCKAM_VAULT_KEY_e key_type,
 
 /**
  ********************************************************************************************************
+ *                                    ockam_vault_host_key_write()
+ *
+ * @brief   Write a private key to the Ockam Vault. Should typically be used for testing only.
+ *
+ * @param   key_type[in]        OCKAM_VAULT_KEY_STATIC if requesting static public key
+ *                              OCKAM_VAULT_KEY_EPHEMERAL if requesting the ephemeral public key
+ *
+ * @param   p_priv_key[in]      Buffer containing the uncompressed private key
+ *
+ * @param   priv_key_size[in]   Size of the private key to write
+ *
+ * @return  OCKAM_ERR_NONE if successful.
+ *
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_host_key_write(OCKAM_VAULT_KEY_e key_type,
+                                     uint8_t *p_priv_key, uint32_t priv_key_size);
+
+
+/**
+ ********************************************************************************************************
  *                                       ockam_vault_host_ecdh()
  *
  * @brief   Perform ECDH using the specified key
