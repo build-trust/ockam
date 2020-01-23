@@ -592,12 +592,25 @@ OCKAM_ERR ockam_vault_host_aes_gcm(OCKAM_VAULT_AES_GCM_MODE_e mode,
 
 
     do {
-        if((p_key == 0) || (key_size == 0) ||                   /* Ensure there are no null buffers or sizes set to   */
-           (p_iv == 0) || (iv_size == 0) ||                     /* 0, every pointer needs to be valid and sizes must  */
-           (p_tag == 0) || (tag_size == 0) ||                   /* always be greater than 0.                          */
-           (p_input == 0) || (input_size == 0) ||
-           (p_output == 0) || (output_size == 0)) {
-            ret_val = OCKAM_ERR_INVALID_PARAM;
+        if((p_key == 0) || (key_size == 0) ||                   /* Key and IV are required for AES GCM. There must be */
+           (p_iv == 0) || (iv_size == 0) ||                     /* valid buffers and sizes greater than zero. Tag is  */
+           (p_tag == 0) || (tag_size == 0)) {                   /* also always required to be present for encrypt and */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* decrypt.                                           */
+            break;
+        }
+
+        if((p_aad == 0) != (aad_size == 0)) {                   /* Valid for both the AAD buffer and size to be zero  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* or non-zero. Can't have a mismatch.                */
+            break;
+        }
+
+        if((p_input == 0) != (input_size == 0)) {               /* Input buffer and size must both either be zero or  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* non-zero. Can't have a mismatch.                   */
+            break;
+        }
+
+        if((p_output == 0) != (output_size == 0)) {             /* Output buffer and size must both either be zero o  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* non-zero. Can't have a mismatch.                   */
             break;
         }
 
@@ -609,8 +622,8 @@ OCKAM_ERR ockam_vault_host_aes_gcm(OCKAM_VAULT_AES_GCM_MODE_e mode,
             break;
         }
 
-        if(p_input == p_output) {
-            ret_val = OCKAM_ERR_VAULT_INVALID_BUFFER;           /* The input buffer can not be used for the result    */
+        if((p_input == p_output) && (p_input != 0)) {           /* The input buffer can not be used for the result    */
+            ret_val = OCKAM_ERR_VAULT_INVALID_BUFFER;
             break;
         }
 

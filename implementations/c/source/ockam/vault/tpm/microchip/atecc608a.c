@@ -86,6 +86,7 @@
 #define ATECC608A_HMAC_HASH_SIZE                32u             /* HMAC hash output size                              */
 
 #define ATECC608A_AES_GCM_KEY                   15u             /* Use slot 15 for the AES Key location               */
+#define ATECC608A_AES_GCM_KEY_SIZE             128u             /* ATECC608A only supports AES GCM 128                */
 #define ATECC608A_AES_GCM_KEY_BLOCK              0u             /* AES Key starts at block 0 in slot 15               */
 #define ATECC608A_AES_GCM_KEY_SLOT_SIZE         72u             /* Size of slot 15 for AES key                        */
 
@@ -666,7 +667,7 @@ OCKAM_ERR ockam_vault_tpm_sha256(uint8_t *p_msg, uint16_t msg_size,
  ********************************************************************************************************
  */
 
-#if(OCKAM_VAULT_CFG_AES_GCM == OCKAM_VAULT_TPM_MICROCHIP_ATECC608A)
+#if(OCKAM_VAULT_CFG_HKDF == OCKAM_VAULT_TPM_MICROCHIP_ATECC608A)
 
 /**
  ********************************************************************************************************
@@ -918,25 +919,36 @@ OCKAM_ERR ockam_vault_tpm_aes_gcm(OCKAM_VAULT_AES_GCM_MODE_e mode,
 
 
     do {
-        if((p_key == 0) || (key_size == 0) ||                   /* Ensure there are no null buffers or sizes set to  */
-           (p_iv == 0) || (iv_size == 0) ||                     /* 0, every pointer needs to be valid and sizes must */
-           (p_tag == 0) || (tag_size == 0) ||                   /* always be greater than 0.                         */
-           (p_input == 0) || (input_size == 0) ||
-           (p_output == 0) || (output_size == 0)) {
-            ret_val = OCKAM_ERR_INVALID_PARAM;
+        if((p_key == 0) || (key_size == 0) ||                   /* Key and IV are required for AES GCM. There must be */
+           (p_iv == 0) || (iv_size == 0) ||                     /* valid buffers and sizes greater than zero. Tag is  */
+           (p_tag == 0) || (tag_size == 0)) {                   /* also always required to be present for encrypt and */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* decrypt.                                           */
+            break;
+        }
+
+        if((p_aad == 0) != (aad_size == 0)) {                   /* Valid for both the AAD buffer and size to be zero  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* or non-zero. Can't have a mismatch.                */
+            break;
+        }
+
+        if((p_input == 0) != (input_size == 0)) {               /* Input buffer and size must both either be zero or  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* non-zero. Can't have a mismatch.                   */
+            break;
+        }
+
+        if((p_output == 0) != (output_size == 0)) {             /* Output buffer and size must both either be zero o  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* non-zero. Can't have a mismatch.                   */
             break;
         }
 
         key_bit_size = key_size * 8;                            /* Key size is specified in bits. Ensure the key      */
-        if((key_bit_size != 128) &&                             /* size is either 128, 192 or 256 bytes.              */
-           (key_bit_size != 192) &&
-           (key_bit_size != 256)) {
+        if(key_bit_size != ATECC608A_AES_GCM_KEY_SIZE) {        /* size is set to 128 for the ATECC608A.              */
             ret_val = OCKAM_ERR_VAULT_INVALID_KEY_SIZE;
             break;
         }
 
-        if(p_input == p_output) {
-            ret_val = OCKAM_ERR_VAULT_INVALID_BUFFER;           /* The input buffer can not be used for the result    */
+        if((p_input == p_output) && (p_input != 0)) {           /* The input buffer can not be used for the result    */
+            ret_val = OCKAM_ERR_VAULT_INVALID_BUFFER;
             break;
         }
 
