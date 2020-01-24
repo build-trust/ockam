@@ -5,7 +5,7 @@
 <p align="center">
 <a href="https://dev.azure.com/ockam-network/ockam/_build/latest?definitionId=10?branchName=master"><img alt="Apache 2.0 License" src="https://dev.azure.com/ockam-network/ockam/_apis/build/status/ockam-network.ockam?branchName=master"></a>
 <a href="LICENSE"><img alt="Apache 2.0 License" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square"></a>
-<a href="https://join.slack.com/t/ockam-community/shared_invite/enQtNDk5Nzk2NDA2NDcxLWMzMzJlZjQzOTZjYWY0YmNkNWE1NmI1M2YyYzlkNjk4NDYyYzU0OWE0YTI4ZjcwNDBjNmQ4NzZjZTMzYmY3NDA"><img alt="Discuss Ockam" src="https://img.shields.io/badge/slack-discuss-E01563.svg?logo=slack&style=flat-square"></a>
+<a href="https://join.slack.com/t/ockam-community/shared_invite/enQtNDk5Nzk2NDA2NDcxLWQ0MjcyZWZjOWVlNGE5M2M3YjBkMjFkODZmODIwZWJmOTY3MThjNmU0ODc0ZDk4MjBjOGZmZDIzY2FhYTY4YTg"><img alt="Discuss Ockam" src="https://img.shields.io/badge/slack-discuss-E01563.svg?logo=slack&style=flat-square"></a>
 </p>
 
 ## License and attributions
