@@ -80,6 +80,7 @@ include_directories(${TEST_INC} "./")
 ####################
 
 add_definitions(-DOCKAM_VAULT_CONFIG_FILE="${TEST_CFG_DIR}/vault_config.h")
+add_definitions(-DMBEDTLS_CONFIG_FILE="${TEST_CFG_DIR}/mbed_crypto_config.h")
 
 ####################
 # Set source files #

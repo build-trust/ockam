@@ -14,6 +14,7 @@
 #include <ockam/error.h>
 #include <ockam/log.h>
 #include <ockam/vault.h>
+#include <ockam/memory.h>
 
 #include <test_vault.h>
 
@@ -24,7 +25,7 @@
  ********************************************************************************************************
  */
 
-#define TEST_VAULT_AES_GCM_CASES                     1u
+#define TEST_VAULT_AES_GCM_CASES                     2u
 
 #define TEST_VAULT_AES_GCM_KEY_SIZE                 16u
 #define TEST_VAULT_AES_GCM_TAG_SIZE                 16u
@@ -98,6 +99,11 @@ uint8_t g_aes_gcm_test1_tag[] = {
     0x94, 0xfa, 0xe9, 0x5a, 0xe7, 0x12, 0x1a, 0x47
 };
 
+uint8_t g_aes_gcm_test2_tag[] = {
+    0x34, 0x64, 0x34, 0xFD, 0x51, 0xD5, 0xCD, 0x0C,
+    0x58, 0x87, 0xEC, 0x63, 0xE3, 0x9B, 0x90, 0x7A
+};
+
 uint8_t g_aes_gcm_test1_encrypted_text[] = {
     0xd9, 0x31, 0x32, 0x25, 0xf8, 0x84, 0x06, 0xe5,
     0xa5, 0x59, 0x09, 0xc5, 0xaf, 0xf5, 0x26, 0x9a,
@@ -134,7 +140,18 @@ TEST_VAULT_AES_GCM_DATA_s g_aes_gcm_data[TEST_VAULT_AES_GCM_CASES] =
         &g_aes_gcm_test1_encrypted_text[0],
         &g_aes_gcm_test1_plain_text[0],
         60
-    }
+    },
+    {
+        &g_aes_gcm_test1_key[0],
+        &g_aes_gcm_test1_aad[0],
+        20,
+        &g_aes_gcm_test1_iv[0],
+        12,
+        &g_aes_gcm_test2_tag[0],
+        0,
+        0,
+        0
+    },
 };
 
 
@@ -169,27 +186,47 @@ void test_vault_aes_gcm(void)
 
 
     for(i = 0; i < TEST_VAULT_AES_GCM_CASES; i++) {
-        uint8_t aes_gcm_tag[TEST_VAULT_AES_GCM_TAG_SIZE];
-        uint8_t aes_gcm_encrypt_hash[g_aes_gcm_data[i].text_size];
-        uint8_t aes_gcm_decrypt_data[g_aes_gcm_data[i].text_size];
 
+        uint8_t *p_aes_gcm_encrypt_hash = 0;
+        uint8_t *p_aes_gcm_decrypt_data = 0;
+        uint8_t aes_gcm_tag[TEST_VAULT_AES_GCM_TAG_SIZE];
+
+        if(g_aes_gcm_data[i].text_size > 0) {
+            err = ockam_mem_alloc(&p_aes_gcm_encrypt_hash,
+                                  g_aes_gcm_data[i].text_size);
+            if(err != OCKAM_ERR_NONE) {
+                test_vault_aes_gcm_print(OCKAM_LOG_FATAL,
+                                         i,
+                                         "Memory Allocation Encrypt Hash Failed");
+                return;
+            }
+
+            err = ockam_mem_alloc(&p_aes_gcm_decrypt_data,
+                                  g_aes_gcm_data[i].text_size);
+            if(err != OCKAM_ERR_NONE) {
+                test_vault_aes_gcm_print(OCKAM_LOG_FATAL,
+                                         i,
+                                         "Memory Allocation Decrypt Hash Failed");
+                return;
+            }
+        }
 
         /* --------------- */
         /* AES GCM Encrypt */
         /* --------------- */
 
-        err = ockam_vault_aes_gcm_encrypt( g_aes_gcm_data[i].p_key,
-                                           TEST_VAULT_AES_GCM_KEY_SIZE,
-                                           g_aes_gcm_data[i].p_iv,
-                                           g_aes_gcm_data[i].iv_size,
-                                           g_aes_gcm_data[i].p_aad,
-                                           g_aes_gcm_data[i].aad_size,
+        err = ockam_vault_aes_gcm_encrypt(g_aes_gcm_data[i].p_key,
+                                          TEST_VAULT_AES_GCM_KEY_SIZE,
+                                          g_aes_gcm_data[i].p_iv,
+                                          g_aes_gcm_data[i].iv_size,
+                                          g_aes_gcm_data[i].p_aad,
+                                          g_aes_gcm_data[i].aad_size,
                                           &aes_gcm_tag[0],
-                                           TEST_VAULT_AES_GCM_TAG_SIZE,
-                                           g_aes_gcm_data[i].p_plain_text,
-                                           g_aes_gcm_data[i].text_size,
-                                          &aes_gcm_encrypt_hash[0],
-                                           g_aes_gcm_data[i].text_size);
+                                          TEST_VAULT_AES_GCM_TAG_SIZE,
+                                          g_aes_gcm_data[i].p_plain_text,
+                                          g_aes_gcm_data[i].text_size,
+                                          p_aes_gcm_encrypt_hash,
+                                          g_aes_gcm_data[i].text_size);
         if(err != OCKAM_ERR_NONE) {
             test_vault_aes_gcm_print(OCKAM_LOG_ERROR,
                                      i,
@@ -203,7 +240,7 @@ void test_vault_aes_gcm(void)
             test_vault_aes_gcm_print(OCKAM_LOG_ERROR,
                                      i,
                                     "Calculated Encrypt Tag Invalid");
-            test_vault_print_array( OCKAM_LOG_DEBUG,
+            test_vault_print_array( OCKAM_LOG_INFO,
                                    "AES GCM",
                                    "Tag : Calculated Value",
                                    &aes_gcm_tag[0],
@@ -221,9 +258,9 @@ void test_vault_aes_gcm(void)
         }
 
 
-        ret = memcmp(&aes_gcm_encrypt_hash[0],                  /* Compare the computed hash with the expected hash   */
-                      g_aes_gcm_data[i].p_encrypted_text,
-                      g_aes_gcm_data[i].text_size);
+        ret = memcmp(p_aes_gcm_encrypt_hash,                    /* Compare the computed hash with the expected hash   */
+                     g_aes_gcm_data[i].p_encrypted_text,
+                     g_aes_gcm_data[i].text_size);
         if(ret != 0) {
             test_vault_aes_gcm_print(OCKAM_LOG_ERROR,
                                      i,
@@ -238,8 +275,8 @@ void test_vault_aes_gcm(void)
         test_vault_print_array(OCKAM_LOG_DEBUG,
                                "AES GCM",
                                "Encrypted Hash : Calculated Value",
-                               &aes_gcm_encrypt_hash[0],
-                                g_aes_gcm_data[i].text_size);
+                               p_aes_gcm_encrypt_hash,
+                               g_aes_gcm_data[i].text_size);
 
         test_vault_print_array(OCKAM_LOG_DEBUG,
                                "AES GCM",
@@ -251,27 +288,27 @@ void test_vault_aes_gcm(void)
         /* AES GCM Decrypt */
         /* --------------- */
 
-        err = ockam_vault_aes_gcm_decrypt( g_aes_gcm_data[i].p_key,
-                                           TEST_VAULT_AES_GCM_KEY_SIZE,
-                                           g_aes_gcm_data[i].p_iv,
-                                           g_aes_gcm_data[i].iv_size,
-                                           g_aes_gcm_data[i].p_aad,
-                                           g_aes_gcm_data[i].aad_size,
-                                           g_aes_gcm_data[i].p_tag,
-                                           TEST_VAULT_AES_GCM_TAG_SIZE,
-                                           g_aes_gcm_data[i].p_encrypted_text,
-                                           g_aes_gcm_data[i].text_size,
-                                          &aes_gcm_decrypt_data[0],
-                                           g_aes_gcm_data[i].text_size);
+        err = ockam_vault_aes_gcm_decrypt(g_aes_gcm_data[i].p_key,
+                                          TEST_VAULT_AES_GCM_KEY_SIZE,
+                                          g_aes_gcm_data[i].p_iv,
+                                          g_aes_gcm_data[i].iv_size,
+                                          g_aes_gcm_data[i].p_aad,
+                                          g_aes_gcm_data[i].aad_size,
+                                          g_aes_gcm_data[i].p_tag,
+                                          TEST_VAULT_AES_GCM_TAG_SIZE,
+                                          g_aes_gcm_data[i].p_encrypted_text,
+                                          g_aes_gcm_data[i].text_size,
+                                          p_aes_gcm_decrypt_data,
+                                          g_aes_gcm_data[i].text_size);
         if(err != OCKAM_ERR_NONE) {
             test_vault_aes_gcm_print(OCKAM_LOG_ERROR,
                                      i,
                                      "Decrypt Operation Failed");
         }
 
-        ret = memcmp(&aes_gcm_decrypt_data[0],                  /* Compare the computed hash with the expected hash   */
-                      g_aes_gcm_data[i].p_plain_text,
-                      g_aes_gcm_data[i].text_size);
+        ret = memcmp(p_aes_gcm_decrypt_data,                    /* Compare the computed hash with the expected hash   */
+                     g_aes_gcm_data[i].p_plain_text,
+                     g_aes_gcm_data[i].text_size);
         if(ret != 0) {
             test_vault_aes_gcm_print(OCKAM_LOG_ERROR,
                                      i,
@@ -285,7 +322,7 @@ void test_vault_aes_gcm(void)
         test_vault_print_array(OCKAM_LOG_DEBUG,
                                "AES GCM",
                                "Decrypted Hash : Calculated Value",
-                               &aes_gcm_decrypt_data[0],
+                               p_aes_gcm_decrypt_data,
                                g_aes_gcm_data[i].text_size);
         test_vault_print_array(OCKAM_LOG_DEBUG,
                                "AES GCM",
@@ -293,6 +330,12 @@ void test_vault_aes_gcm(void)
                                 g_aes_gcm_data[i].p_plain_text,
                                 g_aes_gcm_data[i].text_size);
 
+        /* ----------- */
+        /* Memory Free */
+        /* ----------- */
+
+        ockam_mem_free(p_aes_gcm_encrypt_hash);
+        ockam_mem_free(p_aes_gcm_decrypt_data);
     }
 }
 

@@ -112,7 +112,7 @@ void main (void)
     /* Key Generation & ECDH */
     /* --------------------- */
 
-    test_vault_key_ecdh(vault_cfg.ec);
+    test_vault_key_ecdh(vault_cfg.ec, 1);
 
     /* ------ */
     /* SHA256 */

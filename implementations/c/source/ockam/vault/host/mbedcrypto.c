@@ -19,6 +19,7 @@
 #include <ockam/vault/host.h>
 
 #include "mbedtls/ecp.h"
+#include "mbedtls/ecdh.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/md.h"
@@ -281,6 +282,78 @@ OCKAM_ERR ockam_vault_host_key_get_pub(OCKAM_VAULT_KEY_e key_type,
 }
 
 
+/*
+ ********************************************************************************************************
+ *                                     ockam_vault_host_key_write()
+ ********************************************************************************************************
+ */
+
+OCKAM_ERR ockam_vault_host_key_write(OCKAM_VAULT_KEY_e key_type,
+                                     uint8_t *p_priv_key, uint32_t priv_key_size)
+{
+    OCKAM_ERR ret_val = OCKAM_ERR_NONE;
+    int mbed_ret = 0;
+    uint8_t *p_priv_key_byte = 0;
+    mbedtls_ecp_keypair *p_ecp = 0;
+
+
+    do {
+        if(key_type == OCKAM_VAULT_KEY_STATIC) {                /* Set the keypair data based on the desired key      */
+            p_ecp = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_STATIC];
+        } else if(key_type == OCKAM_VAULT_KEY_EPHEMERAL) {
+            p_ecp = &g_keypair_data[MBEDCRYPTO_KEY_CURVE25519_EPHEMERAL];
+        } else {
+            ret_val = OCKAM_ERR_INVALID_PARAM;
+            break;
+        }
+
+        p_priv_key_byte = p_priv_key;                           /* Ensure the private key is a valid Curve25519 key   */
+        *p_priv_key_byte &= 248;                                /* Bit modifications come from RFC7748 Section 5      */
+        p_priv_key_byte += 31;
+        *p_priv_key_byte &= 127;
+        *p_priv_key_byte |= 64;
+
+        mbedtls_ecp_keypair_init(p_ecp);                        /* Always initialize the keypair first                */
+        mbedtls_ecp_group_load(&(p_ecp->grp),                   /* Set the keypair to use Curve25519                  */
+                               MBEDTLS_ECP_DP_CURVE25519);
+
+        mbed_ret = mbedtls_mpi_read_binary_le(&(p_ecp->d),      /* Write the private key buffer data to the MPI point */
+                                           p_priv_key, priv_key_size);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecp_mul(&(p_ecp->grp),               /* Generate the public key from the private key       */
+                                   &(p_ecp->Q),
+                                   &(p_ecp->d),
+                                   &(p_ecp->grp.G),
+                                   mbedtls_ctr_drbg_random,
+                                   &g_ctr_drbg);
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecp_check_pubkey(&(p_ecp->grp),      /* Check that generated public key lies on the curve  */
+                                            &(p_ecp->Q));
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+
+        mbed_ret = mbedtls_ecp_check_privkey(&(p_ecp->grp),     /* Ensure the loaded private key is valid on the      */
+                                             &(p_ecp->d));      /* specified curve.                                   */
+        if(mbed_ret != 0) {
+            ret_val = OCKAM_ERR_VAULT_HOST_KEY_FAIL;
+            break;
+        }
+    } while(0);
+
+    return ret_val;
+}
+
+
 /**
  ********************************************************************************************************
  *                                      ockam_vault_host_ecdh()
@@ -342,7 +415,6 @@ OCKAM_ERR ockam_vault_host_ecdh(OCKAM_VAULT_KEY_e key_type,
         }
 
     } while(0);
-
 
 
     return ret_val;
@@ -520,12 +592,25 @@ OCKAM_ERR ockam_vault_host_aes_gcm(OCKAM_VAULT_AES_GCM_MODE_e mode,
 
 
     do {
-        if((p_key == 0) || (key_size == 0) ||                   /* Ensure there are no null buffers or sizes set to   */
-           (p_iv == 0) || (iv_size == 0) ||                     /* 0, every pointer needs to be valid and sizes must  */
-           (p_tag == 0) || (tag_size == 0) ||                   /* always be greater than 0.                          */
-           (p_input == 0) || (input_size == 0) ||
-           (p_output == 0) || (output_size == 0)) {
-            ret_val = OCKAM_ERR_INVALID_PARAM;
+        if((p_key == 0) || (key_size == 0) ||                   /* Key and IV are required for AES GCM. There must be */
+           (p_iv == 0) || (iv_size == 0) ||                     /* valid buffers and sizes greater than zero. Tag is  */
+           (p_tag == 0) || (tag_size == 0)) {                   /* also always required to be present for encrypt and */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* decrypt.                                           */
+            break;
+        }
+
+        if((p_aad == 0) != (aad_size == 0)) {                   /* Valid for both the AAD buffer and size to be zero  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* or non-zero. Can't have a mismatch.                */
+            break;
+        }
+
+        if((p_input == 0) != (input_size == 0)) {               /* Input buffer and size must both either be zero or  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* non-zero. Can't have a mismatch.                   */
+            break;
+        }
+
+        if((p_output == 0) != (output_size == 0)) {             /* Output buffer and size must both either be zero o  */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* non-zero. Can't have a mismatch.                   */
             break;
         }
 
@@ -537,8 +622,8 @@ OCKAM_ERR ockam_vault_host_aes_gcm(OCKAM_VAULT_AES_GCM_MODE_e mode,
             break;
         }
 
-        if(p_input == p_output) {
-            ret_val = OCKAM_ERR_VAULT_INVALID_BUFFER;           /* The input buffer can not be used for the result    */
+        if((p_input == p_output) && (p_input != 0)) {           /* The input buffer can not be used for the result    */
+            ret_val = OCKAM_ERR_VAULT_INVALID_BUFFER;
             break;
         }
 

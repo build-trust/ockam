@@ -123,6 +123,9 @@ OCKAM_ERR ockam_vault_key_gen(OCKAM_VAULT_KEY_e key_type);
 OCKAM_ERR ockam_vault_key_get_pub(OCKAM_VAULT_KEY_e key_type,
                                   uint8_t *p_pub_key, uint32_t pub_key_size);
 
+OCKAM_ERR ockam_vault_key_write(OCKAM_VAULT_KEY_e key_type,
+                                uint8_t *p_priv_key, uint32_t priv_key_size);
+
 OCKAM_ERR ockam_vault_ecdh(OCKAM_VAULT_KEY_e key_type,
                            uint8_t *p_pub_key, uint32_t pub_key_size,
                            uint8_t *p_pms, uint32_t pms_size);

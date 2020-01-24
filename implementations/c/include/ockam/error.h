@@ -35,6 +35,7 @@ typedef enum {
     OCKAM_ERR_INVALID_PARAM                           = 0x0011, /*!< Invalid parameter specified                      */
     OCKAM_ERR_INVALID_CFG                             = 0x0012, /*!< Invalid configuration specified                  */
     OCKAM_ERR_INVALID_SIZE                            = 0x0013, /*!< Invalid size specified                           */
+    OCKAM_ERR_UNIMPLEMENTED                           = 0x0014, /*!< Function has not yet been implemented            */
 
     OCKAM_ERR_MEM_INSUFFICIENT                        = 0x0080, /*!< Insufficent space for a memory allocation        */
     OCKAM_ERR_MEM_INVALID_PTR                         = 0x0081, /*!< The specified buffer is not a managed buffer     */
