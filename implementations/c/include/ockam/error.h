@@ -66,7 +66,7 @@ typedef enum {
     OCKAM_ERR_VAULT_HOST_ECDH_FAIL                    = 0x0304, /*!< ECDH failed to complete successfully             */
     OCKAM_ERR_VAULT_HOST_SHA256_FAIL                  = 0x0305, /*!< SHA256 failed to complete sucessfully            */
     OCKAM_ERR_VAULT_HOST_HKDF_FAIL                    = 0x0306, /*!< HKDF failed to complete successfully             */
-    OCKAM_ERR_VAULT_HOST_AES_FAIL                     = 0x0307  /*!< AES failed to complete successfully              */
+    OCKAM_ERR_VAULT_HOST_AES_FAIL                     = 0x0307,  /*!< AES failed to complete successfully              */
 
 	OCKAM_ERR_TRANSPORT_INIT_SOCKET                   = 0x0400, /*!< Failed to create socket                          */
 	OCKAM_ERR_TRANSPORT_CONNECT                       = 0x0401, /*!< Failed to connect, check server address    	  */
