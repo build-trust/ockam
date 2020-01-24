@@ -8,7 +8,14 @@ cmake_minimum_required(VERSION 3.13)
 include($ENV{OCKAM_C_BASE}/tools/cmake/path.cmake)
 
 # This must be included BEFORE the project declaration
-include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
+#!!include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
+if($ENV{PLATFORM} MATCHES "PI")
+	message("Building for PI")
+	include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
+else()
+	set(CMAKE_C_STANDARD 99)
+	set(CMAKE_C_FLAGS "-std=c99 -g")
+endif()
 
 ###########
 # Project #
@@ -65,7 +72,7 @@ set(CMAKE_VERBOSE_MAKEFILE TRUE)
 set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
 set(TEST_INC ${TEST_INC} ${TEST_COMMON_INC_DIR})
 
-include_directories(${TEST_INC})
+include_directories(${TEST_INC} "./")
 
 
 ####################
