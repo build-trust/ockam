@@ -1,4 +1,9 @@
+#ifndef OCKAM_HANDSHAKE_H
+#define OCKAM_HANDSHAKE_H
+
 #include <stdlib.h>
+#include "ockam/error.h"
+#include "ockam/vault.h"
 
 #define KEY_SIZE 32
 #define NAME_SIZE 28
@@ -35,22 +40,23 @@ typedef struct  {
 	uint64_t    nd;
 } HANDSHAKE;
 
-OCKAM_ERR mix_hash( HANDSHAKE* p_handshake,  uint8_t* p_bytes, uint16_t b_length );
-
-OCKAM_ERR hkdf_dh( uint8_t* hkdf1, uint16_t hkdf1_size, OCKAM_VAULT_KEY_e dh_key, uint8_t*  dh2, uint16_t dh2_size,
-                   uint16_t out_size, uint8_t*  out_1, uint8_t*  out_2 );
-
-OCKAM_ERR encrypt_tag( HANDSHAKE* p_h, uint8_t* p_key, uint16_t key_size, uint8_t* p_nonce, uint16_t nonce_size,
-                       uint8_t* p_in,  uint32_t size_in, uint8_t* p_out, uint32_t* p_size_out );
-
-OCKAM_ERR make_vector( uint64_t nonce, uint8_t* p_vector );
-
-void print_uint8_str( uint8_t* p, uint16_t size, char* msg );
-
-void string_to_hex(char* hexstring, uint8_t* val, uint32_t* p_bytes );
-
 OCKAM_ERR decrypt( HANDSHAKE* p_h,
 		uint8_t* p_payload, uint32_t payload_size, uint8_t* p_msg, uint16_t msg_length, uint32_t* p_payload_bytes );
 
 OCKAM_ERR encrypt( HANDSHAKE* p_h, uint8_t* p_payload, uint32_t payload_size,
                    uint8_t* p_msg, uint16_t msg_length, uint16_t* p_msg_size );
+
+void print_uint8_str( uint8_t* p, uint16_t size, char* msg );
+void string_to_hex(char* hexstring, uint8_t* val, uint32_t* p_bytes );
+
+OCKAM_ERR responder_m1_process( HANDSHAKE* p_h, uint8_t* p_m1, uint16_t m1_size );
+OCKAM_ERR responder_m2_make( HANDSHAKE* p_h, uint8_t* p_payload, uint32_t payload_size,
+                             uint8_t* p_msg, uint16_t msg_size, uint16_t* p_bytes_written );
+OCKAM_ERR responder_m3_process( HANDSHAKE* p_h, uint8_t* p_m3, uint16_t m3_size );
+OCKAM_ERR initiator_m1_make( HANDSHAKE* p_h, uint8_t* p_prologue, uint16_t prologue_length,
+                             uint8_t* p_payload, uint16_t payload_length, uint8_t* p_send_buffer, uint16_t buffer_length,
+                             uint16_t* p_transmit_size );
+OCKAM_ERR initiator_m2_process( HANDSHAKE* p_h, uint8_t* p_recv, uint16_t recv_size );
+OCKAM_ERR initiator_m3_make( HANDSHAKE* p_h, uint8_t* p_msg, uint16_t* p_msg_size );
+OCKAM_ERR initiator_epilogue( HANDSHAKE* p_h );
+#endif
