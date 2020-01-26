@@ -27,7 +27,7 @@ endif()
 ###########################
 
 set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_CFG_DIR ${TEST_SRC_DIR}/../config)
+set(TEST_CFG_DIR ${TEST_SRC_DIR}/config)
 
 set(COMMON_OCKAM_SRC_DIR $ENV{OCKAM_C_BASE}/source/ockam)
 set(handshake_responder_test_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
