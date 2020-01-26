@@ -13,6 +13,12 @@
 #define EPI_INITIATOR "7375626d6172696e6579656c6c6f77"
 #define EPI_RESPONDER "79656c6c6f777375626d6172696e65"
 
+#define INITIATOR_STATIC    "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+#define RESPONDER_STATIC    "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+#define INITIATOR_EPH       "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+#define RESPONDER_EPH       "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60"
+
+
 typedef struct  {
 
 	uint64_t    nonce;
@@ -42,3 +48,9 @@ OCKAM_ERR make_vector( uint64_t nonce, uint8_t* p_vector );
 void print_uint8_str( uint8_t* p, uint16_t size, char* msg );
 
 void string_to_hex(char* hexstring, uint8_t* val, uint32_t* p_bytes );
+
+OCKAM_ERR decrypt( HANDSHAKE* p_h,
+		uint8_t* p_payload, uint32_t payload_size, uint8_t* p_msg, uint16_t msg_length, uint32_t* p_payload_bytes );
+
+OCKAM_ERR encrypt( HANDSHAKE* p_h, uint8_t* p_payload, uint32_t payload_size,
+                   uint8_t* p_msg, uint16_t msg_length, uint16_t* p_msg_size );
