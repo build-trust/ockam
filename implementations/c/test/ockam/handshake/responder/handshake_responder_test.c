@@ -7,13 +7,6 @@
 #include "ockam/transport.h"
 #include "ockam/handshake.h"
 
-OCKAM_VAULT_CFG_s vault_cfg =
-{
-		.p_tpm                       = 0,
-		.p_host                      = 0,
-		OCKAM_VAULT_EC_CURVE25519
-};
-
 OCKAM_ERR responder_epilogue( HANDSHAKE* p_h )
 {
 	OCKAM_ERR   status		= OCKAM_ERR_NONE;
@@ -125,71 +118,25 @@ int main() {
 		goto exit_block;
 	}
 
-	status = ockam_vault_init((void*) &vault_cfg);                 /* Initialize vault                                   */
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "ockam_vault_init failed" );
-		goto exit_block;
-	}
-
-	/* Msg 1 receive */
-	status = ockam_receive_blocking( connection, &recv_buffer[0], MAX_TRANSMIT_SIZE, &bytes_received );
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "ockam_receive_blocking for msg 1 failed" );
-		goto exit_block;
-	}
-	print_uint8_str( (uint8_t*)&recv_buffer[0], bytes_received, "Msg 1:\n");
-
-	/* Msg 1 process */
-	status = responder_m1_process( &handshake, recv_buffer, bytes_received );
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "responder_m1_receive failed" );
-		goto exit_block;
-	}
-
-	/* Msg 2 make */
-	status = responder_m2_make( &handshake, NULL, 0, send_buffer, sizeof(send_buffer), &transmit_size );
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "responder_m2_send failed" );
-		goto exit_block;
-	}
-	/* Msg 2 send */
-	status = ockam_send_blocking( connection, send_buffer, transmit_size );
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "responder_m2_send failed" );
-		goto exit_block;
-	}
-	print_uint8_str( send_buffer, transmit_size, "Msg 2 sent: " );
-
-	/* Msg 3 receive */
-	status = ockam_receive_blocking( connection, recv_buffer, MAX_TRANSMIT_SIZE, &bytes_received );
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "ockam_receive_blocking failed for msg 3" );
-		goto exit_block;
-	}
-	print_uint8_str( (uint8_t*)&recv_buffer[0], bytes_received, "Msg 3:\n");
-
-	/* Msg 3 process */
-	status = responder_m3_process( &handshake, recv_buffer,  bytes_received );
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "responder_m3_process failed for msg 3" );
+	status = ockam_responder_handshake( connection, &handshake );
+	if( OCKAM_ERR_NONE != status ) {
+		log_error( status, "ockam_responder_handshake failed" );
 		goto exit_block;
 	}
 
 	/* Epilog make */
-	printf("\n---------Epilogue Send----------\n");
 	status = responder_epilogue(&handshake);
 	if( OCKAM_ERR_NONE != status ) {
 		log_error( status, "Failed responder_epilogue" );
+		goto exit_block;
 	}
 	string_to_hex(EPI_RESPONDER, epilogue, &epilogue_size );
-	print_uint8_str( epilogue, epilogue_size, "Epilogue:");
 	status = encrypt( &handshake, epilogue, epilogue_size,
 			send_buffer, sizeof(send_buffer), &transmit_size );
 	if(status != OCKAM_ERR_NONE) {
 		log_error( status, "responder_epilogue_make failed" );
 		goto exit_block;
 	}
-	printf("\n");
 
 	/* Epilogue send */
 	status = ockam_send_blocking( connection, send_buffer, transmit_size );
@@ -197,7 +144,6 @@ int main() {
 		log_error( status, "ockam_send_blocking epilogue failed" );
 		goto exit_block;
 	}
-	print_uint8_str( send_buffer, transmit_size, "Epilogue sent: " );
 
 	/* Epilogue receive */
 	status = ockam_receive_blocking( connection, recv_buffer, MAX_TRANSMIT_SIZE, &bytes_received );
@@ -205,7 +151,6 @@ int main() {
 		log_error( status, "ockam_receive_blocking failed for msg 3" );
 		goto exit_block;
 	}
-	print_uint8_str( (uint8_t*)&recv_buffer[0], bytes_received, "Msg 3:\n");
 
 	// Epilogue process
 	status = decrypt( &handshake, epilogue, EPI_BYTE_SIZE, recv_buffer, bytes_received, &epilogue_size );
@@ -213,7 +158,6 @@ int main() {
 		log_error( status, "ockam_receive_blocking failed on msg 2" );
 		goto exit_block;
 	}
-	print_uint8_str( epilogue, EPI_BYTE_SIZE, "-------Epilogue received---------");
 
 	/* Epi-epilogue */
 	printf("Enter a string to encrypt and send: ");

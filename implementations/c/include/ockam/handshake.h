@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "ockam/error.h"
 #include "ockam/vault.h"
+#include "ockam/transport.h"
 
 #define KEY_SIZE 32
 #define NAME_SIZE 28
@@ -39,6 +40,9 @@ typedef struct  {
 	uint64_t    ne;
 	uint64_t    nd;
 } HANDSHAKE;
+
+OCKAM_ERR ockam_responder_handshake( OCKAM_TRANSPORT_CONNECTION connection, HANDSHAKE* p_h );
+OCKAM_ERR ockam_initiator_handshake( OCKAM_TRANSPORT_CONNECTION connection, HANDSHAKE* p_h );
 
 OCKAM_ERR decrypt( HANDSHAKE* p_h,
 		uint8_t* p_payload, uint32_t payload_size, uint8_t* p_msg, uint16_t msg_length, uint32_t* p_payload_bytes );
