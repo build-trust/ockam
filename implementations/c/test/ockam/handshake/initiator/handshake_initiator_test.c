@@ -8,13 +8,6 @@
 #include "ockam/handshake.h"
 #include "handshake_test.h"
 
-OCKAM_VAULT_CFG_s vault_cfg =
-{
-		.p_tpm                       = 0,
-		.p_host                      = 0,
-		OCKAM_VAULT_EC_CURVE25519
-};
-
 OCKAM_ERR get_ip_info( OCKAM_INTERNET_ADDRESS* p_address )
 {
 
@@ -25,7 +18,7 @@ OCKAM_ERR get_ip_info( OCKAM_INTERNET_ADDRESS* p_address )
 	unsigned    port = 0;
 
 	// Read the IP address to bind to
-	address_file = fopen("../ipaddress.txt", "r");
+	address_file = fopen("../config/ipaddress.txt", "r");
 	if(NULL == address_file) {
 		printf("Create a file called \"ipaddress.txt\" with the IP address to listen on," \
 			"in nnn.nnn.nnn.nnn format and port number\n");
@@ -104,50 +97,9 @@ int main() {
 		goto exit_block;
 	}
 
-	status = ockam_vault_init((void*) &vault_cfg);                 /* Initialize vault                                   */
-	if(status != OCKAM_ERR_NONE) {
-		log_error( status, "ockam_vault_init failed" );
-		goto exit_block;
-	}
-
-	// Step 1 generate message
-	status = initiator_m1_make( &handshake,  NULL, 0, NULL, 0, send_buffer, MAX_TRANSMIT_SIZE, &transmit_size );
+	status = ockam_initiator_handshake( connection, &handshake );
 	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "initiator_step_1 failed" );
-		goto exit_block;
-	}
-
-	// Step 1 send message
-	status = ockam_send_blocking( connection, send_buffer, transmit_size );
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "ockam_send_blocking after initiator_step_1 failed" );
-		goto exit_block;
-	}
-
-	// Msg 2 receive
-	status = ockam_receive_blocking( connection, recv_buffer, sizeof(recv_buffer), &bytes_received );
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "ockam_receive_blocking failed on msg 2" );
-		goto exit_block;
-	}
-
-	// Msg 2 process
-	status = initiator_m2_process( &handshake, recv_buffer, bytes_received );
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "ockam_receive_blocking failed on msg 2" );
-		goto exit_block;
-	}
-
-	// Msg 3 make
-	status = initiator_m3_make( &handshake, send_buffer, &transmit_size );
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "initiator_m3_make failed" );
-		goto exit_block;
-	}
-	// Msg 3 send
-	status = ockam_send_blocking( connection, send_buffer, transmit_size );
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "ockam_send_blocking failed on msg 3" );
+		log_error( status, "ockam_initiator_handshake" );
 		goto exit_block;
 	}
 
@@ -171,7 +123,11 @@ int main() {
 		log_error( status, "ockam_receive_blocking failed on msg 2" );
 		goto exit_block;
 	}
-	print_uint8_str( epi, EPI_BYTE_SIZE, "-------Epilogue received---------");
+	if( 0 != strncmp( epi, EPI_RESPONDER, EPI_BYTE_SIZE) ){
+		status = OCKAM_ERR_HANDSHAKE_FAILED;
+		log_error( status, "Received bad epilogue message" );
+		goto exit_block;
+	}
 
 	// Epilogue make
 	string_to_hex(EPI_INITIATOR, epi, &epi_size );

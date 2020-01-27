@@ -11,8 +11,6 @@ cmake_minimum_required(VERSION 3.15)
 # Always load the path.cmake file FIRST
 include($ENV{OCKAM_C_BASE}/tools/cmake/path.cmake)
 
-project(handshake_initiator_test C)
-
 # This must be included BEFORE the project declaration
 if($ENV{PLATFORM} MATCHES "PI")
 	 message("********Building for PI**********")
@@ -22,18 +20,18 @@ else()
 	set(CMAKE_C_FLAGS "-std=c99 -g")
 endif()
 
+project(handshake_initiator_test C )
+
 ###########################
 # Set directory locations #
 ###########################
 
 set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_CFG_DIR ${TEST_SRC_DIR}/../config)
+set(TEST_CFG_DIR ${TEST_SRC_DIR}/config)
 
 set(COMMON_OCKAM_SRC_DIR $ENV{OCKAM_C_BASE}/source/ockam)
-set(handshake_initiator_test_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(TRANSPORT_POSIX_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/transport)
-
-set(TEST_COMMON_SRC_DIR ${TEST_SRC_DIR}/../common)
+set(HANDSHAKE_INITIATOR_TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+#set(TEST_COMMON_SRC_DIR ${TEST_SRC_DIR}/../common)
 #set(TEST_COMMON_INC_DIR ${OCKAM_C_BASE}/test/ockam/vault/include)
 
 set(OCKAM_SRC_DIR ${OCKAM_C_BASE}/source/ockam)
@@ -44,6 +42,8 @@ set(VAULT_SRC_DIR ${OCKAM_SRC_DIR}/vault)
 set(KAL_SRC_DIR ${OCKAM_SRC_DIR}/kal)
 set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
 set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/memory)
+set(TRANSPORT_POSIX_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/transport)
+set(HANDSHAKE_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/handshake)
 
 set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party)
 
@@ -84,17 +84,6 @@ include_directories(${TEST_INC} "./" "./../include"
 
 add_definitions(-DOCKAM_VAULT_CONFIG_FILE="${TEST_CFG_DIR}/vault_config.h")
 
-##########################
-# Set vault source files #
-##########################
-
-#set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/aes_gcm.c)
-#set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/hkdf.c)
-#set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/key_ecdh.c)
-#set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/print.c)
-#set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/random.c)
-#set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/sha256.c)
-
 ##############################
 # Set transport source files #
 ##############################
@@ -104,13 +93,19 @@ file(GLOB SOURCES "./*.c"
 		$ENV{OCKAM_C_BASE}/source/ockam/transport/connection/*.c
 		$ENV{OCKAM_C_BASE}/source/ockam/transport/connection/socket/posix/*.c )
 
+##############################
+# Set handshake source files #
+##############################
+
+file(GLOB SOURCES "./*.c"
+		$ENV{OCKAM_C_BASE}/source/ockam/handshake/*.c )
+
 ###################################
 # Set handshake_initiator_test source files #
 ###################################
 
 set(TEST_SRC ${TEST_SRC}
-	${CMAKE_CURRENT_SOURCE_DIR}/handshake_initiator_test.c
-	${TEST_COMMON_SRC_DIR}/handshake.c
+	${TEST_SRC_DIR}/handshake_initiator_test.c
 	${COMMON_OCKAM_SRC_DIR}/log/syslog.c)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
@@ -119,7 +114,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
 # Set the desired modules #
 ###########################
 
-add_subdirectory(${TRANSPORT_POSIX_SRC_DIR} ${BINARY_DIR})
+add_subdirectory(${TRANSPORT_POSIX_SRC_DIR} ${BINARY_DIR}/transport)
+add_subdirectory(${HANDSHAKE_SRC_DIR} ${BINARY_DIR}/handshake)
 add_subdirectory(${VAULT_SRC_DIR} ${BINARY_DIR}/vault)
 add_subdirectory(${KAL_SRC_DIR} ${BINARY_DIR}/kal)
 add_subdirectory(${LOG_SRC_DIR} ${BINARY_DIR}/log)
@@ -138,11 +134,17 @@ option(ENABLE_DIRECTORY_CLEAN
 # Configure link libraries & executable #
 #########################################
 
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}
-	${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/vault)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
+#	${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/vault
+#	${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/transport
+#	${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/handshake)
+
 add_executable(handshake_initiator_test ${TEST_SRC})
 
+set_property(TARGET handshake_initiator_test PROPERTY C_STANDARD 99)
+
 target_link_libraries(handshake_initiator_test ockam_transport)
+target_link_libraries(handshake_initiator_test ockam_handshake)
 target_link_libraries(handshake_initiator_test ockam_vault)
 target_link_libraries(handshake_initiator_test ockam_kal)
 target_link_libraries(handshake_initiator_test ockam_log)
