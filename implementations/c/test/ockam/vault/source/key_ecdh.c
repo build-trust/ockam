@@ -31,7 +31,7 @@
 #define TEST_VAULT_KEY_P256_SIZE                    64u
 #define TEST_VAULT_KEY_CURVE25519_SIZE              32u
 
-#define TEST_VAULT_PMS_SIZE                         32u
+#define TEST_VAULT_SS_SIZE                          32u
 
 
 /*
@@ -87,6 +87,7 @@ typedef struct {
     uint8_t initiator_pub[TEST_VAULT_KEY_CURVE25519_SIZE];
     uint8_t responder_priv[TEST_VAULT_KEY_CURVE25519_SIZE];
     uint8_t responder_pub[TEST_VAULT_KEY_CURVE25519_SIZE];
+    uint8_t shared_secret[TEST_VAULT_KEY_CURVE25519_SIZE];
 } TEST_VAULT_KEYS_CURVE25519_s;
 
 
@@ -177,6 +178,12 @@ TEST_VAULT_KEYS_CURVE25519_s g_test_vault_keys_curve25519[TEST_VAULT_KEY_CURVE25
             0xb7, 0x55, 0xdc, 0x1b, 0x10, 0xe8, 0x6c, 0xb4,
             0x26, 0x37, 0x4a, 0xd1, 0x6a, 0xa8, 0x53, 0xed,
             0x0b, 0xdf, 0xc0, 0xb2, 0xb8, 0x6d, 0x1c, 0x7c
+        },
+        {
+            0x42, 0x74, 0xA3, 0x2E, 0x95, 0x3A, 0xCB, 0x83,     /* Case 0: Expected Shared Secret Value               */
+            0x14, 0xD0, 0xF0, 0x9B, 0xCB, 0xCB, 0x51, 0x93,
+            0xC5, 0xEF, 0x79, 0x9D, 0xDC, 0xD0, 0x03, 0x6F,
+            0x8C, 0x46, 0x82, 0xE5, 0x80, 0x1D, 0xAC, 0x73
         }
     },
     {
@@ -203,6 +210,12 @@ TEST_VAULT_KEYS_CURVE25519_s g_test_vault_keys_curve25519[TEST_VAULT_KEY_CURVE25
             0x04, 0xbd, 0x07, 0x8f, 0x98, 0x95, 0x00, 0x1f,
             0xc0, 0x3e, 0x8e, 0x9f, 0x95, 0x22, 0xf1, 0x88,
             0xdd, 0x12, 0x8d, 0x98, 0x46, 0xd4, 0x84, 0x66
+        },
+        {
+            0x37, 0xE0, 0xE7, 0xDA, 0xAC, 0xBD, 0x6B, 0xFB,     /* Case 1: Expected Shared Secret Value               */
+            0xF6, 0x69, 0xA8, 0x46, 0x19, 0x6F, 0xD4, 0x4D,
+            0x1C, 0x87, 0x45, 0xD3, 0x3F, 0x2B, 0xE4, 0x2E,
+            0x31, 0xD4, 0x67, 0x41, 0x99, 0xAD, 0x00, 0x5E
         }
     },
 };
@@ -232,8 +245,8 @@ void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys)
     uint8_t *p_static_pub     = 0;
     uint8_t *p_ephemeral_pub  = 0;
 
-    uint8_t pms_static[TEST_VAULT_PMS_SIZE];
-    uint8_t pms_ephemeral[TEST_VAULT_PMS_SIZE];
+    uint8_t ss_static[TEST_VAULT_SS_SIZE];
+    uint8_t ss_ephemeral[TEST_VAULT_SS_SIZE];
 
 
     switch(ec) {                                                /* Configure the Key/ECDH tests based on the platform */
@@ -280,11 +293,11 @@ void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys)
 
     for(i = 0; i < test_cases; i++) {
 
-        uint8_t pms_invalid = 0;
         uint8_t *p_initiator_priv = 0;
         uint8_t *p_initiator_pub  = 0;
         uint8_t *p_responder_priv = 0;
         uint8_t *p_responder_pub  = 0;
+        uint8_t *p_shared_secret  = 0;
 
 
         /* ------------------ */
@@ -302,6 +315,7 @@ void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys)
                 p_initiator_pub  = &(g_test_vault_keys_curve25519[i].initiator_pub[0]);
                 p_responder_priv = &(g_test_vault_keys_curve25519[i].responder_priv[0]);
                 p_responder_pub  = &(g_test_vault_keys_curve25519[i].responder_pub[0]);
+                p_shared_secret  = &(g_test_vault_keys_curve25519[i].shared_secret[0]);
             }
 
             err = ockam_vault_key_write(OCKAM_VAULT_KEY_STATIC, /* Write the initiator key to the static slot         */
@@ -418,8 +432,8 @@ void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys)
         err = ockam_vault_ecdh(OCKAM_VAULT_KEY_STATIC,          /* Calculate ECDH with static private/ephemeral pub   */
                                p_ephemeral_pub,
                                key_size,
-                               &pms_static[0],
-                               TEST_VAULT_PMS_SIZE);
+                               &ss_static[0],
+                               TEST_VAULT_SS_SIZE);
         if(err != OCKAM_ERR_NONE) {
             test_vault_key_ecdh_print(OCKAM_LOG_ERROR,
                                       i,
@@ -431,15 +445,15 @@ void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys)
                 test_vault_print_array(OCKAM_LOG_DEBUG,
                                        "KEY ECDH",
                                        "ECDH: Ephemeral Public/Static Private",
-                                       &pms_static[0],
+                                       &ss_static[0],
                                        key_size);
         }
 
         err = ockam_vault_ecdh(OCKAM_VAULT_KEY_EPHEMERAL,       /* Calculate ECDH with ephemeral private/static public*/
                                p_static_pub,
                                key_size,
-                               &pms_ephemeral[0],
-                               TEST_VAULT_PMS_SIZE);
+                               &ss_ephemeral[0],
+                               TEST_VAULT_SS_SIZE);
         if(err != OCKAM_ERR_NONE) {
             test_vault_key_ecdh_print(OCKAM_LOG_ERROR,
                                       i,
@@ -451,25 +465,30 @@ void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys)
             test_vault_print_array(OCKAM_LOG_DEBUG,
                                    "KEY ECDH",
                                    "ECDH: Static Public/Ephemeral Private",
-                                   &pms_ephemeral[0],
-                                   TEST_VAULT_PMS_SIZE);
+                                   &ss_ephemeral[0],
+                                   TEST_VAULT_SS_SIZE);
         }
 
-        for(j = 0; j < TEST_VAULT_PMS_SIZE; j++) {              /* Compare the PMS arrays byte by byte                */
-            if(pms_static[j] != pms_ephemeral[j]) {
-                pms_invalid = 1;
-                break;
+        ret = memcmp(&ss_static[0],                             /* Compare the shared secert arrays                   */
+                     &ss_ephemeral[0],
+                     TEST_VAULT_SS_SIZE);
+        if(!ret) {
+            ret = memcmp(&ss_static[0],                         /* If the computed shared secrets match, validate it  */
+                         p_shared_secret,
+                         TEST_VAULT_SS_SIZE);
+            if(!ret) {
+                test_vault_key_ecdh_print(OCKAM_LOG_INFO,
+                                          i,
+                                          "Shared Secret values match and were calculated as expected");
+            } else {
+                test_vault_key_ecdh_print(OCKAM_LOG_ERROR,
+                                          i,
+                                          "Shared Secret values match but were not calculated as expected");
             }
-        }
-
-        if(pms_invalid) {
+        } else {
             test_vault_key_ecdh_print(OCKAM_LOG_ERROR,
                                       i,
-                                      "PMS values do not match");
-        } else {
-            test_vault_key_ecdh_print(OCKAM_LOG_INFO,
-                                      i,
-                                      "PMS values match");
+                                      "Shared Secret values do not match");
         }
     }
 }
