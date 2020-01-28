@@ -1,3 +1,3 @@
 ```yaml
-Title: Documentation
+title: Documentation
 ```

@@ -1,3 +1,3 @@
 ```yaml
-Title: Secure Channels
+title: Secure Channels
 ```

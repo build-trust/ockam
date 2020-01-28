@@ -1,3 +1,3 @@
 ```yaml
-Title: Contributing to Ockam
+title: Contributing to Ockam
 ```

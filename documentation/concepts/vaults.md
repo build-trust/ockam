@@ -1,3 +1,3 @@
 ```yaml
-Title: Vaults
+title: Vaults
 ```
