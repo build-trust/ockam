@@ -1,15 +1,25 @@
 #!/bin/sh -eux
 
 cd /tmp
-download rustup-init "https://static.rust-lang.org/rustup/archive/1.18.3/x86_64-unknown-linux-gnu/rustup-init" \
-  "a46fe67199b7bcbbde2dcbc23ae08db6f29883e260e23899a88b9073effc9076"
 
+mkdir -p /opt/rust/cargo
 export CARGO_HOME=/opt/rust/cargo
+export RUSTUP_HOME=/opt/rust/rustup
 export PATH=$CARGO_HOME/bin:$PATH
-chmod +x rustup-init
-./rustup-init -y --no-modify-path --default-toolchain "1.35.0"
-rm rustup-init
 
-echo 'export CARGO_HOME=/vagrant/.builder/cargo' > /etc/profile.d/rust.sh
-echo 'export PATH="$CARGO_HOME/bin:/opt/rust/cargo/bin:$PATH"' >> /etc/profile.d/rust.sh
+curl --proto '=https' --tlsv1.2 -sSf 'https://sh.rustup.rs' > /tmp/rustup-init
+chmod +x /tmp/rustup-init
+
+/tmp/rustup-init -y \
+    --no-modify-path \
+    --profile minimal \
+    --default-toolchain stable \
+    --component rustfmt \
+    --target armv7-unknown-linux-gnueabihf
+
+rm /tmp/rustup-init
+
+echo "export CARGO_HOME=$CARGO_HOME" > /etc/profile.d/rust.sh
+echo "export RUSTUP_HOME=$RUSTUP_HOME" > /etc/profile.d/rust.sh
+echo "export PATH=\"$CARGO_HOME/bin:\$PATH\"" >> /etc/profile.d/rust.sh
 chmod u+x /etc/profile.d/rust.sh
