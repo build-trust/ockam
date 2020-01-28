@@ -6,28 +6,7 @@
 #include "ockam/vault.h"
 #include "ockam/transport.h"
 #include "ockam/handshake.h"
-
-OCKAM_ERR responder_epilogue( HANDSHAKE* p_h )
-{
-	OCKAM_ERR   status		= OCKAM_ERR_NONE;
-	uint8_t     keys[2*KEY_SIZE];
-
-	memset(keys, 0, sizeof(keys));
-	status = ockam_vault_hkdf( NULL, 0, p_h->ck, KEY_SIZE, NULL, 0, keys, sizeof(keys));
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "ockam_vault_hkdf failed in responder_epilogue_make");
-		goto exit_block;
-	}
-	memcpy(p_h->ke, keys, KEY_SIZE );
-	memcpy(p_h->kd, &keys[KEY_SIZE], KEY_SIZE );
-	print_uint8_str( p_h->ke, KEY_SIZE, "--------encrypt key--------");
-	print_uint8_str( p_h->kd, KEY_SIZE, "--------decrypt key--------");
-	p_h->ne = 0;
-	p_h->nd = 0;
-
-exit_block:
-	return status;
-}
+#include "handshake_test.h"
 
 OCKAM_ERR get_ip_info( OCKAM_INTERNET_ADDRESS* p_address )
 {
@@ -101,8 +80,9 @@ int main() {
 	uint8_t                         recv_buffer[MAX_TRANSMIT_SIZE];
 	uint16_t                        transmit_size = 0;
 	uint16_t                        bytes_received = 0;
-	uint8_t                         epilogue[16];
-	uint32_t                        epilogue_size;
+	uint8_t                         test[16];
+	uint32_t                        test_size;
+	uint8_t                         test_initiator[TEST_MSG_BYTE_SIZE];
 	char                            user_msg[80];
 	uint8_t*                        p_user_msg = (uint8_t*)user_msg;
 
@@ -124,60 +104,46 @@ int main() {
 		goto exit_block;
 	}
 
-	/* Epilog make */
-	status = responder_epilogue(&handshake);
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "Failed responder_epilogue" );
-		goto exit_block;
-	}
-	string_to_hex(EPI_RESPONDER, epilogue, &epilogue_size );
-	status = encrypt( &handshake, epilogue, epilogue_size,
+	/* Test message make */
+	string_to_hex(TEST_MSG_RESPONDER, test, &test_size );
+	status = encrypt( &handshake, test, test_size,
 			send_buffer, sizeof(send_buffer), &transmit_size );
 	if(status != OCKAM_ERR_NONE) {
 		log_error( status, "responder_epilogue_make failed" );
 		goto exit_block;
 	}
 
-	/* Epilogue send */
+	/* Test message send */
 	status = ockam_send_blocking( connection, send_buffer, transmit_size );
 	if(status != OCKAM_ERR_NONE) {
 		log_error( status, "ockam_send_blocking epilogue failed" );
 		goto exit_block;
 	}
 
-	/* Epilogue receive */
+	/* Test message receive */
 	status = ockam_receive_blocking( connection, recv_buffer, MAX_TRANSMIT_SIZE, &bytes_received );
 	if(status != OCKAM_ERR_NONE) {
 		log_error( status, "ockam_receive_blocking failed for msg 3" );
 		goto exit_block;
 	}
 
-	// Epilogue process
-	status = decrypt( &handshake, epilogue, EPI_BYTE_SIZE, recv_buffer, bytes_received, &epilogue_size );
+	// Test message process
+	status = decrypt( &handshake, test, TEST_MSG_BYTE_SIZE, recv_buffer, bytes_received, &test_size );
 	if( OCKAM_ERR_NONE != status ) {
 		log_error( status, "ockam_receive_blocking failed on msg 2" );
 		goto exit_block;
 	}
-
-	/* Epi-epilogue */
-	printf("Enter a string to encrypt and send: ");
-	getline( (char**)&p_user_msg, (size_t*)&transmit_size, stdin );
-	status = encrypt( &handshake, p_user_msg, strlen((char*)p_user_msg)+1, send_buffer, sizeof(send_buffer), &transmit_size );
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "encrypt failed on user message" );
+	string_to_hex( TEST_MSG_INITIATOR, test_initiator, NULL );
+	if( 0 != memcmp( (void*)test, test_initiator, TEST_MSG_BYTE_SIZE) ){
+		print_uint8_str( test, TEST_MSG_BYTE_SIZE, "Test message decrypted: ");
+		status = OCKAM_ERR_HANDSHAKE_FAILED;
+		log_error( status, "Received bad test message" );
 		goto exit_block;
 	}
-	status = ockam_send_blocking( connection, send_buffer, transmit_size );
-	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "ockam_send_blocking failed on user message" );
-		goto exit_block;
-	}
-	print_uint8_str( send_buffer, transmit_size, "Encrypted: ");
-	printf("Type anything to quit\n");
-	scanf("%s", p_user_msg );
 
 exit_block:
 	if( NULL != connection ) ockam_uninit_connection( connection );
 	if( NULL != listener ) ockam_uninit_connection( listener );
+	printf( "Test ended with status %0.4x\n", status );
 	return status;
 }
