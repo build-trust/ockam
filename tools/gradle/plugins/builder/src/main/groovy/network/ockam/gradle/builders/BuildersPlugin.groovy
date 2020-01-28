@@ -58,6 +58,11 @@ class BuildersPlugin implements Plugin<Project> {
     })
   }
 
+  static boolean usingDockerProvider() {
+    def env = System.getenv("VAGRANT_DEFAULT_PROVIDER")
+    return env == "docker";
+  }
+
   static boolean isRunning(Project project, String builderName) {
     def output = new ByteArrayOutputStream()
     project.exec {
@@ -123,6 +128,9 @@ class BuildersPlugin implements Plugin<Project> {
   }
 
   static syncVM(Project project, String builderName) {
+    if (usingDockerProvider()) {
+      return;
+    }
     project.exec {
       workingDir project.host.vagrantfileDir
       commandLine adaptCommandForOs('vagrant', 'rsync', "builder-${builderName}")
@@ -155,6 +163,9 @@ class BuildersPlugin implements Plugin<Project> {
   }
 
   static syncHost(Project project, String builderName) {
+    if (usingDockerProvider()) {
+      return;
+    }
     def vDir = project.host.vagrantfileDir.toString()
     def result = project.exec {
       workingDir project.host.vagrantfileDir
