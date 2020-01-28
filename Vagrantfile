@@ -16,15 +16,27 @@ Vagrant.configure("2") do |config|
       echo 'export OCKAM_C_BASE=/vagrant/implementations/c' > /etc/profile.d/ockam.sh
     SCRIPT
 
-    config.vm.provider :virtualbox do |vbox|
+    config.vm.provider :virtualbox do |vbox, override|
       vbox.name = "builder-debian"
       vbox.linked_clone = true
       vbox.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
       vbox.memory = ENV['OCKAM_DEBIAN_BUILDER_MEMORY'] || 4096
       vbox.cpus = ENV['OCKAM_DEBIAN_BUILDER_CPUS'] || 2
+
+      override.vm.synced_folder ".", "/vagrant", type: :rsync, rsync__exclude: ['tools/builder/', '.builder']
     end
 
-    config.vm.synced_folder ".", "/vagrant", type: :rsync, rsync__exclude: ['tools/builder/', '.builder']
+    config.vm.provider :docker do |docker, override|
+      override.vm.box = nil
+      override.ssh.insert_key = true
+      override.vm.synced_folder ".", "/vagrant", docker_consistency: "cached"
+
+      docker.image = "ockam-builder-debian-base:latest"
+      docker.name = "builder-debian"
+      docker.remains_running = true
+      docker.has_ssh = true
+      docker.create_args = ['--cap-add', 'SYS_ADMIN', '--tmpfs', '/tmp:exec', '--tmpfs', '/run', '-v', '/sys/fs/cgroup:/sys/fs/cgroup:ro']
+    end
   end
 
   config.vm.define "builder-macos", primary: true do |config|

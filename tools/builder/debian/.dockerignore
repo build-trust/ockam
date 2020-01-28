@@ -1,0 +1,7 @@
+add
+build
+clean
+*.json
+publish
+remove
+tests
