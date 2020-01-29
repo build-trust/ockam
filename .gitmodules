@@ -1,9 +1,6 @@
 [submodule "implementations/c/third-party/microchip/cryptoauthlib"]
     path = implementations/c/third-party/microchip/cryptoauthlib
     url = https://github.com/MicrochipTech/cryptoauthlib.git
-[submodule "implementations/c/third-party/arm/mbedtls"]
-    path = implementations/c/third-party/arm/mbedtls
-    url = https://github.com/ARMmbed/mbedtls.git
 [submodule "implementations/c/tools/toolchains/raspberrypi/tools"]
     path = implementations/c/tools/toolchains/raspberrypi/tools
     url = https://github.com/raspberrypi/tools.git
