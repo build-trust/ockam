@@ -3,6 +3,7 @@
 #include "ockam/error.h"
 #include "ockam/syslog.h"
 #include "ockam/handshake.h"
+#include "handshake_test.h"
 
 
 OCKAM_VAULT_CFG_s vault_cfg =
@@ -30,6 +31,8 @@ OCKAM_ERR ockam_initiator_handshake( OCKAM_TRANSPORT_CONNECTION connection, HAND
 	uint8_t                         recv_buffer[MAX_TRANSMIT_SIZE];
 	uint16_t                        bytes_received = 0;
 	uint16_t                        transmit_size = 0;
+	uint8_t                         compare[1024];
+	uint32_t                         compare_bytes;
 
 
 	status = ockam_vault_init((void*) &vault_cfg);                 /* Initialize vault                                   */
@@ -44,6 +47,15 @@ OCKAM_ERR ockam_initiator_handshake( OCKAM_TRANSPORT_CONNECTION connection, HAND
 		log_error( status, "initiator_step_1 failed" );
 		goto exit_block;
 	}
+
+	// Verify
+	string_to_hex( MSG_1_CIPHERTEXT, compare, &compare_bytes );
+	if( 0 != memcmp(send_buffer, compare, compare_bytes)) {
+		status = OCKAM_ERR_HANDSHAKE_TEST_FAILED;
+		log_error( status, "Test failed on msg 0\n");
+		goto exit_block;
+	}
+	printf("Msg 0 confirmed\n");
 
 	// Step 1 send message
 	status = ockam_send_blocking( connection, send_buffer, transmit_size );
@@ -96,6 +108,8 @@ OCKAM_ERR ockam_responder_handshake( OCKAM_TRANSPORT_CONNECTION connection, HAND
 	uint8_t                         recv_buffer[MAX_TRANSMIT_SIZE];
 	uint16_t                        transmit_size = 0;
 	uint16_t                        bytes_received = 0;
+	uint8_t                         compare[1024];
+	uint32_t                         compare_bytes;
 
 	/* Initialize vault                                   */
 	status = ockam_vault_init((void*) &vault_cfg);
@@ -121,9 +135,20 @@ OCKAM_ERR ockam_responder_handshake( OCKAM_TRANSPORT_CONNECTION connection, HAND
 	/* Msg 2 make */
 	status = responder_m2_make( p_h, NULL, 0, send_buffer, sizeof(send_buffer), &transmit_size );
 	if(status != OCKAM_ERR_NONE) {
+		print_uint8_str( send_buffer, transmit_size, "Sending msg 2:");
 		log_error( status, "responder_m2_send failed" );
 		goto exit_block;
 	}
+
+	/* Msg 2 verify */
+	string_to_hex( MSG_2_CIPHERTEXT, compare, &compare_bytes );
+	if( 0 != memcmp( send_buffer, compare, compare_bytes )) {
+		print_uint8_str( send_buffer, transmit_size, "M2 sending: ");
+		printf("Test failed on msg 2\n");
+		goto exit_block;
+	}
+	printf("M2 confirmed\n");
+
 	/* Msg 2 send */
 	status = ockam_send_blocking( connection, send_buffer, transmit_size );
 	if(status != OCKAM_ERR_NONE) {
@@ -326,6 +351,8 @@ OCKAM_ERR responder_m2_make( HANDSHAKE* p_h, uint8_t* p_payload, uint32_t payloa
 	// 2. ck, k = HKDF(ck, DH(e, re), 2)
 	// n = 0
 	// secret = ECDH( e, re )
+	print_uint8_str( p_h->ck, KEY_SIZE, "ck:");
+	print_uint8_str( p_h->re, KEY_SIZE, "re");
 	status = hkdf_dh( p_h->ck, sizeof(p_h->ck), OCKAM_VAULT_KEY_EPHEMERAL, p_h->re, sizeof(p_h->re), KEY_SIZE, p_h->ck, p_h->k );
 	if( OCKAM_ERR_NONE != status ) {
 		log_error(status, "failed hkdf_dh of prologue in responder_m2_make");
@@ -339,7 +366,7 @@ OCKAM_ERR responder_m2_make( HANDSHAKE* p_h, uint8_t* p_payload, uint32_t payloa
 	memset( cipher_text, 0, sizeof(cipher_text) );
 	make_vector( p_h->nonce, vector );
 	status = ockam_vault_aes_gcm_encrypt( p_h->k, KEY_SIZE, vector, sizeof(vector),
-	                                      p_h->h, sizeof(p_h->h), &cipher_text[KEY_SIZE], TAG_SIZE,  p_h->s, KEY_SIZE, cipher_text, KEY_SIZE);
+			p_h->h, sizeof(p_h->h), &cipher_text[KEY_SIZE], TAG_SIZE,  p_h->s, KEY_SIZE, cipher_text, KEY_SIZE);
 	if( OCKAM_ERR_NONE != status ) {
 		log_error(status, "failed ockam_vault_aes_gcm_encrypt in responder_m2_make");
 		goto exit_block;
@@ -505,6 +532,7 @@ OCKAM_ERR initiator_m1_make( HANDSHAKE* p_h, uint8_t* p_prologue, uint16_t prolo
 		log_error(status, "failed to generate get static public key in initiator_step_1");
 		goto exit_block;
 	}
+	print_uint8_str( p_h->e, KEY_SIZE, "---------e--------");
 
 	// Nonce to 0, k to empty
 	p_h->nonce = 0;
@@ -727,27 +755,32 @@ void print_uint8_str( uint8_t* p, uint16_t size, char* msg )
 }
 
 
-OCKAM_ERR hkdf_dh( uint8_t* hkdf1, uint16_t hkdf1_size, OCKAM_VAULT_KEY_e dh_key, uint8_t*  dh2, uint16_t dh2_size,
+OCKAM_ERR hkdf_dh( uint8_t* dh1, uint16_t hkdf1_size, OCKAM_VAULT_KEY_e dh_key_type, uint8_t*  dh2, uint16_t dh2_size,
                    uint16_t out_size, uint8_t*  out_1, uint8_t*  out_2 )
 {
+	printf("------In hkdf_dh--------");
 	OCKAM_ERR   status = OCKAM_ERR_NONE;
-	uint8_t     pms[KEY_SIZE];
+	uint8_t     secret[KEY_SIZE];
 	uint8_t     bytes[2*out_size];
 
-	status = ockam_vault_ecdh( dh_key, dh2, dh2_size, pms, KEY_SIZE );
+	// Compute pre-master secret
+	status = ockam_vault_ecdh( dh_key_type, dh2, dh2_size, secret, KEY_SIZE );
 	if( OCKAM_ERR_NONE != status ) {
 		log_error(status, "failed ockam_vault_ecdh in responder_m2_send");
 		goto exit_block;
 	}
+	print_uint8_str(secret, KEY_SIZE, "secret");
 
 	// ck, k = HKDF( ck, pms )
-	status = ockam_vault_hkdf( pms, KEY_SIZE, hkdf1, hkdf1_size, NULL, 0, bytes, sizeof(bytes));
+	status = ockam_vault_hkdf( secret, KEY_SIZE, dh1, hkdf1_size, NULL, 0, bytes, sizeof(bytes));
 	if( OCKAM_ERR_NONE != status ) {
 		log_error(status, "failed ockam_vault_hkdf in responder_m2_send");
 		goto exit_block;
 	}
 	memcpy( out_1, bytes, out_size );
-	memcpy( out_2, bytes, out_size );
+	memcpy( out_2, &bytes[out_size], out_size );
+	print_uint8_str(out_1, KEY_SIZE, "ck");
+	print_uint8_str(out_2, KEY_SIZE, "k");
 
 exit_block:
 	return status;

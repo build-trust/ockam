@@ -406,7 +406,7 @@ OCKAM_ERR ockam_vault_host_ecdh(OCKAM_VAULT_KEY_e key_type,
             break;
         }
 
-        mbed_ret = mbedtls_mpi_write_binary(&pms,               /* Write the generated PMS to the PMS buffer          */
+        mbed_ret = mbedtls_mpi_write_binary_le(&pms,               /* Write the generated PMS to the PMS buffer          */
                                             p_pms,
                                             pms_size);
         if(mbed_ret != 0) {

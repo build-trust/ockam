@@ -89,7 +89,8 @@ typedef enum {
 	OCKAM_ERR_QUEUE_EMPTY                             = 0x0504,
 	OCKAM_ERR_QUEUE_INIT                              = 0x0505,
 
-	OCKAM_ERR_HANDSHAKE_FAILED                        = 0x0600
+	OCKAM_ERR_HANDSHAKE_TEST_FAILED                   = 0x0601,
+	OCKAM_ERR_HANDSHAKE_FAILED                        = 0x0602
 
 } OCKAM_ERR;
 
