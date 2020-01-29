@@ -689,4 +689,3 @@ OCKAM_ERR ockam_vault_host_aes_gcm(OCKAM_VAULT_AES_GCM_MODE_e mode,
 
 
 #endif                                                          /* OCKAM_VAULT_CFG_AES_GCM                            */
-
