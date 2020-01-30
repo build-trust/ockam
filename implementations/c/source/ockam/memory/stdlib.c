@@ -135,6 +135,8 @@ OCKAM_ERR ockam_mem_alloc(void** p_buf, uint32_t size)
             ret_val = OCKAM_ERR_MEM_UNAVAIL;
             break;
         }
+
+        memset(*p_buf, 0, size);                                /* Always zero out the memory allocated               */
     } while(0);
 
     return ret_val;

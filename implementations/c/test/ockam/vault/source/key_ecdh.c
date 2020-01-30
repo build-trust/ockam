@@ -473,9 +473,11 @@ void test_vault_key_ecdh(OCKAM_VAULT_EC_e ec, uint8_t load_keys)
                      &ss_ephemeral[0],
                      TEST_VAULT_SS_SIZE);
         if(!ret) {
-            ret = memcmp(&ss_static[0],                         /* If the computed shared secrets match, validate it  */
-                         p_shared_secret,
-                         TEST_VAULT_SS_SIZE);
+            if(p_shared_secret != 0) {
+                ret = memcmp(&ss_static[0],                     /* If the computed shared secrets match, validate it  */
+                             p_shared_secret,
+                             TEST_VAULT_SS_SIZE);
+            }
             if(!ret) {
                 test_vault_key_ecdh_print(OCKAM_LOG_INFO,
                                           i,
