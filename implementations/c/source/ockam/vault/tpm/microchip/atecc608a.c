@@ -313,11 +313,13 @@ OCKAM_ERR atecc608a_write_key(uint8_t *p_key, uint32_t key_size,
         p_buf = p_key_buf;                                      /* Save the p_key_buf address to free later           */
 
         do {
-            ret_val = ockam_mem_copy(p_buf,                     /* Copy the key into the zero'd buffer                */
-                                     p_key,
-                                     key_size);
-            if(ret_val != OCKAM_ERR_NONE) {
-                break;
+            if(key_size > 0) {                                  /* Copy the key into the zero'd buffer, only if there */
+                ret_val = ockam_mem_copy(p_buf,                 /* is a valid key. Otherwise, just zero out the key   */
+                                         p_key,                 /* slot.                                              */
+                                         key_size);
+                if(ret_val != OCKAM_ERR_NONE) {
+                    break;
+                }
             }
                                                                 /* Calculate how many 32 and 4 byte reads are needed  */
             slot_write_32 = key_slot_size / ATECC608A_SLOT_WRITE_SIZE_MAX;
@@ -741,7 +743,7 @@ OCKAM_ERR atecc608a_hkdf_extract(uint8_t *p_input, uint32_t input_size,
 
 
     do {
-        if(p_input == 0) {                                      /* Ensure input buffer is valid                       */
+        if((p_input == 0) != (input_size == 0)) {               /* Ensure input buffer is valid                       */
             ret_val = OCKAM_ERR_INVALID_PARAM;
             break;
         }
