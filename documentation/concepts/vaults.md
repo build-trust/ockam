@@ -2,6 +2,8 @@
 title: Vaults
 ```
 
+# Vaults
+
 Various Ockam protocols depend on a variety of standard cryptographic
 primitives or building blocks. Depending on the environment, these
 building blocks may be provided by a software implementation or a

@@ -1,3 +1,0 @@
-```yaml
-title: Documentation
-```
