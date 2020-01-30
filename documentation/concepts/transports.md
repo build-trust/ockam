@@ -1,7 +1,8 @@
 ```yaml
 title: Transports
 ```
-# Vaults
+
+# Transports
 
 Connected machines and devices communicate amongst each other by exchanging
 messages over a variety of transport protocols like TCP, UDP, Bluetooth,
