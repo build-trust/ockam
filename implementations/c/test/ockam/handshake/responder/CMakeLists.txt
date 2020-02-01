@@ -70,7 +70,10 @@ set(MEM_STDLIB TRUE)
 
 set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
 set(TEST_INC ${TEST_INC} ${TEST_COMMON_INC_DIR})
+<<<<<<< HEAD
 set(TEST_INC ${TEST_INC} ${XX_HANDSHAKE_SRC_DIR}/include)
+=======
+>>>>>>> 2a3b2b50c47508716005292b5f54c7c1048be7c3
 
 include_directories(${TEST_INC} "./" "./../include"
 		${OCKAM_INC_DIR}
@@ -97,7 +100,11 @@ file(GLOB SOURCES "./*.c"
 ##############################
 
 file(GLOB SOURCES "./*.c"
+<<<<<<< HEAD
 		$ENV{OCKAM_C_BASE}/source/ockam/handshake/xx/*.c )
+=======
+		$ENV{OCKAM_C_BASE}/source/ockam/handshake/*.c )
+>>>>>>> 2a3b2b50c47508716005292b5f54c7c1048be7c3
 
 ###################################
 # Set handshake_responder_test source files #
@@ -114,7 +121,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
 ###########################
 
 add_subdirectory(${TRANSPORT_POSIX_SRC_DIR} ${BINARY_DIR}/transport)
+<<<<<<< HEAD
 add_subdirectory(${XX_HANDSHAKE_SRC_DIR} ${BINARY_DIR}/handshake)
+=======
+add_subdirectory(${HANDSHAKE_SRC_DIR} ${BINARY_DIR}/handshake)
+>>>>>>> 2a3b2b50c47508716005292b5f54c7c1048be7c3
 add_subdirectory(${VAULT_SRC_DIR} ${BINARY_DIR}/vault)
 add_subdirectory(${KAL_SRC_DIR} ${BINARY_DIR}/kal)
 add_subdirectory(${LOG_SRC_DIR} ${BINARY_DIR}/log)
