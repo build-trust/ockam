@@ -31,8 +31,6 @@ set(TEST_CFG_DIR ${TEST_SRC_DIR}/config)
 
 set(COMMON_OCKAM_SRC_DIR $ENV{OCKAM_C_BASE}/source/ockam)
 set(HANDSHAKE_INITIATOR_TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-#set(TEST_COMMON_SRC_DIR ${TEST_SRC_DIR}/../common)
-#set(TEST_COMMON_INC_DIR ${OCKAM_C_BASE}/test/ockam/vault/include)
 
 set(OCKAM_SRC_DIR ${OCKAM_C_BASE}/source/ockam)
 set(OCKAM_INC_DIR $ENV{OCKAM_C_BASE}/include/)
@@ -44,7 +42,7 @@ set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
 set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/memory)
 set(TRANSPORT_POSIX_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/transport)
 set(HANDSHAKE_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/handshake)
-
+set(HANDSHAKE_INC_DIR ${HANDSHAKE_SRC_DIR}/include)
 set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party)
 
 #################
@@ -72,11 +70,11 @@ set(MEM_STDLIB TRUE)
 
 set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
 set(TEST_INC ${TEST_INC} ${TEST_COMMON_INC_DIR})
+set(TEST_INC ${TEST_INC} ${HANDSHAKE_INC_DIR})
 
 include_directories(${TEST_INC} "./" "./../include"
 		${OCKAM_INC_DIR}
 		${OCKAM_C_BASE}/source/ockam/transport/include/ )
-
 
 ####################
 # Set config files #

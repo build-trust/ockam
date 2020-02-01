@@ -30,9 +30,7 @@ set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(TEST_CFG_DIR ${TEST_SRC_DIR}/config)
 
 set(COMMON_OCKAM_SRC_DIR $ENV{OCKAM_C_BASE}/source/ockam)
-set(HANDSHAKE_RESPONDER_TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-#set(TEST_COMMON_SRC_DIR ${TEST_SRC_DIR}/../common)
-#set(TEST_COMMON_INC_DIR ${OCKAM_C_BASE}/test/ockam/vault/include)
+set(XX_HANDSHAKE_RESPONDER_TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(OCKAM_SRC_DIR ${OCKAM_C_BASE}/source/ockam)
 set(OCKAM_INC_DIR $ENV{OCKAM_C_BASE}/include/)
@@ -43,7 +41,7 @@ set(KAL_SRC_DIR ${OCKAM_SRC_DIR}/kal)
 set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
 set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/memory)
 set(TRANSPORT_POSIX_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/transport)
-set(HANDSHAKE_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/handshake)
+set(XX_HANDSHAKE_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/handshake)
 
 set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party)
 
@@ -72,6 +70,7 @@ set(MEM_STDLIB TRUE)
 
 set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
 set(TEST_INC ${TEST_INC} ${TEST_COMMON_INC_DIR})
+set(TEST_INC ${TEST_INC} ${XX_HANDSHAKE_SRC_DIR}/include)
 
 include_directories(${TEST_INC} "./" "./../include"
 		${OCKAM_INC_DIR}
@@ -98,7 +97,7 @@ file(GLOB SOURCES "./*.c"
 ##############################
 
 file(GLOB SOURCES "./*.c"
-		$ENV{OCKAM_C_BASE}/source/ockam/handshake/*.c )
+		$ENV{OCKAM_C_BASE}/source/ockam/handshake/xx/*.c )
 
 ###################################
 # Set handshake_responder_test source files #
@@ -115,7 +114,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
 ###########################
 
 add_subdirectory(${TRANSPORT_POSIX_SRC_DIR} ${BINARY_DIR}/transport)
-add_subdirectory(${HANDSHAKE_SRC_DIR} ${BINARY_DIR}/handshake)
+add_subdirectory(${XX_HANDSHAKE_SRC_DIR} ${BINARY_DIR}/handshake)
 add_subdirectory(${VAULT_SRC_DIR} ${BINARY_DIR}/vault)
 add_subdirectory(${KAL_SRC_DIR} ${BINARY_DIR}/kal)
 add_subdirectory(${LOG_SRC_DIR} ${BINARY_DIR}/log)
