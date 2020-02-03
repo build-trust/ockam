@@ -1,5 +1,23 @@
-rm -rf CMakeFiles
-rm Makefile
-rm CMakeCache.txt
-rm *.cbp
-rm -rf _build
+rm ../*.cmake
+rm -rf ../transport
+rm -rf ../CMakeCache.txt
+rm -rf ../CMakeFiles
+rm -rf ../handshake
+rm -rf ../kal
+rm -rf ../vault
+rm -rf ../log
+rm -rf ../mem
+rm -rf ../*.cbp
+rm ../Makefile
+rm ./*.cmake
+rm -rf ./transport
+rm -rf ./CMakeCache.txt
+rm -rf ./CMakeFiles
+rm -rf ./handshake
+rm -rf ./kal
+rm -rf ./vault
+rm -rf ./log
+rm -rf ./mem
+rm -rf ./*.cbp
+rm ./Makefile
+rm handshake_initiator_test

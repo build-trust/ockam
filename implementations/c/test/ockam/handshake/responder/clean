@@ -1,6 +1,0 @@
-rm -rf CMakeFiles
-rm Makefile
-rm CMakeCache.txt
-rm *.cbp
-rm -rf _build
-rm -rf cmake-build-debug

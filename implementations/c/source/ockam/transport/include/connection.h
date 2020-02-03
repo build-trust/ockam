@@ -9,7 +9,6 @@
 #ifndef TEST_TRANSPORT_CONNECTION_H
 #define TEST_TRANSPORT_CONNECTION_H
 #include "ockam/transport.h"
-#include "ockam/queue.h"
 
 #define     DEFAULT_TCP_LISTEN_PORT         8000
 

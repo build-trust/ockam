@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.14)
 project(transport C)
 
 set(CMAKE_C_STANDARD 99)
@@ -17,7 +17,6 @@ include_directories( "./include/"
 
 # Add the source files
 file(GLOB SOURCES "./*.c"
-		$ENV{OCKAM_C_BASE}/source/ockam/queue/*.c
 		$ENV{OCKAM_C_BASE}/source/ockam/log/*.c
 		$ENV{OCKAM_C_BASE}/source/ockam/transport/server/*.c
 		$ENV{OCKAM_C_BASE}/source/ockam/transport/*.c

@@ -1,3 +1,0 @@
-rm -rf CMakeFiles
-rm Makefile
-rm CMakeCache.txt

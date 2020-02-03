@@ -20,7 +20,6 @@
 #include <pthread.h>
 #include "ockam/transport.h"
 #include "syslog.h"
-#include "ockam/queue.h"
 
 #define MAX_QUEUE_SIZE          512
 

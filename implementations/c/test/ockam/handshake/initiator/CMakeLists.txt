@@ -1,8 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
-
-##########################
-# Project handshake_initiator_test #
-##########################
+cmake_minimum_required(VERSION 3.13)
 
 ###########################
 # Path & Compiler Options #
@@ -12,38 +8,44 @@ cmake_minimum_required(VERSION 3.15)
 include($ENV{OCKAM_C_BASE}/tools/cmake/path.cmake)
 
 # This must be included BEFORE the project declaration
+#!!include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
 if($ENV{PLATFORM} MATCHES "PI")
-	 message("********Building for PI**********")
-   include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
+	message("Building for PI")
+	include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
 else()
 	set(CMAKE_C_STANDARD 99)
 	set(CMAKE_C_FLAGS "-std=c99 -g")
 endif()
 
-project(handshake_initiator_test C )
+###########
+# Project #
+###########
+
+project(handshake_initiator_test)
+
 
 ###########################
 # Set directory locations #
 ###########################
 
 set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_CFG_DIR ${TEST_SRC_DIR}/config)
+set(TEST_CFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/config)
 
-set(COMMON_OCKAM_SRC_DIR $ENV{OCKAM_C_BASE}/source/ockam)
-set(HANDSHAKE_INITIATOR_TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(TEST_INC_DIR ${OCKAM_C_BASE}/test/ockam/handshake/include)
 
 set(OCKAM_SRC_DIR ${OCKAM_C_BASE}/source/ockam)
-set(OCKAM_INC_DIR $ENV{OCKAM_C_BASE}/include/)
-set(BINARY_DIR _build/$ENV{PLATFORM})
+set(OCKAM_INC_DIR ${OCKAM_C_BASE}/include)
 
 set(VAULT_SRC_DIR ${OCKAM_SRC_DIR}/vault)
 set(KAL_SRC_DIR ${OCKAM_SRC_DIR}/kal)
 set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
 set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/memory)
-set(TRANSPORT_POSIX_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/transport)
-set(HANDSHAKE_SRC_DIR ${COMMON_OCKAM_SRC_DIR}/handshake)
-set(HANDSHAKE_INC_DIR ${HANDSHAKE_SRC_DIR}/include)
+set(TRANSPORT_SRC_DIR ${OCKAM_SRC_DIR}/transport)
+set(HANDSHAKE_SRC_DIR ${OCKAM_SRC_DIR}/handshake)
+
 set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party)
+
+set(BINARY_DIR _build/$ENV{PLATFORM})
 
 #################
 # Build Options #
@@ -62,91 +64,56 @@ set(LOG_PRINTF TRUE)
 set(MEM_STDLIB TRUE)
 
 # Compiler Build Options
-#set(CMAKE_VERBOSE_MAKEFILE TRUE)
+set(CMAKE_VERBOSE_MAKEFILE TRUE)
+
 
 ###########################
 # Set include directories #
 ###########################
 
 set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
-set(TEST_INC ${TEST_INC} ${TEST_COMMON_INC_DIR})
+set(TEST_INC ${TEST_INC} ${TEST_INC_DIR})
 set(TEST_INC ${TEST_INC} ${HANDSHAKE_INC_DIR})
 
-include_directories(${TEST_INC} "./" "./../include"
-		${OCKAM_INC_DIR}
-		${OCKAM_C_BASE}/source/ockam/transport/include/ )
+include_directories(${TEST_INC})
 
 ####################
 # Set config files #
 ####################
 
-add_definitions(-DOCKAM_VAULT_CONFIG_FILE="${TEST_CFG_DIR}/vault_config.h")
+add_definitions(-DOCKAM_VAULT_CONFIG_FILE="${TEST_SRC_DIR}/config/vault_config.h")
+#add_definitions(-DMBEDTLS_CONFIG_FILE="${TEST_CFG_DIR}/mbed_crypto_config.h")
 
-##############################
-# Set transport source files #
-##############################
+####################
+# Set source files #
+####################
 
-file(GLOB SOURCES "./*.c"
-		$ENV{OCKAM_C_BASE}/source/ockam/transport/*.c
-		$ENV{OCKAM_C_BASE}/source/ockam/transport/connection/*.c
-		$ENV{OCKAM_C_BASE}/source/ockam/transport/connection/socket/posix/*.c )
-
-##############################
-# Set handshake source files #
-##############################
-
-file(GLOB SOURCES "./*.c"
-		$ENV{OCKAM_C_BASE}/source/ockam/handshake/*.c )
-
-###################################
-# Set handshake_initiator_test source files #
-###################################
-
-set(TEST_SRC ${TEST_SRC}
-	${TEST_SRC_DIR}/handshake_initiator_test.c
-	${COMMON_OCKAM_SRC_DIR}/log/syslog.c)
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
+#set(TEST_SRC ${TEST_SRC_DIR}/handshake_initiator_test.c)
+set(TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/handshake_initiator_test.c)
 
 ###########################
 # Set the desired modules #
 ###########################
 
-add_subdirectory(${TRANSPORT_POSIX_SRC_DIR} ${BINARY_DIR}/transport)
-add_subdirectory(${HANDSHAKE_SRC_DIR} ${BINARY_DIR}/handshake)
-add_subdirectory(${VAULT_SRC_DIR} ${BINARY_DIR}/vault)
-add_subdirectory(${KAL_SRC_DIR} ${BINARY_DIR}/kal)
-add_subdirectory(${LOG_SRC_DIR} ${BINARY_DIR}/log)
-add_subdirectory(${MEM_SRC_DIR} ${BINARY_DIR}/mem)
-
-###########################
-# Set CLEAN options       #
-###########################
-
-option(ENABLE_DIRECTORY_CLEAN
-  "Enable ADDITIONAL_CLEAN_FILES on directory level"
-  on
-)
+add_subdirectory(${VAULT_SRC_DIR} vault)
+add_subdirectory(${KAL_SRC_DIR} kal)
+add_subdirectory(${LOG_SRC_DIR} log)
+add_subdirectory(${MEM_SRC_DIR} mem)
+add_subdirectory(${TRANSPORT_SRC_DIR} transport)
+add_subdirectory(${HANDSHAKE_SRC_DIR} handshake)
 
 #########################################
 # Configure link libraries & executable #
 #########################################
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
-#	${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/vault
-#	${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/transport
-#	${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/handshake)
-
 add_executable(handshake_initiator_test ${TEST_SRC})
 
-set_property(TARGET handshake_initiator_test PROPERTY C_STANDARD 99)
-
-target_link_libraries(handshake_initiator_test ockam_transport)
-target_link_libraries(handshake_initiator_test ockam_handshake)
 target_link_libraries(handshake_initiator_test ockam_vault)
 target_link_libraries(handshake_initiator_test ockam_kal)
 target_link_libraries(handshake_initiator_test ockam_log)
-target_link_libraries(handshake_initiator_test ockam_mem)
 target_link_libraries(handshake_initiator_test mbedcrypto)
+target_link_libraries(handshake_initiator_test ockam_transport)
+target_link_libraries(handshake_initiator_test ockam_handshake)
 
 install(TARGETS handshake_initiator_test DESTINATION bin)

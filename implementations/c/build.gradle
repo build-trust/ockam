@@ -2,7 +2,7 @@
 plugins {
     id 'network.ockam.gradle.host' version '1.0.0'
     id 'network.ockam.gradle.builders' version '1.0.0'
-} 
+}
 
 task getDependencies {
     doFirst {
@@ -14,16 +14,22 @@ task getDependencies {
 
 task build {
     onlyIf { host.debianBuilder.enabled }
+    dependsOn getDependencies, gradle.includedBuild('handshake').task(':build')
+    dependsOn getDependencies, gradle.includedBuild('transport').task(':build')
     dependsOn getDependencies, gradle.includedBuild('vault').task(':build')
 }
 
 task test {
     onlyIf { host.debianBuilder.enabled }
+    dependsOn gradle.includedBuild('handshake').task(':test')
+    dependsOn gradle.includedBuild('transport').task(':test')
     dependsOn gradle.includedBuild('vault').task(':test')
 }
 
 task clean {
     onlyIf { host.debianBuilder.enabled }
+    dependsOn gradle.includedBuild('handshake').task(':clean')
+    dependsOn gradle.includedBuild('transport').task(':clean')
     dependsOn gradle.includedBuild('vault').task(':clean')
 }
 

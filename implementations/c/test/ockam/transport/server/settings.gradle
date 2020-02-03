@@ -1,4 +1,4 @@
-rootProject.name = 'responder'
+rootProject.name = 'server'
 
 boolean inComposite = gradle.parent != null
 if (!inComposite) {
