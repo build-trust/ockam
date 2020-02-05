@@ -3,10 +3,9 @@ plugins {
     id 'network.ockam.gradle.host' version '1.0.0'
     id 'network.ockam.gradle.builders' version '1.0.0'
 }
-
 ['build', 'test', 'clean'].each { t ->
     task "${t}" {
-        group 'handshake'
+        group 'transport'
         def testTasks = ['initiator', 'responder'].stream().map { test ->
             tasks.create("${t}${test.capitalize()}") {
                 group test.capitalize()

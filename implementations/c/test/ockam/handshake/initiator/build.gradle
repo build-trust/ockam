@@ -3,8 +3,18 @@ plugins {
   id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
+task getDependencies {
+    doFirst {
+        exec {
+            workingDir '../../../../../..'
+            commandLine 'git', 'submodule', 'update', '--init', '--recursive'
+        }
+    }
+}
+
 task build {
   onlyIf { host.debianBuilder.enabled }
+  dependsOn getDependencies
   doLast {
     builderExec 'debian', {
       script '''
