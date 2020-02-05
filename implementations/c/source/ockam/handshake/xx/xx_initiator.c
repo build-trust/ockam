@@ -42,14 +42,6 @@ OCKAM_ERR ockam_xx_initiator_handshake( OCKAM_TRANSPORT_CONNECTION connection, X
 		goto exit_block;
 	}
 
-	// Verify
-	string_to_hex( MSG_1_CIPHERTEXT, compare, &compare_bytes );
-	if( 0 != memcmp(send_buffer, compare, compare_bytes)) {
-		status = OCKAM_ERR_XX_HANDSHAKE_TEST_FAILED;
-		log_error( status, "Test failed on msg 0\n");
-		goto exit_block;
-	}
-
 	// Step 1 send message
 	status = ockam_send_blocking( connection, send_buffer, transmit_size );
 	if( OCKAM_ERR_NONE != status ) {
@@ -67,7 +59,7 @@ OCKAM_ERR ockam_xx_initiator_handshake( OCKAM_TRANSPORT_CONNECTION connection, X
 	// Msg 2 process
 	status = xx_initiator_m2_process( p_h, recv_buffer, bytes_received );
 	if( OCKAM_ERR_NONE != status ) {
-		log_error( status, "ockam_receive_blocking failed on msg 2" );
+		log_error( status, "xx_initiator_m2_process failed on msg 2" );
 		goto exit_block;
 	}
 
@@ -75,14 +67,6 @@ OCKAM_ERR ockam_xx_initiator_handshake( OCKAM_TRANSPORT_CONNECTION connection, X
 	status = xx_initiator_m3_make( p_h, send_buffer, &transmit_size );
 	if( OCKAM_ERR_NONE != status ) {
 		log_error( status, "initiator_m3_make failed" );
-		goto exit_block;
-	}
-
-	/* Msg 3 verify */
-	string_to_hex( MSG_3_CIPHERTEXT, compare, &compare_bytes);
-	if( 0 != memcmp( compare, send_buffer, transmit_size)) {
-		status = OCKAM_ERR_XX_HANDSHAKE_TEST_FAILED;
-		log_error(status, "Msg 3 verify failed");
 		goto exit_block;
 	}
 

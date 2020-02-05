@@ -21,17 +21,17 @@ endif()
 # Project #
 ###########
 
-project(handshake_initiator_test)
+project(handshake_responder_demo)
 
 
 ###########################
 # Set directory locations #
 ###########################
 
-set(TEST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_CFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/config)
+set(DEMO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(DEMO_CFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/config)
 
-set(TEST_INC_DIR ${OCKAM_C_BASE}/test/ockam/handshake/include)
+set(DEMO_INC_DIR ${OCKAM_C_BASE}/demo/ockam/handshake/include)
 
 set(OCKAM_SRC_DIR ${OCKAM_C_BASE}/source/ockam)
 set(OCKAM_INC_DIR ${OCKAM_C_BASE}/include)
@@ -71,24 +71,25 @@ set(CMAKE_VERBOSE_MAKEFILE TRUE)
 # Set include directories #
 ###########################
 
-set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
-set(TEST_INC ${TEST_INC} ${TEST_INC_DIR})
-set(TEST_INC ${TEST_INC} ${HANDSHAKE_INC_DIR})
+set(DEMO_INC ${DEMO_INC} ${OCKAM_INC_DIR})
+set(DEMO_INC ${DEMO_INC} ${DEMO_INC_DIR})
+set(DEMO_INC ${DEMO_INC} ${HANDSHAKE_INC_DIR})
 
-include_directories(${TEST_INC})
+include_directories(${DEMO_INC})
 
 ####################
 # Set config files #
 ####################
 
-add_definitions(-DOCKAM_VAULT_CONFIG_FILE="${TEST_SRC_DIR}/config/vault_config.h")
+add_definitions(-DOCKAM_VAULT_CONFIG_FILE="${DEMO_SRC_DIR}/config/vault_config.h")
+#add_definitions(-DMBEDTLS_CONFIG_FILE="${DEMO_CFG_DIR}/mbed_crypto_config.h")
 
 ####################
 # Set source files #
 ####################
 
-#set(TEST_SRC ${TEST_SRC_DIR}/handshake_initiator_test.c)
-set(TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/handshake_initiator_test.c)
+#set(DEMO_SRC ${DEMO_SRC_DIR}/handshake_responder_demo.c)
+set(DEMO_SRC ${CMAKE_CURRENT_SOURCE_DIR}/handshake_responder_demo.c)
 
 ###########################
 # Set the desired modules #
@@ -106,13 +107,13 @@ add_subdirectory(${HANDSHAKE_SRC_DIR} handshake)
 #########################################
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR})
-add_executable(handshake_initiator_test ${TEST_SRC})
+add_executable(handshake_responder_demo ${DEMO_SRC})
 
-target_link_libraries(handshake_initiator_test ockam_vault)
-target_link_libraries(handshake_initiator_test ockam_kal)
-target_link_libraries(handshake_initiator_test ockam_log)
-target_link_libraries(handshake_initiator_test mbedcrypto)
-target_link_libraries(handshake_initiator_test ockam_transport)
-target_link_libraries(handshake_initiator_test ockam_handshake)
+target_link_libraries(handshake_responder_demo ockam_vault)
+target_link_libraries(handshake_responder_demo ockam_kal)
+target_link_libraries(handshake_responder_demo ockam_log)
+target_link_libraries(handshake_responder_demo mbedcrypto)
+target_link_libraries(handshake_responder_demo ockam_transport)
+target_link_libraries(handshake_responder_demo ockam_handshake)
 
-install(TARGETS handshake_initiator_test DESTINATION bin)
+install(TARGETS handshake_responder_demo DESTINATION bin)
