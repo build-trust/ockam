@@ -168,7 +168,6 @@ OCKAM_ERR ockam_vault_host_random(uint8_t *p_rand_num, uint32_t rand_num_size)
         ret_val = OCKAM_ERR_VAULT_HOST_RAND_FAIL;
     }
 
-
     return ret_val;
 }
 
@@ -453,7 +452,6 @@ OCKAM_ERR ockam_vault_host_sha256(uint8_t *p_msg, uint16_t msg_size,
     do {
         mbedtls_sha256_init(&sha256_ctx);                       /* SHA256 context structure must be inited before use */
 
-
         mbed_ret = mbedtls_sha256_starts_ret(&sha256_ctx,       /* Configure for SHA256 rather than SHA224            */
                                              MBEDCRYPTO_SHA256_IS224);
         if(mbed_ret != 0) {
@@ -535,22 +533,26 @@ OCKAM_ERR ockam_vault_host_hkdf(uint8_t *p_salt, uint32_t salt_size,
 
 
     do {
-        if((p_ikm == 0) || (ikm_size == 0) ||                   /* Ensure the input key and output buffers are not    */
-           (p_out == 0) || (out_size  == 0)) {                  /* null and the size values are greater than zero     */
-            ret_val = OCKAM_ERR_INVALID_PARAM;
+        if((p_out == 0) || (out_size  == 0)) {                  /* Ensure the output buffers is not null and the size */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* of the buffer is greater than zero                 */
+            break;
+        }
+
+        if((p_ikm == 0) != (ikm_size == 0)) {                   /* Input key material must either have a valid buffer */
+            ret_val = OCKAM_ERR_INVALID_PARAM;                  /* and size >0 or the buffer and size be 0            */
+            break;
         }
 
         p_md = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);    /* Get the SHA-256 MD context for HKDF                */
 
         mbed_ret = mbedtls_hkdf(p_md,                           /* Perform the HKDF calculation                       */
-                           p_salt, salt_size,
-                           p_ikm, ikm_size,
-                           p_info, info_size,
-                           p_out, out_size);
+                                p_salt, salt_size,
+                                p_ikm, ikm_size,
+                                p_info, info_size,
+                                p_out, out_size);
         if(mbed_ret != 0) {                                     /* Check for an mbed TLS error                        */
-            OCKAM_ERR_VAULT_HOST_HKDF_FAIL;
+            ret_val = OCKAM_ERR_VAULT_HOST_HKDF_FAIL;
         }
-
     } while(0);
 
     return ret_val;

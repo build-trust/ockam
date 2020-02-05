@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="880px" height="300px" viewBox="0 0 880 300" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 61.2 (89653) - https://sketch.com -->
+    <title>Artboard</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="659" y="69" width="147" height="43"></rect>
+        <mask id="mask-2" maskContentUnits="userSpaceOnUse" maskUnits="objectBoundingBox" x="0" y="0" width="147" height="43" fill="white">
+            <use xlink:href="#path-1"></use>
+        </mask>
+        <rect id="path-3" x="659" y="189" width="147" height="43"></rect>
+        <mask id="mask-4" maskContentUnits="userSpaceOnUse" maskUnits="objectBoundingBox" x="0" y="0" width="147" height="43" fill="white">
+            <use xlink:href="#path-3"></use>
+        </mask>
+    </defs>
+    <g id="Artboard" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#FFFFFF" x="0" y="0" width="880" height="300"></rect>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="180" y="70" width="145" height="41"></rect>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="180" y="130" width="625" height="41"></rect>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="180" y="190" width="145" height="41"></rect>
+        <text id="Transport-implementa" font-family="Futura-Medium, Futura" font-size="10" font-weight="400" fill="#7EAC3E">
+            <tspan x="187.724121" y="205">Transport implementation for</tspan>
+            <tspan x="318.275879" y="205" font-size="12"> </tspan>
+            <tspan x="242.822266" y="220" font-size="12">TCP</tspan>
+        </text>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="340" y="190" width="145" height="41"></rect>
+        <text id="Transport-implementa" font-family="Futura-Medium, Futura" font-size="10" font-weight="400" fill="#8AB439">
+            <tspan x="347.724121" y="207">Transport implementation for </tspan>
+            <tspan x="388.947266" y="220">LoRaWAN</tspan>
+        </text>
+        <text id="Transport-implementa" font-family="Futura-Medium, Futura" font-size="10" font-weight="400" fill="#8AB439">
+            <tspan x="508.724121" y="208">Transport implementation for </tspan>
+            <tspan x="552.613281" y="221">Bluetooth</tspan>
+        </text>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="339" y="70" width="145" height="41"></rect>
+        <text id="Transport-Interface" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#56903F">
+            <tspan x="441.463867" y="155">Transport Interface</tspan>
+        </text>
+        <text id="Secure-Channels" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#639A40">
+            <tspan x="207.259766" y="95">Secure Channels</tspan>
+        </text>
+        <text id="Protocols" font-family="Futura-Medium, Futura" font-size="16" font-weight="400" fill="#70A340">
+            <tspan x="82.4921875" y="98">Protocols</tspan>
+        </text>
+        <text id="Transports" font-family="Futura-Medium, Futura" font-size="16" font-weight="400" fill="#7EAC3E">
+            <tspan x="74.2265625" y="215">Transports</tspan>
+        </text>
+        <text id="Key-Lifecycle" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#70A340">
+            <tspan x="376.861328" y="95">Key Lifecycle</tspan>
+        </text>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="499" y="70" width="145" height="41"></rect>
+        <text id="Credential-Exchange" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#7EAC3E">
+            <tspan x="515.263672" y="95">Credential Exchange</tspan>
+        </text>
+        <use id="Rectangle" stroke="#3D7B3B" mask="url(#mask-2)" stroke-width="4" stroke-dasharray="5" xlink:href="#path-1"></use>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="501" y="190" width="145" height="41"></rect>
+        <use id="Rectangle" stroke="#3D7B3B" mask="url(#mask-4)" stroke-width="4" stroke-dasharray="5" xlink:href="#path-3"></use>
+    </g>
+</svg>

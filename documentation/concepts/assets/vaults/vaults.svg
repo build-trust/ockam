@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="880px" height="400px" viewBox="0 0 880 400" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 61.2 (89653) - https://sketch.com -->
+    <title>Artboard</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="655" y="62" width="147" height="43"></rect>
+        <mask id="mask-2" maskContentUnits="userSpaceOnUse" maskUnits="objectBoundingBox" x="0" y="0" width="147" height="43" fill="white">
+            <use xlink:href="#path-1"></use>
+        </mask>
+        <rect id="path-3" x="655" y="182" width="147" height="43"></rect>
+        <mask id="mask-4" maskContentUnits="userSpaceOnUse" maskUnits="objectBoundingBox" x="0" y="0" width="147" height="43" fill="white">
+            <use xlink:href="#path-3"></use>
+        </mask>
+    </defs>
+    <g id="Artboard" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#FFFFFF" x="0" y="0" width="880" height="400"></rect>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="176" y="63" width="145" height="41"></rect>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="176" y="123" width="625" height="41"></rect>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="176" y="183" width="145" height="41"></rect>
+        <text id="Vault-implementation" font-family="Futura-Medium, Futura" font-size="10" font-weight="400" fill="#7EAC3E">
+            <tspan x="193.56543" y="198">Vault implementation for</tspan>
+            <tspan x="304.43457" y="198" font-size="12"> </tspan>
+            <tspan x="214.558594" y="213" font-size="12">ATECC608A</tspan>
+        </text>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="336" y="183" width="145" height="41"></rect>
+        <text id="Vault-implementation" font-family="Futura-Medium, Futura" font-size="10" font-weight="400" fill="#8AB439">
+            <tspan x="353.56543" y="198">Vault implementation for</tspan>
+            <tspan x="464.43457" y="198" font-size="12"> </tspan>
+            <tspan x="377.136719" y="213" font-size="12">NXP SE050</tspan>
+        </text>
+        <text id="Pure-software-Vault" font-family="Futura-Medium, Futura" font-size="10" font-weight="400" fill="#8AB439">
+            <tspan x="526.005859" y="201">Pure software Vault </tspan>
+            <tspan x="535.498047" y="214">implementation</tspan>
+        </text>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="335" y="63" width="145" height="41"></rect>
+        <text id="Vault-Interface" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#56903F">
+            <tspan x="449.273438" y="148">Vault Interface</tspan>
+        </text>
+        <g id="Group" transform="translate(215.000000, 269.000000)">
+            <g id="np_chip_1092613_3D7B3B" transform="translate(13.000000, 0.000000)" stroke="#3D7B3B" stroke-linecap="round">
+                <path d="M32.1416924,27.6551552 L32.1416924,25.4777303 M39.2139687,19.2857143 L44.9999965,19.2857143 M39.2139687,14.1437978 L41.4912068,14.1437978 M43.7162448,14.1437978 L44.997732,14.1437978 M45,25.7137631 L39.2139722,25.7137631 M45,30.8579441 L39.2139722,30.8579441 M0,19.2856562 L5.78602783,19.2856562 M5.78602783,14.1437397 L0,14.1437397 M5.78602783,25.7137051 L0,25.7137051 M5.78602783,30.8578861 L0,30.8578861 M19.2861788,6.43008111 L19.2861788,0 M14.1419978,6.43008111 L14.1419978,0 M25.7142857,0 L25.7142857,6.42775852 M30.8562022,8.8817842e-16 L30.8562022,6.42775852 M19.2862369,39.2139722 L19.2862369,45 M14.1420559,39.2139722 L14.1420559,45 M25.7143438,39.2139722 L25.7143438,45 M30.8562603,39.2139722 L30.8562603,45 M6.34890671,7.86358158 L6.34890671,6.50951357 L38.6520223,6.50951357 L38.6520223,38.8939197 L6.34890671,38.8939197 L6.34890671,10.7668149 M32.1423926,23.4434928 L32.1423926,12.9372721 L12.7766652,12.9372721 L12.7766652,32.3029995 L32.1423926,32.3052681 L32.1423926,30.2684757" id="Shape" stroke-width="3"></path>
+                <line x1="15" y1="16" x2="16" y2="15" id="Path"></line>
+                <line x1="15" y1="18" x2="18" y2="15" id="Path"></line>
+                <line x1="15" y1="20" x2="20" y2="15" id="Path"></line>
+                <line x1="15" y1="22" x2="22" y2="15" id="Path"></line>
+                <line x1="15" y1="24" x2="24" y2="15" id="Path"></line>
+                <line x1="15" y1="26" x2="24" y2="17" id="Path"></line>
+                <line x1="15" y1="28" x2="23" y2="20" id="Path"></line>
+                <line x1="15" y1="30" x2="23" y2="22" id="Path"></line>
+                <line x1="17" y1="30" x2="22" y2="25" id="Path"></line>
+                <line x1="19" y1="30" x2="22" y2="27" id="Path"></line>
+                <line x1="21" y1="30" x2="22" y2="29" id="Path"></line>
+                <line x1="23" y1="31" x2="24" y2="30" id="Path"></line>
+                <line x1="24.185545" y1="30.814455" x2="24.814455" y2="30.185545" id="Path"></line>
+            </g>
+            <text id="ATECC608A" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#639A40">
+                <tspan x="0.05859375" y="67">ATECC608A</tspan>
+            </text>
+        </g>
+        <g id="Group" transform="translate(375.000000, 269.000000)">
+            <g id="np_chip_1092613_3D7B3B" transform="translate(11.000000, 0.000000)" stroke="#3D7B3B" stroke-linecap="round">
+                <path d="M32.1416924,27.6551552 L32.1416924,25.4777303 M39.2139687,19.2857143 L44.9999965,19.2857143 M39.2139687,14.1437978 L41.4912068,14.1437978 M43.7162448,14.1437978 L44.997732,14.1437978 M45,25.7137631 L39.2139722,25.7137631 M45,30.8579441 L39.2139722,30.8579441 M0,19.2856562 L5.78602783,19.2856562 M5.78602783,14.1437397 L0,14.1437397 M5.78602783,25.7137051 L0,25.7137051 M5.78602783,30.8578861 L0,30.8578861 M19.2861788,6.43008111 L19.2861788,0 M14.1419978,6.43008111 L14.1419978,0 M25.7142857,0 L25.7142857,6.42775852 M30.8562022,8.8817842e-16 L30.8562022,6.42775852 M19.2862369,39.2139722 L19.2862369,45 M14.1420559,39.2139722 L14.1420559,45 M25.7143438,39.2139722 L25.7143438,45 M30.8562603,39.2139722 L30.8562603,45 M6.34890671,7.86358158 L6.34890671,6.50951357 L38.6520223,6.50951357 L38.6520223,38.8939197 L6.34890671,38.8939197 L6.34890671,10.7668149 M32.1423926,23.4434928 L32.1423926,12.9372721 L12.7766652,12.9372721 L12.7766652,32.3029995 L32.1423926,32.3052681 L32.1423926,30.2684757" id="Shape" stroke-width="3"></path>
+                <line x1="15" y1="16" x2="16" y2="15" id="Path"></line>
+                <line x1="15" y1="18" x2="18" y2="15" id="Path"></line>
+                <line x1="15" y1="20" x2="20" y2="15" id="Path"></line>
+                <line x1="15" y1="22" x2="22" y2="15" id="Path"></line>
+                <line x1="15" y1="24" x2="24" y2="15" id="Path"></line>
+                <line x1="15" y1="26" x2="24" y2="17" id="Path"></line>
+                <line x1="15" y1="28" x2="23" y2="20" id="Path"></line>
+                <line x1="15" y1="30" x2="23" y2="22" id="Path"></line>
+                <line x1="17" y1="30" x2="22" y2="25" id="Path"></line>
+                <line x1="19" y1="30" x2="22" y2="27" id="Path"></line>
+                <line x1="21" y1="30" x2="22" y2="29" id="Path"></line>
+                <line x1="23" y1="31" x2="24" y2="30" id="Path"></line>
+                <line x1="24.185545" y1="30.814455" x2="24.814455" y2="30.185545" id="Path"></line>
+            </g>
+            <text id="NXP-SE050" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#70A340">
+                <tspan x="0.63671875" y="67">NXP SE050</tspan>
+            </text>
+        </g>
+        <text id="Secure-Channels" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#639A40">
+            <tspan x="203.259766" y="88">Secure Channels</tspan>
+        </text>
+        <text id="Protocols" font-family="Futura-Medium, Futura" font-size="16" font-weight="400" fill="#70A340">
+            <tspan x="78.4921875" y="91">Protocols</tspan>
+        </text>
+        <text id="Vaults" font-family="Futura-Medium, Futura" font-size="16" font-weight="400" fill="#7EAC3E">
+            <tspan x="101.472656" y="208">Vaults</tspan>
+        </text>
+        <text id="Key-Lifecycle" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#70A340">
+            <tspan x="372.861328" y="88">Key Lifecycle</tspan>
+        </text>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="495" y="63" width="145" height="41"></rect>
+        <text id="Credential-Exchange" font-family="Futura-Medium, Futura" font-size="12" font-weight="400" fill="#7EAC3E">
+            <tspan x="511.263672" y="88">Credential Exchange</tspan>
+        </text>
+        <use id="Rectangle" stroke="#3D7B3B" mask="url(#mask-2)" stroke-width="4" stroke-dasharray="5" xlink:href="#path-1"></use>
+        <rect id="Rectangle" stroke="#3D7B3B" stroke-width="2" x="497" y="183" width="145" height="41"></rect>
+        <use id="Rectangle" stroke="#3D7B3B" mask="url(#mask-4)" stroke-width="4" stroke-dasharray="5" xlink:href="#path-3"></use>
+    </g>
+</svg>
