@@ -61,7 +61,7 @@ typedef struct {
  * Address type will vary depending on connection type.
  */
 typedef union {
-    OCKAM_INTERNET_ADDRESS              internet_address;
+	OCKAM_INTERNET_ADDRESS              internet_address;
 } OCKAM_LISTEN_ADDRESS;
 
 /*
