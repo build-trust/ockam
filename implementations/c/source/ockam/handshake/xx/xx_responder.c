@@ -17,7 +17,6 @@
 #include "ockam/syslog.h"
 #include "ockam/handshake.h"
 #include "handshake_local.h"
-#include "handshake_test.h"
 
 
 /*
