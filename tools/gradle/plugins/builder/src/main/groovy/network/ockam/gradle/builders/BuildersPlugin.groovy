@@ -39,8 +39,8 @@ class BuildersPlugin implements Plugin<Project> {
       ]
     ]
 
-    def vagrantfileDir = new File(findVagrantfileDir())
     def currentDir = project.file('.')
+    def vagrantfileDir = findVagrantfileDir(currentDir)
     def pathRelativeToVagrentfileDir = vagrantfileDir.toPath().relativize(currentDir.toPath()).toFile()
 
     config = merge(config, project.host)
@@ -68,8 +68,8 @@ class BuildersPlugin implements Plugin<Project> {
   }
 
   // starting from the current directory, look for a parent directory that has a Vagrantfile
-  static String findVagrantfileDir() {
-    def path = new File('.')
+  static File findVagrantfileDir(File currentDir) {
+    def path = currentDir
     def hasVagrantfile = false
     while (true) {
       path.eachFileMatch (FileType.FILES, /Vagrantfile/) { file ->
@@ -78,7 +78,7 @@ class BuildersPlugin implements Plugin<Project> {
       if (hasVagrantfile) break
       path = new File('..', path)
     }
-    return path.getCanonicalPath()
+    return (new File(path.getCanonicalPath()))
   }
 
   static Map merge(Map onto, Map... overrides) {
