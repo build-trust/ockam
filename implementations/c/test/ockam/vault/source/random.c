@@ -11,11 +11,18 @@
  ********************************************************************************************************
  */
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <ockam/error.h>
 #include <ockam/log.h>
 #include <ockam/vault.h>
+#include <ockam/memory.h>
 
 #include <test_vault.h>
+
 
 /*
  ********************************************************************************************************
@@ -23,7 +30,8 @@
  ********************************************************************************************************
  */
 
-#define TEST_VAULT_RAND_NUM_SIZE                    32u
+#define TEST_VAULT_RAND_NUM_SIZE                    32u         /*!< Size of the random number to generate            */
+
 
 /*
  ********************************************************************************************************
@@ -42,6 +50,9 @@
  *                                          FUNCTION PROTOTYPES                                         *
  ********************************************************************************************************
  */
+
+void test_vault_random(void **state);
+
 
 /*
  ********************************************************************************************************
@@ -71,31 +82,42 @@ uint8_t g_rand_num[TEST_VAULT_RAND_NUM_SIZE] = {0};
  *
  * @brief   Ensure the specified ockam vault random function can generate a number
  *
+ * @param   state   Shared variable between all test cases. Unused here.
+ *
  ********************************************************************************************************
  */
 
-void test_vault_random()
+void test_vault_random(void **state)
 {
     OCKAM_ERR err = OCKAM_ERR_NONE;
 
 
     err = ockam_vault_random((uint8_t*) &g_rand_num,            /* Generate a random number                           */
                              TEST_VAULT_RAND_NUM_SIZE);
-    if(err != OCKAM_ERR_NONE) {
-        test_vault_print(OCKAM_LOG_ERROR,
-                         "RANDOM",
-                         TEST_VAULT_NO_TEST_CASE,
-                         "Random number generation failed");
-    }
+    assert_int_equal(err, OCKAM_ERR_NONE);
+}
 
-    test_vault_print(OCKAM_LOG_INFO,
-                     "RANDOM",
-                     TEST_VAULT_NO_TEST_CASE,
-                     "Random Number Generation Success");
-    test_vault_print_array(OCKAM_LOG_DEBUG,
-                           "RANDOM",
-                           "Random Number Generation",
-                            &g_rand_num[0],
-                            TEST_VAULT_RAND_NUM_SIZE);
+
+/**
+ ********************************************************************************************************
+ *                                          test_vault_run_random()
+ *
+ * @brief   Triggers the unit test for random number generation.
+ *
+ * @return  Zero on success. Non-zero on failure.
+ *
+ ********************************************************************************************************
+ */
+
+int test_vault_run_random(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_vault_random),
+    };
+
+    return cmocka_run_group_tests_name("RANDOM",
+                                       tests,
+                                       0,
+                                       0);
 }
 

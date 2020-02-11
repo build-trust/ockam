@@ -15,6 +15,9 @@ task build {
         make
       '''
     }
+    exec {
+        commandLine 'rm', 'compile_commands.json'
+    }
   }
 }
 

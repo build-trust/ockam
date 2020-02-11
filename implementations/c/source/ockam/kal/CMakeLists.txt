@@ -38,7 +38,7 @@ endif()
 ###################
 
 # Add the source files
-add_library(ockam_kal ${KAL_SRC})
+add_library(ockam_kal STATIC ${KAL_SRC})
 
 # Set the include directories
 target_include_directories(ockam_kal PUBLIC ${OCKAM_INC_DIR})

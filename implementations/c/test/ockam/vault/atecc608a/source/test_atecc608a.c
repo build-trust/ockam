@@ -15,6 +15,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <ockam/define.h>
 #include <ockam/error.h>
 
@@ -115,6 +120,8 @@ void main (void)
     uint8_t i;
 
 
+    cmocka_set_message_output(CM_OUTPUT_XML);                   /* Configure the unit test output for JUnit XML       */
+
     /* ---------- */
     /* Vault Init */
     /* ---------- */
@@ -129,42 +136,38 @@ void main (void)
     }
 
     if(err != OCKAM_ERR_NONE) {                                 /* Check if the init succeeded. If after a number of  */
-        test_vault_print(OCKAM_LOG_ERROR,                       /* retries it still fails, don't bother trying to run */
-                         "ATECC608A",                           /* any other tests.                                   */
-                          0,
-                         "Error: Ockam Vauilt Init failed");
-        return;
+        return;                                                 /* retries it still fails, just exit                  */
     }
 
     /* ------------------------ */
     /* Random Number Generation */
     /* ------------------------ */
 
-    test_vault_random();
+    test_vault_run_random();
 
     /* --------------------- */
     /* Key Generation & ECDH */
     /* --------------------- */
 
-    test_vault_key_ecdh(vault_cfg.ec, 0);
+    test_vault_run_key_ecdh(vault_cfg.ec, 0);
 
     /* ------ */
     /* SHA256 */
     /* ------ */
 
-    test_vault_sha256();
+    test_vault_run_sha256();
 
     /* -----*/
     /* HKDF */
     /* -----*/
 
-    test_vault_hkdf();
+    test_vault_run_hkdf();
 
     /* -------------------- */
     /* AES GCM Calculations */
     /* -------------------- */
 
-    test_vault_aes_gcm();
+    test_vault_run_aes_gcm();
 
     return;
 }

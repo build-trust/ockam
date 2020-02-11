@@ -11,9 +11,15 @@
  ********************************************************************************************************
  */
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <ockam/error.h>
 #include <ockam/log.h>
 #include <ockam/vault.h>
+#include <ockam/memory.h>
 
 #include <test_vault.h>
 
@@ -24,7 +30,8 @@
  ********************************************************************************************************
  */
 
-#define TEST_VAULT_SHA256_CASES                     65u
+#define TEST_VAULT_SHA256_TEST_CASES                65u         /*!< Total number of test cases to run                */
+#define TEST_VAULT_SHA256_NAME_SIZE                 32u         /*!< Size of the buffer to allocate for the test name */
 
 
 /*
@@ -47,10 +54,23 @@
  *******************************************************************************
  */
 typedef struct {
-    uint32_t len;
-    uint8_t msg[64];
-    uint8_t digest[32];
+    uint32_t len;                                               /*!< Length of the SHA-256 message to process         */
+    uint8_t msg[64];                                            /*!< Buffer for the message to process                */
+    uint8_t digest[32];                                         /*!< Expected 32-byte result                          */
 } TEST_VAULT_SHA256_DATA_s;
+
+
+/**
+ *******************************************************************************
+ * @struct  TEST_VAULT_SHA256_SHARED_DATA_s
+ * @brief   Shared test data for all unit tests
+ *******************************************************************************
+ */
+
+typedef struct {
+    uint16_t test_count;                                        /*!< Current unit test                                */
+    uint16_t test_count_max;                                    /*!< Total number of unit tests                       */
+} TEST_VAULT_SHA256_SHARED_DATA_s;
 
 
 /*
@@ -59,7 +79,7 @@ typedef struct {
  ********************************************************************************************************
  */
 
-void test_vault_sha256_print(OCKAM_LOG_e level, uint32_t test_case, char *p_str);
+void test_vault_sha256(void **state);
 
 
 /*
@@ -1099,80 +1119,126 @@ TEST_VAULT_SHA256_DATA_s g_sha256_data[] =
  ********************************************************************************************************
  *                                          test_vault_sha256()
  *
- * @brief   Common test functions for SHA256 using Ockam Vault
+ * @brief   Common unit test function for SHA256 using Ockam Vault
+ *
+ * @param   state   Contains a pointer to shared data for all SHA-256 test cases.
  *
  ********************************************************************************************************
  */
 
-void test_vault_sha256()
+void test_vault_sha256(void **state)
 {
     OCKAM_ERR err = OCKAM_ERR_NONE;
-    uint32_t i = 0;
-    int sha256_cmp = 0;
+    TEST_VAULT_SHA256_SHARED_DATA_s *p_test_data = 0;
+    uint8_t sha256_digest[32] = {0};
 
 
-    for(i = 0; i < TEST_VAULT_SHA256_CASES; i++) {
+    /* -------------------------- */
+    /* Test Data and Verification */
+    /* -------------------------- */
 
-        uint8_t sha256_digest[32];
+    p_test_data = (TEST_VAULT_SHA256_SHARED_DATA_s*) *state;
 
-        err = ockam_vault_sha256(&(g_sha256_data[i].msg[0]),    /* Calculate SHA256 using test vectors                */
-                                 (g_sha256_data[i].len / 8),
-                                 &sha256_digest[0],
-                                 32);
-        if(err != OCKAM_ERR_NONE) {
-            test_vault_sha256_print(OCKAM_LOG_ERROR,
-                                    i,
-                                    "SHA256 Operation Failed");
-        } else {
-            sha256_cmp = memcmp(&(g_sha256_data[i].digest[0]),
-                                &sha256_digest[0],
-                                32);
-            if(sha256_cmp != 0) {
-                test_vault_sha256_print(OCKAM_LOG_ERROR,
-                                        i,
-                                        "SHA256 Calculation Invalid");
-
-            } else {
-                test_vault_sha256_print(OCKAM_LOG_INFO,
-                                        i,
-                                        "SHA256 Calculation Valid");
-            }
-
-            test_vault_print_array(OCKAM_LOG_DEBUG,
-                                   "SHA256",
-                                   "Calculated Hash",
-                                   &sha256_digest[0],
-                                   32);
-
-            test_vault_print_array(OCKAM_LOG_DEBUG,
-                                   "SHA256",
-                                   "Expected Hash",
-                                   &(g_sha256_data[i].digest[0]),
-                                   32);
-        }
+    if(p_test_data->test_count >= p_test_data->test_count_max) {
+        fail_msg("Test count %d has exceeded max test count of %d",
+                 p_test_data->test_count,
+                 p_test_data->test_count_max);
     }
+
+    /* ------------ */
+    /* SHA-256 Test */
+    /* ------------ */
+                                                                /* Calculate SHA256 using test vectors                */
+    err = ockam_vault_sha256(&(g_sha256_data[p_test_data->test_count].msg[0]),
+                             (g_sha256_data[p_test_data->test_count].len / 8),
+                             &sha256_digest[0],
+                             32);
+    assert_int_equal(err, OCKAM_ERR_NONE);
+
+    assert_memory_equal(&(g_sha256_data[p_test_data->test_count].digest[0]),
+                            &sha256_digest[0],
+                            32);
+
+    /* ------------------- */
+    /* Test Case Increment */
+    /* ------------------- */
+
+    p_test_data->test_count++;                                  /* Always increment test count last                   */
 }
 
 
 /**
  ********************************************************************************************************
- *                                          test_vault_sha256_print()
+ *                                          test_vault_run_sha256()
  *
- * @brief   Central logging function for SHA256 tests
+ * @brief   Triggers SHA-256 unit tests using Ockam Vault.
  *
- * @param   level       The log level for the specified message
- *
- * @param   test_case   The test case number associated with the message
- *
- * @param   p_str       The message to print
+ * @return  Zero on success. Non-zero on failure.
  *
  ********************************************************************************************************
  */
 
-void test_vault_sha256_print(OCKAM_LOG_e level, uint32_t test_case, char *p_str)
+int test_vault_run_sha256(void)
 {
-    test_vault_print( level,
-                     "SHA256",
-                      test_case,
-                      p_str);
+    OCKAM_ERR err = OCKAM_ERR_NONE;
+    int rc = 0;
+    char *p_test_name = 0;
+    uint16_t i = 0;
+    uint8_t *p_cmocka_data = 0;
+    struct CMUnitTest *p_cmocka_tests = 0;
+    TEST_VAULT_SHA256_SHARED_DATA_s shared_data;
+
+
+    do {
+        err = ockam_mem_alloc((void**) &p_cmocka_data,          /* Allocate test structs based on total test cases    */
+                              (TEST_VAULT_SHA256_TEST_CASES * sizeof(struct CMUnitTest)));
+        if(err != OCKAM_ERR_NONE) {
+            rc = -1;
+            break;
+        }
+
+        p_cmocka_tests = (struct CMUnitTest*) p_cmocka_data;    /* Set the unit test pointer to the allocated data    */
+
+        shared_data.test_count = 0;                             /* Set initial values for the test shared data        */
+        shared_data.test_count_max = TEST_VAULT_SHA256_TEST_CASES;
+
+        for(i = 0; i < TEST_VAULT_SHA256_TEST_CASES; i++) {     /* Configure a CMocka unit test for each test case    */
+            err = ockam_mem_alloc((void**) &p_test_name,
+                                  TEST_VAULT_SHA256_NAME_SIZE);
+            if(err != OCKAM_ERR_NONE) {
+                rc = -1;
+                break;
+            }
+
+            snprintf(p_test_name,                               /* Set the individual test name based on test count   */
+                     TEST_VAULT_SHA256_NAME_SIZE,
+                     "SHA-256 Test Case %02d",
+                     i);
+
+            p_cmocka_tests->name = p_test_name;                 /* Set the name, test function and shared data for    */
+            p_cmocka_tests->test_func = test_vault_sha256;      /* the CMocka unit test.                              */
+            p_cmocka_tests->setup_func = 0;
+            p_cmocka_tests->teardown_func = 0;
+            p_cmocka_tests->initial_state = &shared_data;
+
+            p_cmocka_tests++;                                   /* Bump the unit test pointer                         */
+        }
+
+        if(err != OCKAM_ERR_NONE) {                             /* Ensure there were no memory allocation errors      */
+            rc = -1;
+            break;
+        }
+
+        p_cmocka_tests = (struct CMUnitTest*) p_cmocka_data;    /* Reset CMocka pointer to the front of the data block*/
+
+        rc = _cmocka_run_group_tests("SHA-256",                 /* Run the SHA-256 unit tests                         */
+                                     p_cmocka_tests,
+                                     shared_data.test_count_max,
+                                     0,
+                                     0);
+
+    } while(0);
+
+    return rc;
 }
+

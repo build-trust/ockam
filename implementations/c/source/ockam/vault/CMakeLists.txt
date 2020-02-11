@@ -91,7 +91,7 @@ endif()
 ###################
 
 # Add the source files
-add_library(ockam_vault ${VAULT_SRC})
+add_library(ockam_vault STATIC ${VAULT_SRC})
 
 # Set the include directories
 target_include_directories(ockam_vault PUBLIC ${VAULT_INC})

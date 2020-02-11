@@ -33,7 +33,7 @@ endif()
 ###################
 
 # Add the source files
-add_library(ockam_mem ${MEM_SRC})
+add_library(ockam_mem STATIC ${MEM_SRC})
 
 # Set the include directories
 target_include_directories(ockam_mem PUBLIC ${OCKAM_INC_DIR})
