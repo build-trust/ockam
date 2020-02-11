@@ -8,3 +8,6 @@
 [submodule "implementations/c/third-party/arm/mbed-crypto"]
     path = implementations/c/third-party/arm/mbed-crypto
     url = https://github.com/ARMmbed/mbed-crypto.git
+[submodule "implementations/c/third-party/cmocka/cmocka"]
+	path = implementations/c/third-party/cmocka/cmocka
+	url = https://git.cryptomilk.org/projects/cmocka.git/

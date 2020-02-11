@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.13)
 include($ENV{OCKAM_C_BASE}/tools/cmake/path.cmake)
 
 # This must be included BEFORE the project declaration
-include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
+#include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi-mac.cmake)
 
 ###########
 # Project #
@@ -36,7 +36,7 @@ set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
 set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/memory)
 
 set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party)
-
+set(CMOCKA_SRC_DIR ${THIRD_PARTY_DIR}/cmocka/cmocka)
 
 #################
 # Build Options #
@@ -57,16 +57,12 @@ set(MEM_STDLIB TRUE)
 # Compiler Build Options
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
-
 ###########################
 # Set include directories #
 ###########################
 
 set(TEST_INC ${TEST_INC} ${OCKAM_INC_DIR})
 set(TEST_INC ${TEST_INC} ${TEST_COMMON_INC_DIR})
-
-include_directories(${TEST_INC})
-
 
 ####################
 # Set config files #
@@ -83,9 +79,14 @@ set(TEST_SRC ${TEST_SRC} ${TEST_SRC_DIR}/test_mbedcrypto.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/aes_gcm.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/hkdf.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/key_ecdh.c)
-set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/print.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/random.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/sha256.c)
+
+######################
+# CMakeList Includes #
+######################
+
+include(${OCKAM_C_BASE}/tools/cmake/third-party/cmocka.cmake)
 
 ###########################
 # Set the desired modules #
@@ -100,6 +101,7 @@ add_subdirectory(${MEM_SRC_DIR} mem)
 # Configure link libraries & executable #
 #########################################
 
+include_directories(${TEST_INC})
 link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 add_executable(test_mbedcrypto ${TEST_SRC})
 
@@ -108,5 +110,6 @@ target_link_libraries(test_mbedcrypto ockam_kal)
 target_link_libraries(test_mbedcrypto ockam_log)
 target_link_libraries(test_mbedcrypto ockam_mem)
 target_link_libraries(test_mbedcrypto mbedcrypto)
+target_link_libraries(test_mbedcrypto cmocka-static)
 
 install(TARGETS test_mbedcrypto DESTINATION bin)

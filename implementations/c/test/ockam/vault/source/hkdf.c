@@ -11,9 +11,15 @@
  ********************************************************************************************************
  */
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <ockam/error.h>
 #include <ockam/log.h>
 #include <ockam/vault.h>
+#include <ockam/memory.h>
 
 #include <test_vault.h>
 
@@ -24,7 +30,8 @@
  ********************************************************************************************************
  */
 
-#define TEST_VAULT_HKDF_CASES                       3u
+#define TEST_VAULT_HKDF_TEST_CASES                  3u          /*!< Total number of test cases to run                */
+#define TEST_VAULT_HKDF_NAME_SIZE                  32u          /*!< Size of the buffer to allocate for the test name */
 
 
 /*
@@ -58,13 +65,25 @@ typedef struct {
 } TEST_VAULT_HKDF_DATA_s;
 
 
+/**
+ *******************************************************************************
+ * @struct  TEST_VAULT_HKDF_SHARED_DATA_s
+ * @brief   Shared test data for all unit tests
+ *******************************************************************************
+ */
+typedef struct {
+    uint16_t test_count;                                        /*!< Current unit test                                */
+    uint16_t test_count_max;                                    /*!< Total number of unit tests                       */
+} TEST_VAULT_HKDF_SHARED_DATA_s;
+
+
 /*
  ********************************************************************************************************
  *                                          FUNCTION PROTOTYPES                                         *
  ********************************************************************************************************
  */
 
-void test_vault_hkdf_print(OCKAM_LOG_e level, uint32_t test_case, char *p_str);
+void test_vault_hkdf(void **state);
 
 
 /*
@@ -143,7 +162,7 @@ uint8_t g_hkdf_test_3_output[] = {
 };
 
 
-TEST_VAULT_HKDF_DATA_s g_hkdf_data[TEST_VAULT_HKDF_CASES] =
+TEST_VAULT_HKDF_DATA_s g_hkdf_data[TEST_VAULT_HKDF_TEST_CASES] =
 {
     {
         &g_hkdf_test_1_shared_secret[0],
@@ -199,82 +218,140 @@ TEST_VAULT_HKDF_DATA_s g_hkdf_data[TEST_VAULT_HKDF_CASES] =
  ********************************************************************************************************
  */
 
-void test_vault_hkdf()
+void test_vault_hkdf(void **state)
 {
     OCKAM_ERR err = OCKAM_ERR_NONE;
-    uint32_t i = 0;
-    int hkdf_cmp = 0;
     OCKAM_LOG_e log = OCKAM_LOG_DEBUG;
+    TEST_VAULT_HKDF_SHARED_DATA_s *p_test_data = 0;
+    uint8_t *p_hkdf_key = 0;
 
 
-    for(i = 0; i < TEST_VAULT_HKDF_CASES; i++) {
+    /* -------------------------- */
+    /* Test Data and Verification */
+    /* -------------------------- */
 
-        uint8_t hkdf_key[g_hkdf_data[i].output_size];
+    p_test_data = (TEST_VAULT_HKDF_SHARED_DATA_s*) *state;
 
-        err = ockam_vault_hkdf( g_hkdf_data[i].p_salt,          /* Calculate HKDF using test vectors                  */
-                                g_hkdf_data[i].salt_size,
-                                g_hkdf_data[i].p_shared_secret,
-                                g_hkdf_data[i].shared_secret_size,
-                                g_hkdf_data[i].p_info,
-                                g_hkdf_data[i].info_size,
-                               &hkdf_key[0],
-                                g_hkdf_data[i].output_size);
-        if(err != OCKAM_ERR_NONE) {
-            test_vault_hkdf_print(OCKAM_LOG_ERROR,
-                                  i,
-                                  "HKDF Operation Failed");
-        } else {
-            hkdf_cmp = memcmp(&hkdf_key[0],
-                               g_hkdf_data[i].p_output,
-                               g_hkdf_data[i].output_size);
-            if(hkdf_cmp != 0) {
-                log = OCKAM_LOG_ERROR;
-                test_vault_hkdf_print(OCKAM_LOG_ERROR,
-                                      i,
-                                      "HKDF Calculation Invalid");
-
-            } else {
-                log = OCKAM_LOG_DEBUG;
-                test_vault_hkdf_print(OCKAM_LOG_INFO,
-                                      i,
-                                      "HKDF Calculation Valid");
-            }
-
-            test_vault_print_array(log,
-                                   "HKDF",
-                                   "Calculated Key",
-                                   &hkdf_key[0],
-                                    g_hkdf_data[i].output_size);
-
-            test_vault_print_array(log,
-                                   "HKDF",
-                                   "Expected Key",
-                                   g_hkdf_data[i].p_output,
-                                   g_hkdf_data[i].output_size);
-        }
+    if(p_test_data->test_count >= p_test_data->test_count_max) {
+        fail_msg("Test count %d has exceeded max test count of %d",
+                 p_test_data->test_count,
+                 p_test_data->test_count_max);
     }
+
+    /* ----------------- */
+    /* Memory Allocation */
+    /* ----------------- */
+
+    err = ockam_mem_alloc((void**) &p_hkdf_key,
+                          g_hkdf_data[p_test_data->test_count].output_size);
+    if(err != OCKAM_ERR_NONE) {
+        fail_msg("Unable to allocate p_hkdf_key");
+    }
+
+    /* --------- */
+    /* HKDF Test */
+    /* --------- */
+                                                                /* Calculate HKDF using test vectors                  */
+    err = ockam_vault_hkdf(g_hkdf_data[p_test_data->test_count].p_salt,
+                           g_hkdf_data[p_test_data->test_count].salt_size,
+                           g_hkdf_data[p_test_data->test_count].p_shared_secret,
+                           g_hkdf_data[p_test_data->test_count].shared_secret_size,
+                           g_hkdf_data[p_test_data->test_count].p_info,
+                           g_hkdf_data[p_test_data->test_count].info_size,
+                           p_hkdf_key,
+                           g_hkdf_data[p_test_data->test_count].output_size);
+    assert_int_equal(err, OCKAM_ERR_NONE);
+
+    assert_memory_equal(p_hkdf_key,
+                        g_hkdf_data[p_test_data->test_count].p_output,
+                        g_hkdf_data[p_test_data->test_count].output_size);
+
+    /* ----------- */
+    /* Memory Free */
+    /* ----------- */
+
+    err = ockam_mem_free((void*) p_hkdf_key);
+    assert_int_equal(err, OCKAM_ERR_NONE);
+
+    /* -------------- */
+    /* Test Increment */
+    /* -------------- */
+
+    p_test_data->test_count++;
 }
 
 
 /**
  ********************************************************************************************************
- *                                          test_vault_hkdf_print()
+ *                                          test_vault_run_hkdf()
  *
- * @brief   Central logging function for HKDF tests
+ * @brief   Triggers HKDF unit tests using Ockam Vault.
  *
- * @param   level       The log level for the specified message
- *
- * @param   test_case   The test case number associated with the message
- *
- * @param   p_str       The message to print
+ * @return  Zero on success. Non-zero on failure.
  *
  ********************************************************************************************************
  */
 
-void test_vault_hkdf_print(OCKAM_LOG_e level, uint32_t test_case, char *p_str)
+int test_vault_run_hkdf(void)
 {
-    test_vault_print( level,
-                     "HKDF",
-                      test_case,
-                      p_str);
+    OCKAM_ERR err = OCKAM_ERR_NONE;
+    int rc = 0;
+    char *p_test_name = 0;
+    uint16_t i = 0;
+    uint8_t *p_cmocka_data = 0;
+    struct CMUnitTest *p_cmocka_tests = 0;
+    TEST_VAULT_HKDF_SHARED_DATA_s shared_data;
+
+
+    do {
+        err = ockam_mem_alloc((void**) &p_cmocka_data,          /* Allocate test structs based on total test cases    */
+                              (TEST_VAULT_HKDF_TEST_CASES * sizeof(struct CMUnitTest)));
+        if(err != OCKAM_ERR_NONE) {
+            rc = -1;
+            break;
+        }
+
+        p_cmocka_tests = (struct CMUnitTest*) p_cmocka_data;    /* Set the unit test pointer to the allocated data    */
+
+        shared_data.test_count = 0;                             /* Set initial values for the test shared data        */
+        shared_data.test_count_max = TEST_VAULT_HKDF_TEST_CASES;
+
+        for(i = 0; i < TEST_VAULT_HKDF_TEST_CASES; i++) {       /* Configure a CMocka unit test for each test case    */
+            err = ockam_mem_alloc((void**) &p_test_name,
+                                  TEST_VAULT_HKDF_NAME_SIZE);
+            if(err != OCKAM_ERR_NONE) {
+                rc = -1;
+                break;
+            }
+
+            snprintf(p_test_name,                               /* Set the individual test name based on test count   */
+                     TEST_VAULT_HKDF_NAME_SIZE,
+                     "HKDF Test Case %02d",
+                     i);
+
+            p_cmocka_tests->name = p_test_name;                 /* Set the name, test function and shared data for    */
+            p_cmocka_tests->test_func = test_vault_hkdf;        /* the CMocka unit test.                              */
+            p_cmocka_tests->setup_func = 0;
+            p_cmocka_tests->teardown_func = 0;
+            p_cmocka_tests->initial_state = &shared_data;
+
+            p_cmocka_tests++;                                   /* Bump the unit test pointer                         */
+        }
+
+        if(err != OCKAM_ERR_NONE) {                             /* Ensure there were no memory allocation errors      */
+            rc = -1;
+            break;
+        }
+
+        p_cmocka_tests = (struct CMUnitTest*) p_cmocka_data;    /* Reset CMocka pointer to the front of the data block*/
+
+        rc = _cmocka_run_group_tests("HKDF",                    /* Run the HKDF unit tests                            */
+                                     p_cmocka_tests,
+                                     shared_data.test_count_max,
+                                     0,
+                                     0);
+
+    } while(0);
+
+    return rc;
 }

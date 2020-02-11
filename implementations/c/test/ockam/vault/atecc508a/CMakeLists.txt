@@ -36,7 +36,7 @@ set(LOG_SRC_DIR ${OCKAM_SRC_DIR}/log)
 set(MEM_SRC_DIR ${OCKAM_SRC_DIR}/memory)
 
 set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party)
-
+set(CMOCKA_SRC_DIR ${THIRD_PARTY_DIR}/cmocka/cmocka)
 
 #################
 # Build Options #
@@ -87,9 +87,14 @@ set(TEST_SRC ${TEST_SRC} ${TEST_SRC_DIR}/test_atecc508a.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/aes_gcm.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/hkdf.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/key_ecdh.c)
-set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/print.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/random.c)
 set(TEST_SRC ${TEST_SRC} ${TEST_COMMON_SRC_DIR}/sha256.c)
+
+######################
+# CMakeList Includes #
+######################
+
+include(${OCKAM_C_BASE}/tools/cmake/third-party/cmocka.cmake)
 
 ###########################
 # Set the desired modules #
@@ -113,5 +118,6 @@ target_link_libraries(test_atecc508a ockam_log)
 target_link_libraries(test_atecc508a ockam_mem)
 target_link_libraries(test_atecc508a cryptoauth)
 target_link_libraries(test_atecc508a mbedcrypto)
+target_link_libraries(test_atecc508a cmocka-static)
 
 install(TARGETS test_atecc508a DESTINATION bin)

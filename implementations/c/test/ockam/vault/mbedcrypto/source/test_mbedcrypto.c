@@ -15,6 +15,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <ockam/define.h>
 #include <ockam/error.h>
 #include <ockam/vault.h>
@@ -82,11 +87,13 @@ OCKAM_VAULT_CFG_s vault_cfg =
  ********************************************************************************************************
  */
 
-void main (void)
+int main (void)
 {
     OCKAM_ERR err;
     uint8_t i;
 
+
+    cmocka_set_message_output(CM_OUTPUT_XML);                   /* Configure the unit test output for JUnit XML       */
 
     /* ---------- */
     /* Vault Init */
@@ -95,43 +102,39 @@ void main (void)
     err = ockam_vault_init((void*) &vault_cfg);                 /* Initialize vault                                   */
 
     if(err != OCKAM_ERR_NONE) {                                 /* Ensure it initialized before proceeding, otherwise */
-        test_vault_print(OCKAM_LOG_ERROR,                       /* don't bother trying to run any other tests         */
-                         "MBEDCRYPTO",
-                          0,
-                         "Error: Ockam Vault Init failed");
-        return;
+        return -1;                                              /* don't bother trying to run any other tests         */
     }
 
     /* ------------------------ */
     /* Random Number Generation */
     /* ------------------------ */
 
-    test_vault_random();
+    test_vault_run_random();
 
     /* --------------------- */
     /* Key Generation & ECDH */
     /* --------------------- */
 
-    test_vault_key_ecdh(vault_cfg.ec, 1);
+    test_vault_run_key_ecdh(vault_cfg.ec, 1);
 
     /* ------ */
     /* SHA256 */
     /* ------ */
 
-    test_vault_sha256();
+    test_vault_run_sha256();
 
     /* -----*/
     /* HKDF */
     /* -----*/
 
-    test_vault_hkdf();
+    test_vault_run_hkdf();
 
     /* -------------------- */
     /* AES GCM Calculations */
     /* -------------------- */
 
-    test_vault_aes_gcm();
+    test_vault_run_aes_gcm();
 
-    return;
+    return 0;
 }
 

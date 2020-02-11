@@ -20,5 +20,11 @@ steps:
   - script: ./gradlew test
     displayName: Test
 
+  - task: PublishTestResults@2
+    inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/cm_*.xml'
+
   - script: ./gradlew clean
     displayName: Clean
+

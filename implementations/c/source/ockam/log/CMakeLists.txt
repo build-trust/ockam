@@ -39,7 +39,7 @@ endif()
 ###################
 
 # Add the source files
-add_library(ockam_log ${LOG_SRC})
+add_library(ockam_log STATIC ${LOG_SRC})
 
 # Set the include directories
 target_include_directories(ockam_log PUBLIC ${OCKAM_INC_DIR})
