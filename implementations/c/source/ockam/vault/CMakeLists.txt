@@ -6,7 +6,6 @@ set(VAULT_INC)
 set(VAULT_SRC)
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
-
 #######################
 # Directory Locations #
 #######################
@@ -18,7 +17,6 @@ set(VAULT_HOST_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/host)
 set(OCKAM_INC_DIR ${OCKAM_C_BASE}/include)
 set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party/)
 
-
 #################
 # Build Options #
 #################
@@ -27,6 +25,7 @@ set(THIRD_PARTY_DIR ${OCKAM_C_BASE}/third-party/)
 option(VAULT_TPM_ATECC508A "Vault TPM: Microchip ATECC508A")
 option(VAULT_TPM_ATECC608A "Vault TPM: Microchip ATECC608A")
 option(VAULT_TPM_SE050 "Vault TPM: NXP SE050")
+option(VAULT_TPM_OPTIGA_TRUST_X "Vault TPM: Infineon Optiga Trust X")
 
 # Vault Software Build Options
 option(VAULT_HOST_OCKAM "Vault Host: Ockam")
@@ -38,14 +37,12 @@ option(VAULT_TPM_IFACE_I2C "Vault IFace: I2C")
 option(VAULT_TPM_IFACE_SPI "Vault IFace: SPI")
 option(VAULT_TPM_IFACE_UART "Vault IFace: UART")
 
-
 ###################
 # Vault Interface #
 ###################
 
 set(VAULT_SRC ${VAULT_SRC_DIR}/vault.c)
 set(VAULT_INC ${OCKAM_INC_DIR})
-
 
 ##########################
 # External Specific Code #
@@ -63,6 +60,11 @@ if(VAULT_TPM_ATECC608A)
     include(${OCKAM_C_BASE}/tools/cmake/third-party/microchip.cmake)
 endif()
 
+# OPTIGA_TRUST_X Specific Config
+if(VAULT_TPM_OPTIGA_TRUST_X)
+    set(VAULT_SRC ${VAULT_SRC} ${VAULT_TPM_SRC_DIR}/infineon/optiga_trust_x.c)
+    include(${OCKAM_C_BASE}/tools/cmake/third-party/infineon.cmake)
+endif()
 
 ######################
 # Host Specific Code #
@@ -85,7 +87,6 @@ if(VAULT_HOST_OpenSSL)
     include(${OCKAM_C_CMAKE_THIRD_PARTY}/openssl.cmake)
 endif()
 
-
 ###################
 # Generate Build! #
 ###################
@@ -98,3 +99,4 @@ target_include_directories(ockam_vault PUBLIC ${VAULT_INC})
 
 # Set the target
 set_property(TARGET ockam_vault PROPERTY C_STANDARD 99)
+

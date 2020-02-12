@@ -7,7 +7,7 @@ plugins {
 ['build', 'test', 'clean'].each { t ->
     task "${t}" {
         group 'vault'
-        def testTasks = ['atecc508a', 'atecc608a', 'mbedcrypto'].stream().map { test ->
+        def testTasks = ['atecc508a', 'atecc608a', 'mbedcrypto', 'optiga_trust_x'].stream().map { test ->
             tasks.create("${t}${test.capitalize()}") {
                 group test.capitalize()
                 onlyIf { host.debianBuilder.enabled }
