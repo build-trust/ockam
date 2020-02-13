@@ -29,6 +29,7 @@
 
 #include <ockam/error.h>
 #include <ockam/define.h>
+#include <stdio.h>
 
 
 /*
