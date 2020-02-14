@@ -10,11 +10,11 @@ include($ENV{OCKAM_C_BASE}/tools/cmake/path.cmake)
 # This must be included BEFORE the project declaration
 
 if($ENV{PLATFORM} MATCHES "PI")
-	message("Building for PI")
-	include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
+  message("Building for PI")
+  include(${OCKAM_C_BASE}/tools/cmake/toolchains/raspberry-pi.cmake)
 else()
-	set(CMAKE_C_STANDARD 99)
-	set(CMAKE_C_FLAGS "-std=c99 -g")
+  set(CMAKE_C_STANDARD 99)
+  set(CMAKE_C_FLAGS "-std=c99 -g")
 endif()
 
 ###########
