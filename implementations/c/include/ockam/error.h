@@ -67,7 +67,31 @@ typedef enum {
     OCKAM_ERR_VAULT_HOST_ECDH_FAIL                    = 0x0304, /*!< ECDH failed to complete successfully             */
     OCKAM_ERR_VAULT_HOST_SHA256_FAIL                  = 0x0305, /*!< SHA256 failed to complete sucessfully            */
     OCKAM_ERR_VAULT_HOST_HKDF_FAIL                    = 0x0306, /*!< HKDF failed to complete successfully             */
-    OCKAM_ERR_VAULT_HOST_AES_FAIL                     = 0x0307  /*!< AES failed to complete successfully              */
+    OCKAM_ERR_VAULT_HOST_AES_FAIL                     = 0x0307,  /*!< AES failed to complete successfully              */
+
+    OCKAM_ERR_TRANSPORT_INIT_SOCKET                   = 0x0400, /*!< Failed to create socket                          */
+    OCKAM_ERR_TRANSPORT_CONNECT                       = 0x0401, /*!< Failed to connect, check server address    	  */
+    OCKAM_ERR_TRANSPORT_SEND                          = 0x0402, /*!< Failed to send data						      */
+    OCKAM_ERR_TRANSPORT_SERVER_INIT                   = 0x0403, /*!< Server initialization failed					  */
+    OCKAM_ERR_TRANSPORT_RECEIVE                       = 0x0404, /*!< Receive buffer failed							  */
+    OCKAM_ERR_TRANSPORT_HANDLE                        = 0x0405, /*!< Invalid connection handle						  */
+    OCKAM_ERR_TRANSPORT_ADDRESS                       = 0x0406, /*!< Bad IP address								      */
+    OCKAM_ERR_TRANSPORT_CLOSED                        = 0x0407, /*!< Connection closed unexpectedly                   */
+    OCKAM_ERR_TRANSPORT_ACCEPT                        = 0x0408, /*!< Socket accept failed                             */
+    OCKAM_ERR_TRANSPORT_NOT_CONNECTED                 = 0x0409, /*!< Connection is not connected                      */
+    OCKAM_ERR_TRANSPORT_BUFFER_TOO_SMALL              = 0x040a, /*!< Supplied buffer too small                        */
+    OCKAM_ERR_TRANSPORT_TEST                          = 0x040b, /*!< Error in test program                            */
+
+    OCKAM_ERR_CREATE_MUTEX                            = 0x0500,
+    OCKAM_ERR_CREATE_THREAD                           = 0x0501,
+    OCKAM_ERR_LOCK_MUTEX                              = 0x0502,
+    OCKAM_ERR_QUEUE_FULL                              = 0x0503,
+    OCKAM_ERR_QUEUE_EMPTY                             = 0x0504,
+    OCKAM_ERR_QUEUE_INIT                              = 0x0505,
+
+    OCKAM_ERR_XX_HANDSHAKE_TEST_FAILED                = 0x0601,
+    OCKAM_ERR_XX_HANDSHAKE_FAILED                     = 0x0602
+
 } OCKAM_ERR;
 
 
