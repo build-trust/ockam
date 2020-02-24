@@ -1,4 +1,9 @@
 
+plugins {
+    id 'network.ockam.gradle.host' version '1.0.0'
+    id 'network.ockam.gradle.builders' version '1.0.0'
+}
+
 ['build', 'test', 'clean'].each { t ->
   task "${t}" {
     group 'Ockam'
@@ -19,6 +24,17 @@
     }
 
     dependsOn implementationTasks
+  }
+}
+
+task lint {
+  onlyIf { host.debianBuilder.enabled }
+  doLast {
+   builderExec 'debian', {
+     script '''
+       npx eclint@2.8.1 check
+     '''
+   }
   }
 }
 
