@@ -1,0 +1,97 @@
+edition = "2018"
+
+# General Settings
+
+version = "One"
+emit_mode = "Files"
+make_backup = false
+report_todo = "Never"
+report_fixme = "Never"
+ignore = []
+skip_children = false
+hide_parse_errors = false
+error_on_line_overflow = false
+error_on_unformatted = false
+use_small_heuristics = "Default"
+color = "Auto"
+unstable_features = true
+disable_all_formatting = false
+
+# Spacing and Line
+
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+indent_style = "Block"
+space_before_colon = false
+space_after_colon = true
+spaces_around_ranges = false
+empty_item_single_line = true
+struct_lit_single_line = true
+fn_single_line = false
+
+# Comments
+
+comment_width = 100
+wrap_comments = true
+normalize_comments = false
+normalize_doc_attributes = false
+
+# Strings
+
+format_strings = false
+
+# Macros
+
+format_macro_matchers = false
+format_macro_bodies = true
+
+# Imports
+
+merge_imports = false
+imports_indent = "Block"
+imports_layout = "Mixed"
+reorder_imports = true
+reorder_modules = true
+
+# Traits
+
+reorder_impl_items = false
+where_single_line = false
+
+# Match
+
+match_arm_blocks = true
+
+# Blocks
+
+force_multiline_blocks = false
+blank_lines_upper_bound = 1
+blank_lines_lower_bound = 0
+
+# Braces
+
+brace_style = "SameLineWhere"
+control_brace_style = "AlwaysSameLine"
+
+# Trailing Separators
+
+trailing_semicolon = true
+trailing_comma = "Vertical"
+match_block_trailing_comma = false
+
+# Misc.
+
+merge_derives = true
+use_try_shorthand = true
+use_field_init_shorthand = true
+type_punctuation_density = "Wide"
+binop_separator = "Front"
+remove_nested_parens = true
+combine_control_expr = true
+overflow_delimited_expr = false
+struct_field_align_threshold = 0
+enum_discrim_align_threshold = 0
+force_explicit_abi = true
+condense_wildcard_suffixes = false

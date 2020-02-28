@@ -1,4 +1,6 @@
-[package]
-name = "ockam"
-version = "0.0.0"
-edition = "2018"
+[workspace]
+
+members = [
+  "crates/ockam-vault-sys",
+  "crates/ockam",
+]

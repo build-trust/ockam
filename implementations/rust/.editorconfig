@@ -1,0 +1,2 @@
+# Do not use the root editorconfig for Rust
+root = true

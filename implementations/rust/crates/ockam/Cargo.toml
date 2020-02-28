@@ -1,0 +1,29 @@
+[package]
+name = "ockam"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+# No features are active by default
+default = []
+# Enable encoding/decoding of Vault types in Erlang NIFs
+term_encoding = ["rustler"]
+
+[dependencies]
+anyhow = "1.0"
+thiserror = "1.0"
+cfg-if = "0.1"
+log = "0.4"
+libc = "0.2"
+lazy_static = "1.0"
+rand = "0.7.3"
+rand_core = "0.5.1"
+once_cell = "1.3.1"
+ockam-vault-sys = { path = "../ockam-vault-sys" }
+
+[dependencies.rustler]
+git = "https://github.com/rusterlium/rustler"
+optional = true
