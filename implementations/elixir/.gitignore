@@ -1,4 +1,4 @@
 _build
 deps
 erl_crash.dump
-priv
+priv/native
