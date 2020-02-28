@@ -1,0 +1,22 @@
+[package]
+name = "ockam_nif"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "ockam_nif"
+crate-type = ["dylib"]
+
+[dependencies]
+rand = "0.7.3"
+
+[dependencies.rustler]
+git = "https://github.com/rusterlium/rustler"
+
+[dependencies.ockam]
+path = "../../../rust/crates/ockam"
+default-features = false
+features = ["term_encoding"]

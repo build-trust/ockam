@@ -9,8 +9,9 @@ task build {
   doLast {
     builderExec 'debian', {
       script '''
-        make
-        mix compile
+        mix do local.hex --if-missing --force
+        mix do local.rebar --force
+        mix do deps.get, compile
       '''
     }
   }
@@ -21,6 +22,9 @@ task test {
   doLast {
     builderExec 'debian', {
       script '''
+        mix do local.hex --if-missing --force
+        mix do local.rebar --force
+        mix deps.get
         mix test
       '''
     }
@@ -29,7 +33,7 @@ task test {
 
 task clean {
   doLast {
-    delete 'priv'
+    delete 'priv/native'
     delete '_build'
   }
 }
