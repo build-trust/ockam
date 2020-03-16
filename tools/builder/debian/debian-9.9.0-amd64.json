@@ -80,6 +80,7 @@
         "provision/android.sh",
         "provision/erlang.sh",
         "provision/elixir.sh",
+        "provision/libsodium.sh",
         "provision/cleanup.sh",
         "provision/minimize.sh"
       ]

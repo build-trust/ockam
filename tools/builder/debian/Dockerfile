@@ -115,6 +115,7 @@ RUN \
     sudo /tmp/provision/android.sh && \
     sudo /tmp/provision/erlang.sh && \
     sudo /tmp/provision/elixir.sh && \
+    sudo /tmp/provision/libsodium.sh && \
     sudo rm -rf /tmp/*
 
 # Stage 2: Configure base image for use as a Vagrant builder
