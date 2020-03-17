@@ -36,7 +36,10 @@ RUN apt-get update && \
         build-essential \
         gnupg \
         openssh-server \
-        openssh-client && \
+        openssh-client \
+        llvm-dev \
+        libclang-dev \
+        clang && \
     apt-get clean
 
 RUN systemctl enable ssh.service

@@ -22,4 +22,7 @@ apt-get -y --no-install-recommends install \
   help2man \
   python3-dev \
   libtool-bin \
-  gawk
+  gawk \
+  llvm-dev \
+  libclang-dev \
+  clang
