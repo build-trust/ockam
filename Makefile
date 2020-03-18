@@ -7,7 +7,7 @@ help:
 	@echo "$(IMAGE_NAME)"
 	@perl -nle'print $& if m{^[a-zA-Z_-]+:.*?## .*$$}' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-builder: ## Build the builder Docker image
+docker-builder: ## Build the builder Docker image
 	@cd tools/builder/debian && \
 	 DOCKER_BUILDKIT=1 docker build \
 		--build-arg public_key="$(PUBKEY)" \
@@ -18,3 +18,17 @@ docker: ## Build inside Docker
 
 virtualbox: ## Build inside VirtualBox VM
 	@VAGRANT_DEFAULT_PROVIDER=virtualbox ./gradlew build
+
+virtualbox-local: ## Build using locally-built Debian VM
+	@VAGRANT_DEFAULT_PROVIDER=virtualbox \
+     OCKAM_DEBIAN_BUILDER_BOX=debian-9.9.0-amd64 \
+     OCKAM_DEBIAN_BUILDER_BOX_URL="file://tools/builder/debian/_build/debian-9.9.0-amd64.virtualbox.box" \
+     ./gradlew build
+
+debian-builder: ## Build the Debian VirtualBox image
+	@cd tools/builder/debian && \
+        ./build
+
+clean-debian-builder: ## Clean up artifacts produced when building VMs
+	@cd tools/builder/debian && \
+        ./clean
