@@ -24,7 +24,7 @@ download /opt/android-sdk/platforms/android-28 \
 
 download /opt/android-sdk/ndk/20.0.5594570 \
   "https://dl.google.com/android/repository/android-ndk-r20-linux-x86_64.zip" \
-  "57435158f109162f41f2f43d5563d2164e4d5d0364783a9a6fab3ef12cb06ce0"
+  "cc2fe0c5f5fd830e6906b8a1533802ce1e09217d1271b795b784ccd382b52a36"
 
 
 echo 'export ANDROID_HOME="/opt/android-sdk"' > /etc/profile.d/android.sh
