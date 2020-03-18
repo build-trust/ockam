@@ -3,7 +3,15 @@
 set -eo pipefail
 [ "$TRACE" ] && set -x
 
-packer build debian-9.9.0-amd64.json
+if ! type -p packer >/dev/null; then
+  echo "Must have `packer` installed on on your PATH"
+  exit 2
+fi
+
+if ! packer build debian-9.9.0-amd64.json; then
+  echo "Packaging failed!"
+  exit 1
+fi
 
 box_path="_build/debian-9.9.0-amd64.virtualbox.box"
 shasum -a 256 "$box_path" | cut -d' ' -f1 | xargs echo -n > "$box_path.SHA-256"
