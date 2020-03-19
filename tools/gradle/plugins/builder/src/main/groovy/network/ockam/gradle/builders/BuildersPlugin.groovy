@@ -41,13 +41,13 @@ class BuildersPlugin implements Plugin<Project> {
 
     def currentDir = project.file('.')
     def vagrantfileDir = findVagrantfileDir(currentDir)
-    def pathRelativeToVagrentfileDir = vagrantfileDir.toPath().relativize(currentDir.toPath()).toFile()
+    def pathRelativeToVagrantFileDir = vagrantfileDir.toPath().relativize(currentDir.toPath()).toFile()
 
     config = merge(config, project.host)
     config = merge(config, [
       vagrantfileDir: vagrantfileDir,
       currentDir: currentDir,
-      pathRelativeToVagrentfileDir: pathRelativeToVagrentfileDir
+      pathRelativeToVagrantFileDir: pathRelativeToVagrantFileDir
     ])
     project.host = config
 
@@ -58,9 +58,14 @@ class BuildersPlugin implements Plugin<Project> {
     })
   }
 
-  static boolean usingDockerProvider() {
+  static boolean usingDockerProvider(Project project) {
+    if (project.hasProperty('useDockerProvider') && project.getProperty('useDockerProvider') == true) {
+      return true;
+    }
     def env = System.getenv("VAGRANT_DEFAULT_PROVIDER")
-    return env == "docker";
+    def useDockerProvider = env == "docker";
+    project.ext.useDockerProvider = useDockerProvider;
+    return useDockerProvider;
   }
 
   static boolean isRunning(Project project, String builderName) {
@@ -128,7 +133,7 @@ class BuildersPlugin implements Plugin<Project> {
   }
 
   static syncVM(Project project, String builderName) {
-    if (usingDockerProvider()) {
+    if (usingDockerProvider(project)) {
       return;
     }
     project.exec {
@@ -150,11 +155,11 @@ class BuildersPlugin implements Plugin<Project> {
     def builderExecSpec = new BuilderExecSpec()
     builderExecSpec.with configureClosure
 
-    def pathRelativeToVagrentfileDir = project.host.pathRelativeToVagrentfileDir ?: ""
+    def pathRelativeToVagrantFileDir = project.host.pathRelativeToVagrantFileDir ?: ""
     def workingDirPath = builderExecSpec.workingDirPath ?: ""
     def scriptText = builderExecSpec.scriptText
 
-    def script = "cd /vagrant/${pathRelativeToVagrentfileDir}/${workingDirPath} && ${scriptText}"
+    def script = "cd /vagrant/${pathRelativeToVagrantFileDir}/${workingDirPath} && ${scriptText}"
 
     project.exec {
       workingDir project.host.vagrantfileDir
@@ -163,7 +168,7 @@ class BuildersPlugin implements Plugin<Project> {
   }
 
   static syncHost(Project project, String builderName) {
-    if (usingDockerProvider()) {
+    if (usingDockerProvider(project)) {
       return;
     }
     def vDir = project.host.vagrantfileDir.toString()

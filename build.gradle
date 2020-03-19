@@ -1,4 +1,3 @@
-
 plugins {
     id 'network.ockam.gradle.host' version '1.0.0'
     id 'network.ockam.gradle.builders' version '1.0.0'
@@ -12,6 +11,9 @@ plugins {
         group impl.capitalize()
         doLast {
           exec {
+            if (project.hasProperty('useDockerProvider') && project.findProperty('useDockerProvider') == true) {
+              environment 'VAGRANT_DEFAULT_PROVIDER', 'docker'
+            }
             workingDir "implementations/${impl}"
             commandLine '../../gradlew', '-q', "${t}"
           }
@@ -46,4 +48,54 @@ clean.doLast {
     ignoreExitValue true
   }
   delete '.builder'
+}
+
+task setDockerProvider {
+  doLast {
+    project.ext.useDockerProvider = true
+  }
+}
+
+task buildDocker {
+  group 'Ockam'
+  description 'Build with Docker'
+
+  def vboxDir = new File('.vagrant/machines/builder-debian/virtualbox')
+  if (vboxDir.exists()) {
+    throw new GradleException('Cannot build with Docker without removing VirtualBox builder first!')
+  }
+
+  dependsOn setDockerProvider
+  dependsOn build
+  tasks.findByName('build').mustRunAfter 'setDockerProvider'
+}
+
+task debianBuilder {
+  group 'Build Setup'
+  description 'Build the builder-debian VirtualBox VM'
+
+  doLast {
+    exec {
+      commandLine 'bash', '-c', """
+      cd tools/builder/debian && \
+        ./build
+      """
+    }
+  }
+}
+
+task dockerBuilder {
+  group 'Build Setup'
+  description 'Build the builder-debian Docker image'
+
+  doLast {
+    exec {
+      commandLine 'bash', '-c', """
+      cd tools/builder/debian && \
+        DOCKER_BUILDKIT=1 docker build \
+          --build-arg public_key="\$(cat ~/.ssh/id_rsa.pub || echo '')" \
+          -t ockam-builder-debian-base:latest .
+      """
+    }
+  }
 }

@@ -6,7 +6,6 @@
 CMakeCache.txt
 CMakeFiles
 Makefile
-!/Makefile
 cmake_install.cmake
 *.a
 *.DS_store
