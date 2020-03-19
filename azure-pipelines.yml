@@ -6,6 +6,18 @@ name: $(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
 pool: 'OckamHosted'
 
 steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: 12.x
+
+  - bash: |
+      if [ ! -z "$SYSTEM_PULLREQUEST_TARGETBRANCH" ]; then
+        npx commitlint --from $(git rev-parse origin/$SYSTEM_PULLREQUEST_TARGETBRANCH) --to HEAD --verbose
+      else
+        npx commitlint --from HEAD~1 --to HEAD --verbose
+      fi
+    displayName: Lint Commit Messages
+
   - script: |
       vagrant global-status | grep builder- | awk '{ print $1 }' | xargs -I {} vagrant destroy -f {}
       VBoxManage unregistervm --delete "builder-macos"
@@ -27,4 +39,3 @@ steps:
 
   - script: ./gradlew clean
     displayName: Clean
-
