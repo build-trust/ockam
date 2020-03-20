@@ -53,17 +53,17 @@ clean.doLast {
 task setDockerProvider {
   doLast {
     project.ext.useDockerProvider = true
+
+    def vboxDir = new File('.vagrant/machines/builder-debian/virtualbox')
+    if (vboxDir.exists()) {
+      throw new GradleException('Cannot build with Docker without removing VirtualBox builder first!')
+    }
   }
 }
 
 task buildDocker {
   group 'Ockam'
   description 'Build with Docker'
-
-  def vboxDir = new File('.vagrant/machines/builder-debian/virtualbox')
-  if (vboxDir.exists()) {
-    throw new GradleException('Cannot build with Docker without removing VirtualBox builder first!')
-  }
 
   dependsOn setDockerProvider
   dependsOn build
