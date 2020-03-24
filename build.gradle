@@ -3,19 +3,31 @@ plugins {
     id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
+task detectDockerProvider {
+  doLast {
+    def dockerDir = new File('.vagrant/machines/builder-debian/docker')
+    if (dockerDir.exists()) {
+      project.ext.useDockerProvider = true
+    } else {
+      project.ext.useDockerProvider = false
+    }
+  }
+}
+
 ['build', 'test', 'clean'].each { t ->
   task "${t}" {
     group 'Ockam'
     def implementationTasks = ['c', 'elixir', 'go', 'javascript', 'rust', 'swift'].stream().map { impl ->
       tasks.create("${t}${impl.capitalize()}") {
         group impl.capitalize()
+
+        dependsOn detectDockerProvider
+
         doLast {
           exec {
-            if (project.hasProperty('useDockerProvider') && project.findProperty('useDockerProvider') == true) {
-              environment 'VAGRANT_DEFAULT_PROVIDER', 'docker'
-            }
+            def useDockerProvider = project.ext.useDockerProvider
             workingDir "implementations/${impl}"
-            commandLine '../../gradlew', '-q', "${t}"
+            commandLine '../../gradlew', '-q', "-PuseDockerProvider=${useDockerProvider}", "${t}"
           }
         }
       }
@@ -51,12 +63,15 @@ clean.doLast {
 }
 
 task setDockerProvider {
-  doLast {
-    project.ext.useDockerProvider = true
+  dependsOn detectDockerProvider
 
-    def vboxDir = new File('.vagrant/machines/builder-debian/virtualbox')
-    if (vboxDir.exists()) {
-      throw new GradleException('Cannot build with Docker without removing VirtualBox builder first!')
+  doLast {
+    if (!project.ext.useDockerProvider) {
+      def vboxDir = new File('.vagrant/machines/builder-debian/virtualbox/id')
+      if (vboxDir.exists()) {
+        throw new GradleException('Cannot build with Docker without removing VirtualBox builder first!')
+      }
+      project.ext.useDockerProvider = true
     }
   }
 }

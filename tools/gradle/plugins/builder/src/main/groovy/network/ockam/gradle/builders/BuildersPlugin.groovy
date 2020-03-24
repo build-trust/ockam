@@ -62,6 +62,11 @@ class BuildersPlugin implements Plugin<Project> {
     if (project.hasProperty('useDockerProvider') && project.getProperty('useDockerProvider') == true) {
       return true;
     }
+    def dockerBuilder = new File(project.host.vagrantfileDir, '.vagrant/machines/builder-debian/docker')
+    if (dockerBuilder.exists()) {
+      project.ext.useDockerProvider = true;
+      return true;
+    }
     def env = System.getenv("VAGRANT_DEFAULT_PROVIDER")
     def useDockerProvider = env == "docker";
     project.ext.useDockerProvider = useDockerProvider;
@@ -114,6 +119,9 @@ class BuildersPlugin implements Plugin<Project> {
       ("OCKAM_${builderName.toUpperCase()}_BUILDER_MEMORY".toString()): (project.host["${builderName}Builder"]).memory,
       ("OCKAM_${builderName.toUpperCase()}_BUILDER_CPUS".toString()): (project.host["${builderName}Builder"]).cpus
     ]
+    if (usingDockerProvider(project)) {
+      env['VAGRANT_DEFAULT_PROVIDER'] = 'docker'
+    }
     if(project.host.privateBoxesSharedAccessToken != null) {
       env['OCKAM_PRIVATE_BOXES_SHARED_ACCESS_TOKEN'] = project.host.privateBoxesSharedAccessToken
     }

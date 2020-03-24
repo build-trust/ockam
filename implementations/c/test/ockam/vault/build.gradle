@@ -12,9 +12,10 @@ plugins {
                 group test.capitalize()
                 onlyIf { host.debianBuilder.enabled }
                 doLast {
+                    def useDockerProvider = project.ext.useDockerProvider
                     exec {
                         workingDir "${test}"
-                        commandLine '../../../../../../gradlew', '-q', "${t}"
+                        commandLine '../../../../../../gradlew', '-q', "-PuseDockerProvider=${useDockerProvider}", "${t}"
                     }
                 }
             }
