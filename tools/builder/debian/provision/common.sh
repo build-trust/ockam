@@ -25,4 +25,5 @@ apt-get -y --no-install-recommends install \
   gawk \
   llvm-dev \
   libclang-dev \
-  clang
+  clang \
+  git

@@ -60,40 +60,40 @@ o="$(make --version)"
 [ "$e" == "$o" ]
 }
 
-@test "has erlang otp 22.0.7" {
-e='22.0.7'
+@test "has erlang otp 22.2.3" {
+e='22.2.3'
 o="$(cat $(dirname $(dirname `which erl`)/$(readlink `which erl`))/../releases/*/OTP_*)"
 [ "$e" == "$o" ]
 }
 
-@test "has elixir 1.9.0" {
-e='Elixir 1.9.0 (compiled with Erlang/OTP 22)'
+@test "has elixir 1.10.0" {
+e='Elixir 1.10.0 (compiled with Erlang/OTP 22)'
 o="$(elixir --version | grep Elixir)"
 [ "$e" == "$o" ]
 }
 
-@test "has iex 1.9.0" {
-e='IEx 1.9.0 (compiled with Erlang/OTP 22)'
-o="$(iex --version)"
+@test "has iex 1.10.0" {
+e='IEx 1.10.0 (compiled with Erlang/OTP 22)'
+o="$(iex --version | grep IEx)"
 [ "$e" == "$o" ]
 }
 
-@test "has mix 1.9.0" {
-e='Mix 1.9.0 (compiled with Erlang/OTP 22)'
+@test "has mix 1.10.0" {
+e='Mix 1.10.0 (compiled with Erlang/OTP 22)'
 o="$(mix --version | grep Mix)"
 [ "$e" == "$o" ]
 }
 
-@test "has openjdk 11.0.4" {
-e='openjdk version "11.0.4" 2019-07-16
-OpenJDK Runtime Environment AdoptOpenJDK (build 11.0.4+11)
-OpenJDK 64-Bit Server VM AdoptOpenJDK (build 11.0.4+11, mixed mode)'
+@test "has openjdk 11.0.6" {
+e='openjdk version "11.0.6" 2020-01-14
+OpenJDK Runtime Environment AdoptOpenJDK (build 11.0.6+10)
+OpenJDK 64-Bit Server VM AdoptOpenJDK (build 11.0.6+10, mixed mode)'
 o="$(java -version 2>&1)"
 [ "$e" == "$o" ]
 }
 
-@test "has javac 11.0.4" {
-e='javac 11.0.4'
+@test "has javac 11.0.6" {
+e='javac 11.0.6'
 o="$(javac -version 2>&1)"
 [ "$e" == "$o" ]
 }
@@ -122,20 +122,20 @@ o="$(go version)"
 [ "$e" == "$o" ]
 }
 
-@test "has cargo 1.35.0" {
-e='cargo 1.35.0 (6f3e9c367 2019-04-04)'
+@test "has cargo 1.42.0" {
+e='cargo 1.42.0 (86334295e 2020-01-31)'
 o="$(cargo --version)"
 [ "$e" == "$o" ]
 }
 
-@test "has rustc 1.35.0" {
-e='rustc 1.35.0 (3c235d560 2019-05-20)'
+@test "has rustc 1.42.0" {
+e='rustc 1.42.0 (b8cedc004 2020-03-09)'
 o="$(rustc --version)"
 [ "$e" == "$o" ]
 }
 
-@test "has rustup 1.18.3" {
-e='rustup 1.18.3 (435397f48 2019-05-22)'
+@test "has rustup 1.21.1" {
+e='rustup 1.21.1 (7832b2ebe 2019-12-20)'
 o="$(rustup --version)"
 [ "$e" == "$o" ]
 }
