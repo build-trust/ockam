@@ -39,7 +39,8 @@ RUN apt-get update && \
         openssh-client \
         llvm-dev \
         libclang-dev \
-        clang && \
+        clang \
+        git && \
     apt-get clean
 
 RUN systemctl enable ssh.service
@@ -107,12 +108,12 @@ RUN \
     sudo /tmp/provision/common.sh && \
     sudo /tmp/provision/shellcheck.sh && \
     sudo /tmp/provision/crosstoolng.sh && \
+    sudo /tmp/provision/arm-rpi.sh && \
     sudo /tmp/provision/cmake.sh && \
     sudo /tmp/provision/node.sh && \
     sudo /tmp/provision/go.sh && \
     sudo /tmp/provision/rust.sh && \
     sudo /tmp/provision/java.sh && \
-    sudo /tmp/provision/android.sh && \
     sudo /tmp/provision/erlang.sh && \
     sudo /tmp/provision/elixir.sh && \
     sudo /tmp/provision/libsodium.sh && \
