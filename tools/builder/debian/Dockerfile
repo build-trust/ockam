@@ -23,7 +23,16 @@ RUN echo 'debconf debconf/frontend select teletype' | debconf-set-selections
 #       most needs. Please file an issue if you think this should be changed.
 RUN apt-get update && \
     apt-get dist-upgrade -y && \
-    apt-get install -y --no-install-recommends \
+    echo 'deb http://deb.debian.org/debian unstable main' >> /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends -t unstable \
+        libc6 \
+        libc6-dev \
+        openssl \
+        libssl-dev \
+        openssh-server \
+        openssh-client && \
+    apt-get install -y --no-install-recommends -t stretch \
         apt-transport-https \
         ca-certificates \
         sudo \
@@ -35,8 +44,6 @@ RUN apt-get update && \
         wget \
         build-essential \
         gnupg \
-        openssh-server \
-        openssh-client \
         llvm-dev \
         libclang-dev \
         clang \

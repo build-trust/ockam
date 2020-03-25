@@ -1,6 +1,16 @@
 #!/bin/sh -eux
 
-apt-get -y --no-install-recommends install \
+sudo echo 'deb http://deb.debian.org/debian unstable main' >> /etc/apt/sources.list
+
+sudo apt-get update
+
+apt-get -y --no-install-recommends -t unstable install \
+  libc6 \
+  libc6-dev \
+  openssl \
+  libssl-dev
+
+apt-get -y --no-install-recommends -t stretch install \
   dpkg-dev \
   g++ \
   libstdc++-6-dev \
