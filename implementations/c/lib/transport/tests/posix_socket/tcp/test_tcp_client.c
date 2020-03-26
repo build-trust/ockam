@@ -6,9 +6,9 @@
 #include "ockam/transport.h"
 #include "test_tcp.h"
 
-char *pFileToSend = "./../fixtures/client_test_data.txt";
-char *pFileToReceive = "./../fixtures/client_data_received.txt";
-char *pFileToCompare = "./../fixtures/server_test_data.txt";
+char *pFileToSend = "../../fixtures/client_test_data.txt";
+char *pFileToReceive = "../../fixtures/client_data_received.txt";
+char *pFileToCompare = "../../fixtures/server_test_data.txt";
 
 #define DEFAULT_IP_ADDRESS "127.0.0.1"
 #define DEFAULT_IP_PORT 8000

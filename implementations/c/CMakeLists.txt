@@ -87,11 +87,12 @@ message(STATUS "Build Tests                    : " "${OCKAM_BUILD_TESTS}")
 
 string(JOIN " " CMAKE_CXX_FLAGS ${OCKAM_DEFAULT_COPTS})
 
-set_alwayslink_ockam_libs()
-add_subdirectory(lib)
-
 if(${OCKAM_BUILD_TESTS})
   enable_testing(lib)
 endif()
+
+set_alwayslink_ockam_libs()
+add_subdirectory(lib)
+
 
 ockam_complete_binary_link_options()

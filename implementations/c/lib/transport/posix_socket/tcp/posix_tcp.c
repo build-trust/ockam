@@ -17,6 +17,9 @@
 #include "../posix_socket.h"
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
+//!!
+#include <stdio.h>
+#include <errno.h>
 
 /*
  ********************************************************************************************************
@@ -93,6 +96,16 @@ TransportError PosixTcpListenBlocking(Connection *listener, OckamInternetAddress
     log_error(status, "failed to create listen socket in PosixTcpListenBlocking");
     goto exit_block;
   }
+  if (setsockopt(listen_socket->socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
+    status = kServerInit;
+    log_error(status, "failed setsockopt in PosixTcpListenBlocking");
+    goto exit_block;
+  }
+  if (setsockopt(listen_socket->socket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int)) < 0) {
+    status = kServerInit;
+    log_error(status, "failed setsockopt in PosixTcpListenBlocking");
+    goto exit_block;
+  }
 
   // Save IP address and port and construct address, if provided
   if (NULL != address) {
@@ -160,8 +173,7 @@ TransportError PosixTcpConnectBlocking(Connection *connection, OckamInternetAddr
   memcpy(&posix_socket->remoteAddress, address, sizeof(*address));
 
   // Construct the server address for connection
-  status = MakeSocketAddress(&posix_socket->remoteAddress.IPAddress[0], posix_socket->remoteAddress.port,
-                             &posix_socket->socketAddress);
+  status = MakeSocketAddress(address->IPAddress, address->port, &posix_socket->socketAddress);
   if (kErrorNone != status) {
     status = kBadParameter;
     log_error(status, "MakeSocketAddress failed in PosixTcpConnectBlocking");
@@ -172,6 +184,16 @@ TransportError PosixTcpConnectBlocking(Connection *connection, OckamInternetAddr
   if (-1 == posix_socket->socket) {
     status = kCreateSocket;
     log_error(status, "socket failed in p_socket");
+    goto exit_block;
+  }
+  if (setsockopt(posix_socket->socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
+    status = kServerInit;
+    log_error(status, "failed setsockopt in PosixTcpListenBlocking");
+    goto exit_block;
+  }
+  if (setsockopt(posix_socket->socket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int)) < 0) {
+    status = kServerInit;
+    log_error(status, "failed setsockopt in PosixTcpListenBlocking");
     goto exit_block;
   }
 
