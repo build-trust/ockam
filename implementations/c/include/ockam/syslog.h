@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include "error.h"
+#include "ockam/error.h"
 
-void init_err_log(FILE* fp);
-
-void log_error(OCKAM_ERR error, char* message);
+void log_error(OckamError error, char* message);

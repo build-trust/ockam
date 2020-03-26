@@ -17,7 +17,7 @@ insert_final_newline = true
 
 [*.c, *.h]
 indent_style = space
-indent_size = 4
+indent_size = 2
 
 
 [Makefile]

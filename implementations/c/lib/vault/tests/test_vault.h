@@ -1,21 +1,7 @@
 /**
  ********************************************************************************************************
- * @file    log.h
- * @brief   Generic logging functions for the Ockam Library
- ********************************************************************************************************
- */
-
-#ifndef OCKAM_LOG_H_
-#define OCKAM_LOG_H_
-
-/*
- ********************************************************************************************************
- * @defgroup    OCKAM_LOG OCKAM_LOG_API
- * @ingroup     OCKAM
- * @brief       OCKAM_LOG_API
- *
- * @addtogroup  OCKAM_LOG
- * @{
+ * @file    vault.h
+ * @brief   Common test functions for vault
  ********************************************************************************************************
  */
 
@@ -27,7 +13,7 @@
 
 #include <stdint.h>
 
-#include "ockam/error.h"
+#include "ockam/vault.h"
 
 /*
  ********************************************************************************************************
@@ -35,20 +21,13 @@
  ********************************************************************************************************
  */
 
+#define TEST_VAULT_NO_TEST_CASE 0xFF
+
 /*
  ********************************************************************************************************
  *                                               CONSTANTS                                              *
  ********************************************************************************************************
  */
-
-typedef enum {
-  OCKAM_LOG_DEBUG = 0,
-  OCKAM_LOG_INFO,
-  OCKAM_LOG_WARN,
-  OCKAM_LOG_ERROR,
-  OCKAM_LOG_FATAL,
-  MAX_OCKAM_LOG
-} OCKAM_LOG_e;
 
 /*
  ********************************************************************************************************
@@ -80,22 +59,9 @@ typedef enum {
  ********************************************************************************************************
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-OckamError ockam_log_init(void);
-
-OckamError ockam_log(void* p_str, uint32_t str_size);
-
-#ifdef __cplusplus
-}
-#endif
-
-/*
- ********************************************************************************************************
- * @}
- ********************************************************************************************************
- */
-
-#endif
+int TestVaultRunKeyEcdh(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory, OckamVaultEc ec,
+                        uint8_t load_keys);
+int TestVaultRunHkdf(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
+int TestVaultRunSha256(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
+int TestVaultRunAesGcm(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
+int TestVaultRunRandom(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);

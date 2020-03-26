@@ -2,29 +2,38 @@
 plugins {
     id 'network.ockam.gradle.host' version '1.0.0'
     id 'network.ockam.gradle.builders' version '1.0.0'
-} 
-
-task getDependencies {
-    doFirst {
-        exec {
-            commandLine 'git', 'submodule', 'update', '--init', '--recursive'
-        }
-    }
 }
 
 task build {
-    onlyIf { host.debianBuilder.enabled }
-    dependsOn getDependencies, gradle.includedBuild('vault').task(':build')
+  onlyIf { host.debianBuilder.enabled }
+  doLast {
+    builderExec 'debian', {
+      script '''
+      mkdir -p _build
+      cd _build
+      cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=1 -DOCKAM_TARGET_PLATFORM="linux" ..
+      cmake --build .
+      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ..
+      cmake --build .
+      '''
+    }
+  }
 }
 
 task test {
-    onlyIf { host.debianBuilder.enabled }
-    dependsOn gradle.includedBuild('vault').task(':test')
+  onlyIf { host.debianBuilder.enabled }
+  doLast {
+    builderExec 'debian', {
+      script '''
+        cd _build/x86_64-linux-gnu/Debug/tests
+        CMOCKA_XML_FILE='cm_%g.xml' ./ockam_vault_default_tests_full
+      '''
+    }
+  }
 }
 
 task clean {
-    onlyIf { host.debianBuilder.enabled }
-    dependsOn gradle.includedBuild('vault').task(':clean')
+  doLast {
+    delete '_build'
+  }
 }
-
-build.mustRunAfter(getDependencies)

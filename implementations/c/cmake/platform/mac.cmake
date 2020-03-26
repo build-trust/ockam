@@ -1,0 +1,4 @@
+# System Info
+set(OCKAM_TARGET_OS "Darwin")
+set(OCKAM_TARGET_ARCHITECTURE "x86_64")
+set(OCKAM_TARGET_VENDOR "Apple")
