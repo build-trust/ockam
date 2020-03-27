@@ -1,10 +1,14 @@
 # System Info
-SET(CMAKE_SYSTEM_NAME Linux)
+SET(CMAKE_SYSTEM_NAME "Linux")
+SET(CMAKE_SYSTEM_PROCESSOR "armv8")
 SET(CMAKE_SYSTEM_VERSION 1)
 
 set(OCKAM_TARGET_ARCHITECTURE "armv8")
-set(OCKAM_TARGET_OS "linux")
 set(OCKAM_TARGET_VENDOR "rpi3")
+set(OCKAM_TARGET_OS "linux")
+set(OCKAM_TARGET_LIBC "gnueabihf")
+set(OCKAM_TARGET_TRIPLE
+  "${OCKAM_TARGET_ARCHITECTURE}-${OCKAM_TARGET_VENDOR}-${OCKAM_TARGET_OS}-${OCKAM_TARGET_LIBC}")
 
 # Define the RPI path
 set(OCKAM_C_RPI_PATH ${OCKAM_C_BASE}/tools/toolchains/raspberrypi/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf)

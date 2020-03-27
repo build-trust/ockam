@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.14)
 
 include(CMakePrintHelpers)
 
+project(ockam
+    VERSION 0.1
+)
 
 # Set some configs
 set(OCKAM_C_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -33,10 +36,16 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Load helper modules
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# Grab target and host triples
+include(ockam_triples)
+get_target_triple(OCKAM_TARGET_TRIPLE OCKAM_TARGET_ARCHITECTURE OCKAM_TARGET_VENDOR OCKAM_TARGET_OS OCKAM_TARGET_ABI)
+get_host_triple(OCKAM_HOST_TRIPLE OCKAM_HOST_ARCHITECTURE OCKAM_HOST_VENDOR OCKAM_HOST_OS OCKAM_HOST_ABI)
+# Load the platform toolchain
 include(ockam_platform)
+# Load remaining modules
 include(ockam_macros)
 include(ockam_copts)
-include(ockam_triples)
 include(ockam_cc_binary)
 include(ockam_cc_library)
 include(ockam_cc_test)
@@ -44,9 +53,6 @@ include(ockam_cc_alwayslink)
 include(ockam_debug)
 include(ockam_third_party)
 
-# Grab target and host triples
-get_target_triple(OCKAM_TARGET_TRIPLE OCKAM_TARGET_ARCHITECTURE OCKAM_TARGET_VENDOR OCKAM_TARGET_OS)
-get_host_triple(OCKAM_HOST_TRIPLE OCKAM_HOST_ARCHITECTURE OCKAM_HOST_VENDOR OCKAM_HOST_OS)
 
 # Set output directories
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/${OCKAM_TARGET_TRIPLE})
@@ -58,10 +64,12 @@ set(OCKAM_TESTS_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}/${CMAKE_BUILD_TYPE}/tes
 message(STATUS "OCKAM_TARGET_ARCHITECTURE      : '${OCKAM_TARGET_ARCHITECTURE}'")
 message(STATUS "OCKAM_TARGET_VENDOR            : '${OCKAM_TARGET_VENDOR}'")
 message(STATUS "OCKAM_TARGET_OS                : '${OCKAM_TARGET_OS}'")
+message(STATUS "OCKAM_TARGET_ABI               : '${OCKAM_TARGET_ABI}'")
 message(STATUS "OCKAM_TARGET_TRIPLE            : '${OCKAM_TARGET_TRIPLE}'")
 message(STATUS "OCKAM_HOST_ARCHITECTURE        : '${OCKAM_HOST_ARCHITECTURE}'")
 message(STATUS "OCKAM_HOST_VENDOR              : '${OCKAM_HOST_VENDOR}'")
 message(STATUS "OCKAM_HOST_OS                  : '${OCKAM_HOST_OS}'")
+message(STATUS "OCKAM_HOST_ABI                 : '${OCKAM_HOST_ABI}'")
 message(STATUS "OCKAM_HOST_TRIPLE              : '${OCKAM_HOST_TRIPLE}'")
 
 if (ENV{VERBOSE})
@@ -72,10 +80,6 @@ endif()
 
 
 # Ockam Project
-
-project(ockam
-    VERSION 0.1
-)
 
 option(OCKAM_BUILD_TESTS "Builds Ockam tests." OFF)
 

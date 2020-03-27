@@ -72,7 +72,7 @@ function(ockam_cc_library)
 
     # Prefix the library with the package name, so we get: ockam_package_name.
     ockam_package_name(_PACKAGE_NAME)
-    set(_NAME "_${_PACKAGE_NAME}")
+    set(_NAME "${_PACKAGE_NAME}")
     message(STATUS "_NAME                          : '${_NAME}'")
 
     set(_CC_SRCS "${_RULE_SRCS}")
