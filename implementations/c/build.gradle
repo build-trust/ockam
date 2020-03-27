@@ -43,7 +43,7 @@ task test {
   doLast {
     builderExec 'debian', {
       script '''
-        cd _build/x86_64-linux-gnu/Debug/tests
+        cd _build/x86_64-unknown-linux-gnu/Debug/tests
         CMOCKA_XML_FILE='cm_%g.xml' ./ockam_vault_default_tests_full
       '''
     }
