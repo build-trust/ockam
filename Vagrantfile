@@ -29,7 +29,15 @@ Vagrant.configure("2") do |config|
       vbox.memory = ENV['OCKAM_DEBIAN_BUILDER_MEMORY'] || 4096
       vbox.cpus = ENV['OCKAM_DEBIAN_BUILDER_CPUS'] || 2
 
-      override.vm.synced_folder ".", "/vagrant", type: :rsync, rsync__exclude: ['tools/builder/', '.builder']
+      override.vm.synced_folder ".", "/vagrant", type: :rsync,
+        rsync__exclude: [
+          'tools/builder/',
+          '.builder',
+          'implementations/c/_build',
+          'implementations/elixir/_build',
+          'implementations/elixir/priv/native',
+          'implementations/rust/target'
+        ]
     end
 
     config.vm.provider :docker do |docker, override|
@@ -69,6 +77,14 @@ Vagrant.configure("2") do |config|
       vbox.cpus = ENV['OCKAM_MACOS_BUILDER_CPUS'] || 2
     end
 
-    config.vm.synced_folder ".", "/vagrant", type: :rsync, rsync__exclude: ['tools/builder/', '.builder']
+    config.vm.synced_folder ".", "/vagrant", type: :rsync,
+      rsync__exclude: [
+        'tools/builder/',
+        '.builder',
+        'implementations/c/_build',
+        'implementations/elixir/_build',
+        'implementations/elixir/priv/native',
+        'implementations/rust/target'
+      ]
   end
 end
