@@ -14,6 +14,12 @@ Vagrant.configure("2") do |config|
     config.ssh.keep_alive = true
     config.vm.provision "shell", privileged: true, inline: <<-SCRIPT
       echo 'export OCKAM_C_BASE=/vagrant/implementations/c' > /etc/profile.d/ockam.sh
+
+      apt-get install  apt-transport-https
+      echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-9 main" >> /etc/apt/sources.list
+      wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+      apt-get update
+      apt-get install -y clang-format-9
     SCRIPT
 
     config.vm.provider :virtualbox do |vbox, override|

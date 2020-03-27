@@ -4,7 +4,25 @@ plugins {
     id 'network.ockam.gradle.builders' version '1.0.0'
 }
 
+task lint {
+  onlyIf { host.debianBuilder.enabled }
+  doLast {
+    builderExec 'debian', {
+      script '''
+      find . -type f \\( -iname \\*.h -o -iname \\*.c \\) \
+        -not -path "./tools/*" \
+        -not -path "./documentation/*" \
+        -not -path "*bearssl-0.6*" \
+        -not -path "*tests/cmocka*" \
+        -not -path "*_build*" | \
+          xargs -I {} bash -c "cmp -s <(cat {}) <(clang-format-9 --style=file {}) || echo 'LINTER FAILED - {}'"
+      '''
+    }
+  }
+}
+
 task build {
+  dependsOn lint
   onlyIf { host.debianBuilder.enabled }
   doLast {
     builderExec 'debian', {
