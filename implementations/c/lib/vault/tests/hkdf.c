@@ -193,7 +193,7 @@ void TestVaultHkdf(void **state) {
   /* Memory Free */
   /* ----------- */
 
-  p_test_data->p_memory->Free(p_hkdf_key);
+  p_test_data->p_memory->Free(p_hkdf_key, g_hkdf_data[p_test_data->test_count].output_size);
 }
 
 /**

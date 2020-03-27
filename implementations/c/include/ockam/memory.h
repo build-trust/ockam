@@ -91,11 +91,13 @@ typedef struct {
    *
    * @param   p_buf[in] Pointer to the buffer to free. Must have been allocated from Alloc().
    *
+   * @param   size[in]  Size of the buffer that was allocated. Must match what was specified in Alloc.
+   *
    * @return  kOckamErrNone on success.
    ****************************************************************************************************
    */
 
-  MemoryError (*Free)(void *p_buf);
+  MemoryError (*Free)(void *p_buf, size_t size);
 
   /**
    ****************************************************************************************************

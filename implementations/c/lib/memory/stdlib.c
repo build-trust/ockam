@@ -41,7 +41,7 @@
 
 MemoryError MemoryStdlibCreate(void *p_arg);
 MemoryError MemoryStdlibAlloc(void **p_buf, size_t size);
-MemoryError MemoryStdlibFree(void *p_buf);
+MemoryError MemoryStdlibFree(void *p_buf, size_t size);
 MemoryError MemoryStdlibCopy(void *p_dest, void *p_src, size_t size);
 MemoryError MemoryStdlibSet(void *p_mem, uint8_t val, size_t size);
 MemoryError MemoryStdlibMove(void *p_dest, void *p_src, size_t num);
@@ -112,8 +112,10 @@ exit_block:
  ********************************************************************************************************
  */
 
-MemoryError MemoryStdlibFree(void *p_buf) {
+MemoryError MemoryStdlibFree(void *p_buf, size_t size) {
   MemoryError ret_val = kOckamErrorNone;
+
+  (void) size;
 
   if (p_buf == 0) {
     ret_val = kMemoryErrorInvalidParam;

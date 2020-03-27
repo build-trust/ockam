@@ -318,8 +318,8 @@ void TestVaultKeyEcdh(void **state) {
   /* Memory free */
   /* ----------- */
 
-  p_test_data->p_memory->Free(p_static_pub);
-  p_test_data->p_memory->Free(p_ephemeral_pub);
+  p_test_data->p_memory->Free(p_static_pub, p_test_data->key_size);
+  p_test_data->p_memory->Free(p_ephemeral_pub, p_test_data->key_size);
 }
 
 /**
