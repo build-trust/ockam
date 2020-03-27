@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 include(CMakePrintHelpers)
 
 project(ockam
-    VERSION 0.1
+    VERSION 0.5
 )
 
 # Set some configs
