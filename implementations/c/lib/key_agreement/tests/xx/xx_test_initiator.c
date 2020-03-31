@@ -210,9 +210,9 @@ OckamError XXTestInitiator(int argc, char *argv[], const OckamVault *vault, void
   uint8_t recv_buffer[MAX_TRANSMIT_SIZE];
   uint16_t bytesReceived = 0;
   uint16_t transmit_size = 0;
-  uint8_t test[TEST_MSG_BYTE_SIZE];
+  uint8_t test[TEST_MSG_CIPHER_SIZE];
   uint32_t test_bytes;
-  uint8_t test_responder[TEST_MSG_BYTE_SIZE];
+  uint8_t test_responder[TEST_MSG_CIPHER_SIZE];
 
   /*-------------------------------------------------------------------------
    * Establish transport transportCtx with responder
@@ -237,7 +237,7 @@ OckamError XXTestInitiator(int argc, char *argv[], const OckamVault *vault, void
    *-----------------------------------------------------------------------*/
   status = transport->Read(transportCtx, recv_buffer, sizeof(recv_buffer), &bytesReceived);
   if (kErrorNone != status) {
-    log_error(status, "ockam_ReceiveBlocking failed on msg 2");
+    log_error(status, "ockam_ReceiveBlocking failed on test message");
     goto exit_block;
   }
 
@@ -246,7 +246,7 @@ OckamError XXTestInitiator(int argc, char *argv[], const OckamVault *vault, void
    *-----------------------------------------------------------------------*/
   status = XXDecrypt(&handshake, test, TEST_MSG_BYTE_SIZE, recv_buffer, bytesReceived, &test_bytes);
   if (kErrorNone != status) {
-    log_error(status, "ockam_ReceiveBlocking failed on msg 2");
+    log_error(status, "XXDecrypt failed on test msg");
     goto exit_block;
   }
   string_to_hex(TEST_MSG_RESPONDER, test_responder, NULL);
@@ -287,6 +287,5 @@ OckamError XXTestInitiator(int argc, char *argv[], const OckamVault *vault, void
 
 exit_block:
   if (NULL != transportCtx) transport->Destroy(transportCtx);
-  printf("Test ended with status %0.4x\n", status);
   return status;
 }
