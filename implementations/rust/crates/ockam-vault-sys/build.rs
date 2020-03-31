@@ -55,7 +55,7 @@ fn main() {
     println!(
         "cargo:rustc-link-search=native={}",
         ockam_vault_path
-            .join(&format!("build/{}/{}/lib", &target, profile))
+            .join(&format!("build/{}/lib", profile))
             .display()
     );
     println!("cargo:rustc-link-lib=static=ockam_vault_default");
