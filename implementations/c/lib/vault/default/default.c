@@ -152,19 +152,34 @@ VaultError VaultDefaultCreate(OckamVaultCtx **ctx, OckamVaultDefaultConfig *p_cf
   OckamVaultCtx *p_ctx = 0;
   uint8_t delete = 0;
 
-  if (memory == 0) {
+  if (p_cfg == 0) {
+    ret_val = kOckamError;
     goto exit_block;
   }
 
-  ret_val = memory->Alloc((void **)ctx, sizeof(OckamVaultCtx));
-  if (ret_val != kOckamErrorNone) {
-    goto exit_block;
-  }
+  if (p_cfg->features == OCKAM_VAULT_ALL) { /* If all features are enabled, this is a standalone  */
+    if (memory == 0) {                      /* vault that must be created from scratch. If only   */
+      ret_val = kOckamError;                /* some features are enabled, this is a sub-vault and */
+      goto exit_block;                      /* the context should already exist.                  */
+    }
 
-  p_ctx = *ctx;
-  p_ctx->memory = memory;
-  p_ctx->ec = p_cfg->ec;
-  p_ctx->features = 0;
+    ret_val = memory->Alloc((void **)ctx, sizeof(OckamVaultCtx));
+    if (ret_val != kOckamErrorNone) {
+      goto exit_block;
+    }
+
+    p_ctx = *ctx;
+    p_ctx->memory = memory;
+    p_ctx->ec = p_cfg->ec;
+    p_ctx->default_features = 0;
+  } else {
+    if (*ctx == 0) {         /* If this is a sub-vault, ensure the context already */
+      ret_val = kOckamError; /* exists.                                            */
+      goto exit_block;
+    }
+
+    p_ctx = *ctx;
+  }
 
   delete = 1;
 
@@ -221,15 +236,42 @@ exit_block:
 
 VaultError VaultDefaultDestroy(OckamVaultCtx *p_ctx) {
   VaultError ret_val = kOckamErrorNone;
-  const OckamMemory *memory = 0;
+  const OckamMemory *p_memory = 0;
+  uint8_t delete_ctx = 0;
 
   if (p_ctx == 0) {
     ret_val = kOckamError;
     goto exit_block;
   }
 
-  memory = p_ctx->memory;
-  memory->Free(p_ctx, sizeof(OckamVaultCtx));
+  if (p_ctx->default_features & OCKAM_VAULT_ALL) { /* Determine if the context pointer needs to be freed */
+    delete_ctx = 1;                                /* before we start disabling features                 */
+  }
+
+  if (p_ctx->default_features & OCKAM_VAULT_RANDOM) {
+    VaultDefaultRandomDestroy(p_ctx);
+  }
+
+  if (p_ctx->default_features & OCKAM_VAULT_SHA256) {
+    VaultDefaultSha256Destroy(p_ctx);
+  }
+
+  if (p_ctx->default_features & OCKAM_VAULT_KEY_ECDH) {
+    VaultDefaultKeyEcdhDestroy(p_ctx);
+  }
+
+  if (p_ctx->default_features & OCKAM_VAULT_HKDF) {
+    VaultDefaultHkdfDestroy(p_ctx);
+  }
+
+  if (p_ctx->default_features & OCKAM_VAULT_AES_GCM) {
+    VaultDefaultAesGcmDestroy(p_ctx);
+  }
+
+  if (delete_ctx) {
+    p_memory = p_ctx->memory;
+    p_memory->Free(p_ctx, sizeof(OckamVaultCtx));
+  }
 
 exit_block:
   return ret_val;

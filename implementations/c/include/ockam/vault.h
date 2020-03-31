@@ -79,9 +79,10 @@ typedef enum {
  */
 
 typedef enum {
-  kOckamVaultEcP256 = 0,   /*!< NIST P-256 Elliptic Curve                        */
-  kOckamVaultEcCurve25519, /*!< Curve25519 Elliptic Curve                        */
-  kMaxOckamVaultEc         /*!< Total number of curves supported                 */
+  kOckamVaultEcP256 = 0,   /*!< NIST P-256 Curve                                 */
+  kOckamVaultEcCurve25519, /*!< Curve25519                                       */
+  kMaxOckamVaultEc,        /*!< Total number of curves available                 */
+  kOckamVaultEcNone        /*!< No EC specified or needed                        */
 } OckamVaultEc;
 
 /*
@@ -106,6 +107,7 @@ typedef enum {
 typedef struct {
   const OckamMemory *memory; /*!< Pointer to the Ockam Memory interface            */
   uint32_t features;         /*!< Bitfield containing all enabled vault functions  */
+  uint32_t default_features; /*!< Bitfield containing all enabled default functions*/
   OckamVaultEc ec;           /*!< The elliptic curve supported by this vault       */
   void *random_ctx;          /*!< Pointer to random function data                  */
   void *key_ecdh_ctx;        /*!< Pointer to the Key/ECDH function data            */

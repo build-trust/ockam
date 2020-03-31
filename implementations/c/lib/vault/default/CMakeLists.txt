@@ -18,6 +18,7 @@ FetchContent_Declare(bearssl-tar
 FetchContent_GetProperties(bearssl-tar)
 
 if(NOT bearssl-tar_POPULATED)
+  message(STATUS "FETCHING PACKAGE               : BearSSL") 
   FetchContent_Populate(bearssl-tar)
 endif()
 
@@ -51,6 +52,8 @@ ockam_cc_library(
    INCLUDES
      "${BEARSSL_DIR}/inc"
      "${BEARSSL_DIR}/src"
+   DEPS
+     ockam::memory
    PUBLIC )
 
 
