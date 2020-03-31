@@ -47,5 +47,6 @@ typedef uint32_t OckamError;
 #define kOckamErrorInterfaceVault (3u << kOckamErrorInterfaceShift)
 #define kOckamErrorInterfaceTransport (4u << kOckamErrorInterfaceShift)
 #define kOckamErrorInterfaceKeyAgreement (5u << kOckamErrorInterfaceShift)
+#define kOckamErrorCodec (6u << kOckamErrorInterfaceShift)
 
 #endif
