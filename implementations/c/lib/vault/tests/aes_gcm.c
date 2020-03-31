@@ -227,10 +227,10 @@ void TestVaultAesGcm(void **state) {
   /* ----------- */
 
   // TODO this will not be freed on an error
-  p_test_data->p_memory->Free(p_aes_gcm_encrypt_hash,           /* Ignore the error result. Some tests don't allocate */
-      g_aes_gcm_data[p_test_data->test_count].text_size);
-  p_test_data->p_memory->Free(p_aes_gcm_decrypt_data,           /* memory which freeing results in an error.          */
-      g_aes_gcm_data[p_test_data->test_count].text_size);
+  p_test_data->p_memory->Free(p_aes_gcm_encrypt_hash, /* Ignore the error result. Some tests don't allocate */
+                              g_aes_gcm_data[p_test_data->test_count].text_size);
+  p_test_data->p_memory->Free(p_aes_gcm_decrypt_data, /* memory which freeing results in an error.          */
+                              g_aes_gcm_data[p_test_data->test_count].text_size);
 }
 
 /**

@@ -5,9 +5,9 @@
 #include "ockam/transport.h"
 #include "test_tcp.h"
 
-char *pSrvFileToSend = "../../fixtures/server_test_data.txt";
-char *pSrvFileToReceive = "../../fixtures/server_data_received.txt";
-char *pSrvFileToCompare = "../../fixtures/client_test_data.txt";
+char *pSrvFileToSend = "fixtures/server_test_data.txt";
+char *pSrvFileToReceive = "fixtures/server_data_received.txt";
+char *pSrvFileToCompare = "fixtures/client_test_data.txt";
 
 extern const OckamTransport *transport;
 

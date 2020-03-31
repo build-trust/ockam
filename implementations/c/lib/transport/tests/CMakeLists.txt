@@ -1,5 +1,5 @@
 # Copy test fixtures to the right plact
-set(_fixtures_dest_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../fixtures)
+set(_fixtures_dest_dir ${OCKAM_FIXTURES_OUTPUT_DIRECTORY})
 set(_fixtures_src_dir ${CMAKE_CURRENT_SOURCE_DIR}/fixtures)
 
 file(GLOB _src_fixtures LIST_DIRECTORIES false "${_fixtures_src_dir}/*.txt")

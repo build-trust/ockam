@@ -115,7 +115,7 @@ exit_block:
 MemoryError MemoryStdlibFree(void *p_buf, size_t size) {
   MemoryError ret_val = kOckamErrorNone;
 
-  (void) size;
+  (void)size;
 
   if (p_buf == 0) {
     ret_val = kMemoryErrorInvalidParam;

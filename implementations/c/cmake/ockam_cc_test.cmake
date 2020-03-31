@@ -46,8 +46,10 @@ function(ockam_cc_test)
     ${ARGN}
   )
 
-  message(STATUS "PACKAGE: '${_PACKAGE_NS}'")
+  message(STATUS "------------------ ockam_cc_test -----------------")
+  message(STATUS "_RULE_NAME                     : '${_RULE_NAME}'")
   ockam_package_ns(_PACKAGE_NS)
+  message(STATUS "PACKAGE                        : '${_PACKAGE_NS}'")
 
   # Replace dependencies passed by ::name with ::ockam::package::name
   list(TRANSFORM _RULE_DEPS REPLACE "^::" "${_PACKAGE_NS}::")
@@ -55,6 +57,8 @@ function(ockam_cc_test)
   # Prefix the library with the package name, so we get: ockam_package_name
   ockam_package_name(_PACKAGE_NAME)
   set(_NAME "${_PACKAGE_NAME}_${_RULE_NAME}")
+
+  message(STATUS "NAME                           : '${_NAME}'")
 
   include(CTest)
 

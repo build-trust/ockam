@@ -27,12 +27,21 @@ task build {
   doLast {
     builderExec 'debian', {
       script '''
-      mkdir -p _build
-      cd _build
-      cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=1 -DOCKAM_TARGET_PLATFORM="linux" ..
-      cmake --build .
-      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ..
-      cmake --build .
+      mkdir -p _build/x86_64-unknown-linux-gnu
+      cd _build/x86_64-unknown-linux-gnu
+      cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..
+      cmake --build . --config Debug
+      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..
+      cmake --build . --config Release
+      cd ../..
+
+      mkdir -p _build/armv8-rpi3-linux-gnueabihf
+      cd _build/armv8-rpi3-linux-gnueabihf
+      cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="pi" -DOCKAM_C_COMPILER_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/bin" -DOCKAM_C_SYSROOT_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot" ../..
+      cmake --build . --config Debug
+      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="pi" -DOCKAM_C_COMPILER_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/bin" -DOCKAM_C_SYSROOT_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot" ../..
+      cmake --build . --config Release
+      cd ../..
       '''
     }
   }

@@ -59,7 +59,7 @@ function(ockam_cc_library)
   )
 
   message(STATUS "---------------- ockam_cc_library ----------------")
-  message(STATUS "_RULE_NAME:                    : '${_RULE_NAME}'")
+  message(STATUS "_RULE_NAME                     : '${_RULE_NAME}'")
   ockam_package_ns(_PACKAGE_NS)
 
   # Replace dependencies passed by ::name with ::ockam::name
