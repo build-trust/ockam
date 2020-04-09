@@ -9,7 +9,7 @@ messages over a variety of transport protocols like TCP, UDP, Bluetooth,
 ZigBee, LoRaWAN etc.
 
 Ockam includes a set of secure communication protocols, like
-[secure channels](./secure_channels) that provide their functionality in a
+[secure channels](./secure_channels.md) that provide their functionality in a
 way that is agnostic to the underlying means of transporting messages.
 Such higher level protocols need a simple consistent mechanism, to send
 and receive messages, that only loosely couples them with the underlying
