@@ -83,7 +83,6 @@ const OckamMemory *memory = &ockam_memory_stdlib;
 
 int main(void) {
   OckamError err;
-  uint8_t i;
   void *default_0 = 0;
 
   memory->Create(0);
@@ -94,7 +93,7 @@ int main(void) {
   /* Vault Init */
   /* ---------- */
 
-  vault->Create(&default_0, &default_cfg, memory);
+  err = vault->Create(&default_0, &default_cfg, memory);
   if (err != kOckamErrorNone) { /* Ensure it initialized before proceeding, otherwise */
     return -1;                  /* don't bother trying to run any other tests         */
   }
