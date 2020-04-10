@@ -5,13 +5,16 @@
 #include "ockam/transport.h"
 #include "test_tcp.h"
 
-char *pSrvFileToSend = "fixtures/server_test_data.txt";
-char *pSrvFileToReceive = "fixtures/server_data_received.txt";
-char *pSrvFileToCompare = "fixtures/client_test_data.txt";
+#define DEFAULT_FIXTURE_PATH "fixtures/"
+#define FIXTURE_FULL_PATH_LEN 256
+
+char *pSrvFileToSend = "server_test_data.txt";
+char *pSrvFileToReceive = "server_data_received.txt";
+char *pSrvFileToCompare = "client_test_data.txt";
 
 extern const OckamTransport *transport;
 
-int testTcpServer(OckamInternetAddress *pIPAddress) {
+int testTcpServer(OckamInternetAddress *pIPAddress, char* p_fixture_path) {
   TransportError status = kErrorNone;
   OckamTransportCtx connection = NULL;
   OckamTransportCtx listener = NULL;
@@ -22,6 +25,9 @@ int testTcpServer(OckamInternetAddress *pIPAddress) {
   FILE *fileToSend = NULL;
   FILE *fileToReceive = NULL;
   FILE *errorLog = NULL;
+  char fileSrvToSendPath[FIXTURE_FULL_PATH_LEN] = {0};
+  char fileSrvToReceivePath[FIXTURE_FULL_PATH_LEN] = {0};
+  char fileSrvToComparePath[FIXTURE_FULL_PATH_LEN] = {0};
   uint16_t bytesWritten;
   unsigned sendNotDone = 1;
   unsigned receiveNotDone = 1;
@@ -35,7 +41,8 @@ int testTcpServer(OckamInternetAddress *pIPAddress) {
   }
 
   // Open the test data file for sending
-  fileToSend = fopen(pSrvFileToSend, "r");
+  sprintf(&fileSrvToSendPath[0], "%s/%s", p_fixture_path, pSrvFileToSend);
+  fileToSend = fopen(&fileSrvToSendPath[0], "r");
   if (NULL == fileToSend) {
     status = kTestFailure;
     log_error(status, "failed to open test file test_data_client.txt");
@@ -43,7 +50,8 @@ int testTcpServer(OckamInternetAddress *pIPAddress) {
   }
 
   // Create file for test data received
-  fileToReceive = fopen(pSrvFileToReceive, "w");
+  sprintf(&fileSrvToReceivePath[0], "%s/%s", p_fixture_path, pSrvFileToReceive);
+  fileToReceive = fopen(&fileSrvToReceivePath[0], "w");
   if (NULL == fileToReceive) {
     status = kTestFailure;
     log_error(status, "failed to open test file test_data_client.txt");
@@ -96,7 +104,8 @@ int testTcpServer(OckamInternetAddress *pIPAddress) {
   fclose(fileToSend);
 
   // Now compare the received file and the reference file
-  if (0 != file_compare(pSrvFileToReceive, pSrvFileToCompare)) {
+  sprintf(&fileSrvToComparePath[0], "%s/%s", p_fixture_path, pSrvFileToCompare);
+  if (0 != file_compare(&fileSrvToReceivePath[0], &fileSrvToComparePath[0])) {
     status = kTestFailure;
     log_error(status, "file compare failed");
     goto exit_block;
