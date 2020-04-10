@@ -54,7 +54,7 @@ function(ockam_cc_library)
     _RULE
     "PUBLIC;ALWAYSLINK;TESTONLY;SHARED"
     "NAME"
-    "HDRS;TEXTUAL_HDRS;SRCS;COPTS;DEFINES;LINKOPTS;DEPS;INCLUDES"
+    "HDRS;TEXTUAL_HDRS;PUBLIC_HDRS;PUBLIC_HDRS_DIR;SRCS;COPTS;DEFINES;LINKOPTS;DEPS;INCLUDES"
     ${ARGN}
   )
 
@@ -67,6 +67,7 @@ function(ockam_cc_library)
   set(_NAME "_ockam_${_RULE_NAME}")
   message(STATUS "_NAME                          : '${_NAME}'")
   message(STATUS "_RULE_INCLUDES                 : '${_RULE_INCLUDES}'")
+  message(STATUS "_RULE_PUBLIC_HDRS              : '${_RULE_PUBLIC_HDRS}'")
 
   if(NOT _RULE_TESTONLY OR OCKAM_BUILD_TESTS)
 
@@ -85,6 +86,12 @@ function(ockam_cc_library)
       set(_RULE_IS_INTERFACE 1)
     else()
       set(_RULE_IS_INTERFACE 0)
+    endif()
+
+    if(_RULE_PUBLIC_HDRS_DIR)
+      set(PUBLIC_HEADER_OUTPUT_DIRECTORY "${OCKAM_INCLUDES_OCKAM_OUTPUT_DIRECTORY}/${_RULE_PUBLIC_HDRS_DIR}")
+    else()
+      set(PUBLIC_HEADER_OUTPUT_DIRECTORY "${OCKAM_INCLUDES_OCKAM_OUTPUT_DIRECTORY}")
     endif()
 
     if(NOT _RULE_IS_INTERFACE)
@@ -141,6 +148,12 @@ function(ockam_cc_library)
       set_property(TARGET ${_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
       set_property(TARGET ${_NAME} PROPERTY C_STANDARD ${OCKAM_C_STANDARD})
       set_property(TARGET ${_NAME} PROPERTY C_STANDARD_REQUIRED ON)
+
+      if(_RULE_PUBLIC_HDRS)
+        file(COPY ${_RULE_PUBLIC_HDRS}
+          DESTINATION ${PUBLIC_HEADER_OUTPUT_DIRECTORY})
+      endif()
+
     else()
       # Generating header-only library.
       add_library(${_NAME} INTERFACE)
@@ -165,13 +178,9 @@ function(ockam_cc_library)
       )
     endif()
 
-    install(TARGETS ${_NAME}
-      ARCHIVE DESTINATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
-      LIBRARY DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-    )
-
     message(STATUS "CMAKE_ARCHIVE_OUTPUT_DIRECTORY : '${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}'")
     message(STATUS "CMAKE_LIBRARY_OUTPUT_DIRECTORY : '${CMAKE_LIBRARY_OUTPUT_DIRECTORY}'")
+    message(STATUS "PUBLIC_HEADER_OUTPUT_DIRECTORY : '${PUBLIC_HEADER_OUTPUT_DIRECTORY}'")
 
     # Alias the ockam_package_name library to ockam::package_name.
     # This makes it possible to disambiguate the underscores in paths vs. the separators.

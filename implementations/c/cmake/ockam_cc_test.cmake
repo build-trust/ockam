@@ -42,7 +42,7 @@ function(ockam_cc_test)
     _RULE
     ""
     "NAME"
-    "SRCS;COPTS;DEFINES;LINKOPTS;DEPS;INCLUDES"
+    "SRCS;COPTS;TEST_OPTS;DEFINES;LINKOPTS;DEPS;INCLUDES"
     ${ARGN}
   )
 
@@ -98,5 +98,11 @@ function(ockam_cc_test)
   set_property(TARGET ${_NAME} PROPERTY C_STANDARD_REQUIRED ON)
   set_property(TARGET ${_NAME} PROPERTY RUNTIME_OUTPUT_DIRECTORY ${OCKAM_TESTS_OUTPUT_DIRECTORY})
 
-  add_test(NAME ${_NAME} COMMAND ${_NAME} WORKING_DIRECTORY ${OCKAM_TESTS_OUTPUT_DIRECTORY})
+  if(_RULE_TEST_OPTS)
+    add_test(NAME ${_NAME} COMMAND ${_NAME} ${_RULE_TEST_OPTS})
+  else()
+    add_test(NAME ${_NAME} COMMAND ${_NAME})
+  endif()
+
 endfunction()
+

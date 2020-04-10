@@ -1,5 +1,10 @@
 # Ockam Vault ATECC608A
 
+# Only built for the Pi
+if(NOT "${OCKAM_TARGET_VENDOR}" MATCHES "rpi3")
+  return()
+endif()
+
 project(atecc608a C)
 include(FetchContent)
 
@@ -27,6 +32,10 @@ ockam_cc_library(
     "${cryptoauthlib-tar_SOURCE_DIR}/lib"
     "${cryptoauthlib-tar_SOURCE_DIR}/lib/hal"
     "${cryptoauthlib-tar_BINARY_DIR}/lib"
+  PUBLIC_HDRS
+    "${CMAKE_CURRENT_SOURCE_DIR}/atecc608a.h"
+  PUBLIC_HDRS_DIR
+    "vault/"
   DEPS
     cryptoauth
     ockam::memory

@@ -49,6 +49,10 @@ ockam_cc_library(
      "${BEARSSL_DIR}/src/symcipher/aes_ct.c"
      "${BEARSSL_DIR}/src/symcipher/aes_ct_ctr.c"
      "${BEARSSL_DIR}/src/symcipher/aes_ct_enc.c"
+   PUBLIC_HDRS
+     "${CMAKE_CURRENT_SOURCE_DIR}/default.h"
+   PUBLIC_HDRS_DIR
+     "vault/"
    INCLUDES
      "${BEARSSL_DIR}/inc"
      "${BEARSSL_DIR}/src"

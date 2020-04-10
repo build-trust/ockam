@@ -52,3 +52,9 @@ function(set_alwayslink_ockam_libs)
       ${_ALWAYSLINK_LIBS_OCKAM}
   )
 endfunction()
+
+function(set_alwayslink_ockam_includes)
+  file(COPY ${PROJECT_SOURCE_DIR}/include/
+    DESTINATION ${OCKAM_INCLUDES_OUTPUT_DIRECTORY}
+  )
+endfunction()

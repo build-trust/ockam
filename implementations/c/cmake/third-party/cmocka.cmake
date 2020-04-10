@@ -20,5 +20,5 @@ endif()
 set(WITH_STATIC_LIB ON CACHE BOOL "Build with a static library")
 set(WITH_EXAMPLES OFF CACHE BOOL "Build examples")
 
-add_subdirectory(${cmocka_SOURCE_DIR} ${cmocka_BINARY_DIR})
+add_subdirectory(${cmocka_SOURCE_DIR} ${cmocka_BINARY_DIR} EXCLUDE_FROM_ALL)
 set(CMOCKA_INCLUDE_DIRS "${cmocka_SOURCE_DIR}/include")

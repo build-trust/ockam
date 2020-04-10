@@ -30,17 +30,17 @@ task build {
       mkdir -p _build/x86_64-unknown-linux-gnu
       cd _build/x86_64-unknown-linux-gnu
       cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..
-      cmake --build . --config Debug
-      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..
-      cmake --build . --config Release
+      cmake --build .
+      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=OFF -DOCKAM_TARGET_PLATFORM="linux" ../..
+      cmake --build .
       cd ../..
 
       mkdir -p _build/armv8-rpi3-linux-gnueabihf
       cd _build/armv8-rpi3-linux-gnueabihf
       cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="pi" -DOCKAM_C_COMPILER_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/bin" -DOCKAM_C_SYSROOT_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot" ../..
-      cmake --build . --config Debug
-      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="pi" -DOCKAM_C_COMPILER_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/bin" -DOCKAM_C_SYSROOT_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot" ../..
-      cmake --build . --config Release
+      cmake --build .
+      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=OFF -DOCKAM_TARGET_PLATFORM="pi" -DOCKAM_C_COMPILER_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/bin" -DOCKAM_C_SYSROOT_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot" ../..
+      cmake --build .
       cd ../..
       '''
     }
