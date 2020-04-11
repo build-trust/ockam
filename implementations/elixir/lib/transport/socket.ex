@@ -54,9 +54,26 @@ defmodule Ockam.Transport.Socket do
 
   @doc "Receives a message via the socket"
   def recv(%__MODULE__{socket: socket, buffer: buf} = state, opts \\ []) do
-    {recv_opts, _} = Keyword.split(opts, [:nowait])
+    {timeout, flags} = recv_opts(opts)
+    with {:ok, received} <- :socket.recv(socket, 0, flags, timeout) do
+      received = buf <> received
 
-    with {:ok, received} <- :socket.recv(socket, 0, recv_opts) do
+      case Transport.decode(received) do
+        {:ok, msg, rest} ->
+          {:ok, msg, %__MODULE__{state | buffer: rest}}
+
+        {:more, _} ->
+          recv(%__MODULE__{state | buffer: received}, opts)
+
+        {:error, _} = err ->
+          err
+      end
+    end
+  end
+
+  @doc "Receives a message via the socket, but does not block"
+  def recv_nonblocking(%__MODULE__{socket: socket, buffer: buf} = state, opts \\ []) do
+    with {:ok, received} <- :socket.recv(socket, 0, opts, :nowait) do
       received = buf <> received
 
       case Transport.decode(received) do
@@ -79,6 +96,15 @@ defmodule Ockam.Transport.Socket do
     with :ok <- :socket.close(socket) do
       {:ok, state}
     end
+  end
+
+  defp recv_opts(opts), do: recv_opts(opts, :infinity, [])
+  defp recv_opts([], timeout, flags), do: {timeout, flags}
+  defp recv_opts([{:timeout, to} | rest], _timeout, flags) do
+    recv_opts(rest, to, flags)
+  end
+  defp recv_opts([_ | rest], timeout, flags) do
+    recv_opts(rest, timeout, flags)
   end
 
   defp adapt_role(:client, %__MODULE__{socket: socket, address: address} = state) do

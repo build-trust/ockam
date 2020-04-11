@@ -1,5 +1,5 @@
 defmodule Ockam.Transport.Test do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   require Logger
 
   alias Ockam.Channel
@@ -20,8 +20,8 @@ defmodule Ockam.Transport.Test do
   end
 
   @tag transport: Ockam.Transport.TCP
-  @tag transport_name: :tcp_4000
-  @tag transport_config: [listen_address: "0.0.0.0", listen_port: 4000]
+  @tag transport_name: :tcp_4001
+  @tag transport_config: [listen_address: "0.0.0.0", listen_port: 4001]
   test "tcp transport", %{config: config} do
     {:ok, addr} = Address.new(:inet, :loopback, config[:listen_port])
     socket = Socket.new(:client, addr)

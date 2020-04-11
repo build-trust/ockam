@@ -22,10 +22,16 @@ task test {
   doLast {
     builderExec 'debian', {
       script '''
+        mkdir -p ../c/_build/x86_64-unknown-linux-gnu
+        cd ../c/_build/x86_64-unknown-linux-gnu
+        cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..
+        cmake --build . --config Debug --target ockam_key_agreement_tests_xx_full
+        cd ../../../elixir
+
         mix do local.hex --if-missing --force
         mix do local.rebar --force
         mix deps.get
-        mix test
+        OCKAM_C_BUILD_DIR="$(pwd)/../c/_build/x86_64-unknown-linux-gnu" mix test
       '''
     }
   }

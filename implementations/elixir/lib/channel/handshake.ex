@@ -61,8 +61,8 @@ defmodule Ockam.Channel.Handshake do
     chan = %Channel{hash: HashState.h(ss), state: hs}
 
     case role do
-      :initiator -> {:ok, %Channel{chan | tx: c1, rx: c2}}
-      :responder -> {:ok, %Channel{chan | tx: c2, rx: c1}}
+      :initiator -> {:ok, %Channel{chan | tx: c2, rx: c1}}
+      :responder -> {:ok, %Channel{chan | tx: c1, rx: c2}}
     end
   end
 

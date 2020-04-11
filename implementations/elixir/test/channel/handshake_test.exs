@@ -84,16 +84,16 @@ defmodule Ockam.Channel.Handshake.Tests do
 
     msg_3_payload = Base.decode16!("79656c6c6f777375626d6172696e65", case: :lower)
     msg_3_ciphertext = "9ea1da1ec3bfecfffab213e537ed1791bfa887dd9c631351b3f63d6315ab9a"
-    assert {:ok, init_chan, encrypted} = Channel.encrypt(init_chan, msg_3_payload)
+    assert {:ok, resp_chan, encrypted} = Channel.encrypt(resp_chan, msg_3_payload)
     assert Base.decode16!(msg_3_ciphertext, case: :lower) == encrypted
-    assert {:ok, resp_chan, ^msg_3_payload} = Channel.decrypt(resp_chan, encrypted)
+    assert {:ok, init_chan, ^msg_3_payload} = Channel.decrypt(init_chan, encrypted)
 
     # This all depends on the payload, but if we've made it this far, it means everything is good to go
     msg_4_payload = Base.decode16!("7375626d6172696e6579656c6c6f77", case: :lower)
     msg_4_ciphertext = "217c5111fad7afde33bd28abaff3def88a57ab50515115d23a10f28621f842"
-    assert {:ok, resp_chan, encrypted} = Channel.encrypt(resp_chan, msg_4_payload)
+    assert {:ok, init_chan, encrypted} = Channel.encrypt(init_chan, msg_4_payload)
     assert Base.decode16!(msg_4_ciphertext, case: :lower) == encrypted
-    assert {:ok, _init_chan, ^msg_4_payload} = Channel.decrypt(init_chan, encrypted)
+    assert {:ok, _resp_chan, ^msg_4_payload} = Channel.decrypt(resp_chan, encrypted)
   end
 
   @tag skip: true
