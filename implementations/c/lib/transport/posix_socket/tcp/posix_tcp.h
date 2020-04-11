@@ -16,10 +16,12 @@
  * One Transmission instance is assigned for each read or write
  */
 typedef struct {
-  void *buffer;                     // buffer to transmit (user-allocated)
-  uint16_t bufferSize;              // number of bytes to transmit (write) or buffer size (read)
-  uint16_t bytesTransmitted;        // number of bytes transmitted (so far)
-  TransportError completionStatus;  // transmission completion status
+  void *buffer;                // buffer to transmit (user-allocated)
+  uint16_t buffer_size;        // total size of buffer
+  uint16_t buffer_remaining;   //
+  uint16_t transmit_length;    // total number of bytes transmit
+  uint16_t bytes_transmitted;  // number of bytes transmitted (so far)
+  TransportError status;       // transmission completion status
 } Transmission;
 
 /**
@@ -38,25 +40,11 @@ typedef struct {
 } PosixSocket;
 
 /**
- * For POSIX_TCP_SOCKETs, each transmission of a user's buffer is preceded by a
- * TCP_METa_PACKET that indicates the total length of the buffer. Since TCP
- * operates on streams, this is necessary to detect when the sent buffer has
- * been completely received. Doing it this way prevents an additional memory
- * allocation and copy for each buffer sent and received.
- */
-typedef struct {
-  uint16_t this_packet_length;
-  uint16_t next_packet_length;
-} TCP_META_PACKET;
-
-/**
  * POSIX_TCP_SOCKET has TCP-specific data.
  */
 typedef struct {
   PosixSocket posixSocket;
   void *listenCtx;
-  TCP_META_PACKET receiveMeta;
-  TCP_META_PACKET sendMeta;
 } POSIX_TCP_SOCKET;
 
 /**
