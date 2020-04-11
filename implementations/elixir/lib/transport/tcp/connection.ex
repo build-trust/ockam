@@ -61,7 +61,7 @@ defmodule Ockam.Transport.TCP.Connection do
 
                 {:next_state, :connected,
                  %State{data | socket: socket, handshake: nil, channel: chan, next: :done},
-                 [{:next_event, :internal, :recv}]}
+                 [{:next_event, :internal, :ack}]}
 
               next ->
                 {:keep_state, %State{data | socket: socket, handshake: hs, next: next},
@@ -93,7 +93,7 @@ defmodule Ockam.Transport.TCP.Connection do
 
                 {:next_state, :connected,
                  %State{data | socket: socket, handshake: nil, channel: chan, next: :done},
-                 [{:next_event, :internal, :recv}]}
+                 [{:next_event, :internal, :ack}]}
 
               next ->
                 {:keep_state, %State{data | socket: socket, handshake: hs, next: next},
@@ -128,30 +128,37 @@ defmodule Ockam.Transport.TCP.Connection do
     {:stop, reason, %State{data | socket: nil}}
   end
 
-  def connected(:internal, :receive, %State{socket: socket, data: prev} = data) do
-    case Socket.recv(socket) do
-      {:ok, bin} ->
-        received = prev <> bin
+  def connected(:internal, :ack, %State{channel: chan, socket: socket} = data) do
+    Logger.debug("Connection established, sending ACK..")
+    # Send ACK then start receiving
+    case Channel.encrypt(chan, "ACK") do
+      {:ok, new_chan, encrypted} ->
+        {:ok, new_socket} = Socket.send(socket, encrypted)
+        new_data = %State{data | channel: new_chan, socket: new_socket}
 
-        case Transport.decode(received) do
-          {:ok, message, rest} ->
-            decrypt_and_handle_message(message, %State{data | data: rest})
-
-          {:more, _} ->
-            new_data = %State{data | data: bin}
-            {:keep_state, new_data, [{:next_event, :internal, :receive}]}
-
-          {:error, reason} ->
-            {:ok, _} = Socket.close(socket)
-            {:stop, reason, %State{data | socket: nil}}
-        end
-
-      {:select, {:select_info, :select, info}} ->
-        {:keep_state, %State{data | select_info: info}}
+        {:keep_state, new_data, [{:next_event, :internal, :receive}]}
 
       {:error, reason} ->
         {:ok, _} = Socket.close(socket)
         {:stop, reason, %State{data | socket: nil}}
+    end
+  end
+
+  def connected(:internal, :receive, %State{socket: socket} = data) do
+    Logger.debug("Entering receive state..")
+
+    case Socket.recv_nonblocking(socket) do
+      {:ok, message, new_socket} ->
+        decrypt_and_handle_message(message, %State{data | socket: new_socket})
+
+      {:select, {:select_info, :recv, info}} ->
+        {:keep_state, %State{data | select_info: info}}
+
+      {:error, :closed} ->
+        {:stop, :shutdown, data}
+
+      {:error, reason} ->
+        {:stop, reason, data}
     end
   end
 
@@ -179,13 +186,13 @@ defmodule Ockam.Transport.TCP.Connection do
     end
   end
 
-  defp handle_message("ACK", %State{} = _state) do
-    Logger.info("Connection established and secured successfully!")
-    :keep_state_and_data
+  defp handle_message("OK", %State{} = data) do
+    Logger.debug("ACK was received and acknowledged successfully!")
+    {:keep_state, data}
   end
 
   defp handle_message(msg, _data) do
-    {:stop, {:invalid_data, msg}}
+    {:stop, {:unknown_message, msg}}
   end
 
   def terminate(_reason, _state, %State{socket: nil}), do: :ok

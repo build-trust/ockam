@@ -24,7 +24,7 @@ defmodule Ockam.Transport.TCP do
     name = Keyword.get(meta, :name, __MODULE__)
 
     with {:ok, config} <- Config.from_keyword(opts) do
-      Supervisor.start_link(__MODULE__, [name, config], name: name)
+      Supervisor.start_link(__MODULE__, [name, config])
     end
   end
 

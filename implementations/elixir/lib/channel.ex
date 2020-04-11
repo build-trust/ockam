@@ -134,7 +134,7 @@ defmodule Ockam.Channel do
   end
 
   def negotiate_secure_channel(%Handshake{} = handshake, transport) when is_map(transport) do
-    do_negotiate_secure_channel(handshake, transport, timeout: :infinity)
+    do_negotiate_secure_channel(handshake, transport, :infinity)
   end
 
   defp do_negotiate_secure_channel(%Handshake{} = handshake, transport, timeout) do

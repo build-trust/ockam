@@ -2,13 +2,13 @@ import Config
 
 config :logger,
   backends: [:console],
-  level: :info,
+  level: :debug,
   handle_otp_reports: true,
   handle_sasl_reports: true
 
 config :logger, :console,
   device: :user,
-  level: :info
+  level: :debug
 
 config :ockam, :vault, curve: :curve25519
 
