@@ -5,7 +5,7 @@
  ********************************************************************************************************
  */
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include "../../xx/xx_local.h"
@@ -16,6 +16,9 @@
 #include "ockam/transport.h"
 #include "ockam/vault.h"
 #include "xx_test.h"
+
+extern bool scripted_xx;
+extern OckamInternetAddress ockam_ip;
 
 /**
  ********************************************************************************************************
@@ -96,7 +99,7 @@ exit_block:
  * @return [out] - kErrorNone on success
  ********************************************************************************************************
  */
-OckamError TestResponderHandshake(const OckamVault *vault, OckamVaultCtx *vaultCtx, const OckamTransport *transport,
+OckamError TestResponderHandshake(const OckamVault *vault, void *vault_ctx, const OckamTransport *transport,
                                   OckamTransportCtx transportCtx, KeyEstablishmentXX *xx) {
   OckamError status = kErrorNone;
   uint8_t sendBuffer[MAX_TRANSMIT_SIZE];
@@ -108,7 +111,7 @@ OckamError TestResponderHandshake(const OckamVault *vault, OckamVaultCtx *vaultC
 
   /* Initialize the KeyEstablishmentXX struct */
   memset(xx, 0, sizeof(*xx));
-  OckamKeyInitializeXX(xx, vault, vaultCtx, transport, transportCtx);
+  OckamKeyInitializeXX(xx, vault, vault_ctx, transport, transportCtx);
 
   /* Prologue initializes keys and xx parameters */
   status = OckamErrorXXTestResponderPrologue(xx);
@@ -140,7 +143,7 @@ OckamError TestResponderHandshake(const OckamVault *vault, OckamVaultCtx *vaultC
   /* Msg 2 verify */
   string_to_hex(MSG_2_CIPHERTEXT, compare, &compare_bytes);
   if (0 != memcmp(sendBuffer, compare, compare_bytes)) {
-    log_error(status, "Test failed on msg 2\n");
+    log_error(status, "Test failed on msg 2 make\n");
     goto exit_block;
   }
 
@@ -187,18 +190,10 @@ exit_block:
  * @param connectionCtx
  * @return
  */
-OckamError EstablishResponderConnection(int argc, char *argv[], const OckamTransport *transport,
-                                        OckamTransportCtx *listenerCtx, OckamTransportCtx *connectionCtx) {
+OckamError EstablishResponderConnection(const OckamTransport *transport, OckamTransportCtx *listenerCtx,
+                                        OckamTransportCtx *connectionCtx) {
   OckamError status = kErrorNone;
-  OckamInternetAddress listener_address;
   OckamTransportConfig tcpConfig = {kBlocking};
-
-  // Get the IP address to listen on
-  status = GetIpInfo(argc, argv, &listener_address);
-  if (kErrorNone != status) {
-    log_error(status, "failed to get address into");
-    goto exit_block;
-  }
 
   status = transport->Create(listenerCtx, &tcpConfig);
   if (kErrorNone != status) {
@@ -207,7 +202,8 @@ OckamError EstablishResponderConnection(int argc, char *argv[], const OckamTrans
   }
 
   // Wait for a connection
-  status = transport->Listen(*listenerCtx, &listener_address, connectionCtx);
+  printf("Listening on %s %u\n", ockam_ip.IPAddress, ockam_ip.port);
+  status = transport->Listen(*listenerCtx, &ockam_ip, connectionCtx);
   if (kErrorNone != status) {
     log_error(status, "listen failed");
     goto exit_block;
@@ -227,7 +223,7 @@ exit_block:
 
 extern const OckamTransport ockamPosixTcpTransport;
 
-OckamError XXTestResponder(int argc, char *argv[], const OckamVault *vault, void *vaultCtx) {
+OckamError XXTestResponder(const OckamVault *vault, void *vault_ctx) {
   OckamError status = kErrorNone;
   const OckamTransport *transport = &ockamPosixTcpTransport;
   OckamTransportCtx listenerCtx = NULL;
@@ -247,22 +243,26 @@ OckamError XXTestResponder(int argc, char *argv[], const OckamVault *vault, void
    * Establish transport connection with responder
    *-----------------------------------------------------------------------*/
 
-  status = EstablishResponderConnection(argc, argv, transport, &listenerCtx, &connectionCtx);
+  status = EstablishResponderConnection(transport, &listenerCtx, &connectionCtx);
   if (kErrorNone != status) {
     log_error(status, "Failed to establish connection with responder");
     goto exit_block;
   }
 
-  printf("Connection established\n");
   /*-------------------------------------------------------------------------
    * Perform the secret xx
    * If successful, encrypt/decrypt keys will be established
    *-----------------------------------------------------------------------*/
 
   memset(&xx, 0, sizeof(xx));
-  status = TestResponderHandshake(vault, vaultCtx, transport, connectionCtx, &xx);
+
+  if (scripted_xx) {
+    status = TestResponderHandshake(vault, vault_ctx, transport, connectionCtx, &xx);
+  } else {
+    status = OckamKeyEstablishResponderXX(vault, vault_ctx, transport, connectionCtx, &xx);
+  }
   if (kErrorNone != status) {
-    log_error(status, "ockam_responder_xx failed");
+    log_error(status, "ockam_responder_handshake");
     goto exit_block;
   }
 
@@ -270,19 +270,27 @@ OckamError XXTestResponder(int argc, char *argv[], const OckamVault *vault, void
    * Verify secure channel by sending and receiving a known message
    *-----------------------------------------------------------------------*/
 
-  /* Convert string to hex bytes and encrypt */
-  string_to_hex(TEST_MSG_RESPONDER, test, &test_size);
-  status = XXEncrypt(&xx, test, test_size, sendBuffer, sizeof(sendBuffer), &transmit_size);
-  if (status != kErrorNone) {
-    log_error(status, "responder_epilogue_make failed");
-    goto exit_block;
-  }
-  /* Verify test message ciphertext */
-  string_to_hex(MSG_4_CIPHERTEXT, comp, &comp_size);
-  if (0 != memcmp(comp, sendBuffer, transmit_size)) {
-    status = kXXKeyAgreementTestFailed;
-    log_error(status, "Msg 4 failed");
-    goto exit_block;
+  if (scripted_xx) {
+    /* Convert string to hex bytes and encrypt */
+    string_to_hex(TEST_MSG_RESPONDER, test, &test_size);
+    status = XXEncrypt(&xx, test, test_size, sendBuffer, sizeof(sendBuffer), &transmit_size);
+    if (status != kErrorNone) {
+      log_error(status, "responder_epilogue_make failed");
+      goto exit_block;
+    }
+    /* Verify test message ciphertext */
+    string_to_hex(MSG_4_CIPHERTEXT, comp, &comp_size);
+    if (0 != memcmp(comp, sendBuffer, transmit_size)) {
+      status = kXXKeyAgreementTestFailed;
+      log_error(status, "Msg 4 failed");
+      goto exit_block;
+    }
+  } else {
+    status = XXEncrypt(&xx, (uint8_t *)ACK, ACK_SIZE, sendBuffer, sizeof(sendBuffer), &transmit_size);
+    if (status != kErrorNone) {
+      log_error(status, "responder_epilogue_make failed");
+      goto exit_block;
+    }
   }
 
   /* Send test message */
@@ -308,12 +316,19 @@ OckamError XXTestResponder(int argc, char *argv[], const OckamVault *vault, void
   }
 
   /* Verify test message */
-
-  string_to_hex(TEST_MSG_INITIATOR, test_initiator, NULL);
-  if (0 != memcmp((void *)test, test_initiator, TEST_MSG_BYTE_SIZE)) {
-    status = kXXKeyAgreementTestFailed;
-    log_error(status, "Received bad test message");
-    goto exit_block;
+  if (scripted_xx) {
+    string_to_hex(TEST_MSG_INITIATOR, test_initiator, NULL);
+    if (0 != memcmp((void *)test, test_initiator, TEST_MSG_BYTE_SIZE)) {
+      status = kXXKeyAgreementTestFailed;
+      log_error(status, "Received bad test message");
+      goto exit_block;
+    }
+  } else {
+    if (0 != memcmp(OK, test, OK_SIZE)) {
+      status = kXXKeyAgreementTestFailed;
+      log_error(status, "Received bad test message");
+      goto exit_block;
+    }
   }
 
 exit_block:

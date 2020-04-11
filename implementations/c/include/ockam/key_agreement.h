@@ -90,8 +90,9 @@ OckamError KeyEstablishPrologueXX(KeyEstablishmentXX* xx);
  *
  * ********************************************************************************************************
  */
-OckamError OckamKeyEstablishResponderXX(OckamVault* vault, OckamVaultCtx* vault_ctx, OckamTransport* transport,
-                                        OckamTransportCtx transport_ctx, KeyEstablishmentXX* xx);
+OckamError OckamKeyEstablishResponderXX(const OckamVault* vault, OckamVaultCtx* vault_ctx,
+                                        const OckamTransport* transport, OckamTransportCtx transport_ctx,
+                                        KeyEstablishmentXX* xx);
 /**
  * ********************************************************************************************************
  *                                      ockam_initiator_handshake
@@ -103,8 +104,9 @@ OckamError OckamKeyEstablishResponderXX(OckamVault* vault, OckamVaultCtx* vault_
  *
  * ********************************************************************************************************
  */
-OckamError OckamKeyEstablishInitiatorXX(OckamVault* vault, OckamVaultCtx* vault_ctx, OckamTransport* transport,
-                                        OckamTransportCtx transport_ctx, KeyEstablishmentXX* xx);
+OckamError OckamKeyEstablishInitiatorXX(const OckamVault* vault, OckamVaultCtx* vault_ctx,
+                                        const OckamTransport* transport, OckamTransportCtx transport_ctx,
+                                        KeyEstablishmentXX* xx);
 
 /**
  * ********************************************************************************************************

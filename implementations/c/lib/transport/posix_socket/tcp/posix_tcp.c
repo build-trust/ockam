@@ -30,7 +30,7 @@ TransportError PosixTcpInitialize(OckamTransportCtx *, OckamTransportConfig *);
 TransportError PosixTcpListenBlocking(Connection *, OckamInternetAddress *, OckamTransportCtx *);
 TransportError PosixTcpConnectBlocking(Connection *, OckamInternetAddress *);
 TransportError PosixTcpReceiveBlocking(Connection *, void *, uint16_t, uint16_t *);
-TransportError PosixTcpWrite(Connection *, void *, uint16_t);
+TransportError PosixTcpSendBlocking(Connection *, void *, uint16_t);
 TransportError PosixTcpUninitialize(Connection *connection);
 
 /*
@@ -51,7 +51,7 @@ OckamTransport ockamPosixTcpTransport = {
 
     (TransportError(*)(OckamTransportCtx, void *, uint16_t, uint16_t *)) & PosixTcpReceiveBlocking,
 
-    (TransportError(*)(OckamTransportCtx, void *, uint16_t)) & PosixTcpWrite,
+    (TransportError(*)(OckamTransportCtx, void *, uint16_t)) & PosixTcpSendBlocking,
 
     (TransportError(*)(OckamTransportCtx)) & PosixTcpUninitialize};
 
@@ -102,6 +102,11 @@ TransportError PosixTcpListenBlocking(Connection *listener, OckamInternetAddress
     goto exit_block;
   }
   if (setsockopt(listen_socket->socket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int)) < 0) {
+    status = kServerInit;
+    log_error(status, "failed setsockopt in PosixTcpListenBlocking");
+    goto exit_block;
+  }
+  if (setsockopt(listen_socket->socket, SOL_SOCKET, SO_KEEPALIVE, &(int){1}, sizeof(int)) < 0) {
     status = kServerInit;
     log_error(status, "failed setsockopt in PosixTcpListenBlocking");
     goto exit_block;
@@ -196,6 +201,11 @@ TransportError PosixTcpConnectBlocking(Connection *connection, OckamInternetAddr
     log_error(status, "failed setsockopt in PosixTcpListenBlocking");
     goto exit_block;
   }
+  if (setsockopt(posix_socket->socket, SOL_SOCKET, SO_KEEPALIVE, &(int){1}, sizeof(int)) < 0) {
+    status = kServerInit;
+    log_error(status, "failed setsockopt in PosixTcpListenBlocking");
+    goto exit_block;
+  }
 
   // Try to connect
   if (connect(posix_socket->socket, (struct sockaddr *)&posix_socket->socketAddress,
@@ -210,10 +220,10 @@ exit_block:
   return status;
 }
 
-TransportError PosixTcpReceiveBlocking(Connection *connection, void *buffer, uint16_t length, uint16_t *bytesReceived) {
+TransportError PosixTcpReceiveBlocking(Connection *connection, void *buffer, uint16_t size, uint16_t *bytesReceived) {
   TransportError status = kErrorNone;
   POSIX_TCP_SOCKET *p_tcp = NULL;
-  Transmission *p_transmission;
+  Transmission *p_transmission = NULL;
   ssize_t bytes_read = 0;
 
   if (NULL == connection) {
@@ -222,56 +232,64 @@ TransportError PosixTcpReceiveBlocking(Connection *connection, void *buffer, uin
   }
 
   p_tcp = &connection->type.posixTcpSocket;
-  p_transmission = &p_tcp->posixSocket.receiveTransmission;
 
   if (1 != p_tcp->posixSocket.isConnected) {
     status = kNotConnected;
     log_error(status, "tcp socket must be connected for read operation");
     goto exit_block;
   }
+  p_transmission = &p_tcp->posixSocket.receiveTransmission;
 
-  // Read the metadata buffer
-  bytes_read = recv(p_tcp->posixSocket.socket, &p_tcp->receiveMeta, sizeof(p_tcp->receiveMeta), 0);
-  if (sizeof(p_tcp->receiveMeta) != bytes_read) {
-    status = kReceive;
-    log_error(status, "failed to read metadata buffer");
-    goto exit_block;
+  // See if this is a continuation or a new transmission
+  if (p_transmission->status != kMoreData) {
+    memset(p_transmission, 0, sizeof(*p_transmission));
   }
-
-  // Fix endian-ness
-  p_tcp->receiveMeta.next_packet_length = ntohs(p_tcp->receiveMeta.next_packet_length);
-  p_tcp->receiveMeta.this_packet_length = ntohs(p_tcp->receiveMeta.this_packet_length);
-
-  // Sanity check that what we got was a metadata packet
-  if (p_tcp->receiveMeta.this_packet_length != bytes_read) {
-    status = kReceive;
-    log_error(status, "expected metadata packet in PosixTcpReceiveBlocking");
-    goto exit_block;
-  }
-
-  // Verify the receive buffer is big enough
-  if (length < p_tcp->receiveMeta.next_packet_length) {
-    status = kBufferTooSmall;
-    log_error(status, "supplied receive buffer too small");
-    goto exit_block;
-  }
-
-  // Read the actual data
   p_transmission->buffer = buffer;
-  p_transmission->bufferSize = p_tcp->receiveMeta.next_packet_length;
-  bytes_read = recv(p_tcp->posixSocket.socket, p_transmission->buffer, p_transmission->bufferSize, 0);
-  if (-1 == bytes_read) {
-    status = kReceive;
-    log_error(status, "recv failed in PosixTcpReceiveBlocking\n");
+  p_transmission->buffer_size = size;
+  p_transmission->buffer_remaining = size;
+
+  if (kMoreData != p_transmission->status) {
+    uint16_t recv_len = 0;
+    bytes_read = recv(p_tcp->posixSocket.socket, &recv_len, sizeof(uint16_t), 0);
+    // Must convert from network order to native endianness
+    p_transmission->transmit_length = ntohs(recv_len);
+    if (-1 == bytes_read) {
+      status = kReceive;
+      goto exit_block;
+    }
+    if (p_transmission->transmit_length > 0) p_transmission->status = kMoreData;
   }
-  p_transmission->bytesTransmitted = bytes_read;
+
+  bytes_read = 0;
+  while ((kMoreData == p_transmission->status) && (p_transmission->buffer_remaining > 0)) {
+    uint16_t bytes_to_read = 0;
+    ssize_t recv_status = 0;
+    bytes_to_read = p_transmission->transmit_length - p_transmission->bytes_transmitted;
+    if (bytes_to_read > p_transmission->buffer_remaining) bytes_to_read = p_transmission->buffer_remaining;
+    recv_status = recv(p_tcp->posixSocket.socket, p_transmission->buffer + bytes_read, bytes_to_read, 0);
+    if (-1 == recv_status) {
+      status = kReceive;
+      log_error(status, (char *)__FUNCTION__);
+      goto exit_block;
+    }
+    bytes_read += recv_status;
+
+    p_transmission->bytes_transmitted += recv_status;
+    p_transmission->buffer_remaining -= recv_status;
+    if (p_transmission->bytes_transmitted < p_transmission->transmit_length)
+      p_transmission->status = kMoreData;
+    else
+      p_transmission->status = kErrorNone;
+  }
   *bytesReceived = bytes_read;
+  status = p_transmission->status;
+  if (status == kErrorNone) memset(p_transmission, 0, sizeof(*p_tcp));
 
 exit_block:
   return status;
 }
 
-TransportError PosixTcpWrite(Connection *connection, void *buffer, uint16_t length) {
+TransportError PosixTcpSendBlocking(Connection *connection, void *buffer, uint16_t length) {
   TransportError status = kErrorNone;
   POSIX_TCP_SOCKET *p_tcp = NULL;
   Transmission *transmission;
@@ -279,7 +297,7 @@ TransportError PosixTcpWrite(Connection *connection, void *buffer, uint16_t leng
 
   if (NULL == connection) {
     status = kBadParameter;
-    log_error(status, "transport must not be NULL in PosixTcpWrite");
+    log_error(status, "transport must not be NULL in PosixTcpSendBlocking");
   }
 
   p_tcp = &connection->type.posixTcpSocket;
@@ -291,23 +309,17 @@ TransportError PosixTcpWrite(Connection *connection, void *buffer, uint16_t leng
     goto exit_block;
   }
 
-  // send the meta
-  p_tcp->sendMeta.this_packet_length = htons((uint16_t)sizeof(p_tcp->sendMeta));
-  p_tcp->sendMeta.next_packet_length = htons(length);
-
-  bytes_sent = send(p_tcp->posixSocket.socket, &p_tcp->sendMeta, sizeof(p_tcp->sendMeta), 0);
-  if (bytes_sent != sizeof(p_tcp->sendMeta)) {
+  // Convert from native endianness to network order
+  uint16_t send_len = htons(length);
+  bytes_sent = send(p_tcp->posixSocket.socket, (void *)&send_len, sizeof(uint16_t), 0);
+  if (sizeof(uint16_t) != bytes_sent) {
     status = kSend;
-    log_error(status, "error sending buffer in PosixTcpWrite");
     goto exit_block;
   }
 
-  transmission->buffer = buffer;
-  transmission->bufferSize = length;
-  bytes_sent = send(p_tcp->posixSocket.socket, transmission->buffer, transmission->bufferSize, 0);
-  if (bytes_sent != transmission->bufferSize) {
+  bytes_sent = send(p_tcp->posixSocket.socket, buffer, length, 0);
+  if (bytes_sent != length) {
     status = kSend;
-    log_error(status, "error sending buffer in PosixTcpWrite");
     goto exit_block;
   }
 

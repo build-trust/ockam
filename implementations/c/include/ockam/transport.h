@@ -30,19 +30,20 @@
 #define DEFAULT_TCP_LISTEN_PORT 8000
 
 typedef enum {
-  kErrorNone = 0,
-  kCreateSocket = 0x0100,     /*!< Failed to create socket */
-  kConnect = 0x0101,          /*!< Failed to connect, check server address   */
-  kSend = 0x0102,             /*!< Failed to send data */
-  kServerInit = 0x0103,       /*!< Server initialization failed */
-  kReceive = 0x0104,          /*!< Receive buffer failed */
-  kBadAddress = 0x0105,       /*!< Bad IP address */
-  kAcceptConnection = 0x0106, /*!< Socket accept failed  */
-  kNotConnected = 0x0107,     /*!< Connection is not connected */
-  kBufferTooSmall = 0x0108,   /*!< Supplied buffer too small */
-  kTestFailure = 0x0109,      /*!< Error in test program */
-  kMalloc = 0x010a,           /*!< Malloc failed */
-  kBadParameter = 0x010b      /*!< Bad parameter */
+  kErrorNone = 0u,
+  kCreateSocket = kOckamErrorInterfaceTransport | 0x0100u,     /*!< Failed to create socket */
+  kConnect = kOckamErrorInterfaceTransport | 0x0101u,          /*!< Failed to connect, check server address   */
+  kSend = kOckamErrorInterfaceTransport | 0x0102u,             /*!< Failed to send data */
+  kServerInit = kOckamErrorInterfaceTransport | 0x0103u,       /*!< Server initialization failed */
+  kReceive = kOckamErrorInterfaceTransport | 0x0104u,          /*!< Receive buffer failed */
+  kBadAddress = kOckamErrorInterfaceTransport | 0x0105u,       /*!< Bad IP address */
+  kAcceptConnection = kOckamErrorInterfaceTransport | 0x0106u, /*!< Socket accept failed  */
+  kNotConnected = kOckamErrorInterfaceTransport | 0x0107u,     /*!< Connection is not connected */
+  kBufferTooSmall = kOckamErrorInterfaceTransport | 0x0108u,   /*!< Supplied buffer too small */
+  kTestFailure = kOckamErrorInterfaceTransport | 0x0109u,      /*!< Error in test program */
+  kMalloc = kOckamErrorInterfaceTransport | 0x010Au,           /*!< Malloc failed */
+  kBadParameter = kOckamErrorInterfaceTransport | 0x010Bu,     /*!< Bad parameter */
+  kMoreData = kOckamErrorInterfaceTransport | 0x010Cu          /*!< More data available on socket */
 } TransportError;
 
 /*

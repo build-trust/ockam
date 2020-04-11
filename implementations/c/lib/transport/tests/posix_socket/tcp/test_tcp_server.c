@@ -17,7 +17,7 @@ int testTcpServer(OckamInternetAddress *pIPAddress) {
   OckamTransportCtx listener = NULL;
   char sendBuffer[64];
   unsigned sendLength;
-  char receive_buffer[64];
+  char receive_buffer[32];
   uint16_t bytesReceived = 0;
   FILE *fileToSend = NULL;
   FILE *fileToReceive = NULL;
@@ -57,8 +57,8 @@ int testTcpServer(OckamInternetAddress *pIPAddress) {
     goto exit_block;
   }
   while (receiveNotDone) {
-    status = transport->Read(connection, &receive_buffer[0], sizeof(receive_buffer), &bytesReceived);
-    if (kErrorNone != status) {
+    status = transport->Read(connection, receive_buffer, sizeof(receive_buffer), &bytesReceived);
+    if ((kErrorNone != status) && (kMoreData != status)) {
       log_error(status, "Receive failed");
       goto exit_block;
     }
@@ -66,7 +66,7 @@ int testTcpServer(OckamInternetAddress *pIPAddress) {
     if (0 == strncmp("that's all", &receive_buffer[0], strlen("that's all"))) {
       receiveNotDone = 0;
     } else {
-      bytesWritten = fwrite(&receive_buffer[0], 1, bytesReceived, fileToReceive);
+      bytesWritten = fwrite(receive_buffer, 1, bytesReceived, fileToReceive);
       if (bytesWritten != bytesReceived) {
         log_error(kTestFailure, "failed write to output file");
         goto exit_block;

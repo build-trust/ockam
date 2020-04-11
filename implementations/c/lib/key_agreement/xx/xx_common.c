@@ -103,20 +103,20 @@ OckamError KeyEstablishPrologueXX(KeyEstablishmentXX *xx) {
 
   status = xx->vault->KeyGetPublic(xx->vault_ctx, kOckamVaultKeyStatic, xx->s, KEY_SIZE);
   if (kOckamErrorNone != status) {
-    log_error(status, "failed to generate get static public key in initiator_step_1");
+    log_error(status, "failed to get static public key in initiator_step_1");
     goto exit_block;
   }
 
   // 2. Generate an ephemeral 25519 keypair for this handshake and set it to e
   status = xx->vault->KeyGenerate(xx->vault_ctx, kOckamVaultKeyEphemeral);
   if (kOckamErrorNone != status) {
-    log_error(status, "failed to generate static keypair in initiator_step_1");
+    log_error(status, "failed to generate ephemeral keypair in initiator_step_1");
     goto exit_block;
   }
 
   status = xx->vault->KeyGetPublic(xx->vault_ctx, kOckamVaultKeyEphemeral, xx->e, KEY_SIZE);
   if (kOckamErrorNone != status) {
-    log_error(status, "failed to generate get static public key in initiator_step_1");
+    log_error(status, "failed to get ephemeral public key in initiator_step_1");
     goto exit_block;
   }
 
@@ -213,21 +213,4 @@ OckamError make_vector(uint64_t nonce, uint8_t *vector) {
     *pv++ = *pn--;
   }
   return kOckamErrorNone;
-}
-
-OckamError GetIpInfo(int argc, char *argv[], OckamInternetAddress *p_address) {
-  OckamError status = kErrorNone;
-
-  memset(p_address, 0, sizeof(*p_address));
-
-  if (3 != argc) {
-    strcpy(p_address->IPAddress, DEFAULT_IP_ADDRESS);
-    p_address->port = DEFAULT_IP_PORT;
-  } else {
-    strcpy(p_address->IPAddress, argv[1]);
-    p_address->port = strtoul(argv[2], NULL, 0);
-  }
-
-exit_block:
-  return status;
 }

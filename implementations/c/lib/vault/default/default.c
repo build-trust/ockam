@@ -517,7 +517,7 @@ VaultError VaultDefaultKeyGenerate(OckamVaultCtx *p_ctx, OckamVaultKey key_type)
   p_rng = p_random_ctx->br_random_ctx;
 
   size = br_ec_keygen(&(p_rng->vtable), p_key_ecdh_ctx->br_ec, &(p_key_ecdh_ctx->br_private_key[key_type]),
-                      &(p_key_ecdh_ctx->br_private_key_buf[key_type]), p_key_ecdh_ctx->br_curve);
+                      p_key_ecdh_ctx->br_private_key_buf[key_type], p_key_ecdh_ctx->br_curve);
   if (size == 0) {
     ret_val = kOckamError;
     goto exit_block;

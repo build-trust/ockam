@@ -34,7 +34,7 @@
 #define VECTOR_SIZE 12
 
 #define DEFAULT_IP_ADDRESS "127.0.0.1"
-#define DEFAULT_IP_PORT 8001
+#define DEFAULT_IP_PORT 4000
 
 /*
  ********************************************************************************************************
@@ -65,7 +65,6 @@ OckamError XXEncrypt(KeyEstablishmentXX *xx, uint8_t *payload, uint32_t payload_
                      uint16_t *msg_size);
 OckamError XXDecrypt(KeyEstablishmentXX *xx, uint8_t *payload, uint32_t payload_size, uint8_t *msg, uint16_t msg_length,
                      uint32_t *payload_bytes);
-OckamError GetIpInfo(int argc, char *argv[], OckamInternetAddress *p_address);
 OckamError make_vector(uint64_t nonce, uint8_t *p_vector);
 OckamError HkdfDh(KeyEstablishmentXX *xx, uint8_t *hkdf1, uint16_t hkdf1_size, OckamVaultKey dh_key, uint8_t *dh2,
                   uint16_t dh2_size, uint16_t out_size, uint8_t *out_1, uint8_t *out_2);

@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
   }
   if (0 != testServerProcess) {
     // This is the client process, give the server a moment to come to life
-    sleep(3);
+    sleep(1);
     status = testTcpClient(&ipAddress);
     if (0 != status) {
       log_error(kTestFailure, "testTcpClient failed");
