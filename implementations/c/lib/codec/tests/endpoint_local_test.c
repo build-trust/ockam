@@ -50,7 +50,7 @@ exit_block:
   return status;
 }
 
-void _test_local_endpoint() {
+void _test_local_endpoint(void **state) {
   uint8_t *encoded = codec_test_endpoint_encoded;
 
   KTLocalEndpoint localEndpointShortIn;
