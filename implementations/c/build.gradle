@@ -27,6 +27,7 @@ task build {
   doLast {
     builderExec 'debian', {
       script '''
+      set -eo pipefail
       mkdir -p _build/x86_64-unknown-linux-gnu
       cd _build/x86_64-unknown-linux-gnu
       cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..

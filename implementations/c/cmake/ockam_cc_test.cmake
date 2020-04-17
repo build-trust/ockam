@@ -81,6 +81,7 @@ function(ockam_cc_test)
   target_compile_options(${_NAME}
     PRIVATE
       ${_RULE_COPTS}
+      ${OCKAM_DEFAULT_COPTS}
   )
   target_link_libraries(${_NAME}
     PUBLIC

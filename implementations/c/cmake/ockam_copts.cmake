@@ -30,6 +30,7 @@ ockam_select_compiler_opts(OCKAM_DEFAULT_COPTS
   CLANG_OR_GCC
     "-Wno-unused-parameter"
     "-Wno-undef"
+    "-Werror"
   MSVC_OR_CLANG_CL
     "/DWIN32_LEAN_AND_MEAN"
     "/EHsc"

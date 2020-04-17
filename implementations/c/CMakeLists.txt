@@ -99,13 +99,13 @@ endif()
 
 option(OCKAM_BUILD_TESTS "Builds Ockam tests." OFF)
 
+string(JOIN " " CMAKE_CXX_FLAGS ${OCKAM_DEFAULT_COPTS})
 message(STATUS "CMake Version                  : " "${CMAKE_SYSTEM_VERSION}")
 message(STATUS "Compiler                       : " "${CMAKE_C_COMPILER}")
 message(STATUS "Target                         : " "${CMAKE_C_COMPILER_TARGET}")
 message(STATUS "Operating System               : " "${CMAKE_SYSTEM}")
 message(STATUS "Build Tests                    : " "${OCKAM_BUILD_TESTS}")
-
-string(JOIN " " CMAKE_CXX_FLAGS ${OCKAM_DEFAULT_COPTS})
+message(STATUS "CXX Flags                      : " "${CMAKE_CXX_FLAGS}")
 
 if(${OCKAM_BUILD_TESTS})
   enable_testing(lib)
