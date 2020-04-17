@@ -188,7 +188,7 @@ defmodule Ockam.Transport.TCP.Connection do
 
   defp handle_message("OK", %State{} = data) do
     Logger.debug("ACK was received and acknowledged successfully!")
-    {:keep_state, data}
+    {:keep_state, data, [{:next_event, :internal, :receive}]}
   end
 
   defp handle_message(msg, _data) do

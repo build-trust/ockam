@@ -35,6 +35,7 @@ Vagrant.configure("2") do |config|
           '.builder',
           'implementations/c/_build',
           'implementations/elixir/_build',
+          'implementations/elixir/deps',
           'implementations/elixir/priv/native',
           'implementations/rust/target'
         ]
