@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/wait.h>
 
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
