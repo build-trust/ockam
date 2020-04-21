@@ -14,8 +14,13 @@ task lint {
         -not -path "./documentation/*" \
         -not -path "*bearssl-0.6*" \
         -not -path "*tests/cmocka*" \
-        -not -path "*_build*" | \
-          xargs -I {} bash -c "cmp -s <(cat {}) <(clang-format-9 --style=file {}) || echo 'LINTER FAILED - {}'"
+        -not -path "*_build*" \
+        -not -path "*lib/codec/*" \
+        -not -path "*lib/key_agreement/*" \
+        -not -path "*lib/log/*" \
+        -not -path "*lib/transport/*" \
+        -not -path "*lib/vault/*" | \
+          xargs -I {} bash -c "cmp -s <(cat {}) <(clang-format-10 --style=file {}) || echo 'LINTER FAILED - {}'"
       '''
     }
   }

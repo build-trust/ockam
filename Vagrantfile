@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
       echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-9 main" >> /etc/apt/sources.list
       wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
       apt-get update
-      apt-get install -y clang-format-9
+      apt-get install -y clang-format-10
     SCRIPT
 
     config.vm.provider :virtualbox do |vbox, override|
