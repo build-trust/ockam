@@ -36,6 +36,14 @@ defmodule Ockam.Transport.Socket do
     new(role, address)
   end
 
+  def handle_message(%__MODULE__{} = state, {:socket, socket, :select, _info}) do
+    {:ok, :recv, %__MODULE__{state | socket: socket}}
+  end
+
+  def handle_message(%__MODULE__{} = state, {:socket, socket, :abort, {_info, reason}}) do
+    {:error, {:abort, reason}, %__MODULE__{state | socket: socket}}
+  end
+
   @doc "Opens the socket using the provided configuration"
   def open(%__MODULE__{role: role, socket: nil} = state) do
     with {:ok, socket} <- :socket.open(:inet, :stream, :tcp),
@@ -53,27 +61,31 @@ defmodule Ockam.Transport.Socket do
   end
 
   @doc "Receives a message via the socket"
-  def recv(%__MODULE__{socket: socket, buffer: buf} = state, opts \\ []) do
+  def recv(%__MODULE__{} = state, opts \\ []) do
     {timeout, flags} = recv_opts(opts)
-    with {:ok, received} <- :socket.recv(socket, 0, flags, timeout) do
-      received = buf <> received
+    do_recv(state, flags, timeout)
+  end
 
-      case Transport.decode(received) do
-        {:ok, msg, rest} ->
-          {:ok, msg, %__MODULE__{state | buffer: rest}}
+  defp do_recv(%__MODULE__{} = state, flags, timeout) do
+    with {:wait, {:recv, select_ref}, new_state} <- recv_nonblocking(state, flags) do
+      receive do
+        {:"$socket", socket, :select, ^select_ref} ->
+          do_recv(%__MODULE__{state | socket: socket}, flags, timeout)
 
-        {:more, _} ->
-          recv(%__MODULE__{state | buffer: received}, opts)
-
-        {:error, _} = err ->
-          err
+        {:"$socket", _socket, :abort, {^select_ref, reason}} ->
+          {:error, {:abort, reason}}
+      after
+        timeout ->
+          {:error, :timeout}
       end
     end
   end
 
   @doc "Receives a message via the socket, but does not block"
   def recv_nonblocking(%__MODULE__{socket: socket, buffer: buf} = state, opts \\ []) do
-    with {:ok, received} <- :socket.recv(socket, 0, opts, :nowait) do
+    {_timeout, flags} = recv_opts(opts)
+
+    with {:ok, received} <- :socket.recv(socket, 0, flags, :nowait) do
       received = buf <> received
 
       case Transport.decode(received) do
@@ -86,6 +98,12 @@ defmodule Ockam.Transport.Socket do
         {:error, _} = err ->
           err
       end
+    else
+      {:select, {:select_info, :recv, select_ref}} ->
+        {:wait, {:recv, select_ref}, state}
+
+      {:error, _} = err ->
+        err
     end
   end
 
@@ -100,9 +118,11 @@ defmodule Ockam.Transport.Socket do
 
   defp recv_opts(opts), do: recv_opts(opts, :infinity, [])
   defp recv_opts([], timeout, flags), do: {timeout, flags}
+
   defp recv_opts([{:timeout, to} | rest], _timeout, flags) do
     recv_opts(rest, to, flags)
   end
+
   defp recv_opts([_ | rest], timeout, flags) do
     recv_opts(rest, timeout, flags)
   end

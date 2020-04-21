@@ -29,7 +29,6 @@ defmodule Ockam.Integration.Handshake.Test do
     assert :ok = await_test_executable()
   end
 
-
   @tag initiator: true
   @tag listen_port: 4003
   @tag capture_log: false
@@ -48,8 +47,11 @@ defmodule Ockam.Integration.Handshake.Test do
     handshake_opts = %{protocol: "Noise_XX_25519_AESGCM_SHA256", s: s, e: e, rs: rs, re: re}
     assert {:ok, handshake} = Channel.handshake(:initiator, handshake_opts)
     assert {:ok, transport} = Socket.open(socket)
-    assert {:ok, chan, transport} = Channel.negotiate_secure_channel(handshake, transport)
-    assert {:ok, message, transport} = Socket.recv(transport)
+
+    assert {:ok, chan, transport} =
+             Channel.negotiate_secure_channel(handshake, transport, %{timeout: 10_000})
+
+    assert {:ok, message, transport} = Socket.recv(transport, timeout: 10_000)
     assert {:ok, chan, "ACK"} = Channel.decrypt(chan, message)
     assert {:ok, chan, encrypted} = Channel.encrypt(chan, "OK")
     assert {:ok, transport} = Socket.send(transport, encrypted)
@@ -67,6 +69,7 @@ defmodule Ockam.Integration.Handshake.Test do
 
   defp invoke_test_executable!(args) when is_list(args) do
     parent = self()
+
     spawn_link(fn ->
       Process.flag(:trap_exit, true)
 
@@ -74,9 +77,18 @@ defmodule Ockam.Integration.Handshake.Test do
       init_dir = init_dir || Path.join([__DIR__, "..", "..", "..", "c", "_build"])
       init_dir = Path.expand(init_dir)
       init_cmd = Path.join([init_dir, "Debug", "tests", "ockam_key_agreement_tests_xx_full"])
-      Logger.debug "[port] spawning #{init_cmd} with args #{inspect args}"
-      port = Port.open({:spawn_executable, init_cmd}, [:binary, :exit_status, :stderr_to_stdout, line: 200, args: args])
-      Logger.debug "[port] spawned #{inspect port}"
+      Logger.debug("[port] spawning #{init_cmd} with args #{inspect(args)}")
+
+      port =
+        Port.open({:spawn_executable, init_cmd}, [
+          :binary,
+          :exit_status,
+          :stderr_to_stdout,
+          line: 200,
+          args: args
+        ])
+
+      Logger.debug("[port] spawned #{inspect(port)}")
 
       # Give program 50ms to start
       Process.sleep(50)
@@ -108,7 +120,7 @@ defmodule Ockam.Integration.Handshake.Test do
   defp monitor_test_executable(parent, port, output) do
     receive do
       {^port, {:data, {_flag, data}}} ->
-        Logger.debug "[responder #{inspect port}] #{data}"
+        Logger.debug("[responder #{inspect(port)}] #{data}")
         monitor_test_executable(parent, port, output <> "\n" <> data)
 
       {^port, {:exit_status, status}} ->
@@ -117,17 +129,21 @@ defmodule Ockam.Integration.Handshake.Test do
         monitor_test_executable(parent, port, output)
 
       {^port, :closed} ->
-        Logger.debug "[port] #{inspect port} closed"
+        Logger.debug("[port] #{inspect(port)} closed")
+
         unless is_nil(parent) do
           send(parent, {:ok, output})
         end
+
         exit(:normal)
 
       {:EXIT, ^port, reason} ->
-        Logger.debug "[port] #{inspect port} exited #{inspect reason}"
+        Logger.debug("[port] #{inspect(port)} exited #{inspect(reason)}")
+
         unless is_nil(parent) do
           send(parent, {:error, reason, output})
         end
+
         exit(:normal)
 
       {:EXIT, ^parent, _} ->

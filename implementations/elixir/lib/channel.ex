@@ -120,7 +120,7 @@ defmodule Ockam.Channel do
   @doc """
   Perform a Noise handshake to secure a channel, using the provided transport
   """
-  @spec negotiate_secure_channel(Handshake.t(), Transport.t()) ::
+  @spec negotiate_secure_channel(Handshake.t(), Transport.t(), map()) ::
           {:ok, t(), Transport.t()} | {:error, {__MODULE__, term()}}
   @spec negotiate_secure_channel(role(), Transport.t(), map()) ::
           {:ok, t(), Transport.t()} | {:error, {__MODULE__, term()}}
@@ -133,8 +133,10 @@ defmodule Ockam.Channel do
     end
   end
 
-  def negotiate_secure_channel(%Handshake{} = handshake, transport) when is_map(transport) do
-    do_negotiate_secure_channel(handshake, transport, :infinity)
+  def negotiate_secure_channel(%Handshake{} = handshake, transport, options)
+      when is_map(options) do
+    timeout = Map.get(options, :timeout, :infinity)
+    do_negotiate_secure_channel(handshake, transport, timeout)
   end
 
   defp do_negotiate_secure_channel(%Handshake{} = handshake, transport, timeout) do

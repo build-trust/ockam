@@ -8,6 +8,8 @@ defmodule Ockam.Transport do
   @callback open(t()) :: {:ok, t()} | {:error, reason}
   @callback send(t(), data, opts) :: {:ok, t()} | {:error, reason}
   @callback recv(t(), opts) :: {:ok, data(), t()} | {:error, reason}
+  @callback recv_nonblocking(t(), opts) ::
+              {:ok, data(), t()} | {:wait, any(), t()} | {:error, reason}
   @callback close(t()) :: {:ok, t()} | {:error, reason()}
 
   @doc """
@@ -29,6 +31,13 @@ defmodule Ockam.Transport do
   """
   def recv(%callback_mod{} = transport, opts \\ []) do
     callback_mod.recv(transport, opts)
+  end
+
+  @doc """
+  Receive data using the transport
+  """
+  def recv_nonblocking(%callback_mod{} = transport, opts \\ []) do
+    callback_mod.recv_nonblocking(transport, opts)
   end
 
   @doc """

@@ -46,12 +46,11 @@ defmodule Ockam.Transport.TCP.Connection do
     {:next_state, :handshake, new_data, [{:next_event, :internal, next}]}
   catch
     type, reason ->
-      Socket.close(data.socket)
-      {:stop, {type, reason}, %State{data | socket: nil}}
+      stop(data, {type, reason})
   end
 
   def handshake(:internal, :in, %State{socket: socket, handshake: hs} = data) do
-    case Transport.recv(socket) do
+    case Transport.recv_nonblocking(socket) do
       {:ok, bindata, socket} ->
         case Handshake.read_message(hs, bindata) do
           {:ok, hs, _payload} ->
@@ -69,16 +68,14 @@ defmodule Ockam.Transport.TCP.Connection do
             end
 
           {:error, reason} ->
-            {:ok, _socket} = Transport.close(socket)
-            {:stop, reason, %State{data | socket: nil}}
+            stop(data, reason)
         end
 
-      {:select, {:select_info, :recv, info}} ->
-        {:keep_state, %State{data | select_info: info, next: :in}}
+      {:wait, {:recv, info}, socket} ->
+        {:keep_state, %State{data | socket: socket, select_info: info, next: :in}}
 
       {:error, reason} ->
-        {:ok, _socket} = Transport.close(socket)
-        {:stop, reason, %State{data | socket: nil}}
+        stop(data, reason)
     end
   end
 
@@ -101,46 +98,42 @@ defmodule Ockam.Transport.TCP.Connection do
             end
 
           {:error, reason} ->
-            {:ok, _socket} = Transport.close(socket)
-            {:stop, reason, %State{data | socket: nil}}
+            stop(data, reason)
         end
 
       {:error, reason} ->
-        {:ok, _socket} = Transport.close(socket)
-        {:stop, reason, %State{data | socket: nil}}
+        stop(data, reason)
     end
   end
 
   def handshake(
         :info,
-        {:"$socket", _socket, :select, info},
+        {:"$socket", _socket, :select, info} = msg,
         %State{select_info: info, next: next} = data
       ) do
-    handshake(:internal, next, %State{data | select_info: nil})
+    {:ok, :recv, new_socket} = Socket.handle_message(data.socket, msg)
+    handshake(:internal, next, %State{data | socket: new_socket, select_info: nil})
   end
 
   def handshake(
         :info,
-        {:"$socket", _socket, :abort, {info, reason}},
+        {:"$socket", _socket, :abort, {info, _reason}} = msg,
         %State{select_info: info} = data
       ) do
-    {:ok, _} = Transport.close(data.socket)
-    {:stop, reason, %State{data | socket: nil}}
+    {:error, {:abort, reason}, new_socket} = Socket.handle_message(data.socket, msg)
+    stop(%State{data | socket: new_socket, select_info: nil}, reason)
   end
 
   def connected(:internal, :ack, %State{channel: chan, socket: socket} = data) do
     Logger.debug("Connection established, sending ACK..")
     # Send ACK then start receiving
-    case Channel.encrypt(chan, "ACK") do
-      {:ok, new_chan, encrypted} ->
-        {:ok, new_socket} = Socket.send(socket, encrypted)
-        new_data = %State{data | channel: new_chan, socket: new_socket}
-
-        {:keep_state, new_data, [{:next_event, :internal, :receive}]}
-
-      {:error, reason} ->
-        {:ok, _} = Socket.close(socket)
-        {:stop, reason, %State{data | socket: nil}}
+    with {:ok, new_chan, encrypted} <- Channel.encrypt(chan, "ACK"),
+         {:ok, new_socket} <- Socket.send(socket, encrypted) do
+      new_data = %State{data | channel: new_chan, socket: new_socket}
+      {:keep_state, new_data, [{:next_event, :internal, :receive}]}
+    else
+      {:error, reason} = err ->
+        stop(data, reason)
     end
   end
 
@@ -151,38 +144,44 @@ defmodule Ockam.Transport.TCP.Connection do
       {:ok, message, new_socket} ->
         decrypt_and_handle_message(message, %State{data | socket: new_socket})
 
-      {:select, {:select_info, :recv, info}} ->
-        {:keep_state, %State{data | select_info: info}}
-
-      {:error, :closed} ->
-        {:stop, :shutdown, data}
+      {:wait, {:recv, info}, new_socket} ->
+        {:keep_state, %State{data | socket: new_socket, select_info: info}}
 
       {:error, reason} ->
-        {:stop, reason, data}
+        stop(data, reason)
     end
-  end
-
-  def connected(:info, {:"$socket", _socket, :select, info}, %State{select_info: info} = data) do
-    connected(:internal, :receive, %State{data | select_info: nil})
   end
 
   def connected(
         :info,
-        {:"$socket", _socket, :abort, {info, reason}},
+        {:"$socket", _socket, :select, info} = msg,
         %State{select_info: info} = data
       ) do
-    Socket.close(data.socket)
-    {:stop, reason, %State{data | socket: nil}}
+    {:ok, :recv, new_socket} = Socket.handle_message(data.socket, msg)
+    connected(:internal, :receive, %State{data | socket: new_socket, select_info: nil})
   end
 
-  defp decrypt_and_handle_message(message, %State{channel: chan, socket: socket} = state) do
+  def connected(
+        :info,
+        {:"$socket", _socket, :abort, {info, _reason}} = msg,
+        %State{select_info: info} = data
+      ) do
+    {:error, {:abort, reason}, new_socket} = Socket.handle_message(data.socket, msg)
+    stop(%State{data | socket: new_socket, select_info: nil}, reason)
+  end
+
+  def connect(type, msg, state) do
+    Logger.warn("Unexpected message received in :connect state: #{inspect({type, msg})}")
+    {:keep_state, state, [{:next_event, :internal, :receive}]}
+  end
+
+  defp decrypt_and_handle_message(message, %State{channel: chan} = data) do
     case Channel.decrypt(chan, message) do
       {:ok, new_chan, decrypted} ->
-        handle_message(decrypted, %State{state | channel: new_chan})
+        handle_message(decrypted, %State{data | channel: new_chan})
 
       {:error, reason} ->
-        Socket.close(socket)
-        {:stop, reason, %State{state | socket: nil}}
+        stop(data, reason)
     end
   end
 
@@ -191,14 +190,34 @@ defmodule Ockam.Transport.TCP.Connection do
     {:keep_state, data, [{:next_event, :internal, :receive}]}
   end
 
-  defp handle_message(msg, _data) do
-    {:stop, {:unknown_message, msg}}
+  defp handle_message(msg, data) do
+    stop(data, {:unknown_message, msg})
   end
 
-  def terminate(_reason, _state, %State{socket: nil}), do: :ok
+  defp stop(%State{socket: nil} = data, :closed) do
+    {:stop, :shutdown, data}
+  end
 
-  def terminate(_reason, _state, %State{socket: socket}) do
-    Socket.close(socket)
-    :ok
+  defp stop(%State{socket: nil} = data, reason) do
+    {:stop, reason, data}
+  end
+
+  defp stop(%State{socket: socket} = data, reason) do
+    case Transport.close(socket) do
+      {:ok, new_socket} ->
+        {:stop, reason, %State{data | socket: new_socket}}
+
+      {:error, :closed} when reason == :closed ->
+        # Already closed
+        {:stop, :shutdown, %State{data | socket: nil}}
+
+      {:error, :closed} ->
+        # Already closed
+        {:stop, reason, %State{data | socket: nil}}
+
+      {:error, err} ->
+        Logger.warn("Failed to cleanly shutdown socket: #{inspect(err)}")
+        {:stop, reason, %State{data | socket: nil}}
+    end
   end
 end

@@ -31,7 +31,7 @@ task test {
         mix do local.hex --if-missing --force
         mix do local.rebar --force
         mix deps.get
-        OCKAM_C_BUILD_DIR="$(pwd)/../c/_build/x86_64-unknown-linux-gnu" mix test
+        OCKAM_C_BUILD_DIR="$(pwd)/../c/_build/x86_64-unknown-linux-gnu" mix test --no-start
       '''
     }
   }

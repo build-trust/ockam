@@ -34,7 +34,10 @@ defmodule Ockam.Transport.Test do
     handshake_opts = %{protocol: "Noise_XX_25519_AESGCM_SHA256", s: s, e: e, rs: rs, re: re}
     assert {:ok, handshake} = Channel.handshake(:initiator, handshake_opts)
     assert {:ok, transport} = Socket.open(socket)
-    assert {:ok, _chan, transport} = Channel.negotiate_secure_channel(handshake, transport)
+
+    assert {:ok, _chan, transport} =
+             Channel.negotiate_secure_channel(handshake, transport, %{timeout: 10_000})
+
     assert {:ok, _} = Socket.close(transport)
   end
 end
