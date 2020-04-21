@@ -19,6 +19,7 @@ defmodule Ockam.Integration.Handshake.Test do
     end
   end
 
+  @tag skip: true
   @tag transport: Ockam.Transport.TCP
   @tag transport_name: :tcp_4002
   @tag transport_config: [listen_address: "0.0.0.0", listen_port: 4002]
@@ -29,6 +30,7 @@ defmodule Ockam.Integration.Handshake.Test do
     assert :ok = await_test_executable()
   end
 
+  @tag skip: true
   @tag initiator: true
   @tag listen_port: 4003
   @tag capture_log: false
