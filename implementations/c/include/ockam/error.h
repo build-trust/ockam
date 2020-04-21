@@ -1,52 +1,25 @@
 /**
- ********************************************************************************************************
  * @file  error.h
  * @brief Ockam common error defines
- ********************************************************************************************************
  */
 
 #ifndef OCKAM_ERROR_H_
 #define OCKAM_ERROR_H_
 
-/*
- ********************************************************************************************************
- *                                               INCLUDES                                               *
- ********************************************************************************************************
- */
-
 #include <stdint.h>
 
-/*
- ********************************************************************************************************
- *                                               DEFINES                                                *
- ********************************************************************************************************
- */
+#define OCKAM_ERROR_INTERFACE_MASK  0xFF000000
+#define OCKAM_ERROR_INTERFACE_SHIFT 24u
 
-#define kOckamErrorInterfaceMask 0xFF000000
-#define kOckamErrorInterfaceShift 24u
+typedef uint32_t ockam_error_t;
 
-/*
- ********************************************************************************************************
- *                                              DATA TYPES                                              *
- ********************************************************************************************************
- */
+#define OCKAM_ERROR_NONE 0u
+#define OCKAM_ERROR      1u
 
-typedef uint32_t OckamError;
-
-/*
- ********************************************************************************************************
- *                                          COMMON ERROR CODES                                          *
- ********************************************************************************************************
- */
-
-#define kOckamErrorNone 0u
-#define kOckamError 1u
-
-#define kOckamErrorInterfaceMemory (1u << kOckamErrorInterfaceShift)
-#define kOckamErrorInterfaceLog (2u << kOckamErrorInterfaceShift)
-#define kOckamErrorInterfaceVault (3u << kOckamErrorInterfaceShift)
-#define kOckamErrorInterfaceTransport (4u << kOckamErrorInterfaceShift)
-#define kOckamErrorInterfaceKeyAgreement (5u << kOckamErrorInterfaceShift)
-#define kOckamErrorCodec (6u << kOckamErrorInterfaceShift)
+#define OCKAM_ERROR_INTERFACE_MEMORY       (1u << OCKAM_ERROR_INTERFACE_SHIFT)
+#define OCKAM_ERROR_INTERFACE_LOG          (2u << OCKAM_ERROR_INTERFACE_SHIFT)
+#define OCKAM_ERROR_INTERFACE_VAULT        (3u << OCKAM_ERROR_INTERFACE_SHIFT)
+#define OCKAM_ERROR_INTERFACE_TRANSPORT    (4u << OCKAM_ERROR_INTERFACE_SHIFT)
+#define OCKAM_ERROR_INTERFACE_KEYAGREEMENT (5u << OCKAM_ERROR_INTERFACE_SHIFT)
 
 #endif

@@ -1,7 +1,5 @@
-# Add Ockam Memory implementations
-add_subdirectory(stdlib)
-
 # Ockam Memory
+
 project(memory C)
 
 message(STATUS "")
@@ -9,11 +7,11 @@ message(STATUS "------------------ Ockam Memory ------------------")
 
 ockam_cc_library(
    NAME
-     memory
+     stdlib
    SRCS
-     "memory.c"
+     "stdlib.c"
    PUBLIC_HDRS
-    "${CMAKE_CURRENT_SOURCE_DIR}/impl.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/stdlib.h"
    PUBLIC_HDRS_DIR
     "memory/"
    PUBLIC)
