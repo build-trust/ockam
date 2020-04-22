@@ -4,10 +4,15 @@ defmodule Ockam.Channel do
 
   See an overview of the Noise handshake [here](https://noiseprotocol.org/noise.html#overview-of-handshake-state-machine)
   """
+  require Logger
+
   alias Ockam.Transport
   alias Ockam.Channel.Handshake
   alias Ockam.Channel.Protocol
   alias Ockam.Channel.CipherState
+  alias Ockam.Router.Protocol.Encoding
+  alias Ockam.Router.Protocol.Message.Envelope
+  alias Ockam.Router.Protocol.Message.Payload
 
   defstruct [:rx, :tx, :hash, :state]
 
@@ -141,24 +146,39 @@ defmodule Ockam.Channel do
 
   defp do_negotiate_secure_channel(%Handshake{} = handshake, transport, timeout) do
     next = Handshake.next_message(handshake)
+    Logger.debug("[#{inspect(handshake.role)}] Transitioning handshake to #{inspect(next)}")
     do_negotiate_secure_channel(next, handshake, transport, timeout)
   end
 
   defp do_negotiate_secure_channel(:in, handshake, transport, timeout) do
+    Logger.debug("[#{inspect(handshake.role)}] Awaiting handshake message")
+
     with {:ok, data, transport} <- Transport.recv(transport, timeout: timeout),
+         {:ok, %Envelope{body: %Payload{data: data}}, _rest} <- Encoding.decode(data),
          {:ok, hs, _msg} <- Handshake.read_message(handshake, data) do
       do_negotiate_secure_channel(hs, transport, timeout)
+    else
+      {:ok, message, _} ->
+        {:error, {:unexpected_message, message}}
+
+      {:error, _} = err ->
+        err
     end
   end
 
   defp do_negotiate_secure_channel(:out, handshake, transport, timeout) do
+    Logger.debug("[#{inspect(handshake.role)}] Sending handshake message")
+
     with {:ok, hs, msg} <- Handshake.write_message(handshake, ""),
-         {:ok, transport} <- Transport.send(transport, msg) do
+         {:ok, encoded} <- Encoding.encode(%Payload{data: msg}),
+         {:ok, transport} <- Transport.send(transport, encoded) do
       do_negotiate_secure_channel(hs, transport, timeout)
     end
   end
 
   defp do_negotiate_secure_channel(:done, handshake, transport, _timeout) do
+    Logger.debug("[#{inspect(handshake.role)}] Finalizing handshake")
+
     with {:ok, chan} <- Handshake.finalize(handshake) do
       {:ok, chan, transport}
     end
