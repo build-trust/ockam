@@ -6,6 +6,9 @@ defmodule Ockam.Integration.Handshake.Test do
   alias Ockam.Transport.Address
   alias Ockam.Transport.Socket
   alias Ockam.Vault.KeyPair
+  alias Ockam.Router.Protocol.Message
+  alias Ockam.Router.Protocol.Message.Envelope
+  alias Ockam.Router.Protocol.Encoding
 
   setup context do
     if transport = context[:transport] do
@@ -53,9 +56,12 @@ defmodule Ockam.Integration.Handshake.Test do
     assert {:ok, chan, transport} =
              Channel.negotiate_secure_channel(handshake, transport, %{timeout: 10_000})
 
-    assert {:ok, message, transport} = Socket.recv(transport, timeout: 10_000)
-    assert {:ok, chan, "ACK"} = Channel.decrypt(chan, message)
-    assert {:ok, chan, encrypted} = Channel.encrypt(chan, "OK")
+    assert {:ok, message, encrypted} = Socket.recv(transport, timeout: 10_000)
+    assert {:ok, chan, encoded} = Channel.decrypt(chan, encrypted)
+    assert {:ok, %Envelope{body: %Message.Ping{}}} = Encoding.decode(encoded)
+
+    assert {:ok, encoded} = Encoding.encode(%Message.Pong{})
+    assert {:ok, chan, encrypted} = Channel.encrypt(chan, encoded)
     assert {:ok, transport} = Socket.send(transport, encrypted)
     assert {:ok, _} = Socket.close(transport)
     assert :ok = await_test_executable()

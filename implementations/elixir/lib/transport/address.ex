@@ -1,6 +1,36 @@
 defmodule Ockam.Transport.Address do
   defstruct [:family, :addr, :port]
 
+  defmodule InvalidAddressError do
+    defexception [:message]
+
+    def new({:unsupported_family, family}) do
+      %__MODULE__{message: "unsupported address family: #{inspect(family)}"}
+    end
+
+    def new(reason) when not is_binary(reason) do
+      %__MODULE__{message: "invalid address: #{inspect(reason)}"}
+    end
+
+    def new(reason) when is_binary(reason) do
+      %__MODULE__{message: reason}
+    end
+
+    def message(%__MODULE__{message: message}), do: message
+  end
+
+  def new!(family, addr, port \\ nil)
+
+  def new!(family, addr, port) do
+    case new(family, addr, port) do
+      {:ok, addr} ->
+        addr
+
+      {:error, reason} ->
+        raise InvalidAddressError.new(reason)
+    end
+  end
+
   def new(family, addr, port \\ nil)
 
   def new(:inet, addr, port) when addr in [:any, :loopback] do
@@ -23,6 +53,13 @@ defmodule Ockam.Transport.Address do
   def new(family, _addr, _port) do
     {:error, {:unsupported_family, family}}
   end
+
+  def ip(%__MODULE__{addr: :any}), do: {0, 0, 0, 0}
+  def ip(%__MODULE__{addr: :loopback}), do: {127, 0, 0, 1}
+  def ip(%__MODULE__{addr: {_, _, _, _} = addr}), do: addr
+  def ip(%__MODULE__{addr: {_, _, _, _, _, _, _, _} = addr}), do: addr
+
+  def port(%__MODULE__{port: port}), do: port
 
   @doc """
   Converts this struct to the Erlang address representation

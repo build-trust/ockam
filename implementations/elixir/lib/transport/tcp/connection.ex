@@ -8,6 +8,10 @@ defmodule Ockam.Transport.TCP.Connection do
   alias Ockam.Channel
   alias Ockam.Channel.Handshake
   alias Ockam.Vault.KeyPair
+  alias Ockam.Router.Protocol.Message
+  alias Ockam.Router.Protocol.Message.Envelope
+  alias Ockam.Router.Protocol.Message.Payload
+  alias Ockam.Router.Protocol.Encoding
 
   @protocol "Noise_XX_25519_AESGCM_SHA256"
 
@@ -46,64 +50,87 @@ defmodule Ockam.Transport.TCP.Connection do
     {:next_state, :handshake, new_data, [{:next_event, :internal, next}]}
   catch
     type, reason ->
+      log_error("Failed to initialize connection: #{inspect({type, reason})}")
       stop(data, {type, reason})
   end
 
   def handshake(:internal, :in, %State{socket: socket, handshake: hs} = data) do
-    case Transport.recv_nonblocking(socket) do
-      {:ok, bindata, socket} ->
-        case Handshake.read_message(hs, bindata) do
-          {:ok, hs, _payload} ->
-            case Handshake.next_message(hs) do
-              :done ->
-                {:ok, chan} = Handshake.finalize(hs)
+    log_debug("Awaiting handshake message..")
 
-                {:next_state, :connected,
-                 %State{data | socket: socket, handshake: nil, channel: chan, next: :done},
-                 [{:next_event, :internal, :ack}]}
+    with {:ok, encoded, socket} <- Transport.recv_nonblocking(socket),
+         {:decode, {:ok, %Envelope{body: %Payload{data: payload}}, _}} <-
+           {:decode, Encoding.decode(encoded)},
+         {:ok, hs, _payload} <- Handshake.read_message(hs, payload) do
+      case Handshake.next_message(hs) do
+        :done ->
+          log_debug("Handshake complete")
+          {:ok, chan} = Handshake.finalize(hs)
 
-              next ->
-                {:keep_state, %State{data | socket: socket, handshake: hs, next: next},
-                 [{:next_event, :internal, next}]}
-            end
+          {:next_state, :connected,
+           %State{data | socket: socket, handshake: nil, channel: chan, next: :done},
+           [{:next_event, :internal, :ack}]}
 
-          {:error, reason} ->
-            stop(data, reason)
-        end
+        next ->
+          log_debug("Handshake transitioning to #{inspect(next)}")
 
+          {:keep_state, %State{data | socket: socket, handshake: hs, next: next},
+           [{:next_event, :internal, next}]}
+      end
+    else
       {:wait, {:recv, info}, socket} ->
+        log_debug("No data to receive, entering wait state")
         {:keep_state, %State{data | socket: socket, select_info: info, next: :in}}
 
+      {:decode, {:ok, message, _}} ->
+        log_warn(
+          "Unexpected message received during handshake, expected Payload, got: #{
+            inspect(message)
+          }"
+        )
+
+        throw(:shutdown)
+
+      {:decode, {:error, reason}} ->
+        throw(reason)
+
       {:error, reason} ->
-        stop(data, reason)
+        throw(reason)
     end
+  catch
+    :throw, reason ->
+      log_error("Error occurred while receiving handshake message: #{inspect(reason)}")
+      stop(data, reason)
   end
 
   def handshake(:internal, :out, %State{socket: socket, handshake: hs} = data) do
-    case Handshake.write_message(hs, "") do
-      {:ok, hs, msg} ->
-        case Transport.send(socket, msg) do
-          {:ok, socket} ->
-            case Handshake.next_message(hs) do
-              :done ->
-                {:ok, chan} = Handshake.finalize(hs)
+    log_debug("Generating handshake message")
 
-                {:next_state, :connected,
-                 %State{data | socket: socket, handshake: nil, channel: chan, next: :done},
-                 [{:next_event, :internal, :ack}]}
+    with {:ok, hs, msg} <- Handshake.write_message(hs, ""),
+         {:ok, encoded} <- Encoding.encode(%Payload{data: msg}),
+         {:ok, socket} <- Transport.send(socket, encoded) do
+      case Handshake.next_message(hs) do
+        :done ->
+          log_debug("Handshake complete")
+          {:ok, chan} = Handshake.finalize(hs)
 
-              next ->
-                {:keep_state, %State{data | socket: socket, handshake: hs, next: next},
-                 [{:next_event, :internal, next}]}
-            end
+          {:next_state, :connected,
+           %State{data | socket: socket, handshake: nil, channel: chan, next: :done},
+           [{:next_event, :internal, :ack}]}
 
-          {:error, reason} ->
-            stop(data, reason)
-        end
+        next ->
+          log_debug("Handshake transitioning to #{inspect(next)}")
 
+          {:keep_state, %State{data | socket: socket, handshake: hs, next: next},
+           [{:next_event, :internal, next}]}
+      end
+    else
       {:error, reason} ->
-        stop(data, reason)
+        throw(reason)
     end
+  catch
+    :throw, reason ->
+      log_error("Error occurred while sending handshake message: #{inspect(reason)}")
+      stop(data, reason)
   end
 
   def handshake(
@@ -111,6 +138,7 @@ defmodule Ockam.Transport.TCP.Connection do
         {:"$socket", _socket, :select, info} = msg,
         %State{select_info: info, next: next} = data
       ) do
+    log_debug("Waking up for receive, entering #{inspect(next)}")
     {:ok, :recv, new_socket} = Socket.handle_message(data.socket, msg)
     handshake(:internal, next, %State{data | socket: new_socket, select_info: nil})
   end
@@ -120,36 +148,67 @@ defmodule Ockam.Transport.TCP.Connection do
         {:"$socket", _socket, :abort, {info, _reason}} = msg,
         %State{select_info: info} = data
       ) do
+    log_debug("Cancelling receive due to abort")
     {:error, {:abort, reason}, new_socket} = Socket.handle_message(data.socket, msg)
     stop(%State{data | socket: new_socket, select_info: nil}, reason)
   end
 
   def connected(:internal, :ack, %State{channel: chan, socket: socket} = data) do
-    Logger.debug("Connection established, sending ACK..")
+    log_debug("Connection established, sending ping..")
     # Send ACK then start receiving
-    with {:ok, new_chan, encrypted} <- Channel.encrypt(chan, "ACK"),
-         {:ok, new_socket} <- Socket.send(socket, encrypted) do
+    with {:encode, {:ok, encoded}} <- Encoding.encode(%Message.Ping{}),
+         {:encrypt, {:ok, new_chan, encrypted}} <- Channel.encrypt(chan, encoded),
+         {:ok, new_socket} <- Transport.send(socket, encrypted) do
       new_data = %State{data | channel: new_chan, socket: new_socket}
       {:keep_state, new_data, [{:next_event, :internal, :receive}]}
     else
-      {:error, reason} = err ->
-        stop(data, reason)
-    end
-  end
+      {:encode, {:error, reason}} ->
+        log_warn("Encoding failed: #{inspect(reason)}")
+        throw(:failed_encode)
 
-  def connected(:internal, :receive, %State{socket: socket} = data) do
-    Logger.debug("Entering receive state..")
-
-    case Socket.recv_nonblocking(socket) do
-      {:ok, message, new_socket} ->
-        decrypt_and_handle_message(message, %State{data | socket: new_socket})
-
-      {:wait, {:recv, info}, new_socket} ->
-        {:keep_state, %State{data | socket: new_socket, select_info: info}}
+      {:encrypt, {:error, reason}} ->
+        log_warn("Encrypt failed: #{inspect(reason)}")
+        throw(:failed_encrypt)
 
       {:error, reason} ->
-        stop(data, reason)
+        throw(reason)
     end
+  catch
+    :throw, reason ->
+      log_error("Error occurred while sending ping: #{inspect(reason)}")
+      stop(data, reason)
+  end
+
+  def connected(:internal, :receive, %State{socket: socket, channel: chan} = data) do
+    log_debug("Entering receive state..")
+
+    with {:ok, encrypted, socket} <- Transport.recv_nonblocking(socket),
+         {:decrypt, {:ok, new_chan, decrypted}} <- Channel.decrypt(chan, encrypted),
+         {:decode, {:ok, decoded}} <- Encoding.decode(decrypted) do
+      handle_message(decoded, %State{data | socket: socket, channel: new_chan})
+    else
+      {:wait, {:recv, info}, socket} ->
+        {:keep_state, %State{data | socket: socket, select_info: info}}
+
+      {:decrypt, {:error, reason}} ->
+        log_warn("Decrypt failed: #{inspect(reason)}")
+        throw(:failed_decrypt)
+
+      {:decode, {:error, reason}} ->
+        log_warn("Decoding failed #{inspect(reason)}")
+        throw(:failed_decode)
+
+      {:error, :closed} ->
+        log_debug("Socket closed")
+        stop(data, :shutdown)
+
+      {:error, reason} ->
+        throw(reason)
+    end
+  catch
+    :throw, reason ->
+      log_error("Error occurred while receiving: #{inspect(reason)}")
+      stop(data, reason)
   end
 
   def connected(
@@ -171,22 +230,12 @@ defmodule Ockam.Transport.TCP.Connection do
   end
 
   def connect(type, msg, state) do
-    Logger.warn("Unexpected message received in :connect state: #{inspect({type, msg})}")
+    log_warn("Unexpected message received in :connect state: #{inspect({type, msg})}")
     {:keep_state, state, [{:next_event, :internal, :receive}]}
   end
 
-  defp decrypt_and_handle_message(message, %State{channel: chan} = data) do
-    case Channel.decrypt(chan, message) do
-      {:ok, new_chan, decrypted} ->
-        handle_message(decrypted, %State{data | channel: new_chan})
-
-      {:error, reason} ->
-        stop(data, reason)
-    end
-  end
-
-  defp handle_message("OK", %State{} = data) do
-    Logger.debug("ACK was received and acknowledged successfully!")
+  defp handle_message(%Envelope{body: %Message.Pong{}}, %State{} = data) do
+    log_debug("Ping was received and acknowledged via pong successfully!")
     {:keep_state, data, [{:next_event, :internal, :receive}]}
   end
 
@@ -216,8 +265,24 @@ defmodule Ockam.Transport.TCP.Connection do
         {:stop, reason, %State{data | socket: nil}}
 
       {:error, err} ->
-        Logger.warn("Failed to cleanly shutdown socket: #{inspect(err)}")
+        log_warn("Failed to cleanly shutdown socket: #{inspect(err)}")
         {:stop, reason, %State{data | socket: nil}}
     end
+  end
+
+  defp log_debug(message) do
+    Logger.debug(message)
+  end
+
+  defp log_info(message) do
+    Logger.debug(message)
+  end
+
+  defp log_warn(message) do
+    Logger.debug(message)
+  end
+
+  defp log_error(message) do
+    Logger.error(message)
   end
 end

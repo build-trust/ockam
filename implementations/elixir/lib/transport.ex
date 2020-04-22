@@ -1,4 +1,8 @@
 defmodule Ockam.Transport do
+  import Ockam.Router.Protocol.Encoding.Helpers
+
+  alias Ockam.Router.Protocol.DecodeError
+
   @type opts :: Keyword.t()
   @type data :: iodata()
   @type reason :: term()
@@ -58,8 +62,8 @@ defmodule Ockam.Transport do
   end
 
   def encode(message) when is_binary(message) do
-    size = byte_size(message)
-    <<size::big-unsigned-size(2)-unit(8), message::binary>>
+    size = encode_leb128_u2(byte_size(message))
+    <<size::binary, message::binary>>
   end
 
   @doc """
@@ -69,7 +73,18 @@ defmodule Ockam.Transport do
           {:ok, binary(), binary()}
           | {:more, non_neg_integer()}
           | {:error, term}
-  def decode(message) do
-    :erlang.decode_packet(2, message, [])
+  def decode(message) when is_binary(message) do
+    {size, rest} = decode_leb128_u2(message)
+
+    case rest do
+      <<data::binary-size(size), extra::binary>> ->
+        {:ok, data, extra}
+
+      _ ->
+        {:more, size - byte_size(rest)}
+    end
+  catch
+    :throw, %DecodeError{} = err ->
+      {:error, err}
   end
 end

@@ -36,11 +36,11 @@ defmodule Ockam.Transport.Socket do
     new(role, address)
   end
 
-  def handle_message(%__MODULE__{} = state, {:socket, socket, :select, _info}) do
+  def handle_message(%__MODULE__{} = state, {:"$socket", socket, :select, _info}) do
     {:ok, :recv, %__MODULE__{state | socket: socket}}
   end
 
-  def handle_message(%__MODULE__{} = state, {:socket, socket, :abort, {_info, reason}}) do
+  def handle_message(%__MODULE__{} = state, {:"$socket", socket, :abort, {_info, reason}}) do
     {:error, {:abort, reason}, %__MODULE__{state | socket: socket}}
   end
 
@@ -67,7 +67,7 @@ defmodule Ockam.Transport.Socket do
   end
 
   defp do_recv(%__MODULE__{} = state, flags, timeout) do
-    with {:wait, {:recv, select_ref}, new_state} <- recv_nonblocking(state, flags) do
+    with {:wait, {:recv, select_ref}, state} <- recv_nonblocking(state, flags) do
       receive do
         {:"$socket", socket, :select, ^select_ref} ->
           do_recv(%__MODULE__{state | socket: socket}, flags, timeout)
