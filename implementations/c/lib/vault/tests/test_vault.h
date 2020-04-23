@@ -1,67 +1,25 @@
 /**
- ********************************************************************************************************
- * @file    vault.h
+ * @file    test_vault.h
  * @brief   Common test functions for vault
- ********************************************************************************************************
  */
 
-/*
- ********************************************************************************************************
- *                                             INCLUDE FILES                                            *
- ********************************************************************************************************
- */
+#ifndef TEST_VAULT_H_
+#define TEST_VAULT_H_
 
 #include <stdint.h>
 
 #include "ockam/vault.h"
 
-/*
- ********************************************************************************************************
- *                                                DEFINES                                               *
- ********************************************************************************************************
- */
-
 #define TEST_VAULT_NO_TEST_CASE 0xFF
 
-/*
- ********************************************************************************************************
- *                                               CONSTANTS                                              *
- ********************************************************************************************************
- */
+int test_vault_run_random(ockam_vault_t* vault, ockam_memory_t* memory);
+int test_vault_run_sha256(ockam_vault_t* vault, ockam_memory_t* memory);
 
-/*
- ********************************************************************************************************
- *                                               DATA TYPES                                             *
- ********************************************************************************************************
- */
+#if 0
+int test_vault_run_key_ecdh(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory, OckamVaultEc ec,
+                            uint8_t load_keys);
+int test_vault_run_hkdf(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
+int test_vault_run_aes_gcm(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
+#endif
 
-/*
- ********************************************************************************************************
- *                                          FUNCTION PROTOTYPES                                         *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                            GLOBAL VARIABLES                                          *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                           GLOBAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                            LOCAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
-
-int TestVaultRunKeyEcdh(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory, OckamVaultEc ec,
-                        uint8_t load_keys);
-int TestVaultRunHkdf(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
-int TestVaultRunSha256(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
-int TestVaultRunAesGcm(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
-int TestVaultRunRandom(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
+#endif

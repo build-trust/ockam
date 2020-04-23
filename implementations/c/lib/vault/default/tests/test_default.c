@@ -1,14 +1,6 @@
 /**
-********************************************************************************************************
-* @file        test_default.c
-* @brief
-********************************************************************************************************
-*/
-
-/*
- ********************************************************************************************************
- *                                             INCLUDE FILES                                            *
- ********************************************************************************************************
+ * @file        test_default.c
+ * @brief
  */
 
 #include <setjmp.h>
@@ -18,115 +10,46 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cmocka.h"
-#include "default.h"
 #include "ockam/error.h"
 #include "ockam/memory.h"
 #include "ockam/vault.h"
+
+#include "memory/stdlib/stdlib.h"
+#include "vault/default/default.h"
+
+#include "cmocka.h"
 #include "test_vault.h"
 
-/*
- ********************************************************************************************************
- *                                                DEFINES                                               *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                               CONSTANTS                                              *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                               DATA TYPES                                             *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                          FUNCTION PROTOTYPES                                         *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                            GLOBAL VARIABLES                                          *
- ********************************************************************************************************
- */
-
-OckamVaultDefaultConfig default_cfg = {.features = OCKAM_VAULT_ALL, .ec = kOckamVaultEcCurve25519};
-
-const OckamVault *vault = &ockam_vault_default;
-const OckamMemory *memory = &ockam_memory_stdlib;
-
-/*
- ********************************************************************************************************
- *                                           GLOBAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                            LOCAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
-
 /**
- ********************************************************************************************************
- *                                             main()
- *
- * @brief   Main point of entry for mbedcrypto test
- *
- ********************************************************************************************************
+ * @brief   Main point of entry for default vault test
  */
-
-int main(void) {
-  OckamError err;
-  void *default_0 = 0;
-
-  memory->Create(0);
+int main(void)
+{
+  int                              rc               = 0;
+  ockam_error_t                    error            = OCKAM_ERROR_NONE;
+  ockam_vault_t                    vault            = { 0 };
+  ockam_memory_t                   memory           = { 0 };
+  ockam_vault_default_attributes_t vault_attributes = { .memory = &memory };
 
   cmocka_set_message_output(CM_OUTPUT_XML);
 
-  /* ---------- */
-  /* Vault Init */
-  /* ---------- */
+  error = ockam_memory_stdlib_init(&memory);
+  if (error != OCKAM_ERROR_NONE) { goto exit; }
 
-  err = vault->Create(&default_0, &default_cfg, memory);
-  if (err != kOckamErrorNone) { /* Ensure it initialized before proceeding, otherwise */
-    return -1;                  /* don't bother trying to run any other tests         */
-  }
+  error = ockam_vault_default_init(&vault, &vault_attributes);
+  if (error != OCKAM_ERROR_NONE) { goto exit; }
 
-  /* ------------------------ */
-  /* Random Number Generation */
-  /* ------------------------ */
+  test_vault_run_random(&vault, &memory);
+  test_vault_run_sha256(&vault, &memory);
 
-  TestVaultRunRandom(vault, default_0, memory);
-
-  /* --------------------- */
-  /* Key Generation & ECDH */
-  /* --------------------- */
-
+#if 0
   TestVaultRunKeyEcdh(vault, default_0, memory, default_cfg.ec, 1);
-
-  /* ------ */
-  /* SHA256 */
-  /* ------ */
-
-  TestVaultRunSha256(vault, default_0, memory);
-
-  /* -----*/
-  /* HKDF */
-  /* -----*/
-
   TestVaultRunHkdf(vault, default_0, memory);
-
-  /* -------------------- */
-  /* AES GCM Calculations */
-  /* -------------------- */
-
   TestVaultRunAesGcm(vault, default_0, memory);
+#endif
 
-  return 0;
+exit:
+  if (error != OCKAM_ERROR_NONE) { rc = -1; }
+
+  return rc;
 }
