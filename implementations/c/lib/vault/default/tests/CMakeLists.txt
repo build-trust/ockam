@@ -16,5 +16,7 @@ ockam_cc_test(
    DEPS 
      ockam::vault::tests::suite
      ockam::vault::default
+     ockam::vault
+     ockam::memory::stdlib
      ockam::memory
    PUBLIC )

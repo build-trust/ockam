@@ -1,14 +1,6 @@
 /**
- ********************************************************************************************************
  * @file    random.c
  * @brief   Ockam Vault common tests for random
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                             INCLUDE FILES                                            *
- ********************************************************************************************************
  */
 
 #include <setjmp.h>
@@ -22,113 +14,47 @@
 #include "ockam/vault.h"
 #include "test_vault.h"
 
-/*
- ********************************************************************************************************
- *                                                DEFINES                                               *
- ********************************************************************************************************
- */
-
-#define TEST_VAULT_RAND_NUM_SIZE 32u /*!< Size of the random number to generate            */
-
-/*
- ********************************************************************************************************
- *                                               CONSTANTS                                              *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                               DATA TYPES                                             *
- ********************************************************************************************************
- */
+#define TEST_VAULT_RAND_NUM_SIZE 32u
 
 /**
- *******************************************************************************
  * @struct  TestVaultRandomSharedData
  * @brief   Shared test data for all unit tests
- *******************************************************************************
  */
-
 typedef struct {
-  const OckamVault *p_vault;
-  const OckamMemory *p_memory;
-  void *p_vault_ctx;
-} TestVaultRandomSharedData;
+  ockam_vault_t* vault;
+} test_vault_random_shared_data_t;
 
-/*
- ********************************************************************************************************
- *                                          FUNCTION PROTOTYPES                                         *
- ********************************************************************************************************
- */
+void test_vault_random(void** state);
 
-void TestVaultRandom(void **state);
-
-/*
- ********************************************************************************************************
- *                                            GLOBAL VARIABLES                                          *
- ********************************************************************************************************
- */
-
-uint8_t g_rand_num[TEST_VAULT_RAND_NUM_SIZE] = {0};
-
-/*
- ********************************************************************************************************
- *                                           GLOBAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                            LOCAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
+uint8_t g_rand_num[TEST_VAULT_RAND_NUM_SIZE] = { 0 };
 
 /**
- ********************************************************************************************************
- *                                          TestVaultRandom()
- *
  * @brief   Ensure the specified ockam vault random function can generate a number
- *
  * @param   state   Shared variable between all test cases. Unused here.
- *
- ********************************************************************************************************
  */
+void test_vault_random(void** state)
+{
+  ockam_error_t                    error     = OCKAM_ERROR_NONE;
+  test_vault_random_shared_data_t* test_data = 0;
 
-void TestVaultRandom(void **state) {
-  OckamError err = kOckamErrorNone;
-  TestVaultRandomSharedData *p_test_data = 0;
+  test_data = (test_vault_random_shared_data_t*) *state;
 
-  /* -------------------------- */
-  /* Test Data and Verification */
-  /* -------------------------- */
-
-  p_test_data = (TestVaultRandomSharedData *)*state;
-
-  err = p_test_data->p_vault->Random(p_test_data->p_vault_ctx, /* Generate a random number                           */
-                                     (uint8_t *)&g_rand_num, TEST_VAULT_RAND_NUM_SIZE);
-  assert_int_equal(err, kOckamErrorNone);
+  error = ockam_vault_random_bytes_generate(test_data->vault, (uint8_t*) &g_rand_num[0], TEST_VAULT_RAND_NUM_SIZE);
+  assert_int_equal(error, OCKAM_ERROR_NONE);
 }
 
 /**
- ********************************************************************************************************
- *                                          TestVaultRunRandom()
- *
  * @brief   Triggers the unit test for random number generation.
- *
  * @return  Zero on success. Non-zero on failure.
- *
- ********************************************************************************************************
  */
+int test_vault_run_random(ockam_vault_t* vault, ockam_memory_t* memory)
+{
+  test_vault_random_shared_data_t shared_data;
 
-int TestVaultRunRandom(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory) {
-  TestVaultRandomSharedData shared_data;
-
-  shared_data.p_vault = p_vault;
-  shared_data.p_memory = p_memory;
-  shared_data.p_vault_ctx = p_vault_ctx;
+  shared_data.vault = vault;
 
   const struct CMUnitTest tests[] = {
-      cmocka_unit_test_prestate(TestVaultRandom, &shared_data),
+    cmocka_unit_test_prestate(test_vault_random, &shared_data),
   };
 
   return cmocka_run_group_tests_name("RANDOM", tests, 0, 0);
