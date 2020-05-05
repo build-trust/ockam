@@ -9,11 +9,11 @@ ockam_cc_library(
   NAME
     suite
   SRCS
-    "aes_gcm.c"
-    "hkdf.c"
-    "key_ecdh.c"
     "random.c"
     "sha256.c"
+    "secret_ecdh.c"
+    "hkdf.c"
+    "aead_aes_gcm.c"
   INCLUDES
     ${CMOCKA_INCLUDE_DIRS}
   PUBLIC

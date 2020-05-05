@@ -14,12 +14,11 @@
 
 int test_vault_run_random(ockam_vault_t* vault, ockam_memory_t* memory);
 int test_vault_run_sha256(ockam_vault_t* vault, ockam_memory_t* memory);
-
-#if 0
-int test_vault_run_key_ecdh(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory, OckamVaultEc ec,
-                            uint8_t load_keys);
-int test_vault_run_hkdf(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
-int test_vault_run_aes_gcm(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory);
-#endif
+int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
+                               ockam_memory_t*           memory,
+                               ockam_vault_secret_type_t type,
+                               uint8_t                   load_keys);
+int test_vault_run_hkdf(ockam_vault_t* vault, ockam_memory_t* memory);
+int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory);
 
 #endif

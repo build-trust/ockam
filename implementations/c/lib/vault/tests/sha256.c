@@ -43,6 +43,7 @@ void test_vault_sha256(void** state);
 int  test_vault_sha256_teardown(void** state);
 
 /* clang-format off */
+
 test_vault_sha256_data_t g_sha256_data[] =
 {
     {
