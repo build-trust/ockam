@@ -53,7 +53,7 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_copy(ockam_memory_t* memory, uint8_t* destination, uint8_t* source, size_t copy_size)
+ockam_error_t ockam_memory_copy(ockam_memory_t* memory, uint8_t* destination, const uint8_t* source, size_t copy_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
