@@ -19,7 +19,8 @@ task lint {
         -not -path "*lib/key_agreement/*" \
         -not -path "*lib/log/*" \
         -not -path "*lib/transport/*" \
-        -not -path "*lib/vault/*" | \
+        -not -path "*lib/vault/atecc508a/*" \
+        -not -path "*lib/vault/atecc608a/*" | \
           xargs -I {} bash -c "cmp -s <(cat {}) <(clang-format-10 --style=file {}) || echo 'LINTER FAILED - {}'"
       '''
     }
@@ -33,6 +34,7 @@ task build {
     builderExec 'debian', {
       script '''
       set -eo pipefail
+
       mkdir -p _build/x86_64-unknown-linux-gnu
       cd _build/x86_64-unknown-linux-gnu
       cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..
@@ -70,3 +72,4 @@ task clean {
     delete '_build'
   }
 }
+
