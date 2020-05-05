@@ -1,14 +1,6 @@
 /**
- ********************************************************************************************************
  * @file    hkdf.c
  * @brief   Common HKDF test functions for Ockam Vault
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                             INCLUDE FILES                                            *
- ********************************************************************************************************
  */
 
 #include <setjmp.h>
@@ -22,183 +14,197 @@
 #include "ockam/vault.h"
 #include "test_vault.h"
 
-/*
- ********************************************************************************************************
- *                                                DEFINES                                               *
- ********************************************************************************************************
- */
-
-#define TEST_VAULT_HKDF_TEST_CASES 3u /*!< Total number of test cases to run                */
-#define TEST_VAULT_HKDF_NAME_SIZE 32u /*!< Size of the buffer to allocate for the test name */
-
-/*
- ********************************************************************************************************
- *                                               CONSTANTS                                              *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                               DATA TYPES                                             *
- ********************************************************************************************************
- */
+#define TEST_VAULT_HKDF_TEST_CASES          2u
+#define TEST_VAULT_HKDF_NAME_SIZE           32u
+#define TEST_VAULT_HKDF_DERIVED_OUTPUT_MAX  3u
+#define TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE 32u
 
 /**
- *******************************************************************************
- * @struct  TestVaultHkdfData
+ * @struct  test_vault_hkdf_data_t
  * @brief
- *******************************************************************************
  */
 typedef struct {
-  uint8_t *p_shared_secret;    /*!< Shared secret value to use for HKDF              */
-  uint32_t shared_secret_size; /*!< Size of the shared secret value                  */
-  uint8_t *p_salt;             /*!< Salt value for HKDF. Must fit into HW slot       */
-  uint32_t salt_size;          /*!< Size of the salt value                           */
-  uint8_t *p_info;             /*!< Optional info data for HKDF                      */
-  uint32_t info_size;          /*!< Size of the info value                           */
-  uint8_t *p_output;           /*!< Expected output from HKDF operation              */
-  uint32_t output_size;        /*!< Size of the output to generate                   */
-} TestVaultHkdfData;
+  uint8_t* ikm;
+  uint32_t ikm_size;
+  uint8_t* salt;
+  uint32_t salt_size;
+  uint8_t* output;
+  uint32_t output_count;
+} test_vault_hkdf_data_t;
 
 /**
- *******************************************************************************
- * @struct  TestVaultHkdfSharedData
+ * @struct  test_vault_hkdf_shared_data_t
  * @brief   Shared test data for all unit tests
- *******************************************************************************
  */
 typedef struct {
-  uint16_t test_count;     /*!< Current unit test                                */
-  uint16_t test_count_max; /*!< Total number of unit tests                       */
-  const OckamVault *p_vault;
-  const OckamMemory *p_memory;
-  void *p_vault_ctx;
-} TestVaultHkdfSharedData;
+  uint16_t        test_count;
+  uint16_t        test_count_max;
+  ockam_vault_t*  vault;
+  ockam_memory_t* memory;
+} test_vault_hkdf_shared_data_t;
 
-/*
- ********************************************************************************************************
- *                                          FUNCTION PROTOTYPES                                         *
- ********************************************************************************************************
- */
+void test_vault_hkdf(void** state);
+int  test_vault_hkdf_teardown(void** state);
 
-void TestVaultHkdf(void **state);
-int TestVaultHkdfTeardown(void **state);
+/* clang-format off */
 
-/*
- ********************************************************************************************************
- *                                            GLOBAL VARIABLES                                          *
- ********************************************************************************************************
- */
-
-uint8_t g_hkdf_test_1_shared_secret[] = {0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
-                                         0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b};
-
-uint8_t g_hkdf_test_1_salt[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c};
-
-uint8_t g_hkdf_test_1_info[] = {0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9};
-
-uint8_t g_hkdf_test_1_output[] = {0x3c, 0xb2, 0x5f, 0x25, 0xfa, 0xac, 0xd5, 0x7a, 0x90, 0x43, 0x4f, 0x64, 0xd0, 0x36,
-                                  0x2f, 0x2a, 0x2d, 0x2d, 0x0a, 0x90, 0xcf, 0x1a, 0x5a, 0x4c, 0x5d, 0xb0, 0x2d, 0x56,
-                                  0xec, 0xc4, 0xc5, 0xbf, 0x34, 0x00, 0x72, 0x08, 0xd5, 0xb8, 0x87, 0x18, 0x58, 0x65};
-
-uint8_t g_hkdf_test_2_shared_secret[] = {0x37, 0xe0, 0xe7, 0xda, 0xac, 0xbd, 0x6b, 0xfb, 0xf6, 0x69, 0xa8,
-                                         0x46, 0x19, 0x6f, 0xd4, 0x4d, 0x1c, 0x87, 0x45, 0xd3, 0x3f, 0x2b,
-                                         0xe4, 0x2e, 0x31, 0xd4, 0x67, 0x41, 0x99, 0xad, 0x00, 0x5e};
-
-uint8_t g_hkdf_test_2_salt[] = {0x4e, 0x6f, 0x69, 0x73, 0x65, 0x5f, 0x58, 0x58, 0x5f, 0x32, 0x35, 0x35, 0x31, 0x39,
-                                0x5f, 0x41, 0x45, 0x53, 0x47, 0x43, 0x4d, 0x5f, 0x53, 0x48, 0x41, 0x32, 0x35, 0x36};
-
-uint8_t g_hkdf_test_2_output[] = {0x67, 0x4A, 0xFE, 0x9E, 0x8A, 0x30, 0xE6, 0xDB, 0xF0, 0x73, 0xB3, 0x2C, 0xAD,
-                                  0x4D, 0x71, 0x1D, 0x11, 0xED, 0xF3, 0x2A, 0x4B, 0x83, 0x47, 0x05, 0x83, 0xE6,
-                                  0x89, 0x3B, 0xD4, 0x00, 0x41, 0xF4, 0xB8, 0x5A, 0xA7, 0xE2, 0xE0, 0x4A, 0x79,
-                                  0x2D, 0x25, 0x3B, 0x95, 0x98, 0xED, 0x47, 0x60, 0x1A, 0x55, 0x46, 0x88, 0x13,
-                                  0x09, 0x47, 0x8D, 0xF8, 0xD7, 0x0C, 0x54, 0x54, 0x32, 0x8A, 0x74, 0xC7};
-
-uint8_t g_hkdf_test_3_salt[] = {0xde, 0xed, 0xe2, 0x5e, 0xee, 0x01, 0x58, 0xa0, 0xfd, 0xe9, 0x82,
-                                0xe8, 0xbe, 0x1c, 0x79, 0x9d, 0x39, 0x5f, 0xd5, 0xba, 0xad, 0x40,
-                                0x8c, 0x6b, 0xec, 0x2b, 0xa2, 0xe9, 0x0e, 0xb3, 0xc7, 0x18};
-
-uint8_t g_hkdf_test_3_output[] = {0xb1, 0xc6, 0x74, 0xb6, 0x53, 0x5f, 0xb1, 0xd2, 0x08, 0x77, 0x2a, 0x97, 0x2c,
-                                  0xac, 0x2c, 0xbf, 0x04, 0xd6, 0xaa, 0x08, 0x7c, 0xbb, 0xd3, 0xeb, 0x85, 0x58,
-                                  0xa1, 0xa3, 0xab, 0xca, 0xa7, 0xfb, 0x10, 0x9c, 0x4b, 0x99, 0xea, 0x3a, 0x47,
-                                  0x84, 0xff, 0x55, 0xaf, 0x5e, 0xed, 0x86, 0xc9, 0x9e, 0x85, 0x3f, 0x5a, 0x76,
-                                  0xd8, 0x3c, 0xe4, 0x37, 0xa9, 0xe3, 0xe2, 0x7e, 0xde, 0x24, 0x2a, 0x6a};
-
-TestVaultHkdfData g_hkdf_data[TEST_VAULT_HKDF_TEST_CASES] = {
-    {&g_hkdf_test_1_shared_secret[0], 22, &g_hkdf_test_1_salt[0], 13, &g_hkdf_test_1_info[0], 10,
-     &g_hkdf_test_1_output[0], 42},
-    {&g_hkdf_test_2_shared_secret[0], 32, &g_hkdf_test_2_salt[0], 28, 0, 0, &g_hkdf_test_2_output[0], 64},
-    {0, 0, &g_hkdf_test_3_salt[0], 32, 0, 0, &g_hkdf_test_3_output[0], 64},
+uint8_t g_hkdf_test_1_ikm[] =
+{
+  0x37, 0xe0, 0xe7, 0xda, 0xac, 0xbd, 0x6b, 0xfb,
+  0xf6, 0x69, 0xa8, 0x46, 0x19, 0x6f, 0xd4, 0x4d,
+  0x1c, 0x87, 0x45, 0xd3, 0x3f, 0x2b, 0xe4, 0x2e,
+  0x31, 0xd4, 0x67, 0x41, 0x99, 0xad, 0x00, 0x5e
 };
 
-/*
- ********************************************************************************************************
- *                                           GLOBAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
+uint8_t g_hkdf_test_1_salt[] =
+{
+  0x4e, 0x6f, 0x69, 0x73, 0x65, 0x5f, 0x58, 0x58,
+  0x5f, 0x32, 0x35, 0x35, 0x31, 0x39, 0x5f, 0x41,
+  0x45, 0x53, 0x47, 0x43, 0x4d, 0x5f, 0x53, 0x48,
+  0x41, 0x32, 0x35, 0x36
+};
 
-/*
- ********************************************************************************************************
- *                                            LOCAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
+uint8_t g_hkdf_test_1_output[] =
+{
+  0x67, 0x4A, 0xFE, 0x9E, 0x8A, 0x30, 0xE6, 0xDB,
+  0xF0, 0x73, 0xB3, 0x2C, 0xAD, 0x4D, 0x71, 0x1D,
+  0x11, 0xED, 0xF3, 0x2A, 0x4B, 0x83, 0x47, 0x05,
+  0x83, 0xE6, 0x89, 0x3B, 0xD4, 0x00, 0x41, 0xF4,
+  0xB8, 0x5A, 0xA7, 0xE2, 0xE0, 0x4A, 0x79, 0x2D,
+  0x25, 0x3B, 0x95, 0x98, 0xED, 0x47, 0x60, 0x1A,
+  0x55, 0x46, 0x88, 0x13, 0x09, 0x47, 0x8D, 0xF8,
+  0xD7, 0x0C, 0x54, 0x54, 0x32, 0x8A, 0x74, 0xC7
+};
+
+uint8_t g_hkdf_test_2_ikm[] =
+{
+  0x37, 0xe0, 0xe7, 0xda, 0xac, 0xbd, 0x6b, 0xfb,
+  0xf6, 0x69, 0xa8, 0x46, 0x19, 0x6f, 0xd4, 0x4d,
+  0x1c, 0x87, 0x45, 0xd3, 0x3f, 0x2b, 0xe4, 0x2e,
+  0x31, 0xd4, 0x67, 0x41, 0x99, 0xad, 0x00, 0x5e
+};
+
+uint8_t g_hkdf_test_2_salt[] =
+{
+  0xde, 0xed, 0xe2, 0x5e, 0xee, 0x01, 0x58, 0xa0,
+  0xfd, 0xe9, 0x82, 0xe8, 0xbe, 0x1c, 0x79, 0x9d,
+  0x39, 0x5f, 0xd5, 0xba, 0xad, 0x40, 0x8c, 0x6b,
+  0xec, 0x2b, 0xa2, 0xe9, 0x0e, 0xb3, 0xc7, 0x18
+};
+
+uint8_t g_hkdf_test_2_output[] =
+{
+  0x8a, 0xb6, 0x66, 0xfa, 0x91, 0xc8, 0x16, 0x96,
+  0x7d, 0xbc, 0xb9, 0x78, 0xb4, 0x8c, 0x21, 0x65,
+  0xc9, 0xb7, 0xf9, 0xcc, 0x76, 0xfe, 0xce, 0x03,
+  0x2f, 0xde, 0x20, 0xd6, 0x0b, 0xcf, 0x36, 0x0d,
+  0x82, 0x11, 0xf4, 0x4f, 0xf6, 0x8e, 0xac, 0x7a,
+  0xf9, 0x36, 0x74, 0x39, 0x26, 0x99, 0x42, 0xde,
+  0x98, 0x3a, 0x02, 0x8e, 0x41, 0x2d, 0xef, 0xd1,
+  0x4b, 0x9e, 0x4c, 0x72, 0x0a, 0x6d, 0x3c, 0x5f,
+  0x33, 0x70, 0x8f, 0x49, 0xe3, 0x11, 0x8a, 0x71,
+  0x47, 0xc3, 0x20, 0x12, 0x7f, 0xf0, 0xd8, 0x75,
+  0x9f, 0xa9, 0x57, 0xd3, 0x5d, 0x87, 0x6c, 0x48,
+  0xb8, 0x99, 0x6c, 0x73, 0x89, 0x08, 0xa7, 0xe3
+};
+
+test_vault_hkdf_data_t g_hkdf_data[TEST_VAULT_HKDF_TEST_CASES] =
+{
+  {
+    &g_hkdf_test_1_ikm[0],
+    32,
+    &g_hkdf_test_1_salt[0],
+    28,
+    &g_hkdf_test_1_output[0],
+    2
+  },
+  {
+    &g_hkdf_test_2_ikm[0],
+    32,
+    &g_hkdf_test_2_salt[0],
+    32,
+    &g_hkdf_test_2_output[0],
+    3
+  },
+};
+
+/* clang-format on */
 
 /**
- ********************************************************************************************************
- *                                          TestVaultHkdf()
- *
  * @brief   Common test functions for HKDF using Ockam Vault
- *
- ********************************************************************************************************
  */
 
-void TestVaultHkdf(void **state) {
-  OckamError err = kOckamErrorNone;
-  TestVaultHkdfSharedData *p_test_data = 0;
-  uint8_t *p_hkdf_key = 0;
+void test_vault_hkdf(void** state)
+{
+  ockam_error_t                  error     = OCKAM_ERROR_NONE;
+  uint8_t                        i         = 0;
+  uint8_t*                       hkdf_key  = 0;
+  test_vault_hkdf_shared_data_t* test_data = 0;
+
+  ockam_vault_secret_t            ikm_secret  = { 0 };
+  ockam_vault_secret_t            salt_secret = { 0 };
+  ockam_vault_secret_attributes_t attributes  = { 0 };
+
+  ockam_vault_secret_t derived_outputs[TEST_VAULT_HKDF_DERIVED_OUTPUT_MAX] = { 0 };
+
+  uint8_t generated_output[TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE] = { 0 };
 
   /* -------------------------- */
   /* Test Data and Verification */
   /* -------------------------- */
 
-  p_test_data = (TestVaultHkdfSharedData *)*state;
+  test_data = (test_vault_hkdf_shared_data_t*) *state;
 
-  if (p_test_data->test_count >= p_test_data->test_count_max) {
-    fail_msg("Test count %d has exceeded max test count of %d", p_test_data->test_count, p_test_data->test_count_max);
-  }
-
-  /* ----------------- */
-  /* Memory Allocation */
-  /* ----------------- */
-
-  err = p_test_data->p_memory->Alloc((void **)&p_hkdf_key, g_hkdf_data[p_test_data->test_count].output_size);
-  if (err != kOckamErrorNone) {
-    fail_msg("Unable to allocate p_hkdf_key");
+  if (test_data->test_count >= test_data->test_count_max) {
+    fail_msg("Test count %d has exceeded max test count of %d", test_data->test_count, test_data->test_count_max);
   }
 
   /* --------- */
   /* HKDF Test */
   /* --------- */
 
-  err = p_test_data->p_vault->Hkdf(
-      p_test_data->p_vault_ctx, g_hkdf_data[p_test_data->test_count].p_salt,
-      g_hkdf_data[p_test_data->test_count].salt_size, g_hkdf_data[p_test_data->test_count].p_shared_secret,
-      g_hkdf_data[p_test_data->test_count].shared_secret_size, g_hkdf_data[p_test_data->test_count].p_info,
-      g_hkdf_data[p_test_data->test_count].info_size, p_hkdf_key, g_hkdf_data[p_test_data->test_count].output_size);
-  assert_int_equal(err, kOckamErrorNone);
+  attributes.purpose     = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT;
+  attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
+  attributes.type        = OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED;
 
-  assert_memory_equal(p_hkdf_key, g_hkdf_data[p_test_data->test_count].p_output,
-                      g_hkdf_data[p_test_data->test_count].output_size);
+  attributes.length = g_hkdf_data[test_data->test_count].salt_size;
+  error             = ockam_vault_secret_import(test_data->vault,
+                                    &salt_secret,
+                                    &attributes,
+                                    g_hkdf_data[test_data->test_count].salt,
+                                    g_hkdf_data[test_data->test_count].salt_size);
+  assert_int_equal(error, OCKAM_ERROR_NONE);
 
-  /* ----------- */
-  /* Memory Free */
-  /* ----------- */
+  attributes.length = g_hkdf_data[test_data->test_count].ikm_size;
+  error             = ockam_vault_secret_import(test_data->vault,
+                                    &ikm_secret,
+                                    &attributes,
+                                    g_hkdf_data[test_data->test_count].ikm,
+                                    g_hkdf_data[test_data->test_count].ikm_size);
+  assert_int_equal(error, OCKAM_ERROR_NONE);
 
-  p_test_data->p_memory->Free(p_hkdf_key, g_hkdf_data[p_test_data->test_count].output_size);
+  error = ockam_vault_hkdf_sha256(
+    test_data->vault, &salt_secret, &ikm_secret, g_hkdf_data[test_data->test_count].output_count, &derived_outputs[0]);
+  assert_int_equal(error, OCKAM_ERROR_NONE);
+
+  for (i = 0; i < g_hkdf_data[test_data->test_count].output_count; i++) {
+    size_t   length          = 0;
+    uint8_t* expected_output = g_hkdf_data[test_data->test_count].output + (TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE * i);
+
+    ockam_memory_set(test_data->memory, &generated_output[0], 0, TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE);
+
+    error = ockam_vault_secret_export(
+      test_data->vault, &derived_outputs[i], &generated_output[0], TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE, &length);
+    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_int_equal(length, TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE);
+
+    assert_memory_equal(&generated_output[0], expected_output, TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE);
+  }
 }
 
 /**
  ********************************************************************************************************
- *                                     TestVaultHkdfTeardown()
+ *                                     test_vault_hkdf_teardown()
  *
  * @brief   Common unit test teardown function for HKDF using Ockam Vault
  *
@@ -207,15 +213,16 @@ void TestVaultHkdf(void **state) {
  ********************************************************************************************************
  */
 
-int TestVaultHkdfTeardown(void **state) {
-  TestVaultHkdfSharedData *p_test_data = 0;
+int test_vault_hkdf_teardown(void** state)
+{
+  test_vault_hkdf_shared_data_t* test_data = 0;
 
   /* ------------------- */
   /* Test Case Increment */
   /* ------------------- */
 
-  p_test_data = (TestVaultHkdfSharedData *)*state;
-  p_test_data->test_count++;
+  test_data = (test_vault_hkdf_shared_data_t*) *state;
+  test_data->test_count++;
 
   return 0;
 }
@@ -231,55 +238,56 @@ int TestVaultHkdfTeardown(void **state) {
  ********************************************************************************************************
  */
 
-int TestVaultRunHkdf(const OckamVault *p_vault, void *p_vault_ctx, const OckamMemory *p_memory) {
-  OckamError err = kOckamErrorNone;
-  int rc = 0;
-  char *p_test_name = 0;
-  uint16_t i = 0;
-  uint8_t *p_cmocka_data = 0;
-  struct CMUnitTest *p_cmocka_tests = 0;
-  TestVaultHkdfSharedData shared_data;
+int test_vault_run_hkdf(ockam_vault_t* vault, ockam_memory_t* memory)
+{
+  ockam_error_t                 error        = OCKAM_ERROR_NONE;
+  int                           rc           = 0;
+  char*                         test_name    = 0;
+  uint16_t                      i            = 0;
+  uint8_t*                      cmocka_data  = 0;
+  struct CMUnitTest*            cmocka_tests = 0;
+  test_vault_hkdf_shared_data_t shared_data;
 
-  err = p_memory->Alloc((void **)&p_cmocka_data, (TEST_VAULT_HKDF_TEST_CASES * sizeof(struct CMUnitTest)));
-  if (err != kOckamErrorNone) {
+  error =
+    ockam_memory_alloc(memory, (uint8_t**) &cmocka_data, (TEST_VAULT_HKDF_TEST_CASES * sizeof(struct CMUnitTest)));
+  if (error != OCKAM_ERROR_NONE) {
     rc = -1;
     goto exit_block;
   }
 
-  p_cmocka_tests = (struct CMUnitTest *)p_cmocka_data;
+  cmocka_tests = (struct CMUnitTest*) cmocka_data;
 
-  shared_data.test_count = 0;
+  shared_data.test_count     = 0;
   shared_data.test_count_max = TEST_VAULT_HKDF_TEST_CASES;
-  shared_data.p_vault = p_vault;
-  shared_data.p_memory = p_memory;
-  shared_data.p_vault_ctx = p_vault_ctx;
+  shared_data.vault          = vault;
+  shared_data.memory         = memory;
 
   for (i = 0; i < TEST_VAULT_HKDF_TEST_CASES; i++) {
-    err = p_memory->Alloc((void **)&p_test_name, TEST_VAULT_HKDF_NAME_SIZE);
-    if (err != kOckamErrorNone) {
+    error = ockam_memory_alloc(memory, (uint8_t**) &test_name, TEST_VAULT_HKDF_NAME_SIZE);
+    if (error != OCKAM_ERROR_NONE) {
       rc = -1;
       goto exit_block;
     }
 
-    snprintf(p_test_name, TEST_VAULT_HKDF_NAME_SIZE, "HKDF Test Case %02d", i);
+    snprintf(test_name, TEST_VAULT_HKDF_NAME_SIZE, "HKDF Test Case %02d", i);
 
-    p_cmocka_tests->name = p_test_name;
-    p_cmocka_tests->test_func = TestVaultHkdf;
-    p_cmocka_tests->setup_func = 0;
-    p_cmocka_tests->teardown_func = TestVaultHkdfTeardown;
-    p_cmocka_tests->initial_state = &shared_data;
+    cmocka_tests->name          = test_name;
+    cmocka_tests->test_func     = test_vault_hkdf;
+    cmocka_tests->setup_func    = 0;
+    cmocka_tests->teardown_func = test_vault_hkdf_teardown;
+    cmocka_tests->initial_state = &shared_data;
 
-    p_cmocka_tests++;
+    cmocka_tests++;
   }
 
-  if (err != kOckamErrorNone) {
+  if (error != OCKAM_ERROR_NONE) {
     rc = -1;
     goto exit_block;
   }
 
-  p_cmocka_tests = (struct CMUnitTest *)p_cmocka_data;
+  cmocka_tests = (struct CMUnitTest*) cmocka_data;
 
-  rc = _cmocka_run_group_tests("HKDF", p_cmocka_tests, shared_data.test_count_max, 0, 0);
+  rc = _cmocka_run_group_tests("HKDF", cmocka_tests, shared_data.test_count_max, 0, 0);
 
 exit_block:
   return rc;
