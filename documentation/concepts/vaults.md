@@ -25,4 +25,4 @@ message authentication, digital signatures, Diffie-Hellman key exchange,
 authenticated encryption etc.
 
 The precise design of the `Vault` interface is being discussed as part of
-Ockam Proposal [OP-0004](https://git.io/JvOka).
+a draft Ockam Proposal [OP-000N](https://git.io/JfcYQ).
