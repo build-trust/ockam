@@ -5,20 +5,24 @@ defmodule Ockam.Integration.Handshake.Test do
   alias Ockam.Channel
   alias Ockam.Transport.Address
   alias Ockam.Transport.Socket
+  alias Ockam.Vault
   alias Ockam.Vault.KeyPair
+  alias Ockam.Vault.SecretAttributes
   alias Ockam.Router.Protocol.Message
   alias Ockam.Router.Protocol.Message.Envelope
   alias Ockam.Router.Protocol.Encoding
 
   setup context do
+    {:ok, vault} = Vault.new()
+
     if transport = context[:transport] do
       name = Map.fetch!(context, :transport_name)
       meta = [name: name]
       config = Map.get(context, :transport_config, [])
       pid = start_supervised!({transport, [meta, config]})
-      {:ok, [pid: pid, config: config]}
+      {:ok, [vault: vault, pid: pid, config: config]}
     else
-      {:ok, []}
+      {:ok, [vault: vault]}
     end
   end
 
@@ -37,20 +41,21 @@ defmodule Ockam.Integration.Handshake.Test do
   @tag initiator: true
   @tag listen_port: 4003
   @tag capture_log: false
-  test "with C implementation as responder", %{listen_port: port} do
+  test "with C implementation as responder", %{vault: vault, listen_port: port} do
     # Start server first
     assert {:ok, _} = run_responder!(["-a", "127.0.0.1", "-p", "#{port}"])
 
     {:ok, addr} = Address.new(:inet, :loopback, port)
     socket = Socket.new(:client, addr)
 
-    s = KeyPair.new(:x25519)
-    e = KeyPair.new(:x25519)
-    rs = KeyPair.new(:x25519)
-    re = KeyPair.new(:x25519)
+    attrs = SecretAttributes.x25519(:ephemeral)
+    s = KeyPair.new(vault, attrs)
+    e = KeyPair.new(vault, attrs)
+    rs = KeyPair.new(vault, attrs)
+    re = KeyPair.new(vault, attrs)
 
     handshake_opts = %{protocol: "Noise_XX_25519_AESGCM_SHA256", s: s, e: e, rs: rs, re: re}
-    assert {:ok, handshake} = Channel.handshake(:initiator, handshake_opts)
+    assert {:ok, handshake} = Channel.handshake(vault, :initiator, handshake_opts)
     assert {:ok, transport} = Socket.open(socket)
 
     assert {:ok, chan, transport} =

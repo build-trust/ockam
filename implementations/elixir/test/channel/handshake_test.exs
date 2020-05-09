@@ -4,28 +4,34 @@ defmodule Ockam.Channel.Handshake.Tests do
   alias Ockam.Channel
   alias Ockam.Channel.Protocol
   alias Ockam.Channel.Handshake
+  alias Ockam.Vault
   alias Ockam.Vault.KeyPair
+  alias Ockam.Vault.SecretAttributes
 
   alias Ockam.Test.Fixtures
 
   setup context do
+    {:ok, vault} = Vault.new()
+
     if context[:vectors] == true do
-      {:ok, [vectors: Fixtures.vectors()]}
+      {:ok, [vault: vault, vectors: Fixtures.vectors()]}
     else
-      {:ok, []}
+      {:ok, [vault: vault]}
     end
   end
 
-  test "handshake without transport" do
-    s = KeyPair.new(:x25519)
-    e = KeyPair.new(:x25519)
-    rs = KeyPair.new(:x25519)
-    re = KeyPair.new(:x25519)
+  test "handshake without transport", %{vault: vault} do
+    attrs = SecretAttributes.x25519(:ephemeral)
+    # TODO: Need to test with static keys, but not yet implemented in C
+    s = KeyPair.new(vault, attrs)
+    e = KeyPair.new(vault, attrs)
+    rs = KeyPair.new(vault, attrs)
+    re = KeyPair.new(vault, attrs)
     initiator_opts = %{protocol: "Noise_XX_25519_AESGCM_SHA256", s: s, e: e, rs: rs, re: re}
     responder_opts = %{protocol: "Noise_XX_25519_AESGCM_SHA256", s: rs, e: re, rs: s, re: e}
 
-    assert {:ok, init} = Channel.handshake(:initiator, initiator_opts)
-    assert {:ok, resp} = Channel.handshake(:responder, responder_opts)
+    assert {:ok, init} = Channel.handshake(vault, :initiator, initiator_opts)
+    assert {:ok, resp} = Channel.handshake(vault, :responder, responder_opts)
 
     assert {:ok, :send, data, init} = Channel.step_handshake(init, {:send, ""})
     assert {:ok, :received, data, resp} = Channel.step_handshake(resp, {:received, data})
@@ -42,18 +48,25 @@ defmodule Ockam.Channel.Handshake.Tests do
     assert {:ok, _init_chan, "pong"} = Channel.decrypt(init_chan, encrypted)
   end
 
-  test "well-known test" do
+  test "well-known test", %{vault: vault} do
     # handshake=Noise_XX_25519_AESGCM_SHA256
-    s = KeyPair.from_hex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
-    e = KeyPair.from_hex("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f")
-    rs = KeyPair.from_hex("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20")
-    re = KeyPair.from_hex("4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60")
+    s =
+      KeyPair.from_hex(vault, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+
+    e =
+      KeyPair.from_hex(vault, "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f")
+
+    rs =
+      KeyPair.from_hex(vault, "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20")
+
+    re =
+      KeyPair.from_hex(vault, "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60")
 
     initiator_opts = %{protocol: "Noise_XX_25519_AESGCM_SHA256", s: s, e: e, rs: rs, re: re}
-    assert {:ok, init} = Channel.handshake(:initiator, initiator_opts)
+    assert {:ok, init} = Channel.handshake(vault, :initiator, initiator_opts)
 
     responder_opts = %{protocol: "Noise_XX_25519_AESGCM_SHA256", s: rs, e: re, rs: s, re: e}
-    assert {:ok, resp} = Channel.handshake(:responder, responder_opts)
+    assert {:ok, resp} = Channel.handshake(vault, :responder, responder_opts)
 
     assert {:ok, :send, data, init} = Channel.step_handshake(init, {:send, ""})
     # msg_0_payload=
@@ -98,7 +111,7 @@ defmodule Ockam.Channel.Handshake.Tests do
 
   @tag skip: true
   @tag vectors: true
-  test "test vectors", %{vectors: vectors} do
+  test "test vectors", %{vault: vault, vectors: vectors} do
     for %{name: name} = vector <- vectors do
       case Protocol.from_name(name) do
         {:ok, protocol} ->
@@ -119,7 +132,7 @@ defmodule Ockam.Channel.Handshake.Tests do
           messages = Map.get(vector, :messages)
           hash = fix(Map.get(vector, :handshake_hash))
 
-          test_vector(name, protocol, init_opts, resp_opts, messages, hash)
+          test_vector(vault, name, protocol, init_opts, resp_opts, messages, hash)
 
         {:error, {Protocol, :unsupported_pattern}} ->
           :ok
@@ -130,21 +143,24 @@ defmodule Ockam.Channel.Handshake.Tests do
   defp fix(nil), do: nil
   defp fix(bin) when is_binary(bin), do: Base.decode16!(bin, case: :lower)
 
-  defp test_vector(_name, protocol, init, resp, messages, hash) do
-    dh = Protocol.dh(protocol)
+  defp test_vector(vault, _name, protocol, init, resp, messages, hash) do
+    attrs =
+      protocol
+      |> Protocol.dh()
+      |> SecretAttributes.from_type()
 
     secret = fn
       nil -> nil
-      sec -> KeyPair.new(dh, private: sec)
+      sec -> KeyPair.new(vault, private: sec, attrs: attrs)
     end
 
     pub = fn
       nil -> nil
-      pub -> KeyPair.new(dh, public: pub)
+      pub -> KeyPair.new(vault, public: pub)
     end
 
     build_hs = fn p, r, %{e: e, s: s, rs: rs, prologue: pl} ->
-      Handshake.init(p, r, pl, {secret.(s), secret.(e), pub.(rs), nil})
+      Handshake.init(vault, p, r, pl, {secret.(s), secret.(e), pub.(rs), nil})
     end
 
     assert {:ok, init_hs} = build_hs.(protocol, :initiator, init)

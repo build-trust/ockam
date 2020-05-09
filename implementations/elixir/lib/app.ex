@@ -3,14 +3,8 @@ defmodule Ockam.App do
 
   require Logger
 
-  alias Ockam.Vault
-
   def start(_type, _args) do
     Logger.info("Starting #{__MODULE__}")
-    Logger.info("Initializing Ockam Vault..")
-
-    vault_config = Application.get_env(:ockam, :vault, [])
-    Vault.init_vault!(vault_config)
 
     transports = Application.get_env(:ockam, :transports, [])
 

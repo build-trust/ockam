@@ -2,6 +2,8 @@ defmodule Ockam.Channel.HashState do
   @moduledoc "Noise symmetric (hash) state"
 
   alias Ockam.Vault
+  alias Ockam.Vault.Secret
+  alias Ockam.Vault.SecretAttributes
   alias Ockam.Channel.Protocol
   alias Ockam.Channel.CipherState
 
@@ -16,8 +18,8 @@ defmodule Ockam.Channel.HashState do
           hash: hash()
         }
 
-  @spec init(Protocol.t()) :: t()
-  def init(%Protocol{} = protocol) do
+  @spec init(Protocol.t(), Vault.t()) :: t()
+  def init(%Protocol{} = protocol, %Vault{} = vault) do
     hash = Protocol.hash(protocol)
     cipher = Protocol.cipher(protocol)
     name = Protocol.name(protocol)
@@ -25,56 +27,70 @@ defmodule Ockam.Channel.HashState do
 
     h =
       if byte_size(name) > hash_len do
-        Vault.hash(hash, name)
+        Vault.hash(vault, hash, name)
       else
         Vault.pad(name, hash_len, 0x00)
       end
 
+    {:ok, ck} = Vault.import_secret(vault, h, SecretAttributes.unspecified(:ephemeral))
+
     %__MODULE__{
       cs: CipherState.init(cipher),
-      ck: h,
+      ck: ck,
       h: h,
       hash: hash
     }
   end
 
-  def mix_key(%__MODULE__{hash: hash, ck: ck, cs: cs} = state, ikm) do
-    [ck, <<temp_k::size(32)-binary, _::binary>> | _] = Vault.hkdf(hash, ck, ikm)
-    %__MODULE__{state | ck: ck, cs: CipherState.set_key(cs, temp_k)}
+  def mix_key(%__MODULE__{ck: ck, cs: cs} = state, vault, %Secret{} = ikm) do
+    {:ok, [ck, temp_k]} = Vault.hkdf(vault, ck, ikm, 2)
+    {:ok, new_temp_k} = Vault.set_secret_type(vault, temp_k, :aes256)
+    %__MODULE__{state | ck: ck, cs: CipherState.set_key(cs, new_temp_k)}
   end
 
-  def mix_hash(%__MODULE__{} = state, nil), do: mix_hash(state, "")
+  def mix_hash(%__MODULE__{} = state, vault, nil), do: mix_hash(state, vault, "")
 
-  def mix_hash(%__MODULE__{hash: hash, h: h} = state, data) do
-    h = Vault.hash(hash, <<h::binary, data::binary>>)
+  def mix_hash(%__MODULE__{hash: hash, h: h} = state, vault, data) do
+    {:ok, h} = Vault.hash(vault, hash, <<h::binary, data::binary>>)
     %__MODULE__{state | h: h}
   end
 
-  def mix_key_and_hash(%__MODULE__{hash: hash, ck: ck, cs: cs} = state, ikm) do
-    [ck, temp_h, <<temp_k::size(32)-binary, _::binary>>] = Vault.hkdf(hash, ck, ikm)
-    cs = CipherState.set_key(cs, temp_k)
-    mix_hash(%__MODULE__{state | ck: ck, cs: cs}, temp_h)
+  def mix_key_and_hash(%__MODULE__{ck: ck, cs: cs} = state, vault, %Secret{} = ikm) do
+    {:ok, [ck, temp_h, temp_k]} = Vault.hkdf(vault, ck, ikm, 3)
+    {:ok, new_temp_k} = Vault.set_secret_type(vault, temp_k, :aes256)
+    cs = CipherState.set_key(cs, new_temp_k)
+    mix_hash(%__MODULE__{state | ck: ck, cs: cs}, vault, temp_h)
   end
 
-  def encrypt_and_hash(%__MODULE__{cs: cs, h: h} = state, plaintext) do
-    {:ok, cs, ciphertext} = CipherState.encrypt(cs, h, plaintext)
-    {:ok, mix_hash(%__MODULE__{state | cs: cs}, ciphertext), ciphertext}
+  def encrypt_and_hash(%__MODULE__{cs: cs, h: h} = state, vault, plaintext) do
+    {:ok, cs, ciphertext} = CipherState.encrypt(cs, vault, h, plaintext)
+    {:ok, mix_hash(%__MODULE__{state | cs: cs}, vault, ciphertext), ciphertext}
   end
 
-  def decrypt_and_hash(%__MODULE__{cs: cs, h: h} = state, ciphertext) do
-    with {:ok, cs, plaintext} <- CipherState.decrypt(cs, h, ciphertext) do
-      {:ok, mix_hash(%__MODULE__{state | cs: cs}, ciphertext), plaintext}
+  def decrypt_and_hash(%__MODULE__{cs: cs, h: h} = state, vault, ciphertext) do
+    with {:ok, cs, plaintext} <- CipherState.decrypt(cs, vault, h, ciphertext) do
+      {:ok, mix_hash(%__MODULE__{state | cs: cs}, vault, ciphertext), plaintext}
     end
   end
 
-  def split(%__MODULE__{hash: hash, ck: ck, cs: cs}) do
-    [
-      <<temp_k1::size(32)-binary, _::binary>>,
-      <<temp_k2::size(32)-binary, _::binary>>,
-      _
-    ] = Vault.hkdf(hash, ck, "")
+  def split(%__MODULE__{ck: ck, cs: cs}, vault) do
+    # TODO: Should hkdf import an empty secret here for the input key material?
+    {:ok, empty} =
+      Vault.import_secret(
+        vault,
+        "",
+        SecretAttributes.unspecified(:ephemeral)
+      )
 
-    {CipherState.set_key(cs, temp_k1), CipherState.set_key(cs, temp_k2)}
+    {:ok,
+     [
+       temp_k1,
+       temp_k2
+     ]} = Vault.hkdf(vault, ck, empty, 2)
+
+    {:ok, new_temp_k1} = Vault.set_secret_type(vault, temp_k1, :aes256)
+    {:ok, new_temp_k2} = Vault.set_secret_type(vault, temp_k2, :aes256)
+    {CipherState.set_key(cs, new_temp_k1), CipherState.set_key(cs, new_temp_k2)}
   end
 
   def cipher_state(%__MODULE__{cs: cs}), do: cs
