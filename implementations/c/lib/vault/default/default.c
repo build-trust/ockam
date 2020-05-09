@@ -721,7 +721,7 @@ ockam_error_t vault_default_secret_key_create(ockam_vault_t*                    
     goto exit;
   }
 
-  if ((input == 0) != (input_length == 0)) {
+  if ((input == 0) && (input_length != 0)) {
     error = VAULT_ERROR_INVALID_PARAM;
     goto exit;
   }
