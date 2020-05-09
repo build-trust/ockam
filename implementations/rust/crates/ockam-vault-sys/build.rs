@@ -58,7 +58,9 @@ fn main() {
             .join(&format!("build/{}/lib", profile))
             .display()
     );
+    println!("cargo:rustc-link-lib=static=ockam_vault");
     println!("cargo:rustc-link-lib=static=ockam_vault_default");
+    println!("cargo:rustc-link-lib=static=ockam_memory");
     // Expose include path to downstream crates via DEP_OCKAM_VAULT_INCLUDE
     println!("cargo:include={}", include_dir.display());
     // Rerun build if any of the include paths change
@@ -121,10 +123,10 @@ fn generate_bindings(
         .prepend_enum_name(false)
         .layout_tests(false)
         .ignore_methods()
-        .bitfield_enum("OckamFeatures")
-        .whitelist_function("(Ockam|Vault).*")
-        .whitelist_type("(kOckam|Ockam|OCKAM|Vault|VAULT).*")
-        .whitelist_var("(kOckam|Ockam|OCKAM|Vault|VAULT).*")
+        .bitfield_enum("VaultFeatures")
+        .whitelist_function("(ockam|Ockam|Vault).*")
+        .whitelist_type("(ockam|kOckam|Ockam|OCKAM|Vault|VAULT).*")
+        .whitelist_var("(ockam|kOckam|Ockam|OCKAM|Vault|VAULT|MEMORY_ERROR).*")
         .clang_arg("-I")
         .clang_arg(include_dir.to_str().unwrap())
         .clang_arg("-I")
