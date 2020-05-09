@@ -1,26 +1,55 @@
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 
 use rustler;
 use rustler::types::{Binary, OwnedBinary};
 use rustler::{Env, ResourceArc};
 
-use ockam::vault::{Curve, KeyType, Vault, VaultFeatures, VaultResult};
+use ockam::vault::*;
 
+/// Wraps a Vault in a lock to protect it when shared across threads
 pub struct VaultResource {
-    vault: RwLock<Vault>,
+    vault: Mutex<Vault>,
 }
 unsafe impl Send for VaultResource {}
 unsafe impl Sync for VaultResource {}
 impl VaultResource {
-    pub fn new(curve: Curve) -> Result<Self, ()> {
-        let features = VaultFeatures::OCKAM_VAULT_FEATURE_ALL;
-        let vault = Vault::new(features, curve)?;
+    pub fn new() -> VaultResult<Self> {
+        let vault = Vault::new()?;
         Ok(Self {
-            vault: RwLock::new(vault),
+            vault: Mutex::new(vault),
         })
     }
 }
 
+/// Wraps a Secret in a r/w lock to ensure that set_type/destroy are performed only
+/// when exclusive access is held; all other usages are read-only.
+///
+/// In addition, this resource holds a reference to the VaultResource it was pulled
+/// from, to prevent the Vault from being destroyed with secrets still being used.
+pub struct SecretResource {
+    vault: ResourceArc<VaultResource>,
+    secret: RwLock<Secret>,
+}
+unsafe impl Send for SecretResource {}
+unsafe impl Sync for SecretResource {}
+impl SecretResource {
+    pub fn new(vault: ResourceArc<VaultResource>, secret: Secret) -> Self {
+        Self {
+            vault,
+            secret: RwLock::new(secret),
+        }
+    }
+}
+impl Drop for SecretResource {
+    fn drop(&mut self) {
+        let mut secret = self.secret.get_mut().unwrap();
+        let mut vault = self.vault.vault.lock().unwrap();
+        let _ = vault.destroy_secret(&mut secret).ok();
+        drop(vault);
+    }
+}
+
+/// Represents the result of operations which return `:ok | :error`
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MayFail {
     Ok,
@@ -45,129 +74,201 @@ impl rustler::Encoder for MayFail {
 }
 
 #[rustler::nif]
-pub fn make_vault(curve: Curve) -> Result<ResourceArc<VaultResource>, ()> {
-    Ok(ResourceArc::new(VaultResource::new(curve)?))
+pub fn make_vault() -> VaultResult<ResourceArc<VaultResource>> {
+    Ok(ResourceArc::new(VaultResource::new()?))
 }
 
 #[rustler::nif]
 pub fn random(resource: ResourceArc<VaultResource>) -> i32 {
     use rand::prelude::*;
 
-    let mut vault = resource.vault.write().unwrap();
+    let mut vault = resource.vault.lock().unwrap();
     vault.gen()
 }
 
 #[rustler::nif]
-pub fn key_gen(resource: ResourceArc<VaultResource>, key_type: KeyType) -> MayFail {
-    let mut vault = resource.vault.write().unwrap();
-    vault.key_gen(key_type).into()
+pub fn sha256<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<VaultResource>,
+    data: Binary,
+) -> VaultResult<Binary<'a>> {
+    let mut buffer = OwnedBinary::new(32).unwrap();
+    let mut vault = resource.vault.lock().unwrap();
+    let bytes_written = vault.sha256_with_buffer(data.as_slice(), buffer.as_mut_slice())?;
+
+    if bytes_written < 32 {
+        let _ = buffer.realloc(bytes_written);
+    }
+
+    Ok(buffer.release(env))
+}
+
+#[rustler::nif]
+pub fn generate_secret(
+    vault_resource: ResourceArc<VaultResource>,
+    attributes: SecretAttributes,
+) -> VaultResult<ResourceArc<SecretResource>> {
+    let mut vault = vault_resource.vault.lock().unwrap();
+    vault
+        .generate_secret(attributes)
+        .map(|s| ResourceArc::new(SecretResource::new(vault_resource.clone(), s)))
+}
+
+#[rustler::nif]
+pub fn import_secret(
+    vault_resource: ResourceArc<VaultResource>,
+    input: Binary,
+    attributes: SecretAttributes,
+) -> VaultResult<ResourceArc<SecretResource>> {
+    let mut vault = vault_resource.vault.lock().unwrap();
+    vault
+        .import_secret(input.as_slice(), attributes)
+        .map(|s| ResourceArc::new(SecretResource::new(vault_resource.clone(), s)))
+}
+
+#[rustler::nif]
+pub fn export_secret<'a>(
+    env: Env<'a>,
+    vault_resource: ResourceArc<VaultResource>,
+    secret_resource: ResourceArc<SecretResource>,
+) -> VaultResult<Binary<'a>> {
+    let secret = secret_resource.secret.read().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    let attrs = vault.get_secret_attributes(&secret)?;
+    let mut buffer = OwnedBinary::new(attrs.length as usize).unwrap();
+    let bytes_written = vault.export_secret_with_buffer(&secret, buffer.as_mut_slice())?;
+
+    if bytes_written < attrs.length as usize {
+        let _ = buffer.realloc(bytes_written);
+    }
+
+    Ok(buffer.release(env))
+}
+
+#[rustler::nif]
+pub fn get_secret_attributes(
+    vault_resource: ResourceArc<VaultResource>,
+    secret_resource: ResourceArc<SecretResource>,
+) -> VaultResult<SecretAttributes> {
+    let secret = secret_resource.secret.read().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    vault.get_secret_attributes(&secret)
 }
 
 #[rustler::nif]
 pub fn get_public_key<'a>(
     env: Env<'a>,
-    resource: ResourceArc<VaultResource>,
-    key_type: KeyType,
+    vault_resource: ResourceArc<VaultResource>,
+    secret_resource: ResourceArc<SecretResource>,
 ) -> VaultResult<Binary<'a>> {
-    let mut buffer = OwnedBinary::new(32).unwrap();
-    let mut vault = resource.vault.write().unwrap();
-    vault.get_public_key_with_buffer(key_type, buffer.as_mut_slice())?;
+    let secret = secret_resource.secret.read().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    let attrs = vault.get_secret_attributes(&secret)?;
+    let mut buffer = OwnedBinary::new(attrs.length as usize).unwrap();
+    let bytes_written = vault.get_public_key_with_buffer(&secret, buffer.as_mut_slice())?;
+
+    if bytes_written < attrs.length as usize {
+        let _ = buffer.realloc(bytes_written);
+    }
+
     Ok(buffer.release(env))
 }
 
 #[rustler::nif]
-pub fn write_public_key(
-    resource: ResourceArc<VaultResource>,
-    key_type: KeyType,
-    privkey: Binary,
+pub fn set_secret_type(
+    vault_resource: ResourceArc<VaultResource>,
+    secret_resource: ResourceArc<SecretResource>,
+    ty: SecretType,
 ) -> MayFail {
-    let mut vault = resource.vault.write().unwrap();
-    vault.write_private_key(key_type, privkey.as_slice()).into()
+    let mut secret = secret_resource.secret.write().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    vault.set_secret_type(&mut secret, ty).into()
 }
 
 #[rustler::nif]
-pub fn ecdh<'a>(
-    env: Env<'a>,
-    resource: ResourceArc<VaultResource>,
-    key_type: KeyType,
-    pubkey: Binary,
-) -> VaultResult<Binary<'a>> {
-    let mut buffer = OwnedBinary::new(32).unwrap();
-    let mut vault = resource.vault.write().unwrap();
-    vault.ecdh_with_buffer(key_type, pubkey.as_slice(), buffer.as_mut_slice())?;
-    Ok(buffer.release(env))
+pub fn ecdh(
+    vault_resource: ResourceArc<VaultResource>,
+    privkey_resource: ResourceArc<SecretResource>,
+    peer_pubkey: Binary,
+) -> VaultResult<ResourceArc<SecretResource>> {
+    let privkey = privkey_resource.secret.read().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    vault
+        .ecdh(&privkey, peer_pubkey.as_slice())
+        .map(|s| ResourceArc::new(SecretResource::new(vault_resource.clone(), s)))
 }
 
 #[rustler::nif]
-pub fn hkdf<'a>(
-    env: Env<'a>,
-    resource: ResourceArc<VaultResource>,
-    salt: Binary,
-    key: Binary,
-    info: Option<Binary>,
-) -> VaultResult<Binary<'a>> {
-    let salt_slice = salt.as_slice();
-    let key_slice = key.as_slice();
-    let info = info.map(|i| i.as_slice());
-    let mut buffer = OwnedBinary::new(32).unwrap();
-    let mut vault = resource.vault.write().unwrap();
-    vault.hkdf_with_buffer(salt_slice, key_slice, info, buffer.as_mut_slice())?;
-    Ok(buffer.release(env))
+pub fn hkdf_sha256(
+    vault_resource: ResourceArc<VaultResource>,
+    salt_resource: ResourceArc<SecretResource>,
+    input_key_material_resource: ResourceArc<SecretResource>,
+    num_derived_outputs: u8,
+) -> VaultResult<Vec<ResourceArc<SecretResource>>> {
+    let salt = salt_resource.secret.read().unwrap();
+    let input_key_material = input_key_material_resource.secret.read().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    let mut secrets = vault.hkdf_sha256(&salt, &input_key_material, num_derived_outputs)?;
+
+    let secret_resources = secrets
+        .drain(..)
+        .map(|s| ResourceArc::new(SecretResource::new(vault_resource.clone(), s)))
+        .collect::<Vec<_>>();
+
+    Ok(secret_resources)
 }
 
 #[rustler::nif]
-pub fn aes_gcm_encrypt<'a>(
+pub fn aead_aes_gcm_encrypt<'a>(
     env: Env<'a>,
-    resource: ResourceArc<VaultResource>,
-    input: Binary,
-    key: Binary,
-    iv: Binary,
+    vault_resource: ResourceArc<VaultResource>,
+    key_resource: ResourceArc<SecretResource>,
+    nonce: u64,
     additional_data: Option<Binary>,
-    tag: Binary,
+    plaintext: Binary,
 ) -> VaultResult<Binary<'a>> {
-    let input_slice = input.as_slice();
-    let key_slice = key.as_slice();
-    let iv_slice = iv.as_slice();
-    let additional_data = additional_data.map(|d| d.as_slice());
-    let tag_slice = tag.as_slice();
-    let mut buffer = OwnedBinary::new(input_slice.len()).unwrap();
-    let mut vault = resource.vault.write().unwrap();
-    vault.aes_gcm_encrypt_with_buffer(
-        input_slice,
-        key_slice,
-        iv_slice,
-        additional_data,
-        tag_slice,
+    let key = key_resource.secret.read().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    let plaintext_slice = plaintext.as_slice();
+    let len = plaintext_slice.len() + 16;
+    let mut buffer = OwnedBinary::new(len).unwrap();
+    let bytes_written = vault.aead_aes_gcm_encrypt_with_buffer(
+        &key,
+        nonce,
+        additional_data.map(|d| d.as_slice()),
+        plaintext_slice,
         buffer.as_mut_slice(),
     )?;
+    if bytes_written < len {
+        let _ = buffer.realloc(bytes_written);
+    }
     Ok(buffer.release(env))
 }
 
 #[rustler::nif]
-pub fn aes_gcm_decrypt<'a>(
+pub fn aead_aes_gcm_decrypt<'a>(
     env: Env<'a>,
-    resource: ResourceArc<VaultResource>,
-    input: Binary,
-    key: Binary,
-    iv: Binary,
+    vault_resource: ResourceArc<VaultResource>,
+    key_resource: ResourceArc<SecretResource>,
+    nonce: u64,
     additional_data: Option<Binary>,
-    tag: Binary,
+    ciphertext_and_tag: Binary,
 ) -> VaultResult<Binary<'a>> {
-    let input_slice = input.as_slice();
-    let key_slice = key.as_slice();
-    let iv_slice = iv.as_slice();
-    let additional_data = additional_data.map(|d| d.as_slice());
-    let tag_slice = tag.as_slice();
-    let mut buffer = OwnedBinary::new(input_slice.len()).unwrap();
-    let mut vault = resource.vault.write().unwrap();
-    vault.aes_gcm_decrypt_with_buffer(
-        input_slice,
-        key_slice,
-        iv_slice,
-        additional_data,
-        tag_slice,
+    let key = key_resource.secret.read().unwrap();
+    let mut vault = vault_resource.vault.lock().unwrap();
+    let ciphertext_and_tag_slice = ciphertext_and_tag.as_slice();
+    let len = ciphertext_and_tag_slice.len() - 16;
+    let mut buffer = OwnedBinary::new(len).unwrap();
+    let bytes_written = vault.aead_aes_gcm_decrypt_with_buffer(
+        &key,
+        nonce,
+        additional_data.map(|d| d.as_slice()),
+        ciphertext_and_tag_slice,
         buffer.as_mut_slice(),
     )?;
+    if bytes_written < len {
+        let _ = buffer.realloc(bytes_written);
+    }
     Ok(buffer.release(env))
 }
 
@@ -176,18 +277,23 @@ rustler::init!(
     [
         make_vault,
         random,
-        key_gen,
+        sha256,
+        generate_secret,
+        import_secret,
+        export_secret,
+        get_secret_attributes,
+        set_secret_type,
         get_public_key,
-        write_public_key,
         ecdh,
-        hkdf,
-        aes_gcm_encrypt,
-        aes_gcm_decrypt,
+        hkdf_sha256,
+        aead_aes_gcm_encrypt,
+        aead_aes_gcm_decrypt,
     ],
     load = on_load
 );
 
 fn on_load(env: Env, _: rustler::Term) -> bool {
     rustler::resource!(VaultResource, env);
+    rustler::resource!(SecretResource, env);
     true
 }

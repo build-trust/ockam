@@ -221,7 +221,7 @@ impl From<ockam_vault_secret_purpose_t> for SecretPurpose {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "term_encoding", derive(NifStruct))]
-#[module = "Ockam.Vault.SecretAttributes"]
+#[cfg_attr(feature = "term_encoding", module = "Ockam.Vault.SecretAttributes")]
 pub struct SecretAttributes {
     pub length: u16,
     pub ty: SecretType,

@@ -13,10 +13,12 @@ defmodule Ockam.Channel do
   alias Ockam.Router.Protocol.Encoding
   alias Ockam.Router.Protocol.Message.Envelope
   alias Ockam.Router.Protocol.Message.Payload
+  alias Ockam.Vault
 
-  defstruct [:rx, :tx, :hash, :state]
+  defstruct [:vault, :rx, :tx, :hash, :state]
 
   @type t :: %__MODULE__{
+          vault: Vault.t(),
           rx: CipherState.t(),
           tx: CipherState.t(),
           hash: binary(),
@@ -31,16 +33,16 @@ defmodule Ockam.Channel do
   @doc """
   Encrypt a message to be sent over the given channel
   """
-  def encrypt(%__MODULE__{tx: tx} = chan, payload) do
-    {:ok, new_tx, ciphertext} = CipherState.encrypt(tx, "", payload)
+  def encrypt(%__MODULE__{vault: vault, tx: tx} = chan, payload) do
+    {:ok, new_tx, ciphertext} = CipherState.encrypt(tx, vault, "", payload)
     {:ok, %__MODULE__{chan | tx: new_tx}, ciphertext}
   end
 
   @doc """
   Decrypt a message received over the given channel
   """
-  def decrypt(%__MODULE__{rx: rx} = chan, payload) do
-    with {:ok, new_rx, plaintext} <- CipherState.decrypt(rx, "", payload) do
+  def decrypt(%__MODULE__{vault: vault, rx: rx} = chan, payload) do
+    with {:ok, new_rx, plaintext} <- CipherState.decrypt(rx, vault, "", payload) do
       {:ok, %__MODULE__{chan | rx: new_rx}, plaintext}
     end
   end
@@ -48,10 +50,11 @@ defmodule Ockam.Channel do
   @doc """
   Start a handshake
   """
-  @spec handshake(role(), map()) :: {:ok, Handshake.t()} | {:error, {module(), reason()}}
-  def handshake(role, options)
+  @spec handshake(Vault.t(), role(), map()) ::
+          {:ok, Handshake.t()} | {:error, {module(), reason()}}
+  def handshake(vault, role, options)
 
-  def handshake(role, options) when role in @roles and is_map(options) do
+  def handshake(%Vault{} = vault, role, options) when role in @roles and is_map(options) do
     prologue = Map.get(options, :prologue, "")
 
     protocol =
@@ -73,16 +76,16 @@ defmodule Ockam.Channel do
     rs = Map.get(options, :rs)
     re = Map.get(options, :re)
 
-    Handshake.init(protocol, role, prologue, {s, e, rs, re})
+    Handshake.init(vault, protocol, role, prologue, {s, e, rs, re})
   catch
     :throw, err ->
       err
   end
 
-  def handshake(role, _options) when role not in @roles,
+  def handshake(%Vault{}, role, _options) when role not in @roles,
     do: {:error, {__MODULE__, {:invalid_role, role}}}
 
-  def handshake(_role, _options),
+  def handshake(%Vault{}, _role, _options),
     do: {:error, {__MODULE__, {:invalid_options, :expected_map}}}
 
   @doc """
@@ -127,12 +130,12 @@ defmodule Ockam.Channel do
   """
   @spec negotiate_secure_channel(Handshake.t(), Transport.t(), map()) ::
           {:ok, t(), Transport.t()} | {:error, {__MODULE__, term()}}
-  @spec negotiate_secure_channel(role(), Transport.t(), map()) ::
+  @spec negotiate_secure_channel(Vault.t(), role(), Transport.t(), map()) ::
           {:ok, t(), Transport.t()} | {:error, {__MODULE__, term()}}
-  def negotiate_secure_channel(role, transport, options)
+  def negotiate_secure_channel(vault, role, transport, options)
 
-  def negotiate_secure_channel(role, transport, options) when role in @roles do
-    with {:ok, handshake} <- handshake(role, options) do
+  def negotiate_secure_channel(%Vault{} = vault, role, transport, options) when role in @roles do
+    with {:ok, handshake} <- handshake(vault, role, options) do
       timeout = Map.get(options, :timeout, :infinity)
       do_negotiate_secure_channel(handshake, transport, timeout)
     end

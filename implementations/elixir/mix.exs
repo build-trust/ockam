@@ -25,7 +25,6 @@ defmodule Ockam.MixProject do
     [
       {:rustler, "~> 0.21"},
       {:gen_state_machine, "~> 2.1"},
-      {:enacl, "~> 1.0"},
       {:jason, "~> 1.1", only: [:test]}
     ]
   end

@@ -1,254 +1,169 @@
 defmodule Ockam.Vault do
   require Logger
 
+  alias __MODULE__.NIF
   alias Ockam.Vault.KeyPair
+  alias Ockam.Vault.Secret
+  alias Ockam.Vault.SecretAttributes
 
-  @type key_type :: :static | :ephemeral
-  @type key_id :: binary()
-  @type pubkey :: binary()
-  @type privkey :: binary()
-  @type keypair :: Ockam.Vault.KeyPair.t()
-  @type salt :: binary()
-  @type cipher :: :aes_256_gcm
-  @type curve :: :x25519
+  defstruct [:context]
 
-  @hashes [:sha256, :sha512, :blake2s, :blake2b]
-  @tag_size 16
-  @max_nonce 0xFFFFFFFFFFFFFFFF
+  @opaque t :: %__MODULE__{}
 
-  def init_vault!(config) when is_list(config) do
-    with {_, {:ok, curve}} <- {:curve, Keyword.fetch(config, :curve)},
-         _ = :ets.new(__MODULE__.Keys, [:named_table, :set, :public]),
-         _ = :ets.new(__MODULE__.Vaults, [:named_table, :set, :public]) do
-      case Keyword.get(config, :keypairs, []) do
-        [] ->
-          :ok
-
-        kps when is_list(kps) ->
-          Logger.info("Registering configured static keys..")
-
-          for {name, meta} <- kps do
-            name = Atom.to_string(name)
-            dir = Keyword.get(meta, :path, Application.app_dir(:ockam, :priv))
-            Logger.debug("Registering key '#{name}' in directory '#{dir}'")
-            pubkey_path = Path.join(dir, "#{name}.pub")
-            privkey_path = Path.join(dir, "#{name}")
-            pubkey = File.read!(pubkey_path)
-            privkey = File.read!(privkey_path)
-            true = :ets.insert_new(__MODULE__.Keys, {name, pubkey, privkey})
-          end
-
-          :ok
-      end
-
-      Logger.info("Vault initialized!")
-    else
-      error ->
-        exit(error)
+  @doc """
+  Create a new instance of a Vault
+  """
+  @spec new() :: {:ok, t} | {:error, term}
+  def new() do
+    with {:ok, vault} = NIF.make_vault() do
+      {:ok, %__MODULE__{context: vault}}
     end
   end
 
-  defdelegate make_vault(curve), to: Ockam.Vault.NIF
-
-  def random() do
-    bytes = :crypto.strong_rand_bytes(8)
-    {:ok, :crypto.bytes_to_integer(bytes)}
+  @doc """
+  Generate a new unique random 32-bit integer value
+  """
+  @spec random(t) :: non_neg_integer()
+  def random(%__MODULE__{context: context}) do
+    NIF.random(context)
   end
-
-  @spec key_gen_static(key_id) :: {:ok, {key_id, pubkey, privkey}}
-  def key_gen_static(key_id) do
-    case :ets.lookup(__MODULE__.Keys, key_id) do
-      [] ->
-        {pubkey, privkey} = :crypto.generate_key(:ecdh, :x25519)
-        true = :ets.insert_new(__MODULE__.Keys, {key_id, pubkey, privkey})
-        {:ok, {key_id, pubkey, privkey}}
-
-      [{^key_id, _pubkey, _privkey} = found] ->
-        {:ok, found}
-    end
-  end
-
-  @spec key_gen_ephemeral() :: {:ok, {pubkey, privkey}}
-  def key_gen_ephemeral() do
-    {pubkey, privkey} = :crypto.generate_key(:ecdh, :x25519)
-    {:ok, {pubkey, privkey}}
-  end
-
-  def get_public_key(:static, key_id) do
-    case :ets.lookup(__MODULE__.Keys, key_id) do
-      [] ->
-        {:error, :not_found}
-
-      [{^key_id, pubkey, _privkey}] ->
-        {:ok, pubkey}
-    end
-  end
-
-  def get_public_key(:ephemeral, _key_id) do
-    {:error, {:invalid_key_type, :ephemeral}}
-  end
-
-  defdelegate write_public_key(vault, key_type, privkey), to: Ockam.Vault.NIF
 
   @doc """
   Hash some data using the given algorithm
   """
-  def hash(algorithm, data)
+  def hash(t, algorithm, data)
 
-  def hash(:sha256, data), do: sha256(data)
-  def hash(:sha512, data), do: sha512(data)
+  def hash(vault, :sha256, data), do: sha256(vault, data)
+  def hash(_vault, :sha512, data), do: sha512(data)
 
   @doc "Hash some data with SHA-256"
-  def sha256(data), do: :crypto.hash(:sha256, data)
+  def sha256(%__MODULE__{context: context}, data) when is_binary(data),
+    do: NIF.sha256(context, data)
+
   @doc "Hash some data with SHA-512"
   def sha512(data), do: :crypto.hash(:sha512, data)
+
+  @spec generate_secret(t, SecretAttributes.t()) :: {:ok, Secret.t()} | {:error, term}
+  def generate_secret(%__MODULE__{context: context}, %SecretAttributes{} = attrs) do
+    with {:ok, secret} <- NIF.generate_secret(context, attrs) do
+      {:ok, Secret.new(secret, attrs)}
+    end
+  end
+
+  @spec import_secret(t, binary(), SecretAttributes.t()) :: {:ok, Secret.t()} | {:error, term}
+  def import_secret(%__MODULE__{context: context}, data, %SecretAttributes{} = attrs) do
+    with {:ok, secret} <- NIF.import_secret(context, data, attrs) do
+      {:ok, Secret.new(secret, attrs)}
+    end
+  end
+
+  @spec export_secret(t, Secret.t()) :: {:ok, binary()} | {:error, term}
+  def export_secret(%__MODULE__{context: context}, %Secret{secret: secret}) do
+    NIF.export_secret(context, secret)
+  end
+
+  @spec get_secret_attributes(t, Secret.t()) :: {:ok, SecretAttributes.t()} | {:error, term}
+  def get_secret_attributes(%__MODULE__{context: context}, %Secret{secret: secret}) do
+    NIF.get_secret_attributes(context, secret)
+  end
+
+  @spec set_secret_type(t, Secret.t(), SecretAttributes.secret_type()) :: :ok | {:error, term}
+  def set_secret_type(
+        %__MODULE__{context: context},
+        %Secret{secret: secret, attrs: attrs} = s,
+        ty
+      ) do
+    with {:ok, new_attrs} <- SecretAttributes.set_type(attrs, ty),
+         :ok <- NIF.set_secret_type(context, secret, ty) do
+      {:ok, %Secret{s | attrs: new_attrs}}
+    end
+  end
+
+  @spec get_public_key(t, Secret.t()) :: {:ok, binary()} | {:error, term}
+  def get_public_key(%__MODULE__{context: context}, %Secret{secret: secret}) do
+    NIF.get_public_key(context, secret)
+  end
 
   @doc """
   Perform a Diffie-Hellman calculation with the secret key from `us`
   and the public key from `them` with algorithm `curve`
   """
-  @spec dh(curve(), keypair(), keypair()) :: binary()
-  def dh(type, %KeyPair{} = us, %KeyPair{} = them) when type in [:x25519, :x448] do
-    priv = KeyPair.private_key(us)
-    pub = KeyPair.public_key(them)
-    :crypto.compute_key(:ecdh, pub, priv, type)
+  @spec ecdh(t, KeyPair.t(), KeyPair.t()) :: {:ok, Secret.t()} | {:error, term}
+  def ecdh(%__MODULE__{context: context}, %KeyPair{} = us, %KeyPair{} = them) do
+    do_ecdh(context, KeyPair.private_key(us), KeyPair.public_key(them))
   end
 
-  def dh(type, _, _), do: :erlang.error({__MODULE__, {:unsupported_dh, type}})
-
-  @rekey_size 32 * 8
-  def rekey(:aes_256_gcm, key) do
-    encrypt(:aes_256_gcm, key, @max_nonce, "", <<0::size(@rekey_size)>>)
-  end
-
-  @doc """
-  Create a MAC using the HMAC algorithm
-  """
-  def hmac(hash, key, data)
-
-  def hmac(hash, key, data)
-      when hash in [:sha256, :sha512] and is_binary(key) and is_binary(data) do
-    :crypto.mac(:hmac, hash, key, data)
-  catch
-    :error, {tag, {_file, _line}, description} ->
-      :erlang.error({__MODULE__, {:hmac, tag, description}})
-  end
-
-  def hmac(hash, key, data)
-      when hash in [:blake2b, :blake2s] and is_binary(key) and is_binary(data) do
-    block_len = block_length(hash)
-    block = hmac_format_key(hash, key, 0x36, block_len)
-    hash_value = hash(hash, <<block::binary, data::binary>>)
-    block = hmac_format_key(hash, key, 0x5C, block_len)
-    hash(hash, <<block::binary, hash_value::binary>>)
-  end
-
-  defp hmac_format_key(hash, key, pad, block_len) do
-    key =
-      if byte_size(key) <= block_len do
-        key
-      else
-        hash(hash, key)
-      end
-
-    key = pad(key, block_len, 0)
-
-    <<padding::size(32)>> = <<pad::size(8), pad::size(8), pad::size(8), pad::size(8)>>
-
-    for <<(<<word::size(32)>> <- key)>>, into: <<>> do
-      <<:erlang.bxor(word, padding)::size(32)>>
+  defp do_ecdh(vault, %Secret{secret: privkey}, pubkey) when is_binary(pubkey) do
+    with {:ok, secret} <- NIF.ecdh(vault, privkey, pubkey),
+         {:ok, attrs} <- NIF.get_secret_attributes(vault, secret) do
+      {:ok, Secret.new(secret, attrs)}
     end
   end
 
   @doc """
   Perform HKDF on the given key and data
   """
-  def hkdf(hash, key, data) when hash in @hashes and is_binary(key) and is_binary(data) do
-    len = hash_length(hash)
-    key = if key in [nil, ""], do: :binary.copy("", len), else: key
-    data = if is_nil(data), do: "", else: data
-    prk = hmac(hash, key, data)
-    a = hmac(hash, prk, <<1::size(8)>>)
-    b = hmac(hash, prk, a <> <<2::size(8)>>)
-    c = hmac(hash, prk, b <> <<3::size(8)>>)
-    [a, b, c]
+  @spec hkdf(t, Secret.t(), Secret.t(), num_outputs :: pos_integer()) :: {:ok, [Secret.t()]}
+  def hkdf(
+        %__MODULE__{context: context},
+        %Secret{secret: salt},
+        %Secret{secret: ikm},
+        num_outputs
+      )
+      when is_integer(num_outputs) and num_outputs > 0 do
+    with {:ok, result} <- NIF.hkdf_sha256(context, salt, ikm, num_outputs) do
+      secrets =
+        for secret <- result do
+          case NIF.get_secret_attributes(context, secret) do
+            {:ok, attrs} ->
+              Secret.new(secret, attrs)
+
+            {:error, reason} ->
+              throw(reason)
+          end
+        end
+
+      {:ok, secrets}
+    end
+  catch
+    :throw, reason ->
+      {:error, reason}
   end
 
   @doc """
   Encrypt a message using the provided cipher
   """
   @spec encrypt(
-          cipher,
-          key :: binary(),
+          t,
+          Secret.t(),
           nonce :: non_neg_integer(),
           aad :: binary(),
           plaintext :: binary()
-        ) :: binary()
-  def encrypt(:aes_256_gcm, key, nonce, aad, plaintext) do
-    nonce = <<0::size(32), nonce::size(64)>>
-
-    with {:ok, {ciphertext, tag}} <- aes_gcm_encrypt(plaintext, key, nonce, aad) do
-      {:ok, <<ciphertext::binary, tag::binary>>}
-    end
+        ) :: {:ok, binary()} | {:error, term}
+  def encrypt(%__MODULE__{context: context}, %Secret{secret: key}, nonce, aad, plaintext)
+      when is_integer(nonce) do
+    NIF.aead_aes_gcm_encrypt(context, key, nonce, aad, plaintext)
   end
 
   @doc """
   Decrypt a message using the provided cipher
   """
   @spec decrypt(
-          cipher,
-          key :: binary(),
+          t,
+          Secret.t(),
           nonce :: non_neg_integer(),
           aad :: binary(),
-          ciphertext :: binary()
-        ) ::
-          {:ok, binary()} | {:error, reason :: term}
-  def decrypt(:aes_256_gcm, key, nonce, aad, ciphertext) do
-    nonce = <<0::size(32), nonce::size(64)>>
-    len = byte_size(ciphertext) - @tag_size
-    <<ciphertext::size(len)-binary, tag::size(@tag_size)-binary>> = ciphertext
-    aes_gcm_decrypt(ciphertext, key, nonce, aad, tag)
+          ciphertext_and_tag :: binary()
+        ) :: {:ok, binary()} | {:error, reason :: term}
+  def decrypt(%__MODULE__{context: context}, %Secret{secret: key}, nonce, aad, ciphertext_and_tag)
+      when is_integer(nonce) do
+    NIF.aead_aes_gcm_decrypt(context, key, nonce, aad, ciphertext_and_tag)
   end
 
-  @doc """
-  Encrypt a message using AES-256 GCM
-  """
-  @spec aes_gcm_encrypt(binary(), binary(), binary(), binary()) ::
-          {:ok, {ciphertext :: binary, tag :: binary}} | {:error, term}
-  def aes_gcm_encrypt(input, key, iv, aad) when is_binary(key) do
-    {:ok, :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, input, aad, @tag_size, true)}
-  catch
-    :error, {tag, {_file, _line}, description} ->
-      {:error, {tag, description}}
-  end
-
-  @doc """
-  Decrypt a message encrypted with AES-256 GCM
-  """
-  def aes_gcm_decrypt(ciphertext, key, iv, aad, tag) when is_binary(key) do
-    case :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, ciphertext, aad, tag, false) do
-      :error ->
-        {:error, {:decrypt, "decryption failed"}}
-
-      plaintext ->
-        {:ok, plaintext}
-    end
-  catch
-    :error, {tag, {_file, _line}, description} ->
-      {:error, {tag, description}}
-  end
-
-  @doc "Pad data to at least `min_size`, using `pad_byte` to fill padding bytes"
-  def pad(data, min_size, pad_byte)
-      when is_binary(data) and min_size >= 0 and is_integer(pad_byte) and pad_byte <= 255 do
-    case byte_size(data) do
-      n when n >= min_size ->
-        data
-
-      n ->
-        padding = for _ <- 1..(min_size - n), do: <<pad_byte::size(8)>>, into: <<>>
-        <<data::binary, padding::binary>>
-    end
+  @max_nonce 0xFFFFFFFFFFFFFFFF
+  @rekey_size 32 * 8
+  def rekey(%__MODULE__{} = vault, key) do
+    encrypt(vault, key, @max_nonce, "", <<0::size(@rekey_size)>>)
   end
 
   @doc "Get the length in bytes of the given hash algorithm output"
@@ -266,4 +181,17 @@ defmodule Ockam.Vault do
   @doc "Get the key size in bytes of the given Diffie-Hellman algorithm"
   def dh_length(:x25519), do: 32
   def dh_length(:x448), do: 56
+
+  @doc "Pad data to at least `min_size`, using `pad_byte` to fill padding bytes"
+  def pad(data, min_size, pad_byte)
+      when is_binary(data) and min_size >= 0 and is_integer(pad_byte) and pad_byte <= 255 do
+    case byte_size(data) do
+      n when n >= min_size ->
+        data
+
+      n ->
+        padding = for _ <- 1..(min_size - n), do: <<pad_byte::size(8)>>, into: <<>>
+        <<data::binary, padding::binary>>
+    end
+  end
 end

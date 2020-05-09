@@ -7,7 +7,9 @@ defmodule Ockam.Transport.TCP.Connection do
   alias Ockam.Transport.Socket
   alias Ockam.Channel
   alias Ockam.Channel.Handshake
+  alias Ockam.Vault
   alias Ockam.Vault.KeyPair
+  alias Ockam.Vault.SecretAttributes
   alias Ockam.Router.Protocol.Message
   alias Ockam.Router.Protocol.Message.Envelope
   alias Ockam.Router.Protocol.Message.Payload
@@ -26,7 +28,7 @@ defmodule Ockam.Transport.TCP.Connection do
   end
 
   defmodule State do
-    defstruct [:socket, :data, :mode, :select_info, :handshake, :channel, :next]
+    defstruct [:socket, :data, :mode, :select_info, :handshake, :channel, :next, :vault]
   end
 
   def start_link(_opts, socket) do
@@ -34,16 +36,18 @@ defmodule Ockam.Transport.TCP.Connection do
   end
 
   def init([socket]) do
-    data = %State{socket: socket, data: "", select_info: nil}
+    {:ok, vault} = Vault.new()
+    data = %State{socket: socket, data: "", select_info: nil, vault: vault}
     {:ok, :initializing, data}
   end
 
-  def initializing({:call, from}, {:socket_controller, _conn}, data) do
+  def initializing({:call, from}, {:socket_controller, _conn}, %State{vault: vault} = data) do
     GenStateMachine.reply(from, :ok)
-    e = KeyPair.new(:x25519)
-    s = KeyPair.new(:x25519)
+    attrs = SecretAttributes.x25519(:ephemeral)
+    e = KeyPair.new(vault, attrs)
+    s = KeyPair.new(vault, attrs)
 
-    {:ok, handshake} = Channel.handshake(:responder, %{protocol: @protocol, e: e, s: s})
+    {:ok, handshake} = Channel.handshake(vault, :responder, %{protocol: @protocol, e: e, s: s})
 
     next = Handshake.next_message(handshake)
     new_data = %State{data | handshake: handshake, next: next}
@@ -271,10 +275,6 @@ defmodule Ockam.Transport.TCP.Connection do
   end
 
   defp log_debug(message) do
-    Logger.debug(message)
-  end
-
-  defp log_info(message) do
     Logger.debug(message)
   end
 

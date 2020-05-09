@@ -4,6 +4,8 @@ defmodule Ockam.Channel.Handshake do
   alias Ockam.Channel.Protocol
   alias Ockam.Channel
   alias Ockam.Vault
+  alias Ockam.Vault.Secret
+  alias Ockam.Vault.SecretAttributes
   alias Ockam.Vault.KeyPair
 
   @type role :: :initiator | :responder
@@ -18,19 +20,20 @@ defmodule Ockam.Channel.Handshake do
             re: nil,
             role: :initiator,
             dh: :x25519,
-            msgs: []
+            msgs: [],
+            vault: nil
 
-  def init(protocol_name, role, prologue, keys) when is_binary(protocol_name) do
+  def init(vault, protocol_name, role, prologue, keys) when is_binary(protocol_name) do
     with {:ok, protocol} <- Protocol.from_name(protocol_name) do
-      init(protocol, role, prologue, keys)
+      init(vault, protocol, role, prologue, keys)
     end
   end
 
-  def init(protocol, role, prologue, {s, e, rs, re}) do
+  def init(%Vault{} = vault, protocol, role, prologue, {s, e, rs, re}) do
     ss =
       protocol
-      |> HashState.init()
-      |> HashState.mix_hash(prologue)
+      |> HashState.init(vault)
+      |> HashState.mix_hash(vault, prologue)
 
     base_handshake = %__MODULE__{
       ss: ss,
@@ -40,7 +43,8 @@ defmodule Ockam.Channel.Handshake do
       re: re,
       role: role,
       dh: Protocol.dh(protocol),
-      msgs: Protocol.msgs(role, protocol)
+      msgs: Protocol.msgs(role, protocol),
+      vault: vault
     }
 
     handshake =
@@ -56,9 +60,9 @@ defmodule Ockam.Channel.Handshake do
     {:ok, handshake}
   end
 
-  def finalize(%__MODULE__{msgs: [], ss: ss, role: role} = hs) do
-    {c1, c2} = HashState.split(ss)
-    chan = %Channel{hash: HashState.h(ss), state: hs}
+  def finalize(%__MODULE__{vault: vault, msgs: [], ss: ss, role: role} = hs) do
+    {c1, c2} = HashState.split(ss, vault)
+    chan = %Channel{vault: vault, hash: HashState.h(ss), state: hs}
 
     case role do
       :initiator -> {:ok, %Channel{chan | tx: c2, rx: c1}}
@@ -117,17 +121,18 @@ defmodule Ockam.Channel.Handshake do
     {hs, msg}
   end
 
-  defp write_token(%__MODULE__{} = hs, token) do
+  defp write_token(%__MODULE__{vault: vault} = hs, token) do
     {k1, k2} = dh_token(hs, token)
-    {mix_key(hs, dh(hs, k1, k2)), <<>>}
+    {:ok, secret} = Vault.ecdh(vault, k1, k2)
+    {mix_key(hs, secret), <<>>}
   end
 
-  defp read_token(%__MODULE__{dh: dh} = hs, :e, data) do
+  defp read_token(%__MODULE__{vault: vault, dh: dh} = hs, :e, data) do
     dh_len = Vault.dh_length(dh)
 
     case data do
       <<re_pub::size(dh_len)-binary, data1::binary>> ->
-        re = KeyPair.new(dh, public: re_pub)
+        re = KeyPair.new(vault, public: re_pub)
         {:ok, mix_hash(%__MODULE__{hs | re: re}, re_pub), data1}
 
       _other ->
@@ -135,7 +140,7 @@ defmodule Ockam.Channel.Handshake do
     end
   end
 
-  defp read_token(%__MODULE__{dh: dh} = hs, :s, data) do
+  defp read_token(%__MODULE__{dh: dh, vault: vault} = hs, :s, data) do
     dh_len =
       if has_key(hs) do
         Vault.dh_length(dh) + 16
@@ -146,7 +151,7 @@ defmodule Ockam.Channel.Handshake do
     case data do
       <<temp::size(dh_len)-binary, data1::binary>> ->
         with {:ok, hs, rs_pub} <- decrypt_and_hash(hs, temp) do
-          rs = KeyPair.new(dh, public: rs_pub)
+          rs = KeyPair.new(vault, public: rs_pub)
           {:ok, %__MODULE__{hs | rs: rs}, data1}
         end
 
@@ -155,9 +160,12 @@ defmodule Ockam.Channel.Handshake do
     end
   end
 
-  defp read_token(%__MODULE__{} = hs, token, data) do
+  defp read_token(%__MODULE__{vault: vault} = hs, token, data) do
     {k1, k2} = dh_token(hs, token)
-    {:ok, mix_key(hs, dh(hs, k1, k2)), data}
+
+    with {:ok, secret} <- Vault.ecdh(vault, k1, k2) do
+      {:ok, mix_key(hs, secret), data}
+    end
   end
 
   defp dh_token(%__MODULE__{e: e, re: re}, :ee), do: {e, re}
@@ -167,9 +175,10 @@ defmodule Ockam.Channel.Handshake do
   defp dh_token(%__MODULE__{e: e, rs: rs, role: :responder}, :se), do: {e, rs}
   defp dh_token(%__MODULE__{s: s, rs: rs}, :ss), do: {s, rs}
 
-  defp new_key_pair(%__MODULE__{dh: dh}), do: KeyPair.new(dh)
-
-  defp dh(%__MODULE__{dh: dh}, key1, key2), do: Vault.dh(dh, key1, key2)
+  defp new_key_pair(%__MODULE__{dh: dh, vault: vault}) do
+    attrs = SecretAttributes.from_type(dh)
+    KeyPair.new(vault, attrs)
+  end
 
   defp has_key(%__MODULE__{ss: ss}) do
     ss
@@ -177,21 +186,21 @@ defmodule Ockam.Channel.Handshake do
     |> CipherState.has_key()
   end
 
-  defp mix_key(%__MODULE__{ss: ss} = hs, data) do
-    %__MODULE__{hs | ss: HashState.mix_key(ss, data)}
+  defp mix_key(%__MODULE__{vault: vault, ss: ss} = hs, %Secret{} = data) do
+    %__MODULE__{hs | ss: HashState.mix_key(ss, vault, data)}
   end
 
-  defp mix_hash(%__MODULE__{ss: ss} = hs, data) do
-    %__MODULE__{hs | ss: HashState.mix_hash(ss, data)}
+  defp mix_hash(%__MODULE__{vault: vault, ss: ss} = hs, data) do
+    %__MODULE__{hs | ss: HashState.mix_hash(ss, vault, data)}
   end
 
-  defp encrypt_and_hash(%__MODULE__{ss: ss} = hs, plaintext) do
-    {:ok, ss, ciphertext} = HashState.encrypt_and_hash(ss, plaintext)
+  defp encrypt_and_hash(%__MODULE__{vault: vault, ss: ss} = hs, plaintext) do
+    {:ok, ss, ciphertext} = HashState.encrypt_and_hash(ss, vault, plaintext)
     {:ok, %__MODULE__{hs | ss: ss}, ciphertext}
   end
 
-  defp decrypt_and_hash(%__MODULE__{ss: ss} = hs, ciphertext) do
-    with {:ok, ss, plaintext} <- HashState.decrypt_and_hash(ss, ciphertext) do
+  defp decrypt_and_hash(%__MODULE__{vault: vault, ss: ss} = hs, ciphertext) do
+    with {:ok, ss, plaintext} <- HashState.decrypt_and_hash(ss, vault, ciphertext) do
       {:ok, %__MODULE__{hs | ss: ss}, plaintext}
     else
       other ->
