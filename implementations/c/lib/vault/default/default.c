@@ -646,7 +646,7 @@ ockam_error_t vault_default_secret_ec_create(ockam_vault_t*                     
       goto exit;
     }
   } else {
-    if (input_length != size) {
+    if (input_length != 0 && input_length != size) {
       error = VAULT_ERROR_SECRET_SIZE_MISMATCH;
       goto exit;
     } else {
