@@ -14,5 +14,7 @@ ockam_cc_library(
     "${CMAKE_CURRENT_SOURCE_DIR}/urandom.h"
    PUBLIC_HDRS_DIR
     "random/"
+   DEPS
+     ockam::random
    PUBLIC)
 

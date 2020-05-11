@@ -170,7 +170,7 @@ void test_vault_aead_aes_gcm(void** state)
 
   attributes.purpose     = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT;
   attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
-  attributes.type        = OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED;
+  attributes.type        = OCKAM_VAULT_SECRET_TYPE_BUFFER;
   attributes.length      = g_aead_aes_gcm_data[test_data->test_count].key_size;
 
   error = ockam_vault_secret_import(test_data->vault,

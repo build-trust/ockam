@@ -14,5 +14,7 @@ ockam_cc_library(
     "${CMAKE_CURRENT_SOURCE_DIR}/stdlib.h"
    PUBLIC_HDRS_DIR
     "memory/"
+   DEPS
+     ockam::memory
    PUBLIC)
 

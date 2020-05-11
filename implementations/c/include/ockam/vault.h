@@ -53,7 +53,7 @@ typedef struct ockam_vault ockam_vault_t;
  * @brief   Supported secret types for AES and Elliptic Curves.
  */
 typedef enum {
-  OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED = 0,
+  OCKAM_VAULT_SECRET_TYPE_BUFFER = 0,
   OCKAM_VAULT_SECRET_TYPE_AES128_KEY,
   OCKAM_VAULT_SECRET_TYPE_AES256_KEY,
   OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,

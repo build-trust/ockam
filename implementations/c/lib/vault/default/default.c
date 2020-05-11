@@ -491,7 +491,7 @@ ockam_error_t vault_default_secret_generate(ockam_vault_t*                      
 
   case OCKAM_VAULT_SECRET_TYPE_AES128_KEY:
   case OCKAM_VAULT_SECRET_TYPE_AES256_KEY:
-  case OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED:
+  case OCKAM_VAULT_SECRET_TYPE_BUFFER:
     error = vault_default_secret_key_create(vault, secret, attributes, 1, 0, 0);
     break;
 
@@ -538,7 +538,7 @@ ockam_error_t vault_default_secret_import(ockam_vault_t*                        
 
   case OCKAM_VAULT_SECRET_TYPE_AES128_KEY:
   case OCKAM_VAULT_SECRET_TYPE_AES256_KEY:
-  case OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED:
+  case OCKAM_VAULT_SECRET_TYPE_BUFFER:
     error = vault_default_secret_key_create(vault, secret, attributes, 0, input, input_length);
     break;
 
@@ -654,8 +654,8 @@ ockam_error_t vault_default_secret_ec_create(ockam_vault_t*                     
       goto exit;
     }
   } else {
-    if (input_length != 0 && input_length != size) {
-      error = VAULT_ERROR_SECRET_SIZE_MISMATCH;
+    if ((input_length != size) && (input_length != 0)) {
+      error = OCKAM_VAULT_ERROR_SECRET_SIZE_MISMATCH;
       goto exit;
     } else {
       secret_ctx->private_key_size = size;
@@ -839,7 +839,7 @@ ockam_error_t vault_default_secret_destroy(ockam_vault_t* vault, ockam_vault_sec
 
   case OCKAM_VAULT_SECRET_TYPE_AES128_KEY:
   case OCKAM_VAULT_SECRET_TYPE_AES256_KEY:
-  case OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED:
+  case OCKAM_VAULT_SECRET_TYPE_BUFFER:
     error = vault_default_secret_key_destroy(vault, secret);
     break;
 
@@ -928,7 +928,7 @@ ockam_error_t vault_default_secret_key_destroy(ockam_vault_t* vault, ockam_vault
 
   if ((secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
       (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY) &&
-      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED)) {
+      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER)) {
     error = OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE;
     goto exit;
   }
@@ -980,7 +980,7 @@ ockam_error_t vault_default_secret_export(const ockam_vault_t*        vault,
 
   if ((secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
       (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY) &&
-      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED)) {
+      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER)) {
     error = OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE;
     goto exit;
   }
@@ -1111,7 +1111,9 @@ vault_default_secret_type_set(ockam_vault_t* vault, ockam_vault_secret_t* secret
     goto exit;
   }
 
-  if (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED) {
+  if ((secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER) &&
+      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
+      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY)) {
     error = OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE;
     goto exit;
   }
@@ -1141,6 +1143,8 @@ vault_default_secret_type_set(ockam_vault_t* vault, ockam_vault_secret_t* secret
     secret->attributes.type   = type;
     secret->attributes.length = OCKAM_VAULT_AES256_KEY_LENGTH;
     secret_ctx->key_size      = OCKAM_VAULT_AES256_KEY_LENGTH;
+  } else if (type == OCKAM_VAULT_SECRET_TYPE_BUFFER) {
+    secret->attributes.type = type;
   } else {
     error = OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE;
   }
@@ -1187,7 +1191,7 @@ ockam_error_t vault_default_ecdh(ockam_vault_t*              vault,
 
   {
     const ockam_vault_secret_attributes_t attributes = { .length      = peer_publickey_length,
-                                                         .type        = OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED,
+                                                         .type        = OCKAM_VAULT_SECRET_TYPE_BUFFER,
                                                          .purpose     = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
                                                          .persistence = OCKAM_VAULT_SECRET_EPHEMERAL };
 
@@ -1288,15 +1292,24 @@ ockam_error_t vault_default_hkdf_sha256(ockam_vault_t*              vault,
   ockam_vault_shared_context_t*   ctx         = 0;
   vault_default_secret_key_ctx_t* secret_ctx  = 0;
 
-  if ((vault == 0) || (salt == 0) || (input_key_material == 0)) {
+  if ((vault == 0) || (salt == 0)) {
     error = OCKAM_VAULT_ERROR_INVALID_PARAM;
     goto exit;
   }
 
-  if ((salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED) ||
-      (input_key_material->attributes.type != OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED)) {
+  if ((salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER) &&
+      (salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
+      (salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY)) {
     error = OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE;
     goto exit;
+  }
+
+  if(input_key_material != 0) {
+    if ((input_key_material->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER) &&
+        (input_key_material->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
+        (input_key_material->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY)) {
+      error = OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE;
+    }
   }
 
   if (vault->context == 0) {
@@ -1324,20 +1337,23 @@ ockam_error_t vault_default_hkdf_sha256(ockam_vault_t*              vault,
 
   br_hkdf_init(br_hkdf_ctx, &br_sha256_vtable, secret_ctx->key, secret_ctx->key_size);
 
-  if (input_key_material->context == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_CONTEXT;
-    goto exit;
+  if(input_key_material != 0) {
+    if (input_key_material->context == 0) {
+      error = OCKAM_VAULT_ERROR_INVALID_CONTEXT;
+      goto exit;
+    }
+
+    secret_ctx = (vault_default_secret_key_ctx_t*) input_key_material->context;
+
+    br_hkdf_inject(br_hkdf_ctx, secret_ctx->key, secret_ctx->key_size);
   }
 
-  secret_ctx = (vault_default_secret_key_ctx_t*) input_key_material->context;
-
-  br_hkdf_inject(br_hkdf_ctx, secret_ctx->key, secret_ctx->key_size);
   br_hkdf_flip(br_hkdf_ctx);
 
   {
     uint8_t                         i          = 0;
     ockam_vault_secret_attributes_t attributes = { .length      = OCKAM_VAULT_SHA256_DIGEST_LENGTH,
-                                                   .type        = OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED,
+                                                   .type        = OCKAM_VAULT_SECRET_TYPE_BUFFER,
                                                    .purpose     = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
                                                    .persistence = OCKAM_VAULT_SECRET_EPHEMERAL };
 

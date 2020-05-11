@@ -14,7 +14,7 @@
 #include "ockam/vault.h"
 #include "test_vault.h"
 
-#define TEST_VAULT_HKDF_TEST_CASES          2u
+#define TEST_VAULT_HKDF_TEST_CASES          3u
 #define TEST_VAULT_HKDF_NAME_SIZE           32u
 #define TEST_VAULT_HKDF_DERIVED_OUTPUT_MAX  3u
 #define TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE 32u
@@ -24,10 +24,10 @@
  * @brief
  */
 typedef struct {
-  uint8_t* ikm;
-  uint32_t ikm_size;
   uint8_t* salt;
   uint32_t salt_size;
+  uint8_t* ikm;
+  uint32_t ikm_size;
   uint8_t* output;
   uint32_t output_count;
 } test_vault_hkdf_data_t;
@@ -108,24 +108,52 @@ uint8_t g_hkdf_test_2_output[] =
   0xb8, 0x99, 0x6c, 0x73, 0x89, 0x08, 0xa7, 0xe3
 };
 
+uint8_t g_hkdf_test_3_salt[] =
+{
+  0xDE, 0xED, 0xE2, 0x5E, 0xEE, 0x01, 0x58, 0xA0,
+  0xFD, 0xE9, 0x82, 0xE8, 0xBE, 0x1C, 0x79, 0x9D,
+  0x39, 0x5F, 0xD5, 0xBA, 0xAD, 0x40, 0x8C, 0x6B,
+  0xEC, 0x2B, 0xA2, 0xE9, 0x0E, 0xB3, 0xC7, 0x18
+};
+
+uint8_t g_hkdf_test_3_output[] =
+{
+  0xB1, 0xC6, 0x74, 0xB6, 0x53, 0x5F, 0xB1, 0xD2,
+  0x08, 0x77, 0x2A, 0x97, 0x2C, 0xAC, 0x2C, 0xBF,
+  0x04, 0xD6, 0xAA, 0x08, 0x7C, 0xBB, 0xD3, 0xEB,
+  0x85, 0x58, 0xA1, 0xA3, 0xAB, 0xCA, 0xA7, 0xFB,
+  0x10, 0x9C, 0x4B, 0x99, 0xEA, 0x3A, 0x47, 0x84,
+  0xFF, 0x55, 0xAF, 0x5E, 0xED, 0x86, 0xC9, 0x9E,
+  0x85, 0x3F, 0x5A, 0x76, 0xD8, 0x3C, 0xE4, 0x37,
+  0xA9, 0xE3, 0xE2, 0x7E, 0xDE, 0x24, 0x2A, 0x6A,
+};
+
 test_vault_hkdf_data_t g_hkdf_data[TEST_VAULT_HKDF_TEST_CASES] =
 {
   {
-    &g_hkdf_test_1_ikm[0],
-    32,
     &g_hkdf_test_1_salt[0],
     28,
+    &g_hkdf_test_1_ikm[0],
+    32,
     &g_hkdf_test_1_output[0],
     2
   },
   {
-    &g_hkdf_test_2_ikm[0],
-    32,
     &g_hkdf_test_2_salt[0],
+    32,
+    &g_hkdf_test_2_ikm[0],
     32,
     &g_hkdf_test_2_output[0],
     3
   },
+  {
+    &g_hkdf_test_3_salt[0],
+    32,
+    0,
+    0,
+    &g_hkdf_test_3_output[0],
+    2
+  }
 };
 
 /* clang-format on */
@@ -165,7 +193,7 @@ void test_vault_hkdf(void** state)
 
   attributes.purpose     = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT;
   attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
-  attributes.type        = OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED;
+  attributes.type        = OCKAM_VAULT_SECRET_TYPE_BUFFER;
 
   attributes.length = g_hkdf_data[test_data->test_count].salt_size;
   error             = ockam_vault_secret_import(test_data->vault,
@@ -175,17 +203,23 @@ void test_vault_hkdf(void** state)
                                     g_hkdf_data[test_data->test_count].salt_size);
   assert_int_equal(error, OCKAM_ERROR_NONE);
 
-  attributes.length = g_hkdf_data[test_data->test_count].ikm_size;
-  error             = ockam_vault_secret_import(test_data->vault,
-                                    &ikm_secret,
-                                    &attributes,
-                                    g_hkdf_data[test_data->test_count].ikm,
-                                    g_hkdf_data[test_data->test_count].ikm_size);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  if(g_hkdf_data[test_data->test_count].ikm != 0) {
+    attributes.length = g_hkdf_data[test_data->test_count].ikm_size;
+    error             = ockam_vault_secret_import(test_data->vault,
+                                      &ikm_secret,
+                                      &attributes,
+                                      g_hkdf_data[test_data->test_count].ikm,
+                                      g_hkdf_data[test_data->test_count].ikm_size);
+    assert_int_equal(error, OCKAM_ERROR_NONE);
 
-  error = ockam_vault_hkdf_sha256(
-    test_data->vault, &salt_secret, &ikm_secret, g_hkdf_data[test_data->test_count].output_count, &derived_outputs[0]);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+    error = ockam_vault_hkdf_sha256(
+      test_data->vault, &salt_secret, &ikm_secret, g_hkdf_data[test_data->test_count].output_count, &derived_outputs[0]);
+    assert_int_equal(error, OCKAM_ERROR_NONE);
+  } else {
+    error = ockam_vault_hkdf_sha256(
+      test_data->vault, &salt_secret, 0, g_hkdf_data[test_data->test_count].output_count, &derived_outputs[0]);
+    assert_int_equal(error, OCKAM_ERROR_NONE);
+  }
 
   for (i = 0; i < g_hkdf_data[test_data->test_count].output_count; i++) {
     size_t   length          = 0;

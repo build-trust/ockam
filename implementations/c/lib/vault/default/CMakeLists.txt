@@ -58,6 +58,7 @@ ockam_cc_library(
      "${BEARSSL_DIR}/src"
    DEPS
      ockam::memory
+     ockam::random
      ockam::vault
    PUBLIC )
 
