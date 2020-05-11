@@ -16,7 +16,7 @@ Vagrant.configure("2") do |config|
       echo 'export OCKAM_C_BASE=/vagrant/implementations/c' > /etc/profile.d/ockam.sh
 
       apt-get install  apt-transport-https
-      echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-9 main" >> /etc/apt/sources.list
+      echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-10 main" >> /etc/apt/sources.list
       wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
       apt-get update
       apt-get install -y clang-format-10
