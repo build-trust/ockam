@@ -91,9 +91,9 @@ exit:
 
 ockam_error_t ockam_vault_secret_export(ockam_vault_t*        vault,
                                         ockam_vault_secret_t* secret,
-                                        uint8_t*                    output_buffer,
-                                        size_t                      output_buffer_size,
-                                        size_t*                     output_buffer_length)
+                                        uint8_t*              output_buffer,
+                                        size_t                output_buffer_size,
+                                        size_t*               output_buffer_length)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -110,9 +110,9 @@ exit:
 
 ockam_error_t ockam_vault_secret_publickey_get(ockam_vault_t*        vault,
                                                ockam_vault_secret_t* secret,
-                                               uint8_t*                    output_buffer,
-                                               size_t                      output_buffer_size,
-                                               size_t*                     output_buffer_length)
+                                               uint8_t*              output_buffer,
+                                               size_t                output_buffer_size,
+                                               size_t*               output_buffer_length)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -127,8 +127,8 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_vault_secret_attributes_get(ockam_vault_t*             vault,
-                                                ockam_vault_secret_t*      secret,
+ockam_error_t ockam_vault_secret_attributes_get(ockam_vault_t*                   vault,
+                                                ockam_vault_secret_t*            secret,
                                                 ockam_vault_secret_attributes_t* attributes)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
@@ -175,11 +175,11 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_vault_ecdh(ockam_vault_t*              vault,
+ockam_error_t ockam_vault_ecdh(ockam_vault_t*        vault,
                                ockam_vault_secret_t* privatekey,
-                               const uint8_t*              peer_publickey,
-                               size_t                      peer_publickey_length,
-                               ockam_vault_secret_t*       shared_secret)
+                               const uint8_t*        peer_publickey,
+                               size_t                peer_publickey_length,
+                               ockam_vault_secret_t* shared_secret)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -194,11 +194,11 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_vault_hkdf_sha256(ockam_vault_t*              vault,
+ockam_error_t ockam_vault_hkdf_sha256(ockam_vault_t*        vault,
                                       ockam_vault_secret_t* salt,
                                       ockam_vault_secret_t* input_key_material,
-                                      uint8_t                     derived_outputs_count,
-                                      ockam_vault_secret_t*       derived_outputs)
+                                      uint8_t               derived_outputs_count,
+                                      ockam_vault_secret_t* derived_outputs)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 

@@ -411,7 +411,8 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
     goto exit_block;
   }
 
-  error = ockam_memory_alloc_zeroed(memory, (uint8_t**) &cmocka_data, test_data.test_count_max * sizeof(struct CMUnitTest));
+  error =
+    ockam_memory_alloc_zeroed(memory, (uint8_t**) &cmocka_data, test_data.test_count_max * sizeof(struct CMUnitTest));
   if (error != OCKAM_ERROR_NONE) {
     rc = -1;
     goto exit_block;

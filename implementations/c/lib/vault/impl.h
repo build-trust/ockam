@@ -78,9 +78,9 @@ typedef struct {
    */
   ockam_error_t (*secret_export)(ockam_vault_t*        vault,
                                  ockam_vault_secret_t* secret,
-                                 uint8_t*                    output_buffer,
-                                 size_t                      output_buffer_size,
-                                 size_t*                     output_buffer_length);
+                                 uint8_t*              output_buffer,
+                                 size_t                output_buffer_size,
+                                 size_t*               output_buffer_length);
 
   /**
    * @brief   Retrieve the public key from an ockam vault secret.
@@ -93,9 +93,9 @@ typedef struct {
    */
   ockam_error_t (*secret_publickey_get)(ockam_vault_t*        vault,
                                         ockam_vault_secret_t* secret,
-                                        uint8_t*                    output_buffer,
-                                        size_t                      output_buffer_size,
-                                        size_t*                     output_buffer_length);
+                                        uint8_t*              output_buffer,
+                                        size_t                output_buffer_size,
+                                        size_t*               output_buffer_length);
 
   /**
    * @brief   Retrive the attributes for a specified secret
@@ -103,8 +103,8 @@ typedef struct {
    * @param   secret[in]      Ockam vault secret to get attributes for.
    * @param   attributes[out] Pointer to the attributes for the specified secret.
    */
-  ockam_error_t (*secret_attributes_get)(ockam_vault_t*             vault,
-                                         ockam_vault_secret_t*      secret,
+  ockam_error_t (*secret_attributes_get)(ockam_vault_t*                   vault,
+                                         ockam_vault_secret_t*            secret,
                                          ockam_vault_secret_attributes_t* attributes);
 
   /**
@@ -133,11 +133,11 @@ typedef struct {
    * @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
    * @return  OCKAM_ERROR_NONE on success.
    */
-  ockam_error_t (*ecdh)(ockam_vault_t*              vault,
+  ockam_error_t (*ecdh)(ockam_vault_t*        vault,
                         ockam_vault_secret_t* privatekey,
-                        const uint8_t*              peer_publickey,
-                        size_t                      peer_publickey_length,
-                        ockam_vault_secret_t*       shared_secret);
+                        const uint8_t*        peer_publickey,
+                        size_t                peer_publickey_length,
+                        ockam_vault_secret_t* shared_secret);
 
   /**
    * @brief   Perform an HMAC-SHA256 based key derivation function on the supplied salt and input key material.
@@ -148,11 +148,11 @@ typedef struct {
    * @param   derived_outputs[out]      Array of ockam vault secrets resulting from HKDF.
    * @return  OCKAM_ERROR_NONE on success.
    */
-  ockam_error_t (*hkdf_sha256)(ockam_vault_t*              vault,
+  ockam_error_t (*hkdf_sha256)(ockam_vault_t*        vault,
                                ockam_vault_secret_t* salt,
                                ockam_vault_secret_t* input_key_material,
-                               uint8_t                     derived_outputs_count,
-                               ockam_vault_secret_t*       derived_outputs);
+                               uint8_t               derived_outputs_count,
+                               ockam_vault_secret_t* derived_outputs);
 
   /**
    * @brief   Encrypt a payload using AES-GCM.

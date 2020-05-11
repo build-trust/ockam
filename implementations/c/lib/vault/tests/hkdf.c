@@ -203,7 +203,7 @@ void test_vault_hkdf(void** state)
                                     g_hkdf_data[test_data->test_count].salt_size);
   assert_int_equal(error, OCKAM_ERROR_NONE);
 
-  if(g_hkdf_data[test_data->test_count].ikm != 0) {
+  if (g_hkdf_data[test_data->test_count].ikm != 0) {
     attributes.length = g_hkdf_data[test_data->test_count].ikm_size;
     error             = ockam_vault_secret_import(test_data->vault,
                                       &ikm_secret,
@@ -212,8 +212,11 @@ void test_vault_hkdf(void** state)
                                       g_hkdf_data[test_data->test_count].ikm_size);
     assert_int_equal(error, OCKAM_ERROR_NONE);
 
-    error = ockam_vault_hkdf_sha256(
-      test_data->vault, &salt_secret, &ikm_secret, g_hkdf_data[test_data->test_count].output_count, &derived_outputs[0]);
+    error = ockam_vault_hkdf_sha256(test_data->vault,
+                                    &salt_secret,
+                                    &ikm_secret,
+                                    g_hkdf_data[test_data->test_count].output_count,
+                                    &derived_outputs[0]);
     assert_int_equal(error, OCKAM_ERROR_NONE);
   } else {
     error = ockam_vault_hkdf_sha256(
@@ -282,8 +285,8 @@ int test_vault_run_hkdf(ockam_vault_t* vault, ockam_memory_t* memory)
   struct CMUnitTest*            cmocka_tests = 0;
   test_vault_hkdf_shared_data_t shared_data;
 
-  error =
-    ockam_memory_alloc_zeroed(memory, (uint8_t**) &cmocka_data, (TEST_VAULT_HKDF_TEST_CASES * sizeof(struct CMUnitTest)));
+  error = ockam_memory_alloc_zeroed(
+    memory, (uint8_t**) &cmocka_data, (TEST_VAULT_HKDF_TEST_CASES * sizeof(struct CMUnitTest)));
   if (error != OCKAM_ERROR_NONE) {
     rc = -1;
     goto exit_block;
