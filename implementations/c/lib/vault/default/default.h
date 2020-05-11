@@ -8,6 +8,7 @@
 
 #include "ockam/error.h"
 #include "ockam/memory.h"
+#include "ockam/random.h"
 #include "ockam/vault.h"
 
 #include "vault/impl.h"
@@ -18,6 +19,7 @@
  */
 typedef struct {
   ockam_memory_t* memory;
+  ockam_random_t* random;
   uint32_t        features;
   uint32_t        default_features;
   void*           random_ctx;
@@ -32,6 +34,7 @@ typedef struct {
  */
 typedef struct {
   ockam_memory_t* memory;
+  ockam_random_t* random;
   uint32_t        features;
 } ockam_vault_default_attributes_t;
 

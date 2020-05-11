@@ -12,9 +12,11 @@
 
 #include "ockam/error.h"
 #include "ockam/memory.h"
+#include "ockam/random.h"
 #include "ockam/vault.h"
 
 #include "memory/stdlib/stdlib.h"
+#include "random/urandom/urandom.h"
 #include "vault/default/default.h"
 
 #include "cmocka.h"
@@ -29,13 +31,20 @@ int main(void)
   ockam_error_t                    error            = OCKAM_ERROR_NONE;
   ockam_vault_t                    vault            = { 0 };
   ockam_memory_t                   memory           = { 0 };
-  ockam_vault_default_attributes_t vault_attributes = { .memory = &memory };
+  ockam_random_t                   random           = { 0 };
+  ockam_vault_default_attributes_t vault_attributes = { .memory = &memory, .random = &random };
 
   cmocka_set_message_output(CM_OUTPUT_XML);
 
   error = ockam_memory_stdlib_init(&memory);
   if (error != OCKAM_ERROR_NONE) {
     printf("FAIL: Memory\r\n");
+    goto exit;
+  }
+
+  error = ockam_random_urandom_init(&random);
+  if (error != OCKAM_ERROR_NONE) {
+    printf("FAIL: Random\r\n");
     goto exit;
   }
 

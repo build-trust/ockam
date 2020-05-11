@@ -19,4 +19,6 @@ ockam_cc_test(
      ockam::vault
      ockam::memory::stdlib
      ockam::memory
+     ockam::random::urandom
+     ockam::random
    PUBLIC )

@@ -11,16 +11,14 @@
 #include "default.h"
 #include "bearssl.h"
 
-#define VAULT_DEFAULT_RANDOM_MAX_SIZE 0xFFFF
-
+#define VAULT_DEFAULT_RANDOM_SEED_BYTES         32u
+#define VAULT_DEFAULT_RANDOM_MAX_SIZE           0xFFFF
 #define VAULT_DEFAULT_SHA256_DIGEST_SIZE        32u
 #define VAULT_DEFAULT_AEAD_AES_GCM_DECRYPT      0u
 #define VAULT_DEFAULT_AEAD_AES_GCM_ENCRYPT      1u
 #define VAULT_DEFAULT_AEAD_AES_GCM_IV_SIZE      12u
 #define VAULT_DEFAULT_AEAD_AES_GCM_NONCE_SIZE   8u
 #define VAULT_DEFAULT_AEAD_AES_GCM_NONCE_OFFSET 4u
-
-const char* g_vault_default_random_seed = "ockam_vault_seed";
 
 typedef struct {
   const br_prng_class* br_random;
@@ -135,6 +133,7 @@ ockam_error_t ockam_vault_default_init(ockam_vault_t* vault, ockam_vault_default
 
     ctx         = (ockam_vault_shared_context_t*) vault->context;
     ctx->memory = attributes->memory;
+    ctx->random = attributes->random;
 
     vault->dispatch = &vault_default_dispatch_table;
 
@@ -151,6 +150,11 @@ ockam_error_t ockam_vault_default_init(ockam_vault_t* vault, ockam_vault_default
     if (ctx->memory == 0) {
       error = VAULT_ERROR_INVALID_CONTEXT;
       goto exit;
+    }
+
+    if((ctx->random == 0) &&
+       ((features & OCKAM_VAULT_FEAT_RANDOM) || (features & OCKAM_VAULT_FEAT_SECRET_ECDH))) {
+      error = VAULT_ERROR_INVALID_CONTEXT;
     }
   }
 
@@ -230,13 +234,17 @@ exit:
  */
 ockam_error_t vault_default_random_init(ockam_vault_shared_context_t* ctx)
 {
-  ockam_error_t               error      = OCKAM_ERROR_NONE;
-  vault_default_random_ctx_t* random_ctx = 0;
+  ockam_error_t               error                                   = OCKAM_ERROR_NONE;
+  vault_default_random_ctx_t* random_ctx                              = 0;
+  uint8_t                     buffer[VAULT_DEFAULT_RANDOM_SEED_BYTES] = {0};
 
-  if (ctx == 0) {
+  if ((ctx == 0) || (ctx->random == 0)) {
     error = VAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
+
+  error = ockam_random_get_bytes(ctx->random, &buffer[0], VAULT_DEFAULT_RANDOM_SEED_BYTES);
+  if(error != OCKAM_ERROR_NONE) { goto exit; };
 
   error = ockam_memory_alloc(ctx->memory, (uint8_t**) &random_ctx, sizeof(vault_default_random_ctx_t));
   if (error != OCKAM_ERROR_NONE) { goto exit; }
@@ -251,7 +259,7 @@ ockam_error_t vault_default_random_init(ockam_vault_shared_context_t* ctx)
   }
 
   random_ctx->br_random->init(
-    random_ctx->br_random_ctx, &br_sha256_vtable, g_vault_default_random_seed, sizeof(g_vault_default_random_seed));
+    random_ctx->br_random_ctx, &br_sha256_vtable, &buffer[0], sizeof(VAULT_DEFAULT_RANDOM_SEED_BYTES));
 
   ctx->random_ctx = random_ctx;
   ctx->default_features |= OCKAM_VAULT_FEAT_RANDOM;
