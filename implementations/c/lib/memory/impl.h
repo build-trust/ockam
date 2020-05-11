@@ -28,13 +28,13 @@ typedef struct {
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory or buffer received.
    * @return  MEMORY_ERROR_INVALID_SIZE if buffer_size <=0.
    */
-  ockam_error_t (*alloc)(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size);
+  ockam_error_t (*alloc_zeroed)(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size);
 
   /**
    * @brief   Free the specified buffer.
    * @param   memory[in]      The ockam memory object to use.
-   * @param   buffer[in]      Buffer to free. Must have been allocated from alloc().
-   * @param   buffer_size[in] Size of the buffer that was allocated. Must match what was specified in alloc.
+   * @param   buffer[in]      Buffer to free. Must have been allocated from alloc_zeroed().
+   * @param   buffer_size[in] Size of the buffer that was allocated. Must match what was specified in alloc_zeroed().
    * @return  OCKAM_ERROR_NONE on success.
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory or buffer received.
    * @return  MEMORY_ERROR_INVALID_SIZE if buffer_size <=0.

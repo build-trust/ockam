@@ -19,9 +19,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MEMORY_ERROR_INVALID_PARAM (OCKAM_ERROR_INTERFACE_MEMORY | 1u)
-#define MEMORY_ERROR_INVALID_SIZE  (OCKAM_ERROR_INTERFACE_MEMORY | 2u)
-#define MEMORY_ERROR_ALLOC_FAIL    (OCKAM_ERROR_INTERFACE_MEMORY | 3u)
+#define OCKAM_MEMORY_ERROR_INVALID_PARAM (OCKAM_ERROR_INTERFACE_MEMORY | 1u)
+#define OCKAM_MEMORY_ERROR_INVALID_SIZE  (OCKAM_ERROR_INTERFACE_MEMORY | 2u)
+#define OCKAM_MEMORY_ERROR_ALLOC_FAIL    (OCKAM_ERROR_INTERFACE_MEMORY | 3u)
 
 struct ockam_memory_t;
 typedef struct ockam_memory_t ockam_memory_t;
@@ -44,7 +44,7 @@ ockam_error_t ockam_memory_deinit(ockam_memory_t* memory);
  * @return  MEMORY_ERROR_INVALID_SIZE if buffer_size <=0.
  * @return  MEMORY_ERROR_ALLOC_FAIL if unable to allocate the desired buffer.
  */
-ockam_error_t ockam_memory_alloc(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size);
+ockam_error_t ockam_memory_alloc_zeroed(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size);
 
 /**
  * @brief   Free the specified buffer.

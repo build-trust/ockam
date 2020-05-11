@@ -13,7 +13,7 @@ ockam_error_t ockam_random_deinit(ockam_random_t* random)
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((random == 0) || (random->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_RANDOM_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -28,7 +28,7 @@ ockam_error_t ockam_random_get_bytes(ockam_random_t* random, uint8_t* buffer, si
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((random == 0) || (random->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_RANDOM_ERROR_INVALID_PARAM;
     goto exit;
   }
 

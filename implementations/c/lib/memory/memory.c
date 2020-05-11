@@ -13,7 +13,7 @@ ockam_error_t ockam_memory_deinit(ockam_memory_t* memory)
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((memory == 0) || (memory->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -23,16 +23,16 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_alloc(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size)
+ockam_error_t ockam_memory_alloc_zeroed(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((memory == 0) || (memory->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
     goto exit;
   }
 
-  error = memory->dispatch->alloc(memory, buffer, buffer_size);
+  error = memory->dispatch->alloc_zeroed(memory, buffer, buffer_size);
 
 exit:
   return error;
@@ -43,7 +43,7 @@ ockam_error_t ockam_memory_free(ockam_memory_t* memory, uint8_t* buffer, size_t 
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((memory == 0) || (memory->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -58,7 +58,7 @@ ockam_error_t ockam_memory_copy(ockam_memory_t* memory, uint8_t* destination, co
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((memory == 0) || (memory->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -73,7 +73,7 @@ ockam_error_t ockam_memory_set(ockam_memory_t* memory, uint8_t* buffer, uint8_t 
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((memory == 0) || (memory->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -88,7 +88,7 @@ ockam_error_t ockam_memory_move(ockam_memory_t* memory, uint8_t* destination, ui
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if ((memory == 0) || (memory->dispatch == 0)) {
-    error = OCKAM_ERROR;
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
     goto exit;
   }
 

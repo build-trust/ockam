@@ -225,14 +225,14 @@ void test_vault_secret_ecdh(void** state)
   }
 
   /* ----------------- */
-  /* Memory allocation */
+  /* Memory Allocation */
   /* ----------------- */
 
-  error = ockam_memory_alloc(test_data->memory, &generated_initiator_pub, test_data->key_size);
-  if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to allocate generated_initiator_pub"); }
+  error = ockam_memory_alloc_zeroed(test_data->memory, &generated_initiator_pub, test_data->key_size);
+  if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc generated_initiator_pub"); }
 
-  error = ockam_memory_alloc(test_data->memory, &generated_responder_pub, test_data->key_size);
-  if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to allocate generated_responder_pub"); }
+  error = ockam_memory_alloc_zeroed(test_data->memory, &generated_responder_pub, test_data->key_size);
+  if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc generated_responder_pub"); }
 
   /* ------------------ */
   /* Key Write/Generate */
@@ -411,7 +411,7 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
     goto exit_block;
   }
 
-  error = ockam_memory_alloc(memory, (uint8_t**) &cmocka_data, test_data.test_count_max * sizeof(struct CMUnitTest));
+  error = ockam_memory_alloc_zeroed(memory, (uint8_t**) &cmocka_data, test_data.test_count_max * sizeof(struct CMUnitTest));
   if (error != OCKAM_ERROR_NONE) {
     rc = -1;
     goto exit_block;
@@ -420,7 +420,7 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
   cmocka_tests = (struct CMUnitTest*) cmocka_data;
 
   for (i = 0; i < test_data.test_count_max; i++) {
-    error = ockam_memory_alloc(memory, (uint8_t**) &test_name, TEST_VAULT_KEY_NAME_SIZE);
+    error = ockam_memory_alloc_zeroed(memory, (uint8_t**) &test_name, TEST_VAULT_KEY_NAME_SIZE);
     if (error != OCKAM_ERROR_NONE) { break; }
 
     snprintf(test_name, TEST_VAULT_KEY_NAME_SIZE, "%s Test Case %02d", name, i);

@@ -154,14 +154,14 @@ void test_vault_aead_aes_gcm(void** state)
       g_aead_aes_gcm_data[test_data->test_count].text_size + TEST_VAULT_AEAD_AES_GCM_TAG_SIZE;
 
     error =
-      ockam_memory_alloc(test_data->memory, (uint8_t**) &aead_aes_gcm_encrypt_hash, aead_aes_gcm_encrypt_hash_size);
-    if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to allocate aead_aes_gcm_encrypt_hash"); }
+      ockam_memory_alloc_zeroed(test_data->memory, (uint8_t**) &aead_aes_gcm_encrypt_hash, aead_aes_gcm_encrypt_hash_size);
+    if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc aead_aes_gcm_encrypt_hash"); }
 
     aead_aes_gcm_decrypt_data_size = g_aead_aes_gcm_data[test_data->test_count].text_size;
 
     error =
-      ockam_memory_alloc(test_data->memory, (uint8_t**) &aead_aes_gcm_decrypt_data, aead_aes_gcm_decrypt_data_size);
-    if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to allocate aead_aes_gcm_decrypt_data"); }
+      ockam_memory_alloc_zeroed(test_data->memory, (uint8_t**) &aead_aes_gcm_decrypt_data, aead_aes_gcm_decrypt_data_size);
+    if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc aead_aes_gcm_decrypt_data"); }
   }
 
   /* ------- */
@@ -272,7 +272,7 @@ int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory)
   struct CMUnitTest*                    cmocka_tests = 0;
   test_vault_aead_aes_gcm_shared_data_t shared_data;
 
-  error = ockam_memory_alloc(
+  error = ockam_memory_alloc_zeroed(
     memory, (uint8_t**) &cmocka_data, TEST_VAULT_AEAD_AES_GCM_TEST_CASES * sizeof(struct CMUnitTest));
   if (error != OCKAM_ERROR_NONE) {
     rc = -1;
@@ -287,7 +287,7 @@ int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory)
   shared_data.memory         = memory;
 
   for (i = 0; i < TEST_VAULT_AEAD_AES_GCM_TEST_CASES; i++) {
-    error = ockam_memory_alloc(memory, (uint8_t**) &test_name, TEST_VAULT_AEAD_AES_GCM_NAME_SIZE);
+    error = ockam_memory_alloc_zeroed(memory, (uint8_t**) &test_name, TEST_VAULT_AEAD_AES_GCM_NAME_SIZE);
     if (error != OCKAM_ERROR_NONE) {
       rc = -1;
       goto exit_block;

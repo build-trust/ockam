@@ -14,7 +14,6 @@
 typedef uint32_t ockam_error_t;
 
 #define OCKAM_ERROR_NONE 0u
-#define OCKAM_ERROR      1u
 
 #define OCKAM_ERROR_INTERFACE_MEMORY       (1u << OCKAM_ERROR_INTERFACE_SHIFT)
 #define OCKAM_ERROR_INTERFACE_LOG          (2u << OCKAM_ERROR_INTERFACE_SHIFT)
