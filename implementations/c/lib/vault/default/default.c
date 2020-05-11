@@ -3,7 +3,6 @@
  * @brief   Interface functions for the default Ockam Vault
  */
 
-#include <stdio.h>
 #include "ockam/memory.h"
 #include "ockam/vault.h"
 #include "vault/impl.h"
@@ -17,8 +16,7 @@
 #define VAULT_DEFAULT_AEAD_AES_GCM_DECRYPT      0u
 #define VAULT_DEFAULT_AEAD_AES_GCM_ENCRYPT      1u
 #define VAULT_DEFAULT_AEAD_AES_GCM_IV_SIZE      12u
-#define VAULT_DEFAULT_AEAD_AES_GCM_NONCE_SIZE   8u
-#define VAULT_DEFAULT_AEAD_AES_GCM_NONCE_OFFSET 4u
+#define VAULT_DEFAULT_AEAD_AES_GCM_IV_OFFSET    10u
 
 typedef struct {
   const br_prng_class* br_random;
@@ -80,7 +78,7 @@ ockam_error_t vault_default_aead_aes_gcm_deinit(ockam_vault_shared_context_t* ct
 ockam_error_t vault_default_aead_aes_gcm(ockam_vault_t*        vault,
                                          uint8_t               encrypt,
                                          ockam_vault_secret_t* key,
-                                         uint64_t              nonce,
+                                         uint16_t              nonce,
                                          const uint8_t*        additional_data,
                                          size_t                additional_data_length,
                                          const uint8_t*        input,
@@ -1458,7 +1456,7 @@ exit:
 ockam_error_t vault_default_aead_aes_gcm(ockam_vault_t*        vault,
                                          uint8_t               encrypt,
                                          ockam_vault_secret_t* key,
-                                         uint64_t              nonce,
+                                         uint16_t              nonce,
                                          const uint8_t*        additional_data,
                                          size_t                additional_data_length,
                                          const uint8_t*        input,
@@ -1472,7 +1470,7 @@ ockam_error_t vault_default_aead_aes_gcm(ockam_vault_t*        vault,
   vault_default_secret_key_ctx_t*   secret_ctx                             = 0;
   vault_default_aead_aes_gcm_ctx_t* aead_aes_gcm_ctx                       = 0;
   size_t                            run_length                             = 0;
-  uint8_t                           iv[VAULT_DEFAULT_AEAD_AES_GCM_IV_SIZE] = { 0 };
+  uint8_t                           iv[VAULT_DEFAULT_AEAD_AES_GCM_IV_SIZE] = {0};
 
   if ((vault == 0) || (vault->context == 0)) {
     error = OCKAM_VAULT_ERROR_INVALID_CONTEXT;
@@ -1514,18 +1512,15 @@ ockam_error_t vault_default_aead_aes_gcm(ockam_vault_t*        vault,
   secret_ctx = (vault_default_secret_key_ctx_t*) key->context;
 
   {
-    int      n          = 1;
-    uint8_t  i          = 0;
-    uint8_t* nonce_byte = (uint8_t*) &nonce;
+    int n = 1;
+
 
     if (*(char*) &n == 1) { /* Check the endianness and copy appropriately */
-      for (i = 0; i < VAULT_DEFAULT_AEAD_AES_GCM_NONCE_SIZE; i++) {
-        iv[VAULT_DEFAULT_AEAD_AES_GCM_NONCE_OFFSET + i] = nonce_byte[(VAULT_DEFAULT_AEAD_AES_GCM_NONCE_SIZE - 1) - i];
-      }
+      iv[VAULT_DEFAULT_AEAD_AES_GCM_IV_OFFSET]   = ((nonce >> 8) & 0xFF);
+      iv[VAULT_DEFAULT_AEAD_AES_GCM_IV_OFFSET+1] = ((nonce) & 0xFF);
     } else {
-      for (i = 0; i < VAULT_DEFAULT_AEAD_AES_GCM_NONCE_SIZE; i++) {
-        iv[VAULT_DEFAULT_AEAD_AES_GCM_NONCE_OFFSET + i] = nonce_byte[i];
-      }
+      iv[VAULT_DEFAULT_AEAD_AES_GCM_IV_OFFSET]   = ((nonce) & 0xFF);
+      iv[VAULT_DEFAULT_AEAD_AES_GCM_IV_OFFSET+1] = ((nonce >> 8) & 0xFF);
     }
   }
 
@@ -1573,7 +1568,7 @@ exit:
  */
 ockam_error_t vault_default_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
                                                  ockam_vault_secret_t* key,
-                                                 uint64_t              nonce,
+                                                 uint16_t              nonce,
                                                  const uint8_t*        additional_data,
                                                  size_t                additional_data_length,
                                                  const uint8_t*        plaintext,
@@ -1602,7 +1597,7 @@ ockam_error_t vault_default_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
  */
 ockam_error_t vault_default_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
                                                  ockam_vault_secret_t* key,
-                                                 uint64_t              nonce,
+                                                 uint16_t              nonce,
                                                  const uint8_t*        additional_data,
                                                  size_t                additional_data_length,
                                                  const uint8_t*        ciphertext_and_tag,
@@ -1623,3 +1618,4 @@ ockam_error_t vault_default_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
                                     plaintext_size,
                                     plaintext_length);
 }
+

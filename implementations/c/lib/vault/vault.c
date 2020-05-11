@@ -215,7 +215,7 @@ exit:
 
 ockam_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
                                                ockam_vault_secret_t* key,
-                                               uint64_t              nonce,
+                                               uint16_t              nonce,
                                                const uint8_t*        additional_data,
                                                size_t                additional_data_length,
                                                const uint8_t*        plaintext,
@@ -247,7 +247,7 @@ exit:
 
 ockam_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
                                                ockam_vault_secret_t* key,
-                                               uint64_t              nonce,
+                                               uint16_t              nonce,
                                                const uint8_t*        additional_data,
                                                size_t                additional_data_length,
                                                const uint8_t*        ciphertext_and_tag,
