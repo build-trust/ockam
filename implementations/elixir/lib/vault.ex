@@ -103,14 +103,24 @@ defmodule Ockam.Vault do
   @doc """
   Perform HKDF on the given key and data
   """
-  @spec hkdf(t, Secret.t(), Secret.t(), num_outputs :: pos_integer()) :: {:ok, [Secret.t()]}
+  @spec hkdf(t, Secret.t(), Secret.t() | nil, num_outputs :: pos_integer()) :: {:ok, [Secret.t()]}
+  def hkdf(vault, salt, input_key_material, num_outputs)
+
   def hkdf(
         %__MODULE__{context: context},
         %Secret{secret: salt},
         %Secret{secret: ikm},
         num_outputs
-      )
-      when is_integer(num_outputs) and num_outputs > 0 do
+      ) do
+    do_hkdf(context, salt, ikm, num_outputs)
+  end
+
+  def hkdf(%__MODULE__{context: context}, %Secret{secret: salt}, nil, num_outputs) do
+    do_hkdf(context, salt, nil, num_outputs)
+  end
+
+  defp do_hkdf(context, salt, ikm, num_outputs)
+       when is_integer(num_outputs) and num_outputs > 0 do
     with {:ok, result} <- NIF.hkdf_sha256(context, salt, ikm, num_outputs) do
       secrets =
         for secret <- result do

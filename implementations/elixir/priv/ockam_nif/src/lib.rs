@@ -202,13 +202,21 @@ pub fn ecdh(
 pub fn hkdf_sha256(
     vault_resource: ResourceArc<VaultResource>,
     salt_resource: ResourceArc<SecretResource>,
-    input_key_material_resource: ResourceArc<SecretResource>,
+    input_key_material_resource: Option<ResourceArc<SecretResource>>,
     num_derived_outputs: u8,
 ) -> VaultResult<Vec<ResourceArc<SecretResource>>> {
     let salt = salt_resource.secret.read().unwrap();
-    let input_key_material = input_key_material_resource.secret.read().unwrap();
-    let mut vault = vault_resource.vault.lock().unwrap();
-    let mut secrets = vault.hkdf_sha256(&salt, &input_key_material, num_derived_outputs)?;
+    let mut secrets = match input_key_material_resource {
+        None => {
+            let mut vault = vault_resource.vault.lock().unwrap();
+            vault.hkdf_sha256(&salt, None, num_derived_outputs)?
+        }
+        Some(ikmr) => {
+            let input_key_material = ikmr.secret.read().unwrap();
+            let mut vault = vault_resource.vault.lock().unwrap();
+            vault.hkdf_sha256(&salt, Some(&input_key_material), num_derived_outputs)?
+        }
+    };
 
     let secret_resources = secrets
         .drain(..)
@@ -223,7 +231,7 @@ pub fn aead_aes_gcm_encrypt<'a>(
     env: Env<'a>,
     vault_resource: ResourceArc<VaultResource>,
     key_resource: ResourceArc<SecretResource>,
-    nonce: u64,
+    nonce: u16,
     additional_data: Option<Binary>,
     plaintext: Binary,
 ) -> VaultResult<Binary<'a>> {
@@ -250,7 +258,7 @@ pub fn aead_aes_gcm_decrypt<'a>(
     env: Env<'a>,
     vault_resource: ResourceArc<VaultResource>,
     key_resource: ResourceArc<SecretResource>,
-    nonce: u64,
+    nonce: u16,
     additional_data: Option<Binary>,
     ciphertext_and_tag: Binary,
 ) -> VaultResult<Binary<'a>> {

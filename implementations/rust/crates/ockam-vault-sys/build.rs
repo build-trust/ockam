@@ -41,6 +41,7 @@ fn main() {
         .define("OCKAM_TARGET_TRIPLE", &target)
         .out_dir(ockam_vault_output)
         .build_target("ockam_vault_default")
+        .build_arg("ockam_random_urandom")
         .build();
 
     // Construct CMake profile name from Rust profile
@@ -61,6 +62,8 @@ fn main() {
     println!("cargo:rustc-link-lib=static=ockam_vault");
     println!("cargo:rustc-link-lib=static=ockam_vault_default");
     println!("cargo:rustc-link-lib=static=ockam_memory");
+    println!("cargo:rustc-link-lib=static=ockam_random");
+    println!("cargo:rustc-link-lib=static=ockam_random_urandom");
     // Expose include path to downstream crates via DEP_OCKAM_VAULT_INCLUDE
     println!("cargo:include={}", include_dir.display());
     // Rerun build if any of the include paths change

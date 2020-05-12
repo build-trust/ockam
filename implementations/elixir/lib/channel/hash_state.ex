@@ -32,7 +32,7 @@ defmodule Ockam.Channel.HashState do
         Vault.pad(name, hash_len, 0x00)
       end
 
-    {:ok, ck} = Vault.import_secret(vault, h, SecretAttributes.unspecified(:ephemeral))
+    {:ok, ck} = Vault.import_secret(vault, h, SecretAttributes.buffer(:ephemeral))
 
     %__MODULE__{
       cs: CipherState.init(cipher),
@@ -74,19 +74,11 @@ defmodule Ockam.Channel.HashState do
   end
 
   def split(%__MODULE__{ck: ck, cs: cs}, vault) do
-    # TODO: Should hkdf import an empty secret here for the input key material?
-    {:ok, empty} =
-      Vault.import_secret(
-        vault,
-        "",
-        SecretAttributes.unspecified(:ephemeral)
-      )
-
     {:ok,
      [
        temp_k1,
        temp_k2
-     ]} = Vault.hkdf(vault, ck, empty, 2)
+     ]} = Vault.hkdf(vault, ck, nil, 2)
 
     {:ok, new_temp_k1} = Vault.set_secret_type(vault, temp_k1, :aes256)
     {:ok, new_temp_k2} = Vault.set_secret_type(vault, temp_k2, :aes256)

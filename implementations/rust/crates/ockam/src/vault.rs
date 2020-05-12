@@ -10,7 +10,7 @@ use cfg_if::cfg_if;
 use thiserror::Error;
 
 pub use ockam_vault_sys::VaultFeatures;
-use ockam_vault_sys::{ockam_error_t, ockam_memory_t};
+use ockam_vault_sys::{ockam_error_t, ockam_memory_t, ockam_random_t};
 use ockam_vault_sys::{ockam_vault_default_attributes_t, ockam_vault_t};
 use ockam_vault_sys::{
     ockam_vault_secret_attributes_t, ockam_vault_secret_persistence_t,
@@ -85,22 +85,26 @@ impl From<ockam_error_t> for VaultError {
             "expected error, but got OCKAM_ERROR_NONE"
         );
         match err {
-            ockam_vault_sys::VAULT_ERROR_INVALID_PARAM => Self::InvalidParameter,
-            ockam_vault_sys::VAULT_ERROR_INVALID_ATTRIBUTES => Self::InvalidAttributes,
-            ockam_vault_sys::VAULT_ERROR_INVALID_CONTEXT => Self::InvalidContext,
-            ockam_vault_sys::VAULT_ERROR_INVALID_BUFFER => Self::InvalidBuffer,
-            ockam_vault_sys::VAULT_ERROR_INVALID_SIZE => Self::InvalidSize,
-            ockam_vault_sys::VAULT_ERROR_BUFFER_TOO_SMALL => Self::BufferTooSmall,
-            ockam_vault_sys::VAULT_ERROR_INVALID_REGENERATE => Self::InvalidRegenerate,
-            ockam_vault_sys::VAULT_ERROR_INVALID_SECRET_ATTRIBUTES => Self::InvalidSecretAttributes,
-            ockam_vault_sys::VAULT_ERROR_INVALID_SECRET_TYPE => Self::InvalidSecretType,
-            ockam_vault_sys::VAULT_ERROR_INVALID_TAG => Self::InvalidTag,
-            ockam_vault_sys::VAULT_ERROR_PUBLIC_KEY_FAIL => Self::PublicKeyError,
-            ockam_vault_sys::VAULT_ERROR_ECDH_FAIL => Self::EcdhError,
-            ockam_vault_sys::VAULT_ERROR_DEFAULT_RANDOM_REQUIRED => Self::DefaultRandomRequired,
-            ockam_vault_sys::VAULT_ERROR_MEMORY_REQUIRED => Self::MemoryRequired,
-            ockam_vault_sys::VAULT_ERROR_SECRET_SIZE_MISMATCH => Self::SecretSizeMismatch,
-            ockam_vault_sys::VAULT_ERROR_KEYGEN_FAIL => Self::KeyGenError,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_PARAM => Self::InvalidParameter,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_ATTRIBUTES => Self::InvalidAttributes,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_CONTEXT => Self::InvalidContext,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_BUFFER => Self::InvalidBuffer,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SIZE => Self::InvalidSize,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_BUFFER_TOO_SMALL => Self::BufferTooSmall,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_REGENERATE => Self::InvalidRegenerate,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SECRET_ATTRIBUTES => {
+                Self::InvalidSecretAttributes
+            }
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE => Self::InvalidSecretType,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_TAG => Self::InvalidTag,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_PUBLIC_KEY_FAIL => Self::PublicKeyError,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_ECDH_FAIL => Self::EcdhError,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_DEFAULT_RANDOM_REQUIRED => {
+                Self::DefaultRandomRequired
+            }
+            ockam_vault_sys::OCKAM_VAULT_ERROR_MEMORY_REQUIRED => Self::MemoryRequired,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_SECRET_SIZE_MISMATCH => Self::SecretSizeMismatch,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_KEYGEN_FAIL => Self::KeyGenError,
             _code => Self::Unknown,
         }
     }
@@ -170,7 +174,7 @@ impl Into<ockam_vault_secret_persistence_t> for SecretPersistence {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "term_encoding", derive(NifUnitEnum))]
 pub enum SecretType {
-    Unspecified = 0,
+    Buffer = 0,
     AES128,
     AES256,
     Curve25519Private,
@@ -180,7 +184,7 @@ impl From<ockam_vault_secret_type_t> for SecretType {
     fn from(value: ockam_vault_secret_type_t) -> Self {
         use ockam_vault_secret_type_t::*;
         match value {
-            OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED => Self::Unspecified,
+            OCKAM_VAULT_SECRET_TYPE_BUFFER => Self::Buffer,
             OCKAM_VAULT_SECRET_TYPE_AES128_KEY => Self::AES128,
             OCKAM_VAULT_SECRET_TYPE_AES256_KEY => Self::AES256,
             OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY => Self::Curve25519Private,
@@ -192,7 +196,7 @@ impl Into<ockam_vault_secret_type_t> for SecretType {
     fn into(self) -> ockam_vault_secret_type_t {
         use ockam_vault_secret_type_t::*;
         match self {
-            Self::Unspecified => OCKAM_VAULT_SECRET_TYPE_UNSPECIFIED,
+            Self::Buffer => OCKAM_VAULT_SECRET_TYPE_BUFFER,
             Self::AES128 => OCKAM_VAULT_SECRET_TYPE_AES128_KEY,
             Self::AES256 => OCKAM_VAULT_SECRET_TYPE_AES256_KEY,
             Self::Curve25519Private => OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
@@ -242,7 +246,7 @@ impl Default for SecretAttributes {
     fn default() -> Self {
         Self {
             length: 0,
-            ty: SecretType::Unspecified,
+            ty: SecretType::Buffer,
             purpose: SecretPurpose::KeyAgreement,
             persistence: SecretPersistence::Ephemeral,
         }
@@ -264,20 +268,60 @@ impl AsMut<ockam_vault_secret_t> for Secret {
     }
 }
 
+#[repr(C)]
+#[derive(Debug)]
+pub struct Random(ockam_random_t);
+impl Random {
+    pub fn new() -> VaultResult<Self> {
+        use ockam_vault_sys::ockam_random_urandom_init;
+
+        let mut context = ockam_random_t {
+            dispatch: ptr::null_mut(),
+            context: ptr::null_mut(),
+        };
+
+        VaultError::wrap(|| unsafe { ockam_random_urandom_init(&mut context) })?;
+
+        Ok(Self(context))
+    }
+}
+impl AsRef<ockam_random_t> for Random {
+    fn as_ref(&self) -> &ockam_random_t {
+        &self.0
+    }
+}
+impl AsMut<ockam_random_t> for Random {
+    fn as_mut(&mut self) -> &mut ockam_random_t {
+        &mut self.0
+    }
+}
+impl Drop for Random {
+    fn drop(&mut self) {
+        use ockam_vault_sys::ockam_random_deinit;
+
+        unsafe {
+            ockam_random_deinit(&mut self.0);
+        }
+    }
+}
+
 /// Represents a single instance of an Ockam vault context
 #[derive(Debug)]
 pub struct Vault {
+    random: Random,
     context: ockam_vault_t,
 }
 impl Vault {
     pub fn new() -> VaultResult<Self> {
         use ockam_vault_sys::ockam_vault_default_init;
 
-        let mut attributes = ockam_vault_default_attributes_t {
-            memory: RustAlloc::new() as *const _ as *mut ockam_memory_t,
-            features: 0,
-        };
+        let mut random = Random::new()?;
         let context = {
+            let mut attributes = ockam_vault_default_attributes_t {
+                memory: RustAlloc::new() as *const _ as *mut ockam_memory_t,
+                random: random.as_mut(),
+                features: 0,
+            };
             let mut context = ockam_vault_t {
                 dispatch: ptr::null_mut(),
                 context: ptr::null_mut(),
@@ -288,7 +332,7 @@ impl Vault {
             context
         };
 
-        Ok(Self { context })
+        Ok(Self { random, context })
     }
 }
 impl AsMut<ockam_vault_t> for Vault {
@@ -447,7 +491,7 @@ impl Vault {
             let len = buffer.len();
             ockam_vault_sys::ockam_vault_secret_export(
                 self.as_mut(),
-                secret.as_ref(),
+                secret.as_ref() as *const _ as *mut _,
                 ptr,
                 len,
                 &mut bytes_written,
@@ -464,7 +508,7 @@ impl Vault {
             VaultError::wrap(|| unsafe {
                 ockam_vault_sys::ockam_vault_secret_attributes_get(
                     self.as_mut(),
-                    secret.as_ref(),
+                    secret.as_ref() as *const _ as *mut _,
                     attrs.as_mut(),
                 )
             })?;
@@ -502,7 +546,7 @@ impl Vault {
         VaultError::wrap(|| unsafe {
             ockam_vault_sys::ockam_vault_secret_publickey_get(
                 self.as_mut(),
-                secret.as_ref(),
+                secret.as_ref() as *const _ as *mut _,
                 ptr,
                 len,
                 &mut bytes_written,
@@ -546,7 +590,7 @@ impl Vault {
         VaultError::wrap(|| unsafe {
             ockam_vault_sys::ockam_vault_ecdh(
                 self.as_mut(),
-                private_key.as_ref(),
+                private_key.as_ref() as *const _ as *mut _,
                 ptr,
                 len,
                 &mut shared_secret,
@@ -561,7 +605,7 @@ impl Vault {
     pub fn hkdf_sha256(
         &mut self,
         salt: &Secret,
-        input_key_material: &Secret,
+        input_key_material: Option<&Secret>,
         num_derived_outputs: u8,
     ) -> VaultResult<Vec<Secret>> {
         let len = num_derived_outputs as usize;
@@ -578,8 +622,10 @@ impl Vault {
         VaultError::wrap(|| unsafe {
             ockam_vault_sys::ockam_vault_hkdf_sha256(
                 self.as_mut(),
-                salt.as_ref(),
-                input_key_material.as_ref(),
+                salt.as_ref() as *const _ as *mut _,
+                input_key_material
+                    .map(|ikm| ikm.as_ref() as *const _ as *mut _)
+                    .unwrap_or(ptr::null_mut()),
                 num_derived_outputs,
                 derived_outputs.as_mut_ptr() as *mut _,
             )
@@ -603,7 +649,7 @@ impl Vault {
     pub fn aead_aes_gcm_encrypt(
         &mut self,
         key: &Secret,
-        nonce: u64,
+        nonce: u16,
         additional_data: Option<&[u8]>,
         plaintext: &[u8],
     ) -> VaultResult<Vec<u8>> {
@@ -625,7 +671,7 @@ impl Vault {
     pub fn aead_aes_gcm_encrypt_with_buffer(
         &mut self,
         key: &Secret,
-        nonce: u64,
+        nonce: u16,
         additional_data: Option<&[u8]>,
         plaintext: &[u8],
         buffer: &mut [u8],
@@ -655,7 +701,7 @@ impl Vault {
     pub fn aead_aes_gcm_decrypt(
         &mut self,
         key: &Secret,
-        nonce: u64,
+        nonce: u16,
         additional_data: Option<&[u8]>,
         ciphertext_and_tag: &[u8],
     ) -> VaultResult<Vec<u8>> {
@@ -677,7 +723,7 @@ impl Vault {
     pub fn aead_aes_gcm_decrypt_with_buffer(
         &mut self,
         key: &Secret,
-        nonce: u64,
+        nonce: u16,
         additional_data: Option<&[u8]>,
         ciphertext_and_tag: &[u8],
         buffer: &mut [u8],

@@ -16,7 +16,7 @@ impl AsMut<ockam_memory_t> for RustAlloc {
 impl RustAlloc {
     const DISPATCH: ockam_memory_dispatch_table_t = ockam_memory_dispatch_table_t {
         deinit: None,
-        alloc: Some(self::alloc_impl),
+        alloc_zeroed: Some(self::alloc_zeroed_impl),
         free: Some(self::free_impl),
         set: Some(self::memset_impl),
         copy: Some(self::memcpy_impl),
@@ -36,7 +36,7 @@ impl RustAlloc {
     }
 }
 
-unsafe extern "C" fn alloc_impl(
+unsafe extern "C" fn alloc_zeroed_impl(
     _: *mut ockam_memory_t,
     buffer: *mut *mut u8,
     size: usize,
@@ -50,7 +50,7 @@ unsafe extern "C" fn alloc_impl(
         }
     }
 
-    ockam_vault_sys::MEMORY_ERROR_ALLOC_FAIL
+    ockam_vault_sys::OCKAM_MEMORY_ERROR_ALLOC_FAIL
 }
 
 unsafe extern "C" fn free_impl(_: *mut ockam_memory_t, ptr: *mut u8, size: usize) -> ockam_error_t {
@@ -59,7 +59,7 @@ unsafe extern "C" fn free_impl(_: *mut ockam_memory_t, ptr: *mut u8, size: usize
         std::alloc::dealloc(ptr as *mut _, layout);
         ockam_vault_sys::OCKAM_ERROR_NONE
     } else {
-        ockam_vault_sys::MEMORY_ERROR_INVALID_PARAM
+        ockam_vault_sys::OCKAM_MEMORY_ERROR_INVALID_PARAM
     }
 }
 

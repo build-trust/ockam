@@ -62,7 +62,7 @@ defmodule Ockam.Vault.KeyPair do
 
   @doc "Return the key type for this keypair"
   def key_type(%__MODULE__{priv: %Secret{attrs: attrs}}), do: SecretAttributes.type(attrs)
-  def key_type(%__MODULE__{}), do: :unspecified
+  def key_type(%__MODULE__{}), do: :buffer
 
   @doc "Return the public key for this keypair"
   def public_key(%__MODULE__{pub: pub}), do: pub

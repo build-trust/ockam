@@ -1,6 +1,7 @@
 #include "ockam/vault.h"
 #include "vault/default/default.h"
 #include "memory/impl.h"
+#include "random/urandom/urandom.h"
 
 typedef enum {
     OCKAM_VAULT_FEATURE_RANDOM = OCKAM_VAULT_FEAT_RANDOM,

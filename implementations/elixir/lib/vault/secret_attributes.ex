@@ -2,7 +2,7 @@ defmodule Ockam.Vault.SecretAttributes do
   defstruct [:length, :ty, :purpose, :persistence]
 
   @type secret_persistence :: :static | :ephemeral
-  @type secret_type :: :unspecified | :aes128 | :aes256 | :curve25519_private | :p256_private
+  @type secret_type :: :buffer | :aes128 | :aes256 | :curve25519_private | :p256_private
   @type secret_purpose :: :key_agreement
 
   @type t :: %__MODULE__{
@@ -13,7 +13,7 @@ defmodule Ockam.Vault.SecretAttributes do
         }
 
   @persistence_types [:ephemeral, :static]
-  @secret_types [:unspecified, :aes128, :aes256, :curve25519_private, :p256_private]
+  @secret_types [:buffer, :aes128, :aes256, :curve25519_private, :p256_private]
 
   @doc "Get the type of secret this represents"
   @spec type(t) :: secret_type()
@@ -30,12 +30,12 @@ defmodule Ockam.Vault.SecretAttributes do
     }
   end
 
-  @doc "Get a default set of attributes for a secret of unspecified nature"
-  @spec x25519(secret_persistence()) :: t
-  def unspecified(persistence) when persistence in @persistence_types do
+  @doc "Get a default set of attributes for a secret of unknown nature (i.e. raw byte buffer)"
+  @spec buffer(secret_persistence()) :: t
+  def buffer(persistence) when persistence in @persistence_types do
     %__MODULE__{
       length: 0,
-      ty: :unspecified,
+      ty: :buffer,
       purpose: :key_agreement,
       persistence: persistence
     }
@@ -53,5 +53,5 @@ defmodule Ockam.Vault.SecretAttributes do
   def from_type(type, persistence \\ :ephemeral)
 
   def from_type(:x25519, :ephemeral), do: x25519(:ephemeral)
-  def from_type(:unspecified, :ephemeral), do: unspecified(:ephemeral)
+  def from_type(:buffer, :ephemeral), do: buffer(:ephemeral)
 end

@@ -39,8 +39,7 @@ defmodule Ockam.Channel.HashState.Test do
     assert {:ok, sse2, test_bin} = HashState.encrypt_and_hash(sse1, vault, test_bin)
     assert {:ok, ssd2, test_bin} = HashState.decrypt_and_hash(ssd1, vault, test_bin)
 
-    {:ok, test_ikm} =
-      Vault.import_secret(vault, test_bin, SecretAttributes.unspecified(:ephemeral))
+    {:ok, test_ikm} = Vault.import_secret(vault, test_bin, SecretAttributes.buffer(:ephemeral))
 
     sse3 = HashState.mix_key(sse2, vault, test_ikm)
     ssd3 = HashState.mix_key(ssd2, vault, test_ikm)
