@@ -13,11 +13,11 @@
 #include "memory/stdlib/stdlib.h"
 
 ockam_error_t memory_stdlib_deinit(ockam_memory_t* memory);
-ockam_error_t memory_stdlib_alloc_zeroed(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size);
-ockam_error_t memory_stdlib_free(ockam_memory_t* memory, uint8_t* buffer, size_t buffer_size);
-ockam_error_t memory_stdlib_set(ockam_memory_t* memory, uint8_t* buffer, uint8_t value, size_t set_size);
-ockam_error_t memory_stdlib_copy(ockam_memory_t* memory, uint8_t* destination, const uint8_t* source, size_t copy_size);
-ockam_error_t memory_stdlib_move(ockam_memory_t* memory, uint8_t* destination, uint8_t* source, size_t move_size);
+ockam_error_t memory_stdlib_alloc_zeroed(ockam_memory_t* memory, void** buffer, size_t buffer_size);
+ockam_error_t memory_stdlib_free(ockam_memory_t* memory, void* buffer, size_t buffer_size);
+ockam_error_t memory_stdlib_set(ockam_memory_t* memory, void* buffer, uint8_t value, size_t set_size);
+ockam_error_t memory_stdlib_copy(ockam_memory_t* memory, void* destination, const void* source, size_t copy_size);
+ockam_error_t memory_stdlib_move(ockam_memory_t* memory, void* destination, void* source, size_t move_size);
 
 ockam_memory_dispatch_table_t memory_stdlib_dispatch_table = { &memory_stdlib_deinit, &memory_stdlib_alloc_zeroed,
                                                                &memory_stdlib_free,   &memory_stdlib_set,
@@ -47,7 +47,7 @@ exit:
   return error;
 }
 
-ockam_error_t memory_stdlib_alloc_zeroed(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size)
+ockam_error_t memory_stdlib_alloc_zeroed(ockam_memory_t* memory, void** buffer, size_t buffer_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -74,7 +74,7 @@ exit:
   return error;
 }
 
-ockam_error_t memory_stdlib_free(ockam_memory_t* memory, uint8_t* buffer, size_t buffer_size)
+ockam_error_t memory_stdlib_free(ockam_memory_t* memory, void* buffer, size_t buffer_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -91,7 +91,7 @@ exit:
   return error;
 }
 
-ockam_error_t memory_stdlib_set(ockam_memory_t* memory, uint8_t* buffer, uint8_t value, size_t set_size)
+ockam_error_t memory_stdlib_set(ockam_memory_t* memory, void* buffer, uint8_t value, size_t set_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -106,7 +106,7 @@ exit:
   return error;
 }
 
-ockam_error_t memory_stdlib_copy(ockam_memory_t* memory, uint8_t* destination, const uint8_t* source, size_t copy_size)
+ockam_error_t memory_stdlib_copy(ockam_memory_t* memory, void* destination, const void* source, size_t copy_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -121,7 +121,7 @@ exit:
   return error;
 }
 
-ockam_error_t memory_stdlib_move(ockam_memory_t* memory, uint8_t* destination, uint8_t* source, size_t move_size)
+ockam_error_t memory_stdlib_move(ockam_memory_t* memory, void* destination, void* source, size_t move_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 

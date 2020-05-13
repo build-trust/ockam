@@ -23,7 +23,7 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_alloc_zeroed(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size)
+ockam_error_t ockam_memory_alloc_zeroed(ockam_memory_t* memory, void** buffer, size_t buffer_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -38,7 +38,7 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_free(ockam_memory_t* memory, uint8_t* buffer, size_t buffer_size)
+ockam_error_t ockam_memory_free(ockam_memory_t* memory, void* buffer, size_t buffer_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -53,7 +53,7 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_copy(ockam_memory_t* memory, uint8_t* destination, const uint8_t* source, size_t copy_size)
+ockam_error_t ockam_memory_copy(ockam_memory_t* memory, void* destination, const void* source, size_t copy_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -68,7 +68,7 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_set(ockam_memory_t* memory, uint8_t* buffer, uint8_t value, size_t set_size)
+ockam_error_t ockam_memory_set(ockam_memory_t* memory, void* buffer, uint8_t value, size_t set_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -83,7 +83,7 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_move(ockam_memory_t* memory, uint8_t* destination, uint8_t* source, size_t move_size)
+ockam_error_t ockam_memory_move(ockam_memory_t* memory, void* destination, void* source, size_t move_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 

@@ -44,7 +44,7 @@ ockam_error_t ockam_memory_deinit(ockam_memory_t* memory);
  * @return  MEMORY_ERROR_INVALID_SIZE if buffer_size <=0.
  * @return  MEMORY_ERROR_ALLOC_FAIL if unable to allocate the desired buffer.
  */
-ockam_error_t ockam_memory_alloc_zeroed(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size);
+ockam_error_t ockam_memory_alloc_zeroed(ockam_memory_t* memory, void** buffer, size_t buffer_size);
 
 /**
  * @brief   Free the specified buffer.
@@ -55,7 +55,7 @@ ockam_error_t ockam_memory_alloc_zeroed(ockam_memory_t* memory, uint8_t** buffer
  * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory or buffer received.
  * @return  MEMORY_ERROR_INVALID_SIZE if buffer_size <=0.
  */
-ockam_error_t ockam_memory_free(ockam_memory_t* memory, uint8_t* buffer, size_t buffer_size);
+ockam_error_t ockam_memory_free(ockam_memory_t* memory, void* buffer, size_t buffer_size);
 
 /**
  * @brief   Set a set_size number of bytes to the buffer with value.
@@ -67,7 +67,7 @@ ockam_error_t ockam_memory_free(ockam_memory_t* memory, uint8_t* buffer, size_t 
  * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory or buffer received.
  * @return  MEMORY_ERROR_INVALID_SIZE if set_size <=0.
  */
-ockam_error_t ockam_memory_set(ockam_memory_t* memory, uint8_t* buffer, uint8_t value, size_t set_size);
+ockam_error_t ockam_memory_set(ockam_memory_t* memory, void* buffer, uint8_t value, size_t set_size);
 
 /**
  * @brief   Copy data from the source buffer to the destination buffer.
@@ -79,7 +79,7 @@ ockam_error_t ockam_memory_set(ockam_memory_t* memory, uint8_t* buffer, uint8_t 
  * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory, destination or source received.
  * @return  MEMORY_ERROR_INVALID_SIZE if copy_size <=0.
  */
-ockam_error_t ockam_memory_copy(ockam_memory_t* memory, uint8_t* destination, const uint8_t* source, size_t copy_size);
+ockam_error_t ockam_memory_copy(ockam_memory_t* memory, void* destination, const void* source, size_t copy_size);
 
 /**
  * @brief   Move move_size bytes from source to destination.
@@ -91,7 +91,7 @@ ockam_error_t ockam_memory_copy(ockam_memory_t* memory, uint8_t* destination, co
  * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory, destination or source received.
  * @return  MEMORY_ERROR_INVALID_SIZE if move_size <=0.
  */
-ockam_error_t ockam_memory_move(ockam_memory_t* memory, uint8_t* destination, uint8_t* source, size_t move_size);
+ockam_error_t ockam_memory_move(ockam_memory_t* memory, void* destination, void* source, size_t move_size);
 
 /**
  * @}
