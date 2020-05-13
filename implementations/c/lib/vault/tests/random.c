@@ -39,7 +39,7 @@ void test_vault_random(void** state)
 
   test_data = (test_vault_random_shared_data_t*) *state;
 
-  error = ockam_vault_random_bytes_generate(test_data->vault, (uint8_t*) &g_rand_num[0], TEST_VAULT_RAND_NUM_SIZE);
+  error = ockam_vault_random_bytes_generate(test_data->vault, &g_rand_num[0], TEST_VAULT_RAND_NUM_SIZE);
   assert_int_equal(error, OCKAM_ERROR_NONE);
 }
 
