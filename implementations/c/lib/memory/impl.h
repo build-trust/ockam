@@ -28,7 +28,7 @@ typedef struct {
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory or buffer received.
    * @return  MEMORY_ERROR_INVALID_SIZE if buffer_size <=0.
    */
-  ockam_error_t (*alloc_zeroed)(ockam_memory_t* memory, uint8_t** buffer, size_t buffer_size);
+  ockam_error_t (*alloc_zeroed)(ockam_memory_t* memory, void** buffer, size_t buffer_size);
 
   /**
    * @brief   Free the specified buffer.
@@ -39,7 +39,7 @@ typedef struct {
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory or buffer received.
    * @return  MEMORY_ERROR_INVALID_SIZE if buffer_size <=0.
    */
-  ockam_error_t (*free)(ockam_memory_t* memory, uint8_t* buffer, size_t buffer_size);
+  ockam_error_t (*free)(ockam_memory_t* memory, void* buffer, size_t buffer_size);
 
   /**
    * @brief   Set a set_size number of bytes to the buffer with value
@@ -51,7 +51,7 @@ typedef struct {
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory or buffer received.
    * @return  MEMORY_ERROR_INVALID_SIZE if set_size <=0.
    */
-  ockam_error_t (*set)(ockam_memory_t* memory, uint8_t* buffer, uint8_t value, size_t set_size);
+  ockam_error_t (*set)(ockam_memory_t* memory, void* buffer, uint8_t value, size_t set_size);
 
   /**
    * @brief   Copy data from the source buffer to the destination buffer
@@ -63,7 +63,7 @@ typedef struct {
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory, destination or source received.
    * @return  MEMORY_ERROR_INVALID_SIZE if copy_size <=0.
    */
-  ockam_error_t (*copy)(ockam_memory_t* memory, uint8_t* destination, const uint8_t* source, size_t copy_size);
+  ockam_error_t (*copy)(ockam_memory_t* memory, void* destination, const void* source, size_t copy_size);
 
   /**
    * @brief   Move a move_size bytes from source to destination.
@@ -75,7 +75,7 @@ typedef struct {
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory, destination or source received.
    * @return  MEMORY_ERROR_INVALID_SIZE if move_size <=0.
    */
-  ockam_error_t (*move)(ockam_memory_t* memory, uint8_t* destination, uint8_t* source, size_t move_size);
+  ockam_error_t (*move)(ockam_memory_t* memory, void* destination, void* source, size_t move_size);
 } ockam_memory_dispatch_table_t;
 
 /**
