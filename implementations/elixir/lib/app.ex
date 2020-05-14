@@ -7,8 +7,11 @@ defmodule Ockam.App do
     Logger.info("Starting #{__MODULE__}")
 
     transports = Application.get_env(:ockam, :transports, [])
+    services = Application.get_env(:ockam, :services, [])
 
     children = [
+      {Ockam.Registry, []},
+      {Ockam.Services, [services]},
       {Ockam.Transport.Supervisor, [transports]}
     ]
 

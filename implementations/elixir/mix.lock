@@ -1,6 +1,8 @@
 %{
+  "fluxter": {:hex, :fluxter, "0.9.0", "6b4bbb7cd038ab2dd663bf3bc3c185ffb1851fdf5af9e8485dd7717d41e05e9d", [:mix], [], "hexpm", "868d3e6df5ee5831f96711c127963c7ec79b46fa2928fb0317be73065d2b01ef"},
   "gen_state_machine": {:hex, :gen_state_machine, "2.1.0", "a38b0e53fad812d29ec149f0d354da5d1bc0d7222c3711f3a0bd5aa608b42992", [:mix], [], "hexpm", "ae367038808db25cee2f2c4b8d0531522ea587c4995eb6f96ee73410a60fa06b"},
   "jason": {:hex, :jason, "1.1.2", "b03dedea67a99223a2eaf9f1264ce37154564de899fd3d8b9a21b1a6fd64afe7", [:mix], [{:decimal, "~> 1.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "fdf843bca858203ae1de16da2ee206f53416bbda5dc8c9e78f43243de4bc3afe"},
+  "mint": {:hex, :mint, "1.0.0", "ca5ab33497ba2bdcc42f6cdd3927420a6159116be87c8173658e93c8746703da", [:mix], [{:castore, "~> 0.1.0", [hex: :castore, repo: "hexpm", optional: true]}], "hexpm", "b8943ef1e630879538dd6620bfc189d4d75fab3ad39f3fe9c50539879f7efd84"},
   "rustler": {:hex, :rustler, "0.21.0", "68cc4fc015d0b9541865ea78e78e9ef2dd91ee4be80bf543fd15791102a45aca", [:mix], [{:toml, "~> 0.5.2", [hex: :toml, repo: "hexpm", optional: false]}], "hexpm", "e5429378c397f37f1091a35593b153aee1925e197c6842d04648d802edb52f80"},
   "toml": {:hex, :toml, "0.5.2", "e471388a8726d1ce51a6b32f864b8228a1eb8edc907a0edf2bb50eab9321b526", [:mix], [], "hexpm", "f1e3dabef71fb510d015fad18c0e05e7c57281001141504c6b69d94e99750a07"},
 }
