@@ -3,4 +3,8 @@ import Config
 config :logger,
   level: :warn
 
-config :ockam, :vault, curve: :curve25519
+config :fluxter, Ockam.Services.Influx.Fluxter,
+  host: "127.0.0.1",
+  port: 8089,
+  pool_size: 5,
+  prefix: nil

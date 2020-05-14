@@ -18,3 +18,19 @@ config :ockam, :transports,
     listen_address: "0.0.0.0",
     listen_port: 4000
   ]
+
+config :ockam, :services,
+  influx_example: [
+    service: Ockam.Services.Influx,
+    database: "test",
+    http: [
+      host: "127.0.0.1",
+      port: 8086
+    ]
+  ]
+
+config :fluxter, Ockam.Services.Influx.Fluxter,
+  host: "127.0.0.1",
+  port: 8089,
+  pool_size: 5,
+  prefix: nil

@@ -61,7 +61,7 @@ defmodule Ockam.Integration.Handshake.Test do
     assert {:ok, chan, transport} =
              Channel.negotiate_secure_channel(handshake, transport, %{timeout: 10_000})
 
-    assert {:ok, message, encrypted} = Socket.recv(transport, timeout: 10_000)
+    assert {:ok, encrypted, transport} = Socket.recv(transport, timeout: 10_000)
     assert {:ok, chan, encoded} = Channel.decrypt(chan, encrypted)
     assert {:ok, %Envelope{body: %Message.Ping{}}} = Encoding.decode(encoded)
 

@@ -1,6 +1,6 @@
 defprotocol Ockam.Router.Protocol.Encoder do
   @type t :: term()
-  @type opts :: Keyword.t()
+  @type opts :: map()
   @type reason :: term()
 
   @fallback_to_any true
