@@ -38,10 +38,10 @@ impl RustAlloc {
 
 unsafe extern "C" fn alloc_zeroed_impl(
     _: *mut ockam_memory_t,
-    buffer: *mut *mut u8,
+    buffer: *mut *mut core::ffi::c_void,
     size: usize,
 ) -> ockam_error_t {
-    let layout_result = Layout::from_size_align(size, mem::align_of::<u8>());
+    let layout_result = Layout::from_size_align(size, mem::align_of::<core::ffi::c_void>());
     if let Ok(layout) = layout_result {
         let ptr = std::alloc::alloc_zeroed(layout);
         if !ptr.is_null() {
@@ -53,8 +53,8 @@ unsafe extern "C" fn alloc_zeroed_impl(
     ockam_vault_sys::OCKAM_MEMORY_ERROR_ALLOC_FAIL
 }
 
-unsafe extern "C" fn free_impl(_: *mut ockam_memory_t, ptr: *mut u8, size: usize) -> ockam_error_t {
-    let layout_result = Layout::from_size_align(size, mem::align_of::<u8>());
+unsafe extern "C" fn free_impl(_: *mut ockam_memory_t, ptr: *mut core::ffi::c_void, size: usize) -> ockam_error_t {
+    let layout_result = Layout::from_size_align(size, mem::align_of::<core::ffi::c_void>());
     if let Ok(layout) = layout_result {
         std::alloc::dealloc(ptr as *mut _, layout);
         ockam_vault_sys::OCKAM_ERROR_NONE
@@ -65,7 +65,7 @@ unsafe extern "C" fn free_impl(_: *mut ockam_memory_t, ptr: *mut u8, size: usize
 
 unsafe extern "C" fn memset_impl(
     _: *mut ockam_memory_t,
-    ptr: *mut u8,
+    ptr: *mut core::ffi::c_void,
     byte: u8,
     count: usize,
 ) -> ockam_error_t {
@@ -75,8 +75,8 @@ unsafe extern "C" fn memset_impl(
 
 unsafe extern "C" fn memcpy_impl(
     _: *mut ockam_memory_t,
-    dst: *mut u8,
-    src: *const u8,
+    dst: *mut core::ffi::c_void,
+    src: *const core::ffi::c_void,
     size: usize,
 ) -> ockam_error_t {
     core::intrinsics::copy_nonoverlapping(src, dst, size);
@@ -85,8 +85,8 @@ unsafe extern "C" fn memcpy_impl(
 
 unsafe extern "C" fn memmove_impl(
     _: *mut ockam_memory_t,
-    dst: *mut u8,
-    src: *mut u8,
+    dst: *mut core::ffi::c_void,
+    src: *mut core::ffi::c_void,
     size: usize,
 ) -> ockam_error_t {
     core::intrinsics::copy(src, dst, size);
