@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(example_vault_random
+project(example_vault_hkdf_sha256
   VERSION 1.0
 )
 
@@ -19,14 +19,14 @@ FetchContent_Populate(ockam
 add_subdirectory(${ockam_SOURCE_DIR} ${ockam_BINARY_DIR})
 
 # Add the necessary libraries and sources for the example executable
-add_executable(example_vault_random "")
+add_executable(example_vault_hkdf_sha256 "")
 
-target_sources(example_vault_random
+target_sources(example_vault_hkdf_sha256
   PUBLIC
     main.c
   )
 
-target_link_libraries(example_vault_random
+target_link_libraries(example_vault_hkdf_sha256
   ockam::memory
   ockam::memory::stdlib
   ockam::random
@@ -35,7 +35,7 @@ target_link_libraries(example_vault_random
   ockam::vault::default
 )
 
-target_include_directories(example_vault_random
+target_include_directories(example_vault_hkdf_sha256
   PUBLIC 
     ${OCKAM_INCLUDES_OUTPUT_DIRECTORY}
   )

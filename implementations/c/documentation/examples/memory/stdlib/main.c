@@ -1,5 +1,5 @@
 /**
- * @file  example_memory.c
+ * @file  main.c
  * @brief
  */
 

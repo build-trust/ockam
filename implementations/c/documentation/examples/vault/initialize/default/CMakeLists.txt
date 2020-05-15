@@ -29,6 +29,8 @@ target_sources(example_vault_initialize_default
 target_link_libraries(example_vault_initialize_default
   ockam::memory
   ockam::memory::stdlib
+  ockam::random
+  ockam::random::urandom
   ockam::vault
   ockam::vault::default
 )
