@@ -2,9 +2,11 @@
 #include <stdio.h>
 
 #include "ockam/error.h"
+#include "ockam/error.h"
 #include "ockam/key_agreement.h"
 #include "ockam/syslog.h"
 #include "ockam/vault.h"
+#include "../../vault/default/default.h"
 #include "xx_local.h"
 
 /*
@@ -13,77 +15,62 @@
  ********************************************************************************************************
  */
 
-OckamError OckamKeyInitializeXX(KeyEstablishmentXX *xx, const OckamVault *vault, OckamVaultCtx *vault_ctx,
-                                const OckamTransport *transport, OckamTransportCtx transport_ctx) {
-  xx->vault = vault;
-  xx->vault_ctx = vault_ctx;
-  xx->transport = transport;
-  xx->transport_ctx = transport_ctx;
-  return kOckamErrorNone;
-}
-
-OckamError XXEncrypt(KeyEstablishmentXX *xx, uint8_t *payload, uint32_t payload_size, uint8_t *msg, uint16_t msg_length,
-                     uint16_t *msg_size) {
-  OckamError status = kOckamErrorNone;
-  uint8_t cipher_text[MAX_TRANSMIT_SIZE];
-  uint8_t vector[VECTOR_SIZE];
-  uint32_t offset = 0;
+ockam_error_t xx_encrypt(
+  key_establishment_xx* xx, uint8_t* payload, size_t payload_size, uint8_t* msg, size_t msg_length, size_t* msg_size)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+  uint8_t       cipher_text_and_tag[MAX_TRANSMIT_SIZE];
+  size_t        ciphertext_and_tag_length;
 
   if (msg_length < (payload_size + TAG_SIZE)) {
-    status = kBufferTooSmall;
-    goto exit_block;
+    error = TRANSPORT_ERROR_BUFFER_TOO_SMALL;
+    goto exit;
   }
 
-  memset(cipher_text, 0, sizeof(cipher_text));
-  make_vector(xx->ne, vector);
-  status =
-      xx->vault->AesGcmEncrypt(xx->vault_ctx, xx->ke, KEY_SIZE, vector, sizeof(vector), NULL, 0,
-                               &cipher_text[payload_size], TAG_SIZE, payload, payload_size, cipher_text, payload_size);
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed ockam_vault_aes_gcm_encrypt in encrypt");
-    goto exit_block;
-  }
-  memcpy(msg, cipher_text, TAG_SIZE + payload_size);
-  offset += TAG_SIZE + payload_size;
+  memset(cipher_text_and_tag, 0, sizeof(cipher_text_and_tag));
+  error = ockam_vault_aead_aes_gcm_encrypt(xx->vault,
+                                           &xx->ke_secret,
+                                           xx->ne,
+                                           NULL,
+                                           0,
+                                           payload,
+                                           payload_size,
+                                           cipher_text_and_tag,
+                                           sizeof(cipher_text_and_tag),
+                                           &ciphertext_and_tag_length);
+  ;
+  memcpy(msg, cipher_text_and_tag, ciphertext_and_tag_length);
   xx->ne += 1;
-  *msg_size = offset;
+  *msg_size = ciphertext_and_tag_length;
 
-exit_block:
-  return status;
+exit:
+  if (error) log_error(error, __func__);
+  return error;
 }
 
-OckamError XXDecrypt(KeyEstablishmentXX *xx, uint8_t *payload, uint32_t payload_size, uint8_t *msg, uint16_t msg_length,
-                     uint32_t *payload_bytes) {
-  OckamError status = kOckamErrorNone;
-  uint8_t uncipher[MAX_TRANSMIT_SIZE];
-  uint8_t tag[TAG_SIZE];
-  uint8_t vector[VECTOR_SIZE];
-  uint32_t offset = 0;
-  uint32_t uncipher_size = 0;
+ockam_error_t xx_decrypt(key_establishment_xx* xx,
+                         uint8_t*              payload,
+                         size_t                payload_size,
+                         uint8_t*              msg,
+                         size_t                msg_length,
+                         size_t*               payload_length)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+  uint8_t       clear_text[MAX_TRANSMIT_SIZE];
+  size_t        clear_text_length = 0;
 
-  if (payload_size < (msg_length - TAG_SIZE)) {
-    status = kBufferTooSmall;
-    goto exit_block;
-  }
+  memset(clear_text, 0, sizeof(clear_text));
 
-  *payload_bytes = msg_length - TAG_SIZE;
+  error = ockam_vault_aead_aes_gcm_decrypt(
+    xx->vault, &xx->kd_secret, xx->nd, NULL, 0, msg, msg_length, clear_text, sizeof(clear_text), &clear_text_length);
+  *payload_length = clear_text_length;
 
-  memset(tag, 0, sizeof(tag));
-  memcpy(tag, msg + offset + *payload_bytes, TAG_SIZE);
-  make_vector(xx->nd, vector);
-  memset(uncipher, 0, sizeof(uncipher));
-  uncipher_size = msg_length - TAG_SIZE;
-  status = xx->vault->AesGcmDecrypt(xx->vault_ctx, xx->kd, KEY_SIZE, vector, sizeof(vector), NULL, 0, tag, sizeof(tag),
-                                    msg + offset, uncipher_size, uncipher, uncipher_size);
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed ockam_vault_aes_gcm_decrypt in initiator_m2_recv");
-    goto exit_block;
-  }
-  memcpy(payload, uncipher, payload_size);
+  memcpy(payload, clear_text, clear_text_length);
   xx->nd += 1;
 
-exit_block:
-  return status;
+exit:
+  if (error) log_error(error, __func__);
+  return error;
 }
 
 /*
@@ -91,33 +78,42 @@ exit_block:
  *                                            LOCAL FUNCTIONS *
  ********************************************************************************************************
  */
-OckamError KeyEstablishPrologueXX(KeyEstablishmentXX *xx) {
-  OckamError status = kOckamErrorNone;
+ockam_error_t key_agreement_prologue_xx(key_establishment_xx* xx)
+{
+  ockam_error_t                   error             = OCKAM_ERROR_NONE;
+  ockam_vault_secret_t            secret            = { 0 };
+  ockam_vault_secret_attributes_t secret_attributes = { KEY_SIZE,
+                                                        OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
+                                                        OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
+                                                        OCKAM_VAULT_SECRET_PERSISTENT };
+  size_t                          key_size          = 0;
+  uint8_t                         ck[KEY_SIZE];
 
   // 1. Generate a static 25519 keypair for this handshake and set it to s
-  status = xx->vault->KeyGenerate(xx->vault_ctx, kOckamVaultKeyStatic);
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed to generate static keypair in initiator_step_1");
-    goto exit_block;
+  error = ockam_vault_secret_generate(xx->vault, &secret, &secret_attributes);
+  if (error) {
+    log_error(error, "key_agreement_prologue_xx");
+    goto exit;
   }
 
-  status = xx->vault->KeyGetPublic(xx->vault_ctx, kOckamVaultKeyStatic, xx->s, KEY_SIZE);
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed to get static public key in initiator_step_1");
-    goto exit_block;
+  error = ockam_vault_secret_publickey_get(xx->vault, &secret, xx->s, sizeof(xx->s), &key_size);
+  if (error) {
+    log_error(error, "key_agreement_prologue_xx");
+    goto exit;
   }
 
   // 2. Generate an ephemeral 25519 keypair for this handshake and set it to e
-  status = xx->vault->KeyGenerate(xx->vault_ctx, kOckamVaultKeyEphemeral);
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed to generate ephemeral keypair in initiator_step_1");
-    goto exit_block;
+  secret_attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
+  error                         = ockam_vault_secret_generate(xx->vault, &secret, &secret_attributes);
+  if (error) {
+    log_error(error, "key_agreement_prologue_xx");
+    goto exit;
   }
 
-  status = xx->vault->KeyGetPublic(xx->vault_ctx, kOckamVaultKeyEphemeral, xx->e, KEY_SIZE);
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed to get ephemeral public key in initiator_step_1");
-    goto exit_block;
+  error = ockam_vault_secret_publickey_get(xx->vault, &secret, xx->e, sizeof(xx->e), &key_size);
+  if (error) {
+    log_error(error, "key_agreement_prologue_xx");
+    goto exit;
   }
 
   // 3. Set k to empty, Set n to 0
@@ -127,58 +123,70 @@ OckamError KeyEstablishPrologueXX(KeyEstablishmentXX *xx) {
   // 4. Set h and ck to 'Noise_XX_25519_AESGCM_SHA256'
   memset(xx->h, 0, SHA256_SIZE);
   memcpy(xx->h, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
-  memset(xx->ck, 0, KEY_SIZE);
-  memcpy(xx->ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
+  memset(ck, 0, KEY_SIZE);
+  memcpy(ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
+  secret_attributes.persistence = OCKAM_VAULT_SECRET_PERSISTENT;
+  secret_attributes.type        = OCKAM_VAULT_SECRET_TYPE_BUFFER;
+  error = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, sizeof(ck));
 
   // 5. h = SHA256(h || prologue),
   // prologue is empty
   mix_hash(xx, NULL, 0);
 
-exit_block:
-  return status;
+exit:
+  return error;
 }
 
 /*------------------------------------------------------------------------------------------------------*
  *          UTILITY FUNCTIONS
  *------------------------------------------------------------------------------------------------------*/
-void print_uint8_str(uint8_t *p, uint16_t size, char *msg) {
+void print_uint8_str(uint8_t* p, uint16_t size, char* msg)
+{
   printf("\n%s %d bytes: \n", msg, size);
   for (int i = 0; i < size; ++i) printf("%0.2x", *p++);
   printf("\n");
 }
 
-OckamError HkdfDh(KeyEstablishmentXX *xx, uint8_t *dh1, uint16_t hkdf1_size, OckamVaultKey dh_key_type, uint8_t *dh2,
-                  uint16_t dh2_size, uint16_t out_size, uint8_t *out_1, uint8_t *out_2) {
-  OckamError status = kOckamErrorNone;
-  uint8_t secret[KEY_SIZE];
-  uint8_t bytes[2 * out_size];
+ockam_error_t hkdf_dh(key_establishment_xx* xx,
+                      ockam_vault_secret_t* salt,
+                      ockam_vault_secret_t* privatekey,
+                      uint8_t*              peer_publickey,
+                      size_t                peer_publickey_length,
+                      ockam_vault_secret_t* secret1,
+                      ockam_vault_secret_t* secret2)
+{
+  ockam_error_t        error = OCKAM_ERROR_NONE;
+  ockam_vault_secret_t shared_secret;
+  ockam_vault_secret_t generated_secrets[2];
 
-  // Compute pre-master secret
-  // status = ockam_vault_ecdh( dh_key_type, dh2, dh2_size, secret, KEY_SIZE );
-  status = xx->vault->Ecdh(xx->vault_ctx, dh_key_type, dh2, dh2_size, secret, KEY_SIZE);
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed ockam_vault_ecdh in responder_m2_send");
-    goto exit_block;
+  // Compute shared secret
+  // error = ockam_vault_ecdh( dh_key_type, dh2, dh2_size, secret, KEY_SIZE );
+  error = ockam_vault_ecdh(xx->vault, privatekey, peer_publickey, peer_publickey_length, &shared_secret);
+  if (OCKAM_ERROR_NONE != error) {
+    log_error(error, "failed ockam_vault_ecdh in responder_m2_send");
+    goto exit;
   }
 
-  // ck, k = HKDF( ck, pms )
-  status = xx->vault->Hkdf(xx->vault_ctx, dh1, hkdf1_size, secret, KEY_SIZE, NULL, 0, bytes, sizeof(bytes));
-  if (kOckamErrorNone != status) {
-    log_error(status, "failed ockam_vault_hkdf in responder_m2_send");
-    goto exit_block;
+  // ck, k = HKDF( ck, shared_secret )
+  error = ockam_vault_hkdf_sha256(xx->vault, salt, &shared_secret, 2, generated_secrets);
+  if (OCKAM_ERROR_NONE != error) {
+    log_error(error, "failed ockam_vault_hkdf_sha256 in hkdf_dh");
+    goto exit;
   }
-  memcpy(out_1, bytes, out_size);
-  memcpy(out_2, &bytes[out_size], out_size);
 
-exit_block:
-  return status;
+  memcpy(secret1, &generated_secrets[0], sizeof(ockam_vault_secret_t));
+  memcpy(secret2, &generated_secrets[1], sizeof(ockam_vault_secret_t));
+
+exit:
+  return error;
 }
 
-void string_to_hex(char *hexstring, uint8_t *val, uint32_t *p_bytes) {
-  const char *pos = hexstring;
-  uint32_t bytes = 0;
+void string_to_hex(uint8_t* hexstring, uint8_t* val, size_t* p_bytes)
+{
+  const char* pos   = (char*) hexstring;
+  uint32_t    bytes = 0;
 
-  for (size_t count = 0; count < (strlen(hexstring) / 2); count++) {
+  for (size_t count = 0; count < (strlen((char*) hexstring) / 2); count++) {
     sscanf(pos, "%2hhx", &val[count]);
     pos += 2;
     bytes += 1;
@@ -186,31 +194,34 @@ void string_to_hex(char *hexstring, uint8_t *val, uint32_t *p_bytes) {
   if (NULL != p_bytes) *p_bytes = bytes;
 }
 
-void mix_hash(KeyEstablishmentXX *xx, uint8_t *p_bytes, uint16_t b_length) {
-  uint8_t *p_h = &xx->h[0];
-  uint8_t string[MAX_TRANSMIT_SIZE];
-  uint8_t hash[SHA256_SIZE];
+void mix_hash(key_establishment_xx* xx, uint8_t* p_bytes, uint16_t b_length)
+{
+  ockam_error_t error;
+  uint8_t*      p_h = &xx->h[0];
+  uint8_t       string[MAX_TRANSMIT_SIZE];
+  uint8_t       hash[SHA256_SIZE];
+  size_t        hash_length = 0;
 
   memset(&hash[0], 0, sizeof(hash));
   memset(&string[0], 0, sizeof(string));
   memcpy(&string[0], &p_h[0], SHA256_SIZE);
   memcpy(&string[SHA256_SIZE], p_bytes, b_length);
-  xx->vault->Sha256(xx->vault_ctx, (uint8_t *)&string[0], SHA256_SIZE + b_length, (uint8_t *)&hash[0], SHA256_SIZE);
-  memcpy(p_h, hash, SHA256_SIZE);
+  error = ockam_vault_sha256(xx->vault, string, SHA256_SIZE + b_length, hash, SHA256_SIZE, &hash_length);
+  if (error) log_error(error, "mix_hash");
+  memcpy(p_h, hash, hash_length);
 
-exit_block:
+exit:
   return;
 }
 
-OckamError make_vector(uint64_t nonce, uint8_t *vector) {
-  uint8_t *pv;
-  uint8_t *pn = (uint8_t *)&nonce;
+ockam_error_t make_vector(uint64_t nonce, uint8_t* vector)
+{
+  uint8_t* pv;
+  uint8_t* pn = (uint8_t*) &nonce;
 
   memset(vector, 0, VECTOR_SIZE);
   pv = vector + 4;
   pn += 7;
-  for (int i = 7; i >= 0; --i) {
-    *pv++ = *pn--;
-  }
-  return kOckamErrorNone;
+  for (int i = 7; i >= 0; --i) { *pv++ = *pn--; }
+  return OCKAM_ERROR_NONE;
 }

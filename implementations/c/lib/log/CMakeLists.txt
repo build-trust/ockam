@@ -8,6 +8,6 @@ ockam_cc_library(
    NAME
      log
    SRCS
-     "printf.c"
+#     "printf.c"
      "syslog.c"
    PUBLIC )

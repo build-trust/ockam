@@ -1,3 +1,3 @@
 #include "ockam/error.h"
 
-void log_error(OckamError error, char* message);
+void log_error(ockam_error_t error, const char* message);

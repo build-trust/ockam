@@ -1,7 +1,21 @@
 /**
  ********************************************************************************************************
- * @file        printf.c
- * @brief
+ * @file    log.h
+ * @brief   Generic logging functions for the Ockam Library
+ ********************************************************************************************************
+ */
+
+#ifndef OCKAM_LOG_H_
+#define OCKAM_LOG_H_
+
+/*
+ ********************************************************************************************************
+ * @defgroup    OCKAM_LOG OCKAM_LOG_API
+ * @ingroup     OCKAM
+ * @brief       OCKAM_LOG_API
+ *
+ * @addtogroup  OCKAM_LOG
+ * @{
  ********************************************************************************************************
  */
 
@@ -11,8 +25,9 @@
  ********************************************************************************************************
  */
 
+#include <stdint.h>
+
 #include "ockam/error.h"
-#include "ockam/log.h"
 
 /*
  ********************************************************************************************************
@@ -25,6 +40,15 @@
  *                                               CONSTANTS                                              *
  ********************************************************************************************************
  */
+
+typedef enum {
+  OCKAM_LOG_DEBUG = 0,
+  OCKAM_LOG_INFO,
+  OCKAM_LOG_WARN,
+  OCKAM_LOG_ERROR,
+  OCKAM_LOG_FATAL,
+  MAX_OCKAM_LOG
+} OCKAM_LOG_e;
 
 /*
  ********************************************************************************************************
@@ -56,32 +80,22 @@
  ********************************************************************************************************
  */
 
-/**
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ockam_error_t ockam_log_init(void);
+
+ockam_error_t ockam_log(void* p_str, uint32_t str_size);
+
+#ifdef __cplusplus
+}
+#endif
+
+/*
  ********************************************************************************************************
- *                                            ockam_log_init()
- *
- * @brief   Initialize the Ockam generic log functions.
- *
- * @return  OCKAM_ERR_NONE on success.
- *
+ * @}
  ********************************************************************************************************
  */
 
-OckamError ockam_log_init(void) { return kOckamErrorNone; }
-
-/**
- ********************************************************************************************************
- *                                             ockam_log()
- *
- * @brief   Ockam's generic log function
- *
- * @param   p_str[in]       String buffer to write to the log
- *
- * @param   str_size[in]    Size of the string to write to the log
- *
- * @return  OCKAM_ERR_NONE on success.
- *
- ********************************************************************************************************
- */
-
-OckamError ockam_log(void* p_str, uint32_t str_size) { return kOckamErrorNone; }
+#endif

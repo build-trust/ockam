@@ -13,7 +13,7 @@ void init_err_log(FILE* fp) {
   }
 }
 
-void log_error(OckamError error, char* message) {
+void log_error(ockam_error_t error, const char* message) {
   if (NULL == g_err_log) g_err_log = stdout;
   fprintf(g_err_log, "Error %d: %s\n", error, message);
 }

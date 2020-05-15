@@ -1,17 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ockam/error.h"
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
 
-TransportError file_compare(char *p_f1, char *p_f2) {
-  TransportError status = 0;
+ockam_error_t file_compare(char* p_f1, char* p_f2)
+{
+  ockam_error_t status = 0;
 
   unsigned more = 1;
 
-  FILE *fp1 = NULL;
-  FILE *fp2 = NULL;
+  FILE* fp1 = NULL;
+  FILE* fp2 = NULL;
 
   char buffer1[256];
   char buffer2[256];
@@ -23,7 +25,7 @@ TransportError file_compare(char *p_f1, char *p_f2) {
   fp2 = fopen(p_f2, "r");
 
   if ((NULL == fp1) || (NULL == fp2)) {
-    status = kTestFailure;
+    status = TRANSPORT_ERROR_TEST;
     goto exit_block;
   }
 
@@ -31,16 +33,16 @@ TransportError file_compare(char *p_f1, char *p_f2) {
     r1 = fread(buffer1, 1, sizeof(buffer1), fp1);
     r2 = fread(buffer2, 1, sizeof(buffer2), fp2);
     if (r1 != r2) {
-      status = kTestFailure;
+      status = TRANSPORT_ERROR_TEST;
       goto exit_block;
     }
     if (0 != memcmp(buffer1, buffer2, r1)) {
-      status = kTestFailure;
+      status = TRANSPORT_ERROR_TEST;
       goto exit_block;
     }
     if (feof(fp1)) {
       if (!feof(fp2)) {
-        status = kTestFailure;
+        status = TRANSPORT_ERROR_TEST;
         goto exit_block;
       }
       more = 0;

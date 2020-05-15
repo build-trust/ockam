@@ -2,20 +2,20 @@
 
 #include "ockam/key_agreement.h"
 
-#define ACK "ACK"
+#define ACK      "ACK"
 #define ACK_SIZE 3
-#define OK "OK"
-#define OK_SIZE 2
+#define OK       "OK"
+#define OK_SIZE  2
 
-#define TEST_MSG_BYTE_SIZE 15
-#define TEST_MSG_INITIATOR "7375626d6172696e6579656c6c6f77"
-#define TEST_MSG_RESPONDER "79656c6c6f777375626d6172696e65"
+#define TEST_MSG_BYTE_SIZE   15
+#define TEST_MSG_INITIATOR   "7375626d6172696e6579656c6c6f77"
+#define TEST_MSG_RESPONDER   "79656c6c6f777375626d6172696e65"
 #define TEST_MSG_CIPHER_SIZE 64
 
 #define INITIATOR_STATIC "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 #define RESPONDER_STATIC "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
-#define INITIATOR_EPH "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
-#define RESPONDER_EPH "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60"
+#define INITIATOR_EPH    "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+#define RESPONDER_EPH    "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60"
 
 #define MSG_1_CIPHERTEXT "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254"
 #define MSG_2_CIPHERTEXT                                                       \
@@ -30,5 +30,5 @@
 #define MSG_4_CIPHERTEXT "9ea1da1ec3bfecfffab213e537ed1791bfa887dd9c631351b3f63d6315ab9a"
 #define MSG_5_CIPHERTEXT "217c5111fad7afde33bd28abaff3def88a57ab50515115d23a10f28621f842"
 
-OckamError XXTestInitiator(const OckamVault *vault, void *vaultCtx);
-OckamError XXTestResponder(const OckamVault *vault, void *vaultCtx);
+ockam_error_t xx_test_initiator(ockam_vault_t* vault, ockam_ip_address_t* ip_address);
+ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_ip_address_t*);

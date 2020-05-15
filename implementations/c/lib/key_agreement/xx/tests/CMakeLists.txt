@@ -9,9 +9,14 @@ ockam_cc_test(NAME
 		"xx_test.c"
 		"xx_test.h"
 	DEPS
-		ockam::transport::posix_socket::tcp
+		ockam::io
+		ockam::transport
 		ockam::log
 		ockam::memory
+		ockam::memory::stdlib
+		ockam::random
+		ockam::random::urandom
 		ockam::key_agreement::xx
+		ockam::vault
 		ockam::vault::default
 	)
