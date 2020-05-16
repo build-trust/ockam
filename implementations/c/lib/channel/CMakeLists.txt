@@ -8,7 +8,8 @@ ockam_cc_library(
 		channel
 	SRCS
 		channel_impl.c
-	HDRS
+	DEPS
+		ockam::key_agreement::xx
 )
 
 if(${OCKAM_BUILD_TESTS})
