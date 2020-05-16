@@ -51,8 +51,8 @@ exit:
 ockam_error_t xx_decrypt(key_establishment_xx* xx,
                          uint8_t*              payload,
                          size_t                payload_size,
-                         uint8_t*              msg,
-                         size_t                msg_length,
+                         uint8_t*              cipher_text,
+                         size_t                cipher_text_length,
                          size_t*               payload_length)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
@@ -61,8 +61,16 @@ ockam_error_t xx_decrypt(key_establishment_xx* xx,
 
   memset(clear_text, 0, sizeof(clear_text));
 
-  error = ockam_vault_aead_aes_gcm_decrypt(
-    xx->vault, &xx->kd_secret, xx->nd, NULL, 0, msg, msg_length, clear_text, sizeof(clear_text), &clear_text_length);
+  error           = ockam_vault_aead_aes_gcm_decrypt(xx->vault,
+                                           &xx->kd_secret,
+                                           xx->nd,
+                                           NULL,
+                                           0,
+                                           cipher_text,
+                                           cipher_text_length,
+                                           clear_text,
+                                           sizeof(clear_text),
+                                           &clear_text_length);
   *payload_length = clear_text_length;
 
   memcpy(payload, clear_text, clear_text_length);
@@ -73,6 +81,26 @@ exit:
   return error;
 }
 
+ockam_error_t xx_key_deinit(key_establishment_xx* xx)
+{
+  ockam_error_t error        = OCKAM_ERROR_NONE;
+  ockam_error_t return_error = OCKAM_ERROR_NONE;
+  error                      = ockam_vault_secret_destroy(xx->vault, &xx->e_secret);
+  if (error) return_error = error;
+  error = ockam_vault_secret_destroy(xx->vault, &xx->s_secret);
+  if (error) return_error = error;
+  error = ockam_vault_secret_destroy(xx->vault, &xx->ke_secret);
+  if (error) return_error = error;
+  error = ockam_vault_secret_destroy(xx->vault, &xx->kd_secret);
+  if (error) return_error = error;
+  error = ockam_vault_secret_destroy(xx->vault, &xx->k_secret);
+  if (error) return_error = error;
+  error = ockam_vault_secret_destroy(xx->vault, &xx->ck_secret);
+  if (error) return_error = error;
+exit:
+  return return_error;
+}
+
 /*
  ********************************************************************************************************
  *                                            LOCAL FUNCTIONS *
@@ -81,36 +109,31 @@ exit:
 ockam_error_t key_agreement_prologue_xx(key_establishment_xx* xx)
 {
   ockam_error_t                   error             = OCKAM_ERROR_NONE;
-  ockam_vault_secret_t            secret            = { 0 };
   ockam_vault_secret_attributes_t secret_attributes = { KEY_SIZE,
                                                         OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
                                                         OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
-                                                        OCKAM_VAULT_SECRET_PERSISTENT };
+                                                        OCKAM_VAULT_SECRET_EPHEMERAL };
   size_t                          key_size          = 0;
   uint8_t                         ck[KEY_SIZE];
 
   // 1. Generate a static 25519 keypair for this handshake and set it to s
-  error = ockam_vault_secret_generate(xx->vault, &secret, &secret_attributes);
-  if (error) {
-    log_error(error, "key_agreement_prologue_xx");
-    goto exit;
-  }
+  error = ockam_vault_secret_generate(xx->vault, &xx->s_secret, &secret_attributes);
+  if (error) goto exit;
 
-  error = ockam_vault_secret_publickey_get(xx->vault, &secret, xx->s, sizeof(xx->s), &key_size);
+  error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, sizeof(xx->s), &key_size);
   if (error) {
     log_error(error, "key_agreement_prologue_xx");
     goto exit;
   }
 
   // 2. Generate an ephemeral 25519 keypair for this handshake and set it to e
-  secret_attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
-  error                         = ockam_vault_secret_generate(xx->vault, &secret, &secret_attributes);
+  error = ockam_vault_secret_generate(xx->vault, &xx->e_secret, &secret_attributes);
   if (error) {
     log_error(error, "key_agreement_prologue_xx");
     goto exit;
   }
 
-  error = ockam_vault_secret_publickey_get(xx->vault, &secret, xx->e, sizeof(xx->e), &key_size);
+  error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, sizeof(xx->e), &key_size);
   if (error) {
     log_error(error, "key_agreement_prologue_xx");
     goto exit;
@@ -125,15 +148,16 @@ ockam_error_t key_agreement_prologue_xx(key_establishment_xx* xx)
   memcpy(xx->h, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
   memset(ck, 0, KEY_SIZE);
   memcpy(ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
-  secret_attributes.persistence = OCKAM_VAULT_SECRET_PERSISTENT;
-  secret_attributes.type        = OCKAM_VAULT_SECRET_TYPE_BUFFER;
-  error = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, sizeof(ck));
+  secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
+  error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
+  if (error) goto exit;
 
   // 5. h = SHA256(h || prologue),
   // prologue is empty
   mix_hash(xx, NULL, 0);
 
 exit:
+  if (error) log_error(error, __func__);
   return error;
 }
 

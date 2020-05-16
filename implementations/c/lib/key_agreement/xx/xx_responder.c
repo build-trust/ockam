@@ -7,6 +7,8 @@
 #include "ockam/vault.h"
 #include "xx_local.h"
 
+#include <stdio.h>
+
 ockam_error_t ockam_key_establish_responder_xx(key_establishment_xx* xx)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
@@ -14,10 +16,6 @@ ockam_error_t ockam_key_establish_responder_xx(key_establishment_xx* xx)
   uint8_t       read_buffer[MAX_TRANSMIT_SIZE];
   size_t        bytesReceived = 0;
   size_t        transmit_size = 0;
-
-  /* Initialize handshake struct and generate initial static & ephemeral keys */
-  error = key_agreement_prologue_xx(xx);
-  if (error) goto exit;
 
   /* Initialize handshake struct and generate initial static & ephemeral keys */
   error = key_agreement_prologue_xx(xx);

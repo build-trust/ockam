@@ -19,4 +19,6 @@ ockam_cc_test(NAME
 		ockam::key_agreement::xx
 		ockam::vault
 		ockam::vault::default
+	TEST_OPTS
+		-r -i -s
 	)

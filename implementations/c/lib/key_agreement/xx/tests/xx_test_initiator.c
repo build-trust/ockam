@@ -67,16 +67,14 @@ ockam_error_t xx_test_initiator_prologue(key_establishment_xx* xx)
   memcpy(ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
   secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
   error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
-  if (error) {
-    log_error(error, "xx_test_responder_prologue");
-    goto exit;
-  }
+  if (error)  goto exit;
 
   // 5. h = SHA256(h || prologue),
   // prologue is empty
   mix_hash(xx, NULL, 0);
 
 exit:
+  if(error) log_error(error, __func__ );
   return error;
 }
 
