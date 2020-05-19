@@ -81,8 +81,8 @@ exit:
 ockam_error_t test_initiator_handshake(key_establishment_xx* xx)
 {
   ockam_error_t error = TRANSPORT_ERROR_NONE;
-  uint8_t       sendBuffer[MAX_TRANSMIT_SIZE];
-  uint8_t       recv_buffer[MAX_TRANSMIT_SIZE];
+  uint8_t       sendBuffer[MAX_XX_TRANSMIT_SIZE];
+  uint8_t       recv_buffer[MAX_XX_TRANSMIT_SIZE];
   size_t        bytesReceived = 0;
   size_t        transmit_size = 0;
   uint8_t       compare[1024];
@@ -96,7 +96,7 @@ ockam_error_t test_initiator_handshake(key_establishment_xx* xx)
   }
 
   // Step 1 generate message
-  error = xx_initiator_m1_make(xx, sendBuffer, MAX_TRANSMIT_SIZE, &transmit_size);
+  error = xx_initiator_m1_make(xx, sendBuffer, MAX_XX_TRANSMIT_SIZE, &transmit_size);
   if (TRANSPORT_ERROR_NONE != error) {
     log_error(error, "initiator_step_1 failed");
     goto exit;
@@ -105,7 +105,7 @@ ockam_error_t test_initiator_handshake(key_establishment_xx* xx)
   // Verify
   string_to_hex((uint8_t*) MSG_1_CIPHERTEXT, compare, &compare_bytes);
   if (0 != memcmp(sendBuffer, compare, compare_bytes)) {
-    error = kXXKeyAgreementTestFailed;
+    error = KEYAGREEMENT_ERROR_FAIL;
     log_error(error, "Test failed on msg 0\n");
     goto exit;
   }
@@ -141,7 +141,7 @@ ockam_error_t test_initiator_handshake(key_establishment_xx* xx)
   /* Msg 3 verify */
   string_to_hex((uint8_t*) MSG_3_CIPHERTEXT, compare, &compare_bytes);
   if (0 != memcmp(compare, sendBuffer, transmit_size)) {
-    error = kXXKeyAgreementTestFailed;
+    error = KEYAGREEMENT_ERROR_FAIL;
     log_error(error, "-------Msg 3 verify failed");
     goto exit;
   }
@@ -195,8 +195,8 @@ ockam_error_t xx_test_initiator(ockam_vault_t* vault, ockam_ip_address_t* ip_add
 
   ockam_error_t        error = kXXKeyAgreementFailed;
   key_establishment_xx handshake;
-  uint8_t              sendBuffer[MAX_TRANSMIT_SIZE];
-  uint8_t              recv_buffer[MAX_TRANSMIT_SIZE];
+  uint8_t              sendBuffer[MAX_XX_TRANSMIT_SIZE];
+  uint8_t              recv_buffer[MAX_XX_TRANSMIT_SIZE];
   size_t               bytes_received = 0;
   size_t               transmit_size  = 0;
   uint8_t              test[TEST_MSG_CIPHER_SIZE];
@@ -241,9 +241,9 @@ ockam_error_t xx_test_initiator(ockam_vault_t* vault, ockam_ip_address_t* ip_add
   }
   if (scripted_xx) {
     string_to_hex((uint8_t*) TEST_MSG_RESPONDER, test_responder, NULL);
-    if (0 != memcmp((void*) test, test_responder, TEST_MSG_BYTE_SIZE)) { error = kXXKeyAgreementTestFailed; }
+    if (0 != memcmp((void*) test, test_responder, TEST_MSG_BYTE_SIZE)) { error = KEYAGREEMENT_ERROR_FAIL; }
   } else {
-    if (0 != memcmp(ACK, test, ACK_SIZE)) { error = kXXKeyAgreementTestFailed; }
+    if (0 != memcmp(ACK, test, ACK_SIZE)) { error = KEYAGREEMENT_ERROR_FAIL; }
   }
   if (OCKAM_ERROR_NONE != error) {
     log_error(error, "Received bad epilogue message");
@@ -269,7 +269,7 @@ ockam_error_t xx_test_initiator(ockam_vault_t* vault, ockam_ip_address_t* ip_add
   if (scripted_xx) {
     string_to_hex((uint8_t*) MSG_5_CIPHERTEXT, test, &test_bytes);
     if (0 != memcmp(test, sendBuffer, transmit_size)) {
-      error = kXXKeyAgreementTestFailed;
+      error = KEYAGREEMENT_ERROR_FAIL;
       log_error(error, "Msg 5 failed");
       goto exit;
     }

@@ -22,19 +22,19 @@ int _test_codec_payload_aead_aes_gcm_setup(void **state) {
 
   aag_test_payload = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == aag_test_payload) {
-    status = kOckamError;
+    status = OCKAM_ERROR_INTERFACE_CODEC;
     goto exit_block;
   }
 
   aag_end_payload = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == aag_end_payload) {
-    status = kOckamError;
+    status = OCKAM_ERROR_INTERFACE_CODEC;
     goto exit_block;
   }
 
   aag_encoded_stream = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == aag_encoded_stream) {
-    status = kOckamError;
+    status = OCKAM_ERROR_INTERFACE_CODEC;
     goto exit_block;
   }
 
@@ -47,8 +47,8 @@ exit_block:
 }
 
 void _test_codec_payload_aead_aes_gcm(void **state) {
-  KTAeadAesGcmPayload aag_in;
-  KTAeadAesGcmPayload aag_out;
+  codec_aead_aes_gcm_payload_t aag_in;
+  codec_aead_aes_gcm_payload_t aag_out;
   uint8_t *out = NULL;
   uint8_t *_out = NULL;
   uint8_t *in = NULL;

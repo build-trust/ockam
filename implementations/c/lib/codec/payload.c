@@ -11,7 +11,7 @@
  * @param data_length [in] - bytes to encode
  * @return
  */
-uint8_t *encode_payload(uint8_t *encoded, KTPayload *kt_payload) {
+uint8_t *encode_payload(uint8_t *encoded, codec_payload_t*kt_payload) {
   if (0 == encoded) goto exit_block;
 
   encoded = encode_variable_length_encoded_u2le(encoded, kt_payload->data_length);
@@ -31,7 +31,7 @@ exit_block:
  * @param data_length [in/out] - in: size of data/out: bytes decoded
  * @return
  */
-uint8_t *decode_payload(uint8_t *encoded, KTPayload *kt_payload) {
+uint8_t *decode_payload(uint8_t *encoded, codec_payload_t*kt_payload) {
   uint16_t length;
 
   if (0 == encoded) goto exit_block;

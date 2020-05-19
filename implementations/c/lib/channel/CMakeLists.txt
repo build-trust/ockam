@@ -10,6 +10,7 @@ ockam_cc_library(
 		channel_impl.c
 	DEPS
 		ockam::key_agreement::xx
+		ockam::codec
 )
 
 if(${OCKAM_BUILD_TESTS})

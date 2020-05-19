@@ -7,11 +7,11 @@
 #include "ockam/vault.h"
 #include "ockam/key_agreement.h"
 
-#define PROTOCOL_NAME      "Noise_XX_25519_AESGCM_SHA256"
-#define PROTOCOL_NAME_SIZE 28
-#define MAX_TRANSMIT_SIZE  2048
-#define TAG_SIZE           16
-#define VECTOR_SIZE        12
+#define PROTOCOL_NAME         "Noise_XX_25519_AESGCM_SHA256"
+#define PROTOCOL_NAME_SIZE    28
+#define MAX_XX_TRANSMIT_SIZE  1028
+#define TAG_SIZE              16
+#define VECTOR_SIZE           12
 
 #define DEFAULT_IP_ADDRESS "127.0.0.1"
 #define DEFAULT_IP_PORT    4000

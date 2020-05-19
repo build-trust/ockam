@@ -19,7 +19,7 @@ ockam_error_t xx_encrypt(
   key_establishment_xx* xx, uint8_t* payload, size_t payload_size, uint8_t* msg, size_t msg_length, size_t* msg_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
-  uint8_t       cipher_text_and_tag[MAX_TRANSMIT_SIZE];
+  uint8_t       cipher_text_and_tag[MAX_XX_TRANSMIT_SIZE];
   size_t        ciphertext_and_tag_length;
 
   if (msg_length < (payload_size + TAG_SIZE)) {
@@ -56,7 +56,7 @@ ockam_error_t xx_decrypt(key_establishment_xx* xx,
                          size_t*               payload_length)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
-  uint8_t       clear_text[MAX_TRANSMIT_SIZE];
+  uint8_t       clear_text[MAX_XX_TRANSMIT_SIZE];
   size_t        clear_text_length = 0;
 
   memset(clear_text, 0, sizeof(clear_text));
@@ -222,7 +222,7 @@ void mix_hash(key_establishment_xx* xx, uint8_t* p_bytes, uint16_t b_length)
 {
   ockam_error_t error;
   uint8_t*      p_h = &xx->h[0];
-  uint8_t       string[MAX_TRANSMIT_SIZE];
+  uint8_t       string[MAX_XX_TRANSMIT_SIZE];
   uint8_t       hash[SHA256_SIZE];
   size_t        hash_length = 0;
 

@@ -44,8 +44,8 @@ ockam_error_t channel_responder(ockam_vault_t* vault, ockam_memory_t* p_memory, 
   ockam_reader_t*            p_ch_reader;
   ockam_writer_t*            p_ch_writer;
   key_establishment_xx       handshake;
-  uint8_t                    send_buffer[MAX_TRANSMIT_SIZE];
-  uint8_t                    recv_buffer[MAX_TRANSMIT_SIZE];
+  uint8_t                    send_buffer[MAX_XX_TRANSMIT_SIZE];
+  uint8_t                    recv_buffer[MAX_XX_TRANSMIT_SIZE];
   size_t                     bytes_received = 0;
   size_t                     transmit_size  = 0;
   ockam_channel_attributes_t channel_attrs;

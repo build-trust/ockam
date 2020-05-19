@@ -14,6 +14,7 @@ ockam_cc_library(
 		endpoint.c
 		key_agreement.c
 		ockam_wire.c
+		routes.c
 )
 
 if(${OCKAM_BUILD_TESTS})

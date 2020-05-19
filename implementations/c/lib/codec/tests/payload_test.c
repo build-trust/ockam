@@ -22,19 +22,19 @@ int _test_codec_payload_setup(void **state) {
 
   test_payload = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == test_payload) {
-    status = kOckamError;
+    status = OCKAM_ERROR_INTERFACE_CODEC;
     goto exit_block;
   }
 
   end_payload = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == end_payload) {
-    status = kOckamError;
+    status = OCKAM_ERROR_INTERFACE_CODEC;
     goto exit_block;
   }
 
   encoded_payload = malloc(0xffffu);
   if (NULL == encoded_payload) {
-    status = kOckamError;
+    status = OCKAM_ERROR_INTERFACE_CODEC;
     goto exit_block;
   }
 
@@ -49,8 +49,8 @@ exit_block:
 void _test_codec_payload(void **state) {
   uint8_t *out = 0;
   uint8_t *in = 0;
-  KTPayload payload_in;
-  KTPayload payload_out;
+  codec_payload_t payload_in;
+  codec_payload_t payload_out;
 
   payload_in.data = test_payload;
   payload_out.data = end_payload;

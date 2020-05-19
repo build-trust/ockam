@@ -8,7 +8,7 @@
  * @param payload [in] - pointer to payload
  * @return - out + number of encoded bytes written
  */
-uint8_t *encode_payload_aead_aes_gcm(uint8_t *encoded, KTAeadAesGcmPayload *payload) {
+uint8_t *encode_payload_aead_aes_gcm(uint8_t *encoded, codec_aead_aes_gcm_payload_t*payload) {
   uint16_t encoded_length = 0;
 
   if (0 == payload) encoded = 0;
@@ -34,7 +34,7 @@ exit_block:
  * @param payload [out] - pointer to payload
  * @return - in + number of bytes decoded
  */
-uint8_t *decode_payload_aead_aes_gcm(uint8_t *encoded, KTAeadAesGcmPayload *payload) {
+uint8_t *decode_payload_aead_aes_gcm(uint8_t *encoded, codec_aead_aes_gcm_payload_t*payload) {
   uint16_t decoded_length = 0;
 
   if (0 == payload) encoded = 0;

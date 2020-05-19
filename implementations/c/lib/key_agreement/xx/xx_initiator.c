@@ -6,37 +6,36 @@
 #include "ockam/transport.h"
 #include "ockam/vault.h"
 #include "xx_local.h"
+#include "ockam/codec.h"
+
+uint8_t clear_text[MAX_XX_TRANSMIT_SIZE];
 
 ockam_error_t ockam_key_establish_initiator_xx(key_establishment_xx* xx)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
-  uint8_t       send_buffer[MAX_TRANSMIT_SIZE];
-  uint8_t       recv_buffer[MAX_TRANSMIT_SIZE];
-  size_t        bytes_received = 0;
-  size_t        transmit_size  = 0;
-  uint8_t       compare[1024];
-  size_t        compare_bytes;
+  uint8_t       message[MAX_XX_TRANSMIT_SIZE];
+  size_t        message_length  = 0;
 
   /* Initialize handshake struct and generate initial static & ephemeral keys */
   error = key_agreement_prologue_xx(xx);
   if (error) goto exit;
 
-  error = xx_initiator_m1_make(xx, send_buffer, MAX_TRANSMIT_SIZE, &transmit_size);
+  error = xx_initiator_m1_make(xx, message, sizeof(message), &message_length);
   if (error) goto exit;
 
-  error = ockam_write(xx->p_writer, send_buffer, transmit_size);
+  error = ockam_write(xx->p_writer, message, message_length);
   if (error) goto exit;
 
-  error = ockam_read(xx->p_reader, recv_buffer, sizeof(recv_buffer), &bytes_received);
+  error = ockam_read(xx->p_reader, message, sizeof(message), &message_length);
   if (error) goto exit;
 
-  error = xx_initiator_m2_process(xx, recv_buffer, bytes_received);
+  error = xx_initiator_m2_process(xx, message, message_length);
   if (error) goto exit;
 
-  error = xx_initiator_m3_make(xx, send_buffer, &transmit_size);
+  error = xx_initiator_m3_make(xx, message, &message_length);
   if (error) goto exit;
 
-  error = ockam_write(xx->p_writer, send_buffer, transmit_size);
+  error = ockam_write(xx->p_writer, message, message_length);
   if (error) goto exit;
 
   error = xx_initiator_epilogue(xx);
@@ -77,11 +76,7 @@ ockam_error_t xx_initiator_m2_process(key_establishment_xx* xx, uint8_t* p_recv,
 {
   ockam_error_t        error  = OCKAM_ERROR_NONE;
   uint16_t             offset = 0;
-  uint8_t              clear_text[MAX_TRANSMIT_SIZE];
   size_t               clear_text_length = 0;
-  uint8_t              tag[TAG_SIZE];
-  uint8_t              vector[VECTOR_SIZE];
-  ockam_vault_secret_t secrets[2];
 
   // 1. Read 32 bytes from the incoming
   // message buffer, parse it as a public

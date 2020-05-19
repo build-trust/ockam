@@ -19,6 +19,7 @@ ockam_cc_test(NAME
 		ockam::key_agreement::xx
 		ockam::vault
 		ockam::vault::default
+		ockam::codec
 	TEST_OPTS
 		-r -i -s
 	)

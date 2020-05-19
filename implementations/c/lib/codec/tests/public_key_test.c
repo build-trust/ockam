@@ -9,11 +9,11 @@
 #include "ockam/codec.h"
 
 void _test_public_key(void **state) {
-  KTPublicKey pk_in;
-  KTPublicKey pk_out;
+  codec_public_key_t     pk_in;
+  codec_public_key_t     pk_out;
   uint8_t encoded[2 * KEY_CURVE_SIZE + 1];
   uint8_t *encoded_ptr = encoded;
-  CodecKeyCurveType type;
+  codec_key_curve_type_t type;
 
   memset(pk_in.x, 'O', KEY_CURVE_SIZE);
   memset(pk_in.y, 'K', KEY_CURVE_SIZE);
