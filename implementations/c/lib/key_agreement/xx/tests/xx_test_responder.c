@@ -113,8 +113,8 @@ exit:
 ockam_error_t test_responder_handshake(key_establishment_xx* xx)
 {
   ockam_error_t error = OCKAM_ERROR_INTERFACE_KEYAGREEMENT;
-  uint8_t       sendBuffer[MAX_TRANSMIT_SIZE];
-  uint8_t       recv_buffer[MAX_TRANSMIT_SIZE];
+  uint8_t       sendBuffer[MAX_XX_TRANSMIT_SIZE];
+  uint8_t       recv_buffer[MAX_XX_TRANSMIT_SIZE];
   size_t        transmit_size = 0;
   size_t        bytesReceived = 0;
   uint8_t       compare[1024];
@@ -127,7 +127,7 @@ ockam_error_t test_responder_handshake(key_establishment_xx* xx)
     goto exit;
   }
   /* Msg 1 receive */
-  error = ockam_read(xx->p_reader, &recv_buffer[0], MAX_TRANSMIT_SIZE, &bytesReceived);
+  error = ockam_read(xx->p_reader, &recv_buffer[0], MAX_XX_TRANSMIT_SIZE, &bytesReceived);
   if (error != TRANSPORT_ERROR_NONE) {
     log_error(error, "Read for msg 1 failed");
     goto exit;
@@ -162,7 +162,7 @@ ockam_error_t test_responder_handshake(key_establishment_xx* xx)
   }
 
   /* Msg 3 receive */
-  error = ockam_read(xx->p_reader, recv_buffer, MAX_TRANSMIT_SIZE, &bytesReceived);
+  error = ockam_read(xx->p_reader, recv_buffer, MAX_XX_TRANSMIT_SIZE, &bytesReceived);
   if (error != TRANSPORT_ERROR_NONE) {
     log_error(error, "ockam_ReceiveBlocking failed for msg 3");
     goto exit;
@@ -231,8 +231,8 @@ ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_ip_address_t* ip_add
   ockam_error_t      error     = OCKAM_ERROR_INTERFACE_KEYAGREEMENT;
 
   key_establishment_xx xx;
-  uint8_t              sendBuffer[MAX_TRANSMIT_SIZE];
-  uint8_t              recv_buffer[MAX_TRANSMIT_SIZE];
+  uint8_t              sendBuffer[MAX_XX_TRANSMIT_SIZE];
+  uint8_t              recv_buffer[MAX_XX_TRANSMIT_SIZE];
   size_t               transmit_size = 0;
   uint8_t              test[16];
   size_t               test_size;
@@ -282,7 +282,7 @@ ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_ip_address_t* ip_add
     /* Verify test message ciphertext */
     string_to_hex((uint8_t*) MSG_4_CIPHERTEXT, comp, &comp_size);
     if (0 != memcmp(comp, sendBuffer, transmit_size)) {
-      error = kXXKeyAgreementTestFailed;
+      error = KEYAGREEMENT_ERROR_FAIL;
       log_error(error, "Msg 4 failed");
       goto exit;
     }
@@ -303,7 +303,7 @@ ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_ip_address_t* ip_add
 
   /* Receive test message  */
   memset(recv_buffer, 0, sizeof(recv_buffer));
-  error = ockam_read(xx.p_reader, recv_buffer, MAX_TRANSMIT_SIZE, &transmit_size);
+  error = ockam_read(xx.p_reader, recv_buffer, MAX_XX_TRANSMIT_SIZE, &transmit_size);
   if (error != TRANSPORT_ERROR_NONE) {
     log_error(error, "ockam_ReceiveBlocking failed for msg 3");
     goto exit;
@@ -321,13 +321,13 @@ ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_ip_address_t* ip_add
   if (scripted_xx) {
     string_to_hex((uint8_t*) TEST_MSG_INITIATOR, test_initiator, NULL);
     if (0 != memcmp((void*) test, test_initiator, TEST_MSG_BYTE_SIZE)) {
-      error = kXXKeyAgreementTestFailed;
+      error = KEYAGREEMENT_ERROR_FAIL;
       log_error(error, "Received bad test message");
       goto exit;
     }
   } else {
     if (0 != memcmp(OK, test, OK_SIZE)) {
-      error = kXXKeyAgreementTestFailed;
+      error = KEYAGREEMENT_ERROR_FAIL;
       log_error(error, "Received bad test message");
       goto exit;
     }

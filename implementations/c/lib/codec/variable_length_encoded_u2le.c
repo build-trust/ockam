@@ -7,7 +7,8 @@
  * @param val [out] - decoded value
  * @return - encoded + number of bytes decoded
  */
-uint8_t* decode_variable_length_encoded_u2le(uint8_t* encoded, uint16_t* val) {
+uint8_t* decode_variable_length_encoded_u2le(uint8_t* encoded, uint16_t* val)
+{
   if ((0 == encoded) || (0 == val)) {
     encoded = 0;
     goto exit_block;
@@ -16,9 +17,7 @@ uint8_t* decode_variable_length_encoded_u2le(uint8_t* encoded, uint16_t* val) {
   uint8_t ls_byte = *encoded++;
   uint8_t ms_byte = 0;
 
-  if ((ls_byte & 0x80u) != 0) {
-    ms_byte = *encoded++;
-  }
+  if ((ls_byte & 0x80u) != 0) { ms_byte = *encoded++; }
   ms_byte &= 0x7Fu;
   *val = (ms_byte << 0x07u) + (ls_byte & 0x7fu);
 
@@ -32,7 +31,8 @@ exit_block:
  * @param val [in] - value to encode, must be < CODEC_MAX_VLU2_SIZE
  * @return - encoded + bytes encoded
  */
-uint8_t* encode_variable_length_encoded_u2le(uint8_t* encoded, uint16_t val) {
+uint8_t* encode_variable_length_encoded_u2le(uint8_t* encoded, uint16_t val)
+{
   if ((val & 0xC000u) || (0 == encoded)) {
     encoded = 0;
     goto exit_block;

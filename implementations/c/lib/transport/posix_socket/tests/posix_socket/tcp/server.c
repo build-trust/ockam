@@ -8,7 +8,6 @@
 //!!
 #include <unistd.h>
 
-
 #define DEFAULT_FIXTURE_PATH  "./fixtures"
 #define DEFAULT_IP_ADDRESS    "127.0.0.1"
 #define DEFAULT_IP_PORT       8000

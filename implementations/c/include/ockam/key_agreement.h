@@ -28,11 +28,7 @@
 #define SHA256_SIZE 32
 
 #define KEYAGREEMENT_ERROR_TEST (OCKAM_ERROR_INTERFACE_KEYAGREEMENT | 1u)
-
-typedef enum {
-  kXXKeyAgreementFailed     = 0x0200,
-  kXXKeyAgreementTestFailed = 0x0201,
-} KeyAgreementError;
+#define KEYAGREEMENT_ERROR_FAIL (OCKAM_ERROR_INTERFACE_KEYAGREEMENT | 2U)
 
 /*
  ********************************************************************************************************
@@ -76,5 +72,17 @@ ockam_error_t key_agreement_prologue_xx(key_establishment_xx* xx);
 ockam_error_t ockam_key_establish_initiator_xx(key_establishment_xx* xx);
 
 ockam_error_t ockam_key_establish_responder_xx(key_establishment_xx* xx);
+
+ockam_error_t xx_encrypt(
+  key_establishment_xx* xx, uint8_t* payload, size_t payload_size, uint8_t* msg, size_t msg_length, size_t* msg_size);
+
+ockam_error_t xx_decrypt(key_establishment_xx* xx,
+                         uint8_t*              payload,
+                         size_t                payload_size,
+                         uint8_t*              msg,
+                         size_t                msg_length,
+                         size_t*               payload_length);
+
+ockam_error_t xx_key_deinit(key_establishment_xx* xx);
 
 #endif
