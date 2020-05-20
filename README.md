@@ -1,11 +1,8 @@
-<h1 align="center">
-	<img width="500" alt="Ockam" src="logo.png">
-</h1>
+![Ockam Logo](https://www.ockam.io/0dc9e19beab4d96b8350d09be78361df/logo_white_background_preview.svg)
 
 <p align="center">
 <a href="https://dev.azure.com/ockam-network/ockam/_build/latest?definitionId=10?branchName=master"><img alt="Apache 2.0 License" src="https://dev.azure.com/ockam-network/ockam/_apis/build/status/ockam-network.ockam?branchName=master"></a>
 <a href="LICENSE"><img alt="Apache 2.0 License" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square"></a>
-<a href="https://join.slack.com/t/ockam-community/shared_invite/enQtNDk5Nzk2NDA2NDcxLWQ0MjcyZWZjOWVlNGE5M2M3YjBkMjFkODZmODIwZWJmOTY3MThjNmU0ODc0ZDk4MjBjOGZmZDIzY2FhYTY4YTg"><img alt="Discuss Ockam" src="https://img.shields.io/badge/slack-discuss-E01563.svg?logo=slack&style=flat-square"></a>
 </p>
 
 Consumer, enterprise, and industrial systems will become interconnected and automated around us. These systems require trust architectures to make our data secure and private.
@@ -19,8 +16,9 @@ Ockam’s developer tools enable you to …
 * Establish authenticated channels between endpoints regardless of the transports or route,
 * Create and manage cryptographic keys, unique device identifiers, and verifiable credentials in your connected environments.
 
-The Ockam Team is here to help you.
-If you still have questions after reading through our [published content](https://www.ockam.io/learn), please reach out to us. We’d love to connect with you to hear about what you are building. 
+**The Ockam Team is here to help you.**
+
+If you still have questions after reading through our [published content](https://www.ockam.io/learn), please reach out to us. We’d love to connect with you to hear about what you are building.
 
 ## License and attributions
 
