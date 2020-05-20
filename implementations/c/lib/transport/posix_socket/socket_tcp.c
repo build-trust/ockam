@@ -274,8 +274,9 @@ ockam_error_t socket_tcp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
     p_transmission->buffer_remaining -= recv_status;
     if (p_transmission->bytes_transmitted < p_transmission->transmit_length) {
       p_transmission->status = TRANSPORT_ERROR_MORE_DATA;
+    } else {
+      p_transmission->status = TRANSPORT_ERROR_NONE;
     }
-    else { p_transmission->status = TRANSPORT_ERROR_NONE; }
   }
   *buffer_length = bytes_read;
   error          = p_transmission->status;

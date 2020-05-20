@@ -5,46 +5,43 @@
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
 #include "ockam/vault.h"
+#include "ockam/codec.h"
 #include "xx_local.h"
+
+#include <stdio.h>
 
 ockam_error_t ockam_key_establish_responder_xx(key_establishment_xx* xx)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
-  uint8_t       write_buffer[MAX_TRANSMIT_SIZE];
-  uint8_t       read_buffer[MAX_TRANSMIT_SIZE];
-  size_t        bytesReceived = 0;
-  size_t        transmit_size = 0;
-
-  /* Initialize handshake struct and generate initial static & ephemeral keys */
-  error = key_agreement_prologue_xx(xx);
-  if (error) goto exit;
+  uint8_t       message[MAX_XX_TRANSMIT_SIZE];
+  size_t        message_length = 0;
 
   /* Initialize handshake struct and generate initial static & ephemeral keys */
   error = key_agreement_prologue_xx(xx);
   if (error) goto exit;
 
   /* Msg 1 receive */
-  error = ockam_read(xx->p_reader, read_buffer, MAX_TRANSMIT_SIZE, &bytesReceived);
+  error = ockam_read(xx->p_reader, message, sizeof(message), &message_length);
   if (error) goto exit;
 
   /* Msg 1 process */
-  error = xx_responder_m1_process(xx, read_buffer, bytesReceived);
+  error = xx_responder_m1_process(xx, message, message_length);
   if (error) goto exit;
 
   /* Msg 2 make */
-  error = xx_responder_m2_make(xx, write_buffer, sizeof(write_buffer), &transmit_size);
+  error = xx_responder_m2_make(xx, message, sizeof(message), &message_length);
   if (error) goto exit;
 
   /* Msg 2 send */
-  error = ockam_write(xx->p_writer, write_buffer, transmit_size);
+  error = ockam_write(xx->p_writer, message, message_length);
   if (error) goto exit;
 
   /* Msg 3 receive */
-  error = ockam_read(xx->p_reader, read_buffer, MAX_TRANSMIT_SIZE, &bytesReceived);
+  error = ockam_read(xx->p_reader, message, sizeof(message), &message_length);
   if (error) goto exit;
 
   /* Msg 3 process */
-  error = xx_responder_m3_process(xx, read_buffer, bytesReceived);
+  error = xx_responder_m3_process(xx, message, message_length);
   if (error) goto exit;
 
   /* Epilogue */
@@ -81,7 +78,7 @@ ockam_error_t xx_responder_m1_process(key_establishment_xx* p_h, uint8_t* p_m1, 
   mix_hash(p_h, NULL, 0);
 
   if (offset != m1_size) {
-    error = kXXKeyAgreementFailed;
+    error = KEYAGREEMENT_ERROR_FAIL;
     log_error(error, "handshake failed in  responder_m1_process (size mismatch)");
   }
 
@@ -92,7 +89,7 @@ exit:
 ockam_error_t xx_responder_m2_make(key_establishment_xx* xx, uint8_t* p_msg, size_t msg_size, size_t* p_bytesWritten)
 {
   ockam_error_t error = TRANSPORT_ERROR_NONE;
-  uint8_t       cipher_and_tag[MAX_TRANSMIT_SIZE];
+  uint8_t       cipher_and_tag[MAX_XX_TRANSMIT_SIZE];
   size_t        cipher_and_tag_length = 0;
   uint16_t      offset                = 0;
   uint8_t       vector[VECTOR_SIZE];
@@ -188,7 +185,7 @@ exit:
 ockam_error_t xx_responder_m3_process(key_establishment_xx* xx, uint8_t* p_m3, size_t m3_size)
 {
   ockam_error_t error = TRANSPORT_ERROR_NONE;
-  uint8_t       clear_text[MAX_TRANSMIT_SIZE];
+  uint8_t       clear_text[MAX_XX_TRANSMIT_SIZE];
   size_t        clear_text_length = 0;
   uint8_t       tag[TAG_SIZE];
   uint32_t      offset = 0;
