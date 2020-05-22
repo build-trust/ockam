@@ -40,7 +40,7 @@ include(ockam_platform)
 
 # Define the project AFTER the platform has been set!
 set(OCKAM_MAJOR_VERSION 0)
-set(OCKAM_MINOR_VERSION 5)
+set(OCKAM_MINOR_VERSION 6)
 set(OCKAM_VERSION ${OCKAM_MAJOR_VERSION}.${OCKAM_MINOR_VERSION})
 project(ockam
   VERSION ${OCKAM_VERSION}
@@ -115,4 +115,3 @@ set_alwayslink_ockam_libs()
 set_alwayslink_ockam_includes()
 add_subdirectory(lib)
 ockam_complete_binary_link_options()
-
