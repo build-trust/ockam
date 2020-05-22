@@ -1296,6 +1296,8 @@ ockam_error_t vault_default_aead_aes_gcm_deinit(ockam_vault_shared_context_t* ct
     goto exit;
   }
 
+  aead_aes_gcm_ctx = (vault_default_aead_aes_gcm_ctx_t*) ctx->aead_aes_gcm_ctx;
+
   if (aead_aes_gcm_ctx->br_aes_gcm_ctx != 0) {
     ockam_memory_free(ctx->memory, aead_aes_gcm_ctx->br_aes_gcm_ctx, sizeof(br_gcm_context));
   }
