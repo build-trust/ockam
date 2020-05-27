@@ -276,7 +276,7 @@ checksum = "9cbca9424c482ee628fa549d9c812e2cd22f1180b9222c9200fdfa6eb31aecb2"
 
 [[package]]
 name = "ockam"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -293,7 +293,7 @@ dependencies = [
 
 [[package]]
 name = "ockam-vault-sys"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bindgen",
  "cmake",

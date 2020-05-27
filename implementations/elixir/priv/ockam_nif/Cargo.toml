@@ -1,6 +1,6 @@
 [package]
 name = "ockam_nif"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 

@@ -40,7 +40,7 @@ include(ockam_platform)
 
 # Define the project AFTER the platform has been set!
 set(OCKAM_MAJOR_VERSION 0)
-set(OCKAM_MINOR_VERSION 6)
+set(OCKAM_MINOR_VERSION 7)
 set(OCKAM_VERSION ${OCKAM_MAJOR_VERSION}.${OCKAM_MINOR_VERSION})
 project(ockam
   VERSION ${OCKAM_VERSION}
