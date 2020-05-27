@@ -10,25 +10,39 @@ defmodule Ockam.MixProject do
       deps: deps(Mix.env()),
       elixirc_paths: elixirc_paths(Mix.env()),
       rustler_crates: rustler_crates(Mix.env()),
-      compilers: [:rustler] ++ Mix.compilers()
+      compilers: [:rustler] ++ Mix.compilers(),
+      test_coverage: [output: "_build/cover"],
+      dialyzer: [flags: ["-Wunmatched_returns", :error_handling, :underspecs]],
+      aliases: [
+        docs: "docs --output _build/docs",
+        test: "test --no-start --cover",
+        lint: ["credo --strict --format oneline", "format --check-formatted"]
+      ]
     ]
   end
 
   def application do
     [
-      extra_applications: [:logger, :inets],
-      mod: {Ockam.App, []}
+      extra_applications: [:logger, :inets, :ranch],
+      mod: {Ockam, []}
     ]
   end
 
-  defp deps(_env) do
+  def deps(:prod) do
     [
+      {:ranch, "~> 2.0.0-rc.2"},
       {:rustler, "~> 0.21"},
-      {:gen_state_machine, "~> 2.1"},
-      {:fluxter, "~> 0.9"},
-      {:mint, "~> 1.0"},
-      {:jason, "~> 1.1", only: [:test]}
+      {:gen_state_machine, "~> 2.1"}
     ]
+  end
+
+  def deps(_) do
+    deps(:prod) ++
+      [
+        {:ex_doc, "~> 0.21", only: [:dev], runtime: false},
+        {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
+        {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
+      ]
   end
 
   defp rustler_crates(env) do
