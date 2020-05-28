@@ -28,8 +28,8 @@ void usage()
   printf("OPTIONS\n");
   printf("  -a<xxx.xxx.xxx.xxx>\t\tIP Address\n");
   printf("  -p<portnum>\t\t\tPort\n");
-  printf("  -i \t\t\t\tRun initiator only\n");
-  printf("  -r \t\t\t\tRun responder only \n");
+  printf("  -i \t\t\t\tRun initiator\n");
+  printf("  -r \t\t\t\tRun responder\n");
 }
 
 ockam_error_t parse_opts(int argc, char* argv[])
