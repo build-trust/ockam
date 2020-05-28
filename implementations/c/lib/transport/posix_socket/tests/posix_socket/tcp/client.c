@@ -23,22 +23,22 @@ ockam_transport_tcp_socket_attributes_t transport_attributes;
 
 int test_tcp_client(ockam_ip_address_t* address, char* p_fixture_path)
 {
-  int                error = TRANSPORT_ERROR_TEST;
-  ockam_transport_t* transport;
-  ockam_reader_t*    p_transport_reader;
-  ockam_writer_t*    p_transport_writer;
-  uint8_t            send_buffer[64];
-  size_t             send_length;
-  uint8_t            receive_buffer[64];
-  size_t             bytes_received  = 0;
-  FILE*              file_to_send    = NULL;
-  FILE*              file_to_receive = NULL;
-  size_t             bytes_written;
-  uint16_t           send_not_done                               = 1;
-  uint16_t           receive_not_done                            = 1;
-  char               file_to_send_path[FIXTURE_FULL_PATH_LEN]    = { 0 };
-  char               file_to_receive_path[FIXTURE_FULL_PATH_LEN] = { 0 };
-  char               file_to_compare_path[FIXTURE_FULL_PATH_LEN] = { 0 };
+  int               error = TRANSPORT_ERROR_TEST;
+  ockam_transport_t transport;
+  ockam_reader_t*   p_transport_reader;
+  ockam_writer_t*   p_transport_writer;
+  uint8_t           send_buffer[64];
+  size_t            send_length;
+  uint8_t           receive_buffer[64];
+  size_t            bytes_received  = 0;
+  FILE*             file_to_send    = NULL;
+  FILE*             file_to_receive = NULL;
+  size_t            bytes_written;
+  uint16_t          send_not_done                               = 1;
+  uint16_t          receive_not_done                            = 1;
+  char              file_to_send_path[FIXTURE_FULL_PATH_LEN]    = { 0 };
+  char              file_to_receive_path[FIXTURE_FULL_PATH_LEN] = { 0 };
+  char              file_to_compare_path[FIXTURE_FULL_PATH_LEN] = { 0 };
 
   // Open the test data file for sending
   sprintf(&file_to_send_path[0], "%s/%s", p_fixture_path, p_file_to_send);
@@ -58,7 +58,7 @@ int test_tcp_client(ockam_ip_address_t* address, char* p_fixture_path)
   memset(&transport_attributes, 0, sizeof(transport_attributes));
   error = ockam_transport_socket_tcp_init(&transport, &transport_attributes);
   if (error) goto exit;
-  error = ockam_transport_connect(transport, &p_transport_reader, &p_transport_writer, address);
+  error = ockam_transport_connect(&transport, &p_transport_reader, &p_transport_writer, address);
   if (error) goto exit;
 
   while (send_not_done) {

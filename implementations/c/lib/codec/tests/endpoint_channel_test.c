@@ -6,35 +6,39 @@
 #include "cmocka.h"
 #include "codec_tests.h"
 #include "ockam/codec.h"
+#include "ockam/syslog.h"
 
 uint8_t* local_data_in;
 uint8_t* local_data_out;
 uint8_t* encoded_buffer;
 
-int _test_channel_endpoint_setup(void** state) {
-  int status = 0;
+int _test_channel_endpoint_setup(void** state)
+{
+  int error = 0;
 
   local_data_in = malloc(CODEC_MAX_VLU2_SIZE);
   if (0 == local_data_in) {
-    status = -1;
+    error = -1;
     goto exit_block;
   }
   local_data_out = malloc(CODEC_MAX_VLU2_SIZE);
   if (0 == local_data_out) {
-    status = -1;
+    error = -1;
     goto exit_block;
   }
   encoded_buffer = malloc(0xffff);
   if (0 == encoded_buffer) {
-    status = -1;
+    error = -1;
     goto exit_block;
   }
 
 exit_block:
+  if (error) log_error(error, __func__);
   return 0;
 }
 
-void _test_channel_endpoint() {
+void _test_channel_endpoint()
+{
   KTLocalEndpoint ep_local_in;
   KTLocalEndpoint ep_local_out;
 
@@ -46,10 +50,10 @@ void _test_channel_endpoint() {
   uint8_t* encoded = encoded_buffer;
 
   // Initialize the local endpoints
-  ep_local_in.length = CODEC_MAX_VLU2_SIZE;
-  ep_local_in.data = local_data_in;
+  ep_local_in.length  = CODEC_MAX_VLU2_SIZE;
+  ep_local_in.data    = local_data_in;
   ep_local_out.length = 0;
-  ep_local_out.data = local_data_out;
+  ep_local_out.data   = local_data_out;
   memset(local_data_out, 0, CODEC_MAX_VLU2_SIZE);
   memset(local_data_in, 0, CODEC_MAX_VLU2_SIZE);
   ep_local_in.length = CODEC_MAX_VLU2_SIZE;
@@ -64,25 +68,26 @@ void _test_channel_endpoint() {
   }
 
   // Encode
-  encoded = encode_endpoint(encoded, kChannel, (uint8_t*)&ep_channel_in);
+  encoded = encode_endpoint(encoded, kChannel, (uint8_t*) &ep_channel_in);
   assert_ptr_not_equal(encoded, 0);
-  encoded = encode_endpoint(encoded, kLocal, (uint8_t*)&ep_local_in);
+  encoded = encode_endpoint(encoded, kLocal, (uint8_t*) &ep_local_in);
   assert_ptr_not_equal(encoded, 0);
 
   // Decode
   encoded = encoded_buffer;
-  encoded = decode_endpoint(encoded, &type, (uint8_t*)&ep_channel_out);
+  encoded = decode_endpoint(encoded, &type, (uint8_t*) &ep_channel_out);
   assert_ptr_not_equal(encoded, 0);
   assert_int_equal(type, kChannel);
   assert_int_equal(0, memcmp(&ep_channel_in, &ep_channel_out, sizeof(KTChannelEndpoint)));
-  encoded = decode_endpoint(encoded, &type, (uint8_t*)&ep_local_out);
+  encoded = decode_endpoint(encoded, &type, (uint8_t*) &ep_local_out);
   assert_ptr_not_equal(encoded, 0);
   assert_int_equal(type, kLocal);
   assert_int_equal(memcmp(ep_local_in.data, ep_local_out.data, CODEC_MAX_VLU2_SIZE), 0);
 }
 
-int _test_channel_endpoint_teardown(void** state) {
-  int status = 0;
+int _test_channel_endpoint_teardown(void** state)
+{
+  int error = 0;
 
   if (0 != local_data_in) free(local_data_in);
   if (0 != local_data_out) free(local_data_out);

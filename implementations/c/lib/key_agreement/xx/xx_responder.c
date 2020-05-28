@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "ockam/error.h"
+#include "key_agreement/key_impl.h"
 #include "ockam/key_agreement.h"
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
@@ -10,47 +11,73 @@
 
 #include <stdio.h>
 
-ockam_error_t ockam_key_establish_responder_xx(key_establishment_xx* xx)
+ockam_error_t ockam_key_establish_responder_xx(void* p_context)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
-  uint8_t       message[MAX_XX_TRANSMIT_SIZE];
-  size_t        message_length = 0;
+  ockam_error_t        error        = OCKAM_ERROR_NONE;
+  ockam_error_t        return_error = OCKAM_ERROR_NONE;
+  uint8_t              message[MAX_XX_TRANSMIT_SIZE];
+  size_t               message_length = 0;
+  key_establishment_xx xx;
+  ockam_xx_key_t*      p_xx_key = (ockam_xx_key_t*) p_context;
+
+  memset(&xx, 0, sizeof(xx));
+  xx.vault = p_xx_key->p_vault;
 
   /* Initialize handshake struct and generate initial static & ephemeral keys */
-  error = key_agreement_prologue_xx(xx);
+  error = key_agreement_prologue_xx(&xx);
   if (error) goto exit;
 
   /* Msg 1 receive */
-  error = ockam_read(xx->p_reader, message, sizeof(message), &message_length);
+  error = ockam_read(p_xx_key->p_reader, message, sizeof(message), &message_length);
   if (error) goto exit;
 
   /* Msg 1 process */
-  error = xx_responder_m1_process(xx, message, message_length);
+  error = xx_responder_m1_process(&xx, message, message_length);
   if (error) goto exit;
 
   /* Msg 2 make */
-  error = xx_responder_m2_make(xx, message, sizeof(message), &message_length);
+  error = xx_responder_m2_make(&xx, message, sizeof(message), &message_length);
   if (error) goto exit;
 
   /* Msg 2 send */
-  error = ockam_write(xx->p_writer, message, message_length);
+  error = ockam_write(p_xx_key->p_writer, message, message_length);
   if (error) goto exit;
 
   /* Msg 3 receive */
-  error = ockam_read(xx->p_reader, message, sizeof(message), &message_length);
+  error = ockam_read(p_xx_key->p_reader, message, sizeof(message), &message_length);
   if (error) goto exit;
 
   /* Msg 3 process */
-  error = xx_responder_m3_process(xx, message, message_length);
+  error = xx_responder_m3_process(&xx, message, message_length);
   if (error) goto exit;
 
   /* Epilogue */
-  error = xx_responder_epilogue(xx);
+  error = xx_responder_epilogue(&xx, p_xx_key);
   if (error) goto exit;
 
 exit:
   if (error) log_error(error, __func__);
-  return error;
+  error = ockam_vault_secret_destroy(xx.vault, &xx.s_secret);
+  if (error) {
+    log_error(error, __func__);
+    return_error = error;
+  }
+  error = ockam_vault_secret_destroy(xx.vault, &xx.e_secret);
+  if (error) {
+    log_error(error, __func__);
+    return_error = error;
+  }
+  error = ockam_vault_secret_destroy(xx.vault, &xx.k_secret);
+  if (error) {
+    log_error(error, __func__);
+    return_error = error;
+  }
+  error = ockam_vault_secret_destroy(xx.vault, &xx.ck_secret);
+  if (error) {
+    log_error(error, __func__);
+    return_error = error;
+  }
+  return return_error;
 }
 
 /*
@@ -142,11 +169,9 @@ ockam_error_t xx_responder_m2_make(key_establishment_xx* xx, uint8_t* p_msg, siz
   // n = 0
   error = hkdf_dh(xx, &xx->ck_secret, &xx->s_secret, xx->re, sizeof(xx->re), &xx->ck_secret, &xx->k_secret);
   if (error) goto exit;
-  error = ockam_vault_secret_type_set(
-    xx->vault, &xx->k_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY); //!!Todo: remove these from everywhere
+  error = ockam_vault_secret_type_set(xx->vault, &xx->k_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY);
   if (error) goto exit;
-  error = ockam_vault_secret_type_set(
-    xx->vault, &xx->ck_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY); //!!only do this before using for cryptography
+  error = ockam_vault_secret_type_set(xx->vault, &xx->ck_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY);
   if (error) goto exit;
 
   xx->nonce = 0;
@@ -218,11 +243,9 @@ ockam_error_t xx_responder_m3_process(key_establishment_xx* xx, uint8_t* p_m3, s
   // n = 0
   error = hkdf_dh(xx, &xx->ck_secret, &xx->e_secret, xx->rs, sizeof(xx->rs), &xx->ck_secret, &xx->k_secret);
   if (error) goto exit;
-  error = ockam_vault_secret_type_set(
-    xx->vault, &xx->k_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY); //!!Todo: remove these from everywhere
+  error = ockam_vault_secret_type_set(xx->vault, &xx->k_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY);
   if (error) goto exit;
-  error = ockam_vault_secret_type_set(
-    xx->vault, &xx->ck_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY); //!!only do this before using for cryptography
+  error = ockam_vault_secret_type_set(xx->vault, &xx->ck_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY);
   if (error) goto exit;
 
   xx->nonce = 0;
@@ -247,14 +270,13 @@ ockam_error_t xx_responder_m3_process(key_establishment_xx* xx, uint8_t* p_m3, s
 
   xx->nonce += 1;
   mix_hash(xx, p_m3 + offset, clear_text_length);
-  offset += clear_text_length;
 
 exit:
   if (error) log_error(error, __func__);
   return error;
 }
 
-ockam_error_t xx_responder_epilogue(key_establishment_xx* xx)
+ockam_error_t xx_responder_epilogue(key_establishment_xx* xx, ockam_xx_key_t* p_key)
 {
   ockam_error_t        error = TRANSPORT_ERROR_NONE;
   ockam_vault_secret_t secrets[2];
@@ -263,16 +285,14 @@ ockam_error_t xx_responder_epilogue(key_establishment_xx* xx)
   error = ockam_vault_hkdf_sha256(xx->vault, &xx->ck_secret, NULL, 2, &secrets[0]);
   if (error) goto exit;
 
-  memcpy(&xx->ke_secret, &secrets[0], sizeof(secrets[0]));
-  memcpy(&xx->kd_secret, &secrets[1], sizeof(secrets[1]));
-  error = ockam_vault_secret_type_set(
-    xx->vault, &xx->ke_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY); //!!Todo: remove these from everywhere
+  memcpy(&p_key->encrypt_secret, &secrets[0], sizeof(secrets[0]));
+  memcpy(&p_key->decrypt_secret, &secrets[1], sizeof(secrets[1]));
+  error = ockam_vault_secret_type_set(xx->vault, &p_key->encrypt_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY);
   if (error) goto exit;
-  error = ockam_vault_secret_type_set(
-    xx->vault, &xx->kd_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY); //!!only do this before using for cryptography
+  error = ockam_vault_secret_type_set(xx->vault, &p_key->decrypt_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY);
   if (error) goto exit;
-  xx->ne = 0;
-  xx->nd = 0;
+  p_key->encrypt_nonce = 0;
+  p_key->decrypt_nonce = 0;
 
 exit:
   if (error) log_error(error, __func__);

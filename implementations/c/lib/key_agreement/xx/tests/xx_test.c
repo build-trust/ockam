@@ -13,7 +13,6 @@
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
 
-#include "memory/stdlib/stdlib.h"
 #include "random/urandom/urandom.h"
 #include "vault/default/default.h"
 
@@ -34,8 +33,8 @@ void usage()
   printf("OPTIONS\n");
   printf("  -a<xxx.xxx.xxx.xxx>\t\tIP Address\n");
   printf("  -p<portnum>\t\t\tPort\n");
-  printf("  -i \t\t\t\tRun initiator only\n");
-  printf("  -r \t\t\t\tRun responder only \n");
+  printf("  -i \t\t\t\tRun initiator\n");
+  printf("  -r \t\t\t\tRun responder\n");
   printf("  -s \t\t\t\tUse scripted test case\n\n");
 }
 
@@ -115,6 +114,10 @@ int main(int argc, char* argv[])
   printf("Initiator   : %d\n", run_initiator);
   printf("Responder   : %d\n", run_responder);
 
+  //  error = xx_test_responder(&vault, &ockam_ip);
+  //  error = xx_test_initiator(&vault, &ockam_ip);
+  //  goto exit;
+
   responder_process = fork();
   if (responder_process < 0) {
     error = KEYAGREEMENT_ERROR_TEST;
@@ -124,7 +127,7 @@ int main(int argc, char* argv[])
     // This is the initiator process, give the server a moment to come to life
     if (run_initiator) {
       sleep(1);
-      error = xx_test_initiator(&vault, &ockam_ip);
+      error = xx_test_initiator(&vault, &memory, &ockam_ip);
       if (error) {
         initiator_status = -1;
         goto exit;
@@ -137,17 +140,18 @@ int main(int argc, char* argv[])
       responder_status = -2;
       goto exit;
     }
-    error = responder_status + initiator_status;
   } else {
     if (run_responder) {
       // This is the server process
-      error = xx_test_responder(&vault, &ockam_ip);
+      error = xx_test_responder(&vault, &memory, &ockam_ip);
       if (error) goto exit;
     }
   }
 
 exit:
-  printf("Test ended with error %0.4x\n", error);
+  printf("Tests done\n");
+  if (initiator_status) printf("Initiator failed.\n");
+  if (responder_status) printf("Responder failed.\n");
   if (error) log_error(error, __func__);
   return error;
 }

@@ -157,3 +157,5 @@ uint8_t* encode_key_agreement(uint8_t* encoded, codec_payload_t* kt_payload);
 uint8_t* decode_key_agreement(uint8_t* encoded, codec_payload_t* kt_payload);
 uint8_t* encode_ockam_wire(uint8_t* p_encoded);
 uint8_t* decode_ockam_wire(uint8_t* p_encoded);
+uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route);
+uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route);

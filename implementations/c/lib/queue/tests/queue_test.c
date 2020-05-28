@@ -8,22 +8,22 @@
 
 int main()
 {
-  char          nodes[8][2] = { "1", "2", "3", "4", "5", "6", "7", "8" };
-  ockam_queue_t* p_q           = NULL;
-  ockam_error_t error      = OCKAM_ERROR_NONE;
-  ockam_queue_attributes_t attributes = { 0 };
-  ockam_memory_t memory = { 0 };
-  void*         p_node      = NULL;
-  int           ret_error  = -1;
+  char                     nodes[8][2] = { "1", "2", "3", "4", "5", "6", "7", "8" };
+  ockam_queue_t*           p_q         = NULL;
+  ockam_error_t            error       = OCKAM_ERROR_NONE;
+  ockam_queue_attributes_t attributes  = { 0 };
+  ockam_memory_t           memory      = { 0 };
+  void*                    p_node      = NULL;
+  int                      ret_error   = -1;
 
   // Initialize
   error = ockam_memory_stdlib_init(&memory);
   if (error) goto exit;
 
-  attributes.p_memory = &memory;
-  attributes.p_alert = NULL;
+  attributes.p_memory   = &memory;
+  attributes.p_alert    = NULL;
   attributes.queue_size = 5;
-  
+
   error = init_queue(&p_q, &attributes);
   if (error) goto exit;
 
@@ -100,12 +100,12 @@ int main()
   }
 
   error = uninit_queue(p_q);
-  if(error) goto exit;
+  if (error) goto exit;
 
   ret_error = 0;
   printf("Queue test successful! (3 errors above are expected)\n");
 
 exit:
-  if(error) log_error(error, __func__ );
+  if (error) log_error(error, __func__);
   return ret_error;
 }

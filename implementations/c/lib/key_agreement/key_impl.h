@@ -15,8 +15,8 @@ typedef struct ockam_key_dispatch_table_t {
 } ockam_key_dispatch_table_t;
 
 struct ockam_key {
-  ockam_key_dispatch_table_t*   dispatch;
-  void*                         context;
+  ockam_key_dispatch_table_t* dispatch;
+  void*                       context;
 };
 
 #endif
