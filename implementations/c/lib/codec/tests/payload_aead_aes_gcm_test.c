@@ -70,7 +70,7 @@ void _test_codec_payload_aead_aes_gcm(void** state)
     if (i & 0x8000u) {
       assert_null(out);
     } else {
-      in = decode_payload_aead_aes_gcm(aag_encoded_stream, &aag_out);
+      decode_payload_aead_aes_gcm(aag_encoded_stream, &aag_out);
       assert_int_equal(0, memcmp(aag_in.encrypted_data, aag_out.encrypted_data, i));
       assert_int_equal(0, memcmp(aag_in.tag, aag_out.tag, AEAD_AES_GCM_TAG_SIZE));
       assert_int_equal(i, aag_out.encrypted_data_length);

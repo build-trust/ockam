@@ -6,20 +6,22 @@
 #include "cmocka.h"
 #include "codec_tests.h"
 #include "ockam/codec.h"
+#include "ockam/syslog.h"
 
 uint8_t* encoded_buffer;
 
 int _test_endpoints_setup(void** state)
 {
-  int status = 0;
+  int error = 0;
 
   encoded_buffer = malloc(0xffff);
   if (0 == encoded_buffer) {
-    status = -1;
+    error = -1;
     goto exit_block;
   }
 
 exit_block:
+  if (error) log_error(error, __func__);
   return 0;
 }
 
@@ -44,7 +46,7 @@ void _test_endpoints(void** state)
 
 int _test_endpoints_teardown(void** state)
 {
-  int status = 0;
+  int error = 0;
 
   if (0 != encoded_buffer) free(encoded_buffer);
   return 0;

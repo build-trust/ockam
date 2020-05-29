@@ -23,7 +23,7 @@ int _test_codec_variable_length_encoded_u2le_setup(void** state)
     goto exit_block;
   }
 
-  ul2_encoded = (uint8_t*) malloc(TEST_SET_SIZE * sizeof(uint16_t));
+  ul2_encoded = (uint8_t*) malloc(TEST_SET_SIZE * sizeof(uint8_t));
   if (0 == ul2_encoded) {
     status = OCKAM_ERROR_INTERFACE_CODEC;
     goto exit_block;

@@ -24,6 +24,5 @@ ockam_error_t init_queue(ockam_queue_t** pp_queue, ockam_queue_attributes_t* p_a
 ockam_error_t enqueue(ockam_queue_t* p_q, void* node);
 ockam_error_t dequeue(ockam_queue_t* p_q, void** node);
 ockam_error_t uninit_queue(ockam_queue_t* p_q);
-ockam_error_t queue_size(ockam_queue_t* p_q, uint16_t* p_size);
 
 #endif

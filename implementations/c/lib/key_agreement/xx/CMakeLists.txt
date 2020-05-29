@@ -7,11 +7,12 @@ ockam_cc_library(
    NAME
      xx
    SRCS
-     "xx_common.c"
-     "xx_initiator.c"
-     "xx_responder.c"
+     xx_common.c
+     xx_initiator.c
+     xx_responder.c
+        ../key_impl.c
   HDRS
-    "xx_local.h"
+    xx_local.h
    PUBLIC )
 
 if(${OCKAM_BUILD_TESTS})

@@ -6,6 +6,7 @@
 #include "cmocka.h"
 #include "codec_tests.h"
 #include "ockam/codec.h"
+#include "ockam/syslog.h"
 
 uint8_t* local_data_in;
 uint8_t* local_data_out;
@@ -13,25 +14,26 @@ uint8_t* encoded_buffer;
 
 int _test_channel_endpoint_setup(void** state)
 {
-  int status = 0;
+  int error = 0;
 
   local_data_in = malloc(CODEC_MAX_VLU2_SIZE);
   if (0 == local_data_in) {
-    status = -1;
+    error = -1;
     goto exit_block;
   }
   local_data_out = malloc(CODEC_MAX_VLU2_SIZE);
   if (0 == local_data_out) {
-    status = -1;
+    error = -1;
     goto exit_block;
   }
   encoded_buffer = malloc(0xffff);
   if (0 == encoded_buffer) {
-    status = -1;
+    error = -1;
     goto exit_block;
   }
 
 exit_block:
+  if (error) log_error(error, __func__);
   return 0;
 }
 
@@ -85,7 +87,7 @@ void _test_channel_endpoint()
 
 int _test_channel_endpoint_teardown(void** state)
 {
-  int status = 0;
+  int error = 0;
 
   if (0 != local_data_in) free(local_data_in);
   if (0 != local_data_out) free(local_data_out);

@@ -5,8 +5,9 @@
 #include "ockam/syslog.h"
 #include "ockam/memory.h"
 #include "ockam/key_agreement.h"
+#include "key_agreement/xx/xx.h"
 #include "ockam/transport.h"
-#include "ockam/io/io_impl.h"
+#include "io/io_impl.h"
 #include "ockam/channel.h"
 #include "channel_impl.h"
 #include "ockam/codec.h"
@@ -57,7 +58,7 @@ ockam_error_t channel_decrypt(ockam_channel_t* p_ch,
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   if (CHANNEL_STATE_SECURE == p_ch->state) {
-    error = xx_decrypt(
+    error = ockam_key_decrypt(
       &p_ch->key, p_encoded_text, encoded_text_size, p_cipher_text, cipher_text_length, p_encoded_text_length);
     if (error) goto exit;
   } else {
@@ -92,21 +93,18 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_channel_init(ockam_channel_t** pp_ch, ockam_channel_attributes_t* p_attrs)
+ockam_error_t ockam_channel_init(ockam_channel_t* p_ch, ockam_channel_attributes_t* p_attrs)
 {
-  ockam_error_t    error = OCKAM_ERROR_NONE;
-  ockam_channel_t* p_ch  = NULL;
+  ockam_error_t error = OCKAM_ERROR_NONE;
 
-  if ((NULL == pp_ch) || (NULL == p_attrs) || (NULL == p_attrs->reader) || (NULL == p_attrs->writer) ||
+  if ((NULL == p_ch) || (NULL == p_attrs) || (NULL == p_attrs->reader) || (NULL == p_attrs->writer) ||
       (NULL == p_attrs->memory)) {
     error = CHANNEL_ERROR_PARAMS;
     goto exit;
   }
 
-  error = ockam_memory_alloc_zeroed(p_attrs->memory, (void**) &p_ch, sizeof(ockam_channel_t));
-  if (error) goto exit;
-
   p_ch->memory = p_attrs->memory;
+  p_ch->vault  = p_attrs->vault;
 
   error = ockam_memory_alloc_zeroed(p_ch->memory, (void**) &p_ch->channel_reader, sizeof(ockam_reader_t));
   if (error) goto exit;
@@ -120,20 +118,18 @@ ockam_error_t ockam_channel_init(ockam_channel_t** pp_ch, ockam_channel_attribut
 
   p_ch->transport_reader = p_attrs->reader;
   p_ch->transport_writer = p_attrs->writer;
-  p_ch->key.p_reader     = p_ch->channel_reader;
-  p_ch->key.p_writer     = p_ch->channel_writer;
-  p_ch->key.vault        = p_attrs->vault;
+
+  error = ockam_xx_key_initialize(&p_ch->key, p_ch->memory, p_ch->vault, p_ch->channel_reader, p_ch->channel_writer);
 
   p_ch->state = CHANNEL_STATE_M1;
-
-  *pp_ch = p_ch;
 
 exit:
   if (error) {
     log_error(error, __func__);
-    if (p_ch->channel_reader) ockam_memory_free(p_ch->memory, (void*) p_ch->channel_reader, sizeof(ockam_reader_t));
-    if (p_ch->channel_writer) ockam_memory_free(p_ch->memory, (void*) p_ch->channel_writer, sizeof(ockam_writer_t));
-    if (p_ch) ockam_memory_free(p_ch->memory, (uint8_t*) p_ch, sizeof(ockam_channel_t));
+    if (p_ch) {
+      if (p_ch->channel_reader) ockam_memory_free(p_ch->memory, (void*) p_ch->channel_reader, sizeof(ockam_reader_t));
+      if (p_ch->channel_writer) ockam_memory_free(p_ch->memory, (void*) p_ch->channel_writer, sizeof(ockam_writer_t));
+    }
   }
   return 0;
 }
@@ -141,7 +137,8 @@ exit:
 ockam_error_t ockam_channel_connect(ockam_channel_t* p_ch, ockam_reader_t** p_reader, ockam_writer_t** p_writer)
 {
   ockam_error_t error = 0;
-  error               = ockam_key_establish_initiator_xx(&p_ch->key);
+
+  error = ockam_key_initiate(&p_ch->key);
   if (error) goto exit;
   *p_reader = p_ch->channel_reader;
   *p_writer = p_ch->channel_writer;
@@ -154,7 +151,7 @@ exit:
 ockam_error_t ockam_channel_accept(ockam_channel_t* p_ch, ockam_reader_t** p_reader, ockam_writer_t** p_writer)
 {
   ockam_error_t error = 0;
-  error               = ockam_key_establish_responder_xx(&p_ch->key);
+  error               = ockam_key_respond(&p_ch->key);
   if (error) goto exit;
   *p_reader = p_ch->channel_reader;
   *p_writer = p_ch->channel_writer;
@@ -243,7 +240,7 @@ ockam_error_t channel_write(void* ctx, uint8_t* p_clear_text, size_t clear_text_
     *p_encoded++        = PAYLOAD;
     encoded_text_length = p_encoded - g_encoded_text + clear_text_length;
     memcpy(p_encoded, p_clear_text, clear_text_length);
-    error = xx_encrypt(
+    error = ockam_key_encrypt(
       &p_ch->key, g_encoded_text, encoded_text_length, g_cipher_text, sizeof(g_cipher_text), &cipher_text_length);
     if (error) goto exit;
   } else {
@@ -288,8 +285,7 @@ ockam_error_t ockam_channel_deinit(ockam_channel_t* p_ch)
   if (error) goto exit;
   error = ockam_memory_free(p_ch->memory, p_ch->channel_writer, 0);
   if (error) goto exit;
-  xx_key_deinit(&p_ch->key);
-  error = ockam_memory_free(p_ch->memory, p_ch, 0);
+  ockam_key_deinit(&p_ch->key);
 exit:
   if (error) log_error(error, __func__);
   return error;

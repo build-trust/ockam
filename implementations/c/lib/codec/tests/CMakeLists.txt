@@ -18,4 +18,5 @@ ockam_cc_test(
 		${CMOCKA_INCLUDE_DIRS}
 	DEPS
 		ockam::codec
+		ockam::log
 )

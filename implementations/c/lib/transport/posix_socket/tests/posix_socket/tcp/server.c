@@ -21,7 +21,7 @@ char* p_srv_file_to_compare = "client_test_data.txt";
 int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path)
 {
   int                                     error = 0;
-  ockam_transport_t*                      transport;
+  ockam_transport_t                       transport;
   ockam_reader_t*                         p_transport_reader;
   ockam_writer_t*                         p_transport_writer;
   ockam_ip_address_t                      remote_address;
@@ -59,7 +59,7 @@ int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path)
 
   error = ockam_transport_socket_tcp_init(&transport, &transport_attributes);
   if (error) goto exit;
-  error = ockam_transport_accept(transport, &p_transport_reader, &p_transport_writer, &remote_address);
+  error = ockam_transport_accept(&transport, &p_transport_reader, &p_transport_writer, &remote_address);
   if (0 != error) goto exit;
   printf("Server connected!\n");
 
@@ -110,7 +110,7 @@ int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path)
     goto exit;
   }
 
-  ockam_transport_deinit(transport);
+  ockam_transport_deinit(&transport);
   printf("Server test successful!\n");
 
 exit:

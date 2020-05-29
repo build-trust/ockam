@@ -1,7 +1,7 @@
 #ifndef OCKAM_IO_H
 #define OCKAM_IO_H
 #include "ockam/syslog.h"
-#include "ockam/io/io_impl.h"
+#include "io_impl.h"
 
 ockam_error_t ockam_read(ockam_reader_t* p_reader, uint8_t* buffer, size_t buffer_size, size_t* buffer_length)
 {

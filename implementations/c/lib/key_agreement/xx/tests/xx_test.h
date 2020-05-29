@@ -30,5 +30,5 @@
 #define MSG_4_CIPHERTEXT "9ea1da1ec3bfecfffab213e537ed1791bfa887dd9c631351b3f63d6315ab9a"
 #define MSG_5_CIPHERTEXT "217c5111fad7afde33bd28abaff3def88a57ab50515115d23a10f28621f842"
 
-ockam_error_t xx_test_initiator(ockam_vault_t* vault, ockam_ip_address_t* ip_address);
-ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_ip_address_t*);
+ockam_error_t xx_test_initiator(ockam_vault_t* vault, ockam_memory_t* memory, ockam_ip_address_t* ip_address);
+ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_memory_t* memory, ockam_ip_address_t*);

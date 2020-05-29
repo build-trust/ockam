@@ -10,11 +10,10 @@
 
 void _test_public_key(void** state)
 {
-  codec_public_key_t     pk_in;
-  codec_public_key_t     pk_out;
-  uint8_t                encoded[2 * KEY_CURVE_SIZE + 1];
-  uint8_t*               encoded_ptr = encoded;
-  codec_key_curve_type_t type;
+  codec_public_key_t pk_in;
+  codec_public_key_t pk_out;
+  uint8_t            encoded[2 * KEY_CURVE_SIZE + 1];
+  uint8_t*           encoded_ptr = NULL;
 
   memset(pk_in.x, 'O', KEY_CURVE_SIZE);
   memset(pk_in.y, 'K', KEY_CURVE_SIZE);

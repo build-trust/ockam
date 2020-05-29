@@ -99,9 +99,13 @@ int main()
     }
   }
 
+  error = uninit_queue(p_q);
+  if (error) goto exit;
+
   ret_error = 0;
-  printf("Queue test successful! (3 errors above are expected\n");
+  printf("Queue test successful! (3 errors above are expected)\n");
 
 exit:
+  if (error) log_error(error, __func__);
   return ret_error;
 }

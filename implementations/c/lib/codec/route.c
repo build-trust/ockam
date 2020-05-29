@@ -51,6 +51,7 @@ uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route)
   }
 
 exit:
+  if (error) log_error(error, __func__);
   return p_encoded;
 }
 
@@ -95,5 +96,6 @@ uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route)
   }
 
 exit:
+  if (error) log_error(error, __func__);
   return p_encoded;
 }

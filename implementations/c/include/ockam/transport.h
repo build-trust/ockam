@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "ockam/error.h"
 #include "ockam/io.h"
+#include "transport/transport_impl.h"
 
 #define TRANSPORT_ERROR_NONE             0u
 #define TRANSPORT_ERROR_SOCKET_CREATE    (OCKAM_ERROR_INTERFACE_TRANSPORT | 0x0000u) /*!< Failed to create socket */
@@ -25,21 +26,7 @@
  * Transport
  */
 
-typedef struct ockam_transport_t ockam_transport_t;
-
-#define MAX_DNS_NAME_LENGTH     254 // Maximum DNS name length, including terminating NULL
-#define MAX_IP_ADDRESS_LENGTH   48  // Maximum length of text DNS address in "xxx.xxx.xxx" format
-#define DEFAULT_TCP_LISTEN_PORT 8000
-
-/**
- * OckamInternetAddress - User-friendly internet addresses, includes
- * terminating NULL
- */
-typedef struct ockam_ip_address_t {
-  uint8_t  dns_name[MAX_DNS_NAME_LENGTH];     // "www.name.ext"
-  uint8_t  ip_address[MAX_IP_ADDRESS_LENGTH]; //"xxx.xxx.xxx.xxx"
-  uint16_t port;
-} ockam_ip_address_t;
+typedef struct ockam_transport ockam_transport_t;
 
 ockam_error_t ockam_transport_connect(ockam_transport_t*  transport,
                                       ockam_reader_t**    reader,
@@ -57,7 +44,7 @@ typedef struct ockam_transport_tcp_socket_attributes_t {
   ockam_ip_address_t listen_address;
 } ockam_transport_tcp_socket_attributes_t;
 
-ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t**                      transport,
+ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t*                       transport,
                                               ockam_transport_tcp_socket_attributes_t* attrs);
 
 #endif

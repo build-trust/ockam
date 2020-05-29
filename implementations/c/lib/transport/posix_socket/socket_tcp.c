@@ -4,9 +4,9 @@
 #include <ctype.h>
 #include "ockam/syslog.h"
 #include "ockam/io.h"
-#include "ockam/io/io_impl.h"
+#include "io/io_impl.h"
 #include "ockam/transport.h"
-#include "../transport_impl.h"
+#include "transport/transport_impl.h"
 #include "socket.h"
 #include "socket_tcp.h"
 
@@ -43,19 +43,12 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t**                      pp_transport,
+ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t*                       p_transport,
                                               ockam_transport_tcp_socket_attributes_t* cfg)
 {
-  ockam_error_t               error       = OCKAM_ERROR_NONE;
-  socket_tcp_transport_ctx_t* p_ctx       = NULL;
-  ockam_transport_t*          p_transport = NULL;
-  *pp_transport                           = NULL;
+  ockam_error_t               error = OCKAM_ERROR_NONE;
+  socket_tcp_transport_ctx_t* p_ctx = NULL;
 
-  p_transport = (ockam_transport_t*) calloc(1, sizeof(ockam_transport_t));
-  if (NULL == p_transport) {
-    error = TRANSPORT_ERROR_ALLOC;
-    goto exit;
-  }
   p_transport->vtable = &socket_tcp_vtable;
 
   /*
@@ -69,12 +62,9 @@ ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t**               
   p_transport->ctx = p_ctx;
   if (cfg) memcpy(&p_ctx->listen_address, &cfg->listen_address, sizeof(ockam_ip_address_t));
 
-  *pp_transport = p_transport;
-
 exit:
   if (error) {
     log_error(error, __func__);
-    if (p_transport) free(p_transport);
     if (p_ctx) free(p_ctx);
   }
   return error;
@@ -138,7 +128,7 @@ exit:
     log_error(error, __func__);
     if (p_tcp_socket) {
       free(p_tcp_socket);
-      p_transport_ctx->p_socket = NULL;
+      if (p_transport_ctx) p_transport_ctx->p_socket = NULL;
     }
   }
   return error;
@@ -220,7 +210,11 @@ socket_tcp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_wri
   if (pp_writer) *pp_writer = p_connect_socket->posix_socket.p_writer;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) {
+    log_error(error, __func__);
+    if (p_listen_socket) free(p_listen_socket);
+    if (p_connect_socket) free(p_connect_socket);
+  }
   return error;
 }
 
@@ -326,7 +320,6 @@ ockam_error_t socket_tcp_deinit(ockam_transport_t* p_transport)
       free(p_transport_ctx->p_socket->posix_socket.p_writer);
     if (NULL != p_transport_ctx->p_socket) free(p_transport_ctx->p_socket);
   }
-  free(p_transport);
 
   return 0;
 }

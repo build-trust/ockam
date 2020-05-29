@@ -12,11 +12,8 @@
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
 
-#include "memory/stdlib/stdlib.h"
 #include "random/urandom/urandom.h"
 #include "vault/default/default.h"
-
-#include "ockam/channel.h"
 #include "channel_test.h"
 
 bool               run_initiator = false;
@@ -74,12 +71,15 @@ ockam_error_t parse_opts(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-  ockam_error_t                    error            = OCKAM_ERROR_NONE;
-  ockam_vault_t                    vault            = { 0 };
-  ockam_memory_t                   memory           = { 0 };
-  ockam_random_t                   random           = { 0 };
-  ockam_transport_t*               p_transport      = { 0 };
-  ockam_vault_default_attributes_t vault_attributes = { .memory = &memory, .random = &random };
+  ockam_error_t                    error             = OCKAM_ERROR_NONE;
+  ockam_vault_t                    vault             = { 0 };
+  ockam_memory_t                   memory            = { 0 };
+  ockam_random_t                   random            = { 0 };
+  ockam_vault_default_attributes_t vault_attributes  = { .memory = &memory, .random = &random };
+  int                              responder_status  = 0;
+  int                              initiator_status  = 0;
+  int                              fork_status       = 0;
+  int32_t                          responder_process = 0;
 
   error = ockam_memory_stdlib_init(&memory);
   if (error) goto exit;
@@ -89,11 +89,6 @@ int main(int argc, char* argv[])
 
   error = ockam_vault_default_init(&vault, &vault_attributes);
   if (error) goto exit;
-
-  int     responder_status  = 0;
-  int     initiator_status  = 0;
-  int     fork_status       = 0;
-  int32_t responder_process = 0;
 
   /*-------------------------------------------------------------------------
    * Parse options
@@ -106,7 +101,8 @@ int main(int argc, char* argv[])
   printf("Responder   : %d\n", run_responder);
 
   //  error = channel_responder(&vault, &memory, &ockam_ip);
-  //      error = channel_initiator(&vault, &memory, &ockam_ip);
+  //  error = channel_initiator(&vault, &memory, &ockam_ip);
+  //  goto exit;
 
   responder_process = fork();
   if (responder_process < 0) {
@@ -140,7 +136,7 @@ int main(int argc, char* argv[])
   }
 
 exit:
-  printf("Test ended with error %0.4x\n", error);
+  printf("Test ended with error %d\n", initiator_status + responder_status);
   if (error) log_error(error, __func__);
   return error;
 }

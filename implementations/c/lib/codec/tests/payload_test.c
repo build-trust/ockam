@@ -64,7 +64,7 @@ void _test_codec_payload(void** state)
       assert_null(out);
     } else {
       payload_out.data_length = 0;
-      in                      = decode_payload(encoded_payload, &payload_out);
+      decode_payload(encoded_payload, &payload_out);
       assert_int_equal(i, payload_out.data_length);
       assert_int_equal(0, memcmp(payload_in.data, payload_out.data, i));
     }
