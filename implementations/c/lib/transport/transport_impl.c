@@ -1,6 +1,9 @@
 #include "ockam/io.h"
 #include "ockam/transport.h"
 #include "transport_impl.h"
+#include "ockam/memory.h"
+
+ockam_memory_t* gp_ockam_transport_memory = NULL;
 
 ockam_error_t ockam_transport_connect(ockam_transport_t*  transport,
                                       ockam_reader_t**    reader,

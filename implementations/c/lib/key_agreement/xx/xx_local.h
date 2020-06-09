@@ -24,7 +24,6 @@ struct ockam_xx_key {
   uint16_t             encrypt_nonce;
   uint16_t             decrypt_nonce;
   ockam_vault_t*       p_vault;
-  ockam_memory_t*      p_memory;
   ockam_reader_t*      p_reader;
   ockam_writer_t*      p_writer;
 };

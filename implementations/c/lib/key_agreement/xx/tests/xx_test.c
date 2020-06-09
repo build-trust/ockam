@@ -84,10 +84,15 @@ ockam_error_t parse_opts(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-  ockam_error_t                    error            = OCKAM_ERROR_NONE;
-  ockam_vault_t                    vault            = { 0 };
-  ockam_memory_t                   memory           = { 0 };
-  ockam_random_t                   random           = { 0 };
+  ockam_error_t  error             = OCKAM_ERROR_NONE;
+  ockam_vault_t  vault             = { 0 };
+  ockam_memory_t memory            = { 0 };
+  ockam_random_t random            = { 0 };
+  int            responder_status  = 0;
+  int            initiator_status  = 0;
+  int            fork_status       = 0;
+  int32_t        responder_process = 0;
+
   ockam_vault_default_attributes_t vault_attributes = { .memory = &memory, .random = &random };
 
   error = ockam_memory_stdlib_init(&memory);
@@ -99,11 +104,6 @@ int main(int argc, char* argv[])
   error = ockam_vault_default_init(&vault, &vault_attributes);
   if (error) goto exit;
 
-  int     responder_status  = 0;
-  int     initiator_status  = 0;
-  int     fork_status       = 0;
-  int32_t responder_process = 0;
-
   /*-------------------------------------------------------------------------
    * Parse options
    *-----------------------------------------------------------------------*/
@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
   printf("Initiator   : %d\n", run_initiator);
   printf("Responder   : %d\n", run_responder);
 
-  //  error = xx_test_responder(&vault, &ockam_ip);
+  //  error = xx_test_responder(&vault, &memory, &ockam_ip);
   //  error = xx_test_initiator(&vault, &ockam_ip);
   //  goto exit;
 

@@ -2,6 +2,9 @@
 #include "ockam/syslog.h"
 #include "ockam/key_agreement.h"
 #include "key_impl.h"
+#include "ockam/memory.h"
+
+ockam_memory_t* gp_ockam_key_memory = NULL;
 
 ockam_error_t ockam_key_initiate(ockam_key_t* p_key)
 {

@@ -14,6 +14,8 @@ ockam_cc_test(
 #		ockam::memory
 		ockam::transport
 		ockam::log
+		ockam::memory
+		ockam::memory::stdlib
 	TEST_OPTS
 		-f ${OCKAM_TRANSPORT_TEST_FIXTURE_DIR}
 )

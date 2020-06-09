@@ -9,6 +9,9 @@
 #include "transport/transport_impl.h"
 #include "socket.h"
 #include "socket_tcp.h"
+#include "ockam/memory.h"
+
+extern ockam_memory_t* gp_ockam_transport_memory;
 
 ockam_transport_vtable_t socket_tcp_vtable = { socket_tcp_connect, socket_tcp_accept, socket_tcp_deinit };
 
@@ -19,21 +22,17 @@ ockam_error_t make_socket_reader_writer(posix_socket_t* p_ctx, ockam_reader_t** 
 {
   ockam_error_t error = TRANSPORT_ERROR_NONE;
   if (NULL != pp_reader) {
-    p_ctx->p_reader = (ockam_reader_t*) calloc(1, sizeof(ockam_reader_t));
-    if (NULL == p_ctx->p_reader) {
-      error = TRANSPORT_ERROR_ALLOC;
-      goto exit;
-    }
+    error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_ctx->p_reader, sizeof(ockam_reader_t));
+    if (error) goto exit;
+
     p_ctx->p_reader->read = socket_tcp_read;
     p_ctx->p_reader->ctx  = p_ctx;
     *pp_reader            = p_ctx->p_reader;
   }
   if (NULL != pp_writer) {
-    p_ctx->p_writer = (ockam_writer_t*) calloc(1, sizeof(ockam_writer_t));
-    if (NULL == p_ctx->p_writer) {
-      error = TRANSPORT_ERROR_ALLOC;
-      goto exit;
-    }
+    error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_ctx->p_writer, sizeof(ockam_writer_t));
+    if (error) goto exit;
+
     p_ctx->p_writer->write = socket_tcp_write;
     p_ctx->p_writer->ctx   = p_ctx;
     *pp_writer             = p_ctx->p_writer;
@@ -52,20 +51,30 @@ ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t*                
   p_transport->vtable = &socket_tcp_vtable;
 
   /*
-   * set up type-specific storage for this transport instance
+   * Failure to provide a memory allocator is unrecoverable
    */
-  p_ctx = (socket_tcp_transport_ctx_t*) calloc(1, sizeof(socket_tcp_transport_ctx_t));
-  if (NULL == p_ctx) {
-    error = TRANSPORT_ERROR_ALLOC;
+  if (NULL == cfg->p_memory) {
+    error = TRANSPORT_ERROR_BAD_PARAMETER;
     goto exit;
   }
+  gp_ockam_transport_memory = cfg->p_memory;
+
+  /*
+   * set up type-specific storage for this transport instance
+   */
+  error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_ctx, sizeof(socket_tcp_transport_ctx_t));
+  if (error) goto exit;
+
   p_transport->ctx = p_ctx;
-  if (cfg) memcpy(&p_ctx->listen_address, &cfg->listen_address, sizeof(ockam_ip_address_t));
+  if (cfg) {
+    ockam_memory_copy(
+      gp_ockam_transport_memory, &p_ctx->listen_address, &cfg->listen_address, sizeof(ockam_ip_address_t));
+  }
 
 exit:
   if (error) {
     log_error(error, __func__);
-    if (p_ctx) free(p_ctx);
+    if (p_ctx) ockam_memory_free(gp_ockam_transport_memory, p_ctx, 0);
   }
   return error;
 }
@@ -78,14 +87,18 @@ ockam_error_t socket_tcp_connect(void*               ctx,
   ockam_error_t               error = OCKAM_ERROR_NONE;
   struct sockaddr_in          socket_address;
   socket_tcp_transport_ctx_t* p_transport_ctx = (socket_tcp_transport_ctx_t*) ctx;
-  tcp_socket_t*               p_tcp_socket    = (tcp_socket_t*) calloc(1, sizeof(*p_tcp_socket));
-  posix_socket_t*             p_posix_socket  = &p_tcp_socket->posix_socket;
+  tcp_socket_t*               p_tcp_socket    = NULL;
+  posix_socket_t*             p_posix_socket  = NULL;
 
-  if (NULL == p_transport_ctx || NULL == p_tcp_socket) {
+  if (NULL == p_transport_ctx) {
     error = TRANSPORT_ERROR_BAD_PARAMETER;
     goto exit;
   }
 
+  error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_tcp_socket, sizeof(*p_tcp_socket));
+  if (error) goto exit;
+
+  p_posix_socket            = &p_tcp_socket->posix_socket;
   p_posix_socket->socket_fd = -1;
   p_transport_ctx->p_socket = p_tcp_socket;
 
@@ -94,7 +107,8 @@ ockam_error_t socket_tcp_connect(void*               ctx,
 
   p_transport_ctx->p_socket = p_tcp_socket;
 
-  memcpy(&p_posix_socket->remote_address, remote_address, sizeof(*remote_address));
+  ockam_memory_copy(
+    gp_ockam_transport_memory, &p_posix_socket->remote_address, remote_address, sizeof(*remote_address));
 
   error = make_socket_address(remote_address->ip_address, remote_address->port, &socket_address);
   if (error) goto exit;
@@ -127,7 +141,7 @@ exit:
   if (error) {
     log_error(error, __func__);
     if (p_tcp_socket) {
-      free(p_tcp_socket);
+      ockam_memory_free(gp_ockam_transport_memory, p_tcp_socket, 0);
       if (p_transport_ctx) p_transport_ctx->p_socket = NULL;
     }
   }
@@ -139,13 +153,18 @@ socket_tcp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_wri
 {
   ockam_error_t               error            = TRANSPORT_ERROR_NONE;
   socket_tcp_transport_ctx_t* p_tcp_ctx        = (socket_tcp_transport_ctx_t*) ctx;
-  tcp_socket_t*               p_listen_socket  = (tcp_socket_t*) calloc(1, sizeof(struct tcp_socket_t));
-  tcp_socket_t*               p_connect_socket = (tcp_socket_t*) calloc(1, sizeof(struct tcp_socket_t));
+  tcp_socket_t*               p_listen_socket  = NULL;
+  tcp_socket_t*               p_connect_socket = NULL;
 
-  if (NULL == p_tcp_ctx || NULL == p_listen_socket || NULL == p_connect_socket) {
+  if (NULL == p_tcp_ctx) {
     error = TRANSPORT_ERROR_ACCEPT;
     goto exit;
   }
+
+  error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_listen_socket, sizeof(struct tcp_socket_t));
+  if (error) goto exit;
+  error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_connect_socket, sizeof(struct tcp_socket_t));
+  if (error) goto exit;
 
   p_tcp_ctx->p_listen_socket = p_listen_socket;
   p_tcp_ctx->p_socket        = p_connect_socket;
@@ -173,9 +192,10 @@ socket_tcp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_wri
   }
 
   if (strlen((char*) p_tcp_ctx->listen_address.ip_address)) {
-    memcpy(&p_listen_socket->posix_socket.local_address.ip_address,
-           p_tcp_ctx->listen_address.ip_address,
-           MAX_IP_ADDRESS_LENGTH);
+    ockam_memory_copy(gp_ockam_transport_memory,
+                      &p_listen_socket->posix_socket.local_address.ip_address,
+                      p_tcp_ctx->listen_address.ip_address,
+                      MAX_IP_ADDRESS_LENGTH);
   }
   p_listen_socket->posix_socket.local_address.port = p_tcp_ctx->listen_address.port;
 
@@ -212,8 +232,8 @@ socket_tcp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_wri
 exit:
   if (error) {
     log_error(error, __func__);
-    if (p_listen_socket) free(p_listen_socket);
-    if (p_connect_socket) free(p_connect_socket);
+    if (p_listen_socket) ockam_memory_free(gp_ockam_transport_memory, p_listen_socket, 0);
+    if (p_connect_socket) ockam_memory_free(gp_ockam_transport_memory, p_connect_socket, 0);
   }
   return error;
 }
@@ -234,7 +254,9 @@ ockam_error_t socket_tcp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
   p_transmission = &p_tcp_ctx->read_transmission;
 
   // See if this is a continuation or a new transmission
-  if (p_transmission->status != TRANSPORT_ERROR_MORE_DATA) memset(p_transmission, 0, sizeof(*p_transmission));
+  if (p_transmission->status != TRANSPORT_ERROR_MORE_DATA) {
+    ockam_memory_set(gp_ockam_transport_memory, p_transmission, 0, sizeof(*p_transmission));
+  }
   p_transmission->buffer           = buffer;
   p_transmission->buffer_size      = buffer_size;
   p_transmission->buffer_remaining = buffer_size;
@@ -274,7 +296,9 @@ ockam_error_t socket_tcp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
   }
   *buffer_length = bytes_read;
   error          = p_transmission->status;
-  if (error == TRANSPORT_ERROR_NONE) memset(p_transmission, 0, sizeof(*p_transmission));
+  if (error == TRANSPORT_ERROR_NONE) {
+    ockam_memory_set(gp_ockam_transport_memory, p_transmission, 0, sizeof(*p_transmission));
+  }
 
 exit:
   if (error) log_error(error, __func__);
@@ -315,10 +339,10 @@ ockam_error_t socket_tcp_deinit(ockam_transport_t* p_transport)
   if (p_transport_ctx->p_socket != NULL) {
     // Close the connection
     if (NULL != p_transport_ctx->p_socket->posix_socket.p_reader)
-      free(p_transport_ctx->p_socket->posix_socket.p_reader);
+      ockam_memory_free(gp_ockam_transport_memory, p_transport_ctx->p_socket->posix_socket.p_reader, 0);
     if (NULL != p_transport_ctx->p_socket->posix_socket.p_writer)
-      free(p_transport_ctx->p_socket->posix_socket.p_writer);
-    if (NULL != p_transport_ctx->p_socket) free(p_transport_ctx->p_socket);
+      ockam_memory_free(gp_ockam_transport_memory, p_transport_ctx->p_socket->posix_socket.p_writer, 0);
+    if (NULL != p_transport_ctx->p_socket) ockam_memory_free(gp_ockam_transport_memory, p_transport_ctx->p_socket, 0);
   }
 
   return 0;

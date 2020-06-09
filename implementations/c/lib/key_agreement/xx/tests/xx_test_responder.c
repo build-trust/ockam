@@ -141,6 +141,7 @@ exit:
 }
 
 ockam_error_t establish_responder_connection(ockam_transport_t*  p_transport,
+                                             ockam_memory_t*     p_memory,
                                              ockam_ip_address_t* p_address,
                                              ockam_reader_t**    pp_reader,
                                              ockam_writer_t**    pp_writer)
@@ -149,11 +150,9 @@ ockam_error_t establish_responder_connection(ockam_transport_t*  p_transport,
   ockam_transport_tcp_socket_attributes_t tcp_attributes;
 
   memcpy(&tcp_attributes.listen_address, p_address, sizeof(ockam_ip_address_t));
-  error = ockam_transport_socket_tcp_init(p_transport, &tcp_attributes);
-  if (TRANSPORT_ERROR_NONE != error) {
-    log_error(error, "failed PosixTcpInitialize");
-    goto exit;
-  }
+  tcp_attributes.p_memory = p_memory;
+  error                   = ockam_transport_socket_tcp_init(p_transport, &tcp_attributes);
+  if (error) goto exit;
 
   // Wait for a connection
   error = ockam_transport_accept(p_transport, pp_reader, pp_writer, NULL);
@@ -188,11 +187,10 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
   /*-------------------------------------------------------------------------
    * Establish transport connection with responder
    *-----------------------------------------------------------------------*/
-  error = establish_responder_connection(&transport, ip_address, &p_reader, &p_writer);
-  if (TRANSPORT_ERROR_NONE != error) {
-    log_error(error, "Failed to establish connection with responder");
-    goto exit;
-  }
+  error = establish_responder_connection(&transport, p_memory, ip_address, &p_reader, &p_writer);
+  if (error) goto exit;
+
+  printf("Responder connected\n");
 
   error = ockam_xx_key_initialize(&key, p_memory, p_vault, p_reader, p_writer);
   if (error) goto exit;

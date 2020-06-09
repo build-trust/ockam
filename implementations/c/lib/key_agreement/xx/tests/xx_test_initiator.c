@@ -145,6 +145,7 @@ exit:
 }
 
 ockam_error_t establish_initiator_transport(ockam_transport_t*  p_transport,
+                                            ockam_memory_t*     p_memory,
                                             ockam_ip_address_t* ip_address,
                                             ockam_reader_t**    pp_reader,
                                             ockam_writer_t**    pp_writer)
@@ -152,6 +153,7 @@ ockam_error_t establish_initiator_transport(ockam_transport_t*  p_transport,
   ockam_error_t                           error = OCKAM_ERROR_NONE;
   ockam_transport_tcp_socket_attributes_t tcp_attrs;
   memset(&tcp_attrs, 0, sizeof(tcp_attrs));
+  tcp_attrs.p_memory = p_memory;
 
   error = ockam_transport_socket_tcp_init(p_transport, &tcp_attrs);
   if (error) {
@@ -182,8 +184,10 @@ ockam_error_t xx_test_initiator(ockam_vault_t* p_vault, ockam_memory_t* p_memory
   ockam_reader_t* p_reader;
   ockam_writer_t* p_writer;
 
-  error = establish_initiator_transport(&transport, ip_address, &p_reader, &p_writer);
+  error = establish_initiator_transport(&transport, p_memory, ip_address, &p_reader, &p_writer);
   if (error) goto exit;
+
+  printf("Initiator connected\n");
 
   error = ockam_xx_key_initialize(&key, p_memory, p_vault, p_reader, p_writer);
   if (error) goto exit;

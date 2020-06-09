@@ -13,6 +13,7 @@
 #include "channel_test.h"
 
 ockam_error_t establish_responder_transport(ockam_transport_t*  p_transport,
+                                            ockam_memory_t*     p_memory,
                                             ockam_ip_address_t* p_address,
                                             ockam_reader_t**    pp_reader,
                                             ockam_writer_t**    pp_writer)
@@ -22,7 +23,8 @@ ockam_error_t establish_responder_transport(ockam_transport_t*  p_transport,
 
   memset(&tcp_attributes, 0, sizeof(tcp_attributes));
   memcpy(&tcp_attributes.listen_address, p_address, sizeof(ockam_ip_address_t));
-  error = ockam_transport_socket_tcp_init(p_transport, &tcp_attributes);
+  tcp_attributes.p_memory = p_memory;
+  error                   = ockam_transport_socket_tcp_init(p_transport, &tcp_attributes);
   if (error) goto exit;
 
   // Wait for a connection
@@ -51,7 +53,7 @@ ockam_error_t channel_responder(ockam_vault_t* vault, ockam_memory_t* p_memory, 
   size_t                     transmit_size  = 0;
   ockam_channel_attributes_t channel_attrs;
 
-  error = establish_responder_transport(&transport, ip_address, &p_transport_reader, &p_transport_writer);
+  error = establish_responder_transport(&transport, p_memory, ip_address, &p_transport_reader, &p_transport_writer);
   if (error) goto exit;
 
   channel_attrs.reader = p_transport_reader;

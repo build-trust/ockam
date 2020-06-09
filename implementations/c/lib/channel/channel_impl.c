@@ -12,6 +12,8 @@
 #include "channel_impl.h"
 #include "ockam/codec.h"
 
+ockam_memory_t* gp_ockam_channel_memory = NULL;
+
 ockam_error_t channel_read(void*, uint8_t*, size_t, size_t*);
 ockam_error_t channel_write(void*, uint8_t*, size_t);
 
@@ -62,7 +64,7 @@ ockam_error_t channel_decrypt(ockam_channel_t* p_ch,
       &p_ch->key, p_encoded_text, encoded_text_size, p_cipher_text, cipher_text_length, p_encoded_text_length);
     if (error) goto exit;
   } else {
-    memcpy(p_encoded_text, p_cipher_text, cipher_text_length);
+    ockam_memory_copy(gp_ockam_channel_memory, p_encoded_text, p_cipher_text, cipher_text_length);
     *p_encoded_text_length = cipher_text_length;
   }
 exit:
@@ -82,7 +84,7 @@ ockam_error_t channel_process_message(uint8_t* p_encoded,
     break;
   case PAYLOAD:
     *p_clear_text_length = encoded_text_length - sizeof(uint8_t);
-    memcpy(p_clear_text, p_encoded, *p_clear_text_length);
+    ockam_memory_copy(gp_ockam_channel_memory, p_clear_text, p_encoded, *p_clear_text_length);
     break;
   default:
     error = CHANNEL_ERROR_NOT_IMPLEMENTED;
@@ -103,15 +105,15 @@ ockam_error_t ockam_channel_init(ockam_channel_t* p_ch, ockam_channel_attributes
     goto exit;
   }
 
-  p_ch->memory = p_attrs->memory;
-  p_ch->vault  = p_attrs->vault;
+  gp_ockam_channel_memory = p_attrs->memory;
+  p_ch->vault             = p_attrs->vault;
 
-  error = ockam_memory_alloc_zeroed(p_ch->memory, (void**) &p_ch->channel_reader, sizeof(ockam_reader_t));
+  error = ockam_memory_alloc_zeroed(gp_ockam_channel_memory, (void**) &p_ch->channel_reader, sizeof(ockam_reader_t));
   if (error) goto exit;
   p_ch->channel_reader->read = channel_read;
   p_ch->channel_reader->ctx  = p_ch;
 
-  error = ockam_memory_alloc_zeroed(p_ch->memory, (void**) &p_ch->channel_writer, sizeof(ockam_writer_t));
+  error = ockam_memory_alloc_zeroed(gp_ockam_channel_memory, (void**) &p_ch->channel_writer, sizeof(ockam_writer_t));
   if (error) goto exit;
   p_ch->channel_writer->write = channel_write;
   p_ch->channel_writer->ctx   = p_ch;
@@ -119,7 +121,8 @@ ockam_error_t ockam_channel_init(ockam_channel_t* p_ch, ockam_channel_attributes
   p_ch->transport_reader = p_attrs->reader;
   p_ch->transport_writer = p_attrs->writer;
 
-  error = ockam_xx_key_initialize(&p_ch->key, p_ch->memory, p_ch->vault, p_ch->channel_reader, p_ch->channel_writer);
+  error = ockam_xx_key_initialize(
+    &p_ch->key, gp_ockam_channel_memory, p_ch->vault, p_ch->channel_reader, p_ch->channel_writer);
 
   p_ch->state = CHANNEL_STATE_M1;
 
@@ -127,8 +130,10 @@ exit:
   if (error) {
     log_error(error, __func__);
     if (p_ch) {
-      if (p_ch->channel_reader) ockam_memory_free(p_ch->memory, (void*) p_ch->channel_reader, sizeof(ockam_reader_t));
-      if (p_ch->channel_writer) ockam_memory_free(p_ch->memory, (void*) p_ch->channel_writer, sizeof(ockam_writer_t));
+      if (p_ch->channel_reader)
+        ockam_memory_free(gp_ockam_channel_memory, (void*) p_ch->channel_reader, sizeof(ockam_reader_t));
+      if (p_ch->channel_writer)
+        ockam_memory_free(gp_ockam_channel_memory, (void*) p_ch->channel_writer, sizeof(ockam_writer_t));
     }
   }
   return 0;
@@ -188,7 +193,7 @@ ockam_error_t channel_read(void* ctx, uint8_t* p_clear_text, size_t clear_text_s
   } else {
     codec_message_type_t message_type = *p_encoded++;
     *p_clear_text_length              = encoded_text_length - (p_encoded - g_encoded_text);
-    memcpy(p_clear_text, p_encoded, *p_clear_text_length);
+    ockam_memory_copy(gp_ockam_channel_memory, p_clear_text, p_encoded, *p_clear_text_length);
     switch (p_ch->state) {
     case CHANNEL_STATE_M1:
       if (REQUEST_CHANNEL != message_type) {
@@ -239,7 +244,7 @@ ockam_error_t channel_write(void* ctx, uint8_t* p_clear_text, size_t clear_text_
   if (CHANNEL_STATE_SECURE == p_ch->state) {
     *p_encoded++        = PAYLOAD;
     encoded_text_length = p_encoded - g_encoded_text + clear_text_length;
-    memcpy(p_encoded, p_clear_text, clear_text_length);
+    ockam_memory_copy(gp_ockam_channel_memory, p_encoded, p_clear_text, clear_text_length);
     error = ockam_key_encrypt(
       &p_ch->key, g_encoded_text, encoded_text_length, g_cipher_text, sizeof(g_cipher_text), &cipher_text_length);
     if (error) goto exit;
@@ -265,8 +270,8 @@ ockam_error_t channel_write(void* ctx, uint8_t* p_clear_text, size_t clear_text_
     }
     encoded_text_length = p_encoded - g_encoded_text + clear_text_length;
     cipher_text_length  = encoded_text_length;
-    memcpy(p_encoded, p_clear_text, clear_text_length);
-    memcpy(g_cipher_text, g_encoded_text, encoded_text_length);
+    ockam_memory_copy(gp_ockam_channel_memory, p_encoded, p_clear_text, clear_text_length);
+    ockam_memory_copy(gp_ockam_channel_memory, g_cipher_text, g_encoded_text, encoded_text_length);
   }
 
   error = ockam_write(p_ch->transport_writer, g_cipher_text, cipher_text_length);
@@ -281,9 +286,9 @@ ockam_error_t ockam_channel_deinit(ockam_channel_t* p_ch)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
-  error = ockam_memory_free(p_ch->memory, p_ch->channel_reader, 0);
+  error = ockam_memory_free(gp_ockam_channel_memory, p_ch->channel_reader, 0);
   if (error) goto exit;
-  error = ockam_memory_free(p_ch->memory, p_ch->channel_writer, 0);
+  error = ockam_memory_free(gp_ockam_channel_memory, p_ch->channel_writer, 0);
   if (error) goto exit;
   ockam_key_deinit(&p_ch->key);
 exit:

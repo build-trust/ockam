@@ -10,6 +10,8 @@
 #include "vault/default/default.h"
 #include "xx_local.h"
 
+extern ockam_memory_t* gp_ockam_key_memory;
+
 ockam_key_dispatch_table_t xx_key_dispatch = {
   ockam_key_establish_initiator_xx, ockam_key_establish_responder_xx, xx_encrypt, xx_decrypt, xx_key_deinit
 };
@@ -28,11 +30,12 @@ ockam_error_t ockam_xx_key_initialize(ockam_key_t*    p_key,
     goto exit;
   }
 
+  gp_ockam_key_memory = p_memory;
+
   p_key->dispatch = &xx_key_dispatch;
   error           = ockam_memory_alloc_zeroed(p_memory, &p_key->context, sizeof(ockam_xx_key_t));
   if (error) goto exit;
   p_xx_key           = (ockam_xx_key_t*) p_key->context;
-  p_xx_key->p_memory = p_memory;
   p_xx_key->p_vault  = p_vault;
   p_xx_key->p_reader = p_reader;
   p_xx_key->p_writer = p_writer;
@@ -60,7 +63,7 @@ xx_encrypt(void* p_context, uint8_t* payload, size_t payload_size, uint8_t* msg,
     goto exit;
   }
 
-  memset(cipher_text_and_tag, 0, sizeof(cipher_text_and_tag));
+  ockam_memory_set(gp_ockam_key_memory, cipher_text_and_tag, 0, sizeof(cipher_text_and_tag));
   error = ockam_vault_aead_aes_gcm_encrypt(p_xx_key->p_vault,
                                            &p_xx_key->encrypt_secret,
                                            p_xx_key->encrypt_nonce,
@@ -72,7 +75,7 @@ xx_encrypt(void* p_context, uint8_t* payload, size_t payload_size, uint8_t* msg,
                                            sizeof(cipher_text_and_tag),
                                            &ciphertext_and_tag_length);
   ;
-  memcpy(msg, cipher_text_and_tag, ciphertext_and_tag_length);
+  ockam_memory_copy(gp_ockam_key_memory, msg, cipher_text_and_tag, ciphertext_and_tag_length);
   p_xx_key->encrypt_nonce += 1;
   *msg_size = ciphertext_and_tag_length;
 
@@ -93,7 +96,7 @@ ockam_error_t xx_decrypt(void*    p_context,
   size_t          clear_text_length = 0;
   ockam_xx_key_t* p_xx_key          = (ockam_xx_key_t*) p_context;
 
-  memset(clear_text, 0, sizeof(clear_text));
+  ockam_memory_set(gp_ockam_key_memory, clear_text, 0, sizeof(clear_text));
 
   error           = ockam_vault_aead_aes_gcm_decrypt(p_xx_key->p_vault,
                                            &p_xx_key->decrypt_secret,
@@ -107,7 +110,7 @@ ockam_error_t xx_decrypt(void*    p_context,
                                            &clear_text_length);
   *payload_length = clear_text_length;
 
-  memcpy(payload, clear_text, clear_text_length);
+  ockam_memory_copy(gp_ockam_key_memory, payload, clear_text, clear_text_length);
   p_xx_key->decrypt_nonce += 1;
 
 exit:
@@ -125,7 +128,7 @@ ockam_error_t xx_key_deinit(void* p_context)
   if (error) return_error = error;
   error = ockam_vault_secret_destroy(p_xx_key->p_vault, &p_xx_key->decrypt_secret);
   if (error) return_error = error;
-  ockam_memory_free(p_xx_key->p_memory, p_xx_key, 0);
+  ockam_memory_free(gp_ockam_key_memory, p_xx_key, 0);
 exit:
   return return_error;
 }
@@ -159,13 +162,13 @@ ockam_error_t key_agreement_prologue_xx(key_establishment_xx* xx)
 
   // 3. Set k to empty, Set n to 0
   xx->nonce = 0;
-  memset(xx->k, 0, KEY_SIZE);
+  ockam_memory_set(gp_ockam_key_memory, xx->k, 0, KEY_SIZE);
 
   // 4. Set h and ck to 'Noise_XX_25519_AESGCM_SHA256'
-  memset(xx->h, 0, SHA256_SIZE);
-  memcpy(xx->h, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
-  memset(ck, 0, KEY_SIZE);
-  memcpy(ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
+  ockam_memory_set(gp_ockam_key_memory, xx->h, 0, SHA256_SIZE);
+  ockam_memory_copy(gp_ockam_key_memory, xx->h, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
+  ockam_memory_set(gp_ockam_key_memory, ck, 0, KEY_SIZE);
+  ockam_memory_copy(gp_ockam_key_memory, ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
   secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
   error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
   if (error) goto exit;
@@ -201,8 +204,10 @@ ockam_error_t hkdf_dh(key_establishment_xx* xx,
   ockam_vault_secret_t shared_secret;
   ockam_vault_secret_t generated_secrets[2];
 
+  ockam_memory_set(gp_ockam_key_memory, &shared_secret, 0, sizeof(ockam_vault_secret_t));
+  ockam_memory_set(gp_ockam_key_memory, generated_secrets, 0, 2 * sizeof(ockam_vault_secret_t));
+
   // Compute shared secret
-  // error = ockam_vault_ecdh( dh_key_type, dh2, dh2_size, secret, KEY_SIZE );
   error = ockam_vault_ecdh(xx->vault, privatekey, peer_publickey, peer_publickey_length, &shared_secret);
   if (OCKAM_ERROR_NONE != error) {
     log_error(error, "failed ockam_vault_ecdh in responder_m2_send");
@@ -216,8 +221,8 @@ ockam_error_t hkdf_dh(key_establishment_xx* xx,
     goto exit;
   }
 
-  memcpy(secret1, &generated_secrets[0], sizeof(ockam_vault_secret_t));
-  memcpy(secret2, &generated_secrets[1], sizeof(ockam_vault_secret_t));
+  ockam_memory_copy(gp_ockam_key_memory, secret1, &generated_secrets[0], sizeof(ockam_vault_secret_t));
+  ockam_memory_copy(gp_ockam_key_memory, secret2, &generated_secrets[1], sizeof(ockam_vault_secret_t));
 
 exit:
   return error;
@@ -244,15 +249,16 @@ void mix_hash(key_establishment_xx* xx, uint8_t* p_bytes, uint16_t b_length)
   uint8_t       hash[SHA256_SIZE];
   size_t        hash_length = 0;
 
-  memset(&hash[0], 0, sizeof(hash));
-  memset(&string[0], 0, sizeof(string));
-  memcpy(&string[0], &p_h[0], SHA256_SIZE);
-  memcpy(&string[SHA256_SIZE], p_bytes, b_length);
+  ockam_memory_set(gp_ockam_key_memory, &hash[0], 0, sizeof(hash));
+  ockam_memory_set(gp_ockam_key_memory, &string[0], 0, sizeof(string));
+  ockam_memory_copy(gp_ockam_key_memory, &string[0], &p_h[0], SHA256_SIZE);
+  ockam_memory_copy(gp_ockam_key_memory, &string[SHA256_SIZE], p_bytes, b_length);
   error = ockam_vault_sha256(xx->vault, string, SHA256_SIZE + b_length, hash, SHA256_SIZE, &hash_length);
-  if (error) log_error(error, "mix_hash");
-  memcpy(p_h, hash, hash_length);
+  if (error) goto exit;
+  ockam_memory_copy(gp_ockam_key_memory, p_h, hash, hash_length);
 
 exit:
+  if (error) log_error(error, __func__);
   return;
 }
 
@@ -261,7 +267,7 @@ ockam_error_t make_vector(uint64_t nonce, uint8_t* vector)
   uint8_t* pv;
   uint8_t* pn = (uint8_t*) &nonce;
 
-  memset(vector, 0, VECTOR_SIZE);
+  ockam_memory_set(gp_ockam_key_memory, vector, 0, VECTOR_SIZE);
   pv = vector + 4;
   pn += 7;
   for (int i = 7; i >= 0; --i) { *pv++ = *pn--; }

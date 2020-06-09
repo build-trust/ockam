@@ -5,6 +5,7 @@
 #include "ockam/error.h"
 #include "ockam/io.h"
 #include "transport/transport_impl.h"
+#include "ockam/memory.h"
 
 #define TRANSPORT_ERROR_NONE             0u
 #define TRANSPORT_ERROR_SOCKET_CREATE    (OCKAM_ERROR_INTERFACE_TRANSPORT | 0x0000u) /*!< Failed to create socket */
@@ -42,6 +43,7 @@ ockam_error_t ockam_transport_deinit(ockam_transport_t* transport);
  */
 typedef struct ockam_transport_tcp_socket_attributes_t {
   ockam_ip_address_t listen_address;
+  ockam_memory_t*   p_memory;
 } ockam_transport_tcp_socket_attributes_t;
 
 ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t*                       transport,

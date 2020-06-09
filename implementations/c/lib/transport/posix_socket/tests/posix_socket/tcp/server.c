@@ -4,6 +4,8 @@
 #include "ockam/io.h"
 #include "ockam/transport.h"
 #include "tests.h"
+#include "ockam/memory.h"
+#include "memory/stdlib/stdlib.h"
 
 //!!
 #include <unistd.h>
@@ -38,6 +40,7 @@ int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path)
   char                                    file_to_send_path[FIXTURE_FULL_PATH_LEN]    = { 0 };
   char                                    file_to_receive_path[FIXTURE_FULL_PATH_LEN] = { 0 };
   char                                    file_to_compare_path[FIXTURE_FULL_PATH_LEN] = { 0 };
+  ockam_memory_t                          ockam_memory                                = { 0 };
 
   sprintf(file_to_send_path, "%s/%s", p_fixture_path, p_srv_file_to_send);
   file_to_send = fopen(&file_to_send_path[0], "r");
@@ -53,9 +56,13 @@ int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path)
     goto exit;
   }
 
-  memset(&transport_attributes, 0, sizeof(transport_attributes));
-  memset(&remote_address, 0, sizeof(remote_address));
-  memcpy(&transport_attributes.listen_address, address, sizeof(*address));
+  error = ockam_memory_stdlib_init(&ockam_memory);
+  if (error) goto exit;
+
+  ockam_memory_set(&ockam_memory, &remote_address, 0, sizeof(remote_address));
+  ockam_memory_set(&ockam_memory, &transport_attributes, 0, sizeof(transport_attributes));
+  ockam_memory_copy(&ockam_memory, &transport_attributes.listen_address, address, sizeof(*address));
+  transport_attributes.p_memory = &ockam_memory;
 
   error = ockam_transport_socket_tcp_init(&transport, &transport_attributes);
   if (error) goto exit;
