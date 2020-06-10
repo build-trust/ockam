@@ -8,9 +8,11 @@ ockam_memory_t* gp_ockam_transport_memory = NULL;
 ockam_error_t ockam_transport_connect(ockam_transport_t*  transport,
                                       ockam_reader_t**    reader,
                                       ockam_writer_t**    writer,
-                                      ockam_ip_address_t* remote_address)
+                                      ockam_ip_address_t* remote_address,
+                                      int16_t             retry_count,
+                                      uint16_t            retry_interval)
 {
-  return transport->vtable->connect(transport->ctx, reader, writer, remote_address);
+  return transport->vtable->connect(transport->ctx, reader, writer, remote_address, retry_count, retry_interval);
 }
 ockam_error_t ockam_transport_accept(ockam_transport_t*  transport,
                                      ockam_reader_t**    reader,

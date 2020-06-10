@@ -161,7 +161,7 @@ ockam_error_t establish_initiator_transport(ockam_transport_t*  p_transport,
     goto exit;
   }
 
-  error = ockam_transport_connect(p_transport, pp_reader, pp_writer, ip_address);
+  error = ockam_transport_connect(p_transport, pp_reader, pp_writer, ip_address, 10, 1);
   if (error) goto exit;
 
 exit:

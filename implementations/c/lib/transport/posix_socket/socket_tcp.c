@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
+
 #include "ockam/syslog.h"
 #include "ockam/io.h"
 #include "io/io_impl.h"
@@ -82,7 +84,9 @@ exit:
 ockam_error_t socket_tcp_connect(void*               ctx,
                                  ockam_reader_t**    pp_reader,
                                  ockam_writer_t**    pp_writer,
-                                 ockam_ip_address_t* remote_address)
+                                 ockam_ip_address_t* remote_address,
+                                 int16_t             retry_count,
+                                 uint16_t            retry_interval)
 {
   ockam_error_t               error = OCKAM_ERROR_NONE;
   struct sockaddr_in          socket_address;
@@ -113,26 +117,35 @@ ockam_error_t socket_tcp_connect(void*               ctx,
   error = make_socket_address(remote_address->ip_address, remote_address->port, &socket_address);
   if (error) goto exit;
 
-  p_posix_socket->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (-1 == p_posix_socket->socket_fd) {
-    error = TRANSPORT_ERROR_SOCKET_CREATE;
-    goto exit;
-  }
+  int attempts       = 0;
+  int connect_status = 0;
+  do {
+    p_posix_socket->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (-1 == p_posix_socket->socket_fd) {
+      error = TRANSPORT_ERROR_SOCKET_CREATE;
+      goto exit;
+    }
 
-  if (setsockopt(p_posix_socket->socket_fd, SOL_SOCKET, SO_KEEPALIVE, &(int) { 1 }, sizeof(int)) < 0) {
-    error = TRANSPORT_ERROR_CONNECT;
-    goto exit;
-  }
-  if (setsockopt(p_posix_socket->socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int) { 1 }, sizeof(int)) < 0) {
-    error = TRANSPORT_ERROR_CONNECT;
-    goto exit;
-  }
-  if (setsockopt(p_posix_socket->socket_fd, SOL_SOCKET, SO_REUSEPORT, &(int) { 1 }, sizeof(int)) < 0) {
-    error = TRANSPORT_ERROR_CONNECT;
-    goto exit;
-  }
-
-  if (connect(p_posix_socket->socket_fd, (struct sockaddr*) &socket_address, sizeof(socket_address)) < 0) {
+    if (setsockopt(p_posix_socket->socket_fd, SOL_SOCKET, SO_KEEPALIVE, &(int) { 1 }, sizeof(int)) < 0) {
+      error = TRANSPORT_ERROR_CONNECT;
+      goto exit;
+    }
+    if (setsockopt(p_posix_socket->socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int) { 1 }, sizeof(int)) < 0) {
+      error = TRANSPORT_ERROR_CONNECT;
+      goto exit;
+    }
+    if (setsockopt(p_posix_socket->socket_fd, SOL_SOCKET, SO_REUSEPORT, &(int) { 1 }, sizeof(int)) < 0) {
+      error = TRANSPORT_ERROR_CONNECT;
+      goto exit;
+    }
+    connect_status = connect(p_posix_socket->socket_fd, (struct sockaddr*) &socket_address, sizeof(socket_address));
+    if (connect_status) {
+      sleep(retry_interval);
+      if (retry_count >= 0) { ++attempts; }
+      close(p_posix_socket->socket_fd);
+    }
+  } while (connect_status && (attempts <= retry_count));
+  if (connect_status) {
     error = TRANSPORT_ERROR_CONNECT;
     goto exit;
   }

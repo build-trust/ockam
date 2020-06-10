@@ -34,8 +34,7 @@ typedef struct socket_tcp_transport_ctx_t {
  * ockam_io_t functions
  */
 
-ockam_error_t
-              socket_tcp_connect(void* ctx, ockam_reader_t** reader, ockam_writer_t** writer, ockam_ip_address_t* remote_address);
+ockam_error_t socket_tcp_connect(void*, ockam_reader_t**, ockam_writer_t**, ockam_ip_address_t*, int16_t, uint16_t);
 ockam_error_t socket_tcp_accept(void*               ctx,
                                 ockam_reader_t**    pp_reader,
                                 ockam_writer_t**    pp_writer,

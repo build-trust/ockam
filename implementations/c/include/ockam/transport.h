@@ -32,7 +32,10 @@ typedef struct ockam_transport ockam_transport_t;
 ockam_error_t ockam_transport_connect(ockam_transport_t*  transport,
                                       ockam_reader_t**    reader,
                                       ockam_writer_t**    writer,
-                                      ockam_ip_address_t* remote_address);
+                                      ockam_ip_address_t* remote_address,
+                                      int16_t  retry_count,   // -1 : forever, 0 : no retries, >0 : number of retries
+                                      uint16_t retry_interval // in seconds
+);
 ockam_error_t ockam_transport_accept(ockam_transport_t*  transport,
                                      ockam_reader_t**    reader,
                                      ockam_writer_t**    writer,
@@ -43,7 +46,7 @@ ockam_error_t ockam_transport_deinit(ockam_transport_t* transport);
  */
 typedef struct ockam_transport_tcp_socket_attributes_t {
   ockam_ip_address_t listen_address;
-  ockam_memory_t*   p_memory;
+  ockam_memory_t*    p_memory;
 } ockam_transport_tcp_socket_attributes_t;
 
 ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t*                       transport,

@@ -16,9 +16,9 @@
 #include "vault/default/default.h"
 #include "channel_test.h"
 
-bool               run_initiator = false;
-bool               run_responder = false;
-ockam_ip_address_t ockam_ip      = { "", "127.0.0.1", 8000 };
+bool               run_client = false;
+bool               run_server = false;
+ockam_ip_address_t ockam_ip   = { "", "127.0.0.1", 8000 };
 
 void usage()
 {
@@ -48,11 +48,11 @@ ockam_error_t parse_opts(int argc, char* argv[])
       break;
 
     case 'i':
-      run_initiator = true;
+      run_client = true;
       break;
 
     case 'r':
-      run_responder = true;
+      run_server = true;
       break;
 
     case '?':
@@ -97,8 +97,8 @@ int main(int argc, char* argv[])
   if (error) goto exit;
   printf("Address     : %s\n", ockam_ip.ip_address);
   printf("Port        : %u\n", ockam_ip.port);
-  printf("Initiator   : %d\n", run_initiator);
-  printf("Responder   : %d\n", run_responder);
+  printf("Initiator   : %d\n", run_client);
+  printf("Responder   : %d\n", run_server);
 
   //  error = channel_responder(&vault, &memory, &ockam_ip);
   //  error = channel_initiator(&vault, &memory, &ockam_ip);
@@ -110,15 +110,13 @@ int main(int argc, char* argv[])
     goto exit;
   }
   if (0 != responder_process) {
-    // This is the initiator process, give the server a moment to come to life
-    if (run_initiator) {
-      sleep(1);
+    if (run_client) {
       error = channel_initiator(&vault, &memory, &ockam_ip);
       if (error) {
         initiator_status = -1;
         goto exit;
       }
-    } // end if(run_initiator)
+    } // end if(run_client)
     // Get exit status from responder_process
     wait(&fork_status);
     responder_status = WEXITSTATUS(fork_status);
@@ -128,7 +126,7 @@ int main(int argc, char* argv[])
     }
     error = responder_status + initiator_status;
   } else {
-    if (run_responder) {
+    if (run_server) {
       // This is the server process
       error = channel_responder(&vault, &memory, &ockam_ip);
       if (error) goto exit;

@@ -23,7 +23,9 @@ typedef struct ockam_transport_vtable {
   ockam_error_t (*connect)(void*               ctx,
                            ockam_reader_t**    reader,
                            ockam_writer_t**    writer,
-                           ockam_ip_address_t* remote_address);
+                           ockam_ip_address_t* remote_address,
+                           int16_t             retry_count,
+                           uint16_t            retry_interval);
   ockam_error_t (*accept)(void*               ctx,
                           ockam_reader_t**    reader,
                           ockam_writer_t**    writer,

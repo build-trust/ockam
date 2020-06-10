@@ -4,18 +4,17 @@ ockam_cc_test(
 	NAME
 		full
 	SRCS
+		transport_test.c
 		client.c
 		server.c
 		tools.c
 		tests.h
 	DEPS
 		ockam::io
-#		ockam::memory::stdlib
-#		ockam::memory
 		ockam::transport
 		ockam::log
 		ockam::memory
 		ockam::memory::stdlib
 	TEST_OPTS
-		-f ${OCKAM_TRANSPORT_TEST_FIXTURE_DIR}
+		-c -s -f${OCKAM_TRANSPORT_TEST_FIXTURE_DIR}
 )

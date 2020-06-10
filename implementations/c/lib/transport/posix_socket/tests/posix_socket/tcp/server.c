@@ -42,6 +42,7 @@ int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path)
   char                                    file_to_compare_path[FIXTURE_FULL_PATH_LEN] = { 0 };
   ockam_memory_t                          ockam_memory                                = { 0 };
 
+  printf("In test_tcp_server\n");
   sprintf(file_to_send_path, "%s/%s", p_fixture_path, p_srv_file_to_send);
   file_to_send = fopen(&file_to_send_path[0], "r");
   if (NULL == file_to_send) {
@@ -66,6 +67,7 @@ int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path)
 
   error = ockam_transport_socket_tcp_init(&transport, &transport_attributes);
   if (error) goto exit;
+  printf("Server calling ockam_transport_accept\n");
   error = ockam_transport_accept(&transport, &p_transport_reader, &p_transport_writer, &remote_address);
   if (0 != error) goto exit;
   printf("Server connected!\n");
