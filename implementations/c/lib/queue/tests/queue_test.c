@@ -99,11 +99,165 @@ int main()
     }
   }
 
+  uint16_t p_size = 0;
+  error = queue_size(p_q, &p_size);
+  if (error) { goto exit; }
+  if (p_size != 0) {
+    log_error(error, "queue_size returned incorrect size");
+    goto exit;
+  }
+
+  // Fulfill queue
+  for (int i = 0; i < 5; ++i) {
+    error = enqueue(p_q, nodes[i]);
+    if (error) {
+      log_error(error, "error fulfilling queue");
+      goto exit;
+    }
+  }
+
+  // Check queue size
+  p_size = 0;
+  error = queue_size(p_q, &p_size);
+  if (error) { goto exit; }
+  if (p_size != 5) {
+    log_error(error, "queue_size returned incorrect size");
+    goto exit;
+  }
+
+  // Check queue max size
+  p_size = 0;
+  error = queue_max_size(p_q, &p_size);
+  if (error) { goto exit; }
+  if (p_size != 5) {
+    log_error(error, "queue_max_size returned incorrect max size");
+    goto exit;
+  }
+
+  // Grow queue size
+  error = grow_queue(p_q, 7);
+  if (error) {
+    log_error(error, "error growing queue");
+    goto exit;
+  }
+
+  // Check queue size
+  p_size = 0;
+  error = queue_size(p_q, &p_size);
+  if (error) goto exit;
+  if (p_size != 5) {
+    log_error(error, "queue_size returned incorrect size");
+    goto exit;
+  }
+
+  // Check queue max size
+  p_size = 0;
+  error = queue_max_size(p_q, &p_size);
+  if (error) goto exit;
+  if (p_size != 7) {
+    log_error(error, "queue_max_size returned incorrect max size");
+    goto exit;
+  }
+
+  // Add more elements
+  for (int i = 5; i < 7; ++i) {
+    error = enqueue(p_q, nodes[i]);
+    if (error) {
+      log_error(error, "error queueing to grown queue");
+      goto exit;
+    }
+  }
+
+  // Check queue size
+  p_size = 0;
+  error = queue_size(p_q, &p_size);
+  if (error) goto exit;
+  if (p_size != 7) {
+    log_error(error, "queue_size returned incorrect size");
+    goto exit;
+  }
+
+  // Check queue max size
+  p_size = 0;
+  error = queue_max_size(p_q, &p_size);
+  if (error) goto exit;
+  if (p_size != 7) {
+    log_error(error, "queue_max_size returned incorrect max size");
+    goto exit;
+  }
+
+  // Check queue is full
+  error = enqueue(p_q, nodes[7]);
+  if (QUEUE_ERROR_FULL != error) {
+    log_error(0, "enqueue didn't return queue full");
+    goto exit;
+  }
+
+  // Grow queue even more
+  error = grow_queue(p_q, 8);
+  if (error) {
+    log_error(error, "error growing queue");
+    goto exit;
+  }
+
+  // Check queue is full
+  error = enqueue(p_q, nodes[7]);
+  if (error) {
+    log_error(error, "error queueing to grown queue");
+    goto exit;
+  }
+
+  // Check that elements are correct
+  for (int i = 0; i < 8; ++i) {
+    error = dequeue(p_q, &p_node);
+    if (error) {
+      log_error(error, "error emptying queue");
+      goto exit;
+    }
+    if (p_node != nodes[i]) {
+      log_error(0, "wrong node returned");
+      goto exit;
+    }
+  }
+
+  // Deinit queue
+  error = uninit_queue(p_q);
+  if (error) goto exit;
+
+  // Check grow queue when head < tail
+  attributes.queue_size = 2;
+
+  error = init_queue(&p_q, &attributes);
+  if (error) goto exit;
+
+  for (int i = 0; i < 2; ++i) {
+    error = enqueue(p_q, nodes[i]);
+    if (error) {
+      log_error(error, "error emptying queue");
+      goto exit;
+    }
+  }
+
+  error = grow_queue(p_q, 3);
+  if (error) goto exit;
+
+  for (int i = 0; i < 1; ++i) {
+    error = dequeue(p_q, &p_node);
+    if (error) {
+      log_error(error, "error emptying queue");
+      goto exit;
+    }
+    if (p_node != nodes[i]) {
+      log_error(0, "wrong node returned");
+      goto exit;
+    }
+  }
+
   error = uninit_queue(p_q);
   if (error) goto exit;
 
   ret_error = 0;
-  printf("Queue test successful! (3 errors above are expected)\n");
+  printf("Queue test successful! (4 errors above are expected)\n");
 
 exit:
   if (error) log_error(error, __func__);
