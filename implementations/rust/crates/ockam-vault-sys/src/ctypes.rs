@@ -6,3 +6,4 @@ pub type c_ushort = u16;
 pub type c_uint = u32;
 pub type c_ulong = libc::c_ulong;
 pub type size_t = usize;
+pub type c_int = i32;
