@@ -94,6 +94,20 @@ ockam_error_t ockam_memory_copy(ockam_memory_t* memory, void* destination, const
 ockam_error_t ockam_memory_move(ockam_memory_t* memory, void* destination, void* source, size_t move_size);
 
 /**
+   * @brief   Compare two blocks of memory.
+   * @param   memory[in]       The ockam memory object to use.
+   * @param   res[out]         Result. <0	the first byte that does not match has a lower value in lhs than in rhs.
+                                        0	the contents of both memory blocks are equal.
+                                       >0	the first byte that does not match has a greater value in lhs than in rhs.
+   * @param   lhs[in]          Pointer to first block of memory.
+   * @param   rhs[in]          Pointer to second block of memory.
+   * @param   buffer_size[in]  Size of memory blocks.
+   * @return  OCKAM_ERROR_NONE on success.
+   * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory, res, lhs or rhs received.
+   */
+ockam_error_t ockam_memory_compare(ockam_memory_t* memory, int *res, const void* lhs, const void* rhs, size_t move_size);
+
+/**
  * @}
  */
 

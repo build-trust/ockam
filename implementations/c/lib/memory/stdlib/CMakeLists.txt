@@ -18,3 +18,7 @@ ockam_cc_library(
      ockam::memory
    PUBLIC)
 
+if(${OCKAM_BUILD_TESTS})
+    add_subdirectory(tests)
+    message(STATUS "-----TEST ockam_codec--------")
+endif()

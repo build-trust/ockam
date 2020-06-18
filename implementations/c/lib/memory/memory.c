@@ -97,3 +97,18 @@ ockam_error_t ockam_memory_move(ockam_memory_t* memory, void* destination, void*
 exit:
   return error;
 }
+
+ockam_error_t ockam_memory_compare(ockam_memory_t* memory, int *res, const void* lhs, const void* rhs, size_t move_size)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if ((memory == 0) || (memory->dispatch == 0)) {
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
+    goto exit;
+  }
+
+  error = memory->dispatch->compare(memory, res, lhs, rhs, move_size);
+
+exit:
+  return error;
+}

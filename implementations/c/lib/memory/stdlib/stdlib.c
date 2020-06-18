@@ -18,10 +18,12 @@ ockam_error_t memory_stdlib_free(ockam_memory_t* memory, void* buffer, size_t bu
 ockam_error_t memory_stdlib_set(ockam_memory_t* memory, void* buffer, uint8_t value, size_t set_size);
 ockam_error_t memory_stdlib_copy(ockam_memory_t* memory, void* destination, const void* source, size_t copy_size);
 ockam_error_t memory_stdlib_move(ockam_memory_t* memory, void* destination, void* source, size_t move_size);
+ockam_error_t memory_stdlib_compare(ockam_memory_t* memory, int* res, const void* lhs, const void* rhs, size_t buffer_size);
 
 ockam_memory_dispatch_table_t memory_stdlib_dispatch_table = { &memory_stdlib_deinit, &memory_stdlib_alloc_zeroed,
                                                                &memory_stdlib_free,   &memory_stdlib_set,
-                                                               &memory_stdlib_copy,   &memory_stdlib_move };
+                                                               &memory_stdlib_copy,   &memory_stdlib_move,
+                                                               &memory_stdlib_compare };
 
 ockam_error_t ockam_memory_stdlib_init(ockam_memory_t* memory)
 {
@@ -131,6 +133,21 @@ ockam_error_t memory_stdlib_move(ockam_memory_t* memory, void* destination, void
   }
 
   memmove(destination, source, move_size);
+
+exit:
+  return error;
+}
+
+ockam_error_t memory_stdlib_compare(ockam_memory_t* memory, int* res, const void* lhs, const void* rhs, size_t buffer_size)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if ((memory == 0) || (res == 0) || (lhs == 0) || (rhs == 0)) {
+    error = OCKAM_MEMORY_ERROR_INVALID_PARAM;
+    goto exit;
+  }
+
+  *res = memcmp(lhs, rhs, buffer_size);
 
 exit:
   return error;
