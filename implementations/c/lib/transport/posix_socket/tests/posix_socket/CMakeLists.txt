@@ -1,2 +1,21 @@
+project(test_interfaces C)
 
-add_subdirectory(tcp)
+ockam_cc_test(
+	NAME
+		full
+	SRCS
+		transport_test.c
+		client.c
+		server.c
+		tools.c
+		tests.h
+	DEPS
+		ockam::io
+		ockam::transport
+		ockam::log
+		ockam::memory
+		ockam::memory::stdlib
+	TEST_OPTS
+		-c -s -t -f${OCKAM_TRANSPORT_TEST_FIXTURE_DIR}
+		-c -s -u -f${OCKAM_TRANSPORT_TEST_FIXTURE_DIR}
+)

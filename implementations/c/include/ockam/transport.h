@@ -23,6 +23,7 @@
 #define TRANSPORT_ERROR_MORE_DATA        (OCKAM_ERROR_INTERFACE_TRANSPORT | 0x000Cu) /*!< More data available on socket */
 #define TRANSPORT_ERROR_LISTEN           (OCKAM_ERROR_INTERFACE_TRANSPORT | 0x000Du)
 #define TRANSPORT_ERROR_SOCKET           (OCKAM_ERROR_INTERFACE_TRANSPORT | 0x000Eu)
+#define TRANSPORT_ERROR_INVALID_OP       (OCKAM_ERROR_INTERFACE_TRANSPORT | 0x000Fu)
 /*
  * Transport
  */
@@ -44,12 +45,14 @@ ockam_error_t ockam_transport_deinit(ockam_transport_t* transport);
 /*
  * tcp socket specific transport
  */
-typedef struct ockam_transport_tcp_socket_attributes_t {
+typedef struct ockam_transport_socket_attributes {
   ockam_ip_address_t listen_address;
   ockam_memory_t*    p_memory;
-} ockam_transport_tcp_socket_attributes_t;
+} ockam_transport_socket_attributes_t;
 
-ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t*                       transport,
-                                              ockam_transport_tcp_socket_attributes_t* attrs);
+ockam_error_t ockam_transport_socket_udp_init(ockam_transport_t*                   p_transport,
+                                              ockam_transport_socket_attributes_t* p_cfg);
+
+ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t* transport, ockam_transport_socket_attributes_t* attrs);
 
 #endif

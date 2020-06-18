@@ -16,7 +16,7 @@
 #define VECTOR_SIZE          12
 
 #define DEFAULT_IP_ADDRESS "127.0.0.1"
-#define DEFAULT_IP_PORT    4000
+#define DEFAULT_LISTEN_PORT 4000
 
 struct ockam_xx_key {
   ockam_vault_secret_t encrypt_secret;

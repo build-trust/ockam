@@ -9,17 +9,20 @@
 #include "ockam/memory.h"
 #include "ockam/syslog.h"
 #include "ockam/transport.h"
+#include "tests.h"
 
 #define DEFAULT_FIXTURE_PATH "fixtures"
 #define DEFAULT_IP_ADDRESS   "127.0.0.1"
-#define DEFAULT_IP_PORT      8000
+#define DEFAULT_LISTEN_PORT  8000
 #define FIXTURE_PATH_LEN     192
 
-bool run_client = false;
-bool run_server = false;
+bool run_client   = false;
+bool run_server   = false;
+bool run_tcp_test = 0;
+bool run_udp_test = 0;
 
-int test_tcp_client(ockam_ip_address_t* address, char* p_fixture_path);
-int test_tcp_server(ockam_ip_address_t* address, char* p_fixture_path);
+int test_client(ockam_ip_address_t* address, char* p_fixture_path);
+int test_server(ockam_ip_address_t* address, char* p_fixture_path);
 
 void usage()
 {
@@ -28,13 +31,17 @@ void usage()
   printf("  -p:<portnum>\t\t\tPort\n");
   printf("  -c \t\t\t\tRun client\n");
   printf("  -s \t\t\t\tRun server\n");
+  printf("  -u \t\t\t\tRun UDP test\n");
+  printf("  -t \t\t\t\tRun TCP test\n");
 }
 
 ockam_error_t parse_opts(int argc, char* argv[], ockam_ip_address_t* p_address, char* p_fixture_path)
 {
   int           ch;
   ockam_error_t status = OCKAM_ERROR_NONE;
-  while ((ch = getopt(argc, argv, "ha:p:csf:?")) != -1) {
+  p_address->port      = DEFAULT_LISTEN_PORT;
+  strcpy((char*) p_address->ip_address, DEFAULT_IP_ADDRESS);
+  while ((ch = getopt(argc, argv, "tuha:p:csf:?")) != -1) {
     switch (ch) {
     case 'a':
       strcpy((char*) p_address->ip_address, optarg);
@@ -50,6 +57,14 @@ ockam_error_t parse_opts(int argc, char* argv[], ockam_ip_address_t* p_address, 
 
     case 's':
       run_server = true;
+      break;
+
+    case 'u':
+      run_udp_test = 1;
+      break;
+
+    case 't':
+      run_tcp_test = 1;
       break;
 
     case 'f':
@@ -70,6 +85,17 @@ ockam_error_t parse_opts(int argc, char* argv[], ockam_ip_address_t* p_address, 
     }
   }
 
+  if (run_tcp_test && run_udp_test) {
+    printf("Can't run both UDP and TCP tests, pick one or the other\n");
+    usage();
+    return 2;
+  }
+  if (!(run_tcp_test || run_udp_test)) {
+    printf("Select either UDP or TCP test\n");
+    usage();
+    return 2;
+  }
+
   return status;
 }
 
@@ -83,18 +109,18 @@ int main(int argc, char* argv[])
   char               fixture_path[FIXTURE_PATH_LEN] = { 0 };
   ockam_ip_address_t ip_address;
 
-  ip_address.port = DEFAULT_IP_PORT;
+  ip_address.port = DEFAULT_LISTEN_PORT;
   strcpy((char*) &(ip_address.ip_address)[0], DEFAULT_IP_ADDRESS);
   strcpy(fixture_path, DEFAULT_FIXTURE_PATH);
 
   parse_opts(argc, argv, &ip_address, fixture_path);
 
-  //  error = test_tcp_client(&ip_address, &fixture_path[0]);
-  //  error = test_tcp_server(&ip_address, &fixture_path[0]);
-  //  goto exit;
+  // error = test_client(&ip_address, &fixture_path[0], run_protocol);
+  // error = test_server(&ip_address, &fixture_path[0], run_protocol);
+  // goto exit;
 
   if (run_server) {
-    printf("Run Server!!\n");
+    printf("Run Server\n");
     test_server_process = fork();
     if (test_server_process < 0) {
       log_error(TRANSPORT_ERROR_TEST, "Fork unsuccessful");
@@ -102,25 +128,26 @@ int main(int argc, char* argv[])
       goto exit;
     }
   }
-  if (0 != test_server_process) {
+  if ((0 != test_server_process) || !run_server) {
     if (run_client) {
-      error = test_tcp_client(&ip_address, &fixture_path[0]);
+      printf("Run Client\n");
+      error = test_client(&ip_address, &fixture_path[0]);
       if (0 != error) {
         log_error(TRANSPORT_ERROR_TEST, "testTcpClient failed");
         test_client_error = -1;
       }
-      // Get exit error from testServerProcess
-      if (run_server) {
-        wait(&fork_error);
-        test_server_error = WEXITSTATUS(fork_error);
-        if (0 != test_server_error) { test_server_error = -2; }
-        error = test_server_error + test_client_error;
-        if (!error) printf("Transport test successful!\n");
-      }
+    }
+    // Get exit error from testServerProcess
+    if (run_server) {
+      wait(&fork_error);
+      test_server_error = WEXITSTATUS(fork_error);
+      if (0 != test_server_error) { test_server_error = -2; }
+      error = test_server_error + test_client_error;
+      if (!error) printf("Transport test successful!\n");
     }
   } else if (run_server) {
     // This is the server process
-    error = test_tcp_server(&ip_address, &fixture_path[0]);
+    error = test_server(&ip_address, &fixture_path[0]);
     if (0 != error) {
       log_error(TRANSPORT_ERROR_TEST, "testTcpServer failed");
       error = -1;

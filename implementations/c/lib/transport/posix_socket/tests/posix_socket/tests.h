@@ -4,7 +4,7 @@
 #include "ockam/transport.h"
 
 ockam_error_t file_compare(char* p_f1, char* p_f2);
-int           test_tcp_server(ockam_ip_address_t*, char*);
-int           test_tcp_client(ockam_ip_address_t*, char*);
+int           test_server(ockam_ip_address_t*, char*);
+int           test_client(ockam_ip_address_t*, char*);
 
 #endif

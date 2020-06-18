@@ -11,8 +11,10 @@ ockam_cc_library(
         transport_impl.h
     posix_socket/socket.c
         posix_socket/socket.h
-        posix_socket/socket_tcp.c
-        posix_socket/socket_tcp.h
+		posix_socket/socket_tcp.c
+		posix_socket/socket_tcp.h
+		posix_socket/socket_udp.c
+		posix_socket/socket_udp.h
     PUBLIC )
 
 add_subdirectory(posix_socket)
