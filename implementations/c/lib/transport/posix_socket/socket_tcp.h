@@ -1,5 +1,5 @@
-#ifndef transport_io_impl_h
-#define transport_io_impl_h
+#ifndef socket_tcp_h
+#define socket_tcp_h
 
 #include <stdio.h>
 #include "ockam/io.h"
@@ -18,17 +18,17 @@ typedef struct tcp_transmission_t {
   ockam_error_t error; // transmission completion status
 } tcp_transmission_t;
 
-typedef struct tcp_socket_t {
+typedef struct tcp_socket {
   posix_socket_t     posix_socket;
   tcp_transmission_t read_transmission;
   tcp_transmission_t write_transmission;
 } tcp_socket_t;
 
-typedef struct socket_tcp_transport_ctx_t {
+typedef struct socket_tcp_ctx {
   ockam_ip_address_t listen_address;
   tcp_socket_t*      p_listen_socket;
   tcp_socket_t*      p_socket; // ToDo: make this a linked list
-} socket_tcp_transport_ctx_t;
+} socket_tcp_ctx_t;
 
 /*
  * ockam_io_t functions

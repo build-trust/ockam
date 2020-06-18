@@ -11,6 +11,8 @@ ockam_cc_library(
 		socket.h
 		socket_tcp.c
 		socket_tcp.h
+		socket_udp.c
+		socket_udp.h
 #	HDRS
 #		transport/socket.h
 	PUBLIC )
