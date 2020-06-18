@@ -6,6 +6,11 @@
   src="https://dev.azure.com/ockam-network/ockam/_apis/build/status/ockam-network.ockam?branchName=develop">
 </a>
 
+<a href="https://www.ockam.io/learn/guides/team/conduct/">
+<img alt="Contributor Covenant"
+  src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg">
+</a>
+
 <a href="LICENSE">
 <img alt="Apache 2.0 License"
   src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square">
