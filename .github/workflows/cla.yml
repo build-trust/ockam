@@ -1,0 +1,25 @@
+name: "CLA Check"
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [opened, closed, synchronize]
+
+jobs:
+  cla-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "CLA Check"
+        uses: ockam-network/cla-action@master
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PERSISTANCE_GITHUB_TOKEN: ${{ secrets.PERSISTANCE_GITHUB_TOKEN }}
+        with: 
+          path-to-signatures: 'cla-signers.json'
+          path-to-cla-document: 'https://www.ockam.io/learn/guides/contributions/cla'
+          branch: 'master'
+          persistance-repository: 'contributors'
+          empty-commit-flag: false
+          blockchain-storage-flag: false
