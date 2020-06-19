@@ -1,6 +1,7 @@
 use std::alloc::Layout;
 use std::mem;
 use std::ptr;
+use libc::memcmp;
 
 use ockam_vault_sys::{ockam_error_t, ockam_memory_dispatch_table_t, ockam_memory_t};
 
@@ -21,6 +22,7 @@ impl RustAlloc {
         set: Some(self::memset_impl),
         copy: Some(self::memcpy_impl),
         move_: Some(self::memmove_impl),
+        compare: Some(self::memcmp_impl),
     };
 
     const GLOBAL: Self = Self {
@@ -90,5 +92,21 @@ unsafe extern "C" fn memmove_impl(
     size: usize,
 ) -> ockam_error_t {
     core::intrinsics::copy(src, dst, size);
+    ockam_vault_sys::OCKAM_ERROR_NONE
+}
+
+unsafe extern "C" fn memcmp_impl(
+    _: *mut ockam_memory_t,
+    res: *mut i32,
+    lhs: *const core::ffi::c_void,
+    rhs: *const core::ffi::c_void,
+    size: usize,
+) -> ockam_error_t {
+    if res.is_null() || lhs.is_null() || rhs.is_null() {
+        return ockam_vault_sys::OCKAM_MEMORY_ERROR_INVALID_PARAM;
+    }
+
+    *res = memcmp(lhs, rhs, size);
+
     ockam_vault_sys::OCKAM_ERROR_NONE
 }
