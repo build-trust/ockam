@@ -49,12 +49,12 @@ defmodule Ockam.Channel.XX do
   def handle({:trigger, onward_route}, {:key_establishment, :initiator, :awaiting_trigger}, data) do
     %{key_establisher_state: state} = data
     {:ok, m1, state} = encode_message_1(state, "")
-    Router.route(%Message{payload: m1, onward_route: onward_route, return_route: [data.address]})
+    Router.route(%Message{payload: m1, onward_route: onward_route, return_route: [data.ciphertext_address]})
     data = %{data | key_establisher_state: state}
     {:next_state, {:key_establishment, :initiator, :awaing_m2}, data}
   end
 
-  def handle(message, {:key_establishment, :initiator, :awaing_m2}, data) do
+  def handle({:ciphertext, message}, {:key_establishment, :initiator, :awaing_m2}, data) do
     %Message{payload: m2, return_route: return_route} = message
     %{key_establisher_state: state} = data
 
@@ -73,26 +73,26 @@ defmodule Ockam.Channel.XX do
         h: state.h
       })
 
-    Router.route(%Message{payload: m3, onward_route: return_route, return_route: [data.address]})
+    Router.route(%Message{payload: m3, onward_route: return_route, return_route: [data.ciphertext_address]})
     {:next_state, :data, %{data | key_establisher_state: state}}
   end
 
   # responder states
 
-  def handle(message, {:key_establishment, :responder, :awaing_m1}, data) do
+  def handle({:ciphertext, message}, {:key_establishment, :responder, :awaing_m1}, data) do
     %Message{payload: m1, return_route: return_route} = message
     %{key_establisher_state: state} = data
 
     {:ok, "", state} = decode_message_1(state, m1)
     {:ok, m2, state} = encode_message_2(state, "")
 
-    Router.route(%Message{payload: m2, onward_route: return_route, return_route: [data.address]})
+    Router.route(%Message{payload: m2, onward_route: return_route, return_route: [data.ciphertext_address]})
 
     {:next_state, {:key_establishment, :responder, :awaing_m3},
      %{data | key_establisher_state: state}}
   end
 
-  def handle(message, {:key_establishment, :responder, :awaing_m3}, data) do
+  def handle({:ciphertext, message}, {:key_establishment, :responder, :awaing_m3}, data) do
     %Message{payload: m3, return_route: return_route} = message
     %{key_establisher_state: state} = data
 

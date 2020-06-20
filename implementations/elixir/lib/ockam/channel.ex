@@ -18,13 +18,13 @@ defmodule Ockam.Channel do
 
   @key_establisher Ockam.Channel.XX
 
-  defstruct [:address]
+  defstruct [:address, :external_address]
 
   @typedoc "The udp transport address type."
   @type address :: Router.address()
 
   @typedoc "The udp transport type."
-  @type t :: %__MODULE__{address: address}
+  @type t :: %__MODULE__{address: address, external_address: address}
 
   @doc """
   Sends a message to the given `udp transport`.
@@ -88,21 +88,23 @@ defmodule Ockam.Channel do
   def start_link(%{address: address} = options) do
     name = {:via, Router, address}
 
-    with {:ok, pid} <- GenStateMachine.start_link(__MODULE__, options, name: name) do
-      {:ok, pid, %__MODULE__{address: address}}
+    with {:ok, pid} <- GenStateMachine.start_link(__MODULE__, options, name: name),
+         external_address <- GenStateMachine.call(pid, :get_ciphertext_address) do
+      {:ok, pid, %__MODULE__{address: address, external_address: external_address}}
     end
   end
 
   @impl true
   def init(options) do
-    {:ok, plaintext_collecter} = Ockam.Worker.create fn(m) ->
-      __MODULE__.send %__MODULE__{address: options.address}, {:plaintext, m}
+    {:ok, ciphertext_collecter} = Ockam.Worker.create fn(m) ->
+      __MODULE__.send %__MODULE__{address: options.address}, {:ciphertext, m}
     end
 
     options
     |> Map.put_new(:role, :initiator)
     |> Map.put_new(:route_incoming_messages_to, [])
-    |> Map.put_new(:plaintext_address, plaintext_collecter.address)
+    |> Map.put_new(:s, options.identity_keypair)
+    |> Map.put_new(:ciphertext_address, ciphertext_collecter.address)
     |> @key_establisher.init
   end
 
@@ -112,7 +114,7 @@ defmodule Ockam.Channel do
   end
 
   @impl true
-  def handle_event({:call, from}, :get_plaintext_address, state, %{plaintext_address: address} = data) do
+  def handle_event({:call, from}, :get_ciphertext_address, state, %{ciphertext_address: address} = data) do
     {:next_state, state, data, [{:reply, from, address}]}
   end
 
@@ -124,25 +126,8 @@ defmodule Ockam.Channel do
     @key_establisher.handle(event, {:key_establishment, role, s}, data)
   end
 
-  def handle_event(:info, {:plaintext, m}, :data, %{data_state: state} = data) do
-    %Message{payload: plaintext} = m
-    %{route_to_peer: route_to_peer, vault: vault, encrypt: {encryption_key, nonce}, h: h} = state
-
-    {:ok, ciphertext} = Vault.encrypt(vault, encryption_key, nonce, h, Message.encode(m))
-    nonce = nonce + 1
-
-    message = %Message{
-      payload: ciphertext,
-      onward_route: route_to_peer,
-      return_route: [data.address]
-    }
-
-    Router.route(message)
-    {:next_state, :data, %{data | data_state: %{state | encrypt: {encryption_key, nonce}}}}
-  end
-
   @impl true
-  def handle_event(:info, m, :data, %{data_state: state} = data) do
+  def handle_event(:info, {:ciphertext, m}, :data, %{data_state: state} = data) do
     %Message{payload: ciphertext} = m
     %{vault: vault, decrypt: {decryption_key, nonce}, h: h} = state
 
@@ -154,9 +139,9 @@ defmodule Ockam.Channel do
     message = Message.decode(plaintext)
     %Message{onward_route: onward, return_route: return} = message
 
-    # if top of onward_route is my address then pop it.
+    # if top of onward_route is my ciphertext address then pop it.
     onward =
-      if data.address === List.first(onward) do
+      if data.ciphertext_address === List.first(onward) do
         [_head | tail] = onward
         tail
       else
@@ -170,14 +155,36 @@ defmodule Ockam.Channel do
         data.route_incoming_messages_to ++ onward
       end
 
-    # if incoming return_route is empty then assume that replies should
-    # be sent to my_address
-    return = if [] === return, do: [data.plaintext_address], else: return
-
-    message = %{message | onward_route: onward, return_route: return}
+    message = %{message | onward_route: onward, return_route: [data.address | return]}
     Logger.debug("Incoming #{inspect(message)}")
 
     Router.route(message)
     {:next_state, :data, %{data | data_state: %{state | decrypt: {decryption_key, nonce}}}}
+  end
+
+  def handle_event(:info, m, :data, %{data_state: state} = data) do
+    %Message{onward_route: onward} = m
+    # if top of onward_route is my address then pop it.
+    onward =
+      if data.address === List.first(onward) do
+        [_head | tail] = onward
+        tail
+      else
+        onward
+      end
+    m = %{m | onward_route: onward}
+
+    %{route_to_peer: route_to_peer, vault: vault, encrypt: {encryption_key, nonce}, h: h} = state
+    {:ok, ciphertext} = Vault.encrypt(vault, encryption_key, nonce, h, Message.encode(m))
+    nonce = nonce + 1
+
+    message = %Message{
+      payload: ciphertext,
+      onward_route: route_to_peer,
+      return_route: [data.ciphertext_address]
+    }
+
+    Router.route(message)
+    {:next_state, :data, %{data | data_state: %{state | encrypt: {encryption_key, nonce}}}}
   end
 end

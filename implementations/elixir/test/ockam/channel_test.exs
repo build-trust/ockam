@@ -25,7 +25,7 @@ defmodule Ockam.Channel.Tests do
         Channel.create(
           role: :responder,
           vault: responder_vault,
-          s: responder_s,
+          identity_keypair: responder_s,
           e: responder_e
         )
 
@@ -47,7 +47,7 @@ defmodule Ockam.Channel.Tests do
         Channel.create(
           role: :initiator,
           vault: initiator_vault,
-          s: initiator_s,
+          identity_keypair: initiator_s,
           e: initiator_e,
           onward_route: [responder.address]
         )
