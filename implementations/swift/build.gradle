@@ -16,7 +16,7 @@ task build {
 }
 
 task test {
-  dependsOn gradle.includedBuild('Swift_Tests_Runner').task(':test')
+  // dependsOn gradle.includedBuild('Swift_Tests_Runner').task(':test')
 }
 
 task clean {
