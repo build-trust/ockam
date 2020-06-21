@@ -1,0 +1,28 @@
+name: Nightly Builds
+
+on:
+  repository_dispatch:
+    types: run-nightly-builds
+  schedule:
+    - cron:  '0 1 * * *'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, windows-2019, macos-10.15]
+        java: [8, 9, 10, 11, 12, 13]
+
+    steps:
+      - name: Setup java
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - id: Print Gradle Version
+        run: ./gradlew --version
