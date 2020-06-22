@@ -10,7 +10,7 @@ use cfg_if::cfg_if;
 use thiserror::Error;
 
 pub use ockam_vault_sys::VaultFeatures;
-use ockam_vault_sys::{ockam_error_t, ockam_memory_t, ockam_random_t};
+use ockam_vault_sys::{ockam_error_t, ockam_random_t};
 use ockam_vault_sys::{ockam_vault_default_attributes_t, ockam_vault_t};
 use ockam_vault_sys::{
     ockam_vault_secret_attributes_t, ockam_vault_secret_persistence_t,
@@ -318,7 +318,7 @@ impl Vault {
         let mut random = Random::new()?;
         let context = {
             let mut attributes = ockam_vault_default_attributes_t {
-                memory: RustAlloc::new() as *const _ as *mut ockam_memory_t,
+                memory: RustAlloc::new().as_mut_ptr(),
                 random: random.as_mut(),
                 features: 0,
             };

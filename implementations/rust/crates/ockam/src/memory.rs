@@ -36,6 +36,11 @@ impl RustAlloc {
     pub const fn new() -> &'static Self {
         &Self::GLOBAL
     }
+
+    #[inline(always)]
+    pub const fn as_mut_ptr(&self) -> *mut ockam_memory_t {
+        self as *const _ as *mut ockam_memory_t
+    }
 }
 
 unsafe extern "C" fn alloc_zeroed_impl(
@@ -55,7 +60,11 @@ unsafe extern "C" fn alloc_zeroed_impl(
     ockam_vault_sys::OCKAM_MEMORY_ERROR_ALLOC_FAIL
 }
 
-unsafe extern "C" fn free_impl(_: *mut ockam_memory_t, ptr: *mut core::ffi::c_void, size: usize) -> ockam_error_t {
+unsafe extern "C" fn free_impl(
+    _: *mut ockam_memory_t,
+    ptr: *mut core::ffi::c_void,
+    size: usize,
+) -> ockam_error_t {
     let layout_result = Layout::from_size_align(size, mem::align_of::<core::ffi::c_void>());
     if let Ok(layout) = layout_result {
         std::alloc::dealloc(ptr as *mut _, layout);
@@ -109,4 +118,56 @@ unsafe extern "C" fn memcmp_impl(
     *res = memcmp(lhs, rhs, size);
 
     ockam_vault_sys::OCKAM_ERROR_NONE
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::memory::{memcmp_impl, RustAlloc};
+    use core::ffi::c_void;
+
+    #[test]
+    fn cmp() {
+        #[allow(improper_ctypes)]
+        let block1: [u8; 5] = [0x01, 0x02, 0x03, 0x04, 0x04];
+        let block2: [u8; 5] = [0x01, 0x02, 0x03, 0x04, 0x05];
+        let block3: [u8; 5] = [0x01, 0x02, 0x03, 0x04, 0x05];
+        let block4: [u8; 5] = [0x01, 0x02, 0x03, 0x04, 0x06];
+
+        let mem = RustAlloc::new().as_mut_ptr();
+
+        unsafe {
+            let mut res: i32 = 2;
+            let err = memcmp_impl(
+                mem,
+                &mut res,
+                block2.as_ptr() as *const c_void,
+                block1.as_ptr() as *const c_void,
+                block2.len(),
+            );
+            assert_eq!(err, ockam_vault_sys::OCKAM_ERROR_NONE);
+            assert_eq!(res, 1);
+
+            let mut res: i32 = 2;
+            let err = memcmp_impl(
+                mem,
+                &mut res,
+                block2.as_ptr() as *const c_void,
+                block3.as_ptr() as *const c_void,
+                block2.len(),
+            );
+            assert_eq!(err, ockam_vault_sys::OCKAM_ERROR_NONE);
+            assert_eq!(res, 0);
+
+            let mut res: i32 = 2;
+            let err = memcmp_impl(
+                mem,
+                &mut res,
+                block2.as_ptr() as *const c_void,
+                block4.as_ptr() as *const c_void,
+                block2.len(),
+            );
+            assert_eq!(err, ockam_vault_sys::OCKAM_ERROR_NONE);
+            assert_eq!(res, -1);
+        }
+    }
 }
