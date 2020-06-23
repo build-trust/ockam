@@ -15,7 +15,7 @@ set(OCKAM_C_RPI_PATH ${OCKAM_C_BASE}/tools/toolchains/raspberrypi/tools/arm-bcm2
 
 # Define the cross compiler locations
 SET(CMAKE_C_COMPILER  /Volumes/xtool-build-env/armv8-rpi3-linux-gnueabihf/bin/armv8-rpi3-linux-gnueabihf-gcc CACHE STRING "Force compiler" FORCE)
-SET(CMAKE_CXX_COMPILER /Volumes/xtool-build-env/armv8-rpi3-linux-gnueabihf/bin/armv8-rpi3-linux-gnueabihf-g++ CACHE SRING "Force compiler" FORCE)
+SET(CMAKE_CXX_COMPILER /Volumes/xtool-build-env/armv8-rpi3-linux-gnueabihf/bin/armv8-rpi3-linux-gnueabihf-g++ CACHE STRING "Force compiler" FORCE)
 
 # Where is the target environment
 SET(CMAKE_FIND_ROOT_PATH ${OCKAM_C_RPI_PATH}/arm-linux-gnueabihf/sysroot)

@@ -36,7 +36,7 @@ list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Grab target and host triples
 include(ockam_triples)
-include(ockam_platform)
+include(ockam_cross_compile_platform)
 
 # Define the project AFTER the platform has been set!
 set(OCKAM_MAJOR_VERSION 0)
@@ -45,6 +45,8 @@ set(OCKAM_VERSION ${OCKAM_MAJOR_VERSION}.${OCKAM_MINOR_VERSION})
 project(ockam
   VERSION ${OCKAM_VERSION}
 )
+
+include(ockam_host_platform )
 
 get_target_triple(OCKAM_TARGET_TRIPLE OCKAM_TARGET_ARCHITECTURE OCKAM_TARGET_VENDOR OCKAM_TARGET_OS OCKAM_TARGET_ABI)
 get_host_triple(OCKAM_HOST_TRIPLE OCKAM_HOST_ARCHITECTURE OCKAM_HOST_VENDOR OCKAM_HOST_OS OCKAM_HOST_ABI)
@@ -97,7 +99,7 @@ else()
     set(CMAKE_INSTALL_MESSAGE LAZY)
 endif()
 
-option(OCKAM_BUILD_TESTS "Builds Ockam tests." OFF)
+option(OCKAM_BUILD_TESTS "Builds Ockam tests." ON)
 
 string(JOIN " " CMAKE_CXX_FLAGS ${OCKAM_DEFAULT_COPTS})
 message(STATUS "CMake Version                  : " "${CMAKE_SYSTEM_VERSION}")
