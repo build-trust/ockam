@@ -308,6 +308,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam-no-std"
+version = "0.7.0"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "ockam-vault-sys"
 version = "0.8.0"
 dependencies = [

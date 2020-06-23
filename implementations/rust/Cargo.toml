@@ -3,4 +3,6 @@
 members = [
   "crates/ockam-vault-sys",
   "crates/ockam",
+  "crates/ockam-no-std"
 ]
+
