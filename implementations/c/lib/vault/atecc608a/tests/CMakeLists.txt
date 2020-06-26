@@ -17,5 +17,8 @@ ockam_cc_test(
    DEPS 
      ockam::vault::tests::suite
      ockam::vault::atecc608a
+     ockam::vault
+     ockam::memory::stdlib
      ockam::memory
+     ockam::mutex
    PUBLIC)
