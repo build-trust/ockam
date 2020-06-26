@@ -26,7 +26,7 @@ typedef struct {
   void*           sha256_ctx;
   void*           hkdf_sha256_ctx;
   void*           aead_aes_gcm_ctx;
-} ockam_vault_shared_context_t;
+} ockam_vault_default_context_t;
 
 /**
  * @struct  ockam_vault_default_attributes_t

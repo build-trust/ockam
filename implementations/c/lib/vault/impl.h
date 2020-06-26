@@ -211,7 +211,8 @@ typedef struct {
  */
 struct ockam_vault {
   ockam_vault_dispatch_table_t* dispatch;
-  void*                         context;
+  void*                         default_context;
+  void*                         impl_context;
 };
 
 #endif
