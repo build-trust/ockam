@@ -1,5 +1,6 @@
 add_subdirectory(log)
 add_subdirectory(memory)
+add_subdirectory(mutex)
 add_subdirectory(random)
 add_subdirectory(vault)
 add_subdirectory(io)
