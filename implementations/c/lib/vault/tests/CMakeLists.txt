@@ -14,6 +14,7 @@ ockam_cc_library(
     "secret_ecdh.c"
     "hkdf.c"
     "aead_aes_gcm.c"
+    "hkdf_aead.c"
   INCLUDES
     ${CMOCKA_INCLUDE_DIRS}
   PUBLIC
