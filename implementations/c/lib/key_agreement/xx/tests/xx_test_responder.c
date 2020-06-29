@@ -146,7 +146,7 @@ ockam_error_t establish_responder_connection(ockam_transport_t*  p_transport,
                                              ockam_reader_t**    pp_reader,
                                              ockam_writer_t**    pp_writer)
 {
-  ockam_error_t                           error = OCKAM_ERROR_INTERFACE_KEYAGREEMENT;
+  ockam_error_t                       error = OCKAM_ERROR_INTERFACE_KEYAGREEMENT;
   ockam_transport_socket_attributes_t tcp_attributes;
 
   memcpy(&tcp_attributes.listen_address, p_address, sizeof(ockam_ip_address_t));

@@ -150,7 +150,7 @@ ockam_error_t establish_initiator_transport(ockam_transport_t*  p_transport,
                                             ockam_reader_t**    pp_reader,
                                             ockam_writer_t**    pp_writer)
 {
-  ockam_error_t                           error = OCKAM_ERROR_NONE;
+  ockam_error_t                       error = OCKAM_ERROR_NONE;
   ockam_transport_socket_attributes_t tcp_attrs;
   memset(&tcp_attrs, 0, sizeof(tcp_attrs));
   tcp_attrs.p_memory = p_memory;

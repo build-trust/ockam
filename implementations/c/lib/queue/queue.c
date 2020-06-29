@@ -18,8 +18,8 @@ struct ockam_queue_t {
 
 ockam_error_t init_queue(ockam_queue_t** pp_queue, ockam_queue_attributes_t* p_attributes)
 {
-  ockam_error_t  error      = OCKAM_ERROR_NONE;
-  ockam_queue_t* p_queue    = NULL;
+  ockam_error_t  error   = OCKAM_ERROR_NONE;
+  ockam_queue_t* p_queue = NULL;
 
   if ((NULL == p_attributes) || (NULL == pp_queue)) {
     error = QUEUE_ERROR_PARAMETER;
@@ -32,14 +32,14 @@ ockam_error_t init_queue(ockam_queue_t** pp_queue, ockam_queue_attributes_t* p_a
   *pp_queue = NULL;
 
   // Allocate memory for queue struct
-  error             = ockam_memory_alloc_zeroed(p_attributes->p_memory, (void**) &p_queue, sizeof(ockam_queue_t));
+  error = ockam_memory_alloc_zeroed(p_attributes->p_memory, (void**) &p_queue, sizeof(ockam_queue_t));
   if (error) goto exit;
   p_queue->max_size = p_attributes->queue_size;
   p_queue->p_memory = p_attributes->p_memory;
 
   // Allocate memory for nodes
   size_t nodes_size = p_attributes->queue_size * sizeof(void*);
-  error             = ockam_memory_alloc_zeroed(p_attributes->p_memory, (void**)&(p_queue->nodes), nodes_size);
+  error             = ockam_memory_alloc_zeroed(p_attributes->p_memory, (void**) &(p_queue->nodes), nodes_size);
   if (error) goto exit;
 
   // Create the queue lock
@@ -163,9 +163,7 @@ ockam_error_t uninit_queue(ockam_queue_t* p_q)
 
   // Free up the memory
   error = ockam_memory_free(p_q->p_memory, p_q->nodes, 0);
-  if (OCKAM_ERROR_NONE != error) {
-    goto exit;
-  }
+  if (OCKAM_ERROR_NONE != error) { goto exit; }
 
   // TODO: passing 0 as len may not work properly with all implementations
   error = ockam_memory_free(p_q->p_memory, p_q, 0);
@@ -227,7 +225,7 @@ ockam_error_t grow_queue(ockam_queue_t* p_q, uint16_t new_max_size)
   // Allocate memory for new nodes
   size_t nodes_size = new_max_size * sizeof(void*);
   void** new_nodes  = NULL;
-  error             = ockam_memory_alloc_zeroed(p_q->p_memory, (void**)&new_nodes, nodes_size);
+  error             = ockam_memory_alloc_zeroed(p_q->p_memory, (void**) &new_nodes, nodes_size);
   if (error) goto exit;
 
   // Copy old nodes
@@ -236,7 +234,7 @@ ockam_error_t grow_queue(ockam_queue_t* p_q, uint16_t new_max_size)
       error = ockam_memory_copy(p_q->p_memory, &new_nodes[0], &p_q->nodes[p_q->head], p_q->size * sizeof(void*));
     } else {
       size_t size1 = p_q->max_size - p_q->head;
-      error = ockam_memory_copy(p_q->p_memory, &new_nodes[0], &p_q->nodes[p_q->head], size1 * sizeof(void*));
+      error        = ockam_memory_copy(p_q->p_memory, &new_nodes[0], &p_q->nodes[p_q->head], size1 * sizeof(void*));
       if (error) goto exit;
       ockam_memory_copy(p_q->p_memory, &new_nodes[size1], &p_q->nodes[0], (p_q->size - size1) * sizeof(void*));
     }
@@ -245,11 +243,11 @@ ockam_error_t grow_queue(ockam_queue_t* p_q, uint16_t new_max_size)
   if (error) goto exit;
 
   p_q->max_size = new_max_size;
-  error = ockam_memory_free(p_q->p_memory, p_q->nodes, 0);
+  error         = ockam_memory_free(p_q->p_memory, p_q->nodes, 0);
   if (error) goto exit;
   p_q->nodes = new_nodes;
-  p_q->head = 0;
-  p_q->tail = (p_q->head + p_q->size) % new_max_size;
+  p_q->head  = 0;
+  p_q->tail  = (p_q->head + p_q->size) % new_max_size;
 
 exit:
   if (q_is_locked) pthread_mutex_unlock(&p_q->modify_lock);

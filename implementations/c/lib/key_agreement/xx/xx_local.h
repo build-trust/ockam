@@ -15,7 +15,7 @@
 #define TAG_SIZE             16
 #define VECTOR_SIZE          12
 
-#define DEFAULT_IP_ADDRESS "127.0.0.1"
+#define DEFAULT_IP_ADDRESS  "127.0.0.1"
 #define DEFAULT_LISTEN_PORT 4000
 
 struct ockam_xx_key {

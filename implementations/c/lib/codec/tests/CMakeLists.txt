@@ -13,7 +13,7 @@ ockam_cc_test(
 		endpoint_channel_test.c
 		endpoint_test.c
 		codec_tests.h
-		route_test.c
+		address_test.c
 	INCLUDES
 		${CMOCKA_INCLUDE_DIRS}
 	DEPS

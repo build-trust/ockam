@@ -20,19 +20,14 @@ exit:
   return p_encoded;
 }
 
-uint8_t* decode_ockam_wire(uint8_t* p_encoded)
+uint8_t* decode_ockam_wire(uint8_t* p_encoded, uint16_t* p_version)
 {
-  ockam_error_t error   = OCKAM_ERROR_NONE;
-  uint16_t      version = 0;
+  ockam_error_t error = OCKAM_ERROR_NONE;
   if (!p_encoded) {
     error = CODEC_ERROR_PARAMETER;
     goto exit;
   }
-  p_encoded = decode_variable_length_encoded_u2le(p_encoded, &version);
-  if (OCKAM_WIRE_PROTOCOL_VERSION != version) {
-    error = CODEC_ERROR_NOT_IMPLEMENTED;
-    goto exit;
-  }
+  p_encoded = decode_variable_length_encoded_u2le(p_encoded, p_version);
 exit:
   if (error) {
     log_error(error, __func__);

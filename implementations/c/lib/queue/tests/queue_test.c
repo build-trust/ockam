@@ -100,7 +100,7 @@ int main()
   }
 
   uint16_t p_size = 0;
-  error = queue_size(p_q, &p_size);
+  error           = queue_size(p_q, &p_size);
   if (error) { goto exit; }
   if (p_size != 0) {
     log_error(error, "queue_size returned incorrect size");
@@ -118,7 +118,7 @@ int main()
 
   // Check queue size
   p_size = 0;
-  error = queue_size(p_q, &p_size);
+  error  = queue_size(p_q, &p_size);
   if (error) { goto exit; }
   if (p_size != 5) {
     log_error(error, "queue_size returned incorrect size");
@@ -127,7 +127,7 @@ int main()
 
   // Check queue max size
   p_size = 0;
-  error = queue_max_size(p_q, &p_size);
+  error  = queue_max_size(p_q, &p_size);
   if (error) { goto exit; }
   if (p_size != 5) {
     log_error(error, "queue_max_size returned incorrect max size");
@@ -143,7 +143,7 @@ int main()
 
   // Check queue size
   p_size = 0;
-  error = queue_size(p_q, &p_size);
+  error  = queue_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 5) {
     log_error(error, "queue_size returned incorrect size");
@@ -152,7 +152,7 @@ int main()
 
   // Check queue max size
   p_size = 0;
-  error = queue_max_size(p_q, &p_size);
+  error  = queue_max_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 7) {
     log_error(error, "queue_max_size returned incorrect max size");
@@ -170,7 +170,7 @@ int main()
 
   // Check queue size
   p_size = 0;
-  error = queue_size(p_q, &p_size);
+  error  = queue_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 7) {
     log_error(error, "queue_size returned incorrect size");
@@ -179,7 +179,7 @@ int main()
 
   // Check queue max size
   p_size = 0;
-  error = queue_max_size(p_q, &p_size);
+  error  = queue_max_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 7) {
     log_error(error, "queue_max_size returned incorrect max size");

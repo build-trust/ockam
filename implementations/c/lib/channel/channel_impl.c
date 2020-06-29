@@ -32,7 +32,8 @@ exit:
 
 uint8_t* channel_deocde_header(ockam_channel_t* p_ch, uint8_t* p_encoded)
 {
-  p_encoded = decode_ockam_wire(p_encoded);
+  uint16_t version;
+  p_encoded = decode_ockam_wire(p_encoded, &version);
   if (NULL == p_encoded) goto exit;
   if (!p_encoded) {
     p_encoded = NULL;

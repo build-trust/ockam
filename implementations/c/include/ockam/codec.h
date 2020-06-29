@@ -12,6 +12,7 @@
 #define KEY_CURVE_SIZE        32
 #define IPV6_ADDRESS_SIZE     16
 #define IPV4_ADDRESS_SIZE     4
+#define LOCAL_ADDRESS_SIZE    8
 
 /*
  *
@@ -135,7 +136,8 @@ typedef struct {
   union {
     codec_udp_address_t udp_address;
     codec_tcp_address_t tcp_address;
-  } socket_address;
+    uint8_t             local_address[LOCAL_ADDRESS_SIZE];
+  } address;
 } codec_address_t;
 
 typedef struct {
@@ -156,6 +158,8 @@ uint8_t* decode_endpoint(uint8_t* encoded, CodecEndpointType* type, uint8_t* end
 uint8_t* encode_key_agreement(uint8_t* encoded, codec_payload_t* kt_payload);
 uint8_t* decode_key_agreement(uint8_t* encoded, codec_payload_t* kt_payload);
 uint8_t* encode_ockam_wire(uint8_t* p_encoded);
-uint8_t* decode_ockam_wire(uint8_t* p_encoded);
+uint8_t* decode_ockam_wire(uint8_t* p_encoded, uint16_t* p_version);
 uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route);
 uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route);
+uint8_t* encode_address(uint8_t* p_encoded, codec_address_t* p_address);
+uint8_t* decode_address(uint8_t* p_encoded, codec_address_t* p_address);

@@ -105,7 +105,8 @@ ockam_error_t ockam_memory_move(ockam_memory_t* memory, void* destination, void*
    * @return  OCKAM_ERROR_NONE on success.
    * @return  MEMORY_ERROR_INVALID_PARAM if invalid memory, res, lhs or rhs received.
    */
-ockam_error_t ockam_memory_compare(ockam_memory_t* memory, int *res, const void* lhs, const void* rhs, size_t move_size);
+ockam_error_t
+ockam_memory_compare(ockam_memory_t* memory, int* res, const void* lhs, const void* rhs, size_t move_size);
 
 /**
  * @}
