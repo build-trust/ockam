@@ -3,7 +3,6 @@
  * @brief   Ockam Vault Implementation for the ATECC608A
  */
 
-#include <stdio.h>
 #include "ockam/memory.h"
 #include "ockam/mutex.h"
 #include "ockam/vault.h"
@@ -43,16 +42,12 @@
 #define VAULT_ATECC608A_KEY_TYPE_AES               0x06
 #define VAULT_ATECC608A_KEY_TYPE_BUFFER            0x07
 
+#define VAULT_ATECC608A_SLOT_FEAT_NONE             0x00
 #define VAULT_ATECC608A_SLOT_FEAT_IO_PROTECTION    0x01
 #define VAULT_ATECC608A_SLOT_FEAT_PRIVKEY_GENERATE 0x02
 #define VAULT_ATECC608A_SLOT_FEAT_PRIVKEY_WRITE    0x04
 #define VAULT_ATECC608A_SLOT_FEAT_BUFFER           0x08
 #define VAULT_ATECC608A_SLOT_FEAT_AESKEY           0x10
-
-#define ATECC608A_HKDF_SLOT                         9
-#define ATECC608A_HKDF_SLOT_SIZE                   72
-#define ATECC608A_AES_GCM_KEY                      14
-#define ATECC608A_AES_GCM_KEY_SLOT_SIZE            14
 
 /**
  * @brief Configuration data for the ATECC608A
@@ -330,7 +325,11 @@ ockam_error_t ockam_vault_atecc608a_init(ockam_vault_t* vault, ockam_vault_atecc
         break;
 
       case VAULT_ATECC608A_KEY_TYPE_AES:
-          context->slot_config[i].feat |= VAULT_ATECC608A_SLOT_FEAT_AESKEY;
+          if(i == 15) { //TODO Determine why slots 13 & 14 produce invalid results.
+            context->slot_config[i].feat |= VAULT_ATECC608A_SLOT_FEAT_AESKEY;
+          } else {
+            context->slot_config[i].feat |= VAULT_ATECC608A_SLOT_FEAT_NONE;
+          }
         break;
 
       case VAULT_ATECC608A_KEY_TYPE_BUFFER:
@@ -1352,7 +1351,6 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
   uint8_t                           iv[VAULT_ATECC608A_AEAD_AES_GCM_IV_SIZE] = { 0 };
   uint8_t                           slot                                     = 0;
 
-
   if ((vault == 0) || (vault->impl_context == 0)) {
     error = OCKAM_VAULT_ERROR_INVALID_CONTEXT;
     goto exit;
@@ -1414,17 +1412,12 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
     goto exit;
   }
 
-  printf("Ockam Vault AES: Context: %p\r\n", atca_ctx);
-  printf("Ockam Vault AES: Key Slot: %x\r\n", slot);
-  printf("Ockam Vault AES: IV: %p\r\n", &iv[0]);
-  printf("Ockam Vault AES: IV Size: %d\r\n", VAULT_ATECC608A_AEAD_AES_GCM_IV_SIZE);
   status = atcab_aes_gcm_init(atca_ctx,
                               slot,
                               VAULT_ATECC608A_AES_GCM_KEY_BLOCK,
                               &iv[0],
                               VAULT_ATECC608A_AEAD_AES_GCM_IV_SIZE);
   if (status != ATCA_SUCCESS) {
-    printf("Ockam Vault AES: GCM Init Fail : %x\r\n", status);
     error = OCKAM_VAULT_ERROR_AEAD_AES_GCM_FAIL;
     goto exit;
   }
@@ -1438,6 +1431,7 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
   }
 
   if (encrypt == VAULT_ATECC608A_AEAD_AES_GCM_ENCRYPT) {
+
     uint8_t* tag_offset = 0;
     status = atcab_aes_gcm_encrypt_update(atca_ctx, /* If mode is encrypt, resulting cipertext is placed  */
                                           input,    /* into output.                                       */
@@ -1458,19 +1452,22 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
       goto exit;
     }
 
+    uint8_t* output_buf = output;
+    uint8_t* tag_buf    = tag_offset;
+
     *output_length = input_length + OCKAM_VAULT_AEAD_AES_GCM_TAG_LENGTH;
   } else if (encrypt == VAULT_ATECC608A_AEAD_AES_GCM_DECRYPT) {
     const uint8_t* tag_offset = 0;
     status = atcab_aes_gcm_decrypt_update(atca_ctx, /* If mode is decrypt, resulting plaintext is placed  */
                                           input,    /* into output.                                       */
-                                          input_length,
+                                          (input_length - OCKAM_VAULT_AEAD_AES_GCM_TAG_LENGTH),
                                           output);
     if (status != ATCA_SUCCESS) {
       error = OCKAM_VAULT_ERROR_AEAD_AES_GCM_FAIL;
       goto exit;
     }
 
-    tag_offset = input + input_length;
+    tag_offset = input + (input_length - OCKAM_VAULT_AEAD_AES_GCM_TAG_LENGTH);
 
     status = atcab_aes_gcm_decrypt_finish(atca_ctx,   /* After the plaintext has been generated, complete   */
                                           tag_offset, /* the GCM decrypt by verifying the auth tag          */
