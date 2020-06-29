@@ -16,8 +16,10 @@
 
 #define TEST_VAULT_AEAD_AES_GCM_TEST_CASES 2u
 #define TEST_VAULT_AEAD_AES_GCM_NAME_SIZE  32u
-#define TEST_VAULT_AEAD_AES_GCM_KEY_SIZE   16u
 #define TEST_VAULT_AEAD_AES_GCM_TAG_SIZE   16u
+
+#define TEST_VAULT_AEAD_AES_GCM_128_KEY_SIZE 16u
+#define TEST_VAULT_AEAD_AES_GCM_256_KEY_SIZE 32u
 
 /**
  * @struct  test_vault_aead_aes_gcm_data_t
@@ -39,10 +41,11 @@ typedef struct {
  * @brief   Shared test data for all unit tests
  */
 typedef struct {
-  uint16_t        test_count;
-  uint16_t        test_count_max;
-  ockam_vault_t*  vault;
-  ockam_memory_t* memory;
+  uint16_t                      test_count;
+  uint16_t                      test_count_max;
+  ockam_vault_t*                vault;
+  ockam_memory_t*               memory;
+  TEST_VAULT_AEAD_AES_GCM_KEY_e test_key_type;
 } test_vault_aead_aes_gcm_shared_data_t;
 
 void test_vault_aead_aes_gcm(void** state);
@@ -151,6 +154,16 @@ void test_vault_aead_aes_gcm(void** state)
     fail_msg("Test count %d has exceeded max test count of %d", test_data->test_count, test_data->test_count_max);
   }
 
+  if ((test_data->test_key_type == TEST_VAULT_AEAD_AES_GCM_KEY_128_ONLY) &&
+      (g_aead_aes_gcm_data[test_data->test_count].key_size == TEST_VAULT_AEAD_AES_GCM_256_KEY_SIZE)) {
+    goto exit;
+  }
+
+  if ((test_data->test_key_type == TEST_VAULT_AEAD_AES_GCM_KEY_256_ONLY) &&
+      (g_aead_aes_gcm_data[test_data->test_count].key_size == TEST_VAULT_AEAD_AES_GCM_128_KEY_SIZE)) {
+    goto exit;
+  }
+
   /* ----------------- */
   /* Memory Allocation */
   /* ----------------- */
@@ -244,6 +257,9 @@ void test_vault_aead_aes_gcm(void** state)
   // TODO this will not be freed on an error
   ockam_memory_free(test_data->memory, aead_aes_gcm_encrypt_hash, aead_aes_gcm_encrypt_hash_size);
   ockam_memory_free(test_data->memory, aead_aes_gcm_decrypt_data, g_aead_aes_gcm_data[test_data->test_count].text_size);
+
+exit:
+  return;
 }
 
 /**
@@ -268,7 +284,7 @@ int test_vault_aead_aes_gcm_teardown(void** state)
  * @brief   Triggers AES GCM unit tests using Ockam Vault.
  * @return  Zero on success. Non-zero on failure.
  */
-int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory)
+int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory, TEST_VAULT_AEAD_AES_GCM_KEY_e key)
 {
   ockam_error_t                         error        = OCKAM_ERROR_NONE;
   int                                   rc           = 0;
@@ -291,6 +307,7 @@ int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory)
   shared_data.test_count_max = TEST_VAULT_AEAD_AES_GCM_TEST_CASES;
   shared_data.vault          = vault;
   shared_data.memory         = memory;
+  shared_data.test_key_type  = key;
 
   for (i = 0; i < TEST_VAULT_AEAD_AES_GCM_TEST_CASES; i++) {
     error = ockam_memory_alloc_zeroed(memory, (void**) &test_name, TEST_VAULT_AEAD_AES_GCM_NAME_SIZE);

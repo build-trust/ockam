@@ -80,7 +80,7 @@ int main(void)
   test_vault_run_sha256(&vault, &memory);
   test_vault_run_secret_ecdh(&vault, &memory, OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY, 0);
   test_vault_run_hkdf(&vault, &memory);
-  test_vault_run_aead_aes_gcm(&vault, &memory);
+  test_vault_run_aead_aes_gcm(&vault, &memory, TEST_VAULT_AEAD_AES_GCM_KEY_128_ONLY);
 
 exit:
   if (error != OCKAM_ERROR_NONE) { rc = -1; }
