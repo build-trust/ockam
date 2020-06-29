@@ -12,6 +12,7 @@ ockam_cc_library(
 	DEPS
 		ockam::memory
 		ockam::memory::stdlib
+		ockam::queue
 	PUBLIC )
 
 if(${OCKAM_BUILD_TESTS})
