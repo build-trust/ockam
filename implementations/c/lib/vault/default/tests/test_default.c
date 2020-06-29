@@ -58,7 +58,7 @@ int main(void)
   test_vault_run_sha256(&vault, &memory);
   test_vault_run_secret_ecdh(&vault, &memory, OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY, 1);
   test_vault_run_hkdf(&vault, &memory);
-  test_vault_run_aead_aes_gcm(&vault, &memory);
+  test_vault_run_aead_aes_gcm(&vault, &memory, TEST_VAULT_AEAD_AES_GCM_KEY_BOTH);
 
 exit:
   if (error != OCKAM_ERROR_NONE) { rc = -1; }
