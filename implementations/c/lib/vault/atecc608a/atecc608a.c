@@ -193,13 +193,15 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
                                                    size_t                plaintext_size,
                                                    size_t*               plaintext_length);
 
-ockam_error_t atecc608a_hkdf_extract(vault_atecc608a_context_t* context,
+ockam_error_t atecc608a_hkdf_extract(vault_atecc608a_context_t*        context,
                                      vault_atecc608a_secret_context_t* salt,
-                                     vault_atecc608a_secret_context_t* ikm);
+                                     vault_atecc608a_secret_context_t* ikm,
+                                     uint16_t*                         prk_slot);
 
 ockam_error_t atecc608a_hkdf_expand(vault_atecc608a_context_t* context,
-                                    ockam_vault_secret_t* outputs,
-                                    uint8_t outputs_count);
+                                    ockam_vault_secret_t*      outputs,
+                                    uint8_t                    outputs_count,
+                                    uint16_t                   prk_slot);
 
 ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
                                      int                   encrypt,
@@ -333,7 +335,11 @@ ockam_error_t ockam_vault_atecc608a_init(ockam_vault_t* vault, ockam_vault_atecc
         break;
 
       case VAULT_ATECC608A_KEY_TYPE_BUFFER:
-        context->slot_config[i].feat |= VAULT_ATECC608A_SLOT_FEAT_BUFFER;
+        if(i > 8) {
+          context->slot_config[i].feat |= VAULT_ATECC608A_SLOT_FEAT_BUFFER;
+        } else {
+          context->slot_config[i].feat |= VAULT_ATECC608A_SLOT_FEAT_NONE;
+        }
         break;
 
       default:
@@ -1112,7 +1118,7 @@ ockam_error_t vault_atecc608a_hkdf_sha256(ockam_vault_t*        vault,
   vault_atecc608a_context_t*        context                             = 0;
   vault_atecc608a_secret_context_t* salt_ctx                            = 0;
   vault_atecc608a_secret_context_t* ikm_ctx                             = 0;
-  uint8_t                           i                                   = 0;
+  uint16_t                          prk_slot                            = 0;
 
   if ((vault == 0) || (vault->impl_context == 0)) {
     error = OCKAM_VAULT_ERROR_INVALID_CONTEXT;
@@ -1136,14 +1142,18 @@ ockam_error_t vault_atecc608a_hkdf_sha256(ockam_vault_t*        vault,
     }
   }
 
-  error = atecc608a_hkdf_extract(context, salt_ctx, ikm_ctx);
+  error = atecc608a_hkdf_extract(context,
+                                 salt_ctx,
+                                 ikm_ctx,
+                                 &prk_slot);
   if(error != OCKAM_ERROR_NONE) {
     goto exit;
   }
 
   error = atecc608a_hkdf_expand(context,         /* Expand stage of HKDF. Uses the PRK from extract    */
                                 derived_outputs, /* and outputs the key at the desired output size.    */
-                                derived_outputs_count);
+                                derived_outputs_count,
+                                prk_slot);
 exit:
 
   if(context->mutex) {
@@ -1213,13 +1223,15 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
  ********************************************************************************************************
  */
 
-ockam_error_t atecc608a_hkdf_extract(vault_atecc608a_context_t* context,
+ockam_error_t atecc608a_hkdf_extract(vault_atecc608a_context_t*        context,
                                      vault_atecc608a_secret_context_t* salt,
-                                     vault_atecc608a_secret_context_t* ikm)
+                                     vault_atecc608a_secret_context_t* ikm,
+                                     uint16_t*                         prk_slot)
 {
-  ockam_error_t error  = OCKAM_ERROR_NONE;
-  ATCA_STATUS   status = ATCA_SUCCESS;
-  uint16_t      slot   = 0;
+  ockam_error_t error                                         = OCKAM_ERROR_NONE;
+  ATCA_STATUS   status                                        = ATCA_SUCCESS;
+  uint16_t      slot                                          = 0;
+  uint8_t       tmpkey[OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH] = {0};
 
   if((context == 0) || (salt == 0) || (ikm == 0)) {
     error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
@@ -1250,12 +1262,24 @@ ockam_error_t atecc608a_hkdf_extract(vault_atecc608a_context_t* context,
   status = atcab_sha_hmac(ikm->buffer,
                           ikm->buffer_size,
                           slot,
-                          0,
+                          &tmpkey[0],
                           SHA_MODE_TARGET_TEMPKEY);
   if (status != ATCA_SUCCESS) {
     error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
     goto exit;
   }
+
+  status = atcab_write_bytes_zone(ATCA_ZONE_DATA,
+                                  slot,
+                                  0,
+                                  &tmpkey[0],
+                                  OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH);
+  if (status != ATCA_SUCCESS) {
+    error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
+    goto exit;
+  }
+
+  *prk_slot = slot;
 
 exit:
   return error;
@@ -1268,24 +1292,30 @@ exit:
  */
 
 ockam_error_t atecc608a_hkdf_expand(vault_atecc608a_context_t* context,
-                                    ockam_vault_secret_t* outputs,
-                                    uint8_t outputs_count)
+                                    ockam_vault_secret_t*      outputs,
+                                    uint8_t                    outputs_count,
+                                    uint16_t                   prk_slot)
 {
-  ockam_error_t                     error      = OCKAM_ERROR_NONE;
-  uint8_t                           i          = 0;
-  vault_atecc608a_secret_context_t* output_ctx = 0;
-  ATCA_STATUS                       status     = ATCA_SUCCESS;
+  ockam_error_t                     error           = OCKAM_ERROR_NONE;
+  uint8_t                           i               = 0;
+  uint8_t                           c               = 0;
+  vault_atecc608a_secret_context_t* output_ctx      = 0;
+  ATCA_STATUS                       status          = ATCA_SUCCESS;
+  atca_hmac_sha256_ctx_t            sha_ctx         = {0};
+  uint8_t*                          previous_digest = 0;
 
   if((context == 0) || (outputs == 0) || (outputs_count == 0)) {
     error = OCKAM_VAULT_ERROR_INVALID_PARAM;
     goto exit;
   }
 
-  for(i = 0; i < outputs_count; i++) {
+  for(i = 1; i <= outputs_count; i++) {
     if(outputs->context != 0) {
       error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
       goto exit;
     }
+
+    c = i & 0xFF;
 
     error = ockam_memory_alloc_zeroed(context->memory,
                                       (void**) &(outputs->context),
@@ -1305,16 +1335,46 @@ ockam_error_t atecc608a_hkdf_expand(vault_atecc608a_context_t* context,
 
     output_ctx->buffer_size = OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH;
 
-    status = atcab_sha_hmac(0,
-                            0,
-                            ATCA_TEMPKEY_KEYID,
-                            output_ctx->buffer,
-                            SHA_MODE_TARGET_TEMPKEY);
-    if (status != ATCA_SUCCESS) {
-      error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
+
+    error = ockam_memory_set(context->memory,
+                             &sha_ctx,
+                             0,
+                             sizeof(atca_hmac_sha256_ctx_t));
+    if(error != OCKAM_ERROR_NONE) {
       goto exit;
     }
 
+    status = atcab_sha_hmac_init(&sha_ctx, prk_slot);
+    if(status != ATCA_SUCCESS) {
+      error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
+      break;
+    }
+
+    if(previous_digest != 0) {
+      status = atcab_sha_hmac_update(&sha_ctx,
+                                     previous_digest,
+                                     OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH);
+      if(status != ATCA_SUCCESS) {
+        error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
+        break;
+      }
+    }
+
+    status = atcab_sha_hmac_update(&sha_ctx, &c, 1);
+    if(status != ATCA_SUCCESS) {
+      error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
+      break;
+    }
+
+    status = atcab_sha_hmac_finish(&sha_ctx,
+                                   output_ctx->buffer,
+                                   SHA_MODE_TARGET_OUT_ONLY);
+    if(status != ATCA_SUCCESS) {
+      error = OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL;
+      break;
+    }
+
+    previous_digest = output_ctx->buffer;
     outputs++;
   }
 
