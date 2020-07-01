@@ -46,7 +46,7 @@ project(ockam
   VERSION ${OCKAM_VERSION}
 )
 
-include(ockam_host_platform )
+include(ockam_host_platform)
 
 get_target_triple(OCKAM_TARGET_TRIPLE OCKAM_TARGET_ARCHITECTURE OCKAM_TARGET_VENDOR OCKAM_TARGET_OS OCKAM_TARGET_ABI)
 get_host_triple(OCKAM_HOST_TRIPLE OCKAM_HOST_ARCHITECTURE OCKAM_HOST_VENDOR OCKAM_HOST_OS OCKAM_HOST_ABI)
@@ -57,6 +57,8 @@ if(CMAKE_INSTALL_PREFIX MATCHES "^C:/Program Files" OR CMAKE_INSTALL_PREFIX MATC
 else()
   set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/${OCKAM_TARGET_TRIPLE}")
 endif()
+
+option(OCKAM_BUILD_TESTS "Builds Ockam tests." ON)
 
 include(ockam_macros)
 include(ockam_copts)
@@ -98,8 +100,6 @@ if (ENV{VERBOSE})
 else()
     set(CMAKE_INSTALL_MESSAGE LAZY)
 endif()
-
-option(OCKAM_BUILD_TESTS "Builds Ockam tests." ON)
 
 string(JOIN " " CMAKE_CXX_FLAGS ${OCKAM_DEFAULT_COPTS})
 message(STATUS "CMake Version                  : " "${CMAKE_SYSTEM_VERSION}")
