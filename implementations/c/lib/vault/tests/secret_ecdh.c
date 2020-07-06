@@ -17,8 +17,6 @@
 #define TEST_VAULT_KEY_NAME_SIZE             32u
 #define TEST_VAULT_KEY_P256_TEST_CASES       1u
 #define TEST_VAULT_KEY_CURVE25519_TEST_CASES 2u
-#define TEST_VAULT_KEY_P256_SIZE             64u
-#define TEST_VAULT_KEY_CURVE25519_SIZE       32u
 #define TEST_VAULT_KEY_PRIV_SIZE             32u
 
 /**
@@ -27,9 +25,9 @@
  */
 typedef struct {
   uint8_t initiator_priv[TEST_VAULT_KEY_PRIV_SIZE];
-  uint8_t initiator_pub[TEST_VAULT_KEY_P256_SIZE];
+  uint8_t initiator_pub[OCKAM_VAULT_P256_PUBLICKEY_LENGTH];
   uint8_t responder_priv[TEST_VAULT_KEY_PRIV_SIZE];
-  uint8_t responder_pub[TEST_VAULT_KEY_P256_SIZE];
+  uint8_t responder_pub[OCKAM_VAULT_P256_PUBLICKEY_LENGTH];
   uint8_t shared_secret[OCKAM_VAULT_SHARED_SECRET_LENGTH];
 } test_vault_keys_p256_t;
 
@@ -39,9 +37,9 @@ typedef struct {
  */
 typedef struct {
   uint8_t initiator_priv[TEST_VAULT_KEY_PRIV_SIZE];
-  uint8_t initiator_pub[TEST_VAULT_KEY_CURVE25519_SIZE];
+  uint8_t initiator_pub[OCKAM_VAULT_CURVE25519_PUBLICKEY_LENGTH];
   uint8_t responder_priv[TEST_VAULT_KEY_PRIV_SIZE];
-  uint8_t responder_pub[TEST_VAULT_KEY_CURVE25519_SIZE];
+  uint8_t responder_pub[OCKAM_VAULT_CURVE25519_PUBLICKEY_LENGTH];
   uint8_t shared_secret[OCKAM_VAULT_SHARED_SECRET_LENGTH];
 } test_vault_keys_curve25519_t;
 
@@ -400,11 +398,11 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
 
   if (type == OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY) {
     test_data.test_count_max = TEST_VAULT_KEY_P256_TEST_CASES;
-    test_data.key_size       = 64;
+    test_data.key_size       = OCKAM_VAULT_P256_PUBLICKEY_LENGTH;
     name                     = (char*) &g_test_vault_p256_name[0];
   } else if (type == OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY) {
     test_data.test_count_max = TEST_VAULT_KEY_CURVE25519_TEST_CASES;
-    test_data.key_size       = 32;
+    test_data.key_size       = OCKAM_VAULT_CURVE25519_PUBLICKEY_LENGTH;
     name                     = (char*) &g_test_vault_curve25519_name[0];
   } else {
     rc = -1;
