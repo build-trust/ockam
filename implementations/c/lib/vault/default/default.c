@@ -895,17 +895,17 @@ ockam_error_t vault_default_secret_export(ockam_vault_t*        vault,
     goto exit;
   }
 
-  if (secret->attributes.length > output_buffer_size) {
-    error = OCKAM_VAULT_ERROR_INVALID_SIZE;
-    goto exit;
-  }
-
   if (secret->context == 0) {
     error = OCKAM_VAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
   secret_ctx = (vault_default_secret_key_ctx_t*) secret->context;
+
+  if (secret_ctx->key_size > output_buffer_size) {
+    error = OCKAM_VAULT_ERROR_INVALID_SIZE;
+    goto exit;
+  }
 
   error = ockam_memory_copy(ctx->memory, output_buffer, secret_ctx->key, secret_ctx->key_size);
   if (error != OCKAM_ERROR_NONE) { goto exit; }
@@ -1047,6 +1047,7 @@ exit:
   return error;
 }
 
+
 ockam_error_t vault_default_ecdh(ockam_vault_t*        vault,
                                  ockam_vault_secret_t* privatekey,
                                  const uint8_t*        peer_publickey,
@@ -1059,6 +1060,8 @@ ockam_error_t vault_default_ecdh(ockam_vault_t*        vault,
   ockam_vault_default_context_t*   ctx            = 0;
   vault_default_secret_ec_ctx_t*  secret_ec_ctx  = 0;
   vault_default_secret_key_ctx_t* secret_key_ctx = 0;
+  size_t                          xoff           = 0;
+  size_t                          xlen           = 0;
 
   if ((vault == 0) || (privatekey == 0) || (peer_publickey == 0) || (shared_secret == 0)) {
     error = OCKAM_VAULT_ERROR_INVALID_PARAM;
@@ -1110,9 +1113,8 @@ ockam_error_t vault_default_ecdh(ockam_vault_t*        vault,
     secret_key_ctx->key_size = OCKAM_VAULT_SHARED_SECRET_LENGTH;
   }
 
-  // TODO : Is this needed?
-  // xoff = p_key_ecdh_ctx->br_ec->xoff(p_key_ecdh_ctx->br_curve, &xlen);
-  // ockam_memory_move(ctx->memory, p_ss, p_ss + xoff, xlen);
+  xoff = secret_ec_ctx->ec->xoff(secret_ec_ctx->curve, &xlen);
+  ockam_memory_move(ctx->memory, secret_key_ctx->key, secret_key_ctx->key + xoff, xlen);
 
 exit:
   return error;
