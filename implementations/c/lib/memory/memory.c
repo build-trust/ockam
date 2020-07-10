@@ -98,7 +98,7 @@ exit:
   return error;
 }
 
-ockam_error_t ockam_memory_compare(ockam_memory_t* memory, int *res, const void* lhs, const void* rhs, size_t move_size)
+ockam_error_t ockam_memory_compare(ockam_memory_t* memory, int *res, const void* lhs, const void* rhs, size_t buffer_size)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -107,7 +107,7 @@ ockam_error_t ockam_memory_compare(ockam_memory_t* memory, int *res, const void*
     goto exit;
   }
 
-  error = memory->dispatch->compare(memory, res, lhs, rhs, move_size);
+  error = memory->dispatch->compare(memory, res, lhs, rhs, buffer_size);
 
 exit:
   return error;
