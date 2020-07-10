@@ -13,8 +13,6 @@
 #include "ockam/memory.h"
 #include "socket_udp.h"
 
-#define DEFAULT_UDP_PORT 4001
-
 extern ockam_memory_t* gp_ockam_transport_memory;
 ockam_error_t          socket_udp_connect(void*               ctx,
                                           ockam_reader_t**    pp_reader,
@@ -25,7 +23,7 @@ ockam_error_t          socket_udp_connect(void*               ctx,
 ockam_error_t          socket_udp_accept(void*               ctx,
                                          ockam_reader_t**    pp_reader,
                                          ockam_writer_t**    pp_writer,
-                                         ockam_ip_address_t* remote_address);
+                                         ockam_ip_address_t* p_remote_address);
 ockam_error_t          socket_udp_deinit(ockam_transport_t* p_transport);
 
 ockam_transport_vtable_t socket_udp_vtable = { socket_udp_connect, socket_udp_accept, socket_udp_deinit };
@@ -38,9 +36,7 @@ ockam_error_t ockam_transport_socket_udp_init(ockam_transport_t*                
 {
   ockam_error_t     error    = OCKAM_ERROR_NONE;
   socket_udp_ctx_t* p_ctx    = NULL;
-  uint16_t          port     = DEFAULT_UDP_PORT;
   posix_socket_t*   p_socket = NULL;
-  uint8_t*          p_ip     = NULL;
 
   p_transport->vtable = &socket_udp_vtable;
 
@@ -61,20 +57,21 @@ ockam_error_t ockam_transport_socket_udp_init(ockam_transport_t*                
 
   p_socket = &p_ctx->posix_socket;
 
-  p_socket->socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (-1 == p_socket->socket_fd) {
+  int* p_socket_fd = &p_socket->socket_fd;
+  *p_socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (-1 == *p_socket_fd) {
     error = TRANSPORT_ERROR_SOCKET_CREATE;
     goto exit;
   }
-  if (setsockopt(p_socket->socket_fd, SOL_SOCKET, SO_KEEPALIVE, &(int) { 1 }, sizeof(int)) < 0) {
+  if (setsockopt(*p_socket_fd, SOL_SOCKET, SO_KEEPALIVE, &(int) { 1 }, sizeof(int)) < 0) {
     error = TRANSPORT_ERROR_CONNECT;
     goto exit;
   }
-  if (setsockopt(p_socket->socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int) { 1 }, sizeof(int)) < 0) {
+  if (setsockopt(*p_socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int) { 1 }, sizeof(int)) < 0) {
     error = TRANSPORT_ERROR_CONNECT;
     goto exit;
   }
-  if (setsockopt(p_socket->socket_fd, SOL_SOCKET, SO_REUSEPORT, &(int) { 1 }, sizeof(int)) < 0) {
+  if (setsockopt(*p_socket_fd, SOL_SOCKET, SO_REUSEPORT, &(int) { 1 }, sizeof(int)) < 0) {
     error = TRANSPORT_ERROR_CONNECT;
     goto exit;
   }
@@ -83,15 +80,10 @@ ockam_error_t ockam_transport_socket_udp_init(ockam_transport_t*                
     gp_ockam_transport_memory, &p_socket->local_address, &p_cfg->listen_address, sizeof(p_socket->local_address));
 
   make_socket_address(p_socket->local_address.ip_address, p_socket->local_address.port, &p_socket->local_sockaddr);
-  if (0 != bind(p_socket->socket_fd, (struct sockaddr*) &p_socket->local_sockaddr, sizeof(struct sockaddr_in))) {
+  if (0 != bind(*p_socket_fd, (struct sockaddr*) &p_socket->local_sockaddr, sizeof(struct sockaddr_in))) {
     error = TRANSPORT_ERROR_SERVER_INIT;
     goto exit;
   }
-
-  if (p_cfg->listen_address.port) port = p_cfg->listen_address.port;
-  if (0 != p_cfg->listen_address.ip_address[0]) p_ip = &p_cfg->listen_address.ip_address[0];
-  error = make_socket_address(p_ip, port, &p_socket->local_sockaddr);
-  if (error) goto exit;
 
   p_transport->ctx = p_ctx;
 
@@ -110,6 +102,9 @@ ockam_error_t socket_udp_connect(void*               ctx,
                                  int16_t             retry_count,
                                  uint16_t            retry_interval)
 {
+  (void) retry_count;
+  (void) retry_interval;
+
   ockam_error_t     error     = OCKAM_ERROR_NONE;
   socket_udp_ctx_t* p_udp_ctx = (socket_udp_ctx_t*) ctx;
 
@@ -134,8 +129,10 @@ exit:
 }
 
 ockam_error_t
-socket_udp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_writer, ockam_ip_address_t* p_remote)
+socket_udp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_writer, ockam_ip_address_t* p_remote_address)
 {
+  (void) p_remote_address;
+
   ockam_error_t     error     = OCKAM_ERROR_NONE;
   socket_udp_ctx_t* p_udp_ctx = (socket_udp_ctx_t*) ctx;
 
@@ -166,9 +163,6 @@ ockam_error_t socket_udp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
     goto exit;
   }
 
-  struct sockaddr    a;
-  struct sockaddr_in b;
-
   socklen    = sizeof(p_socket->remote_sockaddr);
   bytes_read = recvfrom(
     p_socket->socket_fd, buffer, buffer_size, MSG_WAITALL, (struct sockaddr*) &p_socket->remote_sockaddr, &socklen);
@@ -190,7 +184,6 @@ ockam_error_t socket_udp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
   ockam_error_t     error       = OCKAM_ERROR_NONE;
   socket_udp_ctx_t* p_udp_ctx   = (socket_udp_ctx_t*) ctx;
   posix_socket_t*   p_socket    = &p_udp_ctx->posix_socket;
-  uint16_t          send_length = 0;
   size_t            bytes_sent  = 0;
 
   bytes_sent = sendto(p_socket->socket_fd,

@@ -40,10 +40,10 @@ exit:
  * address
  * @param p_ip_address - (in) IP address in "nnn.nnn.nnn.nnn" format
  * @param port - port number, must be non-zero
- * @param p_socketAddress - (out) address converted
+ * @param p_socket_address - (out) address converted
  * @return - OCKAM_NO_ERR on success
  */
-ockam_error_t make_socket_address(uint8_t* p_ip_address, in_port_t port, struct sockaddr_in* p_socket_address)
+ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, struct sockaddr_in* p_socket_address)
 {
   ockam_error_t error     = OCKAM_ERROR_NONE;
   int           in_status = 0;

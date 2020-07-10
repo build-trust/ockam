@@ -1,4 +1,4 @@
-# Copy test fixtures to the right plac
+# Copy test fixtures to the right place
 
 set(OCKAM_TRANSPORT_TEST_FIXTURE_DIR ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/tests/fixtures)
 set(_fixtures_src_dir ${CMAKE_CURRENT_SOURCE_DIR}/fixtures)
