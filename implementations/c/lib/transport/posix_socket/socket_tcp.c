@@ -43,10 +43,8 @@ ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t* p_transport, oc
   if (error) goto exit;
 
   p_transport->ctx = p_ctx;
-  if (cfg) {
-    ockam_memory_copy(
-      gp_ockam_transport_memory, &p_ctx->listen_address, &cfg->listen_address, sizeof(ockam_ip_address_t));
-  }
+  ockam_memory_copy(
+    gp_ockam_transport_memory, &p_ctx->listen_address, &cfg->listen_address, sizeof(ockam_ip_address_t));
 
 exit:
   if (error) {
@@ -115,9 +113,11 @@ ockam_error_t socket_tcp_connect(void*               ctx,
     }
     connect_status = connect(p_posix_socket->socket_fd, (struct sockaddr*) &socket_address, sizeof(socket_address));
     if (connect_status) {
-      sleep(retry_interval);
-      if (retry_count >= 0) { ++attempts; }
       close(p_posix_socket->socket_fd);
+      attempts++;
+      if (attempts <= retry_count) {
+        sleep(retry_interval);
+      }
     }
   } while (connect_status && (attempts <= retry_count));
   if (connect_status) {

@@ -35,7 +35,7 @@ ockam_error_t make_socket_reader_writer(posix_socket_t* p_ctx,
                                         ockam_reader_t** pp_reader,
                                         ockam_writer_t** pp_writer);
 
-ockam_error_t make_socket_address(uint8_t* p_ip_address, in_port_t port, struct sockaddr_in* p_socket_address);
+ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, struct sockaddr_in* p_socket_address);
 
 void dump_socket(posix_socket_t* ps);
 #endif
