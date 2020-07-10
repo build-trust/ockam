@@ -30,8 +30,34 @@ pub type VaultResult<T> = Result<T, VaultError>;
 
 #[derive(Error, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum VaultError {
-    #[error("invalid_parameter")]
-    InvalidParameter,
+    #[error("init_fail")]
+    InitFail,
+    #[error("random_fail")]
+    RandomFail,
+    #[error("sha256_fail")]
+    Sha256Fail,
+    #[error("secret_generate_fail")]
+    SecretGenerateFail,
+    #[error("secret_import_fail")]
+    SecretImportFail,
+    #[error("secret_export_fail")]
+    SecretExportFail,
+    #[error("secret_attributes_get_fail")]
+    SecretAttributesGetFail,
+    #[error("public_key_fail")]
+    PublicKeyFail,
+    #[error("ecdh_fail")]
+    EcdhFail,
+    #[error("hkdf_sha256_fail")]
+    HkdfSha256Fail,
+    #[error("aead_aes_gcm_encrypt_fail")]
+    AeadAesGcmEncryptFail,
+    #[error("aead_aes_gcm_decrypt_fail")]
+    AeadAesGcmDecryptFail,
+    #[error("aead_aes_gcm_fail")]
+    AeadAesGcmFail,
+    #[error("invalid_param")]
+    InvalidParam,
     #[error("invalid_attributes")]
     InvalidAttributes,
     #[error("invalid_context")]
@@ -40,28 +66,24 @@ pub enum VaultError {
     InvalidBuffer,
     #[error("invalid_size")]
     InvalidSize,
-    #[error("buffer_too_small")]
-    BufferTooSmall,
     #[error("invalid_regenerate")]
     InvalidRegenerate,
+    #[error("invalid_secret")]
+    InvalidSecret,
     #[error("invalid_secret_attributes")]
     InvalidSecretAttributes,
     #[error("invalid_secret_type")]
     InvalidSecretType,
     #[error("invalid_tag")]
     InvalidTag,
-    #[error("publickey_error")]
-    PublicKeyError,
-    #[error("ecdh_error")]
-    EcdhError,
+    #[error("buffer_too_small")]
+    BufferTooSmall,
     #[error("default_random_required")]
     DefaultRandomRequired,
     #[error("memory_required")]
     MemoryRequired,
     #[error("secret_size_mismatch")]
     SecretSizeMismatch,
-    #[error("keygen_error")]
-    KeyGenError,
     #[error("failed")]
     Unknown,
 }
@@ -85,26 +107,33 @@ impl From<ockam_error_t> for VaultError {
             "expected error, but got OCKAM_ERROR_NONE"
         );
         match err {
-            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_PARAM => Self::InvalidParameter,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INIT_FAIL => Self::InitFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_RANDOM_FAIL => Self::RandomFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_SHA256_FAIL => Self::Sha256Fail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_SECRET_GENERATE_FAIL => Self::SecretGenerateFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_SECRET_IMPORT_FAIL => Self::SecretImportFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_SECRET_EXPORT_FAIL => Self::SecretExportFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_SECRET_ATTRIBUTES_GET_FAIL => Self::SecretAttributesGetFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_PUBLIC_KEY_FAIL => Self::PublicKeyFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_ECDH_FAIL => Self::EcdhFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_HKDF_SHA256_FAIL => Self::HkdfSha256Fail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_AEAD_AES_GCM_ENCRYPT_FAIL => Self::AeadAesGcmEncryptFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_AEAD_AES_GCM_DECRYPT_FAIL => Self::AeadAesGcmDecryptFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_AEAD_AES_GCM_FAIL => Self::AeadAesGcmFail,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_PARAM => Self::InvalidParam,
             ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_ATTRIBUTES => Self::InvalidAttributes,
             ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_CONTEXT => Self::InvalidContext,
             ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_BUFFER => Self::InvalidBuffer,
             ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SIZE => Self::InvalidSize,
-            ockam_vault_sys::OCKAM_VAULT_ERROR_BUFFER_TOO_SMALL => Self::BufferTooSmall,
             ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_REGENERATE => Self::InvalidRegenerate,
-            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SECRET_ATTRIBUTES => {
-                Self::InvalidSecretAttributes
-            }
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SECRET => Self::InvalidSecret,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SECRET_ATTRIBUTES => Self::InvalidSecretAttributes,
             ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_SECRET_TYPE => Self::InvalidSecretType,
             ockam_vault_sys::OCKAM_VAULT_ERROR_INVALID_TAG => Self::InvalidTag,
-            ockam_vault_sys::OCKAM_VAULT_ERROR_PUBLIC_KEY_FAIL => Self::PublicKeyError,
-            ockam_vault_sys::OCKAM_VAULT_ERROR_ECDH_FAIL => Self::EcdhError,
-            ockam_vault_sys::OCKAM_VAULT_ERROR_DEFAULT_RANDOM_REQUIRED => {
-                Self::DefaultRandomRequired
-            }
+            ockam_vault_sys::OCKAM_VAULT_ERROR_BUFFER_TOO_SMALL => Self::BufferTooSmall,
+            ockam_vault_sys::OCKAM_VAULT_ERROR_DEFAULT_RANDOM_REQUIRED => Self::DefaultRandomRequired,
             ockam_vault_sys::OCKAM_VAULT_ERROR_MEMORY_REQUIRED => Self::MemoryRequired,
             ockam_vault_sys::OCKAM_VAULT_ERROR_SECRET_SIZE_MISMATCH => Self::SecretSizeMismatch,
-            ockam_vault_sys::OCKAM_VAULT_ERROR_KEYGEN_FAIL => Self::KeyGenError,
             _code => Self::Unknown,
         }
     }
@@ -324,7 +353,8 @@ impl Vault {
             };
             let mut context = ockam_vault_t {
                 dispatch: ptr::null_mut(),
-                context: ptr::null_mut(),
+                default_context: ptr::null_mut(),
+                impl_context: ptr::null_mut(),
             };
             VaultError::wrap(|| unsafe {
                 ockam_vault_default_init(&mut context, &mut attributes)
