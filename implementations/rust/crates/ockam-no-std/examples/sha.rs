@@ -20,22 +20,13 @@ fn main() -> OckamResult<()> {
     default_vault.init()?;
 
     // Create an array of 32 for ease printing in this example.
-    // Print out the hex values for each generation.
-    // Each generation provides a different approach to error handling.
     let mut bytes = [0; 32];
+
+    // Generate some random bytes for use as input to the hash function.
     default_vault.random(&mut bytes)?;
-    println!("Generation 1: {:02X?}", bytes);
-
-    // Allow the application to handle the result as needed.
-    match default_vault.random(&mut bytes) {
-        Ok(_) => println!("Generation 2: {:02X?}", bytes),
-        Err(_e) => {}
-    }
-
-    // Propogate the result. Application would likely provide a custom result type.
-    match default_vault.random(&mut bytes) {
+    match default_vault.sha256(&mut bytes) {
         Ok(_) => {
-            println!("Generation 3: {:02X?}", bytes);
+            println!("SHA 256: {:02X?}", bytes);
             Ok(())
         }
         Err(e) => Err(e),

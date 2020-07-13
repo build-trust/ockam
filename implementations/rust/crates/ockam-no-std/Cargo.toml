@@ -7,4 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# no_std requires default-features = false
 rand = { version = "0.7.3", default-features = false }
+sha2 = { version = "0.9.1" } 
