@@ -3,5 +3,8 @@
 members = [
   "crates/ockam-vault-sys",
   "crates/ockam",
-  "vault"
+]
+
+exclude = [
+    "vault"
 ]

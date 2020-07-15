@@ -11,4 +11,9 @@ crate-type = ["staticlib", "rlib", "cdylib"]
 [profile.release]
 lto = true
 
+[features]
+default = []
+ffi = []
+
 [dependencies]
+failure = "0.1"
