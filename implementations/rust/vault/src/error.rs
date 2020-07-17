@@ -131,16 +131,17 @@ impl VaultFailErrorKind {
 /// Wraps an error kind with context and backtrace logic
 #[derive(Debug)]
 pub struct VaultFailError {
-    inner: Context<VaultFailErrorKind>
+    inner: Context<VaultFailErrorKind>,
 }
 
 impl VaultFailError {
     /// Convert from an error kind and a static string
     pub fn from_msg<D>(kind: VaultFailErrorKind, msg: D) -> Self
-    where D: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static
+    where
+        D: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
     {
         Self {
-            inner: Context::new(msg).context(kind)
+            inner: Context::new(msg).context(kind),
         }
     }
 
@@ -153,7 +154,7 @@ impl VaultFailError {
 impl From<VaultFailErrorKind> for VaultFailError {
     fn from(kind: VaultFailErrorKind) -> Self {
         Self {
-            inner: Context::new("").context(kind)
+            inner: Context::new("").context(kind),
         }
     }
 }
@@ -174,16 +175,6 @@ impl From<Context<VaultFailErrorKind>> for VaultFailError {
     fn from(inner: Context<VaultFailErrorKind>) -> Self {
         Self { inner }
     }
-}
-
-macro_rules! from_int_impl {
-    ($src:ident, $ty:ty) => {
-        impl From<$src> for $ty {
-            fn from(err: $src) -> $ty {
-                err.to_usize() as $ty
-            }
-        }
-    };
 }
 
 from_int_impl!(VaultFailError, u32);
@@ -226,34 +217,118 @@ mod tests {
     #[test]
     fn into_unsigned() {
         let errors = vec![
-            (VaultFailErrorKind::Init, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 1),
-            (VaultFailErrorKind::Random, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 2),
-            (VaultFailErrorKind::Sha256, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 3),
-            (VaultFailErrorKind::SecretGenerate, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 4),
-            (VaultFailErrorKind::Import, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 5),
-            (VaultFailErrorKind::Export, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 6),
-            (VaultFailErrorKind::GetAttributes, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 7),
-            (VaultFailErrorKind::PublicKey, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 8),
-            (VaultFailErrorKind::Ecdh, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 9),
-            (VaultFailErrorKind::HkdfSha256, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 10),
-            (VaultFailErrorKind::AeadAesGcmEncrypt, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 11),
-            (VaultFailErrorKind::AeadAesGcmDecrypt, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 12),
-            (VaultFailErrorKind::AeadAesGcm, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 13),
-            (VaultFailErrorKind::InvalidParam(0), VaultFailErrorKind::ERROR_INTERFACE_VAULT | 20),
-            (VaultFailErrorKind::InvalidAttributes, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 21),
-            (VaultFailErrorKind::InvalidContext, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 22),
-            (VaultFailErrorKind::InvalidBuffer, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 23),
-            (VaultFailErrorKind::InvalidSize, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 24),
-            (VaultFailErrorKind::InvalidRegenerate, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 25),
-            (VaultFailErrorKind::InvalidSecret, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 26),
-            (VaultFailErrorKind::InvalidSecretAttributes, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 27),
-            (VaultFailErrorKind::InvalidSecretType, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 28),
-            (VaultFailErrorKind::InvalidTag, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 29),
-            (VaultFailErrorKind::BufferTooSmall, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 30),
-            (VaultFailErrorKind::DefaultRandomRequired, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 31),
-            (VaultFailErrorKind::MemoryRequired, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 32),
-            (VaultFailErrorKind::SecretSizeMismatch, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 33),
-            (VaultFailErrorKind::IOError, VaultFailErrorKind::ERROR_INTERFACE_VAULT | 40),
+            (
+                VaultFailErrorKind::Init,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 1,
+            ),
+            (
+                VaultFailErrorKind::Random,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 2,
+            ),
+            (
+                VaultFailErrorKind::Sha256,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 3,
+            ),
+            (
+                VaultFailErrorKind::SecretGenerate,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 4,
+            ),
+            (
+                VaultFailErrorKind::Import,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 5,
+            ),
+            (
+                VaultFailErrorKind::Export,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 6,
+            ),
+            (
+                VaultFailErrorKind::GetAttributes,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 7,
+            ),
+            (
+                VaultFailErrorKind::PublicKey,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 8,
+            ),
+            (
+                VaultFailErrorKind::Ecdh,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 9,
+            ),
+            (
+                VaultFailErrorKind::HkdfSha256,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 10,
+            ),
+            (
+                VaultFailErrorKind::AeadAesGcmEncrypt,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 11,
+            ),
+            (
+                VaultFailErrorKind::AeadAesGcmDecrypt,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 12,
+            ),
+            (
+                VaultFailErrorKind::AeadAesGcm,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 13,
+            ),
+            (
+                VaultFailErrorKind::InvalidParam(0),
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 20,
+            ),
+            (
+                VaultFailErrorKind::InvalidAttributes,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 21,
+            ),
+            (
+                VaultFailErrorKind::InvalidContext,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 22,
+            ),
+            (
+                VaultFailErrorKind::InvalidBuffer,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 23,
+            ),
+            (
+                VaultFailErrorKind::InvalidSize,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 24,
+            ),
+            (
+                VaultFailErrorKind::InvalidRegenerate,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 25,
+            ),
+            (
+                VaultFailErrorKind::InvalidSecret,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 26,
+            ),
+            (
+                VaultFailErrorKind::InvalidSecretAttributes,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 27,
+            ),
+            (
+                VaultFailErrorKind::InvalidSecretType,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 28,
+            ),
+            (
+                VaultFailErrorKind::InvalidTag,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 29,
+            ),
+            (
+                VaultFailErrorKind::BufferTooSmall,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 30,
+            ),
+            (
+                VaultFailErrorKind::DefaultRandomRequired,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 31,
+            ),
+            (
+                VaultFailErrorKind::MemoryRequired,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 32,
+            ),
+            (
+                VaultFailErrorKind::SecretSizeMismatch,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 33,
+            ),
+            (
+                VaultFailErrorKind::IOError,
+                VaultFailErrorKind::ERROR_INTERFACE_VAULT | 40,
+            ),
         ];
 
         for err in &errors {
@@ -276,6 +351,9 @@ mod tests {
     fn display() {
         let verr: VaultFailError = VaultFailErrorKind::Sha256.into();
         let verr_str = format!("{}", verr);
-        assert_eq!("Error: Failed to compute SHA-256 digest\nCaused by: \n", verr_str.as_str());
+        assert_eq!(
+            "Error: Failed to compute SHA-256 digest\nCaused by: \n",
+            verr_str.as_str()
+        );
     }
 }
