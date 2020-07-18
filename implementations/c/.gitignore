@@ -1,2 +1,3 @@
-_build
-tests/cmocka
+build
+?build
+cmake-build-*
