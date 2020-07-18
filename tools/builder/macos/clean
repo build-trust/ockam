@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-vagrant destroy -f
-vagrant box remove --force _ockam_macinbox
-rm -rf _build .vagrant

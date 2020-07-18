@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-
-box_path="_build/debian-9.9.0-amd64.virtualbox.box"
-vagrant box add --name 'ockam-network/builder-debian' "$box_path"

@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-box_path="_build/debian-9.9.0-amd64.virtualbox.box"
-sha256="$(cat $box_path.SHA-256)"
-
-container="boxes"
-
-az storage blob upload --file "$box_path" --container-name "$container" --name "builder/debian/${sha256}.box"
-az storage blob url --container-name "$container" --name "builder/debian/${sha256}.box"

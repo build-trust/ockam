@@ -1,9 +1,2 @@
 
 rootProject.name = 'swift'
-
-boolean inComposite = gradle.parent != null
-if (!inComposite) {
-  includeBuild '../../tools/gradle/plugins/host'
-  includeBuild '../../tools/gradle/plugins/builder'
-  includeBuild 'Tests/Runner'
-}

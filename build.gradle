@@ -1,116 +1,20 @@
-plugins {
-    id 'network.ockam.gradle.host' version '1.0.0'
-    id 'network.ockam.gradle.builders' version '1.0.0'
-}
 
-task detectDockerProvider {
-  doLast {
-    def dockerDir = new File('.vagrant/machines/builder-debian/docker')
-    if (dockerDir.exists()) {
-      project.ext.useDockerProvider = true
-    } else {
-      project.ext.useDockerProvider = false
-    }
-  }
-}
-
-['build', 'test', 'clean'].each { t ->
-  task "${t}" {
-    group 'Ockam'
-    def implementationTasks = ['c', 'elixir', 'go', 'javascript', 'rust', 'swift'].stream().map { impl ->
-      tasks.create("${t}${impl.capitalize()}") {
-        group impl.capitalize()
-
-        dependsOn detectDockerProvider
-
-        doLast {
-          exec {
-            def useDockerProvider = project.ext.useDockerProvider
-            workingDir "implementations/${impl}"
-            commandLine '../../gradlew', '-q', "-PuseDockerProvider=${useDockerProvider}", "${t}"
-          }
-        }
-      }
-    }.toArray()
-
-    for (int i = 0; i < implementationTasks.length - 1; i++) {
-      implementationTasks.getAt(i + 1).mustRunAfter(implementationTasks.getAt(i))
-    }
-
-    dependsOn implementationTasks
-  }
-}
+ext.host = project.hasProperty('host') ? host : 'gradleHost'
+ext.target = project.hasProperty('target') ? target : 'gradleHost'
+ext.mode = project.hasProperty('mode') ? mode : 'dev'
 
 task lint {
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-   builderExec 'debian', {
-     script '''
-       npx eclint@2.8.1 check
-     '''
-   }
-  }
+  dependsOn gradle.includedBuilds*.task(':lint')
 }
 
-clean.doLast {
-  exec {
-    commandLine 'bash', '-c', """
-      vagrant global-status | grep builder- | awk '{ print \$1 }' | xargs -I {} vagrant destroy -f {}
-    """
-    ignoreExitValue true
-  }
-  delete '.builder'
+task build {
+  dependsOn lint, gradle.includedBuilds*.task(':build')
 }
 
-task setDockerProvider {
-  dependsOn detectDockerProvider
-
-  doLast {
-    if (!project.ext.useDockerProvider) {
-      def vboxDir = new File('.vagrant/machines/builder-debian/virtualbox/id')
-      if (vboxDir.exists()) {
-        throw new GradleException('Cannot build with Docker without removing VirtualBox builder first!')
-      }
-      project.ext.useDockerProvider = true
-    }
-  }
+task test {
+  dependsOn lint, gradle.includedBuilds*.task(':test')
 }
 
-task buildDocker {
-  group 'Ockam'
-  description 'Build with Docker'
-
-  dependsOn setDockerProvider
-  dependsOn build
-  tasks.findByName('build').mustRunAfter 'setDockerProvider'
-}
-
-task debianBuilder {
-  group 'Build Setup'
-  description 'Build the builder-debian VirtualBox VM'
-
-  doLast {
-    exec {
-      commandLine 'bash', '-c', """
-      cd tools/builder/debian && \
-        ./build
-      """
-    }
-  }
-}
-
-task dockerBuilder {
-  group 'Build Setup'
-  description 'Build the builder-debian Docker image'
-
-  doLast {
-    exec {
-      commandLine 'bash', '-c', """
-      cd tools/builder/debian && \
-        DOCKER_BUILDKIT=1 docker build \
-          --build-arg public_key="\$(cat ~/.ssh/id_rsa.pub || echo '')" \
-          -t ockam-builder-debian-base:latest .
-      """
-    }
-  }
+task clean {
+  dependsOn gradle.includedBuilds*.task(':clean')
 }

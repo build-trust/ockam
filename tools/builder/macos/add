@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-
-box_path="_build/macos-$(cat _build/productVersion)-$(cat _build/buildVersion).virtualbox.box"
-vagrant box add --name 'ockam-network/builder-macos' "$box_path"

@@ -1,33 +1,12 @@
 
-plugins {
-  id 'network.ockam.gradle.host' version '1.0.0'
-  id 'network.ockam.gradle.builders' version '1.0.0'
+task lint {
 }
 
 task build {
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-    builderExec 'debian', {
-      script '''
-        cargo build
-      '''
-    }
-  }
 }
 
 task test {
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-    builderExec 'debian', {
-      script '''
-        cargo test
-      '''
-    }
-  }
 }
 
 task clean {
-  doLast {
-    delete 'target'
-  }
 }

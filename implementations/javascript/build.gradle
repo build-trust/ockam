@@ -1,36 +1,12 @@
 
-plugins {
-  id 'network.ockam.gradle.host' version '1.0.0'
-  id 'network.ockam.gradle.builders' version '1.0.0'
+task lint {
 }
 
 task build {
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-    builderExec 'debian', {
-      script '''
-        rm -rf node_modules
-        npm install
-        npm run build
-      '''
-    }
-  }
 }
 
 task test {
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-    builderExec 'debian', {
-      script '''
-        npm run test
-      '''
-    }
-  }
 }
 
 task clean {
-  doLast {
-    delete 'build'
-    delete 'node_modules'
-  }
 }

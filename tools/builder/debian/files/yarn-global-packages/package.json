@@ -1,7 +1,0 @@
-{
-  "name": "ockam-builder-yarn-global-packages",
-  "private": true,
-  "dependencies": {
-    "bats": "1.1.0"
-  }
-}

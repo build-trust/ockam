@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-box_path="_build/macos-$(cat _build/productVersion)-$(cat _build/buildVersion).virtualbox.box"
-sha256="$(cat $box_path.SHA-256)"
-
-container="boxes-private"
-
-az storage blob upload --file "$box_path" --container-name "$container" --name "builder/macos/${sha256}.box"
-az storage blob url --container-name "$container" --name "builder/macos/${sha256}.box"

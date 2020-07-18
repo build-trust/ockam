@@ -1,75 +1,12 @@
 
-plugins {
-    id 'network.ockam.gradle.host' version '1.0.0'
-    id 'network.ockam.gradle.builders' version '1.0.0'
-}
-
 task lint {
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-    builderExec 'debian', {
-      script '''
-      find . -type f \\( -iname \\*.h -o -iname \\*.c \\) \
-        -not -path "./tools/*" \
-        -not -path "./documentation/*" \
-        -not -path "*bearssl-0.6*" \
-        -not -path "*tests/cmocka*" \
-        -not -path "*_build*" \
-        -not -path "*lib/codec/*" \
-        -not -path "*lib/key_agreement/*" \
-        -not -path "*lib/log/*" \
-        -not -path "*lib/transport/*" \
-        -not -path "*lib/vault/atecc508a/*" \
-        -not -path "*lib/vault/atecc608a/*" | \
-          xargs -I {} bash -c "cmp -s <(cat {}) <(clang-format-10 --style=file {}) || echo 'LINTER FAILED - {}'"
-      '''
-    }
-  }
 }
 
 task build {
-  dependsOn lint
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-    builderExec 'debian', {
-      script '''
-      set -eo pipefail
-
-      mkdir -p _build/x86_64-unknown-linux-gnu
-      cd _build/x86_64-unknown-linux-gnu
-      cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="linux" ../..
-      cmake --build .
-      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=OFF -DOCKAM_TARGET_PLATFORM="linux" ../..
-      cmake --build .
-      cd ../..
-
-      mkdir -p _build/armv8-rpi3-linux-gnueabihf
-      cd _build/armv8-rpi3-linux-gnueabihf
-      cmake -DCMAKE_BUILD_TYPE=Debug -DOCKAM_BUILD_TESTS=ON -DOCKAM_TARGET_PLATFORM="pi" -DOCKAM_C_COMPILER_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/bin" -DOCKAM_C_SYSROOT_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot" ../..
-      cmake --build .
-      cmake -DCMAKE_BUILD_TYPE=Release -DOCKAM_BUILD_TESTS=OFF -DOCKAM_TARGET_PLATFORM="pi" -DOCKAM_C_COMPILER_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/bin" -DOCKAM_C_SYSROOT_PATH="/opt/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot" ../..
-      cmake --build .
-      cd ../..
-      '''
-    }
-  }
 }
 
 task test {
-  onlyIf { host.debianBuilder.enabled }
-  doLast {
-    builderExec 'debian', {
-      script '''
-        cd _build/x86_64-unknown-linux-gnu/Debug/tests
-        CMOCKA_XML_FILE='cm_%g.xml' ./ockam_vault_default_tests_full
-      '''
-    }
-  }
 }
 
 task clean {
-  doLast {
-    delete '_build'
-  }
 }
-
