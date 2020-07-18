@@ -18,24 +18,24 @@ steps:
       fi
     displayName: Lint Commit Messages
 
-  - script: |
-      vagrant global-status | grep builder- | awk '{ print $1 }' | xargs -I {} vagrant destroy -f {}
-      VBoxManage unregistervm --delete "builder-macos"
-      VBoxManage unregistervm --delete "builder-debian"
-      vagrant global-status --prune
-    continueOnError: true
-    displayName: Clean
-
-  - script: ./gradlew build
-    displayName: Build
-
-  - script: ./gradlew test
-    displayName: Test
-
-  - task: PublishTestResults@2
-    inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '**/cm_*.xml'
-
-  - script: ./gradlew clean
-    displayName: Clean
+  # - script: |
+  #     vagrant global-status | grep builder- | awk '{ print $1 }' | xargs -I {} vagrant destroy -f {}
+  #     VBoxManage unregistervm --delete "builder-macos"
+  #     VBoxManage unregistervm --delete "builder-debian"
+  #     vagrant global-status --prune
+  #   continueOnError: true
+  #   displayName: Clean
+  #
+  # - script: ./gradlew build
+  #   displayName: Build
+  #
+  # - script: ./gradlew test
+  #   displayName: Test
+  #
+  # - task: PublishTestResults@2
+  #   inputs:
+  #       testResultsFormat: 'JUnit'
+  #       testResultsFiles: '**/cm_*.xml'
+  #
+  # - script: ./gradlew clean
+  #   displayName: Clean
