@@ -1,12 +1,81 @@
 
-task lint {
+ext.host = project.hasProperty('host') ? host : 'host'
+ext.target = project.hasProperty('target') ? target : 'host'
+
+ext.availableProcessors = Runtime.getRuntime().availableProcessors();
+ext.isWindows = {
+  def familyWindows = org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS
+  return org.apache.tools.ant.taskdefs.condition.Os.isFamily(familyWindows)
+}()
+
+def adapt(command) {
+  command = command.trim().tokenize(' ')
+  command = isWindows ? ['cmd', '/c'].addAll(command) : command
+  return command
 }
 
 task build {
+  def mode = project.hasProperty('mode') ? mode : 'dev'
+  def buildType = (mode == 'prod') ? 'Release' : 'Debug'
+  def buildDir = "${buildDir}/env/${host}/${target}/${mode}"
+
+  doLast { mkdir buildDir }
+  doLast {
+    exec {
+      commandLine adapt(
+        """
+        cmake \
+          --parallel ${availableProcessors} \
+          -S . \
+          -B ${buildDir} \
+          -DBUILD_TESTING=OFF \
+          -DCMAKE_BUILD_TYPE=${buildType} \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+        """
+      )
+    }
+  }
+  doLast {
+    exec {
+      commandLine adapt("cmake --build ${buildDir} -- -j${availableProcessors}")
+    }
+  }
 }
 
 task test {
+  def mode = 'test'
+  def buildType = 'Debug'
+  def buildDir = "${buildDir}/env/${host}/${target}/${mode}"
+
+  doLast { mkdir buildDir }
+  doLast {
+    exec {
+      commandLine adapt(
+        """
+        cmake \
+          --parallel ${availableProcessors} \
+          -S . \
+          -B ${buildDir} \
+          -DBUILD_TESTING=ON \
+          -DCMAKE_BUILD_TYPE=${buildType} \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+        """
+      )
+    }
+  }
+  doLast {
+    exec {
+      commandLine adapt("cmake --build ${buildDir} -- -j${availableProcessors}")
+    }
+  }
+  doLast {
+    exec {
+      workingDir buildDir
+      commandLine adapt("ctest -V")
+    }
+  }
 }
 
 task clean {
+  doLast { delete buildDir }
 }
