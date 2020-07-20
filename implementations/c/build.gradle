@@ -1,77 +1,90 @@
 
+// override the build directory
+buildDir = '.env'
+
+// read the host project property
 ext.host = project.hasProperty('host') ? host : 'host'
+
+// read the target project property
 ext.target = project.hasProperty('target') ? target : 'host'
 
+// capture the number of processors available to the jvm
 ext.availableProcessors = Runtime.getRuntime().availableProcessors();
+
+// detect if the gradle is running on windows
 ext.isWindows = {
   def familyWindows = org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS
   return org.apache.tools.ant.taskdefs.condition.Os.isFamily(familyWindows)
 }()
 
+// adapt c cammand for windows
 def adapt(command) {
-  command = command.trim().tokenize(' ')
   command = isWindows ? ['cmd', '/c'].addAll(command) : command
   return command
 }
 
 task build {
-  def mode = project.hasProperty('mode') ? mode : 'dev'
-  def buildType = (mode == 'prod') ? 'Release' : 'Debug'
-  def buildDir = "${buildDir}/env/${host}/${target}/${mode}"
+  description 'Build the project.'
+  group project.name
 
-  doLast { mkdir buildDir }
+  def generator = project.hasProperty('generator') ? generator : 'Unix Makefiles'
+
+  def mode = project.hasProperty('mode') ? mode : 'test'
+  def buildType = (mode == 'release') ? 'Release' : 'Debug'
+  def buildTestsing = (mode == 'test') ? 'ON' : 'OFF'
+
+  def targetDir = java.nio.file.Paths.get(buildDir.toString(), host, generator, target, buildType)
+
+  def otherCmakeOptions = project.hasProperty('cmakeOptions') ? cmakeOptions : ''
+
+  // make sure the rust code is built before the actions in this task run.
+  // dependsOn gradle.includedBuild('rust').task(':build')
+
+  // create the cmake binary directory
+  doLast { mkdir targetDir }
+
+  // generate the project build files
   doLast {
     exec {
-      commandLine adapt(
-        """
-        cmake \
-          --parallel ${availableProcessors} \
-          -S . \
-          -B ${buildDir} \
-          -DBUILD_TESTING=OFF \
-          -DCMAKE_BUILD_TYPE=${buildType} \
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
-        """
-      )
+      commandLine adapt(['cmake']) <<
+        '--parallel' << availableProcessors <<
+        '-S' << '.' <<
+        '-B' << targetDir <<
+        "-DBUILD_TESTING=${buildTestsing}" <<
+        "-DCMAKE_BUILD_TYPE=${buildType}" <<
+        '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON' <<
+        '-G' << generator <<
+        otherCmakeOptions
     }
   }
+
   doLast {
     exec {
-      commandLine adapt("cmake --build ${buildDir} -- -j${availableProcessors}")
+      def command = adapt(['cmake']) << '--build' << targetDir
+
+      if(generator == 'Unix Makefiles') {
+        command << '--' << "-j${availableProcessors}"
+      }
+
+      commandLine command
     }
   }
 }
 
 task test {
+  description 'Test the project.'
+  group project.name
+
+  def generator = project.hasProperty('generator') ? generator : 'Unix Makefiles'
   def mode = 'test'
   def buildType = 'Debug'
-  def buildDir = "${buildDir}/env/${host}/${target}/${mode}"
 
-  doLast { mkdir buildDir }
+  def targetDir = java.nio.file.Paths.get(buildDir.toString(), host, generator, target, buildType)
+
   doLast {
     exec {
-      commandLine adapt(
-        """
-        cmake \
-          --parallel ${availableProcessors} \
-          -S . \
-          -B ${buildDir} \
-          -DBUILD_TESTING=ON \
-          -DCMAKE_BUILD_TYPE=${buildType} \
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
-        """
-      )
-    }
-  }
-  doLast {
-    exec {
-      commandLine adapt("cmake --build ${buildDir} -- -j${availableProcessors}")
-    }
-  }
-  doLast {
-    exec {
-      workingDir buildDir
-      commandLine adapt("ctest -V")
+      workingDir targetDir
+      commandLine adapt(["ctest"]) << "-V"
     }
   }
 }
