@@ -165,6 +165,24 @@ impl From<VaultFailError> for VaultFailErrorKind {
     }
 }
 
+impl From<hkdf::InvalidLength> for VaultFailErrorKind {
+    fn from(_: hkdf::InvalidLength) -> Self {
+        VaultFailErrorKind::HkdfSha256
+    }
+}
+
+impl From<hkdf::InvalidPrkLength> for VaultFailErrorKind {
+    fn from(_: hkdf::InvalidPrkLength) -> Self {
+        VaultFailErrorKind::HkdfSha256
+    }
+}
+
+impl From<aes_gcm::Error> for VaultFailErrorKind {
+    fn from(_: aes_gcm::Error) -> Self {
+        VaultFailErrorKind::AeadAesGcm
+    }
+}
+
 impl From<io::Error> for VaultFailError {
     fn from(err: io::Error) -> Self {
         Self::from_msg(VaultFailErrorKind::IOError, format!("{:?}", err))
@@ -174,6 +192,24 @@ impl From<io::Error> for VaultFailError {
 impl From<Context<VaultFailErrorKind>> for VaultFailError {
     fn from(inner: Context<VaultFailErrorKind>) -> Self {
         Self { inner }
+    }
+}
+
+impl From<hkdf::InvalidLength> for VaultFailError {
+    fn from(_: hkdf::InvalidLength) -> Self {
+        VaultFailError::from(VaultFailErrorKind::HkdfSha256)
+    }
+}
+
+impl From<hkdf::InvalidPrkLength> for VaultFailError {
+    fn from(_: hkdf::InvalidPrkLength) -> Self {
+        VaultFailError::from(VaultFailErrorKind::HkdfSha256)
+    }
+}
+
+impl From<aes_gcm::Error> for VaultFailError {
+    fn from(_: aes_gcm::Error) -> Self {
+        VaultFailError::from(VaultFailErrorKind::AeadAesGcm)
     }
 }
 

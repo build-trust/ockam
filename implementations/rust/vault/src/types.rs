@@ -1,7 +1,9 @@
+use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
+
 /// The types of secret keys that the vault supports
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Zeroize)]
 pub enum SecretKeyType {
     /// Raw buffer of bytes
     Buffer(usize),
@@ -40,7 +42,7 @@ from_int_impl!(SecretKeyType, u64);
 from_int_impl!(SecretKeyType, u128);
 
 /// Persistence allowed by Secrets
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
 pub enum SecretPersistenceType {
     /// Secret is temporary
     Ephemeral,
@@ -70,7 +72,7 @@ from_int_impl!(SecretPersistenceType, u64);
 from_int_impl!(SecretPersistenceType, u128);
 
 /// Secrets specific purpose
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
 pub enum SecretPurposeType {
     /// Key exchange
     KeyAgreement,
@@ -97,7 +99,7 @@ from_int_impl!(SecretPurposeType, u64);
 from_int_impl!(SecretPurposeType, u128);
 
 /// Attributes for a specific vault secret
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
 pub struct SecretKeyAttributes {
     /// The type of key
     pub xtype: SecretKeyType,
@@ -129,10 +131,10 @@ pub struct SecretKeyAttributes {
 /// ArmTrustzone,
 /// Key is backed a Apple's secure enclave
 /// SecureEnclave,
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
 pub enum SecretKeyContext {
     /// Key is backed by RAM
-    Memory,
+    Memory(usize),
     /// Key is backed by a file
     File,
     /// Key is backed Azure KeyVault
@@ -143,8 +145,7 @@ pub enum SecretKeyContext {
 }
 
 /// Represents specific secrets employable by the vault
-#[derive(Clone, Debug, Zeroize)]
-#[zeroize(drop)]
+#[derive(Clone, Debug)]
 pub enum SecretKey {
     /// Raw buffer of bytes
     Buffer(Vec<u8>),
@@ -169,3 +170,106 @@ impl AsRef<[u8]> for SecretKey {
         }
     }
 }
+
+impl PartialEq for SecretKey {
+    fn eq(&self, other: &Self) -> bool {
+        use SecretKey::*;
+        match (self, other) {
+            (Buffer(a), Buffer(b)) => a.as_slice().ct_eq(b.as_slice()).unwrap_u8() == 1u8,
+            (Aes128(a), Aes128(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
+            (Aes256(a), Aes256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
+            (Curve25519(a), Curve25519(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
+            (P256(a), P256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
+            (_, _) => false
+        }
+    }
+}
+
+impl Eq for SecretKey {}
+
+impl Zeroize for SecretKey {
+    fn zeroize(&mut self) {
+        use SecretKey::*;
+        match self {
+            Buffer(ref mut a) => a.zeroize(),
+            Aes128(ref mut a) => a.zeroize(),
+            Aes256(ref mut a) => a.zeroize(),
+            Curve25519(ref mut a) => a.zeroize(),
+            P256(ref mut a) => a.zeroize(),
+        }
+    }
+}
+
+zdrop_impl!(SecretKey);
+
+/// The supported public keys
+#[derive(Copy, Clone)]
+pub enum PublicKey {
+    /// x25519 Public Key
+    Curve25519([u8; 32]),
+    /// NIST P-256 (secp256r1, prime256v1) uncompressed public key
+    P256([u8; 65])
+}
+
+impl PublicKey {
+    fn print(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use PublicKey::*;
+        match self {
+            Curve25519(a) => write!(f, "PublicKey::Curve25519 {{ {} }}", hex::encode(a.as_ref())),
+            P256(a) => write!(f, "PublicKey::P256 {{ {} }}", hex::encode(a.as_ref()))
+        }
+    }
+
+    /// True if this is a Curve25519 Public Key
+    pub fn is_curve25519(&self) -> bool {
+        use PublicKey::*;
+        match self {
+            Curve25519(..) => true,
+            _ => false
+        }
+    }
+
+    /// True if this is a NIST P-256 (secp256r1, prime256v1) uncompressed public key
+    pub fn is_p256(&self) -> bool {
+        use PublicKey::*;
+        match self {
+            P256(..) => true,
+            _ => false
+        }
+    }
+}
+
+impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] {
+        use PublicKey::*;
+        match self {
+            Curve25519(a) => a,
+            P256(a) => a
+        }
+    }
+}
+
+impl std::fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.print(f)
+    }
+}
+
+impl std::fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.print(f)
+    }
+}
+
+impl PartialEq for PublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        use PublicKey::*;
+        match (self, other) {
+            (Curve25519(a), Curve25519(b)) => a.ct_eq(b).unwrap_u8() == 1,
+            (P256(a), P256(b)) => a.ct_eq(b).unwrap_u8() == 1,
+            (_, _) => false
+        }
+    }
+}
+
+impl Eq for PublicKey {}

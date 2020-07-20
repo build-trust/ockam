@@ -16,6 +16,16 @@ default = []
 ffi = []
 
 [dependencies]
+aead = "0.3"
+aes-gcm = "0.6"
+arrayref = "0.3"
+elliptic-curve = { version = "0.4.0", features = ["getrandom", "zeroize"] }
+hex = "0.4"
 failure = "0.1"
+hkdf = "0.9"
 rand = "0.7"
+p256 = { version = "0.3", features = ["arithmetic"] }
+sha2 = "0.9"
+subtle = "2.2"
+x25519-dalek = "0.6"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }

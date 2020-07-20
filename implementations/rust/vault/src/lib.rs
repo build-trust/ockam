@@ -19,6 +19,9 @@
 
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
 
+#[macro_use]
+extern crate arrayref;
+
 use crate::error::VaultFailError;
 use zeroize::Zeroize;
 
@@ -32,6 +35,9 @@ pub mod error;
 pub mod ffi;
 /// The various enumerations of options
 pub mod types;
+/// Software implementation of Vault. No persistence
+/// all keys are stored, operations happen in memory
+pub mod software;
 
 use types::*;
 
@@ -50,9 +56,8 @@ pub trait Vault: Zeroize {
     fn secret_import(
         &mut self,
         secret: &SecretKey,
-        context: SecretKeyContext,
         attributes: SecretKeyAttributes,
-    ) -> Result<(), VaultFailError>;
+    ) -> Result<SecretKeyContext, VaultFailError>;
     /// Export a secret key from the vault
     fn secret_export(&self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
     /// Set the attributes for a secret key
@@ -60,28 +65,25 @@ pub trait Vault: Zeroize {
         &self,
         context: SecretKeyContext,
     ) -> Result<SecretKeyAttributes, VaultFailError>;
-    /// Change the type for the secret key
-    fn secret_type_set(
-        &mut self,
-        context: SecretKeyContext,
-        xtype: SecretKeyType,
-    ) -> Result<(), VaultFailError>;
+    /// Return the associated public key given the secret key
+    fn secret_public_key_get(&self, context: SecretKeyContext) -> Result<PublicKey, VaultFailError>;
     /// Remove a secret key from the vault
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError>;
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
-    /// and the specified public key
+    /// and the specified uncompressed public key
     fn ec_diffie_hellman(
         &mut self,
         context: SecretKeyContext,
-        peer_public_key: [u8; 32],
-    ) -> Result<SecretKey, VaultFailError>;
+        peer_public_key: PublicKey,
+    ) -> Result<Vec<u8>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
-    fn hkdf_sha256<B: AsRef<[u8]>>(&mut self, salt: B, ikm: B, okm_len: usize) -> Result<Vec<u8>, VaultFailError>;
+    fn hkdf_sha256<B: AsRef<[u8]>>(&self, salt: B, ikm: B, okm_len: usize) -> Result<Vec<u8>, VaultFailError>;
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>>(
         &self,
         context: SecretKeyContext,
+        plaintext: B,
         nonce: B,
         aad: B,
     ) -> Result<Vec<u8>, VaultFailError>;
@@ -89,8 +91,8 @@ pub trait Vault: Zeroize {
     fn aead_aes_gcm_decrypt<B: AsRef<[u8]>>(
         &self,
         context: SecretKeyContext,
+        cipher_text: B,
         nonce: B,
         aad: B,
-        cipher_text: B,
     ) -> Result<Vec<u8>, VaultFailError>;
 }

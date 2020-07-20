@@ -7,3 +7,14 @@ macro_rules! from_int_impl {
         }
     };
 }
+
+macro_rules! zdrop_impl {
+    ($name:ident) => {
+        impl Drop for $name {
+            fn drop(&mut self) {
+                self.zeroize();
+            }
+        }
+    };
+}
+
