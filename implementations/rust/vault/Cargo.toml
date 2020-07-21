@@ -5,7 +5,6 @@ authors = ["Ockam Developers"]
 edition = "2018"
 
 [lib]
-name = "ockv"
 crate-type = ["staticlib", "rlib", "cdylib"]
 
 [profile.release]
