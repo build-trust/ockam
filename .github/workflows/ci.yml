@@ -1,0 +1,27 @@
+name: Continuous Integration
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-10.15] # windows-2019
+
+    steps:
+      - name: Setup java
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - id: Build
+        run: ../../gradlew build
+        working-directory: implementations/c
+
+      - id: Test
+        run: ../../gradlew test
+        working-directory: implementations/c
