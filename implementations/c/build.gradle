@@ -19,8 +19,13 @@ ext.isWindows = {
 
 // adapt c cammand for windows
 def adapt(command) {
-  command = isWindows ? ['cmd', '/c'].addAll(command) : command
-  return command
+  def adapted = ['cmd', '/c']
+  if(isWindows) {
+    adapted.addAll(command)
+  } else {
+    adapted = command
+  }
+  return adapted
 }
 
 task build {
@@ -46,7 +51,7 @@ task build {
   // generate the project build files
   doLast {
     exec {
-      commandLine adapt(['cmake']) <<
+      commandLine adapt(['cmake'] <<
         '--parallel' << availableProcessors <<
         '-S' << '.' <<
         '-B' << targetDir <<
@@ -55,18 +60,19 @@ task build {
         '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON' <<
         '-G' << generator <<
         otherCmakeOptions
+      )
     }
   }
 
   doLast {
     exec {
-      def command = adapt(['cmake']) << '--build' << targetDir
+      def command = ['cmake'] << '--build' << targetDir
 
       if(generator == 'Unix Makefiles') {
         command << '--' << "-j${availableProcessors}"
       }
 
-      commandLine command
+      commandLine adapt(command)
     }
   }
 }
@@ -84,7 +90,7 @@ task test {
   doLast {
     exec {
       workingDir targetDir
-      commandLine adapt(["ctest"]) << "-V"
+      commandLine adapt(["ctest"] << "-V")
     }
   }
 }
