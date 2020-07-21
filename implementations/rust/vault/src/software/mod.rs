@@ -56,6 +56,8 @@ impl Zeroize for DefaultVault {
         for (_, v) in self.entries.iter_mut() {
             v.zeroize();
         }
+        self.entries.clear();
+        self.next_id = 0;
     }
 }
 
@@ -261,6 +263,10 @@ impl Vault for DefaultVault {
     fn aead_aes_gcm_decrypt<B: AsRef<[u8]>>(&self, context: SecretKeyContext, cipher_text: B, nonce: B, aad: B) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmDecrypt)?;
         encrypt_impl!(entry, aad, nonce, cipher_text, decrypt, VaultFailErrorKind::AeadAesGcmDecrypt)
+    }
+
+    fn deinit(&mut self) {
+        self.zeroize();
     }
 }
 

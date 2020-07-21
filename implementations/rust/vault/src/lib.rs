@@ -21,6 +21,9 @@
 
 #[macro_use]
 extern crate arrayref;
+#[cfg(feature = "ffi")]
+#[macro_use]
+extern crate lazy_static;
 
 use crate::error::VaultFailError;
 use zeroize::Zeroize;
@@ -95,4 +98,7 @@ pub trait Vault: Zeroize {
         nonce: B,
         aad: B,
     ) -> Result<Vec<u8>, VaultFailError>;
+    /// Close and release all resources in use by the vault
+    fn deinit(&mut self);
 }
+

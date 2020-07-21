@@ -12,18 +12,20 @@ lto = true
 
 [features]
 default = []
-ffi = []
+ffi = ["ffi-support", "lazy_static"]
 
 [dependencies]
 aead = "0.3"
 aes-gcm = "0.6"
 arrayref = "0.3"
 elliptic-curve = { version = "0.4.0", features = ["getrandom", "zeroize"] }
-hex = "0.4"
 failure = "0.1"
+ffi-support = { version = "0.4", optional = true }
+hex = "0.4"
 hkdf = "0.9"
-rand = "0.7"
+lazy_static = { version = "1.4", optional = true }
 p256 = { version = "0.3", features = ["arithmetic"] }
+rand = "0.7"
 sha2 = "0.9"
 subtle = "2.2"
 x25519-dalek = "0.6"
