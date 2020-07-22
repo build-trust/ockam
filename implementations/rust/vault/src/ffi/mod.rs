@@ -47,12 +47,7 @@ pub extern "C" fn ockam_vault_random_bytes_generate(
     buffer: *mut u8,
     buffer_len: u32,
 ) -> VaultError {
-    if buffer.is_null() {
-        return VaultFailErrorKind::InvalidParam(1).into();
-    }
-    if buffer_len == 0 {
-        return VaultFailErrorKind::InvalidParam(2).into();
-    }
+    check_buffer!(buffer, buffer_len);
 
     let mut err = ExternError::success();
     match context.vault_id {
@@ -63,14 +58,49 @@ pub extern "C" fn ockam_vault_random_bytes_generate(
                 |vault| -> Result<ByteBuffer, VaultFailError> {
                     let mut data = vec![0u8; buffer_len as usize];
                     vault.random(data.as_mut_slice())?;
-                    let buffer = ByteBuffer::from_vec(data);
-                    Ok(buffer)
+                    let byte_buffer = ByteBuffer::from_vec(data);
+                    Ok(byte_buffer)
                 },
             );
             if err.get_code().is_success() {
                 let output = output.into_vec();
                 unsafe {
                     std::ptr::copy_nonoverlapping(output.as_ptr(), buffer, buffer_len as usize);
+                }
+                ERROR_NONE
+            } else {
+                VaultFailErrorKind::Random.into()
+            }
+        }
+        _ => VaultFailErrorKind::Random.into(),
+    }
+}
+
+/// Compute the SHA-256 hash on `input` and put the result in `digest`.
+/// `digest` must be 32 bytes in length
+#[no_mangle]
+pub extern "C" fn ockam_vault_sha256(context: OckamVaultContext, input: *const u8, input_length: u32, digest: *mut u8) -> VaultError {
+    check_buffer!(input, input_length);
+    check_buffer!(digest);
+
+    let input = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
+
+    let mut err = ExternError::success();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let output = DEFAULT_VAULTS.call_with_result(
+                &mut err,
+                context.handle,
+                |vault| -> Result<ByteBuffer, VaultFailError> {
+                    let digest = vault.sha256(input)?;
+                    let byte_buffer = ByteBuffer::from_vec(digest.to_vec());
+                    Ok(byte_buffer)
+                },
+            );
+            if err.get_code().is_success() {
+                let output = output.into_vec();
+                unsafe {
+                    std::ptr::copy_nonoverlapping(output.as_ptr(), digest, 32);
                 }
                 ERROR_NONE
             } else {
