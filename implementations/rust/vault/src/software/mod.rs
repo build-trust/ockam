@@ -441,19 +441,19 @@ mod tests {
         let res = vault.ec_diffie_hellman(sk_ctx_1, pk_2);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 33);
+        assert_eq!(ss.len(), 32);
         let res = vault.ec_diffie_hellman(sk_ctx_2, pk_1);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 33);
+        assert_eq!(ss.len(), 32);
         let res = vault.ec_diffie_hellman(sk_ctx_1, pk_1);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 33);
+        assert_eq!(ss.len(), 32);
         let res = vault.ec_diffie_hellman(sk_ctx_2, pk_2);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 33);
+        assert_eq!(ss.len(), 32);
     }
 
     #[test]
