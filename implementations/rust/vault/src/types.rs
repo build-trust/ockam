@@ -1,7 +1,6 @@
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
-
 /// The types of secret keys that the vault supports
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Zeroize)]
 pub enum SecretKeyType {
@@ -180,7 +179,7 @@ impl PartialEq for SecretKey {
             (Aes256(a), Aes256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
             (Curve25519(a), Curve25519(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
             (P256(a), P256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
-            (_, _) => false
+            (_, _) => false,
         }
     }
 }
@@ -208,7 +207,7 @@ pub enum PublicKey {
     /// x25519 Public Key
     Curve25519([u8; 32]),
     /// NIST P-256 (secp256r1, prime256v1) uncompressed public key
-    P256([u8; 65])
+    P256([u8; 65]),
 }
 
 impl PublicKey {
@@ -216,7 +215,7 @@ impl PublicKey {
         use PublicKey::*;
         match self {
             Curve25519(a) => write!(f, "PublicKey::Curve25519 {{ {} }}", hex::encode(a.as_ref())),
-            P256(a) => write!(f, "PublicKey::P256 {{ {} }}", hex::encode(a.as_ref()))
+            P256(a) => write!(f, "PublicKey::P256 {{ {} }}", hex::encode(a.as_ref())),
         }
     }
 
@@ -225,7 +224,7 @@ impl PublicKey {
         use PublicKey::*;
         match self {
             Curve25519(..) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -234,7 +233,7 @@ impl PublicKey {
         use PublicKey::*;
         match self {
             P256(..) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -244,7 +243,7 @@ impl AsRef<[u8]> for PublicKey {
         use PublicKey::*;
         match self {
             Curve25519(a) => a,
-            P256(a) => a
+            P256(a) => a,
         }
     }
 }
@@ -267,7 +266,7 @@ impl PartialEq for PublicKey {
         match (self, other) {
             (Curve25519(a), Curve25519(b)) => a.ct_eq(b).unwrap_u8() == 1,
             (P256(a), P256(b)) => a.ct_eq(b).unwrap_u8() == 1,
-            (_, _) => false
+            (_, _) => false,
         }
     }
 }

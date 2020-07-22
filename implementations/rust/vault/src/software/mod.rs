@@ -1,18 +1,12 @@
-use crate::{
-    error::*,
-    types::*,
-    Vault,
-};
-use p256::arithmetic::{Scalar, AffinePoint, ProjectivePoint};
-use rand::{
-    prelude::*,
-    rngs::OsRng,
-};
+use crate::{error::*, types::*, Vault};
+use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
+use aes_gcm::{Aes128Gcm, Aes256Gcm};
+use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
+use rand::{prelude::*, rngs::OsRng};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use zeroize::Zeroize;
-use aes_gcm::{Aes128Gcm, Aes256Gcm};
-use aead::{Aead, NewAead, Payload, generic_array::GenericArray};
+use subtle::ConstantTimeEq;
 
 /// A pure rust implementation of a vault.
 /// Is not thread-safe i.e. if multiple threads
@@ -28,13 +22,17 @@ impl Default for DefaultVault {
     fn default() -> Self {
         Self {
             entries: BTreeMap::new(),
-            next_id: 0
+            next_id: 0,
         }
     }
 }
 
 impl DefaultVault {
-    fn get_entry(&self, context: SecretKeyContext, error: VaultFailErrorKind) -> Result<&VaultEntry, VaultFailError> {
+    fn get_entry(
+        &self,
+        context: SecretKeyContext,
+        error: VaultFailErrorKind,
+    ) -> Result<&VaultEntry, VaultFailError> {
         let id;
         if let SecretKeyContext::Memory(i) = context {
             id = i;
@@ -68,7 +66,7 @@ zdrop_impl!(DefaultVault);
 struct VaultEntry {
     id: usize,
     key_attributes: SecretKeyAttributes,
-    key: SecretKey
+    key: SecretKey,
 }
 
 impl Default for VaultEntry {
@@ -78,9 +76,9 @@ impl Default for VaultEntry {
             key_attributes: SecretKeyAttributes {
                 xtype: SecretKeyType::Curve25519,
                 persistence: SecretPersistenceType::Ephemeral,
-                purpose: SecretPurposeType::KeyAgreement
+                purpose: SecretPurposeType::KeyAgreement,
             },
-            key: SecretKey::Curve25519([0u8; 32])
+            key: SecretKey::Curve25519([0u8; 32]),
         }
     }
 }
@@ -92,7 +90,7 @@ macro_rules! encrypt_op_impl {
         let nonce = GenericArray::from_slice($nonce.as_ref());
         let payload = Payload {
             aad: $aad.as_ref(),
-            msg: $text.as_ref()
+            msg: $text.as_ref(),
         };
         let output = cipher.$op(nonce, payload)?;
         Ok(output)
@@ -102,20 +100,16 @@ macro_rules! encrypt_op_impl {
 macro_rules! encrypt_impl {
     ($entry:expr, $aad:expr, $nonce: expr, $text:expr, $op:ident, $err:expr) => {{
         match $entry.key {
-            SecretKey::Aes128(a) => {
-                encrypt_op_impl!(a, $aad, $nonce, $text, Aes128Gcm, $op)
-            },
-            SecretKey::Aes256(a) => {
-                encrypt_op_impl!(a, $aad, $nonce, $text, Aes256Gcm, $op)
-            },
-            _ => Err($err.into())
+            SecretKey::Aes128(a) => encrypt_op_impl!(a, $aad, $nonce, $text, Aes128Gcm, $op),
+            SecretKey::Aes256(a) => encrypt_op_impl!(a, $aad, $nonce, $text, Aes256Gcm, $op),
+            _ => Err($err.into()),
         }
     }};
 }
 
 impl Vault for DefaultVault {
     fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
-        let mut rng = OsRng{};
+        let mut rng = OsRng {};
         rng.fill_bytes(data);
         Ok(())
     }
@@ -125,70 +119,94 @@ impl Vault for DefaultVault {
         Ok(*array_ref![digest, 0, 32])
     }
 
-    fn secret_generate(&mut self, attributes: SecretKeyAttributes) -> Result<SecretKeyContext, VaultFailError> {
-        let mut rng = OsRng{};
-        let key =
-            match attributes.xtype {
-                SecretKeyType::Curve25519 => {
-                    let sk = x25519_dalek::StaticSecret::new(&mut rng);
-                    SecretKey::Curve25519(sk.to_bytes())
-                },
-                SecretKeyType::Aes128 => {
-                    let mut key = [0u8; 16];
-                    rng.fill_bytes(&mut key);
-                    SecretKey::Aes128(key)
-                },
-                SecretKeyType::Aes256 => {
-                    let mut key = [0u8; 32];
-                    rng.fill_bytes(&mut key);
-                    SecretKey::Aes256(key)
-                },
-                SecretKeyType::P256 => {
-                    let key = p256::SecretKey::generate();
-                    SecretKey::P256(*array_ref![key.secret_scalar().as_ref(), 0, 32])
-                },
-                SecretKeyType::Buffer(size) => {
-                    let mut key = vec![0u8; size];
-                    rng.fill_bytes(key.as_mut_slice());
-                    SecretKey::Buffer(key)
-                }
-            };
+    fn secret_generate(
+        &mut self,
+        attributes: SecretKeyAttributes,
+    ) -> Result<SecretKeyContext, VaultFailError> {
+        let mut rng = OsRng {};
+        let key = match attributes.xtype {
+            SecretKeyType::Curve25519 => {
+                let sk = x25519_dalek::StaticSecret::new(&mut rng);
+                SecretKey::Curve25519(sk.to_bytes())
+            }
+            SecretKeyType::Aes128 => {
+                let mut key = [0u8; 16];
+                rng.fill_bytes(&mut key);
+                SecretKey::Aes128(key)
+            }
+            SecretKeyType::Aes256 => {
+                let mut key = [0u8; 32];
+                rng.fill_bytes(&mut key);
+                SecretKey::Aes256(key)
+            }
+            SecretKeyType::P256 => {
+                let key = p256::SecretKey::generate();
+                SecretKey::P256(*array_ref![key.secret_scalar().as_ref(), 0, 32])
+            }
+            SecretKeyType::Buffer(size) => {
+                let mut key = vec![0u8; size];
+                rng.fill_bytes(key.as_mut_slice());
+                SecretKey::Buffer(key)
+            }
+        };
         self.next_id += 1;
-        self.entries.insert(self.next_id, VaultEntry {
-            id: self.next_id,
-            key_attributes: attributes,
-            key
-        });
+        self.entries.insert(
+            self.next_id,
+            VaultEntry {
+                id: self.next_id,
+                key_attributes: attributes,
+                key,
+            },
+        );
         Ok(SecretKeyContext::Memory(self.next_id))
     }
 
-    fn secret_import(&mut self, secret: &SecretKey, attributes: SecretKeyAttributes) -> Result<SecretKeyContext, VaultFailError> {
+    fn secret_import(
+        &mut self,
+        secret: &SecretKey,
+        attributes: SecretKeyAttributes,
+    ) -> Result<SecretKeyContext, VaultFailError> {
         self.next_id += 1;
-        self.entries.insert(self.next_id, VaultEntry {
-            id: self.next_id,
-            key_attributes: attributes,
-            key: secret.clone()
-        });
+        self.entries.insert(
+            self.next_id,
+            VaultEntry {
+                id: self.next_id,
+                key_attributes: attributes,
+                key: secret.clone(),
+            },
+        );
         Ok(SecretKeyContext::Memory(self.next_id))
     }
 
     fn secret_export(&self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
         if let SecretKeyContext::Memory(id) = context {
-            self.entries.get(&id).map(|i| i.key.clone()).ok_or_else(|| VaultFailErrorKind::GetAttributes.into())
+            self.entries
+                .get(&id)
+                .map(|i| i.key.clone())
+                .ok_or_else(|| VaultFailErrorKind::GetAttributes.into())
         } else {
             Err(VaultFailErrorKind::Export.into())
         }
     }
 
-    fn secret_attributes_get(&self, context: SecretKeyContext) -> Result<SecretKeyAttributes, VaultFailError> {
+    fn secret_attributes_get(
+        &self,
+        context: SecretKeyContext,
+    ) -> Result<SecretKeyAttributes, VaultFailError> {
         if let SecretKeyContext::Memory(id) = context {
-            self.entries.get(&id).map(|i| i.key_attributes).ok_or_else(|| VaultFailErrorKind::GetAttributes.into())
+            self.entries
+                .get(&id)
+                .map(|i| i.key_attributes)
+                .ok_or_else(|| VaultFailErrorKind::GetAttributes.into())
         } else {
             Err(VaultFailErrorKind::GetAttributes.into())
         }
     }
 
-    fn secret_public_key_get(&self, context: SecretKeyContext) -> Result<PublicKey, VaultFailError> {
+    fn secret_public_key_get(
+        &self,
+        context: SecretKeyContext,
+    ) -> Result<PublicKey, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::PublicKey)?;
 
         match entry.key {
@@ -196,14 +214,16 @@ impl Vault for DefaultVault {
                 let sk = x25519_dalek::StaticSecret::from(a);
                 let pk = x25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::Curve25519(*pk.as_bytes()))
-            },
+            }
             SecretKey::P256(a) => {
                 let sk = Scalar::from_bytes(a).unwrap();
                 let pp = ProjectivePoint::generator() * &sk;
-                let pk = p256::elliptic_curve::weierstrass::PublicKey::from(pp.to_affine().unwrap().to_uncompressed_pubkey());
+                let pk = p256::elliptic_curve::weierstrass::PublicKey::from(
+                    pp.to_affine().unwrap().to_uncompressed_pubkey(),
+                );
                 Ok(PublicKey::P256(*array_ref![pk.as_bytes(), 0, 65]))
-            },
-            _ => Err(VaultFailErrorKind::PublicKey.into())
+            }
+            _ => Err(VaultFailErrorKind::PublicKey.into()),
         }
     }
 
@@ -218,7 +238,11 @@ impl Vault for DefaultVault {
         }
     }
 
-    fn ec_diffie_hellman(&mut self, context: SecretKeyContext, peer_public_key: PublicKey) -> Result<Vec<u8>, VaultFailError> {
+    fn ec_diffie_hellman(
+        &mut self,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+    ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
 
         match (&entry.key, peer_public_key) {
@@ -227,9 +251,10 @@ impl Vault for DefaultVault {
                 let pk_t = x25519_dalek::PublicKey::from(b);
                 let secret = sk.diffie_hellman(&pk_t);
                 Ok(secret.as_bytes().to_vec())
-            },
+            }
             (SecretKey::P256(a), PublicKey::P256(b)) => {
-                let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> = p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
+                let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> =
+                    p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
                 if o_pk_t.is_none() {
                     return Err(VaultFailErrorKind::Ecdh.into());
                 }
@@ -241,28 +266,63 @@ impl Vault for DefaultVault {
                 let sk = Scalar::from_bytes(*a).unwrap();
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                 let secret = &pk_t * &sk;
+                if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
+                    return Err(VaultFailErrorKind::Ecdh.into());
+                }
                 let result = secret.to_affine().unwrap().to_compressed_pubkey();
-                Ok(result.as_ref().to_vec())
-            },
-            (_, _) => Err(VaultFailErrorKind::Ecdh.into())
+                // Throw away the compressed indicator byte
+                Ok(result.as_ref()[1..].to_vec())
+            }
+            (_, _) => Err(VaultFailErrorKind::Ecdh.into()),
         }
     }
 
-    fn hkdf_sha256<B: AsRef<[u8]>>(&self, salt: B, ikm: B, okm_len: usize) -> Result<Vec<u8>, VaultFailError> {
+    fn hkdf_sha256<B: AsRef<[u8]>>(
+        &self,
+        salt: B,
+        ikm: B,
+        okm_len: usize,
+    ) -> Result<Vec<u8>, VaultFailError> {
         let mut okm = vec![0u8; okm_len];
         let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.as_ref()), ikm.as_ref());
         prk.expand(b"", okm.as_mut_slice())?;
         Ok(okm)
     }
 
-    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>>(&self, context: SecretKeyContext, plaintext: B, nonce: B, aad: B) -> Result<Vec<u8>, VaultFailError> {
+    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>>(
+        &self,
+        context: SecretKeyContext,
+        plaintext: B,
+        nonce: B,
+        aad: B,
+    ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmEncrypt)?;
-        encrypt_impl!(entry, aad, nonce, plaintext, encrypt, VaultFailErrorKind::AeadAesGcmEncrypt)
+        encrypt_impl!(
+            entry,
+            aad,
+            nonce,
+            plaintext,
+            encrypt,
+            VaultFailErrorKind::AeadAesGcmEncrypt
+        )
     }
 
-    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>>(&self, context: SecretKeyContext, cipher_text: B, nonce: B, aad: B) -> Result<Vec<u8>, VaultFailError> {
+    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>>(
+        &self,
+        context: SecretKeyContext,
+        cipher_text: B,
+        nonce: B,
+        aad: B,
+    ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmDecrypt)?;
-        encrypt_impl!(entry, aad, nonce, cipher_text, decrypt, VaultFailErrorKind::AeadAesGcmDecrypt)
+        encrypt_impl!(
+            entry,
+            aad,
+            nonce,
+            cipher_text,
+            decrypt,
+            VaultFailErrorKind::AeadAesGcmDecrypt
+        )
     }
 
     fn deinit(&mut self) {
@@ -287,7 +347,7 @@ mod tests {
         let mut attributes = SecretKeyAttributes {
             xtype: SecretKeyType::P256,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement
+            purpose: SecretPurposeType::KeyAgreement,
         };
 
         let res = vault.secret_generate(attributes);
@@ -320,13 +380,15 @@ mod tests {
         let mut attributes = SecretKeyAttributes {
             xtype: SecretKeyType::P256,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement
+            purpose: SecretPurposeType::KeyAgreement,
         };
-        let types = [(SecretKeyType::Curve25519, 32),
+        let types = [
+            (SecretKeyType::Curve25519, 32),
             (SecretKeyType::P256, 32),
-        (SecretKeyType::Aes256, 32),
-        (SecretKeyType::Aes128, 16),
-        (SecretKeyType::Buffer(24), 24)];
+            (SecretKeyType::Aes256, 32),
+            (SecretKeyType::Aes128, 16),
+            (SecretKeyType::Buffer(24), 24),
+        ];
         for (t, s) in &types {
             attributes.xtype = *t;
             let res = vault.secret_generate(attributes);
@@ -345,7 +407,10 @@ mod tests {
         let res = vault.sha256(b"a");
         assert!(res.is_ok());
         let digest = res.unwrap();
-        assert_eq!(hex::encode(digest), "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb");
+        assert_eq!(
+            hex::encode(digest),
+            "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        );
     }
 
     #[test]
@@ -354,7 +419,10 @@ mod tests {
         let res = vault.hkdf_sha256(b"hkdf_test".as_ref(), b"a".as_ref(), 24);
         assert!(res.is_ok());
         let digest = res.unwrap();
-        assert_eq!(hex::encode(digest), "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f");
+        assert_eq!(
+            hex::encode(digest),
+            "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
+        );
     }
 
     #[test]
@@ -363,7 +431,7 @@ mod tests {
         let attributes = SecretKeyAttributes {
             xtype: SecretKeyType::P256,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement
+            purpose: SecretPurposeType::KeyAgreement,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
@@ -373,19 +441,19 @@ mod tests {
         let res = vault.ec_diffie_hellman(sk_ctx_1, pk_2);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 65);
+        assert_eq!(ss.len(), 33);
         let res = vault.ec_diffie_hellman(sk_ctx_2, pk_1);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 65);
+        assert_eq!(ss.len(), 33);
         let res = vault.ec_diffie_hellman(sk_ctx_1, pk_1);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 65);
+        assert_eq!(ss.len(), 33);
         let res = vault.ec_diffie_hellman(sk_ctx_2, pk_2);
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 65);
+        assert_eq!(ss.len(), 33);
     }
 
     #[test]
@@ -394,7 +462,7 @@ mod tests {
         let attributes = SecretKeyAttributes {
             xtype: SecretKeyType::Curve25519,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement
+            purpose: SecretPurposeType::KeyAgreement,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
@@ -425,7 +493,7 @@ mod tests {
         let mut attributes = SecretKeyAttributes {
             xtype: SecretKeyType::Curve25519,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement
+            purpose: SecretPurposeType::KeyAgreement,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(sk_ctx_1).unwrap();
@@ -455,12 +523,14 @@ mod tests {
         let res = vault.aead_aes_gcm_encrypt(ctx, message.as_ref(), nonce.as_ref(), aad.as_ref());
         assert!(res.is_ok());
         let mut ciphertext = res.unwrap();
-        let res = vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
+        let res =
+            vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, message.to_vec());
         ciphertext[0] ^= ciphertext[1];
-        let res = vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
+        let res =
+            vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
         assert!(res.is_err());
     }
 }

@@ -36,11 +36,11 @@ pub mod error;
 #[cfg(feature = "ffi")]
 /// The ffi functions, structs, and constants
 pub mod ffi;
-/// The various enumerations of options
-pub mod types;
 /// Software implementation of Vault. No persistence
 /// all keys are stored, operations happen in memory
 pub mod software;
+/// The various enumerations of options
+pub mod types;
 
 use types::*;
 
@@ -69,7 +69,8 @@ pub trait Vault: Zeroize {
         context: SecretKeyContext,
     ) -> Result<SecretKeyAttributes, VaultFailError>;
     /// Return the associated public key given the secret key
-    fn secret_public_key_get(&self, context: SecretKeyContext) -> Result<PublicKey, VaultFailError>;
+    fn secret_public_key_get(&self, context: SecretKeyContext)
+        -> Result<PublicKey, VaultFailError>;
     /// Remove a secret key from the vault
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError>;
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
@@ -81,7 +82,12 @@ pub trait Vault: Zeroize {
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
-    fn hkdf_sha256<B: AsRef<[u8]>>(&self, salt: B, ikm: B, okm_len: usize) -> Result<Vec<u8>, VaultFailError>;
+    fn hkdf_sha256<B: AsRef<[u8]>>(
+        &self,
+        salt: B,
+        ikm: B,
+        okm_len: usize,
+    ) -> Result<Vec<u8>, VaultFailError>;
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>>(
         &self,
@@ -101,4 +107,3 @@ pub trait Vault: Zeroize {
     /// Close and release all resources in use by the vault
     fn deinit(&mut self);
 }
-
