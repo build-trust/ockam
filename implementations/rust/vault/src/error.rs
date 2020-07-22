@@ -183,6 +183,13 @@ impl From<aes_gcm::Error> for VaultFailErrorKind {
     }
 }
 
+#[cfg(feature = "ffi")]
+impl From<VaultFailErrorKind> for ffi_support::ExternError {
+    fn from(err: VaultFailErrorKind) -> ffi_support::ExternError {
+        ffi_support::ExternError::new_error(ffi_support::ErrorCode::new(err.to_usize() as i32), "")
+    }
+}
+
 impl From<io::Error> for VaultFailError {
     fn from(err: io::Error) -> Self {
         Self::from_msg(VaultFailErrorKind::IOError, format!("{:?}", err))
@@ -210,6 +217,14 @@ impl From<hkdf::InvalidPrkLength> for VaultFailError {
 impl From<aes_gcm::Error> for VaultFailError {
     fn from(_: aes_gcm::Error) -> Self {
         VaultFailError::from(VaultFailErrorKind::AeadAesGcm)
+    }
+}
+
+#[cfg(feature = "ffi")]
+impl From<VaultFailError> for ffi_support::ExternError {
+    fn from(err: VaultFailError) -> ffi_support::ExternError {
+        let err: VaultFailErrorKind = err.into();
+        err.into()
     }
 }
 
