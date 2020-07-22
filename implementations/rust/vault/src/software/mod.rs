@@ -241,7 +241,7 @@ impl Vault for DefaultVault {
                 let sk = Scalar::from_bytes(*a).unwrap();
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                 let secret = &pk_t * &sk;
-                let result = secret.to_affine().unwrap().to_uncompressed_pubkey();
+                let result = secret.to_affine().unwrap().to_compressed_pubkey();
                 Ok(result.as_ref().to_vec())
             },
             (_, _) => Err(VaultFailErrorKind::Ecdh.into())
