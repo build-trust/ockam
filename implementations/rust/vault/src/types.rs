@@ -248,7 +248,7 @@ impl SecretKey {
             SecretKeyType::Aes128 => SecretKey::Aes128(*array_ref![data.as_ref(), 0, 16]),
             SecretKeyType::Aes256 => SecretKey::Aes256(*array_ref![data.as_ref(), 0, 32]),
             SecretKeyType::P256 => SecretKey::P256(*array_ref![data.as_ref(), 0, 32]),
-            SecretKeyType::Curve25519 => SecretKey::Curve25519(*array_ref![data.as_ref(), 0, 32])
+            SecretKeyType::Curve25519 => SecretKey::Curve25519(*array_ref![data.as_ref(), 0, 32]),
         }
     }
 }

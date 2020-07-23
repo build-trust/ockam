@@ -115,9 +115,9 @@ uint32_t ockam_vault_sha256(ockam_vault_t vault,
  * @param   secret[out]     Pointer to an ockam secret object to be populated with a handle to the secret
  * @param   attributes[in]  Desired attribtes for the secret to be generated.
  */
-ockam_error_t ockam_vault_secret_generate(ockam_vault_t                   vault,
-                                          ockam_vault_secret_t*           secret,
-                                          ockam_vault_secret_attributes_t attributes);
+uint32_t ockam_vault_secret_generate(ockam_vault_t                   vault,
+                                     ockam_vault_secret_t*           secret,
+                                     ockam_vault_secret_attributes_t attributes);
 
 /**
  * @brief   Import the specified data into the supplied ockam vault secret.
@@ -128,11 +128,26 @@ ockam_error_t ockam_vault_secret_generate(ockam_vault_t                   vault,
  * @param   input_length[in]  Length of data to load into the secret.
  */
 
-ockam_error_t ockam_vault_secret_import(ockam_vault_t*                    vault,
-                                        const ockam_vault_secret_t*       secret,
-                                        ockam_vault_secret_attributes_t   attributes,
-                                        const uint8_t* const              input,
-                                        size_t                            input_length);
+uint32_t ockam_vault_secret_import(ockam_vault_t                   vault,
+                                   ockam_vault_secret_t*           secret,
+                                   ockam_vault_secret_attributes_t attributes,
+                                   const uint8_t* const            input,
+                                   size_t                          input_length);
+
+/**
+ * @brief   Export data from an ockam vault secret into the supplied output buffer.
+ * @param   vault[in]                 Vault object to use for exporting secret data.
+ * @param   secret[in]                Ockam vault secret to export data from.
+ * @param   output_buffer[out]        Buffer to place the exported secret data in.
+ * @param   output_buffer_size[in]    Size of the output buffer.
+ * @param   output_buffer_length[out] Amount of data placed in the output buffer.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_secret_export(ockam_vault_t                     vault,
+                                   const ockam_vault_secret_t* const secret,
+                                   uint8_t*                          output_buffer,
+                                   size_t                            output_buffer_size,
+                                   size_t*                           output_buffer_length);
 
 /**
  * @brief   Deinitialize the specified ockam vault object

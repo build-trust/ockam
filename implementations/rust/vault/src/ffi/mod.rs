@@ -1,11 +1,7 @@
-use crate::{
-    error::*,
-    ffi::types::*,
-    software::DefaultVault,
-    Vault
-};
+use crate::types::SecretKeyContext;
+use crate::{error::*, ffi::types::*, software::DefaultVault, Vault};
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
-use std::convert::TryInto;
+use std::{convert::TryInto, ffi::CStr, str::FromStr};
 
 mod types;
 
@@ -22,6 +18,19 @@ pub struct OckamVaultContext {
 pub struct OckamSecret {
     attributes: FfiSecretKeyAttributes,
     handle: SecretKeyHandle,
+}
+
+impl OckamSecret {
+    /// Get the string handle represented by this Secret
+    pub fn get_handle(&self) -> String {
+        if self.handle.is_null() {
+            String::new()
+        } else {
+            unsafe { CStr::from_ptr(self.handle) }
+                .to_string_lossy()
+                .to_string()
+        }
+    }
 }
 
 /// Represents a Vault id
@@ -166,11 +175,13 @@ pub extern "C" fn ockam_vault_secret_generate(
 
 /// Import a secret key with the specific handle and attributes
 #[no_mangle]
-pub extern "C" fn ockam_vault_secret_import(context: OckamVaultContext,
-                                            secret: &mut OckamSecret,
-                                            attributes: FfiSecretKeyAttributes,
-                                            input: *mut u8,
-                                            input_length: u32) -> VaultError {
+pub extern "C" fn ockam_vault_secret_import(
+    context: OckamVaultContext,
+    secret: &mut OckamSecret,
+    attributes: FfiSecretKeyAttributes,
+    input: *mut u8,
+    input_length: u32,
+) -> VaultError {
     let mut err = ExternError::success();
     let atts = attributes.into();
     match context.vault_id {
@@ -182,7 +193,7 @@ pub extern "C" fn ockam_vault_secret_import(context: OckamVaultContext,
                     let ffi_sk = FfiSecretKey {
                         xtype: attributes.xtype,
                         length: input_length,
-                        buffer: input
+                        buffer: input,
                     };
 
                     let sk: crate::SecretKey = ffi_sk.try_into()?;
@@ -194,7 +205,50 @@ pub extern "C" fn ockam_vault_secret_import(context: OckamVaultContext,
                 *secret = OckamSecret { attributes, handle };
                 ERROR_NONE
             } else {
-                VaultFailErrorKind::SecretGenerate.into()
+                VaultFailErrorKind::InvalidSecret.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
+/// Exprt a secret key with the specific handle to the output buffer
+#[no_mangle]
+pub extern "C" fn ockam_vault_secret_export(
+    context: OckamVaultContext,
+    secret: OckamSecret,
+    output_buffer: &mut u8,
+    output_buffer_size: u32,
+    output_buffer_length: &mut u32,
+) -> VaultError {
+    *output_buffer_length = 0;
+    let mut err = ExternError::success();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let output = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<ByteBuffer, VaultFailError> {
+                    let id_str = secret.get_handle();
+                    let id = usize::from_str(&id_str)?;
+                    let ctx = SecretKeyContext::Memory(id);
+                    let key = vault.secret_export(ctx)?;
+                    Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
+                },
+            );
+            if err.get_code().is_success() {
+                let buffer = output.into_vec();
+                if output_buffer_size < buffer.len() as u32 {
+                    VaultFailErrorKind::Export.into()
+                } else {
+                    *output_buffer_length = buffer.len() as u32;
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(buffer.as_ptr(), output_buffer, buffer.len());
+                    };
+                    ERROR_NONE
+                }
+            } else {
+                VaultFailErrorKind::Export.into()
             }
         }
         _ => VaultFailErrorKind::InvalidContext.into(),

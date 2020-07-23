@@ -190,6 +190,12 @@ impl From<VaultFailErrorKind> for ffi_support::ExternError {
     }
 }
 
+impl From<std::num::ParseIntError> for VaultFailErrorKind {
+    fn from(_: std::num::ParseIntError) -> Self {
+        VaultFailErrorKind::IOError
+    }
+}
+
 impl From<io::Error> for VaultFailError {
     fn from(err: io::Error) -> Self {
         Self::from_msg(VaultFailErrorKind::IOError, format!("{:?}", err))
@@ -217,6 +223,12 @@ impl From<hkdf::InvalidPrkLength> for VaultFailError {
 impl From<aes_gcm::Error> for VaultFailError {
     fn from(_: aes_gcm::Error) -> Self {
         VaultFailError::from(VaultFailErrorKind::AeadAesGcm)
+    }
+}
+
+impl From<std::num::ParseIntError> for VaultFailError {
+    fn from(_: std::num::ParseIntError) -> Self {
+        VaultFailError::from(VaultFailErrorKind::IOError)
     }
 }
 
