@@ -5,8 +5,8 @@ use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
 use rand::{prelude::*, rngs::OsRng};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use zeroize::Zeroize;
 use subtle::ConstantTimeEq;
+use zeroize::Zeroize;
 
 /// A pure rust implementation of a vault.
 /// Is not thread-safe i.e. if multiple threads

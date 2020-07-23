@@ -1,5 +1,7 @@
-use crate::{error::*, software::DefaultVault, Vault};
-use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError};
+use crate::{error::*, ffi::types::FfiSecretKeyAttributes, software::DefaultVault, Vault};
+use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
+
+mod types;
 
 /// A context object to interface with C
 #[derive(Clone, Copy, Debug)]
@@ -9,12 +11,21 @@ pub struct OckamVaultContext {
     vault_id: VaultId,
 }
 
+/// A context object for using secrets in vaults
+#[repr(C)]
+pub struct OckamSecret {
+    attributes: FfiSecretKeyAttributes,
+    handle: SecretKeyHandle,
+}
+
 /// Represents a Vault id
 pub type VaultId = u32;
 /// Represents a Vault handle
 pub type VaultHandle = u64;
 /// Represents a Vault error code
 pub type VaultError = u32;
+///
+pub type SecretKeyHandle = *mut std::os::raw::c_char;
 /// No error or success
 pub const ERROR_NONE: u32 = 0;
 
@@ -79,7 +90,12 @@ pub extern "C" fn ockam_vault_random_bytes_generate(
 /// Compute the SHA-256 hash on `input` and put the result in `digest`.
 /// `digest` must be 32 bytes in length
 #[no_mangle]
-pub extern "C" fn ockam_vault_sha256(context: OckamVaultContext, input: *const u8, input_length: u32, digest: *mut u8) -> VaultError {
+pub extern "C" fn ockam_vault_sha256(
+    context: OckamVaultContext,
+    input: *const u8,
+    input_length: u32,
+    digest: *mut u8,
+) -> VaultError {
     check_buffer!(input, input_length);
     check_buffer!(digest);
 
@@ -111,6 +127,37 @@ pub extern "C" fn ockam_vault_sha256(context: OckamVaultContext, input: *const u
     }
 }
 
+/// Generate a secret key with the specific attributes.
+/// Returns a handle for the secret
+#[no_mangle]
+pub extern "C" fn ockam_vault_secret_generate(
+    context: OckamVaultContext,
+    secret: &mut OckamSecret,
+    attributes: FfiSecretKeyAttributes,
+) -> VaultError {
+    let mut err = ExternError::success();
+    let atts = attributes.into();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let handle = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<SecretKeyHandle, VaultFailError> {
+                    let secret_context = vault.secret_generate(atts)?;
+                    Ok(secret_context.into_ffi_value())
+                },
+            );
+            if err.get_code().is_success() {
+                *secret = OckamSecret { attributes, handle };
+                ERROR_NONE
+            } else {
+                VaultFailErrorKind::SecretGenerate.into()
+            }
+        }
+        _ => VaultFailErrorKind::SecretGenerate.into(),
+    }
+}
+
 /// Deinitialize an Ockam vault
 #[no_mangle]
 pub extern "C" fn ockam_vault_deinit(context: OckamVaultContext) -> VaultError {
@@ -125,3 +172,5 @@ pub extern "C" fn ockam_vault_deinit(context: OckamVaultContext) -> VaultError {
     };
     result
 }
+
+define_string_destructor!(string_free);

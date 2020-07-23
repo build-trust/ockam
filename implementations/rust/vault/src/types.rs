@@ -1,3 +1,6 @@
+use crate::error::{VaultFailError, VaultFailErrorKind};
+#[cfg(feature = "ffi")]
+use ffi_support::IntoFfi;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
@@ -27,6 +30,18 @@ impl SecretKeyType {
             SecretKeyType::P256 => 4,
         }
     }
+
+    /// Try to convert from a number to the rust enum
+    pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
+        match value {
+            0 => Ok(SecretKeyType::Buffer(0)),
+            1 => Ok(SecretKeyType::Aes128),
+            2 => Ok(SecretKeyType::Aes256),
+            3 => Ok(SecretKeyType::Curve25519),
+            4 => Ok(SecretKeyType::P256),
+            _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
+        }
+    }
 }
 
 from_int_impl!(SecretKeyType, i8);
@@ -39,6 +54,16 @@ from_int_impl!(SecretKeyType, u16);
 from_int_impl!(SecretKeyType, u32);
 from_int_impl!(SecretKeyType, u64);
 from_int_impl!(SecretKeyType, u128);
+try_from_int_impl!(SecretKeyType, i8);
+try_from_int_impl!(SecretKeyType, i16);
+try_from_int_impl!(SecretKeyType, i32);
+try_from_int_impl!(SecretKeyType, i64);
+try_from_int_impl!(SecretKeyType, i128);
+try_from_int_impl!(SecretKeyType, u8);
+try_from_int_impl!(SecretKeyType, u16);
+try_from_int_impl!(SecretKeyType, u32);
+try_from_int_impl!(SecretKeyType, u64);
+try_from_int_impl!(SecretKeyType, u128);
 
 /// Persistence allowed by Secrets
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
@@ -57,6 +82,15 @@ impl SecretPersistenceType {
             SecretPersistenceType::Persistent => 1,
         }
     }
+
+    /// Try to convert from a number to the rust enum
+    pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
+        match value {
+            0 => Ok(SecretPersistenceType::Ephemeral),
+            1 => Ok(SecretPersistenceType::Persistent),
+            _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
+        }
+    }
 }
 
 from_int_impl!(SecretPersistenceType, i8);
@@ -69,6 +103,16 @@ from_int_impl!(SecretPersistenceType, u16);
 from_int_impl!(SecretPersistenceType, u32);
 from_int_impl!(SecretPersistenceType, u64);
 from_int_impl!(SecretPersistenceType, u128);
+try_from_int_impl!(SecretPersistenceType, i8);
+try_from_int_impl!(SecretPersistenceType, i16);
+try_from_int_impl!(SecretPersistenceType, i32);
+try_from_int_impl!(SecretPersistenceType, i64);
+try_from_int_impl!(SecretPersistenceType, i128);
+try_from_int_impl!(SecretPersistenceType, u8);
+try_from_int_impl!(SecretPersistenceType, u16);
+try_from_int_impl!(SecretPersistenceType, u32);
+try_from_int_impl!(SecretPersistenceType, u64);
+try_from_int_impl!(SecretPersistenceType, u128);
 
 /// Secrets specific purpose
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
@@ -84,6 +128,14 @@ impl SecretPurposeType {
             SecretPurposeType::KeyAgreement => 0,
         }
     }
+
+    /// Try to convert from a number to the rust enum
+    pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
+        match value {
+            0 => Ok(SecretPurposeType::KeyAgreement),
+            _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
+        }
+    }
 }
 
 from_int_impl!(SecretPurposeType, i8);
@@ -96,6 +148,16 @@ from_int_impl!(SecretPurposeType, u16);
 from_int_impl!(SecretPurposeType, u32);
 from_int_impl!(SecretPurposeType, u64);
 from_int_impl!(SecretPurposeType, u128);
+try_from_int_impl!(SecretPurposeType, i8);
+try_from_int_impl!(SecretPurposeType, i16);
+try_from_int_impl!(SecretPurposeType, i32);
+try_from_int_impl!(SecretPurposeType, i64);
+try_from_int_impl!(SecretPurposeType, i128);
+try_from_int_impl!(SecretPurposeType, u8);
+try_from_int_impl!(SecretPurposeType, u16);
+try_from_int_impl!(SecretPurposeType, u32);
+try_from_int_impl!(SecretPurposeType, u64);
+try_from_int_impl!(SecretPurposeType, u128);
 
 /// Attributes for a specific vault secret
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
@@ -141,6 +203,26 @@ pub enum SecretKeyContext {
     /// Key is backed an OS keyring like Windows Credential Vault, Gnome Keyring, KWallet, or
     /// Security Framework
     OsKeyRing,
+}
+
+#[cfg(feature = "ffi")]
+/// Converts the secret key context to an id that can be passed across the FFI boundary
+unsafe impl IntoFfi for SecretKeyContext {
+    type Value = *mut std::os::raw::c_char;
+
+    fn ffi_default() -> Self::Value {
+        std::ptr::null_mut()
+    }
+
+    fn into_ffi_value(self) -> Self::Value {
+        match self {
+            SecretKeyContext::Memory(id) => {
+                let id_str = format!("{}", id);
+                id_str.into_ffi_value()
+            }
+            _ => Self::ffi_default(),
+        }
+    }
 }
 
 /// Represents specific secrets employable by the vault

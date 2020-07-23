@@ -23,6 +23,9 @@
 extern crate arrayref;
 #[cfg(feature = "ffi")]
 #[macro_use]
+extern crate ffi_support;
+#[cfg(feature = "ffi")]
+#[macro_use]
 extern crate lazy_static;
 
 use crate::error::VaultFailError;

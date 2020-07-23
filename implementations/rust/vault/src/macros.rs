@@ -8,6 +8,18 @@ macro_rules! from_int_impl {
     };
 }
 
+macro_rules! try_from_int_impl {
+    ($src:ident, $ty:ty) => {
+        impl std::convert::TryFrom<$ty> for $src {
+            type Error = VaultFailError;
+
+            fn try_from(value: $ty) -> Result<Self, Self::Error> {
+                Self::from_usize(value as usize)
+            }
+        }
+    };
+}
+
 macro_rules! zdrop_impl {
     ($name:ident) => {
         impl Drop for $name {
@@ -32,5 +44,5 @@ macro_rules! check_buffer {
         if $length == 0 {
             return VaultFailErrorKind::InvalidParam(2).into();
         }
-    }
+    };
 }
