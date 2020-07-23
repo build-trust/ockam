@@ -4,9 +4,9 @@ use std::convert::{TryFrom, TryInto};
 
 #[repr(C)]
 pub struct FfiSecretKey {
-    length: u32,
-    xtype: u32,
-    buffer: *mut u8,
+    pub(crate) length: u32,
+    pub(crate) xtype: u32,
+    pub(crate) buffer: *mut u8,
 }
 
 impl FfiSecretKey {
@@ -78,9 +78,9 @@ impl TryFrom<FfiSecretKey> for SecretKey {
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct FfiSecretKeyAttributes {
-    xtype: u32,
-    persistence: u32,
-    purpose: u32,
+    pub(crate) xtype: u32,
+    pub(crate) persistence: u32,
+    pub(crate) purpose: u32,
 }
 
 impl From<SecretKeyAttributes> for FfiSecretKeyAttributes {

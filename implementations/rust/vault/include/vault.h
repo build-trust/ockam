@@ -120,6 +120,21 @@ ockam_error_t ockam_vault_secret_generate(ockam_vault_t                   vault,
                                           ockam_vault_secret_attributes_t attributes);
 
 /**
+ * @brief   Import the specified data into the supplied ockam vault secret.
+ * @param   vault[in]         Vault object to use for generating a secret key.
+ * @param   secret[out]       Pointer to an ockam secret object to be populated with input data.
+ * @param   attributes[in]    Desired attributes for the secret being imported.
+ * @param   input[in]         Data to load into the supplied secret.
+ * @param   input_length[in]  Length of data to load into the secret.
+ */
+
+ockam_error_t ockam_vault_secret_import(ockam_vault_t*                    vault,
+                                        const ockam_vault_secret_t*       secret,
+                                        ockam_vault_secret_attributes_t   attributes,
+                                        const uint8_t* const              input,
+                                        size_t                            input_length);
+
+/**
  * @brief   Deinitialize the specified ockam vault object
  * @param   vault[in] The ockam vault object to deinitialize.
  * @return  OCKAM_ERROR_NONE on success.

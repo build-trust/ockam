@@ -240,6 +240,19 @@ pub enum SecretKey {
     P256([u8; 32]),
 }
 
+impl SecretKey {
+    /// Create a new Secret key using `data` and of the correct type
+    pub fn new<B: AsRef<[u8]>>(data: B, xtype: SecretKeyType) -> Self {
+        match xtype {
+            SecretKeyType::Buffer(l) => SecretKey::Buffer(data.as_ref()[..l].to_vec()),
+            SecretKeyType::Aes128 => SecretKey::Aes128(*array_ref![data.as_ref(), 0, 16]),
+            SecretKeyType::Aes256 => SecretKey::Aes256(*array_ref![data.as_ref(), 0, 32]),
+            SecretKeyType::P256 => SecretKey::P256(*array_ref![data.as_ref(), 0, 32]),
+            SecretKeyType::Curve25519 => SecretKey::Curve25519(*array_ref![data.as_ref(), 0, 32])
+        }
+    }
+}
+
 impl AsRef<[u8]> for SecretKey {
     fn as_ref(&self) -> &[u8] {
         match self {

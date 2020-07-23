@@ -1,5 +1,11 @@
-use crate::{error::*, ffi::types::FfiSecretKeyAttributes, software::DefaultVault, Vault};
+use crate::{
+    error::*,
+    ffi::types::*,
+    software::DefaultVault,
+    Vault
+};
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
+use std::convert::TryInto;
 
 mod types;
 
@@ -83,7 +89,7 @@ pub extern "C" fn ockam_vault_random_bytes_generate(
                 VaultFailErrorKind::Random.into()
             }
         }
-        _ => VaultFailErrorKind::Random.into(),
+        _ => VaultFailErrorKind::InvalidContext.into(),
     }
 }
 
@@ -120,10 +126,10 @@ pub extern "C" fn ockam_vault_sha256(
                 }
                 ERROR_NONE
             } else {
-                VaultFailErrorKind::Random.into()
+                VaultFailErrorKind::Sha256.into()
             }
         }
-        _ => VaultFailErrorKind::Random.into(),
+        _ => VaultFailErrorKind::InvalidContext.into(),
     }
 }
 
@@ -143,8 +149,8 @@ pub extern "C" fn ockam_vault_secret_generate(
                 &mut err,
                 context.handle,
                 |vault| -> Result<SecretKeyHandle, VaultFailError> {
-                    let secret_context = vault.secret_generate(atts)?;
-                    Ok(secret_context.into_ffi_value())
+                    let ctx = vault.secret_generate(atts)?;
+                    Ok(ctx.into_ffi_value())
                 },
             );
             if err.get_code().is_success() {
@@ -154,7 +160,44 @@ pub extern "C" fn ockam_vault_secret_generate(
                 VaultFailErrorKind::SecretGenerate.into()
             }
         }
-        _ => VaultFailErrorKind::SecretGenerate.into(),
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
+/// Import a secret key with the specific handle and attributes
+#[no_mangle]
+pub extern "C" fn ockam_vault_secret_import(context: OckamVaultContext,
+                                            secret: &mut OckamSecret,
+                                            attributes: FfiSecretKeyAttributes,
+                                            input: *mut u8,
+                                            input_length: u32) -> VaultError {
+    let mut err = ExternError::success();
+    let atts = attributes.into();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let handle = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<SecretKeyHandle, VaultFailError> {
+                    let ffi_sk = FfiSecretKey {
+                        xtype: attributes.xtype,
+                        length: input_length,
+                        buffer: input
+                    };
+
+                    let sk: crate::SecretKey = ffi_sk.try_into()?;
+                    let ctx = vault.secret_import(&sk, atts)?;
+                    Ok(ctx.into_ffi_value())
+                },
+            );
+            if err.get_code().is_success() {
+                *secret = OckamSecret { attributes, handle };
+                ERROR_NONE
+            } else {
+                VaultFailErrorKind::SecretGenerate.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
     }
 }
 
