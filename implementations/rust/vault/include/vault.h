@@ -143,11 +143,26 @@ uint32_t ockam_vault_secret_import(ockam_vault_t                   vault,
  * @param   output_buffer_length[out] Amount of data placed in the output buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-uint32_t ockam_vault_secret_export(ockam_vault_t                     vault,
-                                   const ockam_vault_secret_t* const secret,
-                                   uint8_t*                          output_buffer,
-                                   size_t                            output_buffer_size,
-                                   size_t*                           output_buffer_length);
+uint32_t ockam_vault_secret_export(ockam_vault_t        vault,
+                                   ockam_vault_secret_t secret,
+                                   uint8_t*             output_buffer,
+                                   size_t               output_buffer_size,
+                                   size_t*              output_buffer_length);
+
+/**
+ * @brief   Retrieve the public key from an ockam vault secret.
+ * @param   vault[in]                 Vault object to use for exporting the public key
+ * @param   secret[in]                Ockam vault secret to export the public key for.
+ * @param   output_buffer[out]        Buffer to place the public key in.
+ * @param   output_buffer_size[in]    Size of the output buffer.
+ * @param   output_buffer_length[out] Amount of data placed in the output buffer.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_secret_publickey_get(ockam_vault_t        vault,
+                                          ockam_vault_secret_t secret,
+                                          uint8_t*             output_buffer,
+                                          size_t               output_buffer_size,
+                                          size_t*              output_buffer_length);
 
 /**
  * @brief   Deinitialize the specified ockam vault object

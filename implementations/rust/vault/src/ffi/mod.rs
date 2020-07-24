@@ -212,7 +212,7 @@ pub extern "C" fn ockam_vault_secret_import(
     }
 }
 
-/// Exprt a secret key with the specific handle to the output buffer
+/// Export a secret key with the specific handle to the output buffer
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_export(
     context: OckamVaultContext,
@@ -249,6 +249,49 @@ pub extern "C" fn ockam_vault_secret_export(
                 }
             } else {
                 VaultFailErrorKind::Export.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
+/// Get the public key from a secret key to the output buffer
+#[no_mangle]
+pub extern "C" fn ockam_vault_secret_publickey_get(
+    context: OckamVaultContext,
+    secret: OckamSecret,
+    output_buffer: &mut u8,
+    output_buffer_size: u32,
+    output_buffer_length: &mut u32,
+) -> VaultError {
+    *output_buffer_length = 0;
+    let mut err = ExternError::success();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let output = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<ByteBuffer, VaultFailError> {
+                    let id_str = secret.get_handle();
+                    let id = usize::from_str(&id_str)?;
+                    let ctx = SecretKeyContext::Memory(id);
+                    let key = vault.secret_public_key_get(ctx)?;
+                    Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
+                },
+            );
+            if err.get_code().is_success() {
+                let buffer = output.into_vec();
+                if output_buffer_size < buffer.len() as u32 {
+                    VaultFailErrorKind::PublicKey.into()
+                } else {
+                    *output_buffer_length = buffer.len() as u32;
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(buffer.as_ptr(), output_buffer, buffer.len());
+                    };
+                    ERROR_NONE
+                }
+            } else {
+                VaultFailErrorKind::PublicKey.into()
             }
         }
         _ => VaultFailErrorKind::InvalidContext.into(),
