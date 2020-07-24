@@ -1,100 +1,222 @@
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.apache.tools.ant.taskdefs.condition.Os
+
 // override the build directory
-buildDir = '.env'
+project.buildDir = '.env'
 
-// read the host project property
-ext.host = project.hasProperty('host') ? host : 'host'
-
-// read the target project property
-ext.target = project.hasProperty('target') ? target : 'host'
-
-// capture the number of processors available to the jvm
-ext.availableProcessors = Runtime.getRuntime().availableProcessors();
-
-// detect if the gradle is running on windows
-ext.isWindows = {
-  def familyWindows = org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS
-  return org.apache.tools.ant.taskdefs.condition.Os.isFamily(familyWindows)
-}()
-
-// adapt c cammand for windows
-def adapt(command) {
-  def adapted = ['cmd', '/c']
-  if(isWindows) {
-    adapted.addAll(command)
-  } else {
-    adapted = command
-  }
-  return adapted
+def sanitize(name) {
+  name.toLowerCase().replaceAll("\\W+", "_")
 }
 
-task build {
-  description 'Build the project.'
-  group project.name
+def hasDocker() {
+  try {
+    def process = 'docker'.execute()
+    process.waitForOrKill(200000)
+    process.exitValue() == 0
+  } catch(Exception ex) { false }
+}
 
-  def generator = project.hasProperty('generator') ? generator : 'Unix Makefiles'
+ext {
 
-  def mode = project.hasProperty('mode') ? mode : 'test'
-  def buildType = (mode == 'release') ? 'Release' : 'Debug'
-  def buildTestsing = (mode == 'test') ? 'ON' : 'OFF'
+  // read the mode project property
+  mode = project.hasProperty('mode') ? mode : 'test'
+  mode = mode.toLowerCase()
 
-  def targetDir = java.nio.file.Paths.get(buildDir.toString(), host, generator, target, buildType)
+  // read the dockerImage project property
+  host = project.hasProperty('dockerImage') ? dockerImage : 'gradle_host'
+  hostDir = Paths.get(buildDir.toString(), sanitize(host)).toString()
 
-  def otherCmakeOptions = project.hasProperty('cmakeOptions') ? cmakeOptions : ''
+  cmakeGenerator = project.hasProperty('cmakeGenerator') ? cmakeGenerator : 'Unix Makefiles'
+  cmakeGeneratorDir = Paths.get(hostDir, sanitize(cmakeGenerator)).toString()
 
-  // make sure the rust code is built before the actions in this task run.
-  // dependsOn gradle.includedBuild('rust').task(':build')
+  cmakeToolchainFile = project.hasProperty('cmakeToolchainFile') ? cmakeToolchainFile : 'default'
+  cmakeToolchainId = (cmakeToolchainFile == 'default') ? 'default' : cmakeToolchainFile.digest('SHA-256').take(10)
+  cmakeToolchainDir = Paths.get(cmakeGeneratorDir, sanitize(cmakeToolchainId)).toString()
 
-  // create the cmake binary directory
-  doLast { mkdir targetDir }
+  target = project.hasProperty('target') ? target : host
+  targetDir = Paths.get(cmakeToolchainDir, sanitize(target)).toString()
 
-  // generate the project build files
-  doLast {
-    exec {
-      commandLine adapt(['cmake'] <<
-        '--parallel' << availableProcessors <<
-        '-S' << '.' <<
-        '-B' << targetDir <<
-        "-DBUILD_TESTING=${buildTestsing}" <<
-        "-DCMAKE_BUILD_TYPE=${buildType}" <<
-        '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON' <<
-        '-G' << generator <<
-        otherCmakeOptions
-      )
+  cmakeBuildType = (mode == 'release') ? 'Release' : 'Debug'
+  cmakeBinaryDir = Paths.get(targetDir, sanitize(cmakeBuildType))
+  cmakeBinaryDirRelative = projectDir.toPath().relativize(cmakeBinaryDir)
+  cmakeBinaryDir = cmakeBinaryDir.toString()
+
+  cmakeBuildTesting = (mode == 'test') ? 'ON' : 'OFF'
+  cmakeOptions = project.hasProperty('otherCmakeOptions') ? cmakeOptions : ''
+
+  // capture the number of processors available to the jvm
+  availableProcessors = Runtime.getRuntime().availableProcessors();
+
+  isWindows = Os.isFamily(Os.FAMILY_WINDOWS)
+  useDocker = hasDocker() && !isWindows && (host != 'gradle_host')
+
+}
+
+def defineTasks() {
+  def buildDeps = []
+  def cleanDeps = []
+
+  def commandPrefix = isWindows ? ['cmd', '/c'] : []
+
+  task createCmakeBinaryDir { doLast { mkdir cmakeBinaryDir } }
+  buildDeps = buildDeps << createCmakeBinaryDir
+
+  if(useDocker) {
+    def dockerFile = Paths.get(hostDir, 'Dockerfile')
+    def dockerEntrypoint = Paths.get(hostDir, 'entrypoint.sh')
+    def imageCreatedFlag = Paths.get(hostDir, 'docker_image_created.flag')
+    def dockerImageName = "${buildDir.toString().digest('SHA-256').take(10)}_${hostDir.digest('SHA-256').take(10)}"
+
+    task createDockerEntrypoint {
+      dependsOn createCmakeBinaryDir
+      onlyIf { !file(dockerEntrypoint).exists() }
+      doLast {
+        file(dockerEntrypoint).write '''\
+          #!/bin/bash
+
+          USER_ID=${LOCAL_USER_ID:-9001}
+
+          useradd --shell /bin/bash -u $USER_ID -o -c "" -m builder
+          export HOME=/home/builder
+
+          exec gosu builder "$@"'''.stripIndent()
+      }
     }
-  }
 
-  doLast {
-    exec {
-      def command = ['cmake'] << '--build' << targetDir
+    task createDockerFile {
+      def content = ''
 
-      if(generator == 'Unix Makefiles') {
-        command << '--' << "-j${availableProcessors}"
+      if(host.startsWith('dockcross')) {
+        dependsOn createDockerEntrypoint
+        content = """\
+          FROM ${host}
+          COPY entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+          RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+          WORKDIR /work
+          ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]""".stripIndent()
+      } else {
+        dependsOn createCmakeBinaryDir
+        content = """\
+          FROM ${host}
+          WORKDIR /work
+        """.stripIndent()
       }
 
-      commandLine adapt(command)
+      onlyIf { !file(dockerFile).exists() }
+      doLast {
+        file(dockerFile).write content
+      }
+    }
+
+    task buildDockerImage {
+      def command = []
+      command.addAll(commandPrefix)
+      command.addAll(['docker', 'build', '-t', dockerImageName, '.'])
+
+      dependsOn createDockerFile
+      onlyIf { !file(imageCreatedFlag).exists() }
+      doLast {
+        exec {
+          workingDir hostDir
+          commandLine command
+        }
+        file(imageCreatedFlag).write dockerImageName
+      }
+    }
+
+
+    def uid = ["id", "-u"].execute().text.trim()
+    commandPrefix.addAll([
+      'docker', 'run',
+      '-e', "LOCAL_USER_ID=${uid}",
+      '--workdir', '/work/implementations/c', // this is brittle
+      '--rm',
+      '--volume', "${projectDir}/../..:/work",
+      dockerImageName
+    ])
+
+    buildDeps = buildDeps << buildDockerImage
+
+    task run {
+      def command = []
+      command.addAll(commandPrefix)
+      command.addAll(2, ['-it'])
+      command.addAll(['sh'])
+
+      dependsOn buildDeps
+      doLast {
+        println command.join(' ')
+      }
+    }
+  }
+
+  task generate {
+    def cmakeCache = Paths.get(cmakeBinaryDir.toString(), 'CMakeCache.txt')
+    def command = []
+
+    command.addAll(commandPrefix)
+    command.addAll([
+      'cmake',
+      '--parallel', availableProcessors,
+      '-S', '.',
+      '-B', cmakeBinaryDirRelative,
+      "-DBUILD_TESTING=${cmakeBuildTesting}",
+      "-DCMAKE_BUILD_TYPE=${cmakeBuildType}",
+      '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
+      '-G', cmakeGenerator,
+      cmakeOptions
+    ])
+
+    dependsOn buildDeps
+    onlyIf { !file(cmakeCache).exists() }
+    doLast {
+      exec {
+        commandLine command
+      }
+    }
+  }
+
+  task build {
+    description 'Build the project.'
+    group project.name
+
+    def command = []
+    command.addAll(commandPrefix)
+    command.addAll(['cmake', '--build', cmakeBinaryDirRelative])
+    if(cmakeGenerator == 'Unix Makefiles') {
+      command.addAll(['--', "-j${availableProcessors}"])
+    }
+
+    dependsOn generate
+    doLast {
+      exec {
+        commandLine command
+      }
+    }
+  }
+
+  task test {
+    description 'Test the project.'
+    group project.name
+
+    def command = []
+    command.addAll(commandPrefix)
+    command.addAll(['sh', '-c', "cd ${cmakeBinaryDirRelative} && ctest --verbose"])
+
+    doLast {
+      exec {
+        commandLine command
+      }
+    }
+  }
+
+  task clean {
+    doLast {
+      delete buildDir
     }
   }
 }
 
-task test {
-  description 'Test the project.'
-  group project.name
-
-  def generator = project.hasProperty('generator') ? generator : 'Unix Makefiles'
-  def mode = 'test'
-  def buildType = 'Debug'
-
-  def targetDir = java.nio.file.Paths.get(buildDir.toString(), host, generator, target, buildType)
-
-  doLast {
-    exec {
-      workingDir targetDir
-      commandLine adapt(["ctest"] << "-V")
-    }
-  }
-}
-
-task clean {
-  doLast { delete buildDir }
-}
+defineTasks()
