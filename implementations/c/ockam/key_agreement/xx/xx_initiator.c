@@ -168,7 +168,7 @@ ockam_error_t xx_initiator_m3_make(key_establishment_xx* xx, uint8_t* p_msg, siz
   ockam_error_t error = OCKAM_ERROR_NONE;
   uint8_t       cipher_and_tag[KEY_SIZE + TAG_SIZE];
   size_t        cipher_and_tag_length = 0;
-  u_int16_t     offset                = 0;
+  uint16_t      offset                = 0;
   uint8_t       vector[VECTOR_SIZE];
 
   // 1. c = ENCRYPT(k, n++, h, s.PublicKey)
