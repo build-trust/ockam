@@ -13,13 +13,14 @@ jobs:
     steps:
       - name: "CLA Check"
         uses: ockam-network/cla-action@master
-        env: 
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PERSISTANCE_GITHUB_TOKEN: ${{ secrets.PERSISTANCE_GITHUB_TOKEN }}
-        with: 
+        with:
           path-to-signatures: 'cla-signers.json'
           path-to-cla-document: 'https://www.ockam.io/learn/guides/contributions/cla'
           branch: 'master'
+          whitelist: malnick,rkaiser0324,carlosflrs,robinbudd,Mark Mulrooney
           persistance-repository: 'contributors'
           empty-commit-flag: false
           blockchain-storage-flag: false
