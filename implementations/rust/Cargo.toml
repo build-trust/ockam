@@ -8,4 +8,5 @@ members = [
 exclude = [
   "crates/ockam-vault-sys",
   "crates/ockam",
+  "crates/message",
 ]
