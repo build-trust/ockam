@@ -298,6 +298,34 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
     }
 }
 
+/// Retrieve the attributes for a specified secret
+#[no_mangle]
+pub extern "C" fn ockam_vault_secret_attributes_get(context: OckamVaultContext,
+                                                    secret: OckamSecret,
+                                                    attributes: &mut FfiSecretKeyAttributes) -> VaultError {
+    let mut err = ExternError::success();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let output = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<FfiSecretKeyAttributes, VaultFailError> {
+                    let ctx = get_memory_id(secret)?;
+                    let atts = vault.secret_attributes_get(ctx)?;
+                    Ok(atts.into())
+                },
+            );
+            if err.get_code().is_success() {
+                *attributes = output;
+                ERROR_NONE
+            } else {
+                VaultFailErrorKind::GetAttributes.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
 /// Deinitialize an Ockam vault
 #[no_mangle]
 pub extern "C" fn ockam_vault_deinit(context: OckamVaultContext) -> VaultError {
@@ -314,3 +342,9 @@ pub extern "C" fn ockam_vault_deinit(context: OckamVaultContext) -> VaultError {
 }
 
 define_string_destructor!(string_free);
+
+fn get_memory_id(secret: OckamSecret) -> Result<SecretKeyContext, VaultFailError> {
+    let id_str = secret.get_handle();
+    let id = usize::from_str(&id_str)?;
+    Ok(SecretKeyContext::Memory(id))
+}

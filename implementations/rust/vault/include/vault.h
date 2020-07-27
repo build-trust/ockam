@@ -165,6 +165,16 @@ uint32_t ockam_vault_secret_publickey_get(ockam_vault_t        vault,
                                           size_t*              output_buffer_length);
 
 /**
+ * @brief   Retrieve the attributes for a specified secret
+ * @param   vault[in]               Vault object to use for retrieving ockam vault secret attributes.
+ * @param   secret[in]              Ockam vault secret to get attributes for.
+ * @param   secret_attributes[out]  Pointer to the attributes for the specified secret.
+ */
+ockam_error_t ockam_vault_secret_attributes_get(ockam_vault_t                    vault,
+                                                ockam_vault_secret_t             secret,
+                                                ockam_vault_secret_attributes_t* attributes);
+
+/**
  * @brief   Deinitialize the specified ockam vault object
  * @param   vault[in] The ockam vault object to deinitialize.
  * @return  OCKAM_ERROR_NONE on success.
