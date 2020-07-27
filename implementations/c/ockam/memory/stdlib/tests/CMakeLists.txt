@@ -18,8 +18,7 @@ target_link_libraries(
   PRIVATE
     ockam::log
     ockam::memory_stdlib
-  PUBLIC
-    cmocka
+    cmocka-static
 )
 
 add_test(memory_compare_test memory_compare_test)

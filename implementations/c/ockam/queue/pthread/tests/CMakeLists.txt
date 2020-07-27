@@ -16,7 +16,7 @@ add_executable(queue_test queue_test.c)
 target_link_libraries(
   queue_test
   PRIVATE
-    cmocka
+    cmocka-static
     ockam::log
     ockam::memory_stdlib
     ockam::queue_pthread

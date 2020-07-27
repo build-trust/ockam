@@ -27,7 +27,7 @@ add_executable(codec_tests
 target_link_libraries(
   codec_tests
   PRIVATE
-    cmocka
+	cmocka-static
     ockam::log
     ockam::codec
 )
