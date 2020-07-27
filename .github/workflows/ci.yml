@@ -18,10 +18,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - id: Build
+      - id: Build_windows
+        if: startsWith(matrix.os, 'windows')
+        run: ../../gradlew build -PcmakeGenerator="Unix Makefiles"
+        working-directory: implementations/c
+
+      - id: Build_not_windows
+        if: "!startsWith(matrix.os, 'windows')"
         run: ../../gradlew build
         working-directory: implementations/c
 
-      - id: Test
+      - id: Test_windows
+        if: startsWith(matrix.os, 'windows')
+        run: ../../gradlew test -PcmakeGenerator="Unix Makefiles"
+        working-directory: implementations/c
+
+      - id: Test_not_windows
+        if: "!startsWith(matrix.os, 'windows')"
         run: ../../gradlew test
         working-directory: implementations/c
