@@ -55,18 +55,6 @@ typedef enum {
  * @brief   Attributes for a specific ockam vault secret.
  */
 typedef struct {
-    uint16_t                         length;
-    ockam_vault_secret_type_t        type;
-    ockam_vault_secret_purpose_t     purpose;
-    ockam_vault_secret_persistence_t persistence;
-} ockam_vault_secret_attributes_t;
-
-
-/**
- * @struct  ockam_vault_secret_attributes_t
- * @brief   Attributes for a specific ockam vault secret.
- */
-typedef struct {
     ockam_vault_secret_type_t        type;
     ockam_vault_secret_purpose_t     purpose;
     ockam_vault_secret_persistence_t persistence;
@@ -170,9 +158,9 @@ uint32_t ockam_vault_secret_publickey_get(ockam_vault_t        vault,
  * @param   secret[in]              Ockam vault secret to get attributes for.
  * @param   secret_attributes[out]  Pointer to the attributes for the specified secret.
  */
-ockam_error_t ockam_vault_secret_attributes_get(ockam_vault_t                    vault,
-                                                ockam_vault_secret_t             secret,
-                                                ockam_vault_secret_attributes_t* attributes);
+uint32_t ockam_vault_secret_attributes_get(ockam_vault_t                    vault,
+                                           ockam_vault_secret_t             secret,
+                                           ockam_vault_secret_attributes_t* attributes);
 
 /**
  * @brief   Deinitialize the specified ockam vault object
