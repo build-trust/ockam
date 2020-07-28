@@ -1,18 +1,10 @@
 
-ext.host = project.hasProperty('host') ? host : 'gradleHost'
-ext.target = project.hasProperty('target') ? target : 'gradleHost'
-ext.mode = project.hasProperty('mode') ? mode : 'dev'
-
-task lint {
-  dependsOn gradle.includedBuilds*.task(':lint')
-}
-
 task build {
-  dependsOn lint, gradle.includedBuilds*.task(':build')
+  dependsOn gradle.includedBuilds*.task(':build')
 }
 
 task test {
-  dependsOn lint, gradle.includedBuilds*.task(':test')
+  dependsOn gradle.includedBuilds*.task(':test')
 }
 
 task clean {
