@@ -163,6 +163,80 @@ uint32_t ockam_vault_secret_attributes_get(ockam_vault_t                    vaul
                                            ockam_vault_secret_attributes_t* attributes);
 
 /**
+ * @brief   Delete an ockam vault secret.
+ * @param   vault[in]   Vault object to use for deleting the ockam vault secret.
+ * @param   secret[in]  Ockam vault secret to delete.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam_vault_secret_t secret);
+
+/**
+* @brief   Perform an ECDH operation on the supplied ockam vault secret and peer_publickey. The result is another
+*          ockam vault secret of type unknown.
+* @param   vault[in]                 Vault object to use for encryption.
+* @param   privatekey[in]            The ockam vault secret to use for the private key of ECDH.
+* @param   peer_publickey[in]        Public key data to use for ECDH.
+* @param   peer_publickey_length[in] Length of the public key.
+* @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
+* @return  OCKAM_ERROR_NONE on success.
+*/
+uint32_t ockam_vault_ecdh(ockam_vault_t*        vault,
+                          ockam_vault_secret_t  privatekey,
+                          const uint8_t* const  peer_publickey,
+                          size_t                peer_publickey_length,
+                          ockam_vault_secret_t* shared_secret);
+
+/**
+ * @brief   Encrypt a payload using AES-GCM.
+ * @param   vault[in]                       Vault object to use for encryption.
+ * @param   key[in]                         Ockam secret key to use for encryption.
+ * @param   nonce[in]                       Nonce value to use for encryption.
+ * @param   additional_data[in]             Additional data to use for encryption.
+ * @param   additional_data_length[in]      Length of the additional data.
+ * @param   plaintext[in]                   Buffer containing plaintext data to encrypt.
+ * @param   plaintext_length[in]            Length of plaintext data to encrypt.
+ * @param   ciphertext_and_tag[in]          Buffer containing the generated ciphertext and tag data.
+ * @param   ciphertext_and_tag_size[in]     Size of the ciphertext + tag buffer. Must be plaintext_size + 16.
+ * @param   ciphertext_and_tag_length[out]  Amount of data placed in the ciphertext + tag buffer.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t        vault,
+                                          ockam_vault_secret_t key,
+                                          uint16_t              nonce,
+                                          const uint8_t* const  additional_data,
+                                          size_t                additional_data_length,
+                                          const uint8_t* const  plaintext,
+                                          size_t                plaintext_length,
+                                          uint8_t*              ciphertext_and_tag,
+                                          size_t                ciphertext_and_tag_size,
+                                          size_t*               ciphertext_and_tag_length);
+
+/**
+ * @brief   Decrypt a payload using AES-GCM.
+ * @param   vault[in]                     Vault object to use for decryption.
+ * @param   key[in]                       Ockam secret key to use for decryption.
+ * @param   nonce[in]                     Nonce value to use for decryption.
+ * @param   additional_data[in]           Additional data to use for decryption.
+ * @param   additional_data_length[in]    Length of the additional data.
+ * @param   ciphertext_and_tag[in]        The ciphertext + tag data to decrypt.
+ * @param   ciphertext_and_tag_length[in] Length of the ciphertext + tag data to decrypt.
+ * @param   plaintext[out]                Buffer to place the decrypted data in.
+ * @param   plaintext_size[in]            Size of the plaintext buffer. Must be ciphertext_tag_size - 16.
+ * @param   plaintext_length[out]         Amount of data placed in the plaintext buffer.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uin32_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t        vault,
+                                         ockam_vault_secret_t key,
+                                         uint16_t              nonce,
+                                         const uint8_t* const  additional_data,
+                                         size_t                additional_data_length,
+                                         const uint8_t* const  ciphertext_and_tag,
+                                         size_t                ciphertext_and_tag_length,
+                                         uint8_t*              plaintext,
+                                         size_t                plaintext_size,
+                                         size_t*               plaintext_length);
+
+/**
  * @brief   Deinitialize the specified ockam vault object
  * @param   vault[in] The ockam vault object to deinitialize.
  * @return  OCKAM_ERROR_NONE on success.

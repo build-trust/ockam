@@ -1,5 +1,11 @@
-use crate::types::SecretKeyContext;
-use crate::{error::*, ffi::types::*, software::DefaultVault, Vault};
+use crate::types::{PublicKey, SecretKeyContext};
+use crate::{
+    error::*,
+    ffi::types::*,
+    software::DefaultVault,
+    types::{SecretKeyType, SecretPersistenceType, SecretPurposeType},
+    Vault,
+};
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
 use std::{convert::TryInto, ffi::CStr, str::FromStr};
 
@@ -300,9 +306,11 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
 
 /// Retrieve the attributes for a specified secret
 #[no_mangle]
-pub extern "C" fn ockam_vault_secret_attributes_get(context: OckamVaultContext,
-                                                    secret: OckamSecret,
-                                                    attributes: &mut FfiSecretKeyAttributes) -> VaultError {
+pub extern "C" fn ockam_vault_secret_attributes_get(
+    context: OckamVaultContext,
+    secret: OckamSecret,
+    attributes: &mut FfiSecretKeyAttributes,
+) -> VaultError {
     let mut err = ExternError::success();
     match context.vault_id {
         DEFAULT_VAULT_ID => {
@@ -325,6 +333,190 @@ pub extern "C" fn ockam_vault_secret_attributes_get(context: OckamVaultContext,
         _ => VaultFailErrorKind::InvalidContext.into(),
     }
 }
+
+/// Delete an ockam vault secret.
+#[no_mangle]
+pub extern "C" fn ockam_vault_secret_destroy(
+    context: OckamVaultContext,
+    secret: OckamSecret,
+) -> VaultError {
+    let mut err = ExternError::success();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<(), VaultFailError> {
+                    let ctx = get_memory_id(secret)?;
+                    vault.secret_destroy(ctx)?;
+                    Ok(())
+                },
+            );
+            if err.get_code().is_success() {
+                ERROR_NONE
+            } else {
+                VaultFailErrorKind::GetAttributes.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
+/// Perform an ECDH operation on the supplied ockam vault secret and peer_publickey. The result is
+/// another ockam vault secret of type unknown.
+#[no_mangle]
+pub extern "C" fn ockam_vault_ecdh(
+    context: OckamVaultContext,
+    secret: OckamSecret,
+    peer_publickey: *const u8,
+    peer_publickey_length: u32,
+    shared_secret: &mut OckamSecret,
+) -> VaultError {
+    check_buffer!(peer_publickey, peer_publickey_length);
+    let mut err = ExternError::success();
+    let peer_publickey =
+        unsafe { std::slice::from_raw_parts(peer_publickey, peer_publickey_length as usize) };
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let handle = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<SecretKeyHandle, VaultFailError> {
+                    let ctx = get_memory_id(secret)?;
+                    let atts = vault.secret_attributes_get(ctx)?;
+                    let pubkey = match atts.xtype {
+                        SecretKeyType::Curve25519 => {
+                            if peer_publickey.len() != 32 {
+                                Err(VaultFailErrorKind::Ecdh.into())
+                            } else {
+                                Ok(PublicKey::Curve25519(*array_ref![peer_publickey, 0, 32]))
+                            }
+                        }
+                        SecretKeyType::P256 => {
+                            if peer_publickey.len() != 65 {
+                                Err(VaultFailErrorKind::Ecdh.into())
+                            } else {
+                                Ok(PublicKey::P256(*array_ref![peer_publickey, 0, 65]))
+                            }
+                        }
+                        _ => Err(VaultFailError::from(VaultFailErrorKind::Ecdh)),
+                    }?;
+                    let shared_ctx = vault.ec_diffie_hellman(ctx, pubkey)?;
+                    Ok(shared_ctx.into_ffi_value())
+                },
+            );
+            if err.get_code().is_success() {
+                let attributes = FfiSecretKeyAttributes {
+                    xtype: SecretKeyType::Buffer(0).to_usize() as u32,
+                    purpose: SecretPurposeType::KeyAgreement.to_usize() as u32,
+                    persistence: SecretPersistenceType::Ephemeral.to_usize() as u32
+                };
+                *shared_secret = OckamSecret { attributes, handle };
+                ERROR_NONE
+            } else {
+                VaultFailErrorKind::Ecdh.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
+
+///   Encrypt a payload using AES-GCM.
+#[no_mangle]
+pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(context: OckamVaultContext,
+                                                   secret: OckamSecret,
+                                                   nonce: u16,
+                                                   additional_data: *const u8,
+                                                   additional_data_length: u32,
+                                                   plaintext: *const u8,
+                                                   plaintext_length: u32,
+                                                   ciphertext_and_tag: &mut u8,
+                                                   ciphertext_and_tag_size: u32,
+                                                   ciphertext_and_tag_length: &mut u32) -> VaultError {
+    check_buffer!(additional_data, additional_data_length);
+    check_buffer!(plaintext, plaintext_length);
+    *ciphertext_and_tag_length = 0;
+    let mut err = ExternError::success();
+    let additional_data = unsafe { std::slice::from_raw_parts(additional_data, additional_data_length as usize) };
+    let plaintext = unsafe { std::slice::from_raw_parts(plaintext, plaintext_length as usize) };
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let output = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<ByteBuffer, VaultFailError> {
+                    let ctx = get_memory_id(secret)?;
+                    let ciphertext = vault.aead_aes_gcm_encrypt(ctx, plaintext, nonce.to_be_bytes().as_ref(), additional_data)?;
+                    Ok(ByteBuffer::from_vec(ciphertext))
+                },
+            );
+            if err.get_code().is_success() {
+                let buffer = output.into_vec();
+                if ciphertext_and_tag_size < buffer.len() as u32 {
+                    VaultFailErrorKind::AeadAesGcmEncrypt.into()
+                } else {
+                    *ciphertext_and_tag_length = buffer.len() as u32;
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(buffer.as_ptr(), ciphertext_and_tag, buffer.len())
+                    };
+                    ERROR_NONE
+                }
+            } else {
+                VaultFailErrorKind::AeadAesGcmEncrypt.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
+/// Decrypt a payload using AES-GCM.
+pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(context: OckamVaultContext,
+                                                   secret: OckamSecret,
+                                                   nonce: u16,
+                                                   additional_data: *const u8,
+                                                   additional_data_length: u32,
+                                                   ciphertext_and_tag: *const u8,
+                                                   ciphertext_and_tag_length: u32,
+                                                   plaintext: &mut u8,
+                                                   plaintext_size: u32,
+                                                   plaintext_length: &mut u32) -> VaultError {
+    check_buffer!(additional_data, additional_data_length);
+    check_buffer!(ciphertext_and_tag, plaintext_size);
+    *plaintext_length = 0;
+    let mut err = ExternError::success();
+    let additional_data = unsafe { std::slice::from_raw_parts(additional_data, additional_data_length as usize) };
+    let ciphertext_and_tag = unsafe { std::slice::from_raw_parts(ciphertext_and_tag, ciphertext_and_tag_length as usize) };
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let output = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<ByteBuffer, VaultFailError> {
+                    let ctx = get_memory_id(secret)?;
+                    let plain = vault.aead_aes_gcm_decrypt(ctx, ciphertext_and_tag, nonce.to_be_bytes().as_ref(), additional_data)?;
+                    Ok(ByteBuffer::from_vec(plain))
+                },
+            );
+            if err.get_code().is_success() {
+                let buffer = output.into_vec();
+                if plaintext_size < buffer.len() as u32 {
+                    VaultFailErrorKind::AeadAesGcmDecrypt.into()
+                } else {
+                    *plaintext_length = buffer.len() as u32;
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(buffer.as_ptr(), plaintext, buffer.len())
+                    };
+                    ERROR_NONE
+                }
+            } else {
+                VaultFailErrorKind::AeadAesGcmDecrypt.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
+
 
 /// Deinitialize an Ockam vault
 #[no_mangle]

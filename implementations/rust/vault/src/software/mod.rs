@@ -242,10 +242,10 @@ impl Vault for DefaultVault {
         &mut self,
         context: SecretKeyContext,
         peer_public_key: PublicKey,
-    ) -> Result<Vec<u8>, VaultFailError> {
+    ) -> Result<SecretKeyContext, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
 
-        match (&entry.key, peer_public_key) {
+        let value = match (&entry.key, peer_public_key) {
             (SecretKey::Curve25519(a), PublicKey::Curve25519(b)) => {
                 let sk = x25519_dalek::StaticSecret::from(*a);
                 let pk_t = x25519_dalek::PublicKey::from(b);
@@ -273,14 +273,24 @@ impl Vault for DefaultVault {
                 // Throw away the compressed indicator byte
                 Ok(result.as_ref()[1..].to_vec())
             }
-            (_, _) => Err(VaultFailErrorKind::Ecdh.into()),
-        }
+            (_, _) => Err(VaultFailError::from_msg(
+                VaultFailErrorKind::Ecdh,
+                "Unknown key type",
+            )),
+        }?;
+        let attributes = SecretKeyAttributes {
+            xtype: SecretKeyType::Buffer(value.len()),
+            purpose: SecretPurposeType::KeyAgreement,
+            persistence: SecretPersistenceType::Ephemeral,
+        };
+        let secret = SecretKey::Buffer(value);
+        self.secret_import(&secret, attributes)
     }
 
-    fn hkdf_sha256<B: AsRef<[u8]>>(
+    fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
         &self,
         salt: B,
-        ikm: B,
+        ikm: C,
         okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError> {
         let mut okm = vec![0u8; okm_len];
@@ -289,12 +299,12 @@ impl Vault for DefaultVault {
         Ok(okm)
     }
 
-    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>>(
+    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
         &self,
         context: SecretKeyContext,
         plaintext: B,
-        nonce: B,
-        aad: B,
+        nonce: C,
+        aad: D,
     ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmEncrypt)?;
         encrypt_impl!(
@@ -307,12 +317,12 @@ impl Vault for DefaultVault {
         )
     }
 
-    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>>(
+    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
         &self,
         context: SecretKeyContext,
         cipher_text: B,
-        nonce: B,
-        aad: B,
+        nonce: C,
+        aad: D,
     ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmDecrypt)?;
         encrypt_impl!(

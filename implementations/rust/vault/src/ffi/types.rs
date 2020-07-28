@@ -1,7 +1,7 @@
 use crate::error::VaultFailError;
 use crate::types::*;
-use std::convert::{TryFrom, TryInto};
 use ffi_support::IntoFfi;
+use std::convert::{TryFrom, TryInto};
 
 #[repr(C)]
 pub struct FfiSecretKey {
@@ -111,7 +111,7 @@ unsafe impl IntoFfi for FfiSecretKeyAttributes {
         Self {
             xtype: 0,
             persistence: 0,
-            purpose: 0
+            purpose: 0,
         }
     }
 
