@@ -81,22 +81,21 @@ pub mod message {
     Udp = 2,
   }
 
-  #[derive(PartialEq)]
-  #[derive(Debug)]
+  #[derive(Debug,PartialEq)]
   pub struct LocalAddress {
     pub length: u8,
     pub address: Vec<u8>,
   }
 
-  #[derive(PartialEq)]
-  #[derive(Debug)]
+  // ToDo: implement Copy, Clone
+  #[derive(Debug,PartialEq)]
   pub enum Address {
     LocalAddress(LocalAddress),
     TcpAddress(IpAddr, u16),
     UdpAddress(IpAddr, u16),
   }
 
-  enum HostAddressType {
+  pub enum HostAddressType {
     Ipv4 = 0,
     Ipv6 = 1,
   }
@@ -200,8 +199,7 @@ pub mod message {
   }
 
   /* Routes */
-  #[derive(PartialEq)]
-  #[derive(Debug)]
+  #[derive(PartialEq, Debug)]
   pub struct Route {
     pub addresses: Vec<Address>,
   }
@@ -236,6 +234,7 @@ pub mod message {
     }
   }
 
+  // ToDo: Implement PartialEq, Eq, Copy, Clone
   #[derive(Debug)]
   pub enum MessageBody {
     Ping = 0,
@@ -277,7 +276,6 @@ pub mod message {
     }
   }
 
-  #[allow(arithmetic_overflow)]
   impl Codec<u16> for u16 {
     fn encode(ul2: &mut u16,  u: &mut Vec<u8>) {
       if ul2 >= &mut 0xC000 { panic!() }
@@ -294,7 +292,6 @@ pub mod message {
       }
     }
 
-    #[allow(arithmetic_overflow)]
     fn decode(u: &[u8]) -> Result<(u16, &[u8]), String> {
       let mut bytes = [0,0];
       let mut ul2: u16 = 0;
