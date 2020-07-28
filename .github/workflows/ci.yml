@@ -4,36 +4,22 @@ on: [push, pull_request]
 jobs:
   build:
     name: Build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, macos-10.15, windows-2019]
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Setup java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@1253a7eed45cc6191dc4bd9cacd3542878479569 # v1.4.0
         with:
           java-version: 8
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@28c7f3d2b5162b5ddd3dfd9a45aa55eaf396478b # v2.3.1
 
-      - id: Build_windows
-        if: startsWith(matrix.os, 'windows')
-        run: ../../gradlew build -PcmakeGenerator="Unix Makefiles"
-        working-directory: implementations/c
+      - id: Build
+        run: ./gradlew build
 
-      - id: Build_not_windows
-        if: "!startsWith(matrix.os, 'windows')"
-        run: ../../gradlew build
-        working-directory: implementations/c
+      - id: Test
+        run: ./gradlew test
 
-      - id: Test_windows
-        if: startsWith(matrix.os, 'windows')
-        run: ../../gradlew test -PcmakeGenerator="Unix Makefiles"
-        working-directory: implementations/c
-
-      - id: Test_not_windows
-        if: "!startsWith(matrix.os, 'windows')"
-        run: ../../gradlew test
-        working-directory: implementations/c
+      - id: Clean
+        run: ./gradlew clean
