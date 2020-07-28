@@ -1,7 +1,8 @@
 [workspace]
 
 members = [
-    "vault"
+    "vault",
+    "message",
 ]
 
 exclude = [
