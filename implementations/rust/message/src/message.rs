@@ -276,6 +276,10 @@ pub mod message {
     }
   }
 
+  // u16's are encoded as variable-length.
+  // - If the value is < 0x80, it is encoded as-is, in one byte
+  // - If the value is <= 0x80, the highest-order of the low-order byte is moved to the lowest-order
+  //   bit in the high-order byte, and the high-order byte is shifted left by one to make room.
   impl Codec<u16> for u16 {
     fn encode(ul2: &mut u16,  u: &mut Vec<u8>) {
       if ul2 >= &mut 0xC000 { panic!() }
