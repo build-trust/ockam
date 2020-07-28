@@ -4,7 +4,7 @@
 
 #include "ockam/error.h"
 #include "ockam/memory.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/transport.h"
 #include "tools.h"
 #include "client.h"

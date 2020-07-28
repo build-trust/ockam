@@ -2,14 +2,14 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "../../xx/xx_local.h"
 #include "ockam/error.h"
-#include "key_agreement/xx/xx.h"
-#include "key_agreement/key_impl.h"
+#include "ockam/key_agreement/xx.h"
+#include "ockam/key_agreement/xx_local.h"
 #include "ockam/key_agreement.h"
 #include "ockam/memory.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/transport.h"
+#include "ockam/transport/socket_tcp.h"
 #include "ockam/vault.h"
 #include "xx_test.h"
 

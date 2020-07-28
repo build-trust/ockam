@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <ockam/memory.h>
-#include <memory/impl.h>
+#include <ockam/memory/impl.h>
 #include "runner.h"
 
 #define FIXTURE_PATH_MAX_LEN  192

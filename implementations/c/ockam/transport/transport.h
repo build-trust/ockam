@@ -50,9 +50,4 @@ typedef struct ockam_transport_socket_attributes {
   ockam_memory_t*    p_memory;
 } ockam_transport_socket_attributes_t;
 
-ockam_error_t ockam_transport_socket_udp_init(ockam_transport_t*                   p_transport,
-                                              ockam_transport_socket_attributes_t* p_cfg);
-
-ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t* transport, ockam_transport_socket_attributes_t* attrs);
-
 #endif

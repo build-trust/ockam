@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <string.h>
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/error.h"
 #include "ockam/codec.h"
 

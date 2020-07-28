@@ -6,10 +6,12 @@
 #include "ockam/error.h"
 #include "ockam/key_agreement.h"
 #include "ockam/memory.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/transport.h"
+#include "ockam/transport/socket_tcp.h"
 #include "ockam/vault.h"
 #include "ockam/channel.h"
+#include "ockam/channel/channel_impl.h"
 #include "channel_test.h"
 
 ockam_error_t establish_responder_transport(ockam_transport_t*  p_transport,

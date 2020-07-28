@@ -57,6 +57,9 @@ else()
   include(FetchContent)
 endif()
 
+option(OCKAM_ENABLE_ATECC608A_BUILD "Enables build for atecc608a vault" ON)
+option(OCKAM_ENABLE_ATECC608A_TESTS "Enables tests for atecc608a vault" OFF)
+
 # add external dependencies
 add_subdirectory(external)
 

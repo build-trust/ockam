@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ockam/queue.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/memory.h"
 #include "ockam/memory/stdlib.h"
 

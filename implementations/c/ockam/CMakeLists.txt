@@ -1,7 +1,7 @@
-
 add_subdirectory(error)
 
 add_subdirectory(log)
+add_subdirectory(log/log)
 
 add_subdirectory(memory)
 add_subdirectory(memory/stdlib)
@@ -19,10 +19,14 @@ add_subdirectory(mutex/pthread)
 
 add_subdirectory(vault)
 add_subdirectory(vault/default)
-# add_subdirectory(vault/atecc608a)
-# add_subdirectory(vault/atecc508a)
+
+if (OCKAM_ENABLE_ATECC608A_BUILD)
+    add_subdirectory(vault/atecc608a)
+    # add_subdirectory(vault/atecc508a)
+endif()
 
 add_subdirectory(transport)
+add_subdirectory(transport/posix_socket)
 
 add_subdirectory(key_agreement)
 add_subdirectory(key_agreement/xx)

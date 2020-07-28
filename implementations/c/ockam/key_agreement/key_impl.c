@@ -1,5 +1,5 @@
 #include "ockam/error.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/key_agreement.h"
 #include "ockam/key_agreement/impl.h"
 #include "ockam/memory.h"

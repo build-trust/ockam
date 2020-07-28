@@ -14,8 +14,8 @@
 #include "ockam/vault.h"
 #include "ockam/memory.h"
 
-#include "memory/stdlib/stdlib.h"
-#include "vault/atecc608a/atecc608a.h"
+#include "ockam/memory/stdlib.h"
+#include "ockam/vault/atecc608a.h"
 
 #include "cryptoauthlib.h"
 #include "atca_cfgs.h"

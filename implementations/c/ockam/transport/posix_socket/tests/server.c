@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/io.h"
 #include "ockam/transport.h"
+#include "ockam/transport/socket_tcp.h"
+#include "ockam/transport/socket_udp.h"
 #include "ockam/memory.h"
 #include "server.h"
 

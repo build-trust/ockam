@@ -1,8 +1,10 @@
 #ifndef CHANNEL_IMPL_H
 #define CHANNEL_IMPL_H
 
+#include "ockam/io.h"
+#include "ockam/vault.h"
 #include "ockam/memory.h"
-#include "ockam/key_agreement.h"
+#include "ockam/key_agreement/impl.h"
 
 #define MAX_CHANNEL_PACKET_SIZE 0x7fffu
 

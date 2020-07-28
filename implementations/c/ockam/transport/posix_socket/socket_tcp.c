@@ -4,11 +4,11 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/io.h"
-#include "io/io_impl.h"
+#include "ockam/io/impl.h"
 #include "ockam/transport.h"
-#include "transport/transport_impl.h"
+#include "ockam/transport/impl.h"
 #include "socket.h"
 #include "socket_tcp.h"
 #include "ockam/memory.h"

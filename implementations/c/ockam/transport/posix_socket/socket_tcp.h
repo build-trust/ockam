@@ -3,7 +3,10 @@
 
 #include <stdio.h>
 #include "ockam/io.h"
-#include "../transport_impl.h"
+#include "ockam/transport.h"
+#include "ockam/transport/socket.h"
+
+ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t* transport, ockam_transport_socket_attributes_t* attrs);
 
 /**
  * One Transmission instance is assigned for each read or write

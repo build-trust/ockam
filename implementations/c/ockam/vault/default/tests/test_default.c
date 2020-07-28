@@ -15,9 +15,9 @@
 #include "ockam/random.h"
 #include "ockam/vault.h"
 
-#include "memory/stdlib/stdlib.h"
-#include "random/urandom/urandom.h"
-#include "vault/default/default.h"
+#include "ockam/memory/stdlib.h"
+#include "ockam/random/urandom.h"
+#include "ockam/vault/default.h"
 
 #include "cmocka.h"
 #include "test_vault.h"

@@ -3,7 +3,7 @@
 #include "ockam/error.h"
 #include "ockam/key_agreement/impl.h"
 #include "ockam/key_agreement.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/transport.h"
 #include "ockam/vault.h"
 #include "xx_local.h"

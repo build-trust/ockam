@@ -6,7 +6,7 @@
 #include "cmocka.h"
 #include "codec_tests.h"
 #include "ockam/codec.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 
 uint8_t* encoded_buffer;
 

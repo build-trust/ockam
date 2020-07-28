@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include "ockam/queue.h"
 #include "ockam/error.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 
 struct ockam_queue_t {
   ockam_memory_t* p_memory;

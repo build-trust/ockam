@@ -31,4 +31,4 @@ target_link_libraries(
     ockam::vault_interface
 )
 
-# add_subdirectory(tests)
+add_subdirectory(tests)

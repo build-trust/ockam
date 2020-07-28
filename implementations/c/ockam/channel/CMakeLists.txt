@@ -44,3 +44,5 @@ target_link_libraries(
     ockam::vault_interface
     ockam::channel_interface
 )
+
+add_subdirectory(tests)

@@ -6,7 +6,7 @@
 #include "ockam/memory.h"
 #include "ockam/mutex.h"
 #include "ockam/vault.h"
-#include "vault/impl.h"
+#include "ockam/vault/impl.h"
 
 #include "atecc608a.h"
 
@@ -831,6 +831,8 @@ exit:
       error = exit_error;
     }
   }
+
+  return error;
 }
 
 /**

@@ -10,7 +10,7 @@
 #include "ockam/memory.h"
 #include "ockam/mutex.h"
 
-#include "vault/impl.h"
+#include "ockam/vault/impl.h"
 
 #include "cryptoauthlib.h"
 #include "atca_cfgs.h"

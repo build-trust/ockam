@@ -38,3 +38,5 @@ target_link_libraries(
     ockam::memory_interface
     ockam::vault_interface
 )
+
+add_subdirectory(tests)

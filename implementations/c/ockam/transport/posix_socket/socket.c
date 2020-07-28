@@ -1,6 +1,6 @@
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/io.h"
-#include "io/io_impl.h"
+#include "ockam/io/impl.h"
 #include "ockam/transport.h"
 #include "socket.h"
 #include <stdio.h>

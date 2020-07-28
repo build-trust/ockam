@@ -8,16 +8,16 @@
 #include "ockam/error.h"
 #include "ockam/key_agreement.h"
 #include "ockam/memory.h"
-#include "memory/stdlib/stdlib.h"
-#include "ockam/syslog.h"
+#include "ockam/memory/stdlib.h"
+#include "ockam/log/syslog.h"
 #include "ockam/transport.h"
 
-#include "random/urandom/urandom.h"
-#include "vault/default/default.h"
+#include "ockam/random/urandom.h"
+#include "ockam/vault/default.h"
 #include "channel_test.h"
 
-bool               run_client = false;
-bool               run_server = false;
+bool               run_client = true;
+bool               run_server = true;
 ockam_ip_address_t ockam_ip   = { "", "127.0.0.1", 8000 };
 
 void usage()

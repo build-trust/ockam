@@ -9,6 +9,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_include_directories(ockam_key_agreement_xx PUBLIC ${INCLUDE_DIR})
 
 file(COPY xx.h DESTINATION ${INCLUDE_DIR}/ockam/key_agreement/)
+file(COPY xx_local.h DESTINATION ${INCLUDE_DIR}/ockam/key_agreement/)
 target_sources(
   ockam_key_agreement_xx
   PRIVATE
@@ -33,4 +34,4 @@ target_link_libraries(
     ockam::codec
 )
 
-# add_subdirectory(tests)
+add_subdirectory(tests)

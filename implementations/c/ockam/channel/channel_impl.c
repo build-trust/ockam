@@ -2,14 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/memory.h"
 #include "ockam/key_agreement.h"
 #include "ockam/key_agreement/xx.h"
 #include "ockam/transport.h"
 #include "ockam/io/impl.h"
 #include "ockam/channel.h"
-#include "channel_impl.h"
+#include "ockam/channel/channel_impl.h"
 #include "ockam/codec.h"
 
 ockam_memory_t* gp_ockam_channel_memory = NULL;

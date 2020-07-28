@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include "ockam/transport.h"
-#include "transport/transport_impl.h"
+#include "ockam/transport/impl.h"
 #include "socket.h"
 
 /**

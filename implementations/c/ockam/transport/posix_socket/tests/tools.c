@@ -3,11 +3,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <memory/stdlib/stdlib.h>
+#include <ockam/memory/stdlib.h>
 #include <getopt.h>
 
 #include "ockam/error.h"
-#include "ockam/syslog.h"
+#include "ockam/log/syslog.h"
 #include "ockam/transport.h"
 
 #include "tools.h"
