@@ -10,7 +10,7 @@ struct ockam_queue_t {
   uint16_t        max_size;
   uint16_t        size;
   uint16_t        head;
-  u_int16_t       tail;
+  uint16_t        tail;
   pthread_mutex_t modify_lock;
   pthread_cond_t* p_alert;
   void**          nodes;

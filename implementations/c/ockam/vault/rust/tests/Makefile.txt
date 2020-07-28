@@ -1,0 +1,16 @@
+RUST_PATH := ../../../../../rust
+BUILD_INCLUDE := $(RUST_PATH)/vault/include
+BUILD_LINK := $(RUST_PATH)/target/release
+
+test: build
+	  @./vault
+
+build: rust
+	   @gcc -I$(BUILD_INCLUDE) -L$(BUILD_LINK) -o vault -lockam_vault vault.c
+
+rust:
+	@cargo build --features=ffi --release --manifest-path=$(RUST_PATH)/vault/Cargo.toml
+
+clean:
+	@cargo clean --manifest-path=$(RUST_PATH)/Cargo.toml
+	@rm -f ./vault

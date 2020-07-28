@@ -1,5 +1,6 @@
 use crate::error::VaultFailError;
 use crate::types::*;
+use ffi_support::IntoFfi;
 use std::convert::{TryFrom, TryInto};
 
 #[repr(C)]
@@ -100,5 +101,21 @@ impl From<FfiSecretKeyAttributes> for SecretKeyAttributes {
             persistence: attrs.persistence.try_into().unwrap(),
             purpose: attrs.purpose.try_into().unwrap(),
         }
+    }
+}
+
+unsafe impl IntoFfi for FfiSecretKeyAttributes {
+    type Value = FfiSecretKeyAttributes;
+
+    fn ffi_default() -> Self::Value {
+        Self {
+            xtype: 0,
+            persistence: 0,
+            purpose: 0,
+        }
+    }
+
+    fn into_ffi_value(self) -> Self::Value {
+        self
     }
 }

@@ -3,220 +3,286 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.apache.tools.ant.taskdefs.condition.Os
 
-// override the build directory
+// Override the build directory
 project.buildDir = '.env'
 
+// Make a string more suitable to be a file or directory name
 def sanitize(name) {
   name.toLowerCase().replaceAll("\\W+", "_")
 }
 
-def hasDocker() {
-  try {
-    def process = 'docker'.execute()
-    process.waitForOrKill(200000)
-    process.exitValue() == 0
-  } catch(Exception ex) { false }
-}
-
 ext {
 
-  // read the mode project property
-  mode = project.hasProperty('mode') ? mode : 'test'
-  mode = mode.toLowerCase()
+  cmakeBinaryDir = buildDir.toString()
 
-  // read the dockerImage project property
-  host = project.hasProperty('dockerImage') ? dockerImage : 'gradle_host'
-  hostDir = Paths.get(buildDir.toString(), sanitize(host)).toString()
+  // the name to use for the machine that is running gradle
+  gradleHost = 'gradle_host'
 
-  cmakeGenerator = project.hasProperty('cmakeGenerator') ? cmakeGenerator : 'Unix Makefiles'
-  cmakeGeneratorDir = Paths.get(hostDir, sanitize(cmakeGenerator)).toString()
+  // Read the 'dockerImage' project property to decide where to run the cmake
+  // tasks (cmakeHost).
+  //
+  // If no dockerImage is specified, we'll run the cmake tasks on the machine
+  // that gradle was invoked on (gradleHost).
+  cmakeHost = project.hasProperty('dockerImage') ? dockerImage : gradleHost
+  cmakeHostDir = Paths.get(cmakeBinaryDir, sanitize(cmakeHost)).toString()
+  cmakeBinaryDir = cmakeHostDir
 
-  cmakeToolchainFile = project.hasProperty('cmakeToolchainFile') ? cmakeToolchainFile : 'default'
-  cmakeToolchainId = (cmakeToolchainFile == 'default') ? 'default' : cmakeToolchainFile.digest('SHA-256').take(10)
-  cmakeToolchainDir = Paths.get(cmakeGeneratorDir, sanitize(cmakeToolchainId)).toString()
+  // Read the 'cmakeGenerator' project property to choose the cmake generator
+  // that will be used to generate the build.
+  //
+  // If no cmakeGenerator is specified, we'll use 'Unix Makefiles'
+  //
+  // cmake.org/cmake/help/latest/manual/cmake-generators.7.html
+  cmakeGenerator = project.hasProperty('cmakeGenerator') ? cmakeGenerator : 'detected_generator'
+  cmakeGeneratorDir = Paths.get(cmakeBinaryDir, sanitize(cmakeGenerator)).toString()
+  cmakeBinaryDir = cmakeGeneratorDir
 
-  target = project.hasProperty('target') ? target : host
+  //
+  cmakeToolchainFile = project.hasProperty('cmakeToolchainFile') ? cmakeToolchainFile : 'detected_toolchain'
+  cmakeToolchainId = cmakeToolchainFile.digest('SHA-256').take(10)
+  cmakeToolchainId = (cmakeToolchainFile == 'detected_toolchain') ? cmakeToolchainFile : cmakeToolchainId
+  cmakeToolchainDir = Paths.get(cmakeBinaryDir, sanitize(cmakeToolchainId)).toString()
+  cmakeBinaryDir = cmakeToolchainDir
+
+  //
+  target = project.hasProperty('target') ? target : 'detected_target'
   targetDir = Paths.get(cmakeToolchainDir, sanitize(target)).toString()
+  cmakeBinaryDir = targetDir
 
-  cmakeBuildType = (mode == 'release') ? 'Release' : 'Debug'
-  cmakeBinaryDir = Paths.get(targetDir, sanitize(cmakeBuildType))
-  cmakeBinaryDirRelative = projectDir.toPath().relativize(cmakeBinaryDir)
-  cmakeBinaryDir = cmakeBinaryDir.toString()
+  // Read the 'mode' project property to decide in what cmakeBuildType should
+  // be use to generate and build projects.
+  //
+  // Default mode is Test.
+  //
+  // To support higher level gradle builds that may also be compiling Elixir
+  // - Dev is an alias to Debug
+  // - Prod is an alias to Release
+  //
+  // If mode is Test, cmakeBuildType is 'Debug' and cmakeBuildTesting is
+  // set to ON
+  //
+  // cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
+  mode = project.hasProperty('mode') ? mode.toLowerCase().capitalize() : 'Test'
+  mode = (mode == 'Dev') ? 'Debug' : mode
+  mode = (mode == 'Prod') ? 'Release' : mode
+  mode = (mode == 'Relwithdebinfo') ? 'RelWithDebInfo' : mode
+  mode = (mode == 'Minsizerel') ? 'MinSizeRel' : mode
+  cmakeBuildType = (mode == 'Test') ? 'Debug' : mode
+  cmakeBuildTesting = (mode == 'Test') ? 'ON' : 'OFF'
 
-  cmakeBuildTesting = (mode == 'test') ? 'ON' : 'OFF'
+  // Decide if the cmakeGenerator is multi-config
+  //
+  // If the generator is single config generator, then cmakeBinaryDir will be:
+  //    buildDir/host/generator/toolchain/target/mode
+  // If the generator is milti config generator, then cmakeBinaryDir will be:
+  //    buildDir/host/generator/toolchain/target
+  cmakeGeneratorIsMultiConfig = {
+    def generator = cmakeGenerator.toUpperCase()
+    generator.contains('MULTI') || generator.contains('XCODE') || generator.contains('VISUAL STUDIO')
+  }()
+  modeDir = cmakeGeneratorIsMultiConfig ? cmakeBinaryDir : Paths.get(cmakeBinaryDir, sanitize(mode)).toString()
+  cmakeBinaryDir = modeDir
+  cmakeBinaryDirRelative = projectDir.toPath().relativize(Paths.get(cmakeBinaryDir))
+
+  //
   cmakeOptions = project.hasProperty('otherCmakeOptions') ? cmakeOptions : ''
 
-  // capture the number of processors available to the jvm
-  availableProcessors = Runtime.getRuntime().availableProcessors();
-
+  // detect if gradleHost is windows
   isWindows = Os.isFamily(Os.FAMILY_WINDOWS)
-  useDocker = hasDocker() && !isWindows && (host != 'gradle_host')
 
+  // Check if gradleHost has docker available
+  hasDocker = {
+    try {
+      def process = 'docker'.execute()
+      process.waitForOrKill(200000)
+      process.exitValue() == 0
+    } catch(Exception ex) { false }
+  }()
+  useDocker = hasDocker && !isWindows && (cmakeHost != gradleHost)
+
+  dockerFile = Paths.get(cmakeHostDir, 'Dockerfile')
+  dockerEntrypoint = Paths.get(cmakeHostDir, 'docker-entrypoint.sh')
+  dockerImageCreatedFlag = Paths.get(cmakeHostDir, 'docker_image_created.flag')
+  dockerImageTag = "${buildDir.toString().digest('SHA-256').take(10)}_${cmakeHostDir.digest('SHA-256').take(10)}"
+  dockerImageName = "ockam:${dockerImageTag}"
+
+  buildDeps = []
+  commandPrefix = isWindows ? ['cmd', '/c'] : []
+  testCommandPrefix = isWindows ? ['cmd', '/c'] : []
+  testDir = cmakeBinaryDir
+
+  cmakeCache = Paths.get(cmakeBinaryDir.toString(), 'CMakeCache.txt')
+  buildDoneFlag = Paths.get(cmakeBinaryDir.toString(), 'build_done.flag')
 }
 
-def defineTasks() {
-  def buildDeps = []
-  def cleanDeps = []
+task createCmakeHostDir {
+  doLast {
+    mkdir cmakeHostDir
+  }
+}
 
-  def commandPrefix = isWindows ? ['cmd', '/c'] : []
+buildDeps.add(createCmakeHostDir)
 
-  task createCmakeBinaryDir { doLast { mkdir cmakeBinaryDir } }
-  buildDeps = buildDeps << createCmakeBinaryDir
+if(useDocker) {
 
-  if(useDocker) {
-    def dockerFile = Paths.get(hostDir, 'Dockerfile')
-    def dockerEntrypoint = Paths.get(hostDir, 'entrypoint.sh')
-    def imageCreatedFlag = Paths.get(hostDir, 'docker_image_created.flag')
-    def dockerImageName = "${buildDir.toString().digest('SHA-256').take(10)}_${hostDir.digest('SHA-256').take(10)}"
+  task createDockerEntrypoint {
+    dependsOn createCmakeHostDir
+    onlyIf { !file(dockerEntrypoint).exists() }
+    doLast {
+      file(dockerEntrypoint).write '''\
+        #!/bin/bash
 
-    task createDockerEntrypoint {
-      dependsOn createCmakeBinaryDir
-      onlyIf { !file(dockerEntrypoint).exists() }
-      doLast {
-        file(dockerEntrypoint).write '''\
-          #!/bin/bash
+        USER_ID=${LOCAL_USER_ID:-9001}
 
-          USER_ID=${LOCAL_USER_ID:-9001}
+        useradd --shell /bin/bash -u $USER_ID -o -c "" -m builder
+        export HOME=/home/builder
 
-          useradd --shell /bin/bash -u $USER_ID -o -c "" -m builder
-          export HOME=/home/builder
-
-          exec gosu builder "$@"'''.stripIndent()
-      }
-    }
-
-    task createDockerFile {
-      def content = ''
-
-      if(host.startsWith('dockcross')) {
-        dependsOn createDockerEntrypoint
-        content = """\
-          FROM ${host}
-          COPY entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-          RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-          WORKDIR /work
-          ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]""".stripIndent()
-      } else {
-        dependsOn createCmakeBinaryDir
-        content = """\
-          FROM ${host}
-          WORKDIR /work
-        """.stripIndent()
-      }
-
-      onlyIf { !file(dockerFile).exists() }
-      doLast {
-        file(dockerFile).write content
-      }
-    }
-
-    task buildDockerImage {
-      def command = []
-      command.addAll(commandPrefix)
-      command.addAll(['docker', 'build', '-t', dockerImageName, '.'])
-
-      dependsOn createDockerFile
-      onlyIf { !file(imageCreatedFlag).exists() }
-      doLast {
-        exec {
-          workingDir hostDir
-          commandLine command
-        }
-        file(imageCreatedFlag).write dockerImageName
-      }
-    }
-
-
-    def uid = ["id", "-u"].execute().text.trim()
-    commandPrefix.addAll([
-      'docker', 'run',
-      '-e', "LOCAL_USER_ID=${uid}",
-      '--workdir', '/work/implementations/c', // this is brittle
-      '--rm',
-      '--volume', "${projectDir}/../..:/work",
-      dockerImageName
-    ])
-
-    buildDeps = buildDeps << buildDockerImage
-
-    task run {
-      def command = []
-      command.addAll(commandPrefix)
-      command.addAll(2, ['-it'])
-      command.addAll(['sh'])
-
-      dependsOn buildDeps
-      doLast {
-        println command.join(' ')
-      }
+        exec gosu builder "$@"
+      '''.stripIndent()
     }
   }
 
-  task generate {
-    def cmakeCache = Paths.get(cmakeBinaryDir.toString(), 'CMakeCache.txt')
-    def command = []
+  task createDockerFile {
+    def content = ''
 
-    command.addAll(commandPrefix)
-    command.addAll([
-      'cmake',
-      '--parallel', availableProcessors,
-      '-S', '.',
-      '-B', cmakeBinaryDirRelative,
-      "-DBUILD_TESTING=${cmakeBuildTesting}",
-      "-DCMAKE_BUILD_TYPE=${cmakeBuildType}",
-      '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
-      '-G', cmakeGenerator,
-      cmakeOptions
-    ])
+    if(cmakeHost.startsWith('dockcross')) {
+      dependsOn createDockerEntrypoint
+      content = """\
+        FROM ${cmakeHost}
+        COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+        RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+        WORKDIR /work
+        ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+      """.stripIndent()
+    } else {
+      dependsOn createCmakeHostDir
+      content = """\
+        FROM ${cmakeHost}
+        WORKDIR /work
+      """.stripIndent()
+    }
+
+    onlyIf { !file(dockerFile).exists() }
+    doLast { file(dockerFile).write content }
+  }
+
+  task buildDockerImage {
+    def command = commandPrefix + ['docker', 'build', '-t', dockerImageName, '.']
+
+    dependsOn createDockerFile
+    onlyIf { !file(dockerImageCreatedFlag).exists() }
+    doLast {
+      exec {
+        workingDir cmakeHostDir
+        commandLine command
+      }
+      file(dockerImageCreatedFlag).write dockerImageName
+    }
+  }
+
+  task removeDockerImage {
+    def command = commandPrefix + ['docker', 'rmi', dockerImageName]
+
+    doLast {
+      exec {
+        commandLine command
+        ignoreExitValue true
+      }
+      delete dockerImageCreatedFlag
+    }
+  }
+
+  buildDeps.add(buildDockerImage)
+  def uid = ["id", "-u"].execute().text.trim()
+  commandPrefix.addAll([
+    'docker', 'run',
+    '-e', "LOCAL_USER_ID=${uid}",
+    '--workdir', '/work/implementations/c',
+    '--rm',
+    '--volume', "${projectDir}/../..:/work",
+    dockerImageName
+  ])
+
+  testDir = projectDir
+  testCommandPrefix.addAll([
+    'docker', 'run',
+    '-e', "LOCAL_USER_ID=${uid}",
+    '--workdir', "/work/implementations/c/${cmakeBinaryDirRelative}",
+    '--rm',
+    '--volume', "${projectDir}/../..:/work",
+    dockerImageName
+  ])
+
+  task showDockerRunCommand {
+    def command = commandPrefix + ['sh']
+    command.addAll(2, ['-it'])
 
     dependsOn buildDeps
-    onlyIf { !file(cmakeCache).exists() }
-    doLast {
-      exec {
-        commandLine command
-      }
-    }
+    doLast { println command.join(' ') }
+  }
+}
+
+task cmakeGenerate {
+  def command = commandPrefix + [
+    'cmake',
+    '-S', '.',
+    '-B', cmakeBinaryDirRelative,
+    "-DBUILD_TESTING=${cmakeBuildTesting}",
+    "-DCMAKE_BUILD_TYPE=${cmakeBuildType}",
+    '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
+    cmakeOptions
+  ]
+
+  if(cmakeGenerator != 'detected_generator') {
+    command = command + ['-G', cmakeGenerator]
   }
 
-  task build {
-    description 'Build the project.'
-    group project.name
-
-    def command = []
-    command.addAll(commandPrefix)
-    command.addAll(['cmake', '--build', cmakeBinaryDirRelative])
-    if(cmakeGenerator == 'Unix Makefiles') {
-      command.addAll(['--', "-j${availableProcessors}"])
-    }
-
-    dependsOn generate
-    doLast {
-      exec {
-        commandLine command
-      }
-    }
-  }
-
-  task test {
-    description 'Test the project.'
-    group project.name
-
-    def command = []
-    command.addAll(commandPrefix)
-    command.addAll(['sh', '-c', "cd ${cmakeBinaryDirRelative} && ctest --verbose"])
-
-    doLast {
-      exec {
-        commandLine command
-      }
-    }
-  }
-
-  task clean {
-    doLast {
-      delete buildDir
+  dependsOn buildDeps
+  onlyIf { !file(cmakeCache).exists() }
+  doLast {
+    exec {
+      commandLine command
     }
   }
 }
 
-defineTasks()
+task build {
+  group project.name
+  description 'Build the project.'
+
+  dependsOn cmakeGenerate
+  onlyIf { !file(buildDoneFlag).exists() }
+  doLast {
+    exec {
+      commandLine commandPrefix + ['cmake', '--build', cmakeBinaryDirRelative, '--config', cmakeBuildType]
+    }
+    file(buildDoneFlag).write "${new Date()}"
+  }
+}
+
+task clean {
+  group project.name
+  description 'Clean the project.'
+
+  onlyIf { file(cmakeCache).exists() }
+  doLast {
+    exec {
+      commandLine commandPrefix + ['cmake', '--build', cmakeBinaryDirRelative, '--target', 'clean']
+      ignoreExitValue true
+    }
+    delete buildDoneFlag
+  }
+}
+
+task test {
+  group project.name
+  description 'Test the project.'
+
+  dependsOn build
+  doLast {
+    exec {
+      commandLine testCommandPrefix + ['ctest']
+      workingDir testDir
+    }
+  }
+}

@@ -17,12 +17,33 @@ jobs:
 
     steps:
       - name: Setup java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@1253a7eed45cc6191dc4bd9cacd3542878479569 # v1.4.0
         with:
           java-version: ${{ matrix.java }}
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@28c7f3d2b5162b5ddd3dfd9a45aa55eaf396478b # v2.3.1
 
-      - id: Build
-        run: ./gradlew --version
+      - id: Build_not_windows
+        if: "!startsWith(matrix.os, 'windows')"
+        run: ./gradlew build
+
+      - id: Test_not_windows
+        if: "!startsWith(matrix.os, 'windows')"
+        run: ./gradlew test
+
+      - id: Clean_not_windows
+        if: "!startsWith(matrix.os, 'windows')"
+        run: ./gradlew clean
+
+      - id: Build_windows
+        if: "startsWith(matrix.os, 'windows')"
+        run: ./gradlew build -PcmakeGenerator="Unix Makefiles"
+
+      - id: Test_windows
+        if: "startsWith(matrix.os, 'windows')"
+        run: ./gradlew test -PcmakeGenerator="Unix Makefiles"
+
+      - id: Clean_windows
+        if: "startsWith(matrix.os, 'windows')"
+        run: ./gradlew clean -PcmakeGenerator="Unix Makefiles"

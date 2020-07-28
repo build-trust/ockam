@@ -1,7 +1,4 @@
 
-task lint {
-}
-
 task build {
 }
 
