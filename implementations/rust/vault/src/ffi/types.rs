@@ -119,3 +119,56 @@ unsafe impl IntoFfi for FfiSecretKeyAttributes {
         self
     }
 }
+
+/// Represents a Vault id
+pub type VaultId = u32;
+/// Represents a Vault handle
+pub type VaultHandle = u64;
+/// Represents a Vault error code
+pub type VaultError = u32;
+///
+pub type SecretKeyHandle = *mut std::os::raw::c_char;
+/// No error or success
+pub const ERROR_NONE: u32 = 0;
+
+/// A context object to interface with C
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub struct OckamVaultContext {
+    pub(crate) handle: VaultHandle,
+    pub(crate) vault_id: VaultId,
+}
+
+/// A context object for using secrets in vaults
+#[repr(C)]
+pub struct OckamSecret {
+    pub(crate) attributes: FfiSecretKeyAttributes,
+    pub(crate) handle: SecretKeyHandle,
+}
+
+impl OckamSecret {
+    /// Get the string handle represented by this Secret
+    pub fn get_handle(&self) -> String {
+        if self.handle.is_null() {
+            String::new()
+        } else {
+            unsafe { std::ffi::CStr::from_ptr(self.handle) }
+                .to_string_lossy()
+                .to_string()
+        }
+    }
+}
+
+pub struct OckamSecretList(pub(crate) Vec<OckamSecret>);
+
+unsafe impl IntoFfi for OckamSecretList {
+    type Value = Vec<OckamSecret>;
+
+    fn ffi_default() -> Self::Value {
+        Vec::new()
+    }
+
+    fn into_ffi_value(self) -> Self::Value {
+        self.0
+    }
+}

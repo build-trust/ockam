@@ -1,4 +1,4 @@
-use crate::types::{PublicKey, SecretKeyContext};
+use crate::types::{PublicKey, SecretKey, SecretKeyContext, SecretKeyAttributes};
 use crate::{
     error::*,
     ffi::types::*,
@@ -7,48 +7,9 @@ use crate::{
     Vault,
 };
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
-use std::{convert::TryInto, ffi::CStr, str::FromStr};
+use std::{convert::TryInto, str::FromStr};
 
 mod types;
-
-/// A context object to interface with C
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct OckamVaultContext {
-    handle: VaultHandle,
-    vault_id: VaultId,
-}
-
-/// A context object for using secrets in vaults
-#[repr(C)]
-pub struct OckamSecret {
-    attributes: FfiSecretKeyAttributes,
-    handle: SecretKeyHandle,
-}
-
-impl OckamSecret {
-    /// Get the string handle represented by this Secret
-    pub fn get_handle(&self) -> String {
-        if self.handle.is_null() {
-            String::new()
-        } else {
-            unsafe { CStr::from_ptr(self.handle) }
-                .to_string_lossy()
-                .to_string()
-        }
-    }
-}
-
-/// Represents a Vault id
-pub type VaultId = u32;
-/// Represents a Vault handle
-pub type VaultHandle = u64;
-/// Represents a Vault error code
-pub type VaultError = u32;
-///
-pub type SecretKeyHandle = *mut std::os::raw::c_char;
-/// No error or success
-pub const ERROR_NONE: u32 = 0;
 
 lazy_static! {
     static ref DEFAULT_VAULTS: ConcurrentHandleMap<DefaultVault> = ConcurrentHandleMap::new();
@@ -202,7 +163,7 @@ pub extern "C" fn ockam_vault_secret_import(
                         buffer: input,
                     };
 
-                    let sk: crate::SecretKey = ffi_sk.try_into()?;
+                    let sk: SecretKey = ffi_sk.try_into()?;
                     let ctx = vault.secret_import(&sk, atts)?;
                     Ok(ctx.into_ffi_value())
                 },
@@ -421,6 +382,60 @@ pub extern "C" fn ockam_vault_ecdh(
     }
 }
 
+/// Perform an HMAC-SHA256 based key derivation function on the supplied salt and input key material.
+#[no_mangle]
+pub extern "C" fn ockam_vault_hkdf_sha256(context: OckamVaultContext,
+                                          salt: OckamSecret,
+                                          input_key_material: OckamSecret,
+                                          derived_outputs_count: u8,
+                                          derived_outputs: &mut Vec<OckamSecret>) -> VaultError {
+    let derived_outputs_count = derived_outputs_count as usize;
+    let mut err = ExternError::success();
+    match context.vault_id {
+        DEFAULT_VAULT_ID => {
+            let handles = DEFAULT_VAULTS.call_with_result_mut(
+                &mut err,
+                context.handle,
+                |vault| -> Result<OckamSecretList, VaultFailError> {
+                    const SIZES: usize = 32;
+                    let salt_ctx = get_memory_id(salt)?;
+                    let ikm_ctx = get_memory_id(input_key_material)?;
+                    let salt_bytes = vault.secret_export(salt_ctx)?;
+                    let ikm_bytes = vault.secret_export(ikm_ctx)?;
+                    let output_length = SIZES * derived_outputs_count;
+
+                    let hkdf_bytes = vault.hkdf_sha256(salt_bytes, ikm_bytes, output_length)?;
+                    let attributes = SecretKeyAttributes {
+                        xtype: SecretKeyType::Buffer(SIZES),
+                        purpose: SecretPurposeType::KeyAgreement,
+                        persistence: SecretPersistenceType::Ephemeral,
+                    };
+                    let ffi_attributes = FfiSecretKeyAttributes {
+                        xtype: SecretKeyType::Buffer(0).to_usize() as u32,
+                        purpose: SecretPurposeType::KeyAgreement.to_usize() as u32,
+                        persistence: SecretPersistenceType::Ephemeral.to_usize() as u32
+                    };
+                    let mut outputs = Vec::with_capacity(derived_outputs_count);
+                    for derived in hkdf_bytes.chunks(SIZES) {
+                        let key = SecretKey::Buffer(derived.to_vec());
+                        let h = vault.secret_import(&key, attributes)?;
+                        let secret = OckamSecret { attributes: ffi_attributes, handle: h.into_ffi_value() };
+                        outputs.push(secret);
+                    }
+
+                    Ok(OckamSecretList(outputs))
+                },
+            );
+            if err.get_code().is_success() {
+                *derived_outputs = handles;
+                ERROR_NONE
+            } else {
+                VaultFailErrorKind::HkdfSha256.into()
+            }
+        }
+        _ => VaultFailErrorKind::InvalidContext.into(),
+    }
+}
 
 ///   Encrypt a payload using AES-GCM.
 #[no_mangle]
@@ -516,7 +531,6 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(context: OckamVaultContext,
         _ => VaultFailErrorKind::InvalidContext.into(),
     }
 }
-
 
 /// Deinitialize an Ockam vault
 #[no_mangle]

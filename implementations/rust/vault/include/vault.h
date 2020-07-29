@@ -187,6 +187,21 @@ uint32_t ockam_vault_ecdh(ockam_vault_t*        vault,
                           ockam_vault_secret_t* shared_secret);
 
 /**
+ * @brief   Perform an HMAC-SHA256 based key derivation function on the supplied salt and input key material.
+ * @param   vault[in]                 Vault object to use for encryption.
+ * @param   salt[in]                  Ockam vault secret containing the salt for HKDF.
+ * @param   input_key_material[in]    Ockam vault secret containing input key material to use for HKDF.
+ * @param   derived_outputs_count[in] Total number of keys to generate.
+ * @param   derived_outputs[out]      Array of ockam vault secrets resulting from HKDF.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_hkdf_sha256(ockam_vault_t        vault,
+                                 ockam_vault_secret_t salt,
+                                 ockam_vault_secret_t input_key_material,
+                                 uint8_t               derived_outputs_count,
+                                 ockam_vault_secret_t* derived_outputs);
+
+/**
  * @brief   Encrypt a payload using AES-GCM.
  * @param   vault[in]                       Vault object to use for encryption.
  * @param   key[in]                         Ockam secret key to use for encryption.
