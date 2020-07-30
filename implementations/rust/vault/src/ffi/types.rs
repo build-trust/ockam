@@ -127,7 +127,7 @@ pub type VaultHandle = u64;
 /// Represents a Vault error code
 pub type VaultError = u32;
 ///
-pub type SecretKeyHandle = *mut std::os::raw::c_char;
+pub type SecretKeyHandle = u64;
 /// No error or success
 pub const ERROR_NONE: u32 = 0;
 
@@ -144,19 +144,6 @@ pub struct OckamVaultContext {
 pub struct OckamSecret {
     pub(crate) attributes: FfiSecretKeyAttributes,
     pub(crate) handle: SecretKeyHandle,
-}
-
-impl OckamSecret {
-    /// Get the string handle represented by this Secret
-    pub fn get_handle(&self) -> String {
-        if self.handle.is_null() {
-            String::new()
-        } else {
-            unsafe { std::ffi::CStr::from_ptr(self.handle) }
-                .to_string_lossy()
-                .to_string()
-        }
-    }
 }
 
 pub struct OckamSecretList(pub(crate) Vec<OckamSecret>);

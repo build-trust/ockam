@@ -75,10 +75,10 @@ int main(void) {
     fflush(stdout);
 
     if (0 == result) {
-        printf("fail. Computed SHA-256 digest is zero\n");
+        printf("...fail. Computed SHA-256 digest is zero\n");
         goto Fail;
     } else {
-        printf("pass.\n");
+        printf("...pass.\n");
     }
 
     printf("Generate secret key...");

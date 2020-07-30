@@ -7,7 +7,7 @@ use crate::{
     Vault,
 };
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
-use std::{convert::TryInto, str::FromStr};
+use std::convert::TryInto;
 
 mod types;
 
@@ -196,9 +196,7 @@ pub extern "C" fn ockam_vault_secret_export(
                 &mut err,
                 context.handle,
                 |vault| -> Result<ByteBuffer, VaultFailError> {
-                    let id_str = secret.get_handle();
-                    let id = usize::from_str(&id_str)?;
-                    let ctx = SecretKeyContext::Memory(id);
+                    let ctx = get_memory_id(secret);
                     let key = vault.secret_export(ctx)?;
                     Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
                 },
@@ -239,9 +237,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
                 &mut err,
                 context.handle,
                 |vault| -> Result<ByteBuffer, VaultFailError> {
-                    let id_str = secret.get_handle();
-                    let id = usize::from_str(&id_str)?;
-                    let ctx = SecretKeyContext::Memory(id);
+                    let ctx = get_memory_id(secret);
                     let key = vault.secret_public_key_get(ctx)?;
                     Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
                 },
@@ -279,7 +275,7 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
                 &mut err,
                 context.handle,
                 |vault| -> Result<FfiSecretKeyAttributes, VaultFailError> {
-                    let ctx = get_memory_id(secret)?;
+                    let ctx = get_memory_id(secret);
                     let atts = vault.secret_attributes_get(ctx)?;
                     Ok(atts.into())
                 },
@@ -308,7 +304,7 @@ pub extern "C" fn ockam_vault_secret_destroy(
                 &mut err,
                 context.handle,
                 |vault| -> Result<(), VaultFailError> {
-                    let ctx = get_memory_id(secret)?;
+                    let ctx = get_memory_id(secret);
                     vault.secret_destroy(ctx)?;
                     Ok(())
                 },
@@ -343,7 +339,7 @@ pub extern "C" fn ockam_vault_ecdh(
                 &mut err,
                 context.handle,
                 |vault| -> Result<SecretKeyHandle, VaultFailError> {
-                    let ctx = get_memory_id(secret)?;
+                    let ctx = get_memory_id(secret);
                     let atts = vault.secret_attributes_get(ctx)?;
                     let pubkey = match atts.xtype {
                         SecretKeyType::Curve25519 => {
@@ -398,8 +394,8 @@ pub extern "C" fn ockam_vault_hkdf_sha256(context: OckamVaultContext,
                 context.handle,
                 |vault| -> Result<OckamSecretList, VaultFailError> {
                     const SIZES: usize = 32;
-                    let salt_ctx = get_memory_id(salt)?;
-                    let ikm_ctx = get_memory_id(input_key_material)?;
+                    let salt_ctx = get_memory_id(salt);
+                    let ikm_ctx = get_memory_id(input_key_material);
                     let salt_bytes = vault.secret_export(salt_ctx)?;
                     let ikm_bytes = vault.secret_export(ikm_ctx)?;
                     let output_length = SIZES * derived_outputs_count;
@@ -461,7 +457,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(context: OckamVaultContext,
                 &mut err,
                 context.handle,
                 |vault| -> Result<ByteBuffer, VaultFailError> {
-                    let ctx = get_memory_id(secret)?;
+                    let ctx = get_memory_id(secret);
                     let ciphertext = vault.aead_aes_gcm_encrypt(ctx, plaintext, nonce.to_be_bytes().as_ref(), additional_data)?;
                     Ok(ByteBuffer::from_vec(ciphertext))
                 },
@@ -508,7 +504,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(context: OckamVaultContext,
                 &mut err,
                 context.handle,
                 |vault| -> Result<ByteBuffer, VaultFailError> {
-                    let ctx = get_memory_id(secret)?;
+                    let ctx = get_memory_id(secret);
                     let plain = vault.aead_aes_gcm_decrypt(ctx, ciphertext_and_tag, nonce.to_be_bytes().as_ref(), additional_data)?;
                     Ok(ByteBuffer::from_vec(plain))
                 },
@@ -549,8 +545,7 @@ pub extern "C" fn ockam_vault_deinit(context: OckamVaultContext) -> VaultError {
 
 define_string_destructor!(string_free);
 
-fn get_memory_id(secret: OckamSecret) -> Result<SecretKeyContext, VaultFailError> {
-    let id_str = secret.get_handle();
-    let id = usize::from_str(&id_str)?;
-    Ok(SecretKeyContext::Memory(id))
+#[inline]
+fn get_memory_id(secret: OckamSecret) -> SecretKeyContext {
+    SecretKeyContext::Memory(secret.handle as usize)
 }

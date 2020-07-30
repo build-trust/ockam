@@ -208,18 +208,13 @@ pub enum SecretKeyContext {
 #[cfg(feature = "ffi")]
 /// Converts the secret key context to an id that can be passed across the FFI boundary
 unsafe impl IntoFfi for SecretKeyContext {
-    type Value = *mut std::os::raw::c_char;
+    type Value = u64;
 
-    fn ffi_default() -> Self::Value {
-        std::ptr::null_mut()
-    }
+    fn ffi_default() -> Self::Value { 0 }
 
     fn into_ffi_value(self) -> Self::Value {
         match self {
-            SecretKeyContext::Memory(id) => {
-                let id_str = format!("{}", id);
-                id_str.into_ffi_value()
-            }
+            SecretKeyContext::Memory(id) => id as u64,
             _ => Self::ffi_default(),
         }
     }

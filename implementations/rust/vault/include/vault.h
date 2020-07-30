@@ -63,7 +63,7 @@ typedef struct {
 
 typedef struct {
     ockam_vault_secret_attributes_t attributes;
-    char* handle;
+    uint64_t handle;
 } ockam_vault_secret_t;
 
 /**
@@ -240,7 +240,7 @@ uint32_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t        vault,
  * @param   plaintext_length[out]         Amount of data placed in the plaintext buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-uin32_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t        vault,
+uint32_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t        vault,
                                          ockam_vault_secret_t key,
                                          uint16_t              nonce,
                                          const uint8_t* const  additional_data,
