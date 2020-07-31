@@ -26,7 +26,10 @@ if (OCKAM_ENABLE_ATECC608A_BUILD)
 endif()
 
 add_subdirectory(transport)
-add_subdirectory(transport/posix_socket)
+
+if (NOT WIN32)
+    add_subdirectory(transport/posix_socket)
+endif()
 
 add_subdirectory(key_agreement)
 add_subdirectory(key_agreement/xx)

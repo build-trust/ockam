@@ -3,6 +3,10 @@ if(NOT BUILD_TESTING)
     return()
 endif()
 
+if (WIN32)
+  return()
+endif()
+
 find_package(cmocka QUIET)
 if(NOT cmocka_FOUND)
     return()
