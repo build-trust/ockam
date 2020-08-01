@@ -96,6 +96,12 @@ impl From<SecretKeyAttributes> for FfiSecretKeyAttributes {
 
 impl From<FfiSecretKeyAttributes> for SecretKeyAttributes {
     fn from(attrs: FfiSecretKeyAttributes) -> Self {
+        Self::from(&attrs)
+    }
+}
+
+impl From<&FfiSecretKeyAttributes> for SecretKeyAttributes {
+    fn from(attrs: &FfiSecretKeyAttributes) -> Self {
         Self {
             xtype: attrs.xtype.try_into().unwrap(),
             persistence: attrs.persistence.try_into().unwrap(),

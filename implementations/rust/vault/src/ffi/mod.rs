@@ -36,7 +36,7 @@ pub extern "C" fn ockam_vault_default_init(context: &mut OckamVaultContext) -> V
 /// `buffer_len`. Unfortunately, there is no way to check for this.
 #[no_mangle]
 pub extern "C" fn ockam_vault_random_bytes_generate(
-    context: OckamVaultContext,
+    context: &OckamVaultContext,
     buffer: *mut u8,
     buffer_len: u32,
 ) -> VaultError {
@@ -73,7 +73,7 @@ pub extern "C" fn ockam_vault_random_bytes_generate(
 /// `digest` must be 32 bytes in length
 #[no_mangle]
 pub extern "C" fn ockam_vault_sha256(
-    context: OckamVaultContext,
+    context: &OckamVaultContext,
     input: *const u8,
     input_length: u32,
     digest: *mut u8,
@@ -113,9 +113,9 @@ pub extern "C" fn ockam_vault_sha256(
 /// Returns a handle for the secret
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_generate(
-    context: OckamVaultContext,
+    context: &OckamVaultContext,
     secret: &mut OckamSecret,
-    attributes: FfiSecretKeyAttributes,
+    attributes: &FfiSecretKeyAttributes,
 ) -> VaultError {
     let mut err = ExternError::success();
     let atts = attributes.into();
@@ -130,7 +130,7 @@ pub extern "C" fn ockam_vault_secret_generate(
                 },
             );
             if err.get_code().is_success() {
-                *secret = OckamSecret { attributes, handle };
+                *secret = OckamSecret { attributes: attributes.clone(), handle };
                 ERROR_NONE
             } else {
                 VaultFailErrorKind::SecretGenerate.into()
@@ -143,9 +143,9 @@ pub extern "C" fn ockam_vault_secret_generate(
 /// Import a secret key with the specific handle and attributes
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_import(
-    context: OckamVaultContext,
+    context: &OckamVaultContext,
     secret: &mut OckamSecret,
-    attributes: FfiSecretKeyAttributes,
+    attributes: &FfiSecretKeyAttributes,
     input: *mut u8,
     input_length: u32,
 ) -> VaultError {
@@ -169,7 +169,7 @@ pub extern "C" fn ockam_vault_secret_import(
                 },
             );
             if err.get_code().is_success() {
-                *secret = OckamSecret { attributes, handle };
+                *secret = OckamSecret { attributes: attributes.clone(), handle };
                 ERROR_NONE
             } else {
                 VaultFailErrorKind::InvalidSecret.into()
@@ -182,8 +182,8 @@ pub extern "C" fn ockam_vault_secret_import(
 /// Export a secret key with the specific handle to the output buffer
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_export(
-    context: OckamVaultContext,
-    secret: OckamSecret,
+    context: &OckamVaultContext,
+    secret: &OckamSecret,
     output_buffer: &mut u8,
     output_buffer_size: u32,
     output_buffer_length: &mut u32,
@@ -196,7 +196,7 @@ pub extern "C" fn ockam_vault_secret_export(
                 &mut err,
                 context.handle,
                 |vault| -> Result<ByteBuffer, VaultFailError> {
-                    let ctx = get_memory_id(secret);
+                    let ctx = get_memory_id(&secret);
                     let key = vault.secret_export(ctx)?;
                     Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
                 },
@@ -223,8 +223,8 @@ pub extern "C" fn ockam_vault_secret_export(
 /// Get the public key from a secret key to the output buffer
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_publickey_get(
-    context: OckamVaultContext,
-    secret: OckamSecret,
+    context: &OckamVaultContext,
+    secret: &OckamSecret,
     output_buffer: &mut u8,
     output_buffer_size: u32,
     output_buffer_length: &mut u32,
@@ -264,8 +264,8 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
 /// Retrieve the attributes for a specified secret
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_attributes_get(
-    context: OckamVaultContext,
-    secret: OckamSecret,
+    context: &OckamVaultContext,
+    secret: &OckamSecret,
     attributes: &mut FfiSecretKeyAttributes,
 ) -> VaultError {
     let mut err = ExternError::success();
@@ -294,8 +294,8 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
 /// Delete an ockam vault secret.
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_destroy(
-    context: OckamVaultContext,
-    secret: OckamSecret,
+    context: &OckamVaultContext,
+    secret: &OckamSecret,
 ) -> VaultError {
     let mut err = ExternError::success();
     match context.vault_id {
@@ -323,8 +323,8 @@ pub extern "C" fn ockam_vault_secret_destroy(
 /// another ockam vault secret of type unknown.
 #[no_mangle]
 pub extern "C" fn ockam_vault_ecdh(
-    context: OckamVaultContext,
-    secret: OckamSecret,
+    context: &OckamVaultContext,
+    secret: &OckamSecret,
     peer_publickey: *const u8,
     peer_publickey_length: u32,
     shared_secret: &mut OckamSecret,
@@ -380,9 +380,9 @@ pub extern "C" fn ockam_vault_ecdh(
 
 /// Perform an HMAC-SHA256 based key derivation function on the supplied salt and input key material.
 #[no_mangle]
-pub extern "C" fn ockam_vault_hkdf_sha256(context: OckamVaultContext,
-                                          salt: OckamSecret,
-                                          input_key_material: OckamSecret,
+pub extern "C" fn ockam_vault_hkdf_sha256(context: &OckamVaultContext,
+                                          salt: &OckamSecret,
+                                          input_key_material: &OckamSecret,
                                           derived_outputs_count: u8,
                                           derived_outputs: &mut Vec<OckamSecret>) -> VaultError {
     let derived_outputs_count = derived_outputs_count as usize;
@@ -435,8 +435,8 @@ pub extern "C" fn ockam_vault_hkdf_sha256(context: OckamVaultContext,
 
 ///   Encrypt a payload using AES-GCM.
 #[no_mangle]
-pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(context: OckamVaultContext,
-                                                   secret: OckamSecret,
+pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(context: &OckamVaultContext,
+                                                   secret: &OckamSecret,
                                                    nonce: u16,
                                                    additional_data: *const u8,
                                                    additional_data_length: u32,
@@ -482,8 +482,8 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(context: OckamVaultContext,
 }
 
 /// Decrypt a payload using AES-GCM.
-pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(context: OckamVaultContext,
-                                                   secret: OckamSecret,
+pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(context: &OckamVaultContext,
+                                                   secret: &OckamSecret,
                                                    nonce: u16,
                                                    additional_data: *const u8,
                                                    additional_data_length: u32,
@@ -530,7 +530,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(context: OckamVaultContext,
 
 /// Deinitialize an Ockam vault
 #[no_mangle]
-pub extern "C" fn ockam_vault_deinit(context: OckamVaultContext) -> VaultError {
+pub extern "C" fn ockam_vault_deinit(context: &OckamVaultContext) -> VaultError {
     let mut result: VaultError = ERROR_NONE;
     match context.vault_id {
         DEFAULT_VAULT_ID => {
@@ -546,6 +546,6 @@ pub extern "C" fn ockam_vault_deinit(context: OckamVaultContext) -> VaultError {
 define_string_destructor!(string_free);
 
 #[inline]
-fn get_memory_id(secret: OckamSecret) -> SecretKeyContext {
+fn get_memory_id(secret: &OckamSecret) -> SecretKeyContext {
     SecretKeyContext::Memory(secret.handle as usize)
 }
