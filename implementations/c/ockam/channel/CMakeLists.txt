@@ -34,7 +34,7 @@ target_sources(
 target_link_libraries(
   ockam_channel
   PRIVATE
-    ockam::log_interface
+    ockam::log
     ockam::memory_stdlib
     ockam::key_agreement_xx
   PUBLIC

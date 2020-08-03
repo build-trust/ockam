@@ -8,7 +8,7 @@
 #include "ockam/key_agreement/xx.h"
 #include "ockam/key_agreement/xx_local.h"
 #include "ockam/memory.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 #include "ockam/transport/socket_tcp.h"
 #include "ockam/vault.h"
@@ -32,13 +32,13 @@ ockam_error_t xx_test_initiator_prologue(key_establishment_xx* xx)
   string_to_hex((uint8_t*) INITIATOR_STATIC, key, &key_bytes);
   error = ockam_vault_secret_import(xx->vault, &xx->s_secret, &secret_attributes, key, key_bytes);
   if (error) {
-    log_error(error, "xx_test_initiator_prologue");
+    ockam_log_error("xx_test_initiator_prologue: %x", error);
     goto exit;
   }
 
   error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, KEY_SIZE, &key_bytes);
   if (error) {
-    log_error(error, "xx_test_initiator_prologue");
+    ockam_log_error("xx_test_initiator_prologue: %x", error);
     goto exit;
   }
 
@@ -48,13 +48,13 @@ ockam_error_t xx_test_initiator_prologue(key_establishment_xx* xx)
   secret_attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
   error = ockam_vault_secret_import(xx->vault, &xx->e_secret, &secret_attributes, key, key_bytes);
   if (error) {
-    log_error(error, "xx_test_initiator_prologue");
+    ockam_log_error("xx_test_initiator_prologue: %x", error);
     goto exit;
   }
 
   error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, KEY_SIZE, &key_bytes);
   if (error) {
-    log_error(error, "xx_test_initiator_prologue");
+    ockam_log_error("xx_test_initiator_prologue: %x", error);
     goto exit;
   }
 
@@ -76,7 +76,7 @@ ockam_error_t xx_test_initiator_prologue(key_establishment_xx* xx)
   mix_hash(xx, NULL, 0);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -141,7 +141,7 @@ ockam_error_t test_initiator_handshake(ockam_key_t* p_key)
   if (error) goto exit;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -158,7 +158,7 @@ ockam_error_t establish_initiator_transport(ockam_transport_t*  p_transport,
 
   error = ockam_transport_socket_tcp_init(p_transport, &tcp_attrs);
   if (error) {
-    log_error(error, "establish_initiator_transport");
+    ockam_log_error("establish_initiator_transport: %x", error);
     goto exit;
   }
 
@@ -238,7 +238,7 @@ ockam_error_t xx_test_initiator(ockam_vault_t* p_vault, ockam_memory_t* p_memory
     string_to_hex((uint8_t*) MSG_5_CIPHERTEXT, test, &test_bytes);
     if (0 != memcmp(test, write_buffer, transmit_size)) {
       error = KEYAGREEMENT_ERROR_FAIL;
-      log_error(error, "Msg 5 failed");
+      ockam_log_error("Msg 5 failed: %x", error);
       goto exit;
     }
   }
@@ -248,12 +248,12 @@ ockam_error_t xx_test_initiator(ockam_vault_t* p_vault, ockam_memory_t* p_memory
    *-----------------------------------------------------------------------*/
   error = ockam_write(p_writer, write_buffer, transmit_size);
   if (TRANSPORT_ERROR_NONE != error) {
-    log_error(error, "ockam_SendBlocking failed on test message");
+    ockam_log_error("ockam_SendBlocking failed on test message: %x", error);
     goto exit;
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   ockam_transport_deinit(&transport);
   return error;
 }

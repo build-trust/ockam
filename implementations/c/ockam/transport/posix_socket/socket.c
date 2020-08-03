@@ -1,4 +1,4 @@
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/io.h"
 #include "ockam/io/impl.h"
 #include "ockam/transport.h"
@@ -31,7 +31,7 @@ ockam_error_t make_socket_reader_writer(posix_socket_t* p_ctx,
     *pp_writer             = p_ctx->p_writer;
   }
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -55,7 +55,7 @@ ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, s
     in_status = inet_pton(AF_INET, (char*) p_ip_address, &p_socket_address->sin_addr.s_addr);
     if (1 != in_status) {
       error = TRANSPORT_ERROR_BAD_ADDRESS;
-      log_error(error, "inet_pton failed in make_socket_address");
+      ockam_log_error("inet_pton failed in make_socket_address: %x", error);
       goto exit;
     }
   } else {

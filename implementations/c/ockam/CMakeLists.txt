@@ -1,7 +1,6 @@
 add_subdirectory(error)
 
 add_subdirectory(log)
-add_subdirectory(log/log)
 
 add_subdirectory(memory)
 add_subdirectory(memory/stdlib)

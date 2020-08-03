@@ -3,7 +3,7 @@
 #include "ockam/error.h"
 #include "ockam/key_agreement/impl.h"
 #include "ockam/key_agreement.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 #include "ockam/vault.h"
 #include "ockam/codec.h"
@@ -58,25 +58,25 @@ ockam_error_t ockam_key_establish_responder_xx(void* p_context)
   if (error) goto exit;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   error = ockam_vault_secret_destroy(xx.vault, &xx.s_secret);
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     return_error = error;
   }
   error = ockam_vault_secret_destroy(xx.vault, &xx.e_secret);
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     return_error = error;
   }
   error = ockam_vault_secret_destroy(xx.vault, &xx.k_secret);
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     return_error = error;
   }
   error = ockam_vault_secret_destroy(xx.vault, &xx.ck_secret);
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     return_error = error;
   }
   return return_error;
@@ -108,7 +108,7 @@ ockam_error_t xx_responder_m1_process(key_establishment_xx* p_h, uint8_t* p_m1, 
 
   if (offset != m1_size) {
     error = KEYAGREEMENT_ERROR_FAIL;
-    log_error(error, "handshake failed in  responder_m1_process (size mismatch)");
+    ockam_log_error("handshake failed in  responder_m1_process (size mismatch): %x", error);
   }
 
 exit:
@@ -205,7 +205,7 @@ ockam_error_t xx_responder_m2_make(key_establishment_xx* xx, uint8_t* p_msg, siz
   *p_bytesWritten = offset;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -274,7 +274,7 @@ ockam_error_t xx_responder_m3_process(key_establishment_xx* xx, uint8_t* p_m3, s
   mix_hash(xx, p_m3 + offset, clear_text_length);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -297,6 +297,6 @@ ockam_error_t xx_responder_epilogue(key_establishment_xx* xx, ockam_xx_key_t* p_
   p_key->decrypt_nonce = 0;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }

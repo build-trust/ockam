@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/io.h"
 #include "ockam/io/impl.h"
 #include "ockam/transport.h"
@@ -89,7 +89,7 @@ ockam_error_t ockam_transport_socket_udp_init(ockam_transport_t*                
 
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     if (p_ctx) ockam_memory_free(gp_ockam_transport_memory, p_ctx, 0);
   }
   return error;
@@ -124,7 +124,7 @@ ockam_error_t socket_udp_connect(void*               ctx,
   if (error) goto exit;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -146,7 +146,7 @@ socket_udp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_wri
   if (error) goto exit;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -175,7 +175,7 @@ ockam_error_t socket_udp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
   *buffer_length = bytes_read;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -198,7 +198,7 @@ ockam_error_t socket_udp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 

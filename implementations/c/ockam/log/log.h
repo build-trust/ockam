@@ -1,101 +1,46 @@
-/**
- ********************************************************************************************************
- * @file    log.h
- * @brief   Generic logging functions for the Ockam Library
- ********************************************************************************************************
- */
+#ifndef OCKAM_LOG_H
+#define OCKAM_LOG_H
 
-#ifndef OCKAM_LOG_H_
-#define OCKAM_LOG_H_
+#include <stdarg.h>
 
-/*
- ********************************************************************************************************
- * @defgroup    OCKAM_LOG OCKAM_LOG_API
- * @ingroup     OCKAM
- * @brief       OCKAM_LOG_API
- *
- * @addtogroup  OCKAM_LOG
- * @{
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                             INCLUDE FILES                                            *
- ********************************************************************************************************
- */
-
-#include <stdint.h>
-
-#include "ockam/error.h"
-
-/*
- ********************************************************************************************************
- *                                                DEFINES                                               *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                               CONSTANTS                                              *
- ********************************************************************************************************
- */
+#ifdef OCKAM_DISABLE_LOG
+#define OCKAM_LOG_ENABLED 0
+#else
+#define OCKAM_LOG_ENABLED 1
+#endif
 
 typedef enum {
-  OCKAM_LOG_DEBUG = 0,
-  OCKAM_LOG_INFO,
-  OCKAM_LOG_WARN,
-  OCKAM_LOG_ERROR,
-  OCKAM_LOG_FATAL,
-  MAX_OCKAM_LOG
-} OCKAM_LOG_e;
+    OCKAM_LOG_LEVEL_INFO = 0,
+    OCKAM_LOG_LEVEL_DEBUG,
+    OCKAM_LOG_LEVEL_WARN,
+    OCKAM_LOG_LEVEL_ERROR,
+    OCKAM_LOG_LEVEL_FATAL,
+} ockam_log_level_t;
 
-/*
- ********************************************************************************************************
- *                                               DATA TYPES                                             *
- ********************************************************************************************************
- */
+typedef void (*ockam_log_function_t)(ockam_log_level_t level, const char *file, int line, const char *fmt, va_list args);
 
-/*
- ********************************************************************************************************
- *                                          FUNCTION PROTOTYPES                                         *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                            GLOBAL VARIABLES                                          *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                           GLOBAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
-
-/*
- ********************************************************************************************************
- *                                            LOCAL FUNCTIONS                                           *
- ********************************************************************************************************
- */
-
-#ifdef __cplusplus
-extern "C" {
+#if OCKAM_CUSTOM_LOG_FUNCTION
+void ockam_set_log_function(ockam_log_function_t log_function);
 #endif
 
-ockam_error_t ockam_log_init(void);
+void ockam_log_set_level(ockam_log_level_t level);
+ockam_log_level_t ockam_log_get_level();
 
-ockam_error_t ockam_log(void* p_str, uint32_t str_size);
+void ockam_log_log(ockam_log_level_t level, const char *file, int line, const char *fmt, ...);
 
-#ifdef __cplusplus
-}
-#endif
+#define ockam_log_info(...) \
+        do { if (OCKAM_LOG_ENABLED) ockam_log_log(OCKAM_LOG_LEVEL_INFO, __FILE__, __LINE__, __VA_ARGS__); } while(0)
 
-/*
- ********************************************************************************************************
- * @}
- ********************************************************************************************************
- */
+#define ockam_log_debug(...) \
+        do { if (OCKAM_LOG_ENABLED) ockam_log_log(OCKAM_LOG_LEVEL_DEBUG, __FILE__, __LINE__, __VA_ARGS__); } while(0)
 
-#endif
+#define ockam_log_warn(...) \
+        do { if (OCKAM_LOG_ENABLED) ockam_log_log(OCKAM_LOG_LEVEL_WARN, __FILE__, __LINE__, __VA_ARGS__); } while(0)
+
+#define ockam_log_error(...) \
+        do { if (OCKAM_LOG_ENABLED) ockam_log_log(OCKAM_LOG_LEVEL_ERROR, __FILE__, __LINE__, __VA_ARGS__); } while(0)
+
+#define ockam_log_fatal(...) \
+        do { if (OCKAM_LOG_ENABLED) ockam_log_log(OCKAM_LOG_LEVEL_FATAL, __FILE__, __LINE__, __VA_ARGS__); } while(0)
+
+#endif //OCKAM_LOG_H

@@ -57,8 +57,10 @@ else()
   include(FetchContent)
 endif()
 
-option(OCKAM_ENABLE_ATECC608A_BUILD "Enables build for atecc608a vault" ON)
-option(OCKAM_ENABLE_ATECC608A_TESTS "Enables tests for atecc608a vault" OFF)
+option(OCKAM_ENABLE_ATECC608A_BUILD "Enables build for atecc608a vault"                                        ON )
+option(OCKAM_ENABLE_ATECC608A_TESTS "Enables tests for atecc608a vault"                                        OFF)
+option(OCKAM_DISABLE_LOG            "Disables logging (also reduces size of binary by cutting out log string)" OFF)
+option(OCKAM_CUSTOM_LOG_FUNCTION    "Allows setting custom log function (default uses stdout)"                 OFF)
 
 # add external dependencies
 add_subdirectory(external)

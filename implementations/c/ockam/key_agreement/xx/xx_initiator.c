@@ -3,7 +3,7 @@
 #include "ockam/error.h"
 #include "ockam/key_agreement/impl.h"
 #include "ockam/key_agreement.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 #include "ockam/vault.h"
 #include "xx_local.h"
@@ -50,7 +50,7 @@ ockam_error_t ockam_key_establish_initiator_xx(void* p_context)
   if (error) goto exit;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   error = ockam_vault_secret_destroy(xx.vault, &xx.s_secret);
   if (error) return_error = error;
   error = ockam_vault_secret_destroy(xx.vault, &xx.e_secret);
@@ -159,7 +159,7 @@ ockam_error_t xx_initiator_m2_process(key_establishment_xx* xx, uint8_t* p_recv,
   mix_hash(xx, p_recv + offset, TAG_SIZE);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -228,7 +228,7 @@ ockam_error_t xx_initiator_m3_make(key_establishment_xx* xx, uint8_t* p_msg, siz
   *p_msg_size = offset;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -254,6 +254,6 @@ ockam_error_t xx_initiator_epilogue(key_establishment_xx* xx, ockam_xx_key_t* p_
   p_key->decrypt_nonce = 0;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }

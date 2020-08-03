@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/io.h"
 #include "ockam/io/impl.h"
 #include "ockam/transport.h"
@@ -48,7 +48,7 @@ ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t* p_transport, oc
 
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     if (p_ctx) ockam_memory_free(gp_ockam_transport_memory, p_ctx, 0);
   }
   return error;
@@ -127,7 +127,7 @@ ockam_error_t socket_tcp_connect(void*               ctx,
 
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     if (p_tcp_socket) {
       ockam_memory_free(gp_ockam_transport_memory, p_tcp_socket, 0);
       if (p_transport_ctx) p_transport_ctx->p_socket = NULL;
@@ -197,7 +197,7 @@ socket_tcp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_wri
                 (struct sockaddr*) &p_listen_socket->posix_socket.remote_sockaddr,
                 sizeof(p_listen_socket->posix_socket.remote_sockaddr))) {
     error = TRANSPORT_ERROR_BAD_PARAMETER;
-    log_error(error, "bind failed in PosixTcpListenBlocking");
+    ockam_log_error("bind failed in PosixTcpListenBlocking: %x", error);
     goto exit;
   }
 
@@ -220,7 +220,7 @@ socket_tcp_accept(void* ctx, ockam_reader_t** pp_reader, ockam_writer_t** pp_wri
 
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     if (p_listen_socket) ockam_memory_free(gp_ockam_transport_memory, p_listen_socket, 0);
     if (p_connect_socket) ockam_memory_free(gp_ockam_transport_memory, p_connect_socket, 0);
   }
@@ -270,7 +270,7 @@ ockam_error_t socket_tcp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
     if (bytes_to_read > p_transmission->buffer_remaining) bytes_to_read = p_transmission->buffer_remaining;
     recv_status = recv(p_socket->socket_fd, p_transmission->buffer + bytes_read, bytes_to_read, 0);
     if (-1 == recv_status) {
-      log_error(recv_status, "receive failed");
+      ockam_log_error("receive failed: %ll", recv_status);
       goto exit;
     }
     bytes_read += recv_status;
@@ -290,7 +290,7 @@ ockam_error_t socket_tcp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -317,7 +317,7 @@ ockam_error_t socket_tcp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 

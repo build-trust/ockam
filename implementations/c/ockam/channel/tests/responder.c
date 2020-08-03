@@ -6,7 +6,7 @@
 #include "ockam/error.h"
 #include "ockam/key_agreement.h"
 #include "ockam/memory.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 #include "ockam/transport/socket_tcp.h"
 #include "ockam/vault.h"
@@ -36,7 +36,7 @@ ockam_error_t establish_responder_transport(ockam_transport_t*  p_transport,
   error = OCKAM_ERROR_NONE;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -82,7 +82,7 @@ ockam_error_t channel_responder(ockam_vault_t* vault, ockam_memory_t* p_memory, 
   printf("Responder received %ld bytes: %s\n", bytes_received, recv_buffer);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   ockam_channel_deinit(&channel);
   ockam_transport_deinit(&transport);
   return error;

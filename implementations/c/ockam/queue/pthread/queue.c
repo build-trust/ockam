@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include "ockam/queue.h"
 #include "ockam/error.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 
 struct ockam_queue_t {
   ockam_memory_t* p_memory;
@@ -60,7 +60,7 @@ exit:
     ockam_memory_free(p_attributes->p_memory, p_queue->nodes, nodes_size);
     ockam_memory_free(p_attributes->p_memory, p_queue, sizeof(ockam_queue_t));
   }
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 };
 
@@ -71,7 +71,7 @@ ockam_error_t enqueue(ockam_queue_t* p_q, void* node)
 
   // Validate parameters
   if ((NULL == p_q) || (NULL == node)) {
-    log_error(QUEUE_ERROR_PARAMETER, "Invalid parameter in enqueue");
+    ockam_log_error("%s", "Invalid parameter in enqueue");
     error = QUEUE_ERROR_PARAMETER;
     goto exit;
   }
@@ -99,7 +99,7 @@ ockam_error_t enqueue(ockam_queue_t* p_q, void* node)
   if (NULL != p_q->p_alert) { pthread_cond_signal(p_q->p_alert); }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   if (q_is_locked) pthread_mutex_unlock(&p_q->modify_lock);
   return error;
 }
@@ -111,7 +111,7 @@ ockam_error_t dequeue(ockam_queue_t* p_q, void** pp_node)
 
   // Validate parameters
   if ((NULL == p_q) || (NULL == pp_node)) {
-    log_error(QUEUE_ERROR_PARAMETER, "invalid parameter in dequeue");
+    ockam_log_error("%s", "invalid parameter in dequeue");
     error = QUEUE_ERROR_PARAMETER;
     goto exit;
   }
@@ -136,7 +136,7 @@ ockam_error_t dequeue(ockam_queue_t* p_q, void** pp_node)
   p_q->size -= 1;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   if (q_is_locked) pthread_mutex_unlock(&p_q->modify_lock);
   return error;
 }
@@ -212,7 +212,7 @@ ockam_error_t grow_queue(ockam_queue_t* p_q, uint16_t new_max_size)
 
   // Validate parameters
   if ((NULL == p_q) || (new_max_size <= p_q->max_size)) {
-    log_error(QUEUE_ERROR_PARAMETER, "Invalid parameter in grow_queue");
+    ockam_log_error("%s", "Invalid parameter in grow_queue");
     error = QUEUE_ERROR_PARAMETER;
     goto exit;
   }
@@ -255,7 +255,7 @@ exit:
   if (q_is_locked) pthread_mutex_unlock(&p_q->modify_lock);
   if (error) {
     ockam_memory_free(p_q->p_memory, new_nodes, 0);
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
   }
   return error;
 }

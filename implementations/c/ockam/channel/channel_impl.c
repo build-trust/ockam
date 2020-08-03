@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/memory.h"
 #include "ockam/key_agreement.h"
 #include "ockam/key_agreement/xx.h"
@@ -68,7 +68,7 @@ ockam_error_t channel_decrypt(ockam_channel_t* p_ch,
     *p_encoded_text_length = cipher_text_length;
   }
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -91,7 +91,7 @@ ockam_error_t channel_process_message(uint8_t* p_encoded,
     goto exit;
   }
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -128,7 +128,7 @@ ockam_error_t ockam_channel_init(ockam_channel_t* p_ch, ockam_channel_attributes
 
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     if (p_ch) {
       if (p_ch->channel_reader)
         ockam_memory_free(gp_ockam_channel_memory, (void*) p_ch->channel_reader, sizeof(ockam_reader_t));
@@ -149,7 +149,7 @@ ockam_error_t ockam_channel_connect(ockam_channel_t* p_ch, ockam_reader_t** p_re
   *p_writer = p_ch->channel_writer;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -162,7 +162,7 @@ ockam_error_t ockam_channel_accept(ockam_channel_t* p_ch, ockam_reader_t** p_rea
   *p_writer = p_ch->channel_writer;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -223,7 +223,7 @@ ockam_error_t channel_read(void* ctx, uint8_t* p_clear_text, size_t clear_text_s
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -278,7 +278,7 @@ ockam_error_t channel_write(void* ctx, uint8_t* p_clear_text, size_t clear_text_
   if (error) goto exit;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -292,6 +292,6 @@ ockam_error_t ockam_channel_deinit(ockam_channel_t* p_ch)
   if (error) goto exit;
   ockam_key_deinit(&p_ch->key);
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }

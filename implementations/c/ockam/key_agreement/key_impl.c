@@ -1,5 +1,5 @@
 #include "ockam/error.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/key_agreement.h"
 #include "ockam/key_agreement/impl.h"
 #include "ockam/memory.h"
@@ -18,7 +18,7 @@ ockam_error_t ockam_key_initiate(ockam_key_t* p_key)
   error = p_key->dispatch->initiate(p_key->context);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -34,7 +34,7 @@ ockam_error_t ockam_key_respond(ockam_key_t* p_key)
   error = p_key->dispatch->respond(p_key->context);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -55,7 +55,7 @@ ockam_error_t ockam_key_encrypt(
   error = p_key->dispatch->encrypt(p_key->context, payload, payload_size, msg, msg_size, msg_length);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -76,7 +76,7 @@ ockam_error_t ockam_key_decrypt(
   error = p_key->dispatch->decrypt(p_key->context, payload, payload_size, msg, msg_length, payload_length);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -92,6 +92,6 @@ ockam_error_t ockam_key_deinit(ockam_key_t* p_key)
   error = p_key->dispatch->deinit(p_key->context);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }

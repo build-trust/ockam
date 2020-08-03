@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ockam/queue.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/memory.h"
 #include "ockam/memory/stdlib.h"
 
@@ -39,14 +39,14 @@ int main()
   if (error) goto exit;
 
   if (0 != strcmp((char*) p_node, &nodes[0][0])) {
-    log_error(0, "Dequeue returned garbage");
+    ockam_log_error("%s", "Dequeue returned garbage");
     goto exit;
   }
 
   // Verify queue is empty
   error = dequeue(p_q, &p_node);
   if (QUEUE_ERROR_EMPTY != error) {
-    log_error(0, "Dequeue on empty queue failed");
+    ockam_log_error("%s", "Dequeue on empty queue failed");
     goto exit;
   }
 
@@ -54,13 +54,13 @@ int main()
   for (int i = 0; i < 5; ++i) {
     error = enqueue(p_q, &nodes[i][0]);
     if (OCKAM_ERROR_NONE != error) {
-      log_error(0, "enqueue failed while populating queue");
+      ockam_log_error("%s", "enqueue failed while populating queue");
       goto exit;
     }
   }
   error = enqueue(p_q, (void*) "another ");
   if (QUEUE_ERROR_FULL != error) {
-    log_error(0, "enqueue didn't return queue full");
+    ockam_log_error("%s", "enqueue didn't return queue full");
     goto exit;
   }
 
@@ -68,11 +68,11 @@ int main()
   for (int i = 0; i < 3; ++i) {
     error = dequeue(p_q, &p_node);
     if (OCKAM_ERROR_NONE != error) {
-      log_error(0, "error dequeueing while emptying half-way");
+      ockam_log_error("%s", "error dequeueing while emptying half-way");
       goto exit;
     }
     if (p_node != &nodes[i][0]) {
-      log_error(0, "dequeue returned wrong node");
+      ockam_log_error("%s", "dequeue returned wrong node");
       goto exit;
     }
   }
@@ -81,7 +81,7 @@ int main()
   for (int i = 5; i < 8; ++i) {
     error = enqueue(p_q, (void*) &nodes[i]);
     if (OCKAM_ERROR_NONE != error) {
-      log_error(error, "error refilling queue");
+      ockam_log_error("%s", "error refilling queue");
       goto exit;
     }
   }
@@ -90,11 +90,11 @@ int main()
   for (int i = 3; i < 8; ++i) {
     error = dequeue(p_q, &p_node);
     if (OCKAM_ERROR_NONE != error) {
-      log_error(error, "error emptying queue");
+      ockam_log_error("%s", "error emptying queue");
       goto exit;
     }
     if (p_node != &nodes[i][0]) {
-      log_error(0, "wrong node returned");
+      ockam_log_error("%s", "wrong node returned");
       goto exit;
     }
   }
@@ -103,7 +103,7 @@ int main()
   error = queue_size(p_q, &p_size);
   if (error) { goto exit; }
   if (p_size != 0) {
-    log_error(error, "queue_size returned incorrect size");
+    ockam_log_error("%s", "queue_size returned incorrect size");
     goto exit;
   }
 
@@ -111,7 +111,7 @@ int main()
   for (int i = 0; i < 5; ++i) {
     error = enqueue(p_q, nodes[i]);
     if (error) {
-      log_error(error, "error fulfilling queue");
+      ockam_log_error("%s", "error fulfilling queue");
       goto exit;
     }
   }
@@ -121,7 +121,7 @@ int main()
   error = queue_size(p_q, &p_size);
   if (error) { goto exit; }
   if (p_size != 5) {
-    log_error(error, "queue_size returned incorrect size");
+    ockam_log_error("%s", "queue_size returned incorrect size");
     goto exit;
   }
 
@@ -130,14 +130,14 @@ int main()
   error = queue_max_size(p_q, &p_size);
   if (error) { goto exit; }
   if (p_size != 5) {
-    log_error(error, "queue_max_size returned incorrect max size");
+    ockam_log_error("%s", "queue_max_size returned incorrect max size");
     goto exit;
   }
 
   // Grow queue size
   error = grow_queue(p_q, 7);
   if (error) {
-    log_error(error, "error growing queue");
+    ockam_log_error("%s", "error growing queue");
     goto exit;
   }
 
@@ -146,7 +146,7 @@ int main()
   error = queue_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 5) {
-    log_error(error, "queue_size returned incorrect size");
+    ockam_log_error("%s", "queue_size returned incorrect size");
     goto exit;
   }
 
@@ -155,7 +155,7 @@ int main()
   error = queue_max_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 7) {
-    log_error(error, "queue_max_size returned incorrect max size");
+    ockam_log_error("%s", "queue_max_size returned incorrect max size");
     goto exit;
   }
 
@@ -163,7 +163,7 @@ int main()
   for (int i = 5; i < 7; ++i) {
     error = enqueue(p_q, nodes[i]);
     if (error) {
-      log_error(error, "error queueing to grown queue");
+      ockam_log_error("%s", "error queueing to grown queue");
       goto exit;
     }
   }
@@ -173,7 +173,7 @@ int main()
   error = queue_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 7) {
-    log_error(error, "queue_size returned incorrect size");
+    ockam_log_error("%s", "queue_size returned incorrect size");
     goto exit;
   }
 
@@ -182,28 +182,28 @@ int main()
   error = queue_max_size(p_q, &p_size);
   if (error) goto exit;
   if (p_size != 7) {
-    log_error(error, "queue_max_size returned incorrect max size");
+    ockam_log_error("%s", "queue_max_size returned incorrect max size");
     goto exit;
   }
 
   // Check queue is full
   error = enqueue(p_q, nodes[7]);
   if (QUEUE_ERROR_FULL != error) {
-    log_error(0, "enqueue didn't return queue full");
+    ockam_log_error("%s", "enqueue didn't return queue full");
     goto exit;
   }
 
   // Grow queue even more
   error = grow_queue(p_q, 8);
   if (error) {
-    log_error(error, "error growing queue");
+    ockam_log_error("%s", "error growing queue");
     goto exit;
   }
 
   // Check queue is full
   error = enqueue(p_q, nodes[7]);
   if (error) {
-    log_error(error, "error queueing to grown queue");
+    ockam_log_error("%s", "error queueing to grown queue");
     goto exit;
   }
 
@@ -211,11 +211,11 @@ int main()
   for (int i = 0; i < 8; ++i) {
     error = dequeue(p_q, &p_node);
     if (error) {
-      log_error(error, "error emptying queue");
+      ockam_log_error("%s", "error emptying queue");
       goto exit;
     }
     if (p_node != nodes[i]) {
-      log_error(0, "wrong node returned");
+      ockam_log_error("%s", "wrong node returned");
       goto exit;
     }
   }
@@ -233,7 +233,7 @@ int main()
   for (int i = 0; i < 2; ++i) {
     error = enqueue(p_q, nodes[i]);
     if (error) {
-      log_error(error, "error emptying queue");
+      ockam_log_error("%s", "error emptying queue");
       goto exit;
     }
   }
@@ -244,11 +244,11 @@ int main()
   for (int i = 0; i < 1; ++i) {
     error = dequeue(p_q, &p_node);
     if (error) {
-      log_error(error, "error emptying queue");
+      ockam_log_error("%s", "error emptying queue");
       goto exit;
     }
     if (p_node != nodes[i]) {
-      log_error(0, "wrong node returned");
+      ockam_log_error("%s", "wrong node returned");
       goto exit;
     }
   }
@@ -260,6 +260,6 @@ int main()
   printf("Queue test successful! (4 errors above are expected)\n");
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%s", __func__);
   return ret_error;
 }

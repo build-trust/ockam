@@ -7,7 +7,7 @@
 #include <getopt.h>
 
 #include "ockam/error.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 
 #include "tools.h"
@@ -113,7 +113,7 @@ ockam_error_t init_params(enum TransportType transport_type, int argc, char* arg
     default:
       status = TRANSPORT_ERROR_BAD_PARAMETER;
       print_usage();
-      log_error(status, "invalid command-line arguments");
+      ockam_log_error("%s", "invalid command-line arguments");
       return 2;
     }
   }
@@ -144,7 +144,7 @@ ockam_error_t open_file_for_read(const char* p_fixture_path, const char* p_file_
   *pp_file = fopen(path, "r");
   if (NULL == *pp_file) {
     error = TRANSPORT_ERROR_TEST;
-    log_error(error, "failed to open file");
+    ockam_log_error("%s", "failed to open file");
     goto exit;
   }
 
@@ -162,7 +162,7 @@ ockam_error_t open_file_for_write(const char* p_fixture_path, const char* p_file
   *pp_file = fopen(path, "w");
   if (NULL == *pp_file) {
     error = TRANSPORT_ERROR_TEST;
-    log_error(error, "failed to open file");
+    ockam_log_error("%s", "failed to open file");
     goto exit;
   }
 

@@ -4,7 +4,7 @@
 #include "ockam/error.h"
 #include "ockam/key_agreement.h"
 #include "ockam/key_agreement/impl.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/vault.h"
 #include "ockam/vault/default.h"
 #include "xx_local.h"
@@ -41,7 +41,7 @@ ockam_error_t ockam_xx_key_initialize(ockam_key_t*    p_key,
 
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     if (p_key) {
       if (p_key->context) ockam_memory_free(p_memory, p_key->context, 0);
     }
@@ -79,7 +79,7 @@ xx_encrypt(void* p_context, uint8_t* payload, size_t payload_size, uint8_t* msg,
   *msg_size = ciphertext_and_tag_length;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -113,7 +113,7 @@ ockam_error_t xx_decrypt(void*    p_context,
   p_xx_key->decrypt_nonce += 1;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -148,7 +148,7 @@ ockam_error_t key_agreement_prologue_xx(key_establishment_xx* xx)
 
   error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, sizeof(xx->s), &key_size);
   if (error) {
-    log_error(error, "key_agreement_prologue_xx");
+    ockam_log_error("key_agreement_prologue_xx: %x", error);
     goto exit;
   }
 
@@ -177,7 +177,7 @@ ockam_error_t key_agreement_prologue_xx(key_establishment_xx* xx)
   mix_hash(xx, NULL, 0);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -209,14 +209,14 @@ ockam_error_t hkdf_dh(key_establishment_xx* xx,
   // Compute shared secret
   error = ockam_vault_ecdh(xx->vault, privatekey, peer_publickey, peer_publickey_length, &shared_secret);
   if (OCKAM_ERROR_NONE != error) {
-    log_error(error, "failed ockam_vault_ecdh in responder_m2_send");
+    ockam_log_error("failed ockam_vault_ecdh in responder_m2_send: %x", error);
     goto exit;
   }
 
   // ck, k = HKDF( ck, shared_secret )
   error = ockam_vault_hkdf_sha256(xx->vault, salt, &shared_secret, 2, generated_secrets);
   if (OCKAM_ERROR_NONE != error) {
-    log_error(error, "failed ockam_vault_hkdf_sha256 in hkdf_dh");
+    ockam_log_error("failed ockam_vault_hkdf_sha256 in hkdf_dh: %x", error);
     goto exit;
   }
 
@@ -257,7 +257,7 @@ void mix_hash(key_establishment_xx* xx, uint8_t* p_bytes, uint16_t b_length)
   ockam_memory_copy(gp_ockam_key_memory, p_h, hash, hash_length);
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return;
 }
 

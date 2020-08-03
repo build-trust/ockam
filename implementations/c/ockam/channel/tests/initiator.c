@@ -5,7 +5,7 @@
 
 #include "ockam/error.h"
 #include "ockam/memory.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 #include "ockam/transport/socket_tcp.h"
 #include "ockam/vault.h"
@@ -31,7 +31,7 @@ ockam_error_t establish_initiator_transport(ockam_transport_t*  p_transport,
   if (error) goto exit;
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -73,7 +73,7 @@ ockam_error_t channel_initiator(ockam_vault_t* vault, ockam_memory_t* p_memory, 
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   ockam_channel_deinit(&channel);
   ockam_transport_deinit(&transport);
   return error;

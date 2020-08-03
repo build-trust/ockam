@@ -1,7 +1,7 @@
 #ifndef OCKAM_IO_H
 #define OCKAM_IO_H
 
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/io/impl.h"
 
 ockam_error_t ockam_read(ockam_reader_t* p_reader, uint8_t* buffer, size_t buffer_size, size_t* buffer_length)
@@ -15,7 +15,7 @@ ockam_error_t ockam_read(ockam_reader_t* p_reader, uint8_t* buffer, size_t buffe
   error = p_reader->read(p_reader->ctx, buffer, buffer_size, buffer_length);
 
 exit:
-  if (error) log_error(error, "ockam_read");
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 ockam_error_t ockam_write(ockam_writer_t* p_writer, uint8_t* buffer, size_t buffer_length)
@@ -29,7 +29,7 @@ ockam_error_t ockam_write(ockam_writer_t* p_writer, uint8_t* buffer, size_t buff
   error = p_writer->write(p_writer->ctx, buffer, buffer_length);
 
 exit:
-  if (error) log_error(error, "ockam_write");
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 

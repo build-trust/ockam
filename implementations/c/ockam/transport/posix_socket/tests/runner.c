@@ -4,7 +4,7 @@
 
 #include "ockam/error.h"
 #include "ockam/memory.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 #include "tools.h"
 #include "client.h"
@@ -31,7 +31,7 @@ int run(enum TransportType transport_type, int argc, char* argv[])
     printf("Run Server\n");
     test_server_process = fork();
     if (test_server_process < 0) {
-      log_error(TRANSPORT_ERROR_TEST, "Fork unsuccessful");
+      ockam_log_error("%s", "Fork unsuccessful");
       error = -1;
       goto exit;
     }
@@ -41,7 +41,7 @@ int run(enum TransportType transport_type, int argc, char* argv[])
       printf("Run Client\n");
       error = run_test_client(&test_params);
       if (0 != error) {
-        log_error(TRANSPORT_ERROR_TEST, "testTcpClient failed");
+        ockam_log_error("%s", "testTcpClient failed");
         test_client_error = -1;
       }
     }
@@ -58,14 +58,14 @@ int run(enum TransportType transport_type, int argc, char* argv[])
     // This is the server process
     error = run_test_server(&test_params);
     if (0 != error) {
-      log_error(TRANSPORT_ERROR_TEST, "testTcpServer failed");
+      ockam_log_error("%s", "testTcpServer failed");
       error = -1;
     }
   }
 
 exit:
   if (error) {
-    log_error(error, "Error during transport test run");
+    ockam_log_error("%s", "Error during transport test run");
     return error;
   }
 

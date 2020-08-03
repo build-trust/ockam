@@ -34,7 +34,7 @@ target_sources(
 target_link_libraries(
   ockam_io
   PRIVATE
-    ockam::log_interface
+    ockam::log
   PUBLIC
     ockam::error_interface
     ockam::io_interface

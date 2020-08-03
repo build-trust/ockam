@@ -9,7 +9,7 @@
 #include "ockam/key_agreement.h"
 #include "ockam/memory.h"
 #include "ockam/memory/stdlib.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/transport.h"
 
 #include "ockam/random/urandom.h"
@@ -58,7 +58,7 @@ ockam_error_t parse_opts(int argc, char* argv[])
     case '?':
       status = TRANSPORT_ERROR_BAD_PARAMETER;
       usage();
-      log_error(status, "invalid command-line arguments");
+      ockam_log_error("invalid command-line arguments");
       return 2;
 
     default:
@@ -135,6 +135,6 @@ int main(int argc, char* argv[])
 
 exit:
   printf("Test ended with error %d\n", initiator_status + responder_status);
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return error;
 }

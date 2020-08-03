@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <string.h>
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/error.h"
 #include "ockam/codec.h"
 
@@ -51,7 +51,7 @@ uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route)
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return p_encoded;
 }
 
@@ -96,6 +96,6 @@ uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route)
   }
 
 exit:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return p_encoded;
 }

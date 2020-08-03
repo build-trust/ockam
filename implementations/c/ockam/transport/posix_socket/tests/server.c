@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/io.h"
 #include "ockam/transport.h"
 #include "ockam/transport/socket_tcp.h"
@@ -45,7 +45,7 @@ int run_test_server(test_cli_params_t* p_params)
     uint8_t receive_buffer[64];
     error = ockam_read(p_transport_reader, receive_buffer, sizeof(receive_buffer), &bytes_received);
     if ((error) && (TRANSPORT_ERROR_MORE_DATA != error)) {
-      log_error(error, "Receive failed");
+      ockam_log_error("%s", "Receive failed");
       goto exit;
     }
     // Look for special "the end" buffer
@@ -55,7 +55,7 @@ int run_test_server(test_cli_params_t* p_params)
     else {
       size_t bytes_written = fwrite(receive_buffer, 1, bytes_received, p_file_to_receive);
       if (bytes_written != bytes_received) {
-        log_error(TRANSPORT_ERROR_TEST, "failed write to output file");
+        ockam_log_error("%s", "failed write to output file");
         goto exit;
       }
     }
@@ -76,7 +76,7 @@ int run_test_server(test_cli_params_t* p_params)
     size_t send_length = fread(send_buffer, 1, sizeof(send_buffer), p_file_to_send);
     error = ockam_write(p_transport_writer, &send_buffer[0], send_length);
     if (TRANSPORT_ERROR_NONE != error) {
-      log_error(error, "Send failed");
+      ockam_log_error("%s", "Send failed");
       goto exit;
     }
   }
@@ -86,7 +86,7 @@ int run_test_server(test_cli_params_t* p_params)
   // Send special "the end" buffer
   error = ockam_write(p_transport_writer, (uint8_t*) "that's all", strlen("that's all") + 1);
   if (TRANSPORT_ERROR_NONE != error) {
-    log_error(error, "Send failed");
+    ockam_log_error("%s", "Send failed");
     goto exit;
   }
 
@@ -99,7 +99,7 @@ int run_test_server(test_cli_params_t* p_params)
   // Now compare the received file and the reference file
   if (0 != file_compare(&p_params->memory, p_sent_file, p_received_file)) {
     error = TRANSPORT_ERROR_TEST;
-    log_error(error, "file compare failed");
+    ockam_log_error("%s", "file compare failed");
     goto exit;
   }
 

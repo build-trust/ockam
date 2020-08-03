@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <string.h>
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 #include "ockam/error.h"
 #include "ockam/codec.h"
 
@@ -14,7 +14,7 @@ uint8_t* encode_ockam_wire(uint8_t* p_encoded)
   p_encoded = encode_variable_length_encoded_u2le(p_encoded, OCKAM_WIRE_PROTOCOL_VERSION);
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     p_encoded = NULL;
   }
   return p_encoded;
@@ -35,7 +35,7 @@ uint8_t* decode_ockam_wire(uint8_t* p_encoded)
   }
 exit:
   if (error) {
-    log_error(error, __func__);
+    ockam_log_error("%x", error);
     p_encoded = NULL;
   }
   return p_encoded;

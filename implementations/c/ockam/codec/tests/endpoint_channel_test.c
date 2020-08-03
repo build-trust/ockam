@@ -6,7 +6,7 @@
 #include "cmocka.h"
 #include "codec_tests.h"
 #include "ockam/codec.h"
-#include "ockam/log/syslog.h"
+#include "ockam/log.h"
 
 uint8_t* local_data_in;
 uint8_t* local_data_out;
@@ -33,7 +33,7 @@ int _test_channel_endpoint_setup(void** state)
   }
 
 exit_block:
-  if (error) log_error(error, __func__);
+  if (error) ockam_log_error("%x", error);
   return 0;
 }
 
