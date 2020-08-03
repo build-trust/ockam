@@ -19,6 +19,7 @@ add_subdirectory(mutex/pthread)
 
 add_subdirectory(vault)
 add_subdirectory(vault/default)
+# add_subdirectory(vault/rust)
 
 if (OCKAM_ENABLE_ATECC608A_BUILD)
     add_subdirectory(vault/atecc608a)

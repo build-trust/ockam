@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "vault.h"
+#include "ockam/rust/vault.h"
 
 int main(void) {
     const int32_t bytes = 32;
