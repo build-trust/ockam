@@ -13,6 +13,7 @@ use zeroize::Zeroize;
 /// add values to the vault there may be collisions
 /// This is mostly for testing purposes anyway
 /// and shouldn't be used for production
+#[derive(Debug)]
 pub struct DefaultVault {
     entries: BTreeMap<usize, VaultEntry>,
     next_id: usize,
@@ -37,13 +38,13 @@ impl DefaultVault {
         if let SecretKeyContext::Memory(i) = context {
             id = i;
         } else {
-            return Err(error.into());
+            fail!(error);
         }
         let entry;
         if let Some(e) = self.entries.get(&id) {
             entry = e;
         } else {
-            return Err(error.into());
+            fail!(error);
         }
         Ok(entry)
     }
@@ -256,18 +257,18 @@ impl Vault for DefaultVault {
                 let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> =
                     p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
                 if o_pk_t.is_none() {
-                    return Err(VaultFailErrorKind::Ecdh.into());
+                    fail!(VaultFailErrorKind::Ecdh);
                 }
                 let pk_t = o_pk_t.unwrap();
                 let o_p_t = AffinePoint::from_pubkey(&pk_t);
                 if o_p_t.is_none().unwrap_u8() == 1 {
-                    return Err(VaultFailErrorKind::Ecdh.into());
+                    fail!(VaultFailErrorKind::Ecdh);
                 }
                 let sk = Scalar::from_bytes(*a).unwrap();
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                 let secret = &pk_t * &sk;
                 if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
-                    return Err(VaultFailErrorKind::Ecdh.into());
+                    fail!(VaultFailErrorKind::Ecdh);
                 }
                 let result = secret.to_affine().unwrap().to_compressed_pubkey();
                 // Throw away the compressed indicator byte

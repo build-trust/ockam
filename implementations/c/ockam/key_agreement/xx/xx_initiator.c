@@ -74,7 +74,7 @@ xx_initiator_m1_make(key_establishment_xx* xx, uint8_t* p_send_buffer, size_t bu
   uint16_t      offset = 0;
 
   // Write e to outgoing buffer
-  // h = SHA256(h || e.PublicKey
+  // h = SHA256( h || e.PublicKey )
   ockam_memory_copy(gp_ockam_key_memory, p_send_buffer, xx->e, KEY_SIZE);
   offset += KEY_SIZE;
 

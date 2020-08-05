@@ -1,8 +1,10 @@
 [workspace]
 
 members = [
-    "vault",
+    "common",
+    "kex",
     "message",
+    "vault",
 ]
 
 exclude = [

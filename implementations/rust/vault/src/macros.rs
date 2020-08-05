@@ -46,3 +46,9 @@ macro_rules! check_buffer {
         }
     };
 }
+
+macro_rules! fail {
+    ($err:expr) => {
+        return Err($err.into());
+    };
+}
