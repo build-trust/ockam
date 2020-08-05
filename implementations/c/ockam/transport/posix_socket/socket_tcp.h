@@ -8,6 +8,8 @@
 
 ockam_error_t ockam_transport_socket_tcp_init(ockam_transport_t* transport, ockam_transport_socket_attributes_t* attrs);
 
+// TODO: add ockam_ prefix to types declared here. Review which of them indeed need to be public.
+
 /**
  * One Transmission instance is assigned for each read or write
  */

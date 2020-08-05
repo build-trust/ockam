@@ -14,6 +14,8 @@
 #include "ockam/transport/impl.h"
 #include "socket.h"
 
+// TODO: add ockam_ prefix to types declared here. Review which of them indeed need to be public.
+
 /**
  * The PosixSocket is the posix socket specific class data for a posix socket
  * connection (TCP or UDP). Note that TCP sockets are further defined by the

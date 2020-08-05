@@ -255,7 +255,7 @@ ockam_error_t socket_tcp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
     bytes_read        = recv(p_socket->socket_fd, &recv_len, sizeof(uint16_t), 0);
     // Must convert from network order to native endianness
     p_transmission->transmit_length = ntohs(recv_len);
-    if (-1 == bytes_read) {
+    if (sizeof(uint16_t) != bytes_read) {
       error = TRANSPORT_ERROR_RECEIVE;
       goto exit;
     }
@@ -264,12 +264,11 @@ ockam_error_t socket_tcp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
 
   bytes_read = 0;
   while ((TRANSPORT_ERROR_MORE_DATA == p_transmission->status) && (p_transmission->buffer_remaining > 0)) {
-    uint16_t bytes_to_read = 0;
-    ssize_t  recv_status   = 0;
-    bytes_to_read          = p_transmission->transmit_length - p_transmission->bytes_transmitted;
+    ssize_t recv_status   = 0;
+    size_t  bytes_to_read = p_transmission->transmit_length - p_transmission->bytes_transmitted;
     if (bytes_to_read > p_transmission->buffer_remaining) bytes_to_read = p_transmission->buffer_remaining;
     recv_status = recv(p_socket->socket_fd, p_transmission->buffer + bytes_read, bytes_to_read, 0);
-    if (-1 == recv_status) {
+    if (0 > recv_status) {
       ockam_log_error("receive failed: %ll", recv_status);
       goto exit;
     }
@@ -297,21 +296,26 @@ exit:
 ockam_error_t socket_tcp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
 {
   ockam_error_t   error       = OCKAM_ERROR_NONE;
+
+  if (buffer_length > (SIZE_MAX >> 1u)) {
+      error = TRANSPORT_ERROR_BAD_PARAMETER;
+      goto exit;
+  }
+
   tcp_socket_t*   p_tcp_ctx   = (tcp_socket_t*) ctx;
   posix_socket_t* p_socket    = &p_tcp_ctx->posix_socket;
   uint16_t        send_length = 0;
-  size_t          bytes_sent  = 0;
 
   // Convert from native endianness to network order
   send_length = htons(buffer_length);
-  bytes_sent  = send(p_socket->socket_fd, (void*) &send_length, sizeof(uint16_t), 0);
+  ssize_t bytes_sent = send(p_socket->socket_fd, (void*) &send_length, sizeof(uint16_t), 0);
   if (sizeof(uint16_t) != bytes_sent) {
     error = TRANSPORT_ERROR_SEND;
     goto exit;
   }
 
   bytes_sent = send(p_socket->socket_fd, buffer, buffer_length, 0);
-  if (bytes_sent != buffer_length) {
+  if (bytes_sent < 0 || bytes_sent != buffer_length) {
     error = TRANSPORT_ERROR_SEND;
     goto exit;
   }
