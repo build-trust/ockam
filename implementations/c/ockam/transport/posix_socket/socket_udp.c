@@ -155,23 +155,23 @@ ockam_error_t socket_udp_read(void* ctx, uint8_t* buffer, size_t buffer_size, si
   ockam_error_t     error      = OCKAM_ERROR_NONE;
   socket_udp_ctx_t* p_udp_ctx  = (socket_udp_ctx_t*) ctx;
   posix_socket_t*   p_socket   = &p_udp_ctx->posix_socket;
-  ssize_t           bytes_read = 0;
-  socklen_t         socklen    = 0;
 
   if (-1 == p_socket->socket_fd) {
     error = TRANSPORT_ERROR_SOCKET;
     goto exit;
   }
 
-  socklen    = sizeof(p_socket->remote_sockaddr);
-  bytes_read = recvfrom(
-    p_socket->socket_fd, buffer, buffer_size, MSG_WAITALL, (struct sockaddr*) &p_socket->remote_sockaddr, &socklen);
-  if (0 == bytes_read) {
+  socklen_t socklen    = sizeof(p_socket->remote_sockaddr);
+  ssize_t   bytes_read = recvfrom(p_socket->socket_fd,
+                                  buffer,
+                                  buffer_size,
+                                  MSG_WAITALL,
+                                  (struct sockaddr*) &p_socket->remote_sockaddr,
+                                  &socklen);
+  if (0 >= bytes_read) {
     error = TRANSPORT_ERROR_RECEIVE;
     goto exit;
   }
-  char astring[100];
-  inet_ntop(AF_INET, &p_socket->remote_address, astring, 100);
   *buffer_length = bytes_read;
 
 exit:
@@ -181,18 +181,24 @@ exit:
 
 ockam_error_t socket_udp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
 {
+  // TODO: Check buffer_length can fit in ssize_t?
   ockam_error_t     error       = OCKAM_ERROR_NONE;
+
+  if (buffer_length > (SIZE_MAX >> 1u)) {
+    error = TRANSPORT_ERROR_BAD_PARAMETER;
+    goto exit;
+  }
+
   socket_udp_ctx_t* p_udp_ctx   = (socket_udp_ctx_t*) ctx;
   posix_socket_t*   p_socket    = &p_udp_ctx->posix_socket;
-  size_t            bytes_sent  = 0;
 
-  bytes_sent = sendto(p_socket->socket_fd,
-                      buffer,
-                      buffer_length,
-                      0,
-                      (struct sockaddr*) &p_socket->remote_sockaddr,
-                      sizeof(p_udp_ctx->posix_socket.remote_sockaddr));
-  if (bytes_sent != buffer_length) {
+  ssize_t bytes_sent = sendto(p_socket->socket_fd,
+                              buffer,
+                              buffer_length,
+                              0,
+                              (struct sockaddr*) &p_socket->remote_sockaddr,
+                              sizeof(p_udp_ctx->posix_socket.remote_sockaddr));
+  if (bytes_sent < 0 || bytes_sent != buffer_length) {
     error = TRANSPORT_ERROR_SEND;
     goto exit;
   }
