@@ -6,7 +6,10 @@ add_subdirectory(memory)
 add_subdirectory(memory/stdlib)
 
 add_subdirectory(random)
-add_subdirectory(random/urandom)
+
+if (NOT WIN32)
+    add_subdirectory(random/urandom)
+endif()
 
 add_subdirectory(io)
 
