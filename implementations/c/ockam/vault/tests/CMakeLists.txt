@@ -9,7 +9,7 @@ if(NOT cmocka_FOUND)
 endif()
 
 # ---
-# okcam_vault_tests
+# ockam_vault_tests
 # ---
 add_library(ockam_vault_tests)
 
