@@ -13,16 +13,16 @@ if(NOT cmocka_FOUND)
 endif()
 
 # ---
-# okcam_channel_tests
+# ockam_channel_tests
 # ---
-add_executable(okcam_channel_tests
+add_executable(ockam_channel_tests
         channel_test.h
         channel_test.c
         initiator.c
         responder.c)
 
 target_link_libraries(
-    okcam_channel_tests
+    ockam_channel_tests
     PUBLIC
         ockam::key_agreement_interface
         ockam::vault_default
@@ -34,4 +34,4 @@ target_link_libraries(
         cmocka-static
 )
 
-add_test(okcam_channel_tests okcam_channel_tests)
+add_test(ockam_channel_tests ockam_channel_tests)

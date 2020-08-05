@@ -13,15 +13,15 @@ if(NOT cmocka_FOUND)
 endif()
 
 # ---
-# okcam_key_agreement_xx_tests
+# ockam_key_agreement_xx_tests
 # ---
-add_executable(okcam_key_agreement_xx_tests
+add_executable(ockam_key_agreement_xx_tests
         xx_test.c
         xx_test.h
         xx_test_initiator.c
         xx_test_responder.c)
 
-target_link_libraries(okcam_key_agreement_xx_tests
+target_link_libraries(ockam_key_agreement_xx_tests
     PUBLIC
         cmocka-static
         ockam::error_interface
@@ -35,4 +35,4 @@ target_link_libraries(okcam_key_agreement_xx_tests
         ockam::transport_posix_socket
 )
 
-add_test(okcam_key_agreement_xx_tests okcam_key_agreement_xx_tests)
+add_test(ockam_key_agreement_xx_tests ockam_key_agreement_xx_tests)

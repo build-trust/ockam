@@ -9,12 +9,12 @@ if(NOT cmocka_FOUND)
 endif()
 
 # ---
-# queue_test
+# ockam_queue_test
 # ---
-add_executable(queue_test queue_test.c)
+add_executable(ockam_queue_test queue_test.c)
 
 target_link_libraries(
-  queue_test
+  ockam_queue_test
   PRIVATE
     cmocka-static
     ockam::log
@@ -22,4 +22,4 @@ target_link_libraries(
     ockam::queue_pthread
   )
 
-add_test(queue_test queue_test)
+add_test(ockam_queue_test ockam_queue_test)
