@@ -1,5 +1,6 @@
 #![deny(
     missing_docs,
+    missing_debug_implementations,
     trivial_casts,
     trivial_numeric_casts,
     unconditional_recursion,

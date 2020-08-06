@@ -120,10 +120,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
-name = "common"
-version = "0.1.0"
-
-[[package]]
 name = "cpuid-bool"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -290,8 +286,10 @@ name = "kex"
 version = "0.1.0"
 dependencies = [
  "arrayref",
+ "failure",
  "ffi-support",
  "lazy_static",
+ "ockam-common",
  "ockam-vault",
 ]
 
@@ -336,6 +334,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
 
 [[package]]
+name = "ockam-common"
+version = "0.1.0"
+
+[[package]]
 name = "ockam-vault"
 version = "0.1.0"
 dependencies = [
@@ -348,6 +350,7 @@ dependencies = [
  "hex",
  "hkdf",
  "lazy_static",
+ "ockam-common",
  "p256",
  "rand",
  "sha2",

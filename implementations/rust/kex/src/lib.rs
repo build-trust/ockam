@@ -1,5 +1,6 @@
 #![deny(
 missing_docs,
+missing_debug_implementations,
 trivial_casts,
 trivial_numeric_casts,
 unconditional_recursion,
@@ -15,6 +16,8 @@ while_true
 
 #[macro_use]
 extern crate arrayref;
+#[macro_use]
+extern crate ockam_common;
 
 use ockam_vault::{Vault, error::{
     VaultFailError,
@@ -55,6 +58,7 @@ struct HandshakeStateData {
     ephemeral_secret_handle: SecretKeyContext,
     static_public_key: PublicKey,
     static_secret_handle: SecretKeyContext,
+    other_public_key: Option<PublicKey>,
 }
 
 /// Represents the XX Handshake
@@ -99,7 +103,8 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
                 static_public_key,
                 static_secret_handle,
                 ephemeral_public_key,
-                ephemeral_secret_handle
+                ephemeral_secret_handle,
+                other_public_key: None,
             },
             key: None,
             nonce,
@@ -151,6 +156,61 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
         self.vault.hkdf_sha256(self.state.ck.as_ref(), &[], SHA256_SIZE + AES256_KEYSIZE)
     }
 }
+
+/// Provides methods for handling the initiator role
+#[derive(Debug)]
+pub struct Initiator<'a, V: Vault>(XXSymmetricState<'a, V>);
+
+impl<'a, V: Vault> Initiator<'a, V> {
+    /// Wrap a symmetric state to run as the Initiator
+    pub fn new(ss: XXSymmetricState<'a, V>) -> Self {
+        Self(ss)
+    }
+
+    /// Encode the first message to be sent
+    pub fn encode_message_1<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>, VaultFailError> {
+        let payload = payload.as_ref();
+        self.0.mix_hash(self.0.handshake.ephemeral_public_key)?;
+        self.0.mix_hash(payload)?;
+
+        let mut output = self.0.handshake.ephemeral_public_key.as_ref().to_vec();
+        output.extend_from_slice(payload);
+        Ok(output)
+    }
+
+    /// Decode the second message in the sequence, sent from the responder
+    pub fn decode_message_2<B: AsRef<[u8]>>(&mut self, message: B) -> Result<Vec<u8>, VaultFailError> {
+        unimplemented!();
+    }
+}
+
+/// Provides methods for handling the responder role
+#[derive(Debug)]
+pub struct Responder<'a, V: Vault>(XXSymmetricState<'a, V>);
+
+impl<'a, V: Vault> Responder<'a, V> {
+    /// Wrap a symmetric state to run as the Responder
+    pub fn new(ss: XXSymmetricState<'a, V>) -> Self {
+        Self(ss)
+    }
+
+    /// Decode the first message sent
+    pub fn decode_message_1<B: AsRef<[u8]>>(&mut self, message_1: B) -> Result<(), VaultFailError> {
+        let message_1 = message_1.as_ref();
+        if message_1.len() < 32 {
+            return Err(VaultFailErrorKind::SecretSizeMismatch.into());
+        }
+        let mut re = [0u8; 32];
+        re.copy_from_slice(&message_1[..32]);
+        self.0.handshake.other_public_key = Some(PublicKey::Curve25519(re));
+        self.0.mix_hash(&re)?;
+        self.0.mix_hash(&message_1[32..])?;
+        Ok(())
+    }
+}
+
+/// Errors thrown by Key exchange
+pub mod error;
 
 #[cfg(test)]
 mod tests {

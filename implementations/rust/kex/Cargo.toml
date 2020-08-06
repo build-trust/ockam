@@ -16,6 +16,8 @@ ffi = ["ffi-support", "lazy_static"]
 
 [dependencies]
 arrayref = "0.3"
+failure = "0.1"
 ffi-support = { version = "0.4.0", optional = true }
 lazy_static = { version = "1.4", optional = true }
+ockam-common = { version = "0.1", path = "../common" }
 ockam-vault = { version = "0.1", path = "../vault" }
