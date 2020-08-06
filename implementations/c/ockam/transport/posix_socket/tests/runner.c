@@ -13,7 +13,6 @@
 
 int run(enum TransportType transport_type, int argc, char* argv[])
 {
-  ockam_log_set_level(OCKAM_LOG_LEVEL_DEBUG);
   ockam_log_info("Transport test runner started");
 
   test_cli_params_t test_params;
@@ -32,7 +31,7 @@ int run(enum TransportType transport_type, int argc, char* argv[])
 
   bool is_parent = true;
   if (test_params.run_server) {
-    ockam_log_debug("Starting fork");
+    ockam_log_info("Starting fork");
     test_server_process = fork();
     if (test_server_process < 0) {
       ockam_log_error("%s", "Fork unsuccessful");
@@ -43,9 +42,9 @@ int run(enum TransportType transport_type, int argc, char* argv[])
   }
   if (is_parent || !test_params.run_server) {
     if (test_params.run_client) {
-      ockam_log_debug("Starting client");
+      ockam_log_info("Starting client");
       error = run_test_client(&test_params);
-      ockam_log_debug("Client finished");
+      ockam_log_info("Client finished");
       if (0 != error) {
         ockam_log_error("%s", "testTcpClient failed");
         test_client_error = -1;
@@ -53,19 +52,19 @@ int run(enum TransportType transport_type, int argc, char* argv[])
     }
     // Get exit error from testServerProcess
     if (test_params.run_server) {
-      ockam_log_debug("Waiting for fork to finish");
+      ockam_log_info("Waiting for fork to finish");
       int fork_error = 0;
       wait(&fork_error);
       test_server_error = WEXITSTATUS(fork_error);
-      ockam_log_debug("Fork finished");
+      ockam_log_info("Fork finished");
       if (0 != test_server_error) { test_server_error = -2; }
       error = test_server_error + test_client_error;
-      if (!error) ockam_log_debug("Transport test successful!");
+      if (!error) ockam_log_info("Transport test successful!");
     }
   } else if (test_params.run_server) {
-    ockam_log_debug("Starting server");
+    ockam_log_info("Starting server");
     error = run_test_server(&test_params);
-    ockam_log_debug("Server finished");
+    ockam_log_info("Server finished");
     if (0 != error) {
       ockam_log_error("%s", "testTcpServer failed");
       error = -1;
