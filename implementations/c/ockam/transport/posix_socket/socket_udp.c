@@ -181,7 +181,6 @@ exit:
 
 ockam_error_t socket_udp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
 {
-  // TODO: Check buffer_length can fit in ssize_t?
   ockam_error_t     error       = OCKAM_ERROR_NONE;
 
   if (buffer_length > (SIZE_MAX >> 1u)) {
