@@ -89,9 +89,9 @@ defmodule Ockam.Message do
     def decode_payload(<<0::8>>), do: :ping
     def decode_payload(<<1::8>>), do: :pong
 
-    def decode_payload(<<3::8, message::binary>>), do: {:create_channel_xx_message_1, message}
-    def decode_payload(<<4::8, message::binary>>), do: {:create_channel_xx_message_2, message}
-    def decode_payload(<<5::8, message::binary>>), do: {:create_channel_xx_message_3, message}
+    # def decode_payload(<<3::8, message::binary>>), do: {:create_channel_xx_message_1, message}
+    # def decode_payload(<<4::8, message::binary>>), do: {:create_channel_xx_message_2, message}
+    # def decode_payload(<<5::8, message::binary>>), do: {:create_channel_xx_message_3, message}
 
     def decode_payload(payload), do: payload
 
@@ -136,9 +136,9 @@ defmodule Ockam.Message do
     def encode_payload(:ping), do: <<0::8>>
     def encode_payload(:pong), do: <<1::8>>
 
-    def encode_payload({:create_channel_xx_message_1, message}), do: <<3::8, message::binary>>
-    def encode_payload({:create_channel_xx_message_2, message}), do: <<4::8, message::binary>>
-    def encode_payload({:create_channel_xx_message_3, message}), do: <<5::8, message::binary>>
+    # def encode_payload({:create_channel_xx_message_1, message}), do: <<3::8, message::binary>>
+    # def encode_payload({:create_channel_xx_message_2, message}), do: <<4::8, message::binary>>
+    # def encode_payload({:create_channel_xx_message_3, message}), do: <<5::8, message::binary>>
 
     def encode_payload(payload), do: payload
 

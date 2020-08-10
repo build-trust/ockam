@@ -27,9 +27,9 @@ defmodule Ockam.Controller do
     {:noreply, state}
   end
 
-  def handle_info(%Message{payload: {:create_channel_xx_message_1, _}}, state) do
-    {:noreply, state}
-  end
+  # def handle_info(%Message{payload: {:create_channel_xx_message_1, _}}, state) do
+  #   {:noreply, state}
+  # end
 
   def handle_info(_message, state), do: {:noreply, state}
 end

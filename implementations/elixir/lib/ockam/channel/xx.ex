@@ -116,7 +116,7 @@ defmodule Ockam.Channel.XX do
   def encode_message_1(%__MODULE__{e: e} = state, payload) do
     with {:ok, state} <- mix_hash(state, e.public),
          {:ok, state} <- mix_hash(state, payload) do
-      {:ok, e.public <> payload, state}
+      {:ok, <<3::8>> <> e.public <> payload, state}
     end
   end
 
@@ -128,7 +128,7 @@ defmodule Ockam.Channel.XX do
          {:ok, shared_secret} <- dh(state, s, re),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, encrypted_payload_and_tag} <- encrypt_and_hash(state, payload) do
-      {:ok, e.public <> encrypted_s_and_tag <> encrypted_payload_and_tag, state}
+      {:ok, <<4::8>> <> e.public <> encrypted_s_and_tag <> encrypted_payload_and_tag, state}
     end
   end
 
@@ -137,12 +137,12 @@ defmodule Ockam.Channel.XX do
          {:ok, shared_secret} <- dh(state, s, re),
          {:ok, state} <- mix_key(state, shared_secret),
          {:ok, state, encrypted_payload_and_tag} <- encrypt_and_hash(state, payload) do
-      {:ok, encrypted_s_and_tag <> encrypted_payload_and_tag, state}
+      {:ok, <<5::8>> <> encrypted_s_and_tag <> encrypted_payload_and_tag, state}
     end
   end
 
   def decode_message_1(state, message) do
-    <<re::32-bytes, payload::binary>> = message
+    <<3::8, re::32-bytes, payload::binary>> = message
 
     with {:ok, state} <- mix_hash(state, re),
          {:ok, state} <- mix_hash(state, payload) do
@@ -151,7 +151,7 @@ defmodule Ockam.Channel.XX do
   end
 
   def decode_message_2(%__MODULE__{e: e} = state, message) do
-    <<re::32-bytes, encrypted_rs_and_tag::48-bytes, encrypted_payload_and_tag::binary>> = message
+    <<4::8, re::32-bytes, encrypted_rs_and_tag::48-bytes, encrypted_payload_and_tag::binary>> = message
 
     with {:ok, state} <- mix_hash(state, re),
          {:ok, shared_secret} <- dh(state, e, re),
@@ -165,7 +165,7 @@ defmodule Ockam.Channel.XX do
   end
 
   def decode_message_3(%__MODULE__{e: e} = state, message) do
-    <<encrypted_rs_and_tag::48-bytes, encrypted_payload_and_tag::binary>> = message
+    <<5::8, encrypted_rs_and_tag::48-bytes, encrypted_payload_and_tag::binary>> = message
 
     with {:ok, state, rs} <- decrypt_and_hash(state, encrypted_rs_and_tag),
          {:ok, shared_secret} <- dh(state, e, rs),
