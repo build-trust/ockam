@@ -202,6 +202,17 @@ impl<'a, V: Vault> Initiator<'a, V> {
         let payload = self.0.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
         Ok(payload)
     }
+
+    /// Encode the final message to be sent
+    pub fn encode_message_3<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>, VaultFailError> {
+        let mut encrypted_s_and_tag = self.0.encrypt_and_mix_hash(self.0.handshake.static_public_key)?;
+        let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.static_secret_handle, *self.0.handshake.remote_ephemeral_public_key.as_ref().unwrap())?;
+        let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
+        self.0.mix_key(shared_secret)?;
+        let mut encrypted_payload_and_tag = self.0.encrypt_and_mix_hash(payload)?;
+        encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
+        Ok(encrypted_s_and_tag)
+    }
 }
 
 /// Provides methods for handling the responder role
@@ -244,6 +255,19 @@ impl<'a, V: Vault> Responder<'a, V> {
         output.append(&mut encrypted_s_and_tag);
         output.append(&mut encrypted_payload_and_tag);
         Ok(output)
+    }
+
+    /// Decode the final message received for the handshake
+    pub fn decode_message_3<B: AsRef<[u8]>>(&mut self, message_3: B) -> Result<Vec<u8>, VaultFailError> {
+        let message_3 = message_3.as_ref();
+        let rs = self.0.decrypt_and_mix_hash(&message_3[..48])?;
+        let rs = PublicKey::Curve25519(*array_ref![rs, 0, 32]);
+        let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.ephemeral_secret_handle, rs)?;
+        let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
+        self.0.mix_key(shared_secret)?;
+        let payload = self.0.decrypt_and_mix_hash(&message_3[48..])?;
+        self.0.handshake.remote_static_public_key = Some(rs);
+        Ok(payload)
     }
 }
 
