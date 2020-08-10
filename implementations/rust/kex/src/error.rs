@@ -1,6 +1,5 @@
 use failure::Fail;
 use ockam_common::error::ErrorKind;
-use std::{fmt, io};
 
 /// Represents the failures that can occur in
 /// an Ockam Key Exchange

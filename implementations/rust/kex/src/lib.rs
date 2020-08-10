@@ -16,8 +16,6 @@ while_true
 
 #[macro_use]
 extern crate arrayref;
-#[macro_use]
-extern crate ockam_common;
 
 use ockam_vault::{Vault, error::{
     VaultFailError,
@@ -58,7 +56,8 @@ struct HandshakeStateData {
     ephemeral_secret_handle: SecretKeyContext,
     static_public_key: PublicKey,
     static_secret_handle: SecretKeyContext,
-    other_public_key: Option<PublicKey>,
+    remote_ephemeral_public_key: Option<PublicKey>,
+    remote_static_public_key: Option<PublicKey>,
 }
 
 /// Represents the XX Handshake
@@ -104,7 +103,8 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
                 static_secret_handle,
                 ephemeral_public_key,
                 ephemeral_secret_handle,
-                other_public_key: None,
+                remote_ephemeral_public_key: None,
+                remote_static_public_key: None,
             },
             key: None,
             nonce,
@@ -142,12 +142,12 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
     }
 
     /// Encrypt and mix step in Noise protocol
-    pub fn encrypt_and_mix_hash<B: AsRef<[u8]>, C: AsMut<[u8]>>(&mut self, plaintext: B) -> Result<Vec<u8>, VaultFailError> {
+    pub fn encrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, plaintext: B) -> Result<Vec<u8>, VaultFailError> {
         self.vault.aead_aes_gcm_encrypt(self.key.ok_or_else(|| VaultFailErrorKind::AeadAesGcmEncrypt)?, plaintext, self.nonce.to_be_bytes().as_ref(), &self.state.h)
     }
 
     /// Decrypt and mix step in Noise protocol
-    pub fn decrypt_and_mix_hash<B: AsRef<[u8]>, C: AsMut<[u8]>>(&mut self, ciphertext: B) -> Result<Vec<u8>, VaultFailError> {
+    pub fn decrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, ciphertext: B) -> Result<Vec<u8>, VaultFailError> {
         self.vault.aead_aes_gcm_decrypt(self.key.ok_or_else(|| VaultFailErrorKind::AeadAesGcmDecrypt)?, ciphertext, self.nonce.to_be_bytes().as_ref(), &self.state.h)
     }
 
@@ -180,7 +180,27 @@ impl<'a, V: Vault> Initiator<'a, V> {
 
     /// Decode the second message in the sequence, sent from the responder
     pub fn decode_message_2<B: AsRef<[u8]>>(&mut self, message: B) -> Result<Vec<u8>, VaultFailError> {
-        unimplemented!();
+        let message = message.as_ref();
+        let mut re = [0u8; 32];
+        re.copy_from_slice(&message[..32]);
+        let encrypted_rs_and_tag = &message[32..80];
+        let encrypted_payload_and_tag = &message[80..];
+
+        let re = PublicKey::Curve25519(re);
+        self.0.handshake.remote_ephemeral_public_key = Some(re);
+
+        self.0.mix_hash(&re)?;
+        let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.ephemeral_secret_handle, re)?;
+        let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
+        self.0.mix_key(shared_secret)?;
+        let rs = self.0.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
+        let rs = PublicKey::Curve25519(*array_ref![rs, 0, 32]);
+        self.0.handshake.remote_static_public_key = Some(rs);
+        let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.ephemeral_secret_handle, rs)?;
+        let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
+        self.0.mix_key(shared_secret)?;
+        let payload = self.0.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
+        Ok(payload)
     }
 }
 
@@ -202,10 +222,28 @@ impl<'a, V: Vault> Responder<'a, V> {
         }
         let mut re = [0u8; 32];
         re.copy_from_slice(&message_1[..32]);
-        self.0.handshake.other_public_key = Some(PublicKey::Curve25519(re));
+        self.0.handshake.remote_ephemeral_public_key = Some(PublicKey::Curve25519(re));
         self.0.mix_hash(&re)?;
         self.0.mix_hash(&message_1[32..])?;
         Ok(())
+    }
+
+    /// Encode the second message to be sent
+    pub fn encode_message_2<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>, VaultFailError> {
+        self.0.mix_hash(self.0.handshake.ephemeral_public_key)?;
+        let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.ephemeral_secret_handle, *self.0.handshake.remote_ephemeral_public_key.as_ref().unwrap())?;
+        let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
+        self.0.mix_key(shared_secret)?;
+        let mut encrypted_s_and_tag = self.0.encrypt_and_mix_hash(self.0.handshake.static_public_key)?;
+        let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.static_secret_handle, *self.0.handshake.remote_ephemeral_public_key.as_ref().unwrap())?;
+        let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
+        self.0.mix_key(shared_secret)?;
+        let mut encrypted_payload_and_tag = self.0.encrypt_and_mix_hash(payload)?;
+
+        let mut output = self.0.handshake.ephemeral_public_key.as_ref().to_vec();
+        output.append(&mut encrypted_s_and_tag);
+        output.append(&mut encrypted_payload_and_tag);
+        Ok(output)
     }
 }
 
