@@ -49,6 +49,17 @@ impl Default for SymmetricStateData {
     }
 }
 
+/// A completed handshake transport
+#[derive(Debug)]
+pub struct TransportState<'a, V: Vault> {
+    h: [u8; SHA256_SIZE],
+    encrypt_key: SecretKeyContext,
+    encrypt_nonce: u16,
+    decrypt_key: SecretKeyContext,
+    decrypt_nonce: u16,
+    vault: &'a mut V
+}
+
 /// The state of the handshake for a Noise session
 #[derive(Copy, Clone, Debug)]
 struct HandshakeStateData {
@@ -153,7 +164,33 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
 
     /// Split step in Noise protocol
     pub fn split(&mut self) -> Result<Vec<u8>, VaultFailError> {
-        self.vault.hkdf_sha256(self.state.ck.as_ref(), &[], SHA256_SIZE + AES256_KEYSIZE)
+        self.vault.hkdf_sha256(self.state.ck.as_ref(), &[], AES256_KEYSIZE + AES256_KEYSIZE)
+    }
+
+    /// Set this state up to send and receive messages
+    pub fn finalize<'b, VV: Vault>(&mut self, vault: &'b mut VV) -> Result<TransportState<'b, VV>, VaultFailError> {
+        let keys = self.split()?;
+        let mut decrypt = [0u8; AES256_KEYSIZE];
+        let mut encrypt = [0u8; AES256_KEYSIZE];
+        decrypt.copy_from_slice(&keys[..AES256_KEYSIZE]);
+        encrypt.copy_from_slice(&keys[AES256_KEYSIZE..(2 * AES256_KEYSIZE)]);
+        let decrypt = SecretKey::Aes256(decrypt);
+        let encrypt = SecretKey::Aes256(encrypt);
+        let attributes = SecretKeyAttributes {
+            xtype: SecretKeyType::Aes256,
+            purpose: SecretPurposeType::KeyAgreement,
+            persistence: SecretPersistenceType::Ephemeral,
+        };
+        let decrypt_key = vault.secret_import(&decrypt, attributes)?;
+        let encrypt_key = vault.secret_import(&encrypt, attributes)?;
+        Ok(TransportState {
+            h: self.state.h,
+            encrypt_key,
+            encrypt_nonce: 0,
+            decrypt_key,
+            decrypt_nonce: 0,
+            vault
+        })
     }
 }
 
@@ -213,6 +250,12 @@ impl<'a, V: Vault> Initiator<'a, V> {
         encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
         Ok(encrypted_s_and_tag)
     }
+
+    /// Setup this initiator to send and receive messages
+    /// after encoding message 3
+    pub fn finalize<'b, VV: Vault>(&mut self, vault: &'b mut VV) -> Result<TransportState<'b, VV>, VaultFailError> {
+        self.0.finalize(vault)
+    }
 }
 
 /// Provides methods for handling the responder role
@@ -268,6 +311,12 @@ impl<'a, V: Vault> Responder<'a, V> {
         let payload = self.0.decrypt_and_mix_hash(&message_3[48..])?;
         self.0.handshake.remote_static_public_key = Some(rs);
         Ok(payload)
+    }
+
+    /// Setup this responder to send and receive messages
+    /// after decoding message 3
+    pub fn finalize<'b, VV: Vault>(&mut self, vault: &'b mut VV) -> Result<TransportState<'b, VV>, VaultFailError> {
+        self.0.finalize(vault)
     }
 }
 
