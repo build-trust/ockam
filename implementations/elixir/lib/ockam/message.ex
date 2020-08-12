@@ -88,12 +88,7 @@ defmodule Ockam.Message do
 
     def decode_payload(<<0::8>>), do: :ping
     def decode_payload(<<1::8>>), do: :pong
-
-    # def decode_payload(<<3::8, message::binary>>), do: {:create_channel_xx_message_1, message}
-    # def decode_payload(<<4::8, message::binary>>), do: {:create_channel_xx_message_2, message}
-    # def decode_payload(<<5::8, message::binary>>), do: {:create_channel_xx_message_3, message}
-
-    def decode_payload(payload), do: payload
+    def decode_payload(<<2::8, payload::binary>>) when byte_size(payload) != 0, do: payload
 
     def decode(encoded) do
       {onward, rest} = decode_route(encoded)
@@ -135,12 +130,8 @@ defmodule Ockam.Message do
 
     def encode_payload(:ping), do: <<0::8>>
     def encode_payload(:pong), do: <<1::8>>
-
-    # def encode_payload({:create_channel_xx_message_1, message}), do: <<3::8, message::binary>>
-    # def encode_payload({:create_channel_xx_message_2, message}), do: <<4::8, message::binary>>
-    # def encode_payload({:create_channel_xx_message_3, message}), do: <<5::8, message::binary>>
-
-    def encode_payload(payload), do: payload
+    def encode_payload(payload) when is_binary(payload) and byte_size(payload) > 0,
+      do: <<2::8>> <> payload
 
     def encode(%Message{onward_route: onward, return_route: return, payload: payload}) do
       onward_route = encode_route(onward)
