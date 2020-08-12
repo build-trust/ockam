@@ -106,8 +106,10 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
         // 5. h = SHA256(h || prologue),
         // prologue is empty
         // mix_hash(xx, NULL, 0);
-        let h = vault.sha256(Self::CSUITE)?;
+        let mut h = [0u8; 32];
+        h[..Self::CSUITE.len()].copy_from_slice(Self::CSUITE);
         let ck = h.clone();
+        let h = vault.sha256(h)?;
         Ok(Self {
             handshake: HandshakeStateData {
                 static_public_key,
@@ -129,7 +131,7 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
 
     /// mix key step in Noise protocol
     pub fn mix_key<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError> {
-        let hash = self.vault.hkdf_sha256(&self.state.ck[..], data, SHA256_SIZE + AES256_KEYSIZE)?;
+        let hash = self.vault.hkdf_sha256(self.state.ck.as_ref(), data, SHA256_SIZE + AES256_KEYSIZE)?;
         self.state.ck = *array_ref![hash, 0, SHA256_SIZE];
         let attributes = SecretKeyAttributes {
             xtype: SecretKeyType::Aes256,
@@ -141,12 +143,13 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
             self.vault.secret_destroy(*self.key.as_ref().unwrap())?;
         }
         self.key = Some(self.vault.secret_import(&key, attributes)?);
+        self.nonce = 0;
         Ok(())
     }
 
     /// mix hash step in Noise protocol
     pub fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError> {
-        let mut input = Self::CSUITE.to_vec();
+        let mut input = self.state.h.to_vec();
         input.extend_from_slice(data.as_ref());
         self.state.h = self.vault.sha256(&input)?;
         Ok(())
@@ -154,12 +157,23 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
 
     /// Encrypt and mix step in Noise protocol
     pub fn encrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, plaintext: B) -> Result<Vec<u8>, VaultFailError> {
-        self.vault.aead_aes_gcm_encrypt(self.key.ok_or_else(|| VaultFailErrorKind::AeadAesGcmEncrypt)?, plaintext, self.nonce.to_be_bytes().as_ref(), &self.state.h)
+        let mut nonce = [0u8; 12];
+        nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
+        let ciphertext_and_tag = self.vault.aead_aes_gcm_encrypt(self.key.ok_or_else(|| VaultFailErrorKind::AeadAesGcmEncrypt)?, plaintext, nonce.as_ref(), &self.state.h)?;
+        self.mix_hash(&ciphertext_and_tag)?;
+        self.nonce += 1;
+        Ok(ciphertext_and_tag)
     }
 
     /// Decrypt and mix step in Noise protocol
     pub fn decrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, ciphertext: B) -> Result<Vec<u8>, VaultFailError> {
-        self.vault.aead_aes_gcm_decrypt(self.key.ok_or_else(|| VaultFailErrorKind::AeadAesGcmDecrypt)?, ciphertext, self.nonce.to_be_bytes().as_ref(), &self.state.h)
+        let mut nonce = [0u8; 12];
+        nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
+        let ciphertext = ciphertext.as_ref();
+        let plaintext = self.vault.aead_aes_gcm_decrypt(self.key.ok_or_else(|| VaultFailErrorKind::AeadAesGcmDecrypt)?, ciphertext, nonce.as_ref(), &self.state.h)?;
+        self.mix_hash(ciphertext)?;
+        self.nonce += 1;
+        Ok(plaintext)
     }
 
     /// Split step in Noise protocol
@@ -168,7 +182,9 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
     }
 
     /// Set this state up to send and receive messages
-    pub fn finalize<'b, VV: Vault>(&mut self, vault: &'b mut VV) -> Result<TransportState<'b, VV>, VaultFailError> {
+    pub fn finalize<'b, VV: Vault>(&mut self, vault: &'b mut VV, encrypt_ref: &[u8], decrypt_ref: &[u8]) -> Result<TransportState<'b, VV>, VaultFailError> {
+        debug_assert_eq!(encrypt_ref.len(), AES256_KEYSIZE);
+        debug_assert_eq!(decrypt_ref.len(), AES256_KEYSIZE);
         let keys = self.split()?;
         let mut decrypt = [0u8; AES256_KEYSIZE];
         let mut encrypt = [0u8; AES256_KEYSIZE];
@@ -254,7 +270,8 @@ impl<'a, V: Vault> Initiator<'a, V> {
     /// Setup this initiator to send and receive messages
     /// after encoding message 3
     pub fn finalize<'b, VV: Vault>(&mut self, vault: &'b mut VV) -> Result<TransportState<'b, VV>, VaultFailError> {
-        self.0.finalize(vault)
+        let keys = self.0.split()?;
+        self.0.finalize(vault, &keys[AES256_KEYSIZE..], &keys[..AES256_KEYSIZE])
     }
 }
 
@@ -288,6 +305,7 @@ impl<'a, V: Vault> Responder<'a, V> {
         let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.ephemeral_secret_handle, *self.0.handshake.remote_ephemeral_public_key.as_ref().unwrap())?;
         let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
         self.0.mix_key(shared_secret)?;
+
         let mut encrypted_s_and_tag = self.0.encrypt_and_mix_hash(self.0.handshake.static_public_key)?;
         let shared_secret_ctx = self.0.vault.ec_diffie_hellman(self.0.handshake.static_secret_handle, *self.0.handshake.remote_ephemeral_public_key.as_ref().unwrap())?;
         let shared_secret = self.0.vault.secret_export(shared_secret_ctx)?;
@@ -316,7 +334,8 @@ impl<'a, V: Vault> Responder<'a, V> {
     /// Setup this responder to send and receive messages
     /// after decoding message 3
     pub fn finalize<'b, VV: Vault>(&mut self, vault: &'b mut VV) -> Result<TransportState<'b, VV>, VaultFailError> {
-        self.0.finalize(vault)
+        let keys = self.0.split()?;
+        self.0.finalize(vault, &keys[..AES256_KEYSIZE], &keys[AES256_KEYSIZE..])
     }
 }
 
@@ -328,15 +347,143 @@ mod tests {
     use super::*;
     use ockam_vault::software::DefaultVault;
 
+    // Taken from https://github.com/mcginty/snow/blob/master/tests/vectors/snow.txt#L1466
+    // {
+    //     "protocol_name": "Noise_XX_25519_AESGCM_SHA256",
+    //     "init_prologue": "5468657265206973206e6f20726967687420616e642077726f6e672e2054686572652773206f6e6c792066756e20616e6420626f72696e672e",
+    //     "init_psks": [],
+    //     "init_static": "8332736541eede0aad3480ee75d9563769ba41bbcfb5a233a2df5211e1b28688",
+    //     "init_ephemeral": "10541ced038edae4ecc5f3d9f8500405b48b21df8dee29128dbb432da8d102d6",
+    //     "resp_prologue": "5468657265206973206e6f20726967687420616e642077726f6e672e2054686572652773206f6e6c792066756e20616e6420626f72696e672e",
+    //     "resp_psks": [],
+    //     "resp_static": "9d137b2cf1464e267de417bf5f5a3048d78e752c5b1dc98aab3679ecb16767d1",
+    //     "resp_ephemeral": "836a9fe7191c37411e5e261a20dd86b53b07b71cfa5944219c30c461d70f2c35",
+    //     "messages": [
+    //         {
+    //             "payload": "8727ca13a5735c9402b4a7eddbcf2b0685d41f21b49f432c15ebdea194bd8a48",
+    //             "ciphertext": "a12bb1540bbce2a2de27d1c4a0312b1320e1031200c976466d5eff9f231d545d8727ca13a5735c9402b4a7eddbcf2b0685d41f21b49f432c15ebdea194bd8a48"
+    //         },
+    //         {
+    //             "payload": "2be85c58cf525a53ef168262f17a27b2a8aa88ea89d3f2a9d7b30e526e4d4148",
+    //             "ciphertext": "ddf95a8783487e135ef1da9ce2d86c97a82ce3ee039b82fe3b65ae4f0ae8c657821abc223509f536362c00d650acd2da5c8beb6449c972dfb5353086ff10981a385ac097611210da4a0db4c373e46a0f290ca9a17d2240ef1c128aa878c9542b6b5210a49206c2cfb3d0c6fe97f29477dcbf9e7cde23dc166cb6894568cf13bd"
+    //         },
+    //         {
+    //             "payload": "b63277d8ac69e09ad11b0c1333a9859024a013306f36a93162ec6acde64a47ea",
+    //             "ciphertext": "38dd6d54b33cc023cd01d3cbb5a042f64d93a2efc3c210ca7ebbf15e7c11dbd03c1360363d39898d8f9912f8f69dc2647d55b3ced726fd225522d3725855a7c29836dcb6d86fd783aba0ef974f82a1632378d43cf5a3edd19e002e19cdd32e7b"
+    //         }
+    //     ]
+    // }
+
+
     #[test]
     fn prologue() {
-        let exp_h = [ 106, 46, 40, 203, 12, 213, 250, 236, 181, 181, 143, 65, 101, 32, 71, 73, 245, 126, 152, 127, 140, 234, 95, 77, 44, 142, 231, 83, 57, 81, 35, 37, ];
+        let exp_h = [ 93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79, 126, 100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75 ];
         let mut vault = DefaultVault::default();
         let res = XXSymmetricState::prologue(&mut vault);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.state.h, exp_h);
-        assert_eq!(ss.state.ck, exp_h);
+        assert_eq!(ss.state.ck, *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
         assert_eq!(ss.nonce, 0);
+    }
+
+    #[test]
+    fn handshake_1() {
+        const INIT_STATIC: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+        const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
+        const RESP_STATIC: &str = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
+        const MSG_1_CIPHERTEXT: &str = "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254";
+        const MSG_1_PAYLOAD: &str = "";
+        const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
+        const MSG_2_PAYLOAD: &str = "";
+        const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
+        const MSG_3_PAYLOAD: &str = "";
+
+        let mut vault_init = DefaultVault::default();
+        let mut vault_resp = DefaultVault::default();
+
+        let ss_init = mock_prologue(&mut vault_init, INIT_STATIC, INIT_EPH);
+        let ss_resp = mock_prologue(&mut vault_resp, RESP_STATIC, RESP_EPH);
+        let mut initiator = Initiator::new(ss_init);
+        let mut responder = Responder::new(ss_resp);
+
+        let res = initiator.encode_message_1(hex::decode(MSG_1_PAYLOAD).unwrap());
+        assert!(res.is_ok());
+        let msg1 = res.unwrap();
+        assert_eq!(msg1, hex::decode(MSG_1_CIPHERTEXT).unwrap());
+
+        let res = responder.decode_message_1(&msg1);
+        assert!(res.is_ok());
+
+        let res = responder.encode_message_2(hex::decode(MSG_2_PAYLOAD).unwrap());
+        assert!(res.is_ok());
+        let msg2 = res.unwrap();
+        assert_eq!(msg2, hex::decode(MSG_2_CIPHERTEXT).unwrap());
+
+        let res = initiator.decode_message_2(&msg2);
+        assert!(res.is_ok());
+        let res = initiator.encode_message_3(hex::decode(MSG_3_PAYLOAD).unwrap());
+        assert!(res.is_ok());
+        let msg3 = res.unwrap();
+        assert_eq!(msg3, hex::decode(MSG_3_CIPHERTEXT).unwrap());
+
+        let res = responder.decode_message_3(msg3);
+        assert!(res.is_ok());
+
+        let mut vault_initiator = DefaultVault::default();
+        let mut vault_responder = DefaultVault::default();
+        let res = initiator.finalize(&mut vault_initiator);
+        assert!(res.is_ok());
+        // let left = res.unwrap();
+        let res = responder.finalize(&mut vault_responder);
+        assert!(res.is_ok());
+        // let right = res.unwrap();
+    }
+
+    fn mock_prologue<'a>(vault: &'a mut DefaultVault, static_private: &str, ephemeral_private: &str) -> XXSymmetricState<'a, DefaultVault> {
+        let attributes = SecretKeyAttributes {
+            xtype: SecretKeyType::Curve25519,
+            purpose: SecretPurposeType::KeyAgreement,
+            persistence: SecretPersistenceType::Ephemeral,
+        };
+        // Static x25519 for this handshake, `s`
+        let bytes = hex::decode(static_private).unwrap();
+        let key = SecretKey::Curve25519(*array_ref![bytes, 0, 32]);
+        let static_secret_handle = vault.secret_import(&key, attributes).unwrap();
+        let static_public_key = vault.secret_public_key_get(static_secret_handle).unwrap();
+
+        // Ephemeral x25519 for this handshake, `e`
+        let bytes = hex::decode(ephemeral_private).unwrap();
+        let key = SecretKey::Curve25519(*array_ref![bytes, 0, 32]);
+        let ephemeral_secret_handle = vault.secret_import(&key, attributes).unwrap();
+        let ephemeral_public_key = vault.secret_public_key_get(ephemeral_secret_handle).unwrap();
+
+        // 3. Set k to empty, Set n to 0
+        let nonce = 0;
+
+        // 4. Set h and ck to 'Noise_XX_25519_AESGCM_SHA256'
+        // 5. h = SHA256(h || prologue),
+        // prologue is empty
+        // mix_hash(xx, NULL, 0);
+        let h = vault.sha256(b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0").unwrap();
+        let ck = *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
+        XXSymmetricState {
+            handshake: HandshakeStateData {
+                static_public_key,
+                static_secret_handle,
+                ephemeral_public_key,
+                ephemeral_secret_handle,
+                remote_ephemeral_public_key: None,
+                remote_static_public_key: None,
+            },
+            key: None,
+            nonce,
+            state: SymmetricStateData {
+                h,
+                ck,
+            },
+            vault
+        }
     }
 }

@@ -21,3 +21,6 @@ ffi-support = { version = "0.4.0", optional = true }
 lazy_static = { version = "1.4", optional = true }
 ockam-common = { version = "0.1", path = "../common" }
 ockam-vault = { version = "0.1", path = "../vault" }
+
+[dev-dependencies]
+hex = "0.4"

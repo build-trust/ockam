@@ -288,6 +288,7 @@ dependencies = [
  "arrayref",
  "failure",
  "ffi-support",
+ "hex",
  "lazy_static",
  "ockam-common",
  "ockam-vault",
