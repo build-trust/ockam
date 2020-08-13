@@ -4,7 +4,7 @@ defmodule Ockam.Message.Tests do
   alias Ockam.Message
 
   describe "Ockam.Message" do
-    test "can be created", do: %Message{}
+    test "can be created", do: %Message{payload: "hello"}
 
     test "version is 1 by default" do
       message = %Message{}
@@ -12,7 +12,7 @@ defmodule Ockam.Message.Tests do
     end
 
     test "encode then decode" do
-      message = %Message{}
+      message = %Message{payload: "hello"}
       decoded = message |> Message.encode() |> Message.decode()
       assert message === decoded
     end
