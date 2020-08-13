@@ -87,15 +87,16 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
 
     /// Create a new `HandshakeState` starting with the prologue
     pub fn prologue(vault: &'a mut V) -> Result<Self, VaultFailError> {
-        let attributes = SecretKeyAttributes {
+        let mut attributes = SecretKeyAttributes {
             xtype: SecretKeyType::Curve25519,
             purpose: SecretPurposeType::KeyAgreement,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistenceType::Persistent,
         };
         // 1. Generate a static 25519 keypair for this handshake and set it to `s`
         let static_secret_handle = vault.secret_generate(attributes)?;
         let static_public_key = vault.secret_public_key_get(static_secret_handle)?;
 
+        attributes.persistence = SecretPersistenceType::Ephemeral;
         // 2. Generate an ephemeral 25519 keypair for this handshake and set it to e
         let ephemeral_secret_handle = vault.secret_generate(attributes)?;
         let ephemeral_public_key = vault.secret_public_key_get(ephemeral_secret_handle)?;
