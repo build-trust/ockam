@@ -6,7 +6,10 @@ use ockam_common::error::ErrorKind;
 #[derive(Clone, Copy, Fail, Debug)]
 pub enum KeyExchangeFailErrorKind {
     /// An invalid number of bytes was received in an exchange
-    #[fail(display = "An invalid number of bytes was received in an exchange. Expected: {}, found: {}", 0, 0)]
+    #[fail(
+        display = "An invalid number of bytes was received in an exchange. Expected: {}, found: {}",
+        0, 0
+    )]
     InvalidByteCount(usize, usize),
     /// An invalid parameter was supplied: {}
     #[fail(display = "An invalid parameter was supplied: {}", 0)]
@@ -23,4 +26,3 @@ impl ErrorKind for KeyExchangeFailErrorKind {
         }
     }
 }
-
