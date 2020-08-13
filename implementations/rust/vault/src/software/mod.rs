@@ -288,6 +288,54 @@ impl Vault for DefaultVault {
         self.secret_import(&secret, attributes)
     }
 
+    fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(
+        &mut self,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+        salt: B,
+        okm_len: usize
+    ) -> Result<Vec<u8>, VaultFailError> {
+        let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
+
+        let value = match (&entry.key, peer_public_key) {
+            (SecretKey::Curve25519(a), PublicKey::Curve25519(b)) => {
+                let sk = x25519_dalek::StaticSecret::from(*a);
+                let pk_t = x25519_dalek::PublicKey::from(b);
+                let secret = sk.diffie_hellman(&pk_t);
+                Ok(secret.as_bytes().to_vec())
+            }
+            (SecretKey::P256(a), PublicKey::P256(b)) => {
+                let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> =
+                    p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
+                if o_pk_t.is_none() {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let pk_t = o_pk_t.unwrap();
+                let o_p_t = AffinePoint::from_pubkey(&pk_t);
+                if o_p_t.is_none().unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let sk = Scalar::from_bytes(*a).unwrap();
+                let pk_t = ProjectivePoint::from(o_p_t.unwrap());
+                let secret = &pk_t * &sk;
+                if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let result = secret.to_affine().unwrap().to_compressed_pubkey();
+                // Throw away the compressed indicator byte
+                Ok(result.as_ref()[1..].to_vec())
+            }
+            (_, _) => Err(VaultFailError::from_msg(
+                VaultFailErrorKind::Ecdh,
+                "Unknown key type",
+            )),
+        }?;
+        let mut okm = vec![0u8;  okm_len];
+        let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.as_ref()), &value);
+        prk.expand(b"", okm.as_mut_slice())?;
+        Ok(okm)
+    }
+
     fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
         &self,
         salt: B,
@@ -448,20 +496,21 @@ mod tests {
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(sk_ctx_1).unwrap();
         let pk_2 = vault.secret_public_key_get(sk_ctx_2).unwrap();
+        let salt = b"ec_diffie_hellman_p256";
 
-        let res = vault.ec_diffie_hellman(sk_ctx_1, pk_2);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_1, pk_2, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);
-        let res = vault.ec_diffie_hellman(sk_ctx_2, pk_1);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_2, pk_1, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);
-        let res = vault.ec_diffie_hellman(sk_ctx_1, pk_1);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_1, pk_1, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);
-        let res = vault.ec_diffie_hellman(sk_ctx_2, pk_2);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_2, pk_2, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);
@@ -479,20 +528,21 @@ mod tests {
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(sk_ctx_1).unwrap();
         let pk_2 = vault.secret_public_key_get(sk_ctx_2).unwrap();
+        let salt = b"ec_diffie_hellman_curve25519";
 
-        let res = vault.ec_diffie_hellman(sk_ctx_1, pk_2);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_1, pk_2, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);
-        let res = vault.ec_diffie_hellman(sk_ctx_2, pk_1);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_2, pk_1, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);
-        let res = vault.ec_diffie_hellman(sk_ctx_1, pk_1);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_1, pk_1, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);
-        let res = vault.ec_diffie_hellman(sk_ctx_2, pk_2);
+        let res = vault.ec_diffie_hellman_hkdf_sha256(sk_ctx_2, pk_2, salt, 32);
         assert!(res.is_ok());
         let ss = res.unwrap();
         assert_eq!(ss.len(), 32);

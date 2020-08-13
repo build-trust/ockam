@@ -84,6 +84,16 @@ pub trait Vault: Zeroize {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
     ) -> Result<SecretKeyContext, VaultFailError>;
+    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
+    /// and the specified uncompressed public key and return the HKDF-SHA256
+    /// output using the DH value as the HKDF ikm
+    fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(
+       &mut self,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+        salt: B,
+        okm_len: usize
+    ) -> Result<Vec<u8>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
     fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
@@ -149,6 +159,16 @@ pub trait DynVault {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
     ) -> Result<SecretKeyContext, VaultFailError>;
+    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
+    /// and the specified uncompressed public key and return the HKDF-SHA256
+    /// output using the DH value as the HKDF ikm
+    fn ec_diffie_hellman_hkdf_sha256(
+        &mut self,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+        salt: &[u8],
+        okm_len: usize
+    ) -> Result<Vec<u8>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
     fn hkdf_sha256(
@@ -229,6 +249,16 @@ impl<D: Vault + 'static> DynVault for D {
         peer_public_key: PublicKey,
     ) -> Result<SecretKeyContext, VaultFailError> {
         Vault::ec_diffie_hellman(self, context, peer_public_key)
+    }
+
+    fn ec_diffie_hellman_hkdf_sha256(
+        &mut self,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+        salt: &[u8],
+        okm_len: usize
+    ) -> Result<Vec<u8>, VaultFailError> {
+        Vault::ec_diffie_hellman_hkdf_sha256(self, context, peer_public_key, salt, okm_len)
     }
 
     fn hkdf_sha256(
