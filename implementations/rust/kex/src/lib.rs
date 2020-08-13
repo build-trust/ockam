@@ -82,7 +82,7 @@ pub struct XXSymmetricState<'a, V: Vault> {
 }
 
 impl<'a, V: Vault> XXSymmetricState<'a, V> {
-    const CSUITE: &'static [u8] = b"Noise_XX_25519_AESGCM_SHA256";
+    const CSUITE: &'static [u8] = b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
 
     /// Create a new `HandshakeState` starting with the prologue
     pub fn prologue(vault: &'a mut V) -> Result<Self, VaultFailError> {
@@ -106,7 +106,7 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
         // 5. h = SHA256(h || prologue),
         // prologue is empty
         // mix_hash(xx, NULL, 0);
-        let mut h = [0u8; 32];
+        let mut h = [0u8; SHA256_SIZE];
         h[..Self::CSUITE.len()].copy_from_slice(Self::CSUITE);
         let ck = h.clone();
         let h = vault.sha256(h)?;
