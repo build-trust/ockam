@@ -40,6 +40,9 @@ pub mod error;
 #[cfg(feature = "ffi")]
 /// The ffi functions, structs, and constants
 pub mod ffi;
+/// Vault backed by the OSX Keychain and Secure-Enclave Processor
+#[cfg(target_os = "macos")]
+pub mod osx;
 /// Software implementation of Vault. No persistence
 /// all keys are stored, operations happen in memory
 pub mod software;

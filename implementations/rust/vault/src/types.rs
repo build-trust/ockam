@@ -202,7 +202,34 @@ pub enum SecretKeyContext {
     AzureKeyVault,
     /// Key is backed an OS keyring like Windows Credential Vault, Gnome Keyring, KWallet, or
     /// Security Framework
-    OsKeyRing,
+    KeyRing {
+        /// The id of the secret
+        id: usize,
+        /// The type of represented by `id`
+        os_type: OsKeyRing
+    },
+}
+
+/// The type of OS represented by the Keyring
+#[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
+pub enum OsKeyRing {
+    /// The keyring tied to a Linux operating system
+    Linux,
+    /// The keyring tied to the Mac OS X operating system
+    Osx(OsxContext),
+    /// The credentials vault tied to the Windows operating system
+    Windows,
+}
+
+/// Locations that can be used by the OSX system
+#[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
+pub enum OsxContext {
+    /// Secrets stored ephemerally in memory
+    Memory,
+    /// Secrets stored in the OSX keychain
+    Keychain,
+    /// Secrets stored in the Secure Enclave Processor
+    Enclave
 }
 
 #[cfg(feature = "ffi")]

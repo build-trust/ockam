@@ -235,7 +235,7 @@ impl Vault for DefaultVault {
             }
             Ok(())
         } else {
-            Err(VaultFailErrorKind::IOError.into())
+            Err(VaultFailErrorKind::InvalidParam(0).into())
         }
     }
 

@@ -31,3 +31,7 @@ sha2 = "0.9"
 subtle = "2.2"
 x25519-dalek = "0.6"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "2.0"
+keychain-services = { version = "0.1", git = "https://github.com/iqlusioninc/keychain-services.rs"}

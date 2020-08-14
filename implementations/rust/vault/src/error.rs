@@ -89,6 +89,9 @@ pub enum VaultFailErrorKind {
     /// An error occurred while reading from I/O
     #[fail(display = "An error occurred while reading from I/O")]
     IOError,
+    /// Unable to access the vault
+    #[fail(display = "Access denied to the vault")]
+    AccessDenied,
 }
 
 impl VaultFailErrorKind {
@@ -124,6 +127,7 @@ impl VaultFailErrorKind {
             VaultFailErrorKind::MemoryRequired => Self::ERROR_INTERFACE_VAULT | 32,
             VaultFailErrorKind::SecretSizeMismatch => Self::ERROR_INTERFACE_VAULT | 33,
             VaultFailErrorKind::IOError => Self::ERROR_INTERFACE_VAULT | 40,
+            VaultFailErrorKind::AccessDenied => Self::ERROR_INTERFACE_VAULT | 50,
         }
     }
 }
@@ -229,6 +233,62 @@ impl From<aes_gcm::Error> for VaultFailError {
 impl From<std::num::ParseIntError> for VaultFailError {
     fn from(_: std::num::ParseIntError) -> Self {
         VaultFailError::from(VaultFailErrorKind::IOError)
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl From<security_framework::base::Error> for VaultFailError {
+    fn from(err: security_framework::base::Error) -> Self {
+        match err.code() {
+            -128 => VaultFailErrorKind::AccessDenied.into(),
+            -25300 => VaultFailErrorKind::InvalidContext.into(),
+            _ => VaultFailErrorKind::IOError.into()
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl From<keychain_services::Error> for VaultFailError {
+    fn from(err: keychain_services::Error) -> Self {
+        use keychain_services::ErrorKind::*;
+        println!("ErrorKind = {:?}", err.kind());
+        match err.kind() {
+            AuthFailed => VaultFailErrorKind::AccessDenied.into(),
+            BufferTooSmall => VaultFailErrorKind::BufferTooSmall.into(),
+            CreateChainFailed => VaultFailErrorKind::IOError.into(),
+            DataTooLarge => VaultFailErrorKind::InvalidBuffer.into(),
+            DataNotAvailable => VaultFailErrorKind::InvalidContext.into(),
+            DataNotModifiable => VaultFailErrorKind::IOError.into(),
+            DuplicateCallback => VaultFailErrorKind::IOError.into(),
+            DuplicateItem => VaultFailErrorKind::Import.into(),
+            DuplicateKeychain => VaultFailErrorKind::IOError.into(),
+            InDarkWake => VaultFailErrorKind::Init.into(),
+            InteractionNotAllowed => VaultFailErrorKind::AccessDenied.into(),
+            InteractionRequired => VaultFailErrorKind::AccessDenied.into(),
+            InvalidCallback => VaultFailErrorKind::IOError.into(),
+            InvalidItemRef => VaultFailErrorKind::InvalidContext.into(),
+            InvalidKeychain => VaultFailErrorKind::IOError.into(),
+            InvalidPrefsDomain => VaultFailErrorKind::IOError.into(),
+            InvalidSearchRef => VaultFailErrorKind::InvalidContext.into(),
+            ItemNotFound => VaultFailErrorKind::InvalidContext.into(),
+            KeySizeNotAllowed => VaultFailErrorKind::SecretSizeMismatch.into(),
+            MissingEntitlement => VaultFailErrorKind::AccessDenied.into(),
+            NoCertificateModule => VaultFailErrorKind::AccessDenied.into(),
+            NoDefaultKeychain => VaultFailErrorKind::AccessDenied.into(),
+            NoPolicyModule => VaultFailErrorKind::AccessDenied.into(),
+            NoStorageModule => VaultFailErrorKind::AccessDenied.into(),
+            NoSuchAttr => VaultFailErrorKind::InvalidAttributes.into(),
+            NoSuchClass => VaultFailErrorKind::InvalidAttributes.into(),
+            NoSuchKeychain => VaultFailErrorKind::AccessDenied.into(),
+            NotAvailable => VaultFailErrorKind::IOError.into(),
+            ReadOnly => VaultFailErrorKind::AccessDenied.into(),
+            ReadOnlyAttr => VaultFailErrorKind::InvalidAttributes.into(),
+            WrongSecVersion => VaultFailErrorKind::InvalidAttributes.into(),
+            Io{..} => VaultFailErrorKind::IOError.into(),
+            CFError{..} => VaultFailErrorKind::IOError.into(),
+            Errno{..} => VaultFailErrorKind::IOError.into(),
+            OSError{..} => VaultFailErrorKind::IOError.into()
+        }
     }
 }
 
