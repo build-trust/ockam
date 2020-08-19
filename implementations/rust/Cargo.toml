@@ -6,8 +6,3 @@ members = [
     "message",
     "vault",
 ]
-
-exclude = [
-  "crates/ockam-vault-sys",
-  "crates/ockam",
-]
