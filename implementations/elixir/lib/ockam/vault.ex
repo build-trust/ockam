@@ -127,8 +127,6 @@ defmodule Ockam.Vault do
   defmodule NIF do
     @moduledoc false
 
-    use Rustler, otp_app: :ockam, crate: :ockam_nif
-
     def make_vault, do: exit(:nif_not_loaded)
     def random(_vault), do: exit(:nif_not_loaded)
     def sha256(_vault, _data), do: exit(:nif_not_loaded)
