@@ -20,26 +20,26 @@ defmodule Ockam.Channel do
 
   defstruct [:address, :external_address]
 
-  @typedoc "The udp transport address type."
+  @typedoc "The channel address type."
   @type address :: Router.address()
 
-  @typedoc "The udp transport type."
+  @typedoc "The channel type."
   @type t :: %__MODULE__{address: address, external_address: address}
 
   @doc """
-  Sends a message to the given `udp transport`.
+  Sends a message to the given `channel`.
   """
   @spec send(t, any) :: any
   def send(%__MODULE__{address: address}, message), do: Router.route(address, message)
 
   @doc """
-  Returns the `pid` of the given `udp transport`.
+  Returns the `pid` of the given `channel`.
   """
   @spec whereis(t) :: pid
   def whereis(%__MODULE__{address: address}), do: Router.whereis(address)
 
   @doc """
-  Returns a list of all udp transports currently known to `@supervisor`.
+  Returns a list of all channels currently known to `@supervisor`.
   """
   @spec list() :: [t]
   def list do
@@ -52,7 +52,7 @@ defmodule Ockam.Channel do
   end
 
   @doc """
-  Destroy the given udp transport.
+  Destroy the given channel.
   """
   @spec destroy(t) :: :ok | {:error, :not_found}
   def destroy(%__MODULE__{address: address} = worker) do
@@ -63,7 +63,7 @@ defmodule Ockam.Channel do
   end
 
   @doc """
-  Creates a new udp transport.
+  Creates a new channel.
   """
   def create(options \\ []) when is_list(options) do
     options =
