@@ -320,19 +320,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kex"
-version = "0.1.0"
-dependencies = [
- "arrayref",
- "failure",
- "ffi-support",
- "hex",
- "lazy_static",
- "ockam-common",
- "ockam-vault",
-]
-
-[[package]]
 name = "keychain-services"
 version = "0.1.2"
 source = "git+https://github.com/iqlusioninc/keychain-services.rs#7410fb8baf4ecdf04cdcd7d06d02658f4f158d77"
@@ -386,6 +373,19 @@ checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
 [[package]]
 name = "ockam-common"
 version = "0.1.0"
+
+[[package]]
+name = "ockam-kex"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "failure",
+ "ffi-support",
+ "hex",
+ "lazy_static",
+ "ockam-common",
+ "ockam-vault",
+]
 
 [[package]]
 name = "ockam-vault"

@@ -1,8 +1,8 @@
 [package]
-name = "ockam-vault"
-version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
+name = "ockam-vault"
+version = "0.1.0"
 
 [lib]
 crate-type = ["staticlib", "rlib", "cdylib"]
