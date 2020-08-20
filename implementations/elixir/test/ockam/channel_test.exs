@@ -6,6 +6,8 @@ defmodule Ockam.Channel.Tests do
   alias Ockam.Vault
 
   describe "Ockam.Channel" do
+    @describetag :skip
+
     test "well known" do
       {:ok, responder_vault} = Vault.create()
 
