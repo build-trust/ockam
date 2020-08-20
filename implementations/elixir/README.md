@@ -16,6 +16,13 @@ and [Elixir](https://github.com/asdf-vm/asdf-elixir).
 [Here's good guide](https://thinkingelixir.com/install-elixir-using-asdf/) on using
 asdf to manage erlang and elixir version - [link](https://thinkingelixir.com/install-elixir-using-asdf/)
 
+## CMake, Make and C toolchain
+
+To compile the native code:
+1. CMake should be install
+2. GNU Make should available
+3. C compiler toolchain should be available to CMake
+
 ## Get dependencies
 
 ```
