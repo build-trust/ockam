@@ -242,7 +242,7 @@ impl From<security_framework::base::Error> for VaultFailError {
         match err.code() {
             -128 => VaultFailErrorKind::AccessDenied.into(),
             -25300 => VaultFailErrorKind::InvalidContext.into(),
-            _ => VaultFailErrorKind::IOError.into()
+            _ => VaultFailErrorKind::IOError.into(),
         }
     }
 }
@@ -284,10 +284,10 @@ impl From<keychain_services::Error> for VaultFailError {
             ReadOnly => VaultFailErrorKind::AccessDenied.into(),
             ReadOnlyAttr => VaultFailErrorKind::InvalidAttributes.into(),
             WrongSecVersion => VaultFailErrorKind::InvalidAttributes.into(),
-            Io{..} => VaultFailErrorKind::IOError.into(),
-            CFError{..} => VaultFailErrorKind::IOError.into(),
-            Errno{..} => VaultFailErrorKind::IOError.into(),
-            OSError{..} => VaultFailErrorKind::IOError.into()
+            Io { .. } => VaultFailErrorKind::IOError.into(),
+            CFError { .. } => VaultFailErrorKind::IOError.into(),
+            Errno { .. } => VaultFailErrorKind::IOError.into(),
+            OSError { .. } => VaultFailErrorKind::IOError.into(),
         }
     }
 }

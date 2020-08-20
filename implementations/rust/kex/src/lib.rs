@@ -129,8 +129,17 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
     }
 
     /// Perform the diffie-hellman computation
-    pub fn dh(&mut self, secret_handle: SecretKeyContext, public_key: PublicKey) -> Result<Vec<u8>, VaultFailError> {
-        self.vault.ec_diffie_hellman_hkdf_sha256(secret_handle, public_key, self.state.ck.as_ref(), SHA256_SIZE + AES256_KEYSIZE)
+    pub fn dh(
+        &mut self,
+        secret_handle: SecretKeyContext,
+        public_key: PublicKey,
+    ) -> Result<Vec<u8>, VaultFailError> {
+        self.vault.ec_diffie_hellman_hkdf_sha256(
+            secret_handle,
+            public_key,
+            self.state.ck.as_ref(),
+            SHA256_SIZE + AES256_KEYSIZE,
+        )
     }
 
     /// mix key step in Noise protocol
@@ -296,13 +305,15 @@ impl<'a, V: Vault> Initiator<'a, V> {
         let mut encrypted_s_and_tag = self
             .0
             .encrypt_and_mix_hash(self.0.handshake.static_public_key)?;
-        let hash = self.0.dh(self.0.handshake.static_secret_handle,
-                                                              *self
-                                                                  .0
-                                                                  .handshake
-                                                                  .remote_ephemeral_public_key
-                                                                  .as_ref()
-                                                                  .unwrap())?;
+        let hash = self.0.dh(
+            self.0.handshake.static_secret_handle,
+            *self
+                .0
+                .handshake
+                .remote_ephemeral_public_key
+                .as_ref()
+                .unwrap(),
+        )?;
         self.0.mix_key(&hash)?;
         let mut encrypted_payload_and_tag = self.0.encrypt_and_mix_hash(payload)?;
         encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
@@ -351,25 +362,29 @@ impl<'a, V: Vault> Responder<'a, V> {
         payload: B,
     ) -> Result<Vec<u8>, VaultFailError> {
         self.0.mix_hash(self.0.handshake.ephemeral_public_key)?;
-        let hash = self.0.dh(self.0.handshake.ephemeral_secret_handle,
-                                                              *self
-                                                                  .0
-                                                                  .handshake
-                                                                  .remote_ephemeral_public_key
-                                                                  .as_ref()
-                                                                  .unwrap())?;
+        let hash = self.0.dh(
+            self.0.handshake.ephemeral_secret_handle,
+            *self
+                .0
+                .handshake
+                .remote_ephemeral_public_key
+                .as_ref()
+                .unwrap(),
+        )?;
         self.0.mix_key(&hash)?;
 
         let mut encrypted_s_and_tag = self
             .0
             .encrypt_and_mix_hash(self.0.handshake.static_public_key)?;
-        let hash = self.0.dh(self.0.handshake.static_secret_handle,
-                                                              *self
-                                                                  .0
-                                                                  .handshake
-                                                                  .remote_ephemeral_public_key
-                                                                  .as_ref()
-                                                                  .unwrap())?;
+        let hash = self.0.dh(
+            self.0.handshake.static_secret_handle,
+            *self
+                .0
+                .handshake
+                .remote_ephemeral_public_key
+                .as_ref()
+                .unwrap(),
+        )?;
         self.0.mix_key(&hash)?;
         let mut encrypted_payload_and_tag = self.0.encrypt_and_mix_hash(payload)?;
 
@@ -461,12 +476,15 @@ mod tests {
 
     #[test]
     fn handshake_2() {
-        const INIT_STATIC: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        const RESP_STATIC: &str = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        const INIT_STATIC: &str =
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+        const RESP_STATIC: &str =
+            "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
         const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
         const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
         const MSG_1_PAYLOAD: &str = "746573745f6d73675f30";
-        const MSG_1_CIPHERTEXT: &str = "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254746573745f6d73675f30";
+        const MSG_1_CIPHERTEXT: &str =
+            "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254746573745f6d73675f30";
         const MSG_2_PAYLOAD: &str = "746573745f6d73675f31";
         const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8c9f29dcec8d3ab554f4a5330657867fe4917917195c8cf360e08d6dc5f71baf875ec6e3bfc7afda4c9c2";
         const MSG_3_PAYLOAD: &str = "746573745f6d73675f32";

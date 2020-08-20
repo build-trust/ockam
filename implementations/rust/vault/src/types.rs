@@ -206,7 +206,7 @@ pub enum SecretKeyContext {
         /// The id of the secret
         id: usize,
         /// The type of represented by `id`
-        os_type: OsKeyRing
+        os_type: OsKeyRing,
     },
 }
 
@@ -229,7 +229,7 @@ pub enum OsxContext {
     /// Secrets stored in the OSX keychain
     Keychain,
     /// Secrets stored in the Secure Enclave Processor
-    Enclave
+    Enclave,
 }
 
 #[cfg(feature = "ffi")]
@@ -237,7 +237,9 @@ pub enum OsxContext {
 unsafe impl IntoFfi for SecretKeyContext {
     type Value = u64;
 
-    fn ffi_default() -> Self::Value { 0 }
+    fn ffi_default() -> Self::Value {
+        0
+    }
 
     fn into_ffi_value(self) -> Self::Value {
         match self {

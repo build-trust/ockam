@@ -293,7 +293,7 @@ impl Vault for DefaultVault {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: B,
-        okm_len: usize
+        okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
 
@@ -330,7 +330,7 @@ impl Vault for DefaultVault {
                 "Unknown key type",
             )),
         }?;
-        let mut okm = vec![0u8;  okm_len];
+        let mut okm = vec![0u8; okm_len];
         let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.as_ref()), &value);
         prk.expand(b"", okm.as_mut_slice())?;
         Ok(okm)

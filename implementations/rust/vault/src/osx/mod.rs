@@ -1,14 +1,17 @@
+use crate::types::{OsKeyRing, OsxContext};
 use crate::{
-    Vault,
     error::{VaultFailError, VaultFailErrorKind},
     software::DefaultVault,
-    types::{SecretPersistenceType, SecretKeyType, SecretKeyContext, SecretKey, SecretKeyAttributes, PublicKey}
+    types::{
+        PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext, SecretKeyType,
+        SecretPersistenceType,
+    },
+    Vault,
 };
 use keychain_services as enclave;
 use rand::prelude::*;
 use security_framework::os::macos::keychain;
 use zeroize::Zeroize;
-use crate::types::{OsKeyRing, OsxContext};
 
 const OCKAM_SERVICE_NAME: &str = "OckamOsxVault";
 
@@ -21,14 +24,18 @@ pub struct OsxVault {
 
 impl OsxVault {
     fn unlock(&mut self) -> Result<(), VaultFailError> {
-       self.keychain.unlock(None)?;
+        self.keychain.unlock(None)?;
         Ok(())
     }
 }
 
 impl std::fmt::Debug for OsxVault {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "OsxVault {{ ephemeral_vault: {:?},  keychain: SecKeychain  }}", self.ephemeral_vault)
+        write!(
+            f,
+            "OsxVault {{ ephemeral_vault: {:?},  keychain: SecKeychain  }}",
+            self.ephemeral_vault
+        )
     }
 }
 
@@ -58,68 +65,92 @@ impl Vault for OsxVault {
         self.ephemeral_vault.sha256(data)
     }
 
-    fn secret_generate(&mut self, attributes: SecretKeyAttributes) -> Result<SecretKeyContext, VaultFailError> {
+    fn secret_generate(
+        &mut self,
+        attributes: SecretKeyAttributes,
+    ) -> Result<SecretKeyContext, VaultFailError> {
         let mut swkey_insert = |buffer: &[u8]| -> Result<SecretKeyContext, VaultFailError> {
             let mut r = rand::rngs::OsRng {};
             let id = r.gen::<usize>();
             self.unlock()?;
-            self.keychain.set_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str(), buffer)?;
+            self.keychain.set_generic_password(
+                OCKAM_SERVICE_NAME,
+                id.to_string().as_str(),
+                buffer,
+            )?;
 
-            Ok(SecretKeyContext::KeyRing {id, os_type: OsKeyRing::Osx(OsxContext::Keychain) })
+            Ok(SecretKeyContext::KeyRing {
+                id,
+                os_type: OsKeyRing::Osx(OsxContext::Keychain),
+            })
         };
         let mut rng = rand::rngs::OsRng {};
         match attributes.persistence {
-            SecretPersistenceType::Ephemeral => self.ephemeral_vault.secret_generate(attributes).map(|c| {
-                if let SecretKeyContext::Memory(id) = c {
-                    SecretKeyContext::KeyRing {id, os_type: OsKeyRing::Osx(OsxContext::Memory) }
-                } else {
-                    c
-                }
-            }),
-            SecretPersistenceType::Persistent => {
-                match attributes.xtype {
-                    SecretKeyType::Curve25519 => {
-                        let sk = x25519_dalek::StaticSecret::new(&mut rng);
-                        swkey_insert(sk.to_bytes().as_ref())
-                    },
-                    SecretKeyType::P256 => {
-                        let mut acf = enclave::AccessControlFlags::new();
-                        acf.add(enclave::AccessOption::PrivateKeyUsage);
-                        let acl = enclave::AccessControl::create_with_flags(
-                            enclave::AttrAccessible::WhenUnlockedThisDeviceOnly,acf
-                        )?;
-                        let id = rng.gen::<usize>();
-                        let id_str = format!("{}-{}", OCKAM_SERVICE_NAME, id);
-                        let generate_params = enclave::KeyPairGenerateParams::new(enclave::AttrKeyType::EcSecPrimeRandom, 256)
-                            .access_control(&acl)
-                            .application_tag(id_str.as_str())
-                            .can_derive(true)
-                            .permanent(true)
-                            .token_id(enclave::AttrTokenId::SecureEnclave);
-                        enclave::KeyPair::generate(generate_params)?;
-                        Ok(SecretKeyContext::KeyRing {id, os_type: OsKeyRing::Osx(OsxContext::Enclave) })
-                    },
-                    SecretKeyType::Aes256 => {
-                        let mut key = [0u8; 32];
-                        rng.fill_bytes(&mut key);
-                        swkey_insert(key.as_ref())
-                    },
-                    SecretKeyType::Aes128 => {
-                        let mut key = [0u8; 16];
-                        rng.fill_bytes(&mut key);
-                        swkey_insert(key.as_ref())
-                    },
-                    SecretKeyType::Buffer(size) => {
-                        let mut key = vec![0u8; size];
-                        rng.fill_bytes(key.as_mut_slice());
-                        swkey_insert(key.as_slice())
+            SecretPersistenceType::Ephemeral => {
+                self.ephemeral_vault.secret_generate(attributes).map(|c| {
+                    if let SecretKeyContext::Memory(id) = c {
+                        SecretKeyContext::KeyRing {
+                            id,
+                            os_type: OsKeyRing::Osx(OsxContext::Memory),
+                        }
+                    } else {
+                        c
                     }
-                }
+                })
             }
+            SecretPersistenceType::Persistent => match attributes.xtype {
+                SecretKeyType::Curve25519 => {
+                    let sk = x25519_dalek::StaticSecret::new(&mut rng);
+                    swkey_insert(sk.to_bytes().as_ref())
+                }
+                SecretKeyType::P256 => {
+                    let mut acf = enclave::AccessControlFlags::new();
+                    acf.add(enclave::AccessOption::PrivateKeyUsage);
+                    let acl = enclave::AccessControl::create_with_flags(
+                        enclave::AttrAccessible::WhenUnlockedThisDeviceOnly,
+                        acf,
+                    )?;
+                    let id = rng.gen::<usize>();
+                    let id_str = format!("{}-{}", OCKAM_SERVICE_NAME, id);
+                    let generate_params = enclave::KeyPairGenerateParams::new(
+                        enclave::AttrKeyType::EcSecPrimeRandom,
+                        256,
+                    )
+                    .access_control(&acl)
+                    .application_tag(id_str.as_str())
+                    .can_derive(true)
+                    .permanent(true)
+                    .token_id(enclave::AttrTokenId::SecureEnclave);
+                    enclave::KeyPair::generate(generate_params)?;
+                    Ok(SecretKeyContext::KeyRing {
+                        id,
+                        os_type: OsKeyRing::Osx(OsxContext::Enclave),
+                    })
+                }
+                SecretKeyType::Aes256 => {
+                    let mut key = [0u8; 32];
+                    rng.fill_bytes(&mut key);
+                    swkey_insert(key.as_ref())
+                }
+                SecretKeyType::Aes128 => {
+                    let mut key = [0u8; 16];
+                    rng.fill_bytes(&mut key);
+                    swkey_insert(key.as_ref())
+                }
+                SecretKeyType::Buffer(size) => {
+                    let mut key = vec![0u8; size];
+                    rng.fill_bytes(key.as_mut_slice());
+                    swkey_insert(key.as_slice())
+                }
+            },
         }
     }
 
-    fn secret_import(&mut self, secret: &SecretKey, attributes: SecretKeyAttributes) -> Result<SecretKeyContext, VaultFailError> {
+    fn secret_import(
+        &mut self,
+        secret: &SecretKey,
+        attributes: SecretKeyAttributes,
+    ) -> Result<SecretKeyContext, VaultFailError> {
         unimplemented!()
     }
 
@@ -127,28 +158,36 @@ impl Vault for OsxVault {
         unimplemented!()
     }
 
-    fn secret_attributes_get(&self, context: SecretKeyContext) -> Result<SecretKeyAttributes, VaultFailError> {
+    fn secret_attributes_get(
+        &self,
+        context: SecretKeyContext,
+    ) -> Result<SecretKeyAttributes, VaultFailError> {
         unimplemented!()
     }
 
-    fn secret_public_key_get(&self, context: SecretKeyContext) -> Result<PublicKey, VaultFailError> {
+    fn secret_public_key_get(
+        &self,
+        context: SecretKeyContext,
+    ) -> Result<PublicKey, VaultFailError> {
         unimplemented!()
     }
 
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError> {
-        if let SecretKeyContext::KeyRing {id, os_type} = context {
+        if let SecretKeyContext::KeyRing { id, os_type } = context {
             if let OsKeyRing::Osx(ctx) = os_type {
                 match ctx {
                     OsxContext::Memory => {
                         let memctx = SecretKeyContext::Memory(id);
                         self.ephemeral_vault.secret_destroy(memctx)
-                    },
+                    }
                     OsxContext::Keychain => {
                         self.unlock()?;
-                        let (_, item) = self.keychain.find_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str())?;
+                        let (_, item) = self
+                            .keychain
+                            .find_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str())?;
                         item.delete();
                         Ok(())
-                    },
+                    }
                     OsxContext::Enclave => {
                         let app_tag = format!("{}-{}", OCKAM_SERVICE_NAME, id);
                         let query = enclave::item::Query::new().application_tag(app_tag.as_str());
@@ -165,23 +204,50 @@ impl Vault for OsxVault {
         }
     }
 
-    fn ec_diffie_hellman(&mut self, context: SecretKeyContext, peer_public_key: PublicKey) -> Result<SecretKeyContext, VaultFailError> {
+    fn ec_diffie_hellman(
+        &mut self,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+    ) -> Result<SecretKeyContext, VaultFailError> {
         unimplemented!()
     }
 
-    fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(&mut self, context: SecretKeyContext, peer_public_key: PublicKey, salt: B, okm_len: usize) -> Result<Vec<u8>, VaultFailError> {
+    fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(
+        &mut self,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+        salt: B,
+        okm_len: usize,
+    ) -> Result<Vec<u8>, VaultFailError> {
         unimplemented!()
     }
 
-    fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(&self, salt: B, ikm: C, okm_len: usize) -> Result<Vec<u8>, VaultFailError> {
+    fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
+        &self,
+        salt: B,
+        ikm: C,
+        okm_len: usize,
+    ) -> Result<Vec<u8>, VaultFailError> {
         self.ephemeral_vault.hkdf_sha256(salt, ikm, okm_len)
     }
 
-    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(&self, context: SecretKeyContext, plaintext: B, nonce: C, aad: D) -> Result<Vec<u8>, VaultFailError> {
+    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
+        &self,
+        context: SecretKeyContext,
+        plaintext: B,
+        nonce: C,
+        aad: D,
+    ) -> Result<Vec<u8>, VaultFailError> {
         unimplemented!()
     }
 
-    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(&self, context: SecretKeyContext, cipher_text: B, nonce: C, aad: D) -> Result<Vec<u8>, VaultFailError> {
+    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
+        &self,
+        context: SecretKeyContext,
+        cipher_text: B,
+        nonce: C,
+        aad: D,
+    ) -> Result<Vec<u8>, VaultFailError> {
         unimplemented!()
     }
 
@@ -210,7 +276,12 @@ mod tests {
             persistence: SecretPersistenceType::Persistent,
             purpose: SecretPurposeType::KeyAgreement,
         };
-        let types = [SecretKeyType::Curve25519, SecretKeyType::Aes128, SecretKeyType::Aes256, SecretKeyType::Buffer(24)];
+        let types = [
+            SecretKeyType::Curve25519,
+            SecretKeyType::Aes128,
+            SecretKeyType::Aes256,
+            SecretKeyType::Buffer(24),
+        ];
         for t in &types {
             attributes.xtype = *t;
             let res = vault.secret_generate(attributes);

@@ -28,6 +28,8 @@ extern crate ffi_support;
 #[cfg(feature = "ffi")]
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate ockam_common;
 
 use crate::error::VaultFailError;
 use zeroize::Zeroize;
@@ -91,11 +93,11 @@ pub trait Vault: Zeroize {
     /// and the specified uncompressed public key and return the HKDF-SHA256
     /// output using the DH value as the HKDF ikm
     fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(
-       &mut self,
+        &mut self,
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: B,
-        okm_len: usize
+        okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
@@ -170,7 +172,7 @@ pub trait DynVault {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: &[u8],
-        okm_len: usize
+        okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
@@ -259,7 +261,7 @@ impl<D: Vault + 'static> DynVault for D {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: &[u8],
-        okm_len: usize
+        okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError> {
         Vault::ec_diffie_hellman_hkdf_sha256(self, context, peer_public_key, salt, okm_len)
     }
