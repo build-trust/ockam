@@ -286,3 +286,6 @@ task test {
     }
   }
 }
+
+task lint {
+}

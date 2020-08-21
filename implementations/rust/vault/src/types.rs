@@ -341,19 +341,13 @@ impl PublicKey {
     /// True if this is a Curve25519 Public Key
     pub fn is_curve25519(&self) -> bool {
         use PublicKey::*;
-        match self {
-            Curve25519(..) => true,
-            _ => false,
-        }
+        matches!(self, Curve25519(..))
     }
 
     /// True if this is a NIST P-256 (secp256r1, prime256v1) uncompressed public key
     pub fn is_p256(&self) -> bool {
         use PublicKey::*;
-        match self {
-            P256(..) => true,
-            _ => false,
-        }
+        matches!(self, P256(..))
     }
 }
 

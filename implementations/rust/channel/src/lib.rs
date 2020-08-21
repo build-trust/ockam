@@ -36,4 +36,3 @@ pub struct Channel<'a, R: Read, W: Write, V: Vault> {
 
 /// Represents the errors that occur within a channel
 pub mod error;
-

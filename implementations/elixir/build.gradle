@@ -7,3 +7,6 @@ task test {
 
 task clean {
 }
+
+task lint {
+}

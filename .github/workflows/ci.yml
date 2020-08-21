@@ -23,3 +23,6 @@ jobs:
 
       - id: Clean
         run: ./gradlew clean
+
+      - id: Lint
+        run: ./gradlew lint

@@ -110,7 +110,7 @@ impl<'a, V: Vault> XXSymmetricState<'a, V> {
         // mix_hash(xx, NULL, 0);
         let mut h = [0u8; SHA256_SIZE];
         h[..Self::CSUITE.len()].copy_from_slice(Self::CSUITE);
-        let ck = h.clone();
+        let ck = h;
         let h = vault.sha256(h)?;
         Ok(Self {
             handshake: HandshakeStateData {

@@ -220,7 +220,7 @@ pub mod message {
 
     impl Codec<Route> for Route {
         fn encode(route: &mut Route, u: &mut Vec<u8>) {
-            if route.addresses.len() == 0 {
+            if route.addresses.is_empty() {
                 u.push(0 as u8)
             } else {
                 u.push(route.addresses.len() as u8);
@@ -309,9 +309,9 @@ pub mod message {
             if ul2 < &mut 0x80 {
                 u.push(bytes[0])
             } else {
-                bytes[1] = (bytes[1] << 0x01);
+                bytes[1] <<= 0x01;
                 if 0 != (bytes[0] & 0x80) {
-                    bytes[1] = bytes[1] | 0x01;
+                    bytes[1] |= 0x01;
                 }
                 bytes[0] |= 0x80;
                 u.push(bytes[0]);

@@ -10,3 +10,7 @@ task test {
 task clean {
   dependsOn gradle.includedBuilds*.task(':clean')
 }
+
+task lint {
+    dependsOn gradle.includedBuilds*.task(':lint')
+}

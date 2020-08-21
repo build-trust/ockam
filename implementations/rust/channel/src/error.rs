@@ -17,7 +17,7 @@ pub enum ChannelErrorKind {
     KeyAgreement(KeyExchangeFailErrorKind),
     /// An error occurred with the internal state of the channel
     #[fail(display = "An error occurred with the internal state of the channel")]
-    State
+    State,
 }
 
 impl ChannelErrorKind {
@@ -42,8 +42,8 @@ pub struct ChannelError {
 impl ChannelError {
     /// Convert from an error kind and a static string
     pub fn from_msg<D>(kind: ChannelErrorKind, msg: D) -> Self
-        where
-            D: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
+    where
+        D: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
     {
         Self {
             inner: Context::new(msg).context(kind),
