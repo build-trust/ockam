@@ -151,7 +151,37 @@ impl Vault for OsxVault {
         secret: &SecretKey,
         attributes: SecretKeyAttributes,
     ) -> Result<SecretKeyContext, VaultFailError> {
-        unimplemented!()
+        let mut swkey_insert = |buffer: &[u8]| -> Result<SecretKeyContext, VaultFailError> {
+            let mut r = rand::rngs::OsRng {};
+            let id = r.gen::<usize>();
+            self.unlock()?;
+            self.keychain.set_generic_password(
+                OCKAM_SERVICE_NAME,
+                id.to_string().as_str(),
+                buffer,
+            )?;
+
+            Ok(SecretKeyContext::KeyRing {
+                id,
+                os_type: OsKeyRing::Osx(OsxContext::Keychain),
+            })
+        };
+        match attributes.persistence {
+            SecretPersistenceType::Ephemeral => self
+                .ephemeral_vault
+                .secret_import(secret, attributes)
+                .map(|c| {
+                    if let SecretKeyContext::Memory(id) = c {
+                        SecretKeyContext::KeyRing {
+                            id,
+                            os_type: OsKeyRing::Osx(OsxContext::Memory),
+                        }
+                    } else {
+                        c
+                    }
+                }),
+            SecretPersistenceType::Persistent => swkey_insert(secret.as_ref()),
+        }
     }
 
     fn secret_export(&self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
