@@ -2,7 +2,7 @@
 
 #include "ockam/key_agreement.h"
 
-#define ACK      "ACK"
+#define ACK_TEXT "ACK_TEXT"
 #define ACK_SIZE 3
 #define OK       "OK"
 #define OK_SIZE  2
@@ -27,8 +27,8 @@
 #define MSG_3_CIPHERTEXT                                                       \
   "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd" \
   "9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56"
-#define MSG_4_CIPHERTEXT "9ea1da1ec3bfecfffab213e537ed1791bfa887dd9c631351b3f63d6315ab9a"
-#define MSG_5_CIPHERTEXT "217c5111fad7afde33bd28abaff3def88a57ab50515115d23a10f28621f842"
+#define MSG_4_CIPHERTEXT "9ea1da1ec3bfecfffab213e537ed170ed50de782953cb27b4c5c3339c54eca"
+#define MSG_5_CIPHERTEXT "217c5111fad7afde33bd28abaff3decc280d054cdfd4784fc51d103a82ff22"
 
-ockam_error_t xx_test_initiator(ockam_vault_t* vault, ockam_memory_t* memory, ockam_ip_address_t* ip_address);
-ockam_error_t xx_test_responder(ockam_vault_t* vault, ockam_memory_t* memory, ockam_ip_address_t*);
+ockam_error_t xx_test_initiator(ockam_vault_t*, ockam_memory_t*, ockam_ip_address_t*, ockam_ip_address_t*);
+ockam_error_t xx_test_responder(ockam_vault_t*, ockam_memory_t*, ockam_ip_address_t*);

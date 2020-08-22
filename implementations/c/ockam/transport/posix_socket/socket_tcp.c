@@ -115,9 +115,7 @@ ockam_error_t socket_tcp_connect(void*               ctx,
     if (connect_status) {
       close(p_posix_socket->socket_fd);
       attempts++;
-      if (attempts <= retry_count) {
-        sleep(retry_interval);
-      }
+      if (attempts <= retry_count) { sleep(retry_interval); }
     }
   } while (connect_status && (attempts <= retry_count));
   if (connect_status) {
@@ -295,11 +293,11 @@ exit:
 
 ockam_error_t socket_tcp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
 {
-  ockam_error_t   error       = OCKAM_ERROR_NONE;
+  ockam_error_t error = OCKAM_ERROR_NONE;
 
   if (buffer_length > (SIZE_MAX >> 1u)) {
-      error = TRANSPORT_ERROR_BAD_PARAMETER;
-      goto exit;
+    error = TRANSPORT_ERROR_BAD_PARAMETER;
+    goto exit;
   }
 
   tcp_socket_t*   p_tcp_ctx   = (tcp_socket_t*) ctx;
@@ -307,7 +305,7 @@ ockam_error_t socket_tcp_write(void* ctx, uint8_t* buffer, size_t buffer_length)
   uint16_t        send_length = 0;
 
   // Convert from native endianness to network order
-  send_length = htons(buffer_length);
+  send_length        = htons(buffer_length);
   ssize_t bytes_sent = send(p_socket->socket_fd, (void*) &send_length, sizeof(uint16_t), 0);
   if (sizeof(uint16_t) != bytes_sent) {
     error = TRANSPORT_ERROR_SEND;

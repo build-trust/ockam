@@ -1,4 +1,5 @@
 #ifndef OCKAM_TRANSPORT_IMPL_H
+#include "ockam/codec.h"
 
 #define OCKAM_TRANSPORT_IMPL_H
 #define MAX_DNS_NAME_LENGTH   254 // Maximum DNS name length, including terminating NULL
@@ -20,16 +21,14 @@ struct ockam_transport {
 };
 
 typedef struct ockam_transport_vtable {
-  ockam_error_t (*connect)(void*               ctx,
-                           ockam_reader_t**    reader,
-                           ockam_writer_t**    writer,
-                           ockam_ip_address_t* remote_address,
-                           int16_t             retry_count,
-                           uint16_t            retry_interval);
+  ockam_error_t (*connect)(
+    void* ctx, ockam_reader_t** reader, ockam_writer_t** writer, int16_t retry_count, uint16_t retry_interval);
   ockam_error_t (*accept)(void*               ctx,
                           ockam_reader_t**    reader,
                           ockam_writer_t**    writer,
                           ockam_ip_address_t* remote_address);
+  ockam_error_t (*get_local_address)(void* ctx, codec_address_t*);
+  ockam_error_t (*get_remote_address)(void* ctx, codec_address_t*);
   ockam_error_t (*deinit)(struct ockam_transport* transport);
 } ockam_transport_vtable_t;
 

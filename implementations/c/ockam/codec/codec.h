@@ -1,3 +1,5 @@
+#ifndef CODEC_H
+#define CODEC_H
 #include <stdint.h>
 #include "ockam/error.h"
 
@@ -33,10 +35,6 @@ typedef enum {
   REQUEST_CHANNEL     = 3,
   KEY_AGREEMENT_T1_M2 = 4,
   KEY_AGREEMENT_T1_M3 = 5,
-  kPayloadAeadAesGcm  = 6,
-  kKeyAgreementM1     = 7,
-  kKeyAgreementM2     = 8,
-  kKeyAgreementM3     = 9
 } codec_message_type_t;
 
 typedef struct {
@@ -118,6 +116,11 @@ typedef enum { ADDRESS_LOCAL = 0, ADDRESS_TCP = 1, ADDRESS_UDP = 2 } codec_addre
 typedef enum { HOST_ADDRESS_IPV4 = 0, HOST_ADDRESS_IPV6 = 1 } codec_host_address_type;
 
 typedef struct {
+  uint8_t size;
+  uint8_t address[0xff];
+} codec_local_address_t;
+
+typedef struct {
   codec_host_address_type type;
   union {
     uint8_t ipv4[IPV4_ADDRESS_SIZE];
@@ -133,9 +136,12 @@ typedef struct {
 typedef struct {
   codec_address_type_t type;
   union {
-    codec_udp_address_t udp_address;
-    codec_tcp_address_t tcp_address;
-  } socket_address;
+    union {
+      codec_udp_address_t udp_address;
+      codec_tcp_address_t tcp_address;
+    } socket_address;
+    codec_local_address_t local_address;
+  } address;
 } codec_address_t;
 
 typedef struct {
@@ -159,3 +165,5 @@ uint8_t* encode_ockam_wire(uint8_t* p_encoded);
 uint8_t* decode_ockam_wire(uint8_t* p_encoded);
 uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route);
 uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route);
+
+#endif

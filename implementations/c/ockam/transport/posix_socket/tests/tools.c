@@ -12,11 +12,11 @@
 
 #include "tools.h"
 
-#define DEFAULT_FIXTURE_PATH       "fixtures"
-#define DEFAULT_SERVER_IP_ADDRESS  "127.0.0.1"
-#define DEFAULT_CLIENT_IP_ADDRESS  "127.0.0.1"
-#define DEFAULT_SERVER_PORT        8000
-#define DEFAULT_CLIENT_PORT        8002
+#define DEFAULT_FIXTURE_PATH      "fixtures"
+#define DEFAULT_SERVER_IP_ADDRESS "127.0.0.1"
+#define DEFAULT_CLIENT_IP_ADDRESS "127.0.0.1"
+#define DEFAULT_SERVER_PORT       8000
+#define DEFAULT_CLIENT_PORT       8002
 
 static void print_usage()
 {
@@ -32,26 +32,24 @@ static void print_usage()
 
 ockam_error_t init_params(enum TransportType transport_type, int argc, char* argv[], test_cli_params_t* p_params)
 {
-  if (NULL == p_params) {
-    return TRANSPORT_ERROR_BAD_PARAMETER;
-  }
+  if (NULL == p_params) { return TRANSPORT_ERROR_BAD_PARAMETER; }
 
   ockam_error_t status = OCKAM_ERROR_NONE;
 
   switch (transport_type) {
-    case TCP:
-      p_params->run_tcp_test = true;
-      p_params->run_udp_test = false;
-      break;
+  case TCP:
+    p_params->run_tcp_test = true;
+    p_params->run_udp_test = false;
+    break;
 
-    case UDP:
-      p_params->run_tcp_test = false;
-      p_params->run_udp_test = true;
-      break;
+  case UDP:
+    p_params->run_tcp_test = false;
+    p_params->run_udp_test = true;
+    break;
 
-    default:
-      status = TRANSPORT_ERROR_BAD_PARAMETER;
-      goto exit;
+  default:
+    status = TRANSPORT_ERROR_BAD_PARAMETER;
+    goto exit;
   }
 
   status = ockam_memory_stdlib_init(&p_params->memory);
@@ -68,22 +66,20 @@ ockam_error_t init_params(enum TransportType transport_type, int argc, char* arg
   static int no_client = 0;
   static int no_server = 0;
 
-  static struct option long_options[] = {
-    /* These options set a flag. */
-    {"no-client",   no_argument,       &no_client, 1},
-    {"no-server",   no_argument,       &no_server, 1},
-    {"server-ip",   required_argument, NULL,  1},
-    {"server-port", required_argument, NULL,  2},
-    {"client-ip",   required_argument, NULL,  3},
-    {"client-port", required_argument, NULL,  4},
-    {0, 0, 0, 0}
+  static struct option long_options[] = { /* These options set a flag. */
+                                          { "no-client", no_argument, &no_client, 1 },
+                                          { "no-server", no_argument, &no_server, 1 },
+                                          { "server-ip", required_argument, NULL, 1 },
+                                          { "server-port", required_argument, NULL, 2 },
+                                          { "client-ip", required_argument, NULL, 3 },
+                                          { "client-port", required_argument, NULL, 4 },
+                                          { 0, 0, 0, 0 }
   };
 
   int option_index = 0;
   int ch;
 
-  while ((ch = getopt_long(argc, argv, "ha:p:f:?",
-                            long_options, &option_index)) != -1) {
+  while ((ch = getopt_long(argc, argv, "ha:p:f:?", long_options, &option_index)) != -1) {
     switch (ch) {
     case 0:
       break;
@@ -94,16 +90,16 @@ ockam_error_t init_params(enum TransportType transport_type, int argc, char* arg
       break;
 
     case 2:
-        p_params->server_address.port = strtoul(optarg, NULL, 0);
-        break;
+      p_params->server_address.port = strtoul(optarg, NULL, 0);
+      break;
 
     case 3:
       strcpy((char*) p_params->client_address.ip_address, optarg);
       break;
 
     case 4:
-        p_params->client_address.port = strtoul(optarg, NULL, 0);
-        break;
+      p_params->client_address.port = strtoul(optarg, NULL, 0);
+      break;
 
     case 'f':
       printf("optarg: %s\n", optarg);
@@ -113,7 +109,7 @@ ockam_error_t init_params(enum TransportType transport_type, int argc, char* arg
     default:
       status = TRANSPORT_ERROR_BAD_PARAMETER;
       print_usage();
-      ockam_log_error("%s", "invalid command-line arguments");
+      ockam_log_log(OCKAM_LOG_LEVEL_FATAL, __func__, __LINE__, "%s", "Bad parameter\n");
       return 2;
     }
   }
@@ -125,12 +121,13 @@ exit:
   return status;
 }
 
-static const char CLIENT_TEST_DATA[] = "client_test_data.txt";
-static const char SERVER_TEST_DATA[] = "server_test_data.txt";
+static const char CLIENT_TEST_DATA[]     = "client_test_data.txt";
+static const char SERVER_TEST_DATA[]     = "server_test_data.txt";
 static const char SERVER_RECEIVED_DATA[] = "server_data_received.txt";
 static const char CLIENT_RECEIVED_DATA[] = "client_data_received.txt";
 
-static void make_file_path(const char* p_fixture_path, const char* p_file_name, char* p_path) {
+static void make_file_path(const char* p_fixture_path, const char* p_file_name, char* p_path)
+{
   sprintf(p_path, "%s/%s", p_fixture_path, p_file_name);
 }
 
@@ -144,7 +141,7 @@ ockam_error_t open_file_for_read(const char* p_fixture_path, const char* p_file_
   *pp_file = fopen(path, "r");
   if (NULL == *pp_file) {
     error = TRANSPORT_ERROR_TEST;
-    ockam_log_error("%s", "failed to open file");
+    ockam_log_log(OCKAM_LOG_LEVEL_FATAL, __func__, __LINE__, "%s", "failed to open file");
     goto exit;
   }
 
@@ -162,7 +159,7 @@ ockam_error_t open_file_for_write(const char* p_fixture_path, const char* p_file
   *pp_file = fopen(path, "w");
   if (NULL == *pp_file) {
     error = TRANSPORT_ERROR_TEST;
-    ockam_log_error("%s", "failed to open file");
+    ockam_log_log(OCKAM_LOG_LEVEL_FATAL, __func__, __LINE__, "%s", "failed to open file");
     goto exit;
   }
 
@@ -214,7 +211,7 @@ ockam_error_t open_files_for_server_compare(const char* p_fixture_path, FILE** p
   error = open_file_for_read(p_fixture_path, SERVER_RECEIVED_DATA, pp_received_file);
   if (error) goto exit;
 
-  exit:
+exit:
   return error;
 }
 
@@ -241,10 +238,8 @@ ockam_error_t file_compare(ockam_memory_t* p_memory, FILE* p_f1, FILE* p_f2)
       goto exit_block;
     }
     int cmp = 2;
-    status = ockam_memory_compare(p_memory, &cmp, buffer1, buffer2, r1);
-    if (OCKAM_ERROR_NONE != status) {
-      goto exit_block;
-    }
+    status  = ockam_memory_compare(p_memory, &cmp, buffer1, buffer2, r1);
+    if (OCKAM_ERROR_NONE != status) { goto exit_block; }
     if (0 != cmp) {
       status = TRANSPORT_ERROR_TEST;
       goto exit_block;

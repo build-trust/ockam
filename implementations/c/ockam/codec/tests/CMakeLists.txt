@@ -14,10 +14,8 @@ endif()
 add_executable(codec_tests
 	codec.c
 	variable_length_encoded_u2le_test.c
-	payload_aead_aes_gcm_test.c
 	public_key_test.c
-	payload_test.c
-	endpoint_local_test.c
+		endpoint_local_test.c
 	endpoint_channel_test.c
 	endpoint_test.c
 	codec_tests.h

@@ -21,13 +21,10 @@ int run(enum TransportType transport_type, int argc, char* argv[])
   int     test_client_error   = 0;
   int     test_server_error   = 0;
 
-
   ockam_error_t error = OCKAM_ERROR_NONE;
 
   error = init_params(transport_type, argc, argv, &test_params);
-  if (error) {
-    goto exit;
-  }
+  if (error) { goto exit; }
 
   bool is_parent = true;
   if (test_params.run_server) {
