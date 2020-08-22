@@ -20,10 +20,6 @@ int main(void)
     cmocka_unit_test_setup_teardown(_test_codec_variable_length_encoded_u2le,
                                     _test_codec_variable_length_encoded_u2le_setup,
                                     _test_codec_variable_length_encoded_u2le_teardown),
-    cmocka_unit_test_setup_teardown(_test_codec_payload_aead_aes_gcm,
-                                    _test_codec_payload_aead_aes_gcm_setup,
-                                    _test_codec_payload_aead_aes_gcm_teardown),
-    cmocka_unit_test_setup_teardown(_test_codec_payload, _test_codec_payload_setup, _test_codec_payload_teardown),
     cmocka_unit_test(_test_public_key),
     cmocka_unit_test_setup_teardown(_test_local_endpoint, _test_local_endpoint_setup, _test_local_endpoint_teardown),
     cmocka_unit_test_setup_teardown(

@@ -1,32 +1,71 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
+#include <unistd.h>
 
 #include "ockam/error.h"
-#include "ockam/key_agreement.h"
 #include "ockam/memory.h"
+#include "ockam/memory/stdlib.h"
 #include "ockam/log.h"
 #include "ockam/transport.h"
-#include "ockam/transport/socket_tcp.h"
+#include "ockam/transport/socket_udp.h"
+#include "ockam/random/urandom.h"
 #include "ockam/vault.h"
+#include "ockam/vault/default.h"
 #include "ockam/channel.h"
-#include "ockam/channel/channel_impl.h"
 #include "channel_test.h"
 
-ockam_error_t establish_responder_transport(ockam_transport_t*  p_transport,
-                                            ockam_memory_t*     p_memory,
-                                            ockam_ip_address_t* p_address,
-                                            ockam_reader_t**    pp_reader,
-                                            ockam_writer_t**    pp_writer)
-{
-  ockam_error_t                           error = OCKAM_ERROR_NONE;
-  ockam_transport_socket_attributes_t tcp_attributes;
+ockam_ip_address_t ockam_ip = { "", "127.0.0.1", 8000 };
 
-  memset(&tcp_attributes, 0, sizeof(tcp_attributes));
-  memcpy(&tcp_attributes.listen_address, p_address, sizeof(ockam_ip_address_t));
-  tcp_attributes.p_memory = p_memory;
-  error                   = ockam_transport_socket_tcp_init(p_transport, &tcp_attributes);
+extern ockam_error_t
+channel_write_to_app(void* ctx, uint8_t* p_clear_text, size_t clear_text_length, int32_t remote_app_address);
+
+void usage()
+{
+  printf("Usage\n");
+  printf("  -f<filename>\t\t\tRead configuration from <filename>\n");
+}
+
+ockam_error_t parse_opts(int argc, char* argv[], char* filename)
+{
+  int           ch;
+  ockam_error_t error = OCKAM_ERROR_NONE;
+  while ((ch = getopt(argc, argv, "hf:")) != -1) {
+    switch (ch) {
+    case 'f':
+      strcpy(filename, optarg);
+      break;
+    default:
+      usage();
+      error = CHANNEL_ERROR_PARAMS;
+      break;
+    }
+  }
+  return error;
+}
+
+ockam_error_t establish_responder_transport(ockam_transport_t*   p_transport,
+                                            ockam_memory_t*      p_memory,
+                                            codec_udp_address_t* local_ip,
+                                            ockam_reader_t**     pp_reader,
+                                            ockam_writer_t**     pp_writer)
+{
+  ockam_error_t                       error = OCKAM_ERROR_NONE;
+  ockam_transport_socket_attributes_t xport_attrs;
+  ockam_ip_address_t*                 local_ip_addr = &xport_attrs.local_address;
+
+  memset(&xport_attrs, 0, sizeof(xport_attrs));
+  memcpy(&xport_attrs.local_address, local_ip, sizeof(ockam_ip_address_t));
+  sprintf((char*) local_ip_addr->ip_address,
+          "%d.%d.%d.%d",
+          local_ip->host_address.ip_address.ipv4[0],
+          local_ip->host_address.ip_address.ipv4[1],
+          local_ip->host_address.ip_address.ipv4[2],
+          local_ip->host_address.ip_address.ipv4[3]);
+  local_ip_addr->port = local_ip->port;
+
+  xport_attrs.p_memory = p_memory;
+  error                = ockam_transport_socket_udp_init(p_transport, &xport_attrs);
   if (error) goto exit;
 
   // Wait for a connection
@@ -40,22 +79,38 @@ exit:
   return error;
 }
 
-ockam_error_t channel_responder(ockam_vault_t* vault, ockam_memory_t* p_memory, ockam_ip_address_t* ip_address)
+ockam_error_t c_elixir_channel_responder(ockam_vault_t*   vault,
+                                         ockam_memory_t*  p_memory,
+                                         codec_address_t* local_host_address,
+                                         codec_address_t* local_address)
 {
-  ockam_error_t              error     = OCKAM_ERROR_NONE;
-  ockam_transport_t          transport = { 0 };
-  ockam_channel_t            channel   = { 0 };
-  ockam_reader_t*            p_ch_reader;
-  ockam_writer_t*            p_ch_writer;
-  ockam_reader_t*            p_transport_reader;
-  ockam_writer_t*            p_transport_writer;
-  uint8_t                    send_buffer[MAX_XX_TRANSMIT_SIZE];
-  uint8_t                    recv_buffer[MAX_XX_TRANSMIT_SIZE];
-  size_t                     bytes_received = 0;
-  size_t                     transmit_size  = 0;
-  ockam_channel_attributes_t channel_attrs;
+  ockam_error_t               error     = OCKAM_ERROR_NONE;
+  ockam_transport_t           transport = { 0 };
+  ockam_channel_t             channel   = { 0 };
+  ockam_reader_t*             p_ch_reader;
+  ockam_writer_t*             p_ch_writer;
+  ockam_reader_t*             p_transport_reader;
+  ockam_writer_t*             p_transport_writer;
+  ockam_channel_poll_result_t result = { 0 };
+  uint8_t                     send_buffer[MAX_XX_TRANSMIT_SIZE];
+  uint8_t                     recv_buffer[MAX_XX_TRANSMIT_SIZE];
+  size_t                      bytes_received = 0;
+  size_t                      transmit_size  = 0;
+  ockam_channel_attributes_t  channel_attrs;
+  struct ockam_ip_address_t   ip_address;
 
-  error = establish_responder_transport(&transport, p_memory, ip_address, &p_transport_reader, &p_transport_writer);
+  sprintf((char*) ip_address.ip_address,
+          "%d.%d.%d.%d",
+          local_host_address->address.socket_address.udp_address.host_address.ip_address.ipv4[0],
+          local_host_address->address.socket_address.udp_address.host_address.ip_address.ipv4[1],
+          local_host_address->address.socket_address.udp_address.host_address.ip_address.ipv4[2],
+          local_host_address->address.socket_address.udp_address.host_address.ip_address.ipv4[3]);
+  ip_address.port = local_host_address->address.socket_address.udp_address.port;
+  error           = establish_responder_transport(&transport,
+                                        p_memory,
+                                        &local_host_address->address.socket_address.udp_address,
+                                        &p_transport_reader,
+                                        &p_transport_writer);
   if (error) goto exit;
 
   channel_attrs.reader = p_transport_reader;
@@ -63,27 +118,111 @@ ockam_error_t channel_responder(ockam_vault_t* vault, ockam_memory_t* p_memory, 
   channel_attrs.memory = p_memory;
   channel_attrs.vault  = vault;
 
+  memcpy(&channel_attrs.local_host_address, local_host_address, sizeof(codec_address_t));
   error = ockam_channel_init(&channel, &channel_attrs);
   if (error) goto exit;
 
   error = ockam_channel_accept(&channel, &p_ch_reader, &p_ch_writer);
-  if (error) goto exit;
+  if (error && (TRANSPORT_INFO_NO_DATA != error)) goto exit;
 
-  error = ockam_read(p_ch_reader, recv_buffer, MAX_DNS_NAME_LENGTH, &bytes_received);
-  if (error) goto exit;
-  if (0 != memcmp(recv_buffer, PING, PING_SIZE)) {
-    error = OCKAM_ERROR_INTERFACE_CHANNEL;
-    goto exit;
+  do {
+    error = ockam_channel_poll(&channel, &result);
+    if (error) {
+      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+    }
+    usleep(500 * 1000);
+  } while (!result.channel_is_secure);
+
+  error = ockam_read(p_ch_reader, recv_buffer, MAX_XX_TRANSMIT_SIZE, &bytes_received);
+  if (TRANSPORT_INFO_NO_DATA == error) {
+    do {
+      error = ockam_channel_poll(&channel, &result);
+      if (error) {
+        if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+      }
+      usleep(500 * 1000);
+    } while (error);
   }
+  printf(" Received %ld bytes: %s\n", result.bytes_read, result.read_buffer);
 
-  error = ockam_write(p_ch_writer, (uint8_t*) ACK, ACK_SIZE);
+  char     a[80];
+  size_t   line_length           = 0;
+  size_t   line_size             = sizeof(a);
+  char*    p_line                = a;
+  uint32_t responder_app_address = 0;
+
+  p_line = a;
+  printf("Enter text to send: \n");
+  line_length             = getline(&p_line, &line_size, stdin);
+  p_line[line_length - 1] = 0;
+  error                   = channel_write_to_app(&channel, (uint8_t*) p_line, line_length, responder_app_address);
   if (error) goto exit;
-
-  printf("Responder received %ld bytes: %s\n", bytes_received, recv_buffer);
 
 exit:
   if (error) ockam_log_error("%x", error);
   ockam_channel_deinit(&channel);
   ockam_transport_deinit(&transport);
+  return error;
+}
+
+int main(int argc, char* argv[])
+{
+  ockam_error_t                    error                   = OCKAM_ERROR_NONE;
+  ockam_vault_t                    vault                   = { 0 };
+  ockam_memory_t                   memory                  = { 0 };
+  ockam_random_t                   random                  = { 0 };
+  ockam_vault_default_attributes_t vault_attributes        = { .memory = &memory, .random = &random };
+  codec_route_t                    route                   = { 0 };
+  codec_address_t                  route_addresses[5]      = { { 0 }, { 0 }, { 0 }, { 0 }, { 0 } };
+  codec_address_t                  initiator_ip_address    = { 0 };
+  codec_address_t                  responder_ip_address    = { 0 };
+  codec_address_t                  initiator_local_address = { 0 };
+  codec_address_t                  responder_local_address = { 0 };
+
+  char    filename[128];
+  int     responder_status  = 0;
+  int     initiator_status  = 0;
+  int     fork_status       = 0;
+  int32_t responder_process = 0;
+
+  error = ockam_memory_stdlib_init(&memory);
+  if (error) goto exit;
+
+  error = ockam_random_urandom_init(&random);
+  if (error) goto exit;
+
+  error = ockam_vault_default_init(&vault, &vault_attributes);
+  if (error) goto exit;
+
+  /*-------------------------------------------------------------------------
+   * Parse options
+   *-----------------------------------------------------------------------*/
+  route.p_addresses = route_addresses;
+  error             = parse_opts(argc, argv, filename);
+  if (error) goto exit;
+  error = read_route_configuration(filename, &route, &initiator_ip_address, &responder_ip_address);
+  if (error) goto exit;
+
+  error = c_elixir_channel_responder(&vault, &memory, &responder_ip_address, NULL);
+
+  //  size_t line_length = 0;
+  //  size_t line_size = sizeof(a);
+  //  char* p_line = a;
+  //  printf("Channel secured!\n");
+  //  printf("Enter local address for responder: \n");
+  //  line_length = getline(&p_line, &line_size, stdin);
+  //  uint32_t responder_app_address;
+  //  size_t bytes;
+  //  string_to_hex((uint8_t*)a, (uint8_t*)&responder_app_address, &bytes);
+
+  //  do {
+  //    p_line = a;
+  //    printf("Enter text to send: \n");
+  //    line_length = getline(&p_line, &line_size, stdin);
+  //    error = channel_write_to_app(&channel, (uint8_t*)p_line, line_length-1, responder_app_address);
+  //    if(error) goto exit;
+  //  } while (a[0] != 'q');
+
+exit:
   return error;
 }

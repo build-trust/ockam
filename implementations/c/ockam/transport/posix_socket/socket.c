@@ -55,7 +55,6 @@ ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, s
     in_status = inet_pton(AF_INET, (char*) p_ip_address, &p_socket_address->sin_addr.s_addr);
     if (1 != in_status) {
       error = TRANSPORT_ERROR_BAD_ADDRESS;
-      ockam_log_error("inet_pton failed in make_socket_address: %x", error);
       goto exit;
     }
   } else {
@@ -63,6 +62,7 @@ ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, s
   }
 
 exit:
+  if (error) ockam_log_error("%x", error);
   return error;
 }
 
@@ -75,15 +75,11 @@ void dump_socket(posix_socket_t* ps)
 
   inet_ntop(AF_INET, &ps->local_sockaddr.sin_addr, local_address, 128);
   local_port = ntohs(ps->local_sockaddr.sin_port);
-  //  printf("local address       : %s\n", ps->local_address.ip_address);
-  //  printf("local port          : %d\n", ps->local_address.port);
   printf("local sockaddr:     : %s\n", local_address);
   printf("local port          : %d\n", local_port);
 
   inet_ntop(AF_INET, &ps->remote_sockaddr.sin_addr, remote_address, 128);
   remote_port = ntohs(ps->remote_sockaddr.sin_port);
-  //  printf("remote address       : %s\n", ps->remote_address.ip_address);
-  //  printf("remote port          : %d\n", ps->remote_address.port);
   printf("remote sockaddr:     : %s\n", remote_address);
   printf("remote port          : %d\n", remote_port);
 }

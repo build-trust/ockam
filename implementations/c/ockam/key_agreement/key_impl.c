@@ -6,7 +6,7 @@
 
 ockam_memory_t* gp_ockam_key_memory = NULL;
 
-ockam_error_t ockam_key_initiate(ockam_key_t* p_key)
+ockam_error_t ockam_key_m1_make(ockam_key_t* p_key, uint8_t* m1, size_t m1_size, size_t* m1_length)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -15,14 +15,14 @@ ockam_error_t ockam_key_initiate(ockam_key_t* p_key)
     goto exit;
   }
 
-  error = p_key->dispatch->initiate(p_key->context);
+  error = p_key->dispatch->m1_make(p_key->context, m1, m1_size, m1_length);
 
 exit:
   if (error) ockam_log_error("%x", error);
   return error;
 }
 
-ockam_error_t ockam_key_respond(ockam_key_t* p_key)
+ockam_error_t ockam_key_m2_make(ockam_key_t* p_key, uint8_t* m2, size_t m2_size, size_t* m2_length)
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
@@ -31,7 +31,103 @@ ockam_error_t ockam_key_respond(ockam_key_t* p_key)
     goto exit;
   }
 
-  error = p_key->dispatch->respond(p_key->context);
+  error = p_key->dispatch->m2_make(p_key->context, m2, m2_size, m2_length);
+
+exit:
+  if (error) ockam_log_error("%x", error);
+  return error;
+}
+
+ockam_error_t ockam_key_m3_make(ockam_key_t* p_key, uint8_t* m3, size_t m3_size, size_t* m1_length)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if (!p_key) {
+    error = KEYAGREEMENT_ERROR_PARAMETER;
+    goto exit;
+  }
+
+  error = p_key->dispatch->m3_make(p_key->context, m3, m3_size, m1_length);
+
+exit:
+  if (error) ockam_log_error("%x", error);
+  return error;
+}
+
+ockam_error_t ockam_key_m1_process(ockam_key_t* p_key, uint8_t* m1)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if (!p_key) {
+    error = KEYAGREEMENT_ERROR_PARAMETER;
+    goto exit;
+  }
+
+  error = p_key->dispatch->m1_process(p_key->context, m1);
+
+exit:
+  if (error) ockam_log_error("%x", error);
+  return error;
+}
+
+ockam_error_t ockam_key_m2_process(ockam_key_t* p_key, uint8_t* m2)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if (!p_key) {
+    error = KEYAGREEMENT_ERROR_PARAMETER;
+    goto exit;
+  }
+
+  error = p_key->dispatch->m2_process(p_key->context, m2);
+
+exit:
+  if (error) ockam_log_error("%x", error);
+  return error;
+}
+
+ockam_error_t ockam_key_m3_process(ockam_key_t* p_key, uint8_t* m3)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if (!p_key) {
+    error = KEYAGREEMENT_ERROR_PARAMETER;
+    goto exit;
+  }
+
+  error = p_key->dispatch->m3_process(p_key->context, m3);
+
+exit:
+  if (error) ockam_log_error("%x", error);
+  return error;
+}
+
+ockam_error_t ockam_initiator_epilogue(ockam_key_t* key)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if (!key) {
+    error = KEYAGREEMENT_ERROR_PARAMETER;
+    goto exit;
+  }
+
+  error = key->dispatch->initiator_epilogue(key);
+
+exit:
+  if (error) ockam_log_error("%x", error);
+  return error;
+}
+
+ockam_error_t ockam_responder_epilogue(ockam_key_t* key)
+{
+  ockam_error_t error = OCKAM_ERROR_NONE;
+
+  if (!key) {
+    error = KEYAGREEMENT_ERROR_PARAMETER;
+    goto exit;
+  }
+
+  error = key->dispatch->responder_epilogue(key);
 
 exit:
   if (error) ockam_log_error("%x", error);
@@ -43,7 +139,7 @@ ockam_error_t ockam_key_encrypt(
 {
   ockam_error_t error = OCKAM_ERROR_NONE;
 
-  if (!p_key || !payload || !msg || !msg_length) {
+  if (!p_key || !payload || !msg || !msg_size) {
     error = KEYAGREEMENT_ERROR_PARAMETER;
     goto exit;
   }

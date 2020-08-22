@@ -40,14 +40,14 @@ target_link_libraries(ockam_transport_posix_udp_test
         cmocka)
 add_test(ockam_transport_posix_udp_test ockam_transport_posix_udp_test)
 
-add_executable(ockam_transport_posix_tcp_test)
-target_sources(ockam_transport_posix_tcp_test
-    PUBLIC
-        ${COMMON_SRCS}
-        tcp_test.c)
-target_link_libraries(ockam_transport_posix_tcp_test
-    PRIVATE
-        ${COMMON_DEPENDENCIES}
-    PUBLIC
-        cmocka)
-add_test(ockam_transport_posix_tcp_test ockam_transport_posix_tcp_test)
+#add_executable(ockam_transport_posix_tcp_test)
+#target_sources(ockam_transport_posix_tcp_test
+#    PUBLIC
+#        ${COMMON_SRCS}
+#        tcp_test.c)
+#target_link_libraries(ockam_transport_posix_tcp_test
+#    PRIVATE
+#        ${COMMON_DEPENDENCIES}
+#    PUBLIC
+#        cmocka)
+#add_test(ockam_transport_posix_tcp_test ockam_transport_posix_tcp_test)

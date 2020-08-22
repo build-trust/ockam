@@ -15,7 +15,6 @@ ockam_error_t ockam_read(ockam_reader_t* p_reader, uint8_t* buffer, size_t buffe
   error = p_reader->read(p_reader->ctx, buffer, buffer_size, buffer_length);
 
 exit:
-  if (error) ockam_log_error("%x", error);
   return error;
 }
 ockam_error_t ockam_write(ockam_writer_t* p_writer, uint8_t* buffer, size_t buffer_length)

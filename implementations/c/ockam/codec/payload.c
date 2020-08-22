@@ -15,9 +15,9 @@ uint8_t* encode_payload(uint8_t* encoded, codec_payload_t* kt_payload)
 {
   if (0 == encoded) goto exit_block;
 
-  encoded = encode_variable_length_encoded_u2le(encoded, kt_payload->data_length);
-  if (0 == encoded) goto exit_block;
-
+  //  encoded = encode_variable_length_encoded_u2le(encoded, kt_payload->data_length);
+  //  if (0 == encoded) goto exit_block;
+  //
   memcpy(encoded, kt_payload->data, kt_payload->data_length);
   encoded += kt_payload->data_length;
 

@@ -2,22 +2,23 @@
 #define OCKAM_TOOLS_H
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <ockam/memory.h>
 #include <ockam/memory/impl.h>
 #include "runner.h"
 
-#define FIXTURE_PATH_MAX_LEN  192
-#define ENDING_LINE "that's all"
+#define FIXTURE_PATH_MAX_LEN 192
+#define ENDING_LINE          "that's all"
 
 typedef struct {
-  bool                run_client;
-  bool                run_server;
-  bool                run_udp_test;
-  bool                run_tcp_test;
-  ockam_ip_address_t  client_address;
-  ockam_ip_address_t  server_address;
-  char                fixture_path[FIXTURE_PATH_MAX_LEN];
-  ockam_memory_t      memory;
+  bool               run_client;
+  bool               run_server;
+  bool               run_udp_test;
+  bool               run_tcp_test;
+  ockam_ip_address_t client_address;
+  ockam_ip_address_t server_address;
+  char               fixture_path[FIXTURE_PATH_MAX_LEN];
+  ockam_memory_t     memory;
 } test_cli_params_t;
 
 ockam_error_t init_params(enum TransportType transport_type, int argc, char* argv[], test_cli_params_t* p_params);

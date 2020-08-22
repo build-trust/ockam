@@ -18,21 +18,22 @@
 
 #include "xx_test.h"
 
-#define ACK      "ACK"
+#define ACK_TEXT "ACK_TEXT"
 #define ACK_SIZE 3
 #define OK       "OK"
 #define OK_SIZE  2
 
-bool               scripted_xx = false;
-bool               run_client  = true;
-bool               run_server  = true;
-ockam_ip_address_t ockam_ip    = { "", "127.0.0.1", 8000 };
+bool               scripted_xx        = false;
+bool               run_initiator      = false;
+bool               run_responder      = false;
+ockam_ip_address_t ockam_initiator_ip = { "", "127.0.0.1", 4050 };
+ockam_ip_address_t ockam_responder_ip = { "", "127.0.0.1", 4051 };
 
 void usage()
 {
   printf("OPTIONS\n");
-  printf("  -a<xxx.xxx.xxx.xxx>\t\tIP Address\n");
-  printf("  -p<portnum>\t\t\tPort\n");
+  printf("  -a<xxx.xxx.xxx.xxx:xxxx>\t\tInitiator IP address & port\n");
+  printf("  -b<xxx.xxx.xxx.xxx:xxxx>\t\tResponder IP address & port");
   printf("  -i \t\t\t\tRun initiator\n");
   printf("  -r \t\t\t\tRun responder\n");
   printf("  -s \t\t\t\tUse scripted test case\n\n");
@@ -42,26 +43,38 @@ ockam_error_t parse_opts(int argc, char* argv[])
 {
   int           ch;
   ockam_error_t status = OCKAM_ERROR_NONE;
-  while ((ch = getopt(argc, argv, "hsira:p:")) != -1) {
+  while ((ch = getopt(argc, argv, "hsira:b:")) != -1) {
     switch (ch) {
     case 'h':
       usage();
       return 2;
 
-    case 'a':
-      strcpy((char*) ockam_ip.ip_address, optarg);
+    case 'a': {
+      char*    token = NULL;
+      uint16_t port  = 0;
+      token          = strtok(optarg, ":");
+      strcpy((char*) ockam_initiator_ip.ip_address, token);
+      token                   = strtok(NULL, ":");
+      ockam_initiator_ip.port = atoi(token);
       break;
+    }
 
-    case 'p':
-      ockam_ip.port = atoi(optarg);
+    case 'b': {
+      char*    token = NULL;
+      uint16_t port  = 0;
+      token          = strtok(optarg, ":");
+      strcpy((char*) ockam_responder_ip.ip_address, token);
+      token                   = strtok(NULL, ":");
+      ockam_responder_ip.port = atoi(token);
       break;
+    }
 
     case 'i':
-      run_client = true;
+      run_initiator = true;
       break;
 
     case 'r':
-      run_server = true;
+      run_responder = true;
       break;
 
     case 's':
@@ -71,7 +84,7 @@ ockam_error_t parse_opts(int argc, char* argv[])
     case '?':
       status = TRANSPORT_ERROR_BAD_PARAMETER;
       usage();
-      ockam_log_error("invalid command-line arguments: %x", status);
+      ockam_log_error("%x", TRANSPORT_ERROR_BAD_PARAMETER);
       return 2;
 
     default:
@@ -104,18 +117,21 @@ int main(int argc, char* argv[])
   error = ockam_vault_default_init(&vault, &vault_attributes);
   if (error) goto exit;
 
+  ockam_log_set_level(OCKAM_LOG_LEVEL_ERROR);
+
   /*-------------------------------------------------------------------------
    * Parse options
    *-----------------------------------------------------------------------*/
   error = parse_opts(argc, argv);
   if (error) goto exit;
-  printf("Address     : %s\n", ockam_ip.ip_address);
-  printf("Port        : %u\n", ockam_ip.port);
-  printf("Initiator   : %d\n", run_client);
-  printf("Responder   : %d\n", run_server);
+  printf("Initiator       : %s:%u\n", ockam_initiator_ip.ip_address, ockam_initiator_ip.port);
+  printf("Responder       : %s:%u\n", ockam_responder_ip.ip_address, ockam_responder_ip.port);
+  printf("Run initiator   : %d\n", run_initiator);
+  printf("Run responder   : %d\n", run_responder);
+  printf("Run script      : %d\n", scripted_xx);
 
-  //  error = xx_test_responder(&vault, &memory, &ockam_ip);
-  //  error = xx_test_initiator(&vault, &ockam_ip);
+  // error = xx_test_responder(&vault, &memory, &ockam_responder_ip);
+  // error = xx_test_initiator(&vault, &memory, &ockam_initiator_ip, &ockam_responder_ip);
   //  goto exit;
 
   responder_process = fork();
@@ -124,13 +140,13 @@ int main(int argc, char* argv[])
     goto exit;
   }
   if (0 != responder_process) {
-    if (run_client) {
-      error = xx_test_initiator(&vault, &memory, &ockam_ip);
+    if (run_initiator) {
+      error = xx_test_initiator(&vault, &memory, &ockam_initiator_ip, &ockam_responder_ip);
       if (error) {
         initiator_status = -1;
         goto exit;
       }
-    } // end if(run_client)
+    } // end if(run_initiator)
     // Get exit status from responder_process
     wait(&fork_status);
     responder_status = WEXITSTATUS(fork_status);
@@ -139,9 +155,9 @@ int main(int argc, char* argv[])
       goto exit;
     }
   } else {
-    if (run_server) {
+    if (run_responder) {
       // This is the server process
-      error = xx_test_responder(&vault, &memory, &ockam_ip);
+      error = xx_test_responder(&vault, &memory, &ockam_responder_ip);
       if (error) goto exit;
     }
   }
