@@ -1,11 +1,15 @@
 #include "erl_nif.h"
+#include "ockam/vault.h"
 
 static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-  int a, b;
-  enif_get_int(env, argv[0], &a);
-  enif_get_int(env, argv[1], &b);
+  int result = 0;
 
-  int result = a + b;
+  ockam_vault_t vault;
+  result = ockam_vault_default_init(&vault);
+  if (0 != result) {
+    return enif_make_int(env, 1);
+  }
+
   return enif_make_int(env, result);
 }
 
