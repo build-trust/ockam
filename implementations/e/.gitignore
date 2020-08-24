@@ -1,0 +1,6 @@
+
+# Mix writes compiled artifacts to this directory.
+_build
+
+# Mix downloads project dependency sources to this directory
+deps
