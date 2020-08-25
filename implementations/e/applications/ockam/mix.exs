@@ -12,7 +12,8 @@ defmodule Ockam.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(Mix.env()),
+      aliases: aliases()
     ]
   end
 
@@ -23,8 +24,19 @@ defmodule Ockam.MixProject do
     ]
   end
 
-  defp deps do
+  defp deps(:prod) do
+    []
+  end
+
+  defp deps(_) do
+    deps(:prod) ++ [
+      {:ex_doc, "~> 0.22.2", only: [:dev], runtime: false}
+    ]
+  end
+
+  defp aliases() do
     [
+      docs: "docs --output ../../_build/docs",
     ]
   end
 end

@@ -19,14 +19,12 @@ defmodule Ockam.Umbrella.MixProject do
   end
 
   defp deps(_) do
-    deps(:prod) ++
-      [
-        {:ex_doc, "~> 0.22.2", only: [:dev], runtime: false}
-      ]
+    deps(:prod) ++ []
   end
 
   defp aliases() do
     [
+      docs: "cmd mix docs",
       test: "test --no-start --cover",
       lint: ["format --check-formatted"]
     ]
