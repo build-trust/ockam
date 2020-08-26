@@ -14,7 +14,7 @@ defmodule Ockam.Control do
   Returns the address of the controller process.
   """
   @spec controller_address() :: Address.t()
-  def controller_address(), do: Routing.default_address()
+  def controller_address, do: Routing.default_address()
 
   # Starts controller process linked to the current process
   @doc false
@@ -28,9 +28,7 @@ defmodule Ockam.Control do
 
   @doc false
   @impl true
-  def handle_info(message, state) do
-    IO.inspect message
+  def handle_info(_message, state) do
     {:noreply, state}
   end
-
 end

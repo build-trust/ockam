@@ -1,5 +1,4 @@
 defprotocol Ockam.Routing.Message do
-
   @fallback_to_any true
 
   @spec onward_route(t) :: Ockam.Routing.Route.t()
@@ -10,11 +9,9 @@ defprotocol Ockam.Routing.Message do
 
   @spec payload(t) :: any()
   def payload(message)
-
 end
 
 defimpl Ockam.Routing.Message, for: Any do
-
   def onward_route(%{onward_route: onward_route}) when is_list(onward_route), do: onward_route
   def onward_route(_message), do: []
 
@@ -23,5 +20,4 @@ defimpl Ockam.Routing.Message, for: Any do
 
   def payload(%{payload: payload}), do: payload
   def payload(message), do: message
-
 end

@@ -3,7 +3,8 @@ defmodule Ockam.Routing do
   Implements the Ockam Routing Protocol.
   """
 
-  alias Ockam.Routing.{Address, Message}
+  alias Ockam.Routing.Address
+  alias Ockam.Routing.Message
 
   # Returns a specification to start this module under a supervisor. When this
   # module is added to a supervisor, the supervisor calls child_spec to figure
@@ -28,14 +29,13 @@ defmodule Ockam.Routing do
   Returns the `Ockam.Routing.Address.address_type` that should be used for
   registering local addresses.
   """
-  def local_address_type(), do: 0
+  def local_address_type, do: 0
 
   @doc """
   Returns the `Ockam.Routing.Address` that will be send any message that
   have an empty onward_route.
   """
   def default_address, do: {local_address_type(), 0}
-
 
   @doc """
   Registers an address for a process.
@@ -50,7 +50,6 @@ defmodule Ockam.Routing do
   # See the "Name registration" section of the `GenServer` module.
   @doc false
   def register_name(address, process_id) do
-    IO.inspect {address, process_id}
     Registry.register_name({__MODULE__, address}, process_id)
   end
 
@@ -88,7 +87,8 @@ defmodule Ockam.Routing do
   """
   @spec route(Message.t()) :: :ok | {:error, term()}
   def route(message) do
-    Message.onward_route(message) |> route(message)
+    onward_route = Message.onward_route(message)
+    route(onward_route, message)
   end
 
   # if onward_route is empty, route to default address
@@ -102,5 +102,4 @@ defmodule Ockam.Routing do
     address_value = Address.value(address)
     Registry.send({__MODULE__, {address_type, address_value}}, message)
   end
-
 end
