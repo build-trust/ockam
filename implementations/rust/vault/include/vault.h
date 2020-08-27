@@ -17,8 +17,8 @@ extern "C" {
  * @brief An ockam vault instance
  */
 typedef struct {
-    int64_t handle;
-    int32_t vault_id;
+    uint64_t handle;
+    uint32_t vault_id;
 } ockam_vault_t;
 
 /**
@@ -95,8 +95,6 @@ uint32_t ockam_vault_sha256(ockam_vault_t vault,
                             const uint8_t* const input,
                             size_t input_length,
                             uint8_t* digest);
-
-uint32_t ockam_test(uint32_t a, uint32_t b);
 
 /**
  * @brief   Generate an ockam secret. Attributes struct must specify the configuration for the type of secret to

@@ -133,7 +133,7 @@ pub type VaultId = u32;
 pub type VaultHandle = u64;
 /// Represents a Vault error code
 pub type VaultError = u32;
-///
+/// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;
 /// No error or success
 pub const ERROR_NONE: u32 = 0;

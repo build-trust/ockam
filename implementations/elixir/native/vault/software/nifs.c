@@ -1,9 +1,12 @@
 #include "erl_nif.h"
 #include "ockam/vault.h"
+#include "stdint.h"
 #include "string.h"
 
+static int32_t get_vault(ErlNifEnv *env, const ERL_NIF_TERM argv[], ockam_vault_t* vault);
+
 static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    int result = 0;
+    int32_t result = 0;
     ERL_NIF_TERM vault_handle;
     ERL_NIF_TERM vault_id;
     ockam_vault_t vault;
@@ -13,49 +16,24 @@ static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
         return enif_make_int(env, 0);
     }
 
-    vault_handle = enif_make_int64(env, vault.handle);
-    vault_id = enif_make_int(env, vault.vault_id);
+    vault_handle = enif_make_uint64(env, vault.handle);
+    vault_id = enif_make_uint(env, vault.vault_id);
 
     return enif_make_tuple2(env, vault_handle, vault_id);
 }
 
 static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-  int result = 0;
-  const ERL_NIF_TERM* array;
-  int arity;
-  unsigned char* digest;
-  unsigned int size;
-  ErlNifSInt64 handle;
-  int vault_id;
+  int32_t result = 0;
   ockam_vault_t vault;
+  uint8_t* digest;
+  size_t size;
   ErlNifBinary input;
   ERL_NIF_TERM term;
 
-  if (0 == array) {
-      return enif_make_badarg(env);
-  }
-
-  result = enif_get_tuple(env, argv[0], &arity, &array);
-
-  if (0 == result || arity != 2) {
-      return enif_make_badarg(env);
-  }
-
-  result = enif_get_int64(env, array[0], &handle);
-
+  result = get_vault(env, argv, &vault);
   if (0 == result) {
-      return enif_make_badarg(env);
+      return enif_make_int(env, 0);
   }
-
-  vault.handle = handle;
-
-  result = enif_get_int(env, array[1], &vault_id);
-
-  if (0 == result) {
-      return enif_make_badarg(env);
-  }
-
-  vault.vault_id = vault_id;
 
   result = enif_inspect_binary(env, argv[1], &input);
 
@@ -71,15 +49,53 @@ static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
 
   memset(digest, 0, 32);
 
-  result = ockam_test(vault.vault_id, 3);
-  return enif_make_uint(env, result);
-//  result = ockam_vault_sha256(vault, input.data, 4, digest);
+  result = ockam_vault_sha256(vault, input.data, input.size, digest);
 
-//  if (0 != result) {
-//      return enif_make_atom(env, "null");
-//  }
-//
-//  return term;
+  if (0 != result) {
+      return enif_make_atom(env, "null");
+  }
+
+  return term;
+}
+
+static int32_t get_vault(ErlNifEnv *env, const ERL_NIF_TERM argv[], ockam_vault_t* vault) {
+    int result;
+    int arity;
+    const ERL_NIF_TERM* array;
+    ErlNifUInt64 handle;
+    unsigned int vault_id;
+
+    if (0 == array) {
+        enif_make_badarg(env);
+        return 0;
+    }
+
+    result = enif_get_tuple(env, argv[0], &arity, &array);
+
+    if (0 == result || arity != 2) {
+        enif_make_badarg(env);
+        return 0;
+    }
+
+    result = enif_get_uint64(env, array[0], &handle);
+
+    if (0 == result) {
+        enif_make_badarg(env);
+        return 0;
+    }
+
+    vault->handle = handle;
+
+    result = enif_get_uint(env, array[1], &vault_id);
+
+    if (0 == result) {
+        enif_make_badarg(env);
+        return 0;
+    }
+
+    vault->vault_id = vault_id;
+
+    return 1;
 }
 
 static ErlNifFunc nifs[] = {
