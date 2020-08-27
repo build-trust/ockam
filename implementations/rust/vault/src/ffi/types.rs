@@ -3,6 +3,7 @@ use crate::types::*;
 use ffi_support::IntoFfi;
 use std::convert::{TryFrom, TryInto};
 
+#[derive(Debug)]
 #[repr(C)]
 pub struct FfiSecretKey {
     pub(crate) length: u32,
@@ -146,6 +147,7 @@ pub struct OckamVaultContext {
 }
 
 /// A context object for using secrets in vaults
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct OckamSecret {
     pub(crate) attributes: FfiSecretKeyAttributes,

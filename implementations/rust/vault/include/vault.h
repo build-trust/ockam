@@ -96,6 +96,8 @@ uint32_t ockam_vault_sha256(ockam_vault_t vault,
                             size_t input_length,
                             uint8_t* digest);
 
+uint32_t ockam_test(uint32_t a, uint32_t b);
+
 /**
  * @brief   Generate an ockam secret. Attributes struct must specify the configuration for the type of secret to
  *          generate. For EC keys and AES keys, length is ignored.

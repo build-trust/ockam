@@ -4,7 +4,8 @@ defmodule Ockam.Vault.Software.Tests do
 
   describe "Ockam.Vault.Software.sha256/2" do
     test "can run natively implemented functions" do
-      assert Ockam.Vault.Software.sha256(1, 1) == 2
+      handle = Ockam.Vault.Software.default_init
+      assert Ockam.Vault.Software.sha256(handle, "test") == <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>
     end
   end
 end

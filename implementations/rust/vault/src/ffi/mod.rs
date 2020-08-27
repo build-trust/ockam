@@ -69,6 +69,12 @@ pub extern "C" fn ockam_vault_random_bytes_generate(
     }
 }
 
+/// Sum two numbers
+#[no_mangle]
+pub extern "C" fn ockam_test(a: u32, b: u32) -> u32 {
+    a + b
+}
+
 /// Compute the SHA-256 hash on `input` and put the result in `digest`.
 /// `digest` must be 32 bytes in length
 #[no_mangle]
@@ -78,7 +84,8 @@ pub extern "C" fn ockam_vault_sha256(
     input_length: u32,
     digest: *mut u8,
 ) -> VaultError {
-    check_buffer!(input, input_length);
+    panic!("context = {:?}", context);
+    check_buffer!(input);
     check_buffer!(digest);
 
     let input = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
@@ -90,8 +97,8 @@ pub extern "C" fn ockam_vault_sha256(
                 &mut err,
                 context.handle,
                 |vault| -> Result<ByteBuffer, VaultFailError> {
-                    let digest = vault.sha256(input)?;
-                    let byte_buffer = ByteBuffer::from_vec(digest.to_vec());
+                    let d = vault.sha256(input)?;
+                    let byte_buffer = ByteBuffer::from_vec(d.to_vec());
                     Ok(byte_buffer)
                 },
             );
