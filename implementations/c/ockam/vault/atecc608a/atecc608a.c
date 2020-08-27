@@ -260,7 +260,7 @@ ockam_error_t ockam_vault_atecc608a_init(ockam_vault_t* vault, ockam_vault_atecc
 
   context->memory = attributes->memory;
 
-  if((attributes->io_protection->key == 0) ||
+  if((attributes->io_protection->key_size == 0) ||
      (attributes->io_protection->slot > VAULT_ATECC608A_NUM_SLOTS) ||
      (attributes->io_protection->key_size > g_vault_atecc608a_slot_size[attributes->io_protection->slot])) {
     error = OCKAM_VAULT_ERROR_INVALID_ATTRIBUTES;
