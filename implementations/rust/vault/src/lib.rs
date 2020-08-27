@@ -71,15 +71,17 @@ pub trait Vault: Zeroize {
         attributes: SecretKeyAttributes,
     ) -> Result<SecretKeyContext, VaultFailError>;
     /// Export a secret key from the vault
-    fn secret_export(&self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
+    fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
     /// Set the attributes for a secret key
     fn secret_attributes_get(
-        &self,
+        &mut self,
         context: SecretKeyContext,
     ) -> Result<SecretKeyAttributes, VaultFailError>;
     /// Return the associated public key given the secret key
-    fn secret_public_key_get(&self, context: SecretKeyContext)
-        -> Result<PublicKey, VaultFailError>;
+    fn secret_public_key_get(
+        &mut self,
+        context: SecretKeyContext,
+    ) -> Result<PublicKey, VaultFailError>;
     /// Remove a secret key from the vault
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError>;
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
@@ -102,14 +104,14 @@ pub trait Vault: Zeroize {
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
     fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
-        &self,
+        &mut self,
         salt: B,
         ikm: C,
         okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         plaintext: B,
         nonce: C,
@@ -117,7 +119,7 @@ pub trait Vault: Zeroize {
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Decrypt a payload using AES-GCM
     fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         cipher_text: B,
         nonce: C,
@@ -146,15 +148,17 @@ pub trait DynVault {
         attributes: SecretKeyAttributes,
     ) -> Result<SecretKeyContext, VaultFailError>;
     /// Export a secret key from the vault
-    fn secret_export(&self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
+    fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
     /// Set the attributes for a secret key
     fn secret_attributes_get(
-        &self,
+        &mut self,
         context: SecretKeyContext,
     ) -> Result<SecretKeyAttributes, VaultFailError>;
     /// Return the associated public key given the secret key
-    fn secret_public_key_get(&self, context: SecretKeyContext)
-        -> Result<PublicKey, VaultFailError>;
+    fn secret_public_key_get(
+        &mut self,
+        context: SecretKeyContext,
+    ) -> Result<PublicKey, VaultFailError>;
     /// Remove a secret key from the vault
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError>;
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
@@ -177,14 +181,14 @@ pub trait DynVault {
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
     fn hkdf_sha256(
-        &self,
+        &mut self,
         salt: &[u8],
         ikm: &[u8],
         okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         plaintext: &[u8],
         nonce: &[u8],
@@ -192,7 +196,7 @@ pub trait DynVault {
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Decrypt a payload using AES-GCM
     fn aead_aes_gcm_decrypt(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         cipher_text: &[u8],
         nonce: &[u8],
@@ -226,19 +230,19 @@ impl<D: Vault + 'static> DynVault for D {
         Vault::secret_import(self, secret, attributes)
     }
 
-    fn secret_export(&self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
+    fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
         Vault::secret_export(self, context)
     }
 
     fn secret_attributes_get(
-        &self,
+        &mut self,
         context: SecretKeyContext,
     ) -> Result<SecretKeyAttributes, VaultFailError> {
         Vault::secret_attributes_get(self, context)
     }
 
     fn secret_public_key_get(
-        &self,
+        &mut self,
         context: SecretKeyContext,
     ) -> Result<PublicKey, VaultFailError> {
         Vault::secret_public_key_get(self, context)
@@ -267,7 +271,7 @@ impl<D: Vault + 'static> DynVault for D {
     }
 
     fn hkdf_sha256(
-        &self,
+        &mut self,
         salt: &[u8],
         ikm: &[u8],
         okm_len: usize,
@@ -276,7 +280,7 @@ impl<D: Vault + 'static> DynVault for D {
     }
 
     fn aead_aes_gcm_encrypt(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         plaintext: &[u8],
         nonce: &[u8],
@@ -286,7 +290,7 @@ impl<D: Vault + 'static> DynVault for D {
     }
 
     fn aead_aes_gcm_decrypt(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         cipher_text: &[u8],
         nonce: &[u8],

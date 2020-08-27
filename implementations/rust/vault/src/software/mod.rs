@@ -179,7 +179,7 @@ impl Vault for DefaultVault {
         Ok(SecretKeyContext::Memory(self.next_id))
     }
 
-    fn secret_export(&self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
+    fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
         if let SecretKeyContext::Memory(id) = context {
             self.entries
                 .get(&id)
@@ -191,7 +191,7 @@ impl Vault for DefaultVault {
     }
 
     fn secret_attributes_get(
-        &self,
+        &mut self,
         context: SecretKeyContext,
     ) -> Result<SecretKeyAttributes, VaultFailError> {
         if let SecretKeyContext::Memory(id) = context {
@@ -205,7 +205,7 @@ impl Vault for DefaultVault {
     }
 
     fn secret_public_key_get(
-        &self,
+        &mut self,
         context: SecretKeyContext,
     ) -> Result<PublicKey, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::PublicKey)?;
@@ -337,7 +337,7 @@ impl Vault for DefaultVault {
     }
 
     fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
-        &self,
+        &mut self,
         salt: B,
         ikm: C,
         okm_len: usize,
@@ -349,7 +349,7 @@ impl Vault for DefaultVault {
     }
 
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         plaintext: B,
         nonce: C,
@@ -367,7 +367,7 @@ impl Vault for DefaultVault {
     }
 
     fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
-        &self,
+        &mut self,
         context: SecretKeyContext,
         cipher_text: B,
         nonce: C,
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn hkdf() {
-        let vault = DefaultVault::default();
+        let mut vault = DefaultVault::default();
         let res = vault.hkdf_sha256(b"hkdf_test".as_ref(), b"a".as_ref(), 24);
         assert!(res.is_ok());
         let digest = res.unwrap();

@@ -170,6 +170,37 @@ pub struct SecretKeyAttributes {
     pub purpose: SecretPurposeType,
 }
 
+impl SecretKeyAttributes {
+    /// Convert attributes to byte values
+    pub fn to_bytes(&self) -> [u8; 12] {
+        let mut output = [0u8; 12];
+        output[..4].copy_from_slice((self.xtype.to_usize() as u32).to_be_bytes().as_ref());
+        output[4..8].copy_from_slice((self.persistence.to_usize() as u32).to_be_bytes().as_ref());
+        output[8..].copy_from_slice((self.purpose.to_usize() as u32).to_be_bytes().as_ref());
+        output
+    }
+}
+
+impl std::convert::TryFrom<[u8; 12]> for SecretKeyAttributes {
+    type Error = VaultFailError;
+
+    fn try_from(bytes: [u8; 12]) -> Result<Self, Self::Error> {
+        let xtype =
+            SecretKeyType::from_usize(u32::from_be_bytes(*array_ref![bytes, 0, 4]) as usize)?;
+        let persistence =
+            SecretPersistenceType::from_usize(
+                u32::from_be_bytes(*array_ref![bytes, 4, 4]) as usize
+            )?;
+        let purpose =
+            SecretPurposeType::from_usize(u32::from_be_bytes(*array_ref![bytes, 8, 4]) as usize)?;
+        Ok(Self {
+            xtype,
+            persistence,
+            purpose,
+        })
+    }
+}
+
 /// A context that uses secret keys e.g. TEE, HSM, SEP.
 /// This list is not meant to be exhaustive, just the ones supported
 /// Ockam vault.
