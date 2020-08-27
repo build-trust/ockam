@@ -12,4 +12,16 @@ defmodule Ockam.Vault.Software.Tests do
                        21, 176, 240, 10, 8>>
     end
   end
+  describe "Ockam.Vault.Software.random_bytes/2" do
+    test "can run natively implemented functions" do
+      handle = Ockam.Vault.Software.default_init
+      random1 = Ockam.Vault.Software.random_bytes(handle, 32)
+      assert random1 != nil
+      assert byte_size(random1) == 32
+      random2 = Ockam.Vault.Software.random_bytes(handle, 32)
+      assert random2 != nil
+      assert byte_size(random2) == 32
+      assert random1 != random2
+    end
+  end
 end

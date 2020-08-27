@@ -58,6 +58,41 @@ static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
   return term;
 }
 
+static ERL_NIF_TERM random_bytes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    int32_t result = 0;
+    ockam_vault_t vault;
+    uint8_t* bytes;
+    uint32_t size;
+    ErlNifBinary input;
+    ERL_NIF_TERM term;
+
+    result = get_vault(env, argv, &vault);
+    if (0 == result) {
+        return enif_make_int(env, 0);
+    }
+
+    result = enif_get_uint(env, argv[1], &size);
+
+    if (0 == result) {
+        return enif_make_badarg(env);
+    }
+
+    bytes = enif_make_new_binary(env, size, &term);
+
+    if (0 == bytes) {
+        return enif_make_atom(env, "null");
+    }
+
+    memset(bytes, 0, size);
+    result = ockam_vault_random_bytes_generate(vault, bytes, size);
+
+    if (0 != result) {
+        return enif_make_atom(env, "null");
+    }
+
+    return term;
+}
+
 static int32_t get_vault(ErlNifEnv *env, const ERL_NIF_TERM argv[], ockam_vault_t* vault) {
     int result;
     int arity;
@@ -101,6 +136,7 @@ static int32_t get_vault(ErlNifEnv *env, const ERL_NIF_TERM argv[], ockam_vault_
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
+  {"random_bytes", 2, random_bytes},
   {"sha256", 2, sha256}
 };
 
