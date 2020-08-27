@@ -1,4 +1,8 @@
 defmodule Ockam.Transport.UDP do
+  @moduledoc """
+  Implements the Ockam UDP Transport.
+  """
+
   use Application
 
   require Logger
@@ -16,7 +20,9 @@ defmodule Ockam.Transport.UDP do
     #
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
-    children = []
+    children = [
+      Ockam.Transport.UDP.Server
+    ]
 
     # Start a supervisor with the given children. The supervisor will inturn
     # start the given children.
