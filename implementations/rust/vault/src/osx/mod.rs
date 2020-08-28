@@ -9,6 +9,7 @@ use crate::{
     Vault,
 };
 use keychain_services as enclave;
+use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
 use rand::prelude::*;
 use security_framework::os::macos::keychain;
 use std::convert::TryFrom;
@@ -122,7 +123,7 @@ impl Vault for OsxVault {
                         256,
                     )
                     .access_control(&acl)
-                    .application_tag(id_str.as_str())
+                    .label(id_str.as_str())
                     .can_derive(true)
                     .permanent(true)
                     .token_id(enclave::AttrTokenId::SecureEnclave);
@@ -207,17 +208,17 @@ impl Vault for OsxVault {
                             .keychain
                             .find_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str())?;
                         let bytes = key.to_owned();
-                        let mut atts = [0u8; 12];
-                        atts.copy_from_slice(&bytes[0..12]);
+                        let mut atts = [0u8; 6];
+                        atts.copy_from_slice(&bytes[0..6]);
                         let attributes = SecretKeyAttributes::try_from(atts)?;
                         Ok(match attributes.xtype {
-                            SecretKeyType::Buffer(_) => SecretKey::Buffer(bytes[12..].to_vec()),
-                            SecretKeyType::P256 => SecretKey::P256(*array_ref![bytes, 12, 32]),
+                            SecretKeyType::Buffer(_) => SecretKey::Buffer(bytes[6..].to_vec()),
+                            SecretKeyType::P256 => SecretKey::P256(*array_ref![bytes, 6, 32]),
                             SecretKeyType::Curve25519 => {
-                                SecretKey::Curve25519(*array_ref![bytes, 12, 32])
+                                SecretKey::Curve25519(*array_ref![bytes, 6, 32])
                             }
-                            SecretKeyType::Aes128 => SecretKey::Aes128(*array_ref![bytes, 12, 16]),
-                            SecretKeyType::Aes256 => SecretKey::Aes256(*array_ref![bytes, 12, 32]),
+                            SecretKeyType::Aes128 => SecretKey::Aes128(*array_ref![bytes, 6, 16]),
+                            SecretKeyType::Aes256 => SecretKey::Aes256(*array_ref![bytes, 6, 32]),
                         })
                     }
                     OsxContext::Enclave => Err(VaultFailErrorKind::AccessDenied.into()),
@@ -249,8 +250,8 @@ impl Vault for OsxVault {
                             .keychain
                             .find_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str())?;
                         let bytes = key.to_owned();
-                        let mut atts = [0u8; 12];
-                        atts.copy_from_slice(&bytes[0..12]);
+                        let mut atts = [0u8; 6];
+                        atts.copy_from_slice(&bytes[..6]);
                         let attributes = SecretKeyAttributes::try_from(atts)?;
                         Ok(attributes)
                     }
@@ -264,7 +265,54 @@ impl Vault for OsxVault {
         &mut self,
         context: SecretKeyContext,
     ) -> Result<PublicKey, VaultFailError> {
-        unimplemented!()
+        if let SecretKeyContext::KeyRing { id, os_type } = context {
+            if let OsKeyRing::Osx(ctx) = os_type {
+                return match ctx {
+                    OsxContext::Memory => {
+                        let cid = SecretKeyContext::Memory(id);
+                        self.ephemeral_vault.secret_public_key_get(cid)
+                    }
+                    OsxContext::Keychain => {
+                        self.unlock()?;
+                        let (key, _) = self
+                            .keychain
+                            .find_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str())?;
+                        let bytes = key.to_owned();
+                        let mut atts = [0u8; 6];
+                        atts.copy_from_slice(&bytes[0..6]);
+                        let attributes = SecretKeyAttributes::try_from(atts)?;
+                        match attributes.xtype {
+                            SecretKeyType::P256 => {
+                                let sk = Scalar::from_bytes(*array_ref![bytes, 6, 32]).unwrap();
+                                let pp = ProjectivePoint::generator() * &sk;
+                                let pk = p256::elliptic_curve::weierstrass::PublicKey::from(
+                                    pp.to_affine().unwrap().to_uncompressed_pubkey(),
+                                );
+                                Ok(PublicKey::P256(*array_ref![pk.as_bytes(), 0, 65]))
+                            }
+                            SecretKeyType::Curve25519 => {
+                                let sk =
+                                    x25519_dalek::StaticSecret::from(*array_ref![bytes, 6, 32]);
+                                let pk = x25519_dalek::PublicKey::from(&sk);
+                                Ok(PublicKey::Curve25519(*pk.as_bytes()))
+                            }
+                            _ => Err(VaultFailErrorKind::PublicKey.into()),
+                        }
+                    }
+                    OsxContext::Enclave => {
+                        let id_str = format!("{}-{}", OCKAM_SERVICE_NAME, id);
+                        let query = enclave::item::Query::new()
+                            .key_class(enclave::AttrKeyClass::Public)
+                            .key_type(enclave::AttrKeyType::EcSecPrimeRandom)
+                            .label(id_str.as_str());
+                        let key = enclave::Key::find(query)?;
+                        let bytes = key.to_external_representation()?;
+                        Ok(PublicKey::P256(*array_ref![bytes, 0, 65]))
+                    }
+                };
+            }
+        }
+        Err(VaultFailErrorKind::InvalidContext.into())
     }
 
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError> {
@@ -284,8 +332,8 @@ impl Vault for OsxVault {
                         Ok(())
                     }
                     OsxContext::Enclave => {
-                        let app_tag = format!("{}-{}", OCKAM_SERVICE_NAME, id);
-                        let query = enclave::item::Query::new().application_tag(app_tag.as_str());
+                        let label = format!("{}-{}", OCKAM_SERVICE_NAME, id);
+                        let query = enclave::item::Query::new().label(label.as_str());
                         let key = enclave::key::Key::find(query)?;
                         key.delete()?;
                         Ok(())

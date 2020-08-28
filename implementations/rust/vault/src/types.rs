@@ -172,27 +172,27 @@ pub struct SecretKeyAttributes {
 
 impl SecretKeyAttributes {
     /// Convert attributes to byte values
-    pub fn to_bytes(&self) -> [u8; 12] {
-        let mut output = [0u8; 12];
-        output[..4].copy_from_slice((self.xtype.to_usize() as u32).to_be_bytes().as_ref());
-        output[4..8].copy_from_slice((self.persistence.to_usize() as u32).to_be_bytes().as_ref());
-        output[8..].copy_from_slice((self.purpose.to_usize() as u32).to_be_bytes().as_ref());
+    pub fn to_bytes(&self) -> [u8; 6] {
+        let mut output = [0u8; 6];
+        output[..2].copy_from_slice((self.xtype.to_usize() as u16).to_be_bytes().as_ref());
+        output[2..4].copy_from_slice((self.persistence.to_usize() as u16).to_be_bytes().as_ref());
+        output[4..].copy_from_slice((self.purpose.to_usize() as u16).to_be_bytes().as_ref());
         output
     }
 }
 
-impl std::convert::TryFrom<[u8; 12]> for SecretKeyAttributes {
+impl std::convert::TryFrom<[u8; 6]> for SecretKeyAttributes {
     type Error = VaultFailError;
 
-    fn try_from(bytes: [u8; 12]) -> Result<Self, Self::Error> {
+    fn try_from(bytes: [u8; 6]) -> Result<Self, Self::Error> {
         let xtype =
-            SecretKeyType::from_usize(u32::from_be_bytes(*array_ref![bytes, 0, 4]) as usize)?;
+            SecretKeyType::from_usize(u16::from_be_bytes(*array_ref![bytes, 0, 2]) as usize)?;
         let persistence =
             SecretPersistenceType::from_usize(
-                u32::from_be_bytes(*array_ref![bytes, 4, 4]) as usize
+                u16::from_be_bytes(*array_ref![bytes, 2, 2]) as usize
             )?;
         let purpose =
-            SecretPurposeType::from_usize(u32::from_be_bytes(*array_ref![bytes, 8, 4]) as usize)?;
+            SecretPurposeType::from_usize(u16::from_be_bytes(*array_ref![bytes, 4, 2]) as usize)?;
         Ok(Self {
             xtype,
             persistence,
