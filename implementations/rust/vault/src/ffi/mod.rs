@@ -115,7 +115,7 @@ pub extern "C" fn ockam_vault_sha256(
 pub extern "C" fn ockam_vault_secret_generate(
     context: OckamVaultContext,
     secret: &mut OckamSecret,
-    attributes: &FfiSecretKeyAttributes,
+    attributes: FfiSecretKeyAttributes,
 ) -> VaultError {
     let mut err = ExternError::success();
     let atts = attributes.into();

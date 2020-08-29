@@ -24,4 +24,14 @@ defmodule Ockam.Vault.Software.Tests do
       assert random1 != random2
     end
   end
+
+  describe "Ockam.Vault.Software.secret_generate/2" do
+    test "can run natively implemented functions" do
+      handle = Ockam.Vault.Software.default_init
+      # curve25519 key, ephemeral, key agreement
+      attributes = %{type: 3, persistence: 0, purpose: 0}
+      secret = Ockam.Vault.Software.secret_generate(handle, attributes)
+      assert secret != 0
+    end
+  end
 end
