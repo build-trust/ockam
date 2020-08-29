@@ -79,4 +79,4 @@ have end-to-end secure channels, minimizes the attack surface and helps us to bu
 better end-to-end secure and private systems.
 
 The precise design of the secure channel protocol is being discussed as part of
-Ockam Proposal [OP-0002](https://git.io/JvYxB).
+Ockam Proposal [OP-0002](https://github.com/ockam-network/proposals/tree/master/design/0002-secure-channels).
