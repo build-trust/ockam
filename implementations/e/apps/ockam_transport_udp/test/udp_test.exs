@@ -10,7 +10,9 @@ defmodule Ockam.Transport.UDP.Tests do
 
   def find_child(name) do
     {_, pid, _, _} =
-      Ockam.Transport.UDP |> Supervisor.which_children() |> Enum.find(fn {t, _, _, _} -> t == name end)
+      Ockam.Transport.UDP
+      |> Supervisor.which_children()
+      |> Enum.find(fn {t, _, _, _} -> t == name end)
 
     pid
   end
