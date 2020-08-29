@@ -24,6 +24,3 @@ Transport. Over time there will be many such implementations.
 This loose coupling between Ockam's higher level protocols and how a specific
 transport sends or receives messages allows us to design secure protocols
 that can provide consistent guarantees in complex IoT topologies.
-
-The precise design of the `Transport` interface is being discussed as part of
-Ockam Proposal [OP-0005](https://git.io/JvOLf).
