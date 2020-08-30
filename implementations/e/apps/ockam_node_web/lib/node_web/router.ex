@@ -30,6 +30,11 @@ defmodule Ockam.Node.Web.Router do
     ]
   end
 
+  plug(Plug.Static,
+    at: "/",
+    from: :ockam_node_web
+  )
+
   plug(:match)
   plug(:dispatch)
 
