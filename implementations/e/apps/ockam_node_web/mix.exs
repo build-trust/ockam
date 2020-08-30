@@ -13,7 +13,7 @@ defmodule Ockam.Node.Web.MixProject do
       version: @version,
       elixir: @elixir_requirement,
       consolidate_protocols: Mix.env() != :test,
-      compilers: [:phoenix] ++ Mix.compilers(),
+      compilers: Mix.compilers(),
       deps: deps(),
       aliases: aliases(),
 
@@ -39,16 +39,16 @@ defmodule Ockam.Node.Web.MixProject do
   def application do
     [
       mod: {Ockam.Node.Web, []},
-      extra_applications: [:logger, :ockam, :phoenix]
+      extra_applications: [:logger, :ockam]
     ]
   end
 
   defp deps do
     [
-      {:phoenix, "~> 1.5.4"},
-      {:phoenix_html, "~> 2.11"},
-      {:jason, "~> 1.0"},
-      {:plug_cowboy, "~> 2.0"},
+      {:cowboy, "~> 2.8"},
+      {:plug, "~> 1.10"},
+      {:plug_cowboy, "~> 2.3"},
+      {:jason, "~> 1.2"},
 
       # Docs dependencies
       {:ex_doc, "~> 0.22.2", only: :dev, runtime: false}

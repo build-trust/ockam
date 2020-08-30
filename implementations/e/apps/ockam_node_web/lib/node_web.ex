@@ -19,7 +19,7 @@ defmodule Ockam.Node.Web do
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
     children = [
-      Ockam.Node.Web.Endpoint
+      Ockam.Node.Web.Router
     ]
 
     # Start a supervisor with the given children. The supervisor will inturn
