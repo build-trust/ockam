@@ -6,7 +6,6 @@ defmodule Ockam.Node do
   use GenServer
 
   alias Ockam.Routing
-  alias Ockam.Routing.Address
 
   require Logger
 

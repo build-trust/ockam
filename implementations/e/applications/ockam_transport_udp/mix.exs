@@ -16,6 +16,12 @@ defmodule Ockam.Transport.UDP.MixProject do
       deps: deps(),
       aliases: aliases(),
 
+      # lint
+      dialyzer: [flags: ["-Wunmatched_returns", :error_handling, :underspecs]],
+
+      # test
+      test_coverage: [output: "_build/cover"],
+
       # hex
       description: "UDP transport for Ockam.",
       package: package(),
@@ -23,16 +29,8 @@ defmodule Ockam.Transport.UDP.MixProject do
       # docs
       name: "Ockam UDP Transport",
       docs: docs()
-    ] ++ project(in_umbrella: Mix.Project.umbrella?())
-  end
-
-  defp project(in_umbrella: true) do
-    [
-      test_coverage: [output: "../../_build/cover"]
     ]
   end
-
-  defp project(in_umbrella: false), do: []
 
   # mix help compile.app for more
   def application do
@@ -44,20 +42,10 @@ defmodule Ockam.Transport.UDP.MixProject do
 
   defp deps do
     [
-      # Docs dependencies
-      {:ex_doc, "~> 0.22.2", only: :dev, runtime: false}
-    ] ++ deps(in_umbrella: Mix.Project.umbrella?())
-  end
-
-  defp deps(in_umbrella: true) do
-    [
-      {:ockam, in_umbrella: true}
-    ]
-  end
-
-  defp deps(in_umbrella: false) do
-    [
-      {:ockam, "~> 0.10.0-dev"}
+      {:ockam, path: "../ockam"},
+      {:ex_doc, "~> 0.22.2", only: :dev, runtime: false},
+      {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
     ]
   end
 
@@ -78,6 +66,11 @@ defmodule Ockam.Transport.UDP.MixProject do
   end
 
   defp aliases do
-    []
+    [
+      docs: "docs --output _build/docs --formatter html",
+      test: "test --no-start --cover",
+      lint: ["format --check-formatted", "credo --strict"],
+      dialyzer: ["dialyzer --format dialyxir"]
+    ]
   end
 end

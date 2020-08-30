@@ -9,8 +9,8 @@
       # These are the files included in the analysis:
       files: %{
         included: [
-          "apps/",
-          "config/"
+          "lib/",
+          "test/"
         ],
         excluded: [
           ~r"/_build/",
