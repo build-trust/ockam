@@ -23,6 +23,14 @@ task clean {
   }
 }
 
+task cargoVersion {
+  doLast {
+    exec {
+      commandLine 'cargo', 'version', '-v'
+    }
+  }
+}
+
 task cargoFmt {
   doLast {
     exec {
@@ -49,5 +57,5 @@ task cargoCheck {
 }
 
 task lint {
-  dependsOn cargoFmt, cargoClippy, cargoCheck
+  dependsOn cargoVersion, cargoFmt, cargoClippy, cargoCheck
 }
