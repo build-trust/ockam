@@ -23,7 +23,8 @@ static int test_setup(void **state)
   {
     ockam_memory_t* p_memory = &test_state.memory[i++];
     ockam_error_t      error = ockam_memory_stdlib_init(p_memory);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
   }
 
   test_state.implementations_count = i;
@@ -53,7 +54,8 @@ static void memory_compare__null_memory__should_return_error(void **state)
 
   int           res   = 2;
   ockam_error_t error = ockam_memory_compare(NULL, &res, block1, block2, sizeof(block1));
-  assert_int_equal(error, OCKAM_MEMORY_ERROR_INVALID_PARAM);
+  assert_int_equal(error.code, OCKAM_MEMORY_STDLIB_ERROR_INVALID_PARAM);
+  assert_ptr_equal(error.domain, OCKAM_MEMORY_INTERFACE_ERROR_DOMAIN);
 }
 
 static void memory_compare__null_dispatch__should_return_error(void **state)
@@ -67,7 +69,8 @@ static void memory_compare__null_dispatch__should_return_error(void **state)
 
   int           res   = 2;
   ockam_error_t error = ockam_memory_compare(&memory, &res, block1, block2, sizeof(block1));
-  assert_int_equal(error, OCKAM_MEMORY_ERROR_INVALID_PARAM);
+  assert_int_equal(error.code, OCKAM_MEMORY_STDLIB_ERROR_INVALID_PARAM);
+  assert_ptr_equal(error.domain, OCKAM_MEMORY_INTERFACE_ERROR_DOMAIN);
 }
 
 static void memory_compare__null_res__should_return_error(void **state)
@@ -81,7 +84,8 @@ static void memory_compare__null_res__should_return_error(void **state)
     ockam_memory_t* p_memory = &test_state->memory[i];
 
     ockam_error_t error   = ockam_memory_compare(p_memory, NULL, block1, block2, sizeof(block1));
-    assert_int_equal(error, OCKAM_MEMORY_ERROR_INVALID_PARAM);
+    assert_int_equal(error.code, OCKAM_MEMORY_STDLIB_ERROR_INVALID_PARAM);
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
   }
 }
 
@@ -96,7 +100,8 @@ static void memory_compare__null_lhs__should_return_error(void **state)
 
     int           res   = 2;
     ockam_error_t error = ockam_memory_compare(p_memory, &res, NULL, block2, sizeof(block2));
-    assert_int_equal(error, OCKAM_MEMORY_ERROR_INVALID_PARAM);
+    assert_int_equal(error.code, OCKAM_MEMORY_STDLIB_ERROR_INVALID_PARAM);
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
   }
 }
 
@@ -111,7 +116,8 @@ static void memory_compare__null_rhs__should_return_error(void **state)
 
     int           res   = 2;
     ockam_error_t error = ockam_memory_compare(p_memory, &res, block1, NULL, sizeof(block1));
-    assert_int_equal(error, OCKAM_MEMORY_ERROR_INVALID_PARAM);
+    assert_int_equal(error.code, OCKAM_MEMORY_STDLIB_ERROR_INVALID_PARAM);
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
   }
 }
 
@@ -127,7 +133,8 @@ static void memory_compare__empty_blocks__should_return_zero(void **state)
 
     int           res     = 2;
     ockam_error_t error   = ockam_memory_compare(p_memory, &res, block1, block2, 0);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
     assert_int_equal(res, 0);
   }
 }
@@ -144,7 +151,8 @@ static void memory_compare__eq_blocks__should_return_zero(void **state)
 
     int           res   = 2;
     ockam_error_t error = ockam_memory_compare(p_memory, &res, block1, block2, sizeof(block1));
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
     assert_int_equal(res, 0);
   }
 }
@@ -161,7 +169,8 @@ static void memory_compare__lt_blocks__should_return_minus_one(void **state)
 
     int           res   = 2;
     ockam_error_t error = ockam_memory_compare(p_memory, &res, block1, block2, sizeof(block1));
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
     assert_int_equal(res, -1);
   }
 }
@@ -178,7 +187,8 @@ static void memory_compare__gt_blocks__should_return_one(void **state)
 
     int           res   = 2;
     ockam_error_t error = ockam_memory_compare(p_memory, &res, block1, block2, sizeof(block1));
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
+    assert_ptr_equal(error.domain, OCKAM_MEMORY_STDLIB_ERROR_DOMAIN);
     assert_int_equal(res, 1);
   }
 }

@@ -6,26 +6,23 @@
 #ifndef OCKAM_ERROR_H_
 #define OCKAM_ERROR_H_
 
-#include <stdint.h>
+#include <stdbool.h>
 
-#define OCKAM_ERROR_INTERFACE_MASK  0xFF000000
-#define OCKAM_ERROR_INTERFACE_SHIFT 24u
+typedef struct {
+  int code;
+  const char* domain;
+} ockam_error_t;
 
-typedef uint32_t ockam_error_t;
+typedef enum {
+  OCKAM_ERROR_NONE = 0,
+} ockam_error_code_t;
 
-#define OCKAM_ERROR_NONE 0u
+static inline bool ockam_error_is_none(const ockam_error_t* error) {
+  return error->code == OCKAM_ERROR_NONE;
+}
 
-#define OCKAM_ERROR_INTERFACE_MEMORY       (1u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_LOG          (2u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_VAULT        (3u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_TRANSPORT    (4u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_KEYAGREEMENT (5u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_RANDOM       (6u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_IO           (7u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_CHANNEL      (8u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_ROUTER       (9u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_CODEC        (10u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_QUEUE        (11u << OCKAM_ERROR_INTERFACE_SHIFT)
-#define OCKAM_ERROR_INTERFACE_MUTEX        (12u << OCKAM_ERROR_INTERFACE_SHIFT)
+static inline bool ockam_error_has_error(const ockam_error_t* error) {
+  return !ockam_error_is_none(error);
+}
 
 #endif

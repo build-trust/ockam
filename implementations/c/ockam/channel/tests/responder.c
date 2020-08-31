@@ -26,10 +26,10 @@ void usage()
   printf("  -f<filename>\t\t\tRead configuration from <filename>\n");
 }
 
-ockam_error_t parse_opts(int argc, char* argv[], char* filename)
+int parse_opts(int argc, char* argv[], char* filename)
 {
-  int           ch;
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  int ch;
+  int error = 0;
   while ((ch = getopt(argc, argv, "hf:")) != -1) {
     switch (ch) {
     case 'f':
@@ -37,7 +37,7 @@ ockam_error_t parse_opts(int argc, char* argv[], char* filename)
       break;
     default:
       usage();
-      error = CHANNEL_ERROR_PARAMS;
+      error = -1;
       break;
     }
   }
@@ -50,7 +50,7 @@ ockam_error_t establish_responder_transport(ockam_transport_t*   p_transport,
                                             ockam_reader_t**     pp_reader,
                                             ockam_writer_t**     pp_writer)
 {
-  ockam_error_t                       error = OCKAM_ERROR_NONE;
+  ockam_error_t                       error = ockam_channel_interface_error_none;
   ockam_transport_socket_attributes_t xport_attrs;
   ockam_ip_address_t*                 local_ip_addr = &xport_attrs.local_address;
 
@@ -66,16 +66,14 @@ ockam_error_t establish_responder_transport(ockam_transport_t*   p_transport,
 
   xport_attrs.p_memory = p_memory;
   error                = ockam_transport_socket_udp_init(p_transport, &xport_attrs);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   // Wait for a connection
   error = ockam_transport_accept(p_transport, pp_reader, pp_writer, NULL);
-  if (error) goto exit;
-
-  error = OCKAM_ERROR_NONE;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
@@ -84,7 +82,7 @@ ockam_error_t c_elixir_channel_responder(ockam_vault_t*   vault,
                                          codec_address_t* local_host_address,
                                          codec_address_t* local_address)
 {
-  ockam_error_t               error     = OCKAM_ERROR_NONE;
+  ockam_error_t               error     = ockam_channel_interface_error_none;
   ockam_transport_t           transport = { 0 };
   ockam_channel_t             channel   = { 0 };
   ockam_reader_t*             p_ch_reader;
@@ -111,7 +109,7 @@ ockam_error_t c_elixir_channel_responder(ockam_vault_t*   vault,
                                         &local_host_address->address.socket_address.udp_address,
                                         &p_transport_reader,
                                         &p_transport_writer);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   channel_attrs.reader = p_transport_reader;
   channel_attrs.writer = p_transport_writer;
@@ -120,28 +118,30 @@ ockam_error_t c_elixir_channel_responder(ockam_vault_t*   vault,
 
   memcpy(&channel_attrs.local_host_address, local_host_address, sizeof(codec_address_t));
   error = ockam_channel_init(&channel, &channel_attrs);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_channel_accept(&channel, &p_ch_reader, &p_ch_writer);
-  if (error && (TRANSPORT_INFO_NO_DATA != error)) goto exit;
+  if (ockam_error_has_error(&error) && !(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+                                         && OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN == error.domain)) goto exit;
 
   do {
     error = ockam_channel_poll(&channel, &result);
-    if (error) {
-      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
-    }
+    if (ockam_error_has_error(&error) && !(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+                                           && OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN == error.domain)) goto exit;
     usleep(500 * 1000);
   } while (!result.channel_is_secure);
 
   error = ockam_read(p_ch_reader, recv_buffer, MAX_XX_TRANSMIT_SIZE, &bytes_received);
-  if (TRANSPORT_INFO_NO_DATA == error) {
+  if (error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+      && OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN == error.domain) {
     do {
       error = ockam_channel_poll(&channel, &result);
-      if (error) {
-        if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+      if (ockam_error_has_error(&error)) {
+        if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+              && OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN == error.domain)) goto exit;
       }
       usleep(500 * 1000);
-    } while (error);
+    } while (ockam_error_has_error(&error));
   }
   printf(" Received %ld bytes: %s\n", result.bytes_read, result.read_buffer);
 
@@ -156,10 +156,10 @@ ockam_error_t c_elixir_channel_responder(ockam_vault_t*   vault,
   line_length             = getline(&p_line, &line_size, stdin);
   p_line[line_length - 1] = 0;
   error                   = channel_write_to_app(&channel, (uint8_t*) p_line, line_length, responder_app_address);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   ockam_channel_deinit(&channel);
   ockam_transport_deinit(&transport);
   return error;
@@ -167,7 +167,7 @@ exit:
 
 int main(int argc, char* argv[])
 {
-  ockam_error_t                    error                   = OCKAM_ERROR_NONE;
+  ockam_error_t                    error                   = ockam_channel_interface_error_none;
   ockam_vault_t                    vault                   = { 0 };
   ockam_memory_t                   memory                  = { 0 };
   ockam_random_t                   random                  = { 0 };
@@ -184,24 +184,25 @@ int main(int argc, char* argv[])
   int     initiator_status  = 0;
   int     fork_status       = 0;
   int32_t responder_process = 0;
+  int     status            = 0;
 
   error = ockam_memory_stdlib_init(&memory);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_random_urandom_init(&random);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_vault_default_init(&vault, &vault_attributes);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /*-------------------------------------------------------------------------
    * Parse options
    *-----------------------------------------------------------------------*/
   route.p_addresses = route_addresses;
-  error             = parse_opts(argc, argv, filename);
-  if (error) goto exit;
+  status            = parse_opts(argc, argv, filename);
+  if (status) goto exit;
   error = read_route_configuration(filename, &route, &initiator_ip_address, &responder_ip_address);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = c_elixir_channel_responder(&vault, &memory, &responder_ip_address, NULL);
 
@@ -224,5 +225,5 @@ int main(int argc, char* argv[])
   //  } while (a[0] != 'q');
 
 exit:
-  return error;
+  return error.code + status;
 }

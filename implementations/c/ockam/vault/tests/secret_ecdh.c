@@ -190,7 +190,6 @@ const char g_test_vault_curve25519_name[] = "Curve25519: ";
 
 void test_vault_secret_ecdh(void** state)
 {
-  ockam_error_t                 error     = OCKAM_ERROR_NONE;
   test_vault_key_shared_data_t* test_data = 0;
   size_t                        length    = 0;
 
@@ -226,11 +225,11 @@ void test_vault_secret_ecdh(void** state)
   /* Memory Allocation */
   /* ----------------- */
 
-  error = ockam_memory_alloc_zeroed(test_data->memory, (void**) &generated_initiator_pub, test_data->key_size);
-  if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc generated_initiator_pub"); }
+  ockam_error_t error = ockam_memory_alloc_zeroed(test_data->memory, (void**) &generated_initiator_pub, test_data->key_size);
+  if (ockam_error_has_error(&error)) { fail_msg("Unable to alloc generated_initiator_pub"); }
 
   error = ockam_memory_alloc_zeroed(test_data->memory, (void**) &generated_responder_pub, test_data->key_size);
-  if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc generated_responder_pub"); }
+  if (ockam_error_has_error(&error)) { fail_msg("Unable to alloc generated_responder_pub"); }
 
   /* ------------------ */
   /* Key Write/Generate */
@@ -261,18 +260,18 @@ void test_vault_secret_ecdh(void** state)
   if (test_data->load_keys) {
     error = ockam_vault_secret_import(
       test_data->vault, &initiator_secret, &attributes, initiator_priv, TEST_VAULT_KEY_PRIV_SIZE);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
 
     error = ockam_vault_secret_import(
       test_data->vault, &responder_secret, &attributes, responder_priv, TEST_VAULT_KEY_PRIV_SIZE);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
 
   } else {
     error = ockam_vault_secret_generate(test_data->vault, &initiator_secret, &attributes);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
 
     error = ockam_vault_secret_generate(test_data->vault, &responder_secret, &attributes);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
   }
 
   /* ------------ */
@@ -281,12 +280,12 @@ void test_vault_secret_ecdh(void** state)
 
   error = ockam_vault_secret_publickey_get(
     test_data->vault, &initiator_secret, generated_initiator_pub, test_data->key_size, &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, test_data->key_size);
 
   error = ockam_vault_secret_publickey_get(
     test_data->vault, &responder_secret, generated_responder_pub, test_data->key_size, &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, test_data->key_size);
 
   if (test_data->load_keys) {
@@ -300,20 +299,20 @@ void test_vault_secret_ecdh(void** state)
 
   error = ockam_vault_ecdh(
     test_data->vault, &initiator_secret, generated_responder_pub, test_data->key_size, &shared_secret_0);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_secret_export(
     test_data->vault, &shared_secret_0, &generated_shared_secret_0[0], OCKAM_VAULT_SHARED_SECRET_LENGTH, &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, OCKAM_VAULT_SHARED_SECRET_LENGTH);
 
   error = ockam_vault_ecdh(
     test_data->vault, &responder_secret, generated_initiator_pub, test_data->key_size, &shared_secret_1);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_secret_export(
     test_data->vault, &shared_secret_1, &generated_shared_secret_1[0], OCKAM_VAULT_SHARED_SECRET_LENGTH, &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, OCKAM_VAULT_SHARED_SECRET_LENGTH);
 
   assert_memory_equal(&generated_shared_secret_0[0], &generated_shared_secret_1[0], OCKAM_VAULT_SHARED_SECRET_LENGTH);
@@ -327,16 +326,16 @@ void test_vault_secret_ecdh(void** state)
   /* ----------- */
 
   error = ockam_vault_secret_destroy(test_data->vault, &initiator_secret);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_secret_destroy(test_data->vault, &responder_secret);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_secret_destroy(test_data->vault, &shared_secret_0);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_secret_destroy(test_data->vault, &shared_secret_1);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   ockam_memory_free(test_data->memory, generated_initiator_pub, test_data->key_size);
   ockam_memory_free(test_data->memory, generated_responder_pub, test_data->key_size);
@@ -380,7 +379,6 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
                                ockam_vault_secret_type_t type,
                                uint8_t                   load_keys)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
   int           rc    = 0;
 
   uint8_t                      i            = 0;
@@ -409,9 +407,9 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
     goto exit_block;
   }
 
-  error =
+  ockam_error_t error =
     ockam_memory_alloc_zeroed(memory, (void**) &cmocka_data, test_data.test_count_max * sizeof(struct CMUnitTest));
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit_block;
   }
@@ -420,7 +418,7 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
 
   for (i = 0; i < test_data.test_count_max; i++) {
     error = ockam_memory_alloc_zeroed(memory, (void**) &test_name, TEST_VAULT_KEY_NAME_SIZE);
-    if (error != OCKAM_ERROR_NONE) { break; }
+    if (ockam_error_has_error(&error)) { break; }
 
     snprintf(test_name, TEST_VAULT_KEY_NAME_SIZE, "%s Test Case %02d", name, i);
 
@@ -433,7 +431,7 @@ int test_vault_run_secret_ecdh(ockam_vault_t*            vault,
     cmocka_tests++;
   }
 
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit_block;
   }

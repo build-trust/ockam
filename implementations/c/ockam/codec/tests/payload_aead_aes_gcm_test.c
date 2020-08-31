@@ -23,19 +23,19 @@ int _test_codec_payload_aead_aes_gcm_setup(void** state)
 
   aag_test_payload = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == aag_test_payload) {
-    status = OCKAM_ERROR_INTERFACE_CODEC;
+    status = -1;
     goto exit_block;
   }
 
   aag_end_payload = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == aag_end_payload) {
-    status = OCKAM_ERROR_INTERFACE_CODEC;
+    status = -1;
     goto exit_block;
   }
 
   aag_encoded_stream = malloc(CODEC_MAX_VLU2_SIZE);
   if (NULL == aag_encoded_stream) {
-    status = OCKAM_ERROR_INTERFACE_CODEC;
+    status = -1;
     goto exit_block;
   }
 

@@ -6,10 +6,10 @@
 
 uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_codec_error_none;
 
   if (!p_encoded) {
-    error = CODEC_ERROR_PARAMETER;
+    error.code = OCKAM_CODEC_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -40,7 +40,7 @@ uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route)
         p_encoded += sizeof(uint16_t);
         break;
       default:
-        error = CODEC_ERROR_NOT_IMPLEMENTED;
+        error.code = OCKAM_CODEC_ERROR_NOT_IMPLEMENTED;
         goto exit;
       }
       break;
@@ -51,19 +51,19 @@ uint8_t* encode_route(uint8_t* p_encoded, codec_route_t* p_route)
       }
       break;
     default:
-      error = CODEC_ERROR_NOT_IMPLEMENTED;
+      error.code = OCKAM_CODEC_ERROR_NOT_IMPLEMENTED;
       goto exit;
     }
   }
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return p_encoded;
 }
 
 uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_codec_error_none;
 
   p_route->count_addresses = *p_encoded++;
 
@@ -91,7 +91,7 @@ uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route)
         p_encoded += sizeof(uint16_t);
         break;
       default:
-        error = CODEC_ERROR_NOT_IMPLEMENTED;
+        error.code = OCKAM_CODEC_ERROR_NOT_IMPLEMENTED;
         goto exit;
       }
       break;
@@ -102,12 +102,12 @@ uint8_t* decode_route(uint8_t* p_encoded, codec_route_t* p_route)
       }
       break;
     default:
-      error = CODEC_ERROR_NOT_IMPLEMENTED;
+      error.code = OCKAM_CODEC_ERROR_NOT_IMPLEMENTED;
       goto exit;
     }
   }
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return p_encoded;
 }

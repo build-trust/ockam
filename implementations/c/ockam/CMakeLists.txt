@@ -14,7 +14,6 @@ endif()
 add_subdirectory(io)
 
 add_subdirectory(queue)
-add_subdirectory(queue/pthread)
 
 add_subdirectory(mutex)
 add_subdirectory(mutex/pthread)

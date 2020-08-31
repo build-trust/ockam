@@ -12,6 +12,7 @@ file(COPY codec.h DESTINATION ${INCLUDE_DIR}/ockam/)
 target_sources(
   ockam_codec
   PRIVATE
+		codec.c
 		variable_length_encoded_u2le.c
 		payload_aead_aes_gcm.c
 		public_key.c

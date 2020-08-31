@@ -28,7 +28,8 @@ size_t ip_string_to_octets(char* str, uint8_t* octets, size_t octets_size)
 ockam_error_t
 read_route_configuration(char* filename, codec_route_t* route, codec_address_t* initiator, codec_address_t* responder)
 {
-  ockam_error_t error = TRANSPORT_ERROR_BAD_PARAMETER;
+  ockam_error_t error = ockam_channel_interface_error_none;
+  error.code          = -1;
   char          line[80];
   size_t        line_size   = 80;
   char*         p_line      = line;
@@ -129,7 +130,7 @@ read_route_configuration(char* filename, codec_route_t* route, codec_address_t* 
     }
   } while ((int32_t) line_length > 0);
 
-  error = OCKAM_ERROR_NONE;
+  error = ockam_channel_interface_error_none;
 
 exit:
   return error;

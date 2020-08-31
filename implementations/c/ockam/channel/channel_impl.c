@@ -15,6 +15,13 @@
 
 extern void print_uint8_str(uint8_t* p, uint16_t size, char* msg);
 
+const char* const OCKAM_CHANNEL_INTERFACE_ERROR_DOMAIN = "OCKAM_CHANNEL_INTERFACE_ERROR_DOMAIN";
+
+const ockam_error_t ockam_channel_interface_error_none = {
+  OCKAM_ERROR_NONE,
+  OCKAM_CHANNEL_INTERFACE_ERROR_DOMAIN
+};
+
 ockam_memory_t* gp_ockam_channel_memory = NULL;
 
 ockam_error_t channel_read(void*, uint8_t*, size_t, size_t*);
@@ -35,27 +42,26 @@ ockam_error_t channel_encrypt(ockam_channel_t* ch,
                               size_t           cipher_text_size,
                               size_t*          cipher_text_length)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
 
   if (clear_text_length == 0) goto exit;
 
   if (ch->state == CHANNEL_STATE_SECURE) {
     error =
       ockam_key_encrypt(&ch->key, clear_text, clear_text_length, cipher_text, cipher_text_size, cipher_text_length);
-
   } else {
     error = ockam_memory_copy(gp_ockam_channel_memory, cipher_text, clear_text, clear_text_length);
-    ;
+
     *cipher_text_length = clear_text_length;
   }
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t channel_process_message(ockam_channel_t* ch, uint8_t* p_encoded)
 {
-  ockam_error_t        error        = OCKAM_ERROR_NONE;
+  ockam_error_t        error        = ockam_channel_interface_error_none;
   codec_message_type_t message_type = *p_encoded++;
   switch (message_type) {
   case PAYLOAD: {
@@ -63,17 +69,17 @@ ockam_error_t channel_process_message(ockam_channel_t* ch, uint8_t* p_encoded)
     size_t  clear_text_length = 0;
     size_t  payload_length    = ch->channel_read_buffer_length - (p_encoded - ch->channel_read_buffer);
     error = ockam_key_decrypt(&ch->key, clear_text, sizeof(clear_text), p_encoded, payload_length, &clear_text_length);
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
     p_encoded = clear_text;
     // Step over header
     // Onward addresses should be 0
     // Return address should be local only
     if (OCKAM_WIRE_PROTOCOL_VERSION != *p_encoded++) {
-      error = CHANNEL_ERROR_NOT_IMPLEMENTED;
+      error.code = -1;
       goto exit;
     }
     if (*p_encoded++ != 0) { // count of onward addresses
-      error = CHANNEL_ERROR_NOT_IMPLEMENTED;
+      error.code = -1;
       goto exit;
     }
     switch (*p_encoded++) {
@@ -83,7 +89,7 @@ ockam_error_t channel_process_message(ockam_channel_t* ch, uint8_t* p_encoded)
       p_encoded += *p_encoded + 1; // step over local address & address type
       break;
     default:
-      error = CHANNEL_ERROR_NOT_IMPLEMENTED;
+      error.code = -1;
       goto exit;
     }
     // Step over message type
@@ -93,22 +99,22 @@ ockam_error_t channel_process_message(ockam_channel_t* ch, uint8_t* p_encoded)
     break;
   }
   default:
-    error = CHANNEL_ERROR_NOT_IMPLEMENTED;
+    error.code = OCKAM_CHANNEL_INTERFACE_ERROR_NOT_IMPLEMENTED;
     goto exit;
   }
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t ockam_channel_init(ockam_channel_t* p_ch, ockam_channel_attributes_t* p_attrs)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
   printf("in %s\n", __func__);
 
   if ((NULL == p_ch) || (NULL == p_attrs) || (NULL == p_attrs->reader) || (NULL == p_attrs->writer) ||
       (NULL == p_attrs->memory) || (NULL == p_attrs->vault)) {
-    error = CHANNEL_ERROR_PARAMS;
+    error.code = -1;
     goto exit;
   }
 
@@ -116,29 +122,29 @@ ockam_error_t ockam_channel_init(ockam_channel_t* p_ch, ockam_channel_attributes
   p_ch->vault             = p_attrs->vault;
 
   if ((p_attrs->local_host_address.type != ADDRESS_UDP) && (p_attrs->local_host_address.type != ADDRESS_TCP)) {
-    error = CHANNEL_ERROR_PARAMS;
+    error.code = -1;
     goto exit;
   }
   ockam_memory_copy(
     gp_ockam_channel_memory, &p_ch->local_host_address, &p_attrs->local_host_address, sizeof(p_ch->local_host_address));
 
   error = ockam_memory_alloc_zeroed(gp_ockam_channel_memory, (void**) &p_ch->channel_reader, sizeof(ockam_reader_t));
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   p_ch->channel_reader->read = channel_read;
   p_ch->channel_reader->ctx  = p_ch;
 
   error = ockam_memory_alloc_zeroed(gp_ockam_channel_memory, (void**) &p_ch->channel_writer, sizeof(ockam_writer_t));
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   p_ch->channel_writer->write = channel_write;
   p_ch->channel_writer->ctx   = p_ch;
 
   error =
     ockam_memory_alloc_zeroed(gp_ockam_channel_memory, (void**) &p_ch->channel_read_buffer, MAX_CHANNEL_PACKET_SIZE);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error =
     ockam_memory_alloc_zeroed(gp_ockam_channel_memory, (void**) &p_ch->channel_write_buffer, MAX_CHANNEL_PACKET_SIZE);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   p_ch->transport_reader = p_attrs->reader;
   p_ch->transport_writer = p_attrs->writer;
@@ -148,8 +154,8 @@ ockam_error_t ockam_channel_init(ockam_channel_t* p_ch, ockam_channel_attributes
   error = ockam_xx_key_initialize(&p_ch->key, gp_ockam_channel_memory, p_ch->vault);
 
 exit:
-  if (error) {
-    ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) {
+    ockam_log_error("%s: %d", error.domain, error.code);
     if (p_ch) {
       if (p_ch->channel_reader)
         ockam_memory_free(gp_ockam_channel_memory, (void*) p_ch->channel_reader, sizeof(ockam_reader_t));
@@ -160,28 +166,28 @@ exit:
       }
     }
   }
-  return 0;
+  return error;
 }
 
 ockam_error_t channel_initiate_key_exchange(ockam_channel_t* p_ch)
 {
-  ockam_error_t               error = OCKAM_ERROR_NONE;
+  ockam_error_t               error = ockam_channel_interface_error_none;
   uint8_t                     message[MAX_CHANNEL_PACKET_SIZE];
   size_t                      message_length = 0;
   ockam_channel_poll_result_t result         = { 0 };
   size_t                      offset         = 0;
 
   error = ockam_xx_key_initialize(&p_ch->key, gp_ockam_channel_memory, p_ch->vault);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_key_m1_make(&p_ch->key, message, sizeof(message), &message_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   offset += message_length;
 
   printf("sending REQUEST_CHANNEL %d\n", REQUEST_CHANNEL);
   error = channel_write_message(p_ch, message, offset, REQUEST_CHANNEL);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   do {
     usleep(500 * 1000);
@@ -197,7 +203,7 @@ exit:
 ockam_error_t
 ockam_channel_connect(ockam_channel_t* ch, codec_route_t* route, ockam_reader_t** p_reader, ockam_writer_t** p_writer)
 {
-  ockam_error_t               error = 0;
+  ockam_error_t               error = ockam_channel_interface_error_none;
   ockam_channel_poll_result_t result;
 
   printf("in %s\n", __func__);
@@ -209,19 +215,19 @@ ockam_channel_connect(ockam_channel_t* ch, codec_route_t* route, ockam_reader_t*
                     ch->onward_route.count_addresses * sizeof(codec_address_t));
 
   error = channel_initiate_key_exchange(ch);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   *p_reader = ch->channel_reader;
   *p_writer = ch->channel_writer;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t channel_responder_key_exchange(ockam_channel_t* p_ch)
 {
-  ockam_error_t               error = OCKAM_ERROR_NONE;
+  ockam_error_t               error = ockam_channel_interface_error_none;
   uint8_t                     message[MAX_CHANNEL_PACKET_SIZE];
   size_t                      message_length = 0;
   ockam_channel_poll_result_t result;
@@ -229,8 +235,9 @@ ockam_error_t channel_responder_key_exchange(ockam_channel_t* p_ch)
   printf("in %s\n", __func__);
   do {
     error = ockam_channel_poll(p_ch, &result);
-    if (error) {
-      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+    if (ockam_error_has_error(&error)) {
+      if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+            && error.domain == OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN)) goto exit;
       usleep(500 * 1000);
     }
   } while (p_ch->state != CHANNEL_STATE_SECURE);
@@ -242,7 +249,7 @@ exit:
 
 ockam_error_t ockam_channel_accept(ockam_channel_t* p_ch, ockam_reader_t** p_reader, ockam_writer_t** p_writer)
 {
-  ockam_error_t error = 0;
+  ockam_error_t error = ockam_channel_interface_error_none;
 
   //  error = channel_responder_key_exchange(p_ch);
   //  if (error) goto exit;
@@ -250,19 +257,21 @@ ockam_error_t ockam_channel_accept(ockam_channel_t* p_ch, ockam_reader_t** p_rea
   *p_writer = p_ch->channel_writer;
 
 exit:
-  if (error) ockam_log_error("%x", error);
-  //  return error;
-  return TRANSPORT_INFO_NO_DATA;
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
+  error.domain = OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN;
+  error.code = OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA;
+
+  return error;
 }
 
 ockam_error_t channel_read(void* ctx, uint8_t* p_buffer, size_t buffer_size, size_t* p_buffer_length)
 {
-  ockam_error_t               error = 0;
+  ockam_error_t               error = ockam_channel_interface_error_none;
   ockam_channel_t*            p_ch  = (ockam_channel_t*) ctx;
   ockam_channel_poll_result_t result;
 
   if ((p_ch->app_read_buffer) && (p_ch->app_read_buffer != p_buffer)) {
-    error = CHANNEL_ERROR_READ_PENDING;
+    error.code = OCKAM_CHANNEL_INTERFACE_ERROR_READ_PENDING;
     goto exit;
   }
 
@@ -271,7 +280,7 @@ ockam_error_t channel_read(void* ctx, uint8_t* p_buffer, size_t buffer_size, siz
 
   error = ockam_read(
     p_ch->transport_reader, p_ch->channel_read_buffer, MAX_CHANNEL_PACKET_SIZE, &p_ch->channel_read_buffer_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   print_uint8_str(p_ch->channel_read_buffer, p_ch->channel_read_buffer_length, "channel_read");
   channel_process_read(p_ch, &result);
@@ -281,13 +290,14 @@ ockam_error_t channel_read(void* ctx, uint8_t* p_buffer, size_t buffer_size, siz
   p_ch->app_read_buffer_size   = 0;
 
 exit:
-  if (error != TRANSPORT_INFO_NO_DATA) ockam_log_error("%x", error);
+  if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+        && error.domain == OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t channel_process_read(ockam_channel_t* ch, struct ockam_channel_poll_result* result)
 {
-  ockam_error_t   error               = OCKAM_ERROR_NONE;
+  ockam_error_t   error               = ockam_channel_interface_error_none;
   size_t          cipher_text_length  = 0;
   size_t          encoded_text_length = 0;
   uint8_t*        p_encoded           = ch->channel_read_buffer;
@@ -314,12 +324,12 @@ ockam_error_t channel_process_read(ockam_channel_t* ch, struct ockam_channel_pol
     result->read_buffer     = ch->app_read_buffer;
     result->bytes_read      = ch->app_read_buffer_length;
   } else {
-    error = CHANNEL_ERROR_NOT_IMPLEMENTED;
+    error.code = OCKAM_CHANNEL_INTERFACE_ERROR_NOT_IMPLEMENTED;
     goto exit;
   }
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
@@ -330,73 +340,73 @@ int channel_process_ping()
 
 ockam_error_t channel_m1_process(ockam_channel_t* p_ch, uint8_t* p_encoded)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
   uint8_t       m2_message[MAX_CHANNEL_PACKET_SIZE];
   size_t        m2_length = 0;
 
   error = ockam_key_m1_process(&p_ch->key, p_encoded);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_key_m2_make(&p_ch->key, m2_message, sizeof(m2_message), &m2_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   printf("sending KEY_AGREEMENT_T1_M2 %d\n", KEY_AGREEMENT_T1_M2);
   error = channel_write_message(p_ch, m2_message, m2_length, KEY_AGREEMENT_T1_M2);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 ockam_error_t channel_m2_process(ockam_channel_t* p_ch, uint8_t* p_encoded)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
   uint8_t       m3_message[MAX_CHANNEL_PACKET_SIZE];
   size_t        m3_length = 0;
 
   error = ockam_key_m2_process(&p_ch->key, p_encoded);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_key_m3_make(&p_ch->key, m3_message, sizeof(m3_message), &m3_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   printf("sending KEY_AGREEMENT_T1_M3 %d\n", KEY_AGREEMENT_T1_M3);
   error = channel_write_message(p_ch, m3_message, m3_length, KEY_AGREEMENT_T1_M3);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_initiator_epilogue(&p_ch->key);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   p_ch->state = CHANNEL_STATE_SECURE;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 ockam_error_t channel_m3_process(ockam_channel_t* p_ch, uint8_t* p_encoded)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
   uint8_t       m2_message[MAX_CHANNEL_PACKET_SIZE];
   size_t        m2_length = 0;
 
   printf("processing KEY_AGREEMENT_T1_M3 in %s\n", __func__);
   error = ockam_key_m3_process(&p_ch->key, p_encoded);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_responder_epilogue(&p_ch->key);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   printf("responder secure\n");
   p_ch->state = CHANNEL_STATE_SECURE;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t channel_process_system_message(ockam_channel_t* p_ch, uint8_t* p_encoded)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
 
   codec_message_type_t message_type = *p_encoded++;
 
@@ -414,7 +424,7 @@ ockam_error_t channel_process_system_message(ockam_channel_t* p_ch, uint8_t* p_e
     error = channel_m3_process(p_ch, p_encoded);
     break;
   case PONG:
-    error = CHANNEL_ERROR_NOT_IMPLEMENTED;
+    error.code = OCKAM_CHANNEL_INTERFACE_ERROR_NOT_IMPLEMENTED;
   default:
     break;
   }
@@ -439,7 +449,7 @@ uint8_t* route_encode(ockam_channel_t* ch, uint8_t* encoded)
 
 ockam_error_t channel_write_to_app(void* ctx, uint8_t* clear_text, size_t clear_text_length, int32_t remote_app_address)
 {
-  ockam_error_t   error   = 0;
+  ockam_error_t   error   = ockam_channel_interface_error_none;
   codec_payload_t payload = { 0 };
   codec_route_t   route   = { 0 };
   codec_address_t addresses[2];
@@ -476,7 +486,7 @@ ockam_error_t channel_write(void* ctx, uint8_t* p_clear_text, size_t clear_text_
 ockam_error_t
 channel_write_message(void* ctx, uint8_t* p_clear_text, size_t clear_text_length, codec_message_type_t message_type)
 {
-  ockam_error_t    error              = 0;
+  ockam_error_t    error              = ockam_channel_interface_error_none;
   size_t           cipher_text_length = 0;
   uint8_t*         p_encoded          = g_encoded_text;
   ockam_channel_t* p_ch               = (ockam_channel_t*) ctx;
@@ -491,29 +501,31 @@ channel_write_message(void* ctx, uint8_t* p_clear_text, size_t clear_text_length
                           p_encoded,
                           MAX_CHANNEL_PACKET_SIZE - (p_encoded - g_encoded_text),
                           &cipher_text_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   p_encoded += cipher_text_length;
 
   error = ockam_write(p_ch->transport_writer, g_encoded_text, p_encoded - g_encoded_text);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t ockam_channel_poll(ockam_channel_t* p_ch, ockam_channel_poll_result_t* result)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
   ockam_memory_set(gp_ockam_channel_memory, result, 0, sizeof(*result));
 
   p_ch->channel_read_buffer_length = 0;
   error                            = ockam_read(
     p_ch->transport_reader, p_ch->channel_read_buffer, MAX_CHANNEL_PACKET_SIZE, &p_ch->channel_read_buffer_length);
-  if (error && (TRANSPORT_INFO_NO_DATA != error)) goto exit;
+  if (ockam_error_has_error(&error) &&
+      !(OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA == error.code
+        && OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN == error.domain)) goto exit;
   if (p_ch->channel_read_buffer_length > 0) {
     error = channel_process_read(p_ch, result);
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
   }
 
   if (p_ch->app_write_buffer) {
@@ -523,13 +535,14 @@ ockam_error_t ockam_channel_poll(ockam_channel_t* p_ch, ockam_channel_poll_resul
   if (p_ch->state == CHANNEL_STATE_SECURE) result->channel_is_secure = 1;
 
 exit:
-  if ((error) && (TRANSPORT_INFO_NO_DATA != error)) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error) && !(OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA == error.code
+                  && OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN == error.domain)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t ockam_channel_deinit(ockam_channel_t* p_ch)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_channel_interface_error_none;
 
   if (p_ch->channel_reader) ockam_memory_free(gp_ockam_channel_memory, p_ch->channel_reader, sizeof(ockam_reader_t));
   if (p_ch->channel_writer) ockam_memory_free(gp_ockam_channel_memory, p_ch->channel_writer, sizeof(ockam_writer_t));

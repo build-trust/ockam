@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "ockam/error.h"
+#include "ockam/key_agreement/xx.h"
 #include "ockam/key_agreement.h"
 #include "ockam/key_agreement/impl.h"
 #include "ockam/log.h"
@@ -26,11 +27,11 @@ ockam_key_dispatch_table_t xx_key_dispatch = { xx_initiator_m1_make,
 
 ockam_error_t ockam_xx_key_initialize(ockam_key_t* key, ockam_memory_t* memory, ockam_vault_t* vault)
 {
-  ockam_error_t   error    = OCKAM_ERROR_NONE;
+  ockam_error_t   error    = ockam_key_agreement_xx_error_none;
   ockam_xx_key_t* p_xx_key = NULL;
 
-  if (!key || !vault || !memory) {
-    error = KEYAGREEMENT_ERROR_PARAMETER;
+  if (!key || !memory || !vault) {
+    error.code = OCKAM_KEY_AGREEMENT_XX_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -41,17 +42,17 @@ ockam_error_t ockam_xx_key_initialize(ockam_key_t* key, ockam_memory_t* memory, 
 
   p_xx_key = (ockam_xx_key_t*) key->context;
   error    = ockam_memory_alloc_zeroed(memory, (void**) &p_xx_key->exchange, sizeof(xx_key_exchange_ctx_t));
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   p_xx_key->exchange->vault = vault;
 
   p_xx_key->vault = vault;
 
   error = key_agreement_prologue_xx(p_xx_key->exchange);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
-  if (error) {
-    ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) {
+    ockam_log_error("%s: %d", error.domain, error.code);
     if (key) {
       if (key->context) ockam_memory_free(memory, key->context, 0);
     }
@@ -62,13 +63,13 @@ exit:
 ockam_error_t
 xx_encrypt(void* p_context, uint8_t* payload, size_t payload_size, uint8_t* msg, size_t msg_length, size_t* msg_size)
 {
-  ockam_error_t   error = OCKAM_ERROR_NONE;
+  ockam_error_t   error = ockam_key_agreement_xx_error_none;
   uint8_t         cipher_text_and_tag[MAX_XX_TRANSMIT_SIZE];
   size_t          ciphertext_and_tag_length;
   ockam_xx_key_t* xx = (ockam_xx_key_t*) p_context;
 
   if (msg_length < (payload_size + TAG_SIZE)) {
-    error = TRANSPORT_ERROR_BUFFER_TOO_SMALL;
+    error.code = OCKAM_KEY_AGREEMENT_XX_ERROR_SMALL_BUFFER;
     goto exit;
   }
 
@@ -83,13 +84,13 @@ xx_encrypt(void* p_context, uint8_t* payload, size_t payload_size, uint8_t* msg,
                                            cipher_text_and_tag,
                                            sizeof(cipher_text_and_tag),
                                            &ciphertext_and_tag_length);
-  ;
+
   ockam_memory_copy(gp_ockam_key_memory, msg, cipher_text_and_tag, ciphertext_and_tag_length);
   xx->encrypt_nonce += 1;
   *msg_size = ciphertext_and_tag_length;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
@@ -100,7 +101,7 @@ ockam_error_t xx_decrypt(void*    p_context,
                          size_t   cipher_text_length,
                          size_t*  payload_length)
 {
-  ockam_error_t   error = OCKAM_ERROR_NONE;
+  ockam_error_t   error = ockam_key_agreement_xx_error_none;
   uint8_t         clear_text[MAX_XX_TRANSMIT_SIZE];
   size_t          clear_text_length = 0;
   ockam_xx_key_t* xx                = (ockam_xx_key_t*) p_context;
@@ -117,36 +118,38 @@ ockam_error_t xx_decrypt(void*    p_context,
                                            clear_text,
                                            sizeof(clear_text),
                                            &clear_text_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   *payload_length = clear_text_length;
 
   ockam_memory_copy(gp_ockam_key_memory, payload, clear_text, clear_text_length);
   xx->decrypt_nonce += 1;
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t xx_key_deinit(void* p_context)
 {
-  ockam_error_t   error        = OCKAM_ERROR_NONE;
-  ockam_error_t   return_error = OCKAM_ERROR_NONE;
+  ockam_error_t   error        = ockam_key_agreement_xx_error_none;
+  ockam_error_t   return_error = ockam_key_agreement_xx_error_none;
   ockam_xx_key_t* p_xx_key     = (ockam_xx_key_t*) p_context;
 
   if (p_xx_key) {
     error = ockam_vault_secret_destroy(p_xx_key->vault, &p_xx_key->encrypt_secret);
-    if (error) return_error = error;
+    if (ockam_error_has_error(&error)) return_error = error;
     error = ockam_vault_secret_destroy(p_xx_key->vault, &p_xx_key->decrypt_secret);
-    if (error) return_error = error;
+    if (ockam_error_has_error(&error)) return_error = error;
     ockam_memory_free(gp_ockam_key_memory, p_xx_key, 0);
   } //!!todo - free exchange context
+
+exit:
   return return_error;
 }
 
 ockam_error_t key_agreement_prologue_xx(xx_key_exchange_ctx_t* xx)
 {
-  ockam_error_t                   error             = OCKAM_ERROR_NONE;
+  ockam_error_t                   error             = ockam_key_agreement_xx_error_none;
   ockam_vault_secret_attributes_t secret_attributes = { KEY_SIZE,
                                                         OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
                                                         OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
@@ -156,17 +159,19 @@ ockam_error_t key_agreement_prologue_xx(xx_key_exchange_ctx_t* xx)
 
   // 1. Generate a static 25519 keypair for this handshake and set it to s
   error = ockam_vault_secret_generate(xx->vault, &xx->s_secret, &secret_attributes);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, sizeof(xx->s), &key_size);
-  if (error) { goto exit; }
+  if (ockam_error_has_error(&error)) {
+    goto exit;
+  }
 
   // 2. Generate an ephemeral 25519 keypair for this handshake and set it to e
   error = ockam_vault_secret_generate(xx->vault, &xx->e_secret, &secret_attributes);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, sizeof(xx->e), &key_size);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   // 3. Set k to empty, Set n to 0
   xx->nonce = 0;
@@ -179,14 +184,14 @@ ockam_error_t key_agreement_prologue_xx(xx_key_exchange_ctx_t* xx)
   ockam_memory_copy(gp_ockam_key_memory, ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
   secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
   error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   // 5. h = SHA256(h || prologue),
   // prologue is empty
   mix_hash(xx, NULL, 0);
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
@@ -208,7 +213,7 @@ ockam_error_t hkdf_dh(xx_key_exchange_ctx_t* xx,
                       ockam_vault_secret_t*  secret1,
                       ockam_vault_secret_t*  secret2)
 {
-  ockam_error_t        error = OCKAM_ERROR_NONE;
+  ockam_error_t        error = ockam_key_agreement_xx_error_none;
   ockam_vault_secret_t shared_secret;
   ockam_vault_secret_t generated_secrets[2];
 
@@ -217,17 +222,17 @@ ockam_error_t hkdf_dh(xx_key_exchange_ctx_t* xx,
 
   // Compute shared secret
   error = ockam_vault_ecdh(xx->vault, privatekey, peer_publickey, peer_publickey_length, &shared_secret);
-  if (OCKAM_ERROR_NONE != error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   // ck, k = HKDF( ck, shared_secret )
   error = ockam_vault_hkdf_sha256(xx->vault, salt, &shared_secret, 2, generated_secrets);
-  if (OCKAM_ERROR_NONE != error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   ockam_memory_copy(gp_ockam_key_memory, secret1, &generated_secrets[0], sizeof(ockam_vault_secret_t));
   ockam_memory_copy(gp_ockam_key_memory, secret2, &generated_secrets[1], sizeof(ockam_vault_secret_t));
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
@@ -257,12 +262,11 @@ void mix_hash(xx_key_exchange_ctx_t* xx, uint8_t* p_bytes, uint16_t b_length)
   ockam_memory_copy(gp_ockam_key_memory, &string[0], &p_h[0], SHA256_SIZE);
   ockam_memory_copy(gp_ockam_key_memory, &string[SHA256_SIZE], p_bytes, b_length);
   error = ockam_vault_sha256(xx->vault, string, SHA256_SIZE + b_length, hash, SHA256_SIZE, &hash_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   ockam_memory_copy(gp_ockam_key_memory, p_h, hash, hash_length);
 
 exit:
-  if (error) ockam_log_error("%x", error);
-  return;
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
 }
 
 ockam_error_t make_vector(uint64_t nonce, uint8_t* vector)
@@ -274,5 +278,5 @@ ockam_error_t make_vector(uint64_t nonce, uint8_t* vector)
   pv = vector + 4;
   pn += 7;
   for (int i = 7; i >= 0; --i) { *pv++ = *pn--; }
-  return OCKAM_ERROR_NONE;
+  return ockam_key_agreement_xx_error_none;
 }

@@ -112,7 +112,6 @@ test_vault_hkdf_aead_data_t g_hkdf_aead_data[TEST_VAULT_HKDF_AEAD_TEST_CASES] =
 
 void test_vault_hkdf_aead(void** state)
 {
-  ockam_error_t                       error                       = OCKAM_ERROR_NONE;
   uint8_t                             i                           = 0;
   size_t                              length                      = 0;
   size_t                              hkdf_aead_encrypt_hash_size = 0;
@@ -143,10 +142,10 @@ void test_vault_hkdf_aead(void** state)
 
   hkdf_aead_encrypt_hash_size = g_hkdf_aead_data[test_data->test_count].text_size + TEST_VAULT_HKDF_AEAD_TAG_SIZE;
 
-  error = ockam_memory_alloc_zeroed(test_data->memory,
+  ockam_error_t error = ockam_memory_alloc_zeroed(test_data->memory,
                                     (void**) &hkdf_aead_encrypt_hash,
                                     hkdf_aead_encrypt_hash_size);
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     fail_msg("Unable to alloc hkdf_aead_encrypt_hash");
   }
 
@@ -154,7 +153,7 @@ void test_vault_hkdf_aead(void** state)
 
   error =
     ockam_memory_alloc_zeroed(test_data->memory, (void**) &hkdf_aead_decrypt_data, hkdf_aead_decrypt_data_size);
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     fail_msg("Unable to alloc hkdf_aead_decrypt_data");
   }
 
@@ -164,7 +163,7 @@ void test_vault_hkdf_aead(void** state)
                                                 &attributes,
                                                 g_hkdf_aead_data[test_data->test_count].salt,
                                                 g_hkdf_aead_data[test_data->test_count].salt_size);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   attributes.length = g_hkdf_aead_data[test_data->test_count].ikm_size;
   error             = ockam_vault_secret_import(test_data->vault,
@@ -172,19 +171,19 @@ void test_vault_hkdf_aead(void** state)
                                                 &attributes,
                                                 g_hkdf_aead_data[test_data->test_count].ikm,
                                                 g_hkdf_aead_data[test_data->test_count].ikm_size);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_hkdf_sha256(test_data->vault,
                                   &salt_secret,
                                   &ikm_secret,
                                   1,
                                   &hkdf_aes_key);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_secret_type_set(test_data->vault,
                                       &hkdf_aes_key,
                                       OCKAM_VAULT_SECRET_TYPE_AES128_KEY);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   error = ockam_vault_aead_aes_gcm_encrypt(test_data->vault,
                                            &hkdf_aes_key,
@@ -196,7 +195,7 @@ void test_vault_hkdf_aead(void** state)
                                            hkdf_aead_encrypt_hash,
                                            hkdf_aead_encrypt_hash_size,
                                            &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, hkdf_aead_encrypt_hash_size);
 
   assert_memory_equal(hkdf_aead_encrypt_hash,
@@ -213,7 +212,7 @@ void test_vault_hkdf_aead(void** state)
                                            hkdf_aead_decrypt_data,
                                            hkdf_aead_decrypt_data_size,
                                            &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, hkdf_aead_decrypt_data_size);
 
   assert_memory_equal(
@@ -246,7 +245,6 @@ int test_vault_hkdf_aead_teardown(void** state)
 
 int test_vault_run_hkdf_aead(ockam_vault_t* vault, ockam_memory_t* memory)
 {
-  ockam_error_t                 error        = OCKAM_ERROR_NONE;
   int                           rc           = 0;
   char*                         test_name    = 0;
   uint16_t                      i            = 0;
@@ -254,9 +252,9 @@ int test_vault_run_hkdf_aead(ockam_vault_t* vault, ockam_memory_t* memory)
   struct CMUnitTest*            cmocka_tests = 0;
   test_vault_hkdf_aead_shared_data_t shared_data;
 
-  error =
+  ockam_error_t error =
     ockam_memory_alloc_zeroed(memory, (void**) &cmocka_data, (TEST_VAULT_HKDF_AEAD_TEST_CASES * sizeof(struct CMUnitTest)));
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit_block;
   }
@@ -270,7 +268,7 @@ int test_vault_run_hkdf_aead(ockam_vault_t* vault, ockam_memory_t* memory)
 
   for (i = 0; i < TEST_VAULT_HKDF_AEAD_TEST_CASES; i++) {
     error = ockam_memory_alloc_zeroed(memory, (void**) &test_name, TEST_VAULT_HKDF_AEAD_NAME_SIZE);
-    if (error != OCKAM_ERROR_NONE) {
+    if (ockam_error_has_error(&error)) {
       rc = -1;
       goto exit_block;
     }
@@ -286,7 +284,7 @@ int test_vault_run_hkdf_aead(ockam_vault_t* vault, ockam_memory_t* memory)
     cmocka_tests++;
   }
 
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit_block;
   }

@@ -29,7 +29,7 @@ target_sources(ockam_vault_tests
 
 target_link_libraries(ockam_vault_tests
     PUBLIC
-        ockam_vault_default
+        ockam_vault_interface
         ockam_error_interface
         ockam_memory_interface
         cmocka-static

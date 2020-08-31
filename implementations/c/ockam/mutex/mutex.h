@@ -6,6 +6,12 @@
 #ifndef OCKAM_MUTEX_H_
 #define OCKAM_MUTEX_H_
 
+extern const char* const OCKAM_MUTEX_INTERFACE_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_MUTEX_INTERFACE_ERROR_INVALID_PARAM = 1,
+} ockam_error_code_mutex_interface_t;
+
 /*
  * @defgroup    OCKAM_MUTEX OCKAM_MUTEX_API
  * @ingroup     OCKAM

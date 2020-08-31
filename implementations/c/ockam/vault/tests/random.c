@@ -34,13 +34,12 @@ uint8_t g_rand_num[TEST_VAULT_RAND_NUM_SIZE] = { 0 };
  */
 void test_vault_random(void** state)
 {
-  ockam_error_t                    error     = OCKAM_ERROR_NONE;
   test_vault_random_shared_data_t* test_data = 0;
 
   test_data = (test_vault_random_shared_data_t*) *state;
 
-  error = ockam_vault_random_bytes_generate(test_data->vault, &g_rand_num[0], TEST_VAULT_RAND_NUM_SIZE);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  ockam_error_t error = ockam_vault_random_bytes_generate(test_data->vault, &g_rand_num[0], TEST_VAULT_RAND_NUM_SIZE);
+  assert_true(ockam_error_is_none(&error));
 }
 
 /**

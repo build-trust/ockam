@@ -6,9 +6,11 @@
 
 #include "ockam/error.h"
 
-#define KEYAGREEMENT_ERROR_TEST      (OCKAM_ERROR_INTERFACE_KEYAGREEMENT | 1u)
-#define KEYAGREEMENT_ERROR_FAIL      (OCKAM_ERROR_INTERFACE_KEYAGREEMENT | 2U)
-#define KEYAGREEMENT_ERROR_PARAMETER (OCKAM_ERROR_INTERFACE_KEYAGREEMENT | 3u)
+extern const char* const OCKAM_KEY_AGREEMENT_INTERFACE_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_KEY_AGREEMENT_INTERFACE_ERROR_INVALID_PARAM = 1,
+} ockam_error_code_key_agreement_interface_t;
 
 typedef struct ockam_key ockam_key_t;
 

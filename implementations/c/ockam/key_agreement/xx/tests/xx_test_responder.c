@@ -18,7 +18,7 @@ extern bool scripted_xx;
 
 ockam_error_t xx_test_responder_prologue(xx_key_exchange_ctx_t* xx)
 {
-  ockam_error_t                   error             = OCKAM_ERROR_NONE;
+  ockam_error_t                   error             = ockam_key_agreement_xx_error_none;
   ockam_vault_secret_attributes_t secret_attributes = { KEY_SIZE,
                                                         OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
                                                         OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
@@ -30,19 +30,19 @@ ockam_error_t xx_test_responder_prologue(xx_key_exchange_ctx_t* xx)
   // 1. Pick a static 25519 keypair for this xx and set it to s
   string_to_hex((uint8_t*) RESPONDER_STATIC, key, &key_bytes);
   error = ockam_vault_secret_import(xx->vault, &xx->s_secret, &secret_attributes, key, key_bytes);
-  if (error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, KEY_SIZE, &key_bytes);
-  if (error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   // 2. Generate an ephemeral 25519 keypair for this xx and set it to e
   string_to_hex((uint8_t*) RESPONDER_EPH, key, &key_bytes);
   secret_attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
   error = ockam_vault_secret_import(xx->vault, &xx->e_secret, &secret_attributes, key, key_bytes);
-  if (error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, KEY_SIZE, &key_bytes);
-  if (error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   // Nonce to 0, k to empty
   xx->nonce = 0;
@@ -55,21 +55,21 @@ ockam_error_t xx_test_responder_prologue(xx_key_exchange_ctx_t* xx)
   memcpy(ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
   secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
   error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
-  if (error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   // 5. h = SHA256(h || prologue),
   // prologue is empty
   mix_hash(xx, NULL, 0);
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t test_responder_handshake(
   ockam_key_t* key, ockam_memory_t* memory, ockam_vault_t* vault, ockam_reader_t* reader, ockam_writer_t* writer)
 {
-  ockam_error_t   error = OCKAM_ERROR_INTERFACE_KEYAGREEMENT;
+  ockam_error_t   error = ockam_key_agreement_xx_error_none;
   uint8_t         write_buffer[MAX_XX_TRANSMIT_SIZE];
   uint8_t         read_buffer[MAX_XX_TRANSMIT_SIZE];
   size_t          transmit_size  = 0;
@@ -84,53 +84,55 @@ ockam_error_t test_responder_handshake(
 
   /* Prologue initializes keys and xx parameters */
   error = xx_test_responder_prologue(xx->exchange);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Msg 1 receive */
   do {
     error = ockam_read(xx->reader, read_buffer, MAX_XX_TRANSMIT_SIZE, &bytes_received);
-    if (error) {
-      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+    if (ockam_error_has_error(&error)) {
+      if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+            && error.domain == OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN)) goto exit;
       usleep(500);
     }
-  } while (error);
+  } while (ockam_error_has_error(&error));
   /* Msg 1 process */
   error = xx_responder_m1_process(xx, read_buffer);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Msg 2 make */
   error = xx_responder_m2_make(xx, write_buffer, sizeof(write_buffer), &transmit_size);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Msg 2 verify */
   string_to_hex((uint8_t*) MSG_2_CIPHERTEXT, compare, &compare_bytes);
   if (0 != memcmp(&write_buffer, compare, compare_bytes)) {
-    error = KEYAGREEMENT_ERROR_TEST;
+    error.code = -1;
     goto exit;
   }
 
   /* Msg 2 send */
   error = ockam_write(xx->writer, write_buffer, transmit_size);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Msg 3 receive */
   do {
     error = ockam_read(xx->reader, read_buffer, MAX_XX_TRANSMIT_SIZE, &bytes_received);
-    if (error) {
-      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+    if (ockam_error_has_error(&error)) {
+      if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+            && error.domain == OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN)) goto exit;
       usleep(500);
     }
-  } while (error);
+  } while (ockam_error_has_error(&error));
   /* Msg 3 process */
   error = xx_responder_m3_process(xx, read_buffer);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Epilogue */
   error = xx_responder_epilogue(key);
-  if (TRANSPORT_ERROR_NONE != error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
@@ -140,69 +142,69 @@ ockam_error_t establish_responder_connection(ockam_transport_t*  p_transport,
                                              ockam_reader_t**    pp_reader,
                                              ockam_writer_t**    pp_writer)
 {
-  ockam_error_t                       error = OCKAM_ERROR_INTERFACE_KEYAGREEMENT;
+  ockam_error_t                       error = ockam_key_agreement_xx_error_none;
   ockam_transport_socket_attributes_t transport_attributes;
 
   memcpy(&transport_attributes.local_address, p_address, sizeof(ockam_ip_address_t));
   transport_attributes.p_memory = p_memory;
   error                         = ockam_transport_socket_udp_init(p_transport, &transport_attributes);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   // Wait for a connection
   error = ockam_transport_accept(p_transport, pp_reader, pp_writer, NULL);
-  if (error) { goto exit; }
-
-  error = OCKAM_ERROR_NONE;
+  if (ockam_error_has_error(&error)) { goto exit; }
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
 ockam_error_t run_responder_exchange(ockam_key_t* key, struct ockam_reader_t* reader, struct ockam_writer_t* writer)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_key_agreement_xx_error_none;
   uint8_t       message[MAX_XX_TRANSMIT_SIZE];
   size_t        message_length = 0;
 
   /* Msg 1 receive */
   do {
     error = ockam_read(reader, message, sizeof(message), &message_length);
-    if (error) {
-      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+    if (ockam_error_has_error(&error)) {
+      if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+            && error.domain == OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN)) goto exit;
       usleep(500 * 1000);
     }
-  } while (error);
+  } while (ockam_error_has_error(&error));
   /* Msg 1 process */
   error = ockam_key_m1_process(key, message);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Msg 2 make */
   error = ockam_key_m2_make(key, message, sizeof(message), &message_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Msg 2 send */
   error = ockam_write(writer, message, message_length);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Msg 3 receive */
   do {
     error = ockam_read(reader, message, sizeof(message), &message_length);
-    if (error) {
-      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+    if (ockam_error_has_error(&error)) {
+      if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+            && error.domain == OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN)) goto exit;
       usleep(500);
     }
-  } while (error);
+  } while (ockam_error_has_error(&error));
   /* Msg 3 process */
   error = ockam_key_m3_process(key, message);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Epilogue */
   error = ockam_responder_epilogue(key);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   printf("Responder secure\n");
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
 
   return error;
 }
@@ -212,11 +214,11 @@ extern ockam_key_dispatch_table_t xx_key_dispatch;
 
 ockam_error_t test_responder_initialize(ockam_key_t* key, ockam_memory_t* memory, ockam_vault_t* vault)
 {
-  ockam_error_t   error    = OCKAM_ERROR_NONE;
+  ockam_error_t   error    = ockam_key_agreement_xx_error_none;
   ockam_xx_key_t* p_xx_key = NULL;
 
   if (!key || !vault || !memory) {
-    error = KEYAGREEMENT_ERROR_PARAMETER;
+    error.code = -1;
     goto exit;
   }
 
@@ -227,18 +229,18 @@ ockam_error_t test_responder_initialize(ockam_key_t* key, ockam_memory_t* memory
 
   p_xx_key = (ockam_xx_key_t*) key->context;
   error    = ockam_memory_alloc_zeroed(memory, (void**) &p_xx_key->exchange, sizeof(xx_key_exchange_ctx_t));
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
   p_xx_key->exchange->vault = vault;
 
   p_xx_key->vault = vault;
 
   /* Prologue initializes keys and handshake parameters */
   error = xx_test_responder_prologue(p_xx_key->exchange);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
-  if (error) {
-    ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) {
+    ockam_log_error("%s: %d", error.domain, error.code);
     if (key) {
       if (key->context) ockam_memory_free(memory, key->context, 0);
     }
@@ -249,7 +251,7 @@ exit:
 ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory, ockam_ip_address_t* ip_address)
 {
   ockam_transport_t transport = { 0 };
-  ockam_error_t     error     = OCKAM_ERROR_INTERFACE_KEYAGREEMENT;
+  ockam_error_t     error     = ockam_key_agreement_xx_error_none;
 
   uint8_t         write_buffer[MAX_XX_TRANSMIT_SIZE];
   uint8_t         read_buffer[MAX_XX_TRANSMIT_SIZE];
@@ -267,7 +269,7 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
    * Establish transport connection with responder
    *-----------------------------------------------------------------------*/
   error = establish_responder_connection(&transport, p_memory, ip_address, &p_reader, &p_writer);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /*-------------------------------------------------------------------------
    * Perform the secret xx
@@ -276,15 +278,15 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
 
   if (scripted_xx) {
     error = test_responder_initialize(&key, p_memory, p_vault);
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
     error = test_responder_handshake(&key, p_memory, p_vault, p_reader, p_writer);
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
   } else {
     error = ockam_xx_key_initialize(&key, p_memory, p_vault);
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
     error = run_responder_exchange(&key, p_reader, p_writer);
   }
-  if (error) { goto exit; }
+  if (ockam_error_has_error(&error)) { goto exit; }
 
   /*-------------------------------------------------------------------------
    * Verify secure channel by sending and receiving a known message
@@ -294,57 +296,57 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
     /* Convert string to hex bytes and encrypt */
     string_to_hex((uint8_t*) TEST_MSG_RESPONDER, test, &test_size);
     error = ockam_key_encrypt(&key, test, test_size, write_buffer, sizeof(write_buffer), &transmit_size);
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
     /* Verify test message ciphertext */
     string_to_hex((uint8_t*) MSG_4_CIPHERTEXT, comp, &comp_size);
     if (0 != memcmp(comp, write_buffer, transmit_size)) {
-      error = KEYAGREEMENT_ERROR_FAIL;
+      error.code = -1;
       goto exit;
     }
   } else {
     error = ockam_key_encrypt(&key, (uint8_t*) ACK_TEXT, ACK_SIZE, write_buffer, sizeof(write_buffer), &transmit_size);
-    if (error != TRANSPORT_ERROR_NONE) {
-      ockam_log_error("%x", error);
+    if (ockam_error_has_error(&error)) {
+      ockam_log_error("%s: %d", error.domain, error.code);
       goto exit;
     }
   }
 
   /* Send test message */
   error = ockam_write(p_writer, write_buffer, transmit_size);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Receive test message  */
   memset(read_buffer, 0, sizeof(read_buffer));
   do {
     error = ockam_read(p_reader, read_buffer, MAX_XX_TRANSMIT_SIZE, &transmit_size);
-    if (error) {
-      if (error != TRANSPORT_INFO_NO_DATA) goto exit;
+    if (ockam_error_has_error(&error)) {
+      if (!(error.code == OCKAM_TRANSPORT_INTERFACE_ERROR_NO_DATA
+            && error.domain == OCKAM_TRANSPORT_INTERFACE_ERROR_DOMAIN)) goto exit;
       usleep(50000);
     }
-  } while (error);
+  } while (ockam_error_has_error(&error));
 
   /* Decrypt test message */
 
   error = ockam_key_decrypt(&key, test, TEST_MSG_BYTE_SIZE, read_buffer, transmit_size, &test_size);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   /* Verify test message */
   if (scripted_xx) {
     string_to_hex((uint8_t*) TEST_MSG_INITIATOR, test_initiator, NULL);
     if (0 != memcmp((void*) test, test_initiator, TEST_MSG_BYTE_SIZE)) {
-      error = KEYAGREEMENT_ERROR_FAIL;
+      error.code = -1;
       goto exit;
     }
   } else {
     if (0 != memcmp(OK, test, OK_SIZE)) {
-      error = KEYAGREEMENT_ERROR_FAIL;
+      error.code = -1;
       goto exit;
     }
   }
-  error = OCKAM_ERROR_NONE;
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   ockam_transport_deinit(&transport);
-  printf("Responder test ended with error %.4x\n", error);
+  printf("Responder test ended with error %d\n", error.code);
   return error;
 }

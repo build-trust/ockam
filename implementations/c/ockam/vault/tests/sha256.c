@@ -1065,7 +1065,6 @@ test_vault_sha256_data_t g_sha256_data[] =
  */
 void test_vault_sha256(void** state)
 {
-  ockam_error_t                    error                                        = OCKAM_ERROR_NONE;
   test_vault_sha256_shared_data_t* test_data                                    = 0;
   size_t                           length                                       = 0;
   uint8_t                          sha256_digest[TEST_VAULT_SHA256_DIGEST_SIZE] = { 0 };
@@ -1076,13 +1075,13 @@ void test_vault_sha256(void** state)
     fail_msg("Test count %d has exceeded max test count of %d", test_data->test_count, test_data->test_count_max);
   }
 
-  error = ockam_vault_sha256(test_data->vault,
+  ockam_error_t error = ockam_vault_sha256(test_data->vault,
                              (&(g_sha256_data[test_data->test_count].msg[0])),
                              (g_sha256_data[test_data->test_count].len / 8),
                              &sha256_digest[0],
                              TEST_VAULT_SHA256_DIGEST_SIZE,
                              &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, TEST_VAULT_SHA256_DIGEST_SIZE);
 
   assert_memory_equal(
@@ -1109,7 +1108,6 @@ int test_vault_sha256_teardown(void** state)
  */
 int test_vault_run_sha256(ockam_vault_t* vault, ockam_memory_t* memory)
 {
-  ockam_error_t                   error        = OCKAM_ERROR_NONE;
   int                             rc           = 0;
   char*                           test_name    = 0;
   uint16_t                        i            = 0;
@@ -1117,9 +1115,9 @@ int test_vault_run_sha256(ockam_vault_t* vault, ockam_memory_t* memory)
   struct CMUnitTest*              cmocka_tests = 0;
   test_vault_sha256_shared_data_t shared_data;
 
-  error = ockam_memory_alloc_zeroed(
+  ockam_error_t error = ockam_memory_alloc_zeroed(
     memory, (void**) &cmocka_data, (TEST_VAULT_SHA256_TEST_CASES * sizeof(struct CMUnitTest)));
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit;
   }
@@ -1134,7 +1132,7 @@ int test_vault_run_sha256(ockam_vault_t* vault, ockam_memory_t* memory)
 
   for (i = 0; i < TEST_VAULT_SHA256_TEST_CASES; i++) {
     error = ockam_memory_alloc_zeroed(memory, (void**) &test_name, TEST_VAULT_SHA256_NAME_SIZE);
-    if (error != OCKAM_ERROR_NONE) {
+    if (ockam_error_has_error(&error)) {
       rc = -1;
       goto exit;
     }
@@ -1150,7 +1148,7 @@ int test_vault_run_sha256(ockam_vault_t* vault, ockam_memory_t* memory)
     cmocka_tests++;
   }
 
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit;
   }

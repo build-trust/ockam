@@ -5,6 +5,13 @@
 #include "socket.h"
 #include <stdio.h>
 
+const char* const OCKAM_TRANSPORT_POSIX_SOCKET_ERROR_DOMAIN = "OCKAM_TRANSPORT_POSIX_SOCKET_ERROR_DOMAIN";
+
+const ockam_error_t ockam_transport_posix_socket_error_none = {
+  OCKAM_ERROR_NONE,
+  OCKAM_TRANSPORT_POSIX_SOCKET_ERROR_DOMAIN
+};
+
 extern ockam_memory_t* gp_ockam_transport_memory;
 
 ockam_error_t make_socket_reader_writer(posix_socket_t* p_ctx,
@@ -13,10 +20,11 @@ ockam_error_t make_socket_reader_writer(posix_socket_t* p_ctx,
                                         ockam_reader_t** pp_reader,
                                         ockam_writer_t** pp_writer)
 {
-  ockam_error_t error = TRANSPORT_ERROR_NONE;
+  ockam_error_t error = ockam_transport_posix_socket_error_none;
+
   if (NULL != pp_reader) {
     error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_ctx->p_reader, sizeof(ockam_reader_t));
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
 
     p_ctx->p_reader->read = socket_read;
     p_ctx->p_reader->ctx  = p_ctx;
@@ -24,14 +32,14 @@ ockam_error_t make_socket_reader_writer(posix_socket_t* p_ctx,
   }
   if (NULL != pp_writer) {
     error = ockam_memory_alloc_zeroed(gp_ockam_transport_memory, (void**) &p_ctx->p_writer, sizeof(ockam_writer_t));
-    if (error) goto exit;
+    if (ockam_error_has_error(&error)) goto exit;
 
     p_ctx->p_writer->write = socket_write;
     p_ctx->p_writer->ctx   = p_ctx;
     *pp_writer             = p_ctx->p_writer;
   }
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 
@@ -45,7 +53,7 @@ exit:
  */
 ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, struct sockaddr_in* p_socket_address)
 {
-  ockam_error_t error     = OCKAM_ERROR_NONE;
+  ockam_error_t error     = ockam_transport_posix_socket_error_none;
   int           in_status = 0;
 
   // Get the host IP address and port
@@ -54,7 +62,7 @@ ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, s
   if (NULL != p_ip_address) {
     in_status = inet_pton(AF_INET, (char*) p_ip_address, &p_socket_address->sin_addr.s_addr);
     if (1 != in_status) {
-      error = TRANSPORT_ERROR_BAD_ADDRESS;
+      error.code = OCKAM_TRANSPORT_POSIX_SOCKET_ERROR_BAD_ADDRESS;
       goto exit;
     }
   } else {
@@ -62,7 +70,7 @@ ockam_error_t make_socket_address(const uint8_t* p_ip_address, in_port_t port, s
   }
 
 exit:
-  if (error) ockam_log_error("%x", error);
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
   return error;
 }
 

@@ -19,9 +19,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define OCKAM_MEMORY_ERROR_INVALID_PARAM (OCKAM_ERROR_INTERFACE_MEMORY | 1u)
-#define OCKAM_MEMORY_ERROR_INVALID_SIZE  (OCKAM_ERROR_INTERFACE_MEMORY | 2u)
-#define OCKAM_MEMORY_ERROR_ALLOC_FAIL    (OCKAM_ERROR_INTERFACE_MEMORY | 3u)
+extern const char* const OCKAM_MEMORY_INTERFACE_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_MEMORY_INTERFACE_ERROR_INVALID_PARAM = 1,
+} ockam_error_code_memory_interface_t;
 
 struct ockam_memory_t;
 typedef struct ockam_memory_t ockam_memory_t;

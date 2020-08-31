@@ -24,6 +24,7 @@
 #define OK_SIZE  2
 
 bool               scripted_xx        = false;
+// FIXME: CI tests will run the test without enabling initiator&responder
 bool               run_initiator      = false;
 bool               run_responder      = false;
 ockam_ip_address_t ockam_initiator_ip = { "", "127.0.0.1", 4050 };
@@ -39,10 +40,10 @@ void usage()
   printf("  -s \t\t\t\tUse scripted test case\n\n");
 }
 
-ockam_error_t parse_opts(int argc, char* argv[])
+int parse_opts(int argc, char* argv[])
 {
-  int           ch;
-  ockam_error_t status = OCKAM_ERROR_NONE;
+  int ch;
+  int status = 0;
   while ((ch = getopt(argc, argv, "hsira:b:")) != -1) {
     switch (ch) {
     case 'h':
@@ -82,9 +83,9 @@ ockam_error_t parse_opts(int argc, char* argv[])
       break;
 
     case '?':
-      status = TRANSPORT_ERROR_BAD_PARAMETER;
+      status = -1;
       usage();
-      ockam_log_error("%x", TRANSPORT_ERROR_BAD_PARAMETER);
+      ockam_log_error("invalid command-line arguments: %d", status);
       return 2;
 
     default:
@@ -97,7 +98,6 @@ ockam_error_t parse_opts(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-  ockam_error_t  error             = OCKAM_ERROR_NONE;
   ockam_vault_t  vault             = { 0 };
   ockam_memory_t memory            = { 0 };
   ockam_random_t random            = { 0 };
@@ -108,22 +108,22 @@ int main(int argc, char* argv[])
 
   ockam_vault_default_attributes_t vault_attributes = { .memory = &memory, .random = &random };
 
-  error = ockam_memory_stdlib_init(&memory);
-  if (error) goto exit;
+  ockam_error_t error = ockam_memory_stdlib_init(&memory);
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_random_urandom_init(&random);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = ockam_vault_default_init(&vault, &vault_attributes);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   ockam_log_set_level(OCKAM_LOG_LEVEL_ERROR);
 
   /*-------------------------------------------------------------------------
    * Parse options
    *-----------------------------------------------------------------------*/
-  error = parse_opts(argc, argv);
-  if (error) goto exit;
+  int status = parse_opts(argc, argv);
+  if (status) goto exit;
   printf("Initiator       : %s:%u\n", ockam_initiator_ip.ip_address, ockam_initiator_ip.port);
   printf("Responder       : %s:%u\n", ockam_responder_ip.ip_address, ockam_responder_ip.port);
   printf("Run initiator   : %d\n", run_initiator);
@@ -136,13 +136,13 @@ int main(int argc, char* argv[])
 
   responder_process = fork();
   if (responder_process < 0) {
-    error = KEYAGREEMENT_ERROR_TEST;
+    status = -1;
     goto exit;
   }
   if (0 != responder_process) {
     if (run_initiator) {
       error = xx_test_initiator(&vault, &memory, &ockam_initiator_ip, &ockam_responder_ip);
-      if (error) {
+      if (ockam_error_has_error(&error)) {
         initiator_status = -1;
         goto exit;
       }
@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
     if (run_responder) {
       // This is the server process
       error = xx_test_responder(&vault, &memory, &ockam_responder_ip);
-      if (error) goto exit;
+      if (ockam_error_has_error(&error)) goto exit;
     }
   }
 
@@ -166,6 +166,8 @@ exit:
   printf("Tests done\n");
   if (initiator_status) printf("Initiator failed.\n");
   if (responder_status) printf("Responder failed.\n");
-  if (error) ockam_log_error("%x", error);
-  return error;
+  if (ockam_error_has_error(&error)) ockam_log_error("%s: %d", error.domain, error.code);
+  if (status) ockam_log_error("Status: %d", status);
+
+  return error.code + status;
 }

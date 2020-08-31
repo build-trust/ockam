@@ -21,7 +21,7 @@ int _test_endpoints_setup(void** state)
   }
 
 exit_block:
-  if (error) ockam_log_error("%x", error);
+  if (error) ockam_log_error("%d", error);
   return 0;
 }
 

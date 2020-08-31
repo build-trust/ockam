@@ -136,7 +136,6 @@ test_vault_hkdf_data_t g_hkdf_data[TEST_VAULT_HKDF_TEST_CASES] =
 
 void test_vault_hkdf(void** state)
 {
-  ockam_error_t                  error     = OCKAM_ERROR_NONE;
   uint8_t                        i         = 0;
   uint8_t*                       hkdf_key  = 0;
   test_vault_hkdf_shared_data_t* test_data = 0;
@@ -168,12 +167,12 @@ void test_vault_hkdf(void** state)
   attributes.type        = OCKAM_VAULT_SECRET_TYPE_BUFFER;
 
   attributes.length = g_hkdf_data[test_data->test_count].salt_size;
-  error             = ockam_vault_secret_import(test_data->vault,
+  ockam_error_t error             = ockam_vault_secret_import(test_data->vault,
                                     &salt_secret,
                                     &attributes,
                                     g_hkdf_data[test_data->test_count].salt,
                                     g_hkdf_data[test_data->test_count].salt_size);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   if (g_hkdf_data[test_data->test_count].ikm != 0) {
     attributes.length = g_hkdf_data[test_data->test_count].ikm_size;
@@ -182,18 +181,18 @@ void test_vault_hkdf(void** state)
                                       &attributes,
                                       g_hkdf_data[test_data->test_count].ikm,
                                       g_hkdf_data[test_data->test_count].ikm_size);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
 
     error = ockam_vault_hkdf_sha256(test_data->vault,
                                     &salt_secret,
                                     &ikm_secret,
                                     g_hkdf_data[test_data->test_count].output_count,
                                     &derived_outputs[0]);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
   } else {
     error = ockam_vault_hkdf_sha256(
       test_data->vault, &salt_secret, 0, g_hkdf_data[test_data->test_count].output_count, &derived_outputs[0]);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
   }
 
   for (i = 0; i < g_hkdf_data[test_data->test_count].output_count; i++) {
@@ -204,7 +203,7 @@ void test_vault_hkdf(void** state)
 
     error = ockam_vault_secret_export(
       test_data->vault, &derived_outputs[i], &generated_output[0], TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE, &length);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
     assert_int_equal(length, TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE);
 
     assert_memory_equal(&generated_output[0], expected_output, TEST_VAULT_HKDF_DERIVED_OUTPUT_SIZE);
@@ -249,7 +248,6 @@ int test_vault_hkdf_teardown(void** state)
 
 int test_vault_run_hkdf(ockam_vault_t* vault, ockam_memory_t* memory)
 {
-  ockam_error_t                 error        = OCKAM_ERROR_NONE;
   int                           rc           = 0;
   char*                         test_name    = 0;
   uint16_t                      i            = 0;
@@ -257,9 +255,9 @@ int test_vault_run_hkdf(ockam_vault_t* vault, ockam_memory_t* memory)
   struct CMUnitTest*            cmocka_tests = 0;
   test_vault_hkdf_shared_data_t shared_data;
 
-  error =
+  ockam_error_t error =
     ockam_memory_alloc_zeroed(memory, (void**) &cmocka_data, (TEST_VAULT_HKDF_TEST_CASES * sizeof(struct CMUnitTest)));
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit_block;
   }
@@ -273,7 +271,7 @@ int test_vault_run_hkdf(ockam_vault_t* vault, ockam_memory_t* memory)
 
   for (i = 0; i < TEST_VAULT_HKDF_TEST_CASES; i++) {
     error = ockam_memory_alloc_zeroed(memory, (void**) &test_name, TEST_VAULT_HKDF_NAME_SIZE);
-    if (error != OCKAM_ERROR_NONE) {
+    if (ockam_error_has_error(&error)) {
       rc = -1;
       goto exit_block;
     }
@@ -289,7 +287,7 @@ int test_vault_run_hkdf(ockam_vault_t* vault, ockam_memory_t* memory)
     cmocka_tests++;
   }
 
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit_block;
   }

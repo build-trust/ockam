@@ -3,8 +3,14 @@
 #include <stdint.h>
 #include "ockam/error.h"
 
-#define CODEC_ERROR_PARAMETER       (OCKAM_ERROR_INTERFACE_CODEC | 0x0001u)
-#define CODEC_ERROR_NOT_IMPLEMENTED (OCKAM_ERROR_INTERFACE_CODEC | 0X0002u)
+extern const char* const OCKAM_CODEC_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_CODEC_ERROR_INVALID_PARAM   = 1,
+  OCKAM_CODEC_ERROR_NOT_IMPLEMENTED = 2,
+} ockam_error_code_codec_t;
+
+extern const ockam_error_t ockam_codec_error_none;
 
 #define OCKAM_WIRE_PROTOCOL_VERSION 1
 

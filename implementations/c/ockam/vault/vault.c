@@ -3,12 +3,19 @@
 
 #include "ockam/vault/impl.h"
 
+const char* const OCKAM_VAULT_INTERFACE_ERROR_DOMAIN = "OCKAM_VAULT_INTERFACE_ERROR_DOMAIN";
+
+static const ockam_error_t ockam_vault_interface_error_none = {
+  OCKAM_ERROR_NONE,
+  OCKAM_VAULT_INTERFACE_ERROR_DOMAIN
+};
+
 ockam_error_t ockam_vault_deinit(ockam_vault_t* vault)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -20,10 +27,10 @@ exit:
 
 ockam_error_t ockam_vault_random_bytes_generate(ockam_vault_t* vault, uint8_t* buffer, size_t buffer_size)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if ((vault == 0) || buffer == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -40,10 +47,10 @@ ockam_error_t ockam_vault_sha256(ockam_vault_t* vault,
                                  size_t         digest_size,
                                  size_t*        digest_length)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if ((vault == 0) || (digest == 0)) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -57,10 +64,10 @@ ockam_error_t ockam_vault_secret_generate(ockam_vault_t*                        
                                           ockam_vault_secret_t*                  secret,
                                           const ockam_vault_secret_attributes_t* attributes)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -76,10 +83,10 @@ ockam_error_t ockam_vault_secret_import(ockam_vault_t*                         v
                                         const uint8_t*                         input,
                                         size_t                                 input_length)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -95,10 +102,10 @@ ockam_error_t ockam_vault_secret_export(ockam_vault_t*        vault,
                                         size_t                output_buffer_size,
                                         size_t*               output_buffer_length)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -114,10 +121,10 @@ ockam_error_t ockam_vault_secret_publickey_get(ockam_vault_t*        vault,
                                                size_t                output_buffer_size,
                                                size_t*               output_buffer_length)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -131,10 +138,10 @@ ockam_error_t ockam_vault_secret_attributes_get(ockam_vault_t*                  
                                                 ockam_vault_secret_t*            secret,
                                                 ockam_vault_secret_attributes_t* attributes)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -147,10 +154,10 @@ exit:
 ockam_error_t
 ockam_vault_secret_type_set(ockam_vault_t* vault, ockam_vault_secret_t* secret, ockam_vault_secret_type_t type)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -162,10 +169,10 @@ exit:
 
 ockam_error_t ockam_vault_secret_destroy(ockam_vault_t* vault, ockam_vault_secret_t* secret)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -181,10 +188,10 @@ ockam_error_t ockam_vault_ecdh(ockam_vault_t*        vault,
                                size_t                peer_publickey_length,
                                ockam_vault_secret_t* shared_secret)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -200,10 +207,10 @@ ockam_error_t ockam_vault_hkdf_sha256(ockam_vault_t*        vault,
                                       uint8_t               derived_outputs_count,
                                       ockam_vault_secret_t* derived_outputs)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if (vault == 0) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -224,10 +231,10 @@ ockam_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
                                                size_t                ciphertext_and_tag_size,
                                                size_t*               ciphertext_and_tag_length)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if ((vault == 0) || (ciphertext_and_tag == 0)) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -256,10 +263,10 @@ ockam_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
                                                size_t                plaintext_size,
                                                size_t*               plaintext_length)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_vault_interface_error_none;
 
   if ((vault == 0) || (plaintext == 0)) {
-    error = OCKAM_VAULT_ERROR_INVALID_PARAM;
+    error.code = OCKAM_VAULT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
 

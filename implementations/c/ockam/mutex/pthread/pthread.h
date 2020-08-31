@@ -12,6 +12,14 @@
 
 #include "ockam/mutex/impl.h"
 
+extern const char* const OCKAM_MUTEX_PTHREAD_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_MUTEX_PTHREAD_ERROR_INVALID_PARAM = 1,
+  OCKAM_MUTEX_PTHREAD_ERROR_INVALID_CONTEXT = 2,
+  OCKAM_MUTEX_PTHREAD_ERROR_CREATE_FAIL = 3,
+} ockam_error_code_mutex_pthread_t;
+
 typedef struct {
   ockam_memory_t* memory;
 } ockam_mutex_pthread_attributes_t;

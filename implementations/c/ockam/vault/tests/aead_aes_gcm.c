@@ -189,7 +189,6 @@ test_vault_aead_aes_gcm_data_t g_aead_aes_gcm_data[TEST_VAULT_AEAD_AES_GCM_TEST_
  */
 void test_vault_aead_aes_gcm(void** state)
 {
-  ockam_error_t                          error                          = OCKAM_ERROR_NONE;
   test_vault_aead_aes_gcm_shared_data_t* test_data                      = 0;
   size_t                                 length                         = 0;
   size_t                                 aead_aes_gcm_encrypt_hash_size = 0;
@@ -227,15 +226,15 @@ void test_vault_aead_aes_gcm(void** state)
     aead_aes_gcm_encrypt_hash_size =
       g_aead_aes_gcm_data[test_data->test_count].text_size + TEST_VAULT_AEAD_AES_GCM_TAG_SIZE;
 
-    error =
+    ockam_error_t error =
       ockam_memory_alloc_zeroed(test_data->memory, (void**) &aead_aes_gcm_encrypt_hash, aead_aes_gcm_encrypt_hash_size);
-    if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc aead_aes_gcm_encrypt_hash"); }
+    if (ockam_error_has_error(&error)) { fail_msg("Unable to alloc aead_aes_gcm_encrypt_hash"); }
 
     aead_aes_gcm_decrypt_data_size = g_aead_aes_gcm_data[test_data->test_count].text_size;
 
     error =
       ockam_memory_alloc_zeroed(test_data->memory, (void**) &aead_aes_gcm_decrypt_data, aead_aes_gcm_decrypt_data_size);
-    if (error != OCKAM_ERROR_NONE) { fail_msg("Unable to alloc aead_aes_gcm_decrypt_data"); }
+    if (ockam_error_has_error(&error)) { fail_msg("Unable to alloc aead_aes_gcm_decrypt_data"); }
   }
 
   /* ------- */
@@ -247,19 +246,19 @@ void test_vault_aead_aes_gcm(void** state)
   attributes.type        = OCKAM_VAULT_SECRET_TYPE_BUFFER;
   attributes.length      = g_aead_aes_gcm_data[test_data->test_count].key_size;
 
-  error = ockam_vault_secret_import(test_data->vault,
+  ockam_error_t error = ockam_vault_secret_import(test_data->vault,
                                     &key_secret,
                                     &attributes,
                                     g_aead_aes_gcm_data[test_data->test_count].key,
                                     g_aead_aes_gcm_data[test_data->test_count].key_size);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
 
   if (attributes.length == OCKAM_VAULT_AES128_KEY_LENGTH) {
     error = ockam_vault_secret_type_set(test_data->vault, &key_secret, OCKAM_VAULT_SECRET_TYPE_AES128_KEY);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
   } else if (attributes.length == OCKAM_VAULT_AES256_KEY_LENGTH) {
     error = ockam_vault_secret_type_set(test_data->vault, &key_secret, OCKAM_VAULT_SECRET_TYPE_AES256_KEY);
-    assert_int_equal(error, OCKAM_ERROR_NONE);
+    assert_true(ockam_error_is_none(&error));
   } else {
     fail_msg("Invalid AES key specified");
   }
@@ -278,7 +277,7 @@ void test_vault_aead_aes_gcm(void** state)
                                            aead_aes_gcm_encrypt_hash,
                                            aead_aes_gcm_encrypt_hash_size,
                                            &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, aead_aes_gcm_encrypt_hash_size);
 
   assert_memory_equal(aead_aes_gcm_encrypt_hash,
@@ -299,7 +298,7 @@ void test_vault_aead_aes_gcm(void** state)
                                            aead_aes_gcm_decrypt_data,
                                            aead_aes_gcm_decrypt_data_size,
                                            &length);
-  assert_int_equal(error, OCKAM_ERROR_NONE);
+  assert_true(ockam_error_is_none(&error));
   assert_int_equal(length, aead_aes_gcm_decrypt_data_size);
 
   assert_memory_equal(
@@ -341,7 +340,6 @@ int test_vault_aead_aes_gcm_teardown(void** state)
  */
 int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory, TEST_VAULT_AEAD_AES_GCM_KEY_e key)
 {
-  ockam_error_t                         error        = OCKAM_ERROR_NONE;
   int                                   rc           = 0;
   char*                                 test_name    = 0;
   uint16_t                              i            = 0;
@@ -349,9 +347,9 @@ int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory, TE
   struct CMUnitTest*                    cmocka_tests = 0;
   test_vault_aead_aes_gcm_shared_data_t shared_data;
 
-  error = ockam_memory_alloc_zeroed(
+  ockam_error_t error = ockam_memory_alloc_zeroed(
     memory, (void**) &cmocka_data, TEST_VAULT_AEAD_AES_GCM_TEST_CASES * sizeof(struct CMUnitTest));
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     rc = -1;
     goto exit_block;
   }
@@ -366,7 +364,7 @@ int test_vault_run_aead_aes_gcm(ockam_vault_t* vault, ockam_memory_t* memory, TE
 
   for (i = 0; i < TEST_VAULT_AEAD_AES_GCM_TEST_CASES; i++) {
     error = ockam_memory_alloc_zeroed(memory, (void**) &test_name, TEST_VAULT_AEAD_AES_GCM_NAME_SIZE);
-    if (error != OCKAM_ERROR_NONE) {
+    if (ockam_error_has_error(&error)) {
       rc = -1;
       goto exit_block;
     }

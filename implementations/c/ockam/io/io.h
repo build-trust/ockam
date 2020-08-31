@@ -6,7 +6,12 @@
 
 #include "ockam/error.h"
 
-#define IO_ERROR_INVALID_READER (OCKAM_ERROR_INTERFACE_IO | 1u)
+extern const char* const OCKAM_IO_INTERFACE_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_IO_INTERFACE_ERROR_INVALID_READER = 1,
+  OCKAM_IO_INTERFACE_ERROR_INVALID_WRITER = 2,
+} ockam_error_code_io_interface_t;
 
 typedef struct ockam_reader_t ockam_reader_t;
 

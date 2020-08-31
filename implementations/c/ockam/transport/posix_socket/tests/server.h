@@ -3,6 +3,6 @@
 
 #include "tools.h"
 
-int run_test_server(test_cli_params_t* p_params);
+ockam_error_t run_test_server(test_cli_params_t* p_params);
 
 #endif // OCKAM_SERVER_H

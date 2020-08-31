@@ -19,9 +19,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define OCKAM_RANDOM_ERROR_INVALID_PARAM  (OCKAM_ERROR_INTERFACE_RANDOM | 1u)
-#define OCKAM_RANDOM_ERROR_INVALID_SIZE   (OCKAM_ERROR_INTERFACE_RANDOM | 2u)
-#define OCKAM_RANDOM_ERROR_GET_BYTES_FAIL (OCKAM_ERROR_INTERFACE_RANDOM | 3u)
+extern const char* const OCKAM_RANDOM_INTERFACE_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_RANDOM_INTERFACE_ERROR_INVALID_PARAM = 1,
+} ockam_error_code_random_interface_t;
 
 struct ockam_random_t;
 typedef struct ockam_random_t ockam_random_t;

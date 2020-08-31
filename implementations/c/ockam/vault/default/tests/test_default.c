@@ -28,7 +28,6 @@
 int main(void)
 {
   int                              rc               = 0;
-  ockam_error_t                    error            = OCKAM_ERROR_NONE;
   ockam_vault_t                    vault            = { 0 };
   ockam_memory_t                   memory           = { 0 };
   ockam_random_t                   random           = { 0 };
@@ -36,20 +35,20 @@ int main(void)
 
   cmocka_set_message_output(CM_OUTPUT_XML);
 
-  error = ockam_memory_stdlib_init(&memory);
-  if (error != OCKAM_ERROR_NONE) {
+  ockam_error_t error = ockam_memory_stdlib_init(&memory);
+  if (ockam_error_has_error(&error)) {
     printf("FAIL: Memory\r\n");
     goto exit;
   }
 
   error = ockam_random_urandom_init(&random);
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     printf("FAIL: Random\r\n");
     goto exit;
   }
 
   error = ockam_vault_default_init(&vault, &vault_attributes);
-  if (error != OCKAM_ERROR_NONE) {
+  if (ockam_error_has_error(&error)) {
     printf("FAIL: Vault\r\n");
     goto exit;
   }
@@ -61,7 +60,7 @@ int main(void)
   test_vault_run_aead_aes_gcm(&vault, &memory, TEST_VAULT_AEAD_AES_GCM_KEY_BOTH);
 
 exit:
-  if (error != OCKAM_ERROR_NONE) { rc = -1; }
+  if (ockam_error_has_error(&error)) { rc = -1; }
 
   return rc;
 }

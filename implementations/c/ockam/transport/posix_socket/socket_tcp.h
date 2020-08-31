@@ -19,7 +19,7 @@ typedef struct tcp_transmission_t {
   size_t        buffer_remaining;
   size_t        transmit_length;
   size_t        bytes_transmitted; // number of bytes transmitted (so far)
-  ockam_error_t status;
+  ockam_error_code_transport_posix_socket_t status;
   ockam_error_t error; // transmission completion status
 } tcp_transmission_t;
 

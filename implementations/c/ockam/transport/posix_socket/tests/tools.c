@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <ockam/memory/stdlib.h>
 #include <getopt.h>
+#include <ockam/transport/socket.h>
 
 #include "ockam/error.h"
 #include "ockam/log.h"
@@ -32,9 +33,11 @@ static void print_usage()
 
 ockam_error_t init_params(enum TransportType transport_type, int argc, char* argv[], test_cli_params_t* p_params)
 {
-  if (NULL == p_params) { return TRANSPORT_ERROR_BAD_PARAMETER; }
-
-  ockam_error_t status = OCKAM_ERROR_NONE;
+  ockam_error_t status = ockam_transport_posix_socket_error_none;
+  if (NULL == p_params) {
+    status.code = OCKAM_TRANSPORT_POSIX_SOCKET_ERROR_BAD_PARAMETER;
+    goto exit;
+  }
 
   switch (transport_type) {
   case TCP:
@@ -48,12 +51,12 @@ ockam_error_t init_params(enum TransportType transport_type, int argc, char* arg
     break;
 
   default:
-    status = TRANSPORT_ERROR_BAD_PARAMETER;
+    status.code = OCKAM_TRANSPORT_POSIX_SOCKET_ERROR_BAD_PARAMETER;
     goto exit;
   }
 
   status = ockam_memory_stdlib_init(&p_params->memory);
-  if (status) { goto exit; }
+  if (ockam_error_has_error(&status)) { goto exit; }
 
   strcpy(p_params->fixture_path, DEFAULT_FIXTURE_PATH);
 
@@ -107,10 +110,10 @@ ockam_error_t init_params(enum TransportType transport_type, int argc, char* arg
       break;
 
     default:
-      status = TRANSPORT_ERROR_BAD_PARAMETER;
+      status.code = OCKAM_TRANSPORT_POSIX_SOCKET_ERROR_BAD_PARAMETER;
       print_usage();
-      ockam_log_log(OCKAM_LOG_LEVEL_FATAL, __func__, __LINE__, "%s", "Bad parameter\n");
-      return 2;
+      ockam_log_fatal("Bad parameter");
+      goto exit;
     }
   }
 
@@ -133,15 +136,15 @@ static void make_file_path(const char* p_fixture_path, const char* p_file_name, 
 
 ockam_error_t open_file_for_read(const char* p_fixture_path, const char* p_file_name, FILE** pp_file)
 {
-  int error = 0;
+  ockam_error_t error = ockam_transport_posix_socket_error_none;
 
   char path[256];
 
   make_file_path(p_fixture_path, p_file_name, path);
   *pp_file = fopen(path, "r");
   if (NULL == *pp_file) {
-    error = TRANSPORT_ERROR_TEST;
-    ockam_log_log(OCKAM_LOG_LEVEL_FATAL, __func__, __LINE__, "%s", "failed to open file");
+    error.code = -1;
+    ockam_log_fatal("%s", "failed to open file");
     goto exit;
   }
 
@@ -151,15 +154,15 @@ exit:
 
 ockam_error_t open_file_for_write(const char* p_fixture_path, const char* p_file_name, FILE** pp_file)
 {
-  int error = 0;
+  ockam_error_t error = ockam_transport_posix_socket_error_none;
 
   char path[256];
 
   make_file_path(p_fixture_path, p_file_name, path);
   *pp_file = fopen(path, "w");
   if (NULL == *pp_file) {
-    error = TRANSPORT_ERROR_TEST;
-    ockam_log_log(OCKAM_LOG_LEVEL_FATAL, __func__, __LINE__, "%s", "failed to open file");
+    error.code = -1;
+    ockam_log_fatal("%s", "failed to open file");
     goto exit;
   }
 
@@ -179,13 +182,13 @@ ockam_error_t open_file_for_client_receive(const char* p_fixture_path, FILE** pp
 
 ockam_error_t open_files_for_client_compare(const char* p_fixture_path, FILE** pp_sent_file, FILE** pp_received_file)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_transport_posix_socket_error_none;
 
   error = open_file_for_read(p_fixture_path, SERVER_TEST_DATA, pp_sent_file);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = open_file_for_read(p_fixture_path, CLIENT_RECEIVED_DATA, pp_received_file);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
   return error;
@@ -203,13 +206,13 @@ ockam_error_t open_files_for_server_receive(const char* p_fixture_path, FILE** p
 
 ockam_error_t open_files_for_server_compare(const char* p_fixture_path, FILE** pp_sent_file, FILE** pp_received_file)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_transport_posix_socket_error_none;
 
   error = open_file_for_read(p_fixture_path, CLIENT_TEST_DATA, pp_sent_file);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
   error = open_file_for_read(p_fixture_path, SERVER_RECEIVED_DATA, pp_received_file);
-  if (error) goto exit;
+  if (ockam_error_has_error(&error)) goto exit;
 
 exit:
   return error;
@@ -217,7 +220,7 @@ exit:
 
 ockam_error_t file_compare(ockam_memory_t* p_memory, FILE* p_f1, FILE* p_f2)
 {
-  ockam_error_t status = 0;
+  ockam_error_t status = ockam_transport_posix_socket_error_none;
 
   char buffer1[256];
   char buffer2[256];
@@ -226,7 +229,7 @@ ockam_error_t file_compare(ockam_memory_t* p_memory, FILE* p_f1, FILE* p_f2)
   size_t r2;
 
   if ((NULL == p_f1) || (NULL == p_f2)) {
-    status = TRANSPORT_ERROR_TEST;
+    status.code = -1;
     goto exit_block;
   }
 
@@ -234,19 +237,21 @@ ockam_error_t file_compare(ockam_memory_t* p_memory, FILE* p_f1, FILE* p_f2)
     r1 = fread(buffer1, 1, sizeof(buffer1), p_f1);
     r2 = fread(buffer2, 1, sizeof(buffer2), p_f2);
     if (r1 != r2) {
-      status = TRANSPORT_ERROR_TEST;
+      status.code = -1;
       goto exit_block;
     }
     int cmp = 2;
-    status  = ockam_memory_compare(p_memory, &cmp, buffer1, buffer2, r1);
-    if (OCKAM_ERROR_NONE != status) { goto exit_block; }
+    status = ockam_memory_compare(p_memory, &cmp, buffer1, buffer2, r1);
+    if (ockam_error_has_error(&status)) {
+      goto exit_block;
+    }
     if (0 != cmp) {
-      status = TRANSPORT_ERROR_TEST;
+      status.code = -1;
       goto exit_block;
     }
     if (feof(p_f1) || feof(p_f2)) {
       if (feof(p_f1) != feof(p_f2)) {
-        status = TRANSPORT_ERROR_TEST;
+        status.code = -1;
         goto exit_block;
       }
 

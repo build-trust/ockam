@@ -13,6 +13,7 @@ file(COPY xx_local.h DESTINATION ${INCLUDE_DIR}/ockam/key_agreement/)
 target_sources(
   ockam_key_agreement_xx
   PRIVATE
+    xx.c
     xx_common.c
     xx_initiator.c
     xx_responder.c

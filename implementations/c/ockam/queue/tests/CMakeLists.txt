@@ -19,7 +19,7 @@ target_link_libraries(
     cmocka-static
     ockam::log
     ockam::memory_stdlib
-    ockam::queue_pthread
+    ockam::queue
   )
 
 add_test(ockam_queue_test ockam_queue_test)

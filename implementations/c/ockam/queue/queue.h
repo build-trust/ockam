@@ -6,11 +6,15 @@
 #include "ockam/memory.h"
 #include "ockam/memory/stdlib.h"
 
-#define QUEUE_ERROR_PARAMETER  (OCKAM_ERROR_INTERFACE_QUEUE | 0x0001u)
-#define QUEUE_ERROR_MUTEX      (OCKAM_ERROR_INTERFACE_QUEUE | 0x0002u)
-#define QUEUE_ERROR_MUTEX_LOCK (OCKAM_ERROR_INTERFACE_QUEUE | 0x0003u)
-#define QUEUE_ERROR_FULL       (OCKAM_ERROR_INTERFACE_QUEUE | 0x0004u)
-#define QUEUE_ERROR_EMPTY      (OCKAM_ERROR_INTERFACE_QUEUE | 0x0005u)
+extern const char* const OCKAM_QUEUE_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_QUEUE_ERROR_PARAMETER  = 1,
+  OCKAM_QUEUE_ERROR_MUTEX      = 2,
+  OCKAM_QUEUE_ERROR_MUTEX_LOCK = 3,
+  OCKAM_QUEUE_ERROR_FULL       = 4,
+  OCKAM_QUEUE_ERROR_EMPTY      = 5,
+} ockam_error_code_queue_t;
 
 typedef struct ockam_queue_t ockam_queue_t;
 

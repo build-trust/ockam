@@ -21,8 +21,6 @@ target_sources(
 
 target_link_libraries(
   ockam_log
-  PUBLIC
-    ockam::error_interface
 )
 
 if (OCKAM_DISABLE_LOG)

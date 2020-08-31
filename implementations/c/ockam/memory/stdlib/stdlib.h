@@ -11,6 +11,14 @@
 
 #include "ockam/memory/impl.h"
 
+extern const char* const OCKAM_MEMORY_STDLIB_ERROR_DOMAIN;
+
+typedef enum {
+  OCKAM_MEMORY_STDLIB_ERROR_INVALID_PARAM = 1,
+  OCKAM_MEMORY_STDLIB_ERROR_INVALID_SIZE  = 2,
+  OCKAM_MEMORY_STDLIB_ERROR_ALLOC_FAIL    = 3,
+} ockam_error_code_memory_stdlib_t;
+
 /**
  * @brief   Initialize the standard library memory object
  * @param   memory[in]  The ockam memory object to initialize.

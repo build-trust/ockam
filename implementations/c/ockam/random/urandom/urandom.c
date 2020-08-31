@@ -14,6 +14,13 @@
 #include "ockam/random/impl.h"
 #include "ockam/random/urandom.h"
 
+const char* const OCKAM_RANDOM_URANDOM_ERROR_DOMAIN = "OCKAM_RANDOM_URANDOM_ERROR_DOMAIN";
+
+static const ockam_error_t ockam_random_urandom_error_none = {
+  OCKAM_ERROR_NONE,
+  OCKAM_RANDOM_URANDOM_ERROR_DOMAIN
+};
+
 ockam_error_t random_urandom_deinit(ockam_random_t* random);
 ockam_error_t random_urandom_get_bytes(ockam_random_t* random, uint8_t* buffer, size_t buffer_size);
 
@@ -21,10 +28,10 @@ ockam_random_dispatch_table_t random_urandom_dispatch_table = { &random_urandom_
 
 ockam_error_t ockam_random_urandom_init(ockam_random_t* random)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_random_urandom_error_none;
 
   if (random == 0) {
-    error = OCKAM_RANDOM_ERROR_INVALID_PARAM;
+    error.code = OCKAM_RANDOM_URANDOM_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -37,7 +44,7 @@ exit:
 
 ockam_error_t random_urandom_deinit(ockam_random_t* random)
 {
-  ockam_error_t error = OCKAM_ERROR_NONE;
+  ockam_error_t error = ockam_random_urandom_error_none;
 
 exit:
   return error;
@@ -45,24 +52,24 @@ exit:
 
 ockam_error_t random_urandom_get_bytes(ockam_random_t* random, uint8_t* buffer, size_t buffer_size)
 {
-  ockam_error_t error         = OCKAM_ERROR_NONE;
+  ockam_error_t error         = ockam_random_urandom_error_none;
   int           f             = 0;
   size_t        bytes_written = 0;
 
   if ((random == 0) || (buffer == 0)) {
-    error = OCKAM_RANDOM_ERROR_INVALID_PARAM;
+    error.code = OCKAM_RANDOM_URANDOM_ERROR_INVALID_PARAM;
     goto exit;
   }
 
   if (buffer_size == 0) {
-    error = OCKAM_RANDOM_ERROR_INVALID_SIZE;
+    error.code = OCKAM_RANDOM_URANDOM_ERROR_INVALID_SIZE;
     goto exit;
   }
 
   f = open("/dev/urandom", O_RDONLY);
 
   if (f < 0) {
-    error = OCKAM_RANDOM_ERROR_GET_BYTES_FAIL;
+    error.code = OCKAM_RANDOM_URANDOM_ERROR_GET_BYTES_FAIL;
     goto exit;
   }
 
@@ -75,7 +82,7 @@ ockam_error_t random_urandom_get_bytes(ockam_random_t* random, uint8_t* buffer, 
       if (errno == EINTR) {
         continue;
       } else {
-        error = OCKAM_RANDOM_ERROR_GET_BYTES_FAIL;
+        error.code = OCKAM_RANDOM_URANDOM_ERROR_GET_BYTES_FAIL;
         goto exit;
       }
     }

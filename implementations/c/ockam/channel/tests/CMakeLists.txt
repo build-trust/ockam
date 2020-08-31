@@ -36,6 +36,7 @@ target_link_libraries(
         cmocka-static
 )
 
+# FIXME
 #add_test(ockam_channel_tests ockam_channel_initiator_test)
 
 add_executable(ockam_channel_responder_test
@@ -56,4 +57,5 @@ target_link_libraries(
         cmocka-static
 )
 
+# FIXME
 #add_test(ockam_channel_tests ockam_channel_responder_test)
