@@ -13,6 +13,7 @@ defmodule Ockam.Transport.UDP.MixProject do
       version: @version,
       elixir: @elixir_requirement,
       consolidate_protocols: Mix.env() != :test,
+      elixirc_options: [warnings_as_errors: true],
       deps: deps(),
       aliases: aliases(),
 
