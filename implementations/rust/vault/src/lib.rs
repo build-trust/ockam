@@ -12,6 +12,9 @@
     while_true
 )]
 
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+
 //! Implements the Ockam vault interface and provides
 //! a C FFI version.
 //!

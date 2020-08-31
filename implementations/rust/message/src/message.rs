@@ -10,12 +10,15 @@ pub mod message {
   use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
   use std::slice;
 
-  pub trait Codec<T> {
-    fn encode(t: &mut T, v: &mut Vec<u8>);
-    fn decode(s: &[u8]) -> Result<(T, &[u8]), String>;
+  pub trait Codec {
+    type Inner;
+
+    fn encode(t: &mut Self::Inner, v: &mut Vec<u8>) -> Result<(), String>;
+    fn decode(s: &[u8]) -> Result<(Self::Inner, &[u8]), String>;
   }
 
   #[derive(Debug)]
+  #[repr(C)]
   pub struct Message {
     pub version: WireProtocolVersion,
     pub route: Route,
@@ -30,11 +33,13 @@ pub mod message {
     }
   }
 
-  impl Codec<Message> for Message {
-    fn encode(msg: &mut Message, u: &mut Vec<u8>) {
+  impl Codec for Message {
+    type Inner = Message;
+    fn encode(msg: &mut Message, u: &mut Vec<u8>) ->Result<(), String>{
       WireProtocolVersion::encode(&mut msg.version, u);
       Route::encode(&mut msg.route, u);
       MessageBody::encode(&mut msg.message_body, u);
+      Ok(())
     }
     fn decode(u: &[u8]) -> Result<(Message, &[u8]), String> {
       let mut msg: Message = Message::default();
@@ -65,6 +70,7 @@ pub mod message {
   }
 
   /* Addresses */
+  #[repr(C)]
   enum AddressType {
     Local = 0,
     Tcp = 1,
@@ -72,6 +78,7 @@ pub mod message {
   }
 
   #[derive(Debug,PartialEq)]
+  #[repr(C)]
   pub struct LocalAddress {
     pub length: u8,
     pub address: Vec<u8>,
@@ -79,6 +86,7 @@ pub mod message {
 
   // ToDo: implement Copy, Clone
   #[derive(Debug,PartialEq)]
+  #[repr(C)]
   pub enum Address {
     LocalAddress(LocalAddress),
     TcpAddress(IpAddr, u16),
@@ -113,8 +121,9 @@ pub mod message {
     }
   }
 
-  impl Codec<Address> for Address {
-    fn encode(a: &mut Address, v: &mut Vec<u8>) {
+  impl Codec for Address {
+    type Inner = Address;
+    fn encode(a: &mut Address, v: &mut Vec<u8>) ->Result<(), String> {
       match a {
         Address::LocalAddress(a) => {
           v.push(AddressType::Local as u8);
@@ -131,6 +140,7 @@ pub mod message {
           v.append(&mut port.to_le_bytes().to_vec());
         },
       }
+      Ok(())
     }
     fn decode(u: &[u8]) -> Result<(Address, &[u8]), String> {
       match (AddressType::try_from(u[0])?, &u[1..]) {
@@ -150,8 +160,9 @@ pub mod message {
     }
   }
 
-  impl Codec<IpAddr> for IpAddr {
-    fn encode(ip: &mut IpAddr, v: &mut Vec<u8>) {
+  impl Codec for IpAddr {
+    type Inner = IpAddr;
+    fn encode(ip: &mut IpAddr, v: &mut Vec<u8>) ->Result<(), String> {
       match ip {
         std::net::IpAddr::V4(ip4) => {
           v.push( HostAddressType::Ipv4 as u8);
@@ -162,6 +173,7 @@ pub mod message {
           v.extend_from_slice( ip6.octets().as_ref());
         },
       }
+      Ok(())
     }
     fn decode(u: &[u8]) -> Result<(IpAddr, &[u8]), String> {
       match (HostAddressType::try_from(u[0])?, &u[1..]) {
@@ -176,10 +188,12 @@ pub mod message {
     }
   }
 
-  impl Codec<LocalAddress> for LocalAddress {
-    fn encode(la: &mut LocalAddress, u: &mut Vec<u8>) {
+  impl Codec for LocalAddress {
+    type Inner = LocalAddress;
+    fn encode(la: &mut LocalAddress, u: &mut Vec<u8>) ->Result<(), String> {
       u.push(la.length);
       u.append(&mut la.address);
+      Ok(())
     }
     fn decode(u: &[u8]) -> Result<(LocalAddress, &[u8]), String> {
       let length =  u[0] as usize;
@@ -190,13 +204,15 @@ pub mod message {
 
   /* Routes */
   #[derive(PartialEq, Debug)]
+  #[repr(C)]
   pub struct Route {
     pub onward_addresses: Vec<Address>,
     pub return_addresses: Vec<Address>,
   }
 
-  impl Codec<Route> for Route {
-    fn encode(route: &mut Route, u: &mut Vec<u8>) {
+  impl Codec for Route {
+    type Inner = Route;
+    fn encode(route: &mut Route, u: &mut Vec<u8>) ->Result<(), String> {
       if route.onward_addresses.is_empty() {
         u.push(0 as u8)
       } else {
@@ -213,6 +229,7 @@ pub mod message {
           Address::encode(&mut route.return_addresses[i], u);
         }
       }
+      Ok(())
     }
     fn decode(encoded: &[u8]) -> Result<(Route, &[u8]), String> {
       let mut route = Route{ onward_addresses: vec![], return_addresses: vec![]};
@@ -246,6 +263,7 @@ pub mod message {
 
   // ToDo: Implement PartialEq, Eq, Copy, Clone
   #[derive(Debug)]
+  #[repr(C)]
   pub enum MessageBody {
     Ping = 0,
     Pong = 1,
@@ -258,13 +276,15 @@ pub mod message {
     }
   }
 
-  impl Codec<MessageBody> for MessageBody {
-    fn encode(msg_body: &mut MessageBody, u: &mut Vec<u8>) {
+  impl Codec for MessageBody {
+    type Inner = MessageBody;
+    fn encode(msg_body: &mut MessageBody, u: &mut Vec<u8>) ->Result<(), String> {
       match msg_body {
         MessageBody::Ping => { u.push(MessageBody::Ping as u8); },
         MessageBody::Pong => { u.push(MessageBody::Pong as u8); },
         MessageBody::Payload => {}
       }
+      Ok(())
     }
     fn decode(u: &[u8]) -> Result<(MessageBody, &[u8]), String> {
       match MessageBody::try_from(u[0])? {
@@ -290,9 +310,10 @@ pub mod message {
   // - If the value is < 0x80, it is encoded as-is, in one byte
   // - If the value is <= 0x80, the highest-order of the low-order byte is moved to the lowest-order
   //   bit in the high-order byte, and the high-order byte is shifted left by one to make room.
-  impl Codec<u16> for u16 {
-    fn encode(ul2: &mut u16,  u: &mut Vec<u8>) {
-      if ul2 >= &mut 0xC000 { panic!() }
+  impl Codec for u16 {
+    type Inner = u16;
+    fn encode(ul2: &mut u16,  u: &mut Vec<u8>) ->Result<(), String> {
+      if ul2 >= &mut 0xC000 { return Err("Maximum value exceeded".to_string()) }
       let mut bytes = ul2.to_le_bytes();
 
       if ul2 < &mut 0x80 {
@@ -304,6 +325,7 @@ pub mod message {
         u.push(bytes[0]);
         u.push(bytes[1])
       }
+      Ok(())
     }
 
     fn decode(u: &[u8]) -> Result<(u16, &[u8]), String> {
@@ -324,6 +346,7 @@ pub mod message {
   }
 
   #[derive(Debug)]
+  #[repr(C)]
   pub struct WireProtocolVersion {
     pub(crate) v: u16,
   }
@@ -334,9 +357,11 @@ pub mod message {
     }
   }
 
-  impl Codec<WireProtocolVersion> for WireProtocolVersion {
-    fn encode(version: &mut WireProtocolVersion, v: &mut Vec<u8>) {
+  impl Codec for WireProtocolVersion {
+    type Inner = WireProtocolVersion;
+    fn encode(version: &mut WireProtocolVersion, v: &mut Vec<u8>) ->Result<(), String> {
       u16::encode(&mut version.v, v);
+      Ok(())
     }
     fn decode(v: &[u8]) -> Result<(WireProtocolVersion, &[u8]), String> {
       let (version, v) =  u16::decode(v)?;
@@ -431,14 +456,6 @@ mod tests {
   }
 
   #[test]
-  #[should_panic]
-  fn u16_codec_too_big() {
-    let mut u: Vec<u8> = vec![];
-    let mut n: u16 = 0xC000;
-    u16::encode(&mut n, &mut u);
-  }
-
-  #[test]
   fn u16_codec() {
     let mut u: Vec<u8> = vec![];
     let mut n: u16 = 0x7f;
@@ -450,7 +467,14 @@ mod tests {
         assert_eq!(u[0], 0x7f);
         assert_eq!(v.len(), 0);
       }
-      Err(s) => { panic!() }
+      Err(s) => panic!(),
+    }
+
+    let mut too_big: u16 = 0xC000;
+    let mut u: Vec<u8> = vec![];
+    match u16::encode(&mut too_big, &mut u) {
+      Ok(()) => panic!(),
+      Err(s) => {}
     }
 
     let mut n = 0x80;
