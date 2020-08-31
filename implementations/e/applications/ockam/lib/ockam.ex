@@ -23,7 +23,8 @@ defmodule Ockam do
     # detailed information.
     children = [
       Ockam.Routing,
-      Ockam.Node
+      Ockam.Node,
+      Ockam.Topics
     ]
 
     # Start a supervisor with the given children. The supervisor will inturn
