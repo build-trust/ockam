@@ -9,10 +9,12 @@ use crate::{
     Vault,
 };
 use keychain_services as enclave;
-use p256::arithmetic::{ProjectivePoint, Scalar};
+use p256::arithmetic::{ProjectivePoint, AffinePoint, Scalar};
 use rand::prelude::*;
 use security_framework::os::macos::keychain;
+use sha2::Sha256;
 use std::convert::TryFrom;
+use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
 const OCKAM_SERVICE_NAME: &str = "OckamOsxVault";
@@ -110,28 +112,10 @@ impl Vault for OsxVault {
                     swkey_insert(attributes, sk.to_bytes().as_ref())
                 }
                 SecretKeyType::P256 => {
-                    let mut acf = enclave::AccessControlFlags::new();
-                    acf.add(enclave::AccessOption::PrivateKeyUsage);
-                    let acl = enclave::AccessControl::create_with_flags(
-                        enclave::AttrAccessible::WhenUnlockedThisDeviceOnly,
-                        acf,
-                    )?;
-                    let id = rng.gen::<usize>();
-                    let id_str = format!("{}-{}", OCKAM_SERVICE_NAME, id);
-                    let generate_params = enclave::KeyPairGenerateParams::new(
-                        enclave::AttrKeyType::EcSecPrimeRandom,
-                        256,
-                    )
-                    .access_control(&acl)
-                    .label(id_str.as_str())
-                    .can_derive(true)
-                    .permanent(true)
-                    .token_id(enclave::AttrTokenId::SecureEnclave);
-                    enclave::KeyPair::generate(generate_params)?;
-                    Ok(SecretKeyContext::KeyRing {
-                        id,
-                        os_type: OsKeyRing::Osx(OsxContext::Enclave),
-                    })
+                    // SEP doesn't support ECDH directly
+                    // only for ECIES, for now just use the keychain
+                    let key = p256::SecretKey::generate();
+                    swkey_insert(attributes, key.secret_scalar().as_ref())
                 }
                 SecretKeyType::Aes256 => {
                     let mut key = [0u8; 32];
@@ -223,9 +207,12 @@ impl Vault for OsxVault {
                     }
                     OsxContext::Enclave => Err(VaultFailErrorKind::AccessDenied.into()),
                 };
+            } else {
+                Err(VaultFailErrorKind::InvalidContext.into())
             }
+        } else {
+            Err(VaultFailErrorKind::InvalidContext.into())
         }
-        Err(VaultFailErrorKind::InvalidContext.into())
     }
 
     fn secret_attributes_get(
@@ -256,9 +243,12 @@ impl Vault for OsxVault {
                         Ok(attributes)
                     }
                 };
+            } else {
+                Err(VaultFailErrorKind::InvalidContext.into())
             }
+        } else {
+            Err(VaultFailErrorKind::InvalidContext.into())
         }
-        Err(VaultFailErrorKind::InvalidContext.into())
     }
 
     fn secret_public_key_get(
@@ -267,11 +257,11 @@ impl Vault for OsxVault {
     ) -> Result<PublicKey, VaultFailError> {
         if let SecretKeyContext::KeyRing { id, os_type } = context {
             if let OsKeyRing::Osx(ctx) = os_type {
-                return match ctx {
+                match ctx {
                     OsxContext::Memory => {
                         let cid = SecretKeyContext::Memory(id);
                         self.ephemeral_vault.secret_public_key_get(cid)
-                    }
+                    },
                     OsxContext::Keychain => {
                         self.unlock()?;
                         let (key, _) = self
@@ -279,40 +269,34 @@ impl Vault for OsxVault {
                             .find_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str())?;
                         let bytes = key.to_owned();
                         let mut atts = [0u8; 6];
-                        atts.copy_from_slice(&bytes[0..6]);
+                        atts.copy_from_slice(&bytes[..6]);
                         let attributes = SecretKeyAttributes::try_from(atts)?;
+                        let key = *array_ref![bytes, 6, 32];
                         match attributes.xtype {
+                            SecretKeyType::Curve25519 => {
+                                let sk = x25519_dalek::StaticSecret::from(key);
+                                let pk = x25519_dalek::PublicKey::from(&sk);
+                                Ok(PublicKey::Curve25519(*pk.as_bytes()))
+                            },
                             SecretKeyType::P256 => {
-                                let sk = Scalar::from_bytes(*array_ref![bytes, 6, 32]).unwrap();
+                                let sk = Scalar::from_bytes(key).unwrap();
                                 let pp = ProjectivePoint::generator() * &sk;
                                 let pk = p256::elliptic_curve::weierstrass::PublicKey::from(
                                     pp.to_affine().unwrap().to_uncompressed_pubkey(),
                                 );
                                 Ok(PublicKey::P256(*array_ref![pk.as_bytes(), 0, 65]))
-                            }
-                            SecretKeyType::Curve25519 => {
-                                let sk =
-                                    x25519_dalek::StaticSecret::from(*array_ref![bytes, 6, 32]);
-                                let pk = x25519_dalek::PublicKey::from(&sk);
-                                Ok(PublicKey::Curve25519(*pk.as_bytes()))
-                            }
+                            },
                             _ => Err(VaultFailErrorKind::PublicKey.into()),
                         }
-                    }
-                    OsxContext::Enclave => {
-                        let id_str = format!("{}-{}", OCKAM_SERVICE_NAME, id);
-                        let query = enclave::item::Query::new()
-                            .key_class(enclave::AttrKeyClass::Public)
-                            .key_type(enclave::AttrKeyType::EcSecPrimeRandom)
-                            .label(id_str.as_str());
-                        let key = enclave::Key::find(query)?;
-                        let bytes = key.to_external_representation()?;
-                        Ok(PublicKey::P256(*array_ref![bytes, 0, 65]))
-                    }
-                };
+                    },
+                    _ => Err(VaultFailErrorKind::PublicKey.into()),
+                }
+            } else {
+                Err(VaultFailErrorKind::InvalidContext.into())
             }
+        } else {
+            Err(VaultFailErrorKind::InvalidContext.into())
         }
-        Err(VaultFailErrorKind::InvalidContext.into())
     }
 
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError> {
@@ -349,20 +333,92 @@ impl Vault for OsxVault {
 
     fn ec_diffie_hellman(
         &mut self,
-        _context: SecretKeyContext,
-        _peer_public_key: PublicKey,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
     ) -> Result<SecretKeyContext, VaultFailError> {
-        unimplemented!()
+        if let SecretKeyContext::KeyRing { id, os_type } = context {
+            if let OsKeyRing::Osx(ctx) = os_type {
+                match ctx {
+                    OsxContext::Memory => {
+                        let cid = SecretKeyContext::Memory(id);
+                        self.ephemeral_vault.ec_diffie_hellman(cid, peer_public_key)
+                    },
+                    OsxContext::Keychain => {
+                        self.unlock()?;
+                        let (key, _) = self
+                            .keychain
+                            .find_generic_password(OCKAM_SERVICE_NAME, id.to_string().as_str())?;
+                        let bytes = key.to_owned();
+                        let mut atts = [0u8; 6];
+                        atts.copy_from_slice(&bytes[..6]);
+                        let attributes = SecretKeyAttributes::try_from(atts)?;
+                        let key = *array_ref![bytes, 6, 32];
+                        match (attributes.xtype, peer_public_key) {
+                            (SecretKeyType::Curve25519, PublicKey::Curve25519(b)) => {
+                                let sk = x25519_dalek::StaticSecret::from(key);
+                                let pk_t = x25519_dalek::PublicKey::from(b);
+                                let secret = sk.diffie_hellman(&pk_t);
+                                let buffer = SecretKey::Buffer(secret.as_bytes().to_vec());
+                                let attributes = SecretKeyAttributes {
+                                    xtype: SecretKeyType::Buffer(32),
+                                    purpose: SecretPurposeType::KeyAgreement,
+                                    persistence: SecretPersistenceType::Ephemeral,
+                                };
+                                self.ephemeral_vault.secret_import(&buffer, attributes)
+                            },
+                            (SecretKeyType::P256, PublicKey::P256(b)) => {
+                                let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> =
+                                    p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
+                                if o_pk_t.is_none() {
+                                    fail!(VaultFailErrorKind::Ecdh);
+                                }
+                                let pk_t = o_pk_t.unwrap();
+                                let o_p_t = AffinePoint::from_pubkey(&pk_t);
+                                if o_p_t.is_none().unwrap_u8() == 1 {
+                                    fail!(VaultFailErrorKind::Ecdh);
+                                }
+                                let sk = Scalar::from_bytes(key).unwrap();
+                                let pk_t = ProjectivePoint::from(o_p_t.unwrap());
+                                let secret = &pk_t * &sk;
+                                if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
+                                    fail!(VaultFailErrorKind::Ecdh);
+                                }
+                                let result = secret.to_affine().unwrap().to_compressed_pubkey();
+                                // Throw away the compressed indicator byte
+                                let buffer = SecretKey::Buffer(result.as_ref()[1..].to_vec());
+                                let attributes = SecretKeyAttributes {
+                                    xtype: SecretKeyType::Buffer(32),
+                                    purpose: SecretPurposeType::KeyAgreement,
+                                    persistence: SecretPersistenceType::Ephemeral,
+                                };
+                                self.ephemeral_vault.secret_import(&buffer, attributes)
+                            },
+                            _ => Err(VaultFailErrorKind::PublicKey.into()),
+                        }
+                    },
+                    _ => Err(VaultFailErrorKind::PublicKey.into()),
+                }
+            } else {
+                Err(VaultFailErrorKind::InvalidContext.into())
+            }
+        } else {
+            Err(VaultFailErrorKind::InvalidContext.into())
+        }
     }
 
     fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(
         &mut self,
-        _context: SecretKeyContext,
-        _peer_public_key: PublicKey,
-        _salt: B,
-        _okm_len: usize,
+        context: SecretKeyContext,
+        peer_public_key: PublicKey,
+        salt: B,
+        okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError> {
-        unimplemented!()
+        let ctx = self.ec_diffie_hellman(context, peer_public_key)?;
+        let shared_secret = self.secret_export(ctx)?;
+        let mut okm = vec![0u8; okm_len];
+        let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.as_ref()), &shared_secret.as_ref());
+        prk.expand(b"", okm.as_mut_slice())?;
+        Ok(okm)
     }
 
     fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
