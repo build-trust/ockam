@@ -3,10 +3,6 @@
 #include "stdint.h"
 #include "string.h"
 
-static const char* ATT_TY[] = {"t", "y" };
-static const char* ATT_PERSISTENT[] = {"p", "e", "r", "s", "i", "s", "t", "e", "n", "c", "e" };
-static const char* ATT_PURPOSE[] = {"p", "u", "r", "p", "o", "s", "e" };
-
 static int32_t get_vault(ErlNifEnv *env, const ERL_NIF_TERM argv[], ockam_vault_t* vault);
 
 static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -27,39 +23,39 @@ static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
 }
 
 static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-  int32_t result = 0;
-  ockam_vault_t vault;
-  uint8_t* digest;
-  size_t size;
-  ErlNifBinary input;
-  ERL_NIF_TERM term;
+    int32_t result = 0;
+    ockam_vault_t vault;
+    uint8_t* digest;
+    size_t size;
+    ErlNifBinary input;
+    ERL_NIF_TERM term;
 
-  result = get_vault(env, argv, &vault);
-  if (0 == result) {
-      return enif_make_int(env, 0);
-  }
+    result = get_vault(env, argv, &vault);
+    if (0 == result) {
+        return enif_make_int(env, 0);
+    }
 
-  result = enif_inspect_binary(env, argv[1], &input);
+    result = enif_inspect_binary(env, argv[1], &input);
 
-  if (0 == result) {
-      return enif_make_badarg(env);
-  }
+    if (0 == result) {
+        return enif_make_badarg(env);
+    }
 
-  digest = enif_make_new_binary(env, 32, &term);
+    digest = enif_make_new_binary(env, 32, &term);
 
-  if (0 == digest) {
-      return enif_make_atom(env, "null");
-  }
+    if (0 == digest) {
+        return enif_make_atom(env, "null");
+    }
 
-  memset(digest, 0, 32);
+    memset(digest, 0, 32);
 
-  result = ockam_vault_sha256(vault, input.data, input.size, digest);
+    result = ockam_vault_sha256(vault, input.data, input.size, digest);
 
-  if (0 != result) {
-      return enif_make_atom(env, "null");
-  }
+    if (0 != result) {
+        return enif_make_atom(env, "null");
+    }
 
-  return term;
+    return term;
 }
 
 static ERL_NIF_TERM random_bytes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {

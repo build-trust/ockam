@@ -9,7 +9,7 @@ use crate::{
     Vault,
 };
 use keychain_services as enclave;
-use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
+use p256::arithmetic::{ProjectivePoint, Scalar};
 use rand::prelude::*;
 use security_framework::os::macos::keychain;
 use std::convert::TryFrom;
@@ -349,18 +349,18 @@ impl Vault for OsxVault {
 
     fn ec_diffie_hellman(
         &mut self,
-        context: SecretKeyContext,
-        peer_public_key: PublicKey,
+        _context: SecretKeyContext,
+        _peer_public_key: PublicKey,
     ) -> Result<SecretKeyContext, VaultFailError> {
         unimplemented!()
     }
 
     fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(
         &mut self,
-        context: SecretKeyContext,
-        peer_public_key: PublicKey,
-        salt: B,
-        okm_len: usize,
+        _context: SecretKeyContext,
+        _peer_public_key: PublicKey,
+        _salt: B,
+        _okm_len: usize,
     ) -> Result<Vec<u8>, VaultFailError> {
         unimplemented!()
     }
@@ -376,20 +376,20 @@ impl Vault for OsxVault {
 
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
         &mut self,
-        context: SecretKeyContext,
-        plaintext: B,
-        nonce: C,
-        aad: D,
+        _context: SecretKeyContext,
+        _plaintext: B,
+        _nonce: C,
+        _aad: D,
     ) -> Result<Vec<u8>, VaultFailError> {
         unimplemented!()
     }
 
     fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
         &mut self,
-        context: SecretKeyContext,
-        cipher_text: B,
-        nonce: C,
-        aad: D,
+        _context: SecretKeyContext,
+        _cipher_text: B,
+        _nonce: C,
+        _aad: D,
     ) -> Result<Vec<u8>, VaultFailError> {
         unimplemented!()
     }

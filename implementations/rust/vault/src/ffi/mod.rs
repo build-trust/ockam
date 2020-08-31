@@ -56,7 +56,7 @@ pub extern "C" fn ockam_vault_random_bytes_generate(
                 },
             );
             if err.get_code().is_success() {
-                let output = output.into_vec();
+                let output = output.destroy_into_vec();
                 unsafe {
                     std::ptr::copy_nonoverlapping(output.as_ptr(), buffer, buffer_len as usize);
                 }
@@ -96,7 +96,7 @@ pub extern "C" fn ockam_vault_sha256(
                 },
             );
             if err.get_code().is_success() {
-                let output = output.into_vec();
+                let output = output.destroy_into_vec();
                 unsafe {
                     std::ptr::copy_nonoverlapping(output.as_ptr(), digest, 32);
                 }
@@ -208,7 +208,7 @@ pub extern "C" fn ockam_vault_secret_export(
                 },
             );
             if err.get_code().is_success() {
-                let buffer = output.into_vec();
+                let buffer = output.destroy_into_vec();
                 if output_buffer_size < buffer.len() as u32 {
                     VaultFailErrorKind::Export.into()
                 } else {
@@ -249,7 +249,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
                 },
             );
             if err.get_code().is_success() {
-                let buffer = output.into_vec();
+                let buffer = output.destroy_into_vec();
                 if output_buffer_size < buffer.len() as u32 {
                     VaultFailErrorKind::PublicKey.into()
                 } else {
@@ -483,7 +483,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
                 },
             );
             if err.get_code().is_success() {
-                let buffer = output.into_vec();
+                let buffer = output.destroy_into_vec();
                 if ciphertext_and_tag_size < buffer.len() as u32 {
                     VaultFailErrorKind::AeadAesGcmEncrypt.into()
                 } else {
@@ -544,7 +544,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
                 },
             );
             if err.get_code().is_success() {
-                let buffer = output.into_vec();
+                let buffer = output.destroy_into_vec();
                 if plaintext_size < buffer.len() as u32 {
                     VaultFailErrorKind::AeadAesGcmDecrypt.into()
                 } else {
