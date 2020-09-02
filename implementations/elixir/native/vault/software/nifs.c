@@ -3,144 +3,134 @@
 #include "stdint.h"
 #include "string.h"
 
-static int32_t get_vault(ErlNifEnv *env, const ERL_NIF_TERM argv[], ockam_vault_t* vault);
+static ERL_NIF_TERM ok(ErlNifEnv *env, ERL_NIF_TERM result) {
+    ERL_NIF_TERM id = enif_make_atom(env, "ok");
+    return enif_make_tuple2(env, id, result);
+}
+
+static ERL_NIF_TERM err(ErlNifEnv *env, const char* msg) {
+    ERL_NIF_TERM e = enif_make_atom(env, "error");
+    ERL_NIF_TERM m = enif_make_string(env, msg, 0);
+    return enif_make_tuple2(env, e, m);
+}
 
 static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    int32_t result = 0;
     ERL_NIF_TERM vault_handle;
-    ERL_NIF_TERM vault_id;
     ockam_vault_t vault;
 
-    result = ockam_vault_default_init(&vault);
-    if (0 != result) {
-        return enif_make_int(env, 0);
+    if (0 != ockam_vault_default_init(&vault)) {
+        return err(env, "failed to create vault connection");
     }
 
-    vault_handle = enif_make_uint64(env, vault.handle);
-    vault_id = enif_make_uint(env, vault.vault_id);
+    vault_handle = enif_make_uint64(env, vault);
 
-    return enif_make_tuple2(env, vault_handle, vault_id);
+    return ok(env, vault_handle);
 }
 
 static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    int32_t result = 0;
-    ockam_vault_t vault;
+    ErlNifUInt64 vault;
     uint8_t* digest;
-    size_t size;
     ErlNifBinary input;
     ERL_NIF_TERM term;
 
-    result = get_vault(env, argv, &vault);
-    if (0 == result) {
-        return enif_make_int(env, 0);
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
     }
 
-    result = enif_inspect_binary(env, argv[1], &input);
-
-    if (0 == result) {
+    if (0 == enif_inspect_binary(env, argv[1], &input)) {
         return enif_make_badarg(env);
     }
 
     digest = enif_make_new_binary(env, 32, &term);
 
     if (0 == digest) {
-        return enif_make_atom(env, "null");
+        return err(env, "failed to create buffer for hash");
     }
 
     memset(digest, 0, 32);
 
-    result = ockam_vault_sha256(vault, input.data, input.size, digest);
-
-    if (0 != result) {
-        return enif_make_atom(env, "null");
+    if (0 != ockam_vault_sha256(vault, input.data, input.size, digest)) {
+        return err(env,  "failed to compute sha256 digest");
     }
 
-    return term;
+    return ok(env, term);
 }
 
 static ERL_NIF_TERM random_bytes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    int32_t result = 0;
-    ockam_vault_t vault;
+    ErlNifUInt64 vault;
     uint8_t* bytes;
     uint32_t size;
-    ErlNifBinary input;
     ERL_NIF_TERM term;
 
-    result = get_vault(env, argv, &vault);
-    if (0 == result) {
-        return enif_make_int(env, 0);
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
     }
 
-    result = enif_get_uint(env, argv[1], &size);
-
-    if (0 == result) {
+    if (0 == enif_get_uint(env, argv[1], &size)) {
         return enif_make_badarg(env);
     }
 
     bytes = enif_make_new_binary(env, size, &term);
 
     if (0 == bytes) {
-        return enif_make_atom(env, "null");
+        return err(env, "failed to create buffer for random bytes");
     }
 
     memset(bytes, 0, size);
-    result = ockam_vault_random_bytes_generate(vault, bytes, size);
-
-    if (0 != result) {
-        return enif_make_atom(env, "null");
+    if (0 != ockam_vault_random_bytes_generate(vault, bytes, size)) {
+        return err(env, "failed to generate random bytes");
     }
 
-    return term;
+    return ok(env, term);
 }
 
 static ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    int32_t result = 0;
-    ockam_vault_t vault;
+    ErlNifUInt64 vault;
     ockam_vault_secret_t secret;
     ockam_vault_secret_attributes_t attributes;
     size_t num_keys;
+    char* buf;
+    unsigned size;
     ERL_NIF_TERM term;
     ERL_NIF_TERM value;
     ERL_NIF_TERM secret_handle;
-    int e;
+    ERL_NIF_TERM result;
 
-    result = get_vault(env, argv, &vault);
-    if (0 == result) {
-        return enif_make_uint64(env, 0);
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
     }
-
-    result = enif_get_map_size(env, argv[1], &num_keys);
-    if (0 == result) {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+    if (0 == enif_get_map_size(env, argv[1], &num_keys)) {
+        return enif_make_badarg(env);
     }
 
     if (3 != num_keys) {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+        return enif_make_badarg(env);
     }
 
     term = enif_make_atom(env, "type");
 
-    result = enif_get_map_value(env, argv[1], term, &value);
-
-    if (0 == result) {
+    if (0 == enif_get_map_value(env, argv[1], term, &value)) {
         enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
     }
 
-    result = enif_get_int(env, value, &e);
+    result = enif_get_atom(env, value, buf, size, 0);
 
-    if (0 == result) {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+    if (0 == result || size == 0) {
+        return enif_make_badarg(env);
     }
 
-    if (0 <= e && e <= 4) {
-        attributes.type = (ockam_vault_secret_type_t)e;
+    if (strcmp("buffer", buf) == 0) {
+        attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
+    } else if (strcmp("aes128", buf) == 0) {
+        attributes.type = OCKAM_VAULT_SECRET_TYPE_AES128_KEY;
+    } else if (strcmp("aes256", buf) == 0) {
+        attributes.type = OCKAM_VAULT_SECRET_TYPE_AES256_KEY;
+    } else if (strcmp("curve25519", buf) == 0) {
+        attributes.type = OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY;
+    } else if (strcmp("p256", buf) == 0) {
+        attributes.type = OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY;
     } else {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+        return enif_make_badarg(env);
     }
 
     term = enif_make_atom(env, "persistence");
@@ -152,18 +142,18 @@ static ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM
         return enif_make_uint64(env, 0);
     }
 
-    result = enif_get_int(env, value, &e);
+    result = enif_get_atom(env, value, buf, size, 0);
 
     if (0 == result) {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+        return enif_make_badarg(env);
     }
 
-    if (0 <= e && e <= 1) {
-        attributes.persistence = (ockam_vault_secret_persistence_t)e;
+    if (strcmp("ephemeral", buf) == 0) {
+        attributes.persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
+    } else if (strcmp("persistent", buf) == 0) {
+        attributes.persistence = OCKAM_VAULT_SECRET_PERSISTENT;
     } else {
         enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
     }
 
     term = enif_make_atom(env, "purpose");
@@ -171,71 +161,28 @@ static ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     result = enif_get_map_value(env, argv[1], term, &value);
 
     if (0 == result) {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+        return enif_make_badarg(env);
     }
 
-    result = enif_get_int(env, value, &e);
+    result = enif_get_atom(env, value, buf, size, 0);
 
     if (0 == result) {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+        return enif_make_badarg(env);
     }
 
-    if (0 == e) {
-        attributes.purpose = (ockam_vault_secret_purpose_t)e;
+    if (strcmp("keyagreement", buf) == 0) {
+        attributes.purpose = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT;
     } else {
-        enif_make_badarg(env);
-        return enif_make_uint64(env, 0);
+        return enif_make_badarg(env);
     }
 
-    result = ockam_vault_secret_generate(vault, &secret, attributes);
-
-    if (0 != result) {
-        return enif_make_uint64(env, 0);
+    if (0 != ockam_vault_secret_generate(vault, &secret, attributes)) {
+        return err(env, "unable to generate the secret");
     }
 
-    return enif_make_uint64(env, secret.handle);
-}
+    // TODO: convert to TERM
 
-static int32_t get_vault(ErlNifEnv *env, const ERL_NIF_TERM argv[], ockam_vault_t* vault) {
-    int result;
-    int arity;
-    const ERL_NIF_TERM* array;
-    ErlNifUInt64 handle;
-    unsigned int vault_id;
-
-    if (0 == array) {
-        enif_make_badarg(env);
-        return 0;
-    }
-
-    result = enif_get_tuple(env, argv[0], &arity, &array);
-
-    if (0 == result || arity != 2) {
-        enif_make_badarg(env);
-        return 0;
-    }
-
-    result = enif_get_uint64(env, array[0], &handle);
-
-    if (0 == result) {
-        enif_make_badarg(env);
-        return 0;
-    }
-
-    vault->handle = handle;
-
-    result = enif_get_uint(env, array[1], &vault_id);
-
-    if (0 == result) {
-        enif_make_badarg(env);
-        return 0;
-    }
-
-    vault->vault_id = vault_id;
-
-    return 1;
+    return ok(env, secret_handle);
 }
 
 static ErlNifFunc nifs[] = {

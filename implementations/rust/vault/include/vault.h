@@ -12,14 +12,7 @@
 extern "C" {
 #endif
 
-/**
- * @struct ockam_vault_t
- * @brief An ockam vault instance
- */
-typedef struct {
-    uint64_t handle;
-    uint32_t vault_id;
-} ockam_vault_t;
+typedef uint64_t ockam_vault_t;
 
 /**
  * @enum    ockam_vault_secret_t
