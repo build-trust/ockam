@@ -25,7 +25,7 @@ extern crate arrayref;
 #[cfg(feature = "ffi")]
 #[macro_use]
 extern crate ffi_support;
-#[cfg(feature = "ffi")]
+#[cfg(any(feature = "ffi", feature = "nif"))]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -206,7 +206,7 @@ pub trait DynVault {
     fn deinit(&mut self);
 }
 
-impl<D: Vault + 'static> DynVault for D {
+impl<D: Vault + Send + Sync + 'static> DynVault for D {
     fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
         Vault::random(self, data)
     }
