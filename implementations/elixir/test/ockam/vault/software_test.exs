@@ -25,13 +25,12 @@ defmodule Ockam.Vault.Software.Tests do
     end
   end
 
-#  describe "Ockam.Vault.Software.secret_generate/2" do
-#    test "can run natively implemented functions" do
-#      handle = Ockam.Vault.Software.default_init
-#      # curve25519 key, ephemeral, key agreement
-#      attributes = %{type: 3, persistence: 0, purpose: 0}
-#      secret = Ockam.Vault.Software.secret_generate(handle, attributes)
-#      assert secret != 0
-#    end
-#  end
+  describe "Ockam.Vault.Software.secret_generate/2" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :keyagreement}
+      secret = Ockam.Vault.Software.secret_generate(handle, attributes)
+      assert secret != 0
+    end
+  end
 end
