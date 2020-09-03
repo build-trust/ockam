@@ -153,7 +153,7 @@ static ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     } else if (strcmp("persistent", buf) == 0) {
         attributes.persistence = OCKAM_VAULT_SECRET_PERSISTENT;
     } else {
-        enif_make_badarg(env);
+        return enif_make_badarg(env);
     }
 
     term = enif_make_atom(env, "purpose");
@@ -180,7 +180,7 @@ static ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM
         return err(env, "unable to generate the secret");
     }
 
-    // TODO: convert to TERM
+    secret_handle = enif_make_uint64(env, secret.handle);
 
     return ok(env, secret_handle);
 }
