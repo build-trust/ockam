@@ -1,6 +1,6 @@
 defprotocol Ockam.Router.Address do
   @moduledoc """
-  Defines an elixir protocol for an address that Ockam.Router deal .
+  Defines an elixir protocol for an address that Ockam.Router can handle.
   """
 
   @fallback_to_any true

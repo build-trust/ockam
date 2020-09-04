@@ -23,5 +23,4 @@ defmodule Ockam.Router.Message.Tests do
       assert [] === Message.onward_route(%{onward_route: 100})
     end
   end
-
 end

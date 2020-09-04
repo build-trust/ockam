@@ -1,5 +1,7 @@
 defprotocol Ockam.Router.Message do
-  @moduledoc false
+  @moduledoc """
+  Defines an elixir protocol for a address that Ockam.Router can route.
+  """
 
   @fallback_to_any true
 
