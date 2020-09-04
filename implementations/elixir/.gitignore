@@ -2,3 +2,4 @@ _build
 deps
 erl_crash.dump
 priv/native
+cmake-build-*
