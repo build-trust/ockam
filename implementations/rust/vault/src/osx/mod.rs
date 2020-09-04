@@ -9,7 +9,7 @@ use crate::{
     Vault,
 };
 use keychain_services as enclave;
-use p256::arithmetic::{ProjectivePoint, AffinePoint, Scalar};
+use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
 use rand::prelude::*;
 use security_framework::os::macos::keychain;
 use sha2::Sha256;
@@ -261,7 +261,7 @@ impl Vault for OsxVault {
                     OsxContext::Memory => {
                         let cid = SecretKeyContext::Memory(id);
                         self.ephemeral_vault.secret_public_key_get(cid)
-                    },
+                    }
                     OsxContext::Keychain => {
                         self.unlock()?;
                         let (key, _) = self
@@ -277,7 +277,7 @@ impl Vault for OsxVault {
                                 let sk = x25519_dalek::StaticSecret::from(key);
                                 let pk = x25519_dalek::PublicKey::from(&sk);
                                 Ok(PublicKey::Curve25519(*pk.as_bytes()))
-                            },
+                            }
                             SecretKeyType::P256 => {
                                 let sk = Scalar::from_bytes(key).unwrap();
                                 let pp = ProjectivePoint::generator() * &sk;
@@ -285,10 +285,10 @@ impl Vault for OsxVault {
                                     pp.to_affine().unwrap().to_uncompressed_pubkey(),
                                 );
                                 Ok(PublicKey::P256(*array_ref![pk.as_bytes(), 0, 65]))
-                            },
+                            }
                             _ => Err(VaultFailErrorKind::PublicKey.into()),
                         }
-                    },
+                    }
                     _ => Err(VaultFailErrorKind::PublicKey.into()),
                 }
             } else {
@@ -342,7 +342,7 @@ impl Vault for OsxVault {
                     OsxContext::Memory => {
                         let cid = SecretKeyContext::Memory(id);
                         self.ephemeral_vault.ec_diffie_hellman(cid, peer_public_key)
-                    },
+                    }
                     OsxContext::Keychain => {
                         self.unlock()?;
                         let (key, _) = self
@@ -365,10 +365,13 @@ impl Vault for OsxVault {
                                     persistence: SecretPersistenceType::Ephemeral,
                                 };
                                 self.ephemeral_vault.secret_import(&buffer, attributes)
-                            },
+                            }
                             (SecretKeyType::P256, PublicKey::P256(b)) => {
-                                let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> =
-                                    p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
+                                let o_pk_t: Option<
+                                    p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>,
+                                > = p256::elliptic_curve::weierstrass::PublicKey::from_bytes(
+                                    b.as_ref(),
+                                );
                                 if o_pk_t.is_none() {
                                     fail!(VaultFailErrorKind::Ecdh);
                                 }
@@ -392,10 +395,10 @@ impl Vault for OsxVault {
                                     persistence: SecretPersistenceType::Ephemeral,
                                 };
                                 self.ephemeral_vault.secret_import(&buffer, attributes)
-                            },
+                            }
                             _ => Err(VaultFailErrorKind::PublicKey.into()),
                         }
-                    },
+                    }
                     _ => Err(VaultFailErrorKind::PublicKey.into()),
                 }
             } else {
