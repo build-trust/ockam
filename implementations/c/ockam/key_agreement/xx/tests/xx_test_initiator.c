@@ -20,13 +20,13 @@ extern bool scripted_xx;
 ockam_error_t xx_test_initiator_prologue(xx_key_exchange_ctx_t* xx)
 {
   ockam_error_t                   error             = ockam_key_agreement_xx_error_none;
-  ockam_vault_secret_attributes_t secret_attributes = { KEY_SIZE,
-                                                        OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
+  ockam_vault_secret_attributes_t secret_attributes = { PRIVATE_KEY_SIZE,
+                                                        OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY,
                                                         OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
                                                         OCKAM_VAULT_SECRET_EPHEMERAL };
-  uint8_t                         key[KEY_SIZE];
+  uint8_t                         key[PRIVATE_KEY_SIZE];
   size_t                          key_bytes;
-  uint8_t                         ck[KEY_SIZE];
+  uint8_t                         ck[SYMMETRIC_KEY_SIZE];
 
   // 1. Pick a static 25519 keypair for this handshake and set it to s
 
@@ -34,7 +34,7 @@ ockam_error_t xx_test_initiator_prologue(xx_key_exchange_ctx_t* xx)
   error = ockam_vault_secret_import(xx->vault, &xx->s_secret, &secret_attributes, key, key_bytes);
   if (ockam_error_has_error(&error)) goto exit;
 
-  error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, KEY_SIZE, &key_bytes);
+  error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, P256_PUBLIC_KEY_SIZE, &key_bytes);
   if (ockam_error_has_error(&error)) goto exit;
 
   // 2. Generate an ephemeral 25519 keypair for this handshake and set it to e
@@ -44,20 +44,19 @@ ockam_error_t xx_test_initiator_prologue(xx_key_exchange_ctx_t* xx)
   error = ockam_vault_secret_import(xx->vault, &xx->e_secret, &secret_attributes, key, key_bytes);
   if (ockam_error_has_error(&error)) goto exit;
 
-  error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, KEY_SIZE, &key_bytes);
+  error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, P256_PUBLIC_KEY_SIZE, &key_bytes);
   if (ockam_error_has_error(&error)) goto exit;
 
   // Nonce to 0, k to empty
   xx->nonce = 0;
-  memset(xx->k, 0, sizeof(xx->k));
 
   // 4. Set h and ck to 'Noise_XX_25519_AESGCM_SHA256'
   memset(xx->h, 0, SHA256_SIZE);
   memcpy(xx->h, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
-  memset(ck, 0, KEY_SIZE);
+  memset(ck, 0, SYMMETRIC_KEY_SIZE);
   memcpy(ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
   secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
-  error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
+  error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, SYMMETRIC_KEY_SIZE);
   if (ockam_error_has_error(&error)) goto exit;
 
   // 5. h = SHA256(h || prologue),
@@ -263,6 +262,8 @@ ockam_error_t xx_test_initiator(ockam_vault_t*      p_vault,
     establish_initiator_transport(&transport, p_memory, initiator_address, responder_address, &p_reader, &p_writer);
   if (ockam_error_has_error(&error)) goto exit;
 
+  ockam_log_info("Initiator key agreement initialized");
+
   if (scripted_xx) {
     error = test_initiator_initialize(&key, p_memory, p_vault);
     if (ockam_error_has_error(&error)) goto exit;
@@ -273,6 +274,8 @@ ockam_error_t xx_test_initiator(ockam_vault_t*      p_vault,
     error = run_initiator_exchange(&key, p_reader, p_writer);
   }
   if (ockam_error_has_error(&error)) goto exit;
+
+    ockam_log_info("Initiator key agreement initiated");
 
   /*-------------------------------------------------------------------------
    * Receive the test message
@@ -286,11 +289,15 @@ ockam_error_t xx_test_initiator(ockam_vault_t*      p_vault,
     }
   } while (ockam_error_has_error(&error));
 
+    ockam_log_info("Initiator test message received");
+
   /*-------------------------------------------------------------------------
    * Confirm the test message
    *-----------------------------------------------------------------------*/
   error = ockam_key_decrypt(&key, test, TEST_MSG_CIPHER_SIZE, read_buffer, bytes_received, &test_bytes);
   if (ockam_error_has_error(&error)) goto exit;
+
+    ockam_log_info("Initiator test message decrypted");
 
   if (scripted_xx) {
     string_to_hex((uint8_t*) TEST_MSG_RESPONDER, test_responder, NULL);

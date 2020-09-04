@@ -3,8 +3,11 @@
 
 #include "ockam/key_agreement.h"
 
-#define KEY_SIZE    32
-#define SHA256_SIZE 32
+#define PRIVATE_KEY_SIZE     32
+#define P256_PUBLIC_KEY_SIZE 65
+#define SYMMETRIC_KEY_SIZE   16
+#define DH_SIZE              32
+#define SHA256_SIZE          32
 
 typedef struct ockam_key_dispatch_table_t {
   ockam_error_t (*m1_make)(void*, uint8_t*, size_t, size_t*);

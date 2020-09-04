@@ -19,20 +19,20 @@ extern bool scripted_xx;
 ockam_error_t xx_test_responder_prologue(xx_key_exchange_ctx_t* xx)
 {
   ockam_error_t                   error             = ockam_key_agreement_xx_error_none;
-  ockam_vault_secret_attributes_t secret_attributes = { KEY_SIZE,
+  ockam_vault_secret_attributes_t secret_attributes = { PRIVATE_KEY_SIZE,
                                                         OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
                                                         OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
                                                         OCKAM_VAULT_SECRET_EPHEMERAL };
-  uint8_t                         key[KEY_SIZE];
+  uint8_t                         key[PRIVATE_KEY_SIZE];
   size_t                          key_bytes;
-  uint8_t                         ck[KEY_SIZE];
+  uint8_t                         ck[SYMMETRIC_KEY_SIZE];
 
   // 1. Pick a static 25519 keypair for this xx and set it to s
   string_to_hex((uint8_t*) RESPONDER_STATIC, key, &key_bytes);
   error = ockam_vault_secret_import(xx->vault, &xx->s_secret, &secret_attributes, key, key_bytes);
   if (ockam_error_has_error(&error)) { goto exit; }
 
-  error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, KEY_SIZE, &key_bytes);
+  error = ockam_vault_secret_publickey_get(xx->vault, &xx->s_secret, xx->s, P256_PUBLIC_KEY_SIZE, &key_bytes);
   if (ockam_error_has_error(&error)) { goto exit; }
 
   // 2. Generate an ephemeral 25519 keypair for this xx and set it to e
@@ -41,20 +41,20 @@ ockam_error_t xx_test_responder_prologue(xx_key_exchange_ctx_t* xx)
   error = ockam_vault_secret_import(xx->vault, &xx->e_secret, &secret_attributes, key, key_bytes);
   if (ockam_error_has_error(&error)) { goto exit; }
 
-  error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, KEY_SIZE, &key_bytes);
+  error = ockam_vault_secret_publickey_get(xx->vault, &xx->e_secret, xx->e, P256_PUBLIC_KEY_SIZE, &key_bytes);
   if (ockam_error_has_error(&error)) { goto exit; }
 
   // Nonce to 0, k to empty
   xx->nonce = 0;
-  memset(xx->k, 0, sizeof(xx->k));
 
   // 4. Set h and ck to 'Noise_XX_25519_AESGCM_SHA256'
   memset(xx->h, 0, SHA256_SIZE);
   memcpy(xx->h, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
-  memset(ck, 0, KEY_SIZE);
+  memset(ck, 0, SYMMETRIC_KEY_SIZE);
+  // FIXME
   memcpy(ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
   secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
-  error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
+  error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, SYMMETRIC_KEY_SIZE);
   if (ockam_error_has_error(&error)) { goto exit; }
 
   // 5. h = SHA256(h || prologue),
@@ -271,6 +271,8 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
   error = establish_responder_connection(&transport, p_memory, ip_address, &p_reader, &p_writer);
   if (ockam_error_has_error(&error)) goto exit;
 
+  ockam_log_info("Responder key agreement initialized");
+
   /*-------------------------------------------------------------------------
    * Perform the secret xx
    * If successful, encrypt/decrypt keys will be established
@@ -287,6 +289,8 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
     error = run_responder_exchange(&key, p_reader, p_writer);
   }
   if (ockam_error_has_error(&error)) { goto exit; }
+
+  ockam_log_info("Responder key agreement responded");
 
   /*-------------------------------------------------------------------------
    * Verify secure channel by sending and receiving a known message
@@ -311,9 +315,13 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
     }
   }
 
+  ockam_log_info("Responder test message encrypted");
+
   /* Send test message */
   error = ockam_write(p_writer, write_buffer, transmit_size);
   if (ockam_error_has_error(&error)) goto exit;
+
+  ockam_log_info("Responder test message sent");
 
   /* Receive test message  */
   memset(read_buffer, 0, sizeof(read_buffer));
@@ -326,10 +334,14 @@ ockam_error_t xx_test_responder(ockam_vault_t* p_vault, ockam_memory_t* p_memory
     }
   } while (ockam_error_has_error(&error));
 
+  ockam_log_info("Responder test message receiver");
+
   /* Decrypt test message */
 
   error = ockam_key_decrypt(&key, test, TEST_MSG_BYTE_SIZE, read_buffer, transmit_size, &test_size);
   if (ockam_error_has_error(&error)) goto exit;
+
+  ockam_log_info("Responder test message decrypted");
 
   /* Verify test message */
   if (scripted_xx) {

@@ -129,10 +129,10 @@ ockam_error_t ockam_vault_default_init(ockam_vault_t* vault, ockam_vault_default
     }
 
     error =
-      ockam_memory_alloc_zeroed(attributes->memory, (void**) &(vault->default_context), sizeof(ockam_vault_default_context_t));
+      ockam_memory_alloc_zeroed(attributes->memory, (void**) &(vault->context), sizeof(ockam_vault_default_context_t));
     if (ockam_error_has_error(&error)) { goto exit; }
 
-    ctx         = (ockam_vault_default_context_t*) vault->default_context;
+    ctx         = (ockam_vault_default_context_t*) vault->context;
     ctx->memory = attributes->memory;
     ctx->random = attributes->random;
 
@@ -140,12 +140,12 @@ ockam_error_t ockam_vault_default_init(ockam_vault_t* vault, ockam_vault_default
 
     features = OCKAM_VAULT_FEAT_ALL;
   } else {
-    if (vault->default_context == 0) {
+    if (vault->context == 0) {
       error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
       goto exit;
     }
 
-    ctx      = (ockam_vault_default_context_t*) vault->default_context;
+    ctx      = (ockam_vault_default_context_t*) vault->context;
     features = attributes->features;
 
     if (ctx->memory == 0) {
@@ -155,6 +155,7 @@ ockam_error_t ockam_vault_default_init(ockam_vault_t* vault, ockam_vault_default
 
     if ((ctx->random == 0) && ((features & OCKAM_VAULT_FEAT_RANDOM) || (features & OCKAM_VAULT_FEAT_SECRET_ECDH))) {
       error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
+      goto exit;
     }
   }
 
@@ -181,7 +182,7 @@ ockam_error_t ockam_vault_default_init(ockam_vault_t* vault, ockam_vault_default
   }
 
 exit:
-  if ((ockam_error_has_error(&error)) && (features == OCKAM_VAULT_FEAT_ALL)) { vault_default_deinit(vault); }
+  if (ockam_error_has_error(&error) && features == OCKAM_VAULT_FEAT_ALL) { vault_default_deinit(vault); }
 
   return error;
 }
@@ -192,12 +193,12 @@ ockam_error_t vault_default_deinit(ockam_vault_t* vault)
   ockam_vault_default_context_t* ctx       = 0;
   uint8_t                       delete_ctx = 0;
 
-  if ((vault == 0) || (vault->default_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if (ctx->default_features & OCKAM_VAULT_FEAT_ALL) { delete_ctx = 1; }
 
@@ -215,7 +216,7 @@ ockam_error_t vault_default_deinit(ockam_vault_t* vault)
 
   if (delete_ctx) { ockam_memory_free(ctx->memory, ctx, sizeof(ockam_vault_default_context_t)); }
 
-  vault->default_context  = 0;
+  vault->context  = 0;
   vault->dispatch = 0;
 
 exit:
@@ -290,12 +291,12 @@ ockam_error_t vault_default_random(ockam_vault_t* vault, uint8_t* buffer, size_t
   ockam_vault_default_context_t* ctx       = 0;
   vault_default_random_ctx_t*   random_ctx = 0;
 
-  if ((vault == 0) || (vault->default_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((ctx->random_ctx == 0) || (!(ctx->default_features & OCKAM_VAULT_FEAT_RANDOM))) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
@@ -386,12 +387,12 @@ ockam_error_t vault_default_sha256(ockam_vault_t* vault,
   ockam_vault_default_context_t* ctx       = 0;
   vault_default_sha256_ctx_t*   sha256_ctx = 0;
 
-  if ((vault == 0) || (vault->default_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((ctx->sha256_ctx == 0) || (!(ctx->default_features & OCKAM_VAULT_FEAT_SHA256))) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
@@ -493,6 +494,7 @@ ockam_error_t vault_default_secret_import(ockam_vault_t*                        
   case OCKAM_VAULT_SECRET_TYPE_AES128_KEY:
   case OCKAM_VAULT_SECRET_TYPE_AES256_KEY:
   case OCKAM_VAULT_SECRET_TYPE_BUFFER:
+  case OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY:
     error = vault_default_secret_key_create(vault, secret, attributes, 0, input, input_length);
     break;
 
@@ -529,12 +531,12 @@ ockam_error_t vault_default_secret_ec_create(ockam_vault_t*                     
     goto exit;
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((ctx->random_ctx == 0) || (!(ctx->default_features & OCKAM_VAULT_FEAT_RANDOM))) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_RANDOM_REQUIRED;
@@ -574,6 +576,7 @@ ockam_error_t vault_default_secret_ec_create(ockam_vault_t*                     
   case OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY:
     secret_ctx->ec    = &br_ec_p256_m31;
     secret_ctx->curve = BR_EC_secp256r1;
+    break;
 
   case OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY:
     secret_ctx->ec    = &br_ec_c25519_i31;
@@ -583,7 +586,6 @@ ockam_error_t vault_default_secret_ec_create(ockam_vault_t*                     
   default:
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_PARAM;
     goto exit;
-    break;
   }
 
   size = br_ec_keygen(&(br_random_ctx->vtable), /* Call keygen without a key structure or buffer to     */
@@ -675,12 +677,12 @@ ockam_error_t vault_default_secret_key_create(ockam_vault_t*                    
     goto exit;
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if (generate) {
     if ((ctx->random_ctx == 0) || (!(ctx->default_features & OCKAM_VAULT_FEAT_RANDOM))) {
@@ -701,7 +703,7 @@ ockam_error_t vault_default_secret_key_create(ockam_vault_t*                    
     goto exit;
   }
 
-  if ((attributes->purpose != OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT) ||
+  if ((attributes->purpose != OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT && attributes->purpose != OCKAM_VAULT_SECRET_PURPOSE_EPILOGUE) ||
       (attributes->persistence != OCKAM_VAULT_SECRET_EPHEMERAL)) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_SECRET_ATTRIBUTES;
     goto exit;
@@ -774,6 +776,7 @@ ockam_error_t vault_default_secret_destroy(ockam_vault_t* vault, ockam_vault_sec
   case OCKAM_VAULT_SECRET_TYPE_AES128_KEY:
   case OCKAM_VAULT_SECRET_TYPE_AES256_KEY:
   case OCKAM_VAULT_SECRET_TYPE_BUFFER:
+  case OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY:
     error = vault_default_secret_key_destroy(vault, secret);
     break;
 
@@ -797,12 +800,12 @@ ockam_error_t vault_default_secret_ec_destroy(ockam_vault_t* vault, ockam_vault_
     goto exit;
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY) &&
       (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY)) {
@@ -841,16 +844,17 @@ ockam_error_t vault_default_secret_key_destroy(ockam_vault_t* vault, ockam_vault
     goto exit;
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
       (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY) &&
-      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER)) {
+      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER) &&
+      (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY)) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_SECRET_TYPE;
     goto exit;
   }
@@ -888,12 +892,12 @@ ockam_error_t vault_default_secret_export(ockam_vault_t*        vault,
     goto exit;
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
       (secret->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY) &&
@@ -987,12 +991,12 @@ ockam_error_t vault_default_secret_attributes_get(ockam_vault_t*                
     goto exit;
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   error = ockam_memory_copy(ctx->memory, attributes, &(secret->attributes), sizeof(ockam_vault_secret_attributes_t));
 
@@ -1064,7 +1068,7 @@ ockam_error_t vault_default_ecdh(ockam_vault_t*        vault,
   ockam_error_t                   error          = ockam_vault_default_error_none;
   int                             ret            = 0;
   const uint8_t*                  publickey      = 0;
-  ockam_vault_default_context_t*   ctx           = 0;
+  ockam_vault_default_context_t*  ctx            = 0;
   vault_default_secret_ec_ctx_t*  secret_ec_ctx  = 0;
   vault_default_secret_key_ctx_t* secret_key_ctx = 0;
   size_t                          xoff           = 0;
@@ -1075,12 +1079,12 @@ ockam_error_t vault_default_ecdh(ockam_vault_t*        vault,
     goto exit;
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((privatekey->attributes.type != OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY) &&
       (privatekey->attributes.type != OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY)) {
@@ -1180,7 +1184,8 @@ ockam_error_t vault_default_hkdf_sha256(ockam_vault_t*        vault,
     goto exit;
   }
 
-  if ((salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER) &&
+  if ((salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY) &&
+      (salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_BUFFER) &&
       (salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY) &&
       (salt->attributes.type != OCKAM_VAULT_SECRET_TYPE_AES256_KEY)) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_SECRET_TYPE;
@@ -1195,12 +1200,12 @@ ockam_error_t vault_default_hkdf_sha256(ockam_vault_t*        vault,
     }
   }
 
-  if (vault->default_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((ctx->hkdf_sha256_ctx == 0) || (!(ctx->default_features & OCKAM_VAULT_FEAT_HKDF_SHA256))) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
@@ -1234,15 +1239,9 @@ ockam_error_t vault_default_hkdf_sha256(ockam_vault_t*        vault,
   br_hkdf_flip(br_hkdf_ctx);
 
   {
-    uint8_t                         i          = 0;
-    ockam_vault_secret_attributes_t attributes = { .length      = OCKAM_VAULT_SHA256_DIGEST_LENGTH,
-                                                   .type        = OCKAM_VAULT_SECRET_TYPE_BUFFER,
-                                                   .purpose     = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
-                                                   .persistence = OCKAM_VAULT_SECRET_EPHEMERAL };
-
-    for (i = 0; i < derived_outputs_count; i++) {
-      ockam_vault_secret_t* output = derived_outputs;
-      output += i;
+    for (uint8_t i = 0; i < derived_outputs_count; i++) {
+      ockam_vault_secret_t* output = derived_outputs + i;
+      ockam_vault_secret_attributes_t attributes = output->attributes;
 
       if (output == 0) {
         error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
@@ -1254,7 +1253,16 @@ ockam_error_t vault_default_hkdf_sha256(ockam_vault_t*        vault,
 
       secret_ctx = (vault_default_secret_key_ctx_t*) output->context;
 
-      br_hkdf_produce(br_hkdf_ctx, 0, 0, secret_ctx->key, secret_ctx->key_size);
+      uint8_t output_buffer[OCKAM_VAULT_SHA256_DIGEST_LENGTH];
+      br_hkdf_produce(br_hkdf_ctx, 0, 0, output_buffer, OCKAM_VAULT_SHA256_DIGEST_LENGTH);
+
+      if (secret_ctx->key_size > OCKAM_VAULT_SHA256_DIGEST_LENGTH) {
+        error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
+        goto exit;
+      }
+
+      error = ockam_memory_copy(ctx->memory, secret_ctx->key, output_buffer, secret_ctx->key_size);
+      if (ockam_error_has_error(&error)) goto exit;
     }
   }
 
@@ -1344,12 +1352,12 @@ ockam_error_t vault_default_aead_aes_gcm(ockam_vault_t*        vault,
   size_t                            run_length                             = 0;
   uint8_t                           iv[VAULT_DEFAULT_AEAD_AES_GCM_IV_SIZE] = { 0 };
 
-  if ((vault == 0) || (vault->default_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  ctx = (ockam_vault_default_context_t*) vault->default_context;
+  ctx = (ockam_vault_default_context_t*) vault->context;
 
   if ((ctx->aead_aes_gcm_ctx == 0) || (!(ctx->default_features & OCKAM_VAULT_FEAT_AEAD_AES_GCM))) {
     error.code = OCKAM_VAULT_DEFAULT_ERROR_INVALID_CONTEXT;

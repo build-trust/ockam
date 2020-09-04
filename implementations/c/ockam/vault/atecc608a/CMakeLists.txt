@@ -21,11 +21,17 @@ target_include_directories(ockam_vault_atecc608a
         "${cryptoauthlib_SOURCE_DIR}/lib/hal"
         "${cryptoauthlib_BINARY_DIR}/lib")
 
+target_link_directories(ockam_vault_atecc608a
+        PUBLIC
+        "${cryptoauthlib_BINARY_DIR}/lib")
+
 target_link_libraries(ockam_vault_atecc608a
     PUBLIC
         ockam::mutex
         ockam::memory
         ockam::vault_interface
+        ockam::vault
+        ockam::log
         cryptoauth)
 
 if (OCKAM_ENABLE_ATECC608A_TESTS)

@@ -1,6 +1,7 @@
 #ifndef HANDSHAKE_LOCAL_H
 #define HANDSHAKE_LOCAL_H
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "ockam/error.h"
 #include "ockam/io.h"
@@ -20,15 +21,13 @@
 
 typedef struct xx_key_exchange_ctx {
   uint16_t             nonce;
-  uint8_t              s[KEY_SIZE];
+  uint8_t              s[P256_PUBLIC_KEY_SIZE];
   ockam_vault_secret_t s_secret;
-  uint8_t              rs[KEY_SIZE];
-  uint8_t              e[KEY_SIZE];
+  uint8_t              e[P256_PUBLIC_KEY_SIZE];
   ockam_vault_secret_t e_secret;
-  uint8_t              re[KEY_SIZE];
-  uint8_t              k[KEY_SIZE];
+  uint8_t              rs[P256_PUBLIC_KEY_SIZE];
+  uint8_t              re[P256_PUBLIC_KEY_SIZE];
   ockam_vault_secret_t k_secret;
-  uint8_t              ck[KEY_SIZE];
   ockam_vault_secret_t ck_secret;
   uint8_t              h[SHA256_SIZE];
   ockam_vault_t*       vault;
@@ -46,8 +45,8 @@ typedef struct ockam_xx_key {
   xx_key_exchange_ctx_t* exchange;
 } ockam_xx_key_t;
 
-void print_uint8_str(uint8_t* p, uint16_t size, char* msg);
-void string_to_hex(uint8_t* hexstring, uint8_t* val, size_t* p_bytes);
+void print_uint8_str(const uint8_t* p, uint16_t size, const char* msg);
+void string_to_hex(const uint8_t* hexstring, uint8_t* val, size_t* p_bytes);
 void mix_hash(xx_key_exchange_ctx_t* p_handshake, uint8_t* p_bytes, uint16_t b_length);
 
 ockam_error_t ockam_key_establish_initiator_xx(void* p_context);
@@ -75,5 +74,6 @@ ockam_error_t hkdf_dh(xx_key_exchange_ctx_t* xx,
                       uint8_t*               peer_publickey,
                       size_t                 peer_publickey_length,
                       ockam_vault_secret_t*  secret1,
-                      ockam_vault_secret_t*  secret2);
+                      ockam_vault_secret_t*  secret2,
+                      bool is_last);
 #endif

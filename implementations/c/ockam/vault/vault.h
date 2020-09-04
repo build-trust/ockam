@@ -25,6 +25,7 @@ typedef enum {
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define OCKAM_VAULT_SHARED_SECRET_LENGTH        32u
 #define OCKAM_VAULT_SHA256_DIGEST_LENGTH        32u
@@ -49,6 +50,7 @@ typedef enum {
   OCKAM_VAULT_SECRET_TYPE_AES256_KEY,
   OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
   OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY,
+  OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY,
 } ockam_vault_secret_type_t;
 
 /**
@@ -66,6 +68,7 @@ typedef enum {
  */
 typedef enum {
   OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT = 0,
+  OCKAM_VAULT_SECRET_PURPOSE_EPILOGUE = 1,
 } ockam_vault_secret_purpose_t;
 
 /**

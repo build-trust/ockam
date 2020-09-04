@@ -34,6 +34,7 @@ target_sources(
 target_link_libraries(
   ockam_vault
   PUBLIC
+    ockam::log
     ockam::error_interface
     ockam::memory_interface
     ockam::vault_interface

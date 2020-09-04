@@ -1,6 +1,5 @@
 #include "ockam/error.h"
 #include "ockam/vault.h"
-
 #include "ockam/vault/impl.h"
 
 const char* const OCKAM_VAULT_INTERFACE_ERROR_DOMAIN = "OCKAM_VAULT_INTERFACE_ERROR_DOMAIN";

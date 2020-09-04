@@ -7,6 +7,7 @@
 #include "ockam/mutex.h"
 #include "ockam/vault.h"
 #include "ockam/vault/impl.h"
+#include "ockam/log.h"
 
 #include "ockam/vault/atecc608a.h"
 
@@ -111,11 +112,34 @@ typedef struct {
   vault_atecc608a_slot_cfg_t            slot_config[VAULT_ATECC608A_NUM_SLOTS];
 } vault_atecc608a_context_t;
 
+typedef enum {
+    VAULT_ATECC608A_RAM = -1,
+    VAULT_ATECC608A_SLOT0 = 0,
+    VAULT_ATECC608A_SLOT1,
+    VAULT_ATECC608A_SLOT2,
+    VAULT_ATECC608A_SLOT3,
+    VAULT_ATECC608A_SLOT4,
+    VAULT_ATECC608A_SLOT5,
+    VAULT_ATECC608A_SLOT6,
+    VAULT_ATECC608A_SLOT7,
+    VAULT_ATECC608A_SLOT8,
+    VAULT_ATECC608A_SLOT9,
+    VAULT_ATECC608A_SLOT10,
+    VAULT_ATECC608A_SLOT11,
+    VAULT_ATECC608A_SLOT12,
+    VAULT_ATECC608A_SLOT13,
+    VAULT_ATECC608A_SLOT14,
+    VAULT_ATECC608A_SLOT15,
+    VAULT_ATECC608A_SLOT_TEMP_KEY = 32,
+    VAULT_ATECC608A_SLOT_ALT_KEY = 33,
+    VAULT_ATECC608A_SLOT_MSG_DIGEST = 34,
+} vault_atecc608a_slot_t;
+
 /**
  * @brief Context data for the ATECC608A secrets
  */
 typedef struct {
-  uint16_t slot;
+    vault_atecc608a_slot_t slot;
   uint8_t *buffer;
   size_t buffer_size;
 } vault_atecc608a_secret_context_t;
@@ -201,18 +225,6 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
                                                    uint8_t*              plaintext,
                                                    size_t                plaintext_size,
                                                    size_t*               plaintext_length);
-
-ockam_error_t atecc608a_hkdf_extract(vault_atecc608a_context_t* context,
-                                     uint8_t*                   salt,
-                                     size_t                     salt_length,
-                                     uint8_t*                   ikm,
-                                     size_t                     ikm_length,
-                                     uint16_t*                  prk_slot);
-
-ockam_error_t atecc608a_hkdf_expand(vault_atecc608a_context_t* context,
-                                    ockam_vault_secret_t*      outputs,
-                                    uint8_t                    outputs_count,
-                                    uint16_t                   prk_slot);
 
 ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
                                      int                   encrypt,
@@ -370,7 +382,7 @@ ockam_error_t ockam_vault_atecc608a_init(ockam_vault_t* vault, ockam_vault_atecc
 
 
   vault->dispatch = &vault_atecc608a_dispatch_table;
-  vault->impl_context  = context;
+  vault->context  = context;
 
 exit:
   return error;
@@ -388,19 +400,19 @@ ockam_error_t vault_atecc608a_deinit(ockam_vault_t* vault)
   ATCA_STATUS                status  = ATCA_SUCCESS;
   vault_atecc608a_context_t* context = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   ockam_mutex_destroy(context->mutex, context->lock);
 
   error = ockam_memory_free(context->memory, context, sizeof(vault_atecc608a_context_t));
 
   vault->dispatch = 0;
-  vault->impl_context  = 0;
+  vault->context  = 0;
 
 exit:
   return error;
@@ -419,12 +431,12 @@ ockam_error_t vault_atecc608a_random(ockam_vault_t* vault, uint8_t* buffer, size
   ATCA_STATUS                status     = ATCA_SUCCESS;
   vault_atecc608a_context_t* context    = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if(buffer == 0) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
@@ -478,12 +490,12 @@ ockam_error_t vault_atecc608a_sha256(ockam_vault_t* vault,
   ATCA_STATUS                status     = ATCA_SUCCESS;
   vault_atecc608a_context_t* context    = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if(digest == 0) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
@@ -539,12 +551,12 @@ ockam_error_t vault_atecc608a_secret_generate(ockam_vault_t*                    
   uint8_t                           rand[VAULT_ATECC608A_RAND_SIZE] = {0};
   uint8_t                           slot                            = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if(secret == 0) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_SECRET;
@@ -647,15 +659,20 @@ ockam_error_t vault_atecc608a_secret_import(ockam_vault_t*                      
   uint8_t*                          buffer                           = 0;
   uint8_t                           nonce[VAULT_ATECC608A_RAND_SIZE] = {0};
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if((secret == 0) || (secret->context != 0) || (attributes == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
+    goto exit;
+  }
+
+  if (attributes->type != OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY || input_length != 32) { // FIXME
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
     goto exit;
   }
 
@@ -699,9 +716,7 @@ ockam_error_t vault_atecc608a_secret_import(ockam_vault_t*                      
     ockam_memory_copy(context->memory, &(secret->attributes), attributes, sizeof(ockam_vault_secret_attributes_t));
     secret->attributes.length = input_length;
   }
-
   else if(attributes->type == OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY) {
-
     if(input_length != OCKAM_VAULT_P256_PRIVATEKEY_LENGTH) {
       error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_SIZE;
       goto exit;
@@ -738,6 +753,17 @@ ockam_error_t vault_atecc608a_secret_import(ockam_vault_t*                      
     }
 
     ockam_memory_copy(context->memory, &(secret->attributes), attributes, sizeof(ockam_vault_secret_attributes_t));
+  }
+  else if (attributes->type == OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY) {
+
+    status = atcab_nonce_load(NONCE_MODE_TARGET_ALTKEYBUF, input, input_length);
+    if(status != ATCA_SUCCESS) {
+      error.code = OCKAM_VAULT_ATECC608A_ERROR_SECRET_IMPORT_FAIL;
+      goto exit;
+    }
+
+    ockam_memory_copy(context->memory, &(secret->attributes), attributes, sizeof(ockam_vault_secret_attributes_t));
+    slot = VAULT_ATECC608A_SLOT_ALT_KEY;
   }
 
   secret->context = secret_ctx;
@@ -783,12 +809,12 @@ ockam_error_t vault_atecc608a_secret_export(ockam_vault_t*        vault,
   ATCA_STATUS                       status      = ATCA_SUCCESS;
   uint8_t*                          buffer      = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if((secret == 0) || (secret->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
@@ -861,12 +887,12 @@ ockam_error_t vault_atecc608a_secret_attributes_get(ockam_vault_t*              
     goto exit;
   }
 
-  if (vault->impl_context == 0) {
+  if (vault->context == 0) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   error = ockam_memory_copy(context->memory,
                             attributes,
@@ -954,12 +980,12 @@ ockam_error_t vault_atecc608a_secret_publickey_get(ockam_vault_t*        vault,
   uint8_t                           slot                            = 0;
   uint8_t*                          output                          = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if(secret == 0) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_SECRET;
@@ -1027,12 +1053,12 @@ ockam_error_t vault_atecc608a_ecdh(ockam_vault_t*        vault,
   vault_atecc608a_secret_context_t* privatekey_ctx                  = 0;
   vault_atecc608a_secret_context_t* shared_secret_ctx               = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if((privatekey == 0) ||
      (privatekey->attributes.type != OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY) ||
@@ -1067,14 +1093,6 @@ ockam_error_t vault_atecc608a_ecdh(ockam_vault_t*        vault,
     goto exit;
   }
 
-  error = ockam_memory_alloc_zeroed(context->memory,
-                                    (void**) &(shared_secret_ctx->buffer),
-                                    OCKAM_VAULT_SHARED_SECRET_LENGTH);
-  if(ockam_error_has_error(&error)) {
-    goto exit;
-  }
-
-  shared_secret_ctx->buffer_size   = OCKAM_VAULT_SHARED_SECRET_LENGTH;
   shared_secret->attributes.length = OCKAM_VAULT_SHARED_SECRET_LENGTH;
   shared_secret->attributes.type   = OCKAM_VAULT_SECRET_TYPE_BUFFER;
 
@@ -1085,26 +1103,30 @@ ockam_error_t vault_atecc608a_ecdh(ockam_vault_t*        vault,
     }
   }
 
-  // TODO expand public key if compressed
-
+  // TODO: why?
   status = atcab_random(&rand[0]);
   if (status != ATCA_SUCCESS) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_ECDH_FAIL;
     goto exit;
   }
 
+  // TODO: why?
   status = atcab_nonce((const uint8_t *)&rand[0]);
   if (status != ATCA_SUCCESS) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_ECDH_FAIL;
     goto exit;
   }
 
-  status = atcab_ecdh(privatekey_ctx->slot, peer_publickey+1, shared_secret_ctx->buffer);
+  ockam_log_info("Running ECDH");
+  // Only x,y coordinates of public key go here, 64 bytes
+  status = atcab_ecdh_base(ECDH_MODE_COPY_TEMP_KEY, privatekey_ctx->slot, peer_publickey+1, NULL, NULL);
   if (status != ATCA_SUCCESS) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_ECDH_FAIL;
+    ockam_log_error("ECDH error: %d", status);
     goto exit;
   }
 
+  shared_secret_ctx->slot = VAULT_ATECC608A_SLOT_TEMP_KEY;
   shared_secret->context = shared_secret_ctx;
 
 exit:
@@ -1137,63 +1159,182 @@ ockam_error_t vault_atecc608a_hkdf_sha256(ockam_vault_t*        vault,
                                           uint8_t               derived_outputs_count,
                                           ockam_vault_secret_t* derived_outputs)
 {
-  ockam_error_t                     error                               = ockam_vault_atecc608a_error_none;
-  ockam_error_t                     exit_error                          = ockam_vault_atecc608a_error_none;
-  ATCA_STATUS                       status                              = ATCA_SUCCESS;
-  uint8_t                           rand[VAULT_ATECC608A_RAND_SIZE]     = {0};
-  uint8_t                           prk[VAULT_ATECC608A_HMAC_HASH_SIZE] = {0};
-  ockam_vault_secret_t*             outputs                             = 0;
-  vault_atecc608a_context_t*        context                             = 0;
-  vault_atecc608a_secret_context_t* salt_ctx                            = 0;
-  vault_atecc608a_secret_context_t* ikm_ctx                             = 0;
-  uint16_t                          prk_slot                            = 0;
-  uint8_t*                          ikm_buffer                          = 0;
-  size_t                            ikm_size                            = 0;
+  ockam_error_t                     error      = ockam_vault_atecc608a_error_none;
+  ockam_error_t                     exit_error = ockam_vault_atecc608a_error_none;
+  ATCA_STATUS                       status     = ATCA_SUCCESS;
+  vault_atecc608a_context_t*        context    = 0;
+  vault_atecc608a_secret_context_t* salt_ctx   = 0;
+  vault_atecc608a_secret_context_t* ikm_ctx    = 0;
+  uint8_t extract_mode                         = KDF_MODE_ALG_HKDF | KDF_MODE_TARGET_TEMPKEY;
+  uint32_t extract_details                     = 0;
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
-    goto exit;
+    goto exit1;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  if (derived_outputs_count != 2) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
+    goto exit1;
+  }
+
+  if (derived_outputs == NULL) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
+    goto exit1;
+  }
+
+  if (!(derived_outputs[0].attributes.type == OCKAM_VAULT_SECRET_TYPE_AES128_KEY && derived_outputs[0].attributes.length == 16)
+    && !(derived_outputs[0].attributes.type == OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY && derived_outputs[0].attributes.length == 32)) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
+    goto exit1;
+  }
+
+  if (derived_outputs[1].attributes.type != OCKAM_VAULT_SECRET_TYPE_AES128_KEY || derived_outputs[1].attributes.length != 16) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
+    goto exit1;
+  }
+
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if(salt == 0) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
-    goto exit;
+    goto exit1;
   }
 
   salt_ctx = (vault_atecc608a_secret_context_t*) salt->context;
 
-  if(input_key_material) {
-    ikm_ctx  = (vault_atecc608a_secret_context_t*) input_key_material->context;
-    ikm_buffer = ikm_ctx->buffer;
-    ikm_size = input_key_material->attributes.length;
+  if (salt_ctx->slot == VAULT_ATECC608A_SLOT13) {
+    if (input_key_material != NULL) {
+      ockam_log_error("salt is in temp key slot but ikm was also passed");
+      error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
+      goto exit1;
+    }
+  }
+  else if (salt_ctx->slot == VAULT_ATECC608A_SLOT_ALT_KEY) {
+    extract_mode |= KDF_MODE_SOURCE_ALTKEYBUF;
+  }
+  else {
+    ockam_log_error("salt is not in neither alt key nor temp key slot");
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
+    goto exit1;
   }
 
   if(context->mutex) {
     error = ockam_mutex_lock(context->mutex, context->lock);
     if(ockam_error_has_error(&error)) {
-      goto exit;
+      goto exit1;
     }
   }
 
-  error = atecc608a_hkdf_extract(context,
-                                 salt_ctx->buffer,
-                                 salt->attributes.length,
-                                 ikm_buffer,
-                                 ikm_size,
-                                 &prk_slot);
-  if(ockam_error_has_error(&error)) {
-    goto exit;
+  if (input_key_material) {
+    ikm_ctx = (vault_atecc608a_secret_context_t*) input_key_material->context;
+    if (ikm_ctx->slot != VAULT_ATECC608A_SLOT_TEMP_KEY) {
+      ockam_log_error("ikm is not in temp key slot");
+      error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
+      goto exit1;
+    }
+
+    extract_details |= KDF_DETAILS_HKDF_MSG_LOC_TEMPKEY | (32u << 24u);
+
+    uint8_t one[32]; // Used as a workaround
+    ockam_memory_set(context->memory, one, 0x01, 32);
+
+    // Extract
+    status = atcab_kdf(extract_mode, 0, extract_details, one /* FIXME */, NULL, NULL);
+    if (status != ATCA_SUCCESS) {
+      error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
+      ockam_log_error("HKDF extract error: %d", status);
+      goto exit2;
+    }
+  }
+  else {
+    status = atcab_sha_hmac(NULL,
+                            0,
+                            salt_ctx->slot,
+                            NULL,
+                            SHA_MODE_TARGET_TEMPKEY);
+
+    if (status != ATCA_SUCCESS) {
+      error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
+      ockam_log_error("HKDF extract error: %d", status);
+      goto exit2;
+    }
   }
 
-  error = atecc608a_hkdf_expand(context,         /* Expand stage of HKDF. Uses the PRK from extract    */
-                                derived_outputs, /* and outputs the key at the desired output size.    */
-                                derived_outputs_count,
-                                prk_slot);
+  uint8_t one[32]; // Used as a workaround
+  ockam_memory_set(context->memory, one, 0x01, 32);
 
-exit:
+  // First expand
+  uint8_t expand_result1[32 + 1];
+  status = atcab_kdf(KDF_MODE_ALG_HKDF | KDF_MODE_TARGET_OUTPUT | KDF_MODE_SOURCE_TEMPKEY, 0, KDF_DETAILS_HKDF_MSG_LOC_INPUT | (1u << 24u), one /* FIXME */, expand_result1, NULL);
+  if (status != ATCA_SUCCESS) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
+    ockam_log_error("HKDF first expand error: %d", status);
+    goto exit2;
+  }
 
+  // Second expand
+  expand_result1[32] = 0x02;
+  uint8_t expand_result2[32];
+  status = atcab_kdf(KDF_MODE_ALG_HKDF | KDF_MODE_TARGET_OUTPUT | KDF_MODE_SOURCE_TEMPKEY,
+                     0,
+                     KDF_DETAILS_HKDF_MSG_LOC_INPUT | (33u << 24u),
+                     expand_result1,
+                     expand_result2,
+                     NULL);
+  if (status != ATCA_SUCCESS) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
+    ockam_log_error("HKDF second expand error: %d", status);
+    goto exit2;
+  }
+
+
+  vault_atecc608a_slot_t expand_slot1;
+
+  // Write k1 to slot 14
+  if (derived_outputs[0].attributes.type == OCKAM_VAULT_SECRET_TYPE_AES128_KEY) {
+    expand_slot1 = VAULT_ATECC608A_SLOT14;
+    status = atcab_write_bytes_zone(ATCA_ZONE_DATA, expand_slot1, 0x00, expand_result1, 32);
+  }
+  else if (derived_outputs[0].attributes.purpose == OCKAM_VAULT_SECRET_PURPOSE_EPILOGUE) {
+    expand_slot1 = VAULT_ATECC608A_SLOT13; // FIXME
+    status = atcab_write_bytes_zone(ATCA_ZONE_DATA, expand_slot1, 0x00, expand_result1, 32);
+//    status = atcab_nonce_load(NONCE_MODE_TARGET_TEMPKEY, expand_result1, 32);
+  }
+    // Write ck to ALT_KEY
+  else {
+    expand_slot1 = VAULT_ATECC608A_SLOT_ALT_KEY;
+    status = atcab_nonce_load(NONCE_MODE_TARGET_ALTKEYBUF, expand_result1, 32);
+  }
+  if (status != ATCA_SUCCESS) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
+    ockam_log_error("HKDF first expand write error: %d", status);
+    goto exit2;
+  }
+
+  vault_atecc608a_secret_context_t** ck_ctx = (vault_atecc608a_secret_context_t**) &derived_outputs[0].context;
+  error = ockam_memory_alloc_zeroed(context->memory, (void**) ck_ctx, sizeof(vault_atecc608a_secret_context_t));
+  if (ockam_error_has_error(&error)) { goto exit2; }
+
+  (*ck_ctx)->slot = expand_slot1;
+
+  vault_atecc608a_slot_t expand_slot2 = VAULT_ATECC608A_SLOT15;
+
+  // Write k to AES slot
+  status = atcab_write_bytes_zone(ATCA_ZONE_DATA, expand_slot2, 0x00, expand_result2, 32);
+  if (status != ATCA_SUCCESS) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
+    ockam_log_error("HKDF second expand write error: %d", status);
+    goto exit2;
+  }
+
+  vault_atecc608a_secret_context_t** k_ctx = (vault_atecc608a_secret_context_t**) &derived_outputs[1].context;
+  error = ockam_memory_alloc_zeroed(context->memory, (void**) k_ctx, sizeof(vault_atecc608a_secret_context_t));
+  if (ockam_error_has_error(&error)) { goto exit2; }
+
+  (*k_ctx)->slot = expand_slot2;
+
+exit2:
   if(context->mutex) {
     exit_error = ockam_mutex_unlock(context->mutex, context->lock);
     if(ockam_error_is_none(&error)) {
@@ -1201,6 +1342,7 @@ exit:
     }
   }
 
+exit1:
   return error;
 }
 
@@ -1257,185 +1399,6 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
 
 /*
  ********************************************************************************************************
- *                                      atecc608a_hkdf_extract()
- ********************************************************************************************************
- */
-
-ockam_error_t atecc608a_hkdf_extract(vault_atecc608a_context_t* context,
-                                     uint8_t*                   salt,
-                                     size_t                     salt_length,
-                                     uint8_t*                   ikm,
-                                     size_t                     ikm_length,
-                                     uint16_t*                  prk_slot)
-{
-  ockam_error_t error                                         = ockam_vault_atecc608a_error_none;
-  ATCA_STATUS   status                                        = ATCA_SUCCESS;
-  uint16_t      slot                                          = 0;
-  uint8_t       tmpkey[OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH] = {0};
-
-  if((context == 0) || (salt == 0)) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-    goto exit;
-  }
-
-  if(salt_length > OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-    goto exit;
-  }
-
-  for(slot = 0; slot <= VAULT_ATECC608A_NUM_SLOTS; slot++) {
-    if(slot == VAULT_ATECC608A_NUM_SLOTS) {
-      error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-      goto exit;
-    }
-
-    if((context->slot_config[slot].feat & VAULT_ATECC608A_SLOT_FEAT_BUFFER)) {
-      break;
-    }
-  }
-
-  error = ockam_memory_copy(context->memory, &tmpkey[0], salt, salt_length);
-  if(ockam_error_has_error(&error)) {
-    goto exit;
-  }
-
-  status = atcab_write_bytes_zone(ATCA_ZONE_DATA,
-                                  slot,
-                                  0,
-                                  &tmpkey[0],
-                                  VAULT_ATECC608A_SLOT_WRITE_SIZE_MAX);
-  if (status != ATCA_SUCCESS) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-    goto exit;
-  }
-
-  status = atcab_sha_hmac(ikm,
-                          ikm_length,
-                          slot,
-                          &tmpkey[0],
-                          SHA_MODE_TARGET_TEMPKEY);
-  if (status != ATCA_SUCCESS) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-    goto exit;
-  }
-
-  status = atcab_write_bytes_zone(ATCA_ZONE_DATA,
-                                  slot,
-                                  0,
-                                  &tmpkey[0],
-                                  OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH);
-  if (status != ATCA_SUCCESS) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-    goto exit;
-  }
-
-  *prk_slot = slot;
-
-exit:
-  return error;
-}
-
-/*
- ********************************************************************************************************
- *                                      atecc608a_hkdf_expand()
- ********************************************************************************************************
- */
-
-ockam_error_t atecc608a_hkdf_expand(vault_atecc608a_context_t* context,
-                                    ockam_vault_secret_t*      outputs,
-                                    uint8_t                    outputs_count,
-                                    uint16_t                   prk_slot)
-{
-  ockam_error_t                     error           = ockam_vault_atecc608a_error_none;
-  uint8_t                           i               = 0;
-  uint8_t                           c               = 0;
-  vault_atecc608a_secret_context_t* output_ctx      = 0;
-  ATCA_STATUS                       status          = ATCA_SUCCESS;
-  atca_hmac_sha256_ctx_t            sha_ctx         = {0};
-  uint8_t*                          previous_digest = 0;
-
-  if((context == 0) || (outputs == 0) || (outputs_count == 0)) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_PARAM;
-    goto exit;
-  }
-
-  for(i = 1; i <= outputs_count; i++) {
-    if(outputs->context != 0) {
-      error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-      goto exit;
-    }
-
-    c = i & 0xFF;
-
-    error = ockam_memory_alloc_zeroed(context->memory,
-                                      (void**) &(outputs->context),
-                                      sizeof(vault_atecc608a_secret_context_t));
-    if(ockam_error_has_error(&error)) {
-      goto exit;
-    }
-
-    output_ctx = (vault_atecc608a_secret_context_t*) outputs->context;
-
-    error = ockam_memory_alloc_zeroed(context->memory,
-                                      (void**) &(output_ctx->buffer),
-                                      OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH);
-    if(ockam_error_has_error(&error)) {
-      goto exit;
-    }
-
-    output_ctx->buffer_size = OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH;
-
-    outputs->attributes.type   = OCKAM_VAULT_SECRET_TYPE_BUFFER;
-    outputs->attributes.length = OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH;
-
-    error = ockam_memory_set(context->memory,
-                             &sha_ctx,
-                             0,
-                             sizeof(atca_hmac_sha256_ctx_t));
-    if(ockam_error_has_error(&error)) {
-      goto exit;
-    }
-
-    status = atcab_sha_hmac_init(&sha_ctx, prk_slot);
-    if(status != ATCA_SUCCESS) {
-      error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-      break;
-    }
-
-    if(previous_digest != 0) {
-      status = atcab_sha_hmac_update(&sha_ctx,
-                                     previous_digest,
-                                     OCKAM_VAULT_HKDF_SHA256_OUTPUT_LENGTH);
-      if(status != ATCA_SUCCESS) {
-        error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-        break;
-      }
-    }
-
-    status = atcab_sha_hmac_update(&sha_ctx, &c, 1);
-    if(status != ATCA_SUCCESS) {
-      error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-      break;
-    }
-
-    status = atcab_sha_hmac_finish(&sha_ctx,
-                                   output_ctx->buffer,
-                                   SHA_MODE_TARGET_OUT_ONLY);
-    if(status != ATCA_SUCCESS) {
-      error.code = OCKAM_VAULT_ATECC608A_ERROR_HKDF_SHA256_FAIL;
-      break;
-    }
-
-    previous_digest = output_ctx->buffer;
-    outputs++;
-  }
-
-exit:
-  return error;
-}
-
-/*
- ********************************************************************************************************
  *                                     atecc608a_aead_aes_gcm()
  ********************************************************************************************************
  */
@@ -1464,12 +1427,12 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
   uint8_t                           slot                                        = 0;
   uint8_t                           tmpkey[VAULT_ATECC608A_SLOT_WRITE_SIZE_MAX] = {0};
 
-  if ((vault == 0) || (vault->impl_context == 0)) {
+  if ((vault == 0) || (vault->context == 0)) {
     error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
     goto exit;
   }
 
-  context = (vault_atecc608a_context_t*) vault->impl_context;
+  context = (vault_atecc608a_context_t*) vault->context;
 
   if (encrypt) {
     if (output_size < (input_length + OCKAM_VAULT_AEAD_AES_GCM_TAG_LENGTH)) {
@@ -1490,31 +1453,12 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
 
   key_ctx = (vault_atecc608a_secret_context_t*) key->context;
 
-  for(slot = 0; slot <= VAULT_ATECC608A_NUM_SLOTS; slot++) {
-    if(slot == VAULT_ATECC608A_NUM_SLOTS) {
-      error.code = OCKAM_VAULT_ATECC608A_ERROR_AEAD_AES_GCM_FAIL;
-      goto exit;
-    }
-
-    if((context->slot_config[slot].feat & VAULT_ATECC608A_SLOT_FEAT_AESKEY)) {
-
-      error = ockam_memory_copy(context->memory,
-                                &tmpkey[0],
-                                key_ctx->buffer,
-                                OCKAM_VAULT_AES128_KEY_LENGTH);
-
-      status = atcab_write_bytes_zone(ATCA_ZONE_DATA,
-                                      slot,
-                                      0,
-                                      &tmpkey[0],
-                                      VAULT_ATECC608A_SLOT_WRITE_SIZE_MAX);
-      if(status != ATCA_SUCCESS) {
-        error.code = OCKAM_VAULT_ATECC608A_ERROR_AEAD_AES_GCM_FAIL;
-        goto exit;
-      }
-      break;
-    }
+  if (key_ctx->slot != VAULT_ATECC608A_SLOT14 && key_ctx->slot != VAULT_ATECC608A_SLOT15) {
+    error.code = OCKAM_VAULT_ATECC608A_ERROR_INVALID_CONTEXT;
+    goto exit;
   }
+
+  slot = key_ctx->slot;
 
   {
     int n = 1;

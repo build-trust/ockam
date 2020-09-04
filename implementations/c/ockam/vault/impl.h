@@ -6,6 +6,9 @@
 #ifndef OCKAM_VAULT_IMPL_H_
 #define OCKAM_VAULT_IMPL_H_
 
+#include <ockam/error.h>
+#include <ockam/vault.h>
+
 #define OCKAM_VAULT_FEAT_RANDOM       0x01
 #define OCKAM_VAULT_FEAT_SHA256       0x02
 #define OCKAM_VAULT_FEAT_SECRET_ECDH  0x04
@@ -211,8 +214,7 @@ typedef struct {
  */
 struct ockam_vault {
   ockam_vault_dispatch_table_t* dispatch;
-  void*                         default_context;
-  void*                         impl_context;
+  void*                         context;
 };
 
 #endif

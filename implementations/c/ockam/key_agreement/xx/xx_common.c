@@ -150,12 +150,12 @@ exit:
 ockam_error_t key_agreement_prologue_xx(xx_key_exchange_ctx_t* xx)
 {
   ockam_error_t                   error             = ockam_key_agreement_xx_error_none;
-  ockam_vault_secret_attributes_t secret_attributes = { KEY_SIZE,
-                                                        OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
+  ockam_vault_secret_attributes_t secret_attributes = { PRIVATE_KEY_SIZE,
+                                                        OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY,
                                                         OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
                                                         OCKAM_VAULT_SECRET_EPHEMERAL };
   size_t                          key_size          = 0;
-  uint8_t                         ck[KEY_SIZE];
+  uint8_t                         ck[SHA256_SIZE];
 
   // 1. Generate a static 25519 keypair for this handshake and set it to s
   error = ockam_vault_secret_generate(xx->vault, &xx->s_secret, &secret_attributes);
@@ -175,15 +175,14 @@ ockam_error_t key_agreement_prologue_xx(xx_key_exchange_ctx_t* xx)
 
   // 3. Set k to empty, Set n to 0
   xx->nonce = 0;
-  ockam_memory_set(gp_ockam_key_memory, xx->k, 0, KEY_SIZE);
 
   // 4. Set h and ck to 'Noise_XX_25519_AESGCM_SHA256'
   ockam_memory_set(gp_ockam_key_memory, xx->h, 0, SHA256_SIZE);
   ockam_memory_copy(gp_ockam_key_memory, xx->h, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
-  ockam_memory_set(gp_ockam_key_memory, ck, 0, KEY_SIZE);
+  ockam_memory_set(gp_ockam_key_memory, ck, 0, SHA256_SIZE);
   ockam_memory_copy(gp_ockam_key_memory, ck, PROTOCOL_NAME, PROTOCOL_NAME_SIZE);
-  secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
-  error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, KEY_SIZE);
+  secret_attributes.type = OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY;
+  error                  = ockam_vault_secret_import(xx->vault, &xx->ck_secret, &secret_attributes, ck, SHA256_SIZE);
   if (ockam_error_has_error(&error)) goto exit;
 
   // 5. h = SHA256(h || prologue),
@@ -198,7 +197,7 @@ exit:
 /*------------------------------------------------------------------------------------------------------*
  *          UTILITY FUNCTIONS
  *------------------------------------------------------------------------------------------------------*/
-void print_uint8_str(uint8_t* p, uint16_t size, char* msg)
+void print_uint8_str(const uint8_t* p, uint16_t size, const char* msg)
 {
   printf("\n%s %d bytes: \n", msg, size);
   for (int i = 0; i < size; ++i) printf("%0.2x", *p++);
@@ -211,7 +210,8 @@ ockam_error_t hkdf_dh(xx_key_exchange_ctx_t* xx,
                       uint8_t*               peer_publickey,
                       size_t                 peer_publickey_length,
                       ockam_vault_secret_t*  secret1,
-                      ockam_vault_secret_t*  secret2)
+                      ockam_vault_secret_t*  secret2,
+                      bool is_last)
 {
   ockam_error_t        error = ockam_key_agreement_xx_error_none;
   ockam_vault_secret_t shared_secret;
@@ -223,6 +223,20 @@ ockam_error_t hkdf_dh(xx_key_exchange_ctx_t* xx,
   // Compute shared secret
   error = ockam_vault_ecdh(xx->vault, privatekey, peer_publickey, peer_publickey_length, &shared_secret);
   if (ockam_error_has_error(&error)) { goto exit; }
+
+  ockam_vault_secret_attributes_t attributes = {
+    .length = SHA256_SIZE,
+    .type = OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY,
+    .purpose = is_last ? OCKAM_VAULT_SECRET_PURPOSE_EPILOGUE : OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT,
+    .persistence = OCKAM_VAULT_SECRET_EPHEMERAL,
+  };
+
+  generated_secrets[0].attributes = attributes;
+
+  attributes.length = SYMMETRIC_KEY_SIZE;
+  attributes.type = OCKAM_VAULT_SECRET_TYPE_AES128_KEY;
+
+  generated_secrets[1].attributes = attributes;
 
   // ck, k = HKDF( ck, shared_secret )
   error = ockam_vault_hkdf_sha256(xx->vault, salt, &shared_secret, 2, generated_secrets);
@@ -236,12 +250,12 @@ exit:
   return error;
 }
 
-void string_to_hex(uint8_t* hexstring, uint8_t* val, size_t* p_bytes)
+void string_to_hex(const uint8_t* hexstring, uint8_t* val, size_t* p_bytes)
 {
-  const char* pos   = (char*) hexstring;
+  const char* pos   = (const char*) hexstring;
   uint32_t    bytes = 0;
 
-  for (size_t count = 0; count < (strlen((char*) hexstring) / 2); count++) {
+  for (size_t count = 0; count < (strlen((const  char*) hexstring) / 2); count++) {
     sscanf(pos, "%2hhx", &val[count]);
     pos += 2;
     bytes += 1;
@@ -249,6 +263,7 @@ void string_to_hex(uint8_t* hexstring, uint8_t* val, size_t* p_bytes)
   if (NULL != p_bytes) *p_bytes = bytes;
 }
 
+// FIXME
 void mix_hash(xx_key_exchange_ctx_t* xx, uint8_t* p_bytes, uint16_t b_length)
 {
   ockam_error_t error;

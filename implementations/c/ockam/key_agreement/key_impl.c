@@ -150,7 +150,7 @@ ockam_error_t ockam_key_encrypt(
     error.code = OCKAM_KEY_AGREEMENT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }
-  if (!payload_size || !msg_size) {
+  if (!payload_size || !msg_length) {
     error.code = OCKAM_KEY_AGREEMENT_INTERFACE_ERROR_INVALID_PARAM;
     goto exit;
   }

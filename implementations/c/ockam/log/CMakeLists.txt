@@ -8,8 +8,6 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 target_include_directories(ockam_log PUBLIC ${INCLUDE_DIR})
 
-message(STATUS ${INCLUDE_DIR})
-
 file(COPY log.h DESTINATION ${INCLUDE_DIR}/ockam)
 
 target_sources(

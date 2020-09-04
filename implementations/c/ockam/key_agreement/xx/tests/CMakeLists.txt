@@ -16,6 +16,7 @@ endif()
 # ockam_key_agreement_xx_tests
 # ---
 add_executable(ockam_key_agreement_xx_tests
+        init_vault.c
         xx_test.c
         xx_test.h
         xx_test_initiator.c
@@ -34,5 +35,12 @@ target_link_libraries(ockam_key_agreement_xx_tests
         ockam::random_urandom
         ockam::transport_posix_socket
 )
+
+if (OCKAM_ENABLE_ATECC608A_TESTS)
+    target_compile_definitions(ockam_key_agreement_xx_tests PUBLIC OCKAM_ENABLE_ATECC608A_TESTS)
+    target_link_libraries(ockam_key_agreement_xx_tests
+        PUBLIC
+            ockam::vault_atecc608a)
+endif()
 
 add_test(ockam_key_agreement_xx_tests ockam_key_agreement_xx_tests)
