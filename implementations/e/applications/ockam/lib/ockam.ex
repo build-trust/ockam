@@ -22,7 +22,7 @@ defmodule Ockam do
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
     children = [
-      Ockam.Routing,
+      Ockam.Router,
       Ockam.Node,
       Ockam.Topics
     ]

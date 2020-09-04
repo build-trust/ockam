@@ -3,7 +3,7 @@ defmodule Ockam.Tests do
   doctest Ockam
 
   describe "Ockam.start/2" do
-    test "Ockam.Routing is started", do: Ockam.Routing |> find_child |> Process.alive?() |> assert
+    test "Ockam.Router is started", do: Ockam.Routing |> find_child |> Process.alive?() |> assert
     test "Ockam.Node is started", do: Ockam.Node |> find_child |> Process.alive?() |> assert
     test "Ockam.Topics is started", do: Ockam.Topics |> find_child |> Process.alive?() |> assert
   end
