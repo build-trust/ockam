@@ -11,8 +11,6 @@
     unused_parens,
     while_true
 )]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
 
 //! Implements the Ockam vault interface and provides
 //! a C FFI version.
@@ -45,7 +43,7 @@ pub mod error;
 /// The ffi functions, structs, and constants
 pub mod ffi;
 /// Vault backed by the OSX Keychain and Secure-Enclave Processor
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", feature = "os"))]
 pub mod osx;
 /// Software implementation of Vault. No persistence
 /// all keys are stored, operations happen in memory

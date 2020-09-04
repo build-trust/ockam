@@ -236,7 +236,7 @@ impl From<std::num::ParseIntError> for VaultFailError {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", feature = "os"))]
 impl From<security_framework::base::Error> for VaultFailError {
     fn from(err: security_framework::base::Error) -> Self {
         match err.code() {
@@ -247,7 +247,7 @@ impl From<security_framework::base::Error> for VaultFailError {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", feature = "os"))]
 impl From<keychain_services::Error> for VaultFailError {
     fn from(err: keychain_services::Error) -> Self {
         use keychain_services::ErrorKind::*;

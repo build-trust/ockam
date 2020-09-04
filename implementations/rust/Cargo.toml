@@ -6,4 +6,5 @@ members = [
     "kex",
     "message",
     "vault",
+    "ockam"
 ]

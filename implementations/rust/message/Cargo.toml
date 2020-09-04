@@ -1,21 +1,19 @@
 [package]
-name = "message"
+name = "ockam-message"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 
 [lib]
-name = "message"           # The name of the target.
-path = "src/message.rs"    # The source file of the target.
-test = true            # Is tested by default.
-doctest = true         # Documentation examples are tested by default.
-bench = true           # Is benchmarked by default.
-doc = true             # Is documented by default.
-crate-type = ["lib"]   # The crate types to generate.
+crate-type = ["staticlib", "rlib", "cdylib"]
 
 
 [profile.release]
 lto = true
+
+[features]
+default = []
+ffi = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

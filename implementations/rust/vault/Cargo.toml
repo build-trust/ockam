@@ -13,6 +13,7 @@ lto = true
 [features]
 default = []
 ffi = ["ffi-support", "lazy_static"]
+os = ["keychain-services", "security-framework"]
 
 [dependencies]
 aead = "0.3"
@@ -33,5 +34,5 @@ x25519-dalek = "1.0"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "2.0"
-keychain-services = { version = "0.1", git = "https://github.com/iqlusioninc/keychain-services.rs"}
+security-framework = { version = "2.0", optional = true }
+keychain-services = { version = "0.1", git = "https://github.com/iqlusioninc/keychain-services.rs", optional = true }
