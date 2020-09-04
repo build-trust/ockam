@@ -11,7 +11,6 @@
     unused_parens,
     while_true
 )]
-
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 
