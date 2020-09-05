@@ -84,27 +84,35 @@ defmodule Ockam.Router do
   defp route([], message) do
     case Registry.lookup(__MODULE__, :default_handler) do
       [] -> {:error, :no_default_handler}
-      [{_, handler}] -> handler.(message)
+      [{_pid, handler}] -> handler.(message)
     end
   end
 
   defp route([address | _], message) do
     case Registry.lookup(__MODULE__, {:address, address}) do
       [] -> route(Address.type(address), message)
-      [{_, handler}] -> handler.(message)
+      [{_pid, handler}] -> invoke(handler, message)
     end
   end
 
   defp route(address_type, message) when is_address_type(address_type) do
     case Registry.lookup(__MODULE__, {:address_type, address_type}) do
-      [{_, handler}] ->
-        handler.(message)
+      [{_pid, handler}] ->
+        invoke(handler, message)
 
       [] ->
         case Registry.lookup(__MODULE__, :default_handler) do
           [] -> {:error, :no_default_handler}
-          [{_, handler}] -> handler.(message)
+          [{_pid, handler}] -> invoke(handler, message)
         end
+    end
+  end
+
+  defp invoke(handler, message) do
+    case handler.(message) do
+      :ok -> :ok
+      {:error, reason} -> {:error, {:handler_invocation_failed, reason}}
+      _something_else -> {:error, {:handler_invocation_failed, :handler_did_not_return_ok}}
     end
   end
 
