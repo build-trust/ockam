@@ -8,6 +8,8 @@ defmodule Ockam.Router do
   alias Ockam.Router.Message
   alias Ockam.Router.MessageHandler
 
+  alias Ockam.Telemetry
+
   @doc """
   Register a message handler for a specific address.
 
@@ -79,7 +81,14 @@ defmodule Ockam.Router do
   @doc """
   """
   @spec route(Message.t()) :: :ok | {:error, :no_default_handler}
-  def route(message), do: route(Message.onward_route(message), message)
+  def route(message) do
+    start_time = Telemetry.start(:router_route, %{message: message})
+
+    result = route(Message.onward_route(message), message)
+
+    Telemetry.stop(:router_route, start_time, %{message: message, result: result})
+    result
+  end
 
   defp route([], message) do
     case Registry.lookup(__MODULE__, :default_handler) do
@@ -153,7 +162,8 @@ defmodule Ockam.Router do
 
   # Starts the router and links it to the current process.
   @doc false
-  def start_link(_options) do
+  def start_link(options) do
+    :telemetry.execute([:ockam, :router, :start_link], %{}, %{options: options})
     Registry.start_link(keys: :unique, name: __MODULE__)
   end
 end
