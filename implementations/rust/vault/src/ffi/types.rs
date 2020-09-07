@@ -16,7 +16,12 @@ impl FfiSecretKey {
         if self.buffer.is_null() {
             vec![]
         } else {
-            unsafe { Vec::from_raw_parts(self.buffer, self.length as usize, self.length as usize) }
+            unsafe {
+                let mut dst = Vec::with_capacity(self.length as usize);
+                dst.set_len(self.length as usize);
+                std::ptr::copy(self.buffer, dst.as_mut_ptr(), self.length as usize);
+                dst
+            }
         }
     }
 }
