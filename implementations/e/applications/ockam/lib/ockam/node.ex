@@ -5,14 +5,12 @@ defmodule Ockam.Node do
 
   use GenServer
 
-  alias Ockam.Router
-
   require Logger
 
   # Starts controller process linked to the current process
   @doc false
   def start_link(_options) do
-    GenServer.start_link(__MODULE__, nil, name: {:via, Router, {0, 0}})
+    GenServer.start_link(__MODULE__, nil)
   end
 
   @doc false

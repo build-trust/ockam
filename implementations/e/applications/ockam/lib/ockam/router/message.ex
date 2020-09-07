@@ -19,9 +19,3 @@ defimpl Ockam.Router.Message, for: Any do
   def onward_route(%{onward_route: onward_route}) when is_list(onward_route), do: onward_route
   def onward_route(_message), do: []
 end
-
-defmodule Ockam.Router.MessageHandler do
-  @moduledoc false
-  @type result :: :ok | {:error, reason :: any()}
-  @type t :: (Ockam.Router.Message.t() -> result())
-end

@@ -5,12 +5,12 @@ defmodule Ockam.Router.Address.Tests do
 
   describe "Ockam.Router.Address.Any" do
     test "0 is the default address type" do
-      assert 0 === Address.type(:test)
-      assert 0 === Address.type(100)
-      assert 0 === Address.type(%{})
-      assert 0 === Address.type("test")
-      assert 0 === Address.type([])
-      assert 0 === Address.type(100.0)
+      assert nil === Address.type(:test)
+      assert nil === Address.type(100)
+      assert nil === Address.type(%{})
+      assert nil === Address.type("test")
+      assert nil === Address.type([])
+      assert nil === Address.type(100.0)
     end
 
     test "default address value is same as input" do

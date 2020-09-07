@@ -22,7 +22,7 @@ defimpl Ockam.Router.Address, for: Any do
   import Ockam.Router.Guards
 
   def type({address_type, _address_value}) when is_address_type(address_type), do: address_type
-  def type(_address), do: 0
+  def type(_address), do: nil
 
   def value({address_type, address_value}) when is_address_type(address_type), do: address_value
   def value(address), do: address
