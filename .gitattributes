@@ -7,3 +7,10 @@
 #
 # git-scm.com/docs/gitattributes#_end_of_line_conversion
 * text=auto
+
+# Github detects some C header files incorrectly as C++
+# This setting tells linguist to detect them as C
+#
+# https://github.com/github/linguist#using-gitattributes
+# github.com/github/linguist/issues/2881#issuecomment-231470986
+*.h linguist-language=C
