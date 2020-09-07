@@ -6,6 +6,7 @@ defmodule Ockam.Vault.Software.MixProject do
   @elixir_requirement "~> 1.10"
 
   @ockam_github_repo "https://github.com/ockam-network/ockam"
+  @ockam_github_repo_path "implementations/elixir/applications/ockam_vault_software"
 
   def project do
     [
@@ -62,7 +63,7 @@ defmodule Ockam.Vault.Software.MixProject do
   defp docs do
     [
       main: "Ockam.Vault.Software",
-      source_url: @ockam_github_repo
+      source_url_pattern: "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]
   end
 

@@ -6,6 +6,7 @@ defmodule Ockam.Node.Web.MixProject do
   @elixir_requirement "~> 1.10"
 
   @ockam_github_repo "https://github.com/ockam-network/ockam"
+  @ockam_github_repo_path "implementations/elixir/applications/ockam_node_web"
 
   def project do
     [
@@ -66,7 +67,7 @@ defmodule Ockam.Node.Web.MixProject do
   defp docs do
     [
       main: "Ockam.Node.Web",
-      source_url: @ockam_github_repo
+      source_url_pattern: "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]
   end
 

@@ -6,6 +6,7 @@ defmodule Ockam.Transport.UDP.MixProject do
   @elixir_requirement "~> 1.10"
 
   @ockam_github_repo "https://github.com/ockam-network/ockam"
+  @ockam_github_repo_path "implementations/elixir/applications/ockam_transport_udp"
 
   def project do
     [
@@ -62,7 +63,7 @@ defmodule Ockam.Transport.UDP.MixProject do
   defp docs do
     [
       main: "Ockam.Transport.UDP",
-      source_url: @ockam_github_repo
+      source_url_pattern: "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]
   end
 
