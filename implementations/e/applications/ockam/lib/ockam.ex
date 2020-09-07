@@ -23,7 +23,7 @@ defmodule Ockam do
     # detailed information.
     children = [
       Ockam.Router,
-      Ockam.Node,
+      Ockam.Nodes,
       Ockam.Topics
     ]
 
