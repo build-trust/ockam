@@ -152,7 +152,7 @@ uint32_t ockam_vault_secret_publickey_get(ockam_vault_t        vault,
  * @param   secret_attributes[out]  Pointer to the attributes for the specified secret.
  */
 uint32_t ockam_vault_secret_attributes_get(ockam_vault_t                    vault,
-                                           ockam_vault_secret_t             secret,
+                                           uint64_t                         secret,
                                            ockam_vault_secret_attributes_t* attributes);
 
 /**

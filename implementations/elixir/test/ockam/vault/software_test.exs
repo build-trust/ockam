@@ -28,9 +28,41 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.secret_generate/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = Ockam.Vault.Software.default_init
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :keyagreement}
-      secret = Ockam.Vault.Software.secret_generate(handle, attributes)
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      {:ok, secret} = Ockam.Vault.Software.secret_generate(handle, attributes)
       assert secret != 0
+    end
+  end
+
+  describe "Ockam.Vault.Software.secret_import/3" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      key_data   = <<120, 132, 203, 140, 22, 250, 109, 249,
+                     155, 207, 102, 47, 186, 14, 109, 252,
+                     110, 197, 217, 163, 147, 242, 36, 234,
+                     91, 58, 252, 218, 244, 55, 133, 86>>
+
+      {:ok, secret} = Ockam.Vault.Software.secret_import(handle, attributes, key_data)
+      assert secret != 0
+    end
+  end
+
+  describe "Ockam.Vault.Software.secret_export/2" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      key_data   = <<120, 132, 203, 140, 22, 250, 109, 249,
+                     155, 207, 102, 47, 186, 14, 109, 252,
+                     110, 197, 217, 163, 147, 242, 36, 234,
+                     91, 58, 252, 218, 244, 55, 133, 86>>
+
+      {:ok, secret} = Ockam.Vault.Software.secret_import(handle, attributes, key_data)
+      
+
+      {:ok, data} = Ockam.Vault.Software.secret_export(handle, secret)
+
+      assert data == key_data
     end
   end
 end
