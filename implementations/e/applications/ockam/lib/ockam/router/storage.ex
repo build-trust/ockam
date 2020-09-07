@@ -35,5 +35,33 @@ defmodule Ockam.Router.Storage do
     _error -> :ok
   end
 
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  @doc false
+  def register_name(address, pid), do: Registry.register_name({@registry_name, address}, pid)
+
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  @doc false
+  def whereis_name(address), do: Registry.whereis_name({@registry_name, address})
+
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  @doc false
+  def unregister_name(address), do: Registry.unregister_name({@registry_name, address})
+
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  @doc false
+  def send(address, message), do: Registry.send({@registry_name, address}, message)
+
   def start_link(_options), do: Registry.start_link(keys: :unique, name: @registry_name)
 end

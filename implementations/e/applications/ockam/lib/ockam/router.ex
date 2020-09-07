@@ -200,6 +200,34 @@ defmodule Ockam.Router do
   def unset_default_message_handler, do: Storage.delete(:default_message_handler)
 
   @doc false
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  defdelegate register_name(address, pid), to: Storage
+
+  @doc false
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  defdelegate whereis_name(address), to: Storage
+
+  @doc false
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  defdelegate unregister_name(address), to: Storage
+
+  @doc false
+  # This function is used when a process is registed using the `:via` option.
+  #
+  # The Gen* modules expect this function to be exported.
+  # See the "Name registration" section of the `GenServer` module.
+  defdelegate send(address, message), to: Storage
+
+  @doc false
   # Returns a specification to start this module under a supervisor. When this
   # module is added to a supervisor, the supervisor calls child_spec to figure
   # out the specification that should be used.
