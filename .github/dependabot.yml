@@ -6,7 +6,7 @@ updates:
   - package-ecosystem: "mix"
     directory: "/implementations/e/applications/ockam"
     commit-message:
-      prefix: "build"
+      prefix: "build:"
     schedule:
       interval: "daily"
 
@@ -14,7 +14,7 @@ updates:
   - package-ecosystem: "mix"
     directory: "/implementations/e/applications/ockam_node_web"
     commit-message:
-      prefix: "build"
+      prefix: "build:"
     schedule:
       interval: "daily"
 
@@ -22,7 +22,7 @@ updates:
   - package-ecosystem: "mix"
     directory: "/implementations/e/applications/ockam_transport_udp"
     commit-message:
-      prefix: "build"
+      prefix: "build:"
     schedule:
       interval: "daily"
 
@@ -30,7 +30,7 @@ updates:
   - package-ecosystem: "mix"
     directory: "/implementations/e/applications/ockam_vault_software"
     commit-message:
-      prefix: "build"
+      prefix: "build:"
     schedule:
       interval: "daily"
 
@@ -38,6 +38,6 @@ updates:
   - package-ecosystem: "cargo"
     directory: "/implementations/rust"
     commit-message:
-      prefix: "build"
+      prefix: "build:"
     schedule:
       interval: "daily"
