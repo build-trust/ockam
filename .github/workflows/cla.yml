@@ -20,7 +20,7 @@ jobs:
           path-to-signatures: 'cla-signers.json'
           path-to-cla-document: 'https://www.ockam.io/learn/guides/contributions/cla'
           branch: 'master'
-          allowlist: malnick,rkaiser0324,carlosflrs,robinbudd,bitwalker,Mark Mulrooney,gustin,ercanersoy
+          allowlist: dependabot,malnick,rkaiser0324,carlosflrs,robinbudd,bitwalker,Mark Mulrooney,gustin,ercanersoy
           persistance-repository: 'contributors'
           empty-commit-flag: false
           blockchain-storage-flag: false
