@@ -198,7 +198,7 @@ static ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM
         return err(env, "unable to generate the secret");
     }
 
-    ERL_NIF_TERM secret_handle = enif_make_uint64(env, secret.handle);
+    ERL_NIF_TERM secret_handle = enif_make_uint64(env, secret);
 
     return ok(env, secret_handle);
 }
@@ -228,7 +228,7 @@ static ERL_NIF_TERM secret_import(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
         return err(env, "unable to import the secret");
     }
 
-    ERL_NIF_TERM secret_handle = enif_make_uint64(env, secret.handle);
+    ERL_NIF_TERM secret_handle = enif_make_uint64(env, secret);
 
     return ok(env, secret_handle);
 }
@@ -248,19 +248,11 @@ static ERL_NIF_TERM secret_export(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
         return enif_make_badarg(env);
     }
 
-    ockam_vault_secret_attributes_t attributes;
-    ockam_vault_secret_attributes_get(vault, secret_handle, &attributes);
-
-    ockam_vault_secret_t secret = {
-        attributes,
-        secret_handle
-    };
-
     uint8_t buffer[MAX_SECRET_EXPORT_SIZE];
     size_t length = 0;
 
-    if (0 != ockam_vault_secret_export(vault, secret, buffer, MAX_SECRET_EXPORT_SIZE, &length)) {
-        return err(env, "failed to generate random bytes");
+    if (0 != ockam_vault_secret_export(vault, secret_handle, buffer, MAX_SECRET_EXPORT_SIZE, &length)) {
+        return err(env, "failed to ockam_vault_secret_export");
     }
 
     ERL_NIF_TERM output;

@@ -105,7 +105,7 @@ pub extern "C" fn ockam_vault_sha256(
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_generate(
     context: u64,
-    secret: &mut OckamSecret,
+    secret: &mut u64,
     attributes: FfiSecretKeyAttributes,
 ) -> VaultError {
     let mut err = ExternError::success();
@@ -119,10 +119,7 @@ pub extern "C" fn ockam_vault_secret_generate(
         },
     );
     if err.get_code().is_success() {
-        *secret = OckamSecret {
-            attributes: attributes.clone(),
-            handle,
-        };
+        *secret = handle;
         ERROR_NONE
     } else {
         VaultFailErrorKind::SecretGenerate.into()
@@ -133,7 +130,7 @@ pub extern "C" fn ockam_vault_secret_generate(
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_import(
     context: u64,
-    secret: &mut OckamSecret,
+    secret: &mut u64,
     attributes: FfiSecretKeyAttributes,
     input: *mut u8,
     input_length: u32,
@@ -156,10 +153,7 @@ pub extern "C" fn ockam_vault_secret_import(
         },
     );
     if err.get_code().is_success() {
-        *secret = OckamSecret {
-            attributes: attributes.clone(),
-            handle,
-        };
+        *secret = handle;
         ERROR_NONE
     } else {
         VaultFailErrorKind::InvalidSecret.into()
@@ -170,7 +164,7 @@ pub extern "C" fn ockam_vault_secret_import(
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_export(
     context: u64,
-    secret: OckamSecret,
+    secret: u64,
     output_buffer: &mut u8,
     output_buffer_size: u32,
     output_buffer_length: &mut u32,
@@ -181,7 +175,7 @@ pub extern "C" fn ockam_vault_secret_export(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret.handle);
+            let ctx = get_memory_id(secret);
             let key = v.vault.secret_export(ctx)?;
             Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
         },
@@ -206,7 +200,7 @@ pub extern "C" fn ockam_vault_secret_export(
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_publickey_get(
     context: u64,
-    secret: OckamSecret,
+    secret: u64,
     output_buffer: &mut u8,
     output_buffer_size: u32,
     output_buffer_length: &mut u32,
@@ -217,7 +211,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret.handle);
+            let ctx = get_memory_id(secret);
             let key = v.vault.secret_public_key_get(ctx)?;
             Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
         },
@@ -265,10 +259,10 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
 
 /// Delete an ockam vault secret.
 #[no_mangle]
-pub extern "C" fn ockam_vault_secret_destroy(context: u64, secret: OckamSecret) -> VaultError {
+pub extern "C" fn ockam_vault_secret_destroy(context: u64, secret: u64) -> VaultError {
     let mut err = ExternError::success();
     VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<(), VaultFailError> {
-        let ctx = get_memory_id(secret.handle);
+        let ctx = get_memory_id(secret);
         v.vault.secret_destroy(ctx)?;
         Ok(())
     });
@@ -284,10 +278,10 @@ pub extern "C" fn ockam_vault_secret_destroy(context: u64, secret: OckamSecret) 
 #[no_mangle]
 pub extern "C" fn ockam_vault_ecdh(
     context: u64,
-    secret: OckamSecret,
+    secret: u64,
     peer_publickey: *const u8,
     peer_publickey_length: u32,
-    shared_secret: &mut OckamSecret,
+    shared_secret: &mut u64,
 ) -> VaultError {
     check_buffer!(peer_publickey, peer_publickey_length);
     let mut err = ExternError::success();
@@ -297,7 +291,7 @@ pub extern "C" fn ockam_vault_ecdh(
         &mut err,
         context,
         |v| -> Result<SecretKeyHandle, VaultFailError> {
-            let ctx = get_memory_id(secret.handle);
+            let ctx = get_memory_id(secret);
             let atts = v.vault.secret_attributes_get(ctx)?;
             let pubkey = match atts.xtype {
                 SecretKeyType::Curve25519 => {
@@ -321,12 +315,7 @@ pub extern "C" fn ockam_vault_ecdh(
         },
     );
     if err.get_code().is_success() {
-        let attributes = FfiSecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(0).to_usize() as u32,
-            purpose: SecretPurposeType::KeyAgreement.to_usize() as u32,
-            persistence: SecretPersistenceType::Ephemeral.to_usize() as u32,
-        };
-        *shared_secret = OckamSecret { attributes, handle };
+        *shared_secret = handle;
         ERROR_NONE
     } else {
         VaultFailErrorKind::Ecdh.into()
@@ -338,10 +327,10 @@ pub extern "C" fn ockam_vault_ecdh(
 #[no_mangle]
 pub extern "C" fn ockam_vault_hkdf_sha256(
     context: u64,
-    salt: OckamSecret,
-    input_key_material: OckamSecret,
+    salt: u64,
+    input_key_material: u64,
     derived_outputs_count: u8,
-    derived_outputs: &mut Vec<OckamSecret>,
+    derived_outputs: &mut Vec<u64>,
 ) -> VaultError {
     let derived_outputs_count = derived_outputs_count as usize;
     let mut err = ExternError::success();
@@ -350,8 +339,8 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
         context,
         |v| -> Result<OckamSecretList, VaultFailError> {
             const SIZES: usize = 32;
-            let salt_ctx = get_memory_id(salt.handle);
-            let ikm_ctx = get_memory_id(input_key_material.handle);
+            let salt_ctx = get_memory_id(salt);
+            let ikm_ctx = get_memory_id(input_key_material);
             let salt_bytes = v.vault.secret_export(salt_ctx)?;
             let ikm_bytes = v.vault.secret_export(ikm_ctx)?;
             let output_length = SIZES * derived_outputs_count;
@@ -364,19 +353,11 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
                 purpose: SecretPurposeType::KeyAgreement,
                 persistence: SecretPersistenceType::Ephemeral,
             };
-            let ffi_attributes = FfiSecretKeyAttributes {
-                xtype: SecretKeyType::Buffer(0).to_usize() as u32,
-                purpose: SecretPurposeType::KeyAgreement.to_usize() as u32,
-                persistence: SecretPersistenceType::Ephemeral.to_usize() as u32,
-            };
             let mut outputs = Vec::with_capacity(derived_outputs_count);
             for derived in hkdf_bytes.chunks(SIZES) {
                 let key = SecretKey::Buffer(derived.to_vec());
                 let h = v.vault.secret_import(&key, attributes)?;
-                let secret = OckamSecret {
-                    attributes: ffi_attributes,
-                    handle: h.into_ffi_value(),
-                };
+                let secret = h.into_ffi_value();
                 outputs.push(secret);
             }
 
@@ -395,7 +376,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
 #[no_mangle]
 pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
     context: u64,
-    secret: OckamSecret,
+    secret: u64,
     nonce: u16,
     additional_data: *const u8,
     additional_data_length: u32,
@@ -416,7 +397,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret.handle);
+            let ctx = get_memory_id(secret);
             let ciphertext = v.vault.aead_aes_gcm_encrypt(
                 ctx,
                 plaintext,
@@ -445,7 +426,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
 /// Decrypt a payload using AES-GCM.
 pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     context: u64,
-    secret: OckamSecret,
+    secret: u64,
     nonce: u16,
     additional_data: *const u8,
     additional_data_length: u32,
@@ -468,7 +449,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret.handle);
+            let ctx = get_memory_id(secret);
             let plain = v.vault.aead_aes_gcm_decrypt(
                 ctx,
                 ciphertext_and_tag,

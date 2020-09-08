@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 typedef uint64_t ockam_vault_t;
+typedef uint64_t ockam_vault_secret_t;
 
 /**
  * @enum    ockam_vault_secret_t
@@ -52,12 +53,6 @@ typedef struct {
     ockam_vault_secret_purpose_t     purpose;
     ockam_vault_secret_persistence_t persistence;
 } ockam_vault_secret_attributes_t;
-
-
-typedef struct {
-    ockam_vault_secret_attributes_t attributes;
-    uint64_t handle;
-} ockam_vault_secret_t;
 
 /**
  * @brief   Initialize the specified ockam vault object

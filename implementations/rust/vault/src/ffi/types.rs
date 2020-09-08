@@ -151,18 +151,10 @@ pub struct OckamVaultContext {
     pub(crate) vault_id: VaultId,
 }
 
-/// A context object for using secrets in vaults
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct OckamSecret {
-    pub(crate) attributes: FfiSecretKeyAttributes,
-    pub(crate) handle: SecretKeyHandle,
-}
-
-pub struct OckamSecretList(pub(crate) Vec<OckamSecret>);
+pub struct OckamSecretList(pub(crate) Vec<u64>);
 
 unsafe impl IntoFfi for OckamSecretList {
-    type Value = Vec<OckamSecret>;
+    type Value = Vec<u64>;
 
     fn ffi_default() -> Self::Value {
         Vec::new()
