@@ -417,6 +417,36 @@ static ERL_NIF_TERM secret_destroy(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     return ok_void(env);
 }
 
+static ERL_NIF_TERM ecdh(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (3 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 secret_handle;
+    if (0 == enif_get_uint64(env, argv[1], &secret_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifBinary input;
+    if (0 == enif_inspect_binary(env, argv[2], &input)) {
+        return enif_make_badarg(env);
+    }
+
+    ockam_vault_secret_t shared_secret;
+    if (0 != ockam_vault_ecdh(vault, secret_handle, input.data,  input.size, &shared_secret)) {
+        return err(env, "failed to ecdh");
+    }
+
+    ERL_NIF_TERM shared_secret_term = enif_make_uint64(env, shared_secret);
+
+    return ok(env, shared_secret_term);
+}
+
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
@@ -428,6 +458,7 @@ static ErlNifFunc nifs[] = {
   {"secret_publickey_get", 2, secret_publickey_get},
   {"secret_attributes_get", 2, secret_attributes_get},
   {"secret_destroy", 2, secret_destroy},
+  {"ecdh", 3, ecdh},
 };
 
 ERL_NIF_INIT(Elixir.Ockam.Vault.Software, nifs, NULL, NULL, NULL, NULL)

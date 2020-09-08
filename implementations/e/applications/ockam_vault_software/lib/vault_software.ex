@@ -77,4 +77,8 @@ defmodule Ockam.Vault.Software do
   def secret_destroy(_a, _b) do
     raise "natively implemented secret_destroy/2 not loaded"
   end
+
+  def ecdh(_a, _b, _c) do
+    raise "natively implemented ecdh/3 not loaded"
+  end
 end

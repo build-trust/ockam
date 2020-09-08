@@ -79,10 +79,10 @@ uint32_t ockam_vault_random_bytes_generate(ockam_vault_t vault, uint8_t* buffer,
  * @param   digest[out]         Buffer to place the resulting SHA-256 hash in. Must be 32 bytes.
  * @return  OCKAM_ERROR_NONE on success.
  */
-uint32_t ockam_vault_sha256(ockam_vault_t vault,
-                            const uint8_t* const input,
-                            size_t input_length,
-                            uint8_t* digest);
+uint32_t ockam_vault_sha256(ockam_vault_t  vault,
+                            const uint8_t* input,
+                            size_t         input_length,
+                            uint8_t*       digest);
 
 /**
  * @brief   Generate an ockam secret. Attributes struct must specify the configuration for the type of secret to
@@ -107,7 +107,7 @@ uint32_t ockam_vault_secret_generate(ockam_vault_t                   vault,
 uint32_t ockam_vault_secret_import(ockam_vault_t                   vault,
                                    ockam_vault_secret_t*           secret,
                                    ockam_vault_secret_attributes_t attributes,
-                                   const uint8_t* const            input,
+                                   const uint8_t*                  input,
                                    size_t                          input_length);
 
 /**
@@ -168,9 +168,9 @@ uint32_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam_vault_secret_t se
 * @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
 * @return  OCKAM_ERROR_NONE on success.
 */
-uint32_t ockam_vault_ecdh(ockam_vault_t*        vault,
+uint32_t ockam_vault_ecdh(ockam_vault_t         vault,
                           ockam_vault_secret_t  privatekey,
-                          const uint8_t* const  peer_publickey,
+                          const uint8_t*        peer_publickey,
                           size_t                peer_publickey_length,
                           ockam_vault_secret_t* shared_secret);
 
@@ -183,9 +183,9 @@ uint32_t ockam_vault_ecdh(ockam_vault_t*        vault,
  * @param   derived_outputs[out]      Array of ockam vault secrets resulting from HKDF.
  * @return  OCKAM_ERROR_NONE on success.
  */
-uint32_t ockam_vault_hkdf_sha256(ockam_vault_t        vault,
-                                 ockam_vault_secret_t salt,
-                                 ockam_vault_secret_t input_key_material,
+uint32_t ockam_vault_hkdf_sha256(ockam_vault_t         vault,
+                                 ockam_vault_secret_t  salt,
+                                 ockam_vault_secret_t  input_key_material,
                                  uint8_t               derived_outputs_count,
                                  ockam_vault_secret_t* derived_outputs);
 
@@ -205,14 +205,14 @@ uint32_t ockam_vault_hkdf_sha256(ockam_vault_t        vault,
  */
 uint32_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t        vault,
                                           ockam_vault_secret_t key,
-                                          uint16_t              nonce,
-                                          const uint8_t* const  additional_data,
-                                          size_t                additional_data_length,
-                                          const uint8_t* const  plaintext,
-                                          size_t                plaintext_length,
-                                          uint8_t*              ciphertext_and_tag,
-                                          size_t                ciphertext_and_tag_size,
-                                          size_t*               ciphertext_and_tag_length);
+                                          uint16_t             nonce,
+                                          const uint8_t*       additional_data,
+                                          size_t               additional_data_length,
+                                          const uint8_t*       plaintext,
+                                          size_t               plaintext_length,
+                                          uint8_t*             ciphertext_and_tag,
+                                          size_t               ciphertext_and_tag_size,
+                                          size_t*              ciphertext_and_tag_length);
 
 /**
  * @brief   Decrypt a payload using AES-GCM.
@@ -228,16 +228,16 @@ uint32_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t        vault,
  * @param   plaintext_length[out]         Amount of data placed in the plaintext buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-uint32_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t        vault,
+uint32_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t       vault,
                                          ockam_vault_secret_t key,
-                                         uint16_t              nonce,
-                                         const uint8_t* const  additional_data,
-                                         size_t                additional_data_length,
-                                         const uint8_t* const  ciphertext_and_tag,
-                                         size_t                ciphertext_and_tag_length,
-                                         uint8_t*              plaintext,
-                                         size_t                plaintext_size,
-                                         size_t*               plaintext_length);
+                                         uint16_t             nonce,
+                                         const uint8_t*       additional_data,
+                                         size_t               additional_data_length,
+                                         const uint8_t*       ciphertext_and_tag,
+                                         size_t               ciphertext_and_tag_length,
+                                         uint8_t*             plaintext,
+                                         size_t               plaintext_size,
+                                         size_t*              plaintext_length);
 
 /**
  * @brief   Deinitialize the specified ockam vault object

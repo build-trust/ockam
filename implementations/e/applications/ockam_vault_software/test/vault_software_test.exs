@@ -109,4 +109,32 @@ defmodule Ockam.Vault.Software.Tests do
       :ok = Ockam.Vault.Software.secret_destroy(handle, secret)
     end
   end
+
+  describe "Ockam.Vault.Software.ecdh/3" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+
+      secret_data = <<136, 150, 7, 173, 189, 63, 35, 127,
+                      17, 37, 185, 84, 167, 243, 90, 61,
+                      140, 73, 183, 46, 177, 139, 20, 171,
+                      175, 41, 171, 202, 146, 55, 186, 114>>
+
+      {:ok, secret1} = Ockam.Vault.Software.secret_import(handle, attributes, secret_data)
+
+      public2 = <<244, 220, 38, 193, 253, 60, 127, 20,
+                  18, 61, 120, 162, 140, 188, 230, 36,
+                  20, 82, 31, 186, 20, 207, 112, 14,
+                  88, 119, 23, 20, 119, 179, 226, 95>>
+
+      {:ok, dh} = Ockam.Vault.Software.ecdh(handle, secret1, public2)
+
+      {:ok, dh_data} = Ockam.Vault.Software.secret_export(handle, dh)
+      
+      assert dh_data == <<174, 139, 240, 140, 226, 187, 236, 169,
+                          59, 89, 38, 171, 165, 29, 32, 47,
+                          148, 161, 218, 139, 246, 23, 131, 164,
+                          6, 109, 155, 8, 203, 90, 153, 38>>
+    end
+  end
 end
