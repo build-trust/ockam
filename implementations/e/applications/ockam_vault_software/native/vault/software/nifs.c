@@ -5,6 +5,7 @@
 
 static const size_t MAX_ARG_STR_SIZE       = 32;
 static const size_t MAX_SECRET_EXPORT_SIZE = 65;
+static const size_t MAX_PUBLICKEY_SIZE     = 65;
 
 static ERL_NIF_TERM ok(ErlNifEnv *env, ERL_NIF_TERM result) {
     ERL_NIF_TERM id = enif_make_atom(env, "ok");
@@ -266,6 +267,39 @@ static ERL_NIF_TERM secret_export(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
     return ok(env, output);
 }
 
+static ERL_NIF_TERM secret_publickey_get(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (2 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 secret_handle;
+    if (0 == enif_get_uint64(env, argv[1], &secret_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    uint8_t buffer[MAX_PUBLICKEY_SIZE];
+    size_t length = 0;
+
+    if (0 != ockam_vault_secret_publickey_get(vault, secret_handle, buffer, MAX_SECRET_EXPORT_SIZE, &length)) {
+        return err(env, "failed to ockam_vault_secret_publickey_get");
+    }
+
+    ERL_NIF_TERM output;
+    uint8_t* bytes = enif_make_new_binary(env, length, &output);
+
+    if (0 == bytes) {
+        return err(env, "failed to create buffer for secret_publickey_get");
+    }
+    memcpy(bytes, buffer, length);
+
+    return ok(env, output);
+}
+
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
@@ -274,6 +308,7 @@ static ErlNifFunc nifs[] = {
   {"secret_generate", 2, secret_generate},
   {"secret_import", 3, secret_import},
   {"secret_export", 2, secret_export},
+  {"secret_publickey_get", 2, secret_publickey_get},
 };
 
 ERL_NIF_INIT(Elixir.Ockam.Vault.Software, nifs, NULL, NULL, NULL, NULL)

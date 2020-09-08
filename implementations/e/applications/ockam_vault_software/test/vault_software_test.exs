@@ -65,4 +65,26 @@ defmodule Ockam.Vault.Software.Tests do
       assert data == key_data
     end
   end
+
+  describe "Ockam.Vault.Software.secret_publickey_get/2" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      key_data   = <<120, 132, 203, 140, 22, 250, 109, 249,
+                     155, 207, 102, 47, 186, 14, 109, 252,
+                     110, 197, 217, 163, 147, 242, 36, 234,
+                     91, 58, 252, 218, 244, 55, 133, 86>>
+
+      {:ok, secret} = Ockam.Vault.Software.secret_import(handle, attributes, key_data)
+
+      public_key = <<150, 222, 161, 134, 252, 228, 164, 141,
+                     155, 94, 150, 20, 255, 187, 168, 204,
+                     82, 148, 227, 235, 101, 45, 106, 171,
+                     61, 223, 40, 223, 225, 181, 77, 102>>
+
+      {:ok, data} = Ockam.Vault.Software.secret_publickey_get(handle, secret)
+
+      assert data == public_key
+    end
+  end
 end

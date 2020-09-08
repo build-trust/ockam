@@ -65,4 +65,8 @@ defmodule Ockam.Vault.Software do
   def secret_export(_a, _b) do
     raise "natively implemented secret_export/2 not loaded"
   end
+
+  def secret_publickey_get(_a, _b) do
+    raise "natively implemented secret_publickey_get/2 not loaded"
+  end
 end
