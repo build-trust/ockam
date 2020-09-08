@@ -87,4 +87,16 @@ defmodule Ockam.Vault.Software.Tests do
       assert data == public_key
     end
   end
+
+  describe "Ockam.Vault.Software.secret_attributes_get/2" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      {:ok, secret} = Ockam.Vault.Software.secret_generate(handle, attributes)
+
+      {:ok, attributes} = Ockam.Vault.Software.secret_attributes_get(handle, secret)
+
+      assert attributes == %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+    end
+  end
 end

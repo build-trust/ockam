@@ -18,6 +18,20 @@ static ERL_NIF_TERM err(ErlNifEnv *env, const char* msg) {
     return enif_make_tuple2(env, e, m);
 }
 
+static const char* SECRET_TYPE_KEY        = "type";
+static const char* SECRET_TYPE_BUFFER     = "buffer";
+static const char* SECRET_TYPE_AES128     = "aes128";
+static const char* SECRET_TYPE_AES256     = "aes256";
+static const char* SECRET_TYPE_CURVE25519 = "curve25519";
+static const char* SECRET_TYPE_P256       = "p256";
+
+static const char* SECRET_PERSISTENCE_KEY        = "persistence";
+static const char* SECRET_PERSISTENCE_EPHEMERAL  = "ephemeral";
+static const char* SECRET_PERSISTENCE_PERSISTENT = "persistent";
+
+static const char* SECRET_PURPOSE_KEY           = "purpose";
+static const char* SECRET_PURPOSE_KEY_AGREEMENT = "key_agreement";
+
 static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault_secret_attributes_t* attributes) {
     size_t num_keys;
     if (0 == enif_get_map_size(env, arg, &num_keys)) {
@@ -28,7 +42,7 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
         return -1;
     }
 
-    ERL_NIF_TERM term = enif_make_atom(env, "type");
+    ERL_NIF_TERM term = enif_make_atom(env, SECRET_TYPE_KEY);
     ERL_NIF_TERM value;
 
     if (0 == enif_get_map_value(env, arg, term, &value)) {
@@ -43,22 +57,23 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
     }
 
     // TODO: Document hardcoded values somewhere?
-    if (strncmp("buffer", buf, sizeof(buf)) == 0) {
+    if (strncmp(SECRET_TYPE_BUFFER, buf, sizeof(buf)) == 0) {
         attributes->type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
-    } else if (strncmp("aes128", buf, sizeof(buf)) == 0) {
+    } else if (strncmp(SECRET_TYPE_AES128, buf, sizeof(buf)) == 0) {
         attributes->type = OCKAM_VAULT_SECRET_TYPE_AES128_KEY;
-    } else if (strncmp("aes256", buf, sizeof(buf)) == 0) {
+    } else if (strncmp(SECRET_TYPE_AES256, buf, sizeof(buf)) == 0) {
         attributes->type = OCKAM_VAULT_SECRET_TYPE_AES256_KEY;
-    } else if (strncmp("curve25519", buf, sizeof(buf)) == 0) {
+    } else if (strncmp(SECRET_TYPE_CURVE25519, buf, sizeof(buf)) == 0) {
         attributes->type = OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY;
-    } else if (strncmp("p256", buf, sizeof(buf)) == 0) {
+    } else if (strncmp(SECRET_TYPE_P256, buf, sizeof(buf)) == 0) {
         attributes->type = OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY;
     } else {
         return -1;
     }
 
-    term = enif_make_atom(env, "persistence");
+    term = enif_make_atom(env, SECRET_PERSISTENCE_KEY);
 
+    // FIXME: Replace with iterator
     result = enif_get_map_value(env, arg, term, &value);
 
     if (0 == result) {
@@ -71,15 +86,15 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
         return -1;
     }
 
-    if (strncmp("ephemeral", buf, sizeof(buf)) == 0) {
+    if (strncmp(SECRET_PERSISTENCE_EPHEMERAL, buf, sizeof(buf)) == 0) {
         attributes->persistence = OCKAM_VAULT_SECRET_EPHEMERAL;
-    } else if (strncmp("persistent", buf, sizeof(buf)) == 0) {
+    } else if (strncmp(SECRET_PERSISTENCE_PERSISTENT, buf, sizeof(buf)) == 0) {
         attributes->persistence = OCKAM_VAULT_SECRET_PERSISTENT;
     } else {
         return -1;
     }
 
-    term = enif_make_atom(env, "purpose");
+    term = enif_make_atom(env, SECRET_PURPOSE_KEY);
 
     result = enif_get_map_value(env, arg, term, &value);
 
@@ -93,13 +108,66 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
         return -1;
     }
 
-    if (strncmp("key_agreement", buf, sizeof(buf)) == 0) {
+    if (strncmp(SECRET_PURPOSE_KEY_AGREEMENT, buf, sizeof(buf)) == 0) {
         attributes->purpose = OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT;
     } else {
         return -1;
     }
 
     return 0;
+}
+
+static ERL_NIF_TERM create_term_from_secret_attributes(ErlNifEnv *env, const ockam_vault_secret_attributes_t* attributes) {
+    ERL_NIF_TERM map = enif_make_new_map(env);
+
+    ERL_NIF_TERM type_key = enif_make_atom(env, SECRET_TYPE_KEY);
+
+    const char* type_value_str;
+    switch (attributes->type) {
+        case OCKAM_VAULT_SECRET_TYPE_BUFFER: type_value_str = SECRET_TYPE_BUFFER; break;
+        case OCKAM_VAULT_SECRET_TYPE_AES128_KEY: type_value_str = SECRET_TYPE_AES128; break;
+        case OCKAM_VAULT_SECRET_TYPE_AES256_KEY: type_value_str = SECRET_TYPE_AES256; break;
+        case OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY: type_value_str = SECRET_TYPE_CURVE25519; break;
+        case OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY: type_value_str = SECRET_TYPE_P256; break;
+
+        default:
+            return enif_make_badarg(env);
+    }
+
+    ERL_NIF_TERM type_value = enif_make_atom(env, type_value_str);
+
+    enif_make_map_put(env, map, type_key, type_value, &map);
+
+    ERL_NIF_TERM persistence_key = enif_make_atom(env, SECRET_PERSISTENCE_KEY);
+
+    const char* persistence_value_str;
+    switch (attributes->persistence) {
+        case OCKAM_VAULT_SECRET_EPHEMERAL: persistence_value_str = SECRET_PERSISTENCE_EPHEMERAL; break;
+        case OCKAM_VAULT_SECRET_PERSISTENT: persistence_value_str = SECRET_PERSISTENCE_PERSISTENT; break;
+
+        default:
+            return enif_make_badarg(env);
+    }
+
+    ERL_NIF_TERM persistence_value = enif_make_atom(env, persistence_value_str);
+
+    enif_make_map_put(env, map, persistence_key, persistence_value, &map);
+
+    ERL_NIF_TERM purpose_key = enif_make_atom(env, SECRET_PURPOSE_KEY);
+
+    const char* purpose_value_str;
+    switch (attributes->purpose) {
+        case OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT: purpose_value_str = SECRET_PURPOSE_KEY_AGREEMENT; break;
+
+        default:
+            return enif_make_badarg(env);
+    }
+
+    ERL_NIF_TERM purpose_value = enif_make_atom(env, purpose_value_str);
+
+    enif_make_map_put(env, map, purpose_key, purpose_value, &map);
+
+    return ok(env, map);
 }
 
 static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -300,6 +368,29 @@ static ERL_NIF_TERM secret_publickey_get(ErlNifEnv *env, int argc, const ERL_NIF
     return ok(env, output);
 }
 
+static ERL_NIF_TERM secret_attributes_get(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (2 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 secret_handle;
+    if (0 == enif_get_uint64(env, argv[1], &secret_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    ockam_vault_secret_attributes_t attributes;
+    if (0 != ockam_vault_secret_attributes_get(vault, secret_handle, &attributes)) {
+        return err(env, "failed to secret_attributes_get");
+    }
+
+    return create_term_from_secret_attributes(env, &attributes);
+}
+
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
@@ -309,6 +400,7 @@ static ErlNifFunc nifs[] = {
   {"secret_import", 3, secret_import},
   {"secret_export", 2, secret_export},
   {"secret_publickey_get", 2, secret_publickey_get},
+  {"secret_attributes_get", 2, secret_attributes_get}
 };
 
 ERL_NIF_INIT(Elixir.Ockam.Vault.Software, nifs, NULL, NULL, NULL, NULL)
