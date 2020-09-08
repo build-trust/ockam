@@ -99,4 +99,14 @@ defmodule Ockam.Vault.Software.Tests do
       assert attributes == %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
     end
   end
+
+  describe "Ockam.Vault.Software.secret_destroy/2" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      {:ok, secret} = Ockam.Vault.Software.secret_generate(handle, attributes)
+
+      :ok = Ockam.Vault.Software.secret_destroy(handle, secret)
+    end
+  end
 end

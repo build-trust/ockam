@@ -7,6 +7,10 @@ static const size_t MAX_ARG_STR_SIZE       = 32;
 static const size_t MAX_SECRET_EXPORT_SIZE = 65;
 static const size_t MAX_PUBLICKEY_SIZE     = 65;
 
+static ERL_NIF_TERM ok_void(ErlNifEnv *env) {
+    return enif_make_atom(env, "ok");
+}
+
 static ERL_NIF_TERM ok(ErlNifEnv *env, ERL_NIF_TERM result) {
     ERL_NIF_TERM id = enif_make_atom(env, "ok");
     return enif_make_tuple2(env, id, result);
@@ -391,6 +395,28 @@ static ERL_NIF_TERM secret_attributes_get(ErlNifEnv *env, int argc, const ERL_NI
     return create_term_from_secret_attributes(env, &attributes);
 }
 
+static ERL_NIF_TERM secret_destroy(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (2 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 secret_handle;
+    if (0 == enif_get_uint64(env, argv[1], &secret_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    if (0 != ockam_vault_secret_destroy(vault, secret_handle)) {
+        return err(env, "failed to secret_destroy");
+    }
+
+    return ok_void(env);
+}
+
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
@@ -400,7 +426,8 @@ static ErlNifFunc nifs[] = {
   {"secret_import", 3, secret_import},
   {"secret_export", 2, secret_export},
   {"secret_publickey_get", 2, secret_publickey_get},
-  {"secret_attributes_get", 2, secret_attributes_get}
+  {"secret_attributes_get", 2, secret_attributes_get},
+  {"secret_destroy", 2, secret_destroy},
 };
 
 ERL_NIF_INIT(Elixir.Ockam.Vault.Software, nifs, NULL, NULL, NULL, NULL)
