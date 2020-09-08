@@ -51,6 +51,18 @@ defmodule Ockam.Vault.Software do
   end
 
   def random_bytes(_a, _b) do
-    raise "natively implemented random_bytes_generate/1 not loaded"
+    raise "natively implemented random_bytes/2 not loaded"
+  end
+
+  def secret_generate(_a, _b) do
+    raise "natively implemented secret_generate/2 not loaded"
+  end
+
+  def secret_import(_a, _b, _c) do
+    raise "natively implemented secret_import/3 not loaded"
+  end
+
+  def secret_export(_a, _b) do
+    raise "natively implemented secret_export/2 not loaded"
   end
 end
