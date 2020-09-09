@@ -26,7 +26,7 @@ hex = "0.4"
 hkdf = "0.9"
 lazy_static = { version = "1.4", optional = true }
 ockam-common = { version = "0.1", path = "../common" }
-p256 = { version = "0.3", features = ["arithmetic"] }
+p256 = { version = "0.4", features = ["arithmetic"] }
 rand = "0.7"
 sha2 = "0.9"
 subtle = "2.2"

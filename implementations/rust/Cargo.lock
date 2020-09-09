@@ -208,6 +208,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "elliptic-curve"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9abe4578ed343c7a2c9d617cd2b1895ba0a87a6a4dee97bde156d65f608c7b2d"
+dependencies = [
+ "generic-array",
+ "subtle",
+]
+
+[[package]]
 name = "failure"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -401,7 +411,7 @@ dependencies = [
  "aead",
  "aes-gcm",
  "arrayref",
- "elliptic-curve",
+ "elliptic-curve 0.4.0",
  "failure",
  "ffi-support",
  "hex",
@@ -432,12 +442,11 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "p256"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a425ecb71515663b2735fd1e65bb638fd134c5ad23857eb197c2f157784476cf"
+checksum = "a9f8aff5e98a6a83e374418a0a510ae4d9d45d714b5b0767c2e23ea007d0ba54"
 dependencies = [
- "elliptic-curve",
- "subtle",
+ "elliptic-curve 0.5.0",
 ]
 
 [[package]]
