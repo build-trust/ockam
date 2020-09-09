@@ -240,4 +240,12 @@ defmodule Ockam.Vault.Software.Tests do
       assert plain_text == decrypted
     end
   end
+
+  describe "Ockam.Vault.Software.deinit/1" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+
+      :ok = Ockam.Vault.Software.deinit(handle)
+    end
+  end
 end

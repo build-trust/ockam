@@ -625,6 +625,23 @@ static ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF
     return ok(env, term);
 }
 
+static ERL_NIF_TERM deinit(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (1 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    if (0 != ockam_vault_deinit(vault)) {
+        return err(env, "failed to deinit vault");
+    }
+
+    return ok_void(env);
+}
+
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
@@ -640,6 +657,7 @@ static ErlNifFunc nifs[] = {
   {"hkdf_sha256", 4, hkdf_sha256},
   {"aead_aes_gcm_encrypt", 5, aead_aes_gcm_encrypt},
   {"aead_aes_gcm_decrypt", 5, aead_aes_gcm_decrypt},
+  {"deinit", 1, deinit},
 };
 
 ERL_NIF_INIT(Elixir.Ockam.Vault.Software, nifs, NULL, NULL, NULL, NULL)

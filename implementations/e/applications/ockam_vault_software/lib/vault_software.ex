@@ -93,4 +93,9 @@ defmodule Ockam.Vault.Software do
   def aead_aes_gcm_decrypt(_a, _b, _c, _d, _e) do
     raise "natively implemented aead_aes_gcm_decrypt/5 not loaded"
   end
+
+  def deinit(_a) do
+    raise "natively implemented deinit/1 not loaded"
+  end
+
 end
