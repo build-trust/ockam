@@ -85,6 +85,7 @@ impl TryFrom<FfiSecretKey> for SecretKey {
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct FfiSecretKeyAttributes {
+    pub(crate) length: u32,
     pub(crate) xtype: u32,
     pub(crate) persistence: u32,
     pub(crate) purpose: u32,
@@ -92,11 +93,18 @@ pub struct FfiSecretKeyAttributes {
 
 impl From<SecretKeyAttributes> for FfiSecretKeyAttributes {
     fn from(attrs: SecretKeyAttributes) -> Self {
-        Self {
+        let mut res = Self {
+            length: 0,
             xtype: attrs.xtype.to_usize() as u32,
             persistence: attrs.persistence.to_usize() as u32,
             purpose: attrs.purpose.to_usize() as u32,
+        };
+
+        if let SecretKeyType::Buffer(length) = attrs.xtype {
+            res.length = length as u32;
         }
+
+        res
     }
 }
 
@@ -108,11 +116,17 @@ impl From<FfiSecretKeyAttributes> for SecretKeyAttributes {
 
 impl From<&FfiSecretKeyAttributes> for SecretKeyAttributes {
     fn from(attrs: &FfiSecretKeyAttributes) -> Self {
-        Self {
+        let mut res = Self {
             xtype: attrs.xtype.try_into().unwrap(),
             persistence: attrs.persistence.try_into().unwrap(),
             purpose: attrs.purpose.try_into().unwrap(),
+        };
+
+        if let SecretKeyType::Buffer(_) = SecretKeyType::from_usize(attrs.xtype as usize).unwrap() {
+            res.xtype = SecretKeyType::Buffer(attrs.length as usize);
         }
+
+        res
     }
 }
 
@@ -121,6 +135,7 @@ unsafe impl IntoFfi for FfiSecretKeyAttributes {
 
     fn ffi_default() -> Self::Value {
         Self {
+            length: 0,
             xtype: 0,
             persistence: 0,
             purpose: 0,

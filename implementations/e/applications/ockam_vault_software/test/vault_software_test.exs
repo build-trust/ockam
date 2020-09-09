@@ -137,4 +137,38 @@ defmodule Ockam.Vault.Software.Tests do
                           6, 109, 155, 8, 203, 90, 153, 38>>
     end
   end
+
+  describe "Ockam.Vault.Software.hkdf_sha256/4" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :buffer, persistence: :ephemeral, purpose: :key_agreement, length: 32}
+
+      salt_data = <<122, 235, 128, 126, 98, 120, 229, 181,
+                    70, 49, 183, 146, 114, 203, 117, 56,
+                    57, 97, 114, 156, 206, 162, 68, 171,
+                    40, 228, 128, 217, 198, 93, 57, 93>>
+      {:ok, salt} = Ockam.Vault.Software.secret_import(handle, attributes, salt_data)
+
+      ikm_data = <<52, 28, 249, 202, 250, 82, 168, 196,
+                   7, 9, 236, 217, 229, 151, 87, 163,
+                   96, 201, 169, 224, 128, 160, 192, 242,
+                   238, 41, 189, 157, 200, 196, 78, 144>>
+      {:ok, ikm} = Ockam.Vault.Software.secret_import(handle, attributes, ikm_data)
+
+      {:ok, derived_secrets} = Ockam.Vault.Software.hkdf_sha256(handle, salt, ikm, 2)
+
+      {:ok, data1} = Ockam.Vault.Software.secret_export(handle, Enum.at(derived_secrets, 0))
+      {:ok, data2} = Ockam.Vault.Software.secret_export(handle, Enum.at(derived_secrets, 1))
+
+      assert data1 == <<59, 23, 69, 123, 40, 228, 199, 167,
+                        81, 220, 56, 17, 94, 81, 136, 231,
+                        180, 67, 38, 91, 233, 144, 215, 39,
+                        75, 67, 179, 228, 245, 22, 187, 134>>
+
+      assert data2 == <<19, 115, 44, 135, 74, 135, 235, 12,
+                        109, 224, 28, 81, 156, 216, 108, 224,
+                        191, 254, 187, 175, 111, 210, 162, 132,
+                        249, 167, 199, 71, 188, 118, 14, 2>>
+    end
+  end
 end

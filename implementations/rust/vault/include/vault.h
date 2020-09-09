@@ -49,6 +49,7 @@ typedef enum {
  * @brief   Attributes for a specific ockam vault secret.
  */
 typedef struct {
+    uint32_t                         length; // FIXME: Used only for buffer secret generation
     ockam_vault_secret_type_t        type;
     ockam_vault_secret_purpose_t     purpose;
     ockam_vault_secret_persistence_t persistence;

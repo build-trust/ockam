@@ -81,4 +81,8 @@ defmodule Ockam.Vault.Software do
   def ecdh(_a, _b, _c) do
     raise "natively implemented ecdh/3 not loaded"
   end
+
+  def hkdf_sha256(_a, _b, _c, _d) do
+    raise "natively implemented hkdf_sha256/4 not loaded"
+  end
 end

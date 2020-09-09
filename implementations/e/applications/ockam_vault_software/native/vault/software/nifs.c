@@ -3,9 +3,10 @@
 #include "stdint.h"
 #include "string.h"
 
-static const size_t MAX_ARG_STR_SIZE       = 32;
-static const size_t MAX_SECRET_EXPORT_SIZE = 65;
-static const size_t MAX_PUBLICKEY_SIZE     = 65;
+static const size_t MAX_ARG_STR_SIZE         = 32;
+static const size_t MAX_SECRET_EXPORT_SIZE   = 65;
+static const size_t MAX_PUBLICKEY_SIZE       = 65;
+static const size_t MAX_DERIVED_OUTPUT_COUNT = 2;
 
 static ERL_NIF_TERM ok_void(ErlNifEnv *env) {
     return enif_make_atom(env, "ok");
@@ -36,13 +37,15 @@ static const char* SECRET_PERSISTENCE_PERSISTENT = "persistent";
 static const char* SECRET_PURPOSE_KEY           = "purpose";
 static const char* SECRET_PURPOSE_KEY_AGREEMENT = "key_agreement";
 
+static const char* SECRET_LENGTH_KEY = "length";
+
 static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault_secret_attributes_t* attributes) {
     size_t num_keys;
     if (0 == enif_get_map_size(env, arg, &num_keys)) {
         return -1;
     }
 
-    if (3 != num_keys) {
+    if (num_keys < 3 || 4 < num_keys) {
         return -1;
     }
 
@@ -54,13 +57,11 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
     }
 
     char buf[MAX_ARG_STR_SIZE]; // TODO: Document max allowed size somewhere?
-    ERL_NIF_TERM result = enif_get_atom(env, value, buf, sizeof(buf), ERL_NIF_LATIN1);
 
-    if (0 == result) {
+    if (0 == enif_get_atom(env, value, buf, sizeof(buf), ERL_NIF_LATIN1)) {
         return -1;
     }
 
-    // TODO: Document hardcoded values somewhere?
     if (strncmp(SECRET_TYPE_BUFFER, buf, sizeof(buf)) == 0) {
         attributes->type = OCKAM_VAULT_SECRET_TYPE_BUFFER;
     } else if (strncmp(SECRET_TYPE_AES128, buf, sizeof(buf)) == 0) {
@@ -78,15 +79,11 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
     term = enif_make_atom(env, SECRET_PERSISTENCE_KEY);
 
     // FIXME: Replace with iterator
-    result = enif_get_map_value(env, arg, term, &value);
-
-    if (0 == result) {
+    if (0 == enif_get_map_value(env, arg, term, &value)) {
         return -1;
     }
 
-    result = enif_get_atom(env, value, buf, sizeof(buf), ERL_NIF_LATIN1);
-
-    if (0 == result) {
+    if (0 == enif_get_atom(env, value, buf, sizeof(buf), ERL_NIF_LATIN1)) {
         return -1;
     }
 
@@ -100,15 +97,11 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
 
     term = enif_make_atom(env, SECRET_PURPOSE_KEY);
 
-    result = enif_get_map_value(env, arg, term, &value);
-
-    if (0 == result) {
+    if (0 == enif_get_map_value(env, arg, term, &value)) {
         return -1;
     }
 
-    result = enif_get_atom(env, value, buf, sizeof(buf), ERL_NIF_LATIN1);
-
-    if (0 == result) {
+    if (0 == enif_get_atom(env, value, buf, sizeof(buf), ERL_NIF_LATIN1)) {
         return -1;
     }
 
@@ -117,6 +110,17 @@ static int parse_secret_attributes(ErlNifEnv *env, ERL_NIF_TERM arg, ockam_vault
     } else {
         return -1;
     }
+
+    term = enif_make_atom(env, SECRET_LENGTH_KEY);
+
+    uint32_t length = 0;
+    if (0 != enif_get_map_value(env, arg, term, &value)) {
+        if (0 == enif_get_uint(env, value, &length)) {
+            return -1;
+        }
+    }
+
+    attributes->length = length;
 
     return 0;
 }
@@ -447,6 +451,50 @@ static ERL_NIF_TERM ecdh(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return ok(env, shared_secret_term);
 }
 
+static ERL_NIF_TERM hkdf_sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (4 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 salt_handle;
+    if (0 == enif_get_uint64(env, argv[1], &salt_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 ikm_handle;
+    if (0 == enif_get_uint64(env, argv[2], &ikm_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    unsigned int derived_outputs_count;
+    if (0 == enif_get_uint(env, argv[3], &derived_outputs_count)) {
+        return enif_make_badarg(env);
+    }
+
+    if (derived_outputs_count > MAX_DERIVED_OUTPUT_COUNT) {
+        return enif_make_badarg(env);
+    }
+
+    ockam_vault_secret_t shared_secrets[MAX_DERIVED_OUTPUT_COUNT];
+    if (0 != ockam_vault_hkdf_sha256(vault, salt_handle, ikm_handle, derived_outputs_count, shared_secrets)) {
+        return err(env, "failed to hkdf_sha256");
+    }
+
+    ERL_NIF_TERM output_array[MAX_DERIVED_OUTPUT_COUNT];
+    for (size_t i = 0; i < derived_outputs_count; i++) {
+        output_array[i] = enif_make_uint64(env, shared_secrets[i]);
+    }
+
+    ERL_NIF_TERM output = enif_make_list_from_array(env, output_array, derived_outputs_count);
+
+    return ok(env, output);
+}
+
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
@@ -459,6 +507,7 @@ static ErlNifFunc nifs[] = {
   {"secret_attributes_get", 2, secret_attributes_get},
   {"secret_destroy", 2, secret_destroy},
   {"ecdh", 3, ecdh},
+  {"hkdf_sha256", 4, hkdf_sha256},
 };
 
 ERL_NIF_INIT(Elixir.Ockam.Vault.Software, nifs, NULL, NULL, NULL, NULL)

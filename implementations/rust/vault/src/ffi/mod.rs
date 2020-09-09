@@ -330,7 +330,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
     salt: u64,
     input_key_material: u64,
     derived_outputs_count: u8,
-    derived_outputs: &mut Vec<u64>,
+    derived_outputs: &mut [u64],
 ) -> VaultError {
     let derived_outputs_count = derived_outputs_count as usize;
     let mut err = ExternError::success();
@@ -361,11 +361,15 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
                 outputs.push(secret);
             }
 
-            Ok(OckamSecretList(outputs))
+            // FIXME: Double conversion is happening here
+            let res = OckamSecretList(outputs);
+            Ok(res)
         },
     );
     if err.get_code().is_success() {
-        *derived_outputs = handles;
+        for i in 0..derived_outputs_count {
+            derived_outputs[i] = handles[i];
+        }
         ERROR_NONE
     } else {
         VaultFailErrorKind::HkdfSha256.into()
