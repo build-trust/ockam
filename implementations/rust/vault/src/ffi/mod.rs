@@ -390,6 +390,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
     ciphertext_and_tag_size: u32,
     ciphertext_and_tag_length: &mut u32,
 ) -> VaultError {
+    // FIXME: Additional data is not mandatory
     check_buffer!(additional_data, additional_data_length);
     check_buffer!(plaintext, plaintext_length);
     *ciphertext_and_tag_length = 0;
@@ -402,12 +403,11 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
             let ctx = get_memory_id(secret);
-            let ciphertext = v.vault.aead_aes_gcm_encrypt(
-                ctx,
-                plaintext,
-                nonce.to_be_bytes().as_ref(),
-                additional_data,
-            )?;
+            let mut nonce_vec = vec![0; 12 - 2];
+            nonce_vec.extend_from_slice(&nonce.to_be_bytes());
+            let ciphertext =
+                v.vault
+                    .aead_aes_gcm_encrypt(ctx, plaintext, &nonce_vec, additional_data)?;
             Ok(ByteBuffer::from_vec(ciphertext))
         },
     );
@@ -428,6 +428,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
 }
 
 /// Decrypt a payload using AES-GCM.
+#[no_mangle]
 pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     context: u64,
     secret: u64,
@@ -440,6 +441,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     plaintext_size: u32,
     plaintext_length: &mut u32,
 ) -> VaultError {
+    // FIXME: Additional data is not mandatory
     check_buffer!(additional_data, additional_data_length);
     check_buffer!(ciphertext_and_tag, plaintext_size);
     *plaintext_length = 0;
@@ -454,10 +456,12 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
             let ctx = get_memory_id(secret);
+            let mut nonce_vec = vec![0; 12 - 2];
+            nonce_vec.extend_from_slice(&nonce.to_be_bytes());
             let plain = v.vault.aead_aes_gcm_decrypt(
                 ctx,
                 ciphertext_and_tag,
-                nonce.to_be_bytes().as_ref(),
+                &nonce_vec,
                 additional_data,
             )?;
             Ok(ByteBuffer::from_vec(plain))

@@ -495,6 +495,136 @@ static ERL_NIF_TERM hkdf_sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     return ok(env, output);
 }
 
+static ERL_NIF_TERM aead_aes_gcm_encrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (5 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 key_handle;
+    if (0 == enif_get_uint64(env, argv[1], &key_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    unsigned int nonce;
+    if (0 == enif_get_uint(env, argv[2], &nonce)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifBinary ad;
+    if (0 == enif_inspect_binary(env, argv[3], &ad)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifBinary plain_text;
+    if (0 == enif_inspect_binary(env, argv[4], &plain_text)) {
+        return enif_make_badarg(env);
+    }
+
+    ERL_NIF_TERM term;
+    // FIXME: Allocated size should be provided by the rust lib
+    size_t size = plain_text.size + 16;
+    uint8_t* cipher_text = enif_make_new_binary(env, size, &term);
+
+    if (NULL == cipher_text) {
+        return err(env, "failed to create buffer for aead_aes_gcm_encrypt");
+    }
+
+    memset(cipher_text, 0, size);
+
+    size_t length = 0;
+
+    if (0 != ockam_vault_aead_aes_gcm_encrypt(vault,
+                                              key_handle,
+                                              nonce,
+                                              ad.data,
+                                              ad.size,
+                                              plain_text.data,
+                                              plain_text.size,
+                                              cipher_text,
+                                              size,
+                                              &length)) {
+        return err(env, "failed to aead_aes_gcm_encrypt");
+    }
+
+    if (length != size) {
+        return err(env, "buffer size is invalid during aead_aes_gcm_encrypt");
+    }
+
+    return ok(env, term);
+}
+
+static ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (5 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 key_handle;
+    if (0 == enif_get_uint64(env, argv[1], &key_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    unsigned int nonce;
+    if (0 == enif_get_uint(env, argv[2], &nonce)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifBinary ad;
+    if (0 == enif_inspect_binary(env, argv[3], &ad)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifBinary cipher_text;
+    if (0 == enif_inspect_binary(env, argv[4], &cipher_text)) {
+        return enif_make_badarg(env);
+    }
+
+    if (cipher_text.size < 16) {
+        return enif_make_badarg(env);
+    }
+
+    ERL_NIF_TERM term;
+    // FIXME: Allocated size should be provided by the rust lib
+    size_t size = cipher_text.size - 16;
+    uint8_t* plain_text = enif_make_new_binary(env, size, &term);
+
+    if (NULL == plain_text) {
+        return err(env, "failed to create buffer for aead_aes_gcm_decrypt");
+    }
+
+    memset(plain_text, 0, size);
+
+    size_t length = 0;
+
+    if (0 != ockam_vault_aead_aes_gcm_decrypt(vault,
+                                              key_handle,
+                                              nonce,
+                                              ad.data,
+                                              ad.size,
+                                              cipher_text.data,
+                                              cipher_text.size,
+                                              plain_text,
+                                              size,
+                                              &length)) {
+        return err(env, "failed to aead_aes_gcm_decrypt");
+    }
+
+    if (length != size) {
+        return err(env, "buffer size is invalid during aead_aes_gcm_decrypt");
+    }
+
+    return ok(env, term);
+}
+
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
@@ -508,6 +638,8 @@ static ErlNifFunc nifs[] = {
   {"secret_destroy", 2, secret_destroy},
   {"ecdh", 3, ecdh},
   {"hkdf_sha256", 4, hkdf_sha256},
+  {"aead_aes_gcm_encrypt", 5, aead_aes_gcm_encrypt},
+  {"aead_aes_gcm_decrypt", 5, aead_aes_gcm_decrypt},
 };
 
 ERL_NIF_INIT(Elixir.Ockam.Vault.Software, nifs, NULL, NULL, NULL, NULL)

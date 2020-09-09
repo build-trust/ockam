@@ -171,4 +171,73 @@ defmodule Ockam.Vault.Software.Tests do
                         249, 167, 199, 71, 188, 118, 14, 2>>
     end
   end
+
+  describe "Ockam.Vault.Software.aead_aes_gcm_encrypt/5" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :aes256, persistence: :ephemeral, purpose: :key_agreement}
+
+      key_data = <<60, 39, 4, 177, 160, 228, 92, 103,
+                   87, 110, 249, 2, 175, 175, 130, 92,
+                   196, 211, 49, 250, 51, 157, 6, 45,
+                   39, 205, 207, 84, 126, 153, 104, 209>>
+
+      {:ok, key} = Ockam.Vault.Software.secret_import(handle, attributes, key_data)
+
+      plain_text = "Hello, nif"
+      ad         = "Token"
+      nonce      = 5
+
+      {:ok, cipher_text} = Ockam.Vault.Software.aead_aes_gcm_encrypt(handle, key, nonce, ad, plain_text)
+
+      assert cipher_text == <<125, 225, 184, 225, 253, 238, 233, 167,
+                              41, 157, 48, 205, 146, 233, 209, 117,
+                              3, 243, 166, 199, 19, 203, 229, 132, 96, 13>>
+    end
+  end
+
+  describe "Ockam.Vault.Software.aead_aes_gcm_decrypt/5" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :aes256, persistence: :ephemeral, purpose: :key_agreement}
+
+      key_data = <<60, 39, 4, 177, 160, 228, 92, 103,
+                   87, 110, 249, 2, 175, 175, 130, 92,
+                   196, 211, 49, 250, 51, 157, 6, 45,
+                   39, 205, 207, 84, 126, 153, 104, 209>>
+
+      {:ok, key} = Ockam.Vault.Software.secret_import(handle, attributes, key_data)
+
+      plain_text = "Hello, nif"
+      ad         = "Token"
+      nonce      = 5
+
+      cipher_text = <<125, 225, 184, 225, 253, 238, 233, 167,
+                      41, 157, 48, 205, 146, 233, 209, 117,
+                      3, 243, 166, 199, 19, 203, 229, 132, 96, 13>>
+
+      {:ok, decrypted} = Ockam.Vault.Software.aead_aes_gcm_decrypt(handle, key, nonce, ad, cipher_text)
+
+      assert plain_text == decrypted
+    end
+  end
+
+  describe "Ockam.Vault.Software.aead_aes_gcm_encrypt_decrypt/5" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = Ockam.Vault.Software.default_init
+      attributes = %{type: :aes256, persistence: :ephemeral, purpose: :key_agreement}
+
+      {:ok, key} = Ockam.Vault.Software.secret_generate(handle, attributes)
+
+      plain_text = "Hello, nif"
+      ad         = "Token"
+      nonce      = 5
+
+      {:ok, cipher_text} = Ockam.Vault.Software.aead_aes_gcm_encrypt(handle, key, nonce, ad, plain_text)
+
+      {:ok, decrypted} = Ockam.Vault.Software.aead_aes_gcm_decrypt(handle, key, nonce, ad, cipher_text)
+
+      assert plain_text == decrypted
+    end
+  end
 end
