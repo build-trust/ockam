@@ -1,12 +1,12 @@
 [package]
-name = "ockam-message"
+name = "ockam-router"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 
 [lib]
 crate-type = ["staticlib", "rlib", "cdylib"]
-path = "src/message.rs"
+path = "src/router.rs"
 
 [profile.release]
 lto = true
@@ -14,4 +14,5 @@ lto = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ockam-message = { version = "0.1", path = "../message" }
 

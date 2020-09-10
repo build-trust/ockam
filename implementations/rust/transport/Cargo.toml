@@ -1,0 +1,25 @@
+[package]
+name = "ockam-transport"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[lib]
+name = "transport"           # The name of the target.
+path = "src/transport.rs"    # The source file of the target.
+test = true            # Is tested by default.
+doctest = true         # Documentation examples are tested by default.
+bench = true           # Is benchmarked by default.
+doc = true             # Is documented by default.
+crate-type = ["lib"]   # The crate types to generate.
+
+
+[profile.release]
+lto = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ockam-router = { version = "0.1", path = "../router" }
+ockam-message = { version = "0.1", path = "../message" }
+
