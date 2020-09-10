@@ -1,11 +1,11 @@
 #[allow(unused)]
 
 pub mod transport {
-    use ockam_router::router::{MessageHandler};
-    use ockam_message::message::{Message, Address};
+    use ockam_message::message::{Address, Message};
+    use ockam_router::router::MessageHandler;
+    use std::collections::HashMap;
     use std::net::UdpSocket;
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    use std::collections::HashMap;
 
     pub struct UdpAddressHandler {
         pub socket: UdpSocket,
@@ -21,6 +21,4 @@ pub mod transport {
             Ok(())
         }
     }
-
-
 }
