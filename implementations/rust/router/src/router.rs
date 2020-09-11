@@ -61,15 +61,14 @@ pub mod router {
                 return Err("Not Implemented".to_string());
             }
 
+            let handler_ref: Arc<Mutex<dyn MessageHandler+Send>>;
             match self.registry.get_mut(&key) {
                 Some(r) => {
-                    let r = Arc::clone(r);
-                    let j: thread::JoinHandle<_> = thread::spawn(move || {
-                        r.lock().unwrap().message_handler(m, address);
-                    });
-
-                    j.join().expect("panic");
-                    Ok(())
+                    handler_ref = Arc::clone(r);
+                    match handler_ref.lock().unwrap().message_handler(m, address) {
+                        Ok(()) => { Ok(()) },
+                        Err(s) => { Err("message_handler failed".to_string()) },
+                    }
                 }
                 None => Err("key not found".to_string()),
             }
