@@ -145,7 +145,7 @@ mod tests {
         });
         let mut router: Router = Router::new();
         let udp_socket = UdpSocket::bind("127.0.0.1:4050").expect("couldn't bind to address");
-        let udp_handler: Arc<Mutex<MessageHandler + Send>> =
+        let udp_handler: Arc<Mutex<dyn MessageHandler + Send>> =
             Arc::new(Mutex::new(TestUdpHandler { socket: udp_socket }));
         match router.register_handler(udp_handler, AddressType::Udp) {
             Ok(()) => {
