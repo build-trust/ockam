@@ -25,6 +25,10 @@ use ockam_vault::{
     Vault,
 };
 
+#[cfg(feature = "ffi")]
+/// FFI module
+pub mod ffi;
+
 /// The maximum bytes that will be transmitted in a single message
 pub const MAX_XX_TRANSMIT_SIZE: usize = 16384;
 /// The number of bytes in a SHA256 digest
@@ -276,6 +280,8 @@ impl<'a, V: Vault> Initiator<'a, V> {
         &mut self,
         message: B,
     ) -> Result<Vec<u8>, VaultFailError> {
+        /// FIXME: Shouldn't we provide decode functions with payload
+        /// FIXME: that will be compared to what's in message?
         let message = message.as_ref();
         let mut re = [0u8; 32];
         re.copy_from_slice(&message[..32]);

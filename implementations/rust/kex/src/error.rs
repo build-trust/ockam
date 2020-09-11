@@ -26,3 +26,10 @@ impl ErrorKind for KeyExchangeFailErrorKind {
         }
     }
 }
+
+#[cfg(feature = "ffi")]
+impl From<KeyExchangeFailErrorKind> for ffi_support::ExternError {
+    fn from(err: KeyExchangeFailErrorKind) -> ffi_support::ExternError {
+        ffi_support::ExternError::new_error(ffi_support::ErrorCode::new(err.to_usize() as i32), "")
+    }
+}
