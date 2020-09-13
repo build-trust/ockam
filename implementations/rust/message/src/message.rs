@@ -7,6 +7,7 @@
 pub mod message {
     use std::convert::{Into, TryFrom};
     use std::error::Error;
+    use std::fmt::Formatter;
     pub use std::io::{ErrorKind, Read, Write};
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     use std::ops::Add;
@@ -110,49 +111,70 @@ pub mod message {
         Udp = 2,
     }
 
-    const LOCAL_ADDRESS: u8 = 0;
-    const TCP_ADDRESS: u8 = 1;
-    const UDP_ADDRESS: u8 = 2;
+    impl Clone for AddressType {
+        fn clone(&self) -> Self {
+            return match self {
+                AddressType::Local => AddressType::Local,
+                AddressType::Tcp => AddressType::Tcp,
+                AddressType::Udp => AddressType::Udp,
+            };
+        }
+    }
+
+    impl std::fmt::Debug for AddressType {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+            let s: String;
+            match self {
+                AddressType::Local => {
+                    s = "Local".to_string();
+                }
+                AddressType::Tcp => {
+                    s = "Tcp".to_string();
+                }
+                AddressType::Udp => {
+                    s = "Udp".to_string();
+                }
+            }
+            f.debug_struct("AddressType").field("Type", &s).finish();
+            Ok(())
+        }
+    }
+
+    impl Copy for AddressType {}
 
     #[derive(Debug, PartialEq)]
     #[repr(C)]
     #[derive(Clone, Copy)]
     pub struct LocalAddress {
-        pub length: u8,
         pub address: u32,
     }
 
     // ToDo: implement Copy, Clone
-    #[derive(Debug, PartialEq)]
     #[repr(C)]
-    #[derive(Clone)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum Address {
-        LocalAddress(LocalAddress),
-        TcpAddress(IpAddr, u16),
-        UdpAddress(IpAddr, u16),
+        LocalAddress(AddressType, LocalAddress),
+        TcpAddress(AddressType, IpAddr, u16),
+        UdpAddress(AddressType, IpAddr, u16),
     }
-    /*
-      impl Clone for Address {
-        fn clone(&self) -> Self {
-          let mut a: Address = Address::LocalAddress{ 0: LocalAddress {length: 0, address: 0}};
-          match self {
-            Address::LocalAddress(l) => {
-              a = Address::LocalAddress{0: LocalAddress{length: l.length, address: l.address}};
-            }
-            Address::UdpAddress(ip, port) => {
-              a = Address::UdpAddress{0: *ip, 1: *port};
-            }
-            Address::TcpAddress(ip, port) => {
-              a = Address::TcpAddress{0: *ip, 1: *port};
-            }
-          }
-          return {a}
-        }
-      }
-    */
+
     pub enum HostAddressType {
         Ipv4 = 0,
         Ipv6 = 1,
+    }
+
+    impl PartialEq for AddressType {
+        fn eq(&self, other: &Self) -> bool {
+            let t: u8 = *self as u8;
+            let o = *other as u8;
+            return t == o;
+        }
+
+        fn ne(&self, other: &Self) -> bool {
+            let t = *self as u8;
+            let o = *other as u8;
+            return t != o;
+        }
     }
 
     impl TryFrom<u8> for HostAddressType {
@@ -182,17 +204,17 @@ pub mod message {
         type Inner = Address;
         fn encode(a: &Address, v: &mut Vec<u8>) -> Result<(), String> {
             match a {
-                Address::LocalAddress(a) => {
-                    v.push(AddressType::Local as u8);
+                Address::LocalAddress(mut t, a) => {
+                    v.push(t as u8);
                     LocalAddress::encode(a, v);
                 }
-                Address::UdpAddress(ipa, mut port) => {
-                    v.push(AddressType::Udp as u8);
+                Address::UdpAddress(mut t, ipa, mut port) => {
+                    v.push(t as u8);
                     IpAddr::encode(ipa, v);
                     v.append(&mut port.to_le_bytes().to_vec());
                 }
-                Address::TcpAddress(ipa, mut port) => {
-                    v.push(AddressType::Tcp as u8);
+                Address::TcpAddress(mut t, ipa, mut port) => {
+                    v.push(t as u8);
                     IpAddr::encode(ipa, v);
                     v.append(&mut port.to_le_bytes().to_vec());
                 }
@@ -200,17 +222,17 @@ pub mod message {
             Ok(())
         }
         fn decode(u: &[u8]) -> Result<(Address, &[u8]), String> {
-            match (AddressType::try_from(u[0])?, &u[1..]) {
-                (AddressType::Local, addr) => {
-                    let (la, v) = LocalAddress::decode(addr)?;
-                    let address = Address::LocalAddress(la);
+            match AddressType::try_from(u[0])? {
+                AddressType::Local => {
+                    let (la, v) = LocalAddress::decode(&u[1..])?;
+                    let address = Address::LocalAddress(AddressType::Local, la);
                     Ok((address, v))
                 }
-                (AddressType::Tcp, addr) => Err("Not Implemented".to_string()),
-                (AddressType::Udp, addr) => {
-                    let (ipa, v) = IpAddr::decode(addr)?;
+                AddressType::Tcp => Err("Not Implemented".to_string()),
+                AddressType::Udp => {
+                    let (ipa, v) = IpAddr::decode(&u[1..])?;
                     let port = u16::from_le_bytes([v[0], v[1]]);
-                    let address = Address::UdpAddress(ipa, port);
+                    let address = Address::UdpAddress(AddressType::Udp, ipa, port);
                     Ok((address, &v[2..]))
                 }
             }
@@ -247,7 +269,6 @@ pub mod message {
     impl Codec for LocalAddress {
         type Inner = LocalAddress;
         fn encode(la: &LocalAddress, u: &mut Vec<u8>) -> Result<(), String> {
-            u.push(la.length);
             for le_byte in la.address.to_le_bytes().iter() {
                 u.push(*le_byte);
             }
@@ -256,36 +277,15 @@ pub mod message {
         fn decode(u: &[u8]) -> Result<(LocalAddress, &[u8]), String> {
             Ok((
                 LocalAddress {
-                    length: u[0],
-                    address: u32::from_le_bytes([u[1], u[2], u[3], u[4]]),
+                    address: u32::from_le_bytes([u[0], u[1], u[2], u[3]]),
                 },
-                &u[5..],
+                &u[4..],
             ))
         }
     }
 
-    impl Address {
-        pub fn get_key(&self) -> Result<u64, String> {
-            //ToDo incorporate address type into key
-            //ToDo ensure keys are unique
-            match self {
-                Address::LocalAddress(a) => Ok(a.address as u64),
-                Address::UdpAddress(ip, p) => match ip {
-                    IpAddr::V4(ip4) => {
-                        let mut key: u64 = 0;
-                        key = (*p as u64) << 32;
-                        key += i32::from_le_bytes(ip4.octets()) as u64;
-                        Ok(key)
-                    }
-                    _ => Err("IPV6 Not Implemented".to_string()),
-                },
-                _ => Err("Not Implemented".to_string()),
-            }
-        }
-    }
-
     /* Routes */
-    #[derive(PartialEq, Debug)]
+    #[derive(Debug)]
     #[repr(C)]
     pub struct Route {
         pub addresses: Vec<Address>,
@@ -335,33 +335,6 @@ pub mod message {
     }
 
     // ToDo: Implement PartialEq, Eq, Copy, Clone
-
-    // impl Codec for MessageBody {
-    //   type Inner = MessageBody;
-    //   fn encode(msg_body: &mut MessageBody, u: &mut Vec<u8>) ->Result<(), String> {
-    //     if u.len() < msg_body.len() { return Err("buffer too small".to_string())}
-    //     u[0..] = msg_body.drain();
-    //     Ok(())
-    //   }
-    //   fn decode(u: &[u8]) -> Result<(MessageBody, &[u8]), String> {
-    //     match MessageBody::try_from(u[0])? {
-    //       MessageBody::Ping => { Ok((MessageBody::Ping, &u[1..])) },
-    //       MessageBody::Pong => { Ok((MessageBody::Pong, &u[1..])) },
-    //       _ => Err("Not implemented".to_string())
-    //     }
-    //   }
-    // }
-    //
-    // impl TryFrom<u8> for MessageBody {
-    //   type Error = String;
-    //   fn try_from(data: u8) -> Result<Self, Self::Error> {
-    //     match data {
-    //       0 => Ok(MessageBody::Ping),
-    //       1 => Ok(MessageBody::Pong),
-    //       _ => Err("Not Implemented".to_string())
-    //     }
-    //   }
-    // }
 
     // u16's are encoded as variable-length.
     // - If the value is < 0x80, it is encoded as-is, in one byte
@@ -454,17 +427,15 @@ mod tests {
     #[test]
     fn local_address_codec() {
         let mut local_in = LocalAddress {
-            length: 4,
             address: 0x00010203,
         };
         let mut v: Vec<u8> = vec![];
         LocalAddress::encode(&mut local_in, &mut v);
-        assert_eq!(v, [4, 3, 2, 1, 0]);
+        assert_eq!(v, [3, 2, 1, 0]);
         match LocalAddress::decode(&v) {
             Ok((local_out, w)) => assert_eq!(
                 local_out,
                 LocalAddress {
-                    length: 4,
                     address: 0x00010203
                 }
             ),
@@ -493,7 +464,11 @@ mod tests {
 
     #[test]
     fn address_codec() {
-        let mut address = Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0x8080);
+        let mut address = Address::UdpAddress(
+            AddressType::Udp,
+            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            0x8080,
+        );
         let mut v: Vec<u8> = vec![];
         Address::encode(&mut address, &mut v);
         assert_eq!(v, vec![2, 0, 127, 0, 0, 1, 0x80, 0x80]);
@@ -502,29 +477,37 @@ mod tests {
             Ok((address, w)) => {
                 assert_eq!(
                     address,
-                    Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0x8080)
+                    Address::UdpAddress(
+                        AddressType::Udp,
+                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                        0x8080
+                    )
                 );
             }
             Err(s) => {
                 println!("{}", s);
             }
         }
-        let mut address = Address::LocalAddress(LocalAddress {
-            length: 4,
-            address: 0x00010203,
-        });
+        let mut address = Address::LocalAddress(
+            AddressType::Local,
+            LocalAddress {
+                address: 0x00010203,
+            },
+        );
         let mut v: Vec<u8> = vec![];
         Address::encode(&mut address, &mut v);
-        assert_eq!(v, vec![0, 4, 3, 2, 1, 0]);
-        let mut v = vec![0, 4, 3, 2, 1, 0];
+        assert_eq!(v, vec![0, 3, 2, 1, 0]);
+        let mut v = vec![0, 3, 2, 1, 0];
         match Address::decode(&mut v) {
             Ok((address, w)) => {
                 assert_eq!(
                     address,
-                    Address::LocalAddress(LocalAddress {
-                        length: 4,
-                        address: 0x00010203
-                    })
+                    Address::LocalAddress(
+                        AddressType::Local,
+                        LocalAddress {
+                            address: 0x00010203
+                        }
+                    )
                 );
             }
             Err(s) => {
@@ -537,44 +520,56 @@ mod tests {
     fn route_codec() {
         let mut route: Route = Route { addresses: vec![] };
         route.addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             0x8080,
         ));
         route.addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(10, 0, 1, 10)),
             0x7070,
         ));
-        route.addresses.push(Address::LocalAddress(LocalAddress {
-            length: 4,
-            address: 0x00010203,
-        }));
+        route.addresses.push(Address::LocalAddress(
+            AddressType::Local,
+            LocalAddress {
+                address: 0x00010203,
+            },
+        ));
         let mut v: Vec<u8> = vec![];
         Route::encode(&mut route, &mut v);
         assert_eq!(
             v,
-            vec![
-                3, 2, 0, 127, 0, 0, 1, 0x80, 0x80, 2, 0, 10, 0, 1, 10, 0x70, 0x70, 0, 4, 3, 2, 1, 0
-            ]
+            vec![3, 2, 0, 127, 0, 0, 1, 0x80, 0x80, 2, 0, 10, 0, 1, 10, 0x70, 0x70, 0, 3, 2, 1, 0]
         );
         match Route::decode(&v) {
             Ok((r, u)) => {
                 assert_eq!(r.addresses.len(), 3);
                 assert_eq!(
                     r.addresses[0],
-                    Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0x8080)
+                    Address::UdpAddress(
+                        AddressType::Udp,
+                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                        0x8080
+                    )
                 );
                 assert_eq!(
                     r.addresses[1],
-                    Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(10, 0, 1, 10)), 0x7070)
+                    Address::UdpAddress(
+                        AddressType::Udp,
+                        IpAddr::V4(Ipv4Addr::new(10, 0, 1, 10)),
+                        0x7070
+                    )
                 );
                 assert_eq!(
                     r.addresses[2],
-                    Address::LocalAddress(LocalAddress {
-                        length: 4,
-                        address: 0x00010203
-                    })
+                    Address::LocalAddress(
+                        AddressType::Local,
+                        LocalAddress {
+                            address: 0x00010203
+                        }
+                    )
                 );
-                assert_eq!(v.len(), 23);
+                assert_eq!(v.len(), 22);
             }
             Err(s) => {
                 panic!();
@@ -651,30 +646,38 @@ mod tests {
     fn message_codec() {
         let mut onward_addresses: Vec<Address> = vec![];
         onward_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             0x8080,
         ));
         onward_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(10, 0, 1, 10)),
             0x7070,
         ));
-        onward_addresses.push(Address::LocalAddress(LocalAddress {
-            length: 4,
-            address: 0x00010203,
-        }));
+        onward_addresses.push(Address::LocalAddress(
+            AddressType::Local,
+            LocalAddress {
+                address: 0x00010203,
+            },
+        ));
         let mut return_addresses: Vec<Address> = vec![];
         return_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)),
             0x8080,
         ));
         return_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(10, 0, 1, 11)),
             0x7070,
         ));
-        return_addresses.push(Address::LocalAddress(LocalAddress {
-            length: 4,
-            address: 0x00010203,
-        }));
+        return_addresses.push(Address::LocalAddress(
+            AddressType::Local,
+            LocalAddress {
+                address: 0x00010203,
+            },
+        ));
         let onward_route = Route {
             addresses: onward_addresses,
         };
@@ -692,9 +695,9 @@ mod tests {
         assert_eq!(
             u,
             vec![
-                3, 2, 0, 127, 0, 0, 1, 0x80, 0x80, 2, 0, 10, 0, 1, 10, 0x70, 0x70, 0, 4, 3, 2, 1,
-                0, 3, 2, 0, 127, 0, 0, 2, 0x80, 0x80, 2, 0, 10, 0, 1, 11, 0x70, 0x70, 0, 4, 3, 2,
-                1, 0, 0
+                3, 2, 0, 127, 0, 0, 1, 0x80, 0x80, 2, 0, 10, 0, 1, 10, 0x70, 0x70, 0, 3, 2, 1, 0,
+                3, 2, 0, 127, 0, 0, 2, 0x80, 0x80, 2, 0, 10, 0, 1, 11, 0x70, 0x70, 0, 3, 2, 1, 0,
+                0
             ]
         );
 
@@ -703,34 +706,54 @@ mod tests {
                 assert_eq!(m.onward_route.addresses.len(), 3);
                 assert_eq!(
                     m.onward_route.addresses[0],
-                    Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0x8080)
+                    Address::UdpAddress(
+                        AddressType::Udp,
+                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                        0x8080
+                    )
                 );
                 assert_eq!(
                     m.onward_route.addresses[1],
-                    Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(10, 0, 1, 10)), 0x7070)
+                    Address::UdpAddress(
+                        AddressType::Udp,
+                        IpAddr::V4(Ipv4Addr::new(10, 0, 1, 10)),
+                        0x7070
+                    )
                 );
                 assert_eq!(
                     m.onward_route.addresses[2],
-                    Address::LocalAddress(LocalAddress {
-                        length: 4,
-                        address: 0x00010203
-                    })
+                    Address::LocalAddress(
+                        AddressType::Local,
+                        LocalAddress {
+                            address: 0x00010203
+                        }
+                    )
                 );
                 assert_eq!(m.return_route.addresses.len(), 3);
                 assert_eq!(
                     m.return_route.addresses[0],
-                    Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)), 0x8080)
+                    Address::UdpAddress(
+                        AddressType::Udp,
+                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)),
+                        0x8080
+                    )
                 );
                 assert_eq!(
                     m.return_route.addresses[1],
-                    Address::UdpAddress(IpAddr::V4(Ipv4Addr::new(10, 0, 1, 11)), 0x7070)
+                    Address::UdpAddress(
+                        AddressType::Udp,
+                        IpAddr::V4(Ipv4Addr::new(10, 0, 1, 11)),
+                        0x7070
+                    )
                 );
                 assert_eq!(
                     m.return_route.addresses[2],
-                    Address::LocalAddress(LocalAddress {
-                        length: 4,
-                        address: 0x00010203
-                    })
+                    Address::LocalAddress(
+                        AddressType::Local,
+                        LocalAddress {
+                            address: 0x00010203
+                        }
+                    )
                 );
                 assert_eq!(m.message_body[0], 0);
             }
