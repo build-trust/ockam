@@ -1,24 +1,20 @@
-#![allow(unused)]
+// #![allow(unused)]
 pub mod router {
     use ockam_message::message::*;
-    use std::collections::HashMap;
-    use std::io::{Error, ErrorKind, Read, Write};
-    use std::ops::Add;
     use std::sync::{Arc, Mutex};
-    use std::thread;
 
     pub trait MessageHandler {
-        fn message_handler(&self, m: Box<Message>, address: Address) -> Result<(), std::io::Error>;
+        fn message_handler(&self, m: Box<Message>) -> Result<(), String>;
     }
 
     pub struct Router {
-        registry: HashMap<u64, Arc<Mutex<dyn MessageHandler + Send>>>,
+        registry: Vec<Option<Arc<Mutex<dyn MessageHandler + Send>>>>,
     }
 
     impl Router {
         pub fn new() -> Router {
             Router {
-                registry: HashMap::new(),
+                registry: vec![Option::None; 256],
             }
         }
 
@@ -27,50 +23,41 @@ pub mod router {
             handler: Arc<Mutex<dyn MessageHandler + Send>>,
             address_type: AddressType,
         ) -> Result<(), String> {
-            let mut k: u64 = address_type as u64;
-            self.registry.insert(k, handler);
+            self.registry[address_type as usize] = Option::Some(handler);
             Ok(())
         }
 
-        pub fn route(&mut self, mut m: Box<Message>) -> Result<(), String> {
+        pub fn route(&mut self, m: Box<Message>) -> Result<(), String> {
             // Pop the first address in the list
             // If there are no addresses, route to the controller
             // Controller key is always 0
-            let mut key: u64 = 0;
+            let handler_ref: Arc<Mutex<dyn MessageHandler + Send>>;
+            let mut address_type: u8 = 0;
             let address: Address;
             if !m.onward_route.addresses.is_empty() {
-                address = m.onward_route.addresses.remove(0);
+                address = m.onward_route.addresses[0];
                 match address {
-                    Address::LocalAddress(l) => {
-                        key = AddressType::Local as u64;
+                    Address::LocalAddress(t, _0) => {
+                        address_type = t as u8;
                     }
-                    Address::UdpAddress(ip, port) => {
-                        key = AddressType::Udp as u64;
+                    Address::UdpAddress(t, _0, _1) => {
+                        address_type = t as u8;
                     }
-                    Address::TcpAddress(ip, port) => {
-                        key = AddressType::Tcp as u64;
-                    }
-                }
-            } else {
-                address = Address::LocalAddress(LocalAddress {
-                    length: 0,
-                    address: 0,
-                });
-            }
-            if !self.registry.contains_key(&key) {
-                return Err("Not Implemented".to_string());
-            }
-
-            let handler_ref: Arc<Mutex<dyn MessageHandler + Send>>;
-            match self.registry.get_mut(&key) {
-                Some(r) => {
-                    handler_ref = Arc::clone(r);
-                    match handler_ref.lock().unwrap().message_handler(m, address) {
-                        Ok(()) => Ok(()),
-                        Err(s) => Err("message_handler failed".to_string()),
+                    Address::TcpAddress(t, _0, _1) => {
+                        address_type = t as u8;
                     }
                 }
-                None => Err("key not found".to_string()),
+            }
+            match &self.registry[address_type as usize] {
+                Some(a) => {
+                    handler_ref = Arc::clone(a);
+                }
+                None => return Err("no handler".to_string()),
+            }
+            let r = handler_ref.lock().unwrap().message_handler(m);
+            match r {
+                Ok(()) => Ok(()),
+                Err(s) => Err(s),
             }
         }
     }
@@ -80,11 +67,8 @@ pub mod router {
 mod tests {
     use crate::router::*;
     use ockam_message::message::*;
-    use std::collections::HashMap;
-    use std::io::{Error, ErrorKind, Read, Write};
     use std::net::UdpSocket;
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    use std::ops::Add;
+    use std::net::{IpAddr, Ipv4Addr};
     use std::sync::{Arc, Mutex};
 
     struct TestUdpHandler {
@@ -92,11 +76,7 @@ mod tests {
     }
 
     impl MessageHandler for TestUdpHandler {
-        fn message_handler(
-            &self,
-            mut m: Box<Message>,
-            address: Address,
-        ) -> Result<(), std::io::Error> {
+        fn message_handler(&self, _m: Box<Message>) -> Result<(), String> {
             println!("In TestAddressHandler!");
             Ok(())
         }
@@ -106,38 +86,46 @@ mod tests {
     fn test_handler() {
         let mut onward_addresses: Vec<Address> = vec![];
         onward_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             0x8080,
         ));
         onward_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(10, 0, 1, 10)),
             0x7070,
         ));
-        onward_addresses.push(Address::LocalAddress(LocalAddress {
-            length: 4,
-            address: 0x00010203,
-        }));
+        onward_addresses.push(Address::LocalAddress(
+            AddressType::Local,
+            LocalAddress {
+                address: 0x00010203,
+            },
+        ));
         let mut return_addresses: Vec<Address> = vec![];
         return_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)),
             0x8080,
         ));
         return_addresses.push(Address::UdpAddress(
+            AddressType::Udp,
             IpAddr::V4(Ipv4Addr::new(10, 0, 1, 11)),
             0x7070,
         ));
-        return_addresses.push(Address::LocalAddress(LocalAddress {
-            length: 4,
-            address: 0x00010203,
-        }));
+        return_addresses.push(Address::LocalAddress(
+            AddressType::Local,
+            LocalAddress {
+                address: 0x00010203,
+            },
+        ));
         let onward_route = Route {
             addresses: onward_addresses,
         };
         let return_route = Route {
             addresses: return_addresses,
         };
-        let mut message_body = vec![0];
-        let mut msg = Box::new(Message {
+        let message_body = vec![0];
+        let msg = Box::new(Message {
             onward_route,
             return_route,
             message_body,
