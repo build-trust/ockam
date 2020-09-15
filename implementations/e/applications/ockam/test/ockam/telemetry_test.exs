@@ -132,14 +132,19 @@ defmodule Ockam.Telemetry.Tests do
         rescue
           error ->
             trace = __STACKTRACE__
-            :ok = Telemetry.emit_exception_event(function_name, start_time, {:error, error, trace})
+
+            :ok =
+              Telemetry.emit_exception_event(function_name, start_time, {:error, error, trace})
+
             trace
         end
 
       assert_receive {[:ockam, function_name, :exception], measurements, metadata, nil}
 
       assert %{duration: _duration} = measurements
-      assert %{kind: :error, reason: %RuntimeError{message: "err"}, stacktrace: stacktrace} = metadata
+
+      assert %{kind: :error, reason: %RuntimeError{message: "err"}, stacktrace: stacktrace} =
+               metadata
 
       :telemetry.detach(function_name)
     end
