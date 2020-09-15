@@ -28,11 +28,14 @@ defmodule Ockam.Router.Storage do
 
   If key has value in storage, `value` is returned.
   If key does not have a value in storage, `nil` is returned.
+  If there was an error in getting the key, `{:error, reason}` is returned.
   """
-  @spec get(key()) :: value() | nil
+  @spec get(key()) :: value() | nil | {:error, reason :: {any(), any()}}
 
   def get(key) do
     Agent.get(@agent_name, fn state -> Map.get(state, key) end)
+  catch
+    kind, error -> {:error, {:storage_error, {kind, error}}}
   end
 
   @doc """
@@ -40,11 +43,14 @@ defmodule Ockam.Router.Storage do
 
   If key is successfullly set, `:ok` is returned.
   If a value already exists for this key, it will be overwritten, `:ok` is returned.
+  If there was an error in setting the key, `{:error, reason}` is returned.
   """
-  @spec put(key(), value()) :: :ok
+  @spec put(key(), value()) :: :ok | {:error, reason :: {any(), any()}}
 
   def put(key, value) do
-    Agent.update(@agent_name, fn state -> Map.put(state, key, value) end)
+    case Registry.register(@registry_name, key, value) do
+  catch
+    kind, error -> {:error, {:storage_error, {kind, error}}}
   end
 
   @doc """
@@ -52,10 +58,13 @@ defmodule Ockam.Router.Storage do
 
   If a value exists for this key, it is removed and `:ok` is returned.
   If a value does not exists for this key, `:ok` is returned.
+  If there was an error, `{:error, reason}` is returned.
   """
-  @spec delete(key()) :: :ok
+  @spec delete(key()) :: :ok | {:error, reason :: {any(), any()}}
 
   def delete(key) do
     Agent.update(@agent_name, fn state -> Map.delete(state, key) end)
+  catch
+    kind, error -> {:error, {:storage_error, {kind, error}}}
   end
 end
