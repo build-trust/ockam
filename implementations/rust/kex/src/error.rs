@@ -48,6 +48,12 @@ impl From<KeyExchangeFailErrorKind> for KexExchangeFailError {
     }
 }
 
+impl From<KexExchangeFailError> for KeyExchangeFailErrorKind {
+    fn from(err: KexExchangeFailError) -> Self {
+        *err.inner.get_context()
+    }
+}
+
 impl From<VaultFailError> for KexExchangeFailError {
     fn from(err: VaultFailError) -> Self {
         let err: VaultFailErrorKind = err.into();
