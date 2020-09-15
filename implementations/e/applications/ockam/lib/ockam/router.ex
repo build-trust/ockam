@@ -242,7 +242,7 @@ defmodule Ockam.Router do
   @doc false
   # Starts the router and links it to the current process.
   def start_link(options) do
-    Telemetry.event(:ockam_router_start_link, %{}, %{})
+    Telemetry.emit_event(:ockam_router_start_link)
     Storage.start_link(options)
   end
 end
