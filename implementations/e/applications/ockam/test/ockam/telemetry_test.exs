@@ -134,7 +134,6 @@ defmodule Ockam.Telemetry.Tests do
             trace = __STACKTRACE__
 
             :ok =
-              Telemetry.emit_exception_event(function_name, start_time, {:error, error, trace})
 
             trace
         end
@@ -143,7 +142,6 @@ defmodule Ockam.Telemetry.Tests do
 
       assert %{duration: _duration} = measurements
 
-      assert %{kind: :error, reason: %RuntimeError{message: "err"}, stacktrace: stacktrace} =
                metadata
 
       :telemetry.detach(function_name)
