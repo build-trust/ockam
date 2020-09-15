@@ -22,14 +22,13 @@
 #[macro_use]
 extern crate ockam_common;
 
-use ockam_kex::TransportState;
-use ockam_vault::Vault;
+use ockam_kex::CompletedKeyExchange;
 use std::io::{Read, Write};
 
 /// Represents an Ockam channel for reading and writing payloads
 #[derive(Debug)]
-pub struct Channel<'a, R: Read, W: Write, V: Vault> {
-    transport: TransportState<'a, V>,
+pub struct Channel<R: Read, W: Write> {
+    exchange_data: CompletedKeyExchange,
     reader: R,
     writer: W,
 }
