@@ -5,11 +5,11 @@ defmodule Ockam.Router.Storage.Tests do
 
   describe "Ockam.Router.Storage" do
     test "works" do
-      nil = Ockam.Router.Storage.get(:a)
-      :ok = Ockam.Router.Storage.put(:a, 100)
-      100 = Ockam.Router.Storage.get(:a)
-      :ok = Ockam.Router.Storage.delete(:a)
-      nil = Ockam.Router.Storage.get(:a)
+      nil = Storage.get(:a)
+      :ok = Storage.put(:a, 100)
+      100 = Storage.get(:a)
+      :ok = Storage.delete(:a)
+      nil = Storage.get(:a)
     end
   end
 end
