@@ -22,5 +22,8 @@ defprotocol Ockam.Router.Address do
 end
 
 defimpl Ockam.Router.Address, for: Any do
+  import Ockam.Router.Guards
+
+  def type({address_type, _}) when is_address_type(address_type), do: address_type
   def type(_address), do: nil
 end
