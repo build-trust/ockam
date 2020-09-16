@@ -3,6 +3,7 @@
 members = [
     "channel",
     "common",
+    "daemon",
     "kex",
     "message",
     "vault",
