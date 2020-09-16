@@ -1,7 +1,10 @@
 use crate::{error::*, types::*, Vault};
 use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
-use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
+use p256::{AffinePoint, ProjectivePoint, Scalar, elliptic_curve::{
+    Generate, FromBytes,
+    weierstrass::public_key::FromPublicKey,
+}};
 use rand::{prelude::*, rngs::OsRng};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -141,8 +144,8 @@ impl Vault for DefaultVault {
                 SecretKey::Aes256(key)
             }
             SecretKeyType::P256 => {
-                let key = p256::SecretKey::generate();
-                SecretKey::P256(*array_ref![key.secret_scalar().as_ref(), 0, 32])
+                let key = p256::SecretKey::generate(&mut rng);
+                SecretKey::P256(*array_ref![key.as_bytes(), 0, 32])
             }
             SecretKeyType::Buffer(size) => {
                 let mut key = vec![0u8; size];
@@ -217,10 +220,10 @@ impl Vault for DefaultVault {
                 Ok(PublicKey::Curve25519(*pk.as_bytes()))
             }
             SecretKey::P256(a) => {
-                let sk = Scalar::from_bytes(a).unwrap();
+                let sk = Scalar::from_bytes(GenericArray::from_slice(&a)).unwrap();
                 let pp = ProjectivePoint::generator() * &sk;
                 let pk = p256::elliptic_curve::weierstrass::PublicKey::from(
-                    pp.to_affine().unwrap().to_uncompressed_pubkey(),
+                    pp.to_affine().unwrap().to_pubkey(false),
                 );
                 Ok(PublicKey::P256(*array_ref![pk.as_bytes(), 0, 65]))
             }
@@ -248,6 +251,10 @@ impl Vault for DefaultVault {
 
         let value = match (&entry.key, peer_public_key) {
             (SecretKey::Curve25519(a), PublicKey::Curve25519(b)) => {
+                // Don't allow keys that are all zeros
+                if a.ct_eq(&[0u8; 32]).unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
                 let sk = x25519_dalek::StaticSecret::from(*a);
                 let pk_t = x25519_dalek::PublicKey::from(b);
                 let secret = sk.diffie_hellman(&pk_t);
@@ -260,17 +267,21 @@ impl Vault for DefaultVault {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
                 let pk_t = o_pk_t.unwrap();
-                let o_p_t = AffinePoint::from_pubkey(&pk_t);
+                let o_p_t = AffinePoint::from_public_key(&pk_t);
                 if o_p_t.is_none().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let sk = Scalar::from_bytes(*a).unwrap();
+                // Don't allow keys that are all zeros
+                if a.ct_eq(&[0u8; 32]).unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let sk = Scalar::from_bytes(GenericArray::from_slice(a)).unwrap();
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                 let secret = &pk_t * &sk;
                 if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let result = secret.to_affine().unwrap().to_compressed_pubkey();
+                let result = secret.to_affine().unwrap().to_pubkey(true);
                 // Throw away the compressed indicator byte
                 Ok(result.as_ref()[1..].to_vec())
             }
@@ -299,6 +310,10 @@ impl Vault for DefaultVault {
 
         let value = match (&entry.key, peer_public_key) {
             (SecretKey::Curve25519(a), PublicKey::Curve25519(b)) => {
+                // Don't allow keys that are all zeros
+                if a.ct_eq(&[0u8; 32]).unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
                 let sk = x25519_dalek::StaticSecret::from(*a);
                 let pk_t = x25519_dalek::PublicKey::from(b);
                 let secret = sk.diffie_hellman(&pk_t);
@@ -311,17 +326,21 @@ impl Vault for DefaultVault {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
                 let pk_t = o_pk_t.unwrap();
-                let o_p_t = AffinePoint::from_pubkey(&pk_t);
+                let o_p_t = AffinePoint::from_public_key(&pk_t);
                 if o_p_t.is_none().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let sk = Scalar::from_bytes(*a).unwrap();
+                // Don't allow keys that are all zeros
+                if a.ct_eq(&[0u8; 32]).unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let sk = Scalar::from_bytes(GenericArray::from_slice(a)).unwrap();
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                 let secret = &pk_t * &sk;
                 if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let result = secret.to_affine().unwrap().to_compressed_pubkey();
+                let result = secret.to_affine().unwrap().to_pubkey(true);
                 // Throw away the compressed indicator byte
                 Ok(result.as_ref()[1..].to_vec())
             }

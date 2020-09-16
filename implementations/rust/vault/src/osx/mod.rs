@@ -9,13 +9,17 @@ use crate::{
     Vault,
 };
 use keychain_services as enclave;
-use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
+use p256::{AffinePoint, ProjectivePoint, Scalar, elliptic_curve::{
+    Generate, FromBytes,
+    weierstrass::public_key::FromPublicKey
+}};
 use rand::prelude::*;
 use security_framework::os::macos::keychain;
 use sha2::Sha256;
 use std::convert::TryFrom;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
+use aead::generic_array::GenericArray;
 
 const OCKAM_SERVICE_NAME: &str = "OckamOsxVault";
 
@@ -114,8 +118,8 @@ impl Vault for OsxVault {
                 SecretKeyType::P256 => {
                     // SEP doesn't support ECDH directly
                     // only for ECIES, for now just use the keychain
-                    let key = p256::SecretKey::generate();
-                    swkey_insert(attributes, key.secret_scalar().as_ref())
+                    let key = p256::SecretKey::generate(&mut rng);
+                    swkey_insert(attributes, key.as_bytes().as_ref())
                 }
                 SecretKeyType::Aes256 => {
                     let mut key = [0u8; 32];
@@ -279,10 +283,10 @@ impl Vault for OsxVault {
                                 Ok(PublicKey::Curve25519(*pk.as_bytes()))
                             }
                             SecretKeyType::P256 => {
-                                let sk = Scalar::from_bytes(key).unwrap();
+                                let sk = Scalar::from_bytes(GenericArray::from_slice(&key)).unwrap();
                                 let pp = ProjectivePoint::generator() * &sk;
                                 let pk = p256::elliptic_curve::weierstrass::PublicKey::from(
-                                    pp.to_affine().unwrap().to_uncompressed_pubkey(),
+                                    pp.to_affine().unwrap().to_pubkey(false),
                                 );
                                 Ok(PublicKey::P256(*array_ref![pk.as_bytes(), 0, 65]))
                             }
@@ -353,6 +357,9 @@ impl Vault for OsxVault {
                         atts.copy_from_slice(&bytes[..6]);
                         let attributes = SecretKeyAttributes::try_from(atts)?;
                         let key = *array_ref![bytes, 6, 32];
+                        if key.ct_eq(&[0u8; 32]).unwrap_u8() == 1 {
+                            return Err(VaultFailErrorKind::PublicKey.into());
+                        }
                         match (attributes.xtype, peer_public_key) {
                             (SecretKeyType::Curve25519, PublicKey::Curve25519(b)) => {
                                 let sk = x25519_dalek::StaticSecret::from(key);
@@ -376,17 +383,17 @@ impl Vault for OsxVault {
                                     fail!(VaultFailErrorKind::Ecdh);
                                 }
                                 let pk_t = o_pk_t.unwrap();
-                                let o_p_t = AffinePoint::from_pubkey(&pk_t);
+                                let o_p_t = AffinePoint::from_public_key(&pk_t);
                                 if o_p_t.is_none().unwrap_u8() == 1 {
                                     fail!(VaultFailErrorKind::Ecdh);
                                 }
-                                let sk = Scalar::from_bytes(key).unwrap();
+                                let sk = Scalar::from_bytes(GenericArray::from_slice(&key)).unwrap();
                                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                                 let secret = &pk_t * &sk;
                                 if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
                                     fail!(VaultFailErrorKind::Ecdh);
                                 }
-                                let result = secret.to_affine().unwrap().to_compressed_pubkey();
+                                let result = secret.to_affine().unwrap().to_pubkey(true);
                                 // Throw away the compressed indicator byte
                                 let buffer = SecretKey::Buffer(result.as_ref()[1..].to_vec());
                                 let attributes = SecretKeyAttributes {
@@ -396,10 +403,10 @@ impl Vault for OsxVault {
                                 };
                                 self.ephemeral_vault.secret_import(&buffer, attributes)
                             }
-                            _ => Err(VaultFailErrorKind::PublicKey.into()),
+                            _ => Err(VaultFailErrorKind::Ecdh.into()),
                         }
                     }
-                    _ => Err(VaultFailErrorKind::PublicKey.into()),
+                    _ => Err(VaultFailErrorKind::Ecdh.into()),
                 }
             } else {
                 Err(VaultFailErrorKind::InvalidContext.into())
