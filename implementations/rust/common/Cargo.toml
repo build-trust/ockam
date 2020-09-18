@@ -8,3 +8,4 @@ edition = "2018"
 default = []
 
 [dependencies]
+ockam-message = { version = "0.1", path = "../message" }
