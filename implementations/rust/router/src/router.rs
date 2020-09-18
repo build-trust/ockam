@@ -1,10 +1,24 @@
-// #![allow(unused)]
+#![allow(unused)]
 pub mod router {
     use ockam_message::message::*;
+    use std::sync::mpsc::channel;
     use std::sync::{Arc, Mutex};
+    use std::{thread, time};
+
+    pub struct RouterCommandRegister {
+        registry: Option<Arc<Mutex<dyn MessageHandler + Send>>>,
+        address_type: AddressType,
+    }
+
+    pub enum RouterCommand {
+        None,
+        Register(Arc<Mutex<dyn MessageHandler + Send>>, AddressType),
+        Route(Box<Message>),
+        DeRegister(AddressType),
+    }
 
     pub trait MessageHandler {
-        fn message_handler(&self, m: Box<Message>) -> Result<(), String>;
+        fn message_handler(&mut self, m: Box<Message>) -> Result<(), String>;
     }
 
     pub struct Router {
@@ -12,9 +26,37 @@ pub mod router {
     }
 
     impl Router {
-        pub fn new() -> Router {
-            Router {
+        pub fn start(rx: std::sync::mpsc::Receiver<RouterCommand>) {
+            let mut router = Router {
                 registry: vec![Option::None; 256],
+            };
+            let mut router_command = RouterCommand::None;
+            loop {
+                match rx.try_recv() {
+                    Ok(rc) => {
+                        println!("got rx");
+                        match rc {
+                            RouterCommand::None => {
+                                println!("quit!");
+                                break;
+                            }
+                            RouterCommand::Register(r, a) => {
+                                println!("Registering");
+                                router.register_handler(r, a);
+                            }
+                            RouterCommand::Route(m) => {
+                                println!("Routing");
+                                router.route(m);
+                            }
+                            _ => {
+                                println!("got command");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        thread::sleep(time::Duration::from_millis(100));
+                    }
+                }
             }
         }
 
@@ -28,7 +70,6 @@ pub mod router {
         }
 
         pub fn route(&mut self, m: Box<Message>) -> Result<(), String> {
-            // Pop the first address in the list
             // If there are no addresses, route to the controller
             // Controller key is always 0
             let handler_ref: Arc<Mutex<dyn MessageHandler + Send>>;
@@ -69,21 +110,40 @@ mod tests {
     use ockam_message::message::*;
     use std::net::UdpSocket;
     use std::net::{IpAddr, Ipv4Addr};
+    use std::str;
+    use std::sync::mpsc::channel;
     use std::sync::{Arc, Mutex};
+    use std::{thread, time};
 
     struct TestUdpHandler {
         pub socket: UdpSocket,
     }
 
     impl MessageHandler for TestUdpHandler {
-        fn message_handler(&self, _m: Box<Message>) -> Result<(), String> {
+        fn message_handler(&mut self, mut m: Box<Message>) -> Result<(), String> {
             println!("In TestAddressHandler!");
             Ok(())
         }
     }
 
+    struct TestLocalHandler {
+        payload: String,
+    }
+
+    impl MessageHandler for TestLocalHandler {
+        fn message_handler(&mut self, mut m: Box<Message>) -> Result<(), String> {
+            let s = match str::from_utf8(&m.message_body[..]) {
+                Ok(v) => v,
+                Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+            };
+            self.payload = s.to_string();
+            println!("payload is {}", self.payload);
+            Ok(())
+        }
+    }
+
     #[test]
-    fn test_handler() {
+    fn test_udp_handler() {
         let mut onward_addresses: Vec<Address> = vec![];
         onward_addresses.push(Address::UdpAddress(
             AddressType::Udp,
@@ -130,22 +190,18 @@ mod tests {
             return_route,
             message_body,
         });
-        let mut router: Router = Router::new();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let join_router: thread::JoinHandle<_> = thread::spawn(|| Router::start(rx));
+
         let udp_socket = UdpSocket::bind("127.0.0.1:4050").expect("couldn't bind to address");
         let udp_handler: Arc<Mutex<dyn MessageHandler + Send>> =
             Arc::new(Mutex::new(TestUdpHandler { socket: udp_socket }));
-        match router.register_handler(udp_handler, AddressType::Udp) {
-            Ok(()) => {
-                println!("udp handler registered");
-            }
-            Err(s) => {
-                println!("{}", s);
-                return;
-            }
-        }
-        match router.route(msg) {
-            Ok(()) => println!("success!"),
-            Err(s) => println!("{}", s),
-        }
+        let cmd: RouterCommand = RouterCommand::Register(udp_handler, AddressType::Udp);
+        tx.send(cmd);
+        let cmd: RouterCommand = RouterCommand::Route(msg);
+        tx.send(cmd);
+        let cmd: RouterCommand = RouterCommand::None;
+        tx.send(cmd);
+        join_router.join();
     }
 }

@@ -5,7 +5,7 @@ authors = ["Ockam Developers"]
 edition = "2018"
 
 [features]
-default = ["ockam-common/default", "ockam-channel/default", "ockam-message/default", "ockam-kex/default", "ockam-vault/default"]
+default = ["ockam-common/default", "ockam-channel/default", "ockam-message/default", "ockam-kex/default", "ockam-vault/default", "ockam-transport/default"]
 ffi = ["ockam-common/default", "ockam-channel/default", "ockam-message/ffi", "ockam-kex/ffi", "ockam-vault/ffi"]
 
 [dependencies]
