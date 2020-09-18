@@ -1,15 +1,17 @@
 #[allow(unused)]
 
 pub mod transport {
-    use ockam_message::message::Address::UdpAddress;
-    use ockam_message::message::AddressType::Udp;
-    use ockam_message::message::{Address, Message};
+    // use ockam_message::message::Address::UdpAddress;
+    // use ockam_message::message::AddressType::Udp;
+    use ockam_message::message::{Address, Codec, Message, Route};
     use ockam_router::router::MessageHandler;
     use std::io::{Read, Write};
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     use std::net::{SocketAddrV4, UdpSocket};
     use std::str::FromStr;
     use std::sync::Arc;
+
+    pub struct Transport {}
 
     pub struct UdpConnection {
         socket: UdpSocket,
@@ -31,10 +33,44 @@ pub mod transport {
                 Err(_0) => Err("udp send failed".to_string()),
             }
         }
+
         pub fn receive(&mut self, buff: &mut [u8]) -> Result<usize, String> {
             match self.socket.recv(buff) {
                 Ok(s) => Ok(s),
                 Err(_0) => Err("udp receive failed".to_string()),
+            }
+        }
+
+        pub fn receive_message(&mut self, buff: &mut [u8]) -> Result<Box<Message>, String> {
+            return match self.socket.recv(buff) {
+                Ok(_0) => match Message::decode_boxed(buff) {
+                    Ok(m) => Ok(m.0),
+                    Err(s) => Err(s),
+                },
+                Err(_0) => Err("recv failed".to_string()),
+            };
+        }
+    }
+
+    impl MessageHandler for UdpConnection {
+        fn message_handler(&self, mut m: Box<Message>) -> Result<(), String> {
+            // pop first address
+            // send message
+            let address = m.onward_route.addresses.remove(0);
+            match address {
+                Address::UdpAddress(t, udp_address, port) => {
+                    let mut u: Vec<u8> = vec![];
+                    let mut msg = *m;
+                    match Message::encode(&mut msg, &mut u) {
+                        Ok(_0) => (),
+                        Err(_0) => return Err("failed to encode message".to_string()),
+                    }
+                    match self.socket.send(&u) {
+                        Ok(_0) => Ok(()),
+                        Err(_0) => Err("udp send failed".to_string()),
+                    }
+                }
+                _ => Err("wrong address type".to_string()),
             }
         }
     }

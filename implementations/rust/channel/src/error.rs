@@ -1,5 +1,6 @@
 use failure::{Backtrace, Context, Fail};
-use ockam_kex::error::KeyExchangeFailErrorKind;
+use ockam_kex::error::*;
+use ockam_vault::error::*;
 use std::fmt;
 
 /// Represents the failures that can occur in
@@ -67,6 +68,29 @@ impl From<ChannelErrorKind> for ChannelError {
 impl From<ChannelError> for ChannelErrorKind {
     fn from(err: ChannelError) -> Self {
         *err.inner.get_context()
+    }
+}
+
+impl From<VaultFailError> for ChannelError {
+    fn from(err: VaultFailError) -> Self {
+        let kind: VaultFailErrorKind = err.into();
+        match kind {
+            VaultFailErrorKind::InvalidParam(p) => ChannelErrorKind::InvalidParam(p).into(),
+            _ => ChannelErrorKind::NotImplemented.into(),
+        }
+    }
+}
+
+impl From<KexExchangeFailError> for ChannelError {
+    fn from(err: KexExchangeFailError) -> Self {
+        let kind: KeyExchangeFailErrorKind = err.into();
+        ChannelErrorKind::KeyAgreement(kind).into()
+    }
+}
+
+impl From<std::io::Error> for ChannelError {
+    fn from(_: std::io::Error) -> Self {
+        ChannelErrorKind::State.into()
     }
 }
 

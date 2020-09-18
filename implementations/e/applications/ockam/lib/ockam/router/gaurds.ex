@@ -11,7 +11,7 @@ defmodule Ockam.Router.Guards do
   Allowed in guard tests. Inlined by the compiler.
   """
   @doc guard: true
-  defguard is_address_type(term) when is_integer(term) and term >= 0 and term <= 65_535
+  defguard is_address_type(term) when is_integer(term) and term >= 0 and term <= 255
 
   @doc """
   Returns `true` if `term` is a valid `t:Ockam.Router.Message.t/0`;

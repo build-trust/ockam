@@ -1,29 +1,29 @@
 defprotocol Ockam.Router.Address do
   @moduledoc """
-  Defines an elixir protocol for an address that Ockam.Router can handle.
+  Defines an elixir protocol for an address that can be in the onward route of
+  a message that Ockam.Router can route.
+
+  A address that may be part of a route.
   """
+
+  @dialyzer {:nowarn_function, type: 1}
 
   @fallback_to_any true
 
-  @typedoc "An integer between 0 and 65535 that represents the type of an address."
-  @type type :: 0..65_535
+  @typedoc "An integer between 0 and 255 that represents the type of an address."
+  @type type :: 0..255 | nil
 
-  @typedoc ""
-  @type value :: any()
-
+  @doc """
+  Returns the type of an address.
+  """
   @spec type(t) :: type()
-  def type(address)
 
-  @spec value(t) :: value()
-  def value(address)
+  def type(address)
 end
 
 defimpl Ockam.Router.Address, for: Any do
   import Ockam.Router.Guards
 
-  def type({address_type, _address_value}) when is_address_type(address_type), do: address_type
+  def type({address_type, _}) when is_address_type(address_type), do: address_type
   def type(_address), do: nil
-
-  def value({address_type, address_value}) when is_address_type(address_type), do: address_value
-  def value(address), do: address
 end
