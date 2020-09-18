@@ -8,4 +8,7 @@ macro_rules! from_int_impl {
         }
     };
 }
+
 pub mod error;
+
+pub mod commands;

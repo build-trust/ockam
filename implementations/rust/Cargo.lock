@@ -410,6 +410,9 @@ dependencies = [
 [[package]]
 name = "ockam-common"
 version = "0.1.0"
+dependencies = [
+ "ockam-message",
+]
 
 [[package]]
 name = "ockam-kex"
@@ -427,21 +430,6 @@ dependencies = [
 [[package]]
 name = "ockam-message"
 version = "0.1.0"
-
-[[package]]
-name = "ockam-router"
-version = "0.1.0"
-dependencies = [
- "ockam-message",
-]
-
-[[package]]
-name = "ockam-transport"
-version = "0.1.0"
-dependencies = [
- "ockam-message",
- "ockam-router",
-]
 
 [[package]]
 name = "ockam-vault"
