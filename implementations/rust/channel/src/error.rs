@@ -19,6 +19,11 @@ pub enum ChannelErrorKind {
     /// An error occurred with the internal state of the channel
     #[fail(display = "An error occurred with the internal state of the channel")]
     State,
+    #[fail(display = "The channel with the specified addresses does not exist")]
+    UnknownChannel,
+    /// A generic string message
+    #[fail(display = "{}", msg)]
+    GeneralError{msg: String},
 }
 
 impl ChannelErrorKind {

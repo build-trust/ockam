@@ -119,6 +119,31 @@ pub trait KeyExchanger {
     fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError>;
 }
 
+/// The `DynKeyExchanger` trait is a modification of `KeyExchanger` trait suitable
+/// for trait objects.
+pub trait DynKeyExchanger {
+    /// Handle the current step in the key exchange process
+    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError>;
+    /// Is the key exchange process completed yet
+    fn is_complete(&self) -> bool;
+    /// If completed, then return the data and keys needed for channels
+    fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError>;
+}
+
+impl<D: KeyExchanger + Send + Sync + 'static> DynKeyExchanger for D {
+    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
+        KeyExchanger::process(self, data)
+    }
+
+    fn is_complete(&self) -> bool {
+        KeyExchanger::is_complete(self)
+    }
+
+    fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
+        KeyExchanger::finalize(self)
+    }
+}
+
 /// A Completed Key Exchange elements
 #[derive(Copy, Clone, Debug)]
 pub struct CompletedKeyExchange {
@@ -132,6 +157,12 @@ pub struct CompletedKeyExchange {
     local_static_secret: SecretKeyContext,
     /// The long term static public key from remote party
     remote_static_public_key: PublicKey,
+}
+
+impl CompletedKeyExchange {
+    pub fn get_state_hash(&self) -> [u8; 32] {
+        self.h
+    }
 }
 
 /// Errors thrown by Key exchange
