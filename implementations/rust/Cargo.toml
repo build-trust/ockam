@@ -6,7 +6,7 @@ members = [
     "kex",
     "message",
     "vault",
-    # "router",
-    # "transport",
-    # "node",
+    "router",
+    "transport",
+    "node",
 ]

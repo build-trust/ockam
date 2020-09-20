@@ -44,16 +44,16 @@ pub mod message {
     }
 
     impl Codec for Message {
-        type Inner = Box<Message>;
-        fn encode(msg: Box<Message>, u: &mut Vec<u8>) -> Result<(), String> {
+        type Inner = Message;
+        fn encode(msg: Message, u: &mut Vec<u8>) -> Result<(), String> {
             Route::encode(msg.onward_route, u);
             Route::encode(msg.return_route, u);
             u.extend(&msg.message_body[0..]);
             Ok(())
         }
 
-        fn decode(u: &[u8]) -> Result<(Box<Message>, &[u8]), String> {
-            let mut msg = Box::new(Message::default());
+        fn decode(u: &[u8]) -> Result<(Message, &[u8]), String> {
+            let mut msg = Message::default();
             let mut w = u;
             match Route::decode(w) {
                 Ok((r, u1)) => {
@@ -95,29 +95,6 @@ pub mod message {
         pub address: Address,
     }
 
-    #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub enum Address {
-        // First two fields are type and length
-        LocalAddress(LocalAddress),
-        TcpAddress(IpAddr, u16),
-        UdpAddress(IpAddr, u16),
-        ChannelAddress(u32),
-    }
-
-    pub enum HostAddressType {
-        Ipv4 = 0,
-        Ipv6 = 1,
-    }
-
-    pub enum AddressType {
-        Undefined = 255,
-        Local = 0,
-        Tcp = 1,
-        Udp = 2,
-        Channel = 129,
-    }
-
     impl Clone for AddressType {
         fn clone(&self) -> Self {
             return match self {
@@ -128,6 +105,53 @@ pub mod message {
                 AddressType::Undefined => AddressType::Undefined,
             };
         }
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum Address {
+        LocalAddress(LocalAddress),
+        TcpAddress(IpAddr, u16),
+        UdpAddress(IpAddr, u16),
+        ChannelAddress(u32),
+    }
+
+    impl Address {
+        pub fn to_string(&self) -> String {
+            match self {
+                Address::UdpAddress(ip, p) => {
+                    let mut s = ip.to_string();
+                    s.push_str(":");
+                    s.push_str(&p.to_string());
+                    println!("{}", s);
+                    s
+                }
+                _ => "error".to_string(),
+            }
+        }
+        pub fn size_of(&self) -> u8 {
+            match self {
+                Address::LocalAddress(a) => 4,
+                Address::UdpAddress(a, p) => 7,
+                Address::ChannelAddress(a) => 4,
+                _ => 0,
+            }
+        }
+    }
+
+    pub enum HostAddressType {
+        Ipv4 = 0,
+        Ipv6 = 1,
+    }
+
+    #[derive(Copy)]
+    #[repr(u8)]
+    pub enum AddressType {
+        Undefined = 255,
+        Local = 0,
+        Tcp = 1,
+        Udp = 2,
+        Channel = 129,
     }
 
     impl std::fmt::Debug for AddressType {
@@ -154,8 +178,6 @@ pub mod message {
             Ok(())
         }
     }
-
-    impl Copy for AddressType {}
 
     impl PartialEq for AddressType {
         fn eq(&self, other: &Self) -> bool {
@@ -316,6 +338,21 @@ pub mod message {
                 Address::UdpAddress(a, p) => 7,
                 Address::ChannelAddress(a) => 4,
                 _ => 0,
+            }
+        }
+        pub fn from_address(a: Address) -> Option<RouterAddress> {
+            match a {
+                Address::UdpAddress(_0, _1) => Some(RouterAddress {
+                    a_type: AddressType::Udp,
+                    length: a.size_of(),
+                    address: a,
+                }),
+                Address::ChannelAddress(_0) => Some(RouterAddress {
+                    a_type: AddressType::Channel,
+                    length: a.size_of(),
+                    address: a,
+                }),
+                _ => None,
             }
         }
     }
@@ -506,6 +543,7 @@ mod tests {
             length: 0,
             address: udp_address,
         };
+        assert_eq!(udp_address.to_string(), "127.0.0.1:32896");
         router_address.length = router_address.size_of();
         let mut v: Vec<u8> = vec![];
         RouterAddress::encode(router_address, &mut v);

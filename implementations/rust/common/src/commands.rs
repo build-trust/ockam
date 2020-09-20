@@ -1,24 +1,36 @@
 #[allow(unused)]
 pub mod commands {
-    use ockam_message::message::{AddressType, Message};
+    use ockam_message::message::{AddressType, Message, Route};
     use std::thread;
 
-    // Transport commands
+    pub enum OckamCommand {
+        Transport(TransportCommand),
+        Router(RouterCommand),
+        Channel(ChannelCommand)
+    }
+
+    // Transport commands - these can
+    // be sent to the transport_tx
     pub enum TransportCommand {
         Stop,
         Add(String, String),
         Send(Message),
     }
 
-    // Router commands
+    // Router commands - these can be sent to the
+    // router_tx
     pub enum RouterCommand {
         Stop,
-        Register(AddressType, std::sync::mpsc::Sender<RouterCommand>),
+        Register(AddressType, std::sync::mpsc::Sender<OckamCommand>),
         Route(Message),
     }
 
-    // Channel commands
+    // Channel commands - these can be sent to the
+    // channel_tx
     pub enum ChannelCommand {
-        Message(Message),
+        Stop,
+        InitializeRoute(Route),
+        ReceiveMessage(Message),
+        SendMessage(Message),
     }
 }
