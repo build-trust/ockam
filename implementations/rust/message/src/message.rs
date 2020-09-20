@@ -20,9 +20,6 @@ pub mod message {
 
         fn encode(t: Self::Inner, v: &mut Vec<u8>) -> Result<(), String>;
         fn decode(s: &[u8]) -> Result<(Self::Inner, &[u8]), String>;
-        fn decode_boxed(s: &[u8]) -> Result<(Box<Self::Inner>, &[u8]), String> {
-            Err("not implemented".to_string())
-        }
     }
 
     // #[derive(Debug)]
@@ -815,11 +812,11 @@ mod tests {
         return_route.addresses.push(router_address);
 
         let mut message_body = vec![0];
-        let mut msg = Box::new(Message {
+        let mut msg = Message {
             onward_route,
             return_route,
             message_body,
-        });
+        };
         let mut u: Vec<u8> = vec![];
         Message::encode(msg, &mut u);
         assert_eq!(
