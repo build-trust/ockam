@@ -1,6 +1,6 @@
 #![allow(unused)]
 pub mod router {
-    use ockam_common::commands::commands::*;
+    use ockam_common::commands::ockam_commands::*;
     use ockam_message::message::*;
     use std::sync::mpsc::channel;
     use std::sync::{Arc, Mutex};

@@ -1,7 +1,7 @@
 #[allow(unused)]
 
 pub mod transport {
-    use ockam_common::commands::commands::*;
+    use ockam_common::commands::ockam_commands::*;
     use ockam_common::commands::*;
     use ockam_message::message::*;
     use ockam_router::router::Router;
@@ -53,7 +53,7 @@ pub mod transport {
                         Ok(size) => {
                             if size > 0 {
                                 match Message::decode(&buff) {
-                                    Ok((m, _0)) => {
+                                    Ok((m, _unused)) => {
                                         // // send message to router
                                         // let cmd = RouterCommand::Route(m);
                                         // router_tx.send(cmd);
@@ -81,8 +81,9 @@ pub mod transport {
             got = true;
             while got {
                 got = false;
-                match self.rx.try_recv() {
-                    Ok(tc) => match tc {
+                //               match self.rx.try_recv() {
+                if let Ok(tc) = self.rx.try_recv() {
+                    match tc {
                         OckamCommand::Transport(TransportCommand::Add(local, remote)) => {
                             got = true;
                             println!("creating udp connection");
@@ -96,7 +97,7 @@ pub mod transport {
                         OckamCommand::Transport((TransportCommand::Send(m))) => {
                             let mut udp = match self
                                 .connections
-                                .get_mut(&m.onward_route.addresses[0].address.to_string())
+                                .get_mut(&m.onward_route.addresses[0].address.as_string())
                             {
                                 Some(c) => c,
                                 None => {
@@ -122,11 +123,11 @@ pub mod transport {
                         _ => {
                             println!("unrecognized command");
                         }
-                    },
-                    _ => {}
+                        _ => {}
+                    }
                 } // end match rx.try_recv()
             }
-            return keep_going;
+            keep_going
         }
     }
 
@@ -148,25 +149,13 @@ pub mod transport {
         }
 
         pub fn address_as_string(&self) -> String {
-            let mut s = self.socket.local_addr().unwrap().to_string();
-            return s;
+            self.socket.local_addr().unwrap().to_string()
         }
-        // pub fn new_from_initiator(local: &str) -> Result<UdpConnection, String> {
-        //     let mut socket = UdpSocket::bind(local).expect("couldn't bind to local socket");
-        //     let mut u: [u8; 1024] = [0; 1024];
-        //     match socket.recv_from(&mut u) {
-        //         Ok((_0, remote_address)) => match socket.connect(remote_address) {
-        //             Ok(s) => Ok(UdpConnection { socket }),
-        //             Err(_0) => Err("connect failed".to_string()),
-        //         },
-        //         Err(_0) => Err("recv_from failed".to_string()),
-        //     }
-        // }
 
         pub fn send(&mut self, buff: &[u8]) -> Result<usize, String> {
             match self.socket.send(buff) {
                 Ok(s) => Ok(s),
-                Err(_0) => Err("udp send failed".to_string()),
+                Err(_unused) => Err("udp send failed".to_string()),
             }
         }
 
@@ -181,13 +170,13 @@ pub mod transport {
         }
 
         pub fn receive_message(&mut self, buff: &mut [u8]) -> Result<Message, String> {
-            return match self.socket.recv(buff) {
-                Ok(_0) => match Message::decode(buff) {
+            match self.socket.recv(buff) {
+                Ok(_unused) => match Message::decode(buff) {
                     Ok(m) => Ok(m.0),
                     Err(s) => Err(s),
                 },
-                Err(_0) => Err("recv failed".to_string()),
-            };
+                Err(_unused) => Err("recv failed".to_string()),
+            }
         }
     }
 

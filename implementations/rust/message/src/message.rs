@@ -94,13 +94,13 @@ pub mod message {
 
     impl Clone for AddressType {
         fn clone(&self) -> Self {
-            return match self {
+            match self {
                 AddressType::Local => AddressType::Local,
                 AddressType::Tcp => AddressType::Tcp,
                 AddressType::Udp => AddressType::Udp,
                 AddressType::Channel => AddressType::Channel,
                 AddressType::Undefined => AddressType::Undefined,
-            };
+            }
         }
     }
 
@@ -114,13 +114,12 @@ pub mod message {
     }
 
     impl Address {
-        pub fn to_string(&self) -> String {
+        pub fn as_string(&self) -> String {
             match self {
                 Address::UdpAddress(ip, p) => {
                     let mut s = ip.to_string();
                     s.push_str(":");
                     s.push_str(&p.to_string());
-                    println!("{}", s);
                     s
                 }
                 _ => "error".to_string(),
@@ -180,13 +179,7 @@ pub mod message {
         fn eq(&self, other: &Self) -> bool {
             let t: u8 = *self as u8;
             let o = *other as u8;
-            return t == o;
-        }
-
-        fn ne(&self, other: &Self) -> bool {
-            let t = *self as u8;
-            let o = *other as u8;
-            return t != o;
+            o == t
         }
     }
 
@@ -220,26 +213,24 @@ pub mod message {
         fn encode(a: RouterAddress, v: &mut Vec<u8>) -> Result<(), String> {
             v.push(a.a_type as u8);
             v.push(a.length as u8);
+
             match a.a_type {
-                AddressType::Local => match a.address {
-                    Address::LocalAddress(la) => {
+                AddressType::Local => {
+                    if let Address::LocalAddress(la) = a.address {
                         LocalAddress::encode(la, v);
                     }
-                    _ => {}
-                },
-                AddressType::Udp => match a.address {
-                    Address::UdpAddress(ipa, port) => {
+                }
+                AddressType::Udp => {
+                    if let Address::UdpAddress(ipa, port) = a.address {
                         IpAddr::encode(ipa, v);
                         v.append(&mut port.to_le_bytes().to_vec());
                     }
-                    _ => {}
-                },
-                AddressType::Channel => match a.address {
-                    Address::ChannelAddress(a) => {
+                }
+                AddressType::Channel => {
+                    if let Address::ChannelAddress(a) = a.address {
                         v.append(&mut a.to_le_bytes().to_vec());
                     }
-                    _ => {}
-                },
+                }
                 _ => {}
             }
             Ok(())
@@ -339,12 +330,12 @@ pub mod message {
         }
         pub fn from_address(a: Address) -> Option<RouterAddress> {
             match a {
-                Address::UdpAddress(_0, _1) => Some(RouterAddress {
+                Address::UdpAddress(_ip, _port) => Some(RouterAddress {
                     a_type: AddressType::Udp,
                     length: a.size_of(),
                     address: a,
                 }),
-                Address::ChannelAddress(_0) => Some(RouterAddress {
+                Address::ChannelAddress(_unused) => Some(RouterAddress {
                     a_type: AddressType::Channel,
                     length: a.size_of(),
                     address: a,
@@ -362,9 +353,9 @@ pub mod message {
 
     impl Clone for Route {
         fn clone(&self) -> Self {
-            return Route {
+            Route {
                 addresses: self.addresses.clone(),
-            };
+            }
         }
 
         fn clone_from(&mut self, source: &Self) {
@@ -466,9 +457,7 @@ pub mod message {
             if buf.len() < self.message_body.len() {
                 return Err(std::io::Error::new(ErrorKind::Other, "buffer too small"));
             }
-            for i in 0..self.message_body.len() {
-                buf[i] = self.message_body[i];
-            }
+            buf[..self.message_body.len()].clone_from_slice(&self.message_body[..]);
             Ok(self.message_body.len())
         }
     }
@@ -477,13 +466,13 @@ pub mod message {
             if !self.message_body.is_empty() {
                 return Err(std::io::Error::new(ErrorKind::Other, "no message body"));
             }
-            for i in 0..buf.len() {
-                self.message_body.push(buf[i]);
+            for b in buf {
+                self.message_body.push(*b);
             }
             Ok(self.message_body.len())
         }
         fn flush(&mut self) -> Result<(), std::io::Error> {
-            return Ok(());
+            Ok(())
         }
     }
 }
@@ -540,7 +529,7 @@ mod tests {
             length: 0,
             address: udp_address,
         };
-        assert_eq!(udp_address.to_string(), "127.0.0.1:32896");
+        assert_eq!(udp_address.as_string(), "127.0.0.1:32896");
         router_address.length = router_address.size_of();
         let mut v: Vec<u8> = vec![];
         RouterAddress::encode(router_address, &mut v);
@@ -574,7 +563,7 @@ mod tests {
         assert_eq!(v, vec![129, 4, 3, 2, 1, 0]);
         let mut v = vec![129, 4, 3, 2, 1, 0];
         match RouterAddress::decode(&mut v) {
-            Ok((ra, _0)) => {
+            Ok((ra, _unused)) => {
                 assert_eq!(ra.a_type, AddressType::Channel);
                 assert_eq!(ra.length, 4);
                 match ra.address {

@@ -1,4 +1,4 @@
-use ockam_common::commands::commands::*;
+use ockam_common::commands::ockam_commands::*;
 #[allow(unused)]
 use ockam_message::message::*;
 use ockam_router::router::*;
@@ -21,11 +21,11 @@ impl TestChannel {
         tx: std::sync::mpsc::Sender<OckamCommand>,
         router_tx: std::sync::mpsc::Sender<OckamCommand>,
     ) -> Self {
-        match router_tx.send(OckamCommand::Router(RouterCommand::Register(
+        if let Err(_error) = router_tx.send(OckamCommand::Router(RouterCommand::Register(
             AddressType::Channel,
             tx.clone(),
         ))) {
-            _ => {}
+            println!("send failed in TestChannel::new")
         }
         TestChannel {
             rx,
@@ -39,37 +39,34 @@ impl TestChannel {
         let mut got = true;
         while got {
             got = false;
-            match self.rx.try_recv() {
-                Ok(c) => {
-                    got = true;
-                    match c {
-                        OckamCommand::Channel(ChannelCommand::SendMessage(m)) => {
-                            // encrypt message body here
-                            match self
-                                .router_tx
-                                .send(OckamCommand::Router(RouterCommand::Route(m)))
-                            {
-                                Ok(()) => {}
-                                Err(_0) => {
-                                    println!("send to router failed");
-                                    keep_going = false;
-                                }
+            if let Ok(c) = self.rx.try_recv() {
+                got = true;
+                match c {
+                    OckamCommand::Channel(ChannelCommand::SendMessage(m)) => {
+                        // encrypt message body here
+                        match self
+                            .router_tx
+                            .send(OckamCommand::Router(RouterCommand::Route(m)))
+                        {
+                            Ok(()) => {}
+                            Err(_unused) => {
+                                println!("send to router failed");
+                                keep_going = false;
                             }
                         }
-                        OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)) => {
-                            // decrypt message body here
-                            println!(
-                                "Channel receive message: {}",
-                                str::from_utf8(&m.message_body).unwrap()
-                            );
-                        }
-                        OckamCommand::Channel(ChannelCommand::Stop) => {
-                            keep_going = false;
-                        }
-                        _ => println!("Channel got bad message"),
                     }
+                    OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)) => {
+                        // decrypt message body here
+                        println!(
+                            "Channel receive message: {}",
+                            str::from_utf8(&m.message_body).unwrap()
+                        );
+                    }
+                    OckamCommand::Channel(ChannelCommand::Stop) => {
+                        keep_going = false;
+                    }
+                    _ => println!("Channel got bad message"),
                 }
-                _ => {}
             }
         }
         keep_going
@@ -79,7 +76,7 @@ impl TestChannel {
 pub fn get_route() -> Option<Route> {
     let ip_addr_0 = match IpAddr::from_str("127.0.0.1") {
         Ok(a) => a,
-        Err(_0) => return None,
+        Err(_unused) => return None,
     };
     let udp_addr_0 = Address::UdpAddress(ip_addr_0, 4050);
     let router_addr_0: RouterAddress = match RouterAddress::from_address(udp_addr_0) {
@@ -89,7 +86,7 @@ pub fn get_route() -> Option<Route> {
 
     let ip_addr_1 = match IpAddr::from_str("127.0.0.1") {
         Ok(a) => a,
-        Err(_0) => return None,
+        Err(_unused) => return None,
     };
     let udp_addr_1 = Address::UdpAddress(ip_addr_1, 4051);
     let router_addr_1 = match RouterAddress::from_address(udp_addr_1) {
@@ -110,11 +107,10 @@ fn main() {
     let (channel_tx, channel_rx) = std::sync::mpsc::channel();
     let channel_tx_for_node = channel_tx.clone();
     let router_tx_for_channel = router_tx.clone();
-    let router_tx_for_transport = router_tx.clone();
     let transport_tx_for_node = transport_tx.clone();
 
     let mut router = Router::new(router_rx);
-    let mut transport = UdpTransport::new(transport_rx, transport_tx, router_tx_for_transport);
+    let mut transport = UdpTransport::new(transport_rx, transport_tx, router_tx);
     let mut channel = TestChannel::new(channel_rx, channel_tx, router_tx_for_channel);
 
     let join_thread: thread::JoinHandle<_> = thread::spawn(move || {
@@ -127,14 +123,14 @@ fn main() {
     // Establish transport
     let command = TransportCommand::Add("127.0.0.1:4050".to_string(), "127.0.0.1:4051".to_string());
     match transport_tx_for_node.send(OckamCommand::Transport(command)) {
-        Ok(_0) => println!("sent socket 1 command to transport"),
-        Err(_0) => println!("failed to send command to transport"),
+        Ok(_unused) => println!("sent socket 1 command to transport"),
+        Err(_unused) => println!("failed to send command to transport"),
     }
 
     let command = TransportCommand::Add("127.0.0.1:4051".to_string(), "127.0.0.1:4050".to_string());
     match transport_tx_for_node.send(OckamCommand::Transport(command)) {
-        Ok(_0) => println!("sent socket 2 command to transport"),
-        Err(_0) => println!("failed to send command to transport"),
+        Ok(_unused) => println!("sent socket 2 command to transport"),
+        Err(_unused) => println!("failed to send command to transport"),
     }
 
     // Create route
@@ -153,20 +149,20 @@ fn main() {
     };
     let command = OckamCommand::Channel(ChannelCommand::SendMessage(m));
     match channel_tx_for_node.send(command) {
-        Ok(_0) => {}
-        Err(_0) => {}
+        Ok(_unused) => {}
+        Err(_unused) => {}
     }
 
     sleep(time::Duration::from_millis(1000));
 
     let command = TransportCommand::Stop;
     match transport_tx_for_node.send(OckamCommand::Transport(command)) {
-        Ok(_0) => println!("sent stop command to transport"),
-        Err(_0) => println!("failed to send command to transport"),
+        Ok(_unused) => println!("sent stop command to transport"),
+        Err(_unused) => println!("failed to send command to transport"),
     }
 
     match join_thread.join() {
-        Ok(_0) => {}
-        Err(_0) => {}
+        Ok(_unused) => {}
+        Err(_unused) => {}
     }
 }

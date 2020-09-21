@@ -1,12 +1,12 @@
 #[allow(unused)]
-pub mod commands {
+pub mod ockam_commands {
     use ockam_message::message::{AddressType, Message, Route};
     use std::thread;
 
     pub enum OckamCommand {
         Transport(TransportCommand),
         Router(RouterCommand),
-        Channel(ChannelCommand)
+        Channel(ChannelCommand),
     }
 
     // Transport commands - these can
