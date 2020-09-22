@@ -17,7 +17,7 @@ os = ["keychain-services", "security-framework"]
 
 [dependencies]
 aead = "0.3"
-aes-gcm = "0.6"
+aes-gcm = "0.7"
 arrayref = "0.3"
 elliptic-curve = { version = "0.4", features = ["getrandom", "zeroize"] }
 failure = "0.1"
