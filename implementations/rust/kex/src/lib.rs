@@ -160,9 +160,18 @@ pub struct CompletedKeyExchange {
 }
 
 impl CompletedKeyExchange {
+    /// Return the current state hash
     pub fn get_state_hash(&self) -> [u8; 32] {
         self.h
     }
+    /// Return the current encryption key
+    pub fn get_encrypt_key(&self) -> SecretKeyContext { self.encrypt_key }
+    /// Return the current decryption key
+    pub fn get_decrypt_key(&self) -> SecretKeyContext { self.decrypt_key }
+    /// Return the static secret of the local consumer
+    pub fn get_local_static_secret(&self) -> SecretKeyContext { self.local_static_secret }
+    /// Return the static secret of the remote party
+    pub fn get_remote_static_secret(&self) -> PublicKey { self.remote_static_public_key }
 }
 
 /// Errors thrown by Key exchange

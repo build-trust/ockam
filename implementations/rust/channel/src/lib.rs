@@ -35,17 +35,27 @@ use std::{
 };
 use ockam_vault::DynVault;
 
+/// The template for the sender that Channels use
+pub type ChannelSender = mpsc::Sender<usize>;
+/// The template for the receiver that Channels use
+pub type ChannelReceiver = mpsc::Receiver<usize>;
+
 /// A closure method that is called when channels are handled
 pub trait ChannelHandler {
     /// handle this message
     fn handle(&self);
 }
 
+pub trait ChannelRekeyHandler {
+    fn should_rekey(&self) -> bool;
+    fn rekey(&self);
+}
+
 /// The Manager for the various channels and registered handler closures
 pub struct ChannelManager {
     /// The current channels that are handled
     channels: RefCell<BTreeMap<Connection, Channel>>,
-    sender: mpsc::Sender<usize>,
+    sender: ChannelSender,
     receiver: mpsc::Receiver<usize>,
     router: Vec<mpsc::Sender<usize>>
 }
@@ -62,24 +72,12 @@ impl ChannelManager {
         }
     }
 
-    pub fn handle_new_route(&self, onward_route: Vec<usize>, tx_router: mpsc::Sender<usize>) {
+    pub fn register_new_route(&self, onward_route: Vec<usize>, tx_router: mpsc::Sender<usize>) {
 
     }
 
-    pub fn get_tx(&self) -> tx_channel_manager {
-
-    }
-
-    /// Handles the specified address
-    pub fn process(&self, sender: usize, recipient: usize, message: &[u8]) -> Result<(), ChannelError> {
-        let conn = Connection { return_route: sender, onward_route: recipient };
-        let channel = self.channels.borrow().get(&conn).ok_or_else(|| ChannelErrorKind::UnknownChannel.into())?;
-        let data = channel.exchange_data.as_ref().unwrap();
-        if channel.remote_address == recipient {
-            //TODO: encrypt
-        } else if channel.local_address == recipient {
-            //TODO: decrypt
-        }
+    pub fn get_tx(&self) -> ChannelSender {
+        self.sender.clone()
     }
 }
 
@@ -101,7 +99,8 @@ pub struct Channel {
     key_exchanger: Box<dyn DynKeyExchanger + 'static>,
     local_address: usize,
     remote_address: usize,
-    vault: Box<dyn DynValue + 'static>
+    vault: Box<dyn DynValue + 'static>,
+    rekey: Box<dyn ChannelRekeyHandler + 'static>,
 }
 
 impl Debug for Channel {
