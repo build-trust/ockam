@@ -1,11 +1,13 @@
 use crate::{error::*, types::*, Vault};
 use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
-use p256::arithmetic::{AffinePoint, ProjectivePoint, Scalar};
+use p256::{
+    elliptic_curve::{sec1::FromEncodedPoint, Group},
+    AffinePoint, ProjectivePoint, Scalar,
+};
 use rand::{prelude::*, rngs::OsRng};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
 /// A pure rust implementation of a vault.
@@ -141,8 +143,10 @@ impl Vault for DefaultVault {
                 SecretKey::Aes256(key)
             }
             SecretKeyType::P256 => {
-                let key = p256::SecretKey::generate();
-                SecretKey::P256(*array_ref![key.secret_scalar().as_ref(), 0, 32])
+                let key = p256::SecretKey::random(&mut rng);
+                let mut value = [0u8; 32];
+                value.copy_from_slice(&key.secret_scalar().to_bytes());
+                SecretKey::P256(value)
             }
             SecretKeyType::Buffer(size) => {
                 let mut key = vec![0u8; size];
@@ -217,12 +221,10 @@ impl Vault for DefaultVault {
                 Ok(PublicKey::Curve25519(*pk.as_bytes()))
             }
             SecretKey::P256(a) => {
-                let sk = Scalar::from_bytes(a).unwrap();
+                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(&a));
                 let pp = ProjectivePoint::generator() * &sk;
-                let pk = p256::elliptic_curve::weierstrass::PublicKey::from(
-                    pp.to_affine().unwrap().to_uncompressed_pubkey(),
-                );
-                Ok(PublicKey::P256(*array_ref![pk.as_bytes(), 0, 65]))
+                let ap = p256::elliptic_curve::sec1::EncodedPoint::from(pp.to_affine());
+                Ok(PublicKey::P256(*array_ref![ap.as_bytes(), 0, 65]))
             }
             _ => Err(VaultFailErrorKind::PublicKey.into()),
         }
@@ -254,25 +256,23 @@ impl Vault for DefaultVault {
                 Ok(secret.as_bytes().to_vec())
             }
             (SecretKey::P256(a), PublicKey::P256(b)) => {
-                let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> =
-                    p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
-                if o_pk_t.is_none() {
+                let o_pk_t = p256::elliptic_curve::sec1::EncodedPoint::from_bytes(b.as_ref());
+                if o_pk_t.is_err() {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
                 let pk_t = o_pk_t.unwrap();
-                let o_p_t = AffinePoint::from_pubkey(&pk_t);
+                let o_p_t = AffinePoint::from_encoded_point(&pk_t);
                 if o_p_t.is_none().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let sk = Scalar::from_bytes(*a).unwrap();
+                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(a.as_ref()));
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                 let secret = &pk_t * &sk;
-                if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
+                if secret.is_identity().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let result = secret.to_affine().unwrap().to_compressed_pubkey();
-                // Throw away the compressed indicator byte
-                Ok(result.as_ref()[1..].to_vec())
+                let ap = p256::elliptic_curve::sec1::EncodedPoint::from(secret.to_affine());
+                Ok(ap.x().as_slice().to_vec())
             }
             (_, _) => Err(VaultFailError::from_msg(
                 VaultFailErrorKind::Ecdh,
@@ -305,25 +305,23 @@ impl Vault for DefaultVault {
                 Ok(secret.as_bytes().to_vec())
             }
             (SecretKey::P256(a), PublicKey::P256(b)) => {
-                let o_pk_t: Option<p256::elliptic_curve::weierstrass::PublicKey<p256::NistP256>> =
-                    p256::elliptic_curve::weierstrass::PublicKey::from_bytes(b.as_ref());
-                if o_pk_t.is_none() {
+                let o_pk_t = p256::elliptic_curve::sec1::EncodedPoint::from_bytes(b.as_ref());
+                if o_pk_t.is_err() {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
                 let pk_t = o_pk_t.unwrap();
-                let o_p_t = AffinePoint::from_pubkey(&pk_t);
+                let o_p_t = AffinePoint::from_encoded_point(&pk_t);
                 if o_p_t.is_none().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let sk = Scalar::from_bytes(*a).unwrap();
+                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(a.as_ref()));
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
                 let secret = &pk_t * &sk;
-                if secret.ct_eq(&ProjectivePoint::identity()).unwrap_u8() == 1 {
+                if secret.is_identity().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
-                let result = secret.to_affine().unwrap().to_compressed_pubkey();
-                // Throw away the compressed indicator byte
-                Ok(result.as_ref()[1..].to_vec())
+                let ap = p256::elliptic_curve::sec1::EncodedPoint::from(secret.to_affine());
+                Ok(ap.x().as_slice().to_vec())
             }
             (_, _) => Err(VaultFailError::from_msg(
                 VaultFailErrorKind::Ecdh,
