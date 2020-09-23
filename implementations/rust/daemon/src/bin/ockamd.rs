@@ -1,6 +1,6 @@
 use std::io::stdin;
 
-use ockamd::args::Args;
+use ockamd::cli::Args;
 
 fn main() {
     let args = Args::parse();
