@@ -1,61 +1,100 @@
+use std::convert::TryInto;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use ockam_message::message::Address;
+use ockam_message::{Route, RouterAddress};
 
-use structopt::StructOpt;
+use structopt::{clap::ArgSettings::Hidden, StructOpt};
 use url::Url;
 
 /// The port on which the config updater runs and accepts Config messages.
 pub const DEFAULT_CONFIG_PORT: u16 = 11199;
 /// Command-line arguments passed to `ockamd`.
-#[derive(Debug, StructOpt)]
+#[derive(StructOpt)]
 #[structopt(
     author = "Ockam Developers (ockam.io)",
     about = "Encrypt and route messages using the Ockam daemon."
 )]
 pub struct Args {
+    /// Defines the kind of input from which a message should be read.
+    #[structopt(
+        long,
+        default_value = "stdin",
+        help = r#"Data source providing input to `ockamd`, either "stdin" or a valid URI"#
+    )]
+    input: InputKind,
+
+    /// Defines the kind of output where a message should be sent.
+    #[structopt(
+        long,
+        default_value = "stdout",
+        help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port],channel_address (note comma-separation) or "stdout""#
+    )]
+    output: OutputKind,
+
+    /// Determine if data written to `output` should be decrypted.
+    #[structopt(long, help = "Optionally decrypt messages to output")]
+    decrypt_output: bool,
+
+    /// Defines the kind of Ockam vault implementation to use.
+    #[structopt(
+        long,
+        default_value = "FILESYSTEM",
+        help = "Specify which type of Ockam vault to use for this instance of `ockamd`"
+    )]
+    vault: VaultKind,
+
+    /// Path on disk where the vault data is stored (used with the FILESYSTEM vault).
+    #[structopt(
+        parse(from_os_str),
+        long,
+        default_value = "ockamd_vault",
+        required_if("vault", "FILESYSTEM"),
+        help = "Filepath on disk to pre-existing private keys to be used by the filesystem vault"
+    )]
+    vault_path: PathBuf,
+
+    /// Start the `ockamd` process as the initiator or responder of a secure channel.
+    #[structopt(
+        long,
+        help = r#"Start `ockamd` as an "initiator" or a "responder" of a secure channel"#
+    )]
+    role: ChannelRole,
+
+    /// Define the channel responder address, currently obtained from a responder node.
+    #[structopt(
+        long,
+        required_if("role", "initiator"),
+        required_if("role", "init"),
+        help = r#"Address used to reach channel "responder" on remote machine"#
+    )]
+    channel_responder_address: Option<String>,
+
+    /// Define which private key to use as the initiator's identity.
+    #[structopt(
+        long,
+        required_if("role", "initiator"),
+        required_if("role", "init"),
+        help = "Name of the private key to use for the identity of the channel initiator"
+    )]
+    identity_name: Option<String>,
+
+    // TODO: expose `control` and `control_port` once runtime configuration is needed.
     #[structopt(
         short,
         long,
-        help = "Execute `ockamd` in control-mode, otherwise will start as a long-running process"
+        help = "Execute `ockamd` in control-mode, otherwise will start as a long-running process",
+        set = Hidden,
     )]
     control: bool,
     #[structopt(
         short = "p",
         long = "port",
         default_value = "11199",
-        help = "port for runtime configuration updates"
+        help = "Port for runtime configuration updates",
+        set = Hidden,
     )]
     control_port: u16,
-    /// InputKind translates the provided argument from either a URI formatted string
-    /// (e.g. udp://127.0.0.1:11199/abcdef) into a address usable for creating a secure channel, or
-    /// the literal value "stdin" to instruct `ockamd` to use the STDIN handle to read input.
-    #[structopt(
-        short,
-        long,
-        default_value = "stdin",
-        help = r#"data source providing input to `ockamd`, either "stdin" or a valid URI"#
-    )]
-    input: InputKind,
-    /// OutputKind translates the provided argument from either a URI formatted string
-    /// (e.g. udp://127.0.0.1:11199/abcdef) into a address usable for creating a secure channel, or
-    /// the literal value "stdout" to instruct `ockamd` to use the STDOUT handle to write output.
-    #[structopt(
-        short,
-        long,
-        default_value = "stdout",
-        help = "URI of remote Ockam node, e.g. udp://host:port[/channel_id]"
-    )]
-    output: OutputKind,
-    /// Keys is the path on disk where the vault data is stored.
-    #[structopt(
-        parse(from_os_str),
-        long,
-        default_value = "ockamd_keys",
-        help = "path on disk to pre-existing private keys"
-    )]
-    keys: PathBuf,
 }
 
 impl Default for Args {
@@ -65,7 +104,12 @@ impl Default for Args {
             control_port: DEFAULT_CONFIG_PORT,
             input: InputKind::Stdin,
             output: OutputKind::Stdout,
-            keys: PathBuf::from("ockamd_keys"),
+            decrypt_output: true,
+            vault: VaultKind::Filesystem,
+            vault_path: PathBuf::from("ockamd_vault"),
+            role: ChannelRole::Responder,
+            channel_responder_address: None,
+            identity_name: None,
         }
     }
 }
@@ -73,7 +117,20 @@ impl Default for Args {
 impl Args {
     /// Parse the command line options into the Args struct.
     pub fn parse() -> Args {
-        Args::from_args()
+        let mut args = Args::from_args();
+
+        // validate provided arguments & override possibly fallible options
+        match args.output_kind() {
+            OutputKind::Channel(_) => {
+                // disallow output to be decrypted if it's to be sent over a secure channel
+                if args.decrypt_output {
+                    args.decrypt_output = false;
+                }
+            }
+            _ => {}
+        }
+
+        args
     }
 
     /// Checks which mode the executable was run in: Control or Server.
@@ -81,6 +138,53 @@ impl Args {
         match self.control {
             true => Mode::Control,
             false => Mode::Server,
+        }
+    }
+
+    pub fn role(&self) -> ChannelRole {
+        self.role.clone()
+    }
+
+    pub fn output_kind(&self) -> OutputKind {
+        self.output.clone()
+    }
+}
+
+/// Specifies the implementation of a Ockam vault to be used.
+pub enum VaultKind {
+    Filesystem,
+}
+
+impl FromStr for VaultKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "FILESYSTEM" => Ok(VaultKind::Filesystem),
+            _ => Err("currently, 'FILESYSTEM' is the only supported vault option".into()),
+        }
+    }
+}
+
+/// Specifies which end of the secure channel the instance of `ockamd` is prepared to run in.
+#[derive(Clone, Debug, StructOpt)]
+pub enum ChannelRole {
+    /// The Initiator role expects a channel responder address and a public key to use in order to
+    /// communicate with the Responder end of the channel.
+    Initiator,
+    /// The Responder role will create a channel responder, and will instruct the program to print
+    /// the responder's channel responder address and the public key it's advertising.
+    Responder,
+}
+
+impl FromStr for ChannelRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "initiator" | "init" => Ok(ChannelRole::Initiator),
+            "responder" | "resp" => Ok(ChannelRole::Responder),
+            _ => Err("role must be set to either 'initiator' or 'responder'".into()),
         }
     }
 }
@@ -96,70 +200,131 @@ pub enum Mode {
     Server,
 }
 
-#[derive(Debug)]
+/// Specifies where input to `ockamd` should be read.
 pub enum InputKind {
     Stdin,
-    Channel(Address),
+    Channel(Route),
 }
 
 impl FromStr for InputKind {
     type Err = String;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Url::parse(s) {
-            Ok(u) => {
-                return to_address(u).map(|addr| Self::Channel(addr));
-            }
-            Err(_e) => {
-                if s == "stdin" {
-                    return Ok(Self::Stdin);
-                } else {
-                    return Err(unrecognized_input("input", s));
-                }
-            }
+        match s {
+            "stdin" => Ok(InputKind::Stdin),
+            _ => Err("currently, only 'stdin' is a supported input type".into()),
         }
     }
 }
 
-#[derive(Debug)]
+/// Specifies where ouput from `ockamd` should be written.
+#[derive(Clone)]
 pub enum OutputKind {
     Stdout,
-    Channel(Address),
+    Channel(Route),
 }
 
 impl FromStr for OutputKind {
     type Err = String;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Url::parse(s) {
-            Ok(u) => {
-                return to_address(u).map(|addr| Self::Channel(addr));
-            }
-            Err(_e) => {
-                if s == "stdout" {
-                    return Ok(Self::Stdout);
-                } else {
-                    return Err(unrecognized_input("output", s));
+        if s == "stdout" {
+            return Ok(OutputKind::Stdout);
+        }
+
+        let mut ret = Ok(OutputKind::Stdout);
+        let mut route = Route { addresses: vec![] };
+
+        s.split(',').for_each(|part| {
+            match Url::parse(part) {
+                Ok(u) => {
+                    if !u.has_host() || u.port().is_none() {
+                        ret = Err(format!("invalid URI: {}", part));
+                    }
+
+                    // TODO: add helper fn in message crate that peforms a FromStr and delegates to
+                    // RouterAddress::* fn's if url scheme is udp, tcp, etc.
+                    let addr = u.as_str().trim_start_matches("udp://");
+
+                    if let Ok(router_addr) = RouterAddress::udp_router_address_from_str(addr) {
+                        route.addresses.push(router_addr);
+                    }
+                }
+                Err(_e) => {
+                    // if it's not a known value like "stdin", take value as channel address
+                    // TODO: validate a channel responder address (by length, etc)
+                    match hex::decode(part) {
+                        Ok(v) => {
+                            let num = u32::from_le_bytes(v.as_slice().try_into().expect(&format!(
+                                "invalid slice decoded from channel address: {}",
+                                part
+                            )));
+                            if let Ok(chan_addr) =
+                                RouterAddress::channel_router_address_from_u32(num)
+                            {
+                                route.addresses.push(chan_addr);
+                            }
+                        }
+                        Err(e) => {
+                            ret = Err(format!(
+                                "failed to convert channel address from string: {:?}",
+                                e
+                            ));
+                        }
+                    }
                 }
             }
+        });
+
+        if !route.addresses.is_empty() && ret.is_ok() {
+            ret = Ok(OutputKind::Channel(route))
+        }
+
+        ret
+    }
+}
+
+#[test]
+fn test_cli_args_output() {
+    use ockam_message::AddressType;
+
+    if let Ok(output_kind) = OutputKind::from_str("udp://127.0.0.1:12345".into()) {
+        match output_kind {
+            OutputKind::Channel(route) => {
+                assert_eq!(route.addresses.len(), 1);
+            }
+            _ => {}
         }
     }
-}
 
-fn to_address(u: Url) -> Result<Address, String> {
-    if u.scheme() != "udp" {
-        return Err("currently, UDP is the only supported transport. use a udp://host:port[/id] formatted URI.".into());
+    if let Ok(output_kind) = OutputKind::from_str(
+        "udp://10.10.1.3:9999,udp://192.168.33.4:4444,udp://10.2.22.2:22222".into(),
+    ) {
+        match output_kind {
+            OutputKind::Channel(route) => {
+                assert_eq!(route.addresses.len(), 3);
+                route.addresses.iter().for_each(|addr| {
+                    assert_eq!(addr.a_type, AddressType::Udp);
+                })
+            }
+            _ => {}
+        }
     }
 
-    if u.host().is_none() || u.port().is_none() {
-        return Err(format!("invalid address format: {}", u));
+    if let Ok(output_kind) =
+        OutputKind::from_str("udp://117.2.34.1:11199,udp://10.2.34.3:8000,65ffa6cf".into())
+    {
+        match output_kind {
+            OutputKind::Channel(route) => {
+                assert_eq!(route.addresses.len(), 3);
+                match route.addresses.last() {
+                    Some(addr) => {
+                        assert_eq!(addr.a_type, AddressType::Channel);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
     }
-
-    if let Ok(addr) = u.host().unwrap().to_string().parse() {
-        Ok(Address::UdpAddress(addr, u.port().unwrap()))
-    } else {
-        Err(format!("failed to convert provided URI {} into Address", u).into())
-    }
-}
-
-fn unrecognized_input(flag: &str, input: &str) -> String {
-    format!("Unrecognized value ({:?}) for `{}` flag.", input, flag)
 }

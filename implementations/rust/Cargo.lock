@@ -739,6 +739,7 @@ dependencies = [
 name = "ockamd"
 version = "0.1.0"
 dependencies = [
+ "hex 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ockam-message 0.1.0",
  "structopt 0.3.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
