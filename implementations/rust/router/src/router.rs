@@ -7,9 +7,13 @@ pub mod router {
     use std::{thread, time};
 
     pub struct Router {
-        //        registry: Vec<Option<Arc<Mutex<std::sync::mpsc::Sender<commands::ChannelCommand>>>>>,
         registry: Vec<Option<std::sync::mpsc::Sender<OckamCommand>>>,
         rx: std::sync::mpsc::Receiver<OckamCommand>,
+    }
+
+    pub enum MessageDirection {
+        Send,
+        Receive,
     }
 
     impl Router {
@@ -26,35 +30,36 @@ pub mod router {
             while got {
                 got = false;
                 match self.rx.try_recv() {
-                    Ok(rc) => {
-                        println!("got rx");
-                        match rc {
-                            OckamCommand::Router(RouterCommand::Stop) => {
-                                println!("quit!");
-                                got = true;
-                                keep_going = false;
-                                break;
-                            }
-                            OckamCommand::Router(RouterCommand::Register(a_type, tx)) => {
-                                println!("Registering");
-                                got = true;
-                                self.registry[a_type as usize] = Option::Some(tx);
-                            }
-                            OckamCommand::Router(RouterCommand::Route(m)) => {
-                                println!("Routing");
-                                got = true;
-                                self.route(m);
-                            }
-                            _ => println!("Transport received bad command"),
+                    Ok(rc) => match rc {
+                        OckamCommand::Router(RouterCommand::Stop) => {
+                            println!("quit!");
+                            got = true;
+                            keep_going = false;
+                            break;
                         }
-                    }
+                        OckamCommand::Router(RouterCommand::Register(a_type, tx)) => {
+                            println!("Registering");
+                            got = true;
+                            self.registry[a_type as usize] = Option::Some(tx);
+                        }
+                        OckamCommand::Router(RouterCommand::ReceiveMessage(m)) => {
+                            got = true;
+                            self.route(m, MessageDirection::Receive);
+                        }
+                        OckamCommand::Router(RouterCommand::SendMessage(m)) => {
+                            println!("Routing");
+                            got = true;
+                            self.route(m, MessageDirection::Send);
+                        }
+                        _ => println!("Router received bad command"),
+                    },
                     Err(e) => {}
                 }
             }
             keep_going
         }
 
-        fn route(&mut self, m: Message) -> Result<(), String> {
+        fn route(&mut self, m: Message, direction: MessageDirection) -> Result<(), String> {
             if m.onward_route.addresses.is_empty() {
                 return Err("no route supplied".to_string());
             }
@@ -66,12 +71,18 @@ pub mod router {
                 None => return Err("no handler".to_string()),
             };
             match address_type {
-                AddressType::Channel => {
-                    handler_tx.send(OckamCommand::Channel(ChannelCommand::SendMessage(m)));
-                    Ok(())
-                }
+                AddressType::Channel => match direction {
+                    MessageDirection::Receive => {
+                        handler_tx.send(OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)));
+                        Ok(())
+                    }
+                    MessageDirection::Send => {
+                        handler_tx.send(OckamCommand::Channel(ChannelCommand::SendMessage(m)));
+                        Ok(())
+                    }
+                },
                 AddressType::Udp => {
-                    handler_tx.send(OckamCommand::Transport(TransportCommand::Send(m)));
+                    handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
                     Ok(())
                 }
                 _ => Err("not implemented".to_string()),

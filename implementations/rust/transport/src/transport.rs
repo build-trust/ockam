@@ -6,8 +6,9 @@ pub mod transport {
     use ockam_message::message::*;
     use ockam_router::router::Router;
     use std::collections::HashMap;
+    use std::convert::TryFrom;
     use std::io::{Read, Write};
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
     use std::net::{SocketAddrV4, UdpSocket};
     use std::str;
     use std::str::FromStr;
@@ -42,39 +43,46 @@ pub mod transport {
             }
         }
 
+        pub fn send_message(&mut self, mut m: Message) -> Result<(), String> {
+            let mut udp = match self
+                .connections
+                .get_mut(&m.onward_route.addresses[0].address.as_string())
+            {
+                Some(c) => c,
+                None => {
+                    println!("connection not found");
+                    return Err("connection not found".to_string());
+                }
+            };
+            m.onward_route.addresses.remove(0);
+            let mut local_addr: SocketAddr;
+            match udp.socket.local_addr() {
+                Ok(la) => {
+                    local_addr = la;
+                }
+                Err(_unused) => return Err("send_message".to_string()),
+            };
+
+            if let Some(ra) =
+                RouterAddress::from_address(Address::UdpAddress(udp.socket.local_addr().unwrap()))
+            {
+                m.return_route.addresses.insert(0, ra);
+            }
+            let mut v = vec![];
+            Message::encode(m, &mut v);
+            match udp.socket.send(v.as_slice()) {
+                Ok(n) => Ok(()),
+                Err(s) => Err("socket.send error".to_string()),
+            }
+        }
+
         pub fn poll(&mut self) -> bool {
             let mut got: bool = true;
             let mut keep_going = true;
-            let mut buff = [0; 16348];
             while got {
                 got = false;
                 for (_, mut c) in self.connections.iter_mut() {
-                    match c.receive(&mut buff) {
-                        Ok(size) => {
-                            if size > 0 {
-                                match Message::decode(&buff) {
-                                    Ok((m, _unused)) => {
-                                        // // send message to router
-                                        // let cmd = RouterCommand::Route(m);
-                                        // router_tx.send(cmd);
-                                        // got = true;
-                                        println!(
-                                            "received {}",
-                                            str::from_utf8(&m.message_body).unwrap()
-                                        );
-                                    }
-                                    Err(s) => {
-                                        println!("message decode failed");
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            println!("udp receive error");
-                            break;
-                        }
-                    }
+                    keep_going = c.receive_message(&mut self.router_tx, &mut self.tx);
                 }
             }
 
@@ -91,30 +99,11 @@ pub mod transport {
                                 Ok(c) => c,
                                 Err(s) => return false,
                             };
-                            println!("Added {} to transport", c.address_as_string());
+                            println!("Added {} to transport", remote);
                             self.connections.insert(c.address_as_string(), c);
                         }
-                        OckamCommand::Transport((TransportCommand::Send(m))) => {
-                            let mut udp = match self
-                                .connections
-                                .get_mut(&m.onward_route.addresses[0].address.as_string())
-                            {
-                                Some(c) => c,
-                                None => {
-                                    println!("connection not found");
-                                    return false;
-                                }
-                            };
-                            let mut v = vec![];
-                            Message::encode(m, &mut v);
-                            match udp.socket.send(v.as_slice()) {
-                                Ok(n) => {
-                                    println!("Sent {} bytes!", n);
-                                }
-                                Err(s) => {
-                                    println!("socket.send error {}", s);
-                                }
-                            }
+                        OckamCommand::Transport((TransportCommand::SendMessage(mut m))) => {
+                            self.send_message(m);
                         }
                         OckamCommand::Transport(TransportCommand::Stop) => {
                             keep_going = false;
@@ -133,16 +122,21 @@ pub mod transport {
 
     pub struct UdpConnection {
         socket: UdpSocket,
+        remote_address: SocketAddr,
     }
 
     impl UdpConnection {
         pub fn new(local: &str, remote: &str) -> Result<UdpConnection, String> {
             let mut socket = UdpSocket::bind(local).expect("couldn't bind to local socket");
             let remote_address = SocketAddrV4::from_str(remote).expect("bad remote address");
+            let remote_address = SocketAddr::V4(remote_address);
             match socket.connect(remote_address) {
                 Ok(s) => {
                     socket.set_nonblocking(true);
-                    Ok(UdpConnection { socket })
+                    Ok(UdpConnection {
+                        socket,
+                        remote_address,
+                    })
                 }
                 Err(_a) => Err("couldn't connect to remote address".to_string()),
             }
@@ -152,31 +146,58 @@ pub mod transport {
             self.socket.local_addr().unwrap().to_string()
         }
 
-        pub fn send(&mut self, buff: &[u8]) -> Result<usize, String> {
-            match self.socket.send(buff) {
-                Ok(s) => Ok(s),
-                Err(_unused) => Err("udp send failed".to_string()),
-            }
-        }
+        // pub fn send(&mut self, buff: &[u8]) -> Result<usize, String> {
+        //     match self.socket.send(buff) {
+        //         Ok(s) => Ok(s),
+        //         Err(_unused) => Err("udp send failed".to_string()),
+        //     }
+        // }
+        //
+        // pub fn receive(&mut self, buff: &mut [u8]) -> Result<usize, String> {
+        //     match self.socket.recv(buff) {
+        //         Ok(s) => Ok(s),
+        //         Err(e) => match e.kind() {
+        //             io::ErrorKind::WouldBlock => Ok(0),
+        //             _ => Err("udp receive error".to_string()),
+        //         },
+        //     }
+        // }
 
-        pub fn receive(&mut self, buff: &mut [u8]) -> Result<usize, String> {
-            match self.socket.recv(buff) {
-                Ok(s) => Ok(s),
-                Err(e) => match e.kind() {
-                    io::ErrorKind::WouldBlock => Ok(0),
-                    _ => Err("udp receive error".to_string()),
-                },
+        pub fn receive_message(
+            &mut self,
+            router_tx: &mut std::sync::mpsc::Sender<OckamCommand>,
+            transport_tx: &mut std::sync::mpsc::Sender<OckamCommand>,
+        ) -> bool {
+            let mut buff = [0; 16348];
+            match self.socket.recv(&mut buff) {
+                Ok(s) => {
+                    match Message::decode(&buff) {
+                        Ok((mut m, _unused)) => {
+                            // send message to router
+                            //todo if onward route is udp, send it now
+                            if m.onward_route.addresses[0].a_type == AddressType::Udp {
+                                if let Err(e) = transport_tx
+                                    .send(OckamCommand::Transport(TransportCommand::SendMessage(m)))
+                                {
+                                    return false;
+                                }
+                            } else if let Err(e) = router_tx
+                                .send(OckamCommand::Router(RouterCommand::ReceiveMessage(m)))
+                            {
+                                return false;
+                            }
+                        }
+                        Err(s) => return false,
+                    }
+                }
+                Err(e) => {
+                    return match e.kind() {
+                        io::ErrorKind::WouldBlock => true,
+                        _ => false,
+                    }
+                }
             }
-        }
-
-        pub fn receive_message(&mut self, buff: &mut [u8]) -> Result<Message, String> {
-            match self.socket.recv(buff) {
-                Ok(_unused) => match Message::decode(buff) {
-                    Ok(m) => Ok(m.0),
-                    Err(s) => Err(s),
-                },
-                Err(_unused) => Err("recv failed".to_string()),
-            }
+            true
         }
     }
 

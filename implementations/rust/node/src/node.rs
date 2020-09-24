@@ -3,9 +3,7 @@ use ockam_common::commands::ockam_commands::*;
 use ockam_message::message::*;
 use ockam_router::router::*;
 use ockam_transport::transport::*;
-use std::net::IpAddr;
 use std::str;
-use std::str::FromStr;
 use std::thread::sleep;
 use std::{thread, time};
 
@@ -13,6 +11,7 @@ pub struct TestChannel {
     rx: std::sync::mpsc::Receiver<OckamCommand>,
     _tx: std::sync::mpsc::Sender<OckamCommand>,
     router_tx: std::sync::mpsc::Sender<OckamCommand>,
+    toggle: u16,
 }
 
 impl TestChannel {
@@ -31,6 +30,7 @@ impl TestChannel {
             rx,
             _tx: tx,
             router_tx,
+            toggle: 0,
         }
     }
 
@@ -42,11 +42,17 @@ impl TestChannel {
             if let Ok(c) = self.rx.try_recv() {
                 got = true;
                 match c {
-                    OckamCommand::Channel(ChannelCommand::SendMessage(m)) => {
+                    OckamCommand::Channel(ChannelCommand::SendMessage(mut m)) => {
                         // encrypt message body here
+                        let address = Address::ChannelAddress(1234);
+                        if let Some(r) = RouterAddress::from_address(address) {
+                            m.return_route.addresses.push(r);
+                        } else {
+                            return false;
+                        }
                         match self
                             .router_tx
-                            .send(OckamCommand::Router(RouterCommand::Route(m)))
+                            .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
                         {
                             Ok(()) => {}
                             Err(_unused) => {
@@ -58,9 +64,38 @@ impl TestChannel {
                     OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)) => {
                         // decrypt message body here
                         println!(
-                            "Channel receive message: {}",
+                            "Channel received message: {}",
                             str::from_utf8(&m.message_body).unwrap()
                         );
+                        let s: &str;
+                        if 0 == self.toggle % 2 {
+                            s = "Hello Ockam";
+                        } else {
+                            s = "Goodbye Ockam"
+                        };
+                        self.toggle += 1;
+                        let mut reply: Message = Message {
+                            onward_route: Route { addresses: vec![] },
+                            return_route: Route { addresses: vec![] },
+                            message_body: s.as_bytes().to_vec(),
+                        };
+                        reply.onward_route.addresses = m.return_route.addresses.clone();
+                        let address = Address::ChannelAddress(1234);
+                        if let Some(r) = RouterAddress::from_address(address) {
+                            reply.return_route.addresses.push(r);
+                        } else {
+                            return false;
+                        }
+                        match self
+                            .router_tx
+                            .send(OckamCommand::Router(RouterCommand::SendMessage(reply)))
+                        {
+                            Ok(()) => {}
+                            Err(_unused) => {
+                                println!("send to router failed");
+                                keep_going = false;
+                            }
+                        }
                     }
                     OckamCommand::Channel(ChannelCommand::Stop) => {
                         keep_going = false;
@@ -74,29 +109,19 @@ impl TestChannel {
 }
 
 pub fn get_route() -> Option<Route> {
-    let ip_addr_0 = match IpAddr::from_str("127.0.0.1") {
-        Ok(a) => a,
-        Err(_unused) => return None,
-    };
-    let udp_addr_0 = Address::UdpAddress(ip_addr_0, 4050);
-    let router_addr_0: RouterAddress = match RouterAddress::from_address(udp_addr_0) {
-        Some(a) => a,
-        None => return None,
-    };
-
-    let ip_addr_1 = match IpAddr::from_str("127.0.0.1") {
-        Ok(a) => a,
-        Err(_unused) => return None,
-    };
-    let udp_addr_1 = Address::UdpAddress(ip_addr_1, 4051);
-    let router_addr_1 = match RouterAddress::from_address(udp_addr_1) {
-        Some(a) => a,
-        None => return None,
-    };
-
     let mut r = Route { addresses: vec![] };
-    r.addresses.push(router_addr_0);
-    r.addresses.push(router_addr_1);
+    if let Ok(router_addr_0) = RouterAddress::udp_router_address_from_str("127.0.0.1:4051") {
+        r.addresses.push(router_addr_0);
+    } else {
+        return None;
+    };
+
+    if let Ok(channel_addr) = RouterAddress::channel_router_address_from_u32(1234) {
+        r.addresses.push(channel_addr);
+    } else {
+        return None;
+    }
+
     Some(r)
 }
 
@@ -153,7 +178,7 @@ fn main() {
         Err(_unused) => {}
     }
 
-    sleep(time::Duration::from_millis(1000));
+    sleep(time::Duration::from_millis(5000));
 
     let command = TransportCommand::Stop;
     match transport_tx_for_node.send(OckamCommand::Transport(command)) {

@@ -14,7 +14,7 @@ pub mod ockam_commands {
     pub enum TransportCommand {
         Stop,
         Add(String, String),
-        Send(Message),
+        SendMessage(Message),
     }
 
     // Router commands - these can be sent to the
@@ -22,7 +22,8 @@ pub mod ockam_commands {
     pub enum RouterCommand {
         Stop,
         Register(AddressType, std::sync::mpsc::Sender<OckamCommand>),
-        Route(Message),
+        SendMessage(Message),
+        ReceiveMessage(Message),
     }
 
     // Channel commands - these can be sent to the
