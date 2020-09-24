@@ -46,6 +46,7 @@ OPTIONS:
         --output <output>
             Route to channel responder, e.g. udp://host:port[,udp://host:port],channel_address (note comma-separation)
             or "stdout" [default: stdout]
+        --responder-public-key <responder-public-key>              The public key provided by channel responder
         --role <role>
             Start `ockamd` as an "initiator" or a "responder" of a secure channel
 
@@ -54,8 +55,6 @@ OPTIONS:
 
         --vault-path <vault-path>
             Filepath on disk to pre-existing private keys to be used by the filesystem vault [default: ockamd_vault]
-
-
 ```
 
 
