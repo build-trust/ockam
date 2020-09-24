@@ -137,8 +137,7 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
         let mut nonce = [0u8; 12];
         nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
         let ciphertext_and_tag = self.vault.aead_aes_gcm_encrypt(
-            self.key
-                .ok_or_else(|| VaultFailErrorKind::AeadAesGcmEncrypt)?,
+            self.key.ok_or(VaultFailErrorKind::AeadAesGcmEncrypt)?,
             plaintext,
             nonce.as_ref(),
             &self.state.h,
@@ -157,8 +156,7 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
         nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
         let ciphertext = ciphertext.as_ref();
         let plaintext = self.vault.aead_aes_gcm_decrypt(
-            self.key
-                .ok_or_else(|| VaultFailErrorKind::AeadAesGcmDecrypt)?,
+            self.key.ok_or(VaultFailErrorKind::AeadAesGcmDecrypt)?,
             ciphertext,
             nonce.as_ref(),
             &self.state.h,

@@ -222,7 +222,7 @@ impl Vault for DefaultVault {
             }
             SecretKey::P256(a) => {
                 let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(&a));
-                let pp = ProjectivePoint::generator() * &sk;
+                let pp = ProjectivePoint::generator() * sk;
                 let ap = p256::elliptic_curve::sec1::EncodedPoint::from(pp.to_affine());
                 Ok(PublicKey::P256(*array_ref![ap.as_bytes(), 0, 65]))
             }
@@ -267,7 +267,7 @@ impl Vault for DefaultVault {
                 }
                 let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(a.as_ref()));
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
-                let secret = &pk_t * &sk;
+                let secret = pk_t * sk;
                 if secret.is_identity().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }
@@ -316,7 +316,7 @@ impl Vault for DefaultVault {
                 }
                 let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(a.as_ref()));
                 let pk_t = ProjectivePoint::from(o_p_t.unwrap());
-                let secret = &pk_t * &sk;
+                let secret = pk_t * sk;
                 if secret.is_identity().unwrap_u8() == 1 {
                     fail!(VaultFailErrorKind::Ecdh);
                 }

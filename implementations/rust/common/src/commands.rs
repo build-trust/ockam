@@ -1,6 +1,6 @@
 #[allow(unused)]
 pub mod ockam_commands {
-    use ockam_message::message::{AddressType, Message, Route};
+    use ockam_message::{AddressType, Message, Route};
     use std::thread;
 
     pub enum OckamCommand {
