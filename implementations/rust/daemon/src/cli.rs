@@ -79,6 +79,15 @@ pub struct Args {
     )]
     identity_name: Option<String>,
 
+    /// Define the public key needed to communicate with the channel responder.
+    #[structopt(
+        long,
+        required_if("role", "initiator"),
+        required_if("role", "init"),
+        help = "The public key provided by channel responder"
+    )]
+    responder_public_key: Option<String>,
+
     // TODO: expose `control` and `control_port` once runtime configuration is needed.
     #[structopt(
         short,
@@ -110,6 +119,7 @@ impl Default for Args {
             role: ChannelRole::Responder,
             channel_responder_address: None,
             identity_name: None,
+            responder_public_key: None,
         }
     }
 }
