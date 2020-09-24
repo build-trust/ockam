@@ -176,28 +176,20 @@ pub mod transport {
                             // send message to router
                             //todo if onward route is udp, send it now
                             if m.onward_route.addresses[0].a_type == AddressType::Udp {
-                                if let Err(e) = transport_tx
+                                transport_tx
                                     .send(OckamCommand::Transport(TransportCommand::SendMessage(m)))
-                                {
-                                    return false;
-                                }
-                            } else if let Err(e) = router_tx
-                                .send(OckamCommand::Router(RouterCommand::ReceiveMessage(m)))
-                            {
-                                return false;
+                                    .is_ok()
+                            } else {
+                                router_tx
+                                    .send(OckamCommand::Router(RouterCommand::ReceiveMessage(m)))
+                                    .is_ok()
                             }
                         }
-                        Err(s) => return false,
+                        Err(_) => false,
                     }
                 }
-                Err(e) => {
-                    return match e.kind() {
-                        io::ErrorKind::WouldBlock => true,
-                        _ => false,
-                    }
-                }
+                Err(e) => matches!(e.kind(), io::ErrorKind::WouldBlock),
             }
-            true
         }
     }
 
