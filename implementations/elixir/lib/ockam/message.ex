@@ -73,8 +73,8 @@ defmodule Ockam.Message do
       {Base.encode16(address, case: :lower), rest}
     end
 
-    def decode_address(<<1::8, rest::binary>>), do: decode_socket_address(:tcp, rest)
-    def decode_address(<<2::8, rest::binary>>), do: decode_socket_address(:udp, rest)
+    def decode_address(<<1::8, _length::8, rest::binary>>), do: decode_socket_address(:tcp, rest)
+    def decode_address(<<2::8, _length::8, rest::binary>>), do: decode_socket_address(:udp, rest)
 
     def decode_addressses(0, addresses, rest), do: {Enum.reverse(addresses), rest}
 
@@ -111,15 +111,19 @@ defmodule Ockam.Message do
     end
 
     def encode_address(address) when is_binary(address) do
-      {:ok, address} = Base.decode16(address, case: :lower)
-      <<0::8, byte_size(address)::8>> <> address
+      {:ok, encoded} = Base.decode16(address, case: :lower)
+      <<0::8, byte_size(encoded)::8>> <> encoded
     end
 
-    def encode_address({:tcp, {host, port}}),
-      do: <<1::8>> <> encode_host_address(host) <> <<port::unsigned-little-integer-16>>
+    def encode_address({:tcp, {host, port}}) do
+      encoded = encode_host_address(host) <> <<port::unsigned-little-integer-16>>
+      <<1::8, byte_size(encoded)::8>> <> encoded
+    end
 
-    def encode_address({:udp, {host, port}}),
-      do: <<2::8>> <> encode_host_address(host) <> <<port::unsigned-little-integer-16>>
+    def encode_address({:udp, {host, port}}) do
+      encoded = encode_host_address(host) <> <<port::unsigned-little-integer-16>>
+      <<2::8, byte_size(encoded)::8>> <> encoded
+    end
 
     def encode_addresses([], encoded), do: encoded
 
