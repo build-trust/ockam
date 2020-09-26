@@ -1,6 +1,6 @@
 #[allow(unused)]
 pub mod ockam_commands {
-    use ockam_message::{AddressType, Message, Route};
+    use ockam_message::message::*;
     use std::thread;
 
     pub enum OckamCommand {
@@ -13,7 +13,6 @@ pub mod ockam_commands {
     // be sent to the transport_tx
     pub enum TransportCommand {
         Stop,
-        Add(String, String),
         SendMessage(Message),
     }
 

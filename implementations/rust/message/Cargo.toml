@@ -6,6 +6,7 @@ edition = "2018"
 
 [lib]
 crate-type = ["rlib"]
+path = "src/message.rs"
 
 [profile.release]
 lto = true
@@ -13,4 +14,4 @@ lto = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-
+hex = "0.4.2"

@@ -531,11 +531,15 @@ dependencies = [
 [[package]]
 name = "ockam-message"
 version = "0.1.0"
+dependencies = [
+ "hex",
+]
 
 [[package]]
 name = "ockam-node"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "ockam-common",
  "ockam-message",
  "ockam-router",

@@ -6,6 +6,7 @@ edition = "2018"
 
 [lib]
 crate-type = ["rlib"]
+path = "src/router.rs"
 
 [profile.release]
 lto = true
@@ -15,4 +16,3 @@ lto = true
 [dependencies]
 ockam-message = { version = "0.1", path = "../message" }
 ockam-common = { version = "0.1", path = "../common" }
-

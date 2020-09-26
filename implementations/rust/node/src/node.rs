@@ -1,7 +1,7 @@
 use ockam_common::commands::ockam_commands::*;
-use ockam_message::*;
-use ockam_router::*;
-use ockam_transport::*;
+use ockam_message::message::*;
+use ockam_router::router::*;
+use ockam_transport::transport::*;
 use std::str;
 use std::thread::sleep;
 use std::{thread, time};
@@ -43,8 +43,7 @@ impl TestChannel {
                 match c {
                     OckamCommand::Channel(ChannelCommand::SendMessage(mut m)) => {
                         // encrypt message body here
-                        let address = Address::ChannelAddress(1234);
-                        if let Some(r) = RouterAddress::from_address(address) {
+                        if let Ok(r) = RouterAddress::channel_router_address_from_str("01020304") {
                             m.return_route.addresses.push(r);
                         } else {
                             return false;
@@ -76,11 +75,11 @@ impl TestChannel {
                         let mut reply: Message = Message {
                             onward_route: Route { addresses: vec![] },
                             return_route: Route { addresses: vec![] },
+                            message_type: MessageType::Payload,
                             message_body: s.as_bytes().to_vec(),
                         };
                         reply.onward_route.addresses = m.return_route.addresses.clone();
-                        let address = Address::ChannelAddress(1234);
-                        if let Some(r) = RouterAddress::from_address(address) {
+                        if let Ok(r) = RouterAddress::channel_router_address_from_str("01020304") {
                             reply.return_route.addresses.push(r);
                         } else {
                             return false;
@@ -115,17 +114,16 @@ pub fn get_route() -> Option<Route> {
         return None;
     };
 
-    if let Ok(channel_addr) = RouterAddress::channel_router_address_from_u32(1234) {
+    if let Ok(channel_addr) = RouterAddress::channel_router_address_from_str("01020304") {
         r.addresses.push(channel_addr);
     } else {
         return None;
-    }
+    };
 
     Some(r)
 }
 
-fn main() {
-    // Start transport thread, pass rx ownership
+fn start_thread(local_address: &str, route: Route, payload: String) {
     let (transport_tx, transport_rx) = std::sync::mpsc::channel();
     let (router_tx, router_rx) = std::sync::mpsc::channel();
     let (channel_tx, channel_rx) = std::sync::mpsc::channel();
@@ -134,59 +132,63 @@ fn main() {
     let transport_tx_for_node = transport_tx.clone();
 
     let mut router = Router::new(router_rx);
-    let mut transport = UdpTransport::new(transport_rx, transport_tx, router_tx);
     let mut channel = TestChannel::new(channel_rx, channel_tx, router_tx_for_channel);
 
+    let mut transport =
+        UdpTransport::new(transport_rx, transport_tx, router_tx, local_address).unwrap();
+
     let join_thread: thread::JoinHandle<_> = thread::spawn(move || {
-        println!("in closure");
         while transport.poll() && router.poll() & channel.poll() {
             thread::sleep(time::Duration::from_millis(100));
         }
     });
 
-    // Establish transport
-    let command = TransportCommand::Add("127.0.0.1:4050".to_string(), "127.0.0.1:4051".to_string());
-    match transport_tx_for_node.send(OckamCommand::Transport(command)) {
-        Ok(_unused) => println!("sent socket 1 command to transport"),
-        Err(_unused) => println!("failed to send command to transport"),
-    }
-
-    let command = TransportCommand::Add("127.0.0.1:4051".to_string(), "127.0.0.1:4050".to_string());
-    match transport_tx_for_node.send(OckamCommand::Transport(command)) {
-        Ok(_unused) => println!("sent socket 2 command to transport"),
-        Err(_unused) => println!("failed to send command to transport"),
-    }
-
-    // Create route
-    let route = match get_route() {
-        Some(r) => r,
-        None => {
-            println!("get_route failed");
-            return;
-        }
-    };
-
     let m = Message {
         onward_route: route,
         return_route: Route { addresses: vec![] },
-        message_body: "Hello Ockam".to_string().as_bytes().to_vec(),
+        message_type: MessageType::Payload,
+        message_body: payload.as_bytes().to_vec(),
     };
     let command = OckamCommand::Channel(ChannelCommand::SendMessage(m));
     match channel_tx_for_node.send(command) {
         Ok(_unused) => {}
-        Err(_unused) => {}
+        Err(_unused) => {
+            println!("failed send to channel");
+        }
     }
+}
 
-    sleep(time::Duration::from_millis(5000));
+fn main() {
+    // Create route
+    let mut onward_route = Route { addresses: vec![] };
+    if let Ok(router_addr_0) = RouterAddress::udp_router_address_from_str("127.0.0.1:4051") {
+        onward_route.addresses.push(router_addr_0);
+    } else {
+        return;
+    };
 
-    let command = TransportCommand::Stop;
-    match transport_tx_for_node.send(OckamCommand::Transport(command)) {
-        Ok(_unused) => println!("sent stop command to transport"),
-        Err(_unused) => println!("failed to send command to transport"),
-    }
+    if let Ok(channel_addr) = RouterAddress::channel_router_address_from_str("01020304") {
+        onward_route.addresses.push(channel_addr);
+    } else {
+        return;
+    };
 
-    match join_thread.join() {
-        Ok(_unused) => {}
-        Err(_unused) => {}
-    }
+    start_thread("127.0.0.1:4050", onward_route, "Hello Ockam".to_string());
+
+    let mut onward_route = Route { addresses: vec![] };
+    if let Ok(router_addr_0) = RouterAddress::udp_router_address_from_str("127.0.0.1:4050") {
+        onward_route.addresses.push(router_addr_0);
+    } else {
+        return;
+    };
+
+    if let Ok(channel_addr) = RouterAddress::channel_router_address_from_str("01020304") {
+        onward_route.addresses.push(channel_addr);
+    } else {
+        return;
+    };
+
+    start_thread("127.0.0.1:4051", onward_route, "Goodbye Ockam".to_string());
+
+    thread::sleep(time::Duration::from_millis(10000));
 }

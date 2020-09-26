@@ -6,6 +6,7 @@ edition = "2018"
 
 [lib]
 crate-type = ["rlib"]
+path = "src/transport.rs"
 
 [profile.release]
 lto = true
