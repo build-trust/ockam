@@ -90,7 +90,7 @@ pub mod message {
             }
             msg.message_type = MessageType::try_from(w[0])?;
             let mut w = &w[1..];
-            msg.message_body = w.to_vec().clone();
+            msg.message_body = w.to_vec();
             Ok((msg, w))
         }
     }
@@ -133,7 +133,7 @@ pub mod message {
         pub fn as_string(&self) -> String {
             match self {
                 Address::UdpAddress(socket) => socket.to_string(),
-                Address::ChannelAddress(u) => hex::encode(u.as_slice()).to_string(),
+                Address::ChannelAddress(u) => hex::encode(u.as_slice()),
                 _ => "error".to_string(),
             }
         }
@@ -247,10 +247,10 @@ pub mod message {
 
             match a.a_type {
                 AddressType::Worker => match a.address {
-                    Address::WorkerAddress(wa) => {
-                        v.append(&mut wa.clone());
+                    Address::WorkerAddress(mut wa) => {
+                        v.append(&mut wa);
                     }
-                    Address::ChannelAddress(_0) => {
+                    Address::ChannelAddress(_unused) => {
                         println!("channel");
                     }
                     _ => {
@@ -421,7 +421,7 @@ pub mod message {
                     length: h.len() as u8,
                     address: Address::ChannelAddress(h),
                 }),
-                Err(_0) => Err("string contains non-hex chars".to_string()),
+                Err(_unused) => Err("string contains non-hex chars".to_string()),
             }
         }
         pub fn worker_router_address_from_str(a: &str) -> Result<RouterAddress, String> {
@@ -431,7 +431,7 @@ pub mod message {
                     length: h.len() as u8,
                     address: Address::WorkerAddress(h),
                 }),
-                Err(_0) => Err("string contains non-hex chars".to_string()),
+                Err(_unused) => Err("string contains non-hex chars".to_string()),
             }
         }
     }

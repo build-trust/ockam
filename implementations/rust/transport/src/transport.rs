@@ -41,7 +41,7 @@ pub mod transport {
                         AddressType::Udp,
                         tx.clone(),
                     )));
-                    println!("created udptransport bound to {}", local_address);
+                    println!("created udp transport bound to {}", local_address);
                     Ok(UdpTransport {
                         socket,
                         rx,
@@ -50,7 +50,7 @@ pub mod transport {
                         buffer: [0; 16384],
                     })
                 }
-                Err(_0) => {
+                Err(_unused) => {
                     println!("failed to create socket");
                     Err("failed to create socket".to_string())
                 }
@@ -79,7 +79,7 @@ pub mod transport {
                     }
                     None => Err("send_message error".to_string()),
                 },
-                Err(_unused) => return Err("send_message".to_string()),
+                Err(_unused) => Err("send_message".to_string()),
             }
         }
 
@@ -99,7 +99,7 @@ pub mod transport {
                                 }
                             } else {
                                 match self.router_tx.send(OckamCommand::Router(ReceiveMessage(m))) {
-                                    Ok(_0) => Ok(true),
+                                    Ok(_unused) => Ok(true),
                                     Err(s) => Err("send to router failed".to_string()),
                                 }
                             }
@@ -107,12 +107,10 @@ pub mod transport {
                         _ => Err("decode failed".to_string()),
                     }
                 }
-                Err(e) => {
-                    return match e.kind() {
-                        io::ErrorKind::WouldBlock => Ok(false),
-                        _ => Err("socket receive failed".to_string()),
-                    }
-                }
+                Err(e) => match e.kind() {
+                    io::ErrorKind::WouldBlock => Ok(false),
+                    _ => Err("socket receive failed".to_string()),
+                },
             }
         }
 

@@ -263,13 +263,13 @@ pub mod router {
 //             if !m.onward_route.addresses.is_empty() {
 //                 address = m.onward_route.addresses[0];
 //                 match address {
-//                     Address::LocalAddress(t, _l, _0) => {
+//                     Address::LocalAddress(t, _l, _unused) => {
 //                         address_type = t as u8;
 //                     }
-//                     Address::UdpAddress(t, _l, _0, _1) => {
+//                     Address::UdpAddress(t, _l, _unused, _1) => {
 //                         address_type = t as u8;
 //                     }
-//                     Address::TcpAddress(t, _l, _0, _1) => {
+//                     Address::TcpAddress(t, _l, _unused, _1) => {
 //                         address_type = t as u8;
 //                     }
 //                 }

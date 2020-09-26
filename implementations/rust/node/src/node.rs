@@ -3,7 +3,6 @@ use ockam_message::message::*;
 use ockam_router::router::*;
 use ockam_transport::transport::*;
 use std::str;
-use std::thread::sleep;
 use std::{thread, time};
 
 pub struct TestChannel {
@@ -129,7 +128,6 @@ fn start_thread(local_address: &str, route: Route, payload: String) {
     let (channel_tx, channel_rx) = std::sync::mpsc::channel();
     let channel_tx_for_node = channel_tx.clone();
     let router_tx_for_channel = router_tx.clone();
-    let transport_tx_for_node = transport_tx.clone();
 
     let mut router = Router::new(router_rx);
     let mut channel = TestChannel::new(channel_rx, channel_tx, router_tx_for_channel);
@@ -137,7 +135,7 @@ fn start_thread(local_address: &str, route: Route, payload: String) {
     let mut transport =
         UdpTransport::new(transport_rx, transport_tx, router_tx, local_address).unwrap();
 
-    let join_thread: thread::JoinHandle<_> = thread::spawn(move || {
+    let _join_thread: thread::JoinHandle<_> = thread::spawn(move || {
         while transport.poll() && router.poll() & channel.poll() {
             thread::sleep(time::Duration::from_millis(100));
         }
