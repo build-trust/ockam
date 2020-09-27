@@ -3,7 +3,8 @@
 
 name: $(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
 
-pool: 'OckamHosted'
+pool:
+  vmImage: ubuntu-16.04
 
 steps:
   - task: NodeTool@0
