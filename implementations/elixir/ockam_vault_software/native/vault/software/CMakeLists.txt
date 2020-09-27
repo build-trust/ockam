@@ -9,7 +9,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 target_include_directories(ockam_vault_interface INTERFACE ${INCLUDE_DIR})
 
-file(COPY ../../../../../../rust/vault/include/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
+file(COPY ../../../../../rust/vault/include/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
 
 target_sources(
   ockam_vault_interface
@@ -23,7 +23,7 @@ target_sources(
 add_library(ockam_vault SHARED IMPORTED GLOBAL)
 add_library(ockam::vault ALIAS ockam_vault)
 
-set(vault_dylib_path ../../../../../../rust/target/debug/libockam_vault.dylib)
+set(vault_dylib_path ../../../../../rust/target/debug/libockam_vault.dylib)
 get_filename_component(real_vault_dylib_path "${vault_dylib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set_target_properties(
   ockam_vault
