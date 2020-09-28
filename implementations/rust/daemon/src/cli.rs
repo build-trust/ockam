@@ -1,19 +1,23 @@
 use std::convert::TryInto;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use ockam_message::{Route, RouterAddress};
+use ockam_message::{LocalAddress, Route, RouterAddress};
 
 use structopt::{clap::ArgSettings::Hidden, StructOpt};
 use url::Url;
 
 /// The port on which the config updater runs and accepts Config messages.
 pub const DEFAULT_CONFIG_PORT: u16 = 11199;
+
+const DEFAULT_LOCAL_HOST: &str = "127.0.0.1:11200";
+
 /// Command-line arguments passed to `ockamd`.
 #[derive(StructOpt)]
 #[structopt(
     author = "Ockam Developers (ockam.io)",
-    about = "Encrypt and route messages using the Ockam daemon."
+    about = "Encrypt, route, and decrypt messages using the Ockam daemon."
 )]
 pub struct Args {
     /// Defines the kind of input from which a message should be read.
@@ -31,6 +35,13 @@ pub struct Args {
         help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port],channel_address (note comma-separation) or "stdout""#
     )]
     output: OutputKind,
+
+    #[structopt(
+        long,
+        default_value = DEFAULT_LOCAL_HOST,
+        help = "Local node address and port to bind"
+    )]
+    local_host: SocketAddr,
 
     /// Determine if data written to `output` should be decrypted.
     #[structopt(long, help = "Optionally decrypt messages to output")]
@@ -69,6 +80,15 @@ pub struct Args {
         help = r#"Address used to reach channel "responder" on remote machine"#
     )]
     channel_responder_address: Option<String>,
+
+    /// Define the worker address, currently obtained from a responder node.
+    #[structopt(
+        long,
+        required_if("role", "initiator"),
+        required_if("role", "init"),
+        help = r#"Address used to reach "worker" on remote machine"#
+    )]
+    worker_address: Option<String>,
 
     /// Define which private key to use as the initiator's identity.
     #[structopt(
@@ -113,11 +133,13 @@ impl Default for Args {
             control_port: DEFAULT_CONFIG_PORT,
             input: InputKind::Stdin,
             output: OutputKind::Stdout,
+            local_host: SocketAddr::from_str(DEFAULT_LOCAL_HOST).unwrap(),
             decrypt_output: true,
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
             channel_responder_address: None,
+            worker_address: None,
             identity_name: None,
             responder_public_key: None,
         }
@@ -157,6 +179,14 @@ impl Args {
 
     pub fn output_kind(&self) -> OutputKind {
         self.output.clone()
+    }
+
+    pub fn local_host(&self) -> SocketAddr {
+        self.local_host
+    }
+
+    pub fn decrypt_output(&self) -> bool {
+        self.decrypt_output
     }
 }
 

@@ -1,27 +1,27 @@
 use std::io::stdin;
 
-use ockamd::cli;
+use ockam_vault::software::DefaultVault as FilesystemVault;
+
+use ockamd::{cli, node::Node};
 
 fn main() {
     let args = cli::Args::parse();
 
     match args.exec_mode() {
         cli::Mode::Server => {
-            // read stdin for messages to encrypt and route
+            let config = args.into();
+            let mut vault = FilesystemVault::default();
+
+            // create the server using the input type and get encrypted message from server
+            let (_node, tx_input) = Node::new(vault, config);
+
+            // using stdin as example input
             let input = stdin();
             let mut buf = String::new();
-
             loop {
-                match input.read_line(&mut buf) {
-                    Ok(n) => {
-                        if n > 0 {
-                            print!("ockamd: {}", buf);
-                            buf.clear();
-                        }
-                    }
-                    Err(e) => {
-                        println!("error: {:?}", e);
-                    }
+                if let Ok(_n) = input.read_line(&mut buf) {
+                    tx_input.send(buf.as_bytes().to_vec()).unwrap();
+                    buf.clear();
                 }
             }
         }

@@ -23,7 +23,7 @@
 ```
 ockamd 0.1.0
 Ockam Developers (ockam.io)
-Encrypt and route messages using the Ockam daemon.
+Encrypt, route, and decrypt messages using the Ockam daemon.
 
 USAGE:
     ockamd [FLAGS] [OPTIONS] --role <role>
@@ -55,6 +55,9 @@ OPTIONS:
 
         --vault-path <vault-path>
             Filepath on disk to pre-existing private keys to be used by the filesystem vault [default: ockamd_vault]
+
+        --worker-address <worker-address>                          Address used to reach "worker" on remote machine
+
 ```
 
 
