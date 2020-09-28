@@ -1,80 +1,101 @@
-use ockam_common::commands::ockam_commands::*;
-use ockam_message::*;
+#![allow(unused)]
+pub mod router {
+    use ockam_common::commands::ockam_commands::*;
+    use ockam_message::message::*;
+    use std::sync::mpsc::channel;
+    use std::sync::{Arc, Mutex};
+    use std::{thread, time};
 
-pub struct Router {
-    registry: Vec<Option<std::sync::mpsc::Sender<OckamCommand>>>,
-    rx: std::sync::mpsc::Receiver<OckamCommand>,
-}
-
-pub enum MessageDirection {
-    Send,
-    Receive,
-}
-
-impl Router {
-    pub fn new(rx: std::sync::mpsc::Receiver<OckamCommand>) -> Router {
-        Router {
-            registry: vec![Option::None; 256],
-            rx,
-        }
+    pub struct Router {
+        registry: Vec<Option<std::sync::mpsc::Sender<OckamCommand>>>,
+        rx: std::sync::mpsc::Receiver<OckamCommand>,
     }
 
-    pub fn poll(&mut self) -> bool {
-        let keep_going;
-        loop {
-            if let Ok(rc) = self.rx.try_recv() {
-                match rc {
-                    OckamCommand::Router(RouterCommand::Stop) => {
-                        println!("quit!");
-                        keep_going = false;
-                        break;
-                    }
-                    OckamCommand::Router(RouterCommand::Register(a_type, tx)) => {
-                        println!("Registering");
-                        self.registry[a_type as usize] = Option::Some(tx);
-                    }
-                    OckamCommand::Router(RouterCommand::ReceiveMessage(m)) => {
-                        if let Err(e) = self.route(m, MessageDirection::Receive) {
-                            println!("Router error: {}", e);
-                        }
-                    }
-                    OckamCommand::Router(RouterCommand::SendMessage(m)) => {
-                        println!("Routing");
-                        if let Err(e) = self.route(m, MessageDirection::Send) {
-                            println!("Router error: {}", e);
-                        }
-                    }
-                    _ => println!("Router received bad command"),
-                }
+    pub enum MessageDirection {
+        Send,
+        Receive,
+    }
+
+    impl Router {
+        pub fn new(rx: std::sync::mpsc::Receiver<OckamCommand>) -> Router {
+            Router {
+                registry: vec![Option::None; 256],
+                rx,
             }
         }
-        keep_going
-    }
 
-    fn route(&mut self, m: Message, direction: MessageDirection) -> Result<(), String> {
-        if m.onward_route.addresses.is_empty() {
-            return Err("no route supplied".to_string());
+        pub fn poll(&mut self) -> bool {
+            let mut keep_going = true;
+            let mut got = true;
+            while got {
+                got = false;
+                match self.rx.try_recv() {
+                    Ok(rc) => match rc {
+                        OckamCommand::Router(RouterCommand::Stop) => {
+                            println!("quit!");
+                            got = true;
+                            keep_going = false;
+                            break;
+                        }
+                        OckamCommand::Router(RouterCommand::Register(a_type, tx)) => {
+                            println!("Registering");
+                            got = true;
+                            self.registry[a_type as usize] = Option::Some(tx);
+                        }
+                        OckamCommand::Router(RouterCommand::ReceiveMessage(m)) => {
+                            got = true;
+                            self.route(m, MessageDirection::Receive);
+                        }
+                        OckamCommand::Router(RouterCommand::SendMessage(m)) => {
+                            got = true;
+                            self.route(m, MessageDirection::Send);
+                        }
+                        _ => println!("Router received bad command"),
+                    },
+                    Err(e) => {}
+                }
+            }
+            keep_going
         }
 
-        let destination_address = m.onward_route.addresses[0];
-        let address_type = destination_address.a_type;
-        let handler_tx = match &self.registry[address_type as usize] {
-            Some(a) => a,
-            None => return Err("no handler".to_string()),
-        };
-        match address_type {
-            AddressType::Channel => match direction {
-                MessageDirection::Receive => handler_tx
-                    .send(OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)))
-                    .map_err(|e| e.to_string()),
-                MessageDirection::Send => handler_tx
-                    .send(OckamCommand::Channel(ChannelCommand::SendMessage(m)))
-                    .map_err(|e| e.to_string()),
-            },
-            AddressType::Udp => handler_tx
-                .send(OckamCommand::Transport(TransportCommand::SendMessage(m)))
-                .map_err(|e| e.to_string()),
-            _ => Err("not implemented".to_string()),
+        fn route(&mut self, m: Message, direction: MessageDirection) -> Result<(), String> {
+            if m.onward_route.addresses.is_empty() {
+                return Err("no route supplied".to_string());
+            }
+
+            let destination_address = m.onward_route.addresses[0].clone();
+            let address_type = destination_address.a_type;
+            let handler_tx = match &self.registry[address_type as usize] {
+                Some(a) => a,
+                None => return Err("no handler".to_string()),
+            };
+            match address_type {
+                AddressType::Channel => match direction {
+                    MessageDirection::Receive => {
+                        handler_tx.send(OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)));
+                        Ok(())
+                    }
+                    MessageDirection::Send => {
+                        handler_tx.send(OckamCommand::Channel(ChannelCommand::SendMessage(m)));
+                        Ok(())
+                    }
+                },
+                AddressType::Worker => match direction {
+                    MessageDirection::Receive => {
+                        handler_tx.send(OckamCommand::Worker(WorkerCommand::ReceiveMessage(m)));
+                        Ok(())
+                    }
+                    MessageDirection::Send => {
+                        handler_tx.send(OckamCommand::Worker(WorkerCommand::SendMessage(m)));
+                        Ok(())
+                    }
+                },
+                AddressType::Udp => {
+                    handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
+                    Ok(())
+                }
+                _ => Err("not implemented".to_string()),
+            }
         }
     }
 }
@@ -150,8 +171,8 @@ impl Router {
 //         let udp_socket = UdpSocket::bind("127.0.0.1:4050").expect("couldn't bind to address");
 //         let udp_handler: Arc<Mutex<dyn MessageHandler + Send>> =
 //             Arc::new(Mutex::new(TestUdpHandler { socket: udp_socket }));
-//         let cmd: commands::RouterCommand = commands::RouterCommand::Register(udp_handler,
-// AddressType::Udp);         tx.send(cmd);
+//         let cmd: commands::RouterCommand = commands::RouterCommand::Register(udp_handler, AddressType::Udp);
+//         tx.send(cmd);
 //         let cmd: RouterCommand = RouterCommand::Route(msg);
 //         tx.send(cmd);
 //         let cmd: RouterCommand = RouterCommand::None;
@@ -242,13 +263,13 @@ impl Router {
 //             if !m.onward_route.addresses.is_empty() {
 //                 address = m.onward_route.addresses[0];
 //                 match address {
-//                     Address::LocalAddress(t, _l, _0) => {
+//                     Address::LocalAddress(t, _l, _unused) => {
 //                         address_type = t as u8;
 //                     }
-//                     Address::UdpAddress(t, _l, _0, _1) => {
+//                     Address::UdpAddress(t, _l, _unused, _1) => {
 //                         address_type = t as u8;
 //                     }
-//                     Address::TcpAddress(t, _l, _0, _1) => {
+//                     Address::TcpAddress(t, _l, _unused, _1) => {
 //                         address_type = t as u8;
 //                     }
 //                 }
