@@ -1,12 +1,10 @@
 defmodule Ockam do
   @moduledoc """
-  Ockam is a collection of protocols and toolkits for building connected
-  systems that you can trust.
+  Ockam is a collection tools for building connected systems
+  that you can trust.
   """
 
   use Application
-
-  require Logger
 
   # Called when the Ockam application is started.
   #
@@ -15,16 +13,12 @@ defmodule Ockam do
   #
   @doc false
   def start(_type, _args) do
-    Logger.info("Starting #{__MODULE__}")
-
     # Specifications of child processes that will be started and supervised.
     #
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
     children = [
-      Ockam.Router,
-      Ockam.Node,
-      Ockam.Topic
+      Ockam.Router
     ]
 
     # Start a supervisor with the given children. The supervisor will inturn
