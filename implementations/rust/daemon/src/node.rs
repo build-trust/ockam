@@ -6,9 +6,9 @@ use crate::cli;
 
 use ockam_common::commands::ockam_commands::*;
 // use ockam_kex::{xx::*, KeyExchanger};
-use ockam_message::{Address, Message as OckamMessage, Route, RouterAddress};
+use ockam_message::message::{Address, Message as OckamMessage, MessageType, Route, RouterAddress};
 // use ockam_router::Router;
-use ockam_transport::UdpTransport;
+use ockam_transport::transport::UdpTransport;
 use ockam_vault::Vault;
 
 pub struct Node<V>
@@ -23,7 +23,7 @@ impl<V> Node<V>
 where
     V: Vault,
 {
-    pub fn new(mut vault: V, config: Config) -> (Self, Sender<Vec<u8>>) {
+    pub fn new(mut vault: V, config: Config) -> Sender<Vec<u8>> {
         // create the input and output channel pairs
         let (tx_in, rx_in) = mpsc::channel();
 
@@ -41,43 +41,28 @@ where
             config: config.clone(),
         };
 
-        // create the transport, currently UDP-only, using the first configured onward route
+        // create the transport, currently UDP-only, using the first configured onward route and
+        // poll it for messages on another thread
         if !node.config.output_to_stdout {
-            let mut transport = UdpTransport::new(transport_rx, transport_tx, router_tx);
-
-            thread::spawn(move || {
-                while transport.poll() {
-                    thread::sleep(std::time::Duration::from_millis(100));
-                }
-            });
-
-            match node
-                .config
-                .onward_route
-                .clone()
-                .expect("no output configured to be used for onward route")
-                .addresses
-                .first()
-                .expect("onward route configured from output has no route addresses")
-                .address
-            {
-                Address::UdpAddress(addr) => {
-                    println!(
-                        "transport created using: {:?}, {:?}",
-                        node.config.local_host.to_string(),
-                        addr.to_string()
-                    );
-                    transport_tx_for_node
-                        .send(OckamCommand::Transport(TransportCommand::Add(
-                            node.config.local_host.to_string(),
-                            addr.to_string(),
-                        )))
-                        .expect("failed to add local / remote socket addresses to transport")
-                }
-                _ => panic!("found invalid UDP address, only UDP is supported"),
+            if let Ok(mut transport) = UdpTransport::new(
+                transport_rx,
+                transport_tx,
+                router_tx,
+                node.config.local_host.to_string().as_str(),
+            ) {
+                thread::spawn(move || {
+                    while transport.poll() {
+                        thread::sleep(std::time::Duration::from_millis(100));
+                    }
+                });
             }
         }
 
+        let remote_addr = node
+            .config
+            .onward_route
+            .expect("invalid address provided for output")
+            .clone();
         thread::spawn(move || {
             loop {
                 if let Ok(data) = rx_in.recv() {
@@ -85,11 +70,9 @@ where
                     let mut msg = OckamMessage::default();
                     msg.message_body = data;
                     msg.onward_route = Route {
-                        addresses: vec![RouterAddress::udp_router_address_from_str(
-                            "127.0.0.1:34254",
-                        )
-                        .unwrap()],
+                        addresses: remote_addr.addresses.clone(),
                     };
+                    msg.message_type = MessageType::Payload;
 
                     if !config.output_to_stdout {
                         // send it to the transport
@@ -118,7 +101,8 @@ where
                 }
             }
         });
-        (node, tx_in)
+
+        tx_in
     }
 
     pub fn use_transport(&self) -> bool {
@@ -147,7 +131,7 @@ impl From<cli::Args> for Config {
             onward_route: None,
             output_to_stdout: false,
             decrypt_output: false,
-            local_host: args.local_host(),
+            local_host: args.local_socket(),
             role: Role::Initiator,
         };
 

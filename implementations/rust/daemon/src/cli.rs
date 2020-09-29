@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use ockam_message::{LocalAddress, Route, RouterAddress};
+use ockam_message::message::{Route, RouterAddress};
 
 use structopt::{clap::ArgSettings::Hidden, StructOpt};
 use url::Url;
@@ -11,7 +11,7 @@ use url::Url;
 /// The port on which the config updater runs and accepts Config messages.
 pub const DEFAULT_CONFIG_PORT: u16 = 11199;
 
-const DEFAULT_LOCAL_HOST: &str = "127.0.0.1:11200";
+const DEFAULT_LOCAL_SOCKET: &str = "127.0.0.1:11200";
 
 /// Command-line arguments passed to `ockamd`.
 #[derive(StructOpt)]
@@ -38,10 +38,10 @@ pub struct Args {
 
     #[structopt(
         long,
-        default_value = DEFAULT_LOCAL_HOST,
+        default_value = DEFAULT_LOCAL_SOCKET,
         help = "Local node address and port to bind"
     )]
-    local_host: SocketAddr,
+    local_socket: SocketAddr,
 
     /// Determine if data written to `output` should be decrypted.
     #[structopt(long, help = "Optionally decrypt messages to output")]
@@ -133,7 +133,8 @@ impl Default for Args {
             control_port: DEFAULT_CONFIG_PORT,
             input: InputKind::Stdin,
             output: OutputKind::Stdout,
-            local_host: SocketAddr::from_str(DEFAULT_LOCAL_HOST).unwrap(),
+            local_socket: SocketAddr::from_str(DEFAULT_LOCAL_SOCKET)
+                .expect("bad default set for local socket"),
             decrypt_output: true,
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
@@ -181,8 +182,8 @@ impl Args {
         self.output.clone()
     }
 
-    pub fn local_host(&self) -> SocketAddr {
-        self.local_host
+    pub fn local_socket(&self) -> SocketAddr {
+        self.local_socket
     }
 
     pub fn decrypt_output(&self) -> bool {
@@ -290,20 +291,11 @@ impl FromStr for OutputKind {
                         route.addresses.push(router_addr);
                     }
                 }
-                Err(_e) => {
-                    // if it's not a known value like "stdin", take value as channel address
-                    // TODO: validate a channel responder address (by length, etc)
-                    match hex::decode(part) {
-                        Ok(v) => {
-                            let num = u32::from_le_bytes(v.as_slice().try_into().expect(&format!(
-                                "invalid slice decoded from channel address: {}",
-                                part
-                            )));
-                            if let Ok(chan_addr) =
-                                RouterAddress::channel_router_address_from_u32(num)
-                            {
-                                route.addresses.push(chan_addr);
-                            }
+                Err(_) => {
+                    // try to get a channel address if the URI is not able to be parsed
+                    match RouterAddress::channel_router_address_from_str(part) {
+                        Ok(chan_addr) => {
+                            route.addresses.push(chan_addr);
                         }
                         Err(e) => {
                             ret = Err(format!(
@@ -326,7 +318,7 @@ impl FromStr for OutputKind {
 
 #[test]
 fn test_cli_args_output() {
-    use ockam_message::AddressType;
+    use ockam_message::message::AddressType;
 
     if let Ok(output_kind) = OutputKind::from_str("udp://127.0.0.1:12345".into()) {
         match output_kind {

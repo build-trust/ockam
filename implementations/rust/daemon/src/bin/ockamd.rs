@@ -13,14 +13,16 @@ fn main() {
             let mut vault = FilesystemVault::default();
 
             // create the server using the input type and get encrypted message from server
-            let (_node, tx_input) = Node::new(vault, config);
+            let tx_input = Node::new(vault, config);
 
             // using stdin as example input
             let input = stdin();
             let mut buf = String::new();
             loop {
                 if let Ok(_n) = input.read_line(&mut buf) {
-                    tx_input.send(buf.as_bytes().to_vec()).unwrap();
+                    tx_input
+                        .send(buf.as_bytes().to_vec())
+                        .expect("failed to send input data to node");
                     buf.clear();
                 }
             }
