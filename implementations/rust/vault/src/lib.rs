@@ -37,6 +37,9 @@ use zeroize::Zeroize;
 /// Internal macros
 #[macro_use]
 mod macros;
+#[cfg(feature = "atecc608a")]
+/// C Vault implementations
+pub mod c;
 /// Represents the errors that occur within a vault
 pub mod error;
 #[cfg(feature = "ffi")]

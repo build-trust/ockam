@@ -1,0 +1,14 @@
+[package]
+name = "c_rust_memory"
+version = "0.9.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+# No features are active by default
+default = []
+
+[dependencies]
+libc = "0.2"
+c_bindings = { path = "../bindings" }

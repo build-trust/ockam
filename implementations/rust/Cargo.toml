@@ -9,4 +9,20 @@ members = [
     "router",
     "transport",
     "node",
+    "c/generate_bindings",
+    "c/bindings",
+    "c/rust_memory",
+]
+
+default-members = [
+    "channel",
+    "common",
+    "kex",
+    "message",
+    "vault",
+    "router",
+    "transport",
+    "node",
+    "c/bindings",
+    "c/rust_memory",
 ]

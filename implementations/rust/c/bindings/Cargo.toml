@@ -1,0 +1,15 @@
+[package]
+name = "c_bindings"
+version = "0.9.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+build = "build.rs"
+
+[lib]
+crate-type = ["staticlib", "rlib", "cdylib"]
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+cmake = "0.1"
