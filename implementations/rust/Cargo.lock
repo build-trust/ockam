@@ -647,10 +647,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "ockam-channel"
 version = "0.1.0"
 dependencies = [
- "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "ockam-common 0.1.0",
- "ockam-kex 0.1.0",
- "ockam-vault 0.1.0",
+ "failure",
+ "ockam-common",
+ "ockam-kex",
+ "ockam-message",
+ "ockam-vault",
+ "rand",
 ]
 
 [[package]]

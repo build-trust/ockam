@@ -1,7 +1,11 @@
 use failure::{Backtrace, Context, Fail};
+use ockam_common::commands::ockam_commands::{ChannelCommand, OckamCommand};
 use ockam_kex::error::*;
 use ockam_vault::error::*;
-use std::fmt;
+use std::{
+    fmt,
+    sync::mpsc::{SendError, TryRecvError},
+};
 
 /// Represents the failures that can occur in
 /// an Ockam Channel
@@ -19,6 +23,12 @@ pub enum ChannelErrorKind {
     /// An error occurred with the internal state of the channel
     #[fail(display = "An error occurred with the internal state of the channel")]
     State,
+    /// Couldn't send the message
+    #[fail(display = "Unable to send the message")]
+    CantSend,
+    /// Couldn't receive message
+    #[fail(display = "Couldn't receive message")]
+    RecvError,
 }
 
 impl ChannelErrorKind {
@@ -30,6 +40,8 @@ impl ChannelErrorKind {
             ChannelErrorKind::NotImplemented => Self::ERROR_INTERFACE_CHANNEL | 2,
             ChannelErrorKind::KeyAgreement(_) => Self::ERROR_INTERFACE_CHANNEL | 3,
             ChannelErrorKind::State => Self::ERROR_INTERFACE_CHANNEL | 4,
+            ChannelErrorKind::CantSend => Self::ERROR_INTERFACE_CHANNEL | 5,
+            ChannelErrorKind::RecvError => Self::ERROR_INTERFACE_CHANNEL | 6,
         }
     }
 }
@@ -91,6 +103,24 @@ impl From<KexExchangeFailError> for ChannelError {
 impl From<std::io::Error> for ChannelError {
     fn from(_: std::io::Error) -> Self {
         ChannelErrorKind::State.into()
+    }
+}
+
+impl From<SendError<ChannelCommand>> for ChannelError {
+    fn from(_: SendError<ChannelCommand>) -> Self {
+        ChannelErrorKind::CantSend.into()
+    }
+}
+
+impl From<SendError<OckamCommand>> for ChannelError {
+    fn from(_: SendError<OckamCommand>) -> Self {
+        ChannelErrorKind::CantSend.into()
+    }
+}
+
+impl From<TryRecvError> for ChannelError {
+    fn from(_: TryRecvError) -> Self {
+        ChannelErrorKind::RecvError.into()
     }
 }
 

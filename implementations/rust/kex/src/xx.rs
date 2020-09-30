@@ -3,27 +3,38 @@ use super::{
     AES256_KEYSIZE, SHA256_SIZE,
 };
 use crate::error::KexExchangeFailError;
+use crate::NewKeyExchanger;
 use ockam_vault::{
     error::{VaultFailError, VaultFailErrorKind},
     types::{
         PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext, SecretKeyType,
         SecretPersistenceType, SecretPurposeType,
     },
-    Vault,
+    DynVault,
 };
+use std::sync::{Arc, Mutex};
 
 /// Represents the XX Handshake
-#[derive(Debug)]
-struct SymmetricState<'a, V: Vault> {
+struct SymmetricState {
     handshake: HandshakeStateData,
     key: Option<SecretKeyContext>,
     nonce: u16,
     state: SymmetricStateData,
-    vault: &'a mut V,
+    vault: Arc<Mutex<dyn DynVault + Send>>,
 }
 
-impl<'a, V: Vault> SymmetricState<'a, V> {
-    pub fn new(vault: &'a mut V) -> Self {
+impl std::fmt::Debug for SymmetricState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "SymmetricState {{ handshake: {:?}, key: {:?}, nonce: {:?}, state: {:?}, vault }}",
+            self.handshake, self.key, self.nonce, self.state
+        )
+    }
+}
+
+impl SymmetricState {
+    pub fn new(vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
         Self {
             handshake: HandshakeStateData {
                 ephemeral_public_key: PublicKey::Curve25519([0u8; 32]),
@@ -44,7 +55,7 @@ impl<'a, V: Vault> SymmetricState<'a, V> {
     }
 }
 
-impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
+impl KeyExchange for SymmetricState {
     const CSUITE: &'static [u8] = b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
 
     /// Create a new `HandshakeState` starting with the prologue
@@ -55,13 +66,14 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
             persistence: SecretPersistenceType::Persistent,
         };
         // 1. Generate a static 25519 keypair for this handshake and set it to `s`
-        let static_secret_handle = self.vault.secret_generate(attributes)?;
-        let static_public_key = self.vault.secret_public_key_get(static_secret_handle)?;
+        let mut vault = self.vault.lock().unwrap();
+        let static_secret_handle = vault.secret_generate(attributes)?;
+        let static_public_key = vault.secret_public_key_get(static_secret_handle)?;
 
         attributes.persistence = SecretPersistenceType::Ephemeral;
         // 2. Generate an ephemeral 25519 keypair for this handshake and set it to e
-        let ephemeral_secret_handle = self.vault.secret_generate(attributes)?;
-        let ephemeral_public_key = self.vault.secret_public_key_get(ephemeral_secret_handle)?;
+        let ephemeral_secret_handle = vault.secret_generate(attributes)?;
+        let ephemeral_public_key = vault.secret_public_key_get(ephemeral_secret_handle)?;
 
         // 3. Set k to empty, Set n to 0
         // let nonce = 0;
@@ -73,7 +85,7 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
         let mut h = [0u8; SHA256_SIZE];
         h[..Self::CSUITE.len()].copy_from_slice(Self::CSUITE);
         let ck = h;
-        let h = self.vault.sha256(h)?;
+        let h = vault.sha256(&h)?;
 
         self.handshake = HandshakeStateData {
             static_public_key,
@@ -95,7 +107,8 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
         secret_handle: SecretKeyContext,
         public_key: PublicKey,
     ) -> Result<Vec<u8>, VaultFailError> {
-        self.vault.ec_diffie_hellman_hkdf_sha256(
+        let mut vault = self.vault.lock().unwrap();
+        vault.ec_diffie_hellman_hkdf_sha256(
             secret_handle,
             public_key,
             self.state.ck.as_ref(),
@@ -113,10 +126,11 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
             purpose: SecretPurposeType::KeyAgreement,
         };
         let key = SecretKey::Aes256(*array_ref![hash, SHA256_SIZE, AES256_KEYSIZE]);
+        let mut vault = self.vault.lock().unwrap();
         if self.key.is_some() {
-            self.vault.secret_destroy(*self.key.as_ref().unwrap())?;
+            vault.secret_destroy(*self.key.as_ref().unwrap())?;
         }
-        self.key = Some(self.vault.secret_import(&key, attributes)?);
+        self.key = Some(vault.secret_import(&key, attributes)?);
         self.nonce = 0;
         Ok(())
     }
@@ -125,7 +139,8 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
     fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError> {
         let mut input = self.state.h.to_vec();
         input.extend_from_slice(data.as_ref());
-        self.state.h = self.vault.sha256(&input)?;
+        let vault = self.vault.lock().unwrap();
+        self.state.h = vault.sha256(&input)?;
         Ok(())
     }
 
@@ -136,12 +151,15 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
     ) -> Result<Vec<u8>, VaultFailError> {
         let mut nonce = [0u8; 12];
         nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
-        let ciphertext_and_tag = self.vault.aead_aes_gcm_encrypt(
-            self.key.ok_or(VaultFailErrorKind::AeadAesGcmEncrypt)?,
-            plaintext,
-            nonce.as_ref(),
-            &self.state.h,
-        )?;
+        let ciphertext_and_tag = {
+            let mut vault = self.vault.lock().unwrap();
+            vault.aead_aes_gcm_encrypt(
+                self.key.ok_or(VaultFailErrorKind::AeadAesGcmEncrypt)?,
+                plaintext.as_ref(),
+                nonce.as_ref(),
+                &self.state.h,
+            )?
+        };
         self.mix_hash(&ciphertext_and_tag)?;
         self.nonce += 1;
         Ok(ciphertext_and_tag)
@@ -155,12 +173,15 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
         let mut nonce = [0u8; 12];
         nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
         let ciphertext = ciphertext.as_ref();
-        let plaintext = self.vault.aead_aes_gcm_decrypt(
-            self.key.ok_or(VaultFailErrorKind::AeadAesGcmDecrypt)?,
-            ciphertext,
-            nonce.as_ref(),
-            &self.state.h,
-        )?;
+        let plaintext = {
+            let mut vault = self.vault.lock().unwrap();
+            vault.aead_aes_gcm_decrypt(
+                self.key.ok_or(VaultFailErrorKind::AeadAesGcmDecrypt)?,
+                ciphertext,
+                nonce.as_ref(),
+                &self.state.h,
+            )?
+        };
         self.mix_hash(ciphertext)?;
         self.nonce += 1;
         Ok(plaintext)
@@ -168,8 +189,8 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
 
     /// Split step in Noise protocol
     fn split(&mut self) -> Result<Vec<u8>, VaultFailError> {
-        self.vault
-            .hkdf_sha256(self.state.ck.as_ref(), &[], AES256_KEYSIZE + AES256_KEYSIZE)
+        let mut vault = self.vault.lock().unwrap();
+        vault.hkdf_sha256(self.state.ck.as_ref(), &[], AES256_KEYSIZE + AES256_KEYSIZE)
     }
 
     /// Set this state up to send and receive messages
@@ -193,8 +214,9 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
             purpose: SecretPurposeType::KeyAgreement,
             persistence: SecretPersistenceType::Ephemeral,
         };
-        let decrypt_key = self.vault.secret_import(&decrypt, attributes)?;
-        let encrypt_key = self.vault.secret_import(&encrypt, attributes)?;
+        let mut vault = self.vault.lock().unwrap();
+        let decrypt_key = vault.secret_import(&decrypt, attributes)?;
+        let encrypt_key = vault.secret_import(&encrypt, attributes)?;
         Ok(CompletedKeyExchange {
             h: self.state.h,
             encrypt_key,
@@ -207,9 +229,9 @@ impl<'a, V: Vault> KeyExchange for SymmetricState<'a, V> {
 
 /// Provides methods for handling the initiator role
 #[derive(Debug)]
-struct Initiator<'a, V: Vault>(SymmetricState<'a, V>);
+struct Initiator(SymmetricState);
 
-impl<'a, V: Vault> Initiator<'a, V> {
+impl Initiator {
     /// Encode the first message to be sent
     pub fn encode_message_1<B: AsRef<[u8]>>(
         &mut self,
@@ -284,9 +306,9 @@ impl<'a, V: Vault> Initiator<'a, V> {
 
 /// Provides methods for handling the responder role
 #[derive(Debug)]
-struct Responder<'a, V: Vault>(SymmetricState<'a, V>);
+struct Responder(SymmetricState);
 
-impl<'a, V: Vault> Responder<'a, V> {
+impl Responder {
     /// Decode the first message sent
     pub fn decode_message_1<B: AsRef<[u8]>>(
         &mut self,
@@ -394,23 +416,47 @@ enum ResponderState {
 
 /// Represents an XX initiator
 #[derive(Debug)]
-pub struct XXInitiator<'a, V: Vault> {
+pub struct XXInitiator {
     state: InitiatorState,
-    initiator: Initiator<'a, V>,
+    initiator: Initiator,
 }
 
-impl<'a, V: Vault> XXInitiator<'a, V> {
+impl NewKeyExchanger<Self, XXResponder> for XXInitiator {
     /// Create a new initiator using the provided backing vault
-    pub fn new(vault: &'a mut V) -> Self {
+    fn initiator(vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
         let ss = SymmetricState::new(vault);
         Self {
             state: InitiatorState::EncodeMessage1,
             initiator: Initiator(ss),
         }
     }
+    fn responder(vault: Arc<Mutex<dyn DynVault + Send>>) -> XXResponder {
+        XXResponder::responder(vault)
+    }
 }
 
-impl<'a, V: Vault> KeyExchanger for XXInitiator<'a, V> {
+/// Represents an XX responder
+#[derive(Debug)]
+pub struct XXResponder {
+    state: ResponderState,
+    responder: Responder,
+}
+
+impl NewKeyExchanger<XXInitiator, Self> for XXResponder {
+    fn initiator(vault: Arc<Mutex<dyn DynVault + Send>>) -> XXInitiator {
+        XXInitiator::initiator(vault)
+    }
+    /// Create a new responder using the provided backing vault
+    fn responder(vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
+        let ss = SymmetricState::new(vault);
+        Self {
+            state: ResponderState::DecodeMessage1,
+            responder: Responder(ss),
+        }
+    }
+}
+
+impl KeyExchanger for XXInitiator {
     fn process<B: AsRef<[u8]>>(&mut self, data: B) -> Result<Vec<u8>, KexExchangeFailError> {
         match self.state {
             InitiatorState::EncodeMessage1 => {
@@ -444,25 +490,7 @@ impl<'a, V: Vault> KeyExchanger for XXInitiator<'a, V> {
     }
 }
 
-/// Represents an XX responder
-#[derive(Debug)]
-pub struct XXResponder<'a, V: Vault> {
-    state: ResponderState,
-    responder: Responder<'a, V>,
-}
-
-impl<'a, V: Vault> XXResponder<'a, V> {
-    /// Create a new responder using the provided backing vault
-    pub fn new(vault: &'a mut V) -> Self {
-        let ss = SymmetricState::new(vault);
-        Self {
-            state: ResponderState::DecodeMessage1,
-            responder: Responder(ss),
-        }
-    }
-}
-
-impl<'a, V: Vault> KeyExchanger for XXResponder<'a, V> {
+impl KeyExchanger for XXResponder {
     fn process<B: AsRef<[u8]>>(&mut self, data: B) -> Result<Vec<u8>, KexExchangeFailError> {
         match self.state {
             ResponderState::DecodeMessage1 => {
@@ -507,8 +535,8 @@ mod tests {
             93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79, 126,
             100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
         ];
-        let mut vault = DefaultVault::default();
-        let mut state = SymmetricState::new(&mut vault);
+        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+        let mut state = SymmetricState::new(vault.clone());
         let res = state.prologue();
         assert!(res.is_ok());
         assert_eq!(state.state.h, exp_h);
@@ -592,11 +620,11 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let mut vault_init = DefaultVault::default();
-        let mut vault_resp = DefaultVault::default();
+        let vault_init = Arc::new(Mutex::new(DefaultVault::default()));
+        let vault_resp = Arc::new(Mutex::new(DefaultVault::default()));
 
-        let ss_init = mock_prologue(&mut vault_init, INIT_STATIC, INIT_EPH);
-        let ss_resp = mock_prologue(&mut vault_resp, RESP_STATIC, RESP_EPH);
+        let ss_init = mock_prologue(vault_init.clone(), INIT_STATIC, INIT_EPH);
+        let ss_resp = mock_prologue(vault_resp.clone(), RESP_STATIC, RESP_EPH);
         let mut initiator = XXInitiator {
             state: InitiatorState::EncodeMessage1,
             initiator: Initiator(ss_init),
@@ -639,21 +667,23 @@ mod tests {
         assert!(res.is_ok());
         let bob = res.unwrap();
         assert_eq!(alice.h, bob.h);
+        let mut vault_in = vault_init.lock().unwrap();
         let res =
-            vault_init.aead_aes_gcm_encrypt(alice.encrypt_key, b"hello bob", &[0u8; 12], alice.h);
+            vault_in.aead_aes_gcm_encrypt(alice.encrypt_key, b"hello bob", &[0u8; 12], &alice.h);
         assert!(res.is_ok());
         let ciphertext = res.unwrap();
-        let res = vault_resp.aead_aes_gcm_decrypt(bob.decrypt_key, &ciphertext, &[0u8; 12], bob.h);
+        let mut vault_re = vault_resp.lock().unwrap();
+        let res = vault_re.aead_aes_gcm_decrypt(bob.decrypt_key, &ciphertext, &[0u8; 12], &bob.h);
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, b"hello bob");
 
         let res =
-            vault_resp.aead_aes_gcm_encrypt(bob.encrypt_key, b"hello alice", &[1u8; 12], bob.h);
+            vault_re.aead_aes_gcm_encrypt(bob.encrypt_key, b"hello alice", &[1u8; 12], &bob.h);
         assert!(res.is_ok());
         let ciphertext = res.unwrap();
         let res =
-            vault_init.aead_aes_gcm_decrypt(alice.decrypt_key, &ciphertext, &[1u8; 12], alice.h);
+            vault_in.aead_aes_gcm_decrypt(alice.decrypt_key, &ciphertext, &[1u8; 12], &alice.h);
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, b"hello alice");
@@ -671,11 +701,11 @@ mod tests {
         msg_3_payload: &str,
         msg_3_ciphertext: &str,
     ) {
-        let mut vault_init = DefaultVault::default();
-        let mut vault_resp = DefaultVault::default();
+        let vault_init = Arc::new(Mutex::new(DefaultVault::default()));
+        let vault_resp = Arc::new(Mutex::new(DefaultVault::default()));
 
-        let ss_init = mock_prologue(&mut vault_init, init_static, init_eph);
-        let ss_resp = mock_prologue(&mut vault_resp, resp_static, resp_eph);
+        let ss_init = mock_prologue(vault_init.clone(), init_static, init_eph);
+        let ss_resp = mock_prologue(vault_resp.clone(), resp_static, resp_eph);
         let mut initiator = Initiator(ss_init);
         let mut responder = Responder(ss_resp);
 
@@ -708,11 +738,11 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn mock_prologue<'a>(
-        vault: &'a mut DefaultVault,
+    fn mock_prologue(
+        vault_mutex: Arc<Mutex<DefaultVault>>,
         static_private: &str,
         ephemeral_private: &str,
-    ) -> SymmetricState<'a, DefaultVault> {
+    ) -> SymmetricState {
         let attributes = SecretKeyAttributes {
             xtype: SecretKeyType::Curve25519,
             purpose: SecretPurposeType::KeyAgreement,
@@ -721,6 +751,7 @@ mod tests {
         // Static x25519 for this handshake, `s`
         let bytes = hex::decode(static_private).unwrap();
         let key = SecretKey::Curve25519(*array_ref![bytes, 0, 32]);
+        let mut vault = vault_mutex.lock().unwrap();
         let static_secret_handle = vault.secret_import(&key, attributes).unwrap();
         let static_public_key = vault.secret_public_key_get(static_secret_handle).unwrap();
 
@@ -755,7 +786,7 @@ mod tests {
             key: None,
             nonce,
             state: SymmetricStateData { h, ck },
-            vault,
+            vault: vault_mutex.clone(),
         }
     }
 }

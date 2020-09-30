@@ -21,8 +21,10 @@ use error::*;
 use ockam_vault::{
     error::VaultFailError,
     types::{PublicKey, SecretKeyContext},
-    Vault,
+    DynVault,
 };
+
+use std::sync::{Arc, Mutex};
 
 /// The maximum bytes that will be transmitted in a single message
 pub const MAX_XX_TRANSMIT_SIZE: usize = 16384;
@@ -47,17 +49,6 @@ impl Default for SymmetricStateData {
             ck: [0u8; SHA256_SIZE],
         }
     }
-}
-
-/// A completed handshake transport
-#[derive(Debug)]
-pub struct TransportState<'a, V: Vault> {
-    h: [u8; SHA256_SIZE],
-    encrypt_key: SecretKeyContext,
-    encrypt_nonce: u16,
-    decrypt_key: SecretKeyContext,
-    decrypt_nonce: u16,
-    vault: &'a mut V,
 }
 
 /// The state of the handshake for a Noise session
@@ -119,19 +110,27 @@ pub trait KeyExchanger {
     fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError>;
 }
 
+/// Instantiate a stateful key exchange vault instance
+pub trait NewKeyExchanger<E: KeyExchanger = Self, F: KeyExchanger = Self> {
+    /// Create a new Key Exchanger with the initiator role
+    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> E;
+    /// Create a new Key Exchanger with the responder role
+    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> F;
+}
+
 /// A Completed Key Exchange elements
 #[derive(Copy, Clone, Debug)]
 pub struct CompletedKeyExchange {
     /// The state hash
-    h: [u8; 32],
+    pub h: [u8; 32],
     /// The derived encryption key handle
-    encrypt_key: SecretKeyContext,
+    pub encrypt_key: SecretKeyContext,
     /// The derived decryption key handle
-    decrypt_key: SecretKeyContext,
+    pub decrypt_key: SecretKeyContext,
     /// The long term static key handle
-    local_static_secret: SecretKeyContext,
+    pub local_static_secret: SecretKeyContext,
     /// The long term static public key from remote party
-    remote_static_public_key: PublicKey,
+    pub remote_static_public_key: PublicKey,
 }
 
 /// Errors thrown by Key exchange

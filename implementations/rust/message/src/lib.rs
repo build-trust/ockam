@@ -26,8 +26,8 @@ pub mod message {
         fn decode(s: &[u8]) -> Result<(Self::Inner, &[u8]), String>;
     }
 
-    // #[derive(Debug)]
     #[repr(C)]
+    #[derive(Debug)]
     pub struct Message {
         pub onward_route: Route,
         pub return_route: Route,
@@ -36,6 +36,7 @@ pub mod message {
     }
 
     #[repr(u8)]
+    #[derive(Copy, Clone, Debug)]
     pub enum MessageType {
         Ping = 0,
         Pong = 1,
@@ -453,6 +454,7 @@ pub mod message {
 
     /* Routes */
     #[repr(C)]
+    #[derive(Debug)]
     pub struct Route {
         pub addresses: Vec<RouterAddress>,
     }

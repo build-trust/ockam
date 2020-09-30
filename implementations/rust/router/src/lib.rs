@@ -171,8 +171,8 @@ pub mod router {
 //         let udp_socket = UdpSocket::bind("127.0.0.1:4050").expect("couldn't bind to address");
 //         let udp_handler: Arc<Mutex<dyn MessageHandler + Send>> =
 //             Arc::new(Mutex::new(TestUdpHandler { socket: udp_socket }));
-//         let cmd: commands::RouterCommand = commands::RouterCommand::Register(udp_handler, AddressType::Udp);
-//         tx.send(cmd);
+//         let cmd: commands::RouterCommand = commands::RouterCommand::Register(udp_handler,
+// AddressType::Udp);         tx.send(cmd);
 //         let cmd: RouterCommand = RouterCommand::Route(msg);
 //         tx.send(cmd);
 //         let cmd: RouterCommand = RouterCommand::None;

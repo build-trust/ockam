@@ -15,6 +15,11 @@ use zeroize::Zeroize;
 /// add values to the vault there may be collisions
 /// This is mostly for testing purposes anyway
 /// and shouldn't be used for production
+///
+/// ```
+/// use ockam_vault::software::DefaultVault;
+/// let vault = DefaultVault::default();
+/// ```
 #[derive(Debug)]
 pub struct DefaultVault {
     entries: BTreeMap<usize, VaultEntry>,
