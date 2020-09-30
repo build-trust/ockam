@@ -749,6 +749,7 @@ dependencies = [
  "ockam-vault 0.1.0",
  "structopt 0.3.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zeroize 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

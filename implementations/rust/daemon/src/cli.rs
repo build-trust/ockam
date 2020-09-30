@@ -189,6 +189,10 @@ impl Args {
     pub fn decrypt_output(&self) -> bool {
         self.decrypt_output
     }
+
+    pub fn vault_path(&self) -> PathBuf {
+        self.vault_path.clone()
+    }
 }
 
 /// Specifies the implementation of a Ockam vault to be used.
@@ -208,7 +212,7 @@ impl FromStr for VaultKind {
 }
 
 /// Specifies which end of the secure channel the instance of `ockamd` is prepared to run in.
-#[derive(Clone, Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt, PartialEq)]
 pub enum ChannelRole {
     /// The Initiator role expects a channel responder address and a public key to use in order to
     /// communicate with the Responder end of the channel.

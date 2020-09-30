@@ -1,16 +1,24 @@
 use std::io::stdin;
 
-use ockam_vault::software::DefaultVault as FilesystemVault;
-
-use ockamd::{cli, node::Node};
+use ockamd::{
+    cli::{
+        Args,
+        ChannelRole::{Initiator, Responder},
+        Mode::{Control, Server},
+    },
+    node::{Config, Node},
+    vault::FilesystemVault,
+};
 
 fn main() {
-    let args = cli::Args::parse();
+    let args = Args::parse();
 
     match args.exec_mode() {
-        cli::Mode::Server => {
-            let config = args.into();
-            let mut vault = FilesystemVault::default();
+        Server if args.role() == Initiator => {
+            let config: Config = args.into();
+            // instantiate a vault (TODO: replace with filesystem vault when ready)
+            let vault =
+                FilesystemVault::new(config.vault_path()).expect("failed to initialize vault");
 
             // create the server using the input type and get encrypted message from server
             let tx_input = Node::new(vault, config);
@@ -27,6 +35,8 @@ fn main() {
                 }
             }
         }
-        cli::Mode::Control => unimplemented!(),
+        Server if args.role() == Responder => unimplemented!(),
+        Server => eprintln!("server mode must be executed with a role"),
+        Control => unimplemented!(),
     }
 }

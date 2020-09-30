@@ -1,29 +1,35 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
 use std::thread;
 
 use crate::cli;
 
 use ockam_common::commands::ockam_commands::*;
-// use ockam_kex::{xx::*, KeyExchanger};
-use ockam_message::message::{Address, Message as OckamMessage, MessageType, Route, RouterAddress};
-// use ockam_router::Router;
+use ockam_message::message::{Message as OckamMessage, MessageType, Route};
+use ockam_router::router::Router;
 use ockam_transport::transport::UdpTransport;
-use ockam_vault::Vault;
+use ockam_vault::{types::*, Vault};
 
-pub struct Node<V>
-where
-    V: Vault,
-{
-    vault: V,
-    config: Config,
-}
+pub struct Node;
 
-impl<V> Node<V>
-where
-    V: Vault,
-{
-    pub fn new(mut vault: V, config: Config) -> Sender<Vec<u8>> {
+impl Node {
+    pub fn new<V: Vault>(mut vault: V, config: Config) -> Sender<Vec<u8>> {
+        // TODO: determine best way to check for existing vault key, and if `1` is always
+        // the identity for ockamd to use from a persisted filesystem vault.
+
+        // let key = vault.secret_export(SecretKeyContext::Memory(1)).unwrap();
+        // println!("key 1: {:?}", key);
+
+        let kex_attrs = SecretKeyAttributes {
+            xtype: SecretKeyType::P256,
+            persistence: SecretPersistenceType::Persistent,
+            purpose: SecretPurposeType::KeyAgreement,
+        };
+        let _kex_secret_ctx = vault
+            .secret_generate(kex_attrs)
+            .expect("failed to create secret for key agreement");
+
         // create the input and output channel pairs
         let (tx_in, rx_in) = mpsc::channel();
 
@@ -34,32 +40,27 @@ where
         // let router_tx_for_channel = router_tx.clone();
 
         let transport_tx_for_node = transport_tx.clone();
-        // let mut router = Router::new(router_rx);
-
-        let node = Self {
-            vault,
-            config: config.clone(),
-        };
+        let mut router = Router::new(router_rx);
 
         // create the transport, currently UDP-only, using the first configured onward route and
         // poll it for messages on another thread
-        if !node.config.output_to_stdout {
+        if config.output_to_stdout {
             if let Ok(mut transport) = UdpTransport::new(
                 transport_rx,
                 transport_tx,
                 router_tx,
-                node.config.local_host.to_string().as_str(),
+                config.local_host.to_string().as_str(),
             ) {
                 thread::spawn(move || {
-                    while transport.poll() {
+                    while transport.poll() && router.poll() {
                         thread::sleep(std::time::Duration::from_millis(100));
                     }
                 });
             }
         }
 
-        let remote_addr = node
-            .config
+        let route_config = config.clone();
+        let remote_addr = route_config
             .onward_route
             .expect("invalid address provided for output")
             .clone();
@@ -79,7 +80,7 @@ where
                         if let Err(e) = transport_tx_for_node
                             .send(OckamCommand::Transport(TransportCommand::SendMessage(msg)))
                         {
-                            println!("error sending to socket: {:?}", e);
+                            eprintln!("error sending to socket: {:?}", e);
                         }
                     } else {
                         // send it to stdout
@@ -104,10 +105,6 @@ where
 
         tx_in
     }
-
-    pub fn use_transport(&self) -> bool {
-        !self.config.output_to_stdout
-    }
 }
 
 #[derive(Clone)]
@@ -123,6 +120,13 @@ pub struct Config {
     decrypt_output: bool,
     local_host: SocketAddr,
     role: Role,
+    vault_path: PathBuf,
+}
+
+impl Config {
+    pub fn vault_path(&self) -> PathBuf {
+        self.vault_path.clone()
+    }
 }
 
 impl From<cli::Args> for Config {
@@ -133,6 +137,7 @@ impl From<cli::Args> for Config {
             decrypt_output: false,
             local_host: args.local_socket(),
             role: Role::Initiator,
+            vault_path: args.vault_path(),
         };
 
         match args.output_kind() {
