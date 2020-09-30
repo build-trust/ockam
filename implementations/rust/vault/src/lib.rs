@@ -75,7 +75,7 @@ pub trait Vault: Zeroize {
     ) -> Result<SecretKeyContext, VaultFailError>;
     /// Export a secret key from the vault
     fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
-    /// Set the attributes for a secret key
+    /// Get the attributes for a secret key
     fn secret_attributes_get(
         &mut self,
         context: SecretKeyContext,
@@ -152,7 +152,7 @@ pub trait DynVault {
     ) -> Result<SecretKeyContext, VaultFailError>;
     /// Export a secret key from the vault
     fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
-    /// Set the attributes for a secret key
+    /// Get the attributes for a secret key
     fn secret_attributes_get(
         &mut self,
         context: SecretKeyContext,
