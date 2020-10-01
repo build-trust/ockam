@@ -99,6 +99,9 @@ impl Node {
                             );
                         }
                     }
+                } else {
+                    eprintln!("fatal error: failed to read from input");
+                    std::process::exit(1);
                 }
             }
         });

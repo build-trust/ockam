@@ -1,8 +1,12 @@
+use std::convert::TryFrom;
+use std::fs;
 use std::path::PathBuf;
 
 use ockam_vault::{error::*, software::DefaultVault, types::*, Vault};
 
 use zeroize::Zeroize;
+
+const ATTRS_BYTE_LENGTH: usize = 6;
 
 pub struct FilesystemVault {
     v: DefaultVault,
@@ -12,40 +16,54 @@ pub struct FilesystemVault {
 impl FilesystemVault {
     pub fn new(path: PathBuf) -> std::io::Result<Self> {
         let create_path = path.clone();
-        std::fs::create_dir_all(create_path)?;
+        fs::create_dir_all(create_path)?;
 
         let mut vault = DefaultVault::default();
-        let to_secret = |path: PathBuf,
-                         data: &[u8]|
-         -> Result<(SecretKey, SecretKeyAttributes), VaultFailError> {
-            let attrs = SecretKeyAttributes {
-                xtype: SecretKeyType::Buffer(data.len()),
-                persistence: SecretPersistenceType::Persistent,
-                purpose: SecretPurposeType::KeyAgreement,
-            };
-            let mut bytes = attrs.to_bytes().to_vec();
-            bytes.extend_from_slice(data);
+        let to_secret = |data: &[u8]| -> Result<(SecretKey, SecretKeyAttributes), VaultFailError> {
+            if data.len() < ATTRS_BYTE_LENGTH {
+                return Err(VaultFailErrorKind::InvalidSecret.into());
+            }
 
-            Ok((SecretKey::new(bytes, attrs.xtype), attrs))
+            let mut attrs = [0u8; ATTRS_BYTE_LENGTH];
+            attrs.copy_from_slice(&data[0..ATTRS_BYTE_LENGTH]);
+            let attributes = SecretKeyAttributes::try_from(attrs)?;
+
+            Ok((
+                SecretKey::new(&data[ATTRS_BYTE_LENGTH..], attributes.xtype),
+                attributes,
+            ))
         };
-
-        let secret_path = path.clone();
         let fs_path = path.clone();
 
-        path.clone().read_dir()?.for_each(|entry| {
-            if let Ok(entry) = entry {
-                match std::fs::read(entry.path()) {
-                    Ok(data) => {
-                        let (secret, attrs) =
-                            &to_secret(secret_path.clone(), data.as_slice()).unwrap();
-                        if let Err(e) = vault.secret_import(secret, *attrs) {
-                            eprintln!("{}", e);
-                        }
+        path.clone()
+            .read_dir()?
+            .filter(|r| {
+                // ignore directories within vault path
+                if let Ok(e) = r {
+                    match fs::metadata(e.path()) {
+                        Ok(md) => md.is_file(),
+                        Err(_) => false,
                     }
-                    Err(e) => eprintln!("{}", e),
+                } else {
+                    false
                 }
-            }
-        });
+            })
+            .for_each(|entry| {
+                if let Ok(entry) = entry {
+                    match fs::read(entry.path()) {
+                        Ok(data) => {
+                            let (secret, attrs) = &to_secret(data.as_slice()).expect(&format!(
+                                "failed to get secret {:?} from file",
+                                entry.file_name()
+                            ));
+                            if let Err(e) = vault.secret_import(secret, *attrs) {
+                                eprintln!("{}", e);
+                            }
+                        }
+                        Err(e) => eprintln!("{}", e),
+                    }
+                }
+            });
 
         Ok(Self {
             v: vault,
@@ -56,6 +74,23 @@ impl FilesystemVault {
 
 fn id_to_path(id: usize) -> PathBuf {
     id.to_string().into()
+}
+
+fn fs_write_secret(
+    path: PathBuf,
+    ctx: SecretKeyContext,
+    key: SecretKey,
+    attrs: SecretKeyAttributes,
+) -> Result<(), VaultFailError> {
+    match ctx {
+        SecretKeyContext::Memory(id) => {
+            let mut bytes = attrs.to_bytes().to_vec();
+            bytes.extend_from_slice(key.as_ref());
+
+            Ok(fs::write(path.join(id_to_path(id)), bytes)?)
+        }
+        _ => Err(VaultFailErrorKind::InvalidContext.into()),
+    }
 }
 
 impl Vault for FilesystemVault {
@@ -77,12 +112,7 @@ impl Vault for FilesystemVault {
         // write the secret to disk using the context id
         let ctx = self.v.secret_generate(attributes)?;
         let secret = self.v.secret_export(ctx)?;
-        match ctx {
-            SecretKeyContext::Memory(id) => {
-                std::fs::write(self.path.join(id_to_path(id)), secret)?;
-            }
-            _ => {}
-        }
+        fs_write_secret(self.path.clone(), ctx, secret, attributes)?;
 
         Ok(ctx)
     }
@@ -95,12 +125,7 @@ impl Vault for FilesystemVault {
     ) -> Result<SecretKeyContext, VaultFailError> {
         // write the secret to disk using the context id
         let ctx = self.v.secret_import(secret, attributes)?;
-        match ctx {
-            SecretKeyContext::Memory(id) => {
-                std::fs::write(self.path.join(id_to_path(id)), secret)?;
-            }
-            _ => {}
-        }
+        fs_write_secret(self.path.clone(), ctx, secret.clone(), attributes)?;
 
         Ok(ctx)
     }
@@ -131,7 +156,7 @@ impl Vault for FilesystemVault {
         self.v.secret_destroy(context)?;
         match context {
             SecretKeyContext::Memory(id) => {
-                std::fs::remove_file(self.path.join(id_to_path(id)))
+                fs::remove_file(self.path.join(id_to_path(id)))
                     .map_err(|_| VaultFailErrorKind::IOError)?;
             }
             _ => {}

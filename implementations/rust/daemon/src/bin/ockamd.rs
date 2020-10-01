@@ -16,7 +16,6 @@ fn main() {
     match args.exec_mode() {
         Server if args.role() == Initiator => {
             let config: Config = args.into();
-            // instantiate a vault (TODO: replace with filesystem vault when ready)
             let vault =
                 FilesystemVault::new(config.vault_path()).expect("failed to initialize vault");
 
