@@ -107,7 +107,7 @@ impl Node {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Role {
     Initiator,
     Responder,

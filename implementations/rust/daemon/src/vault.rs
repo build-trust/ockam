@@ -209,5 +209,7 @@ impl Vault for FilesystemVault {
 }
 
 impl Zeroize for FilesystemVault {
-    fn zeroize(&mut self) {}
+    fn zeroize(&mut self) {
+        self.v.zeroize();
+    }
 }

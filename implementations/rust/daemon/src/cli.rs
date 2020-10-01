@@ -212,7 +212,7 @@ impl FromStr for VaultKind {
 }
 
 /// Specifies which end of the secure channel the instance of `ockamd` is prepared to run in.
-#[derive(Clone, Debug, StructOpt, PartialEq)]
+#[derive(Clone, Copy, Debug, StructOpt, PartialEq)]
 pub enum ChannelRole {
     /// The Initiator role expects a channel responder address and a public key to use in order to
     /// communicate with the Responder end of the channel.
@@ -235,7 +235,7 @@ impl FromStr for ChannelRole {
 }
 
 /// The mode in which `ockamd` is to be run.
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Copy, Debug, StructOpt)]
 pub enum Mode {
     /// Used for controlling configuration options at runtime, requiring that a
     /// Server process of `ockamd` is running.
