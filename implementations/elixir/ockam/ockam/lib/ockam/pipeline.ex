@@ -18,7 +18,7 @@ defmodule Ockam.Pipeline do
   defmacro __before_compile__(macro_environment) do
     macro_environment.module
     |> Module.get_attribute(:steps)
-    |> Enum.reverse
+    |> Enum.reverse()
     |> compile
   end
 
