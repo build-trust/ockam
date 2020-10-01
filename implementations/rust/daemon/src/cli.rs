@@ -11,7 +11,7 @@ use url::Url;
 /// The port on which the config updater runs and accepts Config messages.
 pub const DEFAULT_CONFIG_PORT: u16 = 11199;
 
-const DEFAULT_LOCAL_SOCKET: &str = "127.0.0.1:11200";
+const DEFAULT_LOCAL_SOCKET: &str = "127.0.0.1:0";
 
 /// Command-line arguments passed to `ockamd`.
 #[derive(StructOpt)]

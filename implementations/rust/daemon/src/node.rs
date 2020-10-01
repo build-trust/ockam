@@ -44,19 +44,17 @@ impl Node {
 
         // create the transport, currently UDP-only, using the first configured onward route and
         // poll it for messages on another thread
-        if config.output_to_stdout {
-            if let Ok(mut transport) = UdpTransport::new(
-                transport_rx,
-                transport_tx,
-                router_tx,
-                config.local_host.to_string().as_str(),
-            ) {
-                thread::spawn(move || {
-                    while transport.poll() && router.poll() {
-                        thread::sleep(std::time::Duration::from_millis(100));
-                    }
-                });
-            }
+        if let Ok(mut transport) = UdpTransport::new(
+            transport_rx,
+            transport_tx,
+            router_tx,
+            config.local_host.to_string().as_str(),
+        ) {
+            thread::spawn(move || {
+                while transport.poll() && router.poll() {
+                    thread::sleep(std::time::Duration::from_millis(100));
+                }
+            });
         }
 
         let route_config = config.clone();
