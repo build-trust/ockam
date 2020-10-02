@@ -103,7 +103,7 @@ trait KeyExchange {
 /// Represents either the Initiator or the Responder
 pub trait KeyExchanger {
     /// Handle the current step in the key exchange process
-    fn process<B: AsRef<[u8]>>(&mut self, data: B) -> Result<Vec<u8>, KexExchangeFailError>;
+    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError>;
     /// Is the key exchange process completed yet
     fn is_complete(&self) -> bool;
     /// If completed, then return the data and keys needed for channels

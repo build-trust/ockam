@@ -23,6 +23,7 @@
 extern crate ockam_common;
 
 use error::*;
+use failure::_core::marker::PhantomData;
 use ockam_common::commands::ockam_commands::{ChannelCommand, OckamCommand, RouterCommand};
 use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_message::message::{Address, Message, MessageType, Route, RouterAddress};
@@ -38,22 +39,31 @@ use std::{
 
 /// A Channel Manager creates secure channels on demand using the specified key exchange
 /// generic. All keys will be created in the associated vault object
-pub struct ChannelManager<E: KeyExchanger + NewKeyExchanger<E>> {
-    channels: BTreeMap<String, Channel<E>>,
+pub struct ChannelManager<
+    I: KeyExchanger + 'static,
+    R: KeyExchanger + 'static,
+    E: NewKeyExchanger<I, R>,
+> {
+    channels: BTreeMap<String, Channel>,
     receiver: Receiver<OckamCommand>,
     sender: Sender<OckamCommand>,
     router: Sender<OckamCommand>,
     vault: Arc<Mutex<dyn DynVault + Send>>,
     pending_messages: Vec<Message>,
+    phantom_i: PhantomData<I>,
+    phantom_r: PhantomData<R>,
+    phantom_e: PhantomData<E>,
 }
 
-impl<E: KeyExchanger + NewKeyExchanger<E>> std::fmt::Debug for ChannelManager<E> {
+impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> std::fmt::Debug
+    for ChannelManager<I, R, E>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "ChannelManager {{ channels: {:?}, pending_messages: {:?}, receiver, sender, router, vault }}", self.channels, self.pending_messages)
     }
 }
 
-impl<E: KeyExchanger + NewKeyExchanger<E>> ChannelManager<E> {
+impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<I, R, E> {
     /// Create a new Channel Manager
     pub fn new(
         sender: Sender<OckamCommand>,
@@ -68,6 +78,9 @@ impl<E: KeyExchanger + NewKeyExchanger<E>> ChannelManager<E> {
             router,
             vault,
             pending_messages: Vec::new(),
+            phantom_i: PhantomData,
+            phantom_r: PhantomData,
+            phantom_e: PhantomData,
         }
     }
 
@@ -180,15 +193,15 @@ impl<E: KeyExchanger + NewKeyExchanger<E>> ChannelManager<E> {
         let mut rng = thread_rng();
         let channel_id = rng.gen::<u32>();
         let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
-        let mut channel = Channel::new(channel_id, E::responder(self.vault.clone()));
+        let mut channel = Channel::new(channel_id, Box::new(E::responder(self.vault.clone())));
         self.send_ka_m2(&mut channel, m)?;
         self.channels.insert(channel_address.as_string(), channel);
         Ok(())
     }
 
-    fn send_ka_m2(&mut self, channel: &mut Channel<E>, m: &Message) -> Result<(), ChannelError> {
+    fn send_ka_m2(&mut self, channel: &mut Channel, m: &Message) -> Result<(), ChannelError> {
         let ka_m2 = channel.agreement.process(&m.message_body)?;
-        let mut m2 = Message {
+        let m2 = Message {
             onward_route: m.return_route.clone(),
             return_route: Route {
                 addresses: vec![RouterAddress::from_address(channel.as_address()).unwrap()],
@@ -201,7 +214,7 @@ impl<E: KeyExchanger + NewKeyExchanger<E>> ChannelManager<E> {
         Ok(())
     }
 
-    fn handle_send(&mut self, mut m: Message) -> Result<(), ChannelError> {
+    fn handle_send(&mut self, m: Message) -> Result<(), ChannelError> {
         if m.onward_route.addresses.is_empty() {
             return Err(ChannelErrorKind::CantSend.into());
         }
@@ -229,8 +242,10 @@ impl<E: KeyExchanger + NewKeyExchanger<E>> ChannelManager<E> {
                 //TODO: check if key rotation needs to happen
 
                 let mut return_route = m.return_route.clone();
-                return_route.addresses.push(m.onward_route.addresses[0].clone());
-                let mut new_m = Message {
+                return_route
+                    .addresses
+                    .push(m.onward_route.addresses[0].clone());
+                let new_m = Message {
                     onward_route: Route {
                         addresses: m.onward_route.addresses[1..].to_vec(),
                     },
@@ -248,17 +263,20 @@ impl<E: KeyExchanger + NewKeyExchanger<E>> ChannelManager<E> {
                 let channel_zero = Address::ChannelAddress(vec![0u8; 4]);
                 let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
 
-                let mut channel = Channel::new(channel_id, E::initiator(self.vault.clone()));
+                let mut channel =
+                    Channel::new(channel_id, Box::new(E::initiator(self.vault.clone())));
                 let ka_m1 = channel.agreement.process(&[])?;
 
                 let mut onward_route = m.onward_route.clone();
-                onward_route.addresses.push(RouterAddress::from_address(channel_zero.clone()).unwrap());
+                onward_route
+                    .addresses
+                    .push(RouterAddress::from_address(channel_zero).unwrap());
 
-                let mut m1 = Message {
+                let m1 = Message {
                     onward_route,
                     return_route: Route {
                         addresses: vec![
-                            RouterAddress::from_address(channel_address.clone()).unwrap()
+                            RouterAddress::from_address(channel_address).unwrap()
                         ],
                     },
                     message_type: MessageType::KeyAgreementM1,
@@ -278,14 +296,14 @@ impl<E: KeyExchanger + NewKeyExchanger<E>> ChannelManager<E> {
     }
 }
 
-struct Channel<E: KeyExchanger> {
+struct Channel {
     completed_key_exchange: Option<CompletedKeyExchange>,
     id: u32,
-    agreement: E,
+    agreement: Box<dyn KeyExchanger>,
     nonce: u16,
 }
 
-impl<E: KeyExchanger> std::fmt::Debug for Channel<E> {
+impl std::fmt::Debug for Channel {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -295,8 +313,8 @@ impl<E: KeyExchanger> std::fmt::Debug for Channel<E> {
     }
 }
 
-impl<E: KeyExchanger> Channel<E> {
-    pub fn new(id: u32, agreement: E) -> Self {
+impl Channel {
+    pub fn new(id: u32, agreement: Box<dyn KeyExchanger>) -> Self {
         Self {
             id,
             agreement,
@@ -312,3 +330,98 @@ impl<E: KeyExchanger> Channel<E> {
 
 /// Represents the errors that occur within a channel
 pub mod error;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ockam_kex::xx::{XXInitiator, XXResponder};
+    use ockam_message::message::AddressType;
+    use ockam_vault::software::DefaultVault;
+    use std::sync::mpsc::channel;
+
+    type XXInitiatorChannelManager = ChannelManager<XXInitiator, XXResponder, XXInitiator>;
+    type XXResponderChannelManager = ChannelManager<XXInitiator, XXResponder, XXResponder>;
+
+    #[test]
+    fn new_channel_initiator() {
+        let (tx_router, rx_router) = channel();
+        let (tx_channel, rx_channel) = channel();
+
+        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+
+        let mut router = ockam_router::router::Router::new(rx_router);
+        let mut channel = XXInitiatorChannelManager::new(
+            tx_channel.clone(),
+            rx_channel,
+            tx_router.clone(),
+            vault.clone(),
+        );
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::Register(
+                AddressType::Channel,
+                tx_channel.clone(),
+            )))
+            .unwrap();
+
+        let message = Message {
+            onward_route: Route {
+                addresses: vec![RouterAddress::channel_router_address_from_str("deadbeef").unwrap()],
+            },
+            return_route: Route { addresses: vec![] },
+            message_type: MessageType::Payload,
+            message_body: b"Hello Bob".to_vec(),
+        };
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::SendMessage(message)))
+            .unwrap();
+        assert!(router.poll());
+        let res = channel.poll();
+        assert!(res.is_ok());
+        assert!(res.unwrap());
+    }
+
+    #[test]
+    fn new_channel_responder() {
+        let (tx_router, rx_router) = channel();
+        let (tx_channel, rx_channel) = channel();
+
+        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+
+        let mut router = ockam_router::router::Router::new(rx_router);
+        let mut channel = XXResponderChannelManager::new(
+            tx_channel.clone(),
+            rx_channel,
+            tx_router.clone(),
+            vault.clone(),
+        );
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::Register(
+                AddressType::Channel,
+                tx_channel.clone(),
+            )))
+            .unwrap();
+
+        let message = Message {
+            onward_route: Route {
+                addresses: vec![RouterAddress::channel_router_address_from_str("00").unwrap()],
+            },
+            return_route: Route { addresses: vec![] },
+            message_type: MessageType::KeyAgreementM1,
+            message_body: vec![
+                79, 30, 59, 197, 255, 25, 84, 22, 3, 63, 63, 45, 98, 206, 16, 137, 39, 108, 13,
+                171, 237, 191, 172, 115, 63, 124, 209, 114, 59, 97, 28, 82,
+            ],
+        };
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::SendMessage(message)))
+            .unwrap();
+        assert!(router.poll());
+        let res = channel.poll();
+        assert!(res.is_ok());
+        assert!(res.unwrap());
+    }
+}

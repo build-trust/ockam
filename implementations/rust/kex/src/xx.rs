@@ -419,6 +419,7 @@ enum ResponderState {
 pub struct XXInitiator {
     state: InitiatorState,
     initiator: Initiator,
+    run_prologue: bool,
 }
 
 impl NewKeyExchanger<Self, XXResponder> for XXInitiator {
@@ -428,6 +429,7 @@ impl NewKeyExchanger<Self, XXResponder> for XXInitiator {
         Self {
             state: InitiatorState::EncodeMessage1,
             initiator: Initiator(ss),
+            run_prologue: true,
         }
     }
     fn responder(vault: Arc<Mutex<dyn DynVault + Send>>) -> XXResponder {
@@ -440,6 +442,7 @@ impl NewKeyExchanger<Self, XXResponder> for XXInitiator {
 pub struct XXResponder {
     state: ResponderState,
     responder: Responder,
+    run_prologue: bool,
 }
 
 impl NewKeyExchanger<XXInitiator, Self> for XXResponder {
@@ -452,14 +455,18 @@ impl NewKeyExchanger<XXInitiator, Self> for XXResponder {
         Self {
             state: ResponderState::DecodeMessage1,
             responder: Responder(ss),
+            run_prologue: true
         }
     }
 }
 
 impl KeyExchanger for XXInitiator {
-    fn process<B: AsRef<[u8]>>(&mut self, data: B) -> Result<Vec<u8>, KexExchangeFailError> {
+    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
         match self.state {
             InitiatorState::EncodeMessage1 => {
+                if self.run_prologue {
+                    self.initiator.0.prologue()?;
+                }
                 let msg = self.initiator.encode_message_1(data)?;
                 self.state = InitiatorState::DecodeMessage2;
                 Ok(msg)
@@ -491,9 +498,12 @@ impl KeyExchanger for XXInitiator {
 }
 
 impl KeyExchanger for XXResponder {
-    fn process<B: AsRef<[u8]>>(&mut self, data: B) -> Result<Vec<u8>, KexExchangeFailError> {
+    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
         match self.state {
             ResponderState::DecodeMessage1 => {
+                if self.run_prologue {
+                    self.responder.0.prologue()?;
+                }
                 let msg = self.responder.decode_message_1(data)?;
                 self.state = ResponderState::EncodeMessage2;
                 Ok(msg)
@@ -628,36 +638,38 @@ mod tests {
         let mut initiator = XXInitiator {
             state: InitiatorState::EncodeMessage1,
             initiator: Initiator(ss_init),
+            run_prologue: false,
         };
         let mut responder = XXResponder {
             state: ResponderState::DecodeMessage1,
             responder: Responder(ss_resp),
+            run_prologue: false,
         };
 
         assert!(!initiator.is_complete());
         assert!(!responder.is_complete());
         let res = responder.process(&[]);
         assert!(res.is_err());
-        let res = initiator.process(hex::decode(MSG_1_PAYLOAD).unwrap());
+        let res = initiator.process(&hex::decode(MSG_1_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg1 = res.unwrap();
         assert_eq!(hex::encode(&msg1), MSG_1_CIPHERTEXT);
 
         let res = responder.process(&msg1);
         assert!(res.is_ok());
-        let res = responder.process(hex::decode(MSG_2_PAYLOAD).unwrap());
+        let res = responder.process(&hex::decode(MSG_2_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg2 = res.unwrap();
         assert_eq!(hex::encode(&msg2), MSG_2_CIPHERTEXT);
 
-        let res = initiator.process(msg2);
+        let res = initiator.process(&msg2);
         assert!(res.is_ok());
-        let res = initiator.process(hex::decode(MSG_3_PAYLOAD).unwrap());
+        let res = initiator.process(&hex::decode(MSG_3_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg3 = res.unwrap();
         assert_eq!(hex::encode(&msg3), MSG_3_CIPHERTEXT);
 
-        let res = responder.process(msg3);
+        let res = responder.process(&msg3);
         assert!(res.is_ok());
 
         let res = initiator.finalize();
