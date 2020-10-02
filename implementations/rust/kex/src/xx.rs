@@ -455,7 +455,7 @@ impl NewKeyExchanger<XXInitiator, Self> for XXResponder {
         Self {
             state: ResponderState::DecodeMessage1,
             responder: Responder(ss),
-            run_prologue: true
+            run_prologue: true,
         }
     }
 }

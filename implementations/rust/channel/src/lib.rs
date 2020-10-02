@@ -22,8 +22,8 @@
 #[macro_use]
 extern crate ockam_common;
 
+use core::marker::PhantomData;
 use error::*;
-use failure::_core::marker::PhantomData;
 use ockam_common::commands::ockam_commands::{ChannelCommand, OckamCommand, RouterCommand};
 use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_message::message::{Address, Message, MessageType, Route, RouterAddress};
@@ -275,9 +275,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 let m1 = Message {
                     onward_route,
                     return_route: Route {
-                        addresses: vec![
-                            RouterAddress::from_address(channel_address).unwrap()
-                        ],
+                        addresses: vec![RouterAddress::from_address(channel_address).unwrap()],
                     },
                     message_type: MessageType::KeyAgreementM1,
                     message_body: ka_m1,
