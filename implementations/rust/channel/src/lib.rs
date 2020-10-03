@@ -148,6 +148,24 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             match self.channels.get_mut(&address) {
                 Some(channel) => {
                     match m.message_type {
+                        MessageType::KeyAgreementM2 => {
+                            let ka_m2 = channel.agreement.process(&m.message_body)?;
+                            let m2 = Message {
+                                onward_route: m.return_route.clone(),
+                                return_route: Route {
+                                    addresses: vec![m.onward_route.addresses[0].clone()],
+                                },
+                                message_type: MessageType::KeyAgreementM3,
+                                message_body: ka_m2,
+                            };
+                            self.router
+                                .send(OckamCommand::Router(RouterCommand::SendMessage(m2)))?;
+                            if channel.completed_key_exchange.is_none() {
+                                // key agreement has finished, now can process any pending messages
+                                channel.completed_key_exchange =
+                                    Some(channel.agreement.finalize()?);
+                            }
+                        }
                         MessageType::KeyAgreementM3 => {
                             // For now ignore anything returned from M3
                             let _ = channel.agreement.process(&m.message_body)?;
