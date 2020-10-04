@@ -91,21 +91,21 @@ defmodule Ockam.Wire do
 
   @doc false
   # use Exception.message(error) to get formatted error messages.
-  def format_error({:not_loaded, :encoder, nil}),
+  def format_error(%EncodeError{reason: {:not_loaded, :encoder, nil}}),
     do: "Encoder module is nil."
 
-  def format_error({:not_loaded, :encoder, module}),
+  def format_error(%EncodeError{reason: {:not_loaded, :encoder, module}}),
     do: "Encoder module could not be loaded: #{inspect(module)}"
 
-  def format_error({:not_exported, :encoder, {module, :encode, 1}}),
+  def format_error(%EncodeError{reason: {:not_exported, :encoder, {module, :encode, 1}}}),
     do: "Encoder module (#{module}) does not export #{module}.encode/1"
 
-  def format_error({:not_loaded, :decoder, nil}),
+  def format_error(%DecodeError{reason: {:not_loaded, :decoder, nil}}),
     do: "Decoder module is nil."
 
-  def format_error({:not_loaded, :decoder, module}),
+  def format_error(%DecodeError{reason: {:not_loaded, :decoder, module}}),
     do: "Decoder module could not be loaded: #{inspect(module)}"
 
-  def format_error({:not_exported, :decoder, {module, :decode, 1}}),
+  def format_error(%DecodeError{reason: {:not_exported, :decoder, {module, :decode, 1}}}),
     do: "Decoder module (#{module}) does not export #{module}.decode/1"
 end

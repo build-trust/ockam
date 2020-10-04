@@ -7,8 +7,8 @@ defmodule Ockam.Error do
 
       defexception [:reason, :module]
 
-      def message(%__MODULE__{reason: reason, module: module}) do
-        module.format_error(reason)
+      def message(%__MODULE__{module: module} = error) do
+        module.format_error(error)
       end
     end
   end
