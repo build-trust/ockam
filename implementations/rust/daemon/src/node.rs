@@ -4,9 +4,12 @@ use std::sync::mpsc::{self, Sender};
 use std::thread;
 
 use crate::cli;
+use crate::worker::Worker;
 
 use ockam_common::commands::ockam_commands::*;
-use ockam_message::message::{Message as OckamMessage, MessageType, Route};
+use ockam_message::message::{
+    AddressType, Message as OckamMessage, MessageType, Route, RouterAddress,
+};
 use ockam_router::router::Router;
 use ockam_transport::transport::UdpTransport;
 use ockam_vault::{types::*, Vault};
@@ -15,86 +18,70 @@ pub struct Node;
 
 impl Node {
     pub fn new<V: Vault>(mut vault: V, config: Config) -> Sender<Vec<u8>> {
-        // TODO: determine best way to check for existing vault key, and if `1` is always
-        // the identity for ockamd to use from a persisted filesystem vault.
-
-        // let key = vault.secret_export(SecretKeyContext::Memory(1)).unwrap();
-        // println!("key 1: {:?}", key);
-
-        let kex_attrs = SecretKeyAttributes {
-            xtype: SecretKeyType::P256,
-            persistence: SecretPersistenceType::Persistent,
-            purpose: SecretPurposeType::KeyAgreement,
-        };
-        let _kex_secret_ctx = vault
-            .secret_generate(kex_attrs)
-            .expect("failed to create secret for key agreement");
-
         // create the input and output channel pairs
-        let (tx_in, rx_in) = mpsc::channel();
+        let (tx_in, rx_in) = mpsc::channel::<Vec<u8>>();
 
-        let (transport_tx, transport_rx) = mpsc::channel();
+        // create router, on which to register addresses, send messages, etc.
         let (router_tx, router_rx) = mpsc::channel();
-        // let (channel_tx, channel_rx) = mpsc::channel();
-        // let channel_tx_for_node = channel_tx.clone();
-        // let router_tx_for_channel = router_tx.clone();
-
-        let transport_tx_for_node = transport_tx.clone();
         let mut router = Router::new(router_rx);
 
-        // create the transport, currently UDP-only, using the first configured onward route and
-        // poll it for messages on another thread
+        // in the case of a responder, create a worker which is registered with the router
+        // TODO: branch on initiator or responder config, or split into different 'new' fns
+        let (worker_tx, worker_rx) = mpsc::channel();
+        let worker = Worker::new(router_tx.clone(), worker_tx, worker_rx);
+
+        // create the transport, currently UDP-only, poll it for messages on another thread
+        let transport_router_tx = router_tx.clone();
+        let (transport_tx, transport_rx) = mpsc::channel();
         if let Ok(mut transport) = UdpTransport::new(
             transport_rx,
             transport_tx,
-            router_tx,
+            transport_router_tx,
             config.local_host.to_string().as_str(),
         ) {
             thread::spawn(move || {
-                while transport.poll() && router.poll() {
-                    thread::sleep(std::time::Duration::from_millis(100));
+                while router.poll() && transport.poll() && worker.poll() {
+                    thread::sleep(std::time::Duration::from_millis(33));
                 }
             });
         }
 
+        // let node_router_tx = router_tx.clone();
         let route_config = config.clone();
         let remote_addr = route_config
             .onward_route
-            .expect("invalid address provided for output")
-            .clone();
+            .unwrap_or(Route { addresses: vec![] });
+
+        println!("remotr_addr: {:?}", remote_addr.addresses);
         thread::spawn(move || {
             loop {
                 if let Ok(data) = rx_in.recv() {
                     // encrypt data and convert into ockam message
                     let mut msg = OckamMessage::default();
-                    msg.message_body = data;
-                    msg.onward_route = Route {
-                        addresses: remote_addr.addresses.clone(),
-                    };
+                    msg.message_body = data.clone();
                     msg.message_type = MessageType::Payload;
 
-                    if !config.output_to_stdout {
-                        // send it to the transport
-                        if let Err(e) = transport_tx_for_node
-                            .send(OckamCommand::Transport(TransportCommand::SendMessage(msg)))
+                    if config.output_to_stdout {
+                        // send it to the worker
+                        let worker_addr = RouterAddress::worker_router_address_from_str("01242020")
+                            .expect("failed to create worker router address");
+                        msg.onward_route = Route {
+                            addresses: vec![worker_addr],
+                        };
+
+                        let cmd = OckamCommand::Router(RouterCommand::SendMessage(msg));
+                        router_tx
+                            .send(cmd)
+                            .expect("failed to send worker message on router");
+                    } else {
+                        // send it over the transport via the router
+                        msg.onward_route = Route {
+                            addresses: remote_addr.addresses.clone(),
+                        };
+                        if let Err(e) =
+                            router_tx.send(OckamCommand::Router(RouterCommand::SendMessage(msg)))
                         {
                             eprintln!("error sending to socket: {:?}", e);
-                        }
-                    } else {
-                        // send it to stdout
-                        // TODO: remove println! prefix, maybe use stdout() handle directly
-                        if config.decrypt_output {
-                            println!(
-                                "ockam decrypted: {}",
-                                String::from_utf8(msg.message_body)
-                                    .expect("message body contains invalid UTF-8 sequence")
-                            );
-                        } else {
-                            println!(
-                                "ockam encrypted: {}",
-                                String::from_utf8(msg.message_body)
-                                    .expect("message body contains invalid UTF-8 sequence")
-                            );
                         }
                     }
                 } else {

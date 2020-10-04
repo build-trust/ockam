@@ -19,7 +19,7 @@ fn main() {
             let vault =
                 FilesystemVault::new(config.vault_path()).expect("failed to initialize vault");
 
-            // create the server using the input type and get encrypted message from server
+            // configure a node, providing it access to the vault
             let tx_input = Node::new(vault, config);
 
             // using stdin as example input
