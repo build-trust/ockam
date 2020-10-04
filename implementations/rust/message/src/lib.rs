@@ -134,7 +134,7 @@ pub mod message {
         pub fn as_string(&self) -> String {
             match self {
                 Address::UdpAddress(socket) => socket.to_string(),
-                Address::ChannelAddress(u) => hex::encode(u.as_slice()),
+                Address::ChannelAddress(u) | Address::WorkerAddress(u) => hex::encode(u.as_slice()),
                 _ => "error".to_string(),
             }
         }
