@@ -1,4 +1,4 @@
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use ockam_common::commands::ockam_commands::*;
 use ockam_message::message::{AddressType, Message as OckamMessage};
@@ -39,10 +39,13 @@ impl Worker {
                     false
                 }
             },
-            Err(e) => {
-                eprintln!("failed to recv worker rx: {:?}", e);
-                true
-            }
+            Err(e) => match e {
+                TryRecvError::Empty => true,
+                _ => {
+                    eprintln!("failed to recv worker rx: {:?}", e);
+                    false
+                }
+            },
         }
     }
 }
