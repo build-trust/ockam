@@ -97,21 +97,21 @@ pub trait Vault: Zeroize {
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
     /// and the specified uncompressed public key and return the HKDF-SHA256
     /// output using the DH value as the HKDF ikm
-    fn ec_diffie_hellman_hkdf_sha256<B: AsRef<[u8]>>(
+    fn ec_diffie_hellman_hkdf_sha256(
         &mut self,
         context: SecretKeyContext,
         peer_public_key: PublicKey,
-        salt: B,
-        okm_len: usize,
-    ) -> Result<Vec<u8>, VaultFailError>;
+        salt: SecretKeyContext,
+        output_attributes: Vec<SecretKeyAttributes>,
+    ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
-    fn hkdf_sha256<B: AsRef<[u8]>, C: AsRef<[u8]>>(
+    fn hkdf_sha256(
         &mut self,
-        salt: B,
-        ikm: C,
-        okm_len: usize,
-    ) -> Result<Vec<u8>, VaultFailError>;
+        salt: SecretKeyContext,
+        ikm: Option<SecretKeyContext>,
+        output_attributes: Vec<SecretKeyAttributes>,
+    ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
         &mut self,
@@ -178,17 +178,17 @@ pub trait DynVault {
         &mut self,
         context: SecretKeyContext,
         peer_public_key: PublicKey,
-        salt: &[u8],
-        okm_len: usize,
-    ) -> Result<Vec<u8>, VaultFailError>;
+        salt: SecretKeyContext,
+        output_attributes: Vec<SecretKeyAttributes>,
+    ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
     fn hkdf_sha256(
         &mut self,
-        salt: &[u8],
-        ikm: &[u8],
-        okm_len: usize,
-    ) -> Result<Vec<u8>, VaultFailError>;
+        salt: SecretKeyContext,
+        ikm: Option<SecretKeyContext>,
+        output_attributes: Vec<SecretKeyAttributes>,
+    ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt(
         &mut self,
@@ -267,19 +267,25 @@ impl<D: Vault + Send + Sync + 'static> DynVault for D {
         &mut self,
         context: SecretKeyContext,
         peer_public_key: PublicKey,
-        salt: &[u8],
-        okm_len: usize,
-    ) -> Result<Vec<u8>, VaultFailError> {
-        Vault::ec_diffie_hellman_hkdf_sha256(self, context, peer_public_key, salt, okm_len)
+        salt: SecretKeyContext,
+        output_attributes: Vec<SecretKeyAttributes>,
+    ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
+        Vault::ec_diffie_hellman_hkdf_sha256(
+            self,
+            context,
+            peer_public_key,
+            salt,
+            output_attributes,
+        )
     }
 
     fn hkdf_sha256(
         &mut self,
-        salt: &[u8],
-        ikm: &[u8],
-        okm_len: usize,
-    ) -> Result<Vec<u8>, VaultFailError> {
-        Vault::hkdf_sha256(self, salt, ikm, okm_len)
+        salt: SecretKeyContext,
+        ikm: Option<SecretKeyContext>,
+        output_attributes: Vec<SecretKeyAttributes>,
+    ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
+        Vault::hkdf_sha256(self, salt, ikm, output_attributes)
     }
 
     fn aead_aes_gcm_encrypt(

@@ -1,11 +1,6 @@
+use crate::types::*;
 use crate::types::{PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext};
-use crate::{
-    error::*,
-    ffi::types::*,
-    software::DefaultVault,
-    types::{SecretKeyType, SecretPersistenceType, SecretPurposeType},
-    DynVault,
-};
+use crate::{error::*, ffi::types::*, software::DefaultVault, DynVault};
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
 use std::convert::TryInto;
 
@@ -340,30 +335,28 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
         |v| -> Result<OckamSecretList, VaultFailError> {
             const SIZES: usize = 32;
             let salt_ctx = get_memory_id(salt);
+            // FIXME: Allow optional ikm
             let ikm_ctx = get_memory_id(input_key_material);
-            let salt_bytes = v.vault.secret_export(salt_ctx)?;
-            let ikm_bytes = v.vault.secret_export(ikm_ctx)?;
-            let output_length = SIZES * derived_outputs_count;
 
-            let hkdf_bytes =
-                v.vault
-                    .hkdf_sha256(salt_bytes.as_ref(), ikm_bytes.as_ref(), output_length)?;
-            let attributes = SecretKeyAttributes {
-                xtype: SecretKeyType::Buffer(SIZES),
-                purpose: SecretPurposeType::KeyAgreement,
-                persistence: SecretPersistenceType::Ephemeral,
-            };
-            let mut outputs = Vec::with_capacity(derived_outputs_count);
-            for derived in hkdf_bytes.chunks(SIZES) {
-                let key = SecretKey::Buffer(derived.to_vec());
-                let h = v.vault.secret_import(&key, attributes)?;
-                let secret = h.into_ffi_value();
-                outputs.push(secret);
+            let mut output_attributes = Vec::<SecretKeyAttributes>::new();
+
+            for _ in 0..derived_outputs_count {
+                output_attributes.push(SecretKeyAttributes {
+                    xtype: SecretKeyType::Buffer(SIZES),
+                    purpose: SecretPurposeType::KeyAgreement,
+                    persistence: SecretPersistenceType::Ephemeral,
+                });
             }
 
+            let hkdf_output = v
+                .vault
+                .hkdf_sha256(salt_ctx, Some(ikm_ctx), output_attributes)?
+                .iter()
+                .map(|x| x.into_ffi_value())
+                .collect();
+
             // FIXME: Double conversion is happening here
-            let res = OckamSecretList(outputs);
-            Ok(res)
+            Ok(OckamSecretList(hkdf_output))
         },
     );
     if err.get_code().is_success() {

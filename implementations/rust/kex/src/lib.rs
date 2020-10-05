@@ -39,14 +39,14 @@ pub const AES256_KEYSIZE: usize = 32;
 #[derive(Copy, Clone, Debug)]
 struct SymmetricStateData {
     h: [u8; SHA256_SIZE],
-    ck: [u8; SHA256_SIZE],
+    ck: Option<SecretKeyContext>,
 }
 
 impl Default for SymmetricStateData {
     fn default() -> Self {
         Self {
             h: [0u8; SHA256_SIZE],
-            ck: [0u8; SHA256_SIZE],
+            ck: None,
         }
     }
 }
@@ -75,9 +75,12 @@ trait KeyExchange {
         &mut self,
         secret_handle: SecretKeyContext,
         public_key: PublicKey,
-    ) -> Result<Vec<u8>, VaultFailError>;
+    ) -> Result<(SecretKeyContext, SecretKeyContext), VaultFailError>;
     /// mix key step in Noise protocol
-    fn mix_key<B: AsRef<[u8]>>(&mut self, hash: B) -> Result<(), VaultFailError>;
+    fn mix_key(
+        &mut self,
+        hkdf_output: (SecretKeyContext, SecretKeyContext),
+    ) -> Result<(), VaultFailError>;
     /// mix hash step in Noise protocol
     fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError>;
     /// Encrypt and mix step in Noise protocol
@@ -91,12 +94,12 @@ trait KeyExchange {
         ciphertext: B,
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Split step in Noise protocol
-    fn split(&mut self) -> Result<Vec<u8>, VaultFailError>;
+    fn split(&mut self) -> Result<(SecretKeyContext, SecretKeyContext), VaultFailError>;
     /// Finish the key exchange and return computed data
-    fn finalize<B: AsRef<[u8]>, C: AsRef<[u8]>>(
+    fn finalize(
         &mut self,
-        encrypt_ref: B,
-        decrypt_ref: C,
+        encrypt_key: SecretKeyContext,
+        decrypt_key: SecretKeyContext,
     ) -> Result<CompletedKeyExchange, VaultFailError>;
 }
 
