@@ -35,11 +35,14 @@ impl Worker {
                     true
                 }
                 _ => {
-                    eprintln!("unrecognized worker command");
+                    eprintln!("unrecognized worker command: {:?}", cmd);
                     false
                 }
             },
-            Err(_) => true,
+            Err(e) => {
+                eprintln!("failed to recv worker rx: {:?}", e);
+                true
+            }
         }
     }
 }
