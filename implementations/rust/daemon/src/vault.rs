@@ -231,6 +231,23 @@ impl Vault for FilesystemVault {
     fn deinit(&mut self) {
         self.v.deinit()
     }
+
+    fn sign<B: AsRef<[u8]>>(
+        &mut self,
+        secret_key: SecretKeyContext,
+        data: B,
+    ) -> Result<[u8; 64], VaultFailError> {
+        self.v.sign(secret_key, data)
+    }
+
+    fn verify<B: AsRef<[u8]>>(
+        &mut self,
+        signature: [u8; 64],
+        public_key: PublicKey,
+        data: B,
+    ) -> Result<(), VaultFailError> {
+        self.v.verify(signature, public_key, data)
+    }
 }
 
 impl Zeroize for FilesystemVault {

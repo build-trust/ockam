@@ -380,6 +380,46 @@ impl PublicKey {
         use PublicKey::*;
         matches!(self, P256(..))
     }
+
+    /// Return the byte type for the enum value
+    pub fn get_type(&self) -> u8 {
+        match *self {
+            PublicKey::Curve25519(_) => 1,
+            PublicKey::P256(_) => 2,
+        }
+    }
+
+    /// Get the bytes for this key with the first byte that indicates what the public key type is
+    pub fn serialize_bytes(&self) -> Vec<u8> {
+        let mut output = Vec::new();
+        output.push(self.get_type());
+        output.extend_from_slice(self.as_ref());
+        output
+    }
+
+    /// Convert the bytes into a Public key
+    pub fn deserialize_bytes(data: &[u8]) -> Result<Self, VaultFailError> {
+        if data.is_empty() {
+            return Err(VaultFailErrorKind::PublicKey.into());
+        }
+        match data[0] {
+            1 => {
+                if data.len() < 33 {
+                    Ok(PublicKey::Curve25519(*array_ref![data, 1, 32]))
+                } else {
+                    Err(VaultFailErrorKind::PublicKey.into())
+                }
+            }
+            2 => {
+                if data.len() < 65 {
+                    Ok(PublicKey::P256(*array_ref![data, 1, 65]))
+                } else {
+                    Err(VaultFailErrorKind::PublicKey.into())
+                }
+            }
+            _ => Err(VaultFailErrorKind::PublicKey.into()),
+        }
+    }
 }
 
 impl AsRef<[u8]> for PublicKey {

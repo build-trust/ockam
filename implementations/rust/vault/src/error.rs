@@ -300,6 +300,12 @@ impl From<VaultFailError> for ffi_support::ExternError {
     }
 }
 
+impl From<p256::ecdsa::Error> for VaultFailError {
+    fn from(_: p256::ecdsa::Error) -> Self {
+        VaultFailErrorKind::Ecdh.into()
+    }
+}
+
 from_int_impl!(VaultFailError, u32);
 from_int_impl!(VaultFailError, u64);
 from_int_impl!(VaultFailError, u128);

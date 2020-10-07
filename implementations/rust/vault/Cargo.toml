@@ -20,13 +20,15 @@ os = ["keychain-services", "security-framework"]
 aead = "0.3"
 aes-gcm = "0.7"
 arrayref = "0.3"
+ecdsa = { version = "0.8", features = ["arithmetic", "sign", "verify"] }
+ed25519-dalek = "1.0"
 failure = "0.1"
 ffi-support = { version = "0.4", optional = true }
 hex = "0.4"
 hkdf = "0.9"
 lazy_static = { version = "1.4", optional = true }
 ockam-common = { version = "0.1", path = "../common" }
-p256 = { version = "0.5", features = ["arithmetic", "zeroize"] }
+p256 = { version = "0.5", features = ["arithmetic", "ecdsa", "ecdsa", "zeroize"] }
 rand = "0.7"
 sha2 = "0.9"
 subtle = "2.3"

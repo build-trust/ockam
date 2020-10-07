@@ -310,6 +310,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-mac"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58bcd97a54c7ca5ce2f6eb16f6bede5b0ab5f0055fedc17d2f0b4466e21671ca"
+dependencies = [
+ "generic-array",
+ "subtle",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -332,12 +342,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecdsa"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "765a6f9c0938fef990bb7af306fe1e534721bc52a1eb918cc938c5212d6e07eb"
+dependencies = [
+ "elliptic-curve",
+ "hmac 0.9.0",
+ "signature",
+]
+
+[[package]]
+name = "ed25519"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07dfc993ea376e864fe29a4099a61ca0bb994c6d7745a61bf60ddb3d64e05237"
+dependencies = [
+ "signature",
+]
+
+[[package]]
+name = "ed25519-dalek"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c762bae6dcaf24c4c84667b8579785430908723d5c889f469d76a41d59cc7a9d"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519",
+ "rand",
+ "serde",
+ "sha2",
+ "zeroize",
+]
+
+[[package]]
 name = "elliptic-curve"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82e7e174baa250269c92f2e0d59abaeb14c7d8072abd130dee996cc61141825a"
 dependencies = [
  "bitvec",
+ "digest",
  "ff",
  "generic-array",
  "group",
@@ -596,7 +641,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe1149865383e4526a43aee8495f9a325f0b806c63ce6427d06336a590abbbc9"
 dependencies = [
  "digest",
- "hmac",
+ "hmac 0.8.1",
 ]
 
 [[package]]
@@ -605,7 +650,17 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "126888268dcc288495a26bf004b38c5fdbb31682f992c84ceb046a1f0fe38840"
 dependencies = [
- "crypto-mac",
+ "crypto-mac 0.8.0",
+ "digest",
+]
+
+[[package]]
+name = "hmac"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deae6d9dbb35ec2c502d62b8f7b1c000a0822c3b0794ba36b3149c0a1c840dff"
+dependencies = [
+ "crypto-mac 0.9.1",
  "digest",
 ]
 
@@ -799,6 +854,8 @@ dependencies = [
  "arrayref",
  "c_bindings",
  "c_rust_memory",
+ "ecdsa",
+ "ed25519-dalek",
  "failure",
  "ffi-support",
  "hex",
@@ -850,7 +907,9 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1909a5a44a469f7d21c8dec2c634721ba15379b6cad80040d16abfaa8609b37c"
 dependencies = [
+ "ecdsa",
  "elliptic-curve",
+ "sha2",
 ]
 
 [[package]]
@@ -1068,6 +1127,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde"
+version = "1.0.116"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96fe57af81d28386a513cbc6858332abc6117cfdb5999647c6444b8f43a370a5"
+
+[[package]]
 name = "sha2"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1085,6 +1150,16 @@ name = "shlex"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
+
+[[package]]
+name = "signature"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29f060a7d147e33490ec10da418795238fd7545bba241504d6b31a409f2e6210"
+dependencies = [
+ "digest",
+ "rand_core",
+]
 
 [[package]]
 name = "slab"

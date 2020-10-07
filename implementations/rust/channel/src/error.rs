@@ -9,7 +9,7 @@ use std::{
 
 /// Represents the failures that can occur in
 /// an Ockam Channel
-#[derive(Clone, Copy, Fail, Debug)]
+#[derive(Clone, Fail, Debug)]
 pub enum ChannelErrorKind {
     /// An invalid parameter was supplied
     #[fail(display = "An invalid parameter was supplied: {}", 0)]
@@ -79,7 +79,7 @@ impl From<ChannelErrorKind> for ChannelError {
 
 impl From<ChannelError> for ChannelErrorKind {
     fn from(err: ChannelError) -> Self {
-        *err.inner.get_context()
+        err.inner.get_context().clone()
     }
 }
 

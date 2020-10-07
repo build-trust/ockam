@@ -4,7 +4,7 @@ use ockam_vault::error::{VaultFailError, VaultFailErrorKind};
 
 /// Represents the failures that can occur in
 /// an Ockam Key Exchange
-#[derive(Clone, Copy, Fail, Debug)]
+#[derive(Clone, Fail, Debug)]
 pub enum KeyExchangeFailErrorKind {
     /// An invalid number of bytes was received in an exchange
     #[fail(
@@ -26,6 +26,14 @@ pub enum KeyExchangeFailErrorKind {
         /// What was expected
         expected: &'static str,
     },
+    /// Happens when a hash value is expected but finds another
+    #[fail(display = "Expected hash {}, found {} ", expected, actual)]
+    InvalidHash {
+        /// What was expected
+        expected: String,
+        /// What was received
+        actual: String,
+    },
 }
 
 impl ErrorKind for KeyExchangeFailErrorKind {
@@ -36,6 +44,7 @@ impl ErrorKind for KeyExchangeFailErrorKind {
             KeyExchangeFailErrorKind::InvalidByteCount(..) => Self::ERROR_INTERFACE | 2,
             KeyExchangeFailErrorKind::InvalidParam(..) => Self::ERROR_INTERFACE | 3,
             KeyExchangeFailErrorKind::MethodCalledOutOfSequence { .. } => Self::ERROR_INTERFACE | 4,
+            KeyExchangeFailErrorKind::InvalidHash { .. } => Self::ERROR_INTERFACE | 5,
         }
     }
 }
@@ -50,7 +59,7 @@ impl From<KeyExchangeFailErrorKind> for KexExchangeFailError {
 
 impl From<KexExchangeFailError> for KeyExchangeFailErrorKind {
     fn from(err: KexExchangeFailError) -> Self {
-        *err.inner.get_context()
+        err.inner.get_context().clone()
     }
 }
 
@@ -71,14 +80,17 @@ impl From<VaultFailError> for KexExchangeFailError {
 impl From<KexExchangeFailError> for VaultFailError {
     fn from(err: KexExchangeFailError) -> Self {
         let err = err.inner.get_context();
-        match *err {
-            KeyExchangeFailErrorKind::InvalidParam(p) => VaultFailErrorKind::InvalidParam(p).into(),
+        match err {
+            KeyExchangeFailErrorKind::InvalidParam(p) => {
+                VaultFailErrorKind::InvalidParam(*p).into()
+            }
             KeyExchangeFailErrorKind::InvalidByteCount(_, _) => {
                 VaultFailErrorKind::InvalidSize.into()
             }
             KeyExchangeFailErrorKind::MethodCalledOutOfSequence { .. } => {
                 VaultFailErrorKind::InvalidContext.into()
             }
+            KeyExchangeFailErrorKind::InvalidHash { .. } => VaultFailErrorKind::Ecdh.into(),
         }
     }
 }

@@ -130,6 +130,19 @@ pub trait Vault: Zeroize {
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Close and release all resources in use by the vault
     fn deinit(&mut self);
+    /// Generate a signature
+    fn sign<B: AsRef<[u8]>>(
+        &mut self,
+        secret_key: SecretKeyContext,
+        data: B,
+    ) -> Result<[u8; 64], VaultFailError>;
+    /// Verify a signature
+    fn verify<B: AsRef<[u8]>>(
+        &mut self,
+        signature: [u8; 64],
+        public_key: PublicKey,
+        data: B,
+    ) -> Result<(), VaultFailError>;
 }
 
 /// The `DynVault` trait is a modification of `Vault` trait suitable
@@ -207,6 +220,19 @@ pub trait DynVault {
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Close and release all resources in use by the vault
     fn deinit(&mut self);
+    /// Generate a signature
+    fn sign(
+        &mut self,
+        secret_key: SecretKeyContext,
+        data: &[u8],
+    ) -> Result<[u8; 64], VaultFailError>;
+    /// Verify a signature
+    fn verify(
+        &mut self,
+        signature: [u8; 64],
+        public_key: PublicKey,
+        data: &[u8],
+    ) -> Result<(), VaultFailError>;
 }
 
 impl<D: Vault + Send + Sync + 'static> DynVault for D {
@@ -310,5 +336,22 @@ impl<D: Vault + Send + Sync + 'static> DynVault for D {
 
     fn deinit(&mut self) {
         Vault::deinit(self)
+    }
+
+    fn sign(
+        &mut self,
+        secret_key: SecretKeyContext,
+        data: &[u8],
+    ) -> Result<[u8; 64], VaultFailError> {
+        Vault::sign(self, secret_key, data)
+    }
+
+    fn verify(
+        &mut self,
+        signature: [u8; 64],
+        public_key: PublicKey,
+        data: &[u8],
+    ) -> Result<(), VaultFailError> {
+        Vault::verify(self, signature, public_key, data)
     }
 }
