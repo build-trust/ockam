@@ -6,6 +6,10 @@ use crate::{
 use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use p256::{
+    ecdsa::{
+        signature::{Signer, Verifier},
+        Signature, SigningKey, VerifyKey,
+    },
     elliptic_curve::{sec1::FromEncodedPoint, Group},
     AffinePoint, ProjectivePoint, Scalar,
 };
@@ -464,6 +468,7 @@ impl Vault for DefaultVault {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
         match entry.key {
             SecretKey::Curve25519(k) => {
+<<<<<<< HEAD
                 let mut rng = thread_rng();
                 let mut nonce = [0u8; 64];
                 rng.fill_bytes(&mut nonce);
@@ -475,6 +480,21 @@ impl Vault for DefaultVault {
             //     let sig = sign_key.sign(data.as_ref());
             //     Ok(*array_ref![sig.as_ref(), 0, 64])
             // }
+=======
+                // Libsodium and Signal convert from x25519 secret key this way
+                let hash = sha2::Sha512::digest(&k);
+                let key = ed25519_dalek::SecretKey::from_bytes(&hash[..32])?;
+                let pubkey = ed25519_dalek::PublicKey::from(&key);
+                let sign_key = ed25519_dalek::ExpandedSecretKey::from(&key);
+                let sig = sign_key.sign(data.as_ref(), &pubkey);
+                Ok(sig.to_bytes())
+            }
+            SecretKey::P256(k) => {
+                let sign_key = SigningKey::new(&k)?;
+                let sig = sign_key.sign(data.as_ref());
+                Ok(*array_ref![sig.as_ref(), 0, 64])
+            }
+>>>>>>> feat(rust): enrollment protocol
             _ => Err(VaultFailError::from_msg(
                 VaultFailErrorKind::Ecdh,
                 "Unhandled key type",
@@ -490,6 +510,7 @@ impl Vault for DefaultVault {
     ) -> Result<(), VaultFailError> {
         match public_key {
             PublicKey::Curve25519(k) => {
+<<<<<<< HEAD
                 if x25519_dalek::PublicKey::from(k).verify(data.as_ref(), &signature) {
                     Ok(())
                 } else {
@@ -503,6 +524,19 @@ impl Vault for DefaultVault {
             //     Ok(())
             // }
             _ => Err(VaultFailErrorKind::PublicKey.into()),
+=======
+                let key = ed25519_dalek::PublicKey::from_bytes(&k)?;
+                let sig = ed25519_dalek::Signature::new(signature);
+                key.verify(data.as_ref(), &sig)?;
+                Ok(())
+            }
+            PublicKey::P256(k) => {
+                let key = VerifyKey::new(&k)?;
+                let sig = Signature::try_from(&signature[..])?;
+                key.verify(data.as_ref(), &sig)?;
+                Ok(())
+            }
+>>>>>>> feat(rust): enrollment protocol
         }
     }
 }
