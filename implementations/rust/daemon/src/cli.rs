@@ -23,7 +23,7 @@ pub struct Args {
     #[structopt(
         long,
         default_value = "stdin",
-        help = r#"Data source providing input to `ockamd`, either "stdin" or a valid URI"#
+        help = "Data source providing input to `ockamd`"
     )]
     input: InputKind,
 
@@ -31,7 +31,7 @@ pub struct Args {
     #[structopt(
         long,
         default_value = "stdout",
-        help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port],channel_address (note comma-separation) or "stdout""#
+        help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout""#
     )]
     output: OutputKind,
 
@@ -41,10 +41,6 @@ pub struct Args {
         help = "Local node address and port to bind"
     )]
     local_socket: SocketAddr,
-
-    /// Determine if data written to `output` should be decrypted.
-    #[structopt(long, help = "Optionally decrypt messages to output")]
-    decrypt_output: bool,
 
     /// Defines the kind of Ockam vault implementation to use.
     #[structopt(
@@ -134,7 +130,6 @@ impl Default for Args {
             output: OutputKind::Stdout,
             local_socket: SocketAddr::from_str(DEFAULT_LOCAL_SOCKET)
                 .expect("bad default set for local socket"),
-            decrypt_output: true,
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
@@ -149,20 +144,9 @@ impl Default for Args {
 impl Args {
     /// Parse the command line options into the Args struct.
     pub fn parse() -> Args {
-        let mut args = Args::from_args();
-
         // validate provided arguments & override possibly fallible options
-        match args.output_kind() {
-            OutputKind::Channel(_) => {
-                // disallow output to be decrypted if it's to be sent over a secure channel
-                if args.decrypt_output {
-                    args.decrypt_output = false;
-                }
-            }
-            _ => {}
-        }
-
-        args
+        // TODO: what should be disallowed that the CLI validation wont handle?
+        Args::from_args()
     }
 
     /// Checks which mode the executable was run in: Control or Server.
@@ -181,16 +165,20 @@ impl Args {
         self.output.clone()
     }
 
+    pub fn input_kind(&self) -> InputKind {
+        self.input.clone()
+    }
+
     pub fn local_socket(&self) -> SocketAddr {
         self.local_socket
     }
 
-    pub fn decrypt_output(&self) -> bool {
-        self.decrypt_output
-    }
-
     pub fn vault_path(&self) -> PathBuf {
         self.vault_path.clone()
+    }
+
+    pub fn worker_address(&self) -> Option<String> {
+        self.worker_address.clone()
     }
 }
 
@@ -245,9 +233,9 @@ pub enum Mode {
 }
 
 /// Specifies where input to `ockamd` should be read.
+#[derive(Clone)]
 pub enum InputKind {
     Stdin,
-    Channel(Route),
 }
 
 impl FromStr for InputKind {
@@ -294,20 +282,7 @@ impl FromStr for OutputKind {
                         route.addresses.push(router_addr);
                     }
                 }
-                Err(_) => {
-                    // try to get a channel address if the URI is not able to be parsed
-                    match RouterAddress::channel_router_address_from_str(part) {
-                        Ok(chan_addr) => {
-                            route.addresses.push(chan_addr);
-                        }
-                        Err(e) => {
-                            ret = Err(format!(
-                                "failed to convert channel address from string: {:?}",
-                                e
-                            ));
-                        }
-                    }
-                }
+                Err(e) => ret = Err(format!("failed to parse url: {:?}", e)),
             }
         });
 

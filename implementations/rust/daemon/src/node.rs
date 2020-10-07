@@ -2,118 +2,120 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
 use std::thread;
+use std::time;
 
 use crate::cli;
 use crate::worker::Worker;
 
 use ockam_common::commands::ockam_commands::*;
-use ockam_message::message::{
-    AddressType, Message as OckamMessage, MessageType, Route, RouterAddress,
-};
+use ockam_message::message::{AddressType, Route, RouterAddress};
 use ockam_router::router::Router;
 use ockam_transport::transport::UdpTransport;
-use ockam_vault::{types::*, Vault};
+use ockam_vault::Vault;
 
-pub struct Node;
+pub struct Node {
+    worker: Option<Worker>,
+    router: Router,
+    transport: UdpTransport,
+}
 
 impl Node {
-    pub fn new<V: Vault>(mut vault: V, config: Config) -> Sender<Vec<u8>> {
-        // create the input and output channel pairs
-        let (tx_in, rx_in) = mpsc::channel::<Vec<u8>>();
-
+    pub fn new<V: Vault>(
+        mut vault: V,
+        worker: Option<Worker>,
+        config: &Config,
+    ) -> (Self, Sender<OckamCommand>) {
         // create router, on which to register addresses, send messages, etc.
         let (router_tx, router_rx) = mpsc::channel();
-        let mut router = Router::new(router_rx);
+        let router = Router::new(router_rx);
 
-        // in the case of a responder, create a worker which is registered with the router
-        // TODO: branch on initiator or responder config, or split into different 'new' fns
-        let (worker_tx, worker_rx) = mpsc::channel();
-        let worker = Worker::new(router_tx.clone(), worker_tx, worker_rx);
+        // register the worker with the router
+        match &worker {
+            Some(worker) => {
+                router_tx
+                    .send(OckamCommand::Router(RouterCommand::Register(
+                        AddressType::Worker,
+                        worker.sender(),
+                    )))
+                    .expect("failed to register worker with router");
+            }
+            None => {}
+        }
 
-        // create the transport, currently UDP-only, poll it for messages on another thread
+        // create the transport, currently UDP-only
         let transport_router_tx = router_tx.clone();
         let (transport_tx, transport_rx) = mpsc::channel();
-        if let Ok(mut transport) = UdpTransport::new(
+        let transport = UdpTransport::new(
             transport_rx,
             transport_tx,
             transport_router_tx,
             config.local_host.to_string().as_str(),
-        ) {
-            thread::spawn(move || {
-                while router.poll() && transport.poll() && worker.poll() {
-                    thread::sleep(std::time::Duration::from_millis(33));
-                }
-            });
-        }
+        )
+        .expect("failed to create udp transport");
 
-        // let node_router_tx = router_tx.clone();
-        let route_config = config.clone();
-        let remote_addr = route_config
-            .onward_route
-            .unwrap_or(Route { addresses: vec![] });
+        (
+            Self {
+                worker,
+                router,
+                transport,
+            },
+            router_tx.clone(),
+        )
+    }
 
-        println!("remotr_addr: {:?}", remote_addr.addresses);
-        thread::spawn(move || {
-            loop {
-                if let Ok(data) = rx_in.recv() {
-                    // encrypt data and convert into ockam message
-                    let mut msg = OckamMessage::default();
-                    msg.message_body = data.clone();
-                    msg.message_type = MessageType::Payload;
+    pub fn worker_address(&self) -> RouterAddress {
+        // TODO: expect address to come from config, etc.
+        RouterAddress::worker_router_address_from_str("01242020")
+            .expect("failed to convert string to worker address")
+    }
 
-                    if config.output_to_stdout {
-                        // send it to the worker
-                        let worker_addr = RouterAddress::worker_router_address_from_str("01242020")
-                            .expect("failed to create worker router address");
-                        msg.onward_route = Route {
-                            addresses: vec![worker_addr],
-                        };
-
-                        let cmd = OckamCommand::Router(RouterCommand::SendMessage(msg));
-                        router_tx
-                            .send(cmd)
-                            .expect("failed to send worker message on router");
-                    } else {
-                        // send it over the transport via the router
-                        msg.onward_route = Route {
-                            addresses: remote_addr.addresses.clone(),
-                        };
-                        if let Err(e) =
-                            router_tx.send(OckamCommand::Router(RouterCommand::SendMessage(msg)))
-                        {
-                            eprintln!("error sending to socket: {:?}", e);
-                        }
-                    }
-                } else {
-                    eprintln!("fatal error: failed to read from input");
-                    std::process::exit(1);
+    pub fn run(mut self) {
+        match self.worker {
+            Some(worker) => {
+                while self.router.poll() && self.transport.poll() && worker.poll() {
+                    thread::sleep(time::Duration::from_millis(33));
                 }
             }
-        });
-
-        tx_in
+            None => {
+                while self.router.poll() && self.transport.poll() {
+                    thread::sleep(time::Duration::from_millis(33));
+                }
+            }
+        }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Role {
     Initiator,
     Responder,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Config {
     onward_route: Option<Route>,
     output_to_stdout: bool,
-    decrypt_output: bool,
     local_host: SocketAddr,
     role: Role,
     vault_path: PathBuf,
+    worker_address: Option<RouterAddress>,
 }
 
 impl Config {
     pub fn vault_path(&self) -> PathBuf {
         self.vault_path.clone()
+    }
+
+    pub fn onward_route(&self) -> Option<Route> {
+        if let Some(worker_addr) = self.worker_address.clone() {
+            if let Some(mut onward_route) = self.onward_route.clone() {
+                onward_route.addresses.push(worker_addr.clone());
+
+                return Some(onward_route.clone());
+            }
+        }
+
+        self.onward_route.clone()
     }
 }
 
@@ -122,10 +124,10 @@ impl From<cli::Args> for Config {
         let mut cfg = Config {
             onward_route: None,
             output_to_stdout: false,
-            decrypt_output: false,
             local_host: args.local_socket(),
             role: Role::Initiator,
             vault_path: args.vault_path(),
+            worker_address: None,
         };
 
         match args.output_kind() {
@@ -134,7 +136,6 @@ impl From<cli::Args> for Config {
             }
             cli::OutputKind::Stdout => {
                 cfg.output_to_stdout = true;
-                cfg.decrypt_output = args.decrypt_output();
             }
         }
 
@@ -143,6 +144,14 @@ impl From<cli::Args> for Config {
             cli::ChannelRole::Responder => Role::Responder,
         };
 
+        if let Some(worker_addr) = args.worker_address() {
+            cfg.worker_address = match RouterAddress::worker_router_address_from_str(&worker_addr) {
+                Ok(addr) => Some(addr),
+                _ => None,
+            }
+        }
+
+        println!("{:?}", cfg);
         cfg
     }
 }

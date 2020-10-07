@@ -26,12 +26,11 @@ Ockam Developers (ockam.io)
 Encrypt, route, and decrypt messages using the Ockam daemon.
 
 USAGE:
-    ockamd [FLAGS] [OPTIONS] --role <role>
+    ockamd [OPTIONS] --role <role>
 
 FLAGS:
-        --decrypt-output    Optionally decrypt messages to output
-    -h, --help              Prints help information
-    -V, --version           Prints version information
+    -h, --help       Prints help information
+    -V, --version    Prints version information
 
 OPTIONS:
         --channel-responder-address <channel-responder-address>
@@ -41,10 +40,13 @@ OPTIONS:
             Name of the private key to use for the identity of the channel initiator
 
         --input <input>
-            Data source providing input to `ockamd`, either "stdin" or a valid URI [default: stdin]
+            Data source providing input to `ockamd` [default: stdin]
+
+        --local-socket <local-socket>
+            Local node address and port to bind [default: 127.0.0.1:0]
 
         --output <output>
-            Route to channel responder, e.g. udp://host:port[,udp://host:port],channel_address (note comma-separation)
+            Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation)
             or "stdout" [default: stdout]
         --responder-public-key <responder-public-key>              The public key provided by channel responder
         --role <role>
@@ -57,7 +59,6 @@ OPTIONS:
             Filepath on disk to pre-existing private keys to be used by the filesystem vault [default: ockamd_vault]
 
         --worker-address <worker-address>                          Address used to reach "worker" on remote machine
-
 ```
 
 
