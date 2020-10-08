@@ -47,7 +47,7 @@ pub struct PreKeyBundle {
 }
 
 impl PreKeyBundle {
-    const MIN_SIZE: usize = 32 + 32 + 64 + 32;
+    const SIZE: usize = 32 + 32 + 64 + 32;
     /// Convert the prekey bundle to a byte array
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut output = Vec::new();
@@ -63,10 +63,8 @@ impl TryFrom<&[u8]> for PreKeyBundle {
     type Error = KexExchangeFailError;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-        if data.len() != Self::MIN_SIZE {
-            return Err(
-                KeyExchangeFailErrorKind::InvalidByteCount(Self::MIN_SIZE, data.len()).into(),
-            );
+        if data.len() != Self::SIZE {
+            return Err(KeyExchangeFailErrorKind::InvalidByteCount(Self::SIZE, data.len()).into());
         }
         let identity_key = PublicKey::Curve25519(*array_ref![data, 0, 32]);
         let signed_prekey = PublicKey::Curve25519(*array_ref![data, 32, 32]);
@@ -82,7 +80,7 @@ impl TryFrom<&[u8]> for PreKeyBundle {
 }
 
 #[derive(Debug)]
-enum InitiatorState {
+enum ResponderState {
     /// Create a PreKey Bundle
     GenerateBundle,
     /// Expect an enrollment message from this EIK
@@ -97,19 +95,19 @@ const CSUITE: &[u8] = b"X3DH_25519_AESGCM_SHA256\0\0\0\0\0\0\0\0";
 /// EK, Hash(EIK), IK, EdDSA, AES_GCM_TAG
 const ENROLLMENT_MSG_SIZE: usize = 32 + 32 + 32 + 64 + 16;
 
-/// The initiator of X3DH creates a prekey bundle that can be used to establish a shared
+/// The responder of X3DH creates a prekey bundle that can be used to establish a shared
 /// secret key with another party that can use
-pub struct X3dhInitiator {
+pub struct X3dhResponder {
     identity_key: SecretKeyContext,
     signed_prekey: SecretKeyContext,
     one_time_prekey: SecretKeyContext,
     expected_enrollment_key: Option<PublicKey>,
-    state: InitiatorState,
+    state: ResponderState,
     vault: Arc<Mutex<dyn DynVault + Send>>,
     completed_key_exchange: Option<CompletedKeyExchange>,
 }
 
-impl X3dhInitiator {
+impl X3dhResponder {
     fn new(v: Arc<Mutex<dyn DynVault + Send>>) -> Self {
         Self {
             identity_key: SecretKeyContext::Memory(0),
@@ -117,7 +115,7 @@ impl X3dhInitiator {
             one_time_prekey: SecretKeyContext::Memory(0),
             expected_enrollment_key: None,
             completed_key_exchange: None,
-            state: InitiatorState::GenerateBundle,
+            state: ResponderState::GenerateBundle,
             vault: v,
         }
     }
@@ -143,11 +141,11 @@ impl X3dhInitiator {
     }
 }
 
-impl std::fmt::Debug for X3dhInitiator {
+impl std::fmt::Debug for X3dhResponder {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            r#"X3dhInitiator {{ identity_key: {:?},
+            r#"X3dhResponder {{ identity_key: {:?},
                                       signed_prekey: {:?},
                                       one_time_prekey: {:?},
                                       expected_enrollment_key: {:?},
@@ -165,7 +163,7 @@ impl std::fmt::Debug for X3dhInitiator {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum ResponderState {
+enum InitiatorState {
     GenerateEphemeralIdentityKey,
     ProcessPreKeyBundle,
     Done,
@@ -174,20 +172,20 @@ enum ResponderState {
 /// The responder of X3DH receives a prekey bundle and computes the shared secret
 /// to communicate the first message to the initiator
 #[derive(Clone)]
-pub struct X3dhResponder {
+pub struct X3dhInitiator {
     ephemeral_identity_key: SecretKeyContext,
     prekey_bundle: Option<PreKeyBundle>,
-    state: ResponderState,
+    state: InitiatorState,
     vault: Arc<Mutex<dyn DynVault + Send>>,
     completed_key_exchange: Option<CompletedKeyExchange>,
 }
 
-impl X3dhResponder {
+impl X3dhInitiator {
     fn new(v: Arc<Mutex<dyn DynVault + Send>>) -> Self {
         Self {
             ephemeral_identity_key: SecretKeyContext::Memory(0),
             prekey_bundle: None,
-            state: ResponderState::GenerateEphemeralIdentityKey,
+            state: InitiatorState::GenerateEphemeralIdentityKey,
             vault: v,
             completed_key_exchange: None,
         }
@@ -207,11 +205,11 @@ impl X3dhResponder {
     }
 }
 
-impl std::fmt::Debug for X3dhResponder {
+impl std::fmt::Debug for X3dhInitiator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            r#"X3dhResponder {{ ephemeral_identity_key: {:?}, prekey_bundle: {:?}, state: {:?}, vault, completed_key_exchange: {:?} }}"#,
+            r#"X3dhInitiator {{ ephemeral_identity_key: {:?}, prekey_bundle: {:?}, state: {:?}, vault, completed_key_exchange: {:?} }}"#,
             self.ephemeral_identity_key,
             self.prekey_bundle,
             self.state,
@@ -220,10 +218,10 @@ impl std::fmt::Debug for X3dhResponder {
     }
 }
 
-impl KeyExchanger for X3dhInitiator {
+impl KeyExchanger for X3dhResponder {
     fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
         match self.state {
-            InitiatorState::GenerateBundle => {
+            ResponderState::GenerateBundle => {
                 self.prologue()?;
                 let mut vault = self.vault.lock().unwrap();
                 let signed_prekey = vault.secret_public_key_get(self.signed_prekey)?;
@@ -236,19 +234,19 @@ impl KeyExchanger for X3dhInitiator {
                     signature_prekey: Signature(signature),
                     one_time_prekey,
                 };
-                self.state = InitiatorState::SetEnrollmentKey;
+                self.state = ResponderState::SetEnrollmentKey;
                 Ok(bundle.to_bytes())
             }
-            InitiatorState::SetEnrollmentKey => {
+            ResponderState::SetEnrollmentKey => {
                 if data.len() != 32 {
                     return Err(KeyExchangeFailErrorKind::InvalidByteCount(32, data.len()).into());
                 }
                 self.expected_enrollment_key =
                     Some(PublicKey::Curve25519(*array_ref![data, 0, 32]));
-                self.state = InitiatorState::VerifyEnrollment;
+                self.state = ResponderState::VerifyEnrollment;
                 Ok(vec![])
             }
-            InitiatorState::VerifyEnrollment => {
+            ResponderState::VerifyEnrollment => {
                 debug_assert!(self.expected_enrollment_key.is_some());
                 if data.len() != ENROLLMENT_MSG_SIZE {
                     return Err(KeyExchangeFailErrorKind::InvalidByteCount(
@@ -313,15 +311,15 @@ impl KeyExchanger for X3dhInitiator {
                     local_static_secret: self.identity_key,
                     remote_static_public_key: ikb,
                 });
-                self.state = InitiatorState::Done;
+                self.state = ResponderState::Done;
                 Ok(vec![])
             }
-            InitiatorState::Done => Ok(vec![]),
+            ResponderState::Done => Ok(vec![]),
         }
     }
 
     fn is_complete(&self) -> bool {
-        matches!(self.state, InitiatorState::Done)
+        matches!(self.state, ResponderState::Done)
     }
 
     fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
@@ -329,20 +327,20 @@ impl KeyExchanger for X3dhInitiator {
     }
 }
 
-impl NewKeyExchanger<Self, X3dhResponder> for X3dhInitiator {
-    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhInitiator {
+impl NewKeyExchanger<Self, X3dhInitiator> for X3dhResponder {
+    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhResponder {
         Self::new(v)
     }
 
-    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhResponder {
-        X3dhResponder::new(v)
+    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhInitiator {
+        X3dhInitiator::new(v)
     }
 }
 
-impl KeyExchanger for X3dhResponder {
+impl KeyExchanger for X3dhInitiator {
     fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
         match self.state {
-            ResponderState::GenerateEphemeralIdentityKey => {
+            InitiatorState::GenerateEphemeralIdentityKey => {
                 self.prologue()?;
                 let mut vault = self.vault.lock().unwrap();
                 self.ephemeral_identity_key = vault.secret_generate(SecretKeyAttributes {
@@ -351,10 +349,10 @@ impl KeyExchanger for X3dhResponder {
                     xtype: SecretKeyType::Curve25519,
                 })?;
                 let pubkey = vault.secret_public_key_get(self.ephemeral_identity_key)?;
-                self.state = ResponderState::ProcessPreKeyBundle;
+                self.state = InitiatorState::ProcessPreKeyBundle;
                 Ok(pubkey.as_ref().to_vec())
             }
-            ResponderState::ProcessPreKeyBundle => {
+            InitiatorState::ProcessPreKeyBundle => {
                 let prekey_bundle = PreKeyBundle::try_from(data)?;
 
                 let mut vault = self.vault.lock().unwrap();
@@ -365,7 +363,6 @@ impl KeyExchanger for X3dhResponder {
                     prekey_bundle.identity_key,
                     prekey_bundle.signed_prekey.as_ref(),
                 )?;
-
                 let mut atts = SecretKeyAttributes {
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Ephemeral,
@@ -425,15 +422,15 @@ impl KeyExchanger for X3dhResponder {
                     local_static_secret: skb,
                     remote_static_public_key: prekey_bundle.identity_key,
                 });
-                self.state = ResponderState::Done;
+                self.state = InitiatorState::Done;
                 Ok(ciphertext_and_tag)
             }
-            ResponderState::Done => Ok(vec![]),
+            InitiatorState::Done => Ok(vec![]),
         }
     }
 
     fn is_complete(&self) -> bool {
-        matches!(self.state, ResponderState::Done)
+        matches!(self.state, InitiatorState::Done)
     }
 
     fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
@@ -441,12 +438,46 @@ impl KeyExchanger for X3dhResponder {
     }
 }
 
-impl NewKeyExchanger<X3dhInitiator, Self> for X3dhResponder {
-    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhInitiator {
-        X3dhInitiator::new(v)
+impl NewKeyExchanger<X3dhResponder, Self> for X3dhInitiator {
+    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhResponder {
+        X3dhResponder::new(v)
     }
 
-    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhResponder {
+    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhInitiator {
         Self::new(v)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ockam_vault::software::DefaultVault;
+
+    #[test]
+    fn handshake() {
+        let vault_i = Arc::new(Mutex::new(DefaultVault::default()));
+        let vault_r = Arc::new(Mutex::new(DefaultVault::default()));
+        let mut initiator = X3dhInitiator::new(vault_i.clone());
+        let mut responder = X3dhResponder::new(vault_r.clone());
+
+        assert!(initiator.prologue().is_ok());
+        assert!(responder.prologue().is_ok());
+
+        let res = initiator.process(&[]);
+        assert!(res.is_ok());
+        let eik_bytes = res.unwrap();
+        assert_eq!(eik_bytes.len(), 32);
+        let res = responder.process(&[]);
+        assert!(res.is_ok());
+        let prekey_bundle_bytes = res.unwrap();
+
+        let res = initiator.process(prekey_bundle_bytes.as_slice());
+        assert!(res.is_ok(), "{:?}", res);
+        let final_message = res.unwrap();
+
+        let res = responder.process(eik_bytes.as_slice());
+        assert!(res.is_ok(), "{:?}", res);
+        let res = responder.process(final_message.as_slice());
+        assert!(res.is_ok());
     }
 }

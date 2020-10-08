@@ -854,6 +854,7 @@ dependencies = [
  "arrayref",
  "c_bindings",
  "c_rust_memory",
+ "curve25519-dalek",
  "ecdsa",
  "ed25519-dalek",
  "failure",

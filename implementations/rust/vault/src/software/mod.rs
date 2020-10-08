@@ -464,9 +464,7 @@ impl Vault for DefaultVault {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
         match entry.key {
             SecretKey::Curve25519(k) => {
-                // Libsodium and Signal convert from x25519 secret key this way
-                let hash = sha2::Sha512::digest(&k);
-                let key = ed25519_dalek::SecretKey::from_bytes(&hash[..32])?;
+                let key = ed25519_dalek::SecretKey::from_bytes(&k)?;
                 let pubkey = ed25519_dalek::PublicKey::from(&key);
                 let sign_key = ed25519_dalek::ExpandedSecretKey::from(&key);
                 let sig = sign_key.sign(data.as_ref(), &pubkey);
@@ -492,10 +490,18 @@ impl Vault for DefaultVault {
     ) -> Result<(), VaultFailError> {
         match public_key {
             PublicKey::Curve25519(k) => {
-                let key = ed25519_dalek::PublicKey::from_bytes(&k)?;
-                let sig = ed25519_dalek::Signature::new(signature);
-                key.verify(data.as_ref(), &sig)?;
-                Ok(())
+                // <https://signal.org/docs/specifications/xeddsa/>
+                // recommends using the zero sign bit
+                if let Some(pt) = curve25519_dalek::montgomery::MontgomeryPoint(k).to_edwards(0) {
+                    // PublicKey is a CompressedEdwardsY in dalek. Montgomery Form is decompressed
+                    let key = ed25519_dalek::PublicKey::from_bytes(&pt.compress().0)?;
+                    let sig = ed25519_dalek::Signature::new(signature);
+
+                    key.verify(data.as_ref(), &sig)?;
+                    Ok(())
+                } else {
+                    Err(VaultFailErrorKind::PublicKey.into())
+                }
             }
             PublicKey::P256(k) => {
                 let key = VerifyKey::new(&k)?;
