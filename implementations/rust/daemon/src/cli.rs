@@ -180,6 +180,10 @@ impl Args {
     pub fn worker_address(&self) -> Option<String> {
         self.worker_address.clone()
     }
+
+    pub fn channel_responder_address(&self) -> Option<String> {
+        self.channel_responder_address.clone()
+    }
 }
 
 /// Specifies the implementation of a Ockam vault to be used.

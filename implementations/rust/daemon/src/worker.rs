@@ -1,24 +1,38 @@
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use ockam_common::commands::ockam_commands::*;
-use ockam_message::message::Message as OckamMessage;
+use ockam_message::message::{AddressType, Message as OckamMessage, RouterAddress};
 
-type WorkFn = fn(msg: OckamMessage, router_tx: Sender<OckamCommand>);
+type WorkFn = fn(self_worker: &Worker, msg: OckamMessage);
 
 pub struct Worker {
-    router_tx: Option<Sender<OckamCommand>>,
+    router_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,
     tx: Sender<OckamCommand>,
+    address: RouterAddress,
+    pending_message: Option<OckamMessage>,
     work_fn: WorkFn,
 }
 
 impl Worker {
-    pub fn new<'a>(work_fn: WorkFn) -> Self {
+    // TODO: limit / validate `address` to have address type of Worker.
+    pub fn new<'a>(
+        address: RouterAddress,
+        router_tx: Sender<OckamCommand>,
+        work_fn: WorkFn,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
+
+        // register the worker with the router
+        let cmd = OckamCommand::Router(RouterCommand::Register(AddressType::Worker, tx.clone()));
+        router_tx.send(cmd).expect("failed to register worker");
+
         Worker {
-            router_tx: None,
+            router_tx,
             rx,
             tx,
+            address,
+            pending_message: None,
             work_fn,
         }
     }
@@ -31,9 +45,7 @@ impl Worker {
         match self.rx.try_recv() {
             Ok(cmd) => match cmd {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
-                    if let Some(tx) = self.router_tx.clone() {
-                        (self.work_fn)(msg, tx);
-                    }
+                    (self.work_fn)(&self, msg);
                     true
                 }
                 _ => {
@@ -54,21 +66,9 @@ impl Worker {
 
 #[test]
 fn test_ockamd_worker() {
-    let worker = Worker::new(|_, _| {
-        println!("this is from the ockamd worker...");
-    });
+    let addr = RouterAddress::worker_router_address_from_str("01242020").unwrap();
+    let (fake_router_tx, fake_router_rx) = mpsc::channel();
+    Worker::new(addr, fake_router_tx, |_, _| {});
 
-    std::thread::spawn(move || loop {
-        worker.poll();
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        worker
-            .tx
-            .send(OckamCommand::Worker(WorkerCommand::ReceiveMessage(
-                OckamMessage::default(),
-            )))
-            .unwrap();
-        worker.poll();
-    });
-
-    std::thread::sleep(std::time::Duration::from_millis(3000));
+    assert!(fake_router_rx.recv().is_ok());
 }
