@@ -50,9 +50,9 @@ pub struct ChannelManager<
     router: Sender<OckamCommand>,
     vault: Arc<Mutex<dyn DynVault + Send>>,
     pending_messages: Vec<Message>,
-    new_key_exchanger: E,
     phantom_i: PhantomData<I>,
     phantom_r: PhantomData<R>,
+    phantom_e: PhantomData<E>,
 }
 
 impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> std::fmt::Debug
@@ -70,7 +70,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         receiver: Receiver<OckamCommand>,
         router: Sender<OckamCommand>,
         vault: Arc<Mutex<dyn DynVault + Send>>,
-        new_key_exchanger: E,
     ) -> Self {
         Self {
             channels: BTreeMap::new(),
@@ -79,9 +78,9 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             router,
             vault,
             pending_messages: Vec::new(),
-            new_key_exchanger,
             phantom_i: PhantomData,
             phantom_r: PhantomData,
+            phantom_e: PhantomData,
         }
     }
 
@@ -212,10 +211,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let mut rng = thread_rng();
         let channel_id = rng.gen::<u32>();
         let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
-        let mut channel = Channel::new(
-            channel_id,
-            Box::new(self.new_key_exchanger.responder(self.vault.clone())),
-        );
+        let mut channel = Channel::new(channel_id, Box::new(E::responder(self.vault.clone())));
         self.send_ka_m2(&mut channel, m)?;
         self.channels.insert(channel_address.as_string(), channel);
         Ok(())
@@ -285,10 +281,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 let channel_zero = Address::ChannelAddress(vec![0u8; 4]);
                 let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
 
-                let mut channel = Channel::new(
-                    channel_id,
-                    Box::new(self.new_key_exchanger.initiator(self.vault.clone())),
-                );
+                let mut channel =
+                    Channel::new(channel_id, Box::new(E::initiator(self.vault.clone())));
                 let ka_m1 = channel.agreement.process(&[])?;
 
                 let mut onward_route = m.onward_route.clone();
@@ -356,21 +350,19 @@ pub mod error;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
-    use ockam_kex::CipherSuite;
+    use ockam_kex::xx::{XXInitiator, XXResponder};
     use ockam_message::message::AddressType;
     use ockam_vault::software::DefaultVault;
     use std::sync::mpsc::channel;
 
-    type XXInitiatorChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
-    type XXResponderChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
+    type XXInitiatorChannelManager = ChannelManager<XXInitiator, XXResponder, XXInitiator>;
+    type XXResponderChannelManager = ChannelManager<XXInitiator, XXResponder, XXResponder>;
 
     #[test]
     fn new_channel_initiator() {
         let (tx_router, rx_router) = channel();
         let (tx_channel, rx_channel) = channel();
 
-        let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
         let vault = Arc::new(Mutex::new(DefaultVault::default()));
 
         let mut router = ockam_router::router::Router::new(rx_router);
@@ -379,7 +371,6 @@ mod tests {
             rx_channel,
             tx_router.clone(),
             vault.clone(),
-            new_key_exchanger,
         );
 
         tx_router
@@ -412,7 +403,6 @@ mod tests {
         let (tx_router, rx_router) = channel();
         let (tx_channel, rx_channel) = channel();
 
-        let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
         let vault = Arc::new(Mutex::new(DefaultVault::default()));
 
         let mut router = ockam_router::router::Router::new(rx_router);
@@ -421,7 +411,6 @@ mod tests {
             rx_channel,
             tx_router.clone(),
             vault.clone(),
-            new_key_exchanger,
         );
 
         tx_router
