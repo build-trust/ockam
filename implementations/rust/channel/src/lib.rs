@@ -212,10 +212,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let mut rng = thread_rng();
         let channel_id = rng.gen::<u32>();
         let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
-        let mut channel = Channel::new(
-            channel_id,
-            Box::new(self.new_key_exchanger.responder(self.vault.clone())),
-        );
+        let mut channel = Channel::new(channel_id, Box::new(self.new_key_exchanger.responder()));
         self.send_ka_m2(&mut channel, m)?;
         self.channels.insert(channel_address.as_string(), channel);
         Ok(())
@@ -285,10 +282,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 let channel_zero = Address::ChannelAddress(vec![0u8; 4]);
                 let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
 
-                let mut channel = Channel::new(
-                    channel_id,
-                    Box::new(self.new_key_exchanger.initiator(self.vault.clone())),
-                );
+                let mut channel =
+                    Channel::new(channel_id, Box::new(self.new_key_exchanger.initiator()));
                 let ka_m1 = channel.agreement.process(&[])?;
 
                 let mut onward_route = m.onward_route.clone();
@@ -370,8 +365,12 @@ mod tests {
         let (tx_router, rx_router) = channel();
         let (tx_channel, rx_channel) = channel();
 
-        let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
         let vault = Arc::new(Mutex::new(DefaultVault::default()));
+        let new_key_exchanger = XXNewKeyExchanger::new(
+            CipherSuite::Curve25519AesGcmSha256,
+            vault.clone(),
+            vault.clone(),
+        );
 
         let mut router = ockam_router::router::Router::new(rx_router);
         let mut channel = XXInitiatorChannelManager::new(
@@ -412,8 +411,12 @@ mod tests {
         let (tx_router, rx_router) = channel();
         let (tx_channel, rx_channel) = channel();
 
-        let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
         let vault = Arc::new(Mutex::new(DefaultVault::default()));
+        let new_key_exchanger = XXNewKeyExchanger::new(
+            CipherSuite::Curve25519AesGcmSha256,
+            vault.clone(),
+            vault.clone(),
+        );
 
         let mut router = ockam_router::router::Router::new(rx_router);
         let mut channel = XXResponderChannelManager::new(

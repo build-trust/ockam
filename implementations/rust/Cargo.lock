@@ -746,6 +746,7 @@ dependencies = [
  "lazy_static",
  "ockam-common",
  "ockam-vault",
+ "zeroize",
 ]
 
 [[package]]
