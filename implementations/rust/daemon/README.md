@@ -33,22 +33,15 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-        --channel-responder-address <channel-responder-address>
-            Address used to reach channel "responder" on remote machine
-
         --identity-name <identity-name>
             Name of the private key to use for the identity of the channel initiator
 
-        --input <input>
-            Data source providing input to `ockamd` [default: stdin]
-
-        --local-socket <local-socket>
-            Local node address and port to bind [default: 127.0.0.1:0]
-
+        --input <input>                                  Data source providing input to `ockamd` [default: stdin]
+        --local-socket <local-socket>                    Local node address and port to bind [default: 127.0.0.1:0]
         --output <output>
-            Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation)
-            or "stdout" [default: stdout]
-        --responder-public-key <responder-public-key>              The public key provided by channel responder
+            Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout"
+            [default: stdout]
+        --responder-public-key <responder-public-key>    The public key provided by channel responder
         --role <role>
             Start `ockamd` as an "initiator" or a "responder" of a secure channel
 
@@ -57,8 +50,6 @@ OPTIONS:
 
         --vault-path <vault-path>
             Filepath on disk to pre-existing private keys to be used by the filesystem vault [default: ockamd_vault]
-
-        --worker-address <worker-address>                          Address used to reach "worker" on remote machine
 ```
 
 
