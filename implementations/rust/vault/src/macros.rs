@@ -10,6 +10,8 @@ macro_rules! try_from_int_impl {
     };
 }
 
+/// Creates drop implementation with zeroize call
+#[macro_export]
 macro_rules! zdrop_impl {
     ($name:ident) => {
         impl Drop for $name {
