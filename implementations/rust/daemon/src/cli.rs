@@ -67,24 +67,6 @@ pub struct Args {
     )]
     role: ChannelRole,
 
-    /// Define the channel responder address, currently obtained from a responder node.
-    #[structopt(
-        long,
-        required_if("role", "initiator"),
-        required_if("role", "init"),
-        help = r#"Address used to reach channel "responder" on remote machine"#
-    )]
-    channel_responder_address: Option<String>,
-
-    /// Define the worker address, currently obtained from a responder node.
-    #[structopt(
-        long,
-        required_if("role", "initiator"),
-        required_if("role", "init"),
-        help = r#"Address used to reach "worker" on remote machine"#
-    )]
-    worker_address: Option<String>,
-
     /// Define which private key to use as the initiator's identity.
     #[structopt(
         long,
@@ -133,8 +115,6 @@ impl Default for Args {
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
-            channel_responder_address: None,
-            worker_address: None,
             identity_name: None,
             responder_public_key: None,
         }
@@ -175,14 +155,6 @@ impl Args {
 
     pub fn vault_path(&self) -> PathBuf {
         self.vault_path.clone()
-    }
-
-    pub fn worker_address(&self) -> Option<String> {
-        self.worker_address.clone()
-    }
-
-    pub fn channel_responder_address(&self) -> Option<String> {
-        self.channel_responder_address.clone()
     }
 }
 

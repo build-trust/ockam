@@ -6,16 +6,15 @@ use std::thread;
 use std::time;
 
 use crate::cli;
-use crate::vault::FilesystemVault;
 use crate::worker::Worker;
 
 use ockam_channel::*;
 use ockam_common::commands::ockam_commands::*;
 use ockam_kex::xx::{XXInitiator, XXResponder};
-use ockam_message::message::{AddressType, Message as OckamMessage, Route, RouterAddress};
+use ockam_message::message::{AddressType, Route, RouterAddress};
 use ockam_router::router::Router;
 use ockam_transport::transport::UdpTransport;
-use ockam_vault::DynVault;
+use ockam_vault::software::DefaultVault;
 
 pub struct Node<'a> {
     config: &'a Config,
@@ -28,13 +27,24 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    pub fn new(
-        worker: Option<Worker>,
-        router: Router,
-        router_tx: Sender<OckamCommand>,
-        chan_manager: ChannelManager<XXInitiator, XXResponder, XXInitiator>,
-        config: &'a Config,
-    ) -> (Self, Sender<OckamCommand>) {
+    pub fn new(config: &'a Config) -> (Self, Sender<OckamCommand>) {
+        // TODO: temporarily passed into the node, need to re-work
+        let (router_tx, router_rx) = std::sync::mpsc::channel();
+        let router = Router::new(router_rx);
+
+        // create the vault
+        // let vault = Arc::new(Mutex::new(
+        //     FilesystemVault::new(config.vault_path()).expect("failed to initialize vault"),
+        // ));
+
+        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+
+        // create the channel manager
+        type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXInitiator>;
+        let (chan_tx, chan_rx) = mpsc::channel();
+        let chan_manager =
+            XXChannelManager::new(chan_rx, chan_tx, router_tx.clone(), vault).unwrap();
+
         // create the transport, currently UDP-only
         let transport_router_tx = router_tx.clone();
         let (transport_tx, transport_rx) = mpsc::channel();
@@ -51,7 +61,7 @@ impl<'a> Node<'a> {
         (
             Self {
                 config,
-                worker,
+                worker: None,
                 router,
                 router_tx,
                 chan_manager,
@@ -62,10 +72,15 @@ impl<'a> Node<'a> {
         )
     }
 
-    pub fn worker_address(&self) -> RouterAddress {
-        // TODO: expect address to come from config, etc.
-        RouterAddress::worker_router_address_from_str("01242020")
-            .expect("failed to convert string to worker address")
+    pub fn add_worker(&mut self, worker: Worker) {
+        self.router_tx
+            .send(OckamCommand::Router(RouterCommand::Register(
+                AddressType::Worker,
+                worker.sender(),
+            )))
+            .expect("failed to register worker with router");
+
+        self.worker = Some(worker);
     }
 
     pub fn run(mut self) {
@@ -103,15 +118,19 @@ pub enum Role {
     Responder,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Input {
+    Stdin,
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     onward_route: Option<Route>,
     output_to_stdout: bool,
-    channel_responder_address: Option<RouterAddress>,
     local_host: SocketAddr,
     role: Role,
     vault_path: PathBuf,
-    worker_address: Option<RouterAddress>,
+    input_kind: Input,
 }
 
 impl Config {
@@ -120,19 +139,11 @@ impl Config {
     }
 
     pub fn onward_route(&self) -> Option<Route> {
-        // if let Some(worker_addr) = self.worker_address.clone() {
-        //     if let Some(mut onward_route) = self.onward_route.clone() {
-        //         onward_route.addresses.push(worker_addr.clone());
-
-        //         return Some(onward_route.clone());
-        //     }
-        // }
-
         self.onward_route.clone()
     }
 
-    pub fn channel_responder_address(&self) -> Option<RouterAddress> {
-        self.channel_responder_address.clone()
+    pub fn input_kind(&self) -> Input {
+        self.input_kind.clone()
     }
 }
 
@@ -142,17 +153,9 @@ impl From<cli::Args> for Config {
             onward_route: None,
             output_to_stdout: false,
             local_host: args.local_socket(),
-            channel_responder_address: Some(
-                RouterAddress::channel_router_address_from_str(
-                    &args
-                        .channel_responder_address()
-                        .expect("no channel responder address from args"),
-                )
-                .expect("failed to create channel router addr from string"),
-            ),
             role: Role::Initiator,
             vault_path: args.vault_path(),
-            worker_address: None,
+            input_kind: Input::Stdin,
         };
 
         match args.output_kind() {
@@ -169,14 +172,10 @@ impl From<cli::Args> for Config {
             cli::ChannelRole::Responder => Role::Responder,
         };
 
-        if let Some(worker_addr) = args.worker_address() {
-            cfg.worker_address = match RouterAddress::worker_router_address_from_str(&worker_addr) {
-                Ok(addr) => Some(addr),
-                _ => None,
-            }
-        }
+        cfg.input_kind = match args.input_kind() {
+            cli::InputKind::Stdin => Input::Stdin,
+        };
 
-        println!("{:?}", cfg);
         cfg
     }
 }
