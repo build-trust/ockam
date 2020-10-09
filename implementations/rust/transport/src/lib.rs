@@ -59,10 +59,6 @@ pub mod transport {
         }
 
         pub fn send_message(&mut self, mut m: Message) -> Result<(), String> {
-            // println!("Sending message type {:?}\nOnward route:", m.message_type);
-            // m.onward_route.print_route();
-            // println!("Return route:");
-            // m.return_route.print_route();
             let remote_address = m.onward_route.addresses.remove(0);
 
             match self.socket.local_addr() {
@@ -70,10 +66,6 @@ pub mod transport {
                     Some(ra) => {
                         m.return_route.addresses.insert(0, ra);
                         let mut v = vec![];
-                        // println!("Transport sending to route:");
-                        // m.onward_route.print_route();
-                        // println!("Message type {:?} length {}", &m.message_type,
-                        // &m.message_body.len());
                         Message::encode(m, &mut v);
                         match self
                             .socket
