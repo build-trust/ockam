@@ -39,13 +39,13 @@ task cargoFmt {
   }
 }
 
-task cargoClippy {
-  doLast {
-    exec {
-      commandLine 'cargo', 'clippy', '--all', '--', '-D', 'warnings'
-    }
-  }
-}
+// task cargoClippy {
+//   doLast {
+//     exec {
+//       commandLine 'cargo', 'clippy', '--all', '--', '-D', 'warnings'
+//     }
+//   }
+// }
 
 
 task cargoCheck {
@@ -57,5 +57,6 @@ task cargoCheck {
 }
 
 task lint {
-  dependsOn cargoVersion, cargoFmt, cargoClippy, cargoCheck
+//  dependsOn cargoVersion, cargoFmt, cargoClippy, cargoCheck
+  dependsOn cargoVersion, cargoFmt, cargoCheck
 }

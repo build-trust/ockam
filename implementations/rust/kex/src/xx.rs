@@ -115,7 +115,7 @@ impl KeyExchange for SymmetricState {
         let ck = self
             .state
             .ck
-            .ok_or(VaultFailError::from(VaultFailErrorKind::Ecdh))?;
+            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::Ecdh))?;
 
         let mut vault = self.vault.lock().unwrap();
 
@@ -223,7 +223,7 @@ impl KeyExchange for SymmetricState {
         let ck = self
             .state
             .ck
-            .ok_or(VaultFailError::from(VaultFailErrorKind::HkdfSha256))?;
+            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::HkdfSha256))?;
 
         let mut vault = self.vault.lock().unwrap();
         let attributes = SecretKeyAttributes {

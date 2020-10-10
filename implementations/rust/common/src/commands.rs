@@ -34,7 +34,6 @@ pub mod ockam_commands {
     #[derive(Debug)]
     pub enum ChannelCommand {
         Stop,
-        InitializeRoute(Route),
         ReceiveMessage(Message),
         SendMessage(Message),
     }
@@ -42,7 +41,7 @@ pub mod ockam_commands {
     #[derive(Debug)]
     pub enum WorkerCommand {
         Stop,
-        InitializeRoute(Route),
+        Test,
         ReceiveMessage(Message),
         SendMessage(Message),
     }

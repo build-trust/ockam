@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use bindgen::EnumVariation;
 use which::which;
 
-const ENV_LLVM_PREFIX: &'static str = "LLVM_PREFIX";
+const ENV_LLVM_PREFIX: &str = "LLVM_PREFIX";
 
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -84,10 +84,7 @@ fn main() {
         let src_file = root.join("implementations/rust/c/bindings/src/bindings.rs");
         generate_bindings(llvm_config, include_dirs, &src_file);
     } else {
-        println!(
-            "cargo:error={}",
-            "LLVM_PREFIX was not set, and cannot find llvm-config, will not regenerate bindings"
-        );
+        println!("cargo:error=LLVM_PREFIX was not set, and cannot find llvm-config, will not regenerate bindings");
     }
 }
 

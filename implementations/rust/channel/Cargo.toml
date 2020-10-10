@@ -20,6 +20,7 @@ ockam-message = { version = "0.1", path = "../message" }
 ockam-kex = { version = "0.1", path = "../kex" }
 ockam-vault = { version = "0.1", path = "../vault" }
 rand = "0.7"
+hex = "0.4.2"
 
 [dev-dependencies]
 ockam-router = { version = "0.1", path = "../router" }

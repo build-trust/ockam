@@ -1,9 +1,9 @@
 #[allow(unused)]
+#[allow(non_camel_case_types)]
 
 pub mod transport {
     use ockam_common::commands::ockam_commands::RouterCommand::ReceiveMessage;
     use ockam_common::commands::ockam_commands::*;
-    use ockam_common::commands::*;
     use ockam_message::message::*;
     use ockam_router::router::Router;
     use std::collections::HashMap;
@@ -61,8 +61,8 @@ pub mod transport {
         }
 
         pub fn send_message(&mut self, mut m: Message) -> Result<(), String> {
-            println!("Onward route:");
-            m.onward_route.print_route();
+            // println!("Onward route:");
+            // m.onward_route.print_route();
             let remote_address = m.onward_route.addresses.remove(0);
 
             match self.socket.local_addr() {
@@ -70,10 +70,11 @@ pub mod transport {
                     Some(ra) => {
                         m.return_route.addresses.insert(0, ra);
                         let mut v = vec![];
+                        // println!("Transport sending to route:");
+                        // m.onward_route.print_route();
+                        // println!("Message type {:?} length {}", &m.message_type,
+                        // &m.message_body.len());
                         Message::encode(m, &mut v);
-                        // println!("sending:");
-                        // let b: Vec<u8> = v[0..].to_vec();
-                        // println!("{:?}", b);
                         match self
                             .socket
                             .send_to(v.as_slice(), remote_address.address.as_string())
@@ -100,8 +101,15 @@ pub mod transport {
                     // println!("{:?}", b);
                     match Message::decode(&buff[0..s]) {
                         Ok((mut m, _unused)) => {
-                            println!("onward route:");
-                            m.onward_route.print_route();
+                            // println!("onward route:");
+                            // m.onward_route.print_route();
+                            // match m.message_type {
+                            //     MessageType::Payload => {
+                            //         println!("Payload: {}",
+                            // std::str::from_utf8(&m.message_body).unwrap());
+                            //     }
+                            //     _ => {}
+                            // }
                             if m.onward_route.addresses[0].a_type == AddressType::Udp {
                                 match self.send_message(m) {
                                     Err(s) => Err(s),

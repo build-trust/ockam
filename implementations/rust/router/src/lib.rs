@@ -2,6 +2,7 @@
 pub mod router {
     use ockam_common::commands::ockam_commands::*;
     use ockam_message::message::*;
+    use std::convert::TryFrom;
     use std::sync::mpsc::channel;
     use std::sync::{Arc, Mutex};
     use std::{thread, time};
@@ -38,7 +39,6 @@ pub mod router {
                             break;
                         }
                         OckamCommand::Router(RouterCommand::Register(a_type, tx)) => {
-                            println!("Registering");
                             got = true;
                             self.registry[a_type as usize] = Option::Some(tx);
                         }
@@ -63,8 +63,13 @@ pub mod router {
                 return Err("no route supplied".to_string());
             }
 
+            // println!("routing onward/return: ");
+            // m.onward_route.print_route();
+            // m.return_route.print_route();
             let destination_address = m.onward_route.addresses[0].clone();
             let address_type = destination_address.a_type;
+            let at = address_type as u8;
+            let att = AddressType::try_from(at).unwrap();
             let handler_tx = match &self.registry[address_type as usize] {
                 Some(a) => a,
                 None => return Err("no handler".to_string()),
