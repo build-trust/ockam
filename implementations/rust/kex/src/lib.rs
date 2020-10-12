@@ -65,8 +65,8 @@ struct HandshakeStateData {
 /// A KeyExchange implements these methods
 /// A KeyExchange implementation should wrap a vault instance
 trait KeyExchange {
-    /// The inner class wrapped
-    const CSUITE: &'static [u8];
+    /// Returns Noise protocol name
+    fn get_protocol_name(&self) -> &'static [u8];
 
     /// Create a new `HandshakeState` starting with the prologue
     fn prologue(&mut self) -> Result<(), VaultFailError>;
@@ -113,12 +113,21 @@ pub trait KeyExchanger {
     fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError>;
 }
 
+/// XX cipher suites
+#[derive(Copy, Clone, Debug)]
+pub enum CipherSuite {
+    /// Curve25519 Aes256-GCM Sha256
+    Curve25519AesGcmSha256,
+    /// P256 Aes128-GCM Sha256
+    P256Aes128GcmSha256,
+}
+
 /// Instantiate a stateful key exchange vault instance
 pub trait NewKeyExchanger<E: KeyExchanger = Self, F: KeyExchanger = Self> {
     /// Create a new Key Exchanger with the initiator role
-    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> E;
+    fn initiator(&self, v: Arc<Mutex<dyn DynVault + Send>>) -> E;
     /// Create a new Key Exchanger with the responder role
-    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> F;
+    fn responder(&self, v: Arc<Mutex<dyn DynVault + Send>>) -> F;
 }
 
 /// A Completed Key Exchange elements

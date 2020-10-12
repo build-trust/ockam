@@ -53,9 +53,10 @@ pub struct ChannelManager<
     sender: Sender<OckamCommand>,
     router: Sender<OckamCommand>,
     vault: Arc<Mutex<dyn DynVault + Send>>,
+    pending_messages: Vec<Message>,
+    new_key_exchanger: E,
     phantom_i: PhantomData<I>,
     phantom_r: PhantomData<R>,
-    phantom_e: PhantomData<E>,
 }
 
 impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> std::fmt::Debug
@@ -77,26 +78,19 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         sender: Sender<OckamCommand>,
         router: Sender<OckamCommand>,
         vault: Arc<Mutex<dyn DynVault + Send>>,
-    ) -> Result<Self, ChannelError> {
-        // register ChannelManager with the router as the handler for all Channel address types
-        if let Err(_error) = router.send(OckamCommand::Router(RouterCommand::Register(
-            AddressType::Channel,
-            sender.clone(),
-        ))) {
-            println!("Channel failed ro register with router");
-            return Err(ChannelErrorKind::CantSend.into());
-        }
-
-        Ok(Self {
+        new_key_exchanger: E,
+    ) -> Self {
+        Self {
             channels: BTreeMap::new(),
             sender,
             receiver,
             router,
             vault,
+            pending_messages: Vec::new(),
+            new_key_exchanger,
             phantom_i: PhantomData,
             phantom_r: PhantomData,
-            phantom_e: PhantomData,
-        })
+        }
     }
 
     /// Check for work to be done and do it
@@ -371,9 +365,12 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
     fn create_new_responder(&mut self, m: &Message) -> Result<String, ChannelError> {
         let mut rng = thread_rng();
         let channel_id = rng.gen::<u32>();
-        let channel_address = Address::ChannelAddress(channel_id.to_le_bytes().to_vec());
-        let mut channel = Channel::new(channel_id, Box::new(E::responder(self.vault.clone())));
-        println!("Inserting channel {} at 302", channel_address.as_string());
+        let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
+        let mut channel = Channel::new(
+            channel_id,
+            Box::new(self.new_key_exchanger.responder(self.vault.clone())),
+        );
+        self.send_ka_m2(&mut channel, m)?;
         self.channels.insert(channel_address.as_string(), channel);
         Ok(channel_address.as_string())
     }
@@ -435,32 +432,39 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                     .send(OckamCommand::Router(RouterCommand::SendMessage(new_m)))?;
             }
             None => {
-                match m.message_type {
-                    MessageType::None => {}
-                    _ => {
-                        return Err(ChannelErrorKind::State.into());
-                    }
-                }
-                let pending_return = m.return_route.clone();
-                let channel_id = self.initiate_key_exchange(m)?;
-                let channel_str = encode(channel_id.to_le_bytes());
-                let channel_address =
-                    RouterAddress::channel_router_address_from_str(&channel_str).unwrap();
-                match self.channels.get_mut(&channel_address.address.as_string()) {
-                    Some(channel) => {
-                        channel.pending = Some(Message {
-                            onward_route: pending_return,
-                            return_route: Route {
-                                addresses: vec![channel_address],
-                            },
-                            message_type: MessageType::None,
-                            message_body: vec![],
-                        });
-                    }
-                    None => {
-                        return Err(ChannelErrorKind::CantSend.into());
-                    }
-                }
+                // Create new channel and start key exchange as initiator
+                let mut rng = thread_rng();
+                let channel_id = rng.gen::<u32>();
+                let channel_zero = Address::ChannelAddress(vec![0u8; 4]);
+                let channel_address = Address::ChannelAddress(channel_id.to_be_bytes().to_vec());
+
+                let mut channel = Channel::new(
+                    channel_id,
+                    Box::new(self.new_key_exchanger.initiator(self.vault.clone())),
+                );
+                let ka_m1 = channel.agreement.process(&[])?;
+
+                let mut onward_route = m.onward_route.clone();
+                onward_route
+                    .addresses
+                    .push(RouterAddress::from_address(channel_zero).unwrap());
+
+                let m1 = Message {
+                    onward_route,
+                    return_route: Route {
+                        addresses: vec![RouterAddress::from_address(channel_address).unwrap()],
+                    },
+                    message_type: MessageType::KeyAgreementM1,
+                    message_body: ka_m1,
+                };
+
+                self.channels.insert(address, channel);
+
+                // start the key exchange while holding this pending message
+                self.router
+                    .send(OckamCommand::Router(RouterCommand::SendMessage(m1)))?;
+
+                self.pending_messages.push(m);
             }
         };
         Ok(())
@@ -502,20 +506,103 @@ impl Channel {
         Address::ChannelAddress(self.id.to_le_bytes().to_vec())
     }
 
-    pub fn nonce_16_to_96(n16: u16) -> [u8; 12] {
-        // the nonce value is an le u16, whereas the nonce
-        // byte array is 10 bytes of 0's follow by the be
-        // representation of the nonce
-        let mut n: [u8; 12] = [0; 12];
-        let b = n16.to_be_bytes();
-        n[10] = b[0];
-        n[11] = b[1];
-        n
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
+    use ockam_kex::CipherSuite;
+    use ockam_message::message::AddressType;
+    use ockam_vault::software::DefaultVault;
+    use std::sync::mpsc::channel;
+
+    type XXInitiatorChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
+    type XXResponderChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
+
+    #[test]
+    fn new_channel_initiator() {
+        let (tx_router, rx_router) = channel();
+        let (tx_channel, rx_channel) = channel();
+
+        let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
+        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+
+        let mut router = ockam_router::router::Router::new(rx_router);
+        let mut channel = XXInitiatorChannelManager::new(
+            tx_channel.clone(),
+            rx_channel,
+            tx_router.clone(),
+            vault.clone(),
+            new_key_exchanger,
+        );
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::Register(
+                AddressType::Channel,
+                tx_channel.clone(),
+            )))
+            .unwrap();
+
+        let message = Message {
+            onward_route: Route {
+                addresses: vec![RouterAddress::channel_router_address_from_str("deadbeef").unwrap()],
+            },
+            return_route: Route { addresses: vec![] },
+            message_type: MessageType::Payload,
+            message_body: b"Hello Bob".to_vec(),
+        };
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::SendMessage(message)))
+            .unwrap();
+        assert!(router.poll());
+        let res = channel.poll();
+        assert!(res.is_ok());
+        assert!(res.unwrap());
     }
 
-    pub fn nonce_from_96(n: &[u8; 12]) -> u16 {
-        let bytes: [u8; 2] = [n[10], n[11]];
-        u16::from_be_bytes(bytes.into())
+    #[test]
+    fn new_channel_responder() {
+        let (tx_router, rx_router) = channel();
+        let (tx_channel, rx_channel) = channel();
+
+        let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
+        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+
+        let mut router = ockam_router::router::Router::new(rx_router);
+        let mut channel = XXResponderChannelManager::new(
+            tx_channel.clone(),
+            rx_channel,
+            tx_router.clone(),
+            vault.clone(),
+            new_key_exchanger,
+        );
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::Register(
+                AddressType::Channel,
+                tx_channel.clone(),
+            )))
+            .unwrap();
+
+        let message = Message {
+            onward_route: Route {
+                addresses: vec![RouterAddress::channel_router_address_from_str("00").unwrap()],
+            },
+            return_route: Route { addresses: vec![] },
+            message_type: MessageType::KeyAgreementM1,
+            message_body: vec![
+                79, 30, 59, 197, 255, 25, 84, 22, 3, 63, 63, 45, 98, 206, 16, 137, 39, 108, 13,
+                171, 237, 191, 172, 115, 63, 124, 209, 114, 59, 97, 28, 82,
+            ],
+        };
+
+        tx_router
+            .send(OckamCommand::Router(RouterCommand::SendMessage(message)))
+            .unwrap();
+        assert!(router.poll());
+        let res = channel.poll();
+        assert!(res.is_ok());
+        assert!(res.unwrap());
     }
 }
 

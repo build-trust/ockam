@@ -3,7 +3,7 @@ use super::{
     SHA256_SIZE,
 };
 use crate::error::KexExchangeFailError;
-use crate::NewKeyExchanger;
+use crate::{CipherSuite, NewKeyExchanger};
 use ockam_vault::{
     error::{VaultFailError, VaultFailErrorKind},
     types::{
@@ -16,6 +16,7 @@ use std::sync::{Arc, Mutex};
 
 /// Represents the XX Handshake
 struct SymmetricState {
+    cipher_suite: CipherSuite,
     handshake: HandshakeStateData,
     key: Option<SecretKeyContext>,
     nonce: u16,
@@ -34,8 +35,14 @@ impl std::fmt::Debug for SymmetricState {
 }
 
 impl SymmetricState {
-    pub fn new(vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
+    pub fn new(cipher_suite: CipherSuite, vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
+        match cipher_suite {
+            CipherSuite::Curve25519AesGcmSha256 => {}
+            _ => unimplemented!(),
+        }
+
         Self {
+            cipher_suite,
             handshake: HandshakeStateData {
                 ephemeral_public_key: PublicKey::Curve25519([0u8; 32]),
                 ephemeral_secret_handle: SecretKeyContext::Memory(0),
@@ -56,7 +63,12 @@ impl SymmetricState {
 }
 
 impl KeyExchange for SymmetricState {
-    const CSUITE: &'static [u8] = b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
+    fn get_protocol_name(&self) -> &'static [u8] {
+        match self.cipher_suite {
+            CipherSuite::Curve25519AesGcmSha256 => b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0",
+            CipherSuite::P256Aes128GcmSha256 => b"Noise_XX_P256_AES128GCM_SHA256\0\0",
+        }
+    }
 
     /// Create a new `HandshakeState` starting with the prologue
     fn prologue(&mut self) -> Result<(), VaultFailError> {
@@ -83,7 +95,7 @@ impl KeyExchange for SymmetricState {
         // prologue is empty
         // mix_hash(xx, NULL, 0);
         let mut h = [0u8; SHA256_SIZE];
-        h[..Self::CSUITE.len()].copy_from_slice(Self::CSUITE);
+        h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
         let attributes = SecretKeyAttributes {
             xtype: SecretKeyType::Buffer(SHA256_SIZE),
             persistence: SecretPersistenceType::Ephemeral,
@@ -449,18 +461,38 @@ pub struct XXInitiator {
     run_prologue: bool,
 }
 
-impl NewKeyExchanger<Self, XXResponder> for XXInitiator {
+/// Represents an XX NewKeyExchanger
+#[derive(Debug)]
+pub struct XXNewKeyExchanger {
+    cipher_suite: CipherSuite,
+}
+
+impl XXNewKeyExchanger {
+    /// Create a new XXNewKeyExchanger
+    pub fn new(cipher_suite: CipherSuite) -> Self {
+        Self { cipher_suite }
+    }
+}
+
+impl NewKeyExchanger<XXInitiator, XXResponder> for XXNewKeyExchanger {
     /// Create a new initiator using the provided backing vault
-    fn initiator(vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
-        let ss = SymmetricState::new(vault);
-        Self {
+    fn initiator(&self, vault: Arc<Mutex<dyn DynVault + Send>>) -> XXInitiator {
+        let ss = SymmetricState::new(self.cipher_suite, vault);
+        XXInitiator {
             state: InitiatorState::EncodeMessage1,
             initiator: Initiator(ss),
             run_prologue: true,
         }
     }
-    fn responder(vault: Arc<Mutex<dyn DynVault + Send>>) -> XXResponder {
-        XXResponder::responder(vault)
+
+    /// Create a new responder using the provided backing vault
+    fn responder(&self, vault: Arc<Mutex<dyn DynVault + Send>>) -> XXResponder {
+        let ss = SymmetricState::new(self.cipher_suite, vault);
+        XXResponder {
+            state: ResponderState::DecodeMessage1,
+            responder: Responder(ss),
+            run_prologue: true,
+        }
     }
 }
 
@@ -470,21 +502,6 @@ pub struct XXResponder {
     state: ResponderState,
     responder: Responder,
     run_prologue: bool,
-}
-
-impl NewKeyExchanger<XXInitiator, Self> for XXResponder {
-    fn initiator(vault: Arc<Mutex<dyn DynVault + Send>>) -> XXInitiator {
-        XXInitiator::initiator(vault)
-    }
-    /// Create a new responder using the provided backing vault
-    fn responder(vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
-        let ss = SymmetricState::new(vault);
-        Self {
-            state: ResponderState::DecodeMessage1,
-            responder: Responder(ss),
-            run_prologue: true,
-        }
-    }
 }
 
 impl KeyExchanger for XXInitiator {
@@ -573,7 +590,7 @@ mod tests {
             100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
         ];
         let vault = Arc::new(Mutex::new(DefaultVault::default()));
-        let mut state = SymmetricState::new(vault.clone());
+        let mut state = SymmetricState::new(CipherSuite::Curve25519AesGcmSha256, vault.clone());
         let res = state.prologue();
         assert!(res.is_ok());
         assert_eq!(state.state.h, exp_h);
@@ -835,6 +852,7 @@ mod tests {
             .secret_import(&SecretKey::Buffer(ck.to_vec()), attributes)
             .unwrap();
         SymmetricState {
+            cipher_suite: CipherSuite::Curve25519AesGcmSha256,
             handshake: HandshakeStateData {
                 static_public_key,
                 static_secret_handle,
