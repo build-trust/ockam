@@ -342,16 +342,6 @@ impl KeyExchanger for X3dhResponder {
     }
 }
 
-impl NewKeyExchanger<Self, X3dhInitiator> for X3dhResponder {
-    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhResponder {
-        Self::new(v)
-    }
-
-    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhInitiator {
-        X3dhInitiator::new(v)
-    }
-}
-
 impl KeyExchanger for X3dhInitiator {
     fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
         match self.state {
@@ -471,13 +461,41 @@ impl KeyExchanger for X3dhInitiator {
     }
 }
 
-impl NewKeyExchanger<X3dhResponder, Self> for X3dhInitiator {
-    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhResponder {
-        X3dhResponder::new(v)
+/// Represents an XX NewKeyExchanger
+pub struct X3dhNewKeyExchanger {
+    vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
+    vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+}
+
+impl std::fmt::Debug for X3dhNewKeyExchanger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "X3dhNewKeyExchanger {{ vault_initiator, vault_responder }}"
+        )
+    }
+}
+
+impl X3dhNewKeyExchanger {
+    /// Create a new XXNewKeyExchanger
+    pub fn new(
+        vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
+        vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+    ) -> Self {
+        Self {
+            vault_initiator,
+            vault_responder,
+        }
+    }
+}
+
+impl NewKeyExchanger<X3dhInitiator, X3dhResponder> for X3dhNewKeyExchanger {
+    fn initiator(&self) -> X3dhInitiator {
+        X3dhInitiator::new(self.vault_initiator.clone())
     }
 
-    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> X3dhInitiator {
-        Self::new(v)
+    fn responder(&self) -> X3dhResponder {
+        X3dhResponder::new(self.vault_responder.clone())
     }
 }
 

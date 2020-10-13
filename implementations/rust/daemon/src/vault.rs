@@ -189,8 +189,13 @@ impl Vault for FilesystemVault {
         info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
-        self.v
-            .ec_diffie_hellman_hkdf_sha256(context, peer_public_key, salt, info, output_attributes)
+        self.v.ec_diffie_hellman_hkdf_sha256(
+            context,
+            peer_public_key,
+            salt,
+            info,
+            output_attributes,
+        )
     }
 
     /// Compute the HKDF-SHA256 using the specified salt and input key material

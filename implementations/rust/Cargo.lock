@@ -770,6 +770,7 @@ dependencies = [
  "lazy_static",
  "ockam-common",
  "ockam-vault",
+ "subtle",
  "zeroize",
 ]
 
