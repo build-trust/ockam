@@ -9,7 +9,7 @@ use ockam_message::message::{
     AddressType, Message as OckamMessage, MessageType, Route, RouterAddress,
 };
 
-pub fn run(mut config: Config) {
+pub fn run(config: Config) {
     // configure a node
     let node_config = config.clone();
     let (node, router_tx) = Node::new(&node_config);
@@ -67,20 +67,6 @@ pub fn run(mut config: Config) {
         }
 
         if matches!(config.input_kind(), Input::Stdin) {
-            let mps_router_tx = router_tx.clone();
-            let mps_onward_route = onward_route.clone();
-            thread::spawn(move || loop {
-                mps_router_tx
-                    .send(OckamCommand::Router(RouterCommand::SendMessage(
-                        OckamMessage {
-                            onward_route: mps_onward_route.clone(),
-                            return_route: Route { addresses: vec![] },
-                            message_body: b"Hello from mps thread...\n".to_vec(),
-                            message_type: MessageType::Payload,
-                        },
-                    )))
-                    .expect("failed to send input data to node");
-            });
             loop {
                 if input.read_line(&mut buf).is_ok() {
                     router_tx
