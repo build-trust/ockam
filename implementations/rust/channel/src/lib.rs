@@ -1,6 +1,6 @@
 // M1 send
 // M2 send
-
+#![allow(dead_code)]
 #![deny(
     missing_docs,
     missing_debug_implementations,
@@ -34,7 +34,7 @@ use ockam_message::message::{Address, AddressType, Message, MessageType, Route, 
 use ockam_vault::DynVault;
 use rand::prelude::*;
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     sync::{
         mpsc::{Receiver, Sender},
         Arc, Mutex,
@@ -53,9 +53,9 @@ pub struct ChannelManager<
     sender: Sender<OckamCommand>,
     router: Sender<OckamCommand>,
     vault: Arc<Mutex<dyn DynVault + Send>>,
+    new_key_exchanger: E,
     phantom_i: PhantomData<I>,
     phantom_r: PhantomData<R>,
-    phantom_e: PhantomData<E>,
 }
 
 impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> std::fmt::Debug
@@ -77,6 +77,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         sender: Sender<OckamCommand>,
         router: Sender<OckamCommand>,
         vault: Arc<Mutex<dyn DynVault + Send>>,
+        new_key_exchanger: E,
     ) -> Result<Self, ChannelError> {
         // register ChannelManager with the router as the handler for all Channel address types
         if let Err(_error) = router.send(OckamCommand::Router(RouterCommand::Register(
@@ -93,15 +94,15 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             receiver,
             router,
             vault,
+            new_key_exchanger,
             phantom_i: PhantomData,
             phantom_r: PhantomData,
-            phantom_e: PhantomData,
         })
     }
 
     /// Check for work to be done and do it
     pub fn poll(&mut self) -> Result<bool, ChannelError> {
-        let mut keep_going = true;
+        let keep_going = true;
         let mut got_message = true;
         while got_message {
             match self.receiver.try_recv() {
@@ -126,33 +127,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 }
             }
         }
-
-        // Process pending messages
-        // ///!! todo
-        // let mut set = BTreeSet::new();
-        // for i in 0..self.pending_messages.len() {
-        //     debug_assert!(!self.pending_messages[i].onward_route.addresses.is_empty());
-        //
-        //     let address = self.pending_messages[i].onward_route.addresses[0]
-        //         .address
-        //         .as_string();
-        //     if let Some(channel) = self.channels.get(&address) {
-        //         if channel.completed_key_exchange.is_some() {
-        //             // Can send now
-        //             set.insert(i);
-        //         }
-        //     }
-        // }
-        // // Send out pending messages
-        // ///!! todo
-        // for i in set.iter().rev() {
-        //     let m = self.pending_messages.remove(*i);
-        //     self.sender
-        //         .send(OckamCommand::Channel(ChannelCommand::SendMessage(m)))?;
-        // }
-        //
-        // keep_going |= !self.pending_messages.is_empty();
-
         Ok(keep_going)
     }
 
@@ -162,91 +136,74 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             // can't so drop
             return Err(ChannelErrorKind::RecvError.into());
         }
-        let mut return_route = m.return_route.clone();
+        let return_route = m.return_route.clone();
         // If address is zero, it indicates to create a new channel responder for key agreement
         // Otherwise pop the first onward route off to get the channel id
         let mut address = m.onward_route.addresses[0].address.as_string();
         if address == "00000000" {
-            address = self.create_new_responder(&m)?
+            address = self.create_new_responder()?
         }
         match self.channels.get_mut(&address) {
             Some(channel) => {
                 match m.message_type {
                     MessageType::KeyAgreementM1 => {
-                        match channel.agreement.process(&m.message_body) {
-                            Ok(m1) => match channel.agreement.process(&m1) {
-                                Ok(m2) => {
-                                    let m = Message {
-                                        onward_route: return_route,
-                                        return_route: Route {
-                                            addresses: vec![
-                                                RouterAddress::channel_router_address_from_str(
-                                                    &address,
-                                                )
-                                                .unwrap(),
-                                            ],
-                                        },
-                                        message_type: MessageType::KeyAgreementM2,
-                                        message_body: m2,
-                                    };
-                                    self.router
-                                        .send(OckamCommand::Router(RouterCommand::SendMessage(m)));
-                                }
-                                Err(e) => {
-                                    return Err(ChannelErrorKind::KeyAgreement(e.into()).into())
-                                }
+                        let m1 = channel.agreement.process(&m.message_body)?;
+                        let m2 = channel.agreement.process(&m1)?;
+                        let m = Message {
+                            onward_route: return_route,
+                            return_route: Route {
+                                addresses: vec![
+                                    RouterAddress::channel_router_address_from_str(&address)
+                                        .unwrap(),
+                                    RouterAddress::worker_router_address_from_str("00000000")
+                                        .unwrap(),
+                                ],
                             },
-                            Err(e) => return Err(ChannelErrorKind::KeyAgreement(e.into()).into()),
-                        }
+                            message_type: MessageType::KeyAgreementM2,
+                            message_body: m2,
+                        };
+                        self.router
+                            .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
+                            .unwrap();
                     }
                     MessageType::KeyAgreementM2 => {
-                        match channel.agreement.process(&m.message_body) {
-                            Ok(m2) => {
-                                let m3 = channel.agreement.process(&[])?;
-                                let m = Message {
-                                    onward_route: return_route.clone(),
-                                    return_route: Route {
-                                        addresses: vec![m.onward_route.addresses[0].clone()],
-                                    },
-                                    message_type: MessageType::KeyAgreementM3,
-                                    message_body: m3,
-                                };
-                                self.router
-                                    .send(OckamCommand::Router(RouterCommand::SendMessage(m)));
-                                channel.completed_key_exchange =
-                                    Some(channel.agreement.finalize()?);
-                                channel.route = return_route;
+                        channel.agreement.process(&m.message_body)?;
+                        let m3 = channel.agreement.process(&[])?;
+                        let m = Message {
+                            onward_route: return_route.clone(),
+                            return_route: Route {
+                                addresses: vec![m.onward_route.addresses[0].clone()],
+                            },
+                            message_type: MessageType::KeyAgreementM3,
+                            message_body: m3,
+                        };
+                        self.router
+                            .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
+                            .unwrap();
+                        channel.completed_key_exchange = Some(channel.agreement.finalize()?);
+                        channel.route = return_route;
 
-                                // If we have a pending message from a worker (we should) then
-                                // let the worker know the key exchange is done
-                                let pending = channel.pending.clone();
-                                match pending {
-                                    Some(mut p) => {
-                                        let mut return_route = channel.route.clone();
-                                        return_route.addresses.push(
-                                            RouterAddress::worker_router_address_from_str(
-                                                "00000000",
-                                            )
-                                            .unwrap(),
-                                        );
-                                        return_route.addresses.insert(
-                                            0,
-                                            RouterAddress::from_address(
-                                                channel.as_address().clone(),
-                                            )
-                                            .unwrap(),
-                                        );
-                                        p.return_route = return_route;
-                                        self.router.send(OckamCommand::Router(
-                                            RouterCommand::ReceiveMessage(p),
-                                        ));
-                                    }
-                                    None => {
-                                        println!("Expected channel to have pending message");
-                                    }
-                                }
+                        // If we have a pending message from a worker (we should) then
+                        // let the worker know the key exchange is done
+                        let pending = channel.pending.clone();
+                        match pending {
+                            Some(mut p) => {
+                                let mut return_route = channel.route.clone();
+                                return_route.addresses.push(
+                                    RouterAddress::from_address(channel.as_address()).unwrap(),
+                                );
+                                return_route.addresses.insert(
+                                    0,
+                                    RouterAddress::from_address(channel.as_address()).unwrap(),
+                                );
+                                p.return_route = return_route;
+                                self.router
+                                    .send(OckamCommand::Router(RouterCommand::ReceiveMessage(p)))
+                                    .unwrap();
                             }
-                            Err(e) => return Err(ChannelErrorKind::KeyAgreement(e.into()).into()),
+                            None => {
+                                println!("Expected channel to have pending message");
+                            }
                         }
                     }
                     MessageType::KeyAgreementM3 => {
@@ -255,7 +212,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         debug_assert!(channel.agreement.is_complete());
                         if channel.completed_key_exchange.is_none() {
                             // key agreement has finished, now can process any pending messages
-                            let mut pending = channel.pending.clone();
+                            let pending = channel.pending.clone();
                             channel.completed_key_exchange = Some(channel.agreement.finalize()?);
                             channel.route = return_route;
                             match pending {
@@ -265,9 +222,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                                         0,
                                         RouterAddress::from_address(channel.as_address()).unwrap(),
                                     );
-                                    self.router.send(OckamCommand::Router(
-                                        RouterCommand::ReceiveMessage(p.clone()),
-                                    ));
+                                    self.router
+                                        .send(OckamCommand::Router(RouterCommand::ReceiveMessage(
+                                            p,
+                                        )))
+                                        .unwrap();
                                     channel.pending = None;
                                 }
                                 _ => {
@@ -289,9 +248,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                                         message_type: MessageType::None,
                                         message_body: vec![],
                                     };
-                                    self.router.send(OckamCommand::Router(
-                                        RouterCommand::ReceiveMessage(new_m),
-                                    ));
+                                    self.router
+                                        .send(OckamCommand::Router(RouterCommand::ReceiveMessage(
+                                            new_m,
+                                        )))
+                                        .unwrap();
                                 }
                             }
                         }
@@ -343,10 +304,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let channel_address = Address::ChannelAddress(channel_id.to_le_bytes().to_vec());
 
         m.onward_route.addresses.remove(0);
-        //        m.onward_route.addresses.push(RouterAddress::channel_router_address_from_str("
-        // 00000000").unwrap());
 
-        let mut channel = Channel::new(channel_id, Box::new(E::initiator(self.vault.clone())));
+        let mut channel = Channel::new(channel_id, Box::new(self.new_key_exchanger.initiator()));
         let ka_m1 = channel.agreement.process(&[])?;
 
         m.onward_route
@@ -358,7 +317,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         m.message_type = MessageType::KeyAgreementM1;
         m.message_body = ka_m1;
 
-        println!("Inserting channel {} at 285", channel_address.as_string());
         self.channels.insert(channel_address.as_string(), channel);
 
         // start the key exchange while holding this pending message
@@ -368,32 +326,16 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         Ok(channel_id)
     }
 
-    fn create_new_responder(&mut self, m: &Message) -> Result<String, ChannelError> {
+    fn create_new_responder(&mut self) -> Result<String, ChannelError> {
         let mut rng = thread_rng();
         let channel_id = rng.gen::<u32>();
         let channel_address = Address::ChannelAddress(channel_id.to_le_bytes().to_vec());
-        let mut channel = Channel::new(channel_id, Box::new(E::responder(self.vault.clone())));
-        println!("Inserting channel {} at 302", channel_address.as_string());
+        let channel = Channel::new(channel_id, Box::new(self.new_key_exchanger.responder()));
         self.channels.insert(channel_address.as_string(), channel);
         Ok(channel_address.as_string())
     }
 
-    fn send_ka_m2(&mut self, channel: &mut Channel, m: &Message) -> Result<(), ChannelError> {
-        let ka_m2 = channel.agreement.process(&m.message_body)?;
-        let m2 = Message {
-            onward_route: m.return_route.clone(),
-            return_route: Route {
-                addresses: vec![RouterAddress::from_address(channel.as_address()).unwrap()],
-            },
-            message_type: MessageType::KeyAgreementM2,
-            message_body: ka_m2,
-        };
-        self.router
-            .send(OckamCommand::Router(RouterCommand::SendMessage(m2)))?;
-        Ok(())
-    }
-
-    fn handle_send(&mut self, mut m: Message) -> Result<(), ChannelError> {
+    fn handle_send(&mut self, m: Message) -> Result<(), ChannelError> {
         if m.onward_route.addresses.is_empty() {
             return Err(ChannelErrorKind::CantSend.into());
         }
@@ -402,8 +344,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             Some(channel) => {
                 if !channel.agreement.is_complete() {
                     debug_assert!(channel.completed_key_exchange.is_none());
-                    // TODO: wait until channel key agreement is finished, what to do with pending
-                    // message
                     return Ok(());
                 }
                 debug_assert!(channel.completed_key_exchange.is_some());
@@ -422,7 +362,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                     0,
                     RouterAddress::from_address(channel.as_address()).unwrap(),
                 );
-                let mut onward = Route {
+                let onward = Route {
                     addresses: m.onward_route.addresses[1..].to_vec(),
                 };
                 let new_m = Message {
@@ -515,38 +455,40 @@ impl Channel {
 
     pub fn nonce_from_96(n: &[u8; 12]) -> u16 {
         let bytes: [u8; 2] = [n[10], n[11]];
-        u16::from_be_bytes(bytes.into())
+        u16::from_be_bytes(bytes)
     }
 }
 
 /// Represents the errors that occur within a channel
 pub mod error;
-//
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
-//     use ockam_kex::xx::{XXInitiator, XXResponder};
+//     use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
+//     use ockam_kex::CipherSuite;
 //     use ockam_message::message::AddressType;
 //     use ockam_vault::software::DefaultVault;
 //     use std::sync::mpsc::channel;
 //
-//     type XXInitiatorChannelManager = ChannelManager<XXInitiator, XXResponder, XXInitiator>;
-//     type XXResponderChannelManager = ChannelManager<XXInitiator, XXResponder, XXResponder>;
+//     type XXInitiatorChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
+//     type XXResponderChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
 //
 //     #[test]
 //     fn new_channel_initiator() {
 //         let (tx_router, rx_router) = channel();
 //         let (tx_channel, rx_channel) = channel();
 //
+//         let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
 //         let vault = Arc::new(Mutex::new(DefaultVault::default()));
 //
 //         let mut router = ockam_router::router::Router::new(rx_router);
 //         let mut channel = XXInitiatorChannelManager::new(
-//             rx_channel,
 //             tx_channel.clone(),
+//             rx_channel,
 //             tx_router.clone(),
 //             vault.clone(),
-//         ).unwrap();
+//             new_key_exchanger,
+//         );
 //
 //         tx_router
 //             .send(OckamCommand::Router(RouterCommand::Register(
@@ -572,47 +514,49 @@ pub mod error;
 //         assert!(res.is_ok());
 //         assert!(res.unwrap());
 //     }
-
-//#[test]
-// fn new_channel_responder() {
-//     let (tx_router, rx_router) = channel();
-//     let (tx_channel, rx_channel) = channel();
 //
-//     let vault = Arc::new(Mutex::new(DefaultVault::default()));
+//     #[test]
+//     fn new_channel_responder() {
+//         let (tx_router, rx_router) = channel();
+//         let (tx_channel, rx_channel) = channel();
 //
-//     let mut router = ockam_router::router::Router::new(rx_router);
-//     let mut channel = XXResponderChannelManager::new(
-//         rx_channel.clone(),
-//         tx_channel,
-//         tx_router.clone(),
-//         vault.clone(),
-//     ).unwrap();
+//         let new_key_exchanger = XXNewKeyExchanger::new(CipherSuite::Curve25519AesGcmSha256);
+//         let vault = Arc::new(Mutex::new(DefaultVault::default()));
 //
-//     tx_router
-//         .send(OckamCommand::Router(RouterCommand::Register(
-//             AddressType::Channel,
+//         let mut router = ockam_router::router::Router::new(rx_router);
+//         let mut channel = XXResponderChannelManager::new(
 //             tx_channel.clone(),
-//         )))
-//         .unwrap();
+//             rx_channel,
+//             tx_router.clone(),
+//             vault.clone(),
+//             new_key_exchanger,
+//         );
 //
-//     let message = Message {
-//         onward_route: Route {
-//             addresses: vec![RouterAddress::channel_router_address_from_str("00").unwrap()],
-//         },
-//         return_route: Route { addresses: vec![] },
-//         message_type: MessageType::KeyAgreementM1,
-//         message_body: vec![
-//             79, 30, 59, 197, 255, 25, 84, 22, 3, 63, 63, 45, 98, 206, 16, 137, 39, 108, 13,
-//             171, 237, 191, 172, 115, 63, 124, 209, 114, 59, 97, 28, 82,
-//         ],
-//     };
+//         tx_router
+//             .send(OckamCommand::Router(RouterCommand::Register(
+//                 AddressType::Channel,
+//                 tx_channel.clone(),
+//             )))
+//             .unwrap();
 //
-//     tx_router
-//         .send(OckamCommand::Router(RouterCommand::SendMessage(message)))
-//         .unwrap();
-//     assert!(router.poll());
-//     let res = channel.poll();
-//     assert!(res.is_ok());
-//     assert!(res.unwrap());
+//         let message = Message {
+//             onward_route: Route {
+//                 addresses: vec![RouterAddress::channel_router_address_from_str("00").unwrap()],
+//             },
+//             return_route: Route { addresses: vec![] },
+//             message_type: MessageType::KeyAgreementM1,
+//             message_body: vec![
+//                 79, 30, 59, 197, 255, 25, 84, 22, 3, 63, 63, 45, 98, 206, 16, 137, 39, 108, 13,
+//                 171, 237, 191, 172, 115, 63, 124, 209, 114, 59, 97, 28, 82,
+//             ],
+//         };
+//
+//         tx_router
+//             .send(OckamCommand::Router(RouterCommand::SendMessage(message)))
+//             .unwrap();
+//         assert!(router.poll());
+//         let res = channel.poll();
+//         assert!(res.is_ok());
+//         assert!(res.unwrap());
+//     }
 // }
-//}

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use ockam_channel::*;
 use ockam_common::commands::ockam_commands::*;
-use ockam_kex::xx::{XXInitiator, XXResponder};
-use ockam_message::message::Address::ChannelAddress;
+use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
+use ockam_kex::CipherSuite;
 use ockam_message::message::*;
 use ockam_router::router::*;
 use ockam_transport::transport::*;
@@ -105,15 +105,18 @@ impl TestWorker {
         tx: std::sync::mpsc::Sender<OckamCommand>,
         router_tx: std::sync::mpsc::Sender<OckamCommand>,
         worker_address: Address,
-        mut route: Route,
+        route: Route,
     ) -> Result<Self, String> {
-        if let Err(error) = router_tx.send(OckamCommand::Router(RouterCommand::Register(
-            AddressType::Worker,
-            tx.clone(),
-        ))) {
+        if router_tx
+            .send(OckamCommand::Router(RouterCommand::Register(
+                AddressType::Worker,
+                tx.clone(),
+            )))
+            .is_err()
+        {
             return Err("TestWorker failed to register with router".into());
         }
-        let mut channel = Address::ChannelAddress(vec![0, 0, 0, 0]); // This address will initiate a key exchange
+        let channel = Address::ChannelAddress(vec![0, 0, 0, 0]); // This address will initiate a key exchange
 
         Ok(TestWorker {
             rx,
@@ -143,12 +146,13 @@ impl TestWorker {
         m.message_type = MessageType::None;
         m.message_body = vec![];
         self.router_tx
-            .send(OckamCommand::Router(RouterCommand::SendMessage(m)));
+            .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
+            .unwrap();
         Ok(())
     }
 
     pub fn handle_send(&mut self, mut m: Message) -> Result<(), String> {
-        if self.channel_address.as_string() == "00000000".to_string() {
+        if self.channel_address.as_string() == *"00000000" {
             // start key exchange
             self.request_channel(m)
         } else {
@@ -177,25 +181,21 @@ impl TestWorker {
         let m_opt = self.pending_message.clone();
         match m_opt {
             Some(mut m) => {
-                let channel = RouterAddress::from_address(self.channel_address.clone()).unwrap();
                 m.onward_route = self.onward_route.clone();
                 m.return_route = Route {
                     addresses: vec![RouterAddress::from_address(self.address.clone()).unwrap()],
                 };
                 self.router_tx
-                    .send(OckamCommand::Router(RouterCommand::SendMessage(m)));
+                    .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
+                    .unwrap();
                 self.pending_message = None;
-                return Ok(());
+                Ok(())
             }
-            _ => {
-                return Ok(());
-            }
+            _ => Ok(()),
         }
-        Ok(())
     }
 
     pub fn handle_receive(&mut self, m: Message) -> Result<(), String> {
-        println!("Message type: {}", m.message_type as u16);
         self.onward_route = m.return_route.clone(); // next onward_route is always last return_route
         match m.message_type {
             MessageType::Payload => {
@@ -206,7 +206,7 @@ impl TestWorker {
                     s = "Goodbye Ockam"
                 };
                 self.toggle += 1;
-                let mut reply: Message = Message {
+                let reply: Message = Message {
                     onward_route: self.onward_route.clone(),
                     return_route: Route {
                         addresses: vec![RouterAddress::from_address(self.address.clone()).unwrap()],
@@ -245,18 +245,24 @@ impl TestWorker {
                     OckamCommand::Worker(WorkerCommand::Test) => {
                         println!("Worker got test command");
                     }
-                    OckamCommand::Worker(WorkerCommand::SendMessage(mut m)) => {
+                    OckamCommand::Worker(WorkerCommand::SendMessage(m)) => {
                         self.handle_send(m).unwrap();
                     }
-                    OckamCommand::Worker(WorkerCommand::ReceiveMessage(mut m)) => {
-                        match m.message_type {
-                            MessageType::Payload => {
-                                println!(
-                                    "Worker received: {}",
-                                    str::from_utf8(&m.message_body).unwrap()
-                                );
-                            }
-                            _ => {}
+                    OckamCommand::Worker(WorkerCommand::ReceiveMessage(m)) => {
+                        // match m.message_type {
+                        //     MessageType::Payload => {
+                        //         println!(
+                        //             "Worker received: {}",
+                        //             str::from_utf8(&m.message_body).unwrap()
+                        //         );
+                        //     }
+                        //     _ => {}
+                        // }
+                        if let MessageType::Payload = m.message_type {
+                            println!(
+                                "Worker received: {}",
+                                str::from_utf8(&m.message_body).unwrap()
+                            );
                         }
                         self.handle_receive(m).unwrap();
                     }
@@ -281,7 +287,6 @@ pub fn start_node(
     let (router_tx, router_rx) = std::sync::mpsc::channel();
     let (worker_tx, worker_rx) = std::sync::mpsc::channel();
     let (channel_tx, channel_rx) = std::sync::mpsc::channel();
-    let vault = Arc::new(Mutex::new(DefaultVault::default()));
 
     let mut router = Router::new(router_rx);
     onward_route.addresses.insert(
@@ -315,12 +320,27 @@ pub fn start_node(
         UdpTransport::new(transport_rx, transport_tx, router_tx.clone(), &sock_str).unwrap();
 
     let _join_thread: thread::JoinHandle<_> = thread::spawn(move || {
-        type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXInitiator>;
+        type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
+        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+        let new_key_exchanger = XXNewKeyExchanger::new(
+            CipherSuite::Curve25519AesGcmSha256,
+            vault.clone(),
+            vault.clone(),
+        );
+
         // the channel handler cannot, in its current implementation, be passed safely
         // between threads, so it is created in the context of the polling thread
-        let mut channel_handler =
-            XXChannelManager::new(channel_rx, channel_tx.clone(), router_tx.clone(), vault)
-                .unwrap();
+        let mut channel_handler = XXChannelManager::new(
+            channel_rx,
+            channel_tx.clone(),
+            router_tx.clone(),
+            vault,
+            new_key_exchanger,
+        )
+        .unwrap();
+        // let mut channel_handler =
+        //     XXChannelManager::new(channel_rx, channel_tx.clone(), router_tx.clone(), vault)
+        //         .unwrap();
 
         while transport.poll() && router.poll() && channel_handler.poll().unwrap() && worker.poll()
         {

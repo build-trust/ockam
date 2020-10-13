@@ -21,10 +21,10 @@ use error::*;
 use ockam_vault::{
     error::VaultFailError,
     types::{PublicKey, SecretKeyContext},
-    DynVault,
 };
 
-use std::sync::{Arc, Mutex};
+#[macro_use]
+extern crate ockam_vault;
 
 /// The maximum bytes that will be transmitted in a single message
 pub const MAX_XX_TRANSMIT_SIZE: usize = 16384;
@@ -34,39 +34,14 @@ pub const SHA256_SIZE: usize = 32;
 pub const AES128_KEYSIZE: usize = 16;
 /// The number of bytes in AES256 key
 pub const AES256_KEYSIZE: usize = 32;
-
-/// Handles storing the current values for `h`, `ck`, and if its a key or not
-#[derive(Copy, Clone, Debug)]
-struct SymmetricStateData {
-    h: [u8; SHA256_SIZE],
-    ck: Option<SecretKeyContext>,
-}
-
-impl Default for SymmetricStateData {
-    fn default() -> Self {
-        Self {
-            h: [0u8; SHA256_SIZE],
-            ck: None,
-        }
-    }
-}
-
-/// The state of the handshake for a Noise session
-#[derive(Copy, Clone, Debug)]
-struct HandshakeStateData {
-    ephemeral_public_key: PublicKey,
-    ephemeral_secret_handle: SecretKeyContext,
-    static_public_key: PublicKey,
-    static_secret_handle: SecretKeyContext,
-    remote_ephemeral_public_key: Option<PublicKey>,
-    remote_static_public_key: Option<PublicKey>,
-}
+/// The number of bytes in AES-GCM tag
+pub const AES_GCM_TAGSIZE: usize = 16;
 
 /// A KeyExchange implements these methods
 /// A KeyExchange implementation should wrap a vault instance
 trait KeyExchange {
-    /// The inner class wrapped
-    const CSUITE: &'static [u8];
+    /// Returns Noise protocol name
+    fn get_protocol_name(&self) -> &'static [u8];
 
     /// Create a new `HandshakeState` starting with the prologue
     fn prologue(&mut self) -> Result<(), VaultFailError>;
@@ -75,11 +50,6 @@ trait KeyExchange {
         &mut self,
         secret_handle: SecretKeyContext,
         public_key: PublicKey,
-    ) -> Result<(SecretKeyContext, SecretKeyContext), VaultFailError>;
-    /// mix key step in Noise protocol
-    fn mix_key(
-        &mut self,
-        hkdf_output: (SecretKeyContext, SecretKeyContext),
     ) -> Result<(), VaultFailError>;
     /// mix hash step in Noise protocol
     fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError>;
@@ -113,12 +83,21 @@ pub trait KeyExchanger {
     fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError>;
 }
 
+/// XX cipher suites
+#[derive(Copy, Clone, Debug)]
+pub enum CipherSuite {
+    /// Curve25519 Aes256-GCM Sha256
+    Curve25519AesGcmSha256,
+    /// P256 Aes128-GCM Sha256
+    P256Aes128GcmSha256,
+}
+
 /// Instantiate a stateful key exchange vault instance
 pub trait NewKeyExchanger<E: KeyExchanger = Self, F: KeyExchanger = Self> {
     /// Create a new Key Exchanger with the initiator role
-    fn initiator(v: Arc<Mutex<dyn DynVault + Send>>) -> E;
+    fn initiator(&self) -> E;
     /// Create a new Key Exchanger with the responder role
-    fn responder(v: Arc<Mutex<dyn DynVault + Send>>) -> F;
+    fn responder(&self) -> F;
 }
 
 /// A Completed Key Exchange elements
@@ -143,3 +122,52 @@ pub mod error;
 pub mod ffi;
 /// Implementation of Noise XX Pattern
 pub mod xx;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::xx::XXNewKeyExchanger;
+    use ockam_vault::software::DefaultVault;
+    use ockam_vault::Vault;
+    use std::sync::{Arc, Mutex};
+
+    #[allow(non_snake_case)]
+    #[test]
+    fn full_flow__correct_credentials__keys_should_match() {
+        let vault_initiator = Arc::new(Mutex::new(DefaultVault::default()));
+        let vault_responder = Arc::new(Mutex::new(DefaultVault::default()));
+        let key_exchanger = XXNewKeyExchanger::new(
+            CipherSuite::P256Aes128GcmSha256,
+            vault_initiator.clone(),
+            vault_responder.clone(),
+        );
+
+        let mut initiator = key_exchanger.initiator();
+        let mut responder = key_exchanger.responder();
+
+        let m1 = initiator.process(&[]).unwrap();
+        let _ = responder.process(&m1).unwrap();
+        let m2 = responder.process(&[]).unwrap();
+        let _ = initiator.process(&m2).unwrap();
+        let m3 = initiator.process(&[]).unwrap();
+        let _ = responder.process(&m3).unwrap();
+
+        let initiator = initiator.finalize().unwrap();
+        let responder = responder.finalize().unwrap();
+
+        let mut vault_in = vault_initiator.lock().unwrap();
+        let mut vault_re = vault_responder.lock().unwrap();
+
+        assert_eq!(initiator.h, responder.h);
+
+        let s1 = vault_in.secret_export(initiator.encrypt_key).unwrap();
+        let s2 = vault_re.secret_export(responder.decrypt_key).unwrap();
+
+        assert_eq!(s1, s2);
+
+        let s1 = vault_in.secret_export(initiator.decrypt_key).unwrap();
+        let s2 = vault_re.secret_export(responder.encrypt_key).unwrap();
+
+        assert_eq!(s1, s2);
+    }
+}
