@@ -186,10 +186,11 @@ impl Vault for FilesystemVault {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: SecretKeyContext,
+        info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
         self.v
-            .ec_diffie_hellman_hkdf_sha256(context, peer_public_key, salt, output_attributes)
+            .ec_diffie_hellman_hkdf_sha256(context, peer_public_key, salt, info, output_attributes)
     }
 
     /// Compute the HKDF-SHA256 using the specified salt and input key material
@@ -198,10 +199,11 @@ impl Vault for FilesystemVault {
     fn hkdf_sha256(
         &mut self,
         salt: SecretKeyContext,
+        info: &[u8],
         ikm: Option<SecretKeyContext>,
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
-        self.v.hkdf_sha256(salt, ikm, output_attributes)
+        self.v.hkdf_sha256(salt, info, ikm, output_attributes)
     }
 
     /// Encrypt a payload using AES-GCM

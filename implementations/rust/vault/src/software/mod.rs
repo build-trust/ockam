@@ -64,6 +64,7 @@ impl DefaultVault {
     fn hkdf_sha256_internal(
         &mut self,
         salt: SecretKeyContext,
+        info: &[u8],
         ikm: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
@@ -76,7 +77,7 @@ impl DefaultVault {
             SecretKey::Buffer(salt) => {
                 let mut okm = vec![0u8; okm_len];
                 let prk = hkdf::Hkdf::<Sha256>::new(Some(salt), ikm);
-                prk.expand(b"", okm.as_mut_slice())?;
+                prk.expand(info, okm.as_mut_slice())?;
                 Ok(okm)
             }
             _ => Err(VaultFailError::from_msg(
@@ -351,6 +352,7 @@ impl Vault for DefaultVault {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: SecretKeyContext,
+        info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
         let private_key_entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
@@ -387,12 +389,13 @@ impl Vault for DefaultVault {
             )),
         }?;
 
-        self.hkdf_sha256_internal(salt, &dh, output_attributes)
+        self.hkdf_sha256_internal(salt, info, &dh, output_attributes)
     }
 
     fn hkdf_sha256(
         &mut self,
         salt: SecretKeyContext,
+        info: &[u8],
         ikm: Option<SecretKeyContext>,
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
@@ -410,7 +413,7 @@ impl Vault for DefaultVault {
             None => Ok(Vec::new()),
         }?;
 
-        self.hkdf_sha256_internal(salt, &ikm_slice, output_attributes)
+        self.hkdf_sha256_internal(salt, info, &ikm_slice, output_attributes)
     }
 
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
@@ -615,7 +618,7 @@ mod tests {
             purpose: SecretPurposeType::KeyAgreement,
         };
 
-        let res = vault.hkdf_sha256(salt, Some(ikm), vec![attributes]);
+        let res = vault.hkdf_sha256(salt, b"", Some(ikm), vec![attributes]);
         assert!(res.is_ok());
         let digest = res.unwrap();
         assert_eq!(digest.len(), 1);
@@ -660,6 +663,7 @@ mod tests {
             sk_ctx_1,
             pk_2,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());
@@ -678,6 +682,7 @@ mod tests {
             sk_ctx_2,
             pk_1,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());
@@ -695,6 +700,7 @@ mod tests {
             sk_ctx_1,
             pk_1,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());
@@ -712,6 +718,7 @@ mod tests {
             sk_ctx_2,
             pk_2,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());
@@ -756,6 +763,7 @@ mod tests {
             sk_ctx_1,
             pk_2,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());
@@ -773,6 +781,7 @@ mod tests {
             sk_ctx_2,
             pk_1,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());
@@ -790,6 +799,7 @@ mod tests {
             sk_ctx_1,
             pk_1,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());
@@ -808,6 +818,7 @@ mod tests {
             sk_ctx_2,
             pk_2,
             salt,
+            b"",
             vec![output_attributes.clone()],
         );
         assert!(res.is_ok());

@@ -271,23 +271,38 @@ impl KeyExchanger for X3dhResponder {
                 let dh2 = vault.ec_diffie_hellman(self.identity_key, ek)?;
                 let dh3 = vault.ec_diffie_hellman(self.signed_prekey, ek)?;
                 let dh4 = vault.ec_diffie_hellman(self.one_time_prekey, ek)?;
-                let mut ikm = vec![0u8; 32];
-                ikm.extend_from_slice(vault.secret_export(dh1)?.as_ref());
-                ikm.extend_from_slice(vault.secret_export(dh2)?.as_ref());
-                ikm.extend_from_slice(vault.secret_export(dh3)?.as_ref());
-                ikm.extend_from_slice(vault.secret_export(dh4)?.as_ref());
-                let mut sk = vault.hkdf_sha256(&[0u8; 32], CSUITE, ikm.as_slice(), 64)?;
-                let tek = *array_ref![sk, 0, 32];
-                let tdk = *array_ref![sk, 32, 32];
-                let attributes = SecretKeyAttributes {
-                    xtype: SecretKeyType::Aes256,
+                let mut ikm_bytes = vec![0xFFu8; 32];
+                ikm_bytes.extend_from_slice(vault.secret_export(dh1)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(dh2)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(dh3)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(dh4)?.as_ref());
+
+                let ikm = vault.secret_import(
+                    &SecretKey::Buffer(ikm_bytes.to_vec()),
+                    SecretKeyAttributes {
+                        purpose: SecretPurposeType::KeyAgreement,
+                        persistence: SecretPersistenceType::Ephemeral,
+                        xtype: SecretKeyType::Buffer(ikm_bytes.len()),
+                    },
+                )?;
+                let salt = vault.secret_import(
+                    &SecretKey::Buffer(vec![0u8; 32]),
+                    SecretKeyAttributes {
+                        purpose: SecretPurposeType::KeyAgreement,
+                        persistence: SecretPersistenceType::Ephemeral,
+                        xtype: SecretKeyType::Buffer(32),
+                    },
+                )?;
+                let atts = SecretKeyAttributes {
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Persistent,
+                    xtype: SecretKeyType::Aes256,
                 };
-                let encrypt_key = vault.secret_import(&SecretKey::Aes256(tek), attributes)?;
-                let decrypt_key = vault.secret_import(&SecretKey::Aes256(tdk), attributes)?;
+
+                let keyrefs = vault.hkdf_sha256(salt, CSUITE, Some(ikm), vec![atts, atts])?;
+                let (encrypt_key, decrypt_key) = (keyrefs[0], keyrefs[1]);
                 let mut state_hash = vault.sha256(CSUITE)?.to_vec();
-                state_hash.append(&mut sk);
+                state_hash.append(&mut ikm_bytes);
                 let state_hash = vault.sha256(state_hash.as_slice())?;
 
                 let mut aad = data[..64].to_vec();
@@ -363,7 +378,7 @@ impl KeyExchanger for X3dhInitiator {
                     prekey_bundle.identity_key,
                     prekey_bundle.signed_prekey.as_ref(),
                 )?;
-                let mut atts = SecretKeyAttributes {
+                let atts = SecretKeyAttributes {
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Ephemeral,
                     xtype: SecretKeyType::Curve25519,
@@ -374,26 +389,42 @@ impl KeyExchanger for X3dhInitiator {
                 let dh2 = vault.ec_diffie_hellman(esk, prekey_bundle.identity_key)?;
                 let dh3 = vault.ec_diffie_hellman(esk, prekey_bundle.signed_prekey)?;
                 let dh4 = vault.ec_diffie_hellman(esk, prekey_bundle.one_time_prekey)?;
-                let mut ikm = vec![0u8; 32];
-                ikm.extend_from_slice(vault.secret_export(dh1)?.as_ref());
-                ikm.extend_from_slice(vault.secret_export(dh2)?.as_ref());
-                ikm.extend_from_slice(vault.secret_export(dh3)?.as_ref());
-                ikm.extend_from_slice(vault.secret_export(dh4)?.as_ref());
-                let mut sk = vault.hkdf_sha256(&[0u8; 32], CSUITE, ikm.as_slice(), 64)?;
-                let tdk = *array_ref![sk, 0, 32];
-                let tek = *array_ref![sk, 32, 32];
-                let attributes = SecretKeyAttributes {
+                let mut ikm_bytes = vec![0xFFu8; 32];
+                ikm_bytes.extend_from_slice(vault.secret_export(dh1)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(dh2)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(dh3)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(dh4)?.as_ref());
+
+                let ikm = vault.secret_import(
+                    &SecretKey::Buffer(ikm_bytes.clone()),
+                    SecretKeyAttributes {
+                        purpose: SecretPurposeType::KeyAgreement,
+                        persistence: SecretPersistenceType::Ephemeral,
+                        xtype: SecretKeyType::Buffer(ikm_bytes.len()),
+                    },
+                )?;
+                let salt = vault.secret_import(
+                    &SecretKey::Buffer(vec![0u8; 32]),
+                    SecretKeyAttributes {
+                        purpose: SecretPurposeType::KeyAgreement,
+                        persistence: SecretPersistenceType::Ephemeral,
+                        xtype: SecretKeyType::Buffer(32),
+                    },
+                )?;
+
+                let mut atts = SecretKeyAttributes {
                     xtype: SecretKeyType::Aes256,
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Persistent,
                 };
-                let encrypt_key = vault.secret_import(&SecretKey::Aes256(tek), attributes)?;
-                let decrypt_key = vault.secret_import(&SecretKey::Aes256(tdk), attributes)?;
+
+                let keyrefs = vault.hkdf_sha256(salt, CSUITE, Some(ikm), vec![atts, atts])?;
+                let (decrypt_key, encrypt_key) = (keyrefs[0], keyrefs[1]);
                 let ek = vault.secret_public_key_get(esk)?;
                 let pubkey = vault.secret_public_key_get(self.ephemeral_identity_key)?;
 
                 let mut state_hash = vault.sha256(CSUITE)?.to_vec();
-                state_hash.append(&mut sk);
+                state_hash.append(&mut ikm_bytes);
                 let state_hash = vault.sha256(state_hash.as_slice())?;
 
                 let mut aad = ek.as_ref().to_vec();
@@ -401,7 +432,7 @@ impl KeyExchanger for X3dhInitiator {
                 aad.extend_from_slice(CSUITE);
                 aad.extend_from_slice(&state_hash);
 
-                atts.persistence = SecretPersistenceType::Persistent;
+                atts.xtype = SecretKeyType::Curve25519;
                 let skb = vault.secret_generate(atts)?;
                 let ikb = vault.secret_public_key_get(skb)?;
 
@@ -481,5 +512,23 @@ mod tests {
         assert!(res.is_ok(), "{:?}", res);
         let res = responder.process(final_message.as_slice());
         assert!(res.is_ok(), res);
+
+        let init = initiator.completed_key_exchange.as_ref().unwrap();
+        let resp = responder.completed_key_exchange.as_ref().unwrap();
+
+        let mut vault_ii = vault_i.lock().unwrap();
+        let ciphertext_and_tag = vault_ii
+            .aead_aes_gcm_encrypt(init.encrypt_key, b"Hello Alice", &[1u8; 12], &[])
+            .unwrap();
+        let mut vault_rr = vault_r.lock().unwrap();
+        let plaintext = vault_rr
+            .aead_aes_gcm_decrypt(
+                resp.decrypt_key,
+                ciphertext_and_tag.as_slice(),
+                &[1u8; 12],
+                &[],
+            )
+            .unwrap();
+        assert_eq!(plaintext, b"Hello Alice");
     }
 }

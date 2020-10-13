@@ -193,6 +193,7 @@ impl KeyExchange for SymmetricState {
             secret_handle,
             public_key,
             ck,
+            b"",
             vec![attributes_ck, attributes_k],
         )?;
 
@@ -290,7 +291,7 @@ impl KeyExchange for SymmetricState {
             purpose: SecretPurposeType::KeyAgreement,
             persistence: SecretPersistenceType::Ephemeral,
         };
-        let hkdf_output = vault.hkdf_sha256(ck, None, vec![attributes, attributes])?;
+        let hkdf_output = vault.hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
 
         if hkdf_output.len() != 2 {
             return Err(VaultFailError::from(VaultFailErrorKind::HkdfSha256));

@@ -102,6 +102,7 @@ pub trait Vault: Zeroize {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: SecretKeyContext,
+        info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
@@ -109,6 +110,7 @@ pub trait Vault: Zeroize {
     fn hkdf_sha256(
         &mut self,
         salt: SecretKeyContext,
+        info: &[u8],
         ikm: Option<SecretKeyContext>,
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
@@ -192,6 +194,7 @@ pub trait DynVault {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: SecretKeyContext,
+        info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
@@ -199,6 +202,7 @@ pub trait DynVault {
     fn hkdf_sha256(
         &mut self,
         salt: SecretKeyContext,
+        info: &[u8],
         ikm: Option<SecretKeyContext>,
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError>;
@@ -294,6 +298,7 @@ impl<D: Vault + Send + Sync + 'static> DynVault for D {
         context: SecretKeyContext,
         peer_public_key: PublicKey,
         salt: SecretKeyContext,
+        info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
         Vault::ec_diffie_hellman_hkdf_sha256(
@@ -301,6 +306,7 @@ impl<D: Vault + Send + Sync + 'static> DynVault for D {
             context,
             peer_public_key,
             salt,
+            info,
             output_attributes,
         )
     }
@@ -308,10 +314,11 @@ impl<D: Vault + Send + Sync + 'static> DynVault for D {
     fn hkdf_sha256(
         &mut self,
         salt: SecretKeyContext,
+        info: &[u8],
         ikm: Option<SecretKeyContext>,
         output_attributes: Vec<SecretKeyAttributes>,
     ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
-        Vault::hkdf_sha256(self, salt, ikm, output_attributes)
+        Vault::hkdf_sha256(self, salt, info, ikm, output_attributes)
     }
 
     fn aead_aes_gcm_encrypt(
