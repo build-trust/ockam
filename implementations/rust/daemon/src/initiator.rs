@@ -1,14 +1,15 @@
 use std::sync::mpsc;
 use std::thread;
 
-use crate::node::{Config, Input, Node};
+use crate::config::{Config, Input};
+use crate::node::Node;
 
 use ockam_common::commands::ockam_commands::*;
 use ockam_message::message::{
     AddressType, Message as OckamMessage, MessageType, Route, RouterAddress,
 };
 
-pub fn run(config: Config) {
+pub fn run(mut config: Config) {
     // configure a node
     let node_config = config.clone();
     let (node, router_tx) = Node::new(&node_config);
@@ -55,7 +56,7 @@ pub fn run(config: Config) {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
                     match msg.message_type {
                         MessageType::None => {
-                            onward_route = msg.return_route.clone();
+                            onward_route = msg.return_route;
                         }
                         _ => unimplemented!(),
                     }
@@ -66,8 +67,22 @@ pub fn run(config: Config) {
         }
 
         if matches!(config.input_kind(), Input::Stdin) {
+            let mps_router_tx = router_tx.clone();
+            let mps_onward_route = onward_route.clone();
+            thread::spawn(move || loop {
+                mps_router_tx
+                    .send(OckamCommand::Router(RouterCommand::SendMessage(
+                        OckamMessage {
+                            onward_route: mps_onward_route.clone(),
+                            return_route: Route { addresses: vec![] },
+                            message_body: b"Hello from mps thread...\n".to_vec(),
+                            message_type: MessageType::Payload,
+                        },
+                    )))
+                    .expect("failed to send input data to node");
+            });
             loop {
-                if let Ok(_) = input.read_line(&mut buf) {
+                if input.read_line(&mut buf).is_ok() {
                     router_tx
                         .send(OckamCommand::Router(RouterCommand::SendMessage(
                             OckamMessage {
