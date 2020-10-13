@@ -1,17 +1,15 @@
-use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
-use crate::cli;
+use crate::config::Config;
 use crate::worker::Worker;
 
 use ockam_channel::*;
 use ockam_common::commands::ockam_commands::*;
 use ockam_kex::xx::{XXInitiator, XXResponder};
-use ockam_message::message::{AddressType, Route, RouterAddress};
+use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_transport::transport::UdpTransport;
 use ockam_vault::software::DefaultVault;
@@ -53,7 +51,7 @@ impl<'a> Node<'a> {
             transport_rx,
             transport_tx,
             transport_router_tx,
-            config.local_host.to_string().as_str(),
+            config.local_host().to_string().as_str(),
         )
         .expect("failed to create udp transport");
 
@@ -94,7 +92,7 @@ impl<'a> Node<'a> {
                         .poll()
                         .expect("channel manager poll failure")
                 {
-                    thread::sleep(time::Duration::from_millis(333));
+                    thread::sleep(time::Duration::from_millis(1));
                 }
             }
             None => {
@@ -105,77 +103,9 @@ impl<'a> Node<'a> {
                         .poll()
                         .expect("channel manager poll failure")
                 {
-                    thread::sleep(time::Duration::from_millis(333));
+                    thread::sleep(time::Duration::from_millis(1));
                 }
             }
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Role {
-    Initiator,
-    Responder,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Input {
-    Stdin,
-}
-
-#[derive(Debug, Clone)]
-pub struct Config {
-    onward_route: Option<Route>,
-    output_to_stdout: bool,
-    local_host: SocketAddr,
-    role: Role,
-    vault_path: PathBuf,
-    input_kind: Input,
-}
-
-impl Config {
-    pub fn vault_path(&self) -> PathBuf {
-        self.vault_path.clone()
-    }
-
-    pub fn onward_route(&self) -> Option<Route> {
-        self.onward_route.clone()
-    }
-
-    pub fn input_kind(&self) -> Input {
-        self.input_kind.clone()
-    }
-}
-
-impl From<cli::Args> for Config {
-    fn from(args: cli::Args) -> Self {
-        let mut cfg = Config {
-            onward_route: None,
-            output_to_stdout: false,
-            local_host: args.local_socket(),
-            role: Role::Initiator,
-            vault_path: args.vault_path(),
-            input_kind: Input::Stdin,
-        };
-
-        match args.output_kind() {
-            cli::OutputKind::Channel(route) => {
-                cfg.onward_route = Some(route);
-            }
-            cli::OutputKind::Stdout => {
-                cfg.output_to_stdout = true;
-            }
-        }
-
-        cfg.role = match args.role() {
-            cli::ChannelRole::Initiator => Role::Initiator,
-            cli::ChannelRole::Responder => Role::Responder,
-        };
-
-        cfg.input_kind = match args.input_kind() {
-            cli::InputKind::Stdin => Input::Stdin,
-        };
-
-        cfg
     }
 }

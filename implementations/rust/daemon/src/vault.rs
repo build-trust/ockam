@@ -35,8 +35,7 @@ impl FilesystemVault {
         };
         let fs_path = path.clone();
 
-        path.clone()
-            .read_dir()?
+        path.read_dir()?
             .filter(|r| {
                 // ignore directories within vault path
                 if let Ok(e) = r {
@@ -52,10 +51,10 @@ impl FilesystemVault {
                 if let Ok(entry) = entry {
                     match fs::read(entry.path()) {
                         Ok(data) => {
-                            let (secret, attrs) = &to_secret(data.as_slice()).expect(&format!(
-                                "failed to get secret {:?} from file",
-                                entry.file_name()
-                            ));
+                            let (secret, attrs) =
+                                &to_secret(data.as_slice()).unwrap_or_else(|_| {
+                                    panic!("failed to get secret {:?} from file", entry.file_name())
+                                });
                             if let Err(e) = vault.secret_import(secret, *attrs) {
                                 eprintln!("{}", e);
                             }
@@ -154,12 +153,9 @@ impl DynVault for FilesystemVault {
     /// Remove a secret key from the vault
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError> {
         self.v.secret_destroy(context)?;
-        match context {
-            SecretKeyContext::Memory(id) => {
-                fs::remove_file(self.path.join(id_to_path(id)))
-                    .map_err(|_| VaultFailErrorKind::IOError)?;
-            }
-            _ => {}
+        if let SecretKeyContext::Memory(id) = context {
+            fs::remove_file(self.path.join(id_to_path(id)))
+                .map_err(|_| VaultFailErrorKind::IOError)?;
         }
 
         Ok(())

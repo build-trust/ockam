@@ -138,7 +138,7 @@ impl Args {
     }
 
     pub fn role(&self) -> ChannelRole {
-        self.role.clone()
+        self.role
     }
 
     pub fn output_kind(&self) -> OutputKind {

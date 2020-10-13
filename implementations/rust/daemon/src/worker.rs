@@ -16,11 +16,7 @@ pub struct Worker {
 
 impl Worker {
     // TODO: limit / validate `address` to have address type of Worker.
-    pub fn new<'a>(
-        address: RouterAddress,
-        router_tx: Sender<OckamCommand>,
-        work_fn: WorkFn,
-    ) -> Self {
+    pub fn new(address: RouterAddress, router_tx: Sender<OckamCommand>, work_fn: WorkFn) -> Self {
         let (tx, rx) = mpsc::channel();
 
         // register the worker with the router
