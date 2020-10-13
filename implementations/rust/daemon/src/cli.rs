@@ -85,6 +85,9 @@ pub struct Args {
     )]
     responder_public_key: Option<String>,
 
+    #[structopt(long, help = r#"Address used to reach "worker" on remote machine"#)]
+    worker_address: Option<String>,
+
     // TODO: expose `control` and `control_port` once runtime configuration is needed.
     #[structopt(
         short,
@@ -115,6 +118,7 @@ impl Default for Args {
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
+            worker_address: None,
             identity_name: None,
             responder_public_key: None,
         }
