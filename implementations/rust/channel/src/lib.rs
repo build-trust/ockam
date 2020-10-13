@@ -31,7 +31,7 @@ use hex::encode;
 use ockam_common::commands::ockam_commands::{ChannelCommand, OckamCommand, RouterCommand};
 use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_message::message::{Address, AddressType, Message, MessageType, Route, RouterAddress};
-use ockam_vault::DynVault;
+use ockam_vault::{types::PublicKey, DynVault};
 use rand::prelude::*;
 use std::{
     collections::BTreeMap,
@@ -98,6 +98,14 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             phantom_i: PhantomData,
             phantom_r: PhantomData,
         })
+    }
+
+    /// Get the remote public key for a channel
+    pub fn remote_public_key(&self, channel_addr: Address) -> Option<PublicKey> {
+        match self.channels.get(&channel_addr.as_string()) {
+            Some(chan) => chan.remote_public_key(),
+            _ => None,
+        }
     }
 
     /// Check for work to be done and do it
@@ -456,6 +464,13 @@ impl Channel {
     pub fn nonce_from_96(n: &[u8; 12]) -> u16 {
         let bytes: [u8; 2] = [n[10], n[11]];
         u16::from_be_bytes(bytes)
+    }
+
+    pub fn remote_public_key(&self) -> Option<PublicKey> {
+        match self.completed_key_exchange {
+            Some(kex) => Some(kex.remote_static_public_key),
+            _ => None,
+        }
     }
 }
 
