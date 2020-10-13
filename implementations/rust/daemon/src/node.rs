@@ -4,6 +4,7 @@ use std::thread;
 use std::time;
 
 use crate::config::Config;
+use crate::vault::FilesystemVault;
 use crate::worker::Worker;
 
 use ockam_channel::*;
@@ -34,10 +35,10 @@ impl<'a> Node<'a> {
         let router = Router::new(router_rx);
 
         // create the vault
-        // let vault = Arc::new(Mutex::new(
-        //     FilesystemVault::new(config.vault_path()).expect("failed to initialize vault"),
-        // ));
-        let vault = Arc::new(Mutex::new(DefaultVault::default()));
+        let vault = Arc::new(Mutex::new(
+            FilesystemVault::new(config.vault_path()).expect("failed to initialize vault"),
+        ));
+        // let vault = Arc::new(Mutex::new(DefaultVault::default()));
 
         // create the channel manager
         type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
