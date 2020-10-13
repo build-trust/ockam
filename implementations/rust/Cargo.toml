@@ -10,6 +10,7 @@ members = [
     "router",
     "transport",
     "node",
+    "xeddsa",
     "c/generate_bindings",
     "c/bindings",
     "c/rust_memory",
@@ -25,6 +26,8 @@ default-members = [
     "router",
     "transport",
     "node",
+    "xeddsa",
+    "c/generate_bindings",
     "c/bindings",
     "c/rust_memory",
 ]

@@ -409,12 +409,14 @@ impl KeyExchanger for X3dhInitiator {
                 plaintext
                     .extend_from_slice(&vault.sign(self.ephemeral_identity_key, ikb.as_ref())?);
 
-                let ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
+                let mut ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
                     encrypt_key,
                     plaintext.as_slice(),
                     &ek.as_ref()[..12],
                     aad.as_slice(),
                 )?;
+                let mut output = aad[..64].to_vec();
+                output.append(&mut ciphertext_and_tag);
                 self.completed_key_exchange = Some(CompletedKeyExchange {
                     h: state_hash,
                     encrypt_key,
@@ -423,7 +425,7 @@ impl KeyExchanger for X3dhInitiator {
                     remote_static_public_key: prekey_bundle.identity_key,
                 });
                 self.state = InitiatorState::Done;
-                Ok(ciphertext_and_tag)
+                Ok(output)
             }
             InitiatorState::Done => Ok(vec![]),
         }
@@ -478,6 +480,6 @@ mod tests {
         let res = responder.process(eik_bytes.as_slice());
         assert!(res.is_ok(), "{:?}", res);
         let res = responder.process(final_message.as_slice());
-        assert!(res.is_ok());
+        assert!(res.is_ok(), res);
     }
 }

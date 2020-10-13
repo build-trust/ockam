@@ -6,16 +6,13 @@ use crate::{
 use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use p256::{
-    ecdsa::{
-        signature::{Signer, Verifier},
-        Signature, SigningKey, VerifyKey,
-    },
     elliptic_curve::{sec1::FromEncodedPoint, Group},
     AffinePoint, ProjectivePoint, Scalar,
 };
 use rand::{prelude::*, rngs::OsRng};
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, convert::TryFrom};
+use std::collections::BTreeMap;
+use xeddsa::*;
 use zeroize::Zeroize;
 
 /// A pure rust implementation of a vault.
@@ -464,17 +461,17 @@ impl Vault for DefaultVault {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
         match entry.key {
             SecretKey::Curve25519(k) => {
-                let key = ed25519_dalek::SecretKey::from_bytes(&k)?;
-                let pubkey = ed25519_dalek::PublicKey::from(&key);
-                let sign_key = ed25519_dalek::ExpandedSecretKey::from(&key);
-                let sig = sign_key.sign(data.as_ref(), &pubkey);
-                Ok(sig.to_bytes())
+                let mut rng = thread_rng();
+                let mut nonce = [0u8; 64];
+                rng.fill_bytes(&mut nonce);
+                let sig = x25519_dalek::StaticSecret::from(k).sign(data.as_ref(), &nonce);
+                Ok(sig)
             }
-            SecretKey::P256(k) => {
-                let sign_key = SigningKey::new(&k)?;
-                let sig = sign_key.sign(data.as_ref());
-                Ok(*array_ref![sig.as_ref(), 0, 64])
-            }
+            // SecretKey::P256(k) => {
+            //     let sign_key = SigningKey::new(&k)?;
+            //     let sig = sign_key.sign(data.as_ref());
+            //     Ok(*array_ref![sig.as_ref(), 0, 64])
+            // }
             _ => Err(VaultFailError::from_msg(
                 VaultFailErrorKind::Ecdh,
                 "Unhandled key type",
@@ -490,25 +487,19 @@ impl Vault for DefaultVault {
     ) -> Result<(), VaultFailError> {
         match public_key {
             PublicKey::Curve25519(k) => {
-                // <https://signal.org/docs/specifications/xeddsa/>
-                // recommends using the zero sign bit
-                if let Some(pt) = curve25519_dalek::montgomery::MontgomeryPoint(k).to_edwards(0) {
-                    // PublicKey is a CompressedEdwardsY in dalek. Montgomery Form is decompressed
-                    let key = ed25519_dalek::PublicKey::from_bytes(&pt.compress().0)?;
-                    let sig = ed25519_dalek::Signature::new(signature);
-
-                    key.verify(data.as_ref(), &sig)?;
+                if x25519_dalek::PublicKey::from(k).verify(data.as_ref(), &signature) {
                     Ok(())
                 } else {
                     Err(VaultFailErrorKind::PublicKey.into())
                 }
             }
-            PublicKey::P256(k) => {
-                let key = VerifyKey::new(&k)?;
-                let sig = Signature::try_from(&signature[..])?;
-                key.verify(data.as_ref(), &sig)?;
-                Ok(())
-            }
+            // PublicKey::P256(k) => {
+            //     let key = VerifyKey::new(&k)?;
+            //     let sig = Signature::try_from(&signature[..])?;
+            //     key.verify(data.as_ref(), &sig)?;
+            //     Ok(())
+            // }
+            _ => Err(VaultFailErrorKind::PublicKey.into()),
         }
     }
 }
@@ -877,5 +868,23 @@ mod tests {
         let res =
             vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn sign() {
+        let mut vault = DefaultVault::default();
+        let secret = vault
+            .secret_generate(SecretKeyAttributes {
+                persistence: SecretPersistenceType::Ephemeral,
+                purpose: SecretPurposeType::KeyAgreement,
+                xtype: SecretKeyType::Curve25519,
+            })
+            .unwrap();
+        let res = vault.sign(secret, b"hello world!");
+        assert!(res.is_ok());
+        let pubkey = vault.secret_public_key_get(secret).unwrap();
+        let signature = res.unwrap();
+        let res = vault.verify(signature, pubkey, b"hello world!");
+        assert!(res.is_ok());
     }
 }
