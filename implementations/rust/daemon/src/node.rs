@@ -8,7 +8,10 @@ use crate::worker::Worker;
 
 use ockam_channel::*;
 use ockam_common::commands::ockam_commands::*;
-use ockam_kex::xx::{XXInitiator, XXResponder};
+use ockam_kex::{
+    xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
+    CipherSuite,
+};
 use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_transport::transport::UdpTransport;
@@ -16,7 +19,7 @@ use ockam_vault::software::DefaultVault;
 
 pub struct Node<'a> {
     config: &'a Config,
-    chan_manager: ChannelManager<XXInitiator, XXResponder, XXInitiator>,
+    chan_manager: ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>,
     worker: Option<Worker>,
     router: Router,
     router_tx: Sender<OckamCommand>,
@@ -34,14 +37,25 @@ impl<'a> Node<'a> {
         // let vault = Arc::new(Mutex::new(
         //     FilesystemVault::new(config.vault_path()).expect("failed to initialize vault"),
         // ));
-
         let vault = Arc::new(Mutex::new(DefaultVault::default()));
 
         // create the channel manager
-        type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXInitiator>;
-        let (chan_tx, chan_rx) = mpsc::channel();
-        let chan_manager =
-            XXChannelManager::new(chan_rx, chan_tx, router_tx.clone(), vault).unwrap();
+        type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
+        let (channel_tx, channel_rx) = mpsc::channel();
+        let new_key_exchanger = XXNewKeyExchanger::new(
+            CipherSuite::Curve25519AesGcmSha256,
+            vault.clone(),
+            vault.clone(),
+        );
+
+        let mut chan_manager = XXChannelManager::new(
+            channel_rx,
+            channel_tx.clone(),
+            router_tx.clone(),
+            vault,
+            new_key_exchanger,
+        )
+        .unwrap();
 
         // create the transport, currently UDP-only
         let transport_router_tx = router_tx.clone();
