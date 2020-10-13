@@ -48,9 +48,9 @@ impl<'a> Node<'a> {
             vault.clone(),
         );
 
-        let mut chan_manager = XXChannelManager::new(
+        let chan_manager = XXChannelManager::new(
             channel_rx,
-            channel_tx.clone(),
+            channel_tx,
             router_tx.clone(),
             vault,
             new_key_exchanger,
