@@ -61,7 +61,7 @@ impl XEddsaSigner for XSecretKey {
         hasher.update(hash_padding);
         hasher.update(k.as_bytes());
         hasher.update(msg);
-        hasher.update(nonce);
+        hasher.update(nonce.as_ref());
         let r = Scalar::from_hash(hasher);
 
         // R = rB
