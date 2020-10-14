@@ -189,9 +189,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         match pending {
                             Some(mut p) => {
                                 let mut return_route = channel.route.clone();
-                                return_route.addresses.push(
-                                    RouterAddress::from_address(channel.as_address()).unwrap(),
-                                );
                                 return_route.addresses.insert(
                                     0,
                                     RouterAddress::from_address(channel.as_address()).unwrap(),

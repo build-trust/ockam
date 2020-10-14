@@ -74,6 +74,9 @@ pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, String), String> 
 
     if let Some(wa) = args.worker_addr {
         if let Ok(ra) = RouterAddress::worker_router_address_from_str(&wa) {
+            route
+                .addresses
+                .push(RouterAddress::channel_router_address_from_str("00000000").unwrap());
             route.addresses.push(ra);
         }
     };
@@ -104,8 +107,7 @@ impl TestWorker {
         rx: std::sync::mpsc::Receiver<OckamCommand>,
         tx: std::sync::mpsc::Sender<OckamCommand>,
         router_tx: std::sync::mpsc::Sender<OckamCommand>,
-        worker_address: Address,
-        route: Route,
+        address: Address,
     ) -> Result<Self, String> {
         if router_tx
             .send(OckamCommand::Router(RouterCommand::Register(
@@ -122,23 +124,26 @@ impl TestWorker {
             rx,
             _tx: tx,
             router_tx,
-            address: worker_address,
+            address,
             channel_address: channel,
             pending_message: None,
-            onward_route: route,
+            onward_route: Route { addresses: vec![] },
             toggle: 0,
         })
     }
 
     pub fn request_channel(&mut self, mut m: Message) -> Result<(), String> {
         let pending_message = Message {
-            onward_route: Route { addresses: vec![] },
+            onward_route: m.onward_route.clone(),
             return_route: m.return_route.clone(),
             message_type: MessageType::Payload,
             message_body: m.message_body.clone(),
         };
         self.pending_message = Some(pending_message);
-        m.onward_route = self.onward_route.clone();
+        m.onward_route.addresses.insert(
+            0,
+            RouterAddress::channel_router_address_from_str("00000000").unwrap(),
+        );
         m.return_route.addresses.insert(
             0,
             RouterAddress::from_address(self.address.clone()).unwrap(),
@@ -174,19 +179,29 @@ impl TestWorker {
     // This function is called when a key exchange has been completed and a secure
     // channel created. If it was requested by the worker, as in the case of an
     // initiator, the worker address should be non-zero. If it was not requested,
-    // as in the case of a responder, the worker address will be zero and the
+    // as in the case of a responder, the worker address may be zero, in which case the
     // worker manager should either create a new worker, or bail.
     pub fn receive_channel(&mut self, m: Message) -> Result<(), String> {
+        let mut return_route = m.return_route.clone();
         self.channel_address = m.return_route.addresses[0].address.clone();
-        let m_opt = self.pending_message.clone();
-        match m_opt {
-            Some(mut m) => {
-                m.onward_route = self.onward_route.clone();
-                m.return_route = Route {
+        let pending_opt = self.pending_message.clone();
+        match pending_opt {
+            Some(mut pending) => {
+                // what follows is an ugly hack to allow a manually entered remote worker address
+                let remote_endpoint = return_route.addresses.pop().unwrap();
+                if remote_endpoint.a_type != AddressType::Worker {
+                    return_route.addresses.push(remote_endpoint);
+                }
+                return_route
+                    .addresses
+                    .push(pending.onward_route.addresses.pop().unwrap());
+
+                pending.onward_route = return_route.clone();
+                pending.return_route = Route {
                     addresses: vec![RouterAddress::from_address(self.address.clone()).unwrap()],
                 };
                 self.router_tx
-                    .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
+                    .send(OckamCommand::Router(RouterCommand::SendMessage(pending)))
                     .unwrap();
                 self.pending_message = None;
                 Ok(())
@@ -249,15 +264,6 @@ impl TestWorker {
                         self.handle_send(m).unwrap();
                     }
                     OckamCommand::Worker(WorkerCommand::ReceiveMessage(m)) => {
-                        // match m.message_type {
-                        //     MessageType::Payload => {
-                        //         println!(
-                        //             "Worker received: {}",
-                        //             str::from_utf8(&m.message_body).unwrap()
-                        //         );
-                        //     }
-                        //     _ => {}
-                        // }
                         if let MessageType::Payload = m.message_type {
                             println!(
                                 "Worker received: {}",
@@ -289,10 +295,6 @@ pub fn start_node(
     let (channel_tx, channel_rx) = std::sync::mpsc::channel();
 
     let mut router = Router::new(router_rx);
-    onward_route.addresses.insert(
-        0,
-        RouterAddress::channel_router_address_from_str("00000000").unwrap(),
-    );
 
     // "onward_route" should consist of:
     // - channel_address 0, which indicates that a secure channel should be established
@@ -303,7 +305,6 @@ pub fn start_node(
         worker_tx.clone(),
         router_tx.clone(),
         Address::WorkerAddress(hex::decode("00010203").unwrap()), // arbitrary for now
-        onward_route,
     )
     .unwrap();
 
@@ -338,9 +339,6 @@ pub fn start_node(
             new_key_exchanger,
         )
         .unwrap();
-        // let mut channel_handler =
-        //     XXChannelManager::new(channel_rx, channel_tx.clone(), router_tx.clone(), vault)
-        //         .unwrap();
 
         while transport.poll() && router.poll() && channel_handler.poll().unwrap() && worker.poll()
         {
@@ -349,9 +347,6 @@ pub fn start_node(
     });
 
     if is_initiator {
-        let onward_route = Route {
-            addresses: vec![RouterAddress::worker_router_address_from_str("00010203").unwrap()],
-        };
         let m = Message {
             onward_route,
             return_route: Route { addresses: vec![] },
