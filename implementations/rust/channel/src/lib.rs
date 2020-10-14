@@ -197,6 +197,13 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                                     RouterAddress::from_address(channel.as_address()).unwrap(),
                                 );
                                 p.return_route = return_route;
+
+                                // add the channel's remote public key as the message body
+                                if let Some(completed_kex) = channel.completed_key_exchange {
+                                    p.message_body =
+                                        completed_kex.remote_static_public_key.as_ref().to_vec();
+                                }
+
                                 self.router
                                     .send(OckamCommand::Router(RouterCommand::ReceiveMessage(p)))
                                     .unwrap();
@@ -222,6 +229,14 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                                         0,
                                         RouterAddress::from_address(channel.as_address()).unwrap(),
                                     );
+                                    // add the channel's remote public key as the message body
+                                    p.message_body = channel
+                                        .completed_key_exchange
+                                        .unwrap()
+                                        .remote_static_public_key
+                                        .as_ref()
+                                        .to_vec();
+
                                     self.router
                                         .send(OckamCommand::Router(RouterCommand::ReceiveMessage(
                                             p,
