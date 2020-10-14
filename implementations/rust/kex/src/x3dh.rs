@@ -16,7 +16,7 @@ use subtle::ConstantTimeEq;
 
 /// Represents and (X)EdDSA or ECDSA signature
 /// from Ed25519 or P-256
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Signature([u8; 64]);
 
 impl AsRef<[u8; 64]> for Signature {
@@ -34,6 +34,12 @@ impl From<[u8; 64]> for Signature {
 impl From<&[u8; 64]> for Signature {
     fn from(data: &[u8; 64]) -> Self {
         Signature(*data)
+    }
+}
+
+impl std::fmt::Debug for Signature {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Signature {{ {} }}", hex::encode(self.0.as_ref()))
     }
 }
 
