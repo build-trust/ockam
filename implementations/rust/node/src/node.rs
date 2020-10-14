@@ -68,16 +68,23 @@ pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, String), String> 
         if let Ok(sa) = SocketAddr::from_str(&rs) {
             if let Some(ra) = RouterAddress::from_address(Address::UdpAddress(sa)) {
                 route.addresses.push(ra);
+                route
+                    .addresses
+                    .push(RouterAddress::channel_router_address_from_str("00000000").unwrap());
+                if let Some(wa) = args.worker_addr {
+                    route
+                        .addresses
+                        .push(RouterAddress::worker_router_address_from_str(&wa).unwrap());
+                // if let Ok(ra) = RouterAddress::worker_router_address_from_str(&wa) {
+                //     route.addresses.push(RouterAddress::channel_router_address_from_str("
+                // 00000000").unwrap());     route.addresses.push(ra);
+                // }
+                } else {
+                    route
+                        .addresses
+                        .push(RouterAddress::worker_router_address_from_str("00000000").unwrap());
+                }
             }
-        }
-    };
-
-    if let Some(wa) = args.worker_addr {
-        if let Ok(ra) = RouterAddress::worker_router_address_from_str(&wa) {
-            route
-                .addresses
-                .push(RouterAddress::channel_router_address_from_str("00000000").unwrap());
-            route.addresses.push(ra);
         }
     };
 
@@ -285,7 +292,7 @@ impl TestWorker {
 
 pub fn start_node(
     local_socket: RouterAddress,
-    mut onward_route: Route,
+    onward_route: Route,
     payload: String,
     is_initiator: bool,
 ) {
@@ -381,6 +388,8 @@ fn main() {
         }
     }
     let is_initiator = !route.addresses.is_empty();
+
+    println!("route: {:?}", route);
 
     start_node(local_socket, route, message, is_initiator);
 
