@@ -21,4 +21,4 @@ ockam-channel = { version = "0.1", path = "../channel"}
 ockam-kex = { version = "0.1", path = "../kex" }
 ockam-vault = { version = "0.1", path = "../vault" }
 hex = "0.4.2"
-structopt = { version = "0.3.17", default-features = false }
+structopt = { version = "0.3.20", default-features = false }
