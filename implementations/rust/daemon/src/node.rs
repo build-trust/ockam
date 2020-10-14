@@ -16,7 +16,6 @@ use ockam_kex::{
 use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_transport::transport::UdpTransport;
-use ockam_vault::software::DefaultVault;
 
 pub struct Node<'a> {
     config: &'a Config,
