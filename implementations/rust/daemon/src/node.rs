@@ -34,11 +34,10 @@ impl<'a> Node<'a> {
         let (router_tx, router_rx) = std::sync::mpsc::channel();
         let router = Router::new(router_rx);
 
-        // create the vault
+        // create the vault, using the FILESYSTEM implementation
         let vault = Arc::new(Mutex::new(
             FilesystemVault::new(config.vault_path()).expect("failed to initialize vault"),
         ));
-        // let vault = Arc::new(Mutex::new(DefaultVault::default()));
 
         // create the channel manager
         type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
