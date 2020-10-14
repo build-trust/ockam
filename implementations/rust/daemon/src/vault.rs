@@ -153,9 +153,24 @@ impl DynVault for FilesystemVault {
     /// Remove a secret key from the vault
     fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError> {
         self.v.secret_destroy(context)?;
+
         if let SecretKeyContext::Memory(id) = context {
-            fs::remove_file(self.path.join(id_to_path(id)))
-                .map_err(|_| VaultFailErrorKind::IOError)?;
+            let path = self.path.join(id_to_path(id));
+            match fs::metadata(path.clone()) {
+                Ok(md) if md.is_file() => {
+                    fs::remove_file(path).map_err(|_| VaultFailErrorKind::IOError)?;
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!(
+                        "vault error: failed to check path ({:?}), {}",
+                        path.as_os_str(),
+                        e
+                    );
+
+                    return Err(VaultFailErrorKind::IOError.into());
+                }
+            }
         }
 
         Ok(())
