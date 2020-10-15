@@ -160,16 +160,7 @@ impl DynVault for FilesystemVault {
                 Ok(md) if md.is_file() => {
                     fs::remove_file(path).map_err(|_| VaultFailErrorKind::IOError)?;
                 }
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!(
-                        "vault error: failed to check path ({:?}), {}",
-                        path.as_os_str(),
-                        e
-                    );
-
-                    return Err(VaultFailErrorKind::IOError.into());
-                }
+                _ => {}
             }
         }
 
@@ -250,19 +241,19 @@ impl DynVault for FilesystemVault {
         self.v.deinit()
     }
 
-    fn sign<B: AsRef<[u8]>>(
+    fn sign(
         &mut self,
         secret_key: SecretKeyContext,
-        data: B,
+        data: &[u8],
     ) -> Result<[u8; 64], VaultFailError> {
         self.v.sign(secret_key, data)
     }
 
-    fn verify<B: AsRef<[u8]>>(
+    fn verify(
         &mut self,
         signature: [u8; 64],
         public_key: PublicKey,
-        data: B,
+        data: &[u8],
     ) -> Result<(), VaultFailError> {
         self.v.verify(signature, public_key, data)
     }
