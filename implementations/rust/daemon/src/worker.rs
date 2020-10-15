@@ -1,7 +1,9 @@
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use ockam_common::commands::ockam_commands::*;
-use ockam_message::message::{AddressType, Message as OckamMessage, RouterAddress};
+use ockam_message::message::{
+    Address, AddressType, Message as OckamMessage, MessageType, Route, RouterAddress,
+};
 
 type WorkFn = fn(self_worker: &Worker, msg: OckamMessage);
 
@@ -42,8 +44,23 @@ impl Worker {
         match self.rx.try_recv() {
             Ok(cmd) => match cmd {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
-                    (self.work_fn)(&self, msg);
-                    true
+                    match msg.message_type {
+                        MessageType::Payload => {
+                            (self.work_fn)(&self, msg);
+                            true
+                        }
+                        MessageType::None => match String::from_utf8(msg.message_body) {
+                            Ok(key) => {
+                                println!("Responder public key: {}", hex::encode(key));
+                                true
+                            }
+                            Err(e) => {
+                                eprintln!("Invalid public key: {}", e);
+                                false
+                            }
+                        },
+                        _ => unimplemented!(),
+                    }
                 }
                 _ => {
                     eprintln!("unrecognized worker command: {:?}", cmd);
