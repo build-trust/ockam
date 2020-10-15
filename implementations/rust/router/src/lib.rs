@@ -3,18 +3,27 @@ pub mod router {
     use ockam_common::commands::ockam_commands::*;
     use ockam_message::message::*;
     use std::convert::TryFrom;
+    use std::fs::OpenOptions;
     use std::sync::mpsc::channel;
     use std::sync::{Arc, Mutex};
     use std::{thread, time};
+
+    pub trait Routable {
+        fn handle_message(
+            &mut self,
+            m: Message,
+            direction: Direction,
+        ) -> Option<(Message, Direction)>;
+    }
 
     pub struct Router {
         registry: Vec<Option<std::sync::mpsc::Sender<OckamCommand>>>,
         rx: std::sync::mpsc::Receiver<OckamCommand>,
     }
 
-    pub enum MessageDirection {
-        Send,
-        Receive,
+    pub enum Direction {
+        Outgoing,
+        Incoming,
     }
 
     impl Router {
@@ -23,6 +32,14 @@ pub mod router {
                 registry: vec![Option::None; 256],
                 rx,
             }
+        }
+
+        pub fn register(
+            &mut self,
+            address: Address,
+            handler: Arc<Mutex<dyn Routable>>,
+        ) -> Result<(), String> {
+            Err("not implemented".into())
         }
 
         pub fn poll(&mut self) -> bool {
@@ -44,11 +61,11 @@ pub mod router {
                         }
                         OckamCommand::Router(RouterCommand::ReceiveMessage(m)) => {
                             got = true;
-                            self.route(m, MessageDirection::Receive);
+                            self.route(m, Direction::Incoming);
                         }
                         OckamCommand::Router(RouterCommand::SendMessage(m)) => {
                             got = true;
-                            self.route(m, MessageDirection::Send);
+                            self.route(m, Direction::Outgoing);
                         }
                         _ => println!("Router received bad command"),
                     },
@@ -58,7 +75,7 @@ pub mod router {
             keep_going
         }
 
-        fn route(&mut self, m: Message, direction: MessageDirection) -> Result<(), String> {
+        fn route(&mut self, m: Message, direction: Direction) -> Result<(), String> {
             if m.onward_route.addresses.is_empty() {
                 return Err("no route supplied".to_string());
             }
@@ -76,21 +93,21 @@ pub mod router {
             };
             match address_type {
                 AddressType::Channel => match direction {
-                    MessageDirection::Receive => {
+                    Direction::Incoming => {
                         handler_tx.send(OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)));
                         Ok(())
                     }
-                    MessageDirection::Send => {
+                    Direction::Outgoing => {
                         handler_tx.send(OckamCommand::Channel(ChannelCommand::SendMessage(m)));
                         Ok(())
                     }
                 },
                 AddressType::Worker => match direction {
-                    MessageDirection::Receive => {
+                    Direction::Incoming => {
                         handler_tx.send(OckamCommand::Worker(WorkerCommand::ReceiveMessage(m)));
                         Ok(())
                     }
-                    MessageDirection::Send => {
+                    Direction::Outgoing => {
                         handler_tx.send(OckamCommand::Worker(WorkerCommand::SendMessage(m)));
                         Ok(())
                     }

@@ -1,12 +1,10 @@
 #[allow(unused)]
-#[allow(non_camel_case_types)]
 
 pub mod transport {
     use ockam_common::commands::ockam_commands::RouterCommand::ReceiveMessage;
     use ockam_common::commands::ockam_commands::*;
     use ockam_message::message::*;
     use ockam_router::router::Router;
-    use std::collections::HashMap;
     use std::convert::TryFrom;
     use std::io::{Read, Write};
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};

@@ -222,7 +222,7 @@ impl TestWorker {
         match m.message_type {
             MessageType::Payload => {
                 let s: &str;
-                if 0 == self.toggle % 2 {
+                if 0 == &self.toggle % 2 {
                     s = "Hello Ockam";
                 } else {
                     s = "Goodbye Ockam"
