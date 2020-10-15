@@ -160,6 +160,10 @@ impl Args {
     pub fn vault_path(&self) -> PathBuf {
         self.vault_path.clone()
     }
+
+    pub fn responder_public_key(&self) -> Option<String> {
+        self.responder_public_key.clone()
+    }
 }
 
 /// Specifies the implementation of a Ockam vault to be used.
