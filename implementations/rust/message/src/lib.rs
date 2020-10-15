@@ -137,6 +137,12 @@ pub mod message {
                 _ => "error".to_string(),
             }
         }
+        pub fn worker_address_from_string(s: &str) -> Result<Address, String> {
+            match hex::decode(s) {
+                Ok(h) => Ok(Address::WorkerAddress(h)),
+                _ => Err("string must only contain hex digits".into()),
+            }
+        }
         pub fn size_of(&self) -> u8 {
             match self {
                 Address::WorkerAddress(a) => a.len() as u8,

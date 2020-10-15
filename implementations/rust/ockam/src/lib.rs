@@ -5,3 +5,4 @@ pub use ockam_message as message;
 pub use ockam_vault as vault;
 pub use ockam_router as router;
 pub use ockam_transport as transport;
+pub use ockam_worker as worker;
