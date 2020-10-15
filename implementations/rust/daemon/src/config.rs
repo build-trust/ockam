@@ -24,6 +24,7 @@ pub struct Config {
     role: Role,
     vault_path: PathBuf,
     input_kind: Input,
+    remote_public_key: Option<String>,
 }
 
 impl Config {
@@ -42,6 +43,10 @@ impl Config {
     pub fn local_host(&self) -> SocketAddr {
         self.local_host
     }
+
+    pub fn remote_public_key(&self) -> Option<String> {
+        self.remote_public_key.clone()
+    }
 }
 
 impl From<cli::Args> for Config {
@@ -53,6 +58,7 @@ impl From<cli::Args> for Config {
             role: Role::Initiator,
             vault_path: args.vault_path(),
             input_kind: Input::Stdin,
+            remote_public_key: args.responder_public_key(),
         };
 
         match args.output_kind() {
