@@ -1,9 +1,7 @@
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use ockam_common::commands::ockam_commands::*;
-use ockam_message::message::{
-    Address, AddressType, Message as OckamMessage, MessageType, Route, RouterAddress,
-};
+use ockam_message::message::{AddressType, Message as OckamMessage, MessageType, RouterAddress};
 
 type WorkFn = fn(self_worker: &Worker, msg: OckamMessage);
 
@@ -11,14 +9,13 @@ pub struct Worker {
     router_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,
     tx: Sender<OckamCommand>,
-    address: RouterAddress,
-    pending_message: Option<OckamMessage>,
+    addr: RouterAddress,
     work_fn: WorkFn,
 }
 
 impl Worker {
-    pub fn new(address: RouterAddress, router_tx: Sender<OckamCommand>, work_fn: WorkFn) -> Self {
-        debug_assert!(matches!(address.a_type, AddressType::Worker));
+    pub fn new(addr: RouterAddress, router_tx: Sender<OckamCommand>, work_fn: WorkFn) -> Self {
+        debug_assert!(matches!(addr.a_type, AddressType::Worker));
 
         let (tx, rx) = mpsc::channel();
 
@@ -26,12 +23,13 @@ impl Worker {
         let cmd = OckamCommand::Router(RouterCommand::Register(AddressType::Worker, tx.clone()));
         router_tx.send(cmd).expect("failed to register worker");
 
+        println!("Service address: {}", addr.address.as_string());
+
         Worker {
             router_tx,
             rx,
             tx,
-            address,
-            pending_message: None,
+            addr,
             work_fn,
         }
     }
@@ -49,16 +47,7 @@ impl Worker {
                             (self.work_fn)(&self, msg);
                             true
                         }
-                        MessageType::None => match String::from_utf8(msg.message_body) {
-                            Ok(key) => {
-                                println!("Responder public key: {}", hex::encode(key));
-                                true
-                            }
-                            Err(e) => {
-                                eprintln!("Invalid public key: {}", e);
-                                false
-                            }
-                        },
+                        MessageType::None => true,
                         _ => unimplemented!(),
                     }
                 }

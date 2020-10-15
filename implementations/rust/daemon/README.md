@@ -26,7 +26,7 @@ Ockam Developers (ockam.io)
 Encrypt, route, and decrypt messages using the Ockam daemon.
 
 USAGE:
-    ockamd [OPTIONS] --role <role>
+    ockamd [OPTIONS]
 
 FLAGS:
     -h, --help       Prints help information
@@ -36,15 +36,16 @@ OPTIONS:
         --identity-name <identity-name>
             Name of the private key to use for the identity of the channel initiator
 
-        --input <input>                                  Data source providing input to `ockamd` [default: stdin]
-        --local-socket <local-socket>                    Local node address and port to bind [default: 127.0.0.1:0]
-        --output <output>
+        --input <input>                              Data source providing input to `ockamd` [default: stdin]
+        --local-socket <local-socket>                Local node address and port to bind [default: 127.0.0.1:0]
+        --role <role>
+            Start `ockamd` as an "initiator" or a "responder" of a secure channel [default: initiator]
+
+        --route <route>
             Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout"
             [default: stdout]
-        --responder-public-key <responder-public-key>    The public key provided by channel responder
-        --role <role>
-            Start `ockamd` as an "initiator" or a "responder" of a secure channel
-
+        --service-address <service-address>          Address used to reach the service on remote machine
+        --service-public-key <service-public-key>    The public key provided by the remote service
         --vault <vault>
             Specify which type of Ockam vault to use for this instance of `ockamd` [default: FILESYSTEM]
 

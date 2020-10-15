@@ -39,9 +39,6 @@ pub mod transport {
                         AddressType::Udp,
                         tx.clone(),
                     )));
-                    if let Ok(addr) = socket.local_addr() {
-                        println!("created udp transport bound to {}", addr);
-                    }
 
                     Ok(UdpTransport {
                         socket,
