@@ -56,6 +56,11 @@ pub fn run(config: Config) {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
                     match msg.message_type {
                         MessageType::None => {
+                            // validate the public key matches the one in our config
+                            if let Some(key) = config.remote_public_key() {
+                                validate_public_key(&key, msg.message_body)
+                                    .expect("failed to prove responder identity");
+                            }
                             onward_route = msg.return_route;
                         }
                         _ => unimplemented!(),
@@ -90,4 +95,12 @@ pub fn run(config: Config) {
 
     // run the node to poll its various internal components
     node.run();
+}
+
+fn validate_public_key(known: &str, remote: Vec<u8>) -> Result<(), String> {
+    if known.as_bytes().to_vec() == remote {
+        Ok(())
+    } else {
+        Err("remote public key mismatch".into())
+    }
 }
