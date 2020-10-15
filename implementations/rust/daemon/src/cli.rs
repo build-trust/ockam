@@ -27,13 +27,13 @@ pub struct Args {
     )]
     input: InputKind,
 
-    /// Defines the kind of output where a message should be sent.
+    /// Defines the route where a message should be sent.
     #[structopt(
         long,
         default_value = "stdout",
         help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout""#
     )]
-    output: OutputKind,
+    route: OutputKind,
 
     #[structopt(
         long,
@@ -63,6 +63,7 @@ pub struct Args {
     /// Start the `ockamd` process as the initiator or responder of a secure channel.
     #[structopt(
         long,
+        default_value = "initiator",
         help = r#"Start `ockamd` as an "initiator" or a "responder" of a secure channel"#
     )]
     role: ChannelRole,
@@ -70,23 +71,21 @@ pub struct Args {
     /// Define which private key to use as the initiator's identity.
     #[structopt(
         long,
-        required_if("role", "initiator"),
-        required_if("role", "init"),
         help = "Name of the private key to use for the identity of the channel initiator"
     )]
     identity_name: Option<String>,
 
-    /// Define the public key needed to communicate with the channel responder.
+    /// Define the public key provided by the remote service.
     #[structopt(
         long,
         required_if("role", "initiator"),
         required_if("role", "init"),
-        help = "The public key provided by channel responder"
+        help = "The public key provided by the remote service"
     )]
-    responder_public_key: Option<String>,
+    service_public_key: Option<String>,
 
-    #[structopt(long, help = r#"Address used to reach "worker" on remote machine"#)]
-    worker_address: Option<String>,
+    #[structopt(long, help = r#"Address used to reach the service on remote machine"#)]
+    service_address: Option<String>,
 
     // TODO: expose `control` and `control_port` once runtime configuration is needed.
     #[structopt(
@@ -112,15 +111,15 @@ impl Default for Args {
             control: false,
             control_port: DEFAULT_CONFIG_PORT,
             input: InputKind::Stdin,
-            output: OutputKind::Stdout,
+            route: OutputKind::Stdout,
             local_socket: SocketAddr::from_str(DEFAULT_LOCAL_SOCKET)
                 .expect("bad default set for local socket"),
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
-            worker_address: None,
+            service_address: None,
             identity_name: None,
-            responder_public_key: None,
+            service_public_key: None,
         }
     }
 }
@@ -146,7 +145,7 @@ impl Args {
     }
 
     pub fn output_kind(&self) -> OutputKind {
-        self.output.clone()
+        self.route.clone()
     }
 
     pub fn input_kind(&self) -> InputKind {
@@ -161,8 +160,8 @@ impl Args {
         self.vault_path.clone()
     }
 
-    pub fn responder_public_key(&self) -> Option<String> {
-        self.responder_public_key.clone()
+    pub fn service_public_key(&self) -> Option<String> {
+        self.service_public_key.clone()
     }
 }
 
@@ -244,23 +243,24 @@ impl FromStr for OutputKind {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut ret = Ok(OutputKind::Stdout);
+
         if s == "stdout" {
-            return Ok(OutputKind::Stdout);
+            return ret;
         }
 
-        let mut ret = Ok(OutputKind::Stdout);
         let mut route = Route { addresses: vec![] };
 
         s.split(',').for_each(|part| {
             match Url::parse(part) {
                 Ok(u) => {
-                    if !u.has_host() || u.port().is_none() {
+                    if !u.has_host() {
                         ret = Err(format!("invalid URI: {}", part));
                     }
 
                     // TODO: add helper fn in message crate that peforms a FromStr and delegates to
                     // RouterAddress::* fn's if url scheme is udp, tcp, etc.
-                    let addr = u.as_str().trim_start_matches("udp://");
+                    let addr = u.as_str().trim().trim_start_matches("udp://");
 
                     if let Ok(router_addr) = RouterAddress::udp_router_address_from_str(addr) {
                         route.addresses.push(router_addr);
@@ -291,34 +291,27 @@ fn test_cli_args_output() {
         }
     }
 
-    if let Ok(output_kind) = OutputKind::from_str(
-        "udp://10.10.1.3:9999,udp://192.168.33.4:4444,udp://10.2.22.2:22222".into(),
-    ) {
-        match output_kind {
-            OutputKind::Channel(route) => {
-                assert_eq!(route.addresses.len(), 3);
-                route.addresses.iter().for_each(|addr| {
-                    assert_eq!(addr.a_type, AddressType::Udp);
-                })
-            }
-            _ => {}
-        }
-    }
+    let test_cases = [
+        // route
+        "udp://10.10.1.3:9999,udp://192.168.33.4:4444,udp://10.2.22.2:22222",
+        // number of hops in route
+        "3",
+        // etc..
+        "udp://16.31.56.22, udp://ockam.network, udp://14.172.71.124, udp://44.178.238.169",
+        "4",
+    ];
 
-    if let Ok(output_kind) =
-        OutputKind::from_str("udp://117.2.34.1:11199,udp://10.2.34.3:8000,65ffa6cf".into())
-    {
-        match output_kind {
-            OutputKind::Channel(route) => {
-                assert_eq!(route.addresses.len(), 3);
-                match route.addresses.last() {
-                    Some(addr) => {
-                        assert_eq!(addr.a_type, AddressType::Channel);
-                    }
-                    _ => {}
+    test_cases.windows(2).for_each(|route_hop| {
+        if let Ok(output_kind) = OutputKind::from_str(route_hop[0]) {
+            match output_kind {
+                OutputKind::Channel(route) => {
+                    assert_eq!(route.addresses.len(), route_hop[1].parse().unwrap());
+                    route.addresses.iter().for_each(|addr| {
+                        assert_eq!(addr.a_type, AddressType::Udp);
+                    })
                 }
+                _ => {}
             }
-            _ => {}
         }
-    }
+    });
 }

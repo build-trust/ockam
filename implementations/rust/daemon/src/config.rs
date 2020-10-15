@@ -58,7 +58,7 @@ impl From<cli::Args> for Config {
             role: Role::Initiator,
             vault_path: args.vault_path(),
             input_kind: Input::Stdin,
-            remote_public_key: args.responder_public_key(),
+            remote_public_key: args.service_public_key(),
         };
 
         match args.output_kind() {

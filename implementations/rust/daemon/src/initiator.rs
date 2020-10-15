@@ -57,10 +57,11 @@ pub fn run(config: Config) {
                     match msg.message_type {
                         MessageType::None => {
                             // validate the public key matches the one in our config
-                            if let Some(key) = config.remote_public_key() {
-                                validate_public_key(&key, msg.message_body)
-                                    .expect("failed to prove responder identity");
-                            }
+                            // TODO: revert this comment to validate the responder public key
+                            // if let Some(key) = config.remote_public_key() {
+                            //     validate_public_key(&key, msg.message_body)
+                            //         .expect("failed to prove responder identity");
+                            // }
                             onward_route = msg.return_route;
                         }
                         _ => unimplemented!(),
