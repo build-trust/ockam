@@ -63,7 +63,7 @@ ockam_error_t vault_default_deinit(ockam_vault_t* vault);
 
 ockam_error_t vault_default_random(ockam_vault_t* vault, uint8_t* buffer, size_t buffer_size);
 
-ockam_error_t vault_default_sha256(ockam_vault_t* vault,
+ockam_error_t vault_default_sha256(const ockam_vault_t* vault,
                                    const uint8_t* input,
                                    size_t         input_length,
                                    uint8_t*       digest,

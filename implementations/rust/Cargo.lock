@@ -193,6 +193,7 @@ version = "0.9.0"
 dependencies = [
  "cmake",
  "libc",
+ "zeroize",
 ]
 
 [[package]]

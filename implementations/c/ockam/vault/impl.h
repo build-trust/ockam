@@ -40,7 +40,7 @@ typedef struct {
    * @param   digest_size[in]     Size of the digest buffer. Must be 32 bytes.
    * @param   digest_length[out]  Amount of data placed in the digest buffer.
    */
-  ockam_error_t (*sha256)(ockam_vault_t* vault,
+  ockam_error_t (*sha256)(const ockam_vault_t* vault,
                           const uint8_t* input,
                           size_t         input_length,
                           uint8_t*       digest,
