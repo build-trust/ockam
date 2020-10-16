@@ -22,7 +22,7 @@ target_include_directories(ockam_vault_atecc608a
         "${cryptoauthlib_BINARY_DIR}/lib")
 
 target_link_directories(ockam_vault_atecc608a
-        PUBLIC
+    PUBLIC
         "${cryptoauthlib_BINARY_DIR}/lib")
 
 target_link_libraries(ockam_vault_atecc608a

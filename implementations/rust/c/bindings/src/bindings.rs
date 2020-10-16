@@ -337,7 +337,7 @@ extern "C" {
     #[doc = " @param   digest_length[out]  Amount of data placed in the digest buffer."]
     #[doc = " @return  OCKAM_ERROR_NONE on success."]
     pub fn ockam_vault_sha256(
-        vault: *mut ockam_vault_t,
+        vault: *const ockam_vault_t,
         input: *const u8,
         input_length: usize,
         digest: *mut u8,
@@ -529,11 +529,6 @@ extern "C" {
 pub enum ockam_error_code_mutex_interface_t {
     OCKAM_MUTEX_INTERFACE_ERROR_INVALID_PARAM = 1,
 }
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct ockam_mutex_t {
-    _unused: [u8; 0],
-}
 pub type ockam_mutex_lock_t = *mut ::core::ffi::c_void;
 extern "C" {
     #[doc = " @brief   Deinitialize the specified ockam mutex object."]
@@ -603,7 +598,7 @@ pub struct ockam_vault_dispatch_table_t {
     #[doc = " @param   digest_length[out]  Amount of data placed in the digest buffer."]
     pub sha256: ::core::option::Option<
         unsafe extern "C" fn(
-            vault: *mut ockam_vault_t,
+            vault: *const ockam_vault_t,
             input: *const u8,
             input_length: usize,
             digest: *mut u8,
@@ -920,7 +915,6 @@ pub union ATCAIfaceCfg__bindgen_ty_1 {
     pub atcauart: ATCAIfaceCfg__bindgen_ty_1__bindgen_ty_3,
     pub atcahid: ATCAIfaceCfg__bindgen_ty_1__bindgen_ty_4,
     pub atcacustom: ATCAIfaceCfg__bindgen_ty_1__bindgen_ty_5,
-    _bindgen_union_align: [u64; 8usize],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1034,4 +1028,52 @@ extern "C" {
         vault: *mut ockam_vault_t,
         attributes: *mut ockam_vault_atecc608a_attributes_t,
     ) -> ockam_error_t;
+}
+#[doc = " @struct  ockam_mutex_dispatch_table"]
+#[doc = " @brief   The Ockam Mutex implementation functions"]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ockam_mutex_dispatch_table_t {
+    #[doc = " @brief   Deinitialize the specified ockam mutex implementation."]
+    #[doc = " @param   mutex[in]  The ockam mutex object to deinitialize."]
+    #[doc = " @return  OCKAM_ERROR_NONE on success."]
+    pub deinit:
+        ::core::option::Option<unsafe extern "C" fn(mutex: *mut ockam_mutex_t) -> ockam_error_t>,
+    #[doc = " @brief   Create a mutex"]
+    #[doc = " @param   mutex[in] The ockam mutex implementation to use."]
+    #[doc = " @param   lock[out] Lock object to create."]
+    #[doc = " @return  OCKAM_ERROR_NONE on success."]
+    pub create: ::core::option::Option<
+        unsafe extern "C" fn(
+            mutex: *mut ockam_mutex_t,
+            lock: *mut ockam_mutex_lock_t,
+        ) -> ockam_error_t,
+    >,
+    #[doc = " @brief   Unlock the specified mutex"]
+    #[doc = " @param   mutex[in] The ockam mutex implementation to use."]
+    #[doc = " @param   lock[in]  Lock object to destroy."]
+    #[doc = " @return  OCKAM_ERROR_NONE on success."]
+    pub destroy: ::core::option::Option<
+        unsafe extern "C" fn(mutex: *mut ockam_mutex_t, lock: ockam_mutex_lock_t) -> ockam_error_t,
+    >,
+    #[doc = " @brief   Lock the specified mutex"]
+    #[doc = " @param   mutex[in] The ockam mutex implementation to use."]
+    #[doc = " @param   lock[in]  Lock object to lock."]
+    #[doc = " @return  OCKAM_ERROR_NONE on success."]
+    pub lock: ::core::option::Option<
+        unsafe extern "C" fn(mutex: *mut ockam_mutex_t, lock: ockam_mutex_lock_t) -> ockam_error_t,
+    >,
+    #[doc = " @brief   Unlock the specified mutex"]
+    #[doc = " @param   mutex[in] The ockam mutex implementation to use."]
+    #[doc = " @param   lock[in]  Lock object to unlock."]
+    #[doc = " @return  OCKAM_ERROR_NONE on success."]
+    pub unlock: ::core::option::Option<
+        unsafe extern "C" fn(mutex: *mut ockam_mutex_t, lock: ockam_mutex_lock_t) -> ockam_error_t,
+    >,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ockam_mutex_t {
+    pub dispatch: *mut ockam_mutex_dispatch_table_t,
+    pub context: *mut ::core::ffi::c_void,
 }
