@@ -51,7 +51,6 @@ static ockam_vault_atecc608a_io_protection_t test_atecc608a_io_protection =
 int main(void)
 {
   int                                rc               = 0;
-  ockam_error_t                      error            = OCKAM_ERROR_NONE;
   ockam_vault_t                      vault            = { 0 };
   ockam_memory_t                     memory           = { 0 };
   ockam_vault_atecc608a_attributes_t vault_attributes =
@@ -62,9 +61,7 @@ int main(void)
     .io_protection  = &test_atecc608a_io_protection
   };
 
-  cmocka_set_message_output(CM_OUTPUT_XML);
-
-  error = ockam_memory_stdlib_init(&memory);
+  ockam_error_t error = ockam_memory_stdlib_init(&memory);
   if (ockam_error_has_error(&error)) {
     printf("FAIL: Memory\r\n");
     goto exit;
@@ -76,11 +73,13 @@ int main(void)
     goto exit;
   }
 
-  test_vault_run_random(&vault, &memory);
-  test_vault_run_sha256(&vault, &memory);
-  test_vault_run_secret_ecdh(&vault, &memory, OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY, 0);
-  test_vault_run_hkdf(&vault, &memory);
-  test_vault_run_aead_aes_gcm(&vault, &memory, TEST_VAULT_AEAD_AES_GCM_KEY_128_ONLY);
+  uint8_t buffer[32];
+
+  error = ockam_vault_random_bytes_generate(&vault, buffer, 32);
+  if (ockam_error_has_error(&error)) {
+    printf("FAIL: Random\r\n");
+    goto exit;
+  }
 
 exit:
   if (ockam_error_has_error(&error)) { rc = -1; }

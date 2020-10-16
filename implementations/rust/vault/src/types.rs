@@ -1,4 +1,5 @@
 use crate::error::{VaultFailError, VaultFailErrorKind};
+use c_bindings::*;
 #[cfg(feature = "ffi")]
 use ffi_support::IntoFfi;
 use subtle::ConstantTimeEq;
@@ -223,7 +224,7 @@ impl std::convert::TryFrom<[u8; 6]> for SecretKeyAttributes {
 /// ArmTrustzone,
 /// Key is backed a Apple's secure enclave
 /// SecureEnclave,
-#[derive(Clone, Copy, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
+#[derive(Clone, Copy, Debug, Zeroize)]
 pub enum SecretKeyContext {
     /// Key is backed by RAM
     Memory(usize),
@@ -238,6 +239,11 @@ pub enum SecretKeyContext {
         id: usize,
         /// The type of represented by `id`
         os_type: OsKeyRing,
+    },
+    /// CHandle
+    CHandle {
+        /// handle
+        handle: ockam_vault_secret_t,
     },
 }
 
