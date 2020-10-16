@@ -117,7 +117,7 @@ ockam_error_t ockam_vault_random_bytes_generate(ockam_vault_t* vault, uint8_t* b
  * @param   digest_length[out]  Amount of data placed in the digest buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_sha256(ockam_vault_t* vault,
+ockam_error_t ockam_vault_sha256(const ockam_vault_t* vault,
                                  const uint8_t* input,
                                  size_t         input_length,
                                  uint8_t*       digest,

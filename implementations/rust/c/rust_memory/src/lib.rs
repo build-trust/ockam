@@ -16,7 +16,7 @@ const ERROR_NONE: ockam_error_t = ockam_error_t {
 };
 
 #[repr(C)]
-pub(crate) struct RustAlloc {
+pub struct RustAlloc {
     inner: ockam_memory_t,
 }
 impl AsMut<ockam_memory_t> for RustAlloc {
@@ -66,7 +66,7 @@ unsafe extern "C" fn alloc_zeroed_impl(
     let layout_result = Layout::from_size_align(size, mem::align_of::<core::ffi::c_void>());
     if let Ok(layout) = layout_result {
         let ptr = std::alloc::alloc_zeroed(layout);
-        if !ptr.is_null() {
+        if !ptr.is_null() && !buffer.is_null() {
             buffer.write(ptr as *mut _);
             return error;
         }

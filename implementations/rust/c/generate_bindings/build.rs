@@ -9,7 +9,7 @@ use which::which;
 
 const ENV_LLVM_PREFIX: &str = "LLVM_PREFIX";
 
-fn main() {
+fn main() -> Result<(), String> {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     let root = match env::var("OCKAM_ROOT") {
@@ -84,8 +84,12 @@ fn main() {
         let src_file = root.join("implementations/rust/c/bindings/src/bindings.rs");
         generate_bindings(llvm_config, include_dirs, &src_file);
     } else {
-        println!("cargo:error=LLVM_PREFIX was not set, and cannot find llvm-config, will not regenerate bindings");
+        return Err(String::from(
+            "LLVM_PREFIX was not set, and cannot find llvm-config, will not regenerate bindings",
+        ));
     }
+
+    Ok(())
 }
 
 fn generate_bindings(llvm_config: PathBuf, include_dirs: Vec<String>, out_path: &PathBuf) {

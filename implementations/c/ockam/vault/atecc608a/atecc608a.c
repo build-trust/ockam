@@ -108,6 +108,7 @@ typedef struct {
   ockam_mutex_t*                        mutex;
   ockam_mutex_lock_t                    lock;
   ockam_vault_atecc608a_io_protection_t io_protection;
+  ATCAIfaceCfg                          atca_cfg;
   vault_atecc608a_cfg_t                 config;
   vault_atecc608a_slot_cfg_t            slot_config[VAULT_ATECC608A_NUM_SLOTS];
 } vault_atecc608a_context_t;
@@ -153,7 +154,7 @@ ockam_error_t vault_atecc608a_deinit(ockam_vault_t* vault);
 
 ockam_error_t vault_atecc608a_random(ockam_vault_t* vault, uint8_t* buffer, size_t buffer_size);
 
-ockam_error_t vault_atecc608a_sha256(ockam_vault_t* vault,
+ockam_error_t vault_atecc608a_sha256(const ockam_vault_t* vault,
                                      const uint8_t* input,
                                      size_t         input_length,
                                      uint8_t*       digest,
@@ -272,8 +273,9 @@ ockam_error_t ockam_vault_atecc608a_init(ockam_vault_t* vault, ockam_vault_atecc
     goto exit;
   }
 
-  error = ockam_memory_alloc_zeroed(attributes->memory, (void**) &context, sizeof(vault_atecc608a_context_t));
-  if(ockam_error_has_error(&error)) {
+  ockam_error_t memory_error = ockam_memory_alloc_zeroed(attributes->memory, (void**) &context, sizeof(vault_atecc608a_context_t));
+  if(ockam_error_has_error(&memory_error)) {
+    error = memory_error;
     goto exit;
   }
 
@@ -286,49 +288,60 @@ ockam_error_t ockam_vault_atecc608a_init(ockam_vault_t* vault, ockam_vault_atecc
     goto exit;
   }
 
-  error = ockam_memory_copy(context->memory,
+  memory_error = ockam_memory_copy(context->memory,
                             &(context->io_protection),
                             attributes->io_protection,
                             sizeof(ockam_vault_atecc608a_io_protection_t));
-  if(ockam_error_has_error(&error)) {
+  if(ockam_error_has_error(&memory_error)) {
+    error = memory_error;
+    goto exit;
+  }
+
+  memory_error = ockam_memory_copy(context->memory,
+                                   &(context->atca_cfg),
+                                   attributes->atca_iface_cfg,
+                                   sizeof(ATCAIfaceCfg));
+  if(ockam_error_has_error(&memory_error)) {
+    error = memory_error;
     goto exit;
   }
 
   if(attributes->mutex != 0) {
     context->mutex = attributes->mutex;
 
-    error = ockam_mutex_create(context->mutex, context->lock);
-    if(ockam_error_has_error(&error)) {
+    ockam_error_t mutex_error = ockam_mutex_create(context->mutex, context->lock);
+    if(ockam_error_has_error(&mutex_error)) {
+      error = mutex_error;
       goto exit;
     }
   }
 
-  status = atcab_init(attributes->atca_iface_cfg);
+  status = atcab_init(&context->atca_cfg);
   if (status != ATCA_SUCCESS) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_INIT_FAIL;
+    error.code = 50;
     goto exit;
   }
 
   status = atcab_read_config_zone((uint8_t *)&(context->config));
   if (status != ATCA_SUCCESS) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_INIT_FAIL;
+    error.code = 51;
     goto exit;
   }
 
   if ((context->config.revision < VAULT_ATECC608A_DEVREV_MIN) ||
       (context->config.revision > VAULT_ATECC608A_DEVREV_MAX)) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_INIT_FAIL;
+    error.code = 52;
     goto exit;
   }
 
   if ((context->config.lock_config != VAULT_ATECC608A_CFG_LOCK_CONFIG_LOCKED) ||
       (context->config.lock_value != VAULT_ATECC608A_CFG_LOCK_CONFIG_LOCKED)) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_INIT_FAIL;
+    error.code = 53;
     goto exit;
   }
 
   if(context->config.aes_enable == 0) {
-    error.code = OCKAM_VAULT_ATECC608A_ERROR_INIT_FAIL;
+    error.code = 54;
     goto exit;
   }
 
@@ -478,7 +491,7 @@ exit:
  ********************************************************************************************************
  */
 
-ockam_error_t vault_atecc608a_sha256(ockam_vault_t* vault,
+ockam_error_t vault_atecc608a_sha256(const ockam_vault_t* vault,
                                      const uint8_t* input,
                                      size_t         input_length,
                                      uint8_t*       digest,
