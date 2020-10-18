@@ -93,10 +93,10 @@ pub mod transport {
                     // println!("{:?}", b);
                     match Message::decode(&buff[0..s]) {
                         Ok((mut m, _unused)) => {
-                            // println!("Received message type: {:?}\nOnward route:",
-                            // m.message_type); m.onward_route.
-                            // print_route(); println!("Return route:");
-                            // m.return_route.print_route();
+                            println!("Received message type: {:?}\nOnward route:",
+                            m.message_type); m.onward_route.
+                            print_route(); println!("Return route:");
+                            m.return_route.print_route();
                             // match m.message_type {
                             //     MessageType::Payload => {
                             //         println!("Payload: {}",

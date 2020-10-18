@@ -292,7 +292,7 @@ impl TestWorker {
 
 pub fn start_node(
     local_socket: RouterAddress,
-    onward_route: Route,
+    mut onward_route: Route,
     payload: String,
     is_initiator: bool,
 ) {
@@ -307,6 +307,9 @@ pub fn start_node(
     // - channel_address 0, which indicates that a secure channel should be established
     // - the list of UDP address hops that comprise the route
     // in this example, the route is defined by command line options
+
+    let remote_worker_address = onward_route.addresses.pop();
+
     let mut worker = TestWorker::new(
         worker_rx,
         worker_tx.clone(),
@@ -335,7 +338,6 @@ pub fn start_node(
             vault.clone(),
             vault.clone(),
         );
-
         // the channel handler cannot, in its current implementation, be passed safely
         // between threads, so it is created in the context of the polling thread
         let mut channel_handler = XXChannelManager::new(
@@ -345,7 +347,7 @@ pub fn start_node(
             vault,
             new_key_exchanger,
         )
-        .unwrap();
+            .unwrap();
 
         while transport.poll() && router.poll() && channel_handler.poll().unwrap() && worker.poll()
         {
