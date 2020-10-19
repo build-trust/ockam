@@ -34,6 +34,12 @@ pub enum KeyExchangeFailErrorKind {
         /// What was received
         actual: String,
     },
+    /// A general purpose error to string method
+    #[fail(display = "{}", msg)]
+    GeneralError {
+        /// The message that describes the error
+        msg: String,
+    },
 }
 
 impl ErrorKind for KeyExchangeFailErrorKind {
@@ -45,6 +51,7 @@ impl ErrorKind for KeyExchangeFailErrorKind {
             KeyExchangeFailErrorKind::InvalidParam(..) => Self::ERROR_INTERFACE | 3,
             KeyExchangeFailErrorKind::MethodCalledOutOfSequence { .. } => Self::ERROR_INTERFACE | 4,
             KeyExchangeFailErrorKind::InvalidHash { .. } => Self::ERROR_INTERFACE | 5,
+            KeyExchangeFailErrorKind::GeneralError { .. } => Self::ERROR_INTERFACE | 6,
         }
     }
 }
@@ -91,6 +98,7 @@ impl From<KexExchangeFailError> for VaultFailError {
                 VaultFailErrorKind::InvalidContext.into()
             }
             KeyExchangeFailErrorKind::InvalidHash { .. } => VaultFailErrorKind::Ecdh.into(),
+            KeyExchangeFailErrorKind::GeneralError { .. } => VaultFailErrorKind::IOError.into(),
         }
     }
 }

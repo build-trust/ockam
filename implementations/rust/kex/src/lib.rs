@@ -95,9 +95,9 @@ pub enum CipherSuite {
 /// Instantiate a stateful key exchange vault instance
 pub trait NewKeyExchanger<E: KeyExchanger = Self, F: KeyExchanger = Self> {
     /// Create a new Key Exchanger with the initiator role
-    fn initiator(&self) -> E;
+    fn initiator(&self, identity_key: Option<SecretKeyContext>) -> E;
     /// Create a new Key Exchanger with the responder role
-    fn responder(&self) -> F;
+    fn responder(&self, identity_key: Option<SecretKeyContext>) -> F;
 }
 
 /// A Completed Key Exchange elements
@@ -144,8 +144,8 @@ mod tests {
             vault_responder.clone(),
         );
 
-        let mut initiator = key_exchanger.initiator();
-        let mut responder = key_exchanger.responder();
+        let mut initiator = key_exchanger.initiator(None);
+        let mut responder = key_exchanger.responder(None);
 
         let m1 = initiator.process(&[]).unwrap();
         let _ = responder.process(&m1).unwrap();

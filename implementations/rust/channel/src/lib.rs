@@ -317,7 +317,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 
         m.onward_route.addresses.remove(0);
 
-        let mut channel = Channel::new(channel_id, Box::new(self.new_key_exchanger.initiator()));
+        let mut channel =
+            Channel::new(channel_id, Box::new(self.new_key_exchanger.initiator(None)));
         let ka_m1 = channel.agreement.process(&[])?;
 
         m.onward_route
@@ -342,7 +343,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let mut rng = thread_rng();
         let channel_id = rng.gen::<u32>();
         let channel_address = Address::ChannelAddress(channel_id.to_le_bytes().to_vec());
-        let channel = Channel::new(channel_id, Box::new(self.new_key_exchanger.responder()));
+        let channel = Channel::new(channel_id, Box::new(self.new_key_exchanger.responder(None)));
         self.channels.insert(channel_address.as_string(), channel);
         Ok(channel_address.as_string())
     }

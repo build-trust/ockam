@@ -25,6 +25,7 @@ struct SymmetricState {
     ephemeral_key_pair: Option<KeyPair>,
     remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
+    identity_key: Option<SecretKeyContext>,
     key: Option<SecretKeyContext>,
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
@@ -90,13 +91,18 @@ impl SymmetricState {
         }
     }
 
-    pub fn new(cipher_suite: CipherSuite, vault: Arc<Mutex<dyn DynVault + Send>>) -> Self {
+    pub fn new(
+        cipher_suite: CipherSuite,
+        vault: Arc<Mutex<dyn DynVault + Send>>,
+        identity_key: Option<SecretKeyContext>,
+    ) -> Self {
         Self {
             cipher_suite,
             static_key_pair: None,
             ephemeral_key_pair: None,
             remote_static_public_key: None,
             remote_ephemeral_public_key: None,
+            identity_key,
             key: None,
             nonce: 0,
             h: None,
@@ -125,12 +131,22 @@ impl KeyExchange for SymmetricState {
         };
         // 1. Generate a static key pair for this handshake and set it to `s`
         let mut vault = self.vault.lock().unwrap();
-        let static_secret_handle = vault.secret_generate(attributes)?;
-        let static_public_key = vault.secret_public_key_get(static_secret_handle)?;
-        self.static_key_pair = Some(KeyPair {
-            public_key: static_public_key,
-            secret_handle: static_secret_handle,
-        });
+        match self.identity_key {
+            None => {
+                let static_secret_handle = vault.secret_generate(attributes)?;
+                let static_public_key = vault.secret_public_key_get(static_secret_handle)?;
+                self.static_key_pair = Some(KeyPair {
+                    public_key: static_public_key,
+                    secret_handle: static_secret_handle,
+                });
+            }
+            Some(ik) => {
+                self.static_key_pair = Some(KeyPair {
+                    secret_handle: ik,
+                    public_key: vault.secret_public_key_get(ik)?,
+                });
+            }
+        };
 
         attributes.persistence = SecretPersistenceType::Ephemeral;
         // 2. Generate an ephemeral key pair for this handshake and set it to e
@@ -585,8 +601,12 @@ impl XXNewKeyExchanger {
 
 impl NewKeyExchanger<XXInitiator, XXResponder> for XXNewKeyExchanger {
     /// Create a new initiator using the provided backing vault
-    fn initiator(&self) -> XXInitiator {
-        let ss = SymmetricState::new(self.cipher_suite, self.vault_initiator.clone());
+    fn initiator(&self, identity_key: Option<SecretKeyContext>) -> XXInitiator {
+        let ss = SymmetricState::new(
+            self.cipher_suite,
+            self.vault_initiator.clone(),
+            identity_key,
+        );
         XXInitiator {
             state: InitiatorState::EncodeMessage1,
             initiator: Initiator(ss),
@@ -595,8 +615,12 @@ impl NewKeyExchanger<XXInitiator, XXResponder> for XXNewKeyExchanger {
     }
 
     /// Create a new responder using the provided backing vault
-    fn responder(&self) -> XXResponder {
-        let ss = SymmetricState::new(self.cipher_suite, self.vault_responder.clone());
+    fn responder(&self, identity_key: Option<SecretKeyContext>) -> XXResponder {
+        let ss = SymmetricState::new(
+            self.cipher_suite,
+            self.vault_responder.clone(),
+            identity_key,
+        );
         XXResponder {
             state: ResponderState::DecodeMessage1,
             responder: Responder(ss),
@@ -699,7 +723,8 @@ mod tests {
             100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
         ];
         let vault = Arc::new(Mutex::new(DefaultVault::default()));
-        let mut state = SymmetricState::new(CipherSuite::Curve25519AesGcmSha256, vault.clone());
+        let mut state =
+            SymmetricState::new(CipherSuite::Curve25519AesGcmSha256, vault.clone(), None);
         let res = state.prologue();
         assert!(res.is_ok());
         assert_eq!(state.h.unwrap(), exp_h);
@@ -972,6 +997,7 @@ mod tests {
             }),
             remote_ephemeral_public_key: None,
             remote_static_public_key: None,
+            identity_key: None,
             key: None,
             nonce,
             h: Some(h),
