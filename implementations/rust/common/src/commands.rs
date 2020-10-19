@@ -33,9 +33,10 @@ pub mod ockam_commands {
     // channel_tx
     #[derive(Debug)]
     pub enum ChannelCommand {
-        Stop,
-        ReceiveMessage(Message),
+        Initiate(Route, Address), // route to destination, return local address
         SendMessage(Message),
+        ReceiveMessage(Message),
+        Stop,
     }
 
     #[derive(Debug)]

@@ -32,13 +32,9 @@ pub struct Args {
     /// Worker
     #[structopt(short = "w", long = "worker")]
     worker_addr: Option<String>,
-
-    /// Message - message to send
-    #[structopt(short = "m", long = "message")]
-    message: Option<String>,
 }
 
-pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, String), String> {
+pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, RouterAddress), String> {
     let mut local_socket: RouterAddress = RouterAddress {
         a_type: AddressType::Udp,
         length: 7,
@@ -64,6 +60,7 @@ pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, String), String> 
         }
     };
 
+    let mut worker_address = RouterAddress::worker_router_address_from_str("00000000").unwrap();
     if let Some(rs) = args.remote_socket {
         if let Ok(sa) = SocketAddr::from_str(&rs) {
             if let Some(ra) = RouterAddress::from_address(Address::UdpAddress(sa)) {
@@ -72,28 +69,13 @@ pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, String), String> 
                     .addresses
                     .push(RouterAddress::channel_router_address_from_str("00000000").unwrap());
                 if let Some(wa) = args.worker_addr {
-                    route
-                        .addresses
-                        .push(RouterAddress::worker_router_address_from_str(&wa).unwrap());
-                // if let Ok(ra) = RouterAddress::worker_router_address_from_str(&wa) {
-                //     route.addresses.push(RouterAddress::channel_router_address_from_str("
-                // 00000000").unwrap());     route.addresses.push(ra);
-                // }
-                } else {
-                    route
-                        .addresses
-                        .push(RouterAddress::worker_router_address_from_str("00000000").unwrap());
+                    worker_address = RouterAddress::worker_router_address_from_str(&wa).unwrap();
                 }
             }
         }
     };
 
-    let mut message = "Hello Ockam".to_string();
-    if let Some(m) = args.message {
-        message = m;
-    };
-
-    Ok((local_socket, route, message))
+    Ok((local_socket, route, worker_address))
 }
 
 pub struct TestWorker {
@@ -139,36 +121,46 @@ impl TestWorker {
         })
     }
 
-    pub fn request_channel(&mut self, mut m: Message) -> Result<(), String> {
-        let pending_message = Message {
-            onward_route: m.onward_route.clone(),
-            return_route: m.return_route.clone(),
-            message_type: MessageType::Payload,
-            message_body: m.message_body.clone(),
-        };
-        self.pending_message = Some(pending_message);
-        m.onward_route.addresses.insert(
-            0,
-            RouterAddress::channel_router_address_from_str("00000000").unwrap(),
-        );
-        m.return_route.addresses.insert(
-            0,
-            RouterAddress::from_address(self.address.clone()).unwrap(),
-        );
-        m.message_type = MessageType::None;
-        m.message_body = vec![];
-        self.router_tx
-            .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
-            .unwrap();
-        Ok(())
-    }
+    // pub fn request_channel(&mut self, mut m: Message) -> Result<(), String> {
+    //     let pending_message = Message {
+    //         onward_route: m.onward_route.clone(),
+    //         return_route: m.return_route.clone(),
+    //         message_type: MessageType::Payload,
+    //         message_body: m.message_body.clone(),
+    //     };
+    //     self.pending_message = Some(pending_message);
+    //     m.onward_route.addresses.insert(
+    //         0,
+    //         RouterAddress::channel_router_address_from_str("00000000").unwrap(),
+    //     );
+    //     m.return_route.addresses.insert(
+    //         0,
+    //         RouterAddress::from_address(self.address.clone()).unwrap(),
+    //     );
+    //     m.message_type = MessageType::None;
+    //     m.message_body = vec![];
+    //     self.router_tx
+    //         .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
+    //         .unwrap();
+    //     Ok(())
+    // }
 
     pub fn handle_send(&mut self, mut m: Message) -> Result<(), String> {
         if self.channel_address.as_string() == *"00000000" {
-            // start key exchange
-            self.request_channel(m)
+            m.onward_route.addresses.remove(0);
+            let pending_message = Message {
+                onward_route: m.onward_route.clone(),
+                return_route: m.return_route.clone(),
+                message_type: MessageType::Payload,
+                message_body: m.message_body.clone(),
+            };
+            self.pending_message = Some(pending_message);
+            Ok(())
         } else {
-            m.onward_route = self.onward_route.clone();
+            m.onward_route.addresses.insert(
+                0,
+                RouterAddress::from_address(self.channel_address.clone()).unwrap(),
+            );
             m.return_route.addresses.insert(
                 0,
                 RouterAddress::from_address(self.address.clone()).unwrap(),
@@ -194,16 +186,10 @@ impl TestWorker {
         let pending_opt = self.pending_message.clone();
         match pending_opt {
             Some(mut pending) => {
-                // what follows is an ugly hack to allow a manually entered remote worker address
-                let remote_endpoint = return_route.addresses.pop().unwrap();
-                if remote_endpoint.a_type != AddressType::Worker {
-                    return_route.addresses.push(remote_endpoint);
-                }
-                return_route
-                    .addresses
-                    .push(pending.onward_route.addresses.pop().unwrap());
-
-                pending.onward_route = return_route.clone();
+                pending.onward_route.addresses.insert(
+                    0,
+                    RouterAddress::from_address(self.channel_address.clone()).unwrap(),
+                );
                 pending.return_route = Route {
                     addresses: vec![RouterAddress::from_address(self.address.clone()).unwrap()],
                 };
@@ -222,7 +208,7 @@ impl TestWorker {
         match m.message_type {
             MessageType::Payload => {
                 let s: &str;
-                if 0 == &self.toggle % 2 {
+                if 0 == self.toggle % 2 {
                     s = "Hello Ockam";
                 } else {
                     s = "Goodbye Ockam"
@@ -292,8 +278,8 @@ impl TestWorker {
 
 pub fn start_node(
     local_socket: RouterAddress,
-    mut onward_route: Route,
-    payload: String,
+    network_route: Route,
+    worker_address: RouterAddress,
     is_initiator: bool,
 ) {
     let (transport_tx, transport_rx) = std::sync::mpsc::channel();
@@ -302,13 +288,6 @@ pub fn start_node(
     let (channel_tx, channel_rx) = std::sync::mpsc::channel();
 
     let mut router = Router::new(router_rx);
-
-    // "onward_route" should consist of:
-    // - channel_address 0, which indicates that a secure channel should be established
-    // - the list of UDP address hops that comprise the route
-    // in this example, the route is defined by command line options
-
-    let remote_worker_address = onward_route.addresses.pop();
 
     let mut worker = TestWorker::new(
         worker_rx,
@@ -319,6 +298,7 @@ pub fn start_node(
     .unwrap();
 
     let sock_str: String;
+
     match local_socket.address {
         Address::UdpAddress(udp) => {
             sock_str = udp.to_string();
@@ -338,6 +318,7 @@ pub fn start_node(
             vault.clone(),
             vault.clone(),
         );
+
         // the channel handler cannot, in its current implementation, be passed safely
         // between threads, so it is created in the context of the polling thread
         let mut channel_handler = XXChannelManager::new(
@@ -347,7 +328,14 @@ pub fn start_node(
             vault,
             new_key_exchanger,
         )
-            .unwrap();
+        .unwrap();
+
+        if is_initiator {
+            channel_tx.send(OckamCommand::Channel(ChannelCommand::Initiate(
+                network_route,
+                Address::WorkerAddress(hex::decode("00010203").unwrap()),
+            )));
+        }
 
         while transport.poll() && router.poll() && channel_handler.poll().unwrap() && worker.poll()
         {
@@ -356,19 +344,19 @@ pub fn start_node(
     });
 
     if is_initiator {
+        let onward_route = Route {
+            addresses: vec![
+                RouterAddress::worker_router_address_from_str("00010203").unwrap(),
+                worker_address,
+            ],
+        };
         let m = Message {
             onward_route,
             return_route: Route { addresses: vec![] },
             message_type: MessageType::Payload,
-            message_body: payload.as_bytes().to_vec(),
+            message_body: "Ping".as_bytes().to_vec(),
         };
-        let command = OckamCommand::Worker(WorkerCommand::SendMessage(m));
-        match worker_tx.send(command) {
-            Ok(_unused) => {}
-            Err(_unused) => {
-                println!("failed send to worker");
-            }
-        }
+        worker_tx.send(OckamCommand::Worker(WorkerCommand::SendMessage(m)));
     }
 }
 
@@ -377,12 +365,12 @@ fn main() {
     println!("{:?}", args);
     let local_socket: RouterAddress;
     let route: Route;
-    let message: String;
+    let worker: RouterAddress;
     match parse_args(args) {
-        Ok((ls, r, m)) => {
+        Ok((ls, r, w)) => {
             local_socket = ls;
             route = r;
-            message = m;
+            worker = w;
         }
         Err(s) => {
             println!("{}", s);
@@ -393,7 +381,7 @@ fn main() {
 
     println!("route: {:?}", route);
 
-    start_node(local_socket, route, message, is_initiator);
+    start_node(local_socket, route, worker, is_initiator);
 
     thread::sleep(time::Duration::from_millis(1000000));
 }

@@ -8,14 +8,6 @@ pub mod router {
     use std::sync::{Arc, Mutex};
     use std::{thread, time};
 
-    pub trait Routable {
-        fn handle_message(
-            &mut self,
-            m: Message,
-            direction: Direction,
-        ) -> Option<(Message, Direction)>;
-    }
-
     pub struct Router {
         registry: Vec<Option<std::sync::mpsc::Sender<OckamCommand>>>,
         rx: std::sync::mpsc::Receiver<OckamCommand>,
@@ -37,7 +29,7 @@ pub mod router {
         pub fn register(
             &mut self,
             address: Address,
-            handler: Arc<Mutex<dyn Routable>>,
+            handler: Arc<Mutex<dyn Receiver + 'static + Send>>,
         ) -> Result<(), String> {
             Err("not implemented".into())
         }
