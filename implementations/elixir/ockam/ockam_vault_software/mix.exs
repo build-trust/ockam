@@ -69,12 +69,14 @@ defmodule Ockam.Vault.Software.MixProject do
 
   defp aliases do
     [
-      compile: [&compile_native/1, "compile"],
-      clean: ["clean", &clean_native/1],
+      "compile.native": &compile_native/1,
+      "clean.native": &clean_native/1,
       docs: "docs --output _build/docs --formatter html",
-      test: "test --no-start --cover",
-      lint: ["format --check-formatted", "credo --strict"],
-      dialyzer: ["dialyzer --format dialyxir"]
+      "test.cover": "test --no-start --cover",
+      "lint.format": "format --check-formatted",
+      "lint.credo": "credo --strict",
+      "lint.dialyzer": "dialyzer --format dialyxir",
+      lint: ["lint.format", "lint.credo"]
     ]
   end
 
