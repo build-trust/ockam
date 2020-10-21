@@ -64,7 +64,8 @@ defmodule Ockam.Vault.Software.MixProject do
   defp docs do
     [
       main: "Ockam.Vault.Software",
-      source_url_pattern: "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
+      source_url_pattern:
+        "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]
   end
 

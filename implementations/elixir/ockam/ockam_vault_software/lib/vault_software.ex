@@ -97,5 +97,4 @@ defmodule Ockam.Vault.Software do
   def deinit(_a) do
     raise "natively implemented deinit/1 not loaded"
   end
-
 end
