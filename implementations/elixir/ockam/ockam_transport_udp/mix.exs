@@ -23,6 +23,7 @@ defmodule Ockam.Transport.UDP.MixProject do
 
       # test
       test_coverage: [output: "_build/cover"],
+      preferred_cli_env: ["test.cover": :test],
 
       # hex
       description: "UDP transport for Ockam.",
@@ -70,9 +71,11 @@ defmodule Ockam.Transport.UDP.MixProject do
   defp aliases do
     [
       docs: "docs --output _build/docs --formatter html",
-      test: "test --no-start --cover",
-      lint: ["format --check-formatted", "credo --strict"],
-      dialyzer: ["dialyzer --format dialyxir"]
+      "test.cover": "test --no-start --cover",
+      "lint.format": "format --check-formatted",
+      "lint.credo": "credo --strict",
+      "lint.dialyzer": "dialyzer --format dialyxir",
+      lint: ["lint.format", "lint.credo"]
     ]
   end
 end
