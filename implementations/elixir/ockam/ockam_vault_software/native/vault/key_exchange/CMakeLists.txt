@@ -9,7 +9,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 target_include_directories(ockam_kex_interface INTERFACE ${INCLUDE_DIR})
 
-file(COPY ../../../../../rust/kex/include/kex.h DESTINATION ${INCLUDE_DIR}/ockam)
+file(COPY ../../../../../../rust/kex/include/kex.h DESTINATION ${INCLUDE_DIR}/ockam)
 
 target_sources(
   ockam_kex_interface
@@ -23,7 +23,7 @@ target_sources(
 add_library(ockam_kex SHARED IMPORTED GLOBAL)
 add_library(ockam::kex ALIAS ockam_kex)
 
-set(kex_dylib_path ../../../../../rust/target/debug/libockam_kex.dylib)
+set(kex_dylib_path ../../../../../../rust/target/debug/libockam_kex.dylib)
 get_filename_component(real_kex_dylib_path "${kex_dylib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set_target_properties(
   ockam_kex
