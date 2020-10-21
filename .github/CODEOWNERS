@@ -1,1 +1,12 @@
-* @mrinalwadhwa @mikelodder7
+# Request reviews from Mrinal and Steve unless one of the specific rules later in this file take precedence.
+* @mrinalwadhwa @nilslice
+
+# Request reviews from Robin, Mike and Steve when code in the rust implementation changes.
+implementations/rust/* @robinbudd @mikelodder7 @nilslice
+
+# Request reviews from Sanjo, Robin and Steve when code in the C implementation changes.
+implementations/c/* @robinbudd @sanjodeundiak @nilslice
+
+# References on updating this file:
+# https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
+# https://git-scm.com/docs/gitignore#_pattern_format
