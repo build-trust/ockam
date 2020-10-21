@@ -23,6 +23,7 @@ defmodule Ockam.Vault.Software.MixProject do
 
       # test
       test_coverage: [output: "_build/cover"],
+      preferred_cli_env: ["test.cover": :test],
 
       # hex
       description: "A software implementation of the ockam vault behaviour.",
