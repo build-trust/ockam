@@ -40,13 +40,19 @@ mixTasks.each {
     appTasks.add(taskName)
   }
 
-  task "${taskNameSuffix}" {
+  task "_${taskNameSuffix}" {
     group appsDir
     dependsOn appTasks
   }
 }
 
-task build {
-  dependsOn deps_get, compile
-}
-compile.mustRunAfter(deps_get)
+task lint { dependsOn _deps_get, _lint }
+_lint.mustRunAfter(_deps_get)
+
+task build { dependsOn _deps_get, _compile }
+_compile.mustRunAfter(_deps_get)
+
+task test { dependsOn _deps_get, _test }
+_test.mustRunAfter(_deps_get)
+
+task clean { dependsOn _clean }
