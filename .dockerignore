@@ -1,0 +1,20 @@
+# from .gitignore 
+.env
+.gradle
+.vagrant
+.envrc
+.builder
+.apple-codesign
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+*.a
+*.DS_store
+*.gch
+.idea
+.tool-versions
+
+.git
+implementations/rust/target
+implementations/rust/ockamd_vault

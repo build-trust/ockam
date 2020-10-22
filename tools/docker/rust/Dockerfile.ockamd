@@ -1,0 +1,11 @@
+# stage: test & build
+FROM ockam-dev as builder
+COPY . . 
+WORKDIR implementations/rust
+RUN cargo test
+RUN cargo build --bin ockamd
+
+# stage: final
+FROM ubuntu:20.04
+COPY --from=builder implementations/rust/target/debug/ockamd /usr/local/bin/ockamd
+ENTRYPOINT ["ockamd"]
