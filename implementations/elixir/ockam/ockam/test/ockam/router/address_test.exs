@@ -13,21 +13,8 @@ defmodule Ockam.Router.Address.Tests do
       assert nil === Address.type(100.0)
     end
 
-    test "default address value is same as input" do
-      assert :test === Address.value(:test)
-      assert 100 === Address.value(100)
-      assert %{} === Address.value(%{})
-      assert "test" === Address.value("test")
-      assert [] === Address.value([])
-      assert 100.0 === Address.value(100.0)
-    end
-
     test "first element in two tuple is treated as type if it is an integer" do
       assert 100 === Address.type({100, 200})
-    end
-
-    test "second element in two tuple is treated as value if first element is an integer" do
-      assert 200 === Address.value({100, 200})
     end
   end
 end

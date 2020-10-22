@@ -143,8 +143,9 @@ defmodule Ockam.Telemetry.Tests do
 
       assert %{duration: _duration} = measurements
 
-      assert %{kind: :error, reason: %RuntimeError{message: "err"}, stacktrace: stacktrace} =
-               metadata
+      assert %{kind: :error, reason: %RuntimeError{message: "err"}} = metadata
+
+      assert stacktrace === metadata.stacktrace
 
       :telemetry.detach(function_name)
     end

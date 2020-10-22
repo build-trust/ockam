@@ -4,8 +4,6 @@ defmodule Ockam.Tests do
 
   describe "Ockam.start/2" do
     test "Ockam.Router is started", do: Ockam.Router |> find_child |> Process.alive?() |> assert
-    test "Ockam.Nodes is started", do: Ockam.Nodes |> find_child |> Process.alive?() |> assert
-    test "Ockam.Topics is started", do: Ockam.Topics |> find_child |> Process.alive?() |> assert
   end
 
   def find_child(name) do
