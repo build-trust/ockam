@@ -1,4 +1,6 @@
 defmodule Ockam.Node.Web.Socket do
+  @moduledoc false
+
   @behaviour :cowboy_websocket
 
   def init(req, state) do
