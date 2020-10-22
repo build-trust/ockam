@@ -3,8 +3,6 @@ defmodule Ockam.Transport.UDP.Server do
 
   use GenServer
 
-  alias Ockam.Routing
-
   require Logger
 
   @default_ip {127, 0, 0, 1}
@@ -13,7 +11,7 @@ defmodule Ockam.Transport.UDP.Server do
   # Starts the transport process linked to the current process
   @doc false
   def start_link(options) do
-    GenServer.start_link(__MODULE__, options, name: {:via, Routing, {0, 1}})
+    GenServer.start_link(__MODULE__, options)
   end
 
   @doc false
