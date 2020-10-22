@@ -33,13 +33,12 @@ defmodule Ockam.Pipeline do
 
   defp detect_step_type(step_name) do
     case Atom.to_charlist(step_name) do
-      ~c"Elixir." ++ _ -> :module
-      _ -> :function
+      ~c"Elixir." ++ _rest -> :module
+      _something_else -> :function
     end
   end
 
   defp compile(steps) do
-    IO.inspect(steps)
     [compile_pipeline_init(steps), compile_pipeline_handle(steps)]
   end
 

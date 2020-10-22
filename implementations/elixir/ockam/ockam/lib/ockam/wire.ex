@@ -35,8 +35,10 @@ defmodule Ockam.Wire do
               formatted_error_message :: String.t()
 
   # Set the default encoder/decoder from application config.
-  @default_implementation Application.get_env(:ockam, __MODULE__, [])
-                          |> Keyword.get(:default_implementation)
+  @default_implementation Keyword.get(
+                            Application.get_env(:ockam, __MODULE__, []),
+                            :default_implementation
+                          )
 
   @doc """
   Encode a message to a binary using the provided encoder.
