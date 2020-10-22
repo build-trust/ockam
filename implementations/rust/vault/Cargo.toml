@@ -11,7 +11,7 @@ crate-type = ["staticlib", "rlib", "cdylib"]
 lto = true
 
 [features]
-default = []
+default = ["ffi"]
 atecc608a = ["c_bindings", "c_rust_memory"]
 ffi = ["ffi-support", "lazy_static"]
 os = ["keychain-services", "security-framework"]
