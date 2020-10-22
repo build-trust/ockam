@@ -4,7 +4,7 @@ def appsDir = 'ockam'
 def apps = [
   'ockam',
   'ockam_transport_udp',
-  'ockam_vault_software',
+  // 'ockam_vault_software',
   'ockam_node_web'
 ]
 
