@@ -1,0 +1,18 @@
+[package]
+name = "embedded_vault"
+version = "0.1.0"
+authors = ["jared <jared.stanbrough@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+signature = {version = "1.2.2", default-features = false }
+cortex-m = "0.6.0"
+cortex-m-rt = "0.6.10"
+cortex-m-semihosting = "0.3.3"
+panic-halt = "0.2.0"
+alloc-cortex-m = "0.4.0"
+hex = {version = "0.4.2", default-features = false }
+
+ockam-vault = { path = "../../vault", version = "0.1.0", default-features = false }
+
+[workspace]

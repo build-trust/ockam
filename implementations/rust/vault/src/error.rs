@@ -1,4 +1,6 @@
 use failure::{Backtrace, Context, Fail};
+
+#[cfg(feature = "std")]
 use std::{fmt, io};
 
 /// Represents the failures that can occur in
@@ -140,9 +142,11 @@ pub struct VaultFailError {
 
 impl VaultFailError {
     /// Convert from an error kind and a static string
+
+
     pub fn from_msg<D>(kind: VaultFailErrorKind, msg: D) -> Self
     where
-        D: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
+        D: core::fmt::Display + core::fmt::Debug + Send + Sync + 'static,
     {
         Self {
             inner: Context::new(msg).context(kind),
@@ -194,12 +198,14 @@ impl From<VaultFailErrorKind> for ffi_support::ExternError {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<std::num::ParseIntError> for VaultFailErrorKind {
     fn from(_: std::num::ParseIntError) -> Self {
         VaultFailErrorKind::IOError
     }
 }
 
+#[cfg(feature = "std")]
 impl From<io::Error> for VaultFailError {
     fn from(err: io::Error) -> Self {
         Self::from_msg(VaultFailErrorKind::IOError, format!("{:?}", err))
@@ -230,6 +236,7 @@ impl From<aes_gcm::Error> for VaultFailError {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<std::num::ParseIntError> for VaultFailError {
     fn from(_: std::num::ParseIntError) -> Self {
         VaultFailError::from(VaultFailErrorKind::IOError)
@@ -323,8 +330,9 @@ impl Fail for VaultFailError {
     }
 }
 
-impl fmt::Display for VaultFailError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//#[cfg(feature = "std")]
+impl core::fmt::Display for VaultFailError {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let mut first = true;
 
         for cause in Fail::iter_chain(&self.inner) {

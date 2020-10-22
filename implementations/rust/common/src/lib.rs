@@ -1,3 +1,5 @@
+#![no_std]
+
 #[macro_export]
 macro_rules! from_int_impl {
     ($src:ident, $ty:ty) => {

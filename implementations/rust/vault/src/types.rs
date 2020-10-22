@@ -1,8 +1,20 @@
-use crate::error::{VaultFailError, VaultFailErrorKind};
+use cfg_if;
+
+cfg_if! {
+ if #[cfg(not(feature = "std"))] {
+    use crate::error_nostd::{VaultFailError, VaultFailErrorKind};
+ } else {
+    use crate::error::{VaultFailError, VaultFailErrorKind};
+ }
+}
+
 #[cfg(feature = "ffi")]
 use ffi_support::IntoFfi;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 /// The types of secret keys that the vault supports
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Zeroize)]
@@ -43,7 +55,7 @@ impl SecretKeyType {
         }
     }
 }
-
+#[cfg(feature = "std")]
 from_int_impl!(SecretKeyType, i8);
 from_int_impl!(SecretKeyType, i16);
 from_int_impl!(SecretKeyType, i32);
@@ -181,6 +193,7 @@ impl SecretKeyAttributes {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::convert::TryFrom<[u8; 6]> for SecretKeyAttributes {
     type Error = VaultFailError;
 
@@ -361,7 +374,7 @@ pub enum PublicKey {
 }
 
 impl PublicKey {
-    fn print(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn print(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         use PublicKey::*;
         match self {
             Curve25519(a) => write!(f, "PublicKey::Curve25519 {{ {} }}", hex::encode(a.as_ref())),
@@ -432,14 +445,14 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
-impl std::fmt::Display for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         self.print(f)
     }
 }
 
-impl std::fmt::Debug for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         self.print(f)
     }
 }

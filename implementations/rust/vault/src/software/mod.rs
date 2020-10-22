@@ -1,5 +1,14 @@
+use cfg_if;
+
+cfg_if! {
+ if #[cfg(not(feature = "std"))] {
+    use crate::error_nostd::{VaultFailError, VaultFailErrorKind};
+ } else {
+     use crate::error::{VaultFailError, VaultFailErrorKind};
+ }
+}
+
 use crate::{
-    error::{VaultFailError, VaultFailErrorKind},
     types::*,
     Vault,
 };
@@ -9,11 +18,15 @@ use p256::{
     elliptic_curve::{sec1::FromEncodedPoint, Group},
     AffinePoint, ProjectivePoint, Scalar,
 };
-use rand::{prelude::*, rngs::OsRng};
+use rand::{prelude::*, rngs::StdRng};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
 use xeddsa::*;
 use zeroize::Zeroize;
+
+use hashbrown::HashMap;
+
+use alloc::vec::Vec;
+use alloc::borrow::ToOwned;
 
 /// A pure rust implementation of a vault.
 /// Is not thread-safe i.e. if multiple threads
@@ -27,14 +40,14 @@ use zeroize::Zeroize;
 /// ```
 #[derive(Debug)]
 pub struct DefaultVault {
-    entries: BTreeMap<usize, VaultEntry>,
+    entries: HashMap<usize, VaultEntry>,
     next_id: usize,
 }
 
 impl Default for DefaultVault {
     fn default() -> Self {
         Self {
-            entries: BTreeMap::new(),
+            entries: HashMap::new(),
             next_id: 0,
         }
     }
@@ -171,7 +184,9 @@ macro_rules! encrypt_impl {
 
 impl Vault for DefaultVault {
     fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
-        let mut rng = OsRng {};
+        let seed = [1,0,0,0, 23,0,0,0, 200,1,0,0, 210,30,0,0,
+            0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+        let mut rng = StdRng::from_seed(seed);
         rng.fill_bytes(data);
         Ok(())
     }
@@ -185,7 +200,10 @@ impl Vault for DefaultVault {
         &mut self,
         attributes: SecretKeyAttributes,
     ) -> Result<SecretKeyContext, VaultFailError> {
-        let mut rng = OsRng {};
+        let seed = [1,0,0,0, 23,0,0,0, 200,1,0,0, 210,30,0,0,
+            0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+        let mut rng = StdRng::from_seed(seed);
+
         let key = match attributes.xtype {
             SecretKeyType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
@@ -464,8 +482,9 @@ impl Vault for DefaultVault {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
         match entry.key {
             SecretKey::Curve25519(k) => {
-                let mut rng = thread_rng();
-                let mut nonce = [0u8; 64];
+                let seed = [1,0,0,0, 23,0,0,0, 200,1,0,0, 210,30,0,0,
+                    0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+                let mut rng = StdRng::from_seed(seed);                let mut nonce = [0u8; 64];
                 rng.fill_bytes(&mut nonce);
                 let sig = x25519_dalek::StaticSecret::from(k).sign(data.as_ref(), &nonce);
                 Ok(sig)

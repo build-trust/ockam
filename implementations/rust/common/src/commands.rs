@@ -1,4 +1,5 @@
 #[allow(unused)]
+#[cfg(feature = "std")]
 pub mod ockam_commands {
     use ockam_message::message::*;
     use std::thread;

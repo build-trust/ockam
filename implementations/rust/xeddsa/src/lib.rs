@@ -1,6 +1,8 @@
 //! Performe XEdDSA according to
 //! <https://signal.org/docs/specifications/xeddsa/#xeddsa>
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use curve25519_dalek::{
     constants::ED25519_BASEPOINT_POINT, montgomery::MontgomeryPoint, scalar::Scalar,
 };

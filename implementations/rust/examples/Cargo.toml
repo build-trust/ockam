@@ -7,3 +7,7 @@ edition = "2018"
 [[example]]
 name = "noop"
 path = "noop/src/main.rs"
+
+[[example]]
+name = "embedded_vault"
+path = "embedded_vault/src/main.rs"

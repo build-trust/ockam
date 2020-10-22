@@ -1,6 +1,9 @@
-use crate::error::VaultFailError;
 use crate::types::*;
 use ffi_support::IntoFfi;
+
+use crate::error::VaultFailError;
+
+#[cfg(feature = "std")]
 use std::convert::{TryFrom, TryInto};
 
 #[derive(Debug)]

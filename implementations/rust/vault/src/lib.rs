@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #![deny(
     missing_docs,
     missing_debug_implementations,
@@ -31,8 +33,24 @@ extern crate lazy_static;
 #[macro_use]
 extern crate ockam_common;
 
-use crate::error::VaultFailError;
+#[macro_use]
+extern crate cfg_if;
+
 use zeroize::Zeroize;
+
+cfg_if! {
+ if #[cfg(not(feature = "std"))] {
+    #[macro_use]
+    extern crate alloc;
+    use alloc::vec::Vec;
+
+    /// Errors without stdlib support
+    pub mod error_nostd;
+    use crate::error_nostd::VaultFailError;
+ } else {
+    use crate::error::VaultFailError;
+ }
+}
 
 /// Internal macros
 #[macro_use]
@@ -40,8 +58,12 @@ mod macros;
 #[cfg(feature = "atecc608a")]
 /// C Vault implementations
 pub mod c;
+
 /// Represents the errors that occur within a vault
+
+#[cfg(feature = "std")]
 pub mod error;
+
 #[cfg(feature = "ffi")]
 /// The ffi functions, structs, and constants
 pub mod ffi;

@@ -5,7 +5,7 @@ name = "ockam-vault"
 version = "0.1.0"
 
 [lib]
-crate-type = ["staticlib", "rlib", "cdylib"]
+crate-type = ["rlib"]
 
 [profile.release]
 lto = true
@@ -17,22 +17,23 @@ ffi = ["ffi-support", "lazy_static"]
 os = ["keychain-services", "security-framework"]
 
 [dependencies]
-aead = "0.3"
-aes-gcm = "0.8"
+aead =  { version = "0.3", default-features = false, features = ["alloc"]}
+aes-gcm = { version = "0.8", default-features = false, features = ["aes"] }
 arrayref = "0.3"
-curve25519-dalek = "3.0"
-ed25519-dalek = "1.0"
-failure = "0.1"
+cfg-if = "1.0.0"
+curve25519-dalek = { version = "3.0", default-features = false, features = ["u32_backend"] }
+ed25519-dalek = { version = "1.0.1", default-features = false }
 ffi-support = { version = "0.4", optional = true }
-hex = "0.4"
-hkdf = "0.9"
+hashbrown = { version = "0.9.1", default-features = false, features = ["inline-more","ahash"] }
+hex = { version = "0.4",  default-features = false }
+hkdf = { version = "0.9", default-features = false }
 lazy_static = { version = "1.4", optional = true }
 ockam-common = { version = "0.1", path = "../common" }
-p256 = { version = "0.5", features = ["arithmetic", "zeroize"] }
-rand = "0.7"
-sha2 = "0.9"
-subtle = "2.3"
-x25519-dalek = "1.0"
+p256 = { version = "0.5", default-features = false, features = ["arithmetic", "zeroize"] }
+rand = { version = "0.7", default-features = false}
+sha2 = { version = "0.9", default-features = false}
+subtle = { version = "2.3", default-features = false }
+x25519-dalek = { version = "1.0", default-features = false }
 xeddsa = { version = "0.1", path = "../xeddsa" }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 c_bindings = { path = "../c/bindings", optional = true  }

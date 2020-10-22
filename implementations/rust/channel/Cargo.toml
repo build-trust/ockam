@@ -19,7 +19,7 @@ ockam-common = { version = "0.1", path = "../common" }
 ockam-message = { version = "0.1", path = "../message" }
 ockam-kex = { version = "0.1", path = "../kex" }
 ockam-vault = { version = "0.1", path = "../vault" }
-rand = "0.7"
+rand = { version = "0.7", default-features = false}
 hex = "0.4.2"
 
 [dev-dependencies]

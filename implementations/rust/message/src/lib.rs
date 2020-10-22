@@ -1,9 +1,10 @@
 #![allow(unused)]
+#![no_std]
 
 // Definition and implementation of an Ockam message and message components.
 // Each message component, and the message overall, implements the "Codec" trait
 // allowing it to be encoded/decoded for transmission over a transport.
-
+#[cfg(feature = "std")]
 pub mod message {
     use crate::message::Address::ChannelAddress;
     use crate::message::MessageType::Payload;

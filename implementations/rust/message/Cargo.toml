@@ -12,5 +12,8 @@ lto = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+
 [dependencies]
-hex = "0.4.2"
+hex = {version = "0.4.2", default-features = false }

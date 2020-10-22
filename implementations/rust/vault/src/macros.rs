@@ -1,5 +1,6 @@
 macro_rules! try_from_int_impl {
     ($src:ident, $ty:ty) => {
+        #[cfg(feature = "std")]
         impl std::convert::TryFrom<$ty> for $src {
             type Error = VaultFailError;
 
