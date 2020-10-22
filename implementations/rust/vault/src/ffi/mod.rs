@@ -325,7 +325,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
     salt: u64,
     input_key_material: u64,
     derived_outputs_count: u8,
-    derived_outputs: &mut [u64],
+    derived_outputs: *mut u64,
 ) -> VaultError {
     let derived_outputs_count = derived_outputs_count as usize;
     let mut err = ExternError::success();
@@ -348,9 +348,20 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
                 });
             }
 
+            // TODO: Hardcoded to be empty for now because any changes
+            // to the C layer requires an API change.
+            // This change was necessary to implement Enrollment since the info string is not
+            // left blank for that protocol, but is blank for the XX key exchange pattern.
+            // If we agree to change the API, then this wouldn't be hardcoded but received
+            // from a parameter in the C API. Elixir and other consumers would be expected
+            // to pass the appropriate flag. The other option is to not expose the vault
+            // directly since it may confuse users about what to pass here and
+            // I don't like the idea of yelling at consumers through comments.
+            // Instead the vault could be encapsulated in channels and key exchanges.
+            // Either way, I don't want to change the API until this decision is finalized.
             let hkdf_output = v
                 .vault
-                .hkdf_sha256(salt_ctx, Some(ikm_ctx), output_attributes)?
+                .hkdf_sha256(salt_ctx, b"", Some(ikm_ctx), output_attributes)?
                 .iter()
                 .map(|x| x.into_ffi_value())
                 .collect();
@@ -360,9 +371,9 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
         },
     );
     if err.get_code().is_success() {
-        for i in 0..derived_outputs_count {
-            derived_outputs[i] = handles[i];
-        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(handles.as_ptr(), derived_outputs, derived_outputs_count)
+        };
         ERROR_NONE
     } else {
         VaultFailErrorKind::HkdfSha256.into()
