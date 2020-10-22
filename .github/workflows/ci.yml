@@ -8,12 +8,27 @@ jobs:
 
     steps:
       - name: Setup java
-        uses: actions/setup-java@1253a7eed45cc6191dc4bd9cacd3542878479569 # v1.4.0
+        uses: actions/setup-java@d202f5dbf7256730fb690ec59f6381650114feb2 # v1.4.3
         with:
           java-version: 8
 
+      - name: Download elixir
+        run: wget https://packages.erlang-solutions.com/erlang/debian/pool/elixir_1.10.4-1~ubuntu~focal_all.deb
+
+      - name: Validate elixir download
+        run: echo 'd3d300f24b25eb4383f9437d458eacd9d646719550a85399ee2a6e6d64dadf5c  elixir_1.10.4-1~ubuntu~focal_all.deb' | sha256sum -c
+
+      - name: Install elixir
+        run: sudo dpkg -i 'elixir_1.10.4-1~ubuntu~focal_all.deb'
+
+      - name: Setup hex
+        run: mix local.hex --force
+
+      - name: Setup rebar
+        run: mix local.rebar --force
+
       - name: Checkout
-        uses: actions/checkout@28c7f3d2b5162b5ddd3dfd9a45aa55eaf396478b # v2.3.1
+        uses: actions/checkout@a81bbbf8298c0fa03ea29cdc473d45769f953675 # v2.3.3
 
       - id: Lint
         run: ./gradlew lint
