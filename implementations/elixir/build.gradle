@@ -1,12 +1,52 @@
 
+def appsDir = 'ockam'
+
+def apps = [
+  'ockam',
+  'ockam_transport_udp',
+  'ockam_vault_software',
+  'ockam_node_web'
+]
+
+def mixTasks = [
+  'deps.get',
+  'deps.compile',
+  'lint',
+  'lint.format',
+  'lint.credo',
+  'lint.dialyzer',
+  'compile',
+  'test',
+  'test.cover',
+  'clean'
+]
+
+mixTasks.each {
+  def mixTask = it
+  def command = ['mix', mixTask]
+  def taskNameSuffix = mixTask.replaceAll('\\.', '_')
+  def appTasks = []
+
+  apps.each {
+    def app = it
+    def appPath = java.nio.file.Paths.get(appsDir, app).toString()
+    def taskName = "${app}_mix_${taskNameSuffix}"
+
+    task "${taskName}"(type: Exec, group: appsDir) {
+      commandLine command
+      workingDir appPath
+    }
+
+    appTasks.add(taskName)
+  }
+
+  task "${taskNameSuffix}" {
+    group appsDir
+    dependsOn appTasks
+  }
+}
+
 task build {
+  dependsOn deps_get, compile
 }
-
-task test {
-}
-
-task clean {
-}
-
-task lint {
-}
+compile.mustRunAfter(deps_get)
