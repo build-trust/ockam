@@ -23,7 +23,7 @@ default-members = [
     "channel",
     "common",
     "daemon",
-    "examples",
+    "examples/vault-stm32f4-discovery",
     "kex",
     "message",
     "vault",
