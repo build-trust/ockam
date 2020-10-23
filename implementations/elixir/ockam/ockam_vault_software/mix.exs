@@ -73,6 +73,8 @@ defmodule Ockam.Vault.Software.MixProject do
     [
       "compile.native": &compile_native/1,
       "clean.native": &clean_native/1,
+      compile: ["compile.native", "compile"],
+      clean: ["clean", "clean.native"],
       docs: "docs --output _build/docs --formatter html",
       "test.cover": "test --no-start --cover",
       "lint.format": "format --check-formatted",
@@ -134,14 +136,14 @@ defmodule Ockam.Vault.Software.MixProject do
     priv_path = native_priv_path()
     File.mkdir_p!(priv_path)
 
-    # this likely only works on macos,
-    # TODO(mrinal): make this work on all operating systems
-    Path.join([native_build_path(), "**", "*.dylib"])
-    |> Path.wildcard()
-    |> Enum.each(fn lib ->
-      filename = Path.basename(lib, ".dylib")
-      destination = Path.join(priv_path, "#{filename}.so")
-      File.cp!(lib, destination)
+    Enum.each(["dylib", "so"], fn extension ->
+      Path.join([native_build_path(), "**", "*.#{extension}"])
+      |> Path.wildcard()
+      |> Enum.each(fn lib ->
+        filename = Path.basename(lib, ".#{extension}")
+        destination = Path.join(priv_path, "#{filename}.so")
+        File.cp!(lib, destination)
+      end)
     end)
 
     :ok
