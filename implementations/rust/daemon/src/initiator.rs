@@ -36,10 +36,8 @@ pub fn run(config: Config) {
 
     thread::spawn(move || {
         while worker.poll() {
-            println!("poll");
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_millis(1));
         }
-        println!("and...done");
     });
 
     // run the node to poll its various internal components
@@ -124,7 +122,6 @@ impl StdinWorker {
                 }
                 _ => unimplemented!(),
             },
-            //Err(e) => panic!("failed to handle kex response: {:?}", e),
             Err(_) => {}
         }
 
