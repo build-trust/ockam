@@ -1,0 +1,1 @@
+examples/vault-stm32f4-discovery/memory.x

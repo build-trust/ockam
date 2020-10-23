@@ -1,0 +1,42 @@
+[package]
+name = "stm32f4-discovery-vault"
+version = "0.1.0"
+authors = ["Alan C <argot@digikata.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.release]
+opt-level = 'z' # turn on maximum optimizations. We only have 64kB
+lto = true      # Link-time-optimizations for further size reduction
+
+
+[dependencies]
+nb = "0.1.2"
+
+# Access to the generic ARM peripherals
+cortex-m = "^0.6.3"
+
+# Startup code for the ARM Core
+cortex-m-rt = "^0.6.12"
+
+# Access to generic embedded functions (`set_high`)
+embedded-hal = "^0.2.4"
+
+# Panic handler
+panic-halt = "^0.2.0"
+
+# hkdf = { version = "0.9", default-features = false }
+# hex = { version = "0.4", default-features = false }
+# sha2 = { path="/home/alan/proj/wk-ockam/hashes/sha2", default-features = false }
+alloc-no-stdlib = "2.0.1"
+alloc-cortex-m = "0.4.0"
+
+[dependencies.ockam-vault]
+path = "../../vault"
+features = ["nostd-stm32f4"]
+
+# Access to the stm32f103 HAL.
+[dependencies.stm32f4xx-hal]
+# Bluepill contains a 64kB flash variant which is called "medium density"
+features = ["stm32f407", "rt", "usb_fs"]
+version = "^0.8"
