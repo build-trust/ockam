@@ -4,55 +4,55 @@ def appsDir = 'ockam'
 def apps = [
   'ockam',
   'ockam_transport_udp',
-  // 'ockam_vault_software',
+  'ockam_vault_software',
   'ockam_node_web'
 ]
 
 def mixTasks = [
-  'deps.get',
-  'deps.compile',
-  'lint',
-  'lint.format',
-  'lint.credo',
-  'lint.dialyzer',
-  'compile',
-  'test',
-  'test.cover',
-  'clean'
+  [name: 'clean', dependsOnRust: false, dependsOnDepsGet: false],
+  [name: 'deps.get', dependsOnRust: false, dependsOnDepsGet: false],
+  [name: 'lint', dependsOnRust: true, dependsOnDepsGet: true],
+  [name: 'compile', dependsOnRust: true, dependsOnDepsGet: true],
+  [name: 'test', dependsOnRust: true, dependsOnDepsGet: true]
 ]
 
 mixTasks.each {
   def mixTask = it
-  def command = ['mix', mixTask]
-  def taskNameSuffix = mixTask.replaceAll('\\.', '_')
-  def appTasks = []
+  def mixTaskName = mixTask.name
+  def mixTaskCommand = ['mix', mixTaskName]
 
+  // turn mix names like deps.get into gradle friendly deps_get
+  def gradleTaskName = mixTaskName.replaceAll('\\.', '_')
+
+  // use `build` as the name for all compile mix tasks
+  // because that is expected by our higher level gradle projects.
+  gradleTaskName = gradleTaskName == 'compile' ? 'build' : gradleTaskName
+
+  // depend on rust build
+  def appGradleTaskDeps = mixTask.dependsOnRust ? [gradle.includedBuild('rust').task(':build')] : []
+
+  def gradleTaskDeps = []
+
+  // define app specific gradle tasks
   apps.each {
     def app = it
     def appPath = java.nio.file.Paths.get(appsDir, app).toString()
-    def taskName = "${app}_mix_${taskNameSuffix}"
+    def appGradleTaskName = "${app}_mix_${gradleTaskName}"
 
-    task "${taskName}"(type: Exec, group: appsDir) {
-      commandLine command
+    // depend on the corresponding app deps_get
+    if(mixTask.dependsOnDepsGet) { appGradleTaskDeps.add("${app}_mix_deps_get") }
+
+    task "${appGradleTaskName}"(type: Exec, group: appsDir, dependsOn: appGradleTaskDeps) {
+      commandLine mixTaskCommand
       workingDir appPath
     }
 
-    appTasks.add(taskName)
+    gradleTaskDeps.add(appGradleTaskName)
   }
 
-  task "_${taskNameSuffix}" {
+  // define top level gradle task with all app specific tasks as dependencies.
+  task "${gradleTaskName}" {
     group appsDir
-    dependsOn appTasks
+    dependsOn gradleTaskDeps
   }
 }
-
-task lint { dependsOn _deps_get, _lint }
-_lint.mustRunAfter(_deps_get)
-
-task build { dependsOn _deps_get, _compile }
-_compile.mustRunAfter(_deps_get)
-
-task test { dependsOn _deps_get, _test }
-_test.mustRunAfter(_deps_get)
-
-task clean { dependsOn _clean }
