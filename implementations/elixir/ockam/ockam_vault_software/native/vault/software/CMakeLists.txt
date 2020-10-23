@@ -23,12 +23,19 @@ target_sources(
 add_library(ockam_vault SHARED IMPORTED GLOBAL)
 add_library(ockam::vault ALIAS ockam_vault)
 
-set(vault_dylib_path ../../../../../../rust/target/debug/libockam_vault.dylib)
-get_filename_component(real_vault_dylib_path "${vault_dylib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+if(APPLE)
+set(vault_lib_path ../../../../../../rust/target/debug/libockam_vault.dylib)
+endif()
+
+if(UNIX AND NOT APPLE)
+set(vault_lib_path ../../../../../../rust/target/debug/libockam_vault.so)
+endif()
+
+get_filename_component(real_vault_lib_path "${vault_lib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set_target_properties(
   ockam_vault
   PROPERTIES
-    IMPORTED_LOCATION "${real_vault_dylib_path}"
+    IMPORTED_LOCATION "${real_vault_lib_path}"
 )
 
 # ---
@@ -40,7 +47,14 @@ add_library(ockam::elixir_vault_software ALIAS ockam_elixir_vault_software)
 target_sources(ockam_elixir_vault_software PRIVATE nifs.c)
 
 target_include_directories(ockam_elixir_vault_software PUBLIC $ENV{ERL_INCLUDE_DIR})
+
+if(APPLE)
 set_target_properties(ockam_elixir_vault_software PROPERTIES LINK_FLAGS "-dynamiclib -undefined dynamic_lookup")
+endif()
+
+if(UNIX AND NOT APPLE)
+set_target_properties(ockam_elixir_vault_software PROPERTIES LINK_FLAGS "-fPIC -shared")
+endif()
 
 target_link_libraries(
   ockam_elixir_vault_software
