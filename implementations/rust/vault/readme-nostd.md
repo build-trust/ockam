@@ -31,7 +31,7 @@ should automatically be selected.
 
 If building just the vault crate
 
-    $ cargo build --features=nostd-stm32f4 --target=thumbv7em-none-eabi
+	$ cargo build --features="nostd-stm32f4" --no-default-features --target=thumbv7em-none-eabi
 
 Make sure either the nightly use is either set globally, or repeat the override
 in the example directory.
@@ -39,14 +39,14 @@ in the example directory.
 
 ## Notes, Loose Ends, and Bugs
 
-* vault config is only partially feature selectable for nostd-stm32f4
+* FIXED: vault config is only partially feature selectable for nostd-stm32f4
   the configuration will not build without modification of Cargo.toml
   rand dependency configuration.
 
 * the xeddsa also contains modifications that need a cleaner feature toggle
   between std and no_std modes
 
-* due to above, the vault with std config builds, but is not tested atm.
+* FIXED: due to above, the vault with std config builds, but is not tested atm.
 
 * build of this configuration also requires nightly
 

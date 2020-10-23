@@ -12,12 +12,13 @@ crate-type = ["staticlib", "rlib"]
 # lto = true
 
 [features]
-default = []
+default = ["std"]
 atecc608a = ["c_bindings", "c_rust_memory"]
 ffi = ["ffi-support", "lazy_static"]
 os = ["keychain-services", "security-framework"]
-nostd-stm32f4 = ["alloc-no-stdlib", "hashbrown", "rand_chacha", "panic-halt", "alloc-cortex-m"]
-std = []
+nostd-stm32f4 = ["alloc-no-stdlib", "hashbrown", "rand_chacha", "panic-halt", "alloc-cortex-m",
+	"rand/alloc"]
+std = ["rand/std", "rand/getrandom"]
 
 [dependencies]
 aead = "0.3"
@@ -39,11 +40,7 @@ xeddsa = { version = "0.1", path = "../xeddsa" }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 c_bindings = { path = "../c/bindings", optional = true  }
 c_rust_memory = { path = "../c/rust_memory", optional = true  }
-
-# TODO: fix
-# To build without nostd-stm32f4 selected, rand need to be modified to
-# rand = { version = "0.7", default-features = true }
-rand = { version = "0.7", default-features = false, features = ["alloc"] }
+rand = { version = "0.7", default-features = false }
 
 alloc-no-stdlib = { version = "2.0", optional = true }
 hashbrown = { version = "0.9", optional = true }

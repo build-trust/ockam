@@ -30,7 +30,8 @@
  */
 #![cfg_attr(feature = "nostd-stm32f4", no_std)]
 // #![cfg_attr(feature = "nostd-stm32f4", feature(alloc_error_handler))]
-#![feature(alloc_error_handler)]
+#![cfg_attr(feature = "nostd-stm32f4", feature(alloc_error_handler))]
+#![cfg_attr(feature = "nostd-stm32f4", feature(lang_items))]
 
 //! Implements the Ockam vault interface and provides
 //! a C FFI version.
@@ -66,6 +67,10 @@ use panic_halt as _;
 fn nostd_error_handler(layout: core::alloc::Layout) -> ! {
     panic!("memory allocation of {} bytes failed", layout.size())
 }
+
+#[cfg(feature = "nostd-stm32f4")]
+#[lang = "eh_personality"] 
+extern fn rust_eh_personality() {}
 
 #[cfg(feature = "nostd-stm32f4")]
 use alloc_cortex_m::CortexMHeap;
