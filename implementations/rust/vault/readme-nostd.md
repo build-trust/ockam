@@ -12,8 +12,8 @@ To build, the no_std config required some late stage changes that are supported
 only with the nightly config. If using rustup, the following will configure
 the nightly toolchain, and add a target for the stm32f4 instruction set.
 
-$ rustup install nightly
-$ rustup target add thumbv7em-none-eabi
+    $ rustup install nightly
+    $ rustup target add thumbv7em-none-eabi
 
 If the nightly toolchain is desired for global use
 
@@ -59,8 +59,11 @@ in the example directory.
   comments, but should be further examined.
 
 * the ockam_common package was dropped from the vault as a time compromise
-  ockam_common pulls in ockam_message as a dependency w/ numerous std:: constructs for tcp/ip support. The items used in vault from ockam_common only seemed to be a single macro. The macro was copied in, and the dependency
-  dropped
+  ockam_common pulls in ockam_message as a dependency w/ numerous
+  std:: constructs for tcp/ip support. The items used in vault from
+  ockam_common only seemed to be a single macro. The macro was copied in,
+  and the dependency dropped. There are multiple different ways to resolve
+  this.
 
 * generally dependencies were toggled into no_std configurations, because there
   are currently several different approaches that libraries use to configure
