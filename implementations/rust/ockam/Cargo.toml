@@ -16,3 +16,4 @@ ockam-router = { version = "0.1", path = "../router", default-features = false }
 ockam-transport = { version = "0.1", path = "../transport", default-features = false }
 ockam-kex = { version = "0.1", path = "../kex", default-features = false }
 ockam-vault = { version = "0.1", path = "../vault", default-features = false }
+ockam-system = { version = "0.1", path = "../system", default-features = false }

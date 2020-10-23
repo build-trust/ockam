@@ -317,6 +317,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-mac"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58bcd97a54c7ca5ce2f6eb16f6bede5b0ab5f0055fedc17d2f0b4466e21671ca"
+dependencies = [
+ "generic-array",
+ "subtle",
+]
+
+[[package]]
 name = "ctr"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -345,6 +355,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "ecdsa"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87bf8bfb05ea8a6f74ddf48c7d1774851ba77bbe51ac984fdfa6c30310e1ff5f"
+dependencies = [
+ "elliptic-curve",
+ "hmac 0.9.0",
+ "signature",
 ]
 
 [[package]]
@@ -788,6 +809,7 @@ dependencies = [
  "ockam-kex",
  "ockam-message",
  "ockam-router",
+ "ockam-system",
  "ockam-vault",
  "rand",
 ]
@@ -795,9 +817,6 @@ dependencies = [
 [[package]]
 name = "ockam-common"
 version = "0.1.0"
-dependencies = [
- "ockam-message",
-]
 
 [[package]]
 name = "ockam-kex"
@@ -831,8 +850,10 @@ dependencies = [
  "ockam-kex",
  "ockam-message",
  "ockam-router",
+ "ockam-system",
  "ockam-transport",
  "ockam-vault",
+ "ockam-worker",
  "structopt",
 ]
 
@@ -842,6 +863,15 @@ version = "0.1.0"
 dependencies = [
  "ockam-common",
  "ockam-message",
+ "ockam-system",
+]
+
+[[package]]
+name = "ockam-system"
+version = "0.1.0"
+dependencies = [
+ "ockam-message",
+ "ockam-vault",
 ]
 
 [[package]]
@@ -853,6 +883,7 @@ dependencies = [
  "ockam-common",
  "ockam-message",
  "ockam-router",
+ "ockam-system",
 ]
 
 [[package]]
@@ -892,6 +923,7 @@ dependencies = [
  "ockam-common",
  "ockam-message",
  "ockam-router",
+ "ockam-system",
 ]
 
 [[package]]
@@ -904,6 +936,7 @@ dependencies = [
  "ockam-kex",
  "ockam-message",
  "ockam-router",
+ "ockam-system",
  "ockam-transport",
  "ockam-vault",
  "structopt",
@@ -1178,6 +1211,10 @@ name = "signature"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29f060a7d147e33490ec10da418795238fd7545bba241504d6b31a409f2e6210"
+dependencies = [
+ "digest",
+ "rand_core",
+]
 
 [[package]]
 name = "slab"

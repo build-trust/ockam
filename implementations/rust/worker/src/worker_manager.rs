@@ -1,11 +1,8 @@
 use hashbrown::*;
-use ockam_common::commands::ockam_commands::RouterCommand::Register;
-use ockam_common::commands::ockam_commands::{
-    ChannelCommand, OckamCommand, RouterCommand, WorkerCommand,
-};
 use ockam_message::message::Address::{ChannelAddress, WorkerAddress};
 use ockam_message::message::{Address, AddressType, Message, MessageType, Receiver, Route, Sender};
 use ockam_router::router::Direction;
+use ockam_system::commands::commands::{OckamCommand, RouterCommand};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
