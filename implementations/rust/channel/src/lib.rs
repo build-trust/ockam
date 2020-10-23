@@ -162,54 +162,57 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         if m.onward_route.addresses.is_empty() {
             return Err(ChannelErrorKind::CantSend.into());
         }
-        match m.message_type {
-            MessageType::Payload => {}
-            _ => {
-                return Err(ChannelErrorKind::NotImplemented.into());
-            }
-        }
-        let address = m.onward_route.addresses[0].address.as_string();
-        match self.channels.get_mut(&address) {
-            Some(channel) => {
-                let mut channel = channel.lock().unwrap();
+        return match m.message_type {
+            MessageType::Payload => {
+                let address = m.onward_route.addresses[0].address.as_string();
+                match self.channels.get_mut(&address) {
+                    Some(channel) => {
+                        let mut channel = channel.lock().unwrap();
 
-                if !channel.agreement.is_complete() {
-                    debug_assert!(channel.completed_key_exchange.is_none());
-                    return Ok(());
+                        if !channel.agreement.is_complete() {
+                            debug_assert!(channel.completed_key_exchange.is_none());
+                            return Ok(());
+                        }
+
+                        // remove this channel's address, encode message
+                        m.onward_route.addresses.remove(0);
+                        let mut m_encoded: Vec<u8> = vec![];
+                        Message::encode(m, &mut m_encoded);
+
+                        debug_assert!(channel.completed_key_exchange.is_some());
+                        let cke = channel.completed_key_exchange.as_ref().unwrap();
+                        let mut vault = self.vault.lock().unwrap();
+                        let nonce = Channel::nonce_16_to_96(channel.nonce);
+                        let mut new_message_body = channel.nonce.to_le_bytes().to_vec();
+                        let mut ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
+                            cke.encrypt_key,
+                            &m_encoded,
+                            &nonce,
+                            &cke.h,
+                        )?;
+                        channel.nonce += 1;
+                        //TODO: check if key rotation needs to happen
+
+                        new_message_body.append(&mut ciphertext_and_tag);
+                        let new_m = Message {
+                            onward_route: channel.route.clone(),
+                            return_route: Route {
+                                addresses: vec![
+                                    RouterAddress::from_address(channel.as_address()).unwrap()
+                                ],
+                            },
+                            message_type: MessageType::Payload,
+                            message_body: new_message_body,
+                        };
+                        self.router
+                            .send(Router(RouterCommand::SendMessage(new_m)))?;
+                        Ok(())
+                    }
+                    None => Err(ChannelErrorKind::NotImplemented.into()),
                 }
-
-                // remove this channel's address, encode message
-                m.onward_route.addresses.remove(0);
-                let mut m_encoded: Vec<u8> = vec![];
-                Message::encode(m, &mut m_encoded);
-
-                debug_assert!(channel.completed_key_exchange.is_some());
-                let cke = channel.completed_key_exchange.as_ref().unwrap();
-                let mut vault = self.vault.lock().unwrap();
-                let nonce = Channel::nonce_16_to_96(channel.nonce);
-                let mut new_message_body = channel.nonce.to_le_bytes().to_vec();
-                let mut ciphertext_and_tag =
-                    vault.aead_aes_gcm_encrypt(cke.encrypt_key, &m_encoded, &nonce, &cke.h)?;
-                channel.nonce += 1;
-                //TODO: check if key rotation needs to happen
-
-                new_message_body.append(&mut ciphertext_and_tag);
-                let new_m = Message {
-                    onward_route: channel.route.clone(),
-                    return_route: Route {
-                        addresses: vec![RouterAddress::from_address(channel.as_address()).unwrap()],
-                    },
-                    message_type: MessageType::Payload,
-                    message_body: new_message_body,
-                };
-                self.router
-                    .send(Router(RouterCommand::SendMessage(new_m)))?;
             }
-            None => {
-                return Err(ChannelErrorKind::NotImplemented.into());
-            }
+            _ => Err(ChannelErrorKind::NotImplemented.into()),
         };
-        Ok(())
     }
 
     /// Initiates key exchange to create new secure channel over supplied route.

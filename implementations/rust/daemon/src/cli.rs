@@ -84,10 +84,12 @@ pub struct Args {
     )]
     service_public_key: Option<String>,
 
-    #[structopt(long,
-    required_if("role", "initiator"),
-    required_if("role", "init"),
-    help = "Address used to reach the service on remote machine")]
+    #[structopt(
+        long,
+        required_if("role", "initiator"),
+        required_if("role", "init"),
+        help = "Address used to reach the service on remote machine"
+    )]
     service_address: Option<String>,
 
     // TODO: expose `control` and `control_port` once runtime configuration is needed.
@@ -120,7 +122,7 @@ impl Default for Args {
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
-//            service_address: Some("01020304".into()),
+            //            service_address: Some("01020304".into()),
             service_address: None,
             identity_name: None,
             service_public_key: None,
