@@ -4,6 +4,9 @@ use ffi_support::IntoFfi;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
+#[cfg(feature = "nostd-stm32f4")]
+use alloc::vec::Vec;
+
 /// The types of secret keys that the vault supports
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Zeroize)]
 pub enum SecretKeyType {
@@ -181,6 +184,7 @@ impl SecretKeyAttributes {
     }
 }
 
+#[cfg(not(feature = "nostd-stm32f4"))]
 impl std::convert::TryFrom<[u8; 6]> for SecretKeyAttributes {
     type Error = VaultFailError;
 
@@ -352,6 +356,7 @@ impl Zeroize for SecretKey {
 zdrop_impl!(SecretKey);
 
 /// The supported public keys
+#[allow(missing_debug_implementations)]
 #[derive(Copy, Clone)]
 pub enum PublicKey {
     /// x25519 Public Key
@@ -361,6 +366,8 @@ pub enum PublicKey {
 }
 
 impl PublicKey {
+
+    #[cfg(not(feature = "nostd-stm32f4"))]
     fn print(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use PublicKey::*;
         match self {
@@ -432,12 +439,14 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
+#[cfg(not(feature = "nostd-stm32f4"))]
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.print(f)
     }
 }
 
+#[cfg(not(feature = "nostd-stm32f4"))]
 impl std::fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.print(f)

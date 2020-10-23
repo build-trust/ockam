@@ -1,5 +1,11 @@
 use failure::{Backtrace, Context, Fail};
+
+
+#[cfg(not(feature = "nostd-stm32f4"))]
 use std::{fmt, io};
+
+#[cfg(feature = "nostd-stm32f4")]
+use core::fmt;
 
 /// Represents the failures that can occur in
 /// an Ockam Vault
@@ -139,10 +145,23 @@ pub struct VaultFailError {
 }
 
 impl VaultFailError {
+
+    #[cfg(not(feature = "nostd-stm32f4"))]
     /// Convert from an error kind and a static string
     pub fn from_msg<D>(kind: VaultFailErrorKind, msg: D) -> Self
     where
         D: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
+    {
+        Self {
+            inner: Context::new(msg).context(kind),
+        }
+    }
+
+    #[cfg(feature = "nostd-stm32f4")]
+    /// Convert from an error kind and a static string
+    pub fn from_msg<D>(kind: VaultFailErrorKind, msg: D) -> Self
+    where
+        D: fmt::Display + fmt::Debug + Send + Sync + 'static,
     {
         Self {
             inner: Context::new(msg).context(kind),
@@ -194,12 +213,14 @@ impl From<VaultFailErrorKind> for ffi_support::ExternError {
     }
 }
 
+#[cfg(not(feature = "nostd-stm32f4"))]
 impl From<std::num::ParseIntError> for VaultFailErrorKind {
     fn from(_: std::num::ParseIntError) -> Self {
         VaultFailErrorKind::IOError
     }
 }
 
+#[cfg(not(feature = "nostd-stm32f4"))]
 impl From<io::Error> for VaultFailError {
     fn from(err: io::Error) -> Self {
         Self::from_msg(VaultFailErrorKind::IOError, format!("{:?}", err))
@@ -230,6 +251,7 @@ impl From<aes_gcm::Error> for VaultFailError {
     }
 }
 
+#[cfg(not(feature = "nostd-stm32f4"))]
 impl From<std::num::ParseIntError> for VaultFailError {
     fn from(_: std::num::ParseIntError) -> Self {
         VaultFailError::from(VaultFailErrorKind::IOError)

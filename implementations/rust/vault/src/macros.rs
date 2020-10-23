@@ -1,3 +1,5 @@
+
+#[cfg(not(feature = "nostd-stm32f4"))]
 macro_rules! try_from_int_impl {
     ($src:ident, $ty:ty) => {
         impl std::convert::TryFrom<$ty> for $src {
@@ -9,6 +11,32 @@ macro_rules! try_from_int_impl {
         }
     };
 }
+
+#[cfg(feature = "nostd-stm32f4")]
+macro_rules! try_from_int_impl {
+    ($src:ident, $ty:ty) => {
+        // !from_int_impl($ty)
+    };
+}
+
+/*
+ * This is really the only needed item from ockam_common,
+ * and ockam_common pulls in ockam_message, which pulls in
+ * all sorts of std support items, so for now it's duplicated here
+ * and the ockam_common dependency for vault is removed
+ */
+// #[cfg(feature = "nostd-stm32f4")]
+macro_rules! from_int_impl {
+    ($src:ident, $ty:ty) => {
+        impl From<$src> for $ty {
+            fn from(data: $src) -> $ty {
+                data.to_usize() as $ty
+            }
+        }
+    };
+}
+
+
 
 /// Creates drop implementation with zeroize call
 #[macro_export]

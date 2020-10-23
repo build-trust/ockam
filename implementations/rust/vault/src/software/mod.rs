@@ -1,3 +1,17 @@
+
+#[cfg(feature = "nostd-stm32f4")]
+use alloc::vec::Vec;
+
+#[cfg(not(feature = "nostd-stm32f4"))]
+type VaultMap = std::collections::BTreeMap<usize, VaultEntry>;
+
+#[cfg(feature = "nostd-stm32f4")]
+type VaultMap = hashbrown::HashMap<usize, VaultEntry>;
+
+#[cfg(feature = "nostd-stm32f4")]
+use crate::alloc::borrow::ToOwned;
+// use core::marker::Copy;
+
 use crate::{
     error::{VaultFailError, VaultFailErrorKind},
     types::*,
@@ -9,11 +23,47 @@ use p256::{
     elliptic_curve::{sec1::FromEncodedPoint, Group},
     AffinePoint, ProjectivePoint, Scalar,
 };
-use rand::{prelude::*, rngs::OsRng};
+
+
+
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+
 use xeddsa::*;
 use zeroize::Zeroize;
+
+use rand::prelude::*;
+
+
+#[cfg(feature = "nostd-stm32f4")]
+fn get_rng() -> impl RngCore + CryptoRng {
+    /* 
+     * for now just looking for any sw that fills the gap,
+     * if the HW contains a crypto quality HW RNG then this
+     * might supply that
+     * Normally uses an OsRng from getrandom that is not available
+     * on some embedded platforms
+     *
+     * w/o another basic improvement is to gather a seed from some
+     * other source (e.g. clock jitter, or A2D low order bits, etc)
+     */
+     let seed: [u8; 32] = [
+        42, 3, 14, 19,
+        1, 2, 3, 4,
+        1, 2, 3, 4,
+        1, 2, 3, 4,
+        1, 2, 3, 4,
+        1, 2, 3, 4,
+        1, 2, 3, 4,
+        1, 2, 3, 4
+      ];
+    return rand_chacha::ChaCha20Rng::from_seed(seed);
+}
+
+#[cfg(not(feature = "nostd-stm32f4"))]
+fn get_rng() -> impl RngCore + CryptoRng {
+    return rand::rngs::OsRng;
+}
+
 
 /// A pure rust implementation of a vault.
 /// Is not thread-safe i.e. if multiple threads
@@ -27,14 +77,14 @@ use zeroize::Zeroize;
 /// ```
 #[derive(Debug)]
 pub struct DefaultVault {
-    entries: BTreeMap<usize, VaultEntry>,
+    entries: VaultMap,
     next_id: usize,
 }
 
 impl Default for DefaultVault {
     fn default() -> Self {
         Self {
-            entries: BTreeMap::new(),
+            entries: VaultMap::new(),
             next_id: 0,
         }
     }
@@ -171,7 +221,7 @@ macro_rules! encrypt_impl {
 
 impl Vault for DefaultVault {
     fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
-        let mut rng = OsRng {};
+        let mut rng = get_rng();
         rng.fill_bytes(data);
         Ok(())
     }
@@ -185,7 +235,7 @@ impl Vault for DefaultVault {
         &mut self,
         attributes: SecretKeyAttributes,
     ) -> Result<SecretKeyContext, VaultFailError> {
-        let mut rng = OsRng {};
+        let mut rng = get_rng();
         let key = match attributes.xtype {
             SecretKeyType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
@@ -464,7 +514,7 @@ impl Vault for DefaultVault {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
         match entry.key {
             SecretKey::Curve25519(k) => {
-                let mut rng = thread_rng();
+                let mut rng = get_rng();
                 let mut nonce = [0u8; 64];
                 rng.fill_bytes(&mut nonce);
                 let sig = x25519_dalek::StaticSecret::from(k).sign(data.as_ref(), &nonce);

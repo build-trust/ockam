@@ -17,6 +17,21 @@
 //!
 //!
 
+/*
+ * If the feature is selected, the library will be set as no_std
+ *     $ cargo build --features="nostd-stm32f4"
+ *   or in a Cargo.toml dependency line
+ *     [dependencies]
+ *     ockam-vault = { version="x.y", features = ["nostd-stm32f4"] }
+ * The "-tgt00" string is a placeholder to target
+ * different implmentations that would
+ * support of various families hardware parts with
+ * features supporting the functionality of the vault.
+ */
+#![cfg_attr(feature = "nostd-stm32f4", no_std)]
+// #![cfg_attr(feature = "nostd-stm32f4", feature(alloc_error_handler))]
+#![feature(alloc_error_handler)]
+
 //! Implements the Ockam vault interface and provides
 //! a C FFI version.
 //!
@@ -24,6 +39,60 @@
 //! as secure enclaves, TPMs, HSMs, Keyrings, files, memory, etc.
 
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
+
+
+// #[cfg(not(feature = "nostd-stm32f4")]
+// extern crate core;
+
+/*
+ * Though no_std is a desired option, the use of the alloc
+ * crate or other support for Vec or other containers
+ * may be a different decision per target hence the
+ * '-tgt00' portion of the feature tag to allow differentiation
+ */
+#[cfg(feature = "nostd-stm32f4")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "nostd-stm32f4")]
+use alloc::vec::Vec;
+
+#[cfg(feature = "nostd-stm32f4")]
+#[allow(unused_imports)]
+use panic_halt as _;
+
+#[cfg(feature = "nostd-stm32f4")]
+#[alloc_error_handler]
+fn nostd_error_handler(layout: core::alloc::Layout) -> ! {
+    panic!("memory allocation of {} bytes failed", layout.size())
+}
+
+#[cfg(feature = "nostd-stm32f4")]
+use alloc_cortex_m::CortexMHeap;
+
+#[cfg(feature = "nostd-stm32f4")]
+#[global_allocator]
+/// Provides a global_allocator needed in this crate (TODO fix?)
+/// the allocator needs to be initialized at boot time
+/// /* these symbols should come from the link script */
+/// extern "C" {
+///     static mut _heap_start: u32;
+///     static mut _heap_end:   u32;
+/// }
+/// 
+/// fn init_heap()
+/// {
+///     use ockam_vault::ALLOCATOR;
+///
+///     let start = unsafe { &mut _heap_start as *mut u32 as usize };
+///     let end   = unsafe { &mut _heap_end   as *mut u32 as usize };
+///     unsafe { ALLOCATOR.init(start, end - start) }
+///  }
+/// where init_heap needs to be called near the boot time configuration
+/// of the device, before any allocations are used, and where
+/// a link script sets up the values in the _heap_start, _heap_end symbols
+/// and an even earlier stage
+pub static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
 #[macro_use]
 extern crate arrayref;
@@ -33,8 +102,8 @@ extern crate ffi_support;
 #[cfg(any(feature = "ffi", feature = "nif"))]
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate ockam_common;
+// #[macro_use]
+// extern crate ockam_common;
 
 use crate::error::VaultFailError;
 use zeroize::Zeroize;
