@@ -146,18 +146,6 @@ pub struct VaultFailError {
 
 impl VaultFailError {
 
-    #[cfg(not(feature = "nostd-stm32f4"))]
-    /// Convert from an error kind and a static string
-    pub fn from_msg<D>(kind: VaultFailErrorKind, msg: D) -> Self
-    where
-        D: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
-    {
-        Self {
-            inner: Context::new(msg).context(kind),
-        }
-    }
-
-    #[cfg(feature = "nostd-stm32f4")]
     /// Convert from an error kind and a static string
     pub fn from_msg<D>(kind: VaultFailErrorKind, msg: D) -> Self
     where
