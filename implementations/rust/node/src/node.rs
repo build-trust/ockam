@@ -260,6 +260,7 @@ pub mod node {
                 vault,
                 new_key_exchanger,
                 None,
+                None,
             )
             .unwrap();
 

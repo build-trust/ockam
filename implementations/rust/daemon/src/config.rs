@@ -49,6 +49,8 @@ impl Config {
         self.remote_public_key.clone()
     }
 
+    pub fn role(&self) -> Role { self.role }
+
     pub fn service_address(&self) -> Option<String> {
         self.service_address.clone()
     }
