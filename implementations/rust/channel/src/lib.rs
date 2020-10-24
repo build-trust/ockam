@@ -68,6 +68,7 @@ pub struct ChannelManager<
     phantom_i: PhantomData<I>,
     phantom_r: PhantomData<R>,
     secret_key_context: Option<SecretKeyContext>,
+    remote_public_key: Option<PublicKey>,
 }
 
 impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> std::fmt::Debug
@@ -91,6 +92,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         vault: Arc<Mutex<dyn DynVault + Send>>,
         new_key_exchanger: E,
         secret_key_context: Option<SecretKeyContext>,
+        remote_public_key: Option<PublicKey>,
     ) -> Result<Self, ChannelError> {
         // register ChannelManager with the router as the handler for all Channel address types
         if let Err(_error) = router.send(Router(RouterCommand::Register(
@@ -111,6 +113,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             phantom_i: PhantomData,
             phantom_r: PhantomData,
             secret_key_context,
+            remote_public_key,
         })
     }
 

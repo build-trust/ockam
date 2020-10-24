@@ -122,7 +122,6 @@ impl Default for Args {
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
-            //            service_address: Some("01020304".into()),
             service_address: None,
             identity_name: None,
             service_public_key: None,

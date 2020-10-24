@@ -7,6 +7,10 @@ use crate::worker::Worker;
 use ockam_message::message::RouterAddress;
 
 pub fn run(config: Config) {
+    // 1. generate key pair
+    // 2. print the public key
+    // 3.
+
     let (mut node, router_tx) = Node::new(&config);
 
     let worker_addr = RouterAddress::worker_router_address_from_str("01242020").unwrap();
