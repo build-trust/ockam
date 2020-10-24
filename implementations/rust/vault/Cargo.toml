@@ -8,8 +8,8 @@ version = "0.1.0"
 # crate-type = ["staticlib", "rlib", "cdylib"]
 crate-type = ["staticlib", "rlib"]
 
-# [profile.release]
-# lto = true
+[profile.release]
+lto = true
 
 [features]
 default = ["std"]
