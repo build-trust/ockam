@@ -6,12 +6,14 @@ use hex;
 use crate::config::Config;
 use crate::node::Node;
 
+use hex::encode;
 use ockam_message::message::{
     Address, AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
 };
 use ockam_system::commands::commands::{
     ChannelCommand, OckamCommand, RouterCommand, WorkerCommand,
 };
+use ockam_vault::types::PublicKey;
 
 pub fn run(config: Config) {
     // configure a node
@@ -53,7 +55,8 @@ struct StdinWorker {
     stdin: std::io::Stdin,
     buf: String,
     config: Config,
-    pending_message: Option<Message>,
+    //    resp_public_key: Option<PublicKey>,
+    //    pending_message: Option<Message>,
 }
 
 impl StdinWorker {
@@ -77,28 +80,24 @@ impl StdinWorker {
             stdin: std::io::stdin(),
             buf: String::new(),
             config,
-            pending_message: None,
         }
     }
 
     pub fn receive_channel(&mut self, m: Message) -> Result<(), String> {
         let channel = m.return_route.addresses[0].clone();
         self.channel = Some(channel.clone());
-        let pending_opt = self.pending_message.clone();
-        match pending_opt {
-            Some(mut pending) => {
-                pending.onward_route.addresses.insert(0, channel);
-                pending.return_route = Route {
-                    addresses: vec![self.worker_addr.clone()],
-                };
-                self.router_tx
-                    .send(OckamCommand::Router(RouterCommand::SendMessage(pending)))
-                    .unwrap();
-                self.pending_message = None;
-                Ok(())
+        let resp_public_key = encode(&m.message_body);
+        println!("Remote static public key: {}", resp_public_key);
+        if let Some(rpk) = self.config.remote_public_key() {
+            if rpk == encode(&m.message_body) {
+                println!("keys agree");
+                return Ok(());
+            } else {
+                println!("keys conflict");
+                return Err("remote public key doesn't match expected, possible spoofing".into());
             }
-            _ => Ok(()),
         }
+        Ok(())
     }
 
     fn poll(&mut self) -> bool {
@@ -115,7 +114,10 @@ impl StdinWorker {
                             //     validate_public_key(&key, msg.message_body)
                             //         .expect("failed to prove responder identity");
                             // }
-                            self.receive_channel(msg);
+                            match self.receive_channel(msg) {
+                                Ok(()) => {}
+                                Err(s) => panic!(s),
+                            }
                         }
                         _ => unimplemented!(),
                     }
@@ -126,41 +128,29 @@ impl StdinWorker {
         }
 
         // read from stdin, pass each line to the router within the node
-        if self.stdin.read_line(&mut self.buf).is_ok() {
-            return match self.channel.as_ref() {
-                Some(channel) => {
-                    self.router_tx
-                        .send(OckamCommand::Router(RouterCommand::SendMessage(
-                            OckamMessage {
-                                //onward_route: self.onward_route.clone(),
-                                onward_route: Route {
-                                    addresses: vec![channel.clone(), self.worker_addr.clone()],
-                                },
-                                return_route: Route { addresses: vec![] },
-                                message_type: MessageType::Payload,
-                                message_body: self.buf.as_bytes().to_vec(),
+        if let Some(channel) = &self.channel {
+            return if self.stdin.read_line(&mut self.buf).is_ok() {
+                self.router_tx
+                    .send(OckamCommand::Router(RouterCommand::SendMessage(
+                        OckamMessage {
+                            //onward_route: self.onward_route.clone(),
+                            onward_route: Route {
+                                addresses: vec![channel.clone(), self.worker_addr.clone()],
                             },
-                        )))
-                        .expect("failed to send input data to node");
-                    self.buf.clear();
-                    true
-                }
-                None => {
-                    self.pending_message = Some(Message {
-                        onward_route: Route {
-                            addresses: vec![self.worker_addr.clone()],
+                            return_route: Route { addresses: vec![] },
+                            message_type: MessageType::Payload,
+                            message_body: self.buf.as_bytes().to_vec(),
                         },
-                        return_route: Route { addresses: vec![] },
-                        message_type: MessageType::Payload,
-                        message_body: self.buf.as_bytes().to_vec(),
-                    });
-                    true
-                }
+                    )))
+                    .expect("failed to send input data to node");
+                self.buf.clear();
+                true
+            } else {
+                println!("failed to read stdin");
+                false
             };
-        } else {
-            eprintln!("fatal error: failed to read from input");
-            false
         }
+        true
     }
 }
 

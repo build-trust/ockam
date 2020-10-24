@@ -45,8 +45,8 @@ impl<'a> Node<'a> {
         ));
 
         // if responder, generate keypair and display static public key
-        let mut public_key_opt = None;
-        let mut secret_key_ctx_opt = None;
+        let mut resp_key_opt = None;
+        let mut resp_key_ctx_opt = None;
         match config.role() {
             Role::Responder => {
                 let attributes = SecretKeyAttributes {
@@ -55,14 +55,11 @@ impl<'a> Node<'a> {
                     persistence: SecretPersistenceType::Persistent,
                 };
                 let mut v = vault.lock().unwrap();
-                if let static_secret_handle = v.secret_generate(attributes).unwrap() {
-                    if let static_public_key = v
-                        .secret_public_key_get(static_secret_handle.clone())
-                        .unwrap()
-                    {
-                        public_key_opt = Some(static_public_key);
-                        secret_key_ctx_opt = Some(static_secret_handle);
-                        println!("Responder public key: {}", public_key_opt.unwrap());
+                if let resp_key_ctx = v.secret_generate(attributes).unwrap() {
+                    if let resp_key = v.secret_public_key_get(resp_key_ctx.clone()).unwrap() {
+                        resp_key_opt = Some(resp_key);
+                        resp_key_ctx_opt = Some(resp_key_ctx);
+                        println!("Responder public key: {}", resp_key_opt.unwrap());
                     }
                 }
             }
@@ -85,8 +82,8 @@ impl<'a> Node<'a> {
             router_tx.clone(),
             vault.clone(),
             new_key_exchanger,
-            secret_key_ctx_opt,
-            public_key_opt,
+            resp_key_ctx_opt,
+            None,
         )
         .unwrap();
 

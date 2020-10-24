@@ -67,8 +67,8 @@ pub struct ChannelManager<
     new_key_exchanger: E,
     phantom_i: PhantomData<I>,
     phantom_r: PhantomData<R>,
-    secret_key_context: Option<SecretKeyContext>,
-    remote_public_key: Option<PublicKey>,
+    resp_key_ctx: Option<SecretKeyContext>,
+    init_key_ctx: Option<SecretKeyContext>,
 }
 
 impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> std::fmt::Debug
@@ -91,8 +91,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         router: Sender<OckamCommand>,
         vault: Arc<Mutex<dyn DynVault + Send>>,
         new_key_exchanger: E,
-        secret_key_context: Option<SecretKeyContext>,
-        remote_public_key: Option<PublicKey>,
+        resp_key_ctx: Option<SecretKeyContext>,
+        init_key_ctx: Option<SecretKeyContext>,
     ) -> Result<Self, ChannelError> {
         // register ChannelManager with the router as the handler for all Channel address types
         if let Err(_error) = router.send(Router(RouterCommand::Register(
@@ -112,8 +112,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             new_key_exchanger,
             phantom_i: PhantomData,
             phantom_r: PhantomData,
-            secret_key_context,
-            remote_public_key,
+            resp_key_ctx,
+            init_key_ctx,
         })
     }
 
@@ -137,7 +137,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                             }
                             _ => {}
                         }
-                        self.get_new_channel(route, return_address, key)?;
+                        self.get_new_channel(route, return_address)?;
                     }
                     OckamCommand::Channel(ChannelCommand::Stop) => {
                         self.channels.clear();
@@ -223,7 +223,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         &mut self,
         mut route: Route,
         return_address: Address,
-        key: Option<SecretKeyContext>,
     ) -> Result<Address, ChannelError> {
         // Remember who to notify when the channel is secure
         let pending_return = RouterAddress::from_address(return_address).unwrap();
@@ -231,7 +230,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         // Generate 2 channel addresses, one each for clear and cipher text
         let mut clear_address = String::from("00000000");
         let mut cipher_address = String::from("00000000");
-        if let Some((clear, cipher)) = self.create_channel(ExchangerRole::Initiator, key) {
+        if let Some((clear, cipher)) = self.create_channel(ExchangerRole::Initiator) {
             clear_address = clear;
             cipher_address = cipher;
         }
@@ -279,7 +278,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let mut cipher_address = m.onward_route.addresses[0].address.as_string();
         if cipher_address == "00000000" {
             // todo - add option for predefined responder public key
-            if let Some((clear, cipher)) = self.create_channel(ExchangerRole::Responder, None) {
+            if let Some((clear, cipher)) = self.create_channel(ExchangerRole::Responder) {
                 cipher_address = cipher.clone();
             } else {
                 return Err(ChannelErrorKind::State.into());
@@ -388,11 +387,16 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             channel.completed_key_exchange = Some(channel.agreement.finalize()?);
             channel.route = return_route.clone();
 
-            // If we have a pending message from a worker (we should) then
             // let the worker know the key exchange is done
             let pending = channel.pending.clone();
             match pending {
                 Some(mut p) => {
+                    // send the remote public key as the message body
+                    let static_public_key = channel
+                        .completed_key_exchange
+                        .unwrap()
+                        .remote_static_public_key;
+                    p.message_body = static_public_key.as_ref().to_vec();
                     self.router
                         .send(Router(RouterCommand::ReceiveMessage(p)))
                         .unwrap();
@@ -468,11 +472,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         }
     }
 
-    fn create_channel(
-        &mut self,
-        role: ExchangerRole,
-        key: Option<SecretKeyContext>,
-    ) -> Option<(String, String)> {
+    fn create_channel(&mut self, role: ExchangerRole) -> Option<(String, String)> {
         let mut rng = thread_rng();
         let clear_u32 = rng.gen::<u32>();
         let cipher_u32 = rng.gen::<u32>();
@@ -480,12 +480,12 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             ExchangerRole::Initiator => Arc::new(Mutex::new(Channel::new(
                 clear_u32,
                 cipher_u32,
-                Box::new(self.new_key_exchanger.initiator(key)),
+                Box::new(self.new_key_exchanger.initiator(self.init_key_ctx)),
             ))),
             ExchangerRole::Responder => Arc::new(Mutex::new(Channel::new(
                 clear_u32,
                 cipher_u32,
-                Box::new(self.new_key_exchanger.responder(key)),
+                Box::new(self.new_key_exchanger.responder(self.resp_key_ctx)),
             ))),
         };
         let clear_address = Address::ChannelAddress(clear_u32.to_le_bytes().to_vec());
