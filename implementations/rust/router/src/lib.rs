@@ -1,20 +1,14 @@
 #![allow(unused)]
 pub mod router {
-    use ockam_common::commands::ockam_commands::*;
     use ockam_message::message::*;
+    use ockam_system::commands::commands::{
+        ChannelCommand, OckamCommand, RouterCommand, TransportCommand, WorkerCommand,
+    };
     use std::convert::TryFrom;
     use std::fs::OpenOptions;
     use std::sync::mpsc::channel;
     use std::sync::{Arc, Mutex};
     use std::{thread, time};
-
-    pub trait Routable {
-        fn handle_message(
-            &mut self,
-            m: Message,
-            direction: Direction,
-        ) -> Option<(Message, Direction)>;
-    }
 
     pub struct Router {
         registry: Vec<Option<std::sync::mpsc::Sender<OckamCommand>>>,
@@ -37,7 +31,7 @@ pub mod router {
         pub fn register(
             &mut self,
             address: Address,
-            handler: Arc<Mutex<dyn Routable>>,
+            handler: Arc<Mutex<dyn Receiver + 'static + Send>>,
         ) -> Result<(), String> {
             Err("not implemented".into())
         }

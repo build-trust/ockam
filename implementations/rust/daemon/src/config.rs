@@ -25,6 +25,7 @@ pub struct Config {
     vault_path: PathBuf,
     input_kind: Input,
     remote_public_key: Option<String>,
+    service_address: Option<String>,
 }
 
 impl Config {
@@ -47,6 +48,10 @@ impl Config {
     pub fn remote_public_key(&self) -> Option<String> {
         self.remote_public_key.clone()
     }
+
+    pub fn service_address(&self) -> Option<String> {
+        self.service_address.clone()
+    }
 }
 
 impl From<cli::Args> for Config {
@@ -59,6 +64,7 @@ impl From<cli::Args> for Config {
             vault_path: args.vault_path(),
             input_kind: Input::Stdin,
             remote_public_key: args.service_public_key(),
+            service_address: args.service_address(),
         };
 
         match args.output_kind() {

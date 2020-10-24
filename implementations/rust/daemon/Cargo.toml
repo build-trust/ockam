@@ -17,4 +17,6 @@ ockam-channel = { path = "../channel", version = "0.1.0" }
 ockam-kex = { path = "../kex", version = "0.1.0" }
 ockam-transport = { path = "../transport", version = "0.1.0" }
 ockam-router = { path = "../router", version = "0.1.0" }
+ockam-system = { version = "0.1", path = "../system" }
+
 zeroize = { version = "1.1", features = ["zeroize_derive"] }

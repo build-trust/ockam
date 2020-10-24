@@ -1,12 +1,16 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
+use hex;
+
 use crate::config::Config;
 use crate::node::Node;
 
-use ockam_common::commands::ockam_commands::*;
 use ockam_message::message::{
-    AddressType, Message as OckamMessage, MessageType, Route, RouterAddress,
+    Address, AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
+};
+use ockam_system::commands::commands::{
+    ChannelCommand, OckamCommand, RouterCommand, WorkerCommand,
 };
 
 pub fn run(config: Config) {
@@ -14,14 +18,23 @@ pub fn run(config: Config) {
     let node_config = config.clone();
     let (node, router_tx) = Node::new(&node_config);
 
-    thread::spawn(move || {
-        let mut worker = StdinWorker::new(
-            RouterAddress::worker_router_address_from_str("01242020")
-                .expect("failed to create worker address for kex"),
-            router_tx.clone(),
-            config.clone(),
-        );
+    let mut worker = StdinWorker::new(
+        RouterAddress::worker_router_address_from_str("01242020")
+            .expect("failed to create worker address for kex"),
+        router_tx.clone(),
+        config.clone(),
+    );
 
+    // kick off the key exchange process. The result will be that the worker is notified
+    // when the secure channel is created.
+    node.channel_tx
+        .send(OckamCommand::Channel(ChannelCommand::Initiate(
+            config.onward_route().clone().unwrap(),
+            Address::WorkerAddress(hex::decode(config.service_address().unwrap()).unwrap()),
+            None,
+        )));
+
+    thread::spawn(move || {
         while worker.poll() {
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
@@ -33,13 +46,14 @@ pub fn run(config: Config) {
 
 struct StdinWorker {
     onward_route: Route,
-    channel: Option<()>,
+    channel: Option<RouterAddress>,
     worker_addr: RouterAddress,
     router_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,
     stdin: std::io::Stdin,
     buf: String,
     config: Config,
+    pending_message: Option<Message>,
 }
 
 impl StdinWorker {
@@ -63,78 +77,89 @@ impl StdinWorker {
             stdin: std::io::stdin(),
             buf: String::new(),
             config,
+            pending_message: None,
+        }
+    }
+
+    pub fn receive_channel(&mut self, m: Message) -> Result<(), String> {
+        let channel = m.return_route.addresses[0].clone();
+        self.channel = Some(channel.clone());
+        let pending_opt = self.pending_message.clone();
+        match pending_opt {
+            Some(mut pending) => {
+                pending.onward_route.addresses.insert(0, channel);
+                pending.return_route = Route {
+                    addresses: vec![self.worker_addr.clone()],
+                };
+                self.router_tx
+                    .send(OckamCommand::Router(RouterCommand::SendMessage(pending)))
+                    .unwrap();
+                self.pending_message = None;
+                Ok(())
+            }
+            _ => Ok(()),
         }
     }
 
     fn poll(&mut self) -> bool {
-        // read from stdin, pass each line to the router within the node
-        if self.stdin.read_line(&mut self.buf).is_ok() {
-            if self.channel.is_none() {
-                // initiate kex with zero address to create new secure channel
-                let mut onward_route = self
-                    .config
-                    .onward_route()
-                    .expect("misconfigured onward route");
-                onward_route.addresses.insert(
-                    0,
-                    RouterAddress::channel_router_address_from_str("00000000")
-                        .expect("failed to create zero channel address"),
-                );
-                let return_worker_addr = self.worker_addr.clone();
-                let return_route = Route {
-                    addresses: vec![return_worker_addr],
-                };
-                let kex_msg = OckamMessage {
-                    message_type: MessageType::None,
-                    message_body: vec![],
-                    onward_route,
-                    return_route,
-                };
-                self.router_tx
-                    .send(OckamCommand::Router(RouterCommand::SendMessage(kex_msg)))
-                    .expect("failed to send kex request message to router");
-
-                // await key exchange finalization
-                match self.rx.recv() {
-                    Ok(cmd) => match cmd {
-                        OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
-                            match msg.message_type {
-                                MessageType::None => {
-                                    // validate the public key matches the one in our config
-                                    // TODO: revert this comment to validate the responder public
-                                    // key if let Some(key) =
-                                    // config.remote_public_key() {
-                                    //     validate_public_key(&key, msg.message_body)
-                                    //         .expect("failed to prove responder identity");
-                                    // }
-
-                                    self.channel = Some(());
-                                    self.onward_route = msg.return_route;
-                                }
-                                _ => unimplemented!(),
-                            }
+        // await key exchange finalization
+        match self.rx.try_recv() {
+            Ok(cmd) => match cmd {
+                OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
+                    match msg.message_type {
+                        MessageType::None => {
+                            // validate the public key matches the one in our config
+                            // TODO: revert this comment to validate the responder public
+                            // key if let Some(key) =
+                            // config.remote_public_key() {
+                            //     validate_public_key(&key, msg.message_body)
+                            //         .expect("failed to prove responder identity");
+                            // }
+                            self.receive_channel(msg);
                         }
                         _ => unimplemented!(),
-                    },
-                    Err(e) => panic!("failed to handle kex response: {:?}", e),
+                    }
                 }
-            }
-            self.router_tx
-                .send(OckamCommand::Router(RouterCommand::SendMessage(
-                    OckamMessage {
-                        onward_route: self.onward_route.clone(),
-                        return_route: Route { addresses: vec![] },
-                        message_body: self.buf.as_bytes().to_vec(),
-                        message_type: MessageType::Payload,
-                    },
-                )))
-                .expect("failed to send input data to node");
-            self.buf.clear();
+                _ => unimplemented!(),
+            },
+            Err(_) => {}
+        }
 
-            return true;
+        // read from stdin, pass each line to the router within the node
+        if self.stdin.read_line(&mut self.buf).is_ok() {
+            return match self.channel.as_ref() {
+                Some(channel) => {
+                    self.router_tx
+                        .send(OckamCommand::Router(RouterCommand::SendMessage(
+                            OckamMessage {
+                                //onward_route: self.onward_route.clone(),
+                                onward_route: Route {
+                                    addresses: vec![channel.clone(), self.worker_addr.clone()],
+                                },
+                                return_route: Route { addresses: vec![] },
+                                message_type: MessageType::Payload,
+                                message_body: self.buf.as_bytes().to_vec(),
+                            },
+                        )))
+                        .expect("failed to send input data to node");
+                    self.buf.clear();
+                    true
+                }
+                None => {
+                    self.pending_message = Some(Message {
+                        onward_route: Route {
+                            addresses: vec![self.worker_addr.clone()],
+                        },
+                        return_route: Route { addresses: vec![] },
+                        message_type: MessageType::Payload,
+                        message_body: self.buf.as_bytes().to_vec(),
+                    });
+                    true
+                }
+            };
         } else {
             eprintln!("fatal error: failed to read from input");
-            return false;
+            false
         }
     }
 }
