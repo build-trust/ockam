@@ -16,8 +16,11 @@ use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_system::commands::commands::{OckamCommand, RouterCommand};
 use ockam_transport::transport::UdpTransport;
-use ockam_vault::types::{SecretKeyContext, SecretKeyAttributes, SecretKeyType, SecretPurposeType, SecretPersistenceType, PublicKey};
-use ockam_vault::{Vault, DynVault};
+use ockam_vault::types::{
+    PublicKey, SecretKeyAttributes, SecretKeyContext, SecretKeyType, SecretPersistenceType,
+    SecretPurposeType,
+};
+use ockam_vault::{DynVault, Vault};
 
 pub struct Node<'a> {
     config: &'a Config,
@@ -53,7 +56,10 @@ impl<'a> Node<'a> {
                 };
                 let mut v = vault.lock().unwrap();
                 if let static_secret_handle = v.secret_generate(attributes).unwrap() {
-                    if let static_public_key = v.secret_public_key_get(static_secret_handle.clone()).unwrap() {
+                    if let static_public_key = v
+                        .secret_public_key_get(static_secret_handle.clone())
+                        .unwrap()
+                    {
                         public_key_opt = Some(static_public_key);
                         secret_key_ctx_opt = Some(static_secret_handle);
                         println!("Responder public key: {}", public_key_opt.unwrap());
