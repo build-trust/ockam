@@ -1,7 +1,9 @@
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
-use ockam_common::commands::ockam_commands::*;
-use ockam_message::message::{AddressType, Message as OckamMessage, MessageType, RouterAddress};
+use ockam_message::message::{
+    AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
+};
+use ockam_system::commands::commands::{OckamCommand, RouterCommand, WorkerCommand};
 
 type WorkFn = fn(self_worker: &Worker, msg: OckamMessage);
 

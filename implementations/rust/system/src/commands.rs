@@ -1,6 +1,7 @@
 #[allow(unused)]
-pub mod ockam_commands {
+pub mod commands {
     use ockam_message::message::*;
+    use ockam_vault::types::{PublicKey, SecretKeyContext};
     use std::thread;
 
     #[derive(Debug)]
@@ -33,9 +34,10 @@ pub mod ockam_commands {
     // channel_tx
     #[derive(Debug)]
     pub enum ChannelCommand {
-        Stop,
-        ReceiveMessage(Message),
+        Initiate(Route, Address, Option<SecretKeyContext>), // route to destination, return local address
         SendMessage(Message),
+        ReceiveMessage(Message),
+        Stop,
     }
 
     #[derive(Debug)]

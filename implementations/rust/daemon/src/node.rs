@@ -8,13 +8,13 @@ use crate::vault::FilesystemVault;
 use crate::worker::Worker;
 
 use ockam_channel::*;
-use ockam_common::commands::ockam_commands::*;
 use ockam_kex::{
     xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
     CipherSuite,
 };
 use ockam_message::message::AddressType;
 use ockam_router::router::Router;
+use ockam_system::commands::commands::{OckamCommand, RouterCommand};
 use ockam_transport::transport::UdpTransport;
 
 pub struct Node<'a> {
@@ -25,6 +25,7 @@ pub struct Node<'a> {
     router_tx: Sender<OckamCommand>,
     transport: UdpTransport,
     transport_tx: Sender<OckamCommand>,
+    pub channel_tx: Sender<OckamCommand>,
 }
 
 impl<'a> Node<'a> {
@@ -47,12 +48,14 @@ impl<'a> Node<'a> {
             vault.clone(),
         );
 
+        // todo - take predefined key
         let chan_manager = XXChannelManager::new(
             channel_rx,
-            channel_tx,
+            channel_tx.clone(),
             router_tx.clone(),
             vault,
             new_key_exchanger,
+            None,
         )
         .unwrap();
 
@@ -78,6 +81,7 @@ impl<'a> Node<'a> {
                 chan_manager,
                 transport_tx: self_transport_tx,
                 transport,
+                channel_tx,
             },
             node_router_tx,
         )

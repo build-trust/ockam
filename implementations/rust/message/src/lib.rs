@@ -19,6 +19,15 @@ pub mod message {
 
     const WIRE_PROTOCOL_VERSION: u8 = 1;
 
+    /// If the message needs additional routing, return Ok(Some(msg))
+    pub trait Receiver {
+        fn recv(&mut self, m: Message) -> Result<Option<Message>, String>;
+    }
+
+    pub trait Sender {
+        fn send(&mut self, m: Message) -> bool;
+    }
+
     pub trait Codec {
         type Inner;
 
@@ -143,6 +152,12 @@ pub mod message {
                 _ => Err("string must only contain hex digits".into()),
             }
         }
+        pub fn channel_address_from_string(s: &str) -> Result<Address, String> {
+            match hex::decode(s) {
+                Ok(h) => Ok(Address::ChannelAddress(h)),
+                _ => Err("string must only contain hex digits".into()),
+            }
+        }
         pub fn size_of(&self) -> u8 {
             match self {
                 Address::WorkerAddress(a) => a.len() as u8,
@@ -184,7 +199,7 @@ pub mod message {
                     s = "Channel".to_string();
                 }
                 AddressType::Worker => {
-                    s = "Worker".to_string();
+                    s = "worker".to_string();
                 }
                 AddressType::Undefined => {
                     s = "Undefined".to_string();
@@ -387,7 +402,7 @@ pub mod message {
                         println!("Udp: {}", udp.to_string());
                     }
                     Address::WorkerAddress(wa) => {
-                        println!("Worker: {}", hex::encode(wa));
+                        println!("worker: {}", hex::encode(wa));
                     }
                     Address::ChannelAddress(ca) => {
                         println!("Channel: {}", hex::encode(ca));
