@@ -34,6 +34,7 @@ alloc-cortex-m = "0.4.0"
 [dependencies.ockam-vault]
 path = "../../vault"
 features = ["nostd-stm32f4"]
+default-features = false
 
 # Access to the stm32f103 HAL.
 [dependencies.stm32f4xx-hal]
