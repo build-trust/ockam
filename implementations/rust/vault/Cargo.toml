@@ -17,8 +17,13 @@ atecc608a = ["c_bindings", "c_rust_memory"]
 ffi = ["ffi-support", "lazy_static"]
 os = ["keychain-services", "security-framework"]
 nostd-stm32f4 = ["alloc-no-stdlib", "hashbrown", "rand_chacha", "panic-halt", "alloc-cortex-m",
-	"rand/alloc"]
-std = ["rand/std", "rand/getrandom"]
+	"rand/alloc",
+	"failure/derive"
+]
+std = [
+	"rand/std", "rand/getrandom",
+	"failure/std", "failure/derive"
+]
 
 [dependencies]
 aead = "0.3"
@@ -26,7 +31,7 @@ aes-gcm = "0.8"
 arrayref = "0.3"
 curve25519-dalek = { version = "3.0", features = ["u64_backend"], default-features = false }
 ed25519-dalek = { version = "1.0", default-features = false }
-failure = { version = "0.1", default-features = false, features = ["derive"] }
+failure = { version = "0.1", default-features = false }
 ffi-support = { version = "0.4", optional = true }
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.9", default-features = false }
