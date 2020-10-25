@@ -3,6 +3,8 @@ defprotocol Ockam.Address do
   Defines an elixir protocol for an address that can be part of a route.
   """
 
+  alias Ockam.Serializable
+
   @dialyzer {:nowarn_function, type: 1}
 
   @fallback_to_any true
@@ -20,7 +22,7 @@ defprotocol Ockam.Address do
   @doc """
   Returns the value of an address.
   """
-  @spec value(t) :: String.Chars.t()
+  @spec value(t) :: Serializable.t()
 
   def value(address)
 end
@@ -32,7 +34,7 @@ defimpl Ockam.Address, for: Any do
       when is_integer(address_type) and address_type >= 0 and address_type <= 255,
       do: address_type
 
-  def type(_address), do: nil
+  def type(_address), do: 0
 
   def value({address_type, address_value})
       when is_integer(address_type) and address_type >= 0 and address_type <= 255,
