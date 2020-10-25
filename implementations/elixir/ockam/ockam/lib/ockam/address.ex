@@ -25,6 +25,15 @@ defprotocol Ockam.Address do
   @spec value(t) :: Serializable.t()
 
   def value(address)
+
+  @doc """
+  Returns `true` if `term` is a valid `t:Ockam.Router.Address.type/0`;
+  otherwise returns `false`.
+
+  Allowed in guard tests. Inlined by the compiler.
+  """
+  @doc guard: true
+  defguard is_address_type(term) when is_integer(term) and term >= 0 and term <= 255
 end
 
 defimpl Ockam.Address, for: Any do

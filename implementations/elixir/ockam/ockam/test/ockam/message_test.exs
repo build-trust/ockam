@@ -1,7 +1,7 @@
-defmodule Ockam.Router.Message.Tests do
+defmodule Ockam.Message.Tests do
   use ExUnit.Case, async: true
-  doctest Ockam.Router.Message
-  alias Ockam.Router.Message
+  doctest Ockam.Message
+  alias Ockam.Message
 
   describe "Ockam.Router.Message.Any" do
     test "empty onward_route is default" do
