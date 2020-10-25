@@ -50,7 +50,7 @@ impl WorkerManager {
     pub fn poll(&mut self) -> bool {
         true
         //    pub fn poll(wm: Arc<Mutex<WorkerManager>>) -> bool {
-//        let keep_going = true;
+        //        let keep_going = true;
         // let mut got = true;
         // while got {
         //     got = false;
@@ -76,6 +76,6 @@ impl WorkerManager {
         //         }
         //     }
         // }
-//        keep_going
+        //        keep_going
     }
 }

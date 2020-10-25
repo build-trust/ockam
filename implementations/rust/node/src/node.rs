@@ -126,9 +126,7 @@ impl TestWorker {
                 let reply: Message = Message {
                     onward_route: self.onward_route.clone(),
                     return_route: Route {
-                        addresses: vec![
-                            RouterAddress::from_address(self.address.clone()).unwrap()
-                        ],
+                        addresses: vec![RouterAddress::from_address(self.address.clone()).unwrap()],
                     },
                     message_type: MessageType::Payload,
                     message_body: s.as_bytes().to_vec(),
@@ -254,10 +252,7 @@ pub fn start_node(
                 .unwrap();
         }
 
-        while transport.poll()
-            && router.poll()
-            && channel_handler.poll().unwrap()
-            && worker.poll()
+        while transport.poll() && router.poll() && channel_handler.poll().unwrap() && worker.poll()
         {
             thread::sleep(time::Duration::from_millis(100));
         }
