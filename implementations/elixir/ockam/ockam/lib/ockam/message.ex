@@ -2,18 +2,22 @@ defprotocol Ockam.Message do
   @moduledoc """
   Defines an elixir protocol for a message.
   """
+
+  alias Ockam.Serializable
+  alias Ockam.Route
+
   @fallback_to_any true
 
   @doc "Returns the onward_route of a message."
-  @spec onward_route(t()) :: Ockam.Route.t()
+  @spec onward_route(t()) :: Route.t()
   def onward_route(message)
 
   @doc "Returns the return_route of a message."
-  @spec return_route(t()) :: Ockam.Route.t()
+  @spec return_route(t()) :: Route.t()
   def return_route(message)
 
   @doc "Returns the payload of a message."
-  @spec payload(t()) :: String.Chars.t()
+  @spec payload(t()) :: Serializable.t()
   def payload(message)
 end
 
