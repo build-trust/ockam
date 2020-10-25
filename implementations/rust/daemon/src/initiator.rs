@@ -1,8 +1,6 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
-use hex;
-
 use crate::config::Config;
 use crate::node::Node;
 
@@ -10,10 +8,7 @@ use hex::encode;
 use ockam_message::message::{
     Address, AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
 };
-use ockam_system::commands::commands::{
-    ChannelCommand, OckamCommand, RouterCommand, WorkerCommand,
-};
-use ockam_vault::types::PublicKey;
+use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 
 pub fn run(config: Config) {
     // configure a node
@@ -23,7 +18,7 @@ pub fn run(config: Config) {
     let mut worker = StdinWorker::new(
         RouterAddress::worker_router_address_from_str("01242020")
             .expect("failed to create worker address for kex"),
-        router_tx.clone(),
+        router_tx,
         config.clone(),
     );
 
@@ -31,10 +26,11 @@ pub fn run(config: Config) {
     // when the secure channel is created.
     node.channel_tx
         .send(OckamCommand::Channel(ChannelCommand::Initiate(
-            config.onward_route().clone().unwrap(),
+            config.onward_route().unwrap(),
             Address::WorkerAddress(hex::decode(config.service_address().unwrap()).unwrap()),
             None,
-        )));
+        )))
+        .unwrap();
 
     thread::spawn(move || {
         while worker.poll() {
@@ -47,7 +43,6 @@ pub fn run(config: Config) {
 }
 
 struct StdinWorker {
-    onward_route: Route,
     channel: Option<RouterAddress>,
     worker_addr: RouterAddress,
     router_tx: Sender<OckamCommand>,
@@ -55,8 +50,6 @@ struct StdinWorker {
     stdin: std::io::Stdin,
     buf: String,
     config: Config,
-    //    resp_public_key: Option<PublicKey>,
-    //    pending_message: Option<Message>,
 }
 
 impl StdinWorker {
@@ -67,12 +60,11 @@ impl StdinWorker {
         router_tx
             .send(OckamCommand::Router(RouterCommand::Register(
                 AddressType::Worker,
-                tx.clone(),
+                tx,
             )))
             .expect("Stdin worker registration failed");
 
         Self {
-            onward_route: Route { addresses: vec![] },
             channel: None,
             worker_addr,
             router_tx,
@@ -85,7 +77,7 @@ impl StdinWorker {
 
     pub fn receive_channel(&mut self, m: Message) -> Result<(), String> {
         let channel = m.return_route.addresses[0].clone();
-        self.channel = Some(channel.clone());
+        self.channel = Some(channel);
         let resp_public_key = encode(&m.message_body);
         println!("Remote static public key: {}", resp_public_key);
         if let Some(rpk) = self.config.remote_public_key() {
@@ -102,8 +94,10 @@ impl StdinWorker {
 
     fn poll(&mut self) -> bool {
         // await key exchange finalization
-        match self.rx.try_recv() {
-            Ok(cmd) => match cmd {
+        // match self.rx.try_recv() {
+        //     Ok(cmd) => match cmd {
+        if let Ok(cmd) = self.rx.try_recv() {
+            match cmd {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
                     match msg.message_type {
                         MessageType::None => {
@@ -123,8 +117,7 @@ impl StdinWorker {
                     }
                 }
                 _ => unimplemented!(),
-            },
-            Err(_) => {}
+            }
         }
 
         // read from stdin, pass each line to the router within the node
@@ -154,6 +147,7 @@ impl StdinWorker {
     }
 }
 
+#[allow(dead_code)]
 fn validate_public_key(known: &str, remote: Vec<u8>) -> Result<(), String> {
     if known.as_bytes().to_vec() == remote {
         Ok(())

@@ -31,14 +31,11 @@ use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_message::message::{
     Address, AddressType, Codec, Message, MessageType, Route, RouterAddress,
 };
-use ockam_system::commands::commands::OckamCommand::Router;
-use ockam_system::commands::commands::{ChannelCommand, OckamCommand, RouterCommand};
-use ockam_vault::types::OsxContext::Memory;
+use ockam_system::commands::OckamCommand::Router;
+use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand};
 use ockam_vault::types::{PublicKey, SecretKeyContext};
 use ockam_vault::DynVault;
 use rand::{thread_rng, Rng};
-use std::ops::DerefMut;
-use std::sync::MutexGuard;
 use std::{
     collections::BTreeMap,
     sync::{
@@ -46,6 +43,10 @@ use std::{
         Arc, Mutex,
     },
 };
+
+/// A channel address of zero indicates to the channel manager that
+/// a new channel is being initiated
+pub static CHANNEL_ZERO: &str = "00000000";
 
 enum ExchangerRole {
     Initiator,
@@ -60,9 +61,9 @@ pub struct ChannelManager<
     E: NewKeyExchanger<I, R>,
 > {
     channels: BTreeMap<String, Arc<Mutex<Channel>>>,
-    receiver: Receiver<OckamCommand>,
-    sender: Sender<OckamCommand>,
-    router: Sender<OckamCommand>,
+    rx: Receiver<OckamCommand>,
+    tx: Sender<OckamCommand>,
+    router_tx: Sender<OckamCommand>,
     vault: Arc<Mutex<dyn DynVault + Send>>,
     new_key_exchanger: E,
     phantom_i: PhantomData<I>,
@@ -86,18 +87,18 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> std::fmt::Debug
 impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<I, R, E> {
     /// Create a new Channel Manager
     pub fn new(
-        receiver: Receiver<OckamCommand>,
-        sender: Sender<OckamCommand>,
-        router: Sender<OckamCommand>,
+        rx: Receiver<OckamCommand>,
+        tx: Sender<OckamCommand>,
+        router_tx: Sender<OckamCommand>,
         vault: Arc<Mutex<dyn DynVault + Send>>,
         new_key_exchanger: E,
         resp_key_ctx: Option<SecretKeyContext>,
         init_key_ctx: Option<SecretKeyContext>,
     ) -> Result<Self, ChannelError> {
         // register ChannelManager with the router as the handler for all Channel address types
-        if let Err(_error) = router.send(Router(RouterCommand::Register(
+        if let Err(_error) = router_tx.send(Router(RouterCommand::Register(
             AddressType::Channel,
-            sender.clone(),
+            tx.clone(),
         ))) {
             println!("Channel failed ro register with router");
             return Err(ChannelErrorKind::CantSend.into());
@@ -105,9 +106,9 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 
         Ok(Self {
             channels: BTreeMap::new(),
-            sender,
-            receiver,
-            router,
+            tx,
+            rx,
+            router_tx,
             vault,
             new_key_exchanger,
             phantom_i: PhantomData,
@@ -122,22 +123,20 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let keep_going = true;
         let mut got_message = true;
         while got_message {
-            match self.receiver.try_recv() {
+            match self.rx.try_recv() {
                 Ok(c) => match c {
                     OckamCommand::Channel(ChannelCommand::Initiate(
                         mut route,
                         return_address,
                         key,
                     )) => {
-                        match route.addresses[0].a_type {
-                            AddressType::Channel => {
-                                if route.addresses[0].address.as_string() == *"00000000" {
-                                    route.addresses.remove(0);
-                                }
+                        if let AddressType::Channel = route.addresses[0].a_type {
+                            if route.addresses[0].address.as_string() == *CHANNEL_ZERO {
+                                route.addresses.remove(0);
                             }
-                            _ => {}
                         }
-                        self.get_new_channel(route, return_address)?;
+                        self.init_key_ctx = key;
+                        self.initiate_new_channel(route, return_address)?;
                     }
                     OckamCommand::Channel(ChannelCommand::Stop) => {
                         self.channels.clear();
@@ -163,7 +162,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         if m.onward_route.addresses.is_empty() {
             return Err(ChannelErrorKind::CantSend.into());
         }
-        return match m.message_type {
+        match m.message_type {
             MessageType::Payload => {
                 let address = m.onward_route.addresses[0].address.as_string();
                 match self.channels.get_mut(&address) {
@@ -178,7 +177,10 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         // remove this channel's address, encode message
                         m.onward_route.addresses.remove(0);
                         let mut m_encoded: Vec<u8> = vec![];
-                        Message::encode(m, &mut m_encoded);
+
+                        if Message::encode(m, &mut m_encoded).is_err() {
+                            return Err(ChannelErrorKind::CantSend.into());
+                        }
 
                         debug_assert!(channel.completed_key_exchange.is_some());
                         let cke = channel.completed_key_exchange.as_ref().unwrap();
@@ -198,14 +200,15 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         let new_m = Message {
                             onward_route: channel.route.clone(),
                             return_route: Route {
-                                addresses: vec![
-                                    RouterAddress::from_address(channel.as_address()).unwrap()
-                                ],
+                                addresses: vec![RouterAddress::from_address(
+                                    channel.as_ciphertext_address(),
+                                )
+                                .unwrap()],
                             },
                             message_type: MessageType::Payload,
                             message_body: new_message_body,
                         };
-                        self.router
+                        self.router_tx
                             .send(Router(RouterCommand::SendMessage(new_m)))?;
                         Ok(())
                     }
@@ -213,13 +216,13 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 }
             }
             _ => Err(ChannelErrorKind::NotImplemented.into()),
-        };
+        }
     }
 
     /// Initiates key exchange to create new secure channel over supplied route.
     /// Upon completion of key exchange, a message is sent to return_address with
     /// MessageType::None and the channel address in the return route.
-    pub fn get_new_channel(
+    fn initiate_new_channel(
         &mut self,
         mut route: Route,
         return_address: Address,
@@ -228,12 +231,13 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let pending_return = RouterAddress::from_address(return_address).unwrap();
 
         // Generate 2 channel addresses, one each for clear and cipher text
-        let mut clear_address = String::from("00000000");
-        let mut cipher_address = String::from("00000000");
+        let mut clear_address = String::from(CHANNEL_ZERO);
+        let mut cipher_address = String::from(CHANNEL_ZERO);
         if let Some((clear, cipher)) = self.create_channel(ExchangerRole::Initiator) {
             clear_address = clear;
             cipher_address = cipher;
         }
+
         let channel = self.channels.get_mut(&cipher_address).unwrap();
         let mut channel = &mut *channel.lock().unwrap();
         channel.pending = Some(Message {
@@ -251,7 +255,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let ka_m1 = channel.agreement.process(&[])?;
         route
             .addresses
-            .push(RouterAddress::channel_router_address_from_str("00000000").unwrap());
+            .push(RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap());
         let m = Message {
             onward_route: route,
             return_route: Route {
@@ -262,45 +266,45 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             message_type: MessageType::KeyAgreementM1,
             message_body: ka_m1,
         };
-        self.router.send(Router(RouterCommand::SendMessage(m)))?;
+        self.router_tx.send(Router(RouterCommand::SendMessage(m)))?;
         Ok(Address::channel_address_from_string(&clear_address).unwrap())
     }
 
-    fn handle_recv(&mut self, mut m: Message) -> Result<(), ChannelError> {
+    fn handle_recv(&mut self, m: Message) -> Result<(), ChannelError> {
         if m.onward_route.addresses.is_empty() {
             // no onward route, how to determine which channel to decrypt message?
             // can't so drop
             return Err(ChannelErrorKind::RecvError.into());
         }
-        let return_route = m.return_route.clone();
-        // If address is zero, it indicates to create a new channel responder for key agreement
-        // Otherwise pop the first onward route off to get the channel id
+        // Pop the first onward address off to get the channel id.
+        // If it's 0, we expect the message to be M1 of a key exchange
+        // Respond accordingly
         let mut cipher_address = m.onward_route.addresses[0].address.as_string();
-        if cipher_address == "00000000" {
-            // todo - add option for predefined responder public key
-            if let Some((clear, cipher)) = self.create_channel(ExchangerRole::Responder) {
-                cipher_address = cipher.clone();
+        if cipher_address == CHANNEL_ZERO {
+            if let Some((_clear, cipher)) = self.create_channel(ExchangerRole::Responder) {
+                cipher_address = cipher;
             } else {
                 return Err(ChannelErrorKind::State.into());
             }
         }
         match self.channels.get_mut(&cipher_address) {
             Some(channel) => {
+                let channel = channel.clone();
                 return match m.message_type {
                     MessageType::KeyAgreementM1 => {
-                        self.handle_m1_recv(m, cipher_address)?;
+                        self.handle_m1_recv(channel, m)?;
                         Ok(())
                     }
                     MessageType::KeyAgreementM2 => {
-                        self.handle_m2_recv(m, cipher_address)?;
+                        self.handle_m2_recv(channel, m)?;
                         Ok(())
                     }
                     MessageType::KeyAgreementM3 => {
-                        self.handle_m3_recv(m, cipher_address)?;
+                        self.handle_m3_recv(channel, m)?;
                         Ok(())
                     }
                     MessageType::Payload => {
-                        self.handle_payload_recv(m, cipher_address)?;
+                        self.handle_payload_recv(channel, m)?;
                         Ok(())
                     }
                     _ => {
@@ -318,158 +322,146 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         Ok(())
     }
 
-    fn handle_payload_recv(&mut self, mut m: Message, address: String) -> Result<(), ChannelError> {
+    fn handle_payload_recv(
+        &self,
+        channel: Arc<Mutex<Channel>>,
+        m: Message,
+    ) -> Result<(), ChannelError> {
         // Decrypt, put address on onward route at 0 and send
-        if let Some(channel) = self.channels.get_mut(&address) {
-            let mut channel = &mut *channel.lock().unwrap();
-            if m.message_body.len() < 2 {
-                return Err(ChannelErrorKind::RecvError.into());
+        let mut channel = channel.lock().unwrap();
+        if m.message_body.len() < 2 {
+            return Err(ChannelErrorKind::RecvError.into());
+        }
+        let kex = channel.completed_key_exchange.as_ref().unwrap();
+        let nonce =
+            Channel::nonce_16_to_96(u16::from_le_bytes([m.message_body[0], m.message_body[1]]));
+
+        let new_m_encoded = {
+            let mut vault = self.vault.lock().unwrap();
+            vault.aead_aes_gcm_decrypt(kex.decrypt_key, &m.message_body[2..], &nonce, &kex.h)?
+        };
+        let (new_m, _) = Message::decode(&new_m_encoded).unwrap();
+        channel.nonce += 1;
+        self.router_tx
+            .send(Router(RouterCommand::ReceiveMessage(new_m)))?;
+        Ok(())
+    }
+
+    fn handle_m1_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+        let channel = &mut *channel.lock().unwrap();
+        channel.agreement.process(&m.message_body)?;
+        let m2 = channel.agreement.process(&[])?;
+        let m = Message {
+            onward_route: m.return_route,
+            return_route: Route {
+                addresses: vec![
+                    RouterAddress::from_address(channel.as_ciphertext_address()).unwrap()
+                ],
+            },
+            message_type: MessageType::KeyAgreementM2,
+            message_body: m2,
+        };
+        self.router_tx
+            .send(Router(RouterCommand::SendMessage(m)))
+            .unwrap();
+        Ok(())
+    }
+
+    fn handle_m2_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+        let mut channel = &mut *channel.lock().unwrap();
+        let return_route = m.return_route.clone();
+        channel.agreement.process(&m.message_body)?;
+        let m3 = channel.agreement.process(&[])?;
+        let m = Message {
+            onward_route: return_route.clone(),
+            return_route: Route {
+                addresses: vec![m.onward_route.addresses[0].clone()],
+            },
+            message_type: MessageType::KeyAgreementM3,
+            message_body: m3,
+        };
+        self.router_tx
+            .send(Router(RouterCommand::SendMessage(m)))
+            .unwrap();
+        channel.completed_key_exchange = Some(channel.agreement.finalize()?);
+        channel.route = return_route;
+
+        // let the worker know the key exchange is done
+        let pending = channel.pending.clone();
+        match pending {
+            Some(mut p) => {
+                // send the remote public key as the message body
+                let static_public_key = channel
+                    .completed_key_exchange
+                    .unwrap()
+                    .remote_static_public_key;
+                p.message_body = static_public_key.as_ref().to_vec();
+                self.router_tx
+                    .send(Router(RouterCommand::ReceiveMessage(p)))
+                    .unwrap();
             }
-            let kex = channel.completed_key_exchange.as_ref().unwrap();
-            let nonce =
-                Channel::nonce_16_to_96(u16::from_le_bytes([m.message_body[0], m.message_body[1]]));
-
-            let new_m_encoded = {
-                let mut vault = self.vault.lock().unwrap();
-                vault.aead_aes_gcm_decrypt(kex.decrypt_key, &m.message_body[2..], &nonce, &kex.h)?
-            };
-            let (new_m, _) = Message::decode(&new_m_encoded).unwrap();
-            channel.nonce += 1;
-            self.router
-                .send(Router(RouterCommand::ReceiveMessage(new_m)))?;
-            Ok(())
-        } else {
-            return Err(ChannelErrorKind::NotImplemented.into());
+            None => {
+                return Err(ChannelErrorKind::NotImplemented.into());
+            }
         }
+        Ok(())
     }
 
-    fn handle_m1_recv(&mut self, m: Message, address: String) -> Result<(), ChannelError> {
-        if let Some(channel) = self.channels.get_mut(&address) {
-            let mut channel = &mut *channel.lock().unwrap();
-            channel.agreement.process(&m.message_body)?;
-            let m2 = channel.agreement.process(&[])?;
-            let m = Message {
-                onward_route: m.return_route.clone(),
-                return_route: Route {
-                    addresses: vec![
-                        RouterAddress::channel_router_address_from_str(&address).unwrap()
-                    ],
-                },
-                message_type: MessageType::KeyAgreementM2,
-                message_body: m2,
-            };
-            self.router
-                .send(Router(RouterCommand::SendMessage(m)))
-                .unwrap();
-            Ok(())
-        } else {
-            return Err(ChannelErrorKind::InvalidParam(0).into());
-        }
-    }
-
-    fn handle_m2_recv(&mut self, m: Message, address: String) -> Result<(), ChannelError> {
-        if let Some(channel) = self.channels.get_mut(&address) {
-            let mut channel = &mut *channel.lock().unwrap();
-            let return_route = m.return_route.clone();
-            channel.agreement.process(&m.message_body)?;
-            let m3 = channel.agreement.process(&[])?;
-            let m = Message {
-                onward_route: return_route.clone(),
-                return_route: Route {
-                    addresses: vec![m.onward_route.addresses[0].clone()],
-                },
-                message_type: MessageType::KeyAgreementM3,
-                message_body: m3,
-            };
-            self.router
-                .send(Router(RouterCommand::SendMessage(m)))
-                .unwrap();
-            channel.completed_key_exchange = Some(channel.agreement.finalize()?);
-            channel.route = return_route.clone();
-
-            // let the worker know the key exchange is done
+    fn handle_m3_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+        let mut channel = channel.lock().unwrap();
+        let return_route = m.return_route.clone();
+        // For now ignore anything returned from M3
+        let _ = channel.agreement.process(&m.message_body)?;
+        debug_assert!(channel.agreement.is_complete());
+        if channel.completed_key_exchange.is_none() {
+            // key agreement has finished, now can process any pending messages
             let pending = channel.pending.clone();
+            channel.completed_key_exchange = Some(channel.agreement.finalize()?);
+            channel.route = return_route;
             match pending {
                 Some(mut p) => {
-                    // send the remote public key as the message body
-                    let static_public_key = channel
+                    p.return_route = channel.route.clone();
+                    p.return_route.addresses.insert(
+                        0,
+                        RouterAddress::from_address(channel.as_cleartext_address()).unwrap(),
+                    );
+                    // add the channel's remote public key as the message body
+                    p.message_body = channel
                         .completed_key_exchange
                         .unwrap()
-                        .remote_static_public_key;
-                    p.message_body = static_public_key.as_ref().to_vec();
-                    self.router
+                        .remote_static_public_key
+                        .as_ref()
+                        .to_vec();
+
+                    self.router_tx
                         .send(Router(RouterCommand::ReceiveMessage(p)))
                         .unwrap();
+                    channel.pending = None;
                 }
-                None => {
-                    return Err(ChannelErrorKind::NotImplemented.into());
-                }
-            }
-            Ok(())
-        } else {
-            Err(ChannelErrorKind::NotImplemented.into())
-        }
-    }
-
-    fn handle_m3_recv(&mut self, m: Message, address: String) -> Result<(), ChannelError> {
-        if let Some(channel) = self.channels.get_mut(&address) {
-            let mut channel = channel.lock().unwrap();
-            let mut return_route = m.return_route.clone();
-            // For now ignore anything returned from M3
-            let _ = channel.agreement.process(&m.message_body)?;
-            debug_assert!(channel.agreement.is_complete());
-            if channel.completed_key_exchange.is_none() {
-                // key agreement has finished, now can process any pending messages
-                let pending = channel.pending.clone();
-                channel.completed_key_exchange = Some(channel.agreement.finalize()?);
-                channel.route = return_route;
-                match pending {
-                    Some(mut p) => {
-                        p.return_route = channel.route.clone();
-                        p.return_route.addresses.insert(
-                            0,
-                            RouterAddress::from_address(channel.as_address()).unwrap(),
-                        );
-                        // add the channel's remote public key as the message body
-                        p.message_body = channel
-                            .completed_key_exchange
-                            .unwrap()
-                            .remote_static_public_key
-                            .as_ref()
-                            .to_vec();
-
-                        self.router
-                            .send(Router(RouterCommand::ReceiveMessage(p)))
-                            .unwrap();
-                        channel.pending = None;
-                    }
-                    _ => {
-                        let mut return_route = channel.route.clone();
-                        return_route.addresses.insert(
-                            0,
-                            RouterAddress::from_address(channel.as_address()).unwrap(),
-                        );
-                        let new_m = Message {
-                            onward_route: Route {
-                                addresses: vec![RouterAddress::worker_router_address_from_str(
-                                    "00000000",
-                                )
-                                .unwrap()],
-                            },
-                            return_route,
-                            message_type: MessageType::None,
-                            message_body: vec![],
-                        };
-                        self.router
-                            .send(Router(RouterCommand::ReceiveMessage(new_m)))
-                            .unwrap();
-                    }
+                _ => {
+                    let mut return_route = channel.route.clone();
+                    return_route.addresses.insert(
+                        0,
+                        RouterAddress::from_address(channel.as_cleartext_address()).unwrap(),
+                    );
+                    let new_m = Message {
+                        onward_route: Route {
+                            addresses: vec![RouterAddress::worker_router_address_from_str(
+                                CHANNEL_ZERO,
+                            )
+                            .unwrap()],
+                        },
+                        return_route,
+                        message_type: MessageType::None,
+                        message_body: vec![],
+                    };
+                    self.router_tx
+                        .send(Router(RouterCommand::ReceiveMessage(new_m)))
+                        .unwrap();
                 }
             }
-            Ok(())
-        } else {
-            Err(ChannelErrorKind::NotImplemented.into())
         }
+        Ok(())
     }
 
     fn create_channel(&mut self, role: ExchangerRole) -> Option<(String, String)> {
@@ -538,8 +530,12 @@ impl Channel {
         }
     }
 
-    pub fn as_address(&self) -> Address {
+    pub fn as_cleartext_address(&self) -> Address {
         Address::ChannelAddress(self.cleartext_address.to_le_bytes().to_vec())
+    }
+
+    pub fn as_ciphertext_address(&self) -> Address {
+        Address::ChannelAddress(self.ciphertext_address.to_le_bytes().to_vec())
     }
 
     pub fn nonce_16_to_96(n16: u16) -> [u8; 12] {

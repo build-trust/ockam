@@ -3,8 +3,8 @@
 pub mod transport {
     use ockam_message::message::*;
     use ockam_router::router::Router;
-    use ockam_system::commands::commands::RouterCommand::ReceiveMessage;
-    use ockam_system::commands::commands::{OckamCommand, RouterCommand, TransportCommand};
+    use ockam_system::commands::RouterCommand::ReceiveMessage;
+    use ockam_system::commands::{OckamCommand, RouterCommand, TransportCommand};
     use std::convert::TryFrom;
     use std::io::{Read, Write};
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};

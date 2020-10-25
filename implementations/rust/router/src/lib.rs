@@ -1,7 +1,7 @@
 #![allow(unused)]
 pub mod router {
     use ockam_message::message::*;
-    use ockam_system::commands::commands::{
+    use ockam_system::commands::{
         ChannelCommand, OckamCommand, RouterCommand, TransportCommand, WorkerCommand,
     };
     use std::convert::TryFrom;

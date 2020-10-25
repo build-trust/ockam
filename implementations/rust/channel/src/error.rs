@@ -1,6 +1,6 @@
 use failure::{Backtrace, Context, Fail};
 use ockam_kex::error::*;
-use ockam_system::commands::commands::{ChannelCommand, OckamCommand};
+use ockam_system::commands::{ChannelCommand, OckamCommand};
 use ockam_vault::error::*;
 use std::{
     fmt,

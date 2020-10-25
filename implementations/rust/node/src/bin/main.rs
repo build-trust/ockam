@@ -1,5 +1,5 @@
 use ockam_message::message::{Address, AddressType, Route, RouterAddress};
-use ockam_node::node::node::start_node;
+use ockam_node::node::start_node;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::{thread, time};

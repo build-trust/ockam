@@ -1,12 +1,11 @@
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
-use ockam_message::message::{
-    AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
-};
-use ockam_system::commands::commands::{OckamCommand, RouterCommand, WorkerCommand};
+use ockam_message::message::{AddressType, Message as OckamMessage, MessageType, RouterAddress};
+use ockam_system::commands::{OckamCommand, RouterCommand, WorkerCommand};
 
 type WorkFn = fn(self_worker: &Worker, msg: OckamMessage);
 
+#[allow(dead_code)]
 pub struct Worker {
     router_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,

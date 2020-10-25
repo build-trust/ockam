@@ -14,14 +14,14 @@ use ockam_kex::{
 };
 use ockam_message::message::AddressType;
 use ockam_router::router::Router;
-use ockam_system::commands::commands::{OckamCommand, RouterCommand};
+use ockam_system::commands::{OckamCommand, RouterCommand};
 use ockam_transport::transport::UdpTransport;
 use ockam_vault::types::{
-    PublicKey, SecretKeyAttributes, SecretKeyContext, SecretKeyType, SecretPersistenceType,
-    SecretPurposeType,
+    SecretKeyAttributes, SecretKeyType, SecretPersistenceType, SecretPurposeType,
 };
-use ockam_vault::{DynVault, Vault};
+use ockam_vault::DynVault;
 
+#[allow(dead_code)]
 pub struct Node<'a> {
     config: &'a Config,
     chan_manager: ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>,
@@ -40,30 +40,27 @@ impl<'a> Node<'a> {
         let router = Router::new(router_rx);
 
         // create the vault, using the FILESYSTEM implementation
-        let mut vault = Arc::new(Mutex::new(
+        let vault = Arc::new(Mutex::new(
             FilesystemVault::new(config.vault_path()).expect("failed to initialize vault"),
         ));
 
         // if responder, generate keypair and display static public key
-        let mut resp_key_opt = None;
+        let resp_key_opt;
         let mut resp_key_ctx_opt = None;
-        match config.role() {
-            Role::Responder => {
-                let attributes = SecretKeyAttributes {
-                    xtype: SecretKeyType::Curve25519,
-                    purpose: SecretPurposeType::KeyAgreement,
-                    persistence: SecretPersistenceType::Persistent,
-                };
-                let mut v = vault.lock().unwrap();
-                if let resp_key_ctx = v.secret_generate(attributes).unwrap() {
-                    if let resp_key = v.secret_public_key_get(resp_key_ctx.clone()).unwrap() {
-                        resp_key_opt = Some(resp_key);
-                        resp_key_ctx_opt = Some(resp_key_ctx);
-                        println!("Responder public key: {}", resp_key_opt.unwrap());
-                    }
-                }
-            }
-            _ => {}
+        // match config.role() {
+        //     Role::Responder => {
+        if let Role::Responder = config.role() {
+            let attributes = SecretKeyAttributes {
+                xtype: SecretKeyType::Curve25519,
+                purpose: SecretPurposeType::KeyAgreement,
+                persistence: SecretPersistenceType::Persistent,
+            };
+            let mut v = vault.lock().unwrap();
+            let resp_key_ctx = v.secret_generate(attributes).unwrap();
+            let resp_key = v.secret_public_key_get(resp_key_ctx).unwrap();
+            resp_key_opt = Some(resp_key);
+            resp_key_ctx_opt = Some(resp_key_ctx);
+            println!("Responder public key: {}", resp_key_opt.unwrap());
         }
 
         // create the channel manager
@@ -75,12 +72,11 @@ impl<'a> Node<'a> {
             vault.clone(),
         );
 
-        // todo - take predefined key
         let chan_manager = XXChannelManager::new(
             channel_rx,
             channel_tx.clone(),
             router_tx.clone(),
-            vault.clone(),
+            vault,
             new_key_exchanger,
             resp_key_ctx_opt,
             None,
@@ -125,20 +121,6 @@ impl<'a> Node<'a> {
 
         self.worker = Some(worker);
     }
-
-    // pub fn generate_responder_keypair(vault: &mut Vault) -> Option<(PublicKey, SecretKeyContext)> {
-    //     let attributes = SecretKeyAttributes {
-    //         xtype: SecretKeyType::Curve25519,
-    //         purpose: SecretPurposeType::KeyAgreement,
-    //         persistence: SecretPersistenceType::Persistent,
-    //     };
-    //     if let static_secret_handle = vault.secret_generate(attributes).unwrap() {
-    //         if let static_public_key = vault.secret_public_key_get(static_secret_handle.clone()) {
-    //             Some((static_public_key, static_secret_handle))
-    //         }
-    //     }
-    //     None
-    // }
 
     pub fn run(mut self) {
         match self.worker {
