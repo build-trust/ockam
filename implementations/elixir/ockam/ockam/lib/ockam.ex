@@ -18,7 +18,8 @@ defmodule Ockam do
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
     children = [
-      Ockam.Router
+      Ockam.Router,
+      Ockam.Node
     ]
 
     # Start a supervisor with the given children. The supervisor will inturn
