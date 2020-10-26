@@ -178,15 +178,18 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         m.onward_route.addresses.remove(0);
                         let mut m_encoded: Vec<u8> = vec![];
 
-                        if Message::encode(m, &mut m_encoded).is_err() {
+                        if Message::encode(&m, &mut m_encoded).is_err() {
                             return Err(ChannelErrorKind::CantSend.into());
                         }
 
                         debug_assert!(channel.completed_key_exchange.is_some());
                         let cke = channel.completed_key_exchange.as_ref().unwrap();
                         let mut vault = self.vault.lock().unwrap();
+
+                        let mut new_message_body: Vec<u8> = vec![];
+                        u16::encode(&channel.nonce, &mut new_message_body);
+
                         let nonce = Channel::nonce_16_to_96(channel.nonce);
-                        let mut new_message_body = channel.nonce.to_le_bytes().to_vec();
                         let mut ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
                             cke.encrypt_key,
                             &m_encoded,
@@ -333,18 +336,26 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             return Err(ChannelErrorKind::RecvError.into());
         }
         let kex = channel.completed_key_exchange.as_ref().unwrap();
-        let nonce =
-            Channel::nonce_16_to_96(u16::from_le_bytes([m.message_body[0], m.message_body[1]]));
 
-        let new_m_encoded = {
-            let mut vault = self.vault.lock().unwrap();
-            vault.aead_aes_gcm_decrypt(kex.decrypt_key, &m.message_body[2..], &nonce, &kex.h)?
-        };
-        let (new_m, _) = Message::decode(&new_m_encoded).unwrap();
-        channel.nonce += 1;
-        self.router_tx
-            .send(Router(RouterCommand::ReceiveMessage(new_m)))?;
-        Ok(())
+
+        return match u16::decode(&m.message_body) {
+            Ok((nonce, mb)) => {
+                match u16::decode(&m.message_body) {
+                    Ok((nonce, mut cipher_text)) => {
+                        let nonce_96 = Channel::nonce_16_to_96(nonce);
+                        let mut vault = self.vault.lock().unwrap();
+                        let new_m_encoded = vault.aead_aes_gcm_decrypt(kex.decrypt_key, cipher_text, &nonce_96, &kex.h)?;
+                        let (new_m, _) = Message::decode(&new_m_encoded).unwrap();
+                        channel.nonce += 1;
+                        self.router_tx
+                            .send(Router(RouterCommand::ReceiveMessage(new_m)))?;
+                        Ok(())
+                    }
+                _ => Err(ChannelErrorKind::InvalidParam(0).into())
+                }
+            }
+            _ => Err(ChannelErrorKind::InvalidParam(0).into())
+        }
     }
 
     fn handle_m1_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
