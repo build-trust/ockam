@@ -4,7 +4,7 @@ updates:
 
   # Maintain dependencies for elixir ockam application
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam"
+    directory: "/implementations/elixir/ockam/ockam"
     commit-message:
       prefix: "build:"
     schedule:
@@ -12,7 +12,7 @@ updates:
 
   # Maintain dependencies for elixir ockam_node_web application
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam_node_web"
+    directory: "/implementations/elixir/ockam/ockam_node_web"
     commit-message:
       prefix: "build:"
     schedule:
@@ -20,7 +20,7 @@ updates:
 
   # Maintain dependencies for elixir ockam_transport_udp application
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam_transport_udp"
+    directory: "/implementations/elixir/ockam/ockam_transport_udp"
     commit-message:
       prefix: "build:"
     schedule:
@@ -28,7 +28,7 @@ updates:
 
   # Maintain dependencies for elixir ockam_vault_software application
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam_vault_software"
+    directory: "/implementations/elixir/ockam/ockam_vault_software"
     commit-message:
       prefix: "build:"
     schedule:
