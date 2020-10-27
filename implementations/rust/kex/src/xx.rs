@@ -4,36 +4,34 @@ use crate::{CipherSuite, NewKeyExchanger, AES_GCM_TAGSIZE};
 use ockam_vault::{
     error::{VaultFailError, VaultFailErrorKind},
     types::{
-        PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext, SecretKeyType,
-        SecretPersistenceType, SecretPurposeType,
+        PublicKey, SecretKey, SecretKeyAttributes, SecretKeyType, SecretPersistenceType,
+        SecretPurposeType,
     },
-    DynVault,
+    DynVault, Secret,
 };
 use std::sync::{Arc, Mutex};
 use zeroize::Zeroize;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 struct KeyPair {
     public_key: PublicKey,
-    secret_handle: SecretKeyContext,
+    secret_handle: Box<dyn Secret>,
 }
 
 /// Represents the XX Handshake]
 struct SymmetricState {
     cipher_suite: CipherSuite,
-    static_key_pair: Option<KeyPair>,
+    identity_key: Option<Arc<Box<dyn Secret>>>,
+    identity_public_key: Option<PublicKey>,
     ephemeral_key_pair: Option<KeyPair>,
     remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
-    identity_key: Option<SecretKeyContext>,
-    key: Option<SecretKeyContext>,
+    key: Option<Box<dyn Secret>>,
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
-    ck: Option<SecretKeyContext>,
-    vault: Arc<Mutex<dyn DynVault + Send>>,
+    ck: Option<Box<dyn Secret>>,
+    vault: Arc<Mutex<dyn DynVault>>,
 }
-
-zdrop_impl!(SymmetricState);
 
 impl Zeroize for SymmetricState {
     fn zeroize(&mut self) {
@@ -93,16 +91,16 @@ impl SymmetricState {
 
     pub fn new(
         cipher_suite: CipherSuite,
-        vault: Arc<Mutex<dyn DynVault + Send>>,
-        identity_key: Option<SecretKeyContext>,
+        vault: Arc<Mutex<dyn DynVault>>,
+        identity_key: Option<Arc<Box<dyn Secret>>>,
     ) -> Self {
         Self {
             cipher_suite,
-            static_key_pair: None,
+            identity_key,
+            identity_public_key: None,
             ephemeral_key_pair: None,
             remote_static_public_key: None,
             remote_ephemeral_public_key: None,
-            identity_key,
             key: None,
             nonce: 0,
             h: None,
@@ -131,27 +129,22 @@ impl KeyExchange for SymmetricState {
         };
         // 1. Generate a static key pair for this handshake and set it to `s`
         let mut vault = self.vault.lock().unwrap();
-        match self.identity_key {
+        let identity_key = self.identity_key.take();
+        match identity_key {
             None => {
                 let static_secret_handle = vault.secret_generate(attributes)?;
-                let static_public_key = vault.secret_public_key_get(static_secret_handle)?;
-                self.static_key_pair = Some(KeyPair {
-                    public_key: static_public_key,
-                    secret_handle: static_secret_handle,
-                });
+                self.identity_public_key = Some(vault.secret_public_key_get(&static_secret_handle)?);
+                self.identity_key = Some(Arc::new(static_secret_handle));
             }
             Some(ik) => {
-                self.static_key_pair = Some(KeyPair {
-                    secret_handle: ik,
-                    public_key: vault.secret_public_key_get(ik)?,
-                });
+                self.identity_public_key = Some(vault.secret_public_key_get(&ik)?);
             }
         };
 
         attributes.persistence = SecretPersistenceType::Ephemeral;
         // 2. Generate an ephemeral key pair for this handshake and set it to e
         let ephemeral_secret_handle = vault.secret_generate(attributes)?;
-        let ephemeral_public_key = vault.secret_public_key_get(ephemeral_secret_handle)?;
+        let ephemeral_public_key = vault.secret_public_key_get(&ephemeral_secret_handle)?;
         self.ephemeral_key_pair = Some(KeyPair {
             public_key: ephemeral_public_key,
             secret_handle: ephemeral_secret_handle,
@@ -182,11 +175,12 @@ impl KeyExchange for SymmetricState {
     /// Perform the diffie-hellman computation
     fn dh(
         &mut self,
-        secret_handle: SecretKeyContext,
+        secret_handle: &Box<dyn Secret>,
         public_key: PublicKey,
     ) -> Result<(), VaultFailError> {
         let ck = self
             .ck
+            .take()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
         let mut vault = self.vault.lock().unwrap();
@@ -205,10 +199,10 @@ impl KeyExchange for SymmetricState {
             persistence: SecretPersistenceType::Ephemeral,
         };
 
-        let hkdf_output = vault.ec_diffie_hellman_hkdf_sha256(
+        let mut hkdf_output = vault.ec_diffie_hellman_hkdf_sha256(
             secret_handle,
             public_key,
-            ck,
+            &ck,
             b"",
             vec![attributes_ck, attributes_k],
         )?;
@@ -217,14 +211,16 @@ impl KeyExchange for SymmetricState {
             return Err(VaultFailError::from(VaultFailErrorKind::Ecdh));
         }
 
-        vault.secret_destroy(ck)?;
-        self.ck = Some(hkdf_output[0]);
-
-        if self.key.is_some() {
-            vault.secret_destroy(*self.key.as_ref().unwrap())?;
+        let key = self.key.take();
+        if key.is_some() {
+            vault.secret_destroy(key.unwrap())?;
         }
 
-        self.key = Some(hkdf_output[1]);
+        self.key = Some(hkdf_output.pop().unwrap());
+
+        vault.secret_destroy(ck)?;
+        self.ck = Some(hkdf_output.pop().unwrap());
+
         self.nonce = 0;
 
         Ok(())
@@ -257,7 +253,9 @@ impl KeyExchange for SymmetricState {
         let ciphertext_and_tag = {
             let mut vault = self.vault.lock().unwrap();
             vault.aead_aes_gcm_encrypt(
-                self.key.ok_or(VaultFailErrorKind::AeadAesGcmEncrypt)?,
+                self.key
+                    .as_ref()
+                    .ok_or(VaultFailErrorKind::AeadAesGcmEncrypt)?,
                 plaintext.as_ref(),
                 nonce.as_ref(),
                 h,
@@ -283,7 +281,9 @@ impl KeyExchange for SymmetricState {
         let plaintext = {
             let mut vault = self.vault.lock().unwrap();
             vault.aead_aes_gcm_decrypt(
-                self.key.ok_or(VaultFailErrorKind::AeadAesGcmDecrypt)?,
+                self.key
+                    .as_ref()
+                    .ok_or(VaultFailErrorKind::AeadAesGcmDecrypt)?,
                 ciphertext,
                 nonce.as_ref(),
                 h,
@@ -295,9 +295,10 @@ impl KeyExchange for SymmetricState {
     }
 
     /// Split step in Noise protocol
-    fn split(&mut self) -> Result<(SecretKeyContext, SecretKeyContext), VaultFailError> {
+    fn split(&mut self) -> Result<(Box<dyn Secret>, Box<dyn Secret>), VaultFailError> {
         let ck = self
             .ck
+            .as_ref()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
         let mut vault = self.vault.lock().unwrap();
@@ -307,29 +308,31 @@ impl KeyExchange for SymmetricState {
             purpose: SecretPurposeType::KeyAgreement,
             persistence: SecretPersistenceType::Ephemeral,
         };
-        let hkdf_output = vault.hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
+        let mut hkdf_output = vault.hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
 
         if hkdf_output.len() != 2 {
             return Err(VaultFailError::from(VaultFailErrorKind::HkdfSha256));
         }
 
-        Ok((hkdf_output[0], hkdf_output[1]))
+        let res1 = hkdf_output.pop().unwrap();
+        let res0 = hkdf_output.pop().unwrap();
+
+        Ok((res0, res1))
     }
 
     /// Set this state up to send and receive messages
     fn finalize(
-        &mut self,
-        encrypt_key: SecretKeyContext,
-        decrypt_key: SecretKeyContext,
+        self,
+        encrypt_key: Box<dyn Secret>,
+        decrypt_key: Box<dyn Secret>,
     ) -> Result<CompletedKeyExchange, VaultFailError> {
         let h = self
             .h
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
         let local_static_secret = self
-            .static_key_pair
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?
-            .secret_handle;
+            .identity_key
+            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
         let remote_static_public_key = self
             .remote_static_public_key
@@ -376,18 +379,19 @@ impl Initiator {
         &mut self,
         message: B,
     ) -> Result<Vec<u8>, VaultFailError> {
-        let public_key_size = self.0.get_public_key_size();
+        let t = &mut self.0;
+        let public_key_size = t.get_public_key_size();
         let message = message.as_ref();
         if message.len() < 2 * public_key_size + AES_GCM_TAGSIZE {
             return Err(VaultFailErrorKind::SecretSizeMismatch.into());
         }
 
-        let ephemeral_secret_handle = self
-            .0
+        let ephemeral_key_pair = t
             .ephemeral_key_pair
-            .as_ref()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?
-            .secret_handle;
+            .take()
+            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+
+        let ephemeral_secret_handle = &ephemeral_key_pair.secret_handle;
 
         let mut index_l = 0;
         let mut index_r = public_key_size;
@@ -397,17 +401,19 @@ impl Initiator {
         let encrypted_rs_and_tag = &message[index_l..index_r];
         let encrypted_payload_and_tag = &message[index_r..];
 
-        let re = self.0.create_public_key(re)?;
+        let re = t.create_public_key(re)?;
 
-        self.0.remote_ephemeral_public_key = Some(re);
+        t.remote_ephemeral_public_key = Some(re);
 
-        self.0.mix_hash(&re)?;
-        self.0.dh(ephemeral_secret_handle, re)?;
-        let rs = self.0.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
-        let rs = self.0.create_public_key(&rs)?;
-        self.0.remote_static_public_key = Some(rs);
-        self.0.dh(ephemeral_secret_handle, rs)?;
-        let payload = self.0.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
+        t.mix_hash(&re)?;
+        t.dh(ephemeral_secret_handle, re)?;
+        let rs = t.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
+        let rs = t.create_public_key(&rs)?;
+        t.remote_static_public_key = Some(rs);
+        t.dh(ephemeral_secret_handle, rs)?;
+
+        t.ephemeral_key_pair = Some(ephemeral_key_pair);
+        let payload = t.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
         Ok(payload)
     }
 
@@ -416,27 +422,31 @@ impl Initiator {
         &mut self,
         payload: B,
     ) -> Result<Vec<u8>, VaultFailError> {
-        let static_key_pair = self
-            .0
-            .static_key_pair
+        let t = &mut self.0;
+        let static_secret = t
+            .identity_key
+            .take()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        let remote_ephemeral_public_key = self
-            .0
+        let static_public = t
+            .identity_public_key
+            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+
+        let remote_ephemeral_public_key = t
             .remote_ephemeral_public_key
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        let mut encrypted_s_and_tag = self.0.encrypt_and_mix_hash(static_key_pair.public_key)?;
-        self.0
-            .dh(static_key_pair.secret_handle, remote_ephemeral_public_key)?;
-        let mut encrypted_payload_and_tag = self.0.encrypt_and_mix_hash(payload)?;
+        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public)?;
+        t.dh(&static_secret, remote_ephemeral_public_key)?;
+        t.identity_key = Some(static_secret);
+        let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
         encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
         Ok(encrypted_s_and_tag)
     }
 
     /// Setup this initiator to send and receive messages
     /// after encoding message 3
-    pub fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
+    pub fn finalize(mut self) -> Result<CompletedKeyExchange, VaultFailError> {
         let keys = self.0.split()?;
         self.0.finalize(keys.1, keys.0)
     }
@@ -470,31 +480,37 @@ impl Responder {
         &mut self,
         payload: B,
     ) -> Result<Vec<u8>, VaultFailError> {
-        let static_key_pair = self
-            .0
-            .static_key_pair
+        let t = &mut self.0;
+        let static_secret = t
+            .identity_key
+            .take()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
-        let ephemeral_key_pair = self
-            .0
+        let static_public = t
+            .identity_public_key
+            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+        let ephemeral_key_pair = t
             .ephemeral_key_pair
+            .take()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
-        let remote_ephemeral_public_key = self
-            .0
+        let remote_ephemeral_public_key = t
             .remote_ephemeral_public_key
+            .take()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        self.0.mix_hash(ephemeral_key_pair.public_key)?;
-        self.0.dh(
-            ephemeral_key_pair.secret_handle,
+        t.mix_hash(ephemeral_key_pair.public_key)?;
+        t.dh(
+            &ephemeral_key_pair.secret_handle,
             remote_ephemeral_public_key,
         )?;
 
-        let mut encrypted_s_and_tag = self.0.encrypt_and_mix_hash(static_key_pair.public_key)?;
-        self.0
-            .dh(static_key_pair.secret_handle, remote_ephemeral_public_key)?;
-        let mut encrypted_payload_and_tag = self.0.encrypt_and_mix_hash(payload)?;
+        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public)?;
+        t.dh(&static_secret, remote_ephemeral_public_key)?;
+        t.remote_ephemeral_public_key = Some(remote_ephemeral_public_key);
+        t.identity_key = Some(static_secret);
+        let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
 
         let mut output = ephemeral_key_pair.public_key.as_ref().to_vec();
+        t.ephemeral_key_pair = Some(ephemeral_key_pair);
         output.append(&mut encrypted_s_and_tag);
         output.append(&mut encrypted_payload_and_tag);
         Ok(output)
@@ -505,33 +521,30 @@ impl Responder {
         &mut self,
         message_3: B,
     ) -> Result<Vec<u8>, VaultFailError> {
-        let public_key_size = self.0.get_public_key_size();
+        let t = &mut self.0;
+        let public_key_size = t.get_public_key_size();
         let message_3 = message_3.as_ref();
         if message_3.len() < public_key_size + AES_GCM_TAGSIZE {
             return Err(VaultFailErrorKind::SecretSizeMismatch.into());
         }
 
-        let ephemeral_secret_handle = self
-            .0
+        let ephemeral_key_pair = t
             .ephemeral_key_pair
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?
-            .secret_handle;
+            .take()
+            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        let rs = self
-            .0
-            .decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])?;
-        let rs = self.0.create_public_key(&rs)?;
-        self.0.dh(ephemeral_secret_handle, rs)?;
-        let payload = self
-            .0
-            .decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
-        self.0.remote_static_public_key = Some(rs);
+        let rs = t.decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])?;
+        let rs = t.create_public_key(&rs)?;
+        t.dh(&ephemeral_key_pair.secret_handle, rs)?;
+        t.ephemeral_key_pair = Some(ephemeral_key_pair);
+        let payload = t.decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
+        t.remote_static_public_key = Some(rs);
         Ok(payload)
     }
 
     /// Setup this responder to send and receive messages
     /// after decoding message 3
-    pub fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
+    pub fn finalize(mut self) -> Result<CompletedKeyExchange, VaultFailError> {
         let keys = self.0.split()?;
         self.0.finalize(keys.0, keys.1)
     }
@@ -601,7 +614,7 @@ impl XXNewKeyExchanger {
 
 impl NewKeyExchanger<XXInitiator, XXResponder> for XXNewKeyExchanger {
     /// Create a new initiator using the provided backing vault
-    fn initiator(&self, identity_key: Option<SecretKeyContext>) -> XXInitiator {
+    fn initiator(&self, identity_key: Option<Arc<Box<dyn Secret>>>) -> XXInitiator {
         let ss = SymmetricState::new(
             self.cipher_suite,
             self.vault_initiator.clone(),
@@ -615,7 +628,7 @@ impl NewKeyExchanger<XXInitiator, XXResponder> for XXNewKeyExchanger {
     }
 
     /// Create a new responder using the provided backing vault
-    fn responder(&self, identity_key: Option<SecretKeyContext>) -> XXResponder {
+    fn responder(&self, identity_key: Option<Arc<Box<dyn Secret>>>) -> XXResponder {
         let ss = SymmetricState::new(
             self.cipher_suite,
             self.vault_responder.clone(),
@@ -666,7 +679,7 @@ impl KeyExchanger for XXInitiator {
         matches!(self.state, InitiatorState::Done)
     }
 
-    fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
+    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
         match self.state {
             InitiatorState::Done => self.initiator.finalize(),
             _ => Err(VaultFailErrorKind::IOError.into()),
@@ -703,7 +716,7 @@ impl KeyExchanger for XXResponder {
         matches!(self.state, ResponderState::Done)
     }
 
-    fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
+    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
         match self.state {
             ResponderState::Done => self.responder.finalize(),
             _ => Err(VaultFailErrorKind::IOError.into()),
@@ -730,7 +743,7 @@ mod tests {
         assert_eq!(state.h.unwrap(), exp_h);
 
         let mut vault = vault.lock().unwrap();
-        let ck = vault.secret_export(state.ck.unwrap()).unwrap();
+        let ck = vault.secret_export(&state.ck.unwrap()).unwrap();
 
         match &ck {
             SecretKey::Buffer(vec) => {
@@ -860,32 +873,34 @@ mod tests {
         let res = responder.process(&msg3);
         assert!(res.is_ok());
 
+        let initiator = Box::new(initiator);
         let res = initiator.finalize();
         assert!(res.is_ok());
         let alice = res.unwrap();
+        let responder = Box::new(responder);
         let res = responder.finalize();
         assert!(res.is_ok());
         let bob = res.unwrap();
         assert_eq!(alice.h, bob.h);
         let mut vault_in = vault_init.lock().unwrap();
         let res =
-            vault_in.aead_aes_gcm_encrypt(alice.encrypt_key, b"hello bob", &[0u8; 12], &alice.h);
+            vault_in.aead_aes_gcm_encrypt(&alice.encrypt_key, b"hello bob", &[0u8; 12], &alice.h);
 
         assert!(res.is_ok());
         let ciphertext = res.unwrap();
         let mut vault_re = vault_resp.lock().unwrap();
 
-        let res = vault_re.aead_aes_gcm_decrypt(bob.decrypt_key, &ciphertext, &[0u8; 12], &bob.h);
+        let res = vault_re.aead_aes_gcm_decrypt(&bob.decrypt_key, &ciphertext, &[0u8; 12], &bob.h);
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, b"hello bob");
 
         let res =
-            vault_re.aead_aes_gcm_encrypt(bob.encrypt_key, b"hello alice", &[1u8; 12], &bob.h);
+            vault_re.aead_aes_gcm_encrypt(&bob.encrypt_key, b"hello alice", &[1u8; 12], &bob.h);
         assert!(res.is_ok());
         let ciphertext = res.unwrap();
         let res =
-            vault_in.aead_aes_gcm_decrypt(alice.decrypt_key, &ciphertext, &[1u8; 12], &alice.h);
+            vault_in.aead_aes_gcm_decrypt(&alice.decrypt_key, &ciphertext, &[1u8; 12], &alice.h);
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, b"hello alice");
@@ -955,14 +970,14 @@ mod tests {
         let key = SecretKey::Curve25519(*array_ref![bytes, 0, 32]);
         let mut vault = vault_mutex.lock().unwrap();
         let static_secret_handle = vault.secret_import(&key, attributes).unwrap();
-        let static_public_key = vault.secret_public_key_get(static_secret_handle).unwrap();
+        let static_public_key = vault.secret_public_key_get(&static_secret_handle).unwrap();
 
         // Ephemeral x25519 for this handshake, `e`
         let bytes = hex::decode(ephemeral_private).unwrap();
         let key = SecretKey::Curve25519(*array_ref![bytes, 0, 32]);
         let ephemeral_secret_handle = vault.secret_import(&key, attributes).unwrap();
         let ephemeral_public_key = vault
-            .secret_public_key_get(ephemeral_secret_handle)
+            .secret_public_key_get(&ephemeral_secret_handle)
             .unwrap();
 
         // 3. Set k to empty, Set n to 0
