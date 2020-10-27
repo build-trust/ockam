@@ -465,13 +465,13 @@ pub mod message {
             }
         }
         pub fn worker_router_address_from_str(a: &str) -> Result<RouterAddress, String> {
-            match hex::decode(a) {
+            match hex_vec_from_str(a) {
                 Ok(h) => Ok(RouterAddress {
                     a_type: AddressType::Worker,
                     length: h.len() as u8,
                     address: Address::WorkerAddress(h),
                 }),
-                Err(_unused) => Err("string contains non-hex chars".to_string()),
+                Err(_unused) => Err("invalid hex input".to_string()),
             }
         }
     }
@@ -606,12 +606,34 @@ pub mod message {
             Ok(())
         }
     }
+
+    pub fn hex_vec_from_str(s: &str) -> Result<Vec<u8>, String> {
+        let mut hex: Vec<u8> = vec![];
+        if s.len() % 2 != 0 {
+            return Err("odd number of input chars".into());
+        }
+        for i in 0..s.len() {
+            if 0 == i % 2 {
+                let s2: &str = &s[i..(i + 2)];
+                match u8::from_str_radix(s2, 16) {
+                    Ok(val) => {
+                        hex.push(val);
+                    }
+                    _ => {
+                        return Err("non-hex characters found in string".into());
+                    }
+                }
+            }
+        }
+        Ok(hex)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::message::*;
+    use hex::encode;
     use std::net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr};
     use std::str::FromStr;
 
@@ -624,6 +646,40 @@ mod tests {
                 match ra.address {
                     Address::UdpAddress(sa) => {
                         assert_eq!(sa, SocketAddr::from_str("127.0.0.1:8080").unwrap());
+                    }
+                    _ => {
+                        assert!(false);
+                    }
+                }
+            }
+            _ => {
+                assert!(false);
+            }
+        }
+        match RouterAddress::worker_router_address_from_str("01242020") {
+            Ok(ra) => {
+                assert_eq!(ra.length, 4);
+                assert_eq!(ra.a_type, AddressType::Worker);
+                match ra.address {
+                    Address::WorkerAddress(wa) => {
+                        assert_eq!(hex::encode(&wa), "01242020");
+                    }
+                    _ => {
+                        assert!(false);
+                    }
+                }
+            }
+            _ => {
+                assert!(false);
+            }
+        }
+        match RouterAddress::worker_router_address_from_str("01242020070707") {
+            Ok(ra) => {
+                assert_eq!(ra.length, 7);
+                assert_eq!(ra.a_type, AddressType::Worker);
+                match ra.address {
+                    Address::WorkerAddress(wa) => {
+                        assert_eq!(wa, vec![1, 36, 32, 32, 7, 7, 7]);
                     }
                     _ => {
                         assert!(false);
