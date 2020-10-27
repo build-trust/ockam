@@ -2,18 +2,22 @@ use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
 
-use ockam_vault::{error::*, software::DefaultVault, types::*, DynVault};
+use crate::{error::*, software::DefaultVault, types::*, DynVault};
 
 use zeroize::Zeroize;
 
 const ATTRS_BYTE_LENGTH: usize = 6;
 
+/// A Vault that persists keys to the file system in a specified directory.
+/// Each key is in its own file
+#[derive(Debug)]
 pub struct FilesystemVault {
     v: DefaultVault,
     path: PathBuf,
 }
 
 impl FilesystemVault {
+    /// Create a new FilesystemVault where keys are stored in `path`
     pub fn new(path: PathBuf) -> std::io::Result<Self> {
         let create_path = path.clone();
         fs::create_dir_all(create_path)?;

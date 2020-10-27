@@ -4,7 +4,6 @@ use std::thread;
 use std::time;
 
 use crate::config::{Config, Role};
-use crate::vault::FilesystemVault;
 use crate::worker::Worker;
 
 use ockam_channel::*;
@@ -19,7 +18,7 @@ use ockam_transport::transport::UdpTransport;
 use ockam_vault::types::{
     SecretKeyAttributes, SecretKeyType, SecretPersistenceType, SecretPurposeType,
 };
-use ockam_vault::DynVault;
+use ockam_vault::{file::FilesystemVault, DynVault};
 
 #[allow(dead_code)]
 pub struct Node<'a> {
