@@ -147,8 +147,13 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             Some(channel) => {
                 match m.message_type {
                     MessageType::KeyAgreementM1 => {
-                        let m1 = channel.agreement.process(&m.message_body)?;
-                        let m2 = channel.agreement.process(&m1)?;
+                        let agreement = match &mut channel.agreement {
+                            Some(e) => e.as_mut(),
+                            None => panic!(), // FIXME
+                        };
+
+                        let m1 = agreement.process(&m.message_body)?;
+                        let m2 = agreement.process(&m1)?;
                         let m = Message {
                             onward_route: return_route,
                             return_route: Route {
@@ -167,8 +172,12 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                             .unwrap();
                     }
                     MessageType::KeyAgreementM2 => {
-                        channel.agreement.process(&m.message_body)?;
-                        let m3 = channel.agreement.process(&[])?;
+                        let agreement = match &mut channel.agreement {
+                            Some(e) => e.as_mut(),
+                            None => panic!(), // FIXME
+                        };
+                        agreement.process(&m.message_body)?;
+                        let m3 = agreement.process(&[])?;
                         let m = Message {
                             onward_route: return_route.clone(),
                             return_route: Route {
@@ -180,7 +189,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         self.router
                             .send(OckamCommand::Router(RouterCommand::SendMessage(m)))
                             .unwrap();
-                        channel.completed_key_exchange = Some(channel.agreement.finalize()?);
+                        let agreement = channel.agreement.take().unwrap();
+                        channel.completed_key_exchange = Some(agreement.finalize()?);
                         channel.route = return_route;
 
                         // If we have a pending message from a worker (we should) then
@@ -196,7 +206,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                                 p.return_route = return_route;
 
                                 // add the channel's remote public key as the message body
-                                if let Some(completed_kex) = channel.completed_key_exchange {
+                                if let Some(completed_kex) = &channel.completed_key_exchange {
                                     p.message_body =
                                         completed_kex.remote_static_public_key.as_ref().to_vec();
                                 }
@@ -212,12 +222,17 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                     }
                     MessageType::KeyAgreementM3 => {
                         // For now ignore anything returned from M3
-                        let _ = channel.agreement.process(&m.message_body)?;
-                        debug_assert!(channel.agreement.is_complete());
+                        let agreement = match &mut channel.agreement {
+                            Some(e) => e.as_mut(),
+                            None => panic!(), // FIXME
+                        };
+                        let _ = agreement.process(&m.message_body)?;
+                        debug_assert!(agreement.is_complete());
                         if channel.completed_key_exchange.is_none() {
                             // key agreement has finished, now can process any pending messages
                             let pending = channel.pending.clone();
-                            channel.completed_key_exchange = Some(channel.agreement.finalize()?);
+                            channel.completed_key_exchange =
+                                Some(channel.agreement.take().unwrap().finalize()?);
                             channel.route = return_route;
                             match pending {
                                 Some(mut p) => {
@@ -229,6 +244,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                                     // add the channel's remote public key as the message body
                                     p.message_body = channel
                                         .completed_key_exchange
+                                        .as_ref()
                                         .unwrap()
                                         .remote_static_public_key
                                         .as_ref()
@@ -282,7 +298,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         m.message_body = {
                             let mut vault = self.vault.lock().unwrap();
                             vault.aead_aes_gcm_decrypt(
-                                kex.decrypt_key,
+                                &kex.decrypt_key,
                                 &m.message_body[2..],
                                 &nonce,
                                 &kex.h,
@@ -319,7 +335,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 
         let mut channel =
             Channel::new(channel_id, Box::new(self.new_key_exchanger.initiator(None)));
-        let ka_m1 = channel.agreement.process(&[])?;
+        let agreement = match &mut channel.agreement {
+            Some(e) => e.as_mut(),
+            None => panic!(), // FIXME
+        };
+        let ka_m1 = agreement.process(&[])?;
 
         m.onward_route
             .addresses
@@ -355,7 +375,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let address = m.onward_route.addresses[0].address.as_string();
         match self.channels.get_mut(&address) {
             Some(channel) => {
-                if !channel.agreement.is_complete() {
+                let agreement = match &mut channel.agreement {
+                    Some(e) => e.as_mut(),
+                    None => panic!(), // FIXME
+                };
+                if !agreement.is_complete() {
                     debug_assert!(channel.completed_key_exchange.is_none());
                     return Ok(());
                 }
@@ -363,8 +387,12 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 let cke = channel.completed_key_exchange.as_ref().unwrap();
                 let mut vault = self.vault.lock().unwrap();
                 let nonce = Channel::nonce_16_to_96(channel.nonce);
-                let mut ciphertext_and_tag =
-                    vault.aead_aes_gcm_encrypt(cke.encrypt_key, &m.message_body, &nonce, &cke.h)?;
+                let mut ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
+                    &cke.encrypt_key,
+                    &m.message_body,
+                    &nonce,
+                    &cke.h,
+                )?;
                 let mut message_body = channel.nonce.to_le_bytes().to_vec();
                 message_body.append(&mut ciphertext_and_tag);
                 channel.nonce += 1;
@@ -423,7 +451,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 struct Channel {
     completed_key_exchange: Option<CompletedKeyExchange>,
     id: u32,
-    agreement: Box<dyn KeyExchanger>,
+    agreement: Option<Box<dyn KeyExchanger>>,
     nonce: u16,
     route: Route,
     pending: Option<Message>,
@@ -443,7 +471,7 @@ impl Channel {
     pub fn new(id: u32, agreement: Box<dyn KeyExchanger>) -> Self {
         Self {
             id,
-            agreement,
+            agreement: Some(agreement),
             completed_key_exchange: None,
             nonce: 0,
             route: Route { addresses: vec![] },
