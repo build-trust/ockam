@@ -1,7 +1,8 @@
 #[allow(unused)]
 //pub mod commands {
 use ockam_message::message::*;
-use ockam_vault::types::SecretKeyContext;
+use ockam_vault::Secret;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum OckamCommand {
@@ -33,7 +34,7 @@ pub enum RouterCommand {
 // channel_tx
 #[derive(Debug)]
 pub enum ChannelCommand {
-    Initiate(Route, Address, Option<SecretKeyContext>), /* route to destination, return local
+    Initiate(Route, Address, Option<Arc<Box<dyn Secret>>>), /* route to destination, return local
                                                          * address */
     SendMessage(Message),
     ReceiveMessage(Message),

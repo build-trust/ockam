@@ -22,9 +22,11 @@ use ockam_router::router::Router;
 use ockam_system::commands::{OckamCommand, WorkerCommand};
 use ockam_transport::tcp::TcpManager;
 use ockam_vault::types::*;
-use ockam_vault::{file::FilesystemVault, DynVault};
+use ockam_vault::{file::FilesystemVault, DynVault, Secret};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use ockam_vault::software::DefaultVaultSecret;
+use std::ops::Deref;
 
 pub enum OckamdWorker {
     StdinWorker(StdinWorker),
@@ -117,10 +119,9 @@ impl<'a> Node<'a> {
         let mut vault =
             FilesystemVault::new(config.vault_path()).expect("failed to initialize vault");
 
-        let mut resp_key_ctx = None;
         // check for re-use of provided identity name from CLI args, if not in on-disk in vault
         // generate a new one to be used
-        if !contains_key(&mut vault, &config.identity_name()) {
+        let resp_key_ctx = if !contains_key(&mut vault, &config.identity_name()) {
             // if responder, generate keypair and display static public key
             if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
                 let attributes = SecretKeyAttributes {
@@ -128,25 +129,25 @@ impl<'a> Node<'a> {
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Persistent,
                 };
-                resp_key_ctx = Some(
-                    vault
+                Some(Arc::new(vault
                         .secret_generate(attributes)
-                        .expect("failed to generate secret"),
-                );
+                        .expect("failed to generate secret")))
+            }
+            else {
+                None
             }
         } else {
-            resp_key_ctx =
-                Some(as_key_ctx(&config.identity_name()).expect("invalid identity name provided"));
-        }
+            Some(Arc::new(as_key_ctx(&config.identity_name()).expect("invalid identity name provided")))
+        };
 
         if matches!(config.role(), Role::Sink) && resp_key_ctx.is_some() {
-            if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.unwrap()) {
+            if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
                 println!("Responder public key: {}", hex::encode(resp_key));
             }
         }
 
         if matches!(config.role(), Role::Router) && resp_key_ctx.is_some() {
-            if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.unwrap()) {
+            if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
                 println!("Router public key: {}", hex::encode(resp_key));
             }
         }
@@ -255,11 +256,11 @@ impl<'a> Node<'a> {
     }
 }
 
-fn as_key_ctx(key_name: &str) -> Result<SecretKeyContext, String> {
+fn as_key_ctx(key_name: &str) -> Result<Box<dyn Secret>, String> {
     if let Some(id) = key_name.strip_suffix(cli::FILENAME_KEY_SUFFIX) {
-        return Ok(SecretKeyContext::Memory(
+        return Ok(Box::new(DefaultVaultSecret(
             id.parse().map_err(|_| format!("bad key name"))?,
-        ));
+        )));
     }
 
     Err("invalid key name format".into())
@@ -267,7 +268,7 @@ fn as_key_ctx(key_name: &str) -> Result<SecretKeyContext, String> {
 
 fn contains_key(v: &mut dyn DynVault, key_name: &str) -> bool {
     if let Ok(ctx) = as_key_ctx(key_name) {
-        return v.secret_export(ctx).is_ok();
+        return v.secret_export(&ctx).is_ok();
     }
 
     false
