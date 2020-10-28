@@ -24,10 +24,6 @@ pub fn run(config: Config) {
 
     // kick off the key exchange process. The result will be that the worker is notified
     // when the secure channel is created.
-    println!(
-        "Worker address: {:?}",
-        hex::decode(config.service_address().unwrap()).unwrap()
-    );
     node.channel_tx
         .send(OckamCommand::Channel(ChannelCommand::Initiate(
             config.onward_route().unwrap(),
