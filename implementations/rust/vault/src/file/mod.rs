@@ -8,8 +8,8 @@ use zeroize::Zeroize;
 
 const ATTRS_BYTE_LENGTH: usize = 6;
 
-/// A Vault that persists keys to the file system in a specified directory.
-/// Each key is in its own file
+/// A FilesystemVault is an implementation of an Ockam Vault that wraps the software vault and uses
+/// the disk as a persistent store.
 #[derive(Debug)]
 pub struct FilesystemVault {
     v: DefaultVault,
@@ -17,7 +17,7 @@ pub struct FilesystemVault {
 }
 
 impl FilesystemVault {
-    /// Create a new FilesystemVault where keys are stored in `path`
+    /// Creates a new FilesystemVault using the provided path on disk to store secrets.
     pub fn new(path: PathBuf) -> std::io::Result<Self> {
         let create_path = path.clone();
         fs::create_dir_all(create_path)?;
@@ -76,7 +76,7 @@ impl FilesystemVault {
 }
 
 fn id_to_path(id: usize) -> PathBuf {
-    id.to_string().into()
+    format!("{}.key", id.to_string()).into()
 }
 
 fn fs_write_secret(
@@ -85,15 +85,18 @@ fn fs_write_secret(
     key: SecretKey,
     attrs: SecretKeyAttributes,
 ) -> Result<(), VaultFailError> {
-    match ctx {
-        SecretKeyContext::Memory(id) => {
-            let mut bytes = attrs.to_bytes().to_vec();
-            bytes.extend_from_slice(key.as_ref());
+    if matches!(attrs.persistence, SecretPersistenceType::Persistent) {
+        return match ctx {
+            SecretKeyContext::Memory(id) => {
+                let mut bytes = attrs.to_bytes().to_vec();
+                bytes.extend_from_slice(key.as_ref());
 
-            Ok(fs::write(path.join(id_to_path(id)), bytes)?)
-        }
-        _ => Err(VaultFailErrorKind::InvalidContext.into()),
+                Ok(fs::write(path.join(id_to_path(id)), bytes)?)
+            }
+            _ => Err(VaultFailErrorKind::InvalidContext.into()),
+        };
     }
+    return Ok(());
 }
 
 impl DynVault for FilesystemVault {
