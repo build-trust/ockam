@@ -157,6 +157,8 @@ pub type VaultError = u32;
 pub type SecretKeyHandle = u64;
 /// No error or success
 pub const ERROR_NONE: u32 = 0;
+/// Error or success
+pub const ERROR: u32 = 1;
 
 /// A context object to interface with C
 #[derive(Clone, Copy, Debug)]
