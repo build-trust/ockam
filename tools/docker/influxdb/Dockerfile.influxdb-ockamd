@@ -1,0 +1,3 @@
+FROM influxdb:latest
+COPY --from=ockamd:0.1.0 /usr/local/bin/ockamd /usr/local/bin/ockamd
+ENTRYPOINT ["ockamd"]
