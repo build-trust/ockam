@@ -26,6 +26,7 @@ pub struct Config {
     input_kind: Input,
     remote_public_key: Option<String>,
     service_address: Option<String>,
+    identity_name: String,
 }
 
 impl Config {
@@ -56,6 +57,10 @@ impl Config {
     pub fn service_address(&self) -> Option<String> {
         self.service_address.clone()
     }
+
+    pub fn identity_name(&self) -> String {
+        self.identity_name.clone()
+    }
 }
 
 impl From<cli::Args> for Config {
@@ -69,6 +74,7 @@ impl From<cli::Args> for Config {
             input_kind: Input::Stdin,
             remote_public_key: args.service_public_key(),
             service_address: args.service_address(),
+            identity_name: args.identity_name(),
         };
 
         match args.output_kind() {
