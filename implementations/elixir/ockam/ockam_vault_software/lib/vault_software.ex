@@ -46,6 +46,10 @@ defmodule Ockam.Vault.Software do
     raise "natively implemented default_init/0 not loaded"
   end
 
+  def file_init(_a) do
+    raise "natively implemented file_init/1 not loaded"
+  end
+
   def sha256(_a, _b) do
     raise "natively implemented sha256/2 not loaded"
   end

@@ -195,18 +195,18 @@ static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
 }
 
 static ERL_NIF_TERM file_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (0 != argc) {
+    if (1 != argc) {
         return enif_make_badarg(env);
     }
 
     ockam_vault_t vault;
 
     ErlNifBinary file;
-    if (0 == enif_inspect_binary(env, argv[1], &file)) {
+    if (0 == enif_inspect_binary(env, argv[0], &file)) {
         return enif_make_badarg(env);
     }
 
-    if (0 != ockam_vault_file_init(&vault, input.data)) {
+    if (0 != ockam_vault_file_init(&vault, file.data)) {
         return err(env, "failed to create vault connection");
     }
 

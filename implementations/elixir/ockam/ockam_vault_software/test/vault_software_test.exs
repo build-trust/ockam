@@ -14,6 +14,13 @@ defmodule Ockam.Vault.Software.Tests do
     end
   end
 
+  describe "Ockam.Vault.Software.file_init/1" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = SoftwareVault.file_init("/tmp")
+      assert handle != 0
+    end
+  end
+
   describe "Ockam.Vault.Software.random_bytes/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
