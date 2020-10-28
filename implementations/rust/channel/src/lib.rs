@@ -187,7 +187,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         let mut vault = self.vault.lock().unwrap();
 
                         let mut new_message_body: Vec<u8> = vec![];
-                        u16::encode(&channel.nonce, &mut new_message_body);
+                        if let Err(e) = u16::encode(&channel.nonce, &mut new_message_body)
+                            .map_err(|e| ChannelError::from_msg(ChannelErrorKind::CantSend, e))
+                        {
+                            return Err(e);
+                        }
 
                         let nonce = Channel::nonce_16_to_96(channel.nonce);
                         let mut ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
