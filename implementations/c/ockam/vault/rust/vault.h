@@ -74,6 +74,14 @@ typedef struct {
 uint32_t ockam_vault_default_init(ockam_vault_t* vault);
 
 /**
+ * @brief   Initialize the specified ockam vault object
+ * @param   vault[out] The ockam vault object to initialize with the file vault.
+ * @param   path[in] The path to the folder for the file vault.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_file_init(ockam_vault_t* vault, const char* const path);
+
+/**
  * @brief   Generate a random number of desired size.
  * @param   vault[in]       Vault object to use for random number generation.
  * @param   buffer[out]     Buffer that is filled
