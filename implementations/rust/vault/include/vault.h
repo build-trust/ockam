@@ -33,7 +33,7 @@ typedef enum {
  */
 typedef enum {
     OCKAM_VAULT_SECRET_EPHEMERAL = 0,
-    OCKAM_VAULT_SECRET_PERSISTENT,
+    OCKAM_VAULT_SECRET_PERSISTENT = 1,
 } ockam_vault_secret_persistence_t;
 
 /**
@@ -61,6 +61,14 @@ typedef struct {
  * @return  OCKAM_ERROR_NONE on success.
  */
 uint32_t ockam_vault_default_init(ockam_vault_t* vault);
+
+/**
+ * @brief   Initialize the specified ockam vault object
+ * @param   vault[out] The ockam vault object to initialize with the file vault.
+ * @param   path[in] The path to the folder for the file vault.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_file_init(ockam_vault_t* vault, const unsigned char* const path);
 
 /**
  * @brief   Generate a random number of desired size.

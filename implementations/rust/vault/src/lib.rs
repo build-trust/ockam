@@ -13,8 +13,6 @@
 )]
 //! Ockam Vaults encapsulate the various software and hardware secure enclaves
 //! that store and execute cryptographic operations
-//!
-//!
 
 //! Implements the Ockam vault interface and provides
 //! a C FFI version.

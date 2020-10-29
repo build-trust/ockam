@@ -28,7 +28,7 @@ use zeroize::Zeroize;
 #[derive(Debug)]
 pub struct DefaultVault {
     entries: BTreeMap<usize, VaultEntry>,
-    next_id: usize,
+    pub(crate) next_id: usize,
 }
 
 impl Default for DefaultVault {
@@ -108,6 +108,10 @@ impl DefaultVault {
         }
 
         Ok(secrets)
+    }
+
+    pub(crate) fn get_ids(&self) -> Vec<usize> {
+        self.entries.keys().map(|i| *i).collect()
     }
 }
 

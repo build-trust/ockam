@@ -2,14 +2,14 @@ use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
 
-use ockam_vault::{error::*, software::DefaultVault, types::*, DynVault};
+use crate::{error::*, software::DefaultVault, types::*, DynVault};
 
 use zeroize::Zeroize;
 
 const ATTRS_BYTE_LENGTH: usize = 6;
 
-/// A Vault that persists keys to the file system in a specified directory.
-/// Each key is in its own file
+/// A FilesystemVault is an implementation of an Ockam Vault that wraps the software vault and uses
+/// the disk as a persistent store.
 #[derive(Debug)]
 pub struct FilesystemVault {
     v: DefaultVault,
@@ -17,7 +17,7 @@ pub struct FilesystemVault {
 }
 
 impl FilesystemVault {
-    /// Create a new FilesystemVault where keys are stored in `path`
+    /// Creates a new FilesystemVault using the provided path on disk to store secrets.
     pub fn new(path: PathBuf) -> std::io::Result<Self> {
         let create_path = path.clone();
         fs::create_dir_all(create_path)?;
@@ -59,14 +59,34 @@ impl FilesystemVault {
                                 &to_secret(data.as_slice()).unwrap_or_else(|_| {
                                     panic!("failed to get secret {:?} from file", entry.file_name())
                                 });
-                            if let Err(e) = vault.secret_import(secret, *attrs) {
-                                eprintln!("{}", e);
+                            // Files are read in any order
+                            let fname = entry.file_name();
+                            let t: &std::path::Path = fname.as_os_str().as_ref();
+                            let mut valid_id = false;
+                            if let Some(stem) = t.file_stem() {
+                                if let Some(str) = stem.to_str() {
+                                    if let Ok(id) = str.parse::<usize>() {
+                                        // Set the next id to match the file name
+                                        vault.next_id = id - 1;
+                                        valid_id = true;
+                                    }
+                                }
+                            }
+                            if !valid_id {
+                                eprintln!("invalid key file name: {:?}", entry);
+                            } else {
+                                if let Err(e) = vault.secret_import(secret, *attrs) {
+                                    eprintln!("{}", e);
+                                }
                             }
                         }
                         Err(e) => eprintln!("{}", e),
                     }
                 }
             });
+        if let Some(id) = vault.get_ids().iter().max() {
+            vault.next_id = *id;
+        }
 
         Ok(Self {
             v: vault,
@@ -76,7 +96,7 @@ impl FilesystemVault {
 }
 
 fn id_to_path(id: usize) -> PathBuf {
-    id.to_string().into()
+    format!("{}.key", id.to_string()).into()
 }
 
 fn fs_write_secret(
@@ -85,15 +105,18 @@ fn fs_write_secret(
     key: SecretKey,
     attrs: SecretKeyAttributes,
 ) -> Result<(), VaultFailError> {
-    match ctx {
-        SecretKeyContext::Memory(id) => {
-            let mut bytes = attrs.to_bytes().to_vec();
-            bytes.extend_from_slice(key.as_ref());
+    if matches!(attrs.persistence, SecretPersistenceType::Persistent) {
+        return match ctx {
+            SecretKeyContext::Memory(id) => {
+                let mut bytes = attrs.to_bytes().to_vec();
+                bytes.extend_from_slice(key.as_ref());
 
-            Ok(fs::write(path.join(id_to_path(id)), bytes)?)
-        }
-        _ => Err(VaultFailErrorKind::InvalidContext.into()),
+                Ok(fs::write(path.join(id_to_path(id)), bytes)?)
+            }
+            _ => Err(VaultFailErrorKind::InvalidContext.into()),
+        };
     }
+    return Ok(());
 }
 
 impl DynVault for FilesystemVault {
@@ -266,5 +289,42 @@ impl DynVault for FilesystemVault {
 impl Zeroize for FilesystemVault {
     fn zeroize(&mut self) {
         self.v.zeroize();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn persistence_test() {
+        let path = std::path::PathBuf::from("__persistence_test");
+        if path.exists() {
+            std::fs::remove_dir_all(path.clone()).unwrap();
+        }
+        let mut vault = FilesystemVault::new(path.clone()).unwrap();
+        let atts = SecretKeyAttributes {
+            purpose: SecretPurposeType::KeyAgreement,
+            persistence: SecretPersistenceType::Persistent,
+            xtype: SecretKeyType::Curve25519,
+        };
+        let sk1 = vault.secret_generate(atts).unwrap();
+        let sk2 = vault.secret_generate(atts).unwrap();
+        let sk3 = vault.secret_generate(atts).unwrap();
+
+        let sk_data1 = vault.secret_export(sk1).unwrap();
+        let sk_data2 = vault.secret_export(sk2).unwrap();
+        let sk_data3 = vault.secret_export(sk3).unwrap();
+
+        vault.deinit();
+
+        let mut vault2 = FilesystemVault::new(path).unwrap();
+        let sk2_data_1 = vault2.secret_export(sk1).unwrap();
+        let sk2_data_2 = vault2.secret_export(sk2).unwrap();
+        let sk2_data_3 = vault2.secret_export(sk3).unwrap();
+
+        assert_eq!(sk_data1, sk2_data_1);
+        assert_eq!(sk_data2, sk2_data_2);
+        assert_eq!(sk_data3, sk2_data_3);
     }
 }

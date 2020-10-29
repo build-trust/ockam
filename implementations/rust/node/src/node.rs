@@ -293,10 +293,10 @@ pub fn start_node(
 //     use std::sync::{Arc, Mutex};
 //     use std::{thread, time};
 //     use std::env::Args;
-//     use ockam_vault::types::{SecretKeyAttributes, SecretKeyType, SecretPurposeType, SecretPersistenceType};
-//     use ockam_vault::DynVault;
-//     use ockam_system::commands::commands::{OckamCommand, ChannelCommand, WorkerCommand, RouterCommand};
-//     use ockam_channel::*;
+//     use ockam_vault::types::{SecretKeyAttributes, SecretKeyType, SecretPurposeType,
+// SecretPersistenceType};     use ockam_vault::DynVault;
+//     use ockam_system::commands::commands::{OckamCommand, ChannelCommand, WorkerCommand,
+// RouterCommand};     use ockam_channel::*;
 //     use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
 //     use ockam_kex::CipherSuite;
 //     use ockam_message::message::*;
@@ -333,7 +333,8 @@ pub fn start_node(
 //             {
 //                 return Err("TestWorker failed to register with router".into());
 //             }
-//             let channel = Address::ChannelAddress(vec![0, 0, 0, 0]); // This address will initiate a key exchange
+//             let channel = Address::ChannelAddress(vec![0, 0, 0, 0]); // This address will
+// initiate a key exchange
 //
 //             Ok(TestWorker {
 //                 rx,
@@ -393,8 +394,8 @@ pub fn start_node(
 //                         RouterAddress::from_address(self.channel_address.clone()).unwrap(),
 //                     );
 //                     pending.return_route = Route {
-//                         addresses: vec![RouterAddress::from_address(self.address.clone()).unwrap()],
-//                     };
+//                         addresses:
+// vec![RouterAddress::from_address(self.address.clone()).unwrap()],                     };
 //                     self.router_tx
 //                         .send(OckamCommand::Router(RouterCommand::SendMessage(pending)))
 //                         .unwrap();
@@ -406,8 +407,8 @@ pub fn start_node(
 //         }
 //
 //         pub fn handle_receive(&mut self, m: Message) -> Result<(), String> {
-//             self.onward_route = m.return_route.clone(); // next onward_route is always last return_route
-//             match m.message_type {
+//             self.onward_route = m.return_route.clone(); // next onward_route is always last
+// return_route             match m.message_type {
 //                 MessageType::Payload => {
 //                     let s: &str;
 //                     if 0 == self.toggle % 2 {
@@ -419,8 +420,8 @@ pub fn start_node(
 //                     let reply: Message = Message {
 //                         onward_route: self.onward_route.clone(),
 //                         return_route: Route {
-//                             addresses: vec![RouterAddress::from_address(self.address.clone()).unwrap()],
-//                         },
+//                             addresses:
+// vec![RouterAddress::from_address(self.address.clone()).unwrap()],                         },
 //                         message_type: MessageType::Payload,
 //                         message_body: s.as_bytes().to_vec(),
 //                     };
@@ -551,8 +552,8 @@ pub fn start_node(
 //                 )));
 //             }
 //
-//             while transport.poll() && router.poll() && channel_handler.poll().unwrap() && worker.poll()
-//             {
+//             while transport.poll() && router.poll() && channel_handler.poll().unwrap() &&
+// worker.poll()             {
 //                 thread::sleep(time::Duration::from_millis(100));
 //             }
 //         });

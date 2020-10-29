@@ -87,8 +87,8 @@ impl TryFrom<FfiSecretKey> for SecretKey {
 pub struct FfiSecretKeyAttributes {
     pub(crate) length: u32,
     pub(crate) xtype: u32,
-    pub(crate) persistence: u32,
     pub(crate) purpose: u32,
+    pub(crate) persistence: u32,
 }
 
 impl From<SecretKeyAttributes> for FfiSecretKeyAttributes {
@@ -157,6 +157,8 @@ pub type VaultError = u32;
 pub type SecretKeyHandle = u64;
 /// No error or success
 pub const ERROR_NONE: u32 = 0;
+/// Error or success
+pub const ERROR: u32 = 1;
 
 /// A context object to interface with C
 #[derive(Clone, Copy, Debug)]

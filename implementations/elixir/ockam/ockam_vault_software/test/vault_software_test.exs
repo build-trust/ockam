@@ -14,6 +14,31 @@ defmodule Ockam.Vault.Software.Tests do
     end
   end
 
+  describe "Ockam.Vault.Software.file_init/1" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = SoftwareVault.file_init("/tmp")
+      {:ok, hash} = SoftwareVault.sha256(handle, "test")
+
+      assert hash ==
+               <<159, 134, 208, 129, 136, 76, 125, 101, 154, 47, 234, 160, 197, 90, 208, 21, 163,
+                 191, 79, 27, 43, 11, 130, 44, 209, 93, 108, 21, 176, 240, 10, 8>>
+    end
+  end
+
+  describe "Ockam.Vault.Software.secret_generate_persistence/2" do
+    test "can run natively implemented functions" do
+      {:ok, handle} = SoftwareVault.file_init("secret_generate_persistence")
+      attributes = %{type: :curve25519, persistence: :persistent, purpose: :key_agreement}
+      {:ok, secret} = SoftwareVault.secret_generate(handle, attributes)
+      assert secret != 0
+      {:ok, data1} = SoftwareVault.secret_export(handle, secret)
+      SoftwareVault.deinit(handle)
+      {:ok, handle2} = SoftwareVault.file_init("secret_generate_persistence")
+      {:ok, data} = SoftwareVault.secret_export(handle2, secret)
+      assert data == data1
+    end
+  end
+
   describe "Ockam.Vault.Software.random_bytes/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()

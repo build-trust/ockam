@@ -10,6 +10,9 @@ use url::Url;
 /// The port on which the config updater runs and accepts Config messages.
 pub const DEFAULT_CONFIG_PORT: u16 = 11199;
 
+pub const FILENAME_KEY_SUFFIX: &str = ".key";
+pub const FILENAME_KEY_DEFAULT: &str = "1.key";
+
 const DEFAULT_LOCAL_SOCKET: &str = "127.0.0.1:0";
 
 /// Command-line arguments passed to `ockamd`.
@@ -72,9 +75,10 @@ pub struct Args {
     /// Define which private key to use as the initiator's identity.
     #[structopt(
         long,
+        default_value = FILENAME_KEY_DEFAULT,
         help = "Name of the private key to use for the identity of the channel initiator"
     )]
-    identity_name: Option<String>,
+    identity_name: String,
 
     /// Define the public key provided by the remote service.
     #[structopt(
@@ -124,7 +128,7 @@ impl Default for Args {
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Responder,
             service_address: None,
-            identity_name: None,
+            identity_name: format!("1{}", FILENAME_KEY_SUFFIX),
             service_public_key: None,
         }
     }
@@ -172,6 +176,10 @@ impl Args {
 
     pub fn service_address(&self) -> Option<String> {
         self.service_address.clone()
+    }
+
+    pub fn identity_name(&self) -> String {
+        self.identity_name.clone()
     }
 }
 

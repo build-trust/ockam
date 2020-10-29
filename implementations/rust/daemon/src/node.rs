@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
+use crate::cli;
 use crate::config::{Config, Role};
-use crate::vault::FilesystemVault;
 use crate::worker::Worker;
 
 use ockam_channel::*;
@@ -16,10 +16,8 @@ use ockam_message::message::AddressType;
 use ockam_router::router::Router;
 use ockam_system::commands::{OckamCommand, RouterCommand};
 use ockam_transport::transport::UdpTransport;
-use ockam_vault::types::{
-    SecretKeyAttributes, SecretKeyType, SecretPersistenceType, SecretPurposeType,
-};
-use ockam_vault::DynVault;
+use ockam_vault::types::*;
+use ockam_vault::{file::FilesystemVault, DynVault};
 
 #[allow(dead_code)]
 pub struct Node<'a> {
@@ -40,28 +38,39 @@ impl<'a> Node<'a> {
         let router = Router::new(router_rx);
 
         // create the vault, using the FILESYSTEM implementation
-        let vault = Arc::new(Mutex::new(
-            FilesystemVault::new(config.vault_path()).expect("failed to initialize vault"),
-        ));
+        let mut vault =
+            FilesystemVault::new(config.vault_path()).expect("failed to initialize vault");
 
-        // if responder, generate keypair and display static public key
-        let resp_key_opt;
-        let mut resp_key_ctx_opt = None;
-        // match config.role() {
-        //     Role::Responder => {
-        if let Role::Responder = config.role() {
-            let attributes = SecretKeyAttributes {
-                xtype: SecretKeyType::Curve25519,
-                purpose: SecretPurposeType::KeyAgreement,
-                persistence: SecretPersistenceType::Persistent,
-            };
-            let mut v = vault.lock().unwrap();
-            let resp_key_ctx = v.secret_generate(attributes).unwrap();
-            let resp_key = v.secret_public_key_get(resp_key_ctx).unwrap();
-            resp_key_opt = Some(resp_key);
-            resp_key_ctx_opt = Some(resp_key_ctx);
-            println!("Responder public key: {}", resp_key_opt.unwrap());
+        let mut resp_key_ctx = None;
+        // check for re-use of provided identity name from CLI args, if not in on-disk in vault
+        // generate a new one to be used
+        if !contains_key(&mut vault, &config.identity_name()) {
+            // if responder, generate keypair and display static public key
+            if matches!(config.role(), Role::Responder) {
+                let attributes = SecretKeyAttributes {
+                    xtype: SecretKeyType::Curve25519,
+                    purpose: SecretPurposeType::KeyAgreement,
+                    persistence: SecretPersistenceType::Persistent,
+                };
+                resp_key_ctx = Some(
+                    vault
+                        .secret_generate(attributes)
+                        .expect("failed to generate secret"),
+                );
+            }
+        } else {
+            resp_key_ctx =
+                Some(as_key_ctx(&config.identity_name()).expect("invalid identity name provided"));
         }
+
+        if matches!(config.role(), Role::Responder) && resp_key_ctx.is_some() {
+            if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.unwrap()) {
+                println!("Responder public key: {}", hex::encode(resp_key));
+            }
+        }
+
+        // prepare the vault for use in key exchanger and channel manager
+        let vault = Arc::new(Mutex::new(vault));
 
         // create the channel manager
         type XXChannelManager = ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>;
@@ -78,7 +87,7 @@ impl<'a> Node<'a> {
             router_tx.clone(),
             vault,
             new_key_exchanger,
-            resp_key_ctx_opt,
+            resp_key_ctx,
             None,
         )
         .unwrap();
@@ -149,4 +158,22 @@ impl<'a> Node<'a> {
             }
         }
     }
+}
+
+fn as_key_ctx(key_name: &str) -> Result<SecretKeyContext, String> {
+    if let Some(id) = key_name.strip_suffix(cli::FILENAME_KEY_SUFFIX) {
+        return Ok(SecretKeyContext::Memory(
+            id.parse().map_err(|_| format!("bad key name"))?,
+        ));
+    }
+
+    Err("invalid key name format".into())
+}
+
+fn contains_key(v: &mut dyn DynVault, key_name: &str) -> bool {
+    if let Ok(ctx) = as_key_ctx(key_name) {
+        return v.secret_export(ctx).is_ok();
+    }
+
+    false
 }

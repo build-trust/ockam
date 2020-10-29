@@ -33,7 +33,8 @@ pub enum RouterCommand {
 // channel_tx
 #[derive(Debug)]
 pub enum ChannelCommand {
-    Initiate(Route, Address, Option<SecretKeyContext>), // route to destination, return local address
+    Initiate(Route, Address, Option<SecretKeyContext>), /* route to destination, return local
+                                                         * address */
     SendMessage(Message),
     ReceiveMessage(Message),
     Stop,
