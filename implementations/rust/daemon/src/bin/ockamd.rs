@@ -1,9 +1,13 @@
+use ockam_vault::file::FilesystemVault;
+use std::io::stdin;
+
 use ockamd::{
     cli::{
         Args,
         ChannelRole::{Initiator, Responder},
         Mode::{Control, Server},
     },
+    node::{Config, Node},
     initiator, responder,
 };
 

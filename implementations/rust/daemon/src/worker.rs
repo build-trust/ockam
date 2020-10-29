@@ -45,11 +45,6 @@ impl Worker {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
                     match msg.message_type {
                         MessageType::Payload => {
-                            // Confirm address
-                            if self.addr != msg.onward_route.addresses[0] {
-                                println!("Received bad worker address");
-                                return true;
-                            }
                             (self.work_fn)(&self, msg);
                             true
                         }

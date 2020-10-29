@@ -16,7 +16,7 @@ pub fn run(config: Config) {
     let (node, router_tx) = Node::new(&node_config);
 
     let mut worker = StdinWorker::new(
-        RouterAddress::worker_router_address_from_str(&config.service_address().unwrap())
+        RouterAddress::worker_router_address_from_str("01242020")
             .expect("failed to create worker address for kex"),
         router_tx,
         config.clone(),

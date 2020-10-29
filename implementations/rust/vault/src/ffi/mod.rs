@@ -1,7 +1,7 @@
 use crate::types::*;
 use crate::types::{PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext};
-use crate::{error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, DynVault};
-use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr, IntoFfi};
+use crate::{error::*, ffi::types::*, software::DefaultVault, DynVault};
+use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
 use std::convert::TryInto;
 
 mod types;
@@ -24,24 +24,6 @@ pub extern "C" fn ockam_vault_default_init(context: &mut u64) -> VaultError {
         vault: Box::new(DefaultVault::default()),
     });
     ERROR_NONE
-}
-
-/// Create a new Ockam file vault and return it
-#[no_mangle]
-pub extern "C" fn ockam_vault_file_init(context: &mut u64, path: FfiStr<'_>) -> VaultError {
-    let mut err = ExternError::success();
-    let path = path.into_string();
-    *context = VAULTS.insert_with_result(&mut err, || {
-        match FilesystemVault::new(std::path::PathBuf::from(path)) {
-            Ok(v) => Ok(BoxVault { vault: Box::new(v) }),
-            Err(_) => Err(ExternError::new_error(ErrorCode::new(1), "")),
-        }
-    });
-    if err == ExternError::success() {
-        ERROR_NONE
-    } else {
-        ERROR
-    }
 }
 
 /// Fill a preallocated buffer with random data.

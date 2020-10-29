@@ -33,6 +33,7 @@ default-members = [
     "node",
     "worker",
     "xeddsa",
+    "c/generate_bindings",
     "c/bindings",
     "c/rust_memory",
 ]

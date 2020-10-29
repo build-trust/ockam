@@ -31,7 +31,7 @@ pub mod message {
     pub trait Codec {
         type Inner;
 
-        fn encode(&self, v: &mut Vec<u8>) -> Result<(), String>;
+        fn encode(t: Self::Inner, v: &mut Vec<u8>) -> Result<(), String>;
         fn decode(s: &[u8]) -> Result<(Self::Inner, &[u8]), String>;
     }
 
@@ -68,12 +68,12 @@ pub mod message {
 
     impl Codec for Message {
         type Inner = Message;
-        fn encode(&self, u: &mut Vec<u8>) -> Result<(), String> {
+        fn encode(msg: Message, u: &mut Vec<u8>) -> Result<(), String> {
             u.push(1);
-            Route::encode(&self.onward_route.clone(), u);
-            Route::encode(&self.return_route.clone(), u);
-            u.push(self.message_type as u8);
-            u.extend(&self.message_body[0..]);
+            Route::encode(msg.onward_route, u);
+            Route::encode(msg.return_route, u);
+            u.push(msg.message_type as u8);
+            u.extend(&msg.message_body[0..]);
             Ok(())
         }
 
@@ -260,24 +260,24 @@ pub mod message {
 
     impl Codec for RouterAddress {
         type Inner = RouterAddress;
-        fn encode(&self, v: &mut Vec<u8>) -> Result<(), String> {
-            v.push(self.a_type as u8);
-            v.push(self.length as u8);
+        fn encode(a: RouterAddress, v: &mut Vec<u8>) -> Result<(), String> {
+            v.push(a.a_type as u8);
+            v.push(a.length as u8);
 
-            match self.a_type {
+            match a.a_type {
                 AddressType::Worker => {
-                    if let Address::WorkerAddress(mut wa) = self.address.clone() {
+                    if let Address::WorkerAddress(mut wa) = a.address {
                         v.append(&mut wa);
                     }
                 }
                 AddressType::Udp => {
-                    if let Address::UdpAddress(sock_addr) = self.address.clone() {
-                        SocketAddr::encode(&sock_addr, v);
+                    if let Address::UdpAddress(sock_addr) = a.address {
+                        SocketAddr::encode(sock_addr, v);
                     }
                 }
                 AddressType::Channel => {
-                    if let Address::ChannelAddress(mut ca) = self.address.clone() {
-                        v.append(&mut ca);
+                    if let Address::ChannelAddress(mut a) = a.address {
+                        v.append(&mut a);
                     }
                 }
                 _ => {}
@@ -337,8 +337,8 @@ pub mod message {
 
     impl Codec for IpAddr {
         type Inner = IpAddr;
-        fn encode(&self, v: &mut Vec<u8>) -> Result<(), String> {
-            match self {
+        fn encode(ip: IpAddr, v: &mut Vec<u8>) -> Result<(), String> {
+            match ip {
                 std::net::IpAddr::V4(ip4) => {
                     v.push(HostAddressType::Ipv4 as u8);
                     v.extend_from_slice(ip4.octets().as_ref());
@@ -364,8 +364,8 @@ pub mod message {
 
     impl Codec for SocketAddr {
         type Inner = SocketAddr;
-        fn encode(&self, v: &mut Vec<u8>) -> Result<(), String> {
-            match self {
+        fn encode(sock: SocketAddr, v: &mut Vec<u8>) -> Result<(), String> {
+            match sock {
                 std::net::SocketAddr::V4(sock4) => {
                     v.push(HostAddressType::Ipv4 as u8);
                     v.extend_from_slice(sock4.ip().octets().as_ref());
@@ -465,13 +465,13 @@ pub mod message {
             }
         }
         pub fn worker_router_address_from_str(a: &str) -> Result<RouterAddress, String> {
-            match hex_vec_from_str(a) {
+            match hex::decode(a) {
                 Ok(h) => Ok(RouterAddress {
                     a_type: AddressType::Worker,
                     length: h.len() as u8,
                     address: Address::WorkerAddress(h),
                 }),
-                Err(_unused) => Err("invalid hex input".to_string()),
+                Err(_unused) => Err("string contains non-hex chars".to_string()),
             }
         }
     }
@@ -497,13 +497,13 @@ pub mod message {
 
     impl Codec for Route {
         type Inner = Route;
-        fn encode(&self, u: &mut Vec<u8>) -> Result<(), String> {
-            if self.addresses.is_empty() {
+        fn encode(route: Route, u: &mut Vec<u8>) -> Result<(), String> {
+            if route.addresses.is_empty() {
                 u.push(0 as u8)
             } else {
-                u.push(self.addresses.len() as u8);
-                for i in 0..self.addresses.len() {
-                    RouterAddress::encode(&self.addresses[i].clone(), u);
+                u.push(route.addresses.len() as u8);
+                for i in 0..route.addresses.len() {
+                    RouterAddress::encode(route.addresses[i].clone(), u);
                 }
             }
             Ok(())
@@ -535,26 +535,27 @@ pub mod message {
     //   make room.
     impl Codec for u16 {
         type Inner = u16;
-        fn encode(&self, u: &mut Vec<u8>) -> Result<(), String> {
-            if self >= &0xC000 {
+        fn encode(ul2: u16, u: &mut Vec<u8>) -> Result<(), String> {
+            if ul2 >= 0xC000 {
                 return Err("Maximum value exceeded".to_string());
             }
-            let mut bytes = self.to_le_bytes();
+            let mut bytes = ul2.to_le_bytes();
 
-            if self < &0x80 {
+            if ul2 < 0x80 {
                 u.push(bytes[0])
             } else {
-                bytes[1] <<= &0x01;
+                bytes[1] <<= 0x01;
                 if 0 != (bytes[0] & 0x80) {
                     bytes[1] |= 0x01;
                 }
-                bytes[0] |= &0x80;
+                bytes[0] |= 0x80;
                 u.push(bytes[0]);
                 u.push(bytes[1])
             }
             Ok(())
         }
-        fn decode(u: &[u8]) -> Result<(Self::Inner, &[u8]), String> {
+
+        fn decode(u: &[u8]) -> Result<(u16, &[u8]), String> {
             let mut bytes = [0, 0];
             let mut i = 1;
 
@@ -606,34 +607,12 @@ pub mod message {
             Ok(())
         }
     }
-
-    pub fn hex_vec_from_str(s: &str) -> Result<Vec<u8>, String> {
-        let mut hex: Vec<u8> = vec![];
-        if s.len() % 2 != 0 {
-            return Err("odd number of input chars".into());
-        }
-        for i in 0..s.len() {
-            if 0 == i % 2 {
-                let s2: &str = &s[i..(i + 2)];
-                match u8::from_str_radix(s2, 16) {
-                    Ok(val) => {
-                        hex.push(val);
-                    }
-                    _ => {
-                        return Err("non-hex characters found in string".into());
-                    }
-                }
-            }
-        }
-        Ok(hex)
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::message::*;
-    use hex::encode;
     use std::net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr};
     use std::str::FromStr;
 
@@ -656,47 +635,13 @@ mod tests {
                 assert!(false);
             }
         }
-        match RouterAddress::worker_router_address_from_str("01242020") {
-            Ok(ra) => {
-                assert_eq!(ra.length, 4);
-                assert_eq!(ra.a_type, AddressType::Worker);
-                match ra.address {
-                    Address::WorkerAddress(wa) => {
-                        assert_eq!(hex::encode(&wa), "01242020");
-                    }
-                    _ => {
-                        assert!(false);
-                    }
-                }
-            }
-            _ => {
-                assert!(false);
-            }
-        }
-        match RouterAddress::worker_router_address_from_str("01242020070707") {
-            Ok(ra) => {
-                assert_eq!(ra.length, 7);
-                assert_eq!(ra.a_type, AddressType::Worker);
-                match ra.address {
-                    Address::WorkerAddress(wa) => {
-                        assert_eq!(wa, vec![1, 36, 32, 32, 7, 7, 7]);
-                    }
-                    _ => {
-                        assert!(false);
-                    }
-                }
-            }
-            _ => {
-                assert!(false);
-            }
-        }
     }
 
     #[test]
     fn ip4_address_codec() {
         let mut v: Vec<u8> = vec![];
         let mut ip4a: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-        IpAddr::encode(&ip4a, &mut v);
+        IpAddr::encode(ip4a, &mut v);
         assert_eq!(v, vec![0, 127, 0, 0, 1]);
         let mut v: Vec<u8> = vec![0, 127, 0, 0, 1];
         match IpAddr::decode(&v) {
@@ -722,7 +667,7 @@ mod tests {
         assert_eq!(udp_address.as_string(), "127.0.0.1:32896");
         router_address.length = router_address.size_of();
         let mut v: Vec<u8> = vec![];
-        RouterAddress::encode(&router_address, &mut v);
+        RouterAddress::encode(router_address, &mut v);
         assert_eq!(v, vec![2, 7, 0, 127, 0, 0, 1, 0x80, 0x80]);
 
         let mut v = vec![2, 7, 0, 127, 0, 0, 1, 0x80, 0x80];
@@ -754,7 +699,7 @@ mod tests {
         let mut router_channel_address =
             RouterAddress::channel_router_address_from_str("00010203").unwrap();
         let mut v: Vec<u8> = vec![];
-        RouterAddress::encode(&router_channel_address, &mut v);
+        RouterAddress::encode(router_channel_address, &mut v);
         assert_eq!(v, vec![129, 4, 0, 1, 2, 3]);
 
         let mut v = vec![129, 4, 3, 2, 1, 0];
@@ -808,7 +753,7 @@ mod tests {
         route.addresses.push(router_address);
 
         let mut v: Vec<u8> = vec![];
-        Route::encode(&route, &mut v);
+        Route::encode(route, &mut v);
         assert_eq!(
             v,
             vec![
@@ -893,7 +838,7 @@ mod tests {
     fn u16_codec() {
         let mut u: Vec<u8> = vec![];
         let mut n: u16 = 0x7f;
-        u16::encode(&n, &mut u);
+        u16::encode(n, &mut u);
         assert_eq!(u.len(), 1);
         assert_eq!(u[0], 0x7f);
         match u16::decode(&u) {
@@ -906,14 +851,14 @@ mod tests {
 
         let mut too_big: u16 = 0xC000;
         let mut u: Vec<u8> = vec![];
-        match u16::encode(&too_big, &mut u) {
+        match u16::encode(too_big, &mut u) {
             Ok(()) => panic!(),
             Err(s) => {}
         }
 
         let mut n = 0x80;
         let mut u: Vec<u8> = vec![];
-        u16::encode(&n, &mut u);
+        u16::encode(n, &mut u);
         assert_eq!(u.len(), 2);
         assert_eq!(u[0], 0x80);
         assert_eq!(u[1], 0x01);
@@ -927,7 +872,7 @@ mod tests {
 
         let mut n = 0x1300;
         let mut u: Vec<u8> = vec![];
-        u16::encode(&n, &mut u);
+        u16::encode(n, &mut u);
         assert_eq!(u.len(), 2);
         assert_eq!(u[1], 0x13 << 1);
         assert_eq!(u[0], 0x80);
@@ -941,7 +886,7 @@ mod tests {
 
         let mut n = 0x1381;
         let mut u: Vec<u8> = vec![];
-        u16::encode(&n, &mut u);
+        u16::encode(n, &mut u);
         assert_eq!(u.len(), 2);
         assert_eq!(u[1], (0x13 << 1) | 1);
         assert_eq!(u[0], 0x81);
@@ -1025,7 +970,7 @@ mod tests {
             message_body,
         };
         let mut u: Vec<u8> = vec![];
-        Message::encode(&msg, &mut u);
+        Message::encode(msg, &mut u);
         assert_eq!(
             u,
             vec![

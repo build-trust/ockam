@@ -2,14 +2,14 @@ use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::{error::*, software::DefaultVault, types::*, DynVault};
+use ockam_vault::{error::*, software::DefaultVault, types::*, DynVault};
 
 use zeroize::Zeroize;
 
 const ATTRS_BYTE_LENGTH: usize = 6;
 
-/// A FilesystemVault is an implementation of an Ockam Vault that wraps the software vault and uses
-/// the disk as a persistent store.
+/// A Vault that persists keys to the file system in a specified directory.
+/// Each key is in its own file
 #[derive(Debug)]
 pub struct FilesystemVault {
     v: DefaultVault,
@@ -17,7 +17,7 @@ pub struct FilesystemVault {
 }
 
 impl FilesystemVault {
-    /// Creates a new FilesystemVault using the provided path on disk to store secrets.
+    /// Create a new FilesystemVault where keys are stored in `path`
     pub fn new(path: PathBuf) -> std::io::Result<Self> {
         let create_path = path.clone();
         fs::create_dir_all(create_path)?;
@@ -76,7 +76,7 @@ impl FilesystemVault {
 }
 
 fn id_to_path(id: usize) -> PathBuf {
-    format!("{}.key", id.to_string()).into()
+    id.to_string().into()
 }
 
 fn fs_write_secret(
@@ -85,18 +85,15 @@ fn fs_write_secret(
     key: SecretKey,
     attrs: SecretKeyAttributes,
 ) -> Result<(), VaultFailError> {
-    if matches!(attrs.persistence, SecretPersistenceType::Persistent) {
-        return match ctx {
-            SecretKeyContext::Memory(id) => {
-                let mut bytes = attrs.to_bytes().to_vec();
-                bytes.extend_from_slice(key.as_ref());
+    match ctx {
+        SecretKeyContext::Memory(id) => {
+            let mut bytes = attrs.to_bytes().to_vec();
+            bytes.extend_from_slice(key.as_ref());
 
-                Ok(fs::write(path.join(id_to_path(id)), bytes)?)
-            }
-            _ => Err(VaultFailErrorKind::InvalidContext.into()),
-        };
+            Ok(fs::write(path.join(id_to_path(id)), bytes)?)
+        }
+        _ => Err(VaultFailErrorKind::InvalidContext.into()),
     }
-    return Ok(());
 }
 
 impl DynVault for FilesystemVault {

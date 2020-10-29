@@ -194,27 +194,6 @@ static ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
     return ok(env, vault_handle);
 }
 
-static ERL_NIF_TERM file_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (1 != argc) {
-        return enif_make_badarg(env);
-    }
-
-    ockam_vault_t vault;
-
-    ErlNifBinary file;
-    if (0 == enif_inspect_binary(env, argv[0], &file)) {
-        return enif_make_badarg(env);
-    }
-
-    if (0 != ockam_vault_file_init(&vault, file.data)) {
-        return err(env, "failed to create vault connection");
-    }
-
-    ERL_NIF_TERM vault_handle = enif_make_uint64(env, vault);
-
-    return ok(env, vault_handle);
-}
-
 static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (2 != argc) {
         return enif_make_badarg(env);
@@ -666,7 +645,6 @@ static ERL_NIF_TERM deinit(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
 static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
-  {"file_init", 1, file_init},
   {"random_bytes", 2, random_bytes},
   {"sha256", 2, sha256},
   {"secret_generate", 2, secret_generate},

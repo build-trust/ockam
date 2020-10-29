@@ -67,7 +67,7 @@ pub mod transport {
                         // m.onward_route.print_route();
                         // m.return_route.print_route();
                         // println!("message type: {:?}", m.message_type);
-                        Message::encode(&m, &mut v);
+                        Message::encode(m, &mut v);
                         match self
                             .socket
                             .send_to(v.as_slice(), remote_address.address.as_string())
