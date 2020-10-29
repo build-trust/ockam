@@ -99,7 +99,7 @@ pub struct Args {
 
     #[structopt(
         long,
-        help = r#"Pre-defined configuration for an official Ockam Add-on, e.g. "influx,http://localhost:8086""#
+        help = r#"Pre-defined configuration for an official Ockam Add-on, e.g. "influxdb,database_name,http://localhost:8086""#
     )]
     addon: Option<Addon>,
 

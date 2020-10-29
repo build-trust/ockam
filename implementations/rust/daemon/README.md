@@ -33,24 +33,27 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-        --identity-name <identity-name>
-            Name of the private key to use for the identity of the channel initiator
+    --addon <addon>
+        Pre-defined configuration for an official Ockam Add-on, e.g. "influx,http://localhost:8086"
 
-        --input <input>                              Data source providing input to `ockamd` [default: stdin]
-        --local-socket <local-socket>                Local node address and port to bind [default: 127.0.0.1:0]
-        --role <role>
-            Start `ockamd` as an "initiator" or a "responder" of a secure channel [default: initiator]
+    --identity-name <identity-name>
+        Name of the private key to use for the identity of the channel initiator [default: 1.key]
 
-        --route <route>
-            Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout"
-            [default: stdout]
-        --service-address <service-address>          Address used to reach the service on remote machine
-        --service-public-key <service-public-key>    The public key provided by the remote service
-        --vault <vault>
-            Specify which type of Ockam vault to use for this instance of `ockamd` [default: FILESYSTEM]
+    --input <input>                              Data source providing input to `ockamd` [default: stdin]
+    --local-socket <local-socket>                Local node address and port to bind [default: 127.0.0.1:0]
+    --role <role>
+        Start `ockamd` as an "initiator" or a "responder" of a secure channel [default: initiator]
 
-        --vault-path <vault-path>
-            Filepath on disk to pre-existing private keys to be used by the filesystem vault [default: ockamd_vault]
+    --route <route>
+        Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout"
+        [default: stdout]
+    --service-address <service-address>          Address used to reach the service on remote machine
+    --service-public-key <service-public-key>    The public key provided by the remote service
+    --vault <vault>
+        Specify which type of Ockam vault to use for this instance of `ockamd` [default: FILESYSTEM]
+
+    --vault-path <vault-path>
+        Filepath on disk to pre-existing private keys to be used by the filesystem vault [default: ockamd_vault]
 ```
 
 
