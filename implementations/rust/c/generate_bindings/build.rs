@@ -38,7 +38,14 @@ fn main() -> Result<(), String> {
         .build();
 
     let mut include_dirs = Vec::<String>::new();
-    let modules = vec!["error", "mutex", "memory", "vault", "vault/atecc608a"];
+    let modules = vec![
+        "error",
+        "log",
+        "mutex",
+        "memory",
+        "vault",
+        "vault/atecc608a",
+    ];
 
     let include_root_dir = ockam_vault_output.join("build").join("ockam");
 

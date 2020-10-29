@@ -25,7 +25,7 @@ ockam_error_t xx_test_responder_prologue(xx_key_exchange_ctx_t* xx)
                                                         OCKAM_VAULT_SECRET_EPHEMERAL };
   uint8_t                         key[PRIVATE_KEY_SIZE];
   size_t                          key_bytes;
-  uint8_t                         ck[SYMMETRIC_KEY_SIZE];
+  uint8_t                         ck[SHA256_SIZE];
 
   // 1. Pick a static 25519 keypair for this xx and set it to s
   string_to_hex((uint8_t*) RESPONDER_STATIC, key, &key_bytes);

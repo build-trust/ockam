@@ -48,6 +48,7 @@ trait KeyExchange {
         &mut self,
         secret_handle: &Box<dyn Secret>,
         public_key: PublicKey,
+        is_last: bool,
     ) -> Result<(), VaultFailError>;
     /// mix hash step in Noise protocol
     fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError>;
@@ -127,14 +128,20 @@ pub mod xx;
 mod tests {
     use super::*;
     use crate::xx::XXNewKeyExchanger;
+    use ockam_vault::c::{Atecc608aVaultBuilder, CVault};
     use ockam_vault::software::DefaultVault;
-    use ockam_vault::Vault;
+    use ockam_vault::DynVault;
     use std::sync::{Arc, Mutex};
+
+    fn create_initiator_vault() -> CVault {
+        let builder = Atecc608aVaultBuilder::default();
+        builder.build().unwrap()
+    }
 
     #[allow(non_snake_case)]
     #[test]
     fn full_flow__correct_credentials__keys_should_match() {
-        let vault_initiator = Arc::new(Mutex::new(DefaultVault::default()));
+        let vault_initiator = Arc::new(Mutex::new(create_initiator_vault()));
         let vault_responder = Arc::new(Mutex::new(DefaultVault::default()));
         let key_exchanger = XXNewKeyExchanger::new(
             CipherSuite::P256Aes128GcmSha256,
@@ -162,14 +169,31 @@ mod tests {
 
         assert_eq!(initiator.h, responder.h);
 
-        let s1 = vault_in.secret_export(&initiator.encrypt_key).unwrap();
-        let s2 = vault_re.secret_export(&responder.decrypt_key).unwrap();
+        let mut nonce = [0u8; 12];
+        nonce[10] = 2;
+        nonce[11] = 3;
 
-        assert_eq!(s1, s2);
+        let mut text1 = [0u8; 32];
+        vault_in.random(&mut text1).unwrap();
 
-        let s1 = vault_in.secret_export(&initiator.decrypt_key).unwrap();
-        let s2 = vault_re.secret_export(&responder.encrypt_key).unwrap();
+        let mut text2 = [0u8; 32];
+        vault_re.random(&mut text2).unwrap();
 
-        assert_eq!(s1, s2);
+        let cipher_text1 = vault_in
+            .aead_aes_gcm_encrypt(&initiator.encrypt_key, &text1, &nonce, &[])
+            .unwrap();
+        let cipher_text2 = vault_re
+            .aead_aes_gcm_encrypt(&responder.encrypt_key, &text2, &nonce, &[])
+            .unwrap();
+
+        let plain_text2 = vault_in
+            .aead_aes_gcm_decrypt(&initiator.decrypt_key, &cipher_text2, &nonce, &[])
+            .unwrap();
+        let plain_text1 = vault_re
+            .aead_aes_gcm_decrypt(&responder.decrypt_key, &cipher_text1, &nonce, &[])
+            .unwrap();
+
+        assert_eq!(&text1[..], plain_text1.as_slice());
+        assert_eq!(&text2[..], plain_text2.as_slice());
     }
 }
