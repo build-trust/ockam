@@ -97,6 +97,12 @@ pub struct Args {
     )]
     service_address: Option<String>,
 
+    #[structopt(
+        long,
+        help = r#"Pre-defined configuration for an official Ockam Add-on, e.g. "influx,http://localhost:8086""#
+    )]
+    addon: Option<Addon>,
+
     // TODO: expose `control` and `control_port` once runtime configuration is needed.
     #[structopt(
         short,
@@ -130,6 +136,7 @@ impl Default for Args {
             service_address: None,
             identity_name: format!("1{}", FILENAME_KEY_SUFFIX),
             service_public_key: None,
+            addon: None,
         }
     }
 }
@@ -180,6 +187,36 @@ impl Args {
 
     pub fn identity_name(&self) -> String {
         self.identity_name.clone()
+    }
+
+    pub fn addon(&self) -> Option<Addon> {
+        self.addon.clone()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Addon {
+    InfluxDb(Url, String),
+}
+
+impl FromStr for Addon {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.split(',').collect::<Vec<&str>>().as_slice() {
+            ["influx", dbname_url @ ..] => {
+                if dbname_url.len() != 2 {
+                    return Err("bad configuration: influx addon needs db and url".into());
+                }
+
+                if let Ok(u) = Url::parse(dbname_url[1]) {
+                    Ok(Addon::InfluxDb(u, dbname_url[0].into()))
+                } else {
+                    Err("expected valid URL".into())
+                }
+            }
+            _ => Err(format!("couldn't parse: {}", s)),
+        }
     }
 }
 

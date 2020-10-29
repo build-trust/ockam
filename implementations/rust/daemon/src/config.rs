@@ -17,6 +17,11 @@ pub enum Input {
 }
 
 #[derive(Debug, Clone)]
+pub enum AddonKind {
+    InfluxDb(url::Url, String),
+}
+
+#[derive(Debug, Clone)]
 pub struct Config {
     onward_route: Option<Route>,
     output_to_stdout: bool,
@@ -27,6 +32,13 @@ pub struct Config {
     remote_public_key: Option<String>,
     service_address: Option<String>,
     identity_name: String,
+    addon: Option<AddonKind>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        cli::Args::default().into()
+    }
 }
 
 impl Config {
@@ -61,6 +73,10 @@ impl Config {
     pub fn identity_name(&self) -> String {
         self.identity_name.clone()
     }
+
+    pub fn addon(&self) -> Option<AddonKind> {
+        self.addon.clone()
+    }
 }
 
 impl From<cli::Args> for Config {
@@ -75,6 +91,13 @@ impl From<cli::Args> for Config {
             remote_public_key: args.service_public_key(),
             service_address: args.service_address(),
             identity_name: args.identity_name(),
+            addon: if let Some(a) = args.addon() {
+                match a {
+                    cli::Addon::InfluxDb(u, db) => Some(AddonKind::InfluxDb(u, db)),
+                }
+            } else {
+                None
+            },
         };
 
         match args.output_kind() {
