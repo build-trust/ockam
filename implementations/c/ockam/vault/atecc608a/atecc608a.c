@@ -93,7 +93,7 @@ typedef struct {            /*!< Byte(s): Description                           
  * @brief EEPROM slot configuration data
  */
 typedef struct {
-  ockam_vault_secret_t* secret;
+  bool                  taken;
   uint8_t               feat;
   uint8_t               req_random;
   uint8_t               write_key;
@@ -172,19 +172,19 @@ ockam_error_t vault_atecc608a_secret_import(ockam_vault_t*                      
                                             size_t                                 input_length);
 
 ockam_error_t vault_atecc608a_secret_export(ockam_vault_t*        vault,
-                                            ockam_vault_secret_t* secret,
+                                            const ockam_vault_secret_t* secret,
                                             uint8_t*              output_buffer,
                                             size_t                output_buffer_size,
                                             size_t*               output_buffer_length);
 
 ockam_error_t vault_atecc608a_secret_publickey_get(ockam_vault_t*        vault,
-                                                   ockam_vault_secret_t* secret,
+                                                   const ockam_vault_secret_t* secret,
                                                    uint8_t*              output_buffer,
                                                    size_t                output_buffer_size,
                                                    size_t*               output_buffer_length);
 
 ockam_error_t vault_atecc608a_secret_attributes_get(ockam_vault_t*                   vault,
-                                                    ockam_vault_secret_t*            secret,
+                                                    const ockam_vault_secret_t*            secret,
                                                     ockam_vault_secret_attributes_t* attributes);
 
 ockam_error_t vault_atecc608a_secret_type_set(ockam_vault_t*            vault,
@@ -194,19 +194,19 @@ ockam_error_t vault_atecc608a_secret_type_set(ockam_vault_t*            vault,
 ockam_error_t vault_atecc608a_secret_destroy(ockam_vault_t* vault, ockam_vault_secret_t* secret);
 
 ockam_error_t vault_atecc608a_ecdh(ockam_vault_t*        vault,
-                                   ockam_vault_secret_t* privatekey,
+                                   const ockam_vault_secret_t* privatekey,
                                    const uint8_t*        peer_publickey,
                                    size_t                peer_publickey_length,
                                    ockam_vault_secret_t* shared_secret);
 
 ockam_error_t vault_atecc608a_hkdf_sha256(ockam_vault_t*        vault,
-                                          ockam_vault_secret_t* salt,
-                                          ockam_vault_secret_t* input_key_material,
+                                          const ockam_vault_secret_t* salt,
+                                          const ockam_vault_secret_t* input_key_material,
                                           uint8_t               derived_outputs_count,
                                           ockam_vault_secret_t* derived_outputs);
 
 ockam_error_t vault_atecc608a_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
-                                                   ockam_vault_secret_t* key,
+                                                   const ockam_vault_secret_t* key,
                                                    uint16_t              nonce,
                                                    const uint8_t*        additional_data,
                                                    size_t                additional_data_length,
@@ -217,7 +217,7 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
                                                    size_t*               ciphertext_and_tag_length);
 
 ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
-                                                   ockam_vault_secret_t* key,
+                                                   const ockam_vault_secret_t* key,
                                                    uint16_t              nonce,
                                                    const uint8_t*        additional_data,
                                                    size_t                additional_data_length,
@@ -229,7 +229,7 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
 
 ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
                                      int                   encrypt,
-                                     ockam_vault_secret_t* key,
+                                     const ockam_vault_secret_t* key,
                                      uint16_t              nonce,
                                      const uint8_t*        additional_data,
                                      size_t                additional_data_length,
@@ -600,8 +600,7 @@ ockam_error_t vault_atecc608a_secret_generate(ockam_vault_t*                    
       goto exit;
     }
 
-    if((context->slot_config[slot].secret == 0) &&
-       (context->slot_config[slot].feat & VAULT_ATECC608A_SLOT_FEAT_PRIVKEY_GENERATE)) {
+    if(!context->slot_config[slot].taken && (context->slot_config[slot].feat & VAULT_ATECC608A_SLOT_FEAT_PRIVKEY_GENERATE)) {
       break;
     }
   }
@@ -635,10 +634,9 @@ ockam_error_t vault_atecc608a_secret_generate(ockam_vault_t*                    
 
   secret_ctx->slot = slot;
   secret->context  = secret_ctx;
+  context->slot_config[slot].taken = true;
 
   ockam_memory_copy(context->memory, &(secret->attributes), attributes, sizeof(ockam_vault_secret_attributes_t));
-  context->slot_config[slot].secret = secret;
-
 
 exit:
   if(context->mutex) {
@@ -741,8 +739,7 @@ ockam_error_t vault_atecc608a_secret_import(ockam_vault_t*                      
         goto exit;
       }
 
-      if((context->slot_config[slot].secret == 0) &&
-         (context->slot_config[slot].feat & VAULT_ATECC608A_SLOT_FEAT_PRIVKEY_WRITE)) {
+      if(!context->slot_config[slot].taken && (context->slot_config[slot].feat & VAULT_ATECC608A_SLOT_FEAT_PRIVKEY_WRITE)) {
         break;
       }
     }
@@ -782,7 +779,6 @@ ockam_error_t vault_atecc608a_secret_import(ockam_vault_t*                      
   secret->context = secret_ctx;
 
   secret_ctx->slot = slot;
-  context->slot_config[slot].secret = secret;
 
 exit:
 
@@ -810,7 +806,7 @@ exit:
  */
 
 ockam_error_t vault_atecc608a_secret_export(ockam_vault_t*        vault,
-                                            ockam_vault_secret_t* secret,
+                                            const ockam_vault_secret_t* secret,
                                             uint8_t*              output_buffer,
                                             size_t                output_buffer_size,
                                             size_t*               output_buffer_length)
@@ -888,7 +884,7 @@ exit:
  */
 
 ockam_error_t vault_atecc608a_secret_attributes_get(ockam_vault_t*                   vault,
-                                                    ockam_vault_secret_t*            secret,
+                                                    const ockam_vault_secret_t*            secret,
                                                     ockam_vault_secret_attributes_t* attributes)
 {
   ockam_error_t              error   = ockam_vault_atecc608a_error_none;
@@ -979,7 +975,7 @@ ockam_error_t vault_atecc608a_secret_destroy(ockam_vault_t* vault, ockam_vault_s
  */
 
 ockam_error_t vault_atecc608a_secret_publickey_get(ockam_vault_t*        vault,
-                                                   ockam_vault_secret_t* secret,
+                                                   const ockam_vault_secret_t* secret,
                                                    uint8_t*              output_buffer,
                                                    size_t                output_buffer_size,
                                                    size_t*               output_buffer_length)
@@ -1053,7 +1049,7 @@ exit:
  */
 
 ockam_error_t vault_atecc608a_ecdh(ockam_vault_t*        vault,
-                                   ockam_vault_secret_t* privatekey,
+                                   const ockam_vault_secret_t* privatekey,
                                    const uint8_t*        peer_publickey,
                                    size_t                peer_publickey_length,
                                    ockam_vault_secret_t* shared_secret)
@@ -1167,8 +1163,8 @@ exit:
  */
 
 ockam_error_t vault_atecc608a_hkdf_sha256(ockam_vault_t*        vault,
-                                          ockam_vault_secret_t* salt,
-                                          ockam_vault_secret_t* input_key_material,
+                                          const ockam_vault_secret_t* salt,
+                                          const ockam_vault_secret_t* input_key_material,
                                           uint8_t               derived_outputs_count,
                                           ockam_vault_secret_t* derived_outputs)
 {
@@ -1367,7 +1363,7 @@ exit1:
  */
 
 ockam_error_t vault_atecc608a_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
-                                                   ockam_vault_secret_t* key,
+                                                   const ockam_vault_secret_t* key,
                                                    uint16_t              nonce,
                                                    const uint8_t*        additional_data,
                                                    size_t                additional_data_length,
@@ -1389,7 +1385,7 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
  */
 
 ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
-                                                   ockam_vault_secret_t* key,
+                                                   const ockam_vault_secret_t* key,
                                                    uint16_t              nonce,
                                                    const uint8_t*        additional_data,
                                                    size_t                additional_data_length,
@@ -1418,7 +1414,7 @@ ockam_error_t vault_atecc608a_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
 
 ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
                                      int                   encrypt,
-                                     ockam_vault_secret_t* key,
+                                     const ockam_vault_secret_t* key,
                                      uint16_t              nonce,
                                      const uint8_t*        additional_data,
                                      size_t                additional_data_length,

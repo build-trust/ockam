@@ -121,7 +121,6 @@ impl KeyExchange for SymmetricState {
     /// Create a new `HandshakeState` starting with the prologue
     fn prologue(&mut self) -> Result<(), VaultFailError> {
         let secret_key_type = self.get_secret_key_type();
-
         let mut attributes = SecretKeyAttributes {
             xtype: secret_key_type,
             purpose: SecretPurposeType::KeyAgreement,
@@ -162,11 +161,11 @@ impl KeyExchange for SymmetricState {
         let mut h = [0u8; SHA256_SIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
         let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(SHA256_SIZE),
+            xtype: SecretKeyType::ChainKey,
             persistence: SecretPersistenceType::Ephemeral,
             purpose: SecretPurposeType::KeyAgreement,
         };
-        self.ck = Some(vault.secret_import(&SecretKey::Buffer(h.to_vec()), attributes)?);
+        self.ck = Some(vault.secret_import(&SecretKey::ChainKey(h), attributes)?);
         self.h = Some(vault.sha256(&h)?);
 
         Ok(())
@@ -177,6 +176,7 @@ impl KeyExchange for SymmetricState {
         &mut self,
         secret_handle: &Box<dyn Secret>,
         public_key: PublicKey,
+        is_last: bool,
     ) -> Result<(), VaultFailError> {
         let ck = self
             .ck
@@ -186,8 +186,12 @@ impl KeyExchange for SymmetricState {
         let mut vault = self.vault.lock().unwrap();
 
         let attributes_ck = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(SHA256_SIZE),
-            purpose: SecretPurposeType::KeyAgreement,
+            xtype: SecretKeyType::ChainKey,
+            purpose: if is_last {
+                SecretPurposeType::Epilogue
+            } else {
+                SecretPurposeType::KeyAgreement
+            },
             persistence: SecretPersistenceType::Ephemeral,
         };
 
@@ -195,7 +199,11 @@ impl KeyExchange for SymmetricState {
 
         let attributes_k = SecretKeyAttributes {
             xtype: symmetric_key_type,
-            purpose: SecretPurposeType::KeyAgreement,
+            purpose: if is_last {
+                SecretPurposeType::Epilogue
+            } else {
+                SecretPurposeType::KeyAgreement
+            },
             persistence: SecretPersistenceType::Ephemeral,
         };
 
@@ -406,11 +414,11 @@ impl Initiator {
         t.remote_ephemeral_public_key = Some(re);
 
         t.mix_hash(&re)?;
-        t.dh(ephemeral_secret_handle, re)?;
+        t.dh(ephemeral_secret_handle, re, false)?;
         let rs = t.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
         let rs = t.create_public_key(&rs)?;
         t.remote_static_public_key = Some(rs);
-        t.dh(ephemeral_secret_handle, rs)?;
+        t.dh(ephemeral_secret_handle, rs, false)?;
 
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         let payload = t.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
@@ -437,7 +445,7 @@ impl Initiator {
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
         let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public)?;
-        t.dh(&static_secret, remote_ephemeral_public_key)?;
+        t.dh(&static_secret, remote_ephemeral_public_key, true)?;
         t.identity_key = Some(static_secret);
         let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
         encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
@@ -501,10 +509,11 @@ impl Responder {
         t.dh(
             &ephemeral_key_pair.secret_handle,
             remote_ephemeral_public_key,
+            false,
         )?;
 
         let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public)?;
-        t.dh(&static_secret, remote_ephemeral_public_key)?;
+        t.dh(&static_secret, remote_ephemeral_public_key, false)?;
         t.remote_ephemeral_public_key = Some(remote_ephemeral_public_key);
         t.identity_key = Some(static_secret);
         let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
@@ -535,7 +544,7 @@ impl Responder {
 
         let rs = t.decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])?;
         let rs = t.create_public_key(&rs)?;
-        t.dh(&ephemeral_key_pair.secret_handle, rs)?;
+        t.dh(&ephemeral_key_pair.secret_handle, rs, true)?;
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         let payload = t.decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
         t.remote_static_public_key = Some(rs);
@@ -587,8 +596,8 @@ pub struct XXInitiator {
 /// Represents an XX NewKeyExchanger
 pub struct XXNewKeyExchanger {
     cipher_suite: CipherSuite,
-    vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
-    vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+    vault_initiator: Arc<Mutex<dyn DynVault>>,
+    vault_responder: Arc<Mutex<dyn DynVault>>,
 }
 
 impl std::fmt::Debug for XXNewKeyExchanger {
@@ -601,8 +610,8 @@ impl XXNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
     pub fn new(
         cipher_suite: CipherSuite,
-        vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
-        vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+        vault_initiator: Arc<Mutex<dyn DynVault>>,
+        vault_responder: Arc<Mutex<dyn DynVault>>,
     ) -> Self {
         Self {
             cipher_suite,
@@ -746,9 +755,7 @@ mod tests {
         let ck = vault.secret_export(&state.ck.unwrap()).unwrap();
 
         match &ck {
-            SecretKey::Buffer(vec) => {
-                assert_eq!(vec.as_slice(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0")
-            }
+            SecretKey::ChainKey(arr) => assert_eq!(arr, b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"),
             _ => panic!(),
         }
 

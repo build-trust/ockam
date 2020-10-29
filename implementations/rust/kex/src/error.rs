@@ -73,6 +73,7 @@ impl From<KexExchangeFailError> for KeyExchangeFailErrorKind {
 impl From<VaultFailError> for KexExchangeFailError {
     fn from(err: VaultFailError) -> Self {
         let err: VaultFailErrorKind = err.into();
+        // FIXME
         match err {
             VaultFailErrorKind::InvalidParam(p) => KeyExchangeFailErrorKind::InvalidParam(p).into(),
             _ => KeyExchangeFailErrorKind::MethodCalledOutOfSequence {

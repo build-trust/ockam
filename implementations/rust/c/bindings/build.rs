@@ -58,6 +58,12 @@ fn main() {
 
     println!(
         "cargo:rustc-link-search=native={}",
+        ockam_vault_output.join("build/ockam/log").display()
+    );
+    println!("cargo:rustc-link-lib=static=ockam_log");
+
+    println!(
+        "cargo:rustc-link-search=native={}",
         ockam_vault_output.join("build/ockam/vault").display()
     );
     println!("cargo:rustc-link-lib=static=ockam_vault");
@@ -77,7 +83,7 @@ fn main() {
     println!(
         "cargo:rustc-link-search=native={}",
         ockam_vault_output
-            .join("build/_deps/cryptoauthlib-build/lib")
+            .join("build/_deps/cryptoauth-build/lib")
             .display()
     );
     println!("cargo:rustc-link-lib=static=cryptoauth");

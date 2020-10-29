@@ -1,13 +1,42 @@
 use crate::error::{VaultFailError, VaultFailErrorKind};
 use crate::types::{
-    PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext, SecretKeyType,
-    SecretPersistenceType, SecretPurposeType,
+    PublicKey, SecretKey, SecretKeyAttributes, SecretKeyType, SecretPersistenceType,
+    SecretPurposeType,
 };
-use crate::Vault;
+use crate::{Secret, Vault};
 use c_bindings::*;
 use c_rust_memory::RustAlloc;
+use failure::_core::any::Any;
 use std::ffi::CStr;
 use zeroize::Zeroize;
+
+/// C vault secret
+#[derive(Debug)]
+pub struct CVaultSecret {
+    handle: ockam_vault_secret_t,
+}
+
+// FIXME
+unsafe impl Send for CVaultSecret {}
+
+// FIXME
+unsafe impl Sync for CVaultSecret {}
+
+impl Drop for CVaultSecret {
+    fn drop(&mut self) {
+        // FIXME
+    }
+}
+
+impl Secret for CVaultSecret {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 /// Builder
 #[derive(Debug)]
@@ -24,8 +53,7 @@ impl Atecc608aVaultBuilder {
     pub fn build(self) -> Result<CVault, VaultFailError> {
         let mut c_vault = ockam_vault_t {
             dispatch: std::ptr::null_mut(),
-            default_context: std::ptr::null_mut(),
-            impl_context: std::ptr::null_mut(),
+            context: std::ptr::null_mut(),
         };
 
         let memory = RustAlloc::new();
@@ -84,6 +112,12 @@ pub struct CVault {
     context: ockam_vault_t,
 }
 
+impl Drop for CVault {
+    fn drop(&mut self) {
+        // FIXME
+    }
+}
+
 impl CVault {
     fn new(vault: ockam_vault_t) -> Self {
         CVault { context: vault }
@@ -93,15 +127,25 @@ impl CVault {
         if ockam_error_is_none(&error) {
             Ok(())
         } else {
+            let str = unsafe { CStr::from_ptr(error.domain) };
+            println!("ERROR: {:?}, {}", str, error.code);
             Err(error.into())
         }
     }
 
-    fn extract_handle(context: SecretKeyContext) -> Result<ockam_vault_secret_t, VaultFailError> {
-        if let SecretKeyContext::CHandle { handle } = context {
-            Ok(handle)
-        } else {
-            Err(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+    fn cast_secret(context: &Box<dyn Secret>) -> Result<&ockam_vault_secret_t, VaultFailError> {
+        match context.as_any().downcast_ref::<CVaultSecret>() {
+            Some(secret) => Ok(&secret.handle),
+            None => panic!(), //FIXME,
+        }
+    }
+
+    fn cast_secret_consume(
+        context: Box<dyn Secret>,
+    ) -> Result<ockam_vault_secret_t, VaultFailError> {
+        match context.as_any().downcast_ref::<CVaultSecret>() {
+            Some(secret) => Ok(secret.handle),
+            None => panic!(), //FIXME,
         }
     }
 
@@ -138,6 +182,7 @@ impl From<ockam_vault_secret_type_t> for SecretKeyType {
             ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY => {
                 Self::Curve25519
             }
+            ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY => SecretKeyType::ChainKey,
             ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_BUFFER => Self::Buffer(0), // FIXME
         }
     }
@@ -153,6 +198,7 @@ impl Into<ockam_vault_secret_type_t> for SecretKeyType {
                 ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY
             }
             Self::Buffer(_) => ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_BUFFER, // FIXME
+            Self::ChainKey => ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY,
         }
     }
 }
@@ -163,6 +209,7 @@ impl From<ockam_vault_secret_purpose_t> for SecretPurposeType {
             ockam_vault_secret_purpose_t::OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT => {
                 Self::KeyAgreement
             }
+            ockam_vault_secret_purpose_t::OCKAM_VAULT_SECRET_PURPOSE_EPILOGUE => Self::Epilogue,
         }
     }
 }
@@ -173,6 +220,7 @@ impl Into<ockam_vault_secret_purpose_t> for SecretPurposeType {
             Self::KeyAgreement => {
                 ockam_vault_secret_purpose_t::OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT
             }
+            Self::Epilogue => ockam_vault_secret_purpose_t::OCKAM_VAULT_SECRET_PURPOSE_EPILOGUE,
         }
     }
 }
@@ -207,8 +255,19 @@ impl From<ockam_vault_secret_attributes_t> for SecretKeyAttributes {
 
 impl Into<ockam_vault_secret_attributes_t> for SecretKeyAttributes {
     fn into(self) -> ockam_vault_secret_attributes_t {
+        let length = match self.xtype {
+            SecretKeyType::ChainKey => 32,
+            SecretKeyType::Aes128 => 16,
+            SecretKeyType::P256 => 32,
+            SecretKeyType::Buffer(len) => len as u16,
+            _ => {
+                println!("TYPE: {:?}", self.xtype);
+                panic!()
+            }
+        };
+
         ockam_vault_secret_attributes_t {
-            length: 0, //FIXME
+            length,
             type_: self.xtype.into(),
             purpose: self.purpose.into(),
             persistence: self.persistence.into(),
@@ -256,7 +315,7 @@ impl Vault for CVault {
     fn secret_generate(
         &mut self,
         attributes: SecretKeyAttributes,
-    ) -> Result<SecretKeyContext, VaultFailError> {
+    ) -> Result<Box<dyn Secret>, VaultFailError> {
         let mut handle = ockam_vault_secret_t::default();
 
         let error = unsafe {
@@ -264,20 +323,21 @@ impl Vault for CVault {
         };
         Self::handle_error(error)?;
 
-        Ok(SecretKeyContext::CHandle { handle })
+        Ok(Box::new(CVaultSecret { handle }))
     }
 
     fn secret_import(
         &mut self,
         secret: &SecretKey,
         attributes: SecretKeyAttributes,
-    ) -> Result<SecretKeyContext, VaultFailError> {
+    ) -> Result<Box<dyn Secret>, VaultFailError> {
         let slice = match secret {
             SecretKey::P256(arr) => &arr[..],
             SecretKey::Curve25519(arr) => &arr[..],
             SecretKey::Buffer(vec) => &vec[..],
             SecretKey::Aes128(arr) => &arr[..],
             SecretKey::Aes256(arr) => &arr[..],
+            SecretKey::ChainKey(arr) => &arr[..],
         };
 
         let ptr = slice.as_ptr();
@@ -290,11 +350,11 @@ impl Vault for CVault {
         };
         Self::handle_error(error)?;
 
-        Ok(SecretKeyContext::CHandle { handle })
+        Ok(Box::new(CVaultSecret { handle }))
     }
 
-    fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
-        let mut handle = Self::extract_handle(context)?;
+    fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError> {
+        let handle = Self::cast_secret(context)?;
 
         const MAX_SECRET_SIZE: usize = 65;
 
@@ -305,7 +365,7 @@ impl Vault for CVault {
         let error = unsafe {
             ockam_vault_secret_export(
                 &mut self.context,
-                &mut handle,
+                handle,
                 output_ptr,
                 MAX_SECRET_SIZE,
                 &mut output_size,
@@ -343,18 +403,19 @@ impl Vault for CVault {
                 res.resize(output_size, 0);
                 Ok(SecretKey::Buffer(res))
             }
+            ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_CHAIN_KEY => panic!(),
         }
     }
 
     fn secret_attributes_get(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
     ) -> Result<SecretKeyAttributes, VaultFailError> {
-        let mut handle = Self::extract_handle(context)?;
+        let handle = Self::cast_secret(context)?;
         let mut attributes = ockam_vault_secret_attributes_t::default();
 
         let error = unsafe {
-            ockam_vault_secret_attributes_get(&mut self.context, &mut handle, &mut attributes)
+            ockam_vault_secret_attributes_get(&mut self.context, handle, &mut attributes)
         };
         Self::handle_error(error)?;
 
@@ -363,9 +424,9 @@ impl Vault for CVault {
 
     fn secret_public_key_get(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
     ) -> Result<PublicKey, VaultFailError> {
-        let mut handle = Self::extract_handle(context)?;
+        let handle = Self::cast_secret(context)?;
 
         match handle.attributes.type_ {
             ockam_vault_secret_type_t::OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY
@@ -381,7 +442,7 @@ impl Vault for CVault {
         let error = unsafe {
             ockam_vault_secret_publickey_get(
                 &mut self.context,
-                &mut handle,
+                handle,
                 output_ptr,
                 MAX_PUBLIC_KEY_SIZE,
                 &mut output_size,
@@ -406,8 +467,8 @@ impl Vault for CVault {
         }
     }
 
-    fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError> {
-        let mut handle = Self::extract_handle(context)?;
+    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError> {
+        let mut handle = Self::cast_secret_consume(context)?;
 
         let error = unsafe { ockam_vault_secret_destroy(&mut self.context, &mut handle) };
         Self::handle_error(error)?;
@@ -417,10 +478,10 @@ impl Vault for CVault {
 
     fn ec_diffie_hellman(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         peer_public_key: PublicKey,
-    ) -> Result<SecretKeyContext, VaultFailError> {
-        let mut handle = Self::extract_handle(context)?;
+    ) -> Result<Box<dyn Secret>, VaultFailError> {
+        let handle = Self::cast_secret(context)?;
 
         let slice = match &peer_public_key {
             PublicKey::P256(arr) => &arr[..],
@@ -432,47 +493,51 @@ impl Vault for CVault {
 
         let mut secret = ockam_vault_secret_t::default();
 
-        let error =
-            unsafe { ockam_vault_ecdh(&mut self.context, &mut handle, ptr, len, &mut secret) };
+        let error = unsafe { ockam_vault_ecdh(&mut self.context, handle, ptr, len, &mut secret) };
         Self::handle_error(error)?;
 
-        Ok(SecretKeyContext::CHandle { handle })
+        Ok(Box::new(CVaultSecret { handle: secret }))
     }
 
     fn ec_diffie_hellman_hkdf_sha256(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         peer_public_key: PublicKey,
-        salt: SecretKeyContext,
+        salt: &Box<dyn Secret>,
         info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
-    ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
-        unimplemented!()
+    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
+        let dh = self.ec_diffie_hellman(context, peer_public_key)?;
+        self.hkdf_sha256(salt, info, Some(&dh), output_attributes)
     }
 
     fn hkdf_sha256(
         &mut self,
-        salt: SecretKeyContext,
+        salt: &Box<dyn Secret>,
         info: &[u8],
-        ikm: Option<SecretKeyContext>,
+        ikm: Option<&Box<dyn Secret>>,
         output_attributes: Vec<SecretKeyAttributes>,
-    ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
+    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         // FIXME: info not supported
         // FIXME: only one output supported
-        let mut salt = Self::extract_handle(salt)?;
+        let salt = Self::cast_secret(salt)?;
 
-        let ikm: *mut ockam_vault_secret_t = match ikm {
-            Some(ikm) => &mut Self::extract_handle(ikm)?,
+        let ikm: *const ockam_vault_secret_t = match ikm {
+            Some(ikm) => Self::cast_secret(ikm)?,
             None => std::ptr::null_mut(),
         };
 
         let mut res = Vec::<ockam_vault_secret_t>::new();
         res.resize(output_attributes.len(), ockam_vault_secret_t::default());
 
+        for i in 0..output_attributes.len() {
+            res[i].attributes = output_attributes[i].into();
+        }
+
         let error = unsafe {
             ockam_vault_hkdf_sha256(
                 &mut self.context,
-                &mut salt,
+                salt,
                 ikm,
                 output_attributes.len() as u8,
                 res.as_mut_ptr(),
@@ -482,7 +547,10 @@ impl Vault for CVault {
 
         let res = res
             .iter()
-            .map(|&handle| SecretKeyContext::CHandle { handle })
+            .map(|&handle| {
+                let b: Box<dyn Secret> = Box::new(CVaultSecret { handle });
+                b
+            })
             .collect();
 
         Ok(res)
@@ -490,12 +558,12 @@ impl Vault for CVault {
 
     fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         plaintext: B,
         nonce: C,
         aad: D,
     ) -> Result<Vec<u8>, VaultFailError> {
-        let mut handle = Self::extract_handle(context)?;
+        let handle = Self::cast_secret(context)?;
 
         let aad_ptr = aad.as_ref().as_ptr();
         let aad_len = aad.as_ref().len();
@@ -516,7 +584,7 @@ impl Vault for CVault {
         let error = unsafe {
             ockam_vault_aead_aes_gcm_encrypt(
                 &mut self.context,
-                &mut handle,
+                handle,
                 nonce,
                 aad_ptr,
                 aad_len,
@@ -533,17 +601,19 @@ impl Vault for CVault {
             return Err(VaultFailError::from(VaultFailErrorKind::InvalidSecret));
         }
 
+        unsafe { ciphertext.set_len(output_size) };
+
         Ok(ciphertext)
     }
 
     fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         cipher_text: B,
         nonce: C,
         aad: D,
     ) -> Result<Vec<u8>, VaultFailError> {
-        let mut handle = Self::extract_handle(context)?;
+        let handle = Self::cast_secret(context)?;
 
         let aad_ptr = aad.as_ref().as_ptr();
         let aad_len = aad.as_ref().len();
@@ -568,7 +638,7 @@ impl Vault for CVault {
         let error = unsafe {
             ockam_vault_aead_aes_gcm_decrypt(
                 &mut self.context,
-                &mut handle,
+                handle,
                 nonce,
                 aad_ptr,
                 aad_len,
@@ -585,6 +655,8 @@ impl Vault for CVault {
             return Err(VaultFailError::from(VaultFailErrorKind::InvalidSecret));
         }
 
+        unsafe { plaintext.set_len(output_size) };
+
         Ok(plaintext)
     }
 
@@ -595,7 +667,7 @@ impl Vault for CVault {
 
     fn sign<B: AsRef<[u8]>>(
         &mut self,
-        secret_key: SecretKeyContext,
+        secret_key: &Box<dyn Secret>,
         data: B,
     ) -> Result<[u8; 64], VaultFailError> {
         unimplemented!()
@@ -621,6 +693,8 @@ mod tests {
         let builder = Atecc608aVaultBuilder::default();
         let mut vault = builder.build().unwrap();
 
+        let mut vault = vault.lock().unwrap();
+
         let secret1 = vault
             .secret_generate(SecretKeyAttributes {
                 xtype: SecretKeyType::P256,
@@ -628,7 +702,7 @@ mod tests {
                 purpose: SecretPurposeType::KeyAgreement,
             })
             .unwrap();
-        let public_key1 = vault.secret_public_key_get(secret1).unwrap();
+        let public_key1 = vault.secret_public_key_get(&secret1).unwrap();
 
         let secret2 = vault
             .secret_generate(SecretKeyAttributes {
@@ -637,9 +711,9 @@ mod tests {
                 purpose: SecretPurposeType::KeyAgreement,
             })
             .unwrap();
-        let public_key2 = vault.secret_public_key_get(secret2).unwrap();
+        let public_key2 = vault.secret_public_key_get(&secret2).unwrap();
 
-        let dh = vault.ec_diffie_hellman(secret1, public_key2).unwrap();
+        let dh = vault.ec_diffie_hellman(&secret1, public_key2).unwrap();
 
         let mut salt = [0u8; 32];
         vault.random(&mut salt).unwrap();
@@ -657,11 +731,11 @@ mod tests {
             )
             .unwrap();
 
-        let shared_secret = vault
+        let mut shared_secret = vault
             .hkdf_sha256(
-                salt_secret,
+                &salt_secret,
                 &[],
-                Some(dh),
+                Some(&dh),
                 vec![SecretKeyAttributes {
                     xtype: SecretKeyType::Buffer(16),
                     persistence: SecretPersistenceType::Ephemeral,
@@ -671,7 +745,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(shared_secret.len(), 1);
-        let shared_secret = shared_secret[0];
+        let shared_secret = shared_secret.pop().unwrap();
 
         let mut text = [0u8; 32];
         vault.random(&mut text).unwrap();
@@ -681,7 +755,7 @@ mod tests {
         nonce[11] = 3;
 
         let ciphertext = vault
-            .aead_aes_gcm_encrypt(shared_secret, &text, &nonce, &[])
+            .aead_aes_gcm_encrypt(&shared_secret, &text, &nonce, &[])
             .unwrap();
 
         // TODO:
