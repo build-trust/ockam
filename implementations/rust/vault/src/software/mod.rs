@@ -31,6 +31,10 @@ impl Secret for DefaultVaultSecret {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 /// A pure rust implementation of a vault.
@@ -94,18 +98,23 @@ impl DefaultVault {
         // FIXME: Doesn't work for secrets with size more than 32 bytes
         let okm_len = output_attributes.len() * 32;
 
-        let okm = match &salt.key {
-            SecretKey::Buffer(salt) => {
-                let mut okm = vec![0u8; okm_len];
-                let prk = hkdf::Hkdf::<Sha256>::new(Some(salt), ikm);
-                prk.expand(info, okm.as_mut_slice())?;
-                Ok(okm)
+        let salt: &[u8] = match &salt.key {
+            SecretKey::Buffer(salt) => salt,
+            SecretKey::ChainKey(salt) => salt,
+            _ => {
+                return Err(VaultFailError::from_msg(
+                    VaultFailErrorKind::HkdfSha256,
+                    "Unknown key type",
+                ))
             }
-            _ => Err(VaultFailError::from_msg(
-                VaultFailErrorKind::HkdfSha256,
-                "Unknown key type",
-            )),
-        }?;
+        };
+
+        let okm = {
+            let mut okm = vec![0u8; okm_len];
+            let prk = hkdf::Hkdf::<Sha256>::new(Some(salt), ikm);
+            prk.expand(info, okm.as_mut_slice())?;
+            okm
+        };
 
         let mut secrets = Vec::<Box<dyn Secret>>::new();
         let mut index = 0;
@@ -115,6 +124,7 @@ impl DefaultVault {
                 SecretKeyType::Buffer(size) => {
                     Ok(SecretKey::Buffer(okm[index..index + size].to_vec()))
                 }
+                SecretKeyType::ChainKey => Ok(SecretKey::ChainKey(*array_ref!(okm, index, 32))),
                 SecretKeyType::Aes256 => Ok(SecretKey::Aes256(*array_ref!(okm, index, 32))),
                 SecretKeyType::Aes128 => Ok(SecretKey::Aes128(*array_ref!(okm, index, 16))),
                 _ => Err(VaultFailError::from_msg(
@@ -233,6 +243,7 @@ impl Vault for DefaultVault {
                 rng.fill_bytes(key.as_mut_slice());
                 SecretKey::Buffer(key)
             }
+            SecretKeyType::ChainKey => panic!(),
         };
         self.next_id += 1;
         self.entries.insert(

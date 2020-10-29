@@ -40,7 +40,7 @@ static ockam_log_function_t ockam_log_function = NULL;
 #endif
 
 // Default log level
-static ockam_log_level_t ockam_log_level = OCKAM_LOG_LEVEL_INFO;
+static ockam_log_level_t ockam_log_level = OCKAM_LOG_LEVEL_WARN;
 
 void ockam_log_set_level(ockam_log_level_t level) {
     ockam_log_level = level;

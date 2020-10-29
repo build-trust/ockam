@@ -42,9 +42,9 @@ use zeroize::Zeroize;
 /// Internal macros
 #[macro_use]
 mod macros;
-// #[cfg(feature = "atecc608a")]
+#[cfg(feature = "atecc608a")]
 /// C Vault implementations
-// pub mod c;
+pub mod c;
 /// Represents the errors that occur within a vault
 pub mod error;
 // #[cfg(feature = "ffi")]
@@ -67,6 +67,9 @@ use types::*;
 pub trait Secret: Debug {
     /// As any
     fn as_any(&self) -> &dyn Any;
+
+    /// As mut any
+    fn as_mut_any(&mut self) -> &mut dyn Any;
 }
 
 /// Represents the methods available to a Vault
@@ -252,7 +255,7 @@ pub trait DynVault {
     ) -> Result<(), VaultFailError>;
 }
 
-impl<D: Vault + Send + Sync + 'static> DynVault for D {
+impl<D: Vault + 'static> DynVault for D {
     fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
         Vault::random(self, data)
     }
