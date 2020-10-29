@@ -1,5 +1,7 @@
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
+use crate::config::Config;
+
 use ockam_message::message::{AddressType, Message as OckamMessage, MessageType, RouterAddress};
 use ockam_system::commands::{OckamCommand, RouterCommand, WorkerCommand};
 
@@ -12,10 +14,16 @@ pub struct Worker {
     tx: Sender<OckamCommand>,
     addr: RouterAddress,
     work_fn: WorkFn,
+    config: Config,
 }
 
 impl Worker {
-    pub fn new(addr: RouterAddress, router_tx: Sender<OckamCommand>, work_fn: WorkFn) -> Self {
+    pub fn new(
+        addr: RouterAddress,
+        router_tx: Sender<OckamCommand>,
+        config: Config,
+        work_fn: WorkFn,
+    ) -> Self {
         debug_assert!(matches!(addr.a_type, AddressType::Worker));
 
         let (tx, rx) = mpsc::channel();
@@ -31,12 +39,17 @@ impl Worker {
             rx,
             tx,
             addr,
+            config,
             work_fn,
         }
     }
 
     pub fn sender(&self) -> Sender<OckamCommand> {
         self.tx.clone()
+    }
+
+    pub fn config(&self) -> Config {
+        self.config.clone()
     }
 
     pub fn poll(&self) -> bool {
@@ -77,7 +90,7 @@ impl Worker {
 fn test_ockamd_worker() {
     let addr = RouterAddress::worker_router_address_from_str("01242020").unwrap();
     let (fake_router_tx, fake_router_rx) = mpsc::channel();
-    Worker::new(addr, fake_router_tx, |_, _| {});
+    Worker::new(addr, fake_router_tx, Default::default(), |_, _| {});
 
     assert!(fake_router_rx.recv().is_ok());
 }

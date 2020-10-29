@@ -204,7 +204,7 @@ impl FromStr for Addon {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split(',').collect::<Vec<&str>>().as_slice() {
-            ["influx", dbname_url @ ..] => {
+            ["influxdb", dbname_url @ ..] => {
                 if dbname_url.len() != 2 {
                     return Err("bad configuration: influx addon needs db and url".into());
                 }
@@ -215,7 +215,7 @@ impl FromStr for Addon {
                     Err("expected valid URL".into())
                 }
             }
-            _ => Err(format!("couldn't parse: {}", s)),
+            _ => Err(format!("unknown configuration: {}", s)),
         }
     }
 }
