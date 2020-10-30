@@ -5,7 +5,8 @@ def apps = [
   'ockam',
   'ockam_transport_udp',
   'ockam_vault_software',
-  'ockam_node_web'
+  'ockam_node_web',
+  'ockam_hub'
 ]
 
 def mixTasks = [

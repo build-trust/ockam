@@ -10,6 +10,14 @@ updates:
     schedule:
       interval: "daily"
 
+  # Maintain dependencies for elixir ockam_hub application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_hub"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+
   # Maintain dependencies for elixir ockam_node_web application
   - package-ecosystem: "mix"
     directory: "/implementations/elixir/ockam/ockam_node_web"
