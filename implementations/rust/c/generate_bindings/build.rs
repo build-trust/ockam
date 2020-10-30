@@ -58,7 +58,7 @@ fn main() -> Result<(), String> {
     let cryptoauth_include1 = ockam_vault_output
         .join("build")
         .join("_deps")
-        .join("cryptoauthlib-src")
+        .join("cryptoauth-src")
         .join("lib");
 
     include_dirs.push(String::from(cryptoauth_include1.to_str().unwrap()));
@@ -66,7 +66,7 @@ fn main() -> Result<(), String> {
     let cryptoauth_include2 = ockam_vault_output
         .join("build")
         .join("_deps")
-        .join("cryptoauthlib-build")
+        .join("cryptoauth-build")
         .join("lib");
 
     include_dirs.push(String::from(cryptoauth_include2.to_str().unwrap()));
