@@ -100,7 +100,7 @@ impl<'a> Node<'a> {
             transport_rx,
             transport_tx,
             transport_router_tx,
-            config.local_host().to_string().as_str(),
+            config.local_socket().to_string().as_str(),
         )
         .expect("failed to create udp transport");
 
@@ -128,12 +128,14 @@ impl<'a> Node<'a> {
             )))
             .expect("failed to register worker with router");
 
+        println!("worker registered");
         self.worker = Some(worker);
     }
 
     pub fn run(mut self) {
         match self.worker {
-            Some(worker) => {
+            Some(mut worker) => {
+                println!("will poll worker");
                 while self.router.poll()
                     && self.transport.poll()
                     && worker.poll()

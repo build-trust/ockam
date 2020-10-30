@@ -904,6 +904,15 @@ mod tests {
             Err(s) => panic!(),
         }
 
+        let mut u: Vec<u8> = vec![0x7f, 1, 2, 3];
+        match u16::decode(&u) {
+            Ok((m, v)) => {
+                assert_eq!(v[0], 1);
+                assert_eq!(v.len(), 3);
+            }
+            Err(s) => panic!(),
+        }
+
         let mut too_big: u16 = 0xC000;
         let mut u: Vec<u8> = vec![];
         match u16::encode(&too_big, &mut u) {

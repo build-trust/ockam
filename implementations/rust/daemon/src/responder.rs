@@ -4,7 +4,8 @@ use crate::config::{AddonKind, Config};
 use crate::node::Node;
 use crate::worker::Worker;
 
-use ockam_message::message::RouterAddress;
+use ockam_message::message::{Address, Route, RouterAddress};
+use ockam_system::commands::{ChannelCommand, OckamCommand};
 
 use attohttpc::post;
 
@@ -12,6 +13,26 @@ pub fn run(config: Config) {
     let (mut node, router_tx) = Node::new(&config);
 
     let worker_addr = RouterAddress::worker_router_address_from_str("01242020").unwrap();
+    // kick off secure channel to router, if we have a router address
+    match config.router_socket() {
+        Some(socket) => {
+            let route = Route {
+                addresses: vec![
+                    RouterAddress::from_address(Address::UdpAddress(socket)).unwrap(),
+                    RouterAddress::channel_router_address_from_str("00000000").unwrap(),
+                ],
+            };
+            node.channel_tx
+                .send(OckamCommand::Channel(ChannelCommand::Initiate(
+                    route,
+                    Address::WorkerAddress(hex::decode("01242020").unwrap()),
+                    None,
+                )))
+                .unwrap();
+        }
+        None => {}
+    }
+    
     let worker = Worker::new(worker_addr, router_tx, config.clone(), |w, msg| {
         match w.config().addon() {
             Some(AddonKind::InfluxDb(url, db)) => {

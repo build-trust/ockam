@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use ockam_message::message::{Route, RouterAddress};
+use ockam_message::message::{Address, Route, RouterAddress};
 
 use structopt::{clap::ArgSettings::Hidden, StructOpt};
 use url::Url;
@@ -37,14 +37,20 @@ pub struct Args {
         default_value = "stdout",
         help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout""#
     )]
-    route: OutputKind,
+    sink_route: OutputKind,
 
     #[structopt(
-        long,
-        default_value = DEFAULT_LOCAL_SOCKET,
-        help = "Local node address and port to bind"
+    long,
+    default_value = DEFAULT_LOCAL_SOCKET,
+    help = "Local node address and port to bind"
     )]
     local_socket: SocketAddr,
+
+    #[structopt(long, help = "Router node address and port to bind")]
+    router_socket: Option<SocketAddr>,
+
+    #[structopt(long, help = "Channel address for router to sink hop")]
+    channel_to_sink: Option<String>,
 
     /// Defines the kind of Ockam vault implementation to use.
     #[structopt(
@@ -68,7 +74,7 @@ pub struct Args {
     #[structopt(
         long,
         default_value = "initiator",
-        help = r#"Start `ockamd` as an "initiator" or a "responder" of a secure channel"#
+        help = r#"Start `ockamd` as "initiator", "responder", or "router" of a secure channel"#
     )]
     role: ChannelRole,
 
@@ -127,12 +133,14 @@ impl Default for Args {
             control: false,
             control_port: DEFAULT_CONFIG_PORT,
             input: InputKind::Stdin,
-            route: OutputKind::Stdout,
+            sink_route: OutputKind::Stdout,
             local_socket: SocketAddr::from_str(DEFAULT_LOCAL_SOCKET)
                 .expect("bad default set for local socket"),
+            channel_to_sink: None,
+            router_socket: None,
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
-            role: ChannelRole::Responder,
+            role: ChannelRole::Sink,
             service_address: None,
             identity_name: format!("1{}", FILENAME_KEY_SUFFIX),
             service_public_key: None,
@@ -162,7 +170,7 @@ impl Args {
     }
 
     pub fn output_kind(&self) -> OutputKind {
-        self.route.clone()
+        self.sink_route.clone()
     }
 
     pub fn input_kind(&self) -> InputKind {
@@ -171,6 +179,14 @@ impl Args {
 
     pub fn local_socket(&self) -> SocketAddr {
         self.local_socket
+    }
+
+    pub fn channel_to_sink(&self) -> Option<String> {
+        self.channel_to_sink.clone()
+    }
+
+    pub fn router_socket(&self) -> Option<SocketAddr> {
+        self.router_socket
     }
 
     pub fn vault_path(&self) -> PathBuf {
@@ -241,10 +257,13 @@ impl FromStr for VaultKind {
 pub enum ChannelRole {
     /// The Initiator role expects a channel responder address and a public key to use in order to
     /// communicate with the Responder end of the channel.
-    Initiator,
+    Source,
     /// The Responder role will create a channel responder, and will instruct the program to print
     /// the responder's channel responder address and the public key it's advertising.
-    Responder,
+    Sink,
+    /// The Router role will route messages along the path, and is capable of acting as a responder
+    /// to establish channels for tunneling
+    Router,
 }
 
 impl FromStr for ChannelRole {
@@ -252,8 +271,9 @@ impl FromStr for ChannelRole {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "initiator" | "init" => Ok(ChannelRole::Initiator),
-            "responder" | "resp" => Ok(ChannelRole::Responder),
+            "initiator" | "init" => Ok(ChannelRole::Source),
+            "responder" | "resp" => Ok(ChannelRole::Sink),
+            "router" => Ok(ChannelRole::Router),
             _ => Err("role must be set to either 'initiator' or 'responder'".into()),
         }
     }
