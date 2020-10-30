@@ -9,6 +9,14 @@ def apps = [
   'ockam_hub'
 ]
 
+def buildDirs = []
+def depsDirs = []
+apps.each {
+  def app = it
+  buildDirs << java.nio.file.Paths.get(appsDir, app, '_build').toString()
+  depsDirs << java.nio.file.Paths.get(appsDir, app, 'deps').toString()
+}
+
 def mixTasks = [
   [name: 'clean', dependsOnRust: false, dependsOnDepsGet: false],
   [name: 'deps.get', dependsOnRust: false, dependsOnDepsGet: false],
@@ -56,4 +64,9 @@ mixTasks.each {
     group appsDir
     dependsOn gradleTaskDeps
   }
+}
+
+task veryClean(type: Delete) {
+  delete buildDirs
+  delete depsDirs
 }

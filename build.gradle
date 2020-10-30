@@ -14,3 +14,7 @@ task clean {
 task lint {
     dependsOn gradle.includedBuilds*.task(':lint')
 }
+
+task veryClean {
+  dependsOn gradle.includedBuilds*.task(':veryClean')
+}

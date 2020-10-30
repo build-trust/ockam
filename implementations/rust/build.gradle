@@ -60,3 +60,7 @@ task lint {
 //  dependsOn cargoVersion, cargoFmt, cargoClippy, cargoCheck
   dependsOn cargoVersion, cargoFmt, cargoCheck
 }
+
+task veryClean(type: Delete) {
+  delete 'target'
+}

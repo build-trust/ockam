@@ -289,3 +289,7 @@ task test {
 
 task lint {
 }
+
+task veryClean(type: Delete) {
+  delete buildDir
+}
