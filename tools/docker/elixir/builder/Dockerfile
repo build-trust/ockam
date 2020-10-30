@@ -3,7 +3,7 @@ FROM debian:buster-slim@sha256:1be41347adaee8303bf12114b9edf4af0b35a5e1d9756b3dd
 RUN set -xe; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive \
-    apt-get install --assume-yes --no-install-recommends ca-certificates locales gnupg dirmngr curl make gcc g++ git; \
+    apt-get install --assume-yes --no-install-recommends ca-certificates libssl-dev pkg-config locales gnupg dirmngr curl make gcc g++ git; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*; \
 # setup locale
