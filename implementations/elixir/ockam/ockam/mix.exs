@@ -6,7 +6,7 @@ defmodule Ockam.MixProject do
   @elixir_requirement "~> 1.10"
 
   @ockam_github_repo "https://github.com/ockam-network/ockam"
-  @ockam_github_repo_path "implementations/elixir/applications/ockam"
+  @ockam_github_repo_path "implementations/elixir/ockam/ockam"
 
   def project do
     [
@@ -39,15 +39,16 @@ defmodule Ockam.MixProject do
   def application do
     [
       mod: {Ockam, []},
-      extra_applications: [:logger]
+      extra_applications: [:logger, :gen_state_machine]
     ]
   end
 
   defp deps do
     [
       {:telemetry, "~> 0.4.2"},
-      {:ex_doc, "~> 0.22.2", only: :dev, runtime: false},
-      {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:gen_state_machine, "~> 3.0"},
+      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
+      {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
     ]
   end
