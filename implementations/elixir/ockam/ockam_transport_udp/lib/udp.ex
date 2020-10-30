@@ -5,8 +5,6 @@ defmodule Ockam.Transport.UDP do
 
   use Application
 
-  require Logger
-
   # Called when the Ockam application is started.
   #
   # This function is called when an application is started using
@@ -14,14 +12,12 @@ defmodule Ockam.Transport.UDP do
   #
   @doc false
   def start(_type, _args) do
-    Logger.info("Starting #{__MODULE__}")
-
     # Specifications of child processes that will be started and supervised.
     #
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
     children = [
-      Ockam.Transport.UDP.Server
+      Ockam.Transport.UDP.DynamicSupervisor
     ]
 
     # Start a supervisor with the given children. The supervisor will inturn

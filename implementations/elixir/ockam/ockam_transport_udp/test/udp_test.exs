@@ -3,8 +3,8 @@ defmodule Ockam.Transport.UDP.Tests do
   doctest Ockam
 
   describe "Ockam.Transport.UDP.start/2" do
-    test "Ockam.Transport.UDP.Server is started" do
-      Ockam.Transport.UDP.Server |> find_child |> Process.alive?() |> assert
+    test "Ockam.Transport.UDP.DynamicSupervisor is started" do
+      Ockam.Transport.UDP.DynamicSupervisor |> find_child |> Process.alive?() |> assert
     end
   end
 
