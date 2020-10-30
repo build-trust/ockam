@@ -47,7 +47,7 @@ defmodule Ockam.Wire.Binary.V1 do
   def encode_payload(payload) do
     case Serializable.impl_for(payload) do
       nil ->
-        EncodeError.new({:payload_is_not_serializable, payload})
+        {:error, EncodeError.new({:payload_is_not_serializable, payload})}
 
       _impl ->
         case Serializable.serialize(payload) do
@@ -67,8 +67,10 @@ defmodule Ockam.Wire.Binary.V1 do
           {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
 
   def decode(encoded) do
-    with {:ok, @version, rest} <- decode_version(encoded) do
-      %{payload: rest}
+    with {:ok, @version, rest} <- decode_version(encoded),
+         {:ok, onward_route, rest} <- Route.decode(rest),
+         {:ok, return_route, rest} <- Route.decode(rest) do
+      {:ok, %{onward_route: onward_route, return_route: return_route, payload: rest}}
     end
   end
 

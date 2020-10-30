@@ -1,7 +1,6 @@
 defmodule Ockam.Wire.Binary.V1.Address do
   @moduledoc false
 
-  alias Ockam.Address
   alias Ockam.Serializable
   alias Ockam.Wire.DecodeError
   alias Ockam.Wire.EncodeError
@@ -9,30 +8,32 @@ defmodule Ockam.Wire.Binary.V1.Address do
   require DecodeError
   require EncodeError
 
-  def encode(address) do
-    type = Address.type(address)
-    value = Address.value(address)
+  def encode({_address_type, address}) when is_binary(address) do
+    address
+  end
 
-    case Serializable.impl_for(value) do
+  def encode(address) do
+    case Serializable.impl_for(address) do
       nil ->
-        reason = {:address_value_is_not_serializable, value}
+        reason = {:address_is_not_serializable, address}
         {:error, EncodeError.new(reason)}
 
       _impl ->
-        encode_serializable_address(type, value)
+        encode_serializable_address(address)
     end
   end
 
-  defp encode_serializable_address(type, value) do
-    case Serializable.serialize(value) do
-      {:error, reason} -> {:error, EncodeError.new({reason, value})}
-      serialized -> [<<type::8>>, <<byte_size(serialized)::8>>, serialized]
+  defp encode_serializable_address(address) do
+    case Serializable.serialize(address) do
+      {:error, reason} -> {:error, EncodeError.new({reason, address})}
+      serialized -> serialized
     end
   end
 
   def decode(<<address_type::unsigned-integer-8, length::8, encoded::binary>>) do
     case encoded do
-      <<address::binary-size(length), rest::binary>> ->
+      <<value::binary-size(length), rest::binary>> ->
+        address = <<address_type::unsigned-integer-8, length::8, value::binary-size(length)>>
         {{address_type, address}, rest}
 
       _else ->
