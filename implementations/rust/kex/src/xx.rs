@@ -123,17 +123,19 @@ impl KeyExchange for SymmetricState {
         // 1. Generate a static key pair for this handshake and set it to `s`
         let mut vault = self.vault.lock().unwrap();
         let identity_key = self.identity_key.take();
-        match identity_key {
+        let identity_key = match identity_key {
             None => {
                 let static_secret_handle = vault.secret_generate(attributes)?;
                 self.identity_public_key =
                     Some(vault.secret_public_key_get(&static_secret_handle)?);
-                self.identity_key = Some(Arc::new(static_secret_handle));
+                Arc::new(static_secret_handle)
             }
             Some(ik) => {
                 self.identity_public_key = Some(vault.secret_public_key_get(&ik)?);
+                ik
             }
         };
+        self.identity_key = Some(identity_key);
 
         attributes.persistence = SecretPersistenceType::Ephemeral;
         // 2. Generate an ephemeral key pair for this handshake and set it to e
