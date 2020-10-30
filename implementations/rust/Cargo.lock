@@ -1013,6 +1013,7 @@ name = "ockamd"
 version = "0.1.0"
 dependencies = [
  "attohttpc",
+ "cfg-if 1.0.0",
  "hex",
  "ockam-channel",
  "ockam-common",
