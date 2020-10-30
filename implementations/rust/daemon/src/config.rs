@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::cli;
 
+use crate::cli::VaultKind;
 use ockam_kex::CipherSuite;
 use ockam_message::message::Route;
 
@@ -25,6 +26,7 @@ pub enum AddonKind {
 
 #[derive(Debug, Clone)]
 pub struct Config {
+    vault_kind: VaultKind,
     onward_route: Option<Route>,
     route_hub: Option<SocketAddr>, // TODO: make this a Route so it can be multiple hops.
     output_to_stdout: bool,
@@ -49,6 +51,10 @@ impl Default for Config {
 }
 
 impl Config {
+    pub fn vault_kind(&self) -> VaultKind {
+        self.vault_kind
+    }
+
     pub fn vault_path(&self) -> PathBuf {
         self.vault_path.clone()
     }
@@ -102,13 +108,14 @@ impl Config {
     }
 
     pub fn cipher_suite(&self) -> CipherSuite {
-        self.cipher_suite.clone()
+        self.cipher_suite
     }
 }
 
 impl From<cli::Args> for Config {
     fn from(args: cli::Args) -> Self {
         let mut cfg = Config {
+            vault_kind: args.vault_kind(),
             onward_route: None,
             route_hub: args.route_hub(),
             output_to_stdout: false,

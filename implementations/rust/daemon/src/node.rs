@@ -12,6 +12,7 @@ use crate::source::StdinWorker;
 //     ockam_daemon::initiator::StdinWorker
 // }
 
+use crate::cli::VaultKind;
 use ockam_channel::*;
 use ockam_kex::{
     xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
@@ -266,7 +267,7 @@ fn as_key_ctx(key_name: &str) -> Result<Box<dyn Secret>, String> {
     Err("invalid key name format".into())
 }
 
-fn contains_key(v: &mut dyn DynVault, key_name: &str) -> bool {
+fn contains_key(v: &mut FilesystemVault, key_name: &str) -> bool {
     if let Ok(ctx) = as_key_ctx(key_name) {
         return v.secret_export(&ctx).is_ok();
     }

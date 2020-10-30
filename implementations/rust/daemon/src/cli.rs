@@ -54,6 +54,7 @@ pub struct Args {
 
     /// Defines the kind of Ockam vault implementation to use.
     #[structopt(
+        short = "v",
         long,
         default_value = "FILESYSTEM",
         help = "Specify which type of Ockam vault to use for this instance of `ockamd`"
@@ -205,6 +206,10 @@ impl Args {
     //     self.router_socket
     // }
 
+    pub fn vault_kind(&self) -> VaultKind {
+        self.vault
+    }
+
     pub fn vault_path(&self) -> PathBuf {
         self.vault_path.clone()
     }
@@ -230,7 +235,7 @@ impl Args {
     }
 
     pub fn cipher_suite(&self) -> CipherSuite {
-        self.cipher_suite.clone()
+        self.cipher_suite
     }
 }
 
@@ -261,8 +266,10 @@ impl FromStr for Addon {
 }
 
 /// Specifies the implementation of a Ockam vault to be used.
+#[derive(Debug, Clone, Copy)]
 pub enum VaultKind {
     Filesystem,
+    Atecc,
 }
 
 impl FromStr for VaultKind {
@@ -271,7 +278,10 @@ impl FromStr for VaultKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "FILESYSTEM" => Ok(VaultKind::Filesystem),
-            _ => Err("currently, 'FILESYSTEM' is the only supported vault option".into()),
+            "ATECC" => Ok(VaultKind::Atecc),
+            _ => Err(
+                "currently, 'FILESYSTEM' and 'ATECC' are the only supported vault option".into(),
+            ),
         }
     }
 }
