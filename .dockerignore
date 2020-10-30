@@ -1,4 +1,4 @@
-# from .gitignore 
+# from .gitignore
 .env
 .gradle
 .vagrant
@@ -18,3 +18,5 @@ cmake_install.cmake
 .git
 implementations/rust/target
 implementations/rust/ockamd_vault
+_build
+deps
