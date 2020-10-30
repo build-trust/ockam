@@ -18,7 +18,9 @@ extern crate arrayref;
 
 use error::*;
 
+use ockam_vault::types::SecretKeyType;
 use ockam_vault::{error::VaultFailError, types::PublicKey, Secret};
+use std::str::FromStr;
 use std::sync::Arc;
 
 #[macro_use]
@@ -89,6 +91,38 @@ pub enum CipherSuite {
     Curve25519AesGcmSha256,
     /// P256 Aes128-GCM Sha256
     P256Aes128GcmSha256,
+}
+
+impl CipherSuite {
+    /// Return secret key type
+    pub fn get_secret_key_type(&self) -> SecretKeyType {
+        match self {
+            CipherSuite::Curve25519AesGcmSha256 => SecretKeyType::Curve25519,
+            CipherSuite::P256Aes128GcmSha256 => SecretKeyType::P256,
+        }
+    }
+
+    /// Return symmetric key type
+    pub fn get_symmetric_key_type(&self) -> SecretKeyType {
+        match self {
+            CipherSuite::Curve25519AesGcmSha256 => SecretKeyType::Aes256,
+            CipherSuite::P256Aes128GcmSha256 => SecretKeyType::Aes128,
+        }
+    }
+}
+
+impl FromStr for CipherSuite {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Curve25519AesGcmSha256" | "25519" | "default" => {
+                Ok(CipherSuite::Curve25519AesGcmSha256)
+            }
+            "P256Aes128GcmSha256" | "P256" | "atecc" => Ok(CipherSuite::P256Aes128GcmSha256),
+            _ => Err("role must be set to either '25519' or 'P256'".into()),
+        }
+    }
 }
 
 /// Instantiate a stateful key exchange vault instance

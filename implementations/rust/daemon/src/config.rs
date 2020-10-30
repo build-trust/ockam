@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::cli;
 
+use ockam_kex::CipherSuite;
 use ockam_message::message::Route;
 
 #[derive(Debug, Clone, Copy)]
@@ -38,6 +39,7 @@ pub struct Config {
     service_address: Option<String>,
     identity_name: String,
     addon: Option<AddonKind>,
+    cipher_suite: CipherSuite,
 }
 
 impl Default for Config {
@@ -98,6 +100,10 @@ impl Config {
     pub fn addon(&self) -> Option<AddonKind> {
         self.addon.clone()
     }
+
+    pub fn cipher_suite(&self) -> CipherSuite {
+        self.cipher_suite.clone()
+    }
 }
 
 impl From<cli::Args> for Config {
@@ -123,6 +129,7 @@ impl From<cli::Args> for Config {
             } else {
                 None
             },
+            cipher_suite: args.cipher_suite(),
         };
 
         match args.output_kind() {
