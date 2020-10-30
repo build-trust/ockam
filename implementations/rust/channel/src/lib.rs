@@ -161,10 +161,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             Some(channel) => {
                 let mut channel = channel.lock().unwrap();
                 if address.address == channel.as_cleartext_address() {
-                    // do cleartext stuff
-                    //self.handle_cleartext_send(channel.clone(), m)
-                    //let mut ch = channel.lock().unwrap();
-
                     // messages coming in on the cleartext channel need to be encrypted,
                     // wrapped in an outer message, and sent on their way
 
@@ -208,8 +204,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 
                     Ok(())
                 } else {
-                    // do ciphertext stuff
-                    //self.handle_ciphertext_send(channel.clone(), m)
                     println!(
                         "got unexapected send on ciphertext address: {:?}",
                         m.message_type
@@ -219,70 +213,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             }
             _ => Err(ChannelErrorKind::NotImplemented.into()),
         };
-    }
-
-    fn handle_cleartext_send(
-        &mut self,
-        channel: Arc<Mutex<Channel>>,
-        mut m: Message,
-    ) -> Result<(), ChannelError> {
-        Ok(())
-    }
-
-    fn handle_ciphertext_send(
-        &self,
-        channel: Arc<Mutex<Channel>>,
-        m: Message,
-    ) -> Result<(), ChannelError> {
-        // not expecting this right now!
-        Err(ChannelErrorKind::NotImplemented.into())
-    }
-
-    fn handle_cleartext_receive(
-        &self,
-        channel: Arc<Mutex<Channel>>,
-        mut m: Message,
-    ) -> Result<(), ChannelError> {
-        Err(ChannelErrorKind::NotImplemented.into())
-    }
-
-    fn tunnel_send(
-        &self,
-        channel: Arc<Mutex<Channel>>,
-        m: Message,
-        onward_route: Route,
-        return_route: Route,
-    ) -> Result<(), ChannelError> {
-        let mut channel = channel.lock().unwrap();
-
-        // encode
-        let mut encoded_msg: Vec<u8> = vec![];
-        Message::encode(&m, &mut encoded_msg);
-
-        // encrypt
-        let mut encrypted_msg: Vec<u8> = vec![];
-        u16::encode(&channel.nonce, &mut encrypted_msg);
-
-        let cke = channel.completed_key_exchange.as_ref().unwrap();
-        let nonce = Channel::nonce_16_to_96(channel.nonce);
-        let mut vault = self.vault.lock().unwrap();
-        println!("****?????????******");
-        let mut ciphertext_and_tag =
-            vault.aead_aes_gcm_encrypt(cke.encrypt_key, &encoded_msg, &nonce, &cke.h)?;
-        channel.nonce += 1;
-        encrypted_msg.append(&mut ciphertext_and_tag);
-
-        // wrap & send
-        let new_m = Message {
-            onward_route,
-            return_route,
-            message_type: MessageType::Payload,
-            message_body: encrypted_msg,
-        };
-        self.router_tx
-            .send(Router(RouterCommand::SendMessage(new_m)))
-            .unwrap();
-        Ok(())
     }
 
     fn handle_recv(&mut self, mut m: Message) -> Result<(), ChannelError> {
@@ -308,16 +238,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             Some(channel) => {
                 let channel = channel.clone();
 
-                // if the message is received on the cleartext address, tunnel it
                 let ch = channel.lock().unwrap();
                 let clear_address = ch.as_cleartext_address();
                 std::mem::drop(ch);
                 if recv_address_str == clear_address.as_string() {
-                    // tunnel
-                    // let onward_route = m.onward_route.clone();
-                    // m.onward_route.addresses.remove(0);
-                    // let return_route = m.return_route.clone();
-                    // return self.tunnel_send(channel, m, onward_route, return_route);
+                    // if the message is received on the cleartext address, tunnel it
                     self.router_tx.send(Router(RouterCommand::SendMessage(m)));
                     return Ok(());
                 }
