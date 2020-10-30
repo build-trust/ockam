@@ -63,11 +63,11 @@ pub mod transport {
                     Some(ra) => {
                         m.return_route.addresses.insert(0, ra);
                         let mut v = vec![];
-                        println!("\nsending onward:");
-                        println!("message type: {:?}", m.message_type);
-                        println!("sending to {:?}", remote_address);
+                        dbg!("\nsending onward:");
+                        dbg!("message type: {:?}", m.message_type);
+                        dbg!("sending to {:?}", remote_address);
                         m.onward_route.print_route();
-                        println!("sending return:");
+                        dbg!("sending return:");
                         m.return_route.print_route();
                         Message::encode(&m, &mut v);
                         match self
@@ -92,11 +92,11 @@ pub mod transport {
             match self.socket.recv_from(&mut buff) {
                 Ok((s, a)) => match Message::decode(&buff[0..s]) {
                     Ok((mut m, _unused)) => {
-                        println!("\nreceiving onward:");
-                        println!("received from: {:?}", a);
+                        dbg!("\nreceiving onward:");
+                        dbg!("received from: {:?}", a);
                         m.onward_route.print_route();
-                        println!("message type: {:?}", m.message_type);
-                        println!("receiving return:");
+                        dbg!("message type: {:?}", m.message_type);
+                        dbg!("receiving return:");
                         m.return_route.print_route();
                         if !m.onward_route.addresses.is_empty()
                             && m.onward_route.addresses[0].a_type == AddressType::Udp
