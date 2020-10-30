@@ -3,12 +3,13 @@ use std::path::PathBuf;
 
 use crate::cli;
 
-use ockam_message::message::Route;
+use ockam_message::message::{Address, Route};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Role {
     Initiator,
     Responder,
+    Router,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -25,7 +26,9 @@ pub enum AddonKind {
 pub struct Config {
     onward_route: Option<Route>,
     output_to_stdout: bool,
-    local_host: SocketAddr,
+    local_socket: SocketAddr,
+    router_socket: Option<SocketAddr>,
+    channel_to_sink: Option<String>,
     role: Role,
     vault_path: PathBuf,
     input_kind: Input,
@@ -54,12 +57,20 @@ impl Config {
         self.input_kind
     }
 
-    pub fn local_host(&self) -> SocketAddr {
-        self.local_host
+    pub fn local_socket(&self) -> SocketAddr {
+        self.local_socket
+    }
+
+    pub fn router_socket(&self) -> Option<SocketAddr> {
+        self.router_socket
     }
 
     pub fn remote_public_key(&self) -> Option<String> {
         self.remote_public_key.clone()
+    }
+
+    pub fn channel_to_sink(&self) -> Option<String> {
+        self.channel_to_sink.clone()
     }
 
     pub fn role(&self) -> Role {
@@ -84,7 +95,9 @@ impl From<cli::Args> for Config {
         let mut cfg = Config {
             onward_route: None,
             output_to_stdout: false,
-            local_host: args.local_socket(),
+            local_socket: args.local_socket(),
+            channel_to_sink: args.channel_to_sink(),
+            router_socket: args.router_socket(),
             role: Role::Initiator,
             vault_path: args.vault_path(),
             input_kind: Input::Stdin,
@@ -110,8 +123,9 @@ impl From<cli::Args> for Config {
         }
 
         cfg.role = match args.role() {
-            cli::ChannelRole::Initiator => Role::Initiator,
-            cli::ChannelRole::Responder => Role::Responder,
+            cli::ChannelRole::Source => Role::Initiator,
+            cli::ChannelRole::Sink => Role::Responder,
+            cli::ChannelRole::Router => Role::Router,
         };
 
         cfg.input_kind = match args.input_kind() {

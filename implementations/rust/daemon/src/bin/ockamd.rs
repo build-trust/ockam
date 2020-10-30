@@ -1,7 +1,7 @@
 use ockamd::{
     cli::{
         Args,
-        ChannelRole::{Initiator, Responder},
+        ChannelRole::{Router, Sink, Source},
         Mode::{Control, Server},
     },
     initiator, responder,
@@ -14,8 +14,9 @@ fn main() {
     let cfg = args.into();
 
     match mode {
-        Server if matches!(role, Initiator) => initiator::run(cfg),
-        Server if matches!(role, Responder) => responder::run(cfg),
+        Server if matches!(role, Source) => initiator::run(cfg),
+        Server if matches!(role, Sink) => responder::run(cfg),
+        Server if matches!(role, Router) => responder::run(cfg),
         Server => eprintln!("server mode must be executed with a role"),
         Control => unimplemented!(),
     }

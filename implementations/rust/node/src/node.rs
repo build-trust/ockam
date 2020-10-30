@@ -190,6 +190,7 @@ pub fn start_node(
     network_route: Route,
     worker_address: RouterAddress,
     is_initiator: bool,
+    router_only: bool,
 ) {
     let (transport_tx, transport_rx) = std::sync::mpsc::channel();
     let (router_tx, router_rx) = std::sync::mpsc::channel();
@@ -252,8 +253,12 @@ pub fn start_node(
                 .unwrap();
         }
 
-        while transport.poll() && router.poll() && channel_handler.poll().unwrap() && worker.poll()
-        {
+        while transport.poll() && router.poll() && channel_handler.poll().unwrap() {
+            if !router_only {
+                if !worker.poll() {
+                    break;
+                }
+            }
             thread::sleep(time::Duration::from_millis(100));
         }
     });

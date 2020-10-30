@@ -1,13 +1,16 @@
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use crate::config::Config;
-
-use ockam_message::message::{AddressType, Message as OckamMessage, MessageType, RouterAddress};
+use hex::encode;
+use ockam_message::message::{
+    AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
+};
 use ockam_system::commands::{OckamCommand, RouterCommand, WorkerCommand};
 
 type WorkFn = fn(self_worker: &Worker, msg: OckamMessage);
 
 #[allow(dead_code)]
+
 pub struct Worker {
     router_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,
@@ -15,6 +18,7 @@ pub struct Worker {
     addr: RouterAddress,
     work_fn: WorkFn,
     config: Config,
+    route: Option<Route>,
 }
 
 impl Worker {
@@ -41,6 +45,7 @@ impl Worker {
             addr,
             config,
             work_fn,
+            route: None,
         }
     }
 
@@ -52,7 +57,24 @@ impl Worker {
         self.config.clone()
     }
 
-    pub fn poll(&self) -> bool {
+    fn receive_channel(&mut self, m: Message) -> Result<(), String> {
+        self.route = Some(m.return_route.clone());
+        Ok(())
+        // let resp_public_key = encode(&m.message_body);
+        // println!("Remote static public key: {}", resp_public_key);
+        // if let Some(rpk) = self.config.remote_public_key() {
+        //     if rpk == encode(&m.message_body) {
+        //         println!("keys agree");
+        //         return Ok(());
+        //     } else {
+        //         println!("keys conflict");
+        //         return Err("remote public key doesn't match expected, possible spoofing".into());
+        //     }
+        // }
+        // Ok(())
+    }
+
+    pub fn poll(&mut self) -> bool {
         match self.rx.try_recv() {
             Ok(cmd) => match cmd {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
@@ -66,7 +88,10 @@ impl Worker {
                             (self.work_fn)(&self, msg);
                             true
                         }
-                        MessageType::None => true,
+                        MessageType::None => {
+                            self.receive_channel(msg);
+                            true
+                        }
                         _ => unimplemented!(),
                     }
                 }

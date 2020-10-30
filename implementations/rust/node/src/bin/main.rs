@@ -23,9 +23,12 @@ pub struct Args {
     /// Worker
     #[structopt(short = "w", long = "worker")]
     worker_addr: Option<String>,
+
+    #[structopt(long = "router-only")]
+    router_only: Option<bool>,
 }
 
-pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, RouterAddress), String> {
+pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, RouterAddress, bool), String> {
     let mut local_socket: RouterAddress = RouterAddress {
         a_type: AddressType::Udp,
         length: 7,
@@ -63,7 +66,12 @@ pub fn parse_args(args: Args) -> Result<(RouterAddress, Route, RouterAddress), S
         }
     };
 
-    Ok((local_socket, route, worker_address))
+    let mut router_only = false;
+    if let Some(ro) = args.router_only {
+        router_only = ro;
+    }
+
+    Ok((local_socket, route, worker_address, router_only))
 }
 
 fn main() {
@@ -72,11 +80,13 @@ fn main() {
     let local_socket: RouterAddress;
     let route: Route;
     let worker: RouterAddress;
+    let router_only: bool;
     match parse_args(args) {
-        Ok((ls, r, w)) => {
+        Ok((ls, r, w, ro)) => {
             local_socket = ls;
             route = r;
             worker = w;
+            router_only = ro;
         }
         Err(s) => {
             println!("{}", s);
@@ -86,8 +96,9 @@ fn main() {
     let is_initiator = !route.addresses.is_empty();
 
     println!("route: {:?}", route);
+    println!("router-only: {:?}", router_only);
 
-    start_node(local_socket, route, worker, is_initiator);
+    start_node(local_socket, route, worker, is_initiator, router_only);
 
     thread::sleep(time::Duration::from_millis(1000000));
 }
