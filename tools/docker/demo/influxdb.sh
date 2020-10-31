@@ -1,29 +1,31 @@
 #!/usr/bin/env sh
 
 if [[ -z "$1" ]]; then
-    echo "Ockam Demo: InfluxDB Add-on"
-    echo "" 
-    echo "USAGE"
-    echo "" 
-    echo "$ ./tools/docker/demo/influxdb.sh [COMPONENT] [ARGS]"
-    echo "" 
-    echo "COMPONENTS"
-    echo ""
-    echo "  influxdb-ockamd"
-    echo "      starts the responder (sink) end, containing \`influxdb\` and \`ockamd\`, with configuration to send \`influxdb\` measurement data via \`ockamd\` over HTTP."
-    echo "" 
-    echo "  telegraf-ockamd [RESPONDER-PUBLIC-KEY]"
-    echo "      starts the initiator (source) end, containing \`telegraf\` and \`ockamd\`, with configuration to start \`telegraf\` to use \`ockamd\` as an \"execd\" output plugin."
-    echo ""
-    echo "  telegraf-write"
-    echo "      sends a random 'temperature' measurement to \`telegraf\` agent, which is encrypted by \`ockamd\` and written to \`influxdb\`."
-    echo ""
-    echo "  influxdb-query"
-    echo "      executes a 'SELECT * FROM temperature' query within the 'ockam_demo' database in \`influxdb\`."
-    echo ""
-    echo "  kill-all"
-    echo "      kills and removes all demo containers."
-    echo ""
+    echo "\
+Ockam Demo: InfluxDB Add-on
+
+USAGE
+    
+$ ./tools/docker/demo/influxdb.sh [COMMAND] [ARGS]
+
+COMMANDS
+
+    influxdb-ockamd
+        starts the responder (sink) end, containing \`influxdb\` and \`ockamd\`, with configuration to send \`influxdb\` measurement data via \`ockamd\` over HTTP.
+    
+    telegraf-ockamd [RESPONDER-PUBLIC-KEY]
+        starts the initiator (source) end, containing \`telegraf\` and \`ockamd\`, with configuration to start \`telegraf\` to use \`ockamd\` as an \"execd\" output plugin.
+
+    telegraf-write
+        sends a random 'temperature' measurement to \`telegraf\` agent, which is encrypted by \`ockamd\` and written to \`influxdb\`.
+
+    influxdb-query
+        executes a 'SELECT * FROM temperature' query within the 'ockam_demo' database in \`influxdb\`.
+
+    kill-all
+        kills and removes all demo containers.
+"
+    exit 0
 fi
 
 case $1 in 
@@ -70,9 +72,12 @@ case $1 in
         # sends a random 'temperature' measurement to `telegraf` agent, which is encrypted by 
         # `ockamd` and written to `influxdb`.
         TEMP=$(( ( RANDOM % 10 )  + 70 ))
+        DATA="temperature,region=us-west temp=${TEMP}"
         docker exec influxdb-ockamd \
             curl -s -X POST http://0.0.0.0:8080/telegraf \
-            --data-binary "temperature,region=us-west temp=${TEMP}"
+            --data-binary "${DATA}"
+        
+        echo "sent measurement: ${DATA}"
         ;;
 
     kill-all)
