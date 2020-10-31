@@ -1,4 +1,4 @@
-FROM ockam-dev as builder
+FROM ockam/ockam-dev as builder
 RUN apt update && apt install -y pkg-config libssl-dev
 COPY . . 
 WORKDIR implementations/rust
