@@ -173,7 +173,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 
                     // encrypt it
                     let mut encrypted_mb: Vec<u8> = vec![];
-                    u16::encode(&channel.nonce, &mut encrypted_mb);
+                    if let Err(e) = u16::encode(&channel.nonce, &mut encrypted_mb)
+                        .map_err(|e| ChannelError::from_msg(ChannelErrorKind::CantSend, e))
+                    {
+                        return Err(e);
+                    }
 
                     let cke = channel.completed_key_exchange.as_ref().unwrap();
                     let nonce = Channel::nonce_16_to_96(channel.nonce);
