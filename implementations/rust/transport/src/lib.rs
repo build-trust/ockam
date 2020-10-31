@@ -65,7 +65,7 @@ pub mod transport {
                         let mut v = vec![];
                         println!("\nsending onward:");
                         println!("message type: {:?}", &m.message_type);
-                        println!("sending to {:?}", &remote_address);
+                        println!("sending to {}", remote_address.address.as_string());
                         m.onward_route.print_route();
                         println!("sending return:");
                         m.return_route.print_route();

@@ -309,11 +309,18 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let encoded_msg =
             vault.aead_aes_gcm_decrypt(kex.decrypt_key, encrypted_msg, &nonce_96, &kex.h)?;
         let (mut decoded_msg, _) = Message::decode(&encoded_msg).unwrap();
+        decoded_msg.return_route.addresses.insert(
+            0,
+            RouterAddress::from_address(channel.as_cleartext_address()).unwrap(),
+        );
 
         // send it on its way
         self.router_tx
-            .send(Router(RouterCommand::ReceiveMessage(decoded_msg)))
+            .send(Router(RouterCommand::SendMessage(decoded_msg)))
             .unwrap();
+        // self.router_tx
+        //     .send(Router(RouterCommand::ReceiveMessage(decoded_msg)))
+        //     .unwrap();
         Ok(())
     }
 

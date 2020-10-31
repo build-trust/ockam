@@ -32,7 +32,7 @@ pub fn run(config: Config) {
         }
         None => {}
     }
-    
+
     let worker = Worker::new(worker_addr, router_tx, config.clone(), |w, msg| {
         match w.config().addon() {
             Some(AddonKind::InfluxDb(url, db)) => {
