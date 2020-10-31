@@ -87,7 +87,7 @@ defmodule Ockam.Telemetry do
 
     measurements = Map.merge(measurements, %{system_time: System.system_time()})
 
-    event_name = Enum.reverse([:start] ++ event_name)
+    event_name = Enum.reverse([:start | Enum.reverse(event_name)])
     :ok = :telemetry.execute([:ockam] ++ event_name, measurements, metadata)
 
     start_time
@@ -131,7 +131,7 @@ defmodule Ockam.Telemetry do
     end_time = System.monotonic_time()
     measurements = Map.merge(measurements, %{duration: end_time - start_time})
 
-    event_name = Enum.reverse([:stop] ++ event_name)
+    event_name = Enum.reverse([:stop | Enum.reverse(event_name)])
     :ok = :telemetry.execute([:ockam] ++ event_name, measurements, metadata)
   end
 
@@ -192,7 +192,7 @@ defmodule Ockam.Telemetry do
     end_time = System.monotonic_time()
     measurements = Map.merge(measurements, %{duration: end_time - start_time})
 
-    event_name = Enum.reverse([:exception] ++ event_name)
+    event_name = Enum.reverse([:exception | Enum.reverse(event_name)])
     :ok = :telemetry.execute([:ockam] ++ event_name, measurements, metadata)
   end
 end
