@@ -26,14 +26,6 @@ updates:
     schedule:
       interval: "daily"
 
-  # Maintain dependencies for elixir ockam_transport_udp application
-  - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_transport_udp"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-
   # Maintain dependencies for elixir ockam_vault_software application
   - package-ecosystem: "mix"
     directory: "/implementations/elixir/ockam/ockam_vault_software"
