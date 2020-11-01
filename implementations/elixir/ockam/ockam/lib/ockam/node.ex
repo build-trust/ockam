@@ -1,86 +1,124 @@
 defmodule Ockam.Node do
   @moduledoc false
 
-  # `get_unused_address/1` uses this as the length of the new address
+  @doc false
+  use Supervisor
+
+  alias Ockam.Message
+  alias Ockam.Node.Registry
+  alias Ockam.Router
+
+  # `get_random_unused_address/1` uses this as the length of the new address
   # that will be generated.
   @default_address_length_in_bytes 4
 
-  # Returns a specification to start this module under a supervisor. When this
-  # module is added to a supervisor, the supervisor calls child_spec to figure
-  # out the specification that should be used.
-  #
-  # See the "Child specification" section in the `Supervisor` module for more
-  # detailed information.
-  @doc false
-  def child_spec(options) do
-    start = {__MODULE__, :start_link, [options]}
-    %{id: __MODULE__, start: start, type: :worker, restart: :permanent, shutdown: 500}
-  end
+  # Name of the DynamicSupervisor used to supervise processes
+  # created with `start_supervised/2`
+  @processes_supervisor __MODULE__.ProcessSupervisor
 
-  # Starts the node and links it to the current process.
-  @doc false
-  def start_link(_options) do
-    # TODO: investigte other registry options like listeners and partitions
-    Registry.start_link(keys: :unique, name: __MODULE__)
-  end
+  @ping <<0>>
+  @pong <<1>>
 
   @doc """
-  Registers the address of a `pid`.
+  Returns the process registry for this node.
   """
-  def register(address, pid), do: register_name(address, pid)
-
-  # This function is used when a process is registed using the `:via` option.
-  #
-  # The Gen* modules expect this function to be exported.
-  # See the "Name registration" section of the `GenServer` module.
-  @doc false
-  def register_name(address, pid), do: Registry.register_name({__MODULE__, address}, pid)
+  def process_registry, do: Registry
 
   @doc """
-  Returns the `pid` of registered address, or `nil` is
+  Returns the `pid` of registered address, or `nil`.
   """
   def whereis(address) do
-    case whereis_name(address) do
+    case Registry.whereis_name(address) do
       :undefined -> nil
       pid -> pid
     end
   end
 
-  # This function is used when a process is registed using the `:via` option.
-  #
-  # The Gen* modules expect this function to be exported.
-  # See the "Name registration" section of the `GenServer` module.
-  @doc false
-  def whereis_name(address), do: Registry.whereis_name({__MODULE__, address})
+  @doc """
+  Registers the address of a `pid`.
+  """
+  defdelegate register_address(address, pid), to: Registry, as: :register_name
 
   @doc """
   Unregisters an address.
   """
-  def unregister(address), do: unregister_name(address)
-
-  # This function is used when a process is registed using the `:via` option.
-  #
-  # The Gen* modules expect this function to be exported.
-  # See the "Name registration" section of the `GenServer` module.
-  @doc false
-  def unregister_name(address), do: Registry.unregister_name({__MODULE__, address})
-
-  # This function is used when a process is registed using the `:via` option.
-  #
-  # The Gen* modules expect this function to be exported.
-  # See the "Name registration" section of the `GenServer` module.
-  @doc false
-  def send(address, message), do: Registry.send({__MODULE__, address}, message)
+  defdelegate unregister_address(address), to: Registry, as: :unregister_name
 
   @doc """
-  Returns a random address that is currently not registed with the node.
+  Send a message to the process registered with an address.
   """
-  def get_unused_address(length_in_bytes \\ @default_address_length_in_bytes) do
+  defdelegate send(address, message), to: Registry
+
+  @doc """
+  Returns a random address that is currently not registed on the node.
+  """
+  def get_random_unregistered_address(length_in_bytes \\ @default_address_length_in_bytes) do
     cadidate = :crypto.strong_rand_bytes(length_in_bytes)
 
     case whereis(cadidate) do
       nil -> cadidate
-      _pid -> get_unused_address(length_in_bytes)
+      _pid -> get_random_unregistered_address(length_in_bytes)
+    end
+  end
+
+  @doc false
+  def start_supervised(module, options) do
+    DynamicSupervisor.start_child(@processes_supervisor, {module, options})
+  end
+
+  @doc false
+  def start_link(_init_arg) do
+    Supervisor.start_link(__MODULE__, nil, name: __MODULE__)
+  end
+
+  @doc false
+  @impl true
+  def init(nil) do
+    with :ok <- Router.set_message_handler(:default, &handle_routed_message/1),
+         :ok <- Router.set_message_handler(0, &handle_routed_message/1) do
+      # Specifications of child processes that will be started and supervised.
+      #
+      # See the "Child specification" section in the `Supervisor` module for more
+      # detailed information.
+      children = [
+        Registry,
+        {DynamicSupervisor, strategy: :one_for_one, name: @processes_supervisor}
+      ]
+
+      # Start a supervisor with the given children. The supervisor will inturn
+      # start the given children.
+      #
+      # The :one_for_all supervision strategy is used, if a child process
+      # terminates, all other child processes are terminated and then all child
+      # processes (including the terminated one) are restarted.
+      #
+      # See the "Strategies" section in the `Supervisor` module for more
+      # detailed information.
+      Supervisor.init(children, strategy: :one_for_all)
+    end
+  end
+
+  def handle_routed_message(message) do
+    onward_route = Message.onward_route(message)
+
+    case onward_route do
+      [] -> handle_control_message(message)
+      [first | _rest] -> __MODULE__.send(first, message)
+      unexpected_onward_route -> {:error, {:unexpected_onward_route, unexpected_onward_route}}
+    end
+  end
+
+  def handle_control_message(message) do
+    return_route = Message.return_route(message)
+    payload = Message.payload(message)
+
+    case payload do
+      @ping ->
+        reply = %{payload: @pong, onward_route: return_route}
+        Router.route(reply)
+
+      unexpected_payload ->
+        {:error, {:unexpected_control_instruction, unexpected_payload, message}}
     end
   end
 end
