@@ -315,12 +315,11 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         );
 
         // send it on its way
+        println!("Sink decrypted msg, onward route:");
+        decoded_msg.onward_route.print_route();
         self.router_tx
-            .send(Router(RouterCommand::SendMessage(decoded_msg)))
+            .send(Router(RouterCommand::ReceiveMessage(decoded_msg)))
             .unwrap();
-        // self.router_tx
-        //     .send(Router(RouterCommand::ReceiveMessage(decoded_msg)))
-        //     .unwrap();
         Ok(())
     }
 
