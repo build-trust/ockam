@@ -24,12 +24,12 @@ defmodule Ockam.Router do
 
   def route(message) do
     metadata = %{message: message}
-    start_time = Telemetry.emit_start_event(:"Router.route", metadata: metadata)
+    start_time = Telemetry.emit_start_event([__MODULE__, :route], metadata: metadata)
 
     return_value = pick_and_invoke_handler(message)
 
     metadata = Map.put(metadata, :return_value, return_value)
-    Telemetry.emit_stop_event(:"Router.route", start_time, metadata: metadata)
+    Telemetry.emit_stop_event([__MODULE__, :route], start_time, metadata: metadata)
 
     return_value
   end
@@ -115,12 +115,8 @@ defmodule Ockam.Router do
   def start_link(options) do
     return_value = Storage.start_link(options)
 
-    Telemetry.emit_event(:"Router.start_link",
-      metadata: %{
-        options: options,
-        return_value: return_value
-      }
-    )
+    metadata = %{options: options, return_value: return_value}
+    Telemetry.emit_event([__MODULE__, :start_link], metadata: metadata)
 
     return_value
   end
