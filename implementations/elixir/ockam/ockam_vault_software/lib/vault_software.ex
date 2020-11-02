@@ -5,9 +5,15 @@ defmodule Ockam.Vault.Software do
 
   use Application
 
-  @on_load :load_natively_implemented_functions
+  @on_load {:load_natively_implemented_functions, 0}
 
-  require Logger
+  app = Mix.Project.config()[:app]
+
+  def load_natively_implemented_functions do
+    path_components = [:code.priv_dir(unquote(app)), 'native', 'libockam_elixir_vault_software']
+    path = :filename.join(path_components)
+    :ok = :erlang.load_nif(path, 0)
+  end
 
   # Called when the Ockam application is started.
   #
@@ -16,8 +22,6 @@ defmodule Ockam.Vault.Software do
   #
   @doc false
   def start(_type, _args) do
-    Logger.info("Starting #{__MODULE__}")
-
     # Specifications of child processes that will be started and supervised.
     #
     # See the "Child specification" section in the `Supervisor` module for more
@@ -33,13 +37,6 @@ defmodule Ockam.Vault.Software do
     # See the "Strategies" section in the `Supervisor` module for more
     # detailed information.
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
-  end
-
-  def load_natively_implemented_functions do
-    [:code.priv_dir(:ockam_vault_software), "native", "libockam_elixir_vault_software"]
-    |> Path.join()
-    |> to_charlist()
-    |> :erlang.load_nif(0)
   end
 
   def default_init do
