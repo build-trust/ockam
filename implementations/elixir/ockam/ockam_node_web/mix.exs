@@ -39,13 +39,12 @@ defmodule Ockam.Node.Web.MixProject do
   def application do
     [
       mod: {Ockam.Node.Web, []},
-      extra_applications: [:logger, :ockam]
+      extra_applications: [:logger]
     ]
   end
 
   defp deps do
     [
-      {:ockam, path: "../ockam"},
       {:cowboy, "~> 2.8"},
       {:plug, "~> 1.11"},
       {:plug_cowboy, "~> 2.4"},
