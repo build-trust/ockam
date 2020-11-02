@@ -39,13 +39,12 @@ defmodule Ockam.Vault.Software.MixProject do
   def application do
     [
       mod: {Ockam.Vault.Software, []},
-      extra_applications: [:logger, :ockam]
+      extra_applications: []
     ]
   end
 
   defp deps do
     [
-      {:ockam, path: "../ockam"},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false}

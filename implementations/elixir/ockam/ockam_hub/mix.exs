@@ -39,13 +39,14 @@ defmodule Ockam.Hub.MixProject do
   def application do
     [
       mod: {Ockam.Hub, []},
-      extra_applications: [:logger, :ockam, :ranch]
+      extra_applications: [:logger, :ockam, :ockam_vault_software, :ranch]
     ]
   end
 
   defp deps do
     [
       {:ockam, path: "../ockam"},
+      {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ranch, "~> 2.0"},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
