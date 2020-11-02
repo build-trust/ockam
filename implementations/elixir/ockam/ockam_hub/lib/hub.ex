@@ -5,6 +5,8 @@ defmodule Ockam.Hub do
 
   use Application
 
+  alias Ockam.Transport.TCP
+
   # Called when the Ockam application is started.
   #
   # This function is called when an application is started using
@@ -12,6 +14,8 @@ defmodule Ockam.Hub do
   #
   @doc false
   def start(_type, _args) do
+    TCP.create_listener(ip: {0, 0, 0, 0}, port: 4000)
+
     # Specifications of child processes that will be started and supervised.
     #
     # See the "Child specification" section in the `Supervisor` module for more
