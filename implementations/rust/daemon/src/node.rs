@@ -46,7 +46,7 @@ impl<'a> Node<'a> {
         // generate a new one to be used
         if !contains_key(&mut vault, &config.identity_name()) {
             // if responder, generate keypair and display static public key
-            if matches!(config.role(), Role::Responder) {
+            if matches!(config.role(), Role::Sink) {
                 let attributes = SecretKeyAttributes {
                     xtype: SecretKeyType::Curve25519,
                     purpose: SecretPurposeType::KeyAgreement,
@@ -63,7 +63,7 @@ impl<'a> Node<'a> {
                 Some(as_key_ctx(&config.identity_name()).expect("invalid identity name provided"));
         }
 
-        if matches!(config.role(), Role::Responder) && resp_key_ctx.is_some() {
+        if matches!(config.role(), Role::Sink) && resp_key_ctx.is_some() {
             if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.unwrap()) {
                 println!("Responder public key: {}", hex::encode(resp_key));
             }
@@ -128,14 +128,12 @@ impl<'a> Node<'a> {
             )))
             .expect("failed to register worker with router");
 
-        println!("worker registered");
         self.worker = Some(worker);
     }
 
     pub fn run(mut self) {
         match self.worker {
             Some(mut worker) => {
-                println!("will poll worker");
                 while self.router.poll()
                     && self.transport.poll()
                     && worker.poll()

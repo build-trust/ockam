@@ -7,8 +7,8 @@ use ockam_message::message::{Address, Route};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Role {
-    Initiator,
-    Responder,
+    Source,
+    Sink,
     Router,
 }
 
@@ -98,7 +98,7 @@ impl From<cli::Args> for Config {
             local_socket: args.local_socket(),
             channel_to_sink: args.channel_to_sink(),
             router_socket: args.router_socket(),
-            role: Role::Initiator,
+            role: Role::Source,
             vault_path: args.vault_path(),
             input_kind: Input::Stdin,
             remote_public_key: args.service_public_key(),
@@ -123,8 +123,8 @@ impl From<cli::Args> for Config {
         }
 
         cfg.role = match args.role() {
-            cli::ChannelRole::Source => Role::Initiator,
-            cli::ChannelRole::Sink => Role::Responder,
+            cli::ChannelRole::Source => Role::Source,
+            cli::ChannelRole::Sink => Role::Sink,
             cli::ChannelRole::Router => Role::Router,
         };
 

@@ -37,7 +37,7 @@ pub struct Args {
         default_value = "stdout",
         help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout""#
     )]
-    sink_route: OutputKind,
+    route: OutputKind,
 
     #[structopt(
     long,
@@ -73,8 +73,8 @@ pub struct Args {
     /// Start the `ockamd` process as the initiator or responder of a secure channel.
     #[structopt(
         long,
-        default_value = "initiator",
-        help = r#"Start `ockamd` as "initiator", "responder", or "router" of a secure channel"#
+        default_value = "source",
+        help = r#"Start `ockamd` as "source", "sink", or "router" of a secure channel"#
     )]
     role: ChannelRole,
 
@@ -89,16 +89,14 @@ pub struct Args {
     /// Define the public key provided by the remote service.
     #[structopt(
         long,
-        required_if("role", "initiator"),
-        required_if("role", "init"),
+        required_if("role", "source"),
         help = "The public key provided by the remote service"
     )]
     service_public_key: Option<String>,
 
     #[structopt(
         long,
-        required_if("role", "initiator"),
-        required_if("role", "init"),
+        required_if("role", "source"),
         help = "Address used to reach the service on remote machine"
     )]
     service_address: Option<String>,
@@ -133,7 +131,7 @@ impl Default for Args {
             control: false,
             control_port: DEFAULT_CONFIG_PORT,
             input: InputKind::Stdin,
-            sink_route: OutputKind::Stdout,
+            route: OutputKind::Stdout,
             local_socket: SocketAddr::from_str(DEFAULT_LOCAL_SOCKET)
                 .expect("bad default set for local socket"),
             channel_to_sink: None,
@@ -170,7 +168,7 @@ impl Args {
     }
 
     pub fn output_kind(&self) -> OutputKind {
-        self.sink_route.clone()
+        self.route.clone()
     }
 
     pub fn input_kind(&self) -> InputKind {
@@ -255,11 +253,12 @@ impl FromStr for VaultKind {
 /// Specifies which end of the secure channel the instance of `ockamd` is prepared to run in.
 #[derive(Clone, Copy, Debug, StructOpt)]
 pub enum ChannelRole {
-    /// The Initiator role expects a channel responder address and a public key to use in order to
-    /// communicate with the Responder end of the channel.
+    /// The Source role expects a channel Sink address, a router address (optional),
+    /// and a public key to use in order to communicate with the Sink-Responder end of the channel.
     Source,
-    /// The Responder role will create a channel responder, and will instruct the program to print
-    /// the responder's channel responder address and the public key it's advertising.
+    /// The Sink role will optionally initiate a channel to a router, and create a channel responder for
+    /// the source to initiate to.
+    /// The Sink will also print its static public key for the Source to use..
     Sink,
     /// The Router role will route messages along the path, and is capable of acting as a responder
     /// to establish channels for tunneling
@@ -271,8 +270,8 @@ impl FromStr for ChannelRole {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "initiator" | "init" => Ok(ChannelRole::Source),
-            "responder" | "resp" => Ok(ChannelRole::Sink),
+            "source" => Ok(ChannelRole::Source),
+            "sink" => Ok(ChannelRole::Sink),
             "router" => Ok(ChannelRole::Router),
             _ => Err("role must be set to either 'initiator' or 'responder'".into()),
         }
