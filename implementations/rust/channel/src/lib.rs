@@ -454,7 +454,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         mut route: Route,
         return_address: Address,
     ) -> Result<Address, ChannelError> {
-        println!("\nInitiating channel, route:");
         route.print_route();
 
         // Remember who to notify when the channel is secure

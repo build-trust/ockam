@@ -45,7 +45,6 @@ pub fn run(config: Config) {
     onward_route
         .addresses
         .push(RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap());
-    println!("Initiating channel with route");
     onward_route.print_route();
 
     node.channel_tx

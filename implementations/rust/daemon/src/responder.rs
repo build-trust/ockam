@@ -8,6 +8,7 @@ use ockam_message::message::{Address, Route, RouterAddress};
 use ockam_system::commands::{ChannelCommand, OckamCommand};
 
 use attohttpc::post;
+use ockam_channel::CHANNEL_ZERO;
 
 pub fn run(config: Config) {
     let (mut node, router_tx) = Node::new(&config);
@@ -19,7 +20,7 @@ pub fn run(config: Config) {
             let route = Route {
                 addresses: vec![
                     RouterAddress::from_address(Address::UdpAddress(socket)).unwrap(),
-                    RouterAddress::channel_router_address_from_str("00000000").unwrap(),
+                    RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap(),
                 ],
             };
             node.channel_tx
