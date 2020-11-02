@@ -9,6 +9,9 @@ defmodule Ockam.Transport.UDP.Listener do
 
   @wire_encoder_decoder Ockam.Wire.Binary.V1
 
+  # udp address type
+  @udp 2
+
   @doc false
   @impl true
   def setup(options, state) do
@@ -31,7 +34,7 @@ defmodule Ockam.Transport.UDP.Listener do
   defp setup_routed_message_handler(true, listener) do
     handler = fn message -> handle_routed_message(listener, message) end
 
-    with :ok <- Router.set_message_handler(2, handler),
+    with :ok <- Router.set_message_handler(@udp, handler),
          :ok <- Router.set_message_handler(Ockam.Transport.UDPAddress, handler) do
       :ok
     end
@@ -92,7 +95,7 @@ defmodule Ockam.Transport.UDP.Listener do
     case destination_and_onward_route do
       {nil, []} -> {:error, :no_destination}
       {%UDPAddress{} = destination, r} -> {:ok, destination, %{message | onward_route: r}}
-      {{2, address}, onward_route} -> deserialize_address(message, address, onward_route)
+      {{@udp, address}, onward_route} -> deserialize_address(message, address, onward_route)
       {destination, _onward_route} -> {:error, {:invalid_destination, destination}}
     end
   end
