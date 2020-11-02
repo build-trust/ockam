@@ -1,10 +1,10 @@
 defmodule Ockam.Transport.UDP do
   @moduledoc false
 
-  alias Ockam.Transport.UDP.Listerner
+  alias Ockam.Transport.UDP.Listener
 
   @doc false
   def create_listener(options) do
-    Listerner.create(options)
+    Listener.create(options)
   end
 end

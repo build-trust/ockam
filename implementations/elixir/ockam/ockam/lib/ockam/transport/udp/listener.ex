@@ -1,4 +1,4 @@
-defmodule Ockam.Transport.UDP.Listerner do
+defmodule Ockam.Transport.UDP.Listener do
   @moduledoc false
 
   use Ockam.Worker
@@ -28,8 +28,8 @@ defmodule Ockam.Transport.UDP.Listerner do
     end
   end
 
-  defp setup_routed_message_handler(true, listerner) do
-    handler = fn message -> handle_routed_message(listerner, message) end
+  defp setup_routed_message_handler(true, listener) do
+    handler = fn message -> handle_routed_message(listener, message) end
 
     with :ok <- Router.set_message_handler(2, handler),
          :ok <- Router.set_message_handler(Ockam.Transport.UDPAddress, handler) do
@@ -37,10 +37,10 @@ defmodule Ockam.Transport.UDP.Listerner do
     end
   end
 
-  defp setup_routed_message_handler(_something_else, _listerner), do: :ok
+  defp setup_routed_message_handler(_something_else, _listener), do: :ok
 
-  defp handle_routed_message(listerner, message) do
-    Node.send(listerner, message)
+  defp handle_routed_message(listener, message) do
+    Node.send(listener, message)
   end
 
   @doc false

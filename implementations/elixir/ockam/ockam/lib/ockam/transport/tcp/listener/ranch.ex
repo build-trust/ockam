@@ -20,12 +20,12 @@ if Code.ensure_loaded?(:ranch) do
       protocol_options = []
 
       with {:ok, _apps} <- Application.ensure_all_started(:ranch),
-           :ok <- start_listerner(ref, transport, transport_options, protocol, protocol_options) do
+           :ok <- start_listener(ref, transport, transport_options, protocol, protocol_options) do
         {:ok, state}
       end
     end
 
-    defp start_listerner(ref, transport, transport_options, protocol, protocol_options) do
+    defp start_listener(ref, transport, transport_options, protocol, protocol_options) do
       r = :ranch.start_listener(ref, transport, transport_options, protocol, protocol_options)
 
       case r do
