@@ -59,8 +59,14 @@ defmodule Ockam.Worker do
       @doc false
       @impl true
       def init(options) do
+        metadata = %{options: options}
+        start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
+
         with {:ok, address} <- get_from_options(:address, options) do
-          setup(options, %{address: address})
+          return_value = setup(options, %{address: address})
+
+          metadata = Map.put(metadata, :return_value, return_value)
+          Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
         end
       end
 
