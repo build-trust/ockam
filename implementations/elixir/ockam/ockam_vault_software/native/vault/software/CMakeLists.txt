@@ -24,14 +24,16 @@ add_library(ockam_vault SHARED IMPORTED GLOBAL)
 add_library(ockam::vault ALIAS ockam_vault)
 
 if(APPLE)
-set(vault_lib_path ../../../../../../rust/target/debug/libockam_vault.dylib)
+file(COPY ../../../../../../rust/target/debug/libockam_vault.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+set(vault_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault.dylib")
 endif()
 
 if(UNIX AND NOT APPLE)
-set(vault_lib_path ../../../../../../rust/target/debug/libockam_vault.so)
+file(COPY ../../../../../../rust/target/debug/libockam_vault.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+set(vault_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault.so")
 endif()
 
-get_filename_component(real_vault_lib_path "${vault_lib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+get_filename_component(real_vault_lib_path "${vault_lib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 set_target_properties(
   ockam_vault
   PROPERTIES
