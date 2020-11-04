@@ -86,5 +86,9 @@ case $1 in
         docker container rm -f telegraf-ockamd
         ;;
 
+    *)
+        echo "[$0] unrecognized command: '$@'\n" 
+        exec "$0" # call self without arguments to get usage
+        ;;
 esac
     
