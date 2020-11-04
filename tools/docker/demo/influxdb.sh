@@ -5,14 +5,14 @@ if [[ -z "$1" ]]; then
 Ockam Demo: InfluxDB Add-on
 
 USAGE
-    
+
 $ ./tools/docker/demo/influxdb.sh [COMMAND] [ARGS]
 
 COMMANDS
 
     influxdb-ockamd
         starts the responder (sink) end, containing \`influxdb\` and \`ockamd\`, with configuration to send \`influxdb\` measurement data via \`ockamd\` over HTTP.
-    
+
     telegraf-ockamd [RESPONDER-PUBLIC-KEY]
         starts the initiator (source) end, containing \`telegraf\` and \`ockamd\`, with configuration to start \`telegraf\` to use \`ockamd\` as an \"execd\" output plugin.
 
@@ -36,12 +36,12 @@ COMMANDS
     exit 0
 fi
 
-case $1 in 
+case $1 in
     -h|--help)
         exec $0;
         ;;
     influxdb-ockamd)
-        # start the responder (sink) end, containing `influxdb` and `ockamd`, with configuration to 
+        # start the responder (sink) end, containing `influxdb` and `ockamd`, with configuration to
         # send `influxdb` measurement data via `ockamd` over HTTP.
         docker run -d --network="host" --name="influxdb-ockamd" ockam/influxdb-ockamd:0.10.0 \
             --role=responder \
@@ -68,7 +68,7 @@ case $1 in
             --env OCKAMD_ROUTE=udp://127.0.0.1:52440 \
             ockam/telegraf-ockamd:0.10.0 > /dev/null
         ;;
-    
+
     influxdb-ockamd-via-ockam-hub)
         docker network create --subnet=172.18.0.0/16 ockam-net > /dev/null
 
@@ -77,7 +77,7 @@ case $1 in
             --role=router \
             --route-hub=172.18.0.20:4052 > /dev/null
 
-        # start the responder (sink) end, containing `influxdb` and `ockamd`, with configuration to 
+        # start the responder (sink) end, containing `influxdb` and `ockamd`, with configuration to
         # send `influxdb` measurement data via `ockamd` over HTTP.
         docker run -d --net ockam-net --ip 172.18.0.21 --name="influxdb-ockamd" ockam/influxdb-ockamd-via-hub:0.10.1 \
             --role=sink \
@@ -107,20 +107,20 @@ case $1 in
         ;;
 
     influxdb-query)
-        # executes a 'SELECT * FROM temperature' query within the 'ockam_demo' database in 
+        # executes a 'SELECT * FROM temperature' query within the 'ockam_demo' database in
         # `influxdb`.
         docker exec influxdb-ockamd influx -database "ockam_demo" -execute "select * from temperature"
         ;;
 
     telegraf-write)
-        # sends a random 'temperature' measurement to `telegraf` agent, which is encrypted by 
+        # sends a random 'temperature' measurement to `telegraf` agent, which is encrypted by
         # `ockamd` and written to `influxdb`.
         TEMP=$(( ( RANDOM % 10 ) + 70 ))
         DATA="temperature,region=us-west temp=${TEMP}"
         docker exec telegraf-ockamd \
             curl -s -X POST http://0.0.0.0:8080/telegraf \
             --data-binary "${DATA}"
-        
+
         echo "sent measurement: ${DATA}"
         ;;
 
@@ -132,10 +132,9 @@ case $1 in
         docker network rm ockam-net >/dev/null 2>&1
         echo "Demo components removed."
         ;;
-    
+
     *)
         echo "Error: unrecognized command '$@'"
         exec $0;
         ;;
 esac
-    
