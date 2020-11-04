@@ -273,7 +273,7 @@ impl FromStr for ChannelRole {
             "source" => Ok(ChannelRole::Source),
             "sink" => Ok(ChannelRole::Sink),
             "router" => Ok(ChannelRole::Router),
-            _ => Err("role must be set to either 'initiator' or 'responder'".into()),
+            _ => Err("role must be set to either 'source', 'sink', or 'router'".into()),
         }
     }
 }
