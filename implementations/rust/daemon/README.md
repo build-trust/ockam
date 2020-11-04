@@ -33,27 +33,24 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    --addon <addon>
-        Pre-defined configuration for an official Ockam Add-on, e.g. "influx,http://localhost:8086"
-
-    --identity-name <identity-name>
-        Name of the private key to use for the identity of the channel initiator [default: 1.key]
-
-    --input <input>                              Data source providing input to `ockamd` [default: stdin]
-    --local-socket <local-socket>                Local node address and port to bind [default: 127.0.0.1:0]
-    --role <role>
-        Start `ockamd` as an "initiator" or a "responder" of a secure channel [default: initiator]
-
-    --route <route>
-        Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout"
-        [default: stdout]
-    --service-address <service-address>          Address used to reach the service on remote machine
-    --service-public-key <service-public-key>    The public key provided by the remote service
-    --vault <vault>
-        Specify which type of Ockam vault to use for this instance of `ockamd` [default: FILESYSTEM]
-
-    --vault-path <vault-path>
-        Filepath on disk to pre-existing private keys to be used by the filesystem vault [default: ockamd_vault]
+        --addon <addon>                        Pre-defined configuration for an official Ockam Add-on, e.g.
+                                               "influxdb,database_name,http://localhost:8086"
+        --identity-name <identity-name>        Name of the private key to use for the identity of the channel initiator
+                                               [default: 1.key]
+        --input <input>                        Data source providing input to `ockamd` [default: stdin]
+        --local-socket <local-socket>          Local node address and port to bind [default: 127.0.0.1:0]
+        --public-key-hub <public-key-hub>      The public key provided by the hub service
+        --public-key-sink <public-key-sink>    The public key provided by the remote (sink) service
+        --role <role>                          Start `ockamd` as "source", "sink", or "router" of a secure channel
+                                               [default: source]
+        --route-hub <route-hub>                Hub address and port to establish a listening channel
+        --route-sink <route-sink>              Route to responder (sink), e.g. udp://host:port[,udp://host:port] (note
+                                               comma-separation) or "stdout" [default: stdout]
+        --service-address <service-address>    Address used to reach the service on remote machine
+        --vault <vault>                        Specify which type of Ockam vault to use for this instance of `ockamd`
+                                               [default: FILESYSTEM]
+        --vault-path <vault-path>              Filepath on disk to pre-existing private keys to be used by the
+                                               filesystem vault [default: ockamd_vault]
 ```
 
 
