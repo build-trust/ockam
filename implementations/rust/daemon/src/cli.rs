@@ -31,26 +31,25 @@ pub struct Args {
     )]
     input: InputKind,
 
+    /// Defines the local socket address and port to bind a transport
+    #[structopt(
+        long,
+        default_value = DEFAULT_LOCAL_SOCKET,
+        help = "Local node address and port to bind"
+    )]
+    local_socket: SocketAddr,
+
     /// Defines the route where a message should be sent.
     #[structopt(
         long,
         default_value = "stdout",
-        help = r#"Route to channel responder, e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout""#
+        help = r#"Route to responder (sink), e.g. udp://host:port[,udp://host:port] (note comma-separation) or "stdout""#
     )]
-    route: OutputKind,
+    route_sink: OutputKind,
 
-    #[structopt(
-    long,
-    default_value = DEFAULT_LOCAL_SOCKET,
-    help = "Local node address and port to bind"
-    )]
-    local_socket: SocketAddr,
-
-    #[structopt(long, help = "Router node address and port to bind")]
-    router_socket: Option<SocketAddr>,
-
-    #[structopt(long, help = "Channel address for router to sink hop")]
-    channel_to_sink: Option<String>,
+    /// Hub address and port to establish a listening channel.
+    #[structopt(long, help = "Hub address and port to establish a listening channel")]
+    route_hub: Option<SocketAddr>, // TODO: make this a Route so it can be multiple hops.
 
     /// Defines the kind of Ockam vault implementation to use.
     #[structopt(
@@ -86,14 +85,19 @@ pub struct Args {
     )]
     identity_name: String,
 
-    /// Define the public key provided by the remote service.
+    /// Define the public key provided by the remote (sink) service.
     #[structopt(
         long,
         required_if("role", "source"),
-        help = "The public key provided by the remote service"
+        help = "The public key provided by the remote (sink) service"
     )]
-    service_public_key: Option<String>,
+    public_key_sink: Option<String>,
 
+    /// Define the public key provided by the hub service.
+    #[structopt(long, help = "The public key provided by the hub service")]
+    public_key_hub: Option<String>,
+
+    /// Address used to reach the service on remote machine.
     #[structopt(
         long,
         required_if("role", "source"),
@@ -101,6 +105,7 @@ pub struct Args {
     )]
     service_address: Option<String>,
 
+    /// Pre-defined configuration for an official Ockam Add-on, e.g. "influxdb,database_name,http://localhost:8086"
     #[structopt(
         long,
         help = r#"Pre-defined configuration for an official Ockam Add-on, e.g. "influxdb,database_name,http://localhost:8086""#
@@ -131,17 +136,16 @@ impl Default for Args {
             control: false,
             control_port: DEFAULT_CONFIG_PORT,
             input: InputKind::Stdin,
-            route: OutputKind::Stdout,
-            local_socket: SocketAddr::from_str(DEFAULT_LOCAL_SOCKET)
-                .expect("bad default set for local socket"),
-            channel_to_sink: None,
-            router_socket: None,
+            route_sink: OutputKind::Stdout,
+            route_hub: Some(SocketAddr::from_str(DEFAULT_LOCAL_SOCKET).expect("bad socket addr")),
+            local_socket: SocketAddr::from_str(DEFAULT_LOCAL_SOCKET).expect("bad socket addr"),
             vault: VaultKind::Filesystem,
             vault_path: PathBuf::from("ockamd_vault"),
             role: ChannelRole::Sink,
             service_address: None,
             identity_name: format!("1{}", FILENAME_KEY_SUFFIX),
-            service_public_key: None,
+            public_key_sink: None,
+            public_key_hub: Some("default_key_vaule".into()),
             addon: None,
         }
     }
@@ -168,7 +172,11 @@ impl Args {
     }
 
     pub fn output_kind(&self) -> OutputKind {
-        self.route.clone()
+        self.route_sink.clone()
+    }
+
+    pub fn route_hub(&self) -> Option<SocketAddr> {
+        self.route_hub.clone()
     }
 
     pub fn input_kind(&self) -> InputKind {
@@ -179,20 +187,24 @@ impl Args {
         self.local_socket
     }
 
-    pub fn channel_to_sink(&self) -> Option<String> {
-        self.channel_to_sink.clone()
-    }
+    // pub fn channel_to_sink(&self) -> Option<String> {
+    //     self.channel_to_sink.clone()
+    // }
 
-    pub fn router_socket(&self) -> Option<SocketAddr> {
-        self.router_socket
-    }
+    // pub fn router_socket(&self) -> Option<SocketAddr> {
+    //     self.router_socket
+    // }
 
     pub fn vault_path(&self) -> PathBuf {
         self.vault_path.clone()
     }
 
-    pub fn service_public_key(&self) -> Option<String> {
-        self.service_public_key.clone()
+    pub fn public_key_sink(&self) -> Option<String> {
+        self.public_key_sink.clone()
+    }
+
+    pub fn public_key_hub(&self) -> Option<String> {
+        self.public_key_hub.clone()
     }
 
     pub fn service_address(&self) -> Option<String> {
@@ -332,15 +344,34 @@ impl FromStr for OutputKind {
                         ret = Err(format!("invalid URI: {}", part));
                     }
 
-                    // TODO: add helper fn in message crate that peforms a FromStr and delegates to
-                    // RouterAddress::* fn's if url scheme is udp, tcp, etc.
-                    let addr = u.as_str().trim().trim_start_matches("udp://");
-
-                    if let Ok(router_addr) = RouterAddress::udp_router_address_from_str(addr) {
-                        route.addresses.push(router_addr);
+                    match u.scheme() {
+                        "udp" => {
+                            let addr = u.as_str().trim().trim_start_matches("udp://");
+                            if let Ok(router_addr) =
+                                RouterAddress::udp_router_address_from_str(addr)
+                            {
+                                route.addresses.push(router_addr);
+                            }
+                        }
+                        "tcp" => {
+                            // let addr = u.as_str().trim().trim_start_matches("tcp://");
+                            // if let Ok(router_addr) =
+                            //     RouterAddress::tcp_router_address_from_str(addr)
+                            // {
+                            //     route.addresses.push(router_addr);
+                            // }
+                            todo!();
+                        }
+                        _ => ret = Err(format!("unsupported URL scheme for: {}", u.as_str())),
                     }
                 }
-                Err(e) => ret = Err(format!("failed to parse url: {:?}", e)),
+                Err(e) => {
+                    if let Ok(chan_addr) = RouterAddress::channel_router_address_from_str(part) {
+                        route.addresses.push(chan_addr);
+                    } else {
+                        ret = Err(format!("failed to parse route part '{}': {:?}", part, e));
+                    }
+                }
             }
         });
 
@@ -365,7 +396,8 @@ fn test_cli_args_output() {
         }
     }
 
-    let test_cases = [
+    // UDP-only route test cases
+    [
         // route
         "udp://10.10.1.3:9999,udp://192.168.33.4:4444,udp://10.2.22.2:22222",
         // number of hops in route
@@ -373,9 +405,9 @@ fn test_cli_args_output() {
         // etc..
         "udp://16.31.56.22, udp://ockam.network, udp://14.172.71.124, udp://44.178.238.169",
         "4",
-    ];
-
-    test_cases.windows(2).for_each(|route_hop| {
+    ]
+    .windows(2)
+    .for_each(|route_hop| {
         if let Ok(output_kind) = OutputKind::from_str(route_hop[0]) {
             match output_kind {
                 OutputKind::Channel(route) => {
@@ -388,4 +420,52 @@ fn test_cli_args_output() {
             }
         }
     });
+
+    // UDP and Channel address test cases
+    let route =
+        match OutputKind::from_str("udp://127.0.0.1:54201,udp://1.1.1.1:8000,87c4dd31,cd5d1fe9")
+            .unwrap()
+        {
+            OutputKind::Channel(r) => r,
+            _ => panic!("bad output kind, expected channel"),
+        };
+    for (i, addr) in route.addresses.iter().enumerate() {
+        match i {
+            0 | 1 => {
+                assert!(matches!(
+                    addr.a_type,
+                    ockam_message::message::AddressType::Udp
+                ));
+            }
+            2 | 3 => {
+                assert!(matches!(
+                    addr.a_type,
+                    ockam_message::message::AddressType::Channel
+                ));
+            }
+            _ => unimplemented!("a test for this value is not included"),
+        }
+    }
+
+    // TCP-only route test cases
+    // [
+    //     "tcp://127.0.0.1:12345,tcp://10.1.20.34:11111",
+    //     "2",
+    //     "tcp://99.234.21.34:8808, tcp://0.0.0.0:2341, tcp://1.1.1.1:3033",
+    //     "3",
+    // ]
+    // .windows(2)
+    // .for_each(|route_hop| {
+    //     if let Ok(output_kind) = OutputKind::from_str(route_hop[0]) {
+    //         match output_kind {
+    //             OutputKind::Channel(route) => {
+    //                 assert_eq!(route.addresses.len(), route_hop[1].parse().unwrap());
+    //                 route.addresses.iter().for_each(|addr| {
+    //                     assert_eq!(addr.a_type, AddressType::Tcp);
+    //                 })
+    //             }
+    //             _ => {}
+    //         }
+    //     }
+    // });
 }

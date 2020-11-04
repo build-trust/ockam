@@ -31,17 +31,17 @@ pub fn run(config: Config) {
         hex::decode(config.service_address().unwrap()).unwrap()
     );
 
-    let mut onward_route = Route { addresses: vec![] };
-    if let Some(router_address) = config.router_socket() {
-        onward_route
-            .addresses
-            .push(RouterAddress::from_address(Address::UdpAddress(router_address)).unwrap());
-    }
-    if let Some(channel_to_sink) = config.channel_to_sink() {
-        onward_route
-            .addresses
-            .push(RouterAddress::channel_router_address_from_str(&channel_to_sink).unwrap());
-    }
+    let mut onward_route = config.onward_route().unwrap_or(Route { addresses: vec![] });
+    // if let Some(router_address) = config.router_socket() {
+    //     onward_route
+    //         .addresses
+    //         .push(RouterAddress::from_address(Address::UdpAddress(router_address)).unwrap());
+    // }
+    // if let Some(channel_to_sink) = config.channel_to_sink() {
+    //     onward_route
+    //         .addresses
+    //         .push(RouterAddress::channel_router_address_from_str(&channel_to_sink).unwrap());
+    // }
     onward_route
         .addresses
         .push(RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap());
@@ -100,7 +100,6 @@ impl StdinWorker {
     }
 
     fn receive_channel(&mut self, m: Message) -> Result<(), String> {
-        let channel = m.return_route.addresses[0].clone();
         self.route = m.return_route.clone();
 
         // add the service address
@@ -109,8 +108,7 @@ impl StdinWorker {
                 .unwrap();
         self.route.addresses.push(service_address);
 
-        let resp_public_key = encode(&m.message_body);
-        if let Some(rpk) = self.config.remote_public_key() {
+        if let Some(rpk) = self.config.public_key_sink() {
             if rpk == encode(&m.message_body) {
                 println!("keys agree");
                 return Ok(());
@@ -124,25 +122,14 @@ impl StdinWorker {
 
     fn poll(&mut self) -> bool {
         // await key exchange finalization
-        // match self.rx.try_recv() {
-        //     Ok(cmd) => match cmd {
         if let Ok(cmd) = self.rx.try_recv() {
             match cmd {
                 OckamCommand::Worker(WorkerCommand::ReceiveMessage(msg)) => {
                     match msg.message_type {
-                        MessageType::None => {
-                            // validate the public key matches the one in our config
-                            // TODO: revert this comment to validate the responder public
-                            // key if let Some(key) =
-                            // config.remote_public_key() {
-                            //     validate_public_key(&key, msg.message_body)
-                            //         .expect("failed to prove responder identity");
-                            // }
-                            match self.receive_channel(msg) {
-                                Ok(()) => {}
-                                Err(s) => panic!(s),
-                            }
-                        }
+                        MessageType::None => match self.receive_channel(msg) {
+                            Ok(()) => {}
+                            Err(s) => panic!(s),
+                        },
                         _ => unimplemented!(),
                     }
                 }
@@ -156,7 +143,6 @@ impl StdinWorker {
                 self.router_tx
                     .send(OckamCommand::Router(RouterCommand::SendMessage(
                         OckamMessage {
-                            //onward_route: self.onward_route.clone(),
                             onward_route: self.route.clone(),
                             return_route: Route { addresses: vec![] },
                             message_type: MessageType::Payload,
@@ -172,14 +158,5 @@ impl StdinWorker {
             };
         }
         true
-    }
-}
-
-#[allow(dead_code)]
-fn validate_public_key(known: &str, remote: Vec<u8>) -> Result<(), String> {
-    if known.as_bytes().to_vec() == remote {
-        Ok(())
-    } else {
-        Err("remote public key mismatch".into())
     }
 }

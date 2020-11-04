@@ -25,14 +25,16 @@ pub enum AddonKind {
 #[derive(Debug, Clone)]
 pub struct Config {
     onward_route: Option<Route>,
+    route_hub: Option<SocketAddr>, // TODO: make this a Route so it can be multiple hops.
     output_to_stdout: bool,
     local_socket: SocketAddr,
-    router_socket: Option<SocketAddr>,
-    channel_to_sink: Option<String>,
+    // router_socket: Option<SocketAddr>,
+    // channel_to_sink: Option<String>,
     role: Role,
     vault_path: PathBuf,
     input_kind: Input,
-    remote_public_key: Option<String>,
+    public_key_sink: Option<String>,
+    public_key_hub: Option<String>,
     service_address: Option<String>,
     identity_name: String,
     addon: Option<AddonKind>,
@@ -53,6 +55,10 @@ impl Config {
         self.onward_route.clone()
     }
 
+    pub fn route_hub(&self) -> Option<SocketAddr> {
+        self.route_hub.clone()
+    }
+
     pub fn input_kind(&self) -> Input {
         self.input_kind
     }
@@ -61,16 +67,20 @@ impl Config {
         self.local_socket
     }
 
-    pub fn router_socket(&self) -> Option<SocketAddr> {
-        self.router_socket
+    // pub fn router_socket(&self) -> Option<SocketAddr> {
+    //     self.router_socket
+    // }
+
+    // pub fn channel_to_sink(&self) -> Option<String> {
+    //     self.channel_to_sink.clone()
+    // }
+
+    pub fn public_key_sink(&self) -> Option<String> {
+        self.public_key_sink.clone()
     }
 
-    pub fn remote_public_key(&self) -> Option<String> {
-        self.remote_public_key.clone()
-    }
-
-    pub fn channel_to_sink(&self) -> Option<String> {
-        self.channel_to_sink.clone()
+    pub fn public_key_hub(&self) -> Option<String> {
+        self.public_key_hub.clone()
     }
 
     pub fn role(&self) -> Role {
@@ -94,14 +104,16 @@ impl From<cli::Args> for Config {
     fn from(args: cli::Args) -> Self {
         let mut cfg = Config {
             onward_route: None,
+            route_hub: args.route_hub(),
             output_to_stdout: false,
             local_socket: args.local_socket(),
-            channel_to_sink: args.channel_to_sink(),
-            router_socket: args.router_socket(),
+            // channel_to_sink: args.channel_to_sink(),
+            // router_socket: args.router_socket(),
             role: Role::Source,
             vault_path: args.vault_path(),
             input_kind: Input::Stdin,
-            remote_public_key: args.service_public_key(),
+            public_key_sink: args.public_key_sink(),
+            public_key_hub: args.public_key_hub(),
             service_address: args.service_address(),
             identity_name: args.identity_name(),
             addon: if let Some(a) = args.addon() {

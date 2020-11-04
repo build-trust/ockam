@@ -15,7 +15,7 @@ pub fn run(config: Config) {
 
     let worker_addr = RouterAddress::worker_router_address_from_str("01242020").unwrap();
     // kick off secure channel to router, if we have a router address
-    match config.router_socket() {
+    match config.route_hub() {
         Some(socket) => {
             let route = Route {
                 addresses: vec![
