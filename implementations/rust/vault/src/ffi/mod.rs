@@ -3,6 +3,7 @@ use crate::types::{PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext};
 use crate::{error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, DynVault};
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr, IntoFfi};
 use std::convert::TryInto;
+use std::slice;
 
 mod types;
 
@@ -148,6 +149,8 @@ pub extern "C" fn ockam_vault_secret_import(
     input: *mut u8,
     input_length: u32,
 ) -> VaultError {
+    check_buffer!(input, input_length);
+
     let mut err = ExternError::success();
     let atts = attributes.into();
     let handle = VAULTS.call_with_result_mut(
@@ -341,7 +344,8 @@ pub extern "C" fn ockam_vault_ecdh(
 pub extern "C" fn ockam_vault_hkdf_sha256(
     context: u64,
     salt: u64,
-    input_key_material: u64,
+    input_key_material: *const u64,
+    derived_outputs_attributes: *const FfiSecretKeyAttributes,
     derived_outputs_count: u8,
     derived_outputs: *mut u64,
 ) -> VaultError {
@@ -351,20 +355,18 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
         &mut err,
         context,
         |v| -> Result<OckamSecretList, VaultFailError> {
-            const SIZES: usize = 32;
             let salt_ctx = get_memory_id(salt);
-            // FIXME: Allow optional ikm
-            let ikm_ctx = get_memory_id(input_key_material);
+            let ikm_ctx = if input_key_material.is_null() {
+                None
+            } else {
+                unsafe { Some(get_memory_id(*input_key_material)) }
+            };
 
-            let mut output_attributes = Vec::<SecretKeyAttributes>::new();
+            let array: &[FfiSecretKeyAttributes] =
+                unsafe { slice::from_raw_parts(derived_outputs_attributes, derived_outputs_count) };
 
-            for _ in 0..derived_outputs_count {
-                output_attributes.push(SecretKeyAttributes {
-                    xtype: SecretKeyType::Buffer(SIZES),
-                    purpose: SecretPurposeType::KeyAgreement,
-                    persistence: SecretPersistenceType::Ephemeral,
-                });
-            }
+            let output_attributes: Vec<SecretKeyAttributes> =
+                array.iter().map(|x| x.into()).collect();
 
             // TODO: Hardcoded to be empty for now because any changes
             // to the C layer requires an API change.
@@ -379,7 +381,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
             // Either way, I don't want to change the API until this decision is finalized.
             let hkdf_output = v
                 .vault
-                .hkdf_sha256(salt_ctx, b"", Some(ikm_ctx), output_attributes)?
+                .hkdf_sha256(salt_ctx, b"", ikm_ctx, output_attributes)?
                 .iter()
                 .map(|x| x.into_ffi_value())
                 .collect();
@@ -462,8 +464,8 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     plaintext_size: u32,
     plaintext_length: &mut u32,
 ) -> VaultError {
+    check_buffer!(ciphertext_and_tag, ciphertext_and_tag_length);
     check_buffer!(additional_data);
-    check_buffer!(ciphertext_and_tag, plaintext_size);
     *plaintext_length = 0;
     let mut err = ExternError::success();
     let additional_data =

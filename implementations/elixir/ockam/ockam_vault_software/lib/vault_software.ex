@@ -87,6 +87,10 @@ defmodule Ockam.Vault.Software do
     raise "natively implemented hkdf_sha256/4 not loaded"
   end
 
+  def hkdf_sha256(_a, _b, _c) do
+    raise "natively implemented hkdf_sha256/3 not loaded"
+  end
+
   def aead_aes_gcm_encrypt(_a, _b, _c, _d, _e) do
     raise "natively implemented aead_aes_gcm_encrypt/5 not loaded"
   end

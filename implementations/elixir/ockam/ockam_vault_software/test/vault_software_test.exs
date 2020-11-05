@@ -187,7 +187,22 @@ defmodule Ockam.Vault.Software.Tests do
 
       {:ok, ikm} = SoftwareVault.secret_import(handle, attributes, ikm_data)
 
-      {:ok, derived_secrets} = SoftwareVault.hkdf_sha256(handle, salt, ikm, 2)
+      attributes_out1 = %{
+        type: :buffer,
+        persistence: :ephemeral,
+        purpose: :key_agreement,
+        length: 32
+      }
+
+      attributes_out2 = %{
+        type: :buffer,
+        persistence: :ephemeral,
+        purpose: :key_agreement,
+        length: 32
+      }
+
+      {:ok, derived_secrets} =
+        SoftwareVault.hkdf_sha256(handle, salt, ikm, [attributes_out1, attributes_out2])
 
       {:ok, data1} = SoftwareVault.secret_export(handle, Enum.at(derived_secrets, 0))
       {:ok, data2} = SoftwareVault.secret_export(handle, Enum.at(derived_secrets, 1))

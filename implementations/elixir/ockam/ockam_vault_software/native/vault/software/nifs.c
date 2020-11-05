@@ -482,7 +482,7 @@ static ERL_NIF_TERM ecdh(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
 }
 
 static ERL_NIF_TERM hkdf_sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (4 != argc) {
+    if (4 != argc && 3 != argc) {
         return enif_make_badarg(env);
     }
 
@@ -496,13 +496,21 @@ static ERL_NIF_TERM hkdf_sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
         return enif_make_badarg(env);
     }
 
+    size_t i = 2;
     ErlNifUInt64 ikm_handle;
-    if (0 == enif_get_uint64(env, argv[2], &ikm_handle)) {
-        return enif_make_badarg(env);
+    const ockam_vault_secret_t *ikm_handle_ptr = (const ockam_vault_secret_t *) &ikm_handle;
+    if (argc == 4) {
+        if (0 == enif_get_uint64(env, argv[2], &ikm_handle)) {
+            return enif_make_badarg(env);
+        }
+        i++;
+    }
+    else {
+        ikm_handle_ptr = NULL;
     }
 
     unsigned int derived_outputs_count;
-    if (0 == enif_get_uint(env, argv[3], &derived_outputs_count)) {
+    if (0 == enif_get_list_length(env, argv[i], &derived_outputs_count)) {
         return enif_make_badarg(env);
     }
 
@@ -510,14 +518,31 @@ static ERL_NIF_TERM hkdf_sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
         return enif_make_badarg(env);
     }
 
+    ockam_vault_secret_attributes_t attributes[MAX_DERIVED_OUTPUT_COUNT];
+    ockam_vault_secret_attributes_t* attr = attributes;
+
+    ERL_NIF_TERM current_list = argv[i];
+    ERL_NIF_TERM head;
+    ERL_NIF_TERM tail;
+
+    for (unsigned int j = 0; j < derived_outputs_count; j++, attr++) {
+        if (0 == enif_get_list_cell(env, current_list, &head, &tail)) {
+            return enif_make_badarg(env);
+        }
+        current_list = tail;
+        if (0 != parse_secret_attributes(env, head, attr)) {
+            return enif_make_badarg(env);
+        }
+    }
+
     ockam_vault_secret_t shared_secrets[MAX_DERIVED_OUTPUT_COUNT];
-    if (0 != ockam_vault_hkdf_sha256(vault, salt_handle, ikm_handle, derived_outputs_count, shared_secrets)) {
+    if (0 != ockam_vault_hkdf_sha256(vault, salt_handle, ikm_handle_ptr, attributes, derived_outputs_count, shared_secrets)) {
         return err(env, "failed to hkdf_sha256");
     }
 
     ERL_NIF_TERM output_array[MAX_DERIVED_OUTPUT_COUNT];
-    for (size_t i = 0; i < derived_outputs_count; i++) {
-        output_array[i] = enif_make_uint64(env, shared_secrets[i]);
+    for (size_t j = 0; j < derived_outputs_count; j++) {
+        output_array[j] = enif_make_uint64(env, shared_secrets[j]);
     }
 
     ERL_NIF_TERM output = enif_make_list_from_array(env, output_array, derived_outputs_count);
@@ -685,6 +710,7 @@ static ErlNifFunc nifs[] = {
   {"secret_attributes_get", 2, secret_attributes_get},
   {"secret_destroy", 2, secret_destroy},
   {"ecdh", 3, ecdh},
+  {"hkdf_sha256", 3, hkdf_sha256},
   {"hkdf_sha256", 4, hkdf_sha256},
   {"aead_aes_gcm_encrypt", 5, aead_aes_gcm_encrypt},
   {"aead_aes_gcm_decrypt", 5, aead_aes_gcm_decrypt},
