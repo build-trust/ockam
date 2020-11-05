@@ -100,5 +100,17 @@ fn main() {
 
     start_node(local_socket, route, worker, is_initiator, router_only);
 
-    thread::sleep(time::Duration::from_millis(1000000));
+    match start_node(
+        local_udp,
+        router_addr,
+        remote_addr,
+        worker_addr,
+        listen_addr,
+        role,
+    ) {
+        Err(s) => {
+            println!("{}", s);
+        }
+        _ => {}
+    }
 }

@@ -327,8 +327,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let channel = &mut *channel.lock().unwrap();
         channel.agreement.process(&m.message_body)?;
         let m2 = channel.agreement.process(&[])?;
-        let m = Message {
-            onward_route: m.return_route,
+        let new_m = Message {
+            onward_route: m.return_route.clone(),
             return_route: Route {
                 addresses: vec![
                     RouterAddress::from_address(channel.as_ciphertext_address()).unwrap()
@@ -338,7 +338,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             message_body: m2,
         };
         self.router_tx
-            .send(Router(RouterCommand::SendMessage(m)))
+            .send(Router(RouterCommand::SendMessage(new_m)))
             .unwrap();
         Ok(())
     }

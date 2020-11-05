@@ -110,6 +110,10 @@ pub mod router {
                     handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
                     Ok(())
                 }
+                AddressType::Tcp => {
+                    handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
+                    Ok(())
+                }
                 _ => Err("not implemented".to_string()),
             }
         }

@@ -142,6 +142,7 @@ pub mod message {
         pub fn as_string(&self) -> String {
             match self {
                 Address::UdpAddress(socket) => socket.to_string(),
+                Address::TcpAddress(socket) => socket.to_string(),
                 Address::ChannelAddress(u) | Address::WorkerAddress(u) => hex::encode(u.as_slice()),
                 _ => "error".to_string(),
             }
@@ -162,6 +163,7 @@ pub mod message {
             match self {
                 Address::WorkerAddress(a) => a.len() as u8,
                 Address::UdpAddress(s) => 7,
+                Address::TcpAddress(s) => 7,
                 Address::ChannelAddress(a) => a.len() as u8,
                 _ => 0,
             }
@@ -400,6 +402,9 @@ pub mod message {
                 match &a.address {
                     Address::UdpAddress(udp) => {
                         println!("Udp: {}", udp.to_string());
+                    }
+                    Address::TcpAddress(tcp) => {
+                        println!("Tcp: {}", tcp.to_string());
                     }
                     Address::WorkerAddress(wa) => {
                         println!("worker: {}", hex::encode(wa));
