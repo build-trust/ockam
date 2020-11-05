@@ -52,6 +52,7 @@ pub mod message {
         KeyAgreementM1 = 3,
         KeyAgreementM2 = 4,
         KeyAgreementM3 = 5,
+        NoSuchChannel = 9,
         None = 255,
     }
 
@@ -118,7 +119,6 @@ pub mod message {
     impl Clone for AddressType {
         fn clone(&self) -> Self {
             match self {
-                //                AddressType::Local => AddressType::Local,
                 AddressType::Tcp => AddressType::Tcp,
                 AddressType::Udp => AddressType::Udp,
                 AddressType::Channel => AddressType::Channel,
@@ -131,8 +131,7 @@ pub mod message {
     //    #[repr(C)]
     #[derive(Clone, Debug, PartialEq)]
     pub enum Address {
-        //        LocalAddress(u32),
-        TcpAddress(IpAddr, u16),
+        TcpAddress(SocketAddr),
         UdpAddress(SocketAddr),
         ChannelAddress(Vec<u8>),
         WorkerAddress(Vec<u8>),
@@ -277,6 +276,11 @@ pub mod message {
                         SocketAddr::encode(&sock_addr, v);
                     }
                 }
+                AddressType::Tcp => {
+                    if let Address::TcpAddress(sock_addr) = self.address.clone() {
+                        SocketAddr::encode(&sock_addr, v);
+                    }
+                }
                 AddressType::Channel => {
                     if let Address::ChannelAddress(mut ca) = self.address.clone() {
                         v.append(&mut ca);
@@ -328,6 +332,18 @@ pub mod message {
                             a_type: AddressType::Udp,
                             length: u[1],
                             address: Address::UdpAddress(sock),
+                        },
+                        &u[u[1] as usize + 2..],
+                    ))
+                }
+                AddressType::Tcp => {
+                    let (sock, v) = SocketAddr::decode(&u[2..])?;
+                    let address = Address::TcpAddress(sock);
+                    Ok((
+                        RouterAddress {
+                            a_type: AddressType::Tcp,
+                            length: u[1],
+                            address: Address::TcpAddress(sock),
                         },
                         &u[u[1] as usize + 2..],
                     ))
@@ -425,6 +441,7 @@ pub mod message {
             match &self.address {
                 Address::WorkerAddress(a) => a.len() as u8,
                 Address::UdpAddress(_unused) => 7,
+                Address::TcpAddress(_unused) => 7,
                 Address::ChannelAddress(a) => a.len() as u8,
                 _ => 0,
             }
@@ -435,6 +452,11 @@ pub mod message {
                     a_type: AddressType::Udp,
                     length: a.size_of(),
                     address: Address::UdpAddress(*sock_addr),
+                }),
+                Address::TcpAddress(sock_addr) => Some(RouterAddress {
+                    a_type: AddressType::Tcp,
+                    length: a.size_of(),
+                    address: Address::TcpAddress(*sock_addr),
                 }),
                 Address::ChannelAddress(ca) => Some(RouterAddress {
                     a_type: AddressType::Channel,
@@ -455,6 +477,16 @@ pub mod message {
                     a_type: AddressType::Udp,
                     length: 7,
                     address: Address::UdpAddress(s),
+                }),
+                Err(_unused) => Err("failed to parse router address".to_string()),
+            }
+        }
+        pub fn tcp_router_address_from_str(s: &str) -> Result<RouterAddress, String> {
+            match SocketAddr::from_str(s) {
+                Ok(s) => Ok(RouterAddress {
+                    a_type: AddressType::Tcp,
+                    length: 7,
+                    address: Address::TcpAddress(s),
                 }),
                 Err(_unused) => Err("failed to parse router address".to_string()),
             }
