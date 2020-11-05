@@ -412,9 +412,8 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
     ciphertext_and_tag_size: u32,
     ciphertext_and_tag_length: &mut u32,
 ) -> VaultError {
-    // FIXME: Additional data is not mandatory
-    check_buffer!(additional_data, additional_data_length);
-    check_buffer!(plaintext, plaintext_length);
+    check_buffer!(additional_data);
+    check_buffer!(plaintext);
     *ciphertext_and_tag_length = 0;
     let mut err = ExternError::success();
     let additional_data =
@@ -463,8 +462,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     plaintext_size: u32,
     plaintext_length: &mut u32,
 ) -> VaultError {
-    // FIXME: Additional data is not mandatory
-    check_buffer!(additional_data, additional_data_length);
+    check_buffer!(additional_data);
     check_buffer!(ciphertext_and_tag, plaintext_size);
     *plaintext_length = 0;
     let mut err = ExternError::success();
