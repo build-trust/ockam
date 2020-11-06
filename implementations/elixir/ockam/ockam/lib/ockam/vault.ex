@@ -41,6 +41,10 @@ defmodule Ockam.Vault do
     vault_module.hkdf_sha256(vault_id, b, c, d)
   end
 
+  def hkdf_sha256(%vault_module{id: vault_id}, b, c) do
+    vault_module.hkdf_sha256(vault_id, b, c)
+  end
+
   def aead_aes_gcm_encrypt(%vault_module{id: vault_id}, b, c, d, e) do
     vault_module.aead_aes_gcm_encrypt(vault_id, b, c, d, e)
   end
