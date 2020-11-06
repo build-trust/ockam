@@ -7,6 +7,7 @@ defmodule Ockam.Node do
   alias Ockam.Message
   alias Ockam.Node.Registry
   alias Ockam.Router
+  alias Ockam.Telemetry
 
   # `get_random_unused_address/1` uses this as the length of the new address
   # that will be generated.
@@ -99,6 +100,21 @@ defmodule Ockam.Node do
   end
 
   def handle_routed_message(message) do
+    metadata = %{message: message}
+
+    start_time =
+      Telemetry.emit_start_event([__MODULE__, :handle_routed_message], metadata: metadata)
+
+    return_value = route_message(message)
+
+    metadata = Map.put(metadata, :return_value, return_value)
+
+    Telemetry.emit_stop_event([__MODULE__, :handle_routed_message], start_time, metadata: metadata)
+
+    return_value
+  end
+
+  def route_message(message) do
     onward_route = Message.onward_route(message)
 
     case onward_route do
