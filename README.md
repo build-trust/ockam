@@ -1,4 +1,4 @@
-<div align="center"><em>[Placeholder] <a href="https://ockam.io">try a demo</a></em></div>
+<div align="center"><em><h3><b>InfluxDays 2020</b> <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub">Demo: Learn how Ockam provides end-to-end secure connections for InfluxDB and Telegraf</a></h3></em></div>
 <hr>
 
 <p align="center">
@@ -15,7 +15,7 @@
   src="https://github.com/ockam-network/ockam/workflows/Continuous%20Integration/badge.svg">
 </a>
 
-<a href="https://www.ockam.io/learn/guides/team/conduct/">
+<a href="https://www.ockam.io/learn/how-to-guides/high-performance-team/conduct/">
 <img alt="Contributor Covenant"
   src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg">
 </a>
@@ -28,7 +28,7 @@
 
 <div align="center">
   <h3>
-    <a href="https://www.ockam.io/learn/">
+    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub/">
       Try a demo
     </a>
     <span> | </span>
@@ -40,7 +40,7 @@
       Discuss
     </a>
     <span> | </span>
-    <a href="https://www.ockam.io/learn/">
+    <a href="https://www.ockam.io/learn/how-to-guides/contributing/">
       Contribute
     </a>
   </h3>
@@ -61,7 +61,7 @@ trustfully with cloud services and other devices.
 * Libraries for multiple languages - C, Rust, Elixir (more on the roadmap).
 
 <p align="center">
-  <a href="https://ockam.io">
+  <a href="https://ockam.io/learn/concepts/">
     <img alt="Ockam"
       src="./documentation/concepts/assets/ockam-features.png"
       width="900">
