@@ -1,9 +1,18 @@
-![Ockam Logo](https://www.ockam.io/0dc9e19beab4d96b8350d09be78361df/logo_white_background_preview.svg)
+<div align="center"><em>[Placeholder] <a href="https://ockam.io">try a demo</a></em></div>
+<hr>
 
-<p>
-<a href="https://dev.azure.com/ockam-network/ockam/_build/latest?definitionId=10?branchName=develop">
-<img alt="Build Status"
-  src="https://dev.azure.com/ockam-network/ockam/_apis/build/status/ockam-network.ockam?branchName=develop">
+<p align="center">
+  <a href="https://ockam.io">
+    <img alt="Ockam"
+      src="https://www.ockam.io/0dc9e19beab4d96b8350d09be78361df/logo_white_background_preview.svg"
+      width="450">
+  </a>
+</p>
+
+<p align="center">
+<a href="https://github.com/ockam-network/ockam/actions?query=workflow%3A%22Continuous+Integration%22">
+<img alt="Continuous Integration"
+  src="https://github.com/ockam-network/ockam/workflows/Continuous%20Integration/badge.svg">
 </a>
 
 <a href="https://www.ockam.io/learn/guides/team/conduct/">
@@ -17,37 +26,68 @@
 </a>
 </p>
 
-Consumer, enterprise, and industrial systems will become interconnected and
-automated around us. These systems require trust architectures to make our data
-secure and private.
+<div align="center">
+  <h3>
+    <a href="https://www.ockam.io/learn/">
+      Try a demo
+    </a>
+    <span> | </span>
+    <a href="https://www.ockam.io/learn/concepts">
+      Learn
+    </a>
+    <span> | </span>
+    <a href="https://github.com/ockam-network/ockam/discussions">
+      Discuss
+    </a>
+    <span> | </span>
+    <a href="https://www.ockam.io/learn/">
+      Contribute
+    </a>
+  </h3>
+</div>
 
-Ockam’s mission is to empower developers. Building distributed systems of
-interconnected devices is really difficult. It takes specialized skills and
-massive development budgets to do right. Very few teams have these resources.
-However, it will take millions of developers to build our connected future.
-This is why Ockam’s mission is to empower builders with our simple-to-use open
-source tools.
+<hr>
 
-Ockam helps you build connected systems that you can trust.
+Ockam is an open source suite of tools, programming libraries and
+infrastructure needed for a device to communicate securely, privately and
+trustfully with cloud services and other devices.
 
-Ockam’s developer tools enable you to …
-* Send end-to-end encrypted messages through your connected system,
+## Features
 
-* Establish authenticated channels between endpoints regardless of
-the transports or route,
+* End-to-end encrypted messages.
+* Mutually authenticated secure channels.
+* Key Lifecycle and Credential Exchange protocols.
+* Add-Ons for a variety of transport protocols, hardware cryptography, and enterprise integrations.
+* Libraries for multiple languages - C, Rust, Elixir (more on the roadmap).
 
-* Create and manage cryptographic keys, unique device identifiers, and
-verifiable credentials in your connected environments.
+<p align="center">
+  <a href="https://ockam.io">
+    <img alt="Ockam"
+      src="./documentation/concepts/assets/ockam-features.png"
+      width="900">
+  </a>
+</p>
 
-**The Ockam Team is here to help you.**
+<hr>
 
-If you still have questions after reading through our
-[published content](https://www.ockam.io/learn), please reach out to us. We’d
-love to connect with you to hear about what you are building.
+We believe that Security, Privacy and Trust are application layer concerns and
+IoT developers should have easy to use tools to granularly control these aspects
+of their applications.
 
-## License and attributions
+Cryptographic protocols can be a powerful tool to solve many complex, real world
+challenges in deploying dependable IoT at scale. Such protocols, however, must
+be designed and implemented with extreme care.
 
-This code is licensed under the terms of the [Apache License 2.0](LICENSE)
+In Ockam, we're taking proven cryptographic building blocks and applying them
+to build solutions for common IoT and edge computing problems like:
 
-This code depends on other open source packages; attributions for those
-packages are in the [NOTICE](NOTICE) file.
+* Secure, easy and rapid __enrollment of large fleets__ of devices.
+* Scalable provisioning, proof of possession, rotation, and revocation of __identity keys and credentials__.
+* __End-to-end encrypted communication__ over low-bandwidth, intermittently connected, multi-protocol IoT topologies.
+
+Our goal is to provide this functionality with secure, high level application
+interfaces that are easy to use correctly and hard to misuse.
+
+## License
+
+This code is licensed under the terms of the [Apache License 2.0](LICENSE).
