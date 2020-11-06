@@ -67,6 +67,8 @@ defmodule Ockam.Worker do
 
           metadata = Map.put(metadata, :return_value, return_value)
           Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
+
+          return_value
         end
       end
 
