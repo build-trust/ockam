@@ -5,6 +5,8 @@ defmodule Ockam.Vault.Software do
 
   use Application
 
+  defstruct [:id]
+
   @on_load {:load_natively_implemented_functions, 0}
 
   app = Mix.Project.config()[:app]
@@ -37,6 +39,12 @@ defmodule Ockam.Vault.Software do
     # See the "Strategies" section in the `Supervisor` module for more
     # detailed information.
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
+  end
+
+  def init do
+    with {:ok, id} <- default_init() do
+      {:ok, %__MODULE__{id: id}}
+    end
   end
 
   def default_init do
