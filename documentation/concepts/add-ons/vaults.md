@@ -1,8 +1,9 @@
 ```yaml
 title: Vaults
+order: 3
 ```
 
-# Vaults
+# Ockam Add-Ons for Cryptographic Hardware - Vaults
 
 Various Ockam protocols depend on a variety of standard cryptographic
 primitives or building blocks. Depending on the environment, these
@@ -17,7 +18,7 @@ an abstract `Vault` interface.
 A concrete implementation of the `Vault` interface is called an Ockam
 Vault. Over time there will be many such implementations.
 
-![Vaults](./assets/vaults/vaults.svg)
+![Vaults](../assets/vaults/vaults.svg)
 
 The `Vault` interface exposes functions for generating and using
 cryptographic keys, secure random numbers, key derivation, hashing,

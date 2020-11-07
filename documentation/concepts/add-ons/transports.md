@@ -1,8 +1,9 @@
 ```yaml
 title: Transports
+order: 2
 ```
 
-# Transports
+# Ockam Add-Ons for Transport Protocols
 
 Connected machines and devices communicate amongst each other by exchanging
 messages over a variety of transport protocols like TCP, UDP, Bluetooth,
@@ -19,7 +20,7 @@ transport protocol. This loose coupling is achieved using an abstract
 A concrete implementation of the `Transport` interface is called an Ockam
 Transport. Over time there will be many such implementations.
 
-![Transports](./assets/transports/transports.svg)
+![Transports](../assets/transports/transports.svg)
 
 This loose coupling between Ockam's higher level protocols and how a specific
 transport sends or receives messages allows us to design secure protocols

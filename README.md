@@ -1,7 +1,12 @@
-<div align="center"><em><b>InfluxDays 2020</b> <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub">Demo: Learn how Ockam provides end-to-end encrypted connections between Telegraf and InfluxDB.</a></em></div>
+<div>
+  <b>InfluxDays 2020 - Ockam Demo:</b>
+  <em>
+    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub">End-to-end encrypted connections between Telegraf and InfluxDB.</a>
+  </em>
+  </div>
 <hr>
 
-<p align="center">
+<p>
   <a href="https://ockam.io">
     <img alt="Ockam"
       src="https://www.ockam.io/0dc9e19beab4d96b8350d09be78361df/logo_white_background_preview.svg"
@@ -9,7 +14,7 @@
   </a>
 </p>
 
-<p align="center">
+<p>
 <a href="https://github.com/ockam-network/ockam/actions?query=workflow%3A%22Continuous+Integration%22">
 <img alt="Continuous Integration"
   src="https://github.com/ockam-network/ockam/workflows/Continuous%20Integration/badge.svg">
@@ -26,7 +31,7 @@
 </a>
 </p>
 
-<div align="center">
+<div>
   <h3>
     <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub/">
       Try a demo
@@ -48,19 +53,22 @@
 
 <hr>
 
-Ockam is an open source suite of tools, programming libraries and
-infrastructure needed for a device to communicate securely, privately and
-trustfully with cloud services and other devices.
+Ockam is a suite of tools, programming libraries and infrastructure that make
+it easy to build devices that communicate securely, privately and trustfully
+with cloud services and other devices.
 
 ## Features
 
 * End-to-end encrypted messages.
 * Mutually authenticated secure channels.
 * Key Lifecycle and Credential Exchange protocols.
-* Add-Ons for a variety of transport protocols, hardware cryptography, and enterprise integrations.
+* Add-Ons for a variety of transport protocols, hardware cryptography, and
+  enterprise integrations.
 * Libraries for multiple languages - C, Rust, Elixir (more on the roadmap).
 
-<p align="center">
+<hr>
+
+<p>
   <a href="https://ockam.io/learn/concepts/">
     <img alt="Ockam"
       src="./documentation/concepts/assets/ockam-features.png"
@@ -71,7 +79,7 @@ trustfully with cloud services and other devices.
 <hr>
 
 We believe that Security, Privacy and Trust are application layer concerns and
-IoT developers should have easy to use tools to granularly control these aspects
+IoT developers should have simple tools to granularly control these aspects
 of their applications.
 
 Cryptographic protocols can be a powerful tool to solve many complex, real world
@@ -82,11 +90,14 @@ In Ockam, we're taking proven cryptographic building blocks and applying them
 to build solutions for common IoT and edge computing problems like:
 
 * Secure, easy and rapid __enrollment of large fleets__ of devices.
-* Scalable provisioning, proof of possession, rotation, and revocation of __identity keys and credentials__.
-* __End-to-end encrypted communication__ over low-bandwidth, intermittently connected, multi-protocol IoT topologies.
+* Scalable provisioning, proof of possession, rotation, and revocation
+  of __identity keys and credentials__.
+* __End-to-end encrypted communication__ over low-bandwidth, intermittently
+  connected, multi-protocol IoT network topologies.
 
-Our goal is to provide this functionality with secure, high level application
-interfaces that are easy to use correctly and hard to misuse.
+Our goal is to provide this functionality in multiple programming languages with
+secure, high level application interfaces that are easy to use correctly and
+hard to misuse.
 
 ## License
 
