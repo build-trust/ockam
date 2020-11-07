@@ -337,52 +337,39 @@ impl FromStr for OutputKind {
 
         let mut route = Route { addresses: vec![] };
 
-        s.split(',').for_each(|addr| {
-            if addr.starts_with("tcp//") {
-                let tcp_addr = addr.trim().trim_start_matches("tcp//");
-                if let Ok(router_addr) = RouterAddress::tcp_router_address_from_str(tcp_addr) {
-                    route.addresses.push(router_addr);
+        s.split(',').for_each(|part| match Url::parse(part) {
+            Ok(u) => {
+                if !u.has_host() {
+                    ret = Err(format!("invalid URI: {}", part));
                 }
-            } else if addr.starts_with("ch//") {
-                let ch_addr = addr.trim().trim_start_matches("ch//");
-                if let Ok(router_addr) = RouterAddress::channel_router_address_from_str(ch_addr) {
-                    route.addresses.push(router_addr);
+
+                match u.scheme() {
+                    "udp" => {
+                        let addr = u.as_str().trim().trim_start_matches("udp://");
+                        if let Ok(router_addr) = RouterAddress::udp_router_address_from_str(addr) {
+                            route.addresses.push(router_addr);
+                        }
+                    }
+                    "tcp" => {
+                        let addr = u.as_str().trim().trim_start_matches("tcp://");
+                        if let Ok(router_addr) = RouterAddress::tcp_router_address_from_str(addr) {
+                            route.addresses.push(router_addr);
+                        }
+                    }
+                    _ => ret = Err(format!("unsupported URL scheme for: {}", u.as_str())),
                 }
-            } else {
-                ret = Err(format!("failed to parse route part '{}'", addr));
+            }
+            Err(e) => {
+                if let Ok(chan_addr) = RouterAddress::channel_router_address_from_str(part) {
+                    route.addresses.push(chan_addr);
+                } else {
+                    ret = Err(format!("failed to parse route part '{}': {:?}", part, e));
+                }
             }
         });
 
-        // s.split(',').for_each(|part| match Url::parse(part) {
-        //     Ok(u) => {
-        //         if !u.has_host() {
-        //             ret = Err(format!("invalid URI: {}", part));
-        //         }
-        //
-        //         match u.scheme() {
-        //             "udp" => {
-        //                 let addr = u.as_str().trim().trim_start_matches("udp://");
-        //                 if let Ok(router_addr) = RouterAddress::udp_router_address_from_str(addr) {
-        //                     route.addresses.push(router_addr);
-        //                 }
-        //             }
-        //             "tcp" => {
-        //                 let addr = u.as_str().trim().trim_start_matches("tcp://");
-        //                 if let Ok(router_addr) = RouterAddress::udp_router_address_from_str(addr) {
-        //                     route.addresses.push(router_addr);
-        //                 }
-        //             }
-        //             _ => ret = Err(format!("unsupported URL scheme for: {}", u.as_str())),
-        //         }
-        //     }
-        //     Err(e) => {
-        //         if let Ok(chan_addr) = RouterAddress::channel_router_address_from_str(part) {
-        //             route.addresses.push(chan_addr);
-        //         } else {
-        //             ret = Err(format!("failed to parse route part '{}': {:?}", part, e));
-        //         }
-        //     }
-        // });
+        println!("==============Route:");
+        route.print_route();
 
         if !route.addresses.is_empty() && ret.is_ok() {
             ret = Ok(OutputKind::Channel(route))
