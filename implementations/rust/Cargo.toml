@@ -3,7 +3,7 @@
 members = [
     "channel",
     "common",
-#    "daemon",
+    "daemon",
     "examples",
     "kex",
     "message",
@@ -14,7 +14,7 @@ members = [
     "node",
 #    "worker",
     "xeddsa",
-#    "c/generate_bindings",
+    "c/generate_bindings",
     "c/bindings",
     "c/rust_memory",
 ]
@@ -22,7 +22,7 @@ members = [
 default-members = [
     "channel",
     "common",
-#    "daemon",
+    "daemon",
     "examples",
     "kex",
     "message",
