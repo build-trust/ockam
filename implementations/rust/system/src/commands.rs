@@ -44,6 +44,7 @@ pub enum ChannelCommand {
 pub enum WorkerCommand {
     Stop,
     Test,
+    AddLine(String),
     ReceiveMessage(Message),
     SendMessage(Message),
 }

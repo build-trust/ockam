@@ -79,23 +79,12 @@ pub mod router {
             // m.return_route.print_route();
             let destination_address = m.onward_route.addresses[0].clone();
             let address_type = destination_address.a_type;
-            let at = address_type as u8;
-            let att = AddressType::try_from(at).unwrap();
-            let handler_tx = match &self.registry[address_type as usize] {
+            let at = address_type as usize;
+            let handler_tx = match &self.registry[at] {
                 Some(a) => a,
                 None => return Err("no handler".to_string()),
             };
             match address_type {
-                AddressType::Channel => match direction {
-                    Direction::Incoming => {
-                        handler_tx.send(OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)));
-                        Ok(())
-                    }
-                    Direction::Outgoing => {
-                        handler_tx.send(OckamCommand::Channel(ChannelCommand::SendMessage(m)));
-                        Ok(())
-                    }
-                },
                 AddressType::Worker => match direction {
                     Direction::Incoming => {
                         handler_tx.send(OckamCommand::Worker(WorkerCommand::ReceiveMessage(m)));
@@ -106,14 +95,24 @@ pub mod router {
                         Ok(())
                     }
                 },
-                AddressType::Udp => {
-                    handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
-                    Ok(())
-                }
                 AddressType::Tcp => {
                     handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
                     Ok(())
                 }
+                AddressType::Udp => {
+                    handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
+                    Ok(())
+                }
+                AddressType::Channel => match direction {
+                    Direction::Incoming => {
+                        handler_tx.send(OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)));
+                        Ok(())
+                    }
+                    Direction::Outgoing => {
+                        handler_tx.send(OckamCommand::Channel(ChannelCommand::SendMessage(m)));
+                        Ok(())
+                    }
+                },
                 _ => Err("not implemented".to_string()),
             }
         }

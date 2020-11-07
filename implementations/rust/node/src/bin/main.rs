@@ -113,7 +113,7 @@ impl Args {
         if self.role == "sink" {
             return Role::Sink;
         }
-        if self.role == "hub" {
+        if self.role == "hub" || self.role == "router" {
             return Role::Hub;
         }
         panic!("invalid role specified");

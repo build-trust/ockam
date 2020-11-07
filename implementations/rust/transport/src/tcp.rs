@@ -110,7 +110,6 @@ impl TcpManager {
                 for s in listener.incoming() {
                     match s {
                         Ok(stream) => {
-                            println!("got connection");
                             keep_going = self.add_connection(stream);
                             break;
                         }
@@ -133,7 +132,6 @@ impl TcpManager {
                     OckamCommand::Transport((TransportCommand::SendMessage(mut m))) => {
                         let addr = m.onward_route.addresses.get_mut(0).unwrap();
                         let addr = addr.address.as_string();
-                        println!("tcp manager, getting connection {}", &addr);
                         if let Some(tcp_xport) = self.connections.get_mut(&addr) {
                             match tcp_xport.send_message(m) {
                                 Err(e) => {
@@ -198,12 +196,14 @@ impl TcpTransport {
             RouterAddress::from_address(self.local_address.clone()).unwrap(),
         );
         let mut v = vec![];
-        println!("\nsending onward:");
-        println!("message type: {:?}", &m.message_type);
-        println!("sending to {}", remote_address.address.as_string());
-        m.onward_route.print_route();
-        println!("sending return:");
-        m.return_route.print_route();
+        // println!("------Send-------");
+        // println!("sending onward:");
+        // println!("message type: {:?}", &m.message_type);
+        // println!("sending to {}", remote_address.address.as_string());
+        // m.onward_route.print_route();
+        // println!("sending return:");
+        // m.return_route.print_route();
+        // println!("------Send Over-------");
         Message::encode(&m, &mut v);
         return match self.stream.write(v.as_slice()) {
             Ok(n) => Ok(()),
@@ -217,12 +217,14 @@ impl TcpTransport {
             Ok(len) => {
                 match Message::decode(&buff[0..len]) {
                     Ok((mut m, _)) => {
-                        println!("\nreceiving onward:");
-                        println!("received from: {:?}", self.stream.peer_addr());
-                        m.onward_route.print_route();
-                        println!("message type: {:?}", m.message_type);
-                        println!("receiving return:");
-                        m.return_route.print_route();
+                        // println!("--------Receive-------");
+                        // println!("receiving onward:");
+                        // println!("received from: {:?}", self.stream.peer_addr());
+                        // m.onward_route.print_route();
+                        // println!("message type: {:?}", m.message_type);
+                        // println!("receiving return:");
+                        // m.return_route.print_route();
+                        // println!("--------Receive Over-------");
                         if !m.onward_route.addresses.is_empty()
                             && ((m.onward_route.addresses[0].a_type == AddressType::Udp)
                                 || (m.onward_route.addresses[0].a_type == AddressType::Tcp))

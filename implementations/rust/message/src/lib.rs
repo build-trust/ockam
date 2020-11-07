@@ -187,9 +187,6 @@ pub mod message {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
             let s: String;
             match self {
-                // AddressType::Local => {
-                //     s = "local".to_string();
-                // }
                 AddressType::Tcp => {
                     s = "Tcp".to_string();
                 }

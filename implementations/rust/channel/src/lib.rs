@@ -2,17 +2,17 @@
 // M2 send
 #![allow(dead_code)]
 #![deny(
-    missing_docs,
-    missing_debug_implementations,
-    trivial_casts,
-    trivial_numeric_casts,
-    unconditional_recursion,
-    unused_import_braces,
-    unused_lifetimes,
-    //unused_qualifications,
-    unused_extern_crates,
-    unused_parens,
-    while_true
+missing_docs,
+missing_debug_implementations,
+trivial_casts,
+trivial_numeric_casts,
+unconditional_recursion,
+unused_import_braces,
+unused_lifetimes,
+//unused_qualifications,
+unused_extern_crates,
+unused_parens,
+while_true
 )]
 
 //! Implements the Ockam channels interface and provides
@@ -128,7 +128,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                     OckamCommand::Channel(ChannelCommand::Initiate(
                         mut route,
                         return_address,
-                        key,
+                        _key,
                     )) => {
                         self.initiate_new_channel(route, return_address)?;
                     }
@@ -291,10 +291,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         match &m.onward_route.addresses[0].address {
             Address::ChannelAddress(ca) => {
                 if ca.as_slice() != channel.ciphertext_address.to_le_bytes() {
-                    println!(
-                        "received message on cleartext address: {:?}",
-                        m.message_type
-                    );
                     return Err(ChannelErrorKind::NotImplemented.into());
                 }
             }
@@ -315,8 +311,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         );
 
         // send it on its way
-        println!("Sink decrypted msg, onward route:");
-        decoded_msg.onward_route.print_route();
         self.router_tx
             .send(Router(RouterCommand::ReceiveMessage(decoded_msg)))
             .unwrap();
@@ -360,9 +354,9 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             .send(Router(RouterCommand::SendMessage(m)))
             .unwrap();
         channel.completed_key_exchange = Some(channel.agreement.finalize()?);
-        println!("\n**finalized");
-        println!("\n**channel return route: ");
-        return_route.print_route();
+        // println!("\n**finalized");
+        // println!("\n**channel return route: ");
+        // return_route.print_route();
         channel.route = return_route;
 
         // let the worker know the key exchange is done
@@ -396,9 +390,17 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             // key agreement has finished, now can process any pending messages
             let pending = channel.pending.clone();
             channel.completed_key_exchange = Some(channel.agreement.finalize()?);
-            println!("**finalized");
-            println!("\n**channel return route: ");
-            return_route.print_route();
+            // println!("**finalized");
+            // println!("\n**channel return route: ");
+            // println!(
+            //     "\ncleartext address: {}",
+            //     channel.as_cleartext_address().as_string()
+            // );
+            // println!(
+            //     "ciphertext address: {}",
+            //     channel.as_ciphertext_address().as_string()
+            // );
+            // return_route.print_route();
             channel.route = return_route;
             match pending {
                 Some(mut p) => {
@@ -482,9 +484,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             message_body: vec![],
         });
         let ka_m1 = channel.agreement.process(&[])?;
-        // route
-        //     .addresses
-        //     .push(RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap());
         let m = Message {
             onward_route: route,
             return_route: Route {

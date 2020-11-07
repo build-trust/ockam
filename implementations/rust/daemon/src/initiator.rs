@@ -12,79 +12,71 @@ use ockam_message::message::{
 };
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 
-pub fn run(config: Config) {
-    // configure a node
-    let node_config = config.clone();
-    let (node, router_tx) = Node::new(&node_config);
-
-    let mut worker = StdinWorker::new(
-        RouterAddress::worker_router_address_from_str(&config.service_address().unwrap())
-            .expect("failed to create worker address for kex"),
-        router_tx,
-        config.clone(),
-    );
-
-    // kick off the key exchange process. The result will be that the worker is notified
-    // when the secure channel is created.
-    println!(
-        "Worker address: {:?}",
-        hex::decode(config.service_address().unwrap()).unwrap()
-    );
-
-    let mut onward_route = config.onward_route().unwrap_or(Route { addresses: vec![] });
-    // if let Some(router_address) = config.router_socket() {
-    //     onward_route
-    //         .addresses
-    //         .push(RouterAddress::from_address(Address::UdpAddress(router_address)).unwrap());
-    // }
-    // if let Some(channel_to_sink) = config.channel_to_sink() {
-    //     onward_route
-    //         .addresses
-    //         .push(RouterAddress::channel_router_address_from_str(&channel_to_sink).unwrap());
-    // }
-    onward_route
-        .addresses
-        .push(RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap());
-    onward_route.print_route();
-
-    node.channel_tx
-        .send(OckamCommand::Channel(ChannelCommand::Initiate(
-            onward_route,
-            Address::WorkerAddress(hex::decode(config.service_address().unwrap()).unwrap()),
-            None,
-        )))
-        .unwrap();
-
-    thread::spawn(move || {
-        while worker.poll() {
-            std::thread::sleep(std::time::Duration::from_millis(1));
-        }
-    });
-
-    // run the node to poll its various internal components
-    node.run();
-}
-
-struct StdinWorker {
-    //channel: Option<RouterAddress>,
+pub struct StdinWorker {
     route: Route,
     worker_addr: RouterAddress,
     router_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,
+    tx: Sender<OckamCommand>,
     stdin: std::io::Stdin,
     buf: String,
     config: Config,
+    lines_to_send: Vec<String>,
 }
 
 impl StdinWorker {
-    fn new(worker_addr: RouterAddress, router_tx: Sender<OckamCommand>, config: Config) -> Self {
+    pub fn initialize(
+        config: &Config,
+        router_tx: std::sync::mpsc::Sender<OckamCommand>,
+        channel_tx: std::sync::mpsc::Sender<OckamCommand>,
+    ) -> Option<StdinWorker> {
+        // configure a node
+        // let node_config = config.clone();
+        // let (node, router_tx) = Node::new(&node_config);
+
+        let mut worker = StdinWorker::new(
+            RouterAddress::worker_router_address_from_str(&config.service_address().unwrap())
+                .expect("failed to create worker address for kex"),
+            router_tx,
+            config.clone(),
+        );
+
+        // kick off the key exchange process. The result will be that the worker is notified
+        // when the secure channel is created.
+        println!(
+            "Worker address: {:?}",
+            hex::decode(config.service_address().unwrap()).unwrap()
+        );
+
+        let mut onward_route = config.onward_route().unwrap_or(Route { addresses: vec![] });
+        onward_route
+            .addresses
+            .push(RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap());
+        onward_route.print_route();
+
+        channel_tx
+            .send(OckamCommand::Channel(ChannelCommand::Initiate(
+                onward_route,
+                Address::WorkerAddress(hex::decode(config.service_address().unwrap()).unwrap()),
+                None,
+            )))
+            .unwrap();
+
+        Some(worker)
+    }
+
+    pub fn new(
+        worker_addr: RouterAddress,
+        router_tx: Sender<OckamCommand>,
+        config: Config,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
 
         // register the worker with the router
         router_tx
             .send(OckamCommand::Router(RouterCommand::Register(
                 AddressType::Worker,
-                tx,
+                tx.clone(),
             )))
             .expect("Stdin worker registration failed");
 
@@ -93,14 +85,23 @@ impl StdinWorker {
             worker_addr,
             router_tx,
             rx,
+            tx,
             stdin: std::io::stdin(),
             buf: String::new(),
             config,
+            lines_to_send: vec![],
         }
+    }
+
+    pub fn get_tx(&self) -> Sender<OckamCommand> {
+        self.tx.clone()
     }
 
     fn receive_channel(&mut self, m: Message) -> Result<(), String> {
         self.route = m.return_route.clone();
+        self.route.addresses.push(self.worker_addr.clone());
+        // println!("Worker return route:");
+        // self.route.print_route();
 
         // add the service address
         let service_address =
@@ -120,7 +121,7 @@ impl StdinWorker {
         Ok(())
     }
 
-    fn poll(&mut self) -> bool {
+    pub fn poll(&mut self) -> bool {
         // await key exchange finalization
         if let Ok(cmd) = self.rx.try_recv() {
             match cmd {
@@ -133,30 +134,28 @@ impl StdinWorker {
                         _ => unimplemented!(),
                     }
                 }
+                OckamCommand::Worker(WorkerCommand::AddLine(s)) => {
+                    self.lines_to_send.push(s);
+                }
                 _ => unimplemented!(),
             }
         }
 
         // read from stdin, pass each line to the router within the node
-        if self.route.addresses.len() > 0 {
-            return if self.stdin.read_line(&mut self.buf).is_ok() {
-                self.router_tx
-                    .send(OckamCommand::Router(RouterCommand::SendMessage(
-                        OckamMessage {
-                            onward_route: self.route.clone(),
-                            return_route: Route { addresses: vec![] },
-                            message_type: MessageType::Payload,
-                            message_body: self.buf.as_bytes().to_vec(),
-                        },
-                    )))
-                    .expect("failed to send input data to node");
-                self.buf.clear();
-                true
-            } else {
-                println!("failed to read stdin");
-                false
-            };
+        for s in &self.lines_to_send {
+            self.router_tx
+                .send(OckamCommand::Router(RouterCommand::SendMessage(
+                    OckamMessage {
+                        onward_route: self.route.clone(),
+                        return_route: Route { addresses: vec![] },
+                        message_type: MessageType::Payload,
+                        message_body: s.as_bytes().to_vec(),
+                    },
+                )))
+                .expect("failed to send input data to node");
+            self.buf.clear();
         }
+        self.lines_to_send.clear();
         true
     }
 }
