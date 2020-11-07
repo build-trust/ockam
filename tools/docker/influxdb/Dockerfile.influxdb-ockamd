@@ -1,4 +1,4 @@
 FROM influxdb:1.8
-COPY --from=ockam/ockamd:0.1.0 /usr/local/bin/ockamd /usr/local/bin/ockamd
+COPY --from=ockam/ockamd:0.10.0 /usr/local/bin/ockamd /usr/local/bin/ockamd
 COPY ./tools/docker/influxdb/entrypoint.sh .
 ENTRYPOINT ["./entrypoint.sh"]

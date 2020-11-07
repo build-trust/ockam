@@ -1,3 +1,3 @@
 FROM telegraf:1.16
-COPY --from=ockam/ockamd:0.1.0 /usr/local/bin/ockamd /usr/local/bin/ockamd
+COPY --from=ockam/ockamd:0.10.0 /usr/local/bin/ockamd /usr/local/bin/ockamd
 COPY ./tools/docker/telegraf/telegraf.conf /etc/telegraf/telegraf.conf

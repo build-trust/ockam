@@ -32,7 +32,7 @@ case $1 in
     influxdb-ockamd)
         # start the responder (sink) end, containing `influxdb` and `ockamd`, with configuration to 
         # send `influxdb` measurement data via `ockamd` over HTTP.
-        docker run -d --network="host" --name="influxdb-ockamd" ockam/influxdb-ockamd:0.1.0 \
+        docker run -d --network="host" --name="influxdb-ockamd" ockam/influxdb-ockamd:0.10.0 \
             --role=responder \
             --local-socket=127.0.0.1:52440 \
             --addon=influxdb,ockam_demo,http://localhost:8086 > /dev/null
@@ -55,7 +55,7 @@ case $1 in
             --env OCKAMD_RESPONDER_PUBLIC_KEY=$2 \
             --env OCKAMD_LOCAL_SOCKET=127.0.0.1:52441 \
             --env OCKAMD_ROUTE=udp://127.0.0.1:52440 \
-            ockam/telegraf-ockamd:0.1.0 > /dev/null
+            ockam/telegraf-ockamd:0.10.0 > /dev/null
         ;;
 
     ockam-router)
