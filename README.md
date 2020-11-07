@@ -1,4 +1,4 @@
-<div align="center"><em><h3><b>InfluxDays 2020</b> <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub">Demo: Learn how Ockam provides end-to-end secure connections for InfluxDB and Telegraf</a></h3></em></div>
+<div align="center"><em><b>InfluxDays 2020</b> <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub">Demo: Learn how Ockam provides end-to-end encrypted connections between Telegraf and InfluxDB.</a></em></div>
 <hr>
 
 <p align="center">
