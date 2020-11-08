@@ -1,22 +1,15 @@
 #[allow(unused)]
 use ockam_message::message::*;
-use ockam_router::router::Router;
 use ockam_system::commands::RouterCommand::ReceiveMessage;
 use ockam_system::commands::{OckamCommand, RouterCommand, TransportCommand};
-use std::convert::TryFrom;
-use std::io::{Read, Write};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-use std::net::{SocketAddrV4, UdpSocket};
-use std::str;
-use std::str::FromStr;
-use std::sync::mpsc::channel;
-use std::sync::Arc;
-use std::{io, thread, time};
+use std::io;
+use std::net::SocketAddr;
+use std::net::UdpSocket;
 
 pub struct UdpTransport {
     socket: UdpSocket,
     rx: std::sync::mpsc::Receiver<OckamCommand>,
-    tx: std::sync::mpsc::Sender<OckamCommand>,
+    _tx: std::sync::mpsc::Sender<OckamCommand>,
     router_tx: std::sync::mpsc::Sender<OckamCommand>,
 }
 
@@ -30,17 +23,19 @@ impl UdpTransport {
         // Try to create socket at given address
         match UdpSocket::bind(local_udp_socket) {
             Ok(socket) => {
-                socket.set_nonblocking(true);
+                socket.set_nonblocking(true).unwrap();
                 // Register address type with Router
-                router_tx.send(OckamCommand::Router(RouterCommand::Register(
-                    AddressType::Udp,
-                    tx.clone(),
-                )));
+                router_tx
+                    .send(OckamCommand::Router(RouterCommand::Register(
+                        AddressType::Udp,
+                        tx.clone(),
+                    )))
+                    .unwrap();
 
                 Ok(UdpTransport {
                     socket,
                     rx,
-                    tx,
+                    _tx: tx,
                     router_tx,
                 })
             }
@@ -64,7 +59,7 @@ impl UdpTransport {
                         .socket
                         .send_to(v.as_slice(), remote_address.address.as_string())
                     {
-                        Ok(n) => Ok(()),
+                        Ok(_) => Ok(()),
                         Err(s) => {
                             println!("send_message failed {}", s.to_string());
                             Err("send_message error".to_string())
@@ -93,7 +88,7 @@ impl UdpTransport {
                     } else {
                         match self.router_tx.send(OckamCommand::Router(ReceiveMessage(m))) {
                             Ok(_unused) => Ok(true),
-                            Err(s) => Err("send to router failed".to_string()),
+                            Err(_) => Err("send to router failed".to_string()),
                         }
                     }
                 }
@@ -115,7 +110,7 @@ impl UdpTransport {
                 Ok(b) => {
                     got = b;
                 }
-                Err(e) => {
+                Err(_) => {
                     keep_going = false;
                 }
             }
@@ -126,8 +121,11 @@ impl UdpTransport {
             got = false;
             if let Ok(tc) = self.rx.try_recv() {
                 match tc {
-                    OckamCommand::Transport((TransportCommand::SendMessage(mut m))) => {
-                        self.send_message(m);
+                    OckamCommand::Transport(TransportCommand::SendMessage(m)) => {
+                        if let Err(s) = self.send_message(m) {
+                            println!("udp send_message failed: {}", s);
+                            return false;
+                        }
                     }
                     OckamCommand::Transport(TransportCommand::Stop) => {
                         keep_going = false;

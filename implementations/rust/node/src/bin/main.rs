@@ -1,8 +1,7 @@
-use ockam_message::message::{Address, AddressType, Route, RouterAddress};
-use ockam_node::node::{start_node, IpProtocol, Role};
+use ockam_message::message::Address;
+use ockam_node::node::{start_node, Role};
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::{thread, time};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -54,7 +53,7 @@ pub fn parse_args(
     let role = args.role();
 
     // local udp socket
-    let mut local_udp = Some(SocketAddr::from_str("127.0.0.1:4050").unwrap());
+    let local_udp;
     if let Some(lua) = args.local_addr_udp {
         if let Ok(sock_addr) = SocketAddr::from_str(&lua) {
             local_udp = Some(sock_addr);
@@ -66,7 +65,7 @@ pub fn parse_args(
     }
 
     // router address
-    let mut router_addr = Some(SocketAddr::from_str("127.0.0.1:4052").unwrap());
+    let router_addr;
     if let Some(ra) = args.router_addr_tcp {
         router_addr = Some(SocketAddr::from_str(&ra).unwrap());
     } else {
@@ -74,7 +73,7 @@ pub fn parse_args(
     }
 
     // remote address
-    let mut remote_addr = Some(SocketAddr::from_str("127.0.0.1:4051").unwrap());
+    let remote_addr;
     if let Some(ra) = args.remote_addr {
         remote_addr = Some(SocketAddr::from_str(&ra).unwrap());
     } else {
@@ -88,7 +87,7 @@ pub fn parse_args(
     }
 
     // listen address
-    let mut listen_addr = Some(SocketAddr::from_str("127.0.0.1:4052").unwrap());
+    let listen_addr;
     if let Some(listen) = args.listen_addr {
         listen_addr = Some(SocketAddr::from_str(&listen).unwrap());
     } else {
@@ -128,7 +127,7 @@ fn main() {
     let remote_addr: Option<SocketAddr>;
     let worker_addr: Option<Address>;
     let listen_addr: Option<SocketAddr>;
-    let router_only: bool;
+    let _router_only: bool;
     let role: Role;
     match parse_args(args) {
         Ok((local, router, remote, worker, listen, r)) => {

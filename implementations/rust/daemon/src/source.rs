@@ -1,10 +1,7 @@
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread;
 
 use crate::config::Config;
-use crate::node::Node;
 
-use crate::cli::ChannelRole::Router;
 use hex::encode;
 use ockam_channel::CHANNEL_ZERO;
 use ockam_message::message::{
@@ -18,7 +15,6 @@ pub struct StdinWorker {
     router_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,
     tx: Sender<OckamCommand>,
-    stdin: std::io::Stdin,
     buf: String,
     config: Config,
     lines_to_send: Vec<String>,
@@ -30,10 +26,6 @@ impl StdinWorker {
         router_tx: std::sync::mpsc::Sender<OckamCommand>,
         channel_tx: std::sync::mpsc::Sender<OckamCommand>,
     ) -> Option<StdinWorker> {
-        // configure a node
-        // let node_config = config.clone();
-        // let (node, router_tx) = Node::new(&node_config);
-
         let worker = StdinWorker::new(
             RouterAddress::worker_router_address_from_str(&config.service_address().unwrap())
                 .expect("failed to create worker address for kex"),
@@ -80,7 +72,6 @@ impl StdinWorker {
             router_tx,
             rx,
             tx,
-            stdin: std::io::stdin(),
             buf: String::new(),
             config,
             lines_to_send: vec![],

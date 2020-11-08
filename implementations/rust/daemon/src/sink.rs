@@ -2,7 +2,6 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use crate::config::{AddonKind, Config};
 use attohttpc::post;
-use hex::encode;
 use ockam_channel::CHANNEL_ZERO;
 use ockam_message::message::{
     Address, AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
@@ -10,11 +9,11 @@ use ockam_message::message::{
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 use std::io::Write;
 
-type WorkFn = fn(self_worker: &Worker, msg: OckamMessage);
+type WorkFn = fn(self_worker: &SinkWorker, msg: OckamMessage);
 
 #[allow(dead_code)]
 
-pub struct Worker {
+pub struct SinkWorker {
     router_tx: Sender<OckamCommand>,
     channel_tx: Sender<OckamCommand>,
     rx: Receiver<OckamCommand>,
@@ -25,14 +24,14 @@ pub struct Worker {
     route: Option<Route>,
 }
 
-impl Worker {
+impl SinkWorker {
     pub fn initialize(
         config: &Config,
         worker_addr: RouterAddress,
         router_tx: Sender<OckamCommand>,
         channel_tx: Sender<OckamCommand>,
-    ) -> Result<Worker, String> {
-        let worker = Worker::new(
+    ) -> Result<SinkWorker, String> {
+        let worker = SinkWorker::new(
             worker_addr,
             router_tx,
             channel_tx.clone(),
@@ -85,9 +84,6 @@ impl Worker {
 
         println!("Service address: {}", addr.address.as_string());
 
-        //-------------------------------
-        //let worker_addr = RouterAddress::worker_router_address_from_str("01242020").unwrap();
-        let worker_addr = Address::worker_address_from_string("01242020").unwrap();
         // kick off secure channel to router, if we have a router address
         match config.route_hub() {
             Some(socket) => {
@@ -109,7 +105,7 @@ impl Worker {
         }
         //------------------------------------
 
-        Worker {
+        SinkWorker {
             router_tx,
             channel_tx,
             rx,
@@ -161,8 +157,12 @@ impl Worker {
                             true
                         }
                         MessageType::None => {
-                            self.receive_channel(msg);
-                            true
+                            return if let Err(s) = self.receive_channel(msg) {
+                                println!("failed to receive channel: {}", s);
+                                false
+                            } else {
+                                true
+                            }
                         }
                         _ => unimplemented!(),
                     }

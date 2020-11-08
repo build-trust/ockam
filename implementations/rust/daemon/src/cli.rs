@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use ockam_message::message::{Address, Route, RouterAddress};
+use ockam_message::message::{Route, RouterAddress};
 
 use structopt::{clap::ArgSettings::Hidden, StructOpt};
 use url::Url;

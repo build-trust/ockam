@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -7,8 +5,12 @@ use std::time;
 
 use crate::cli;
 use crate::config::{Config, Role};
-use crate::initiator::StdinWorker;
-use crate::worker::Worker;
+use crate::sink::SinkWorker;
+use crate::source::StdinWorker;
+
+// pub enum OckamdWorker {
+//     ockam_daemon::initiator::StdinWorker
+// }
 
 use ockam_channel::*;
 use ockam_kex::{
@@ -21,15 +23,17 @@ use ockam_system::commands::{OckamCommand, WorkerCommand};
 use ockam_transport::tcp::TcpManager;
 use ockam_vault::types::*;
 use ockam_vault::{file::FilesystemVault, DynVault};
+use std::net::SocketAddr;
+use std::str::FromStr;
 
 pub enum OckamdWorker {
     StdinWorker(StdinWorker),
-    Worker(Worker),
+    Sink(SinkWorker),
 }
 
 #[allow(dead_code)]
-pub struct Node {
-    config: Config,
+pub struct Node<'a> {
+    config: &'a Config,
     chan_manager: ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>,
     worker: Option<OckamdWorker>,
     router: Router,
@@ -43,14 +47,76 @@ pub fn get_console_line(wtx: Sender<OckamCommand>) {
     let mut buf: String = "".into();
     while buf != "q" {
         if std::io::stdin().read_line(&mut buf).is_ok() {
-            wtx.send(OckamCommand::Worker(WorkerCommand::AddLine(buf.clone())));
+            wtx.send(OckamCommand::Worker(WorkerCommand::AddLine(buf.clone())))
+                .unwrap();
         }
         buf.clear();
     }
 }
 
-impl Node {
-    pub fn new(config: Config) -> (Self, Sender<OckamCommand>) {
+impl<'a> Node<'a> {
+    pub fn create_transport(
+        config: &Config,
+        router_tx: Sender<OckamCommand>,
+    ) -> Result<(TcpManager, Sender<OckamCommand>), String> {
+        // create the transport, currently TCP-only
+        // if role == Router, give it a listen address
+        let mut listen_addr: Option<SocketAddr> = None;
+
+        match config.role() {
+            Role::Router => {
+                let la = config
+                    .route_hub()
+                    .expect("role requires local IP address for tcp listen");
+                listen_addr = Some(la);
+            }
+            Role::Sink => {
+                let la = config.local_socket();
+                listen_addr = Some(la);
+            }
+            _ => {}
+        }
+
+        // if matches!(config.role(), Role::Router) || matches!(config.role(), Role::Sink) {
+        //     let la = config
+        //         .route_hub()
+        //         .expect("role requires local IP address for tcp listen");
+        //     listen_addr = Some(la);
+        // }
+        let (transport_tx, transport_rx) = mpsc::channel();
+        let mut transport = TcpManager::new(
+            transport_rx,
+            transport_tx.clone(),
+            router_tx,
+            listen_addr,
+            None,
+        )
+        .expect("failed to create tcp transport manager");
+
+        // connect to router or sink
+        if matches!(config.role(), Role::Source)
+            || (matches!(config.role(), Role::Sink) && config.route_hub().is_some())
+        {
+            let hop1: RouterAddress;
+            if matches!(config.role(), Role::Source) {
+                hop1 = config.onward_route().unwrap().addresses[0].clone();
+            } else {
+                let a = Address::TcpAddress(config.route_hub().unwrap());
+                hop1 = RouterAddress::from_address(a).unwrap();
+            }
+            let sock_addr = SocketAddr::from_str(&hop1.address.as_string()).unwrap();
+            println!("connecting to: {:?}", sock_addr);
+            match transport.connect(sock_addr) {
+                Ok(_) => {}
+                Err(_) => {
+                    panic!("failed to connect, is server running?");
+                }
+            };
+        }
+        Ok((transport, transport_tx))
+    }
+
+    pub fn new(config: &'a Config) -> Result<Self, String> {
         // TODO: temporarily passed into the node, need to re-work
         let (router_tx, router_rx) = std::sync::mpsc::channel();
         let router = Router::new(router_rx);
@@ -64,7 +130,7 @@ impl Node {
         // generate a new one to be used
         if !contains_key(&mut vault, &config.identity_name()) {
             // if responder, generate keypair and display static public key
-            if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
+            if matches!(config.role(), Role::Sink) {
                 let attributes = SecretKeyAttributes {
                     xtype: SecretKeyType::Curve25519,
                     purpose: SecretPurposeType::KeyAgreement,
@@ -116,81 +182,46 @@ impl Node {
         )
         .unwrap();
 
-        // create the transport, currently TCP-only
-        // if role == Router, give it a listen address
-        let mut listen_addr: Option<SocketAddr> = None;
-        if matches!(config.role(), Role::Router) {
-            let la = config
-                .route_hub()
-                .expect("router role requires route-hub address");
-            listen_addr = Some(la);
-        }
-        let transport_router_tx = router_tx.clone();
-        let (transport_tx, transport_rx) = mpsc::channel();
-        let self_transport_tx = transport_tx.clone();
-        let mut transport = TcpManager::new(
-            transport_rx,
-            transport_tx,
-            transport_router_tx,
-            listen_addr,
-            None,
-        )
-        .expect("failed to create udp transport");
-
-        // connect to router or sink
-        if matches!(config.role(), Role::Source)
-            || (matches!(config.role(), Role::Sink) && config.route_hub().is_some())
-        {
-            let hop = if matches!(config.role(), Role::Source) {
-                config.onward_route().unwrap().addresses[0].clone()
-            } else {
-                let a = Address::TcpAddress(config.route_hub().unwrap());
-                RouterAddress::from_address(a).unwrap()
-            };
-            let sock_addr = SocketAddr::from_str(&hop.address.as_string()).unwrap();
-            match transport.connect(sock_addr) {
-                Ok(h) => h,
-                Err(_) => {
-                    panic!("failed to connect, is server running?");
-                }
-            };
-        }
-
-        let node_router_tx = router_tx.clone();
-
-        // create the worker
-        let mut worker: Option<OckamdWorker> = None;
-        if matches!(config.role(), Role::Source) {
-            worker = Some(OckamdWorker::StdinWorker(
-                StdinWorker::initialize(&config, router_tx.clone(), channel_tx.clone()).unwrap(),
-            ));
-        }
-        if matches!(config.role(), Role::Sink) {
-            let worker_addr = RouterAddress::worker_router_address_from_str("01242020").unwrap();
-            worker = Some(OckamdWorker::Worker(
-                Worker::initialize(&config, worker_addr, router_tx.clone(), channel_tx.clone())
+        if let Ok((transport, transport_tx)) = Node::create_transport(&config, router_tx.clone()) {
+            // create the worker
+            let mut worker: Option<OckamdWorker> = None;
+            if matches!(config.role(), Role::Source) {
+                worker = Some(OckamdWorker::StdinWorker(
+                    StdinWorker::initialize(config, router_tx.clone(), channel_tx.clone()).unwrap(),
+                ));
+            }
+            if matches!(config.role(), Role::Sink) {
+                let worker_addr =
+                    RouterAddress::worker_router_address_from_str("01242020").unwrap();
+                worker = Some(OckamdWorker::Sink(
+                    SinkWorker::initialize(
+                        &config,
+                        worker_addr,
+                        router_tx.clone(),
+                        channel_tx.clone(),
+                    )
                     .unwrap(),
-            ));
-        }
-        (
-            Self {
+                ));
+            }
+            Ok(Self {
                 config,
                 worker,
                 router,
                 router_tx,
                 chan_manager,
-                transport_tx: self_transport_tx,
+                transport_tx,
                 transport,
                 channel_tx,
-            },
-            node_router_tx,
-        )
+            })
+        } else {
+            Err("failed to create transport".into())
+        }
     }
 
     pub fn run(mut self) {
         match self.worker {
-            Some(mut worker) => match worker {
-                OckamdWorker::Worker(mut w) => {
+            Some(worker) => match worker {
+                OckamdWorker::Sink(mut w) => {
                     while self.router.poll()
                         && self.transport.poll()
                         && w.poll()

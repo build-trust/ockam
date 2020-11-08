@@ -126,7 +126,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             match self.rx.try_recv() {
                 Ok(c) => match c {
                     OckamCommand::Channel(ChannelCommand::Initiate(
-                        mut route,
+                        route,
                         return_address,
                         _key,
                     )) => {
@@ -169,7 +169,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 
                     // the message body will be the encoded & encrypted original message
                     let mut encoded_mb: Vec<u8> = vec![];
-                    Message::encode(&m, &mut encoded_mb);
+                    Message::encode(&m, &mut encoded_mb).unwrap();
 
                     // encrypt it
                     let mut encrypted_mb: Vec<u8> = vec![];
@@ -219,7 +219,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         };
     }
 
-    fn handle_recv(&mut self, mut m: Message) -> Result<(), ChannelError> {
+    fn handle_recv(&mut self, m: Message) -> Result<(), ChannelError> {
         if m.onward_route.addresses.is_empty() {
             // no onward route, how to determine which channel to decrypt message?
             // can't so drop
@@ -229,7 +229,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         // Pop the first onward address off to get the channel id.
         // If it's 0, we expect the message to be M1 of a key exchange
         // Respond accordingly
-        let recv_address = m.onward_route.addresses[0].address.clone();
         let mut recv_address_str = m.onward_route.addresses[0].address.as_string();
         if recv_address_str == CHANNEL_ZERO {
             if let Some((_clear, cipher)) = self.create_channel(ExchangerRole::Responder) {
@@ -247,7 +246,9 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 std::mem::drop(ch);
                 if recv_address_str == clear_address.as_string() {
                     // if the message is received on the cleartext address, tunnel it
-                    self.router_tx.send(Router(RouterCommand::SendMessage(m)));
+                    self.router_tx
+                        .send(Router(RouterCommand::SendMessage(m)))
+                        .unwrap();
                     return Ok(());
                 }
 
@@ -298,7 +299,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         }
 
         // unwrap the payload and decode the message (payload *should* be an encrypted Message)
-        let (nonce, mut encrypted_msg) = u16::decode(&m.message_body).unwrap();
+        let (nonce, encrypted_msg) = u16::decode(&m.message_body).unwrap();
         let nonce_96 = Channel::nonce_16_to_96(nonce);
         let kex = channel.completed_key_exchange.as_ref().unwrap();
         let mut vault = self.vault.lock().unwrap();
@@ -439,7 +440,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
     /// MessageType::None and the channel address in the return route.
     fn initiate_new_channel(
         &mut self,
-        mut route: Route,
+        route: Route,
         return_address: Address,
     ) -> Result<Address, ChannelError> {
         // Remember who to notify when the channel is secure

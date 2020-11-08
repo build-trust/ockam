@@ -3,22 +3,17 @@ use ockam_message::message::*;
 use ockam_system::commands::RouterCommand::ReceiveMessage;
 use ockam_system::commands::{OckamCommand, RouterCommand, TransportCommand};
 use std::collections::HashMap;
+use std::io;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::net::{SocketAddr, TcpListener};
-use std::str;
-use std::str::FromStr;
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::{io, thread, time};
 
 pub struct TcpManager {
     rx: std::sync::mpsc::Receiver<OckamCommand>,
-    tx: std::sync::mpsc::Sender<OckamCommand>,
+    _tx: std::sync::mpsc::Sender<OckamCommand>,
     router_tx: std::sync::mpsc::Sender<OckamCommand>,
-    listen_addr: Option<SocketAddr>,
-    timeout: Duration,
+    _timeout: Duration,
     listener: Option<TcpListener>,
     connections: HashMap<String, TcpTransport>,
     addresses: Vec<String>,
@@ -34,7 +29,7 @@ impl TcpManager {
                 self.add_connection(stream);
                 Ok(Address::TcpAddress(address))
             }
-            Err(e) => Err("tcp failed to connect".into()),
+            Err(_) => Err("tcp failed to connect".into()),
         }
     }
 
@@ -45,10 +40,12 @@ impl TcpManager {
         listen_addr: Option<SocketAddr>,
         tmo: Option<Duration>,
     ) -> Result<TcpManager, String> {
-        router_tx.send(OckamCommand::Router(RouterCommand::Register(
-            AddressType::Tcp,
-            tx.clone(),
-        )));
+        router_tx
+            .send(OckamCommand::Router(RouterCommand::Register(
+                AddressType::Tcp,
+                tx.clone(),
+            )))
+            .unwrap();
         let connections = HashMap::new();
 
         let timeout = tmo.unwrap_or(Duration::new(5, 0));
@@ -56,13 +53,12 @@ impl TcpManager {
         return match listen_addr {
             Some(la) => {
                 if let Ok(l) = TcpListener::bind(la) {
-                    l.set_nonblocking(true);
+                    l.set_nonblocking(true).unwrap();
                     Ok(TcpManager {
                         rx,
-                        tx,
+                        _tx: tx,
                         router_tx,
-                        listen_addr,
-                        timeout,
+                        _timeout: timeout,
                         listener: Some(l),
                         connections,
                         addresses: vec![],
@@ -73,10 +69,9 @@ impl TcpManager {
             }
             _ => Ok(TcpManager {
                 rx,
-                tx,
+                _tx: tx,
                 router_tx,
-                listen_addr,
-                timeout,
+                _timeout: timeout,
                 listener: None,
                 connections,
                 addresses: vec![],
@@ -86,9 +81,7 @@ impl TcpManager {
 
     fn add_connection(&mut self, stream: TcpStream) -> bool {
         let peer_addr = stream.peer_addr().unwrap().clone();
-        let local_addr = stream.local_addr().unwrap().clone();
-        let tcp_xport =
-            TcpTransport::new(self.timeout.clone(), stream, self.router_tx.clone()).unwrap();
+        let tcp_xport = TcpTransport::new(stream, self.router_tx.clone()).unwrap();
         self.connections.insert(peer_addr.to_string(), tcp_xport);
         self.addresses.push(peer_addr.to_string());
         true
@@ -124,12 +117,12 @@ impl TcpManager {
 
             if let Ok(tc) = self.rx.try_recv() {
                 match tc {
-                    OckamCommand::Transport((TransportCommand::SendMessage(mut m))) => {
+                    OckamCommand::Transport(TransportCommand::SendMessage(mut m)) => {
                         let addr = m.onward_route.addresses.get_mut(0).unwrap();
                         let addr = addr.address.as_string();
                         if let Some(tcp_xport) = self.connections.get_mut(&addr) {
                             match tcp_xport.send_message(m) {
-                                Err(e) => {
+                                Err(_) => {
                                     println!("connection not found");
                                     keep_going = false;
                                 }
@@ -151,7 +144,10 @@ impl TcpManager {
             for a in &self.addresses {
                 match self.connections.get_mut(&a.to_string()) {
                     Some(t) => {
-                        t.receive_message();
+                        if let Err(s) = t.receive_message() {
+                            println!("tcp receive failed {}", s);
+                            return false;
+                        }
                     }
                     None => {}
                 }
@@ -163,7 +159,6 @@ impl TcpManager {
 }
 
 pub struct TcpTransport {
-    timeout: Duration,
     stream: TcpStream,
     router_tx: std::sync::mpsc::Sender<OckamCommand>,
     local_address: Address,
@@ -171,13 +166,11 @@ pub struct TcpTransport {
 
 impl TcpTransport {
     pub fn new(
-        timeout: Duration,
         stream: TcpStream,
         router_tx: std::sync::mpsc::Sender<OckamCommand>,
     ) -> Result<TcpTransport, String> {
         let local_address = Address::TcpAddress(stream.local_addr().unwrap());
         Ok(TcpTransport {
-            timeout,
             stream,
             router_tx,
             local_address,
@@ -193,8 +186,8 @@ impl TcpTransport {
         let mut v = vec![];
         Message::encode(&m, &mut v)?;
         return match self.stream.write(v.as_slice()) {
-            Ok(n) => Ok(()),
-            Err(e) => Err("tcp write failed".into()),
+            Ok(_) => Ok(()),
+            Err(_) => Err("tcp write failed".into()),
         };
     }
 

@@ -6,7 +6,7 @@ use ockam_kex::CipherSuite;
 use ockam_message::message::*;
 use ockam_router::router::*;
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
-use ockam_transport::tcp::{TcpManager, TcpTransport};
+use ockam_transport::tcp::TcpManager;
 use ockam_transport::udp::UdpTransport;
 use ockam_vault::software::DefaultVault;
 use std::net::SocketAddr;
@@ -128,7 +128,7 @@ impl TestWorker {
         }
     }
 
-    fn handle_payload(&mut self, m: Message) -> Result<(), String> {
+    fn handle_payload(&mut self, _m: Message) -> Result<(), String> {
         let s: &str;
         if 0 == self.toggle % 2 {
             s = "Hello Ockam";
@@ -163,8 +163,8 @@ impl TestWorker {
             MessageType::Payload => self.handle_payload(m),
             MessageType::None => {
                 // MessageType::None indicates new channel
-                self.receive_channel(m.clone());
-                self.handle_payload(m);
+                self.receive_channel(m.clone()).unwrap();
+                self.handle_payload(m).unwrap();
                 Ok(())
             }
             _ => Err("worker got bad message type".into()),
@@ -209,7 +209,7 @@ pub fn start_node(
     local_udp: Option<SocketAddr>,
     router_addr: Option<SocketAddr>,
     remote_addr: Option<SocketAddr>,
-    worker_addr: Option<Address>,
+    _worker_addr: Option<Address>,
     listen_addr: Option<SocketAddr>,
     role: Role,
 ) -> Result<(), String> {
@@ -279,7 +279,7 @@ pub fn start_node(
     // if initiator, kick off the key exchange process
     if matches!(role, Role::Source) {
         // create tcp connection
-        let mut hop1_addr: SocketAddr;
+        let hop1_addr: SocketAddr;
         if let Some(ra) = router_addr {
             hop1_addr = ra;
         } else if let Some(ra) = remote_addr {
@@ -288,7 +288,7 @@ pub fn start_node(
             panic!("no route supplied");
         }
 
-        let mut hop1 = match tcp_manager.connect(hop1_addr) {
+        let hop1 = match tcp_manager.connect(hop1_addr) {
             Ok(h) => h,
             Err(_) => {
                 return Err("failed to connect".into());
@@ -317,12 +317,12 @@ pub fn start_node(
     }
 
     while router.poll() && channel_handler.poll().unwrap() {
-        if let Some(mut w) = worker.as_mut() {
+        if let Some(w) = worker.as_mut() {
             if !w.poll() {
                 break;
             }
         }
-        if let Some(mut u) = udp_transport.as_mut() {
+        if let Some(u) = udp_transport.as_mut() {
             if !u.poll() {
                 break;
             }
