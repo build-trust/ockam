@@ -1,9 +1,9 @@
 ```yaml
 title: Device Enrollment
-order: 6
+order: 5
 ```
 
-# Secure Enrollment of Connected Fleets
+# Secure Enrollment in Connected Fleets
 
 ![Ockam](./assets/ockam-features-enrollment.png)
 

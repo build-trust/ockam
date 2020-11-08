@@ -1,9 +1,9 @@
 ```yaml
-title: Vaults
-order: 5
+title: Vault Add-Ons
+order: 6
 ```
 
-# Vaults: Ockam Add-Ons for Cryptographic Hardware
+# Vault Add-ons: For Cryptographic Hardware
 
 ![Ockam](./assets/ockam-features-vaults.png)
 

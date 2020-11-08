@@ -1,9 +1,9 @@
 ```yaml
-title: Enterprise Integration
+title: Enterprise Add-Ons
 order: 7
 ```
 
-# Ockam Add-Ons for Enterprise Systems
+# Enterprise Add-Ons: For Cloud Services and Enterprise Architectures
 
 ![Ockam](./assets/ockam-features-enterprise-integration.png)
 
