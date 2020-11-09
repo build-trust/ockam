@@ -441,24 +441,24 @@ fn test_cli_args_output() {
     }
 
     // TCP-only route test cases
-    // [
-    //     "tcp://127.0.0.1:12345,tcp://10.1.20.34:11111",
-    //     "2",
-    //     "tcp://99.234.21.34:8808, tcp://0.0.0.0:2341, tcp://1.1.1.1:3033",
-    //     "3",
-    // ]
-    // .windows(2)
-    // .for_each(|route_hop| {
-    //     if let Ok(output_kind) = OutputKind::from_str(route_hop[0]) {
-    //         match output_kind {
-    //             OutputKind::Channel(route) => {
-    //                 assert_eq!(route.addresses.len(), route_hop[1].parse().unwrap());
-    //                 route.addresses.iter().for_each(|addr| {
-    //                     assert_eq!(addr.a_type, AddressType::Tcp);
-    //                 })
-    //             }
-    //             _ => {}
-    //         }
-    //     }
-    // });
+    [
+        "tcp://127.0.0.1:12345,tcp://10.1.20.34:11111",
+        "2",
+        "tcp://99.234.21.34:8808, tcp://0.0.0.0:2341, tcp://1.1.1.1:3033",
+        "3",
+    ]
+    .windows(2)
+    .for_each(|route_hop| {
+        if let Ok(output_kind) = OutputKind::from_str(route_hop[0]) {
+            match output_kind {
+                OutputKind::Channel(route) => {
+                    assert_eq!(route.addresses.len(), route_hop[1].parse().unwrap());
+                    route.addresses.iter().for_each(|addr| {
+                        assert_eq!(addr.a_type, AddressType::Tcp);
+                    })
+                }
+                _ => {}
+            }
+        }
+    });
 }
