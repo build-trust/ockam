@@ -1,7 +1,7 @@
 <div>
   <b>InfluxDays 2020 - Ockam Demo:</b>
   <em>
-    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub">End-to-end encrypted connections between Telegraf and InfluxDB.</a>
+    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/telegraf-influxdb-with-ockamd/">End-to-end encrypted connections between Telegraf and InfluxDB.</a>
   </em>
   </div>
 <hr>
