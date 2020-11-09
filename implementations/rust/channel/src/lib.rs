@@ -354,9 +354,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             .send(Router(RouterCommand::SendMessage(m)))
             .unwrap();
         channel.completed_key_exchange = Some(channel.agreement.finalize()?);
-        // println!("\n**finalized");
-        // println!("\n**channel return route: ");
-        // return_route.print_route();
         channel.route = return_route;
 
         // let the worker know the key exchange is done
@@ -390,17 +387,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             // key agreement has finished, now can process any pending messages
             let pending = channel.pending.clone();
             channel.completed_key_exchange = Some(channel.agreement.finalize()?);
-            // println!("**finalized");
-            // println!("\n**channel return route: ");
-            // println!(
-            //     "\ncleartext address: {}",
-            //     channel.as_cleartext_address().as_string()
-            // );
-            // println!(
-            //     "ciphertext address: {}",
-            //     channel.as_ciphertext_address().as_string()
-            // );
-            // return_route.print_route();
             channel.route = return_route;
             match pending {
                 Some(mut p) => {
@@ -456,8 +442,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         mut route: Route,
         return_address: Address,
     ) -> Result<Address, ChannelError> {
-        route.print_route();
-
         // Remember who to notify when the channel is secure
         let pending_return = RouterAddress::from_address(return_address).unwrap();
 
@@ -519,10 +503,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         println!(
             "Channel cleartext address: {}",
             hex::encode(u32::to_le_bytes(clear_u32))
-        );
-        println!(
-            "Channel ciphertext address: {}",
-            hex::encode(u32::to_le_bytes(cipher_u32))
         );
         self.channels
             .insert(clear_address.as_string(), channel.clone());

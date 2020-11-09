@@ -59,13 +59,7 @@ impl UdpTransport {
                 Some(ra) => {
                     m.return_route.addresses.insert(0, ra);
                     let mut v = vec![];
-                    println!("\nsending onward:");
-                    println!("message type: {:?}", &m.message_type);
-                    println!("sending to {}", remote_address.address.as_string());
-                    m.onward_route.print_route();
-                    println!("sending return:");
-                    m.return_route.print_route();
-                    Message::encode(&m, &mut v);
+                    Message::encode(&m, &mut v)?;
                     match self
                         .socket
                         .send_to(v.as_slice(), remote_address.address.as_string())
@@ -86,14 +80,8 @@ impl UdpTransport {
     pub fn receive_message(&mut self) -> Result<bool, String> {
         let mut buff = [0; 16348];
         match self.socket.recv_from(&mut buff) {
-            Ok((s, a)) => match Message::decode(&buff[0..s]) {
-                Ok((mut m, _unused)) => {
-                    println!("\nreceiving onward:");
-                    println!("received from: {:?}", a);
-                    m.onward_route.print_route();
-                    println!("message type: {:?}", m.message_type);
-                    println!("receiving return:");
-                    m.return_route.print_route();
+            Ok((s, _)) => match Message::decode(&buff[0..s]) {
+                Ok((m, _unused)) => {
                     if !m.onward_route.addresses.is_empty()
                         && ((m.onward_route.addresses[0].a_type == AddressType::Udp)
                             || (m.onward_route.addresses[0].a_type == AddressType::Tcp))

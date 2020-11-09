@@ -74,9 +74,6 @@ pub mod router {
                 return Err("no route supplied".to_string());
             }
 
-            // println!("routing onward/return: ");
-            // m.onward_route.print_route();
-            // m.return_route.print_route();
             let destination_address = m.onward_route.addresses[0].clone();
             let address_type = destination_address.a_type;
             let at = address_type as usize;

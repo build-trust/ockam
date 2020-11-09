@@ -50,14 +50,8 @@ impl TcpManager {
         )));
         let connections = HashMap::new();
 
-        let mut timeout: Duration;
-        if let Some(t) = tmo {
-            timeout = t;
-        } else {
-            timeout = Duration::new(5, 0);
-        }
+        let timeout = tmo.unwrap_or(Duration::new(5, 0));
 
-        let mut listener: Option<TcpListener> = None;
         return match listen_addr {
             Some(la) => {
                 if let Ok(l) = TcpListener::bind(la) {
@@ -196,15 +190,7 @@ impl TcpTransport {
             RouterAddress::from_address(self.local_address.clone()).unwrap(),
         );
         let mut v = vec![];
-        // println!("------Send-------");
-        // println!("sending onward:");
-        // println!("message type: {:?}", &m.message_type);
-        // println!("sending to {}", remote_address.address.as_string());
-        // m.onward_route.print_route();
-        // println!("sending return:");
-        // m.return_route.print_route();
-        // println!("------Send Over-------");
-        Message::encode(&m, &mut v);
+        Message::encode(&m, &mut v)?;
         return match self.stream.write(v.as_slice()) {
             Ok(n) => Ok(()),
             Err(e) => Err("tcp write failed".into()),
@@ -214,46 +200,35 @@ impl TcpTransport {
     pub fn receive_message(&mut self) -> Result<bool, String> {
         let mut buff = [0u8; 16348];
         match self.stream.read(&mut buff) {
-            Ok(len) => {
-                match Message::decode(&buff[0..len]) {
-                    Ok((mut m, _)) => {
-                        // println!("--------Receive-------");
-                        // println!("receiving onward:");
-                        // println!("received from: {:?}", self.stream.peer_addr());
-                        // m.onward_route.print_route();
-                        // println!("message type: {:?}", m.message_type);
-                        // println!("receiving return:");
-                        // m.return_route.print_route();
-                        // println!("--------Receive Over-------");
-                        if !m.onward_route.addresses.is_empty()
-                            && ((m.onward_route.addresses[0].a_type == AddressType::Udp)
-                                || (m.onward_route.addresses[0].a_type == AddressType::Tcp))
-                        {
-                            match self.send_message(m) {
-                                Err(s) => {
-                                    return Err(s);
-                                }
-                                Ok(()) => {
-                                    return Ok(true);
-                                }
+            Ok(len) => match Message::decode(&buff[0..len]) {
+                Ok((m, _)) => {
+                    if !m.onward_route.addresses.is_empty()
+                        && ((m.onward_route.addresses[0].a_type == AddressType::Udp)
+                            || (m.onward_route.addresses[0].a_type == AddressType::Tcp))
+                    {
+                        match self.send_message(m) {
+                            Err(s) => {
+                                return Err(s);
                             }
-                        } else {
-                            match self.router_tx.send(OckamCommand::Router(ReceiveMessage(m))) {
-                                Ok(_unused) => {
-                                    return Ok(true);
-                                }
-                                Err(s) => {
-                                    return Err("send to router failed".to_string());
-                                }
+                            Ok(()) => {
+                                return Ok(true);
+                            }
+                        }
+                    } else {
+                        match self.router_tx.send(OckamCommand::Router(ReceiveMessage(m))) {
+                            Ok(_unused) => {
+                                return Ok(true);
+                            }
+                            Err(_) => {
+                                return Err("send to router failed".to_string());
                             }
                         }
                     }
-                    _ => {
-                        return Err("decode failed".to_string());
-                    }
                 }
-                Ok(true)
-            }
+                _ => {
+                    return Err("decode failed".to_string());
+                }
+            },
             Err(e) => match e.kind() {
                 io::ErrorKind::WouldBlock => Ok(false),
                 _ => Err("tcp receive failed".to_string()),

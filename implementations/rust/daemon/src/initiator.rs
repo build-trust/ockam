@@ -34,7 +34,7 @@ impl StdinWorker {
         // let node_config = config.clone();
         // let (node, router_tx) = Node::new(&node_config);
 
-        let mut worker = StdinWorker::new(
+        let worker = StdinWorker::new(
             RouterAddress::worker_router_address_from_str(&config.service_address().unwrap())
                 .expect("failed to create worker address for kex"),
             router_tx,
@@ -43,16 +43,10 @@ impl StdinWorker {
 
         // kick off the key exchange process. The result will be that the worker is notified
         // when the secure channel is created.
-        println!(
-            "Worker address: {:?}",
-            hex::decode(config.service_address().unwrap()).unwrap()
-        );
-
         let mut onward_route = config.onward_route().unwrap_or(Route { addresses: vec![] });
         onward_route
             .addresses
             .push(RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap());
-        onward_route.print_route();
 
         channel_tx
             .send(OckamCommand::Channel(ChannelCommand::Initiate(
@@ -100,8 +94,6 @@ impl StdinWorker {
     fn receive_channel(&mut self, m: Message) -> Result<(), String> {
         self.route = m.return_route.clone();
         self.route.addresses.push(self.worker_addr.clone());
-        // println!("Worker return route:");
-        // self.route.print_route();
 
         // add the service address
         let service_address =

@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -8,24 +10,17 @@ use crate::config::{Config, Role};
 use crate::initiator::StdinWorker;
 use crate::worker::Worker;
 
-// pub enum OckamdWorker {
-//     ockam_daemon::initiator::StdinWorker
-// }
-
 use ockam_channel::*;
 use ockam_kex::{
     xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
     CipherSuite,
 };
-use ockam_message::message::{Address, AddressType, RouterAddress};
+use ockam_message::message::{Address, RouterAddress};
 use ockam_router::router::Router;
-use ockam_system::commands::{OckamCommand, RouterCommand, WorkerCommand};
-use ockam_transport::tcp::{TcpManager, TcpTransport};
+use ockam_system::commands::{OckamCommand, WorkerCommand};
+use ockam_transport::tcp::TcpManager;
 use ockam_vault::types::*;
 use ockam_vault::{file::FilesystemVault, DynVault};
-use std::io::stdin;
-use std::net::SocketAddr;
-use std::str::FromStr;
 
 pub enum OckamdWorker {
     StdinWorker(StdinWorker),
@@ -33,8 +28,8 @@ pub enum OckamdWorker {
 }
 
 #[allow(dead_code)]
-pub struct Node<'a> {
-    config: &'a Config,
+pub struct Node {
+    config: Config,
     chan_manager: ChannelManager<XXInitiator, XXResponder, XXNewKeyExchanger>,
     worker: Option<OckamdWorker>,
     router: Router,
@@ -54,8 +49,8 @@ pub fn get_console_line(wtx: Sender<OckamCommand>) {
     }
 }
 
-impl<'a> Node<'a> {
-    pub fn new(config: &'a Config) -> (Self, Sender<OckamCommand>) {
+impl Node {
+    pub fn new(config: Config) -> (Self, Sender<OckamCommand>) {
         // TODO: temporarily passed into the node, need to re-work
         let (router_tx, router_rx) = std::sync::mpsc::channel();
         let router = Router::new(router_rx);
@@ -146,15 +141,14 @@ impl<'a> Node<'a> {
         if matches!(config.role(), Role::Source)
             || (matches!(config.role(), Role::Sink) && config.route_hub().is_some())
         {
-            let mut hop1: RouterAddress;
-            if matches!(config.role(), Role::Source) {
-                hop1 = config.onward_route().unwrap().addresses[0].clone();
+            let hop = if matches!(config.role(), Role::Source) {
+                config.onward_route().unwrap().addresses[0].clone()
             } else {
                 let a = Address::TcpAddress(config.route_hub().unwrap());
-                hop1 = RouterAddress::from_address(a).unwrap();
-            }
-            let sock_addr = SocketAddr::from_str(&hop1.address.as_string()).unwrap();
-            let mut hop1 = match transport.connect(sock_addr) {
+                RouterAddress::from_address(a).unwrap()
+            };
+            let sock_addr = SocketAddr::from_str(&hop.address.as_string()).unwrap();
+            match transport.connect(sock_addr) {
                 Ok(h) => h,
                 Err(_) => {
                     panic!("failed to connect, is server running?");
@@ -168,7 +162,7 @@ impl<'a> Node<'a> {
         let mut worker: Option<OckamdWorker> = None;
         if matches!(config.role(), Role::Source) {
             worker = Some(OckamdWorker::StdinWorker(
-                StdinWorker::initialize(config, router_tx.clone(), channel_tx.clone()).unwrap(),
+                StdinWorker::initialize(&config, router_tx.clone(), channel_tx.clone()).unwrap(),
             ));
         }
         if matches!(config.role(), Role::Sink) {

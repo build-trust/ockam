@@ -368,9 +368,6 @@ impl FromStr for OutputKind {
             }
         });
 
-        println!("==============Route:");
-        route.print_route();
-
         if !route.addresses.is_empty() && ret.is_ok() {
             ret = Ok(OutputKind::Channel(route))
         }
