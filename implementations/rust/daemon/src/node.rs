@@ -64,7 +64,7 @@ impl Node {
         // generate a new one to be used
         if !contains_key(&mut vault, &config.identity_name()) {
             // if responder, generate keypair and display static public key
-            if matches!(config.role(), Role::Sink) {
+            if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
                 let attributes = SecretKeyAttributes {
                     xtype: SecretKeyType::Curve25519,
                     purpose: SecretPurposeType::KeyAgreement,
