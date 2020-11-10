@@ -1,0 +1,9 @@
+
+FROM ockam/builder:latest
+COPY . /opt/ockam
+RUN set -xe; \
+    cd /opt/ockam; \
+    ./gradlew veryClean; \
+    ./gradlew build; \
+    cd implementations/elixir/ockam/ockam_hub; \
+    MIX_ENV=prod mix release

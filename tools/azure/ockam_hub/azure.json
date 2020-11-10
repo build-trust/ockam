@@ -1,0 +1,92 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "influxToken": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "identityKey1": {
+      "type": "string",
+      "defaultValue": ""
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "ockam-hub",
+      "type": "Microsoft.ContainerInstance/containerGroups",
+      "apiVersion": "2018-10-01",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "containers": [
+          {
+            "name": "ockam-hub",
+            "properties": {
+              "image": "ockam/ockam_hub:latest",
+              "command": [
+                "/bin/bash",
+                "-c",
+                "/opt/ockam/implementations/elixir/ockam/ockam_hub/_build/prod/rel/ockam_hub/bin/ockam_hub start"
+              ],
+              "resources": {
+                "requests": {
+                  "cpu": 1,
+                  "memoryInGb": 1.5
+                }
+              },
+              "ports": [
+                {
+                  "port": 4000
+                }
+              ],
+              "volumeMounts": [
+                {
+                  "name": "secrets-volume-ockam-vault",
+                  "mountPath": "/mnt/secrets/ockam-vault"
+                },
+                {
+                  "name": "secrets-volume-influx",
+                  "mountPath": "/mnt/secrets/influx"
+                }
+              ],
+              "livenessProbe": {
+                "exec": {
+                  "command": [
+                    "/opt/ockam/implementations/elixir/ockam/ockam_hub/_build/prod/rel/ockam_hub/bin/ockam_hub",
+                    "pid"
+                  ]
+                },
+              }
+            }
+          }
+        ],
+        "osType": "Linux",
+        "ipAddress": {
+          "type": "Public",
+          "ports": [
+            {
+              "protocol": "tcp",
+              "port": "4000"
+            }
+          ],
+          "dnsNameLabel": "ockam-hub"
+        },
+        "volumes": [
+          {
+            "name": "secrets-volume-ockam-vault",
+            "secret": {
+              "k1": "[parameters('identityKey1')]"
+            }
+          },
+          {
+            "name": "secrets-volume-influx",
+            "secret": {
+              "token": "[parameters('influxToken')]"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
