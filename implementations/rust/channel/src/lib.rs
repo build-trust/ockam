@@ -319,9 +319,18 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
     }
 
     fn handle_m1_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+        println!("got m1");
         let channel = &mut *channel.lock().unwrap();
+
+        // send cleartext channel address as payload
+        let cleartext_router_addr =
+            RouterAddress::from_address(channel.as_cleartext_address()).unwrap();
+        let mut cleartext_addr_encoded = vec![];
+        RouterAddress::encode(&cleartext_router_addr, &mut cleartext_addr_encoded).unwrap();
+
         channel.agreement.process(&m.message_body)?;
-        let m2 = channel.agreement.process(&[])?;
+        let mut m2 = channel.agreement.process(&cleartext_addr_encoded)?;
+
         let new_m = Message {
             onward_route: m.return_route.clone(),
             return_route: Route {
@@ -335,13 +344,15 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         self.router_tx
             .send(Router(RouterCommand::SendMessage(new_m)))
             .unwrap();
+        println!("sent m2");
         Ok(())
     }
 
     fn handle_m2_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+        println!("got m2");
         let mut channel = &mut *channel.lock().unwrap();
         let return_route = m.return_route.clone();
-        channel.agreement.process(&m.message_body)?;
+        let channel_cleartext_addr_encoded = channel.agreement.process(&m.message_body)?;
         let m3 = channel.agreement.process(&[])?;
         let m = Message {
             onward_route: return_route.clone(),
@@ -361,12 +372,14 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let pending = channel.pending.clone();
         match pending {
             Some(mut p) => {
-                // send the remote public key as the message body
+                // send the remote public key and remote channel cleartext address as the message body
                 let static_public_key = channel
                     .completed_key_exchange
                     .unwrap()
                     .remote_static_public_key;
-                p.message_body = static_public_key.as_ref().to_vec();
+                p.message_body = channel_cleartext_addr_encoded;
+                p.message_body
+                    .append(&mut static_public_key.as_ref().to_vec());
                 self.router_tx
                     .send(Router(RouterCommand::ReceiveMessage(p)))
                     .unwrap();
@@ -379,6 +392,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
     }
 
     fn handle_m3_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+        println!("got m3");
         let mut channel = channel.lock().unwrap();
         let return_route = m.return_route.clone();
         // For now ignore anything returned from M3

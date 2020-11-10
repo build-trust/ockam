@@ -1,3 +1,4 @@
+use futures::io::Error;
 #[allow(unused)]
 use ockam_message::message::*;
 use ockam_system::commands::RouterCommand::ReceiveMessage;
@@ -196,38 +197,33 @@ impl TcpTransport {
         self.stream.set_nonblocking(true);
         self.stream.set_nodelay(true);
         match self.stream.read(&mut buff) {
-            Ok(len) => match Message::decode(&buff[0..len]) {
-                Ok((m, _)) => {
-                    if !m.onward_route.addresses.is_empty()
-                        && ((m.onward_route.addresses[0].a_type == AddressType::Udp)
-                            || (m.onward_route.addresses[0].a_type == AddressType::Tcp))
-                    {
-                        match self.send_message(m) {
-                            Err(s) => {
-                                return Err(s);
+            Ok(len) => {
+                if len == 0 {
+                    return Ok(true);
+                }
+                return match Message::decode(&buff[0..len]) {
+                    Ok((m, _)) => {
+                        if !m.onward_route.addresses.is_empty()
+                            && ((m.onward_route.addresses[0].a_type == AddressType::Udp)
+                                || (m.onward_route.addresses[0].a_type == AddressType::Tcp))
+                        {
+                            match self.send_message(m) {
+                                Err(s) => Err(s),
+                                Ok(()) => Ok(true),
                             }
-                            Ok(()) => {
-                                return Ok(true);
-                            }
-                        }
-                    } else {
-                        match self.router_tx.send(OckamCommand::Router(ReceiveMessage(m))) {
-                            Ok(_unused) => {
-                                return Ok(true);
-                            }
-                            Err(_) => {
-                                return Err("send to router failed".to_string());
+                        } else {
+                            match self.router_tx.send(OckamCommand::Router(ReceiveMessage(m))) {
+                                Ok(_unused) => Ok(true),
+                                Err(_) => Err("send to router failed".to_string()),
                             }
                         }
                     }
-                }
-                _ => {
-                    return Err("decode failed".to_string());
-                }
-            },
+                    _ => Err("decode failed".to_string()),
+                };
+            }
             Err(e) => match e.kind() {
                 io::ErrorKind::WouldBlock => Ok(false),
-                _ => Err("tcp receive failed".to_string()),
+                _ => Err("***tcp receive failed".to_string()),
             },
         }
     }

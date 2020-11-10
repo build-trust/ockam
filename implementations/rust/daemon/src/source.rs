@@ -5,7 +5,8 @@ use crate::config::Config;
 use hex::encode;
 use ockam_channel::CHANNEL_ZERO;
 use ockam_message::message::{
-    Address, AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
+    Address, AddressType, Codec, Message as OckamMessage, Message, MessageType, Route,
+    RouterAddress,
 };
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 
@@ -92,16 +93,31 @@ impl StdinWorker {
                 .unwrap();
         self.route.addresses.push(service_address);
 
-        if let Some(rpk) = self.config.public_key_sink() {
-            if rpk == encode(&m.message_body) {
-                println!("keys agree");
-                return Ok(());
-            } else {
-                println!("keys conflict");
-                return Err("remote public key doesn't match expected, possible spoofing".into());
+        // extract cleartext channel address
+        let mut remote_cleartext_channel: RouterAddress =
+            RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap();
+        let mut new_mb = m.message_body;
+        let mut new_mb_offet = &new_mb;
+        return match RouterAddress::decode(&new_mb) {
+            Ok((rcc, mb)) => {
+                if let Some(rpk) = self.config.public_key_sink() {
+                    if rpk == encode(mb) {
+                        println!("keys agree");
+                        return Ok(());
+                    } else {
+                        println!("keys conflict");
+                        return Err(
+                            "remote public key doesn't match expected, possible spoofing".into(),
+                        );
+                    }
+                }
+                Ok(())
             }
-        }
-        Ok(())
+            _ => {
+                println!("Receive channel: expected channel address in message body");
+                Err("receive_channel".into())
+            }
+        };
     }
 
     pub fn poll(&mut self) -> bool {

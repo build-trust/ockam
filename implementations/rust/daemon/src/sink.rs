@@ -4,7 +4,8 @@ use crate::config::{AddonKind, Config};
 use attohttpc::post;
 use ockam_channel::CHANNEL_ZERO;
 use ockam_message::message::{
-    Address, AddressType, Message as OckamMessage, Message, MessageType, Route, RouterAddress,
+    Address, AddressType, Codec, Message as OckamMessage, Message, MessageType, Route,
+    RouterAddress,
 };
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 use std::io::Write;
@@ -127,19 +128,19 @@ impl SinkWorker {
 
     fn receive_channel(&mut self, m: Message) -> Result<(), String> {
         self.route = Some(m.return_route.clone());
+        if !m.message_body.is_empty() {
+            if let Ok((cleartext_channel_addr, _)) = RouterAddress::decode(&m.message_body) {
+                println!(
+                    "hub cleartext channel address: {}",
+                    cleartext_channel_addr.address.as_string()
+                );
+                return Ok(());
+            } else {
+                println!("no hub cleartext channel address in M2");
+                return Ok(());
+            }
+        }
         Ok(())
-        // let resp_public_key = encode(&m.message_body);
-        // println!("Remote static public key: {}", resp_public_key);
-        // if let Some(rpk) = self.config.remote_public_key() {
-        //     if rpk == encode(&m.message_body) {
-        //         println!("keys agree");
-        //         return Ok(());
-        //     } else {
-        //         println!("keys conflict");
-        //         return Err("remote public key doesn't match expected, possible spoofing".into());
-        //     }
-        // }
-        // Ok(())
     }
 
     pub fn poll(&mut self) -> bool {
