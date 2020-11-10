@@ -30,6 +30,7 @@ impl TcpManager {
         match stream {
             Ok(stream) => {
                 stream.set_nonblocking(true);
+                stream.set_nodelay(true);
                 self.add_connection(stream);
                 Ok(Address::TcpAddress(address))
             }
@@ -199,6 +200,8 @@ impl TcpTransport {
 
     pub fn receive_message(&mut self) -> Result<bool, String> {
         let mut buff = [0u8; 16348];
+        self.stream.set_nonblocking(true);
+        self.stream.set_nodelay(true);
         match self.stream.read(&mut buff) {
             Ok(len) => match Message::decode(&buff[0..len]) {
                 Ok((m, _)) => {
