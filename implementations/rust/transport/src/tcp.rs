@@ -25,8 +25,16 @@ impl TcpManager {
         let stream = TcpStream::connect(address);
         match stream {
             Ok(stream) => {
+<<<<<<< HEAD
+<<<<<<< HEAD
                 stream.set_nonblocking(true);
                 stream.set_nodelay(true);
+=======
+                stream.set_nonblocking(true).unwrap();
+                stream.set_nodelay(true).unwrap();
+>>>>>>> fix(rust): add patch to tcp to reset nonblock on each read
+=======
+>>>>>>> debug
                 self.add_connection(stream);
                 Ok(Address::TcpAddress(address))
             }
@@ -81,6 +89,8 @@ impl TcpManager {
     }
 
     fn add_connection(&mut self, stream: TcpStream) -> bool {
+        stream.set_nonblocking(true).unwrap();
+        stream.set_nodelay(true).unwrap();
         let peer_addr = stream.peer_addr().unwrap().clone();
         let tcp_xport = TcpTransport::new(stream, self.router_tx.clone()).unwrap();
         self.connections.insert(peer_addr.to_string(), tcp_xport);
@@ -128,6 +138,12 @@ impl TcpManager {
                                     keep_going = false;
                                 }
                                 _ => {}
+                            }
+                        } else {
+                            println!("can't find connection {}", addr);
+                            println!("{} connections in hashmap", self.connections.len());
+                            for (c, t) in &self.connections {
+                                println!("{}", c);
                             }
                         }
                     }
@@ -201,6 +217,7 @@ impl TcpTransport {
                 if len == 0 {
                     return Ok(true);
                 }
+                println!("receive_message: decoding");
                 return match Message::decode(&buff[0..len]) {
                     Ok((m, _)) => {
                         if !m.onward_route.addresses.is_empty()

@@ -59,6 +59,7 @@ pub mod router {
                         }
                         OckamCommand::Router(RouterCommand::SendMessage(m)) => {
                             got = true;
+                            println!("router got SendMessage");
                             self.route(m, Direction::Outgoing);
                         }
                         _ => println!("Router received bad command"),
