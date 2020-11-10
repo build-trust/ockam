@@ -1,4 +1,15 @@
-FROM influxdb:1.8
-COPY --from=ockam/ockamd:0.10.0 /usr/local/bin/ockamd /usr/local/bin/ockamd
-COPY ./tools/docker/influxdb/entrypoint.sh .
+# FROM influxdb:1.8
+# RUN apt-get update && \
+#     apt-get install -y pkg-config libc6-dev libc6
+# COPY --from=ockam/ockamd:0.10.1 /usr/local/bin/ockamd /usr/local/bin/ockamd
+# COPY ./tools/docker/influxdb/entrypoint.sh .
+# ENTRYPOINT ["./entrypoint.sh"]
+
+FROM ockam/ockamd:0.10.1
+COPY ./tools/docker/influxdb/entrypoint.sh entrypoint.sh
+RUN curl -sL https://repos.influxdata.com/influxdb.key | apt-key add - && \
+    . /etc/lsb-release && \
+    echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | tee /etc/apt/sources.list.d/influxdb.list
+RUN apt-get update && apt-get install influxdb influxdb-client
+EXPOSE 8086
 ENTRYPOINT ["./entrypoint.sh"]
