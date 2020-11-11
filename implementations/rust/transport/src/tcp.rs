@@ -84,9 +84,6 @@ impl TcpManager {
         stream.set_nonblocking(true).unwrap();
         stream.set_nodelay(true).unwrap();
         let peer_addr = stream.peer_addr().unwrap().clone();
-        println!("Adding tcp connection key {}", peer_addr);
-        println!("socket: {:?}", stream);
-        println!("local addr is {}", stream.local_addr().unwrap());
         let tcp_xport = TcpTransport::new(stream, self.router_tx.clone()).unwrap();
         self.connections.insert(peer_addr.to_string(), tcp_xport);
         self.addresses.push(peer_addr.to_string());
@@ -126,7 +123,6 @@ impl TcpManager {
                     OckamCommand::Transport(TransportCommand::SendMessage(mut m)) => {
                         let addr = m.onward_route.addresses.get_mut(0).unwrap();
                         let addr = addr.address.as_string();
-                        println!("looking for {}", addr);
                         if let Some(tcp_xport) = self.connections.get_mut(&addr) {
                             match tcp_xport.send_message(m) {
                                 Err(_) => {
@@ -208,12 +204,10 @@ impl TcpTransport {
                 if len == 0 {
                     return Ok(true);
                 }
-                println!("receive_message: decoding");
                 return match Message::decode(&buff[0..len]) {
                     Ok((mut m, _)) => {
                         // fix up return tcp address with nat-ed address
                         let tcp_return = Address::TcpAddress(self.stream.peer_addr().unwrap());
-                        println!("***old address: {:?}", m.return_route.addresses[0]);
                         m.return_route.addresses[0] =
                             RouterAddress::from_address(tcp_return).unwrap();
                         if !m.onward_route.addresses.is_empty()

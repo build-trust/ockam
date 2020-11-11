@@ -319,7 +319,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
     }
 
     fn handle_m1_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
-        println!("got m1");
         let channel = &mut *channel.lock().unwrap();
 
         // send cleartext channel address as payload
@@ -344,12 +343,10 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         self.router_tx
             .send(Router(RouterCommand::SendMessage(new_m)))
             .unwrap();
-        println!("sent m2");
         Ok(())
     }
 
     fn handle_m2_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
-        println!("got m2");
         let mut channel = &mut *channel.lock().unwrap();
         let return_route = m.return_route.clone();
         let channel_cleartext_addr_encoded = channel.agreement.process(&m.message_body)?;
@@ -366,6 +363,12 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             .send(Router(RouterCommand::SendMessage(m)))
             .unwrap();
         channel.completed_key_exchange = Some(channel.agreement.finalize()?);
+<<<<<<< HEAD
+=======
+        // println!("\n**finalized");
+        // println!("\n**channel return route: ");
+        // return_route.print_route();
+>>>>>>> style(rust): remove much debug printout
         channel.route = return_route;
 
         // let the worker know the key exchange is done
@@ -392,7 +395,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
     }
 
     fn handle_m3_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
-        println!("got m3");
         let mut channel = channel.lock().unwrap();
         let return_route = m.return_route.clone();
         // For now ignore anything returned from M3
@@ -515,10 +517,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         };
         let clear_address = Address::ChannelAddress(clear_u32.to_le_bytes().to_vec());
         let cipher_address = Address::ChannelAddress(cipher_u32.to_le_bytes().to_vec());
-        println!(
-            "Channel cleartext address: {}",
-            hex::encode(u32::to_le_bytes(clear_u32))
-        );
         self.channels
             .insert(clear_address.as_string(), channel.clone());
         self.channels.insert(cipher_address.as_string(), channel);

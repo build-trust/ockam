@@ -59,7 +59,6 @@ pub mod router {
                         }
                         OckamCommand::Router(RouterCommand::SendMessage(m)) => {
                             got = true;
-                            println!("router got SendMessage");
                             self.route(m, Direction::Outgoing);
                         }
                         _ => println!("Router received bad command"),
@@ -77,7 +76,6 @@ pub mod router {
 
             let destination_address = m.onward_route.addresses[0].clone();
             let address_type = destination_address.a_type;
-            println!("routing address type: {:?}", address_type);
             let at = address_type as usize;
             let handler_tx = match &self.registry[at] {
                 Some(a) => a,
@@ -95,7 +93,6 @@ pub mod router {
                     }
                 },
                 AddressType::Tcp => {
-                    println!("routing: sending message to tcp");
                     handler_tx.send(OckamCommand::Transport(TransportCommand::SendMessage(m)));
                     Ok(())
                 }
