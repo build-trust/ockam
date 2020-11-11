@@ -22,7 +22,7 @@ cmake_minimum_required(VERSION 3.1...3.18 FATAL_ERROR)
 # can find both compilers. We don't use the C++ compiler, so by sepecifying
 # only C here we tell CMake to test only for a presence of the C compiler.
 # This way the build environment isn't required to have a CXX compiler.
-project(ockam VERSION 0.10.0 LANGUAGES C)
+project(ockam VERSION 0.10.1 LANGUAGES C)
 
 # If this is the top level CMake project.
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)

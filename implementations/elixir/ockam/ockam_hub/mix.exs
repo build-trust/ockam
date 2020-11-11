@@ -1,7 +1,7 @@
 defmodule Ockam.Hub.MixProject do
   use Mix.Project
 
-  @version "0.10.0"
+  @version "0.10.1"
 
   @elixir_requirement "~> 1.10"
 
