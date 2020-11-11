@@ -288,9 +288,11 @@ pub fn start_node(
             panic!("no route supplied");
         }
 
+        println!("Connecting to {:?}", hop1_addr);
         let hop1 = match tcp_manager.connect(hop1_addr) {
             Ok(h) => h,
             Err(_) => {
+                println!("couldn't connect to {:?}", hop1_addr);
                 return Err("failed to connect".into());
             }
         };

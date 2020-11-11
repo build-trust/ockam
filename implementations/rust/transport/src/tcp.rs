@@ -92,6 +92,9 @@ impl TcpManager {
         stream.set_nonblocking(true).unwrap();
         stream.set_nodelay(true).unwrap();
         let peer_addr = stream.peer_addr().unwrap().clone();
+        println!("Adding tcp connection key {}", peer_addr);
+        println!("socket: {:?}", stream);
+        println!("local addr is {}", stream.local_addr().unwrap());
         let tcp_xport = TcpTransport::new(stream, self.router_tx.clone()).unwrap();
         self.connections.insert(peer_addr.to_string(), tcp_xport);
         self.addresses.push(peer_addr.to_string());
@@ -131,6 +134,7 @@ impl TcpManager {
                     OckamCommand::Transport(TransportCommand::SendMessage(mut m)) => {
                         let addr = m.onward_route.addresses.get_mut(0).unwrap();
                         let addr = addr.address.as_string();
+                        println!("looking for {}", addr);
                         if let Some(tcp_xport) = self.connections.get_mut(&addr) {
                             match tcp_xport.send_message(m) {
                                 Err(_) => {
@@ -178,7 +182,6 @@ impl TcpManager {
 pub struct TcpTransport {
     stream: TcpStream,
     router_tx: std::sync::mpsc::Sender<OckamCommand>,
-    local_address: Address,
 }
 
 impl TcpTransport {
@@ -187,19 +190,15 @@ impl TcpTransport {
         router_tx: std::sync::mpsc::Sender<OckamCommand>,
     ) -> Result<TcpTransport, String> {
         let local_address = Address::TcpAddress(stream.local_addr().unwrap());
-        Ok(TcpTransport {
-            stream,
-            router_tx,
-            local_address,
-        })
+        Ok(TcpTransport { stream, router_tx })
     }
 
     pub fn send_message(&mut self, mut m: Message) -> Result<(), String> {
         let remote_address = m.onward_route.addresses.remove(0);
-        m.return_route.addresses.insert(
-            0,
-            RouterAddress::from_address(self.local_address.clone()).unwrap(),
-        );
+        let local_address = Address::TcpAddress(self.stream.local_addr().unwrap());
+        m.return_route
+            .addresses
+            .insert(0, RouterAddress::from_address(local_address).unwrap());
         let mut v = vec![];
         Message::encode(&m, &mut v)?;
         return match self.stream.write(v.as_slice()) {
