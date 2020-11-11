@@ -1,7 +1,7 @@
 <div>
   <b>InfluxDays 2020 - Ockam Demo:</b>
   <em>
-    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/telegraf-influxdb-with-ockamd/">End-to-end encrypted connections between Telegraf and InfluxDB.</a>
+    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub/">End-to-end encrypted connections between Telegraf and InfluxDB.</a>
   </em>
   </div>
 <hr>
@@ -98,6 +98,8 @@ to build solutions for common IoT and edge computing problems like:
 Our goal is to provide this functionality in multiple programming languages with
 secure, high level application interfaces that are easy to use correctly and
 hard to misuse.
+
+[An introduction to the core concepts.](https://www.ockam.io/learn/concepts/secure_channels/)
 
 ## License
 
