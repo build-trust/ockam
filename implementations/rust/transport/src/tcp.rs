@@ -25,16 +25,8 @@ impl TcpManager {
         let stream = TcpStream::connect(address);
         match stream {
             Ok(stream) => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-                stream.set_nonblocking(true);
-                stream.set_nodelay(true);
-=======
                 stream.set_nonblocking(true).unwrap();
                 stream.set_nodelay(true).unwrap();
->>>>>>> fix(rust): add patch to tcp to reset nonblock on each read
-=======
->>>>>>> debug
                 self.add_connection(stream);
                 Ok(Address::TcpAddress(address))
             }
@@ -218,7 +210,12 @@ impl TcpTransport {
                 }
                 println!("receive_message: decoding");
                 return match Message::decode(&buff[0..len]) {
-                    Ok((m, _)) => {
+                    Ok((mut m, _)) => {
+                        // fix up return tcp address with nat-ed address
+                        let tcp_return = Address::TcpAddress(self.stream.peer_addr().unwrap());
+                        println!("***old address: {:?}", m.return_route.addresses[0]);
+                        m.return_route.addresses[0] =
+                            RouterAddress::from_address(tcp_return).unwrap();
                         if !m.onward_route.addresses.is_empty()
                             && ((m.onward_route.addresses[0].a_type == AddressType::Udp)
                                 || (m.onward_route.addresses[0].a_type == AddressType::Tcp))
