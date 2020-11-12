@@ -77,12 +77,6 @@ impl<'a> Node<'a> {
             _ => {}
         }
 
-        // if matches!(config.role(), Role::Router) || matches!(config.role(), Role::Sink) {
-        //     let la = config
-        //         .route_hub()
-        //         .expect("role requires local IP address for tcp listen");
-        //     listen_addr = Some(la);
-        // }
         let (transport_tx, transport_rx) = mpsc::channel();
         let mut transport = TcpManager::new(
             transport_rx,
@@ -97,17 +91,15 @@ impl<'a> Node<'a> {
         if matches!(config.role(), Role::Source)
             || (matches!(config.role(), Role::Sink) && config.route_hub().is_some())
         {
-            let hop1: RouterAddress;
-            if matches!(config.role(), Role::Source) {
-                hop1 = config.onward_route().unwrap().addresses[0].clone();
+            let hop = if matches!(config.role(), Role::Source) {
+                config.onward_route().unwrap().addresses[0].clone()
             } else {
                 let a = Address::TcpAddress(config.route_hub().unwrap());
-                hop1 = RouterAddress::from_address(a).unwrap();
-            }
-            let sock_addr = SocketAddr::from_str(&hop1.address.as_string()).unwrap();
-            println!("connecting to: {:?}", sock_addr);
+                RouterAddress::from_address(a).unwrap()
+            };
+            let sock_addr = SocketAddr::from_str(&hop.address.as_string()).unwrap();
             match transport.connect(sock_addr) {
-                Ok(_) => {}
+                Ok(h) => h,
                 Err(_) => {
                     panic!("failed to connect, is server running?");
                 }
@@ -130,7 +122,7 @@ impl<'a> Node<'a> {
         // generate a new one to be used
         if !contains_key(&mut vault, &config.identity_name()) {
             // if responder, generate keypair and display static public key
-            if matches!(config.role(), Role::Sink) {
+            if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
                 let attributes = SecretKeyAttributes {
                     xtype: SecretKeyType::Curve25519,
                     purpose: SecretPurposeType::KeyAgreement,

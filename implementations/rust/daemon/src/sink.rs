@@ -131,13 +131,9 @@ impl SinkWorker {
         if !m.message_body.is_empty() {
             if let Ok((cleartext_channel_addr, _)) = RouterAddress::decode(&m.message_body) {
                 println!(
-                    "hub cleartext channel address: {}",
+                    "Channel cleartext address: {}",
                     cleartext_channel_addr.address.as_string()
                 );
-                return Ok(());
-            } else {
-                println!("no hub cleartext channel address in M2");
-                return Ok(());
             }
         }
         Ok(())

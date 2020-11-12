@@ -93,12 +93,7 @@ impl StdinWorker {
                 .unwrap();
         self.route.addresses.push(service_address);
 
-        // extract cleartext channel address
-        let mut remote_cleartext_channel: RouterAddress =
-            RouterAddress::channel_router_address_from_str(CHANNEL_ZERO).unwrap();
-        let mut new_mb = m.message_body;
-        let mut new_mb_offet = &new_mb;
-        return match RouterAddress::decode(&new_mb) {
+        return match RouterAddress::decode(&m.message_body) {
             Ok((rcc, mb)) => {
                 if let Some(rpk) = self.config.public_key_sink() {
                     if rpk == encode(mb) {
@@ -113,10 +108,7 @@ impl StdinWorker {
                 }
                 Ok(())
             }
-            _ => {
-                println!("Receive channel: expected channel address in message body");
-                Err("receive_channel".into())
-            }
+            _ => Err("receive channel: expected channel address in message body".into()),
         };
     }
 

@@ -30,7 +30,7 @@ impl TcpManager {
                 self.add_connection(stream);
                 Ok(Address::TcpAddress(address))
             }
-            Err(_) => Err("tcp failed to connect".into()),
+            Err(e) => Err(format!("tcp failed to connect: {}", e)),
         }
     }
 
@@ -125,8 +125,8 @@ impl TcpManager {
                         let addr = addr.address.as_string();
                         if let Some(tcp_xport) = self.connections.get_mut(&addr) {
                             match tcp_xport.send_message(m) {
-                                Err(_) => {
-                                    println!("connection not found");
+                                Err(e) => {
+                                    println!("send_message failed: {}", e);
                                     keep_going = false;
                                 }
                                 _ => {}
@@ -182,7 +182,7 @@ impl TcpTransport {
     }
 
     pub fn send_message(&mut self, mut m: Message) -> Result<(), String> {
-        let remote_address = m.onward_route.addresses.remove(0);
+        m.onward_route.addresses.remove(0);
         let local_address = Address::TcpAddress(self.stream.local_addr().unwrap());
         m.return_route
             .addresses
