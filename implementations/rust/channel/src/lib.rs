@@ -363,12 +363,6 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             .send(Router(RouterCommand::SendMessage(m)))
             .unwrap();
         channel.completed_key_exchange = Some(channel.agreement.finalize()?);
-<<<<<<< HEAD
-=======
-        // println!("\n**finalized");
-        // println!("\n**channel return route: ");
-        // return_route.print_route();
->>>>>>> style(rust): remove much debug printout
         channel.route = return_route;
 
         // let the worker know the key exchange is done
