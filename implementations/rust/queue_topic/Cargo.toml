@@ -1,0 +1,8 @@
+[package]
+name = "ockam-queue-topic"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+hashbrown = "0.9.1"
