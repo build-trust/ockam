@@ -268,8 +268,8 @@ pub enum ChannelRole {
     /// The Source role expects a channel Sink address, a router address (optional),
     /// and a public key to use in order to communicate with the Sink-Responder end of the channel.
     Source,
-    /// The Sink role will optionally initiate a channel to a router, and create a channel responder for
-    /// the source to initiate to.
+    /// The Sink role will optionally initiate a channel to a router, and create a channel
+    /// responder for the source to initiate to.
     /// The Sink will also print its static public key for the Source to use..
     Sink,
     /// The Router role will route messages along the path, and is capable of acting as a responder

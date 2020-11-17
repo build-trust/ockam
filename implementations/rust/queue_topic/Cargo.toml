@@ -1,0 +1,12 @@
+[package]
+name = "ockam-queue-topic"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+simple_redis = { version = "0.5.2", optional = true }
+
+[features]
+default = ["redis"]
+redis = ["simple_redis"]
