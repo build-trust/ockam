@@ -369,7 +369,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let pending = channel.pending.clone();
         match pending {
             Some(mut p) => {
-                // send the remote public key and remote channel cleartext address as the message body
+                // send the remote public key and remote channel cleartext address as the message
+                // body
                 let static_public_key = channel
                     .completed_key_exchange
                     .unwrap()

@@ -7,3 +7,11 @@ edition = "2018"
 [[example]]
 name = "noop"
 path = "noop/src/main.rs"
+
+[[example]]
+name = "redis"
+path = "redis/src/main.rs"
+
+[dependencies]
+simple_redis = "0.5.2"
+ockam-queue-topic = { version = "0.1.0", path = "../queue_topic" }
