@@ -946,6 +946,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam-queue-topic"
+version = "0.1.0"
+dependencies = [
+ "hashbrown",
+]
+
+[[package]]
 name = "ockam-router"
 version = "0.1.0"
 dependencies = [
