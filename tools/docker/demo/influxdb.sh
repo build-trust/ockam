@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-if [[ -z "$1" ]]; then
+if [ -z "$1" ]; then
     echo "\
 Ockam Demo: InfluxDB Add-on
 
@@ -57,7 +57,7 @@ case $1 in
     telegraf-ockamd)
         # start the initiator (source) end, containing `telegraf` and `ockamd`, with configuration
         # to start `telegraf` to use `ockamd` as an "execd" output plugin:
-        if [[ -z "$2" ]]; then
+        if [ -z "$2" ]; then
             echo "ERROR: You must provide the responder public key returned from the previous script."
             exit 1
         fi
@@ -95,7 +95,7 @@ case $1 in
     telegraf-ockamd-via-ockam-hub)
         # start the initiator (source) end, containing `telegraf` and `ockamd`, with configuration
         # to start `telegraf` to use `ockamd` as an "execd" output plugin:
-        if [[ -z "$2" ]]; then
+        if [ -z "$2" ]; then
             echo "ERROR: You must provide the responder public key and cleartext channel address returned from the previous script."
             exit 1
         fi
