@@ -6,7 +6,7 @@
   src="https://dev.azure.com/ockam-network/ockam/_apis/build/status/ockam-network.ockam?branchName=develop">
 </a>
 
-<a href="https://www.ockam.io/learn/guides/team/conduct/">
+<a href="https://www.ockam.io/learn/how-to-guides/high-performance-team/conduct/">
 <img alt="Contributor Covenant"
   src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg">
 </a>
