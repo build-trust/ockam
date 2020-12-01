@@ -36,3 +36,7 @@ default-members = [
     "c/bindings",
     "c/rust_memory",
 ]
+
+exclude = [
+    "ockam"
+]

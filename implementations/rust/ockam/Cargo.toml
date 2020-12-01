@@ -5,16 +5,12 @@ authors = ["Ockam Developers"]
 edition = "2018"
 
 [features]
-default = ["ockam-common/default", "ockam-channel/default", "ockam-message/default", "ockam-kex/default", "ockam-vault/default"]
-ffi = ["ockam-common/default", "ockam-channel/default", "ockam-message/ffi", "ockam-kex/ffi", "ockam-vault/ffi"]
+alloc = []
+default = ["alloc"]
+std = ["alloc"]
 
 [dependencies]
-ockam-channel = { version = "0.1", path = "../channel", default-features = false }
-ockam-common = { version = "0.1", path = "../common", default-features = false }
-ockam-kex = { version = "0.1", path = "../kex", default-features = false }
-ockam-message = { version = "0.1", path = "../message", default-features = false }
-ockam-router = { version = "0.1", path = "../router", default-features = false }
-ockam-system = { version = "0.1", path = "../system", default-features = false }
-ockam-transport = { version = "0.1", path = "../transport", default-features = false }
-ockam-vault = { version = "0.1", path = "../vault", default-features = false }
-ockam-worker = { version = "0.1", path = "../worker", default-features = false }
+cfg-if = "1.0"
+downcast = "0.10"
+heapless = { version = "0.5", optional = true }
+
