@@ -383,6 +383,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "downcast"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bb454f0228b18c7f4c3b0ebbee346ed9c52e7443b0999cd543ff3571205701d"
+
+[[package]]
 name = "ed25519"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -977,6 +983,7 @@ dependencies = [
  "c_bindings",
  "c_rust_memory",
  "curve25519-dalek",
+ "downcast",
  "ed25519-dalek",
  "failure",
  "ffi-support",
