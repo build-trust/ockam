@@ -18,10 +18,8 @@ extern crate arrayref;
 
 use error::*;
 
-use ockam_vault::{
-    error::VaultFailError,
-    types::{PublicKey, SecretKeyContext},
-};
+use ockam_vault::{error::VaultFailError, types::PublicKey, Secret};
+use std::sync::Arc;
 
 #[macro_use]
 extern crate ockam_vault;
@@ -48,7 +46,7 @@ trait KeyExchange {
     /// Perform the diffie-hellman computation
     fn dh(
         &mut self,
-        secret_handle: SecretKeyContext,
+        secret_handle: &Box<dyn Secret>,
         public_key: PublicKey,
     ) -> Result<(), VaultFailError>;
     /// mix hash step in Noise protocol
@@ -64,12 +62,12 @@ trait KeyExchange {
         ciphertext: B,
     ) -> Result<Vec<u8>, VaultFailError>;
     /// Split step in Noise protocol
-    fn split(&mut self) -> Result<(SecretKeyContext, SecretKeyContext), VaultFailError>;
+    fn split(&mut self) -> Result<(Box<dyn Secret>, Box<dyn Secret>), VaultFailError>;
     /// Finish the key exchange and return computed data
     fn finalize(
-        &mut self,
-        encrypt_key: SecretKeyContext,
-        decrypt_key: SecretKeyContext,
+        self,
+        encrypt_key: Box<dyn Secret>,
+        decrypt_key: Box<dyn Secret>,
     ) -> Result<CompletedKeyExchange, VaultFailError>;
 }
 
@@ -80,7 +78,7 @@ pub trait KeyExchanger {
     /// Is the key exchange process completed yet
     fn is_complete(&self) -> bool;
     /// If completed, then return the data and keys needed for channels
-    fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError>;
+    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError>;
 }
 
 /// XX cipher suites
@@ -95,22 +93,22 @@ pub enum CipherSuite {
 /// Instantiate a stateful key exchange vault instance
 pub trait NewKeyExchanger<E: KeyExchanger = Self, F: KeyExchanger = Self> {
     /// Create a new Key Exchanger with the initiator role
-    fn initiator(&self, identity_key: Option<SecretKeyContext>) -> E;
+    fn initiator(&self, identity_key: Option<Arc<Box<dyn Secret>>>) -> E;
     /// Create a new Key Exchanger with the responder role
-    fn responder(&self, identity_key: Option<SecretKeyContext>) -> F;
+    fn responder(&self, identity_key: Option<Arc<Box<dyn Secret>>>) -> F;
 }
 
 /// A Completed Key Exchange elements
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct CompletedKeyExchange {
     /// The state hash
     pub h: [u8; 32],
     /// The derived encryption key handle
-    pub encrypt_key: SecretKeyContext,
+    pub encrypt_key: Box<dyn Secret>,
     /// The derived decryption key handle
-    pub decrypt_key: SecretKeyContext,
+    pub decrypt_key: Box<dyn Secret>,
     /// The long term static key handle
-    pub local_static_secret: SecretKeyContext,
+    pub local_static_secret: Arc<Box<dyn Secret>>,
     /// The long term static public key from remote party
     pub remote_static_public_key: PublicKey,
 }
@@ -154,7 +152,9 @@ mod tests {
         let m3 = initiator.process(&[]).unwrap();
         let _ = responder.process(&m3).unwrap();
 
+        let initiator = Box::new(initiator);
         let initiator = initiator.finalize().unwrap();
+        let responder = Box::new(responder);
         let responder = responder.finalize().unwrap();
 
         let mut vault_in = vault_initiator.lock().unwrap();
@@ -162,13 +162,13 @@ mod tests {
 
         assert_eq!(initiator.h, responder.h);
 
-        let s1 = vault_in.secret_export(initiator.encrypt_key).unwrap();
-        let s2 = vault_re.secret_export(responder.decrypt_key).unwrap();
+        let s1 = vault_in.secret_export(&initiator.encrypt_key).unwrap();
+        let s2 = vault_re.secret_export(&responder.decrypt_key).unwrap();
 
         assert_eq!(s1, s2);
 
-        let s1 = vault_in.secret_export(initiator.decrypt_key).unwrap();
-        let s2 = vault_re.secret_export(responder.encrypt_key).unwrap();
+        let s1 = vault_in.secret_export(&initiator.decrypt_key).unwrap();
+        let s2 = vault_re.secret_export(&responder.encrypt_key).unwrap();
 
         assert_eq!(s1, s2);
     }

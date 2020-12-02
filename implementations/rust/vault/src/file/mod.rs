@@ -2,8 +2,9 @@ use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::{error::*, software::DefaultVault, types::*, DynVault};
+use crate::{error::*, software::DefaultVault, types::*, DynVault, Secret};
 
+use crate::software::DefaultVaultSecret;
 use zeroize::Zeroize;
 
 const ATTRS_BYTE_LENGTH: usize = 6;
@@ -101,20 +102,17 @@ fn id_to_path(id: usize) -> PathBuf {
 
 fn fs_write_secret(
     path: PathBuf,
-    ctx: SecretKeyContext,
-    key: SecretKey,
+    ctx: &Box<dyn Secret>,
+    key: &SecretKey,
     attrs: SecretKeyAttributes,
 ) -> Result<(), VaultFailError> {
-    if matches!(attrs.persistence, SecretPersistenceType::Persistent) {
-        return match ctx {
-            SecretKeyContext::Memory(id) => {
-                let mut bytes = attrs.to_bytes().to_vec();
-                bytes.extend_from_slice(key.as_ref());
+    let id = DefaultVaultSecret::downcast_secret(ctx)?.0;
 
-                Ok(fs::write(path.join(id_to_path(id)), bytes)?)
-            }
-            _ => Err(VaultFailErrorKind::InvalidContext.into()),
-        };
+    if matches!(attrs.persistence, SecretPersistenceType::Persistent) {
+        let mut bytes = attrs.to_bytes().to_vec();
+        bytes.extend_from_slice(key.as_ref());
+
+        fs::write(path.join(id_to_path(id)), bytes)?;
     }
     return Ok(());
 }
@@ -134,11 +132,11 @@ impl DynVault for FilesystemVault {
     fn secret_generate(
         &mut self,
         attributes: SecretKeyAttributes,
-    ) -> Result<SecretKeyContext, VaultFailError> {
+    ) -> Result<Box<dyn Secret>, VaultFailError> {
         // write the secret to disk using the context id
         let ctx = self.v.secret_generate(attributes)?;
-        let secret = self.v.secret_export(ctx)?;
-        fs_write_secret(self.path.clone(), ctx, secret, attributes)?;
+        let secret = self.v.secret_export(&ctx)?;
+        fs_write_secret(self.path.clone(), &ctx, &secret, attributes)?;
 
         Ok(ctx)
     }
@@ -148,23 +146,23 @@ impl DynVault for FilesystemVault {
         &mut self,
         secret: &SecretKey,
         attributes: SecretKeyAttributes,
-    ) -> Result<SecretKeyContext, VaultFailError> {
+    ) -> Result<Box<dyn Secret>, VaultFailError> {
         // write the secret to disk using the context id
         let ctx = self.v.secret_import(secret, attributes)?;
-        fs_write_secret(self.path.clone(), ctx, secret.clone(), attributes)?;
+        fs_write_secret(self.path.clone(), &ctx, &secret, attributes)?;
 
         Ok(ctx)
     }
 
     /// Export a secret key from the vault
-    fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError> {
+    fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError> {
         self.v.secret_export(context)
     }
 
     /// Get the attributes for a secret key
     fn secret_attributes_get(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
     ) -> Result<SecretKeyAttributes, VaultFailError> {
         self.v.secret_attributes_get(context)
     }
@@ -172,24 +170,24 @@ impl DynVault for FilesystemVault {
     /// Return the associated public key given the secret key
     fn secret_public_key_get(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
     ) -> Result<PublicKey, VaultFailError> {
         self.v.secret_public_key_get(context)
     }
 
     /// Remove a secret key from the vault
-    fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError> {
-        self.v.secret_destroy(context)?;
+    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError> {
+        let id = DefaultVaultSecret::downcast_secret(&context)?.0;
 
-        if let SecretKeyContext::Memory(id) = context {
-            let path = self.path.join(id_to_path(id));
-            match fs::metadata(path.clone()) {
-                Ok(md) if md.is_file() => {
-                    fs::remove_file(path).map_err(|_| VaultFailErrorKind::IOError)?;
-                }
-                _ => {}
+        let path = self.path.join(id_to_path(id));
+        match fs::metadata(path.clone()) {
+            Ok(md) if md.is_file() => {
+                fs::remove_file(path).map_err(|_| VaultFailErrorKind::IOError)?;
             }
+            _ => {}
         }
+
+        self.v.secret_destroy(context)?;
 
         Ok(())
     }
@@ -199,9 +197,9 @@ impl DynVault for FilesystemVault {
     /// and the specified uncompressed public key
     fn ec_diffie_hellman(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         peer_public_key: PublicKey,
-    ) -> Result<SecretKeyContext, VaultFailError> {
+    ) -> Result<Box<dyn Secret>, VaultFailError> {
         self.v.ec_diffie_hellman(context, peer_public_key)
     }
 
@@ -212,12 +210,12 @@ impl DynVault for FilesystemVault {
     /// output using the DH value as the HKDF ikm
     fn ec_diffie_hellman_hkdf_sha256(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         peer_public_key: PublicKey,
-        salt: SecretKeyContext,
+        salt: &Box<dyn Secret>,
         info: &[u8],
         output_attributes: Vec<SecretKeyAttributes>,
-    ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
+    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         self.v.ec_diffie_hellman_hkdf_sha256(
             context,
             peer_public_key,
@@ -232,18 +230,18 @@ impl DynVault for FilesystemVault {
     /// and return the output key material of the specified length
     fn hkdf_sha256(
         &mut self,
-        salt: SecretKeyContext,
+        salt: &Box<dyn Secret>,
         info: &[u8],
-        ikm: Option<SecretKeyContext>,
+        ikm: Option<&Box<dyn Secret>>,
         output_attributes: Vec<SecretKeyAttributes>,
-    ) -> Result<Vec<SecretKeyContext>, VaultFailError> {
+    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         self.v.hkdf_sha256(salt, info, ikm, output_attributes)
     }
 
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
@@ -254,7 +252,7 @@ impl DynVault for FilesystemVault {
     /// Decrypt a payload using AES-GCM
     fn aead_aes_gcm_decrypt(
         &mut self,
-        context: SecretKeyContext,
+        context: &Box<dyn Secret>,
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
@@ -270,7 +268,7 @@ impl DynVault for FilesystemVault {
 
     fn sign(
         &mut self,
-        secret_key: SecretKeyContext,
+        secret_key: &Box<dyn Secret>,
         data: &[u8],
     ) -> Result<[u8; 64], VaultFailError> {
         self.v.sign(secret_key, data)
@@ -312,16 +310,16 @@ mod tests {
         let sk2 = vault.secret_generate(atts).unwrap();
         let sk3 = vault.secret_generate(atts).unwrap();
 
-        let sk_data1 = vault.secret_export(sk1).unwrap();
-        let sk_data2 = vault.secret_export(sk2).unwrap();
-        let sk_data3 = vault.secret_export(sk3).unwrap();
+        let sk_data1 = vault.secret_export(&sk1).unwrap();
+        let sk_data2 = vault.secret_export(&sk2).unwrap();
+        let sk_data3 = vault.secret_export(&sk3).unwrap();
 
         vault.deinit();
 
         let mut vault2 = FilesystemVault::new(path).unwrap();
-        let sk2_data_1 = vault2.secret_export(sk1).unwrap();
-        let sk2_data_2 = vault2.secret_export(sk2).unwrap();
-        let sk2_data_3 = vault2.secret_export(sk3).unwrap();
+        let sk2_data_1 = vault2.secret_export(&sk1).unwrap();
+        let sk2_data_2 = vault2.secret_export(&sk2).unwrap();
+        let sk2_data_3 = vault2.secret_export(&sk3).unwrap();
 
         assert_eq!(sk_data1, sk2_data_1);
         assert_eq!(sk_data2, sk2_data_2);

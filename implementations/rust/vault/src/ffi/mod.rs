@@ -1,15 +1,51 @@
+use crate::software::DefaultVaultSecret;
 use crate::types::*;
-use crate::types::{PublicKey, SecretKey, SecretKeyAttributes, SecretKeyContext};
-use crate::{error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, DynVault};
-use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr, IntoFfi};
+use crate::types::{PublicKey, SecretKey, SecretKeyAttributes};
+use crate::{
+    error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, DynVault, Secret,
+};
+use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr};
 use std::convert::TryInto;
 use std::slice;
 
 mod types;
 
+/// Implementation for this trait is needed to add ffi support for vault implementation
+pub trait SecretFfiConverter {
+    /// Convert secret trait to u64
+    fn secret_into_ffi(&self, secret: &Box<dyn Secret>) -> Result<u64, VaultFailError>;
+    /// Create secret from u64
+    fn secret_from_ffi(&self, secret_handle: u64) -> Result<Box<dyn Secret>, VaultFailError>;
+}
+
+/// SecretFfiConverter implementation for DefaultVault
+struct DefaultVaultSecretFfiConverter {}
+
+/// Default
+impl Default for DefaultVaultSecretFfiConverter {
+    /// Default
+    fn default() -> Self {
+        DefaultVaultSecretFfiConverter {}
+    }
+}
+
+/// SecretFfiConverter implementation for DefaultVault
+impl SecretFfiConverter for DefaultVaultSecretFfiConverter {
+    fn secret_into_ffi(&self, secret: &Box<dyn Secret>) -> Result<u64, VaultFailError> {
+        let secret = DefaultVaultSecret::downcast_secret(secret)?;
+        Ok(secret.0 as u64)
+    }
+
+    fn secret_from_ffi(&self, secret_handle: u64) -> Result<Box<dyn Secret>, VaultFailError> {
+        let secret = DefaultVaultSecret(secret_handle as usize);
+        Ok(Box::new(secret))
+    }
+}
+
 /// Wraps a vault that can be used as a trait object
 struct BoxVault {
     vault: Box<dyn DynVault + Send>,
+    secret_ffi_converter: Box<dyn SecretFfiConverter + Send>,
 }
 
 lazy_static! {
@@ -23,6 +59,7 @@ pub extern "C" fn ockam_vault_default_init(context: &mut u64) -> VaultError {
     // TODO: handle logging
     *context = VAULTS.insert_with_output(&mut err, || BoxVault {
         vault: Box::new(DefaultVault::default()),
+        secret_ffi_converter: Box::new(DefaultVaultSecretFfiConverter::default()),
     });
     ERROR_NONE
 }
@@ -34,7 +71,10 @@ pub extern "C" fn ockam_vault_file_init(context: &mut u64, path: FfiStr<'_>) -> 
     let path = path.into_string();
     *context = VAULTS.insert_with_result(&mut err, || {
         match FilesystemVault::new(std::path::PathBuf::from(path)) {
-            Ok(v) => Ok(BoxVault { vault: Box::new(v) }),
+            Ok(v) => Ok(BoxVault {
+                vault: Box::new(v),
+                secret_ffi_converter: Box::new(DefaultVaultSecretFfiConverter::default()),
+            }),
             Err(_) => Err(ExternError::new_error(ErrorCode::new(1), "")),
         }
     });
@@ -129,7 +169,8 @@ pub extern "C" fn ockam_vault_secret_generate(
         context,
         |v| -> Result<SecretKeyHandle, VaultFailError> {
             let ctx = v.vault.secret_generate(atts)?;
-            Ok(ctx.into_ffi_value())
+            let ctx = v.secret_ffi_converter.secret_into_ffi(&ctx)?;
+            Ok(ctx)
         },
     );
     if err.get_code().is_success() {
@@ -165,7 +206,8 @@ pub extern "C" fn ockam_vault_secret_import(
 
             let sk: SecretKey = ffi_sk.try_into()?;
             let ctx = v.vault.secret_import(&sk, atts)?;
-            Ok(ctx.into_ffi_value())
+            let ctx = v.secret_ffi_converter.secret_into_ffi(&ctx)?;
+            Ok(ctx)
         },
     );
     if err.get_code().is_success() {
@@ -191,8 +233,8 @@ pub extern "C" fn ockam_vault_secret_export(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret);
-            let key = v.vault.secret_export(ctx)?;
+            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
+            let key = v.vault.secret_export(&ctx)?;
             Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
         },
     );
@@ -227,8 +269,8 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret);
-            let key = v.vault.secret_public_key_get(ctx)?;
+            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
+            let key = v.vault.secret_public_key_get(&ctx)?;
             Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
         },
     );
@@ -260,8 +302,8 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
         &mut err,
         context,
         |v| -> Result<FfiSecretKeyAttributes, VaultFailError> {
-            let ctx = get_memory_id(secret_handle);
-            let atts = v.vault.secret_attributes_get(ctx)?;
+            let ctx = v.secret_ffi_converter.secret_from_ffi(secret_handle)?;
+            let atts = v.vault.secret_attributes_get(&ctx)?;
             Ok(atts.into())
         },
     );
@@ -278,7 +320,7 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
 pub extern "C" fn ockam_vault_secret_destroy(context: u64, secret: u64) -> VaultError {
     let mut err = ExternError::success();
     VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<(), VaultFailError> {
-        let ctx = get_memory_id(secret);
+        let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
         v.vault.secret_destroy(ctx)?;
         Ok(())
     });
@@ -307,8 +349,8 @@ pub extern "C" fn ockam_vault_ecdh(
         &mut err,
         context,
         |v| -> Result<SecretKeyHandle, VaultFailError> {
-            let ctx = get_memory_id(secret);
-            let atts = v.vault.secret_attributes_get(ctx)?;
+            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
+            let atts = v.vault.secret_attributes_get(&ctx)?;
             let pubkey = match atts.xtype {
                 SecretKeyType::Curve25519 => {
                     if peer_publickey.len() != 32 {
@@ -326,8 +368,8 @@ pub extern "C" fn ockam_vault_ecdh(
                 }
                 _ => Err(VaultFailError::from(VaultFailErrorKind::Ecdh)),
             }?;
-            let shared_ctx = v.vault.ec_diffie_hellman(ctx, pubkey)?;
-            Ok(shared_ctx.into_ffi_value())
+            let shared_ctx = v.vault.ec_diffie_hellman(&ctx, pubkey)?;
+            Ok(v.secret_ffi_converter.secret_into_ffi(&shared_ctx)?)
         },
     );
     if err.get_code().is_success() {
@@ -355,11 +397,16 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
         &mut err,
         context,
         |v| -> Result<OckamSecretList, VaultFailError> {
-            let salt_ctx = get_memory_id(salt);
+            let salt_ctx = v.secret_ffi_converter.secret_from_ffi(salt)?;
             let ikm_ctx = if input_key_material.is_null() {
                 None
             } else {
-                unsafe { Some(get_memory_id(*input_key_material)) }
+                unsafe {
+                    Some(
+                        v.secret_ffi_converter
+                            .secret_from_ffi(*input_key_material)?,
+                    )
+                }
             };
 
             let array: &[FfiSecretKeyAttributes] =
@@ -381,9 +428,11 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
             // Either way, I don't want to change the API until this decision is finalized.
             let hkdf_output = v
                 .vault
-                .hkdf_sha256(salt_ctx, b"", ikm_ctx, output_attributes)?
+                .hkdf_sha256(&salt_ctx, b"", ikm_ctx.as_ref(), output_attributes)?
                 .iter()
-                .map(|x| x.into_ffi_value())
+                .map(
+                    |x| v.secret_ffi_converter.secret_into_ffi(x).unwrap(), /* FIXME */
+                )
                 .collect();
 
             // FIXME: Double conversion is happening here
@@ -425,12 +474,12 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret);
+            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
             let mut nonce_vec = vec![0; 12 - 2];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
             let ciphertext =
                 v.vault
-                    .aead_aes_gcm_encrypt(ctx, plaintext, &nonce_vec, additional_data)?;
+                    .aead_aes_gcm_encrypt(&ctx, plaintext, &nonce_vec, additional_data)?;
             Ok(ByteBuffer::from_vec(ciphertext))
         },
     );
@@ -477,11 +526,11 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
         &mut err,
         context,
         |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = get_memory_id(secret);
+            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
             let mut nonce_vec = vec![0; 12 - 2];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
             let plain = v.vault.aead_aes_gcm_decrypt(
-                ctx,
+                &ctx,
                 ciphertext_and_tag,
                 &nonce_vec,
                 additional_data,
@@ -514,8 +563,3 @@ pub extern "C" fn ockam_vault_deinit(context: u64) -> VaultError {
 }
 
 define_string_destructor!(string_free);
-
-#[inline]
-fn get_memory_id(secret_handle: u64) -> SecretKeyContext {
-    SecretKeyContext::Memory(secret_handle as usize)
-}
