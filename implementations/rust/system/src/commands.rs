@@ -46,6 +46,7 @@ pub enum WorkerCommand {
     Stop,
     Test,
     AddLine(String),
+    SendPayload(String),
     ReceiveMessage(Message),
     SendMessage(Message),
 }
