@@ -115,6 +115,12 @@ impl Args {
         if self.role == "hub" || self.role == "router" {
             return Role::Hub;
         }
+        if self.role == "blaster" {
+            return Role::Blaster;
+        }
+        if self.role == "blastee" {
+            return Role::Blastee;
+        }
         panic!("invalid role specified");
     }
 }
