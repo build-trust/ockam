@@ -47,7 +47,7 @@ use std::{
 
 /// A channel address of zero indicates to the channel manager that
 /// a new channel is being initiated
-pub static CHANNEL_ZERO: &str = "00000000";
+pub const CHANNEL_ZERO: &str = "00000000";
 
 enum ExchangerRole {
     Initiator,
@@ -157,11 +157,14 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         if m.onward_route.addresses.is_empty() {
             return Err(ChannelErrorKind::CantSend.into());
         }
-        let address = &m.onward_route.addresses[0];
-        return match self.channels.get_mut(&address.address.as_string()) {
+        let this_channel_address = &m.onward_route.addresses[0];
+        return match self
+            .channels
+            .get_mut(&this_channel_address.address.as_string())
+        {
             Some(channel) => {
                 let mut channel = channel.lock().unwrap();
-                if address.address == channel.as_cleartext_address() {
+                if this_channel_address.address == channel.as_cleartext_address() {
                     // messages coming in on the cleartext channel need to be encrypted,
                     // wrapped in an outer message, and sent on their way
 
@@ -437,6 +440,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                 .to_vec();
             channel.completed_key_exchange = Some(completed_key_exchange);
             channel.route = return_route;
+            let pending = channel.pending.clone();
             match pending {
                 Some(mut p) => {
                     p.return_route = channel.route.clone();
@@ -582,8 +586,6 @@ impl std::fmt::Debug for Channel {
 }
 
 impl Channel {
-    //   pub fn new(cleartext_address: u32, ciphertext_address: u32, agreement: Box<dyn
-    // KeyExchanger>) -> Self {
     pub fn new(
         cleartext_address: u32,
         ciphertext_address: u32,
