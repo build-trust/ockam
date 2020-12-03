@@ -1,5 +1,6 @@
 #[allow(unused)]
 use ockam_message::message::*;
+use ockam_message::MAX_MESSAGE_SIZE;
 use ockam_system::commands::RouterCommand::ReceiveMessage;
 use ockam_system::commands::{OckamCommand, RouterCommand, TransportCommand};
 use std::io;
@@ -73,7 +74,7 @@ impl UdpTransport {
     }
 
     pub fn receive_message(&mut self) -> Result<bool, String> {
-        let mut buff = [0; 16348];
+        let mut buff = [0; MAX_MESSAGE_SIZE];
         match self.socket.recv_from(&mut buff) {
             Ok((s, _)) => match Message::decode(&buff[0..s]) {
                 Ok((m, _unused)) => {
