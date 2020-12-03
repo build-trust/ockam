@@ -81,7 +81,7 @@ pub trait TopicWorker {
 
     fn subscribe(&mut self, topic: &str) -> Option<String>;
 
-    fn consume_messages(&mut self, subscriber: &str, handler: &dyn Fn(&QueueMessage));
+    fn consume_messages(&mut self, subscriber: &str, handler: &mut dyn FnMut(&QueueMessage));
 
     fn unsubscribe(&mut self, subscriber: &str);
 }
@@ -137,7 +137,7 @@ impl TopicWorker for MemTopicWorker {
         }
     }
 
-    fn consume_messages(&mut self, subscriber: &str, handler: &dyn Fn(&QueueMessage)) {
+    fn consume_messages(&mut self, subscriber: &str, handler: &mut dyn FnMut(&QueueMessage)) {
         match self.subscriptions.get(subscriber) {
             Some(sub) => {
                 let q = sub.borrow().queue();
@@ -176,7 +176,7 @@ fn topic_tdd() {
 
     // TODO jds allow for additional captured scope/context for the callback
 
-    tw.consume_messages(&sub, &|_m,|{ });
+    tw.consume_messages(&sub, &mut |_m,|{ });
 
     tw.unsubscribe(&sub);
 
