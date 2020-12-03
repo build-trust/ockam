@@ -28,3 +28,5 @@ ockam-system = { version = "0.1", path = "../system" }
 
 hex = "0.4.2"
 structopt = { version = "0.3.20", default-features = false }
+rand = "0.7"
+
