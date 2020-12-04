@@ -192,8 +192,8 @@ impl Vault for DefaultVault {
         Ok(())
     }
 
-    fn sha256<B: AsRef<[u8]>>(&self, data: B) -> Result<[u8; 32], VaultFailError> {
-        let digest = Sha256::digest(data.as_ref());
+    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
+        let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
     }
 
@@ -418,12 +418,12 @@ impl Vault for DefaultVault {
         self.hkdf_sha256_internal(salt, info, &ikm_slice, output_attributes)
     }
 
-    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
+    fn aead_aes_gcm_encrypt(
         &mut self,
         context: &Box<dyn Secret>,
-        plaintext: B,
-        nonce: C,
-        aad: D,
+        plaintext: &[u8],
+        nonce: &[u8],
+        aad: &[u8],
     ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmEncrypt)?;
         encrypt_impl!(
@@ -436,12 +436,12 @@ impl Vault for DefaultVault {
         )
     }
 
-    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
+    fn aead_aes_gcm_decrypt(
         &mut self,
         context: &Box<dyn Secret>,
-        cipher_text: B,
-        nonce: C,
-        aad: D,
+        cipher_text: &[u8],
+        nonce: &[u8],
+        aad: &[u8],
     ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmDecrypt)?;
         encrypt_impl!(
@@ -458,10 +458,10 @@ impl Vault for DefaultVault {
         self.zeroize();
     }
 
-    fn sign<B: AsRef<[u8]>>(
+    fn sign(
         &mut self,
         secret_key: &Box<dyn Secret>,
-        data: B,
+        data: &[u8],
     ) -> Result<[u8; 64], VaultFailError> {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
         match entry.key {
@@ -484,11 +484,11 @@ impl Vault for DefaultVault {
         }
     }
 
-    fn verify<B: AsRef<[u8]>>(
+    fn verify(
         &mut self,
         signature: [u8; 64],
         public_key: PublicKey,
-        data: B,
+        data: &[u8],
     ) -> Result<(), VaultFailError> {
         match public_key {
             PublicKey::Curve25519(k) => {

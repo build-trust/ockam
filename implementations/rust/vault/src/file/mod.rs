@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::{error::*, software::DefaultVault, types::*, DynVault, Secret};
+use crate::{error::*, software::DefaultVault, types::*, Secret, Vault};
 
 use crate::software::DefaultVaultSecret;
 use zeroize::Zeroize;
@@ -117,7 +117,7 @@ fn fs_write_secret(
     return Ok(());
 }
 
-impl DynVault for FilesystemVault {
+impl Vault for FilesystemVault {
     /// Generate random bytes and fill them into `data`
     fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
         self.v.random(data)

@@ -2,7 +2,7 @@ use crate::software::DefaultVaultSecret;
 use crate::types::*;
 use crate::types::{PublicKey, SecretKey, SecretKeyAttributes};
 use crate::{
-    error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, DynVault, Secret,
+    error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, Secret, Vault,
 };
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr};
 use std::convert::TryInto;
@@ -44,7 +44,7 @@ impl SecretFfiConverter for DefaultVaultSecretFfiConverter {
 
 /// Wraps a vault that can be used as a trait object
 struct BoxVault {
-    vault: Box<dyn DynVault + Send>,
+    vault: Box<dyn Vault + Send>,
     secret_ffi_converter: Box<dyn SecretFfiConverter + Send>,
 }
 
