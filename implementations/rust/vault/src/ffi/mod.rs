@@ -1,11 +1,10 @@
 use crate::software::DefaultVaultSecret;
+use crate::types::SecretAttributes;
 use crate::types::*;
-use crate::types::{PublicKey, SecretKey, SecretKeyAttributes};
 use crate::{
     error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, Secret, Vault,
 };
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr};
-use std::convert::TryInto;
 use std::slice;
 
 mod types;
@@ -160,7 +159,7 @@ pub extern "C" fn ockam_vault_sha256(
 pub extern "C" fn ockam_vault_secret_generate(
     context: u64,
     secret: &mut u64,
-    attributes: FfiSecretKeyAttributes,
+    attributes: FfiSecretAttributes,
 ) -> VaultError {
     let mut err = ExternError::success();
     let atts = attributes.into();
@@ -186,7 +185,7 @@ pub extern "C" fn ockam_vault_secret_generate(
 pub extern "C" fn ockam_vault_secret_import(
     context: u64,
     secret: &mut u64,
-    attributes: FfiSecretKeyAttributes,
+    attributes: FfiSecretAttributes,
     input: *mut u8,
     input_length: u32,
 ) -> VaultError {
@@ -198,14 +197,9 @@ pub extern "C" fn ockam_vault_secret_import(
         &mut err,
         context,
         |v| -> Result<SecretKeyHandle, VaultFailError> {
-            let ffi_sk = FfiSecretKey {
-                xtype: attributes.xtype,
-                length: input_length,
-                buffer: input,
-            };
+            let secret_data = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
 
-            let sk: SecretKey = ffi_sk.try_into()?;
-            let ctx = v.vault.secret_import(&sk, atts)?;
+            let ctx = v.vault.secret_import(secret_data, atts)?;
             let ctx = v.secret_ffi_converter.secret_into_ffi(&ctx)?;
             Ok(ctx)
         },
@@ -235,7 +229,7 @@ pub extern "C" fn ockam_vault_secret_export(
         |v| -> Result<ByteBuffer, VaultFailError> {
             let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
             let key = v.vault.secret_export(&ctx)?;
-            Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
+            Ok(ByteBuffer::from_vec(key.0.clone()))
         },
     );
     if err.get_code().is_success() {
@@ -271,7 +265,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
         |v| -> Result<ByteBuffer, VaultFailError> {
             let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
             let key = v.vault.secret_public_key_get(&ctx)?;
-            Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
+            Ok(ByteBuffer::from_vec(key.0))
         },
     );
     if err.get_code().is_success() {
@@ -295,13 +289,13 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
 pub extern "C" fn ockam_vault_secret_attributes_get(
     context: u64,
     secret_handle: u64,
-    attributes: &mut FfiSecretKeyAttributes,
+    attributes: &mut FfiSecretAttributes,
 ) -> VaultError {
     let mut err = ExternError::success();
     let output = VAULTS.call_with_result_mut(
         &mut err,
         context,
-        |v| -> Result<FfiSecretKeyAttributes, VaultFailError> {
+        |v| -> Result<FfiSecretAttributes, VaultFailError> {
             let ctx = v.secret_ffi_converter.secret_from_ffi(secret_handle)?;
             let atts = v.vault.secret_attributes_get(&ctx)?;
             Ok(atts.into())
@@ -351,24 +345,24 @@ pub extern "C" fn ockam_vault_ecdh(
         |v| -> Result<SecretKeyHandle, VaultFailError> {
             let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
             let atts = v.vault.secret_attributes_get(&ctx)?;
-            let pubkey = match atts.xtype {
-                SecretKeyType::Curve25519 => {
+            let pubkey = match atts.stype {
+                SecretType::Curve25519 => {
                     if peer_publickey.len() != 32 {
                         Err(VaultFailErrorKind::Ecdh.into())
                     } else {
-                        Ok(PublicKey::Curve25519(*array_ref![peer_publickey, 0, 32]))
+                        Ok(PublicKey(peer_publickey.to_vec()))
                     }
                 }
-                SecretKeyType::P256 => {
+                SecretType::P256 => {
                     if peer_publickey.len() != 65 {
                         Err(VaultFailErrorKind::Ecdh.into())
                     } else {
-                        Ok(PublicKey::P256(*array_ref![peer_publickey, 0, 65]))
+                        Ok(PublicKey(peer_publickey.to_vec()))
                     }
                 }
                 _ => Err(VaultFailError::from(VaultFailErrorKind::Ecdh)),
             }?;
-            let shared_ctx = v.vault.ec_diffie_hellman(&ctx, pubkey)?;
+            let shared_ctx = v.vault.ec_diffie_hellman(&ctx, pubkey.0.as_slice())?;
             Ok(v.secret_ffi_converter.secret_into_ffi(&shared_ctx)?)
         },
     );
@@ -387,7 +381,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
     context: u64,
     salt: u64,
     input_key_material: *const u64,
-    derived_outputs_attributes: *const FfiSecretKeyAttributes,
+    derived_outputs_attributes: *const FfiSecretAttributes,
     derived_outputs_count: u8,
     derived_outputs: *mut u64,
 ) -> VaultError {
@@ -409,11 +403,10 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
                 }
             };
 
-            let array: &[FfiSecretKeyAttributes] =
+            let array: &[FfiSecretAttributes] =
                 unsafe { slice::from_raw_parts(derived_outputs_attributes, derived_outputs_count) };
 
-            let output_attributes: Vec<SecretKeyAttributes> =
-                array.iter().map(|x| x.into()).collect();
+            let output_attributes: Vec<SecretAttributes> = array.iter().map(|x| x.into()).collect();
 
             // TODO: Hardcoded to be empty for now because any changes
             // to the C layer requires an API change.

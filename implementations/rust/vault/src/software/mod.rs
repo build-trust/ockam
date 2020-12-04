@@ -77,46 +77,93 @@ impl DefaultVault {
         Ok(entry)
     }
 
+    fn ecdh_internal(
+        vault_entry: &VaultEntry,
+        peer_public_key: &[u8],
+    ) -> Result<Vec<u8>, VaultFailError> {
+        let key = vault_entry.key.0.as_slice();
+        match vault_entry.key_attributes.stype {
+            SecretType::Curve25519
+                if peer_public_key.len() == CURVE25519_PUBLIC_LENGTH
+                    && key.len() == CURVE25519_SECRET_LENGTH =>
+            {
+                let sk =
+                    x25519_dalek::StaticSecret::from(*array_ref!(key, 0, CURVE25519_SECRET_LENGTH));
+                let pk_t = x25519_dalek::PublicKey::from(*array_ref!(
+                    peer_public_key,
+                    0,
+                    CURVE25519_PUBLIC_LENGTH
+                ));
+                let secret = sk.diffie_hellman(&pk_t);
+                Ok(secret.as_bytes().to_vec())
+            }
+            SecretType::P256
+                if peer_public_key.len() == P256_PUBLIC_LENGTH
+                    && key.len() == P256_SECRET_LENGTH =>
+            {
+                let o_pk_t = p256::elliptic_curve::sec1::EncodedPoint::from_bytes(peer_public_key);
+                if o_pk_t.is_err() {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let pk_t = o_pk_t.unwrap();
+                let o_p_t = AffinePoint::from_encoded_point(&pk_t);
+                if o_p_t.is_none().unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(key));
+                let pk_t = ProjectivePoint::from(o_p_t.unwrap());
+                let secret = pk_t * sk;
+                if secret.is_identity().unwrap_u8() == 1 {
+                    fail!(VaultFailErrorKind::Ecdh);
+                }
+                let ap = p256::elliptic_curve::sec1::EncodedPoint::from(secret.to_affine());
+                Ok(ap.x().as_slice().to_vec())
+            }
+            _ => Err(VaultFailError::from_msg(
+                VaultFailErrorKind::Ecdh,
+                "Unknown key type",
+            )),
+        }
+    }
+
     fn hkdf_sha256_internal(
         &mut self,
         salt: &Box<dyn Secret>,
         info: &[u8],
         ikm: &[u8],
-        output_attributes: Vec<SecretKeyAttributes>,
+        output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         let salt = self.get_entry(salt, VaultFailErrorKind::Ecdh)?;
 
         // FIXME: Doesn't work for secrets with size more than 32 bytes
         let okm_len = output_attributes.len() * 32;
 
-        let okm = match &salt.key {
-            SecretKey::Buffer(salt) => {
-                let mut okm = vec![0u8; okm_len];
-                let prk = hkdf::Hkdf::<Sha256>::new(Some(salt), ikm);
-                prk.expand(info, okm.as_mut_slice())?;
-                Ok(okm)
-            }
-            _ => Err(VaultFailError::from_msg(
-                VaultFailErrorKind::HkdfSha256,
-                "Unknown key type",
-            )),
-        }?;
+        let okm = {
+            let mut okm = vec![0u8; okm_len];
+            let prk = hkdf::Hkdf::<Sha256>::new(Some(&salt.key.0), ikm);
+            prk.expand(info, okm.as_mut_slice())?;
+            okm
+        };
 
         let mut secrets = Vec::<Box<dyn Secret>>::new();
         let mut index = 0;
 
         for attributes in output_attributes {
-            let secret = match attributes.xtype {
-                SecretKeyType::Buffer(size) => {
-                    Ok(SecretKey::Buffer(okm[index..index + size].to_vec()))
+            let length = attributes.length;
+            if attributes.stype == SecretType::Aes {
+                if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
+                    return Err(VaultFailError::from_msg(
+                        VaultFailErrorKind::HkdfSha256,
+                        "Unknown key type",
+                    ));
                 }
-                SecretKeyType::Aes256 => Ok(SecretKey::Aes256(*array_ref!(okm, index, 32))),
-                SecretKeyType::Aes128 => Ok(SecretKey::Aes128(*array_ref!(okm, index, 16))),
-                _ => Err(VaultFailError::from_msg(
+            } else if attributes.stype != SecretType::Buffer {
+                return Err(VaultFailError::from_msg(
                     VaultFailErrorKind::HkdfSha256,
                     "Unknown key type",
-                )),
-            }?;
+                ));
+            }
+            let secret = &okm[index..index + length];
             let secret = self.secret_import(&secret, attributes)?;
 
             secrets.push(secret);
@@ -143,24 +190,31 @@ impl Zeroize for DefaultVault {
 
 zdrop_impl!(DefaultVault);
 
-#[derive(Debug, Eq, PartialEq, Zeroize)]
-#[zeroize(drop)]
+#[derive(Debug, Eq, PartialEq)]
 struct VaultEntry {
     id: usize,
-    key_attributes: SecretKeyAttributes,
+    key_attributes: SecretAttributes,
     key: SecretKey,
 }
+
+impl Zeroize for VaultEntry {
+    fn zeroize(&mut self) {
+        self.key.zeroize()
+    }
+}
+
+zdrop_impl!(VaultEntry);
 
 impl Default for VaultEntry {
     fn default() -> Self {
         Self {
             id: 0,
-            key_attributes: SecretKeyAttributes {
-                xtype: SecretKeyType::Curve25519,
+            key_attributes: SecretAttributes {
+                stype: SecretType::Curve25519,
                 persistence: SecretPersistenceType::Ephemeral,
-                purpose: SecretPurposeType::KeyAgreement,
+                length: 0,
             },
-            key: SecretKey::Curve25519([0u8; 32]),
+            key: SecretKey(Vec::new()),
         }
     }
 }
@@ -181,9 +235,16 @@ macro_rules! encrypt_op_impl {
 
 macro_rules! encrypt_impl {
     ($entry:expr, $aad:expr, $nonce: expr, $text:expr, $op:ident, $err:expr) => {{
-        match $entry.key {
-            SecretKey::Aes128(a) => encrypt_op_impl!(a, $aad, $nonce, $text, Aes128Gcm, $op),
-            SecretKey::Aes256(a) => encrypt_op_impl!(a, $aad, $nonce, $text, Aes256Gcm, $op),
+        if $entry.key_attributes.stype != SecretType::Aes {
+            return Err($err.into());
+        }
+        match $entry.key_attributes.length {
+            AES128_SECRET_LENGTH => {
+                encrypt_op_impl!($entry.key.0, $aad, $nonce, $text, Aes128Gcm, $op)
+            }
+            AES256_SECRET_LENGTH => {
+                encrypt_op_impl!($entry.key.0, $aad, $nonce, $text, Aes256Gcm, $op)
+            }
             _ => Err($err.into()),
         }
     }};
@@ -203,34 +264,36 @@ impl Vault for DefaultVault {
 
     fn secret_generate(
         &mut self,
-        attributes: SecretKeyAttributes,
+        attributes: SecretAttributes,
     ) -> Result<Box<dyn Secret>, VaultFailError> {
         let mut rng = OsRng {};
-        let key = match attributes.xtype {
-            SecretKeyType::Curve25519 => {
+        let length = attributes.length;
+        let key = match attributes.stype {
+            SecretType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
-                SecretKey::Curve25519(sk.to_bytes())
+                SecretKey(sk.to_bytes().to_vec())
             }
-            SecretKeyType::Aes128 => {
-                let mut key = [0u8; 16];
+            SecretType::Aes => {
+                if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
+                    return Err(VaultFailError::from_msg(
+                        VaultFailErrorKind::HkdfSha256,
+                        "Unknown key type",
+                    ));
+                };
+                let mut key = vec![0u8; length];
                 rng.fill_bytes(&mut key);
-                SecretKey::Aes128(key)
+                SecretKey(key.to_vec())
             }
-            SecretKeyType::Aes256 => {
-                let mut key = [0u8; 32];
-                rng.fill_bytes(&mut key);
-                SecretKey::Aes256(key)
-            }
-            SecretKeyType::P256 => {
+            SecretType::P256 => {
                 let key = p256::SecretKey::random(&mut rng);
                 let mut value = [0u8; 32];
                 value.copy_from_slice(&key.secret_scalar().to_bytes());
-                SecretKey::P256(value)
+                SecretKey(value.to_vec())
             }
-            SecretKeyType::Buffer(size) => {
-                let mut key = vec![0u8; size];
+            SecretType::Buffer => {
+                let mut key = vec![0u8; attributes.length];
                 rng.fill_bytes(key.as_mut_slice());
-                SecretKey::Buffer(key)
+                SecretKey(key)
             }
         };
         self.next_id += 1;
@@ -248,8 +311,8 @@ impl Vault for DefaultVault {
 
     fn secret_import(
         &mut self,
-        secret: &SecretKey,
-        attributes: SecretKeyAttributes,
+        secret: &[u8],
+        attributes: SecretAttributes,
     ) -> Result<Box<dyn Secret>, VaultFailError> {
         self.next_id += 1;
         self.entries.insert(
@@ -257,7 +320,7 @@ impl Vault for DefaultVault {
             VaultEntry {
                 id: self.next_id,
                 key_attributes: attributes,
-                key: secret.clone(),
+                key: SecretKey(secret.to_vec()),
             },
         );
         Ok(Box::new(DefaultVaultSecret(self.next_id)))
@@ -271,7 +334,7 @@ impl Vault for DefaultVault {
     fn secret_attributes_get(
         &mut self,
         context: &Box<dyn Secret>,
-    ) -> Result<SecretKeyAttributes, VaultFailError> {
+    ) -> Result<SecretAttributes, VaultFailError> {
         self.get_entry(context, VaultFailErrorKind::InvalidSecret)
             .map(|i| i.key_attributes)
     }
@@ -282,17 +345,26 @@ impl Vault for DefaultVault {
     ) -> Result<PublicKey, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::PublicKey)?;
 
-        match entry.key {
-            SecretKey::Curve25519(a) => {
-                let sk = x25519_dalek::StaticSecret::from(a);
+        match entry.key_attributes.stype {
+            SecretType::Curve25519 => {
+                if entry.key.0.len() != CURVE25519_SECRET_LENGTH {
+                    return Err(VaultFailErrorKind::PublicKey.into());
+                }
+                let sk = x25519_dalek::StaticSecret::from(*array_ref![
+                    entry.key.0.as_slice(),
+                    0,
+                    CURVE25519_SECRET_LENGTH
+                ]);
                 let pk = x25519_dalek::PublicKey::from(&sk);
-                Ok(PublicKey::Curve25519(*pk.as_bytes()))
+                Ok(PublicKey(pk.to_bytes().to_vec()))
             }
-            SecretKey::P256(a) => {
-                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(&a));
+            SecretType::P256 => {
+                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(
+                    entry.key.0.as_slice(),
+                ));
                 let pp = ProjectivePoint::generator() * sk;
                 let ap = p256::elliptic_curve::sec1::EncodedPoint::from(pp.to_affine());
-                Ok(PublicKey::P256(*array_ref![ap.as_bytes(), 0, 65]))
+                Ok(PublicKey(ap.as_bytes().to_vec()))
             }
             _ => Err(VaultFailErrorKind::PublicKey.into()),
         }
@@ -309,91 +381,31 @@ impl Vault for DefaultVault {
     fn ec_diffie_hellman(
         &mut self,
         context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
+        peer_public_key: &[u8],
     ) -> Result<Box<dyn Secret>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
 
-        let value = match (&entry.key, peer_public_key) {
-            (SecretKey::Curve25519(a), PublicKey::Curve25519(b)) => {
-                let sk = x25519_dalek::StaticSecret::from(*a);
-                let pk_t = x25519_dalek::PublicKey::from(b);
-                let secret = sk.diffie_hellman(&pk_t);
-                Ok(secret.as_bytes().to_vec())
-            }
-            (SecretKey::P256(a), PublicKey::P256(b)) => {
-                let o_pk_t = p256::elliptic_curve::sec1::EncodedPoint::from_bytes(b.as_ref());
-                if o_pk_t.is_err() {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
-                let pk_t = o_pk_t.unwrap();
-                let o_p_t = AffinePoint::from_encoded_point(&pk_t);
-                if o_p_t.is_none().unwrap_u8() == 1 {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
-                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(a.as_ref()));
-                let pk_t = ProjectivePoint::from(o_p_t.unwrap());
-                let secret = pk_t * sk;
-                if secret.is_identity().unwrap_u8() == 1 {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
-                let ap = p256::elliptic_curve::sec1::EncodedPoint::from(secret.to_affine());
-                Ok(ap.x().as_slice().to_vec())
-            }
-            (_, _) => Err(VaultFailError::from_msg(
-                VaultFailErrorKind::Ecdh,
-                "Unknown key type",
-            )),
-        }?;
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(value.len()),
-            purpose: SecretPurposeType::KeyAgreement,
+        let dh = Self::ecdh_internal(entry, peer_public_key)?;
+
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
+            length: dh.len(),
         };
-        let secret = SecretKey::Buffer(value);
-        self.secret_import(&secret, attributes)
+        self.secret_import(&dh, attributes)
     }
 
     fn ec_diffie_hellman_hkdf_sha256(
         &mut self,
         context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
+        peer_public_key: &[u8],
         salt: &Box<dyn Secret>,
         info: &[u8],
-        output_attributes: Vec<SecretKeyAttributes>,
+        output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         let private_key_entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
 
-        let dh = match (&private_key_entry.key, peer_public_key) {
-            (SecretKey::Curve25519(a), PublicKey::Curve25519(b)) => {
-                let sk = x25519_dalek::StaticSecret::from(*a);
-                let pk_t = x25519_dalek::PublicKey::from(b);
-                let secret = sk.diffie_hellman(&pk_t);
-                Ok(secret.as_bytes().to_vec())
-            }
-            (SecretKey::P256(a), PublicKey::P256(b)) => {
-                let o_pk_t = p256::elliptic_curve::sec1::EncodedPoint::from_bytes(b.as_ref());
-                if o_pk_t.is_err() {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
-                let pk_t = o_pk_t.unwrap();
-                let o_p_t = AffinePoint::from_encoded_point(&pk_t);
-                if o_p_t.is_none().unwrap_u8() == 1 {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
-                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(a.as_ref()));
-                let pk_t = ProjectivePoint::from(o_p_t.unwrap());
-                let secret = pk_t * sk;
-                if secret.is_identity().unwrap_u8() == 1 {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
-                let ap = p256::elliptic_curve::sec1::EncodedPoint::from(secret.to_affine());
-                Ok(ap.x().as_slice().to_vec())
-            }
-            (_, _) => Err(VaultFailError::from_msg(
-                VaultFailErrorKind::Ecdh,
-                "Unknown key type",
-            )),
-        }?;
+        let dh = Self::ecdh_internal(private_key_entry, peer_public_key)?;
 
         self.hkdf_sha256_internal(salt, info, &dh, output_attributes)
     }
@@ -403,17 +415,18 @@ impl Vault for DefaultVault {
         salt: &Box<dyn Secret>,
         info: &[u8],
         ikm: Option<&Box<dyn Secret>>,
-        output_attributes: Vec<SecretKeyAttributes>,
+        output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         let ikm_slice = match ikm {
             Some(ikm) => {
                 let ikm = self.get_entry(ikm, VaultFailErrorKind::HkdfSha256)?;
-                match &ikm.key {
-                    SecretKey::Buffer(mem) => Ok(mem.as_slice().to_owned()),
-                    _ => Err(VaultFailError::from_msg(
+                if ikm.key_attributes.stype == SecretType::Buffer {
+                    Ok(ikm.key.0.clone())
+                } else {
+                    Err(VaultFailError::from_msg(
                         VaultFailErrorKind::HkdfSha256,
                         "Unknown key type",
-                    )),
+                    ))
                 }
             }
             None => Ok(Vec::new()),
@@ -430,6 +443,7 @@ impl Vault for DefaultVault {
         aad: &[u8],
     ) -> Result<Vec<u8>, VaultFailError> {
         let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmEncrypt)?;
+
         encrypt_impl!(
             entry,
             aad,
@@ -468,12 +482,15 @@ impl Vault for DefaultVault {
         data: &[u8],
     ) -> Result<[u8; 64], VaultFailError> {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
-        match entry.key {
-            SecretKey::Curve25519(k) => {
+        let key = &entry.key.0;
+        match entry.key_attributes.stype {
+            SecretType::Curve25519 if key.len() == CURVE25519_SECRET_LENGTH => {
                 let mut rng = thread_rng();
                 let mut nonce = [0u8; 64];
                 rng.fill_bytes(&mut nonce);
-                let sig = x25519_dalek::StaticSecret::from(k).sign(data.as_ref(), &nonce);
+                let sig =
+                    x25519_dalek::StaticSecret::from(*array_ref!(key, 0, CURVE25519_SECRET_LENGTH))
+                        .sign(data.as_ref(), &nonce);
                 Ok(sig)
             }
             // SecretKey::P256(k) => {
@@ -491,25 +508,29 @@ impl Vault for DefaultVault {
     fn verify(
         &mut self,
         signature: [u8; 64],
-        public_key: PublicKey,
+        public_key: &[u8],
         data: &[u8],
     ) -> Result<(), VaultFailError> {
-        match public_key {
-            PublicKey::Curve25519(k) => {
-                if x25519_dalek::PublicKey::from(k).verify(data.as_ref(), &signature) {
-                    Ok(())
-                } else {
-                    Err(VaultFailErrorKind::PublicKey.into())
-                }
+        // FIXME
+        if public_key.len() == CURVE25519_PUBLIC_LENGTH {
+            if x25519_dalek::PublicKey::from(*array_ref!(public_key, 0, CURVE25519_PUBLIC_LENGTH))
+                .verify(data.as_ref(), &signature)
+            {
+                Ok(())
+            } else {
+                Err(VaultFailErrorKind::PublicKey.into())
             }
-            // PublicKey::P256(k) => {
-            //     let key = VerifyKey::new(&k)?;
-            //     let sig = Signature::try_from(&signature[..])?;
-            //     key.verify(data.as_ref(), &sig)?;
-            //     Ok(())
-            // }
-            _ => Err(VaultFailErrorKind::PublicKey.into()),
+        } else {
+            Err(VaultFailErrorKind::PublicKey.into())
         }
+        // match public_key {
+        // PublicKey::P256(k) => {
+        //     let key = VerifyKey::new(&k)?;
+        //     let sig = Signature::try_from(&signature[..])?;
+        //     key.verify(data.as_ref(), &sig)?;
+        //     Ok(())
+        // }
+        // }
     }
 }
 
@@ -527,10 +548,10 @@ mod tests {
     #[test]
     fn new_public_keys() {
         let mut vault = DefaultVault::default();
-        let mut attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::P256,
+        let mut attributes = SecretAttributes {
+            stype: SecretType::P256,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: P256_SECRET_LENGTH,
         };
 
         let res = vault.secret_generate(attributes);
@@ -540,11 +561,11 @@ mod tests {
         let res = vault.secret_public_key_get(&p256_ctx_1);
         assert!(res.is_ok());
         let pk_1 = res.unwrap();
-        assert!(pk_1.is_p256());
+        assert_eq!(pk_1.0.len(), P256_PUBLIC_LENGTH);
         assert_eq!(vault.entries.len(), 1);
         assert_eq!(vault.next_id, 1);
 
-        attributes.xtype = SecretKeyType::Curve25519;
+        attributes.stype = SecretType::Curve25519;
 
         let res = vault.secret_generate(attributes);
         assert!(res.is_ok());
@@ -552,7 +573,7 @@ mod tests {
         let res = vault.secret_public_key_get(&c25519_ctx_1);
         assert!(res.is_ok());
         let pk_1 = res.unwrap();
-        assert!(pk_1.is_curve25519());
+        assert_eq!(pk_1.0.len(), CURVE25519_PUBLIC_LENGTH);
         assert_eq!(vault.entries.len(), 2);
         assert_eq!(vault.next_id, 2);
     }
@@ -560,25 +581,26 @@ mod tests {
     #[test]
     fn new_secret_keys() {
         let mut vault = DefaultVault::default();
-        let mut attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::P256,
+        let mut attributes = SecretAttributes {
+            stype: SecretType::P256,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: P256_SECRET_LENGTH,
         };
         let types = [
-            (SecretKeyType::Curve25519, 32),
-            (SecretKeyType::P256, 32),
-            (SecretKeyType::Aes256, 32),
-            (SecretKeyType::Aes128, 16),
-            (SecretKeyType::Buffer(24), 24),
+            (SecretType::Curve25519, 32),
+            (SecretType::P256, 32),
+            (SecretType::Aes, 32),
+            (SecretType::Aes, 16),
+            (SecretType::Buffer, 24),
         ];
         for (t, s) in &types {
-            attributes.xtype = *t;
+            attributes.stype = *t;
+            attributes.length = *s;
             let res = vault.secret_generate(attributes);
             assert!(res.is_ok());
             let sk_ctx = res.unwrap();
             let sk = vault.secret_export(&sk_ctx).unwrap();
-            assert_eq!(sk.as_ref().len(), *s);
+            assert_eq!(sk.0.as_slice().len(), *s);
             vault.secret_destroy(sk_ctx).unwrap();
             assert_eq!(vault.entries.len(), 0);
         }
@@ -601,27 +623,25 @@ mod tests {
         let mut vault = DefaultVault::default();
 
         let salt_value = b"hkdf_test";
-        let salt = SecretKey::Buffer(salt_value.to_vec());
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(salt_value.len()),
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: salt_value.len(),
         };
-        let salt = vault.secret_import(&salt, attributes).unwrap();
+        let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
 
         let ikm_value = b"a";
-        let ikm = SecretKey::Buffer(ikm_value.to_vec());
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(ikm_value.len()),
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: ikm_value.len(),
         };
-        let ikm = vault.secret_import(&ikm, attributes).unwrap();
+        let ikm = vault.secret_import(&ikm_value[..], attributes).unwrap();
 
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(24),
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: 24,
         };
 
         let res = vault.hkdf_sha256(&salt, b"", Some(&ikm), vec![attributes]);
@@ -629,45 +649,40 @@ mod tests {
         let digest = res.unwrap();
         assert_eq!(digest.len(), 1);
         let digest = vault.secret_export(&digest[0]).unwrap();
-        if let SecretKey::Buffer(digest) = &digest {
-            assert_eq!(
-                hex::encode(digest),
-                "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
-            );
-        } else {
-            panic!();
-        }
+        assert_eq!(
+            hex::encode(digest.0.as_slice()),
+            "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
+        );
     }
 
     #[test]
     fn ec_diffie_hellman_p256() {
         let mut vault = DefaultVault::default();
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::P256,
+        let attributes = SecretAttributes {
+            stype: SecretType::P256,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: P256_SECRET_LENGTH,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();
         let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
         let salt_value = b"ec_diffie_hellman_p256";
-        let salt = SecretKey::Buffer(salt_value.to_vec());
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(salt_value.len()),
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: salt_value.len(),
         };
-        let salt = vault.secret_import(&salt, attributes).unwrap();
+        let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
 
-        let output_attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(32),
+        let output_attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: 32,
         };
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_1,
-            pk_2,
+            pk_2.0.as_slice(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -677,16 +692,11 @@ mod tests {
         assert_eq!(ss.len(), 1);
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
-        // FIXME: Check actual value
-        } else {
-            panic!();
-        }
+        assert_eq!(ss.0.len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_2,
-            pk_1,
+            pk_1.0.as_slice(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -696,15 +706,12 @@ mod tests {
         assert_eq!(ss.len(), 1);
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
         // FIXME: Check actual value
-        } else {
-            panic!();
-        }
+        assert_eq!(ss.0.len(), 32);
+
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_1,
-            pk_1,
+            pk_1.0.as_slice(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -714,15 +721,12 @@ mod tests {
         assert_eq!(ss.len(), 1);
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
         // FIXME: Check actual value
-        } else {
-            panic!();
-        }
+        assert_eq!(ss.0.len(), 32);
+
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_2,
-            pk_2,
+            pk_2.0.as_slice(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -732,42 +736,37 @@ mod tests {
         assert_eq!(ss.len(), 1);
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
         // FIXME: Check actual value
-        } else {
-            panic!();
-        }
+        assert_eq!(ss.0.len(), 32);
     }
 
     #[test]
     fn ec_diffie_hellman_curve25519() {
         let mut vault = DefaultVault::default();
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Curve25519,
+        let attributes = SecretAttributes {
+            stype: SecretType::Curve25519,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: CURVE25519_SECRET_LENGTH,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();
         let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
         let salt_value = b"ec_diffie_hellman_curve25519";
-        let salt = SecretKey::Buffer(salt_value.to_vec());
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(salt_value.len()),
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: salt_value.len(),
         };
-        let salt = vault.secret_import(&salt, attributes).unwrap();
-        let output_attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(32),
+        let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
+        let output_attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: 32,
         };
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_1,
-            pk_2,
+            pk_2.0.as_slice(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -777,52 +776,12 @@ mod tests {
         assert_eq!(ss.len(), 1);
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
         // FIXME: Check actual value
-        } else {
-            panic!();
-        }
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_2,
-            pk_1,
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
-        // FIXME: Check actual value
-        } else {
-            panic!();
-        }
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_1,
-            pk_1,
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
-        // FIXME: Check actual value
-        } else {
-            panic!();
-        }
+        assert_eq!(ss.0.len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_2,
-            pk_2,
+            pk_1.0.as_slice(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -832,31 +791,57 @@ mod tests {
         assert_eq!(ss.len(), 1);
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
-        if let SecretKey::Buffer(ss) = &ss {
-            assert_eq!(ss.len(), 32);
         // FIXME: Check actual value
-        } else {
-            panic!();
-        }
+        assert_eq!(ss.0.len(), 32);
+
+        let res = vault.ec_diffie_hellman_hkdf_sha256(
+            &sk_ctx_1,
+            pk_1.0.as_slice(),
+            &salt,
+            b"",
+            vec![output_attributes.clone()],
+        );
+        assert!(res.is_ok());
+        let ss = res.unwrap();
+        assert_eq!(ss.len(), 1);
+        let ss = &ss[0];
+        let ss = vault.secret_export(ss).unwrap();
+        // FIXME: Check actual value
+        assert_eq!(ss.0.len(), 32);
+
+        let res = vault.ec_diffie_hellman_hkdf_sha256(
+            &sk_ctx_2,
+            pk_2.0.as_slice(),
+            &salt,
+            b"",
+            vec![output_attributes.clone()],
+        );
+        assert!(res.is_ok());
+        let ss = res.unwrap();
+        assert_eq!(ss.len(), 1);
+        let ss = &ss[0];
+        let ss = vault.secret_export(ss).unwrap();
+        // FIXME: Check actual value
+        assert_eq!(ss.0.len(), 32);
     }
 
     #[test]
     fn ec_diffie_hellman_different_keys() {
         let mut vault = DefaultVault::default();
-        let mut attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Curve25519,
+        let mut attributes = SecretAttributes {
+            stype: SecretType::Curve25519,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: CURVE25519_SECRET_LENGTH,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();
-        attributes.xtype = SecretKeyType::P256;
+        attributes.stype = SecretType::P256;
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
 
-        let res = vault.ec_diffie_hellman(&sk_ctx_1, pk_2);
+        let res = vault.ec_diffie_hellman(&sk_ctx_1, pk_2.0.as_slice());
         assert!(res.is_err());
-        let res = vault.ec_diffie_hellman(&sk_ctx_2, pk_1);
+        let res = vault.ec_diffie_hellman(&sk_ctx_2, pk_1.0.as_slice());
         assert!(res.is_err());
     }
 
@@ -866,10 +851,10 @@ mod tests {
         let message = b"Ockam Test Message";
         let nonce = b"TestingNonce";
         let aad = b"Extra payload data";
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Aes128,
+        let attributes = SecretAttributes {
+            stype: SecretType::Aes,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: AES128_SECRET_LENGTH,
         };
 
         let ctx = &vault.secret_generate(attributes).unwrap();
@@ -891,17 +876,17 @@ mod tests {
     fn sign() {
         let mut vault = DefaultVault::default();
         let secret = vault
-            .secret_generate(SecretKeyAttributes {
+            .secret_generate(SecretAttributes {
                 persistence: SecretPersistenceType::Ephemeral,
-                purpose: SecretPurposeType::KeyAgreement,
-                xtype: SecretKeyType::Curve25519,
+                stype: SecretType::Curve25519,
+                length: CURVE25519_SECRET_LENGTH,
             })
             .unwrap();
         let res = vault.sign(&secret, b"hello world!");
         assert!(res.is_ok());
         let pubkey = vault.secret_public_key_get(&secret).unwrap();
         let signature = res.unwrap();
-        let res = vault.verify(signature, pubkey, b"hello world!");
+        let res = vault.verify(signature, pubkey.0.as_slice(), b"hello world!");
         assert!(res.is_ok());
     }
 }

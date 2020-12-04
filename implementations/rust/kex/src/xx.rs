@@ -1,12 +1,12 @@
 use super::{CompletedKeyExchange, KeyExchange, KeyExchanger, SHA256_SIZE};
 use crate::error::KexExchangeFailError;
 use crate::{CipherSuite, NewKeyExchanger, AES_GCM_TAGSIZE};
+use ockam_vault::types::{
+    AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH, P256_SECRET_LENGTH,
+};
 use ockam_vault::{
     error::{VaultFailError, VaultFailErrorKind},
-    types::{
-        PublicKey, SecretKey, SecretKeyAttributes, SecretKeyType, SecretPersistenceType,
-        SecretPurposeType,
-    },
+    types::{PublicKey, SecretAttributes, SecretPersistenceType, SecretType},
     Secret, Vault,
 };
 use std::sync::{Arc, Mutex};
@@ -51,17 +51,19 @@ impl std::fmt::Debug for SymmetricState {
 }
 
 impl SymmetricState {
-    fn get_secret_key_type(&self) -> SecretKeyType {
+    fn get_secret_key_type_and_length(&self) -> (SecretType, usize) {
         match self.cipher_suite {
-            CipherSuite::Curve25519AesGcmSha256 => SecretKeyType::Curve25519,
-            CipherSuite::P256Aes128GcmSha256 => SecretKeyType::P256,
+            CipherSuite::Curve25519AesGcmSha256 => {
+                (SecretType::Curve25519, CURVE25519_SECRET_LENGTH)
+            }
+            CipherSuite::P256Aes128GcmSha256 => (SecretType::P256, P256_SECRET_LENGTH),
         }
     }
 
-    fn get_symmetric_key_type(&self) -> SecretKeyType {
+    fn get_symmetric_key_type_and_length(&self) -> (SecretType, usize) {
         match self.cipher_suite {
-            CipherSuite::Curve25519AesGcmSha256 => SecretKeyType::Aes256,
-            CipherSuite::P256Aes128GcmSha256 => SecretKeyType::Aes128,
+            CipherSuite::Curve25519AesGcmSha256 => (SecretType::Aes, AES256_SECRET_LENGTH),
+            CipherSuite::P256Aes128GcmSha256 => (SecretType::Aes, AES128_SECRET_LENGTH),
         }
     }
 
@@ -71,13 +73,13 @@ impl SymmetricState {
                 if public_key.len() != 32 {
                     return Err(VaultFailError::from(VaultFailErrorKind::InvalidSize));
                 }
-                Ok(PublicKey::Curve25519(*array_ref![public_key, 0, 32]))
+                Ok(PublicKey(array_ref![public_key, 0, 32].to_vec()))
             }
             CipherSuite::P256Aes128GcmSha256 => {
                 if public_key.len() != 65 {
                     return Err(VaultFailError::from(VaultFailErrorKind::InvalidSize));
                 }
-                Ok(PublicKey::P256(*array_ref![public_key, 0, 65]))
+                Ok(PublicKey(array_ref![public_key, 0, 65].to_vec()))
             }
         }
     }
@@ -120,12 +122,12 @@ impl KeyExchange for SymmetricState {
 
     /// Create a new `HandshakeState` starting with the prologue
     fn prologue(&mut self) -> Result<(), VaultFailError> {
-        let secret_key_type = self.get_secret_key_type();
+        let asymmetric_secret_info = self.get_secret_key_type_and_length();
 
-        let mut attributes = SecretKeyAttributes {
-            xtype: secret_key_type,
-            purpose: SecretPurposeType::KeyAgreement,
+        let mut attributes = SecretAttributes {
+            stype: asymmetric_secret_info.0,
             persistence: SecretPersistenceType::Persistent,
+            length: asymmetric_secret_info.1,
         };
         // 1. Generate a static key pair for this handshake and set it to `s`
         let mut vault = self.vault.lock().unwrap();
@@ -164,12 +166,12 @@ impl KeyExchange for SymmetricState {
         // mix_hash(xx, NULL, 0);
         let mut h = [0u8; SHA256_SIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(SHA256_SIZE),
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
-            purpose: SecretPurposeType::KeyAgreement,
+            length: SHA256_SIZE,
         };
-        self.ck = Some(vault.secret_import(&SecretKey::Buffer(h.to_vec()), attributes)?);
+        self.ck = Some(vault.secret_import(&h, attributes)?);
         self.h = Some(vault.sha256(&h)?);
 
         Ok(())
@@ -179,7 +181,7 @@ impl KeyExchange for SymmetricState {
     fn dh(
         &mut self,
         secret_handle: &Box<dyn Secret>,
-        public_key: PublicKey,
+        public_key: &[u8],
     ) -> Result<(), VaultFailError> {
         let ck = self
             .ck
@@ -188,18 +190,18 @@ impl KeyExchange for SymmetricState {
 
         let mut vault = self.vault.lock().unwrap();
 
-        let attributes_ck = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(SHA256_SIZE),
-            purpose: SecretPurposeType::KeyAgreement,
+        let attributes_ck = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
+            length: SHA256_SIZE,
         };
 
-        let symmetric_key_type = self.get_symmetric_key_type();
+        let symmetric_secret_info = self.get_symmetric_key_type_and_length();
 
-        let attributes_k = SecretKeyAttributes {
-            xtype: symmetric_key_type,
-            purpose: SecretPurposeType::KeyAgreement,
+        let attributes_k = SecretAttributes {
+            stype: symmetric_secret_info.0,
             persistence: SecretPersistenceType::Ephemeral,
+            length: symmetric_secret_info.1,
         };
 
         let mut hkdf_output = vault.ec_diffie_hellman_hkdf_sha256(
@@ -305,11 +307,11 @@ impl KeyExchange for SymmetricState {
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
         let mut vault = self.vault.lock().unwrap();
-        let symmetric_key_type = self.get_symmetric_key_type();
-        let attributes = SecretKeyAttributes {
-            xtype: symmetric_key_type,
-            purpose: SecretPurposeType::KeyAgreement,
+        let symmetric_key_info = self.get_symmetric_key_type_and_length();
+        let attributes = SecretAttributes {
+            stype: symmetric_key_info.0,
             persistence: SecretPersistenceType::Ephemeral,
+            length: symmetric_key_info.1,
         };
         let mut hkdf_output = vault.hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
 
@@ -366,13 +368,14 @@ impl Initiator {
             .ephemeral_key_pair
             .as_ref()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?
-            .public_key;
+            .public_key
+            .clone();
 
         let payload = payload.as_ref();
-        self.0.mix_hash(ephemeral_public_key)?;
+        self.0.mix_hash(ephemeral_public_key.0.as_slice())?;
         self.0.mix_hash(payload)?;
 
-        let mut output = ephemeral_public_key.as_ref().to_vec();
+        let mut output = ephemeral_public_key.0;
         output.extend_from_slice(payload);
         Ok(output)
     }
@@ -406,14 +409,13 @@ impl Initiator {
 
         let re = t.create_public_key(re)?;
 
+        t.mix_hash(re.0.as_slice())?;
+        t.dh(ephemeral_secret_handle, re.0.as_slice())?;
         t.remote_ephemeral_public_key = Some(re);
-
-        t.mix_hash(&re)?;
-        t.dh(ephemeral_secret_handle, re)?;
         let rs = t.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
         let rs = t.create_public_key(&rs)?;
+        t.dh(ephemeral_secret_handle, rs.0.as_slice())?;
         t.remote_static_public_key = Some(rs);
-        t.dh(ephemeral_secret_handle, rs)?;
 
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         let payload = t.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
@@ -433,14 +435,16 @@ impl Initiator {
 
         let static_public = t
             .identity_public_key
+            .clone()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
         let remote_ephemeral_public_key = t
             .remote_ephemeral_public_key
+            .clone()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public)?;
-        t.dh(&static_secret, remote_ephemeral_public_key)?;
+        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public.0.as_slice())?;
+        t.dh(&static_secret, remote_ephemeral_public_key.0.as_slice())?;
         t.identity_key = Some(static_secret);
         let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
         encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
@@ -490,6 +494,7 @@ impl Responder {
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
         let static_public = t
             .identity_public_key
+            .clone()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
         let ephemeral_key_pair = t
             .ephemeral_key_pair
@@ -500,19 +505,19 @@ impl Responder {
             .take()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        t.mix_hash(ephemeral_key_pair.public_key)?;
+        t.mix_hash(ephemeral_key_pair.public_key.0.as_slice())?;
         t.dh(
             &ephemeral_key_pair.secret_handle,
-            remote_ephemeral_public_key,
+            remote_ephemeral_public_key.0.as_slice(),
         )?;
 
-        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public)?;
-        t.dh(&static_secret, remote_ephemeral_public_key)?;
+        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public.0.as_slice())?;
+        t.dh(&static_secret, remote_ephemeral_public_key.0.as_slice())?;
         t.remote_ephemeral_public_key = Some(remote_ephemeral_public_key);
         t.identity_key = Some(static_secret);
         let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
 
-        let mut output = ephemeral_key_pair.public_key.as_ref().to_vec();
+        let mut output = ephemeral_key_pair.public_key.0.clone();
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         output.append(&mut encrypted_s_and_tag);
         output.append(&mut encrypted_payload_and_tag);
@@ -538,7 +543,7 @@ impl Responder {
 
         let rs = t.decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])?;
         let rs = t.create_public_key(&rs)?;
-        t.dh(&ephemeral_key_pair.secret_handle, rs)?;
+        t.dh(&ephemeral_key_pair.secret_handle, rs.0.as_slice())?;
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         let payload = t.decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
         t.remote_static_public_key = Some(rs);
@@ -748,13 +753,7 @@ mod tests {
         let mut vault = vault.lock().unwrap();
         let ck = vault.secret_export(&state.ck.unwrap()).unwrap();
 
-        match &ck {
-            SecretKey::Buffer(vec) => {
-                assert_eq!(vec.as_slice(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0")
-            }
-            _ => panic!(),
-        }
-
+        assert_eq!(ck.0.as_slice(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
         assert_eq!(state.nonce, 0);
     }
 
@@ -963,22 +962,22 @@ mod tests {
         static_private: &str,
         ephemeral_private: &str,
     ) -> SymmetricState {
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Curve25519,
-            purpose: SecretPurposeType::KeyAgreement,
+        let attributes = SecretAttributes {
+            stype: SecretType::Curve25519,
             persistence: SecretPersistenceType::Ephemeral,
+            length: CURVE25519_SECRET_LENGTH,
         };
         // Static x25519 for this handshake, `s`
-        let bytes = hex::decode(static_private).unwrap();
-        let key = SecretKey::Curve25519(*array_ref![bytes, 0, 32]);
         let mut vault = vault_mutex.lock().unwrap();
-        let static_secret_handle = vault.secret_import(&key, attributes).unwrap();
+        let static_secret_handle = vault
+            .secret_import(&hex::decode(static_private).unwrap(), attributes)
+            .unwrap();
         let static_public_key = vault.secret_public_key_get(&static_secret_handle).unwrap();
 
         // Ephemeral x25519 for this handshake, `e`
-        let bytes = hex::decode(ephemeral_private).unwrap();
-        let key = SecretKey::Curve25519(*array_ref![bytes, 0, 32]);
-        let ephemeral_secret_handle = vault.secret_import(&key, attributes).unwrap();
+        let ephemeral_secret_handle = vault
+            .secret_import(&hex::decode(ephemeral_private).unwrap(), attributes)
+            .unwrap();
         let ephemeral_public_key = vault
             .secret_public_key_get(&ephemeral_secret_handle)
             .unwrap();
@@ -995,14 +994,12 @@ mod tests {
             .unwrap();
         let ck = *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
 
-        let attributes = SecretKeyAttributes {
-            xtype: SecretKeyType::Buffer(ck.len()),
-            purpose: SecretPurposeType::KeyAgreement,
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
             persistence: SecretPersistenceType::Ephemeral,
+            length: ck.len(),
         };
-        let ck = vault
-            .secret_import(&SecretKey::Buffer(ck.to_vec()), attributes)
-            .unwrap();
+        let ck = vault.secret_import(&ck[..], attributes).unwrap();
         SymmetricState {
             cipher_suite: CipherSuite::Curve25519AesGcmSha256,
             identity_public_key: Some(static_public_key),

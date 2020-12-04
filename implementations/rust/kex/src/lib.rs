@@ -47,7 +47,7 @@ trait KeyExchange {
     fn dh(
         &mut self,
         secret_handle: &Box<dyn Secret>,
-        public_key: PublicKey,
+        public_key: &[u8],
     ) -> Result<(), VaultFailError>;
     /// mix hash step in Noise protocol
     fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError>;

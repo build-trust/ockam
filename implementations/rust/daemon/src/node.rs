@@ -124,10 +124,10 @@ impl<'a> Node<'a> {
         let resp_key_ctx = if !contains_key(&mut vault, &config.identity_name()) {
             // if responder, generate keypair and display static public key
             if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
-                let attributes = SecretKeyAttributes {
-                    xtype: SecretKeyType::Curve25519,
-                    purpose: SecretPurposeType::KeyAgreement,
+                let attributes = SecretAttributes {
+                    stype: SecretType::Curve25519,
                     persistence: SecretPersistenceType::Persistent,
+                    length: CURVE25519_SECRET_LENGTH,
                 };
                 Some(Arc::new(
                     vault
@@ -145,13 +145,16 @@ impl<'a> Node<'a> {
 
         if matches!(config.role(), Role::Sink) && resp_key_ctx.is_some() {
             if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
-                println!("Responder public key: {}", hex::encode(resp_key));
+                println!(
+                    "Responder public key: {}",
+                    hex::encode(resp_key.0.as_slice())
+                );
             }
         }
 
         if matches!(config.role(), Role::Router) && resp_key_ctx.is_some() {
             if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
-                println!("Router public key: {}", hex::encode(resp_key));
+                println!("Router public key: {}", hex::encode(resp_key.0.as_slice()));
             }
         }
 

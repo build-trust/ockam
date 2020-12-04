@@ -941,6 +941,7 @@ dependencies = [
  "ockam-transport",
  "ockam-vault",
  "ockam-worker",
+ "rand",
  "structopt",
 ]
 
@@ -982,6 +983,7 @@ dependencies = [
  "arrayref",
  "c_bindings",
  "c_rust_memory",
+ "cfg-if 1.0.0",
  "curve25519-dalek",
  "downcast",
  "ed25519-dalek",

@@ -1,67 +1,107 @@
 use crate::error::{VaultFailError, VaultFailErrorKind};
-use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
+/// Curve25519 private key length
+pub const CURVE25519_SECRET_LENGTH: usize = 32;
+/// Curve25519 public key length
+pub const CURVE25519_PUBLIC_LENGTH: usize = 32;
+/// P256 private key length
+pub const P256_SECRET_LENGTH: usize = 32;
+/// P256 public key length
+pub const P256_PUBLIC_LENGTH: usize = 65;
+/// AES256 private key length
+pub const AES256_SECRET_LENGTH: usize = 32;
+/// AES128 private key length
+pub const AES128_SECRET_LENGTH: usize = 16;
+
+cfg_if! {
+    if #[cfg(feature = "heapless")] {
+        use crate::heapless::consts::*;
+        /// Secret Key Vector
+        pub type SecretKeyVec = heapless::Vec<u8, U32>;
+        /// Public Key Vector
+        pub type PublicKeyVec = heapless::Vec<u8, U65>;
+        /// Bufer for small vectors (e.g. array of attributes). Max size - 4
+        pub type SmallBuffer<T> = heapless::Vec<T, U4>;
+        /// Buffer for large binaries (e.g. encrypted data). Max size - 512
+        pub type Buffer<T> = heapless::Vec<T, U512>;
+    }
+    else {
+        /// Secret Key Vector
+        pub type SecretKeyVec = Vec<u8>;
+        /// Public Key Vector
+        pub type PublicKeyVec = Vec<u8>;
+        /// Bufer for small vectors (e.g. array of attributes)
+        pub type SmallBuffer<T> = Vec<T>;
+        /// Buffer for large binaries (e.g. encrypted data)
+        pub type Buffer<T> = Vec<T>;
+    }
+}
+
+/// Secret Key
+#[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
+pub struct SecretKey(pub SecretKeyVec);
+
+/// Public key
+#[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
+pub struct PublicKey(pub PublicKeyVec);
+
 /// The types of secret keys that the vault supports
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Zeroize)]
-pub enum SecretKeyType {
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub enum SecretType {
     /// Raw buffer of bytes
-    Buffer(usize),
-    /// AES-128 bit key
-    Aes128,
-    /// AES-256 bit key
-    Aes256,
+    Buffer,
+    /// AES key
+    Aes,
     /// x25519 secret key
     Curve25519,
     /// NIST P-256 (secp256r1, prime256v1) secret key
     P256,
 }
 
-impl SecretKeyType {
+impl SecretType {
     /// Convert enum to a number
     pub fn to_usize(&self) -> usize {
         match *self {
-            SecretKeyType::Buffer(..) => 0,
-            SecretKeyType::Aes128 => 1,
-            SecretKeyType::Aes256 => 2,
-            SecretKeyType::Curve25519 => 3,
-            SecretKeyType::P256 => 4,
+            SecretType::Buffer => 0,
+            SecretType::Aes => 1,
+            SecretType::Curve25519 => 2,
+            SecretType::P256 => 3,
         }
     }
 
     /// Try to convert from a number to the rust enum
     pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
         match value {
-            0 => Ok(SecretKeyType::Buffer(0)),
-            1 => Ok(SecretKeyType::Aes128),
-            2 => Ok(SecretKeyType::Aes256),
-            3 => Ok(SecretKeyType::Curve25519),
-            4 => Ok(SecretKeyType::P256),
+            0 => Ok(SecretType::Buffer),
+            1 => Ok(SecretType::Aes),
+            2 => Ok(SecretType::Curve25519),
+            3 => Ok(SecretType::P256),
             _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
         }
     }
 }
 
-from_int_impl!(SecretKeyType, i8);
-from_int_impl!(SecretKeyType, i16);
-from_int_impl!(SecretKeyType, i32);
-from_int_impl!(SecretKeyType, i64);
-from_int_impl!(SecretKeyType, i128);
-from_int_impl!(SecretKeyType, u8);
-from_int_impl!(SecretKeyType, u16);
-from_int_impl!(SecretKeyType, u32);
-from_int_impl!(SecretKeyType, u64);
-from_int_impl!(SecretKeyType, u128);
-try_from_int_impl!(SecretKeyType, i8);
-try_from_int_impl!(SecretKeyType, i16);
-try_from_int_impl!(SecretKeyType, i32);
-try_from_int_impl!(SecretKeyType, i64);
-try_from_int_impl!(SecretKeyType, i128);
-try_from_int_impl!(SecretKeyType, u8);
-try_from_int_impl!(SecretKeyType, u16);
-try_from_int_impl!(SecretKeyType, u32);
-try_from_int_impl!(SecretKeyType, u64);
-try_from_int_impl!(SecretKeyType, u128);
+from_int_impl!(SecretType, i8);
+from_int_impl!(SecretType, i16);
+from_int_impl!(SecretType, i32);
+from_int_impl!(SecretType, i64);
+from_int_impl!(SecretType, i128);
+from_int_impl!(SecretType, u8);
+from_int_impl!(SecretType, u16);
+from_int_impl!(SecretType, u32);
+from_int_impl!(SecretType, u64);
+from_int_impl!(SecretType, u128);
+try_from_int_impl!(SecretType, i8);
+try_from_int_impl!(SecretType, i16);
+try_from_int_impl!(SecretType, i32);
+try_from_int_impl!(SecretType, i64);
+try_from_int_impl!(SecretType, i128);
+try_from_int_impl!(SecretType, u8);
+try_from_int_impl!(SecretType, u16);
+try_from_int_impl!(SecretType, u32);
+try_from_int_impl!(SecretType, u64);
+try_from_int_impl!(SecretType, u128);
 
 /// Persistence allowed by Secrets
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
@@ -112,266 +152,44 @@ try_from_int_impl!(SecretPersistenceType, u32);
 try_from_int_impl!(SecretPersistenceType, u64);
 try_from_int_impl!(SecretPersistenceType, u128);
 
-/// Secrets specific purpose
-#[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
-pub enum SecretPurposeType {
-    /// Key exchange
-    KeyAgreement,
-}
-
-impl SecretPurposeType {
-    /// Convert enum to a number
-    pub fn to_usize(&self) -> usize {
-        match *self {
-            SecretPurposeType::KeyAgreement => 0,
-        }
-    }
-
-    /// Try to convert from a number to the rust enum
-    pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
-        match value {
-            0 => Ok(SecretPurposeType::KeyAgreement),
-            _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
-        }
-    }
-}
-
-from_int_impl!(SecretPurposeType, i8);
-from_int_impl!(SecretPurposeType, i16);
-from_int_impl!(SecretPurposeType, i32);
-from_int_impl!(SecretPurposeType, i64);
-from_int_impl!(SecretPurposeType, i128);
-from_int_impl!(SecretPurposeType, u8);
-from_int_impl!(SecretPurposeType, u16);
-from_int_impl!(SecretPurposeType, u32);
-from_int_impl!(SecretPurposeType, u64);
-from_int_impl!(SecretPurposeType, u128);
-try_from_int_impl!(SecretPurposeType, i8);
-try_from_int_impl!(SecretPurposeType, i16);
-try_from_int_impl!(SecretPurposeType, i32);
-try_from_int_impl!(SecretPurposeType, i64);
-try_from_int_impl!(SecretPurposeType, i128);
-try_from_int_impl!(SecretPurposeType, u8);
-try_from_int_impl!(SecretPurposeType, u16);
-try_from_int_impl!(SecretPurposeType, u32);
-try_from_int_impl!(SecretPurposeType, u64);
-try_from_int_impl!(SecretPurposeType, u128);
-
 /// Attributes for a specific vault secret
-#[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
-pub struct SecretKeyAttributes {
+#[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
+pub struct SecretAttributes {
     /// The type of key
-    pub xtype: SecretKeyType,
+    pub stype: SecretType,
     /// How the key is persisted
     pub persistence: SecretPersistenceType,
     /// The purpose of the secret key
-    pub purpose: SecretPurposeType,
+    pub length: usize,
 }
 
-impl SecretKeyAttributes {
+impl SecretAttributes {
     /// Convert attributes to byte values
     pub fn to_bytes(&self) -> [u8; 6] {
         let mut output = [0u8; 6];
-        output[..2].copy_from_slice((self.xtype.to_usize() as u16).to_be_bytes().as_ref());
+        output[..2].copy_from_slice((self.stype.to_usize() as u16).to_be_bytes().as_ref());
         output[2..4].copy_from_slice((self.persistence.to_usize() as u16).to_be_bytes().as_ref());
-        output[4..].copy_from_slice((self.purpose.to_usize() as u16).to_be_bytes().as_ref());
+        output[4..].copy_from_slice((self.length as u16).to_be_bytes().as_ref());
         output
     }
 }
 
-impl std::convert::TryFrom<[u8; 6]> for SecretKeyAttributes {
+impl std::convert::TryFrom<[u8; 6]> for SecretAttributes {
     type Error = VaultFailError;
 
     fn try_from(bytes: [u8; 6]) -> Result<Self, Self::Error> {
-        let xtype =
-            SecretKeyType::from_usize(u16::from_be_bytes(*array_ref![bytes, 0, 2]) as usize)?;
+        let xtype = SecretType::from_usize(u16::from_be_bytes(*array_ref![bytes, 0, 2]) as usize)?;
         let persistence =
             SecretPersistenceType::from_usize(
                 u16::from_be_bytes(*array_ref![bytes, 2, 2]) as usize
             )?;
-        let purpose =
-            SecretPurposeType::from_usize(u16::from_be_bytes(*array_ref![bytes, 4, 2]) as usize)?;
+        let len = u16::from_be_bytes(*array_ref![bytes, 4, 2]) as usize;
         Ok(Self {
-            xtype,
+            stype: xtype,
             persistence,
-            purpose,
+            length: len,
         })
     }
 }
 
-/// Represents specific secrets employable by the vault
-#[derive(Clone, Debug)]
-pub enum SecretKey {
-    /// Raw buffer of bytes
-    Buffer(Vec<u8>),
-    /// AES-128 bit key
-    Aes128([u8; 16]),
-    /// AES-256 bit key
-    Aes256([u8; 32]),
-    /// x25519 secret key
-    Curve25519([u8; 32]),
-    /// NIST P-256 (secp256r1, prime256v1) secret key
-    P256([u8; 32]),
-}
-
-impl SecretKey {
-    /// Create a new Secret key using `data` and of the correct type
-    pub fn new<B: AsRef<[u8]>>(data: B, xtype: SecretKeyType) -> Self {
-        match xtype {
-            SecretKeyType::Buffer(l) => SecretKey::Buffer(data.as_ref()[..l].to_vec()),
-            SecretKeyType::Aes128 => SecretKey::Aes128(*array_ref![data.as_ref(), 0, 16]),
-            SecretKeyType::Aes256 => SecretKey::Aes256(*array_ref![data.as_ref(), 0, 32]),
-            SecretKeyType::P256 => SecretKey::P256(*array_ref![data.as_ref(), 0, 32]),
-            SecretKeyType::Curve25519 => SecretKey::Curve25519(*array_ref![data.as_ref(), 0, 32]),
-        }
-    }
-}
-
-impl AsRef<[u8]> for SecretKey {
-    fn as_ref(&self) -> &[u8] {
-        match self {
-            SecretKey::Buffer(a) => a.as_slice(),
-            SecretKey::Aes128(a) => a.as_ref(),
-            SecretKey::Aes256(a) => a.as_ref(),
-            SecretKey::Curve25519(a) => a.as_ref(),
-            SecretKey::P256(a) => a.as_ref(),
-        }
-    }
-}
-
-impl PartialEq for SecretKey {
-    fn eq(&self, other: &Self) -> bool {
-        use SecretKey::*;
-        match (self, other) {
-            (Buffer(a), Buffer(b)) => a.as_slice().ct_eq(b.as_slice()).unwrap_u8() == 1u8,
-            (Aes128(a), Aes128(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
-            (Aes256(a), Aes256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
-            (Curve25519(a), Curve25519(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
-            (P256(a), P256(b)) => a.as_ref().ct_eq(b.as_ref()).unwrap_u8() == 1u8,
-            (_, _) => false,
-        }
-    }
-}
-
-impl Eq for SecretKey {}
-
-impl Zeroize for SecretKey {
-    fn zeroize(&mut self) {
-        use SecretKey::*;
-        match self {
-            Buffer(ref mut a) => a.zeroize(),
-            Aes128(ref mut a) => a.zeroize(),
-            Aes256(ref mut a) => a.zeroize(),
-            Curve25519(ref mut a) => a.zeroize(),
-            P256(ref mut a) => a.zeroize(),
-        }
-    }
-}
-
 zdrop_impl!(SecretKey);
-
-/// The supported public keys
-#[derive(Copy, Clone)]
-pub enum PublicKey {
-    /// x25519 Public Key
-    Curve25519([u8; 32]),
-    /// NIST P-256 (secp256r1, prime256v1) uncompressed public key
-    P256([u8; 65]),
-}
-
-impl PublicKey {
-    fn print(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use PublicKey::*;
-        match self {
-            Curve25519(a) => write!(f, "PublicKey::Curve25519 {{ {} }}", hex::encode(a.as_ref())),
-            P256(a) => write!(f, "PublicKey::P256 {{ {} }}", hex::encode(a.as_ref())),
-        }
-    }
-
-    /// True if this is a Curve25519 Public Key
-    pub fn is_curve25519(&self) -> bool {
-        use PublicKey::*;
-        matches!(self, Curve25519(..))
-    }
-
-    /// True if this is a NIST P-256 (secp256r1, prime256v1) uncompressed public key
-    pub fn is_p256(&self) -> bool {
-        use PublicKey::*;
-        matches!(self, P256(..))
-    }
-
-    /// Return the byte type for the enum value
-    pub fn get_type(&self) -> u8 {
-        match *self {
-            PublicKey::Curve25519(_) => 1,
-            PublicKey::P256(_) => 2,
-        }
-    }
-
-    /// Get the bytes for this key with the first byte that indicates what the public key type is
-    pub fn serialize_bytes(&self) -> Vec<u8> {
-        let mut output = Vec::new();
-        output.push(self.get_type());
-        output.extend_from_slice(self.as_ref());
-        output
-    }
-
-    /// Convert the bytes into a Public key
-    pub fn deserialize_bytes(data: &[u8]) -> Result<Self, VaultFailError> {
-        if data.is_empty() {
-            return Err(VaultFailErrorKind::PublicKey.into());
-        }
-        match data[0] {
-            1 => {
-                if data.len() < 33 {
-                    Ok(PublicKey::Curve25519(*array_ref![data, 1, 32]))
-                } else {
-                    Err(VaultFailErrorKind::PublicKey.into())
-                }
-            }
-            2 => {
-                if data.len() < 65 {
-                    Ok(PublicKey::P256(*array_ref![data, 1, 65]))
-                } else {
-                    Err(VaultFailErrorKind::PublicKey.into())
-                }
-            }
-            _ => Err(VaultFailErrorKind::PublicKey.into()),
-        }
-    }
-}
-
-impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        use PublicKey::*;
-        match self {
-            Curve25519(a) => a,
-            P256(a) => a,
-        }
-    }
-}
-
-impl std::fmt::Display for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.print(f)
-    }
-}
-
-impl std::fmt::Debug for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.print(f)
-    }
-}
-
-impl PartialEq for PublicKey {
-    fn eq(&self, other: &Self) -> bool {
-        use PublicKey::*;
-        match (self, other) {
-            (Curve25519(a), Curve25519(b)) => a.ct_eq(b).unwrap_u8() == 1,
-            (P256(a), P256(b)) => a.ct_eq(b).unwrap_u8() == 1,
-            (_, _) => false,
-        }
-    }
-}
-
-impl Eq for PublicKey {}
