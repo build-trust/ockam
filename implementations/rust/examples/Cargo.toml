@@ -10,8 +10,8 @@ path = "noop/src/main.rs"
 
 [[example]]
 name = "redis"
-path = "redis/src/main.rs"
+path = "redis/main.rs"
 
-[dependencies]
+[dev-dependencies]
 simple_redis = "0.5.2"
 ockam-queue-topic = { version = "0.1.0", path = "../queue_topic" }

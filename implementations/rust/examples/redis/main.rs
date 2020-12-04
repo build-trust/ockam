@@ -1,13 +1,12 @@
-
 extern crate alloc;
 extern crate simple_redis;
 
-use simple_redis::client::Client;
-use simple_redis::RedisResult;
-use core::cell::RefCell;
 use alloc::rc::Rc;
+use core::cell::RefCell;
 use ockam_queue_topic::queue::*;
 use ockam_queue_topic::topic::MemTopicWorker;
+use simple_redis::client::Client;
+use simple_redis::RedisResult;
 use std::str::FromStr;
 
 pub struct RedisQueue {
@@ -16,8 +15,8 @@ pub struct RedisQueue {
 }
 
 impl Queue<QueueMessage> for RedisQueue {
-    fn address(&self) -> String {
-        self.address.clone()
+    fn address(&self) -> &str {
+        &self.address
     }
 
     fn enqueue(&mut self, message: QueueMessage) {
@@ -91,7 +90,8 @@ pub fn main() {
 
     tw.publish("test", QueueMessage::from_str("ockam!").unwrap());
 
-    tw.consume_messages(&sub, &|m| println!("{:?}", m.body));
+    let messages = tw.consume_messages(&sub);
 
+    assert_eq!(2, messages.len());
     tw.unsubscribe(&sub);
 }
