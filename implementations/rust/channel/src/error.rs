@@ -1,5 +1,5 @@
 use failure::{Backtrace, Context, Fail};
-use ockam_kex::error::*;
+use ockam_establishment::error::*;
 use ockam_system::commands::{ChannelCommand, OckamCommand};
 use ockam_vault::error::*;
 use std::{

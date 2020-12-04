@@ -22,9 +22,9 @@ fn write_bin_to_buffer(
     }
 }
 
-/// Create a new kex initiator and return it
+/// Create a new establishment initiator and return it
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_initiator(context: &mut u64, vault: u64) -> KexError {
+pub extern "C" fn ockam_establishment_xx_initiator(context: &mut u64, vault: u64) -> KexError {
     // TODO: obtain vault from storage using handle
     let mut vault = DefaultVault::default();
     let state = match XXSymmetricState::prologue(&mut vault) {
@@ -39,9 +39,9 @@ pub extern "C" fn ockam_kex_xx_initiator(context: &mut u64, vault: u64) -> KexEr
     ERROR_NONE
 }
 
-/// Create a new kex responder and return it
+/// Create a new establishment responder and return it
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_responder(context: &mut u64, vault: u64) -> KexError {
+pub extern "C" fn ockam_establishment_xx_responder(context: &mut u64, vault: u64) -> KexError {
     // TODO: obtain vault from storage using handle
     let mut vault = DefaultVault::default();
     let state = match XXSymmetricState::prologue(&mut vault) {
@@ -58,7 +58,7 @@ pub extern "C" fn ockam_kex_xx_responder(context: &mut u64, vault: u64) -> KexEr
 
 /// Initiator encodes message 1
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_initiator_encode_message_1(
+pub extern "C" fn ockam_establishment_xx_initiator_encode_message_1(
     context: u64,
     payload: *const u8,
     payload_length: u32,
@@ -86,7 +86,7 @@ pub extern "C" fn ockam_kex_xx_initiator_encode_message_1(
 
 /// Responder encodes message 2
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_responder_encode_message_2(
+pub extern "C" fn ockam_establishment_xx_responder_encode_message_2(
     context: u64,
     payload: *const u8,
     payload_length: u32,
@@ -114,7 +114,7 @@ pub extern "C" fn ockam_kex_xx_responder_encode_message_2(
 
 /// Initiator encodes message 3
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_initiator_encode_message_3(
+pub extern "C" fn ockam_establishment_xx_initiator_encode_message_3(
     context: u64,
     payload: *const u8,
     payload_length: u32,
@@ -142,7 +142,7 @@ pub extern "C" fn ockam_kex_xx_initiator_encode_message_3(
 
 /// Responder decodes message 1
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_responder_decode_message_1(
+pub extern "C" fn ockam_establishment_xx_responder_decode_message_1(
     context: u64,
     m1: *const u8,
     m1_length: u32,
@@ -165,7 +165,7 @@ pub extern "C" fn ockam_kex_xx_responder_decode_message_1(
 
 /// Initiator decodes message 2
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_initiator_decode_message_2(
+pub extern "C" fn ockam_establishment_xx_initiator_decode_message_2(
     context: u64,
     m2: *const u8,
     m2_length: u32,
@@ -188,7 +188,7 @@ pub extern "C" fn ockam_kex_xx_initiator_decode_message_2(
 
 /// Responder decodes message 3
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_responder_decode_message_3(
+pub extern "C" fn ockam_establishment_xx_responder_decode_message_3(
     context: u64,
     m3: *const u8,
     m3_length: u32,
@@ -211,7 +211,7 @@ pub extern "C" fn ockam_kex_xx_responder_decode_message_3(
 
 /// Finalize initiator
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_initiator_finalize(context: u64, kex: &mut u64) -> KexError {
+pub extern "C" fn ockam_establishment_xx_initiator_finalize(context: u64, establishment: &mut u64) -> KexError {
     // TODO: obtain initiator from storage
     let mut vault = DefaultVault::default();
     let state = match XXSymmetricState::prologue(&mut vault) {
@@ -223,7 +223,7 @@ pub extern "C" fn ockam_kex_xx_initiator_finalize(context: u64, kex: &mut u64) -
     // TODO: Can we use vault from Initiator?
     let mut vault2 = DefaultVault::default();
     match initiator.finalize(&mut vault2) {
-        Ok(r) => *kex = 0, // TODO: Set proper context
+        Ok(r) => *establishment = 0, // TODO: Set proper context
         Err(_) => return 1,
     };
 
@@ -232,7 +232,7 @@ pub extern "C" fn ockam_kex_xx_initiator_finalize(context: u64, kex: &mut u64) -
 
 /// Finalize responder
 #[no_mangle]
-pub extern "C" fn ockam_kex_xx_responder_finalize(context: u64, kex: &mut u64) -> KexError {
+pub extern "C" fn ockam_establishment_xx_responder_finalize(context: u64, establishment: &mut u64) -> KexError {
     // TODO: obtain initiator from storage
     let mut vault = DefaultVault::default();
     let state = match XXSymmetricState::prologue(&mut vault) {
@@ -244,7 +244,7 @@ pub extern "C" fn ockam_kex_xx_responder_finalize(context: u64, kex: &mut u64) -
     // TODO: Can we use vault from Initiator?
     let mut vault2 = DefaultVault::default();
     match responder.finalize(&mut vault2) {
-        Ok(r) => *kex = 0, // TODO: Set proper context
+        Ok(r) => *establishment = 0, // TODO: Set proper context
         Err(_) => return 1,
     };
 

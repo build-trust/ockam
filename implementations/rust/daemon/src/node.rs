@@ -13,7 +13,7 @@ use crate::source::StdinWorker;
 // }
 
 use ockam_channel::*;
-use ockam_kex::{
+use ockam_establishment::{
     xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
     CipherSuite,
 };

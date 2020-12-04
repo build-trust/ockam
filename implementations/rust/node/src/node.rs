@@ -3,8 +3,8 @@
 use crate::blast_worker::BlastWorker;
 use crate::hello_worker::HelloWorker;
 use ockam_channel::*;
-use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
-use ockam_kex::CipherSuite;
+use ockam_establishment::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
+use ockam_establishment::CipherSuite;
 use ockam_message::message::*;
 use ockam_message::MAX_MESSAGE_SIZE;
 use ockam_router::router::*;

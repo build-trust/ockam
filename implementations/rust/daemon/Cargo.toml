@@ -15,7 +15,7 @@ ockam-common = { path = "../common", version = "0.1.0" }
 ockam-message = { path = "../message", version = "0.1.0" }
 ockam-vault = { path = "../vault", version = "0.1.0" }
 ockam-channel = { path = "../channel", version = "0.1.0" }
-ockam-kex = { path = "../kex", version = "0.1.0" }
+ockam-establishment = { path = "../establishment", version = "0.1.0" }
 ockam-transport = { path = "../transport", version = "0.1.0" }
 ockam-router = { path = "../router", version = "0.1.0" }
 ockam-system = { version = "0.1", path = "../system" }

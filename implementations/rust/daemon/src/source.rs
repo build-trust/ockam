@@ -29,7 +29,7 @@ impl StdinWorker {
     ) -> Option<StdinWorker> {
         let worker = StdinWorker::new(
             RouterAddress::worker_router_address_from_str(&config.service_address().unwrap())
-                .expect("failed to create worker address for kex"),
+                .expect("failed to create worker address for establishment"),
             router_tx,
             config.clone(),
         );

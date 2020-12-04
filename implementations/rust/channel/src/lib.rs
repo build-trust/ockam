@@ -27,8 +27,8 @@ extern crate ockam_common;
 
 use core::marker::PhantomData;
 use error::*;
-use ockam_kex::error::KeyExchangeFailErrorKind;
-use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
+use ockam_establishment::error::KeyExchangeFailErrorKind;
+use ockam_establishment::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_message::message::{
     Address, AddressType, Codec, Message, MessageType, Route, RouterAddress,
 };
@@ -309,10 +309,10 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         // unwrap the payload and decode the message (payload *should* be an encrypted Message)
         let (nonce, encrypted_msg) = u16::decode(&m.message_body).unwrap();
         let nonce_96 = Channel::nonce_16_to_96(nonce);
-        let kex = channel.completed_key_exchange.as_ref().unwrap();
+        let establishment = channel.completed_key_exchange.as_ref().unwrap();
         let mut vault = self.vault.lock().unwrap();
         let encoded_msg =
-            vault.aead_aes_gcm_decrypt(&kex.decrypt_key, encrypted_msg, &nonce_96, &kex.h)?;
+            vault.aead_aes_gcm_decrypt(&establishment.decrypt_key, encrypted_msg, &nonce_96, &establishment.h)?;
         let (mut decoded_msg, _) = Message::decode(&encoded_msg).unwrap();
         decoded_msg.return_route.addresses.insert(
             0,
@@ -633,8 +633,8 @@ pub mod error;
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
-//     use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
-//     use ockam_kex::CipherSuite;
+//     use ockam_establishment::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
+//     use ockam_establishment::CipherSuite;
 //     use ockam_message::message::AddressType;
 //     use ockam_vault::software::DefaultVault;
 //     use std::sync::mpsc::channel;
