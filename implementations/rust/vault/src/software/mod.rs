@@ -211,7 +211,7 @@ impl Default for VaultEntry {
             id: 0,
             key_attributes: SecretAttributes {
                 stype: SecretType::Curve25519,
-                persistence: SecretPersistenceType::Ephemeral,
+                persistence: SecretPersistence::Ephemeral,
                 length: 0,
             },
             key: SecretKey(Vec::new()),
@@ -389,7 +389,7 @@ impl Vault for DefaultVault {
 
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: dh.len(),
         };
         self.secret_import(&dh, attributes)
@@ -550,7 +550,7 @@ mod tests {
         let mut vault = DefaultVault::default();
         let mut attributes = SecretAttributes {
             stype: SecretType::P256,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: P256_SECRET_LENGTH,
         };
 
@@ -583,7 +583,7 @@ mod tests {
         let mut vault = DefaultVault::default();
         let mut attributes = SecretAttributes {
             stype: SecretType::P256,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: P256_SECRET_LENGTH,
         };
         let types = [
@@ -625,7 +625,7 @@ mod tests {
         let salt_value = b"hkdf_test";
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: salt_value.len(),
         };
         let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
@@ -633,14 +633,14 @@ mod tests {
         let ikm_value = b"a";
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: ikm_value.len(),
         };
         let ikm = vault.secret_import(&ikm_value[..], attributes).unwrap();
 
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: 24,
         };
 
@@ -660,7 +660,7 @@ mod tests {
         let mut vault = DefaultVault::default();
         let attributes = SecretAttributes {
             stype: SecretType::P256,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: P256_SECRET_LENGTH,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
@@ -670,14 +670,14 @@ mod tests {
         let salt_value = b"ec_diffie_hellman_p256";
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: salt_value.len(),
         };
         let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
 
         let output_attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: 32,
         };
         let res = vault.ec_diffie_hellman_hkdf_sha256(
@@ -745,7 +745,7 @@ mod tests {
         let mut vault = DefaultVault::default();
         let attributes = SecretAttributes {
             stype: SecretType::Curve25519,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: CURVE25519_SECRET_LENGTH,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
@@ -755,13 +755,13 @@ mod tests {
         let salt_value = b"ec_diffie_hellman_curve25519";
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: salt_value.len(),
         };
         let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
         let output_attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: 32,
         };
         let res = vault.ec_diffie_hellman_hkdf_sha256(
@@ -830,7 +830,7 @@ mod tests {
         let mut vault = DefaultVault::default();
         let mut attributes = SecretAttributes {
             stype: SecretType::Curve25519,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: CURVE25519_SECRET_LENGTH,
         };
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
@@ -853,7 +853,7 @@ mod tests {
         let aad = b"Extra payload data";
         let attributes = SecretAttributes {
             stype: SecretType::Aes,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: AES128_SECRET_LENGTH,
         };
 
@@ -877,7 +877,7 @@ mod tests {
         let mut vault = DefaultVault::default();
         let secret = vault
             .secret_generate(SecretAttributes {
-                persistence: SecretPersistenceType::Ephemeral,
+                persistence: SecretPersistence::Ephemeral,
                 stype: SecretType::Curve25519,
                 length: CURVE25519_SECRET_LENGTH,
             })

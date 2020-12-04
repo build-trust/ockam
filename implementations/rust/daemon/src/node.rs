@@ -126,7 +126,7 @@ impl<'a> Node<'a> {
             if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
                 let attributes = SecretAttributes {
                     stype: SecretType::Curve25519,
-                    persistence: SecretPersistenceType::Persistent,
+                    persistence: SecretPersistence::Persistent,
                     length: CURVE25519_SECRET_LENGTH,
                 };
                 Some(Arc::new(
