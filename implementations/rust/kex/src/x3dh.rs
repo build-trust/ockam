@@ -4,7 +4,7 @@ use ockam_vault::software::DefaultVaultSecret;
 use ockam_vault::types::{
     SecretKey, SecretKeyAttributes, SecretKeyType, SecretPersistenceType, SecretPurposeType,
 };
-use ockam_vault::{error::VaultFailError, types::PublicKey, DynVault, Secret};
+use ockam_vault::{error::VaultFailError, types::PublicKey, Secret, Vault};
 use std::{
     convert::TryFrom,
     sync::{Arc, Mutex},
@@ -108,12 +108,12 @@ pub struct X3dhResponder {
     one_time_prekey: Option<Box<dyn Secret>>,
     expected_enrollment_key: Option<PublicKey>,
     state: ResponderState,
-    vault: Arc<Mutex<dyn DynVault + Send>>,
+    vault: Arc<Mutex<dyn Vault + Send>>,
     completed_key_exchange: Option<CompletedKeyExchange>,
 }
 
 impl X3dhResponder {
-    fn new(v: Arc<Mutex<dyn DynVault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
+    fn new(v: Arc<Mutex<dyn Vault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
         Self {
             identity_key,
             signed_prekey: None,
@@ -182,13 +182,13 @@ pub struct X3dhInitiator {
     ephemeral_identity_key: Option<Box<dyn Secret>>,
     prekey_bundle: Option<PreKeyBundle>,
     state: InitiatorState,
-    vault: Arc<Mutex<dyn DynVault + Send>>,
+    vault: Arc<Mutex<dyn Vault + Send>>,
     completed_key_exchange: Option<CompletedKeyExchange>,
     identity_key: Option<Arc<Box<dyn Secret>>>,
 }
 
 impl X3dhInitiator {
-    fn new(v: Arc<Mutex<dyn DynVault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
+    fn new(v: Arc<Mutex<dyn Vault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
         Self {
             ephemeral_identity_key: None,
             prekey_bundle: None,
@@ -519,8 +519,8 @@ impl KeyExchanger for X3dhInitiator {
 
 /// Represents an XX NewKeyExchanger
 pub struct X3dhNewKeyExchanger {
-    vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
-    vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+    vault_initiator: Arc<Mutex<dyn Vault + Send>>,
+    vault_responder: Arc<Mutex<dyn Vault + Send>>,
 }
 
 impl std::fmt::Debug for X3dhNewKeyExchanger {
@@ -535,8 +535,8 @@ impl std::fmt::Debug for X3dhNewKeyExchanger {
 impl X3dhNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
     pub fn new(
-        vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
-        vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+        vault_initiator: Arc<Mutex<dyn Vault + Send>>,
+        vault_responder: Arc<Mutex<dyn Vault + Send>>,
     ) -> Self {
         Self {
             vault_initiator,

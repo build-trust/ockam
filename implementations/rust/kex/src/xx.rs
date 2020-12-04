@@ -7,7 +7,7 @@ use ockam_vault::{
         PublicKey, SecretKey, SecretKeyAttributes, SecretKeyType, SecretPersistenceType,
         SecretPurposeType,
     },
-    DynVault, Secret,
+    Secret, Vault,
 };
 use std::sync::{Arc, Mutex};
 use zeroize::Zeroize;
@@ -30,7 +30,7 @@ struct SymmetricState {
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
     ck: Option<Box<dyn Secret>>,
-    vault: Arc<Mutex<dyn DynVault>>,
+    vault: Arc<Mutex<dyn Vault>>,
 }
 
 impl Zeroize for SymmetricState {
@@ -91,7 +91,7 @@ impl SymmetricState {
 
     pub fn new(
         cipher_suite: CipherSuite,
-        vault: Arc<Mutex<dyn DynVault>>,
+        vault: Arc<Mutex<dyn Vault>>,
         identity_key: Option<Arc<Box<dyn Secret>>>,
     ) -> Self {
         Self {
@@ -590,8 +590,8 @@ pub struct XXInitiator {
 /// Represents an XX NewKeyExchanger
 pub struct XXNewKeyExchanger {
     cipher_suite: CipherSuite,
-    vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
-    vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+    vault_initiator: Arc<Mutex<dyn Vault + Send>>,
+    vault_responder: Arc<Mutex<dyn Vault + Send>>,
 }
 
 impl std::fmt::Debug for XXNewKeyExchanger {
@@ -604,8 +604,8 @@ impl XXNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
     pub fn new(
         cipher_suite: CipherSuite,
-        vault_initiator: Arc<Mutex<dyn DynVault + Send>>,
-        vault_responder: Arc<Mutex<dyn DynVault + Send>>,
+        vault_initiator: Arc<Mutex<dyn Vault + Send>>,
+        vault_responder: Arc<Mutex<dyn Vault + Send>>,
     ) -> Self {
         Self {
             cipher_suite,

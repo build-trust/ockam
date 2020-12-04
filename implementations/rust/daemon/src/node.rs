@@ -23,7 +23,7 @@ use ockam_system::commands::{OckamCommand, WorkerCommand};
 use ockam_transport::tcp::TcpManager;
 use ockam_vault::software::DefaultVaultSecret;
 use ockam_vault::types::*;
-use ockam_vault::{file::FilesystemVault, DynVault, Secret};
+use ockam_vault::{file::FilesystemVault, Secret, Vault};
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -269,7 +269,7 @@ fn as_key_ctx(key_name: &str) -> Result<Box<dyn Secret>, String> {
     Err("invalid key name format".into())
 }
 
-fn contains_key(v: &mut dyn DynVault, key_name: &str) -> bool {
+fn contains_key(v: &mut dyn Vault, key_name: &str) -> bool {
     if let Ok(ctx) = as_key_ctx(key_name) {
         return v.secret_export(&ctx).is_ok();
     }
