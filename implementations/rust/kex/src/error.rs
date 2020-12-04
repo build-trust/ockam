@@ -16,16 +16,8 @@ pub enum KeyExchangeFailErrorKind {
     #[fail(display = "An invalid parameter was supplied: {}", 0)]
     InvalidParam(usize),
     /// Happens when the Key exchange method is called out of sequence
-    #[fail(
-        display = "{} called out of sequence. Expected {} to be called",
-        actual, expected
-    )]
-    MethodCalledOutOfSequence {
-        /// What was received
-        actual: &'static str,
-        /// What was expected
-        expected: &'static str,
-    },
+    #[fail(display = "Key exchange called out of sequence. Key agreement was finalized")]
+    MethodCalledOutOfSequence,
     /// Happens when a hash value is expected but finds another
     #[fail(display = "Expected hash {}, found {} ", expected, actual)]
     InvalidHash {
@@ -75,11 +67,7 @@ impl From<VaultFailError> for KexExchangeFailError {
         let err: VaultFailErrorKind = err.into();
         match err {
             VaultFailErrorKind::InvalidParam(p) => KeyExchangeFailErrorKind::InvalidParam(p).into(),
-            _ => KeyExchangeFailErrorKind::MethodCalledOutOfSequence {
-                actual: "",
-                expected: "",
-            }
-            .into(),
+            _ => KeyExchangeFailErrorKind::MethodCalledOutOfSequence.into(),
         }
     }
 }

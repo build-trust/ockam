@@ -4,6 +4,8 @@
 // Each message component, and the message overall, implements the "Codec" trait
 // allowing it to be encoded/decoded for transmission over a transport.
 
+pub const MAX_MESSAGE_SIZE: usize = 16348;
+
 pub mod message {
     use crate::message::Address::ChannelAddress;
     use crate::message::MessageType::Payload;
@@ -567,6 +569,11 @@ pub mod message {
     // - If the value is <= 0x80, the highest-order of the low-order byte is moved to the
     //   lowest-order bit in the high-order byte, and the high-order byte is shifted left by one to
     //   make room.
+
+    pub fn varint_size(i: u16) -> usize {
+        return if i < 0x80 { 1 } else { 2 };
+    }
+
     impl Codec for u16 {
         type Inner = u16;
         fn encode(&self, u: &mut Vec<u8>) -> Result<(), String> {

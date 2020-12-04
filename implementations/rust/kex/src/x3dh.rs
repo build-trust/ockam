@@ -1,13 +1,10 @@
 use crate::error::{KexExchangeFailError, KeyExchangeFailErrorKind};
 use crate::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
+use ockam_vault::software::DefaultVaultSecret;
 use ockam_vault::types::{
     SecretKey, SecretKeyAttributes, SecretKeyType, SecretPersistenceType, SecretPurposeType,
 };
-use ockam_vault::{
-    error::VaultFailError,
-    types::{PublicKey, SecretKeyContext},
-    DynVault,
-};
+use ockam_vault::{error::VaultFailError, types::PublicKey, DynVault, Secret};
 use std::{
     convert::TryFrom,
     sync::{Arc, Mutex},
@@ -104,9 +101,11 @@ const ENROLLMENT_MSG_SIZE: usize = 32 + 32 + 32 + 64 + 16;
 /// The responder of X3DH creates a prekey bundle that can be used to establish a shared
 /// secret key with another party that can use
 pub struct X3dhResponder {
-    identity_key: Option<SecretKeyContext>,
-    signed_prekey: SecretKeyContext,
-    one_time_prekey: SecretKeyContext,
+    // Identity key and signer prekey are wrapped in Arc because they are possible shared
+    // among threads/modules
+    identity_key: Option<Arc<Box<dyn Secret>>>,
+    signed_prekey: Option<Arc<Box<dyn Secret>>>,
+    one_time_prekey: Option<Box<dyn Secret>>,
     expected_enrollment_key: Option<PublicKey>,
     state: ResponderState,
     vault: Arc<Mutex<dyn DynVault + Send>>,
@@ -114,11 +113,11 @@ pub struct X3dhResponder {
 }
 
 impl X3dhResponder {
-    fn new(v: Arc<Mutex<dyn DynVault + Send>>, identity_key: Option<SecretKeyContext>) -> Self {
+    fn new(v: Arc<Mutex<dyn DynVault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
         Self {
             identity_key,
-            signed_prekey: SecretKeyContext::Memory(0),
-            one_time_prekey: SecretKeyContext::Memory(0),
+            signed_prekey: None,
+            one_time_prekey: None,
             expected_enrollment_key: None,
             completed_key_exchange: None,
             state: ResponderState::GenerateBundle,
@@ -139,10 +138,10 @@ impl X3dhResponder {
             xtype: SecretKeyType::Curve25519,
         };
         if self.identity_key.is_none() {
-            self.identity_key = Some(vault.secret_generate(p_atts)?);
+            self.identity_key = Some(Arc::new(vault.secret_generate(p_atts)?));
         }
-        self.signed_prekey = vault.secret_generate(p_atts)?;
-        self.one_time_prekey = vault.secret_generate(e_atts)?;
+        self.signed_prekey = Some(Arc::new(vault.secret_generate(p_atts)?));
+        self.one_time_prekey = Some(vault.secret_generate(e_atts)?);
         self.expected_enrollment_key = None;
         self.completed_key_exchange = None;
         Ok(())
@@ -179,20 +178,19 @@ enum InitiatorState {
 
 /// The responder of X3DH receives a prekey bundle and computes the shared secret
 /// to communicate the first message to the initiator
-#[derive(Clone)]
 pub struct X3dhInitiator {
-    ephemeral_identity_key: SecretKeyContext,
+    ephemeral_identity_key: Option<Box<dyn Secret>>,
     prekey_bundle: Option<PreKeyBundle>,
     state: InitiatorState,
     vault: Arc<Mutex<dyn DynVault + Send>>,
     completed_key_exchange: Option<CompletedKeyExchange>,
-    identity_key: Option<SecretKeyContext>,
+    identity_key: Option<Arc<Box<dyn Secret>>>,
 }
 
 impl X3dhInitiator {
-    fn new(v: Arc<Mutex<dyn DynVault + Send>>, identity_key: Option<SecretKeyContext>) -> Self {
+    fn new(v: Arc<Mutex<dyn DynVault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
         Self {
-            ephemeral_identity_key: SecretKeyContext::Memory(0),
+            ephemeral_identity_key: None,
             prekey_bundle: None,
             state: InitiatorState::GenerateEphemeralIdentityKey,
             vault: v,
@@ -208,7 +206,7 @@ impl X3dhInitiator {
             persistence: SecretPersistenceType::Persistent,
             xtype: SecretKeyType::Curve25519,
         };
-        self.ephemeral_identity_key = vault.secret_generate(p_atts)?;
+        self.ephemeral_identity_key = Some(vault.secret_generate(p_atts)?);
         self.prekey_bundle = None;
         self.completed_key_exchange = None;
         Ok(())
@@ -237,18 +235,30 @@ impl KeyExchanger for X3dhResponder {
                 let mut vault = self.vault.lock().unwrap();
                 let identity_secret_key =
                     self.identity_key
+                        .as_ref()
                         .ok_or(KeyExchangeFailErrorKind::GeneralError {
                             msg: "Invalid identity key".to_string(),
                         })?;
-                let signed_prekey = vault.secret_public_key_get(self.signed_prekey)?;
-                let signature = vault.sign(identity_secret_key, signed_prekey.as_ref())?;
+                let signed_prekey =
+                    self.signed_prekey
+                        .as_ref()
+                        .ok_or(KeyExchangeFailErrorKind::GeneralError {
+                            msg: "Invalid signer prekey".to_string(),
+                        })?;
+                let one_time_prekey = self.one_time_prekey.as_ref().ok_or(
+                    KeyExchangeFailErrorKind::GeneralError {
+                        msg: "Invalid one-time prekey".to_string(),
+                    },
+                )?;
+                let signed_prekey_pub = vault.secret_public_key_get(signed_prekey)?;
+                let signature = vault.sign(identity_secret_key, signed_prekey_pub.as_ref())?;
                 let identity_key = vault.secret_public_key_get(identity_secret_key)?;
-                let one_time_prekey = vault.secret_public_key_get(self.one_time_prekey)?;
+                let one_time_prekey_pub = vault.secret_public_key_get(one_time_prekey)?;
                 let bundle = PreKeyBundle {
                     identity_key,
-                    signed_prekey,
+                    signed_prekey: signed_prekey_pub,
                     signature_prekey: Signature(signature),
-                    one_time_prekey,
+                    one_time_prekey: one_time_prekey_pub,
                 };
                 self.state = ResponderState::SetEnrollmentKey;
                 Ok(bundle.to_bytes())
@@ -272,6 +282,17 @@ impl KeyExchanger for X3dhResponder {
                     .into());
                 }
                 let mut vault = self.vault.lock().unwrap();
+                let signed_prekey =
+                    self.signed_prekey
+                        .as_ref()
+                        .ok_or(KeyExchangeFailErrorKind::GeneralError {
+                            msg: "Invalid signer prekey".to_string(),
+                        })?;
+                let one_time_prekey = self.one_time_prekey.as_ref().ok_or(
+                    KeyExchangeFailErrorKind::GeneralError {
+                        msg: "Invalid one-time prekey".to_string(),
+                    },
+                )?;
                 let eik = self.expected_enrollment_key.as_ref().unwrap();
                 let id = vault.sha256(eik.as_ref())?;
                 if id.ct_eq(&data[32..64]).unwrap_u8() != 1 {
@@ -284,19 +305,20 @@ impl KeyExchanger for X3dhResponder {
                 let ek = PublicKey::Curve25519(*array_ref![data, 0, 32]);
                 let local_static_secret =
                     self.identity_key
+                        .take()
                         .ok_or(KeyExchangeFailErrorKind::GeneralError {
                             msg: "Invalid identity key".to_string(),
                         })?;
 
-                let dh1 = vault.ec_diffie_hellman(self.signed_prekey, *eik)?;
-                let dh2 = vault.ec_diffie_hellman(local_static_secret, ek)?;
-                let dh3 = vault.ec_diffie_hellman(self.signed_prekey, ek)?;
-                let dh4 = vault.ec_diffie_hellman(self.one_time_prekey, ek)?;
+                let dh1 = vault.ec_diffie_hellman(signed_prekey, *eik)?;
+                let dh2 = vault.ec_diffie_hellman(&local_static_secret, ek)?;
+                let dh3 = vault.ec_diffie_hellman(signed_prekey, ek)?;
+                let dh4 = vault.ec_diffie_hellman(one_time_prekey, ek)?;
                 let mut ikm_bytes = vec![0xFFu8; 32];
-                ikm_bytes.extend_from_slice(vault.secret_export(dh1)?.as_ref());
-                ikm_bytes.extend_from_slice(vault.secret_export(dh2)?.as_ref());
-                ikm_bytes.extend_from_slice(vault.secret_export(dh3)?.as_ref());
-                ikm_bytes.extend_from_slice(vault.secret_export(dh4)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh1)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh2)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh3)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh4)?.as_ref());
 
                 let ikm = vault.secret_import(
                     &SecretKey::Buffer(ikm_bytes.to_vec()),
@@ -320,8 +342,9 @@ impl KeyExchanger for X3dhResponder {
                     xtype: SecretKeyType::Aes256,
                 };
 
-                let keyrefs = vault.hkdf_sha256(salt, CSUITE, Some(ikm), vec![atts, atts])?;
-                let (encrypt_key, decrypt_key) = (keyrefs[0], keyrefs[1]);
+                let mut keyrefs = vault.hkdf_sha256(&salt, CSUITE, Some(&ikm), vec![atts, atts])?;
+                let decrypt_key = keyrefs.pop().unwrap();
+                let encrypt_key = keyrefs.pop().unwrap();
                 let mut state_hash = vault.sha256(CSUITE)?.to_vec();
                 state_hash.append(&mut ikm_bytes);
                 let state_hash = vault.sha256(state_hash.as_slice())?;
@@ -331,7 +354,7 @@ impl KeyExchanger for X3dhResponder {
                 aad.extend_from_slice(&state_hash);
                 //TODO: get the channel address from the message somehow if needed
                 let plaintext = vault.aead_aes_gcm_decrypt(
-                    decrypt_key,
+                    &decrypt_key,
                     &data[64..],
                     &data[..12],
                     aad.as_slice(),
@@ -358,8 +381,8 @@ impl KeyExchanger for X3dhResponder {
         matches!(self.state, ResponderState::Done)
     }
 
-    fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
-        Ok(*self.completed_key_exchange.as_ref().unwrap())
+    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
+        Ok(self.completed_key_exchange.unwrap())
     }
 }
 
@@ -369,12 +392,13 @@ impl KeyExchanger for X3dhInitiator {
             InitiatorState::GenerateEphemeralIdentityKey => {
                 self.prologue()?;
                 let mut vault = self.vault.lock().unwrap();
-                self.ephemeral_identity_key = vault.secret_generate(SecretKeyAttributes {
+                let ephemeral_identity_key = vault.secret_generate(SecretKeyAttributes {
                     purpose: SecretPurposeType::KeyAgreement,
                     persistence: SecretPersistenceType::Persistent,
                     xtype: SecretKeyType::Curve25519,
                 })?;
-                let pubkey = vault.secret_public_key_get(self.ephemeral_identity_key)?;
+                let pubkey = vault.secret_public_key_get(&ephemeral_identity_key)?;
+                self.ephemeral_identity_key = Some(ephemeral_identity_key);
                 self.state = InitiatorState::ProcessPreKeyBundle;
                 Ok(pubkey.as_ref().to_vec())
             }
@@ -382,6 +406,12 @@ impl KeyExchanger for X3dhInitiator {
                 let prekey_bundle = PreKeyBundle::try_from(data)?;
 
                 let mut vault = self.vault.lock().unwrap();
+
+                let ephemeral_identity_key = self.ephemeral_identity_key.as_ref().ok_or(
+                    KeyExchangeFailErrorKind::GeneralError {
+                        msg: "Invalid ephemeral identity key".to_string(),
+                    },
+                )?;
 
                 // Check the prekey_bundle signature
                 vault.verify(
@@ -395,16 +425,16 @@ impl KeyExchanger for X3dhInitiator {
                     xtype: SecretKeyType::Curve25519,
                 };
                 let esk = vault.secret_generate(atts)?;
-                let dh1 = vault
-                    .ec_diffie_hellman(self.ephemeral_identity_key, prekey_bundle.signed_prekey)?;
-                let dh2 = vault.ec_diffie_hellman(esk, prekey_bundle.identity_key)?;
-                let dh3 = vault.ec_diffie_hellman(esk, prekey_bundle.signed_prekey)?;
-                let dh4 = vault.ec_diffie_hellman(esk, prekey_bundle.one_time_prekey)?;
+                let dh1 =
+                    vault.ec_diffie_hellman(ephemeral_identity_key, prekey_bundle.signed_prekey)?;
+                let dh2 = vault.ec_diffie_hellman(&esk, prekey_bundle.identity_key)?;
+                let dh3 = vault.ec_diffie_hellman(&esk, prekey_bundle.signed_prekey)?;
+                let dh4 = vault.ec_diffie_hellman(&esk, prekey_bundle.one_time_prekey)?;
                 let mut ikm_bytes = vec![0xFFu8; 32];
-                ikm_bytes.extend_from_slice(vault.secret_export(dh1)?.as_ref());
-                ikm_bytes.extend_from_slice(vault.secret_export(dh2)?.as_ref());
-                ikm_bytes.extend_from_slice(vault.secret_export(dh3)?.as_ref());
-                ikm_bytes.extend_from_slice(vault.secret_export(dh4)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh1)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh2)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh3)?.as_ref());
+                ikm_bytes.extend_from_slice(vault.secret_export(&dh4)?.as_ref());
 
                 let ikm = vault.secret_import(
                     &SecretKey::Buffer(ikm_bytes.clone()),
@@ -429,10 +459,11 @@ impl KeyExchanger for X3dhInitiator {
                     persistence: SecretPersistenceType::Persistent,
                 };
 
-                let keyrefs = vault.hkdf_sha256(salt, CSUITE, Some(ikm), vec![atts, atts])?;
-                let (decrypt_key, encrypt_key) = (keyrefs[0], keyrefs[1]);
-                let ek = vault.secret_public_key_get(esk)?;
-                let pubkey = vault.secret_public_key_get(self.ephemeral_identity_key)?;
+                let mut keyrefs = vault.hkdf_sha256(&salt, CSUITE, Some(&ikm), vec![atts, atts])?;
+                let encrypt_key = keyrefs.pop().unwrap();
+                let decrypt_key = keyrefs.pop().unwrap();
+                let ek = vault.secret_public_key_get(&esk)?;
+                let pubkey = vault.secret_public_key_get(ephemeral_identity_key)?;
 
                 let mut state_hash = vault.sha256(CSUITE)?.to_vec();
                 state_hash.append(&mut ikm_bytes);
@@ -444,19 +475,19 @@ impl KeyExchanger for X3dhInitiator {
                 aad.extend_from_slice(&state_hash);
 
                 atts.xtype = SecretKeyType::Curve25519;
-                let skb = if self.identity_key.is_some() {
-                    self.identity_key.unwrap()
+                let identity_key = self.identity_key.take();
+                let skb = if identity_key.is_none() {
+                    Arc::new(vault.secret_generate(atts)?)
                 } else {
-                    vault.secret_generate(atts)?
+                    identity_key.unwrap()
                 };
-                let ikb = vault.secret_public_key_get(skb)?;
+                let ikb = vault.secret_public_key_get(&skb)?;
 
                 let mut plaintext = ikb.as_ref().to_vec();
-                plaintext
-                    .extend_from_slice(&vault.sign(self.ephemeral_identity_key, ikb.as_ref())?);
+                plaintext.extend_from_slice(&vault.sign(ephemeral_identity_key, ikb.as_ref())?);
 
                 let mut ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
-                    encrypt_key,
+                    &encrypt_key,
                     plaintext.as_slice(),
                     &ek.as_ref()[..12],
                     aad.as_slice(),
@@ -481,8 +512,8 @@ impl KeyExchanger for X3dhInitiator {
         matches!(self.state, InitiatorState::Done)
     }
 
-    fn finalize(&mut self) -> Result<CompletedKeyExchange, VaultFailError> {
-        Ok(*self.completed_key_exchange.as_ref().unwrap())
+    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
+        Ok(self.completed_key_exchange.unwrap())
     }
 }
 
@@ -515,11 +546,11 @@ impl X3dhNewKeyExchanger {
 }
 
 impl NewKeyExchanger<X3dhInitiator, X3dhResponder> for X3dhNewKeyExchanger {
-    fn initiator(&self, identity_key: Option<SecretKeyContext>) -> X3dhInitiator {
+    fn initiator(&self, identity_key: Option<Arc<Box<dyn Secret>>>) -> X3dhInitiator {
         X3dhInitiator::new(self.vault_initiator.clone(), identity_key)
     }
 
-    fn responder(&self, identity_key: Option<SecretKeyContext>) -> X3dhResponder {
+    fn responder(&self, identity_key: Option<Arc<Box<dyn Secret>>>) -> X3dhResponder {
         X3dhResponder::new(self.vault_responder.clone(), identity_key)
     }
 }
@@ -561,12 +592,12 @@ mod tests {
 
         let mut vault_ii = vault_i.lock().unwrap();
         let ciphertext_and_tag = vault_ii
-            .aead_aes_gcm_encrypt(init.encrypt_key, b"Hello Alice", &[1u8; 12], &[])
+            .aead_aes_gcm_encrypt(&init.encrypt_key, b"Hello Alice", &[1u8; 12], &[])
             .unwrap();
         let mut vault_rr = vault_r.lock().unwrap();
         let plaintext = vault_rr
             .aead_aes_gcm_decrypt(
-                resp.decrypt_key,
+                &resp.decrypt_key,
                 ciphertext_and_tag.as_slice(),
                 &[1u8; 12],
                 &[],
