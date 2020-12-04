@@ -6,7 +6,7 @@ use ockam_vault::types::{
 };
 use ockam_vault::{
     error::{VaultFailError, VaultFailErrorKind},
-    types::{PublicKey, SecretAttributes, SecretPersistenceType, SecretType},
+    types::{PublicKey, SecretAttributes, SecretPersistence, SecretType},
     Secret, Vault,
 };
 use std::sync::{Arc, Mutex};
@@ -126,7 +126,7 @@ impl KeyExchange for SymmetricState {
 
         let mut attributes = SecretAttributes {
             stype: asymmetric_secret_info.0,
-            persistence: SecretPersistenceType::Persistent,
+            persistence: SecretPersistence::Persistent,
             length: asymmetric_secret_info.1,
         };
         // 1. Generate a static key pair for this handshake and set it to `s`
@@ -146,7 +146,7 @@ impl KeyExchange for SymmetricState {
         };
         self.identity_key = Some(identity_key);
 
-        attributes.persistence = SecretPersistenceType::Ephemeral;
+        attributes.persistence = SecretPersistence::Ephemeral;
         // 2. Generate an ephemeral key pair for this handshake and set it to e
         let ephemeral_secret_handle = vault.secret_generate(attributes)?;
         let ephemeral_public_key = vault.secret_public_key_get(&ephemeral_secret_handle)?;
@@ -168,7 +168,7 @@ impl KeyExchange for SymmetricState {
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: SHA256_SIZE,
         };
         self.ck = Some(vault.secret_import(&h, attributes)?);
@@ -192,7 +192,7 @@ impl KeyExchange for SymmetricState {
 
         let attributes_ck = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: SHA256_SIZE,
         };
 
@@ -200,7 +200,7 @@ impl KeyExchange for SymmetricState {
 
         let attributes_k = SecretAttributes {
             stype: symmetric_secret_info.0,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: symmetric_secret_info.1,
         };
 
@@ -310,7 +310,7 @@ impl KeyExchange for SymmetricState {
         let symmetric_key_info = self.get_symmetric_key_type_and_length();
         let attributes = SecretAttributes {
             stype: symmetric_key_info.0,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: symmetric_key_info.1,
         };
         let mut hkdf_output = vault.hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
@@ -964,7 +964,7 @@ mod tests {
     ) -> SymmetricState {
         let attributes = SecretAttributes {
             stype: SecretType::Curve25519,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: CURVE25519_SECRET_LENGTH,
         };
         // Static x25519 for this handshake, `s`
@@ -996,7 +996,7 @@ mod tests {
 
         let attributes = SecretAttributes {
             stype: SecretType::Buffer,
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             length: ck.len(),
         };
         let ck = vault.secret_import(&ck[..], attributes).unwrap();

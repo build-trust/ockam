@@ -105,7 +105,7 @@ fn fs_write_secret(
 ) -> Result<(), VaultFailError> {
     let id = DefaultVaultSecret::downcast_secret(ctx)?.0;
 
-    if matches!(attrs.persistence, SecretPersistenceType::Persistent) {
+    if matches!(attrs.persistence, SecretPersistence::Persistent) {
         let mut bytes = attrs.to_bytes().to_vec();
         bytes.extend_from_slice(key.as_ref());
 
@@ -300,7 +300,7 @@ mod tests {
         let mut vault = FilesystemVault::new(path.clone()).unwrap();
         let atts = SecretAttributes {
             stype: SecretType::Curve25519,
-            persistence: SecretPersistenceType::Persistent,
+            persistence: SecretPersistence::Persistent,
             length: CURVE25519_SECRET_LENGTH,
         };
         let sk1 = vault.secret_generate(atts).unwrap();

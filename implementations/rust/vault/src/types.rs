@@ -105,52 +105,52 @@ try_from_int_impl!(SecretType, u128);
 
 /// Persistence allowed by Secrets
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Zeroize)]
-pub enum SecretPersistenceType {
+pub enum SecretPersistence {
     /// Secret is temporary
     Ephemeral,
     /// Secret is permanent
     Persistent,
 }
 
-impl SecretPersistenceType {
+impl SecretPersistence {
     /// Convert enum to a number
     pub fn to_usize(&self) -> usize {
         match *self {
-            SecretPersistenceType::Ephemeral => 0,
-            SecretPersistenceType::Persistent => 1,
+            SecretPersistence::Ephemeral => 0,
+            SecretPersistence::Persistent => 1,
         }
     }
 
     /// Try to convert from a number to the rust enum
     pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
         match value {
-            0 => Ok(SecretPersistenceType::Ephemeral),
-            1 => Ok(SecretPersistenceType::Persistent),
+            0 => Ok(SecretPersistence::Ephemeral),
+            1 => Ok(SecretPersistence::Persistent),
             _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
         }
     }
 }
 
-from_int_impl!(SecretPersistenceType, i8);
-from_int_impl!(SecretPersistenceType, i16);
-from_int_impl!(SecretPersistenceType, i32);
-from_int_impl!(SecretPersistenceType, i64);
-from_int_impl!(SecretPersistenceType, i128);
-from_int_impl!(SecretPersistenceType, u8);
-from_int_impl!(SecretPersistenceType, u16);
-from_int_impl!(SecretPersistenceType, u32);
-from_int_impl!(SecretPersistenceType, u64);
-from_int_impl!(SecretPersistenceType, u128);
-try_from_int_impl!(SecretPersistenceType, i8);
-try_from_int_impl!(SecretPersistenceType, i16);
-try_from_int_impl!(SecretPersistenceType, i32);
-try_from_int_impl!(SecretPersistenceType, i64);
-try_from_int_impl!(SecretPersistenceType, i128);
-try_from_int_impl!(SecretPersistenceType, u8);
-try_from_int_impl!(SecretPersistenceType, u16);
-try_from_int_impl!(SecretPersistenceType, u32);
-try_from_int_impl!(SecretPersistenceType, u64);
-try_from_int_impl!(SecretPersistenceType, u128);
+from_int_impl!(SecretPersistence, i8);
+from_int_impl!(SecretPersistence, i16);
+from_int_impl!(SecretPersistence, i32);
+from_int_impl!(SecretPersistence, i64);
+from_int_impl!(SecretPersistence, i128);
+from_int_impl!(SecretPersistence, u8);
+from_int_impl!(SecretPersistence, u16);
+from_int_impl!(SecretPersistence, u32);
+from_int_impl!(SecretPersistence, u64);
+from_int_impl!(SecretPersistence, u128);
+try_from_int_impl!(SecretPersistence, i8);
+try_from_int_impl!(SecretPersistence, i16);
+try_from_int_impl!(SecretPersistence, i32);
+try_from_int_impl!(SecretPersistence, i64);
+try_from_int_impl!(SecretPersistence, i128);
+try_from_int_impl!(SecretPersistence, u8);
+try_from_int_impl!(SecretPersistence, u16);
+try_from_int_impl!(SecretPersistence, u32);
+try_from_int_impl!(SecretPersistence, u64);
+try_from_int_impl!(SecretPersistence, u128);
 
 /// Attributes for a specific vault secret
 #[derive(Copy, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
@@ -158,7 +158,7 @@ pub struct SecretAttributes {
     /// The type of key
     pub stype: SecretType,
     /// How the key is persisted
-    pub persistence: SecretPersistenceType,
+    pub persistence: SecretPersistence,
     /// The purpose of the secret key
     pub length: usize,
 }
@@ -180,9 +180,7 @@ impl std::convert::TryFrom<[u8; 6]> for SecretAttributes {
     fn try_from(bytes: [u8; 6]) -> Result<Self, Self::Error> {
         let xtype = SecretType::from_usize(u16::from_be_bytes(*array_ref![bytes, 0, 2]) as usize)?;
         let persistence =
-            SecretPersistenceType::from_usize(
-                u16::from_be_bytes(*array_ref![bytes, 2, 2]) as usize
-            )?;
+            SecretPersistence::from_usize(u16::from_be_bytes(*array_ref![bytes, 2, 2]) as usize)?;
         let len = u16::from_be_bytes(*array_ref![bytes, 4, 2]) as usize;
         Ok(Self {
             stype: xtype,

@@ -1,8 +1,7 @@
 use crate::error::{KexExchangeFailError, KeyExchangeFailErrorKind};
 use crate::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_vault::types::{
-    SecretAttributes, SecretPersistenceType, SecretType, AES256_SECRET_LENGTH,
-    CURVE25519_SECRET_LENGTH,
+    SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use ockam_vault::{error::VaultFailError, types::PublicKey, Secret, Vault};
 use std::{
@@ -128,12 +127,12 @@ impl X3dhResponder {
     fn prologue(&mut self) -> Result<(), VaultFailError> {
         let mut vault = self.vault.lock().unwrap();
         let p_atts = SecretAttributes {
-            persistence: SecretPersistenceType::Persistent,
+            persistence: SecretPersistence::Persistent,
             stype: SecretType::Curve25519,
             length: CURVE25519_SECRET_LENGTH,
         };
         let e_atts = SecretAttributes {
-            persistence: SecretPersistenceType::Ephemeral,
+            persistence: SecretPersistence::Ephemeral,
             stype: SecretType::Curve25519,
             length: CURVE25519_SECRET_LENGTH,
         };
@@ -202,7 +201,7 @@ impl X3dhInitiator {
     fn prologue(&mut self) -> Result<(), VaultFailError> {
         let mut vault = self.vault.lock().unwrap();
         let p_atts = SecretAttributes {
-            persistence: SecretPersistenceType::Persistent,
+            persistence: SecretPersistence::Persistent,
             stype: SecretType::Curve25519,
             length: CURVE25519_SECRET_LENGTH,
         };
@@ -322,7 +321,7 @@ impl KeyExchanger for X3dhResponder {
                 let ikm = vault.secret_import(
                     &ikm_bytes,
                     SecretAttributes {
-                        persistence: SecretPersistenceType::Ephemeral,
+                        persistence: SecretPersistence::Ephemeral,
                         stype: SecretType::Buffer,
                         length: ikm_bytes.len(),
                     },
@@ -330,13 +329,13 @@ impl KeyExchanger for X3dhResponder {
                 let salt = vault.secret_import(
                     &[0u8; 32],
                     SecretAttributes {
-                        persistence: SecretPersistenceType::Ephemeral,
+                        persistence: SecretPersistence::Ephemeral,
                         stype: SecretType::Buffer,
                         length: 32,
                     },
                 )?;
                 let atts = SecretAttributes {
-                    persistence: SecretPersistenceType::Persistent,
+                    persistence: SecretPersistence::Persistent,
                     stype: SecretType::Aes,
                     length: AES256_SECRET_LENGTH,
                 };
@@ -392,7 +391,7 @@ impl KeyExchanger for X3dhInitiator {
                 self.prologue()?;
                 let mut vault = self.vault.lock().unwrap();
                 let ephemeral_identity_key = vault.secret_generate(SecretAttributes {
-                    persistence: SecretPersistenceType::Persistent,
+                    persistence: SecretPersistence::Persistent,
                     stype: SecretType::Curve25519,
                     length: CURVE25519_SECRET_LENGTH,
                 })?;
@@ -419,7 +418,7 @@ impl KeyExchanger for X3dhInitiator {
                     prekey_bundle.signed_prekey.0.as_slice(),
                 )?;
                 let atts = SecretAttributes {
-                    persistence: SecretPersistenceType::Ephemeral,
+                    persistence: SecretPersistence::Ephemeral,
                     stype: SecretType::Curve25519,
                     length: CURVE25519_SECRET_LENGTH,
                 };
@@ -442,7 +441,7 @@ impl KeyExchanger for X3dhInitiator {
                 let ikm = vault.secret_import(
                     &ikm_bytes,
                     SecretAttributes {
-                        persistence: SecretPersistenceType::Ephemeral,
+                        persistence: SecretPersistence::Ephemeral,
                         stype: SecretType::Buffer,
                         length: ikm_bytes.len(),
                     },
@@ -450,7 +449,7 @@ impl KeyExchanger for X3dhInitiator {
                 let salt = vault.secret_import(
                     &[0u8; 32],
                     SecretAttributes {
-                        persistence: SecretPersistenceType::Ephemeral,
+                        persistence: SecretPersistence::Ephemeral,
                         stype: SecretType::Buffer,
                         length: 32,
                     },
@@ -458,7 +457,7 @@ impl KeyExchanger for X3dhInitiator {
 
                 let mut atts = SecretAttributes {
                     stype: SecretType::Aes,
-                    persistence: SecretPersistenceType::Persistent,
+                    persistence: SecretPersistence::Persistent,
                     length: AES256_SECRET_LENGTH,
                 };
 
