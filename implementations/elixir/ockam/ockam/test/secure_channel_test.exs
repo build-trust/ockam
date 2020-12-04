@@ -7,7 +7,7 @@ defmodule Ockam.SecureChannel.Tests do
   alias Ockam.Vault.Software, as: SoftwareVault
 
   test "secure channel works" do
-    secret_attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+    secret_attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
 
     {:ok, responder_vault} = SoftwareVault.init()
     {:ok, responder_identity} = Vault.secret_generate(responder_vault, secret_attributes)

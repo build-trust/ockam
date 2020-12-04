@@ -33,6 +33,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate downcast;
 #[macro_use]
+extern crate cfg_if;
+#[macro_use]
 extern crate ockam_common;
 
 use crate::error::VaultFailError;
@@ -78,13 +80,13 @@ pub trait Vault: Zeroize {
     /// Create a new secret key
     fn secret_generate(
         &mut self,
-        attributes: SecretKeyAttributes,
+        attributes: SecretAttributes,
     ) -> Result<Box<dyn Secret>, VaultFailError>;
     /// Import a secret key into the vault
     fn secret_import(
         &mut self,
-        secret: &SecretKey,
-        attributes: SecretKeyAttributes,
+        secret: &[u8],
+        attributes: SecretAttributes,
     ) -> Result<Box<dyn Secret>, VaultFailError>;
     /// Export a secret key from the vault
     fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError>;
@@ -92,7 +94,7 @@ pub trait Vault: Zeroize {
     fn secret_attributes_get(
         &mut self,
         context: &Box<dyn Secret>,
-    ) -> Result<SecretKeyAttributes, VaultFailError>;
+    ) -> Result<SecretAttributes, VaultFailError>;
     /// Return the associated public key given the secret key
     fn secret_public_key_get(
         &mut self,
@@ -105,7 +107,7 @@ pub trait Vault: Zeroize {
     fn ec_diffie_hellman(
         &mut self,
         context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
+        peer_public_key: &[u8],
     ) -> Result<Box<dyn Secret>, VaultFailError>;
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
     /// and the specified uncompressed public key and return the HKDF-SHA256
@@ -113,10 +115,10 @@ pub trait Vault: Zeroize {
     fn ec_diffie_hellman_hkdf_sha256(
         &mut self,
         context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
+        peer_public_key: &[u8],
         salt: &Box<dyn Secret>,
         info: &[u8],
-        output_attributes: Vec<SecretKeyAttributes>,
+        output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
@@ -125,7 +127,7 @@ pub trait Vault: Zeroize {
         salt: &Box<dyn Secret>,
         info: &[u8],
         ikm: Option<&Box<dyn Secret>>,
-        output_attributes: Vec<SecretKeyAttributes>,
+        output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt(
@@ -155,7 +157,7 @@ pub trait Vault: Zeroize {
     fn verify(
         &mut self,
         signature: [u8; 64],
-        public_key: PublicKey,
+        public_key: &[u8],
         data: &[u8],
     ) -> Result<(), VaultFailError>;
 }

@@ -21,8 +21,7 @@ typedef uint64_t ockam_vault_secret_t;
  */
 typedef enum {
     OCKAM_VAULT_SECRET_TYPE_BUFFER = 0,
-    OCKAM_VAULT_SECRET_TYPE_AES128_KEY,
-    OCKAM_VAULT_SECRET_TYPE_AES256_KEY,
+    OCKAM_VAULT_SECRET_TYPE_AES_KEY,
     OCKAM_VAULT_SECRET_TYPE_CURVE25519_PRIVATEKEY,
     OCKAM_VAULT_SECRET_TYPE_P256_PRIVATEKEY,
 } ockam_vault_secret_type_t;
@@ -37,21 +36,12 @@ typedef enum {
 } ockam_vault_secret_persistence_t;
 
 /**
- * @enum    ockam_vault_secret_purpose_t
- * @brief   Types of uses for a secret
- */
-typedef enum {
-    OCKAM_VAULT_SECRET_PURPOSE_KEY_AGREEMENT = 0,
-} ockam_vault_secret_purpose_t;
-
-/**
  * @struct  ockam_vault_secret_attributes_t
  * @brief   Attributes for a specific ockam vault secret.
  */
 typedef struct {
-    uint32_t                         length; // FIXME: Used only for buffer secret generation
+    uint32_t                         length;
     ockam_vault_secret_type_t        type;
-    ockam_vault_secret_purpose_t     purpose;
     ockam_vault_secret_persistence_t persistence;
 } ockam_vault_secret_attributes_t;
 

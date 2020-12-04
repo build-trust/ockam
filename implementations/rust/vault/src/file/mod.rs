@@ -24,19 +24,16 @@ impl FilesystemVault {
         fs::create_dir_all(create_path)?;
 
         let mut vault = DefaultVault::default();
-        let to_secret = |data: &[u8]| -> Result<(SecretKey, SecretKeyAttributes), VaultFailError> {
+        let to_secret = |data: &[u8]| -> Result<(SecretKey, SecretAttributes), VaultFailError> {
             if data.len() < ATTRS_BYTE_LENGTH {
                 return Err(VaultFailErrorKind::InvalidSecret.into());
             }
 
             let mut attrs = [0u8; ATTRS_BYTE_LENGTH];
             attrs.copy_from_slice(&data[0..ATTRS_BYTE_LENGTH]);
-            let attributes = SecretKeyAttributes::try_from(attrs)?;
+            let attributes = SecretAttributes::try_from(attrs)?;
 
-            Ok((
-                SecretKey::new(&data[ATTRS_BYTE_LENGTH..], attributes.xtype),
-                attributes,
-            ))
+            Ok((SecretKey(data[ATTRS_BYTE_LENGTH..].to_vec()), attributes))
         };
         let fs_path = path.clone();
 
@@ -76,7 +73,7 @@ impl FilesystemVault {
                             if !valid_id {
                                 eprintln!("invalid key file name: {:?}", entry);
                             } else {
-                                if let Err(e) = vault.secret_import(secret, *attrs) {
+                                if let Err(e) = vault.secret_import(&secret.0, *attrs) {
                                     eprintln!("{}", e);
                                 }
                             }
@@ -103,8 +100,8 @@ fn id_to_path(id: usize) -> PathBuf {
 fn fs_write_secret(
     path: PathBuf,
     ctx: &Box<dyn Secret>,
-    key: &SecretKey,
-    attrs: SecretKeyAttributes,
+    key: &[u8],
+    attrs: SecretAttributes,
 ) -> Result<(), VaultFailError> {
     let id = DefaultVaultSecret::downcast_secret(ctx)?.0;
 
@@ -131,12 +128,12 @@ impl Vault for FilesystemVault {
     /// Create a new secret key
     fn secret_generate(
         &mut self,
-        attributes: SecretKeyAttributes,
+        attributes: SecretAttributes,
     ) -> Result<Box<dyn Secret>, VaultFailError> {
         // write the secret to disk using the context id
         let ctx = self.v.secret_generate(attributes)?;
         let secret = self.v.secret_export(&ctx)?;
-        fs_write_secret(self.path.clone(), &ctx, &secret, attributes)?;
+        fs_write_secret(self.path.clone(), &ctx, &secret.0, attributes)?;
 
         Ok(ctx)
     }
@@ -144,8 +141,8 @@ impl Vault for FilesystemVault {
     /// Import a secret key into the vault
     fn secret_import(
         &mut self,
-        secret: &SecretKey,
-        attributes: SecretKeyAttributes,
+        secret: &[u8],
+        attributes: SecretAttributes,
     ) -> Result<Box<dyn Secret>, VaultFailError> {
         // write the secret to disk using the context id
         let ctx = self.v.secret_import(secret, attributes)?;
@@ -163,7 +160,7 @@ impl Vault for FilesystemVault {
     fn secret_attributes_get(
         &mut self,
         context: &Box<dyn Secret>,
-    ) -> Result<SecretKeyAttributes, VaultFailError> {
+    ) -> Result<SecretAttributes, VaultFailError> {
         self.v.secret_attributes_get(context)
     }
 
@@ -198,7 +195,7 @@ impl Vault for FilesystemVault {
     fn ec_diffie_hellman(
         &mut self,
         context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
+        peer_public_key: &[u8],
     ) -> Result<Box<dyn Secret>, VaultFailError> {
         self.v.ec_diffie_hellman(context, peer_public_key)
     }
@@ -211,10 +208,10 @@ impl Vault for FilesystemVault {
     fn ec_diffie_hellman_hkdf_sha256(
         &mut self,
         context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
+        peer_public_key: &[u8],
         salt: &Box<dyn Secret>,
         info: &[u8],
-        output_attributes: Vec<SecretKeyAttributes>,
+        output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         self.v.ec_diffie_hellman_hkdf_sha256(
             context,
@@ -233,7 +230,7 @@ impl Vault for FilesystemVault {
         salt: &Box<dyn Secret>,
         info: &[u8],
         ikm: Option<&Box<dyn Secret>>,
-        output_attributes: Vec<SecretKeyAttributes>,
+        output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
         self.v.hkdf_sha256(salt, info, ikm, output_attributes)
     }
@@ -277,7 +274,7 @@ impl Vault for FilesystemVault {
     fn verify(
         &mut self,
         signature: [u8; 64],
-        public_key: PublicKey,
+        public_key: &[u8],
         data: &[u8],
     ) -> Result<(), VaultFailError> {
         self.v.verify(signature, public_key, data)
@@ -301,10 +298,10 @@ mod tests {
             std::fs::remove_dir_all(path.clone()).unwrap();
         }
         let mut vault = FilesystemVault::new(path.clone()).unwrap();
-        let atts = SecretKeyAttributes {
-            purpose: SecretPurposeType::KeyAgreement,
+        let atts = SecretAttributes {
+            stype: SecretType::Curve25519,
             persistence: SecretPersistenceType::Persistent,
-            xtype: SecretKeyType::Curve25519,
+            length: CURVE25519_SECRET_LENGTH,
         };
         let sk1 = vault.secret_generate(atts).unwrap();
         let sk2 = vault.secret_generate(atts).unwrap();

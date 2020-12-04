@@ -36,7 +36,7 @@ defmodule Ockam.Vault.Software.Tests do
       vault_dir = Path.join(temp_dir, "a")
 
       {:ok, handle} = SoftwareVault.file_init(vault_dir)
-      attributes = %{type: :curve25519, persistence: :persistent, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :persistent, length: 32}
       {:ok, secret} = SoftwareVault.secret_generate(handle, attributes)
       assert secret != 0
       {:ok, data1} = SoftwareVault.secret_export(handle, secret)
@@ -65,7 +65,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.secret_generate/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
       {:ok, secret} = SoftwareVault.secret_generate(handle, attributes)
       assert secret != 0
     end
@@ -74,7 +74,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.secret_import/3" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
 
       key_data =
         <<120, 132, 203, 140, 22, 250, 109, 249, 155, 207, 102, 47, 186, 14, 109, 252, 110, 197,
@@ -88,7 +88,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.secret_export/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
 
       key_data =
         <<120, 132, 203, 140, 22, 250, 109, 249, 155, 207, 102, 47, 186, 14, 109, 252, 110, 197,
@@ -105,7 +105,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.secret_publickey_get/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
 
       key_data =
         <<120, 132, 203, 140, 22, 250, 109, 249, 155, 207, 102, 47, 186, 14, 109, 252, 110, 197,
@@ -126,19 +126,19 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.secret_attributes_get/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
       {:ok, secret} = SoftwareVault.secret_generate(handle, attributes)
 
       {:ok, attributes} = SoftwareVault.secret_attributes_get(handle, secret)
 
-      assert attributes == %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      assert attributes == %{type: :curve25519, persistence: :ephemeral, length: 32}
     end
   end
 
   describe "Ockam.Vault.Software.secret_destroy/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
       {:ok, secret} = SoftwareVault.secret_generate(handle, attributes)
 
       :ok = SoftwareVault.secret_destroy(handle, secret)
@@ -148,7 +148,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.ecdh/3" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
 
       secret_data =
         <<136, 150, 7, 173, 189, 63, 35, 127, 17, 37, 185, 84, 167, 243, 90, 61, 140, 73, 183, 46,
@@ -173,7 +173,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.hkdf_sha256/4" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :buffer, persistence: :ephemeral, purpose: :key_agreement, length: 32}
+      attributes = %{type: :buffer, persistence: :ephemeral, length: 32}
 
       salt_data =
         <<122, 235, 128, 126, 98, 120, 229, 181, 70, 49, 183, 146, 114, 203, 117, 56, 57, 97, 114,
@@ -190,14 +190,12 @@ defmodule Ockam.Vault.Software.Tests do
       attributes_out1 = %{
         type: :buffer,
         persistence: :ephemeral,
-        purpose: :key_agreement,
         length: 32
       }
 
       attributes_out2 = %{
         type: :buffer,
         persistence: :ephemeral,
-        purpose: :key_agreement,
         length: 32
       }
 
@@ -220,7 +218,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.aead_aes_gcm_encrypt/5" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :aes256, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :aes, persistence: :ephemeral, length: 32}
 
       key_data =
         <<60, 39, 4, 177, 160, 228, 92, 103, 87, 110, 249, 2, 175, 175, 130, 92, 196, 211, 49,
@@ -243,7 +241,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.aead_aes_gcm_decrypt/5" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :aes256, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :aes, persistence: :ephemeral, length: 32}
 
       key_data =
         <<60, 39, 4, 177, 160, 228, 92, 103, 87, 110, 249, 2, 175, 175, 130, 92, 196, 211, 49,
@@ -268,7 +266,7 @@ defmodule Ockam.Vault.Software.Tests do
   describe "Ockam.Vault.Software.aead_aes_gcm_encrypt_decrypt/5" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
-      attributes = %{type: :aes256, persistence: :ephemeral, purpose: :key_agreement}
+      attributes = %{type: :aes, persistence: :ephemeral, length: 32}
 
       {:ok, key} = SoftwareVault.secret_generate(handle, attributes)
 

@@ -89,7 +89,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp generate_e(%{vault: vault} = state) do
-    secret_attributes = %{type: :curve25519, persistence: :ephemeral, purpose: :key_agreement}
+    secret_attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
 
     with {:ok, private_key} <- Vault.secret_generate(vault, secret_attributes),
          {:ok, public_key} <- Vault.secret_publickey_get(vault, private_key) do
@@ -106,7 +106,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp setup_ck(%{vault: vault} = state) do
-    ck_attributes = %{type: :buffer, persistence: :ephemeral, purpose: :key_agreement}
+    ck_attributes = %{type: :buffer, persistence: :ephemeral, length: 32}
 
     case Vault.secret_import(vault, ck_attributes, zero_padded_protocol_name()) do
       {:ok, ck} -> {:ok, %{state | ck: ck}}
@@ -242,8 +242,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def mix_key(%{vault: vault, ck: ck} = state, input_key_material) do
-    ck_attributes = %{type: :buffer, length: 32, persistence: :ephemeral, purpose: :key_agreement}
-    k_attributes = %{type: :aes256, length: 32, persistence: :ephemeral, purpose: :key_agreement}
+    ck_attributes = %{type: :buffer, length: 32, persistence: :ephemeral}
+    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
     kdf_result = Vault.hkdf_sha256(vault, ck, input_key_material, [ck_attributes, k_attributes])
 
     with {:ok, [ck, k]} <- kdf_result do
@@ -256,7 +256,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def encrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, plaintext) do
-    k_attributes = %{type: :aes256, length: 32, persistence: :ephemeral, purpose: :key_agreement}
+    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
 
     with {:ok, k} <- Vault.secret_export(vault, k),
          {:ok, k} <- Vault.secret_import(vault, k_attributes, k),
@@ -268,7 +268,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def decrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, ciphertext_and_tag) do
-    k_attributes = %{type: :aes256, length: 32, persistence: :ephemeral, purpose: :key_agreement}
+    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
 
     with {:ok, k} <- Vault.secret_export(vault, k),
          {:ok, k} <- Vault.secret_import(vault, k_attributes, k),
@@ -280,8 +280,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def split(%{xx_key_establishment_state: %{vault: vault, ck: ck, h: h}} = data) do
-    k1_attributes = %{type: :aes256, length: 32, persistence: :ephemeral, purpose: :key_agreement}
-    k2_attributes = %{type: :aes256, length: 32, persistence: :ephemeral, purpose: :key_agreement}
+    k1_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
+    k2_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
 
     with {:ok, [k1, k2]} <- Vault.hkdf_sha256(vault, ck, [k1_attributes, k2_attributes]) do
       {:ok, {k1, k2, h}, data}

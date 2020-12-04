@@ -57,7 +57,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
         secret_attributes = %{
           type: :curve25519,
           persistence: :ephemeral,
-          purpose: :key_agreement
+          length: 32
         }
 
         private_key = Map.get(test_case, k)
