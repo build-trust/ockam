@@ -65,104 +65,12 @@ use failure::_core::fmt::Debug;
 use types::*;
 
 /// Secret
-pub trait Secret: Debug + Sync + Send + 'static + downcast::Any {}
+pub trait Secret: Debug + Sync + Send + 'static + downcast::Any + Zeroize {}
 
 downcast!(dyn Secret);
 
 /// Represents the methods available to a Vault
 pub trait Vault: Zeroize {
-    /// Generate random bytes and fill them into `data`
-    fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError>;
-    /// Compute the SHA-256 digest given input `data`
-    fn sha256<B: AsRef<[u8]>>(&self, data: B) -> Result<[u8; 32], VaultFailError>;
-    /// Create a new secret key
-    fn secret_generate(
-        &mut self,
-        attributes: SecretKeyAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
-    /// Import a secret key into the vault
-    fn secret_import(
-        &mut self,
-        secret: &SecretKey,
-        attributes: SecretKeyAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
-    /// Export a secret key from the vault
-    fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError>;
-    /// Get the attributes for a secret key
-    fn secret_attributes_get(
-        &mut self,
-        context: &Box<dyn Secret>,
-    ) -> Result<SecretKeyAttributes, VaultFailError>;
-    /// Return the associated public key given the secret key
-    fn secret_public_key_get(
-        &mut self,
-        context: &Box<dyn Secret>,
-    ) -> Result<PublicKey, VaultFailError>;
-    /// Remove a secret key from the vault
-    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError>;
-    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
-    /// and the specified uncompressed public key
-    fn ec_diffie_hellman(
-        &mut self,
-        context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
-    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
-    /// and the specified uncompressed public key and return the HKDF-SHA256
-    /// output using the DH value as the HKDF ikm
-    fn ec_diffie_hellman_hkdf_sha256(
-        &mut self,
-        context: &Box<dyn Secret>,
-        peer_public_key: PublicKey,
-        salt: &Box<dyn Secret>,
-        info: &[u8],
-        output_attributes: Vec<SecretKeyAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
-    /// Compute the HKDF-SHA256 using the specified salt and input key material
-    /// and return the output key material of the specified length
-    fn hkdf_sha256(
-        &mut self,
-        salt: &Box<dyn Secret>,
-        info: &[u8],
-        ikm: Option<&Box<dyn Secret>>,
-        output_attributes: Vec<SecretKeyAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
-    /// Encrypt a payload using AES-GCM
-    fn aead_aes_gcm_encrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
-        &mut self,
-        context: &Box<dyn Secret>,
-        plaintext: B,
-        nonce: C,
-        aad: D,
-    ) -> Result<Vec<u8>, VaultFailError>;
-    /// Decrypt a payload using AES-GCM
-    fn aead_aes_gcm_decrypt<B: AsRef<[u8]>, C: AsRef<[u8]>, D: AsRef<[u8]>>(
-        &mut self,
-        context: &Box<dyn Secret>,
-        cipher_text: B,
-        nonce: C,
-        aad: D,
-    ) -> Result<Vec<u8>, VaultFailError>;
-    /// Close and release all resources in use by the vault
-    fn deinit(&mut self);
-    /// Generate a signature
-    fn sign<B: AsRef<[u8]>>(
-        &mut self,
-        secret_key: &Box<dyn Secret>,
-        data: B,
-    ) -> Result<[u8; 64], VaultFailError>;
-    /// Verify a signature
-    fn verify<B: AsRef<[u8]>>(
-        &mut self,
-        signature: [u8; 64],
-        public_key: PublicKey,
-        data: B,
-    ) -> Result<(), VaultFailError>;
-}
-
-/// The `DynVault` trait is a modification of `Vault` trait suitable
-/// for trait objects.
-pub trait DynVault {
     /// Generate random bytes and fill them into `data`
     fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError>;
     /// Compute the SHA-256 digest given input `data`

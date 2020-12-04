@@ -29,6 +29,10 @@ impl DefaultVaultSecret {
     }
 }
 
+impl Zeroize for DefaultVaultSecret {
+    fn zeroize(&mut self) {}
+}
+
 impl Secret for DefaultVaultSecret {}
 
 /// A pure rust implementation of a vault.
