@@ -2,3 +2,4 @@ target
 .cargo
 .gitignore
 ockamd_vault
+Cargo.lock
