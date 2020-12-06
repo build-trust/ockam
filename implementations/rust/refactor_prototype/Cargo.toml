@@ -7,10 +7,9 @@ members = [
     "node",
     "ockam",
     "print_worker",
-    "queue_topic",
     "tcp_manager",
     "worker_manager",
-    "queue_topic",
+#    "queue_topic",
 ]
 
 default-members = [
@@ -21,7 +20,6 @@ default-members = [
     "ockam",
     "print_worker",
     "tcp_manager",
-    "queue_topic",
     "worker_manager",
-    "queue_topic",
+#    "queue_topic",
 ]
