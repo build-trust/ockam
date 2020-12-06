@@ -34,7 +34,7 @@ impl Node {
         wm.register_worker(address, message_handler, poll_handler)
     }
 
-    pub fn run(&mut self) -> Result<bool, String> {
+    pub fn run(&mut self) -> Result<(), String> {
 
         // 1. Create a queue of poll traits for anything that wants to be polled
         let mut modules_to_poll: VecDeque<Rc<RefCell<dyn Poll>>> = VecDeque::new();
@@ -55,8 +55,7 @@ impl Node {
                         if !keep_going { break; }
                     }
                     Err(s) => {
-                        println!("Exiting due to error: {}", s);
-                        break;
+                        return Err(s);
                     }
                 }
             }
@@ -65,13 +64,11 @@ impl Node {
                     if !keep_going { break; }
                 }
                 Err(s) => {
-                    println!("Exiting due to error: {}", s);
-                    break;
+                    return Err(s);
                 }
             }
             thread::sleep(time::Duration::from_millis(500));
         }
-
-        Ok(true)
+        Ok(())
     }
 }
