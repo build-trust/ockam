@@ -1,3 +1,4 @@
+use ockam_node::{Node};
 extern crate alloc;
 use alloc::vec::*;
 use alloc::rc::Rc;
@@ -5,26 +6,26 @@ use core::cell::RefCell;
 use ockam_no_std_traits::{MessageHandler, Enqueue, Poll};
 use ockam_message::message::{Message, Route, RouterAddress, MessageType};
 use alloc::string::String;
-use hashbrown::HashMap;
 use alloc::collections::VecDeque;
 use core::ops::Deref;
 use libc_print::*;
 
-pub struct  PrintWorker {
+pub struct TestWorker {
     address: String,
     text: String,
+    count: usize,
 }
 
-impl PrintWorker {
+impl TestWorker {
     pub fn new(address: String, text: String) -> Self {
-        PrintWorker{ address, text }
+        TestWorker { address, text, count: 0 }
     }
 }
 
-impl Poll for PrintWorker {
+impl Poll for TestWorker {
     fn poll(&mut self, q_ref: Rc<RefCell<dyn Enqueue<Message>>>) -> Result<bool, String> {
         libc_println!("{} is polling", self.text);
-        let msg_text = "sent to you by PrintWorker".as_bytes();
+        let msg_text = "sent to you by TestWorker".as_bytes();
         let mut onward_addresses = Vec::new();
 
         onward_addresses.push(RouterAddress::worker_router_address_from_str("aabbccdd".into()).unwrap());
@@ -42,9 +43,24 @@ impl Poll for PrintWorker {
     }
 }
 
-impl MessageHandler for PrintWorker {
+impl MessageHandler for TestWorker {
     fn handle_message(&mut self, message: Message, q_ref: Rc<RefCell<dyn Enqueue<Message>>>) -> Result<bool, String> {
-        libc_println!("Printworker: {}", std::str::from_utf8(&message.message_body).unwrap());
+        libc_println!("TestWorker: {}", std::str::from_utf8(&message.message_body).unwrap());
+        self.count += 1;
+        if self.count > 3 { return Ok(false); }
         Ok(true)
     }
+}
+
+#[test]
+fn test_node() {
+    // create node
+    let mut node = Node::new().unwrap();
+    // 4. Now create the worker(s) and register them with the worker manager
+    let mut test_worker =
+        Rc::new(RefCell::new(TestWorker::new("aabbccdd".into(), "text".into())));
+
+    node.register_worker("aabbccdd".into(), Some(test_worker.clone()), Some(test_worker.clone()));
+
+    node.run();
 }
