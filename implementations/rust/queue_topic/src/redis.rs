@@ -1,8 +1,8 @@
 use crate::queue::{Queue, QueueHandle, QueueMessage, QueueWorker, QueueWorkerHandle};
 use simple_redis::client::Client;
+use simple_redis::RedisResult;
 use std::cell::RefCell;
 use std::rc::Rc;
-use simple_redis::RedisResult;
 
 pub struct RedisQueue {
     address: String,
@@ -18,9 +18,7 @@ impl Queue for RedisQueue {
         match String::from_utf8(message.body) {
             Ok(s) => match self.client.borrow_mut().lpush(&self.address, s.as_str()) {
                 Ok(_) => (),
-                Err(e) => {
-                    println!("Redis enqueue failure: {}", e)
-                }
+                Err(e) => println!("Redis enqueue failure: {}", e),
             },
             _ => (),
         };
@@ -62,8 +60,8 @@ impl QueueWorker for RedisQueueWorker {
 
     fn remove_queue(&mut self, queue_name: &str) {
         match self.client.borrow_mut().ltrim(queue_name, -1, 0) {
-            Err(e) => { println!("Redis remove failed: {}", e)},
-            _ => ()
+            Err(e) => println!("Redis remove failed: {}", e),
+            _ => (),
         }
     }
 }

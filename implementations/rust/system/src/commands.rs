@@ -34,7 +34,8 @@ pub enum RouterCommand {
 // channel_tx
 #[derive(Debug)]
 pub enum ChannelCommand {
-    Initiate(Route, Address, Option<Arc<Box<dyn Secret>>>), /* route to destination, return local
+    Initiate(Route, Address, Option<Arc<Box<dyn Secret>>>), /* route to destination, return
+                                                             * local
                                                              * address */
     SendMessage(Message),
     ReceiveMessage(Message),
