@@ -5,4 +5,5 @@ pub use ockam_node as node;
 pub use ockam_tcp_manager as tcp_manager;
 pub use ockam_worker_manager as worker_manager;
 pub use ockam_print_worker as print_worker;
-pub use ockam_trait_queue as trait_queue;
+pub use ockam_queue_worker as queue_worker;
+pub use ockam_topic_queue as topic_queue;

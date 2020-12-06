@@ -5,11 +5,10 @@ authors = ["Ockam Developers"]
 edition = "2018"
 
 [dependencies]
-ockam-message = { version = "0.1", path = "../message", default-features = false }
+ockam-message = { version = "0.1", path = "../../message", default-features = false }
 ockam-message-router = { version = "0.1", path = "../message_router", default-features = false }
 ockam-no-std-traits = { version = "0.1", path = "../no_std_traits", default-features = false }
 ockam-node = { version = "0.1", path = "../node", default-features = false }
 ockam-worker-manager = { version = "0.1", path = "../worker_manager", default-features = false }
 ockam-tcp-manager = { version = "0.1", path = "../tcp_manager", default-features = false }
 ockam-print-worker = { version = "0.1", path = "../print_worker", default-features = false }
-ockam-trait-queue = { version = "0.1", path = "../trait_queue", default-features = false }

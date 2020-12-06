@@ -1,25 +1,27 @@
 [workspace]
 
 members = [
-    "message",
+#    "message",
     "message_router",
     "no_std_traits",
     "node",
     "ockam",
     "print_worker",
+    "queue_topic",
     "tcp_manager",
-    "trait_queue",
     "worker_manager",
+    "queue_topic",
 ]
 
 default-members = [
-    "message",
+#    "message",
     "message_router",
     "no_std_traits",
     "node",
     "ockam",
     "print_worker",
     "tcp_manager",
-    "trait_queue",
+    "queue_topic",
     "worker_manager",
+    "queue_topic",
 ]
