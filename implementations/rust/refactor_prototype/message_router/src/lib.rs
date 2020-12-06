@@ -60,7 +60,14 @@ impl Poll for MessageRouter {
                 Some( h) => {
                     let mut handler = h.clone();
                     let mut handler = handler.deref().borrow_mut();
-                    handler.handle_message(m, q_ref.clone());
+                    match handler.handle_message(m, q_ref.clone()) {
+                        Ok(keep_going) => {
+                            if !keep_going { return Ok(false); }
+                        }
+                        Err(s) => {
+                            return Err(s);
+                        }
+                    }
                 }
                 None => {
                     return Err("no handler for message type".into());

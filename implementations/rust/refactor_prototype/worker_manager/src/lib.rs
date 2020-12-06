@@ -44,8 +44,7 @@ impl MessageHandler for WorkerManager {
         let address = message.onward_route.addresses[0].address.as_string();
         if let Some(h) = self.message_handlers.get_mut(&address) {
             let mut handler = h.deref().borrow_mut();
-            handler.handle_message(message, q_ref);
-            Ok(true)
+            handler.handle_message(message, q_ref)
         } else {
             Err("message handler not found".into())
         }

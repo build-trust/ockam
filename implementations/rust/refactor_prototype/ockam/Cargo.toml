@@ -11,4 +11,3 @@ ockam-no-std-traits = { version = "0.1", path = "../no_std_traits", default-feat
 ockam-node = { version = "0.1", path = "../node", default-features = false }
 ockam-worker-manager = { version = "0.1", path = "../worker_manager", default-features = false }
 ockam-tcp-manager = { version = "0.1", path = "../tcp_manager", default-features = false }
-ockam-print-worker = { version = "0.1", path = "../print_worker", default-features = false }

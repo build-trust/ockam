@@ -15,7 +15,6 @@ use ockam_no_std_traits::{Enqueue, MessageHandler, Poll};
 use ockam_tcp_manager::tcp_manager::TcpManager;
 use std::thread;
 use ockam_worker_manager::WorkerManager;
-use ockam_print_worker::PrintWorker;
 
 pub struct Node {
     worker_manager: Rc<RefCell<WorkerManager>>
@@ -51,10 +50,26 @@ impl Node {
         loop {
             for p_ref in modules_to_poll.iter() {
                 let mut p = p_ref.deref().borrow_mut();
-                p.poll(q.clone());
+                match p.poll(q.clone()) {
+                    Ok(keep_going) => {
+                        if !keep_going { break; }
+                    }
+                    Err(s) => {
+                        println!("Exiting due to error: {}", s);
+                        break;
+                    }
+                }
             }
-            message_router.poll(q.clone());
-            thread::sleep(time::Duration::from_millis(3000));
+            match message_router.poll(q.clone()) {
+                Ok(keep_going) => {
+                    if !keep_going { break; }
+                }
+                Err(s) => {
+                    println!("Exiting due to error: {}", s);
+                    break;
+                }
+            }
+            thread::sleep(time::Duration::from_millis(500));
         }
 
         Ok(true)

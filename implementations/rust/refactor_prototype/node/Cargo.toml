@@ -4,10 +4,11 @@ version = "0.1.0"
 authors = ["Robin Budd <robin@ockam.io>"]
 edition = "2018"
 
-[[bin]]
-name = "Node"
-path = "src/bin/main.rs"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["rlib"]
+
+[profile.release]
+lto = true
 
 [dependencies]
 ockam-message = { version = "0.1", path = "../../message" }
@@ -15,4 +16,5 @@ ockam-message-router = { version = "0.1", path = "../message_router" }
 ockam-no-std-traits = { version = "0.1", path = "../no_std_traits" }
 ockam-tcp-manager = {version = "0.1", path = "../tcp_manager"}
 ockam-worker-manager = {version = "0.1", path = "../worker_manager"}
-ockam-print-worker = {version = "0.1", path = "../print_worker"}
+libc = "0.2.80"
+libc-print = "0.1.14"
