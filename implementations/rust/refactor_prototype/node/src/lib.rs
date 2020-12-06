@@ -17,11 +17,22 @@ use std::thread;
 use ockam_worker_manager::WorkerManager;
 use ockam_print_worker::PrintWorker;
 
-pub struct Node {}
+pub struct Node {
+    worker_manager: Rc<RefCell<WorkerManager>>
+}
 
 impl Node {
     pub fn new() -> Result<Self, String> {
-        Ok(Node {})
+        Ok(Node {worker_manager: Rc::new(RefCell::new(WorkerManager::new()))})
+    }
+
+    pub fn register_worker(&mut self,
+                           address: String,
+                           message_handler: Option<Rc<RefCell<dyn MessageHandler>>>,
+                           poll_handler: Option<Rc<RefCell<dyn Poll>>>) -> Result<bool, String> {
+
+        let mut wm = self.worker_manager.deref().borrow_mut();
+        wm.register_worker(address, message_handler, poll_handler)
     }
 
     pub fn run(&mut self) -> Result<bool, String> {
@@ -34,24 +45,8 @@ impl Node {
         let mut message_router = MessageRouter::new().unwrap();
         let (q, mut message_router) = message_router.get_enqueue_trait();
 
-        // 3. Create the worker manager, register its as an address-type handler, and add it to the queue of things to poll.
-        //    The worker manager is responsible for routing messages of AddressType::Worker
-        //    and polling workers that register for it.
-        let mut worker_manager = Rc::new(RefCell::new(WorkerManager::new()));
-        modules_to_poll.push_back(worker_manager.clone());
-        message_router.register_address_type_handler(AddressType::Worker, worker_manager.clone());
-
-        // 4. Now create the worker(s) and register them with the worker manager
-        // ToDo: move worker creation out of node
-        let mut print_worker =
-            Rc::new(RefCell::new(PrintWorker::new("aabbccdd".into(), "text".into())));
-
-        // This scoping is required so the borrow of the workers is released
-        {
-            let wm = worker_manager.clone();
-            let mut wm = wm.deref().borrow_mut();
-            wm.register_worker("aabbccdd".into(), Some(print_worker.clone()), Some(print_worker.clone()));
-        }
+        modules_to_poll.push_back(self.worker_manager.clone());
+        message_router.register_address_type_handler(AddressType::Worker, self.worker_manager.clone());
 
         loop {
             for p_ref in modules_to_poll.iter() {
