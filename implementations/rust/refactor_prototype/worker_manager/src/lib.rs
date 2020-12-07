@@ -3,7 +3,7 @@ extern crate alloc;
 use alloc::vec::*;
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use ockam_no_std_traits::{HandleMessage, RouteMessage, Poll};
+use ockam_no_std_traits::{ProcessMessage, RouteMessage, Poll, ProcessMessageHandle, PollHandle, RouteMessageHandle};
 use ockam_message::message::{Message, RouterAddress, MessageType};
 use alloc::string::String;
 use hashbrown::HashMap;
@@ -12,8 +12,8 @@ use core::ops::Deref;
 use libc_print::*;
 
 pub struct WorkerManager {
-    message_handlers: HashMap<String, Rc<RefCell<dyn HandleMessage>>>,
-    poll_handlers: VecDeque<Rc<RefCell<dyn Poll>>>
+    message_handlers: HashMap<String, ProcessMessageHandle>,
+    poll_handlers: VecDeque<PollHandle>
 }
 
 impl WorkerManager {
@@ -24,8 +24,8 @@ impl WorkerManager {
     pub fn register_worker(
         &mut self,
         address: String,
-        message_handler: Option<Rc<RefCell<dyn HandleMessage>>>,
-        poll_handler: Option<Rc<RefCell<dyn Poll>>>
+        message_handler: Option<ProcessMessageHandle>,
+        poll_handler: Option<PollHandle>
     ) -> Result<bool, String> {
         libc_println!("registered {:?}", address);
         if let Some(mh) = message_handler {
@@ -39,8 +39,8 @@ impl WorkerManager {
 
 }
 
-impl HandleMessage for WorkerManager {
-    fn handle_message(&mut self, message: Message, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String> {
+impl ProcessMessage for WorkerManager {
+    fn handle_message(&mut self, message: Message, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         let address = message.onward_route.addresses[0].address.as_string();
         if let Some(h) = self.message_handlers.get_mut(&address) {
             let mut handler = h.deref().borrow_mut();
@@ -52,7 +52,7 @@ impl HandleMessage for WorkerManager {
 }
 
 impl Poll for WorkerManager {
-    fn poll(&mut self, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String> {
+    fn poll(&mut self, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         libc_println!("Poll for WorkerManager");
         for p in self.poll_handlers.iter_mut() {
             let mut handler = p.deref().borrow_mut();

@@ -4,7 +4,7 @@ use crate::tcp_worker::TcpTransport;
 use alloc::rc::Rc;
 use libc_print::*;
 use ockam_message::message::{AddressType, Message, MessageType, Route};
-use ockam_no_std_traits::{RouteMessage, HandleMessage, Poll};
+use ockam_no_std_traits::{RouteMessage, ProcessMessage, Poll, RouteMessageHandle};
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::io;
@@ -13,13 +13,13 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 pub struct TcpManager {
-    connections: HashMap<String, Box<dyn HandleMessage>>,
+    connections: HashMap<String, Box<dyn ProcessMessage>>,
     listener: Option<TcpListener>,
 }
 
 impl TcpManager {
     pub fn new(listen_addr: Option<&str>) -> Result<TcpManager, String> {
-        let connections: HashMap<String, Box<dyn HandleMessage>> = HashMap::new();
+        let connections: HashMap<String, Box<dyn ProcessMessage>> = HashMap::new();
         Ok(TcpManager {
             connections,
             listener: None,
@@ -27,11 +27,11 @@ impl TcpManager {
     }
 }
 
-impl HandleMessage for TcpManager {
+impl ProcessMessage for TcpManager {
     fn handle_message(
         &mut self,
         message: Message,
-        q_ref: Rc<RefCell<dyn RouteMessage<Message>>>,
+        q_ref: RouteMessageHandle<Message>,
     ) -> Result<bool, String> {
         libc_println!("routing address type tcp");
         Ok(true)
@@ -39,7 +39,7 @@ impl HandleMessage for TcpManager {
 }
 
 impl Poll for TcpManager {
-    fn poll(&mut self, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String> {
+    fn poll(&mut self, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         libc_println!("polling for tcpmanager");
         let m = Message {
             onward_route: Route { addresses: vec![] },

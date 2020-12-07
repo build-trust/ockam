@@ -8,21 +8,23 @@ use core::cell::RefCell;
 use core::ops::DerefMut;
 use ockam_message::message::{AddressType, Message};
 
-pub trait HandleMessage {
+pub trait ProcessMessage {
     fn handle_message(
         &mut self,
         message: Message, //todo - add context
-        queue: Rc<RefCell<dyn RouteMessage<Message>>>,
+        queue: RouteMessageHandle<Message>,
     ) -> Result<bool, String>;
 }
+pub type ProcessMessageHandle = Rc<RefCell<dyn ProcessMessage>>;
 
 /// Poll trait is for workers to get cpu cycles on a regular basis.
 ///
 /// A worker gets polled by registering its address and Poll trait with the Node.
 /// poll() will be called once each polling interval.
 pub trait Poll { //todo - add context
-    fn poll(&mut self, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String>;
+    fn poll(&mut self, q_ref: RouteMessageHandle<Message>) -> Result<bool, String>;
 }
+pub type PollHandle = Rc<RefCell<dyn Poll>>;
 
 /// Enqueue trait is used by Workers to enqueue messages for routing.
 ///
@@ -30,6 +32,7 @@ pub trait Poll { //todo - add context
 pub trait RouteMessage<T> {
     fn route_message(&mut self, t: T) -> Result<bool, String>;
 }
+pub type RouteMessageHandle<T> = Rc<RefCell<dyn RouteMessage<T>>>;
 
 impl<T> RouteMessage<T> for VecDeque<T> {
     fn route_message(&mut self, t: T) -> Result<bool, String> {

@@ -3,7 +3,7 @@ extern crate alloc;
 use alloc::vec::*;
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use ockam_no_std_traits::{HandleMessage, RouteMessage, Poll};
+use ockam_no_std_traits::{ProcessMessage, RouteMessage, Poll, RouteMessageHandle};
 use ockam_message::message::{Message, Route, RouterAddress, MessageType};
 use alloc::string::String;
 use alloc::collections::VecDeque;
@@ -23,7 +23,7 @@ impl TestWorker {
 }
 
 impl Poll for TestWorker {
-    fn poll(&mut self, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String> {
+    fn poll(&mut self, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         libc_println!("{} is polling", self.text);
         let msg_text = "sent to you by TestWorker".as_bytes();
         let mut onward_addresses = Vec::new();
@@ -43,8 +43,8 @@ impl Poll for TestWorker {
     }
 }
 
-impl HandleMessage for TestWorker {
-    fn handle_message(&mut self, message: Message, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String> {
+impl ProcessMessage for TestWorker {
+    fn handle_message(&mut self, message: Message, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         libc_println!("TestWorker: {}", std::str::from_utf8(&message.message_body).unwrap());
         self.count += 1;
         if self.count > 3 { return Ok(false); }

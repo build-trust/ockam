@@ -11,7 +11,7 @@ use core::cell::RefCell;
 use core::ops::Deref;
 use core::time;
 use ockam_message_router::MessageRouter;
-use ockam_no_std_traits::{RouteMessage, HandleMessage, Poll};
+use ockam_no_std_traits::{RouteMessage, ProcessMessage, Poll, ProcessMessageHandle, PollHandle};
 use ockam_tcp_manager::tcp_manager::TcpManager;
 use std::thread;
 use ockam_worker_manager::WorkerManager;
@@ -27,8 +27,8 @@ impl Node {
 
     pub fn register_worker(&mut self,
                            address: String,
-                           message_handler: Option<Rc<RefCell<dyn HandleMessage>>>,
-                           poll_handler: Option<Rc<RefCell<dyn Poll>>>) -> Result<bool, String> {
+                           message_handler: Option<ProcessMessageHandle>,
+                           poll_handler: Option<PollHandle>) -> Result<bool, String> {
 
         let mut wm = self.worker_manager.deref().borrow_mut();
         wm.register_worker(address, message_handler, poll_handler)
@@ -37,7 +37,7 @@ impl Node {
     pub fn run(&mut self) -> Result<(), String> {
 
         // 1. Create a queue of poll traits for anything that wants to be polled
-        let mut modules_to_poll: VecDeque<Rc<RefCell<dyn Poll>>> = VecDeque::new();
+        let mut modules_to_poll: VecDeque<PollHandle> = VecDeque::new();
 
         // 2. Create the message router and get the Enqueue trait, which is used
         //    by workers and message handlers to queue up any Messages they generate

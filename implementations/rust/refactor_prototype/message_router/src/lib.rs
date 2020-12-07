@@ -9,14 +9,14 @@ use core::cell::RefCell;
 use core::ops::Deref;
 use libc_print::*;
 use ockam_message::message::{AddressType, Message, MessageType};
-use ockam_no_std_traits::{RouteMessage, HandleMessage, Poll};
+use ockam_no_std_traits::{RouteMessage, ProcessMessage, Poll, ProcessMessageHandle, RouteMessageHandle};
 
 pub struct MessageRouter {
-    handlers: [Option<Rc<RefCell<dyn HandleMessage>>>; 256],
+    handlers: [Option<ProcessMessageHandle>; 256],
     message_queue: Rc<RefCell<VecDeque<Message>>>,
 }
 
-const INIT_TO_NO_RECORD: Option<Rc<RefCell<dyn HandleMessage>>> = None;
+const INIT_TO_NO_RECORD: Option<ProcessMessageHandle> = None;
 
 impl MessageRouter {
     pub fn new() -> Result<Self, String> {
@@ -29,14 +29,14 @@ impl MessageRouter {
     pub fn register_address_type_handler(
         &mut self,
         address_type: AddressType,
-        handler: Rc<RefCell<dyn HandleMessage>>,
+        handler: ProcessMessageHandle,
     ) -> Result<bool, String> {
         self.handlers[address_type as usize] = Some(handler);
         libc_println!("registered {:?}", address_type);
         Ok(true)
     }
 
-    pub fn get_enqueue_trait(self) -> (Rc<RefCell<dyn RouteMessage<Message>>>, Self) {
+    pub fn get_enqueue_trait(self) -> (RouteMessageHandle<Message>, Self) {
         (self.message_queue.clone(), self)
     }
 }
@@ -50,7 +50,7 @@ impl RouteMessage<Message> for MessageRouter {
 }
 
 impl Poll for MessageRouter {
-    fn poll(&mut self, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String> {
+    fn poll(&mut self, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         libc_println!("in MessageRouter: Poll");
         let mut q = self.message_queue.deref().borrow_mut();
         for m in q.drain(..) {
