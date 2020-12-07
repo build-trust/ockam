@@ -389,7 +389,10 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             .send(Router(RouterCommand::SendMessage(m)))
             .unwrap();
         let completed_key_exchange = agreement.finalize()?;
-        let mut static_public_key = completed_key_exchange.remote_static_public_key.0.clone();
+        let mut static_public_key = completed_key_exchange
+            .remote_static_public_key
+            .as_ref()
+            .to_vec();
         channel.completed_key_exchange = Some(completed_key_exchange);
         channel.route = return_route;
 
@@ -431,8 +434,10 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             // key agreement has finished, now can process any pending messages
             let pending = channel.pending.clone();
             let completed_key_exchange = agreement.finalize()?;
-            let remote_static_public_key =
-                completed_key_exchange.remote_static_public_key.0.clone();
+            let remote_static_public_key = completed_key_exchange
+                .remote_static_public_key
+                .as_ref()
+                .to_vec();
             channel.completed_key_exchange = Some(completed_key_exchange);
             channel.route = return_route;
             let pending = channel.pending.clone();

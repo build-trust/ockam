@@ -145,16 +145,13 @@ impl<'a> Node<'a> {
 
         if matches!(config.role(), Role::Sink) && resp_key_ctx.is_some() {
             if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
-                println!(
-                    "Responder public key: {}",
-                    hex::encode(resp_key.0.as_slice())
-                );
+                println!("Responder public key: {}", hex::encode(resp_key.as_ref()));
             }
         }
 
         if matches!(config.role(), Role::Router) && resp_key_ctx.is_some() {
             if let Ok(resp_key) = vault.secret_public_key_get(resp_key_ctx.as_ref().unwrap()) {
-                println!("Router public key: {}", hex::encode(resp_key.0.as_slice()));
+                println!("Router public key: {}", hex::encode(resp_key.as_ref()));
             }
         }
 

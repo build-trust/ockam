@@ -33,7 +33,10 @@ impl FilesystemVault {
             attrs.copy_from_slice(&data[0..ATTRS_BYTE_LENGTH]);
             let attributes = SecretAttributes::try_from(attrs)?;
 
-            Ok((SecretKey(data[ATTRS_BYTE_LENGTH..].to_vec()), attributes))
+            Ok((
+                SecretKey::new(data[ATTRS_BYTE_LENGTH..].to_vec()),
+                attributes,
+            ))
         };
         let fs_path = path.clone();
 
@@ -73,7 +76,7 @@ impl FilesystemVault {
                             if !valid_id {
                                 eprintln!("invalid key file name: {:?}", entry);
                             } else {
-                                if let Err(e) = vault.secret_import(&secret.0, *attrs) {
+                                if let Err(e) = vault.secret_import(secret.as_ref(), *attrs) {
                                     eprintln!("{}", e);
                                 }
                             }
@@ -133,7 +136,7 @@ impl Vault for FilesystemVault {
         // write the secret to disk using the context id
         let ctx = self.v.secret_generate(attributes)?;
         let secret = self.v.secret_export(&ctx)?;
-        fs_write_secret(self.path.clone(), &ctx, &secret.0, attributes)?;
+        fs_write_secret(self.path.clone(), &ctx, secret.as_ref(), attributes)?;
 
         Ok(ctx)
     }

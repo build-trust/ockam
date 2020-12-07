@@ -81,7 +81,7 @@ impl DefaultVault {
         vault_entry: &VaultEntry,
         peer_public_key: &[u8],
     ) -> Result<Vec<u8>, VaultFailError> {
-        let key = vault_entry.key.0.as_slice();
+        let key = vault_entry.key.as_ref();
         match vault_entry.key_attributes.stype {
             SecretType::Curve25519
                 if peer_public_key.len() == CURVE25519_PUBLIC_LENGTH
@@ -140,7 +140,7 @@ impl DefaultVault {
 
         let okm = {
             let mut okm = vec![0u8; okm_len];
-            let prk = hkdf::Hkdf::<Sha256>::new(Some(&salt.key.0), ikm);
+            let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key.as_ref()), ikm);
             prk.expand(info, okm.as_mut_slice())?;
             okm
         };
@@ -205,20 +205,6 @@ impl Zeroize for VaultEntry {
 
 zdrop_impl!(VaultEntry);
 
-impl Default for VaultEntry {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            key_attributes: SecretAttributes {
-                stype: SecretType::Curve25519,
-                persistence: SecretPersistence::Ephemeral,
-                length: 0,
-            },
-            key: SecretKey(Vec::new()),
-        }
-    }
-}
-
 macro_rules! encrypt_op_impl {
     ($a:expr,$aad:expr,$nonce:expr,$text:expr,$type:ident,$op:ident) => {{
         let key = GenericArray::from_slice($a.as_ref());
@@ -240,10 +226,10 @@ macro_rules! encrypt_impl {
         }
         match $entry.key_attributes.length {
             AES128_SECRET_LENGTH => {
-                encrypt_op_impl!($entry.key.0, $aad, $nonce, $text, Aes128Gcm, $op)
+                encrypt_op_impl!($entry.key.as_ref(), $aad, $nonce, $text, Aes128Gcm, $op)
             }
             AES256_SECRET_LENGTH => {
-                encrypt_op_impl!($entry.key.0, $aad, $nonce, $text, Aes256Gcm, $op)
+                encrypt_op_impl!($entry.key.as_ref(), $aad, $nonce, $text, Aes256Gcm, $op)
             }
             _ => Err($err.into()),
         }
@@ -271,7 +257,7 @@ impl Vault for DefaultVault {
         let key = match attributes.stype {
             SecretType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
-                SecretKey(sk.to_bytes().to_vec())
+                SecretKey::new(sk.to_bytes().to_vec())
             }
             SecretType::Aes => {
                 if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
@@ -282,18 +268,18 @@ impl Vault for DefaultVault {
                 };
                 let mut key = vec![0u8; length];
                 rng.fill_bytes(&mut key);
-                SecretKey(key.to_vec())
+                SecretKey::new(key)
             }
             SecretType::P256 => {
                 let key = p256::SecretKey::random(&mut rng);
                 let mut value = [0u8; 32];
                 value.copy_from_slice(&key.secret_scalar().to_bytes());
-                SecretKey(value.to_vec())
+                SecretKey::new(value.to_vec())
             }
             SecretType::Buffer => {
                 let mut key = vec![0u8; attributes.length];
                 rng.fill_bytes(key.as_mut_slice());
-                SecretKey(key)
+                SecretKey::new(key)
             }
         };
         self.next_id += 1;
@@ -320,7 +306,7 @@ impl Vault for DefaultVault {
             VaultEntry {
                 id: self.next_id,
                 key_attributes: attributes,
-                key: SecretKey(secret.to_vec()),
+                key: SecretKey::new(secret.to_vec()),
             },
         );
         Ok(Box::new(DefaultVaultSecret(self.next_id)))
@@ -347,24 +333,23 @@ impl Vault for DefaultVault {
 
         match entry.key_attributes.stype {
             SecretType::Curve25519 => {
-                if entry.key.0.len() != CURVE25519_SECRET_LENGTH {
+                if entry.key.as_ref().len() != CURVE25519_SECRET_LENGTH {
                     return Err(VaultFailErrorKind::PublicKey.into());
                 }
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
-                    entry.key.0.as_slice(),
+                    entry.key.as_ref(),
                     0,
                     CURVE25519_SECRET_LENGTH
                 ]);
                 let pk = x25519_dalek::PublicKey::from(&sk);
-                Ok(PublicKey(pk.to_bytes().to_vec()))
+                Ok(PublicKey::new(pk.to_bytes().to_vec()))
             }
             SecretType::P256 => {
-                let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(
-                    entry.key.0.as_slice(),
-                ));
+                let sk =
+                    Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(entry.key.as_ref()));
                 let pp = ProjectivePoint::generator() * sk;
                 let ap = p256::elliptic_curve::sec1::EncodedPoint::from(pp.to_affine());
-                Ok(PublicKey(ap.as_bytes().to_vec()))
+                Ok(PublicKey::new(ap.as_bytes().to_vec()))
             }
             _ => Err(VaultFailErrorKind::PublicKey.into()),
         }
@@ -421,7 +406,7 @@ impl Vault for DefaultVault {
             Some(ikm) => {
                 let ikm = self.get_entry(ikm, VaultFailErrorKind::HkdfSha256)?;
                 if ikm.key_attributes.stype == SecretType::Buffer {
-                    Ok(ikm.key.0.clone())
+                    Ok(ikm.key.as_ref().to_vec())
                 } else {
                     Err(VaultFailError::from_msg(
                         VaultFailErrorKind::HkdfSha256,
@@ -482,7 +467,7 @@ impl Vault for DefaultVault {
         data: &[u8],
     ) -> Result<[u8; 64], VaultFailError> {
         let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
-        let key = &entry.key.0;
+        let key = entry.key.as_ref();
         match entry.key_attributes.stype {
             SecretType::Curve25519 if key.len() == CURVE25519_SECRET_LENGTH => {
                 let mut rng = thread_rng();
@@ -561,7 +546,7 @@ mod tests {
         let res = vault.secret_public_key_get(&p256_ctx_1);
         assert!(res.is_ok());
         let pk_1 = res.unwrap();
-        assert_eq!(pk_1.0.len(), P256_PUBLIC_LENGTH);
+        assert_eq!(pk_1.as_ref().len(), P256_PUBLIC_LENGTH);
         assert_eq!(vault.entries.len(), 1);
         assert_eq!(vault.next_id, 1);
 
@@ -573,7 +558,7 @@ mod tests {
         let res = vault.secret_public_key_get(&c25519_ctx_1);
         assert!(res.is_ok());
         let pk_1 = res.unwrap();
-        assert_eq!(pk_1.0.len(), CURVE25519_PUBLIC_LENGTH);
+        assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
         assert_eq!(vault.entries.len(), 2);
         assert_eq!(vault.next_id, 2);
     }
@@ -600,7 +585,7 @@ mod tests {
             assert!(res.is_ok());
             let sk_ctx = res.unwrap();
             let sk = vault.secret_export(&sk_ctx).unwrap();
-            assert_eq!(sk.0.as_slice().len(), *s);
+            assert_eq!(sk.as_ref().len(), *s);
             vault.secret_destroy(sk_ctx).unwrap();
             assert_eq!(vault.entries.len(), 0);
         }
@@ -650,7 +635,7 @@ mod tests {
         assert_eq!(digest.len(), 1);
         let digest = vault.secret_export(&digest[0]).unwrap();
         assert_eq!(
-            hex::encode(digest.0.as_slice()),
+            hex::encode(digest.as_ref()),
             "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
         );
     }
@@ -682,7 +667,7 @@ mod tests {
         };
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_1,
-            pk_2.0.as_slice(),
+            pk_2.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -692,11 +677,11 @@ mod tests {
         assert_eq!(ss.len(), 1);
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_2,
-            pk_1.0.as_slice(),
+            pk_1.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -707,11 +692,11 @@ mod tests {
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
         // FIXME: Check actual value
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_1,
-            pk_1.0.as_slice(),
+            pk_1.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -722,11 +707,11 @@ mod tests {
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
         // FIXME: Check actual value
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_2,
-            pk_2.0.as_slice(),
+            pk_2.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -737,7 +722,7 @@ mod tests {
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
         // FIXME: Check actual value
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
     }
 
     #[test]
@@ -766,7 +751,7 @@ mod tests {
         };
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_1,
-            pk_2.0.as_slice(),
+            pk_2.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -777,11 +762,11 @@ mod tests {
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
         // FIXME: Check actual value
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_2,
-            pk_1.0.as_slice(),
+            pk_1.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -792,11 +777,11 @@ mod tests {
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
         // FIXME: Check actual value
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_1,
-            pk_1.0.as_slice(),
+            pk_1.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -807,11 +792,11 @@ mod tests {
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
         // FIXME: Check actual value
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
 
         let res = vault.ec_diffie_hellman_hkdf_sha256(
             &sk_ctx_2,
-            pk_2.0.as_slice(),
+            pk_2.as_ref(),
             &salt,
             b"",
             vec![output_attributes.clone()],
@@ -822,7 +807,7 @@ mod tests {
         let ss = &ss[0];
         let ss = vault.secret_export(ss).unwrap();
         // FIXME: Check actual value
-        assert_eq!(ss.0.len(), 32);
+        assert_eq!(ss.as_ref().len(), 32);
     }
 
     #[test]
@@ -839,9 +824,9 @@ mod tests {
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
 
-        let res = vault.ec_diffie_hellman(&sk_ctx_1, pk_2.0.as_slice());
+        let res = vault.ec_diffie_hellman(&sk_ctx_1, pk_2.as_ref());
         assert!(res.is_err());
-        let res = vault.ec_diffie_hellman(&sk_ctx_2, pk_1.0.as_slice());
+        let res = vault.ec_diffie_hellman(&sk_ctx_2, pk_1.as_ref());
         assert!(res.is_err());
     }
 
@@ -886,7 +871,7 @@ mod tests {
         assert!(res.is_ok());
         let pubkey = vault.secret_public_key_get(&secret).unwrap();
         let signature = res.unwrap();
-        let res = vault.verify(signature, pubkey.0.as_slice(), b"hello world!");
+        let res = vault.verify(signature, pubkey.as_ref(), b"hello world!");
         assert!(res.is_ok());
     }
 }

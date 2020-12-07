@@ -40,11 +40,35 @@ cfg_if! {
 
 /// Secret Key
 #[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
-pub struct SecretKey(pub SecretKeyVec);
+pub struct SecretKey(SecretKeyVec);
+
+impl SecretKey {
+    /// Constructor
+    pub fn new(data: SecretKeyVec) -> Self {
+        Self(data)
+    }
+
+    /// Returns slice
+    pub fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 /// Public key
 #[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
-pub struct PublicKey(pub PublicKeyVec);
+pub struct PublicKey(PublicKeyVec);
+
+impl PublicKey {
+    /// Constructor
+    pub fn new(data: PublicKeyVec) -> Self {
+        Self(data)
+    }
+
+    /// Returns slice
+    pub fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 /// The types of secret keys that the vault supports
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
