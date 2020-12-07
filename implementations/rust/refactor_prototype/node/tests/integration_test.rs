@@ -3,10 +3,9 @@ extern crate alloc;
 use alloc::vec::*;
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use ockam_no_std_traits::{ProcessMessage, RouteMessage, Poll, RouteMessageHandle};
+use ockam_no_std_traits::{ProcessMessage, Poll, RouteMessageHandle};
 use ockam_message::message::{Message, Route, RouterAddress, MessageType};
 use alloc::string::String;
-use alloc::collections::VecDeque;
 use core::ops::Deref;
 use libc_print::*;
 
@@ -38,13 +37,13 @@ impl Poll for TestWorker {
             message_body: msg_text.to_vec(),
         };
         let mut q = q_ref.deref().borrow_mut();
-        q.route_message(m);
+        q.route_message(m)?;
         Ok(true)
     }
 }
 
 impl ProcessMessage for TestWorker {
-    fn handle_message(&mut self, message: Message, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
+    fn handle_message(&mut self, message: Message, _q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         libc_println!("TestWorker: {}", std::str::from_utf8(&message.message_body).unwrap());
         self.count += 1;
         if self.count > 3 { return Ok(false); }
@@ -57,12 +56,12 @@ fn test_node() {
     // create node
     let mut node = Node::new().unwrap();
     // Now create the worker(s) and register them with the worker manager
-    let mut test_worker =
+    let test_worker =
         Rc::new(RefCell::new(TestWorker::new("aabbccdd".into(), "text".into())));
 
-    node.register_worker("aabbccdd".into(), Some(test_worker.clone()), Some(test_worker.clone()));
+    node.register_worker("aabbccdd".into(), Some(test_worker.clone()), Some(test_worker.clone())).expect("failed to register worker");
 
-    if let Err(s) = node.run() {
+    if let Err(_s) = node.run() {
         assert!(false);
     } else {
         assert!(true);

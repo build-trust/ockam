@@ -1,12 +1,10 @@
 #![no_std]
 extern crate alloc;
-use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
-use core::ops::DerefMut;
-use ockam_message::message::{AddressType, Message};
+use ockam_message::message::{Message};
 
 pub trait ProcessMessage {
     fn handle_message(

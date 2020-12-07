@@ -2,17 +2,14 @@ extern crate alloc;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 
-use ockam_message::message::{AddressType, Message, MessageType, Route};
+use ockam_message::message::{AddressType};
 
-use alloc::boxed::Box;
 use alloc::string::String;
-use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::ops::Deref;
 use core::time;
 use ockam_message_router::MessageRouter;
-use ockam_no_std_traits::{RouteMessage, ProcessMessage, Poll, ProcessMessageHandle, PollHandle};
-use ockam_tcp_manager::tcp_manager::TcpManager;
+use ockam_no_std_traits::{ProcessMessageHandle, PollHandle};
 use std::thread;
 use ockam_worker_manager::WorkerManager;
 
@@ -42,8 +39,8 @@ impl Node {
         // 2. Create the message router and get the Enqueue trait, which is used
         //    by workers and message handlers to queue up any Messages they generate
         let mut message_router = MessageRouter::new().unwrap();
-        message_router.register_address_type_handler(AddressType::Worker, self.worker_manager.clone());
-        let (q, mut message_router) = message_router.get_enqueue_trait();
+        message_router.register_address_type_handler(AddressType::Worker, self.worker_manager.clone())?;
+        let (q, message_router) = message_router.get_enqueue_trait();
         let mr_ref = Rc::new(RefCell::new(message_router));
         modules_to_poll.push_back(mr_ref.clone());
 

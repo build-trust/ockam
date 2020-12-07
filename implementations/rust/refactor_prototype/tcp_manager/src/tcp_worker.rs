@@ -1,4 +1,4 @@
-#![no_std]
+#![allow(unused)]
 extern crate alloc;
 use alloc::rc::Rc;
 use core::cell::RefCell;

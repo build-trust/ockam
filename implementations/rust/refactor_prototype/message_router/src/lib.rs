@@ -1,15 +1,13 @@
 #![no_std]
 extern crate alloc;
-use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::string::String;
-use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::ops::Deref;
 use libc_print::*;
-use ockam_message::message::{AddressType, Message, MessageType};
-use ockam_no_std_traits::{RouteMessage, ProcessMessage, Poll, ProcessMessageHandle, RouteMessageHandle};
+use ockam_message::message::{AddressType, Message};
+use ockam_no_std_traits::{RouteMessage, Poll, ProcessMessageHandle, RouteMessageHandle};
 
 pub struct MessageRouter {
     handlers: [Option<ProcessMessageHandle>; 256],
@@ -58,7 +56,7 @@ impl Poll for MessageRouter {
             let address_type = m.onward_route.addresses[0].a_type as usize;
             match &self.handlers[address_type] {
                 Some( h) => {
-                    let mut handler = h.clone();
+                    let handler = h.clone();
                     let mut handler = handler.deref().borrow_mut();
                     match handler.handle_message(m, q_ref.clone()) {
                         Ok(keep_going) => {

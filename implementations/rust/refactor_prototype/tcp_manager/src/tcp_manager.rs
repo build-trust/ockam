@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 extern crate alloc;
 
 use crate::tcp_worker::TcpTransport;
@@ -13,16 +15,16 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 pub struct TcpManager {
-    connections: HashMap<String, Box<dyn ProcessMessage>>,
-    listener: Option<TcpListener>,
+    //connections: HashMap<String, Box<dyn ProcessMessage>>,
+    //listener: Option<TcpListener>,
 }
 
 impl TcpManager {
     pub fn new(listen_addr: Option<&str>) -> Result<TcpManager, String> {
         let connections: HashMap<String, Box<dyn ProcessMessage>> = HashMap::new();
         Ok(TcpManager {
-            connections,
-            listener: None,
+            //connections,
+            //listener: None,
         })
     }
 }
@@ -48,7 +50,7 @@ impl Poll for TcpManager {
             message_body: vec![],
         };
         let mut q = q_ref.deref().borrow_mut();
-        q.route_message(m);
+        q.route_message(m)?;
         Ok(true)
     }
 }

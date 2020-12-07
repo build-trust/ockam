@@ -1,4 +1,3 @@
-
 #![allow(unused)]
 
 // Definition and implementation of an Ockam message and message components.

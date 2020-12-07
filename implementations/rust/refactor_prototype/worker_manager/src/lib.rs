@@ -1,10 +1,7 @@
 #![no_std]
 extern crate alloc;
-use alloc::vec::*;
-use alloc::rc::Rc;
-use core::cell::RefCell;
-use ockam_no_std_traits::{ProcessMessage, RouteMessage, Poll, ProcessMessageHandle, PollHandle, RouteMessageHandle};
-use ockam_message::message::{Message, RouterAddress, MessageType};
+use ockam_no_std_traits::{ProcessMessage, Poll, ProcessMessageHandle, PollHandle, RouteMessageHandle};
+use ockam_message::message::{Message};
 use alloc::string::String;
 use hashbrown::HashMap;
 use alloc::collections::VecDeque;
@@ -56,7 +53,7 @@ impl Poll for WorkerManager {
         libc_println!("Poll for WorkerManager");
         for p in self.poll_handlers.iter_mut() {
             let mut handler = p.deref().borrow_mut();
-            handler.poll(q_ref.clone());
+            handler.poll(q_ref.clone())?;
         }
         Ok(true)
     }
