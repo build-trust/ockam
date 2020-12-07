@@ -229,7 +229,7 @@ pub extern "C" fn ockam_vault_secret_export(
         |v| -> Result<ByteBuffer, VaultFailError> {
             let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
             let key = v.vault.secret_export(&ctx)?;
-            Ok(ByteBuffer::from_vec(key.0.clone()))
+            Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
         },
     );
     if err.get_code().is_success() {
@@ -265,7 +265,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
         |v| -> Result<ByteBuffer, VaultFailError> {
             let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
             let key = v.vault.secret_public_key_get(&ctx)?;
-            Ok(ByteBuffer::from_vec(key.0))
+            Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
         },
     );
     if err.get_code().is_success() {
@@ -350,19 +350,19 @@ pub extern "C" fn ockam_vault_ecdh(
                     if peer_publickey.len() != 32 {
                         Err(VaultFailErrorKind::Ecdh.into())
                     } else {
-                        Ok(PublicKey(peer_publickey.to_vec()))
+                        Ok(PublicKey::new(peer_publickey.to_vec()))
                     }
                 }
                 SecretType::P256 => {
                     if peer_publickey.len() != 65 {
                         Err(VaultFailErrorKind::Ecdh.into())
                     } else {
-                        Ok(PublicKey(peer_publickey.to_vec()))
+                        Ok(PublicKey::new(peer_publickey.to_vec()))
                     }
                 }
                 _ => Err(VaultFailError::from(VaultFailErrorKind::Ecdh)),
             }?;
-            let shared_ctx = v.vault.ec_diffie_hellman(&ctx, pubkey.0.as_slice())?;
+            let shared_ctx = v.vault.ec_diffie_hellman(&ctx, pubkey.as_ref())?;
             Ok(v.secret_ffi_converter.secret_into_ffi(&shared_ctx)?)
         },
     );

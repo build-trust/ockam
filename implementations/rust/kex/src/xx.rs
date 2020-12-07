@@ -73,13 +73,13 @@ impl SymmetricState {
                 if public_key.len() != 32 {
                     return Err(VaultFailError::from(VaultFailErrorKind::InvalidSize));
                 }
-                Ok(PublicKey(array_ref![public_key, 0, 32].to_vec()))
+                Ok(PublicKey::new(array_ref![public_key, 0, 32].to_vec()))
             }
             CipherSuite::P256Aes128GcmSha256 => {
                 if public_key.len() != 65 {
                     return Err(VaultFailError::from(VaultFailErrorKind::InvalidSize));
                 }
-                Ok(PublicKey(array_ref![public_key, 0, 65].to_vec()))
+                Ok(PublicKey::new(array_ref![public_key, 0, 65].to_vec()))
             }
         }
     }
@@ -372,10 +372,10 @@ impl Initiator {
             .clone();
 
         let payload = payload.as_ref();
-        self.0.mix_hash(ephemeral_public_key.0.as_slice())?;
+        self.0.mix_hash(ephemeral_public_key.as_ref())?;
         self.0.mix_hash(payload)?;
 
-        let mut output = ephemeral_public_key.0;
+        let mut output = ephemeral_public_key.as_ref().to_vec();
         output.extend_from_slice(payload);
         Ok(output)
     }
@@ -409,12 +409,12 @@ impl Initiator {
 
         let re = t.create_public_key(re)?;
 
-        t.mix_hash(re.0.as_slice())?;
-        t.dh(ephemeral_secret_handle, re.0.as_slice())?;
+        t.mix_hash(re.as_ref())?;
+        t.dh(ephemeral_secret_handle, re.as_ref())?;
         t.remote_ephemeral_public_key = Some(re);
         let rs = t.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
         let rs = t.create_public_key(&rs)?;
-        t.dh(ephemeral_secret_handle, rs.0.as_slice())?;
+        t.dh(ephemeral_secret_handle, rs.as_ref())?;
         t.remote_static_public_key = Some(rs);
 
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
@@ -443,8 +443,8 @@ impl Initiator {
             .clone()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public.0.as_slice())?;
-        t.dh(&static_secret, remote_ephemeral_public_key.0.as_slice())?;
+        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public.as_ref())?;
+        t.dh(&static_secret, remote_ephemeral_public_key.as_ref())?;
         t.identity_key = Some(static_secret);
         let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
         encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
@@ -505,19 +505,19 @@ impl Responder {
             .take()
             .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
 
-        t.mix_hash(ephemeral_key_pair.public_key.0.as_slice())?;
+        t.mix_hash(ephemeral_key_pair.public_key.as_ref())?;
         t.dh(
             &ephemeral_key_pair.secret_handle,
-            remote_ephemeral_public_key.0.as_slice(),
+            remote_ephemeral_public_key.as_ref(),
         )?;
 
-        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public.0.as_slice())?;
-        t.dh(&static_secret, remote_ephemeral_public_key.0.as_slice())?;
+        let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public.as_ref())?;
+        t.dh(&static_secret, remote_ephemeral_public_key.as_ref())?;
         t.remote_ephemeral_public_key = Some(remote_ephemeral_public_key);
         t.identity_key = Some(static_secret);
         let mut encrypted_payload_and_tag = t.encrypt_and_mix_hash(payload)?;
 
-        let mut output = ephemeral_key_pair.public_key.0.clone();
+        let mut output = ephemeral_key_pair.public_key.as_ref().to_vec();
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         output.append(&mut encrypted_s_and_tag);
         output.append(&mut encrypted_payload_and_tag);
@@ -543,7 +543,7 @@ impl Responder {
 
         let rs = t.decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])?;
         let rs = t.create_public_key(&rs)?;
-        t.dh(&ephemeral_key_pair.secret_handle, rs.0.as_slice())?;
+        t.dh(&ephemeral_key_pair.secret_handle, rs.as_ref())?;
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         let payload = t.decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
         t.remote_static_public_key = Some(rs);
@@ -753,7 +753,7 @@ mod tests {
         let mut vault = vault.lock().unwrap();
         let ck = vault.secret_export(&state.ck.unwrap()).unwrap();
 
-        assert_eq!(ck.0.as_slice(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
+        assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
         assert_eq!(state.nonce, 0);
     }
 
