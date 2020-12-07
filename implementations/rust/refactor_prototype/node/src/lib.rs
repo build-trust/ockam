@@ -42,10 +42,12 @@ impl Node {
         // 2. Create the message router and get the Enqueue trait, which is used
         //    by workers and message handlers to queue up any Messages they generate
         let mut message_router = MessageRouter::new().unwrap();
+        message_router.register_address_type_handler(AddressType::Worker, self.worker_manager.clone());
         let (q, mut message_router) = message_router.get_enqueue_trait();
+        let mr_ref = Rc::new(RefCell::new(message_router));
+        modules_to_poll.push_back(mr_ref.clone());
 
         modules_to_poll.push_back(self.worker_manager.clone());
-        message_router.register_address_type_handler(AddressType::Worker, self.worker_manager.clone());
 
         loop {
             for p_ref in modules_to_poll.iter() {
@@ -57,14 +59,6 @@ impl Node {
                     Err(s) => {
                         return Err(s);
                     }
-                }
-            }
-            match message_router.poll(q.clone()) {
-                Ok(keep_going) => {
-                    if !keep_going { break; }
-                }
-                Err(s) => {
-                    return Err(s);
                 }
             }
             thread::sleep(time::Duration::from_millis(500));
