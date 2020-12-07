@@ -8,15 +8,15 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::ops::Deref;
 use libc_print::*;
-use ockam_message::message::{AddressType, Message, MessageType, Route};
-use ockam_no_std_traits::*;
+use ockam_message::message::{AddressType, Message, MessageType};
+use ockam_no_std_traits::{RouteMessage, HandleMessage, Poll};
 
 pub struct MessageRouter {
-    handlers: [Option<Rc<RefCell<dyn MessageHandler>>>; 256],
+    handlers: [Option<Rc<RefCell<dyn HandleMessage>>>; 256],
     message_queue: Rc<RefCell<VecDeque<Message>>>,
 }
 
-const INIT_TO_NO_RECORD: Option<Rc<RefCell<dyn MessageHandler>>> = None;
+const INIT_TO_NO_RECORD: Option<Rc<RefCell<dyn HandleMessage>>> = None;
 
 impl MessageRouter {
     pub fn new() -> Result<Self, String> {
@@ -29,20 +29,20 @@ impl MessageRouter {
     pub fn register_address_type_handler(
         &mut self,
         address_type: AddressType,
-        handler: Rc<RefCell<dyn MessageHandler>>,
+        handler: Rc<RefCell<dyn HandleMessage>>,
     ) -> Result<bool, String> {
         self.handlers[address_type as usize] = Some(handler);
         libc_println!("registered {:?}", address_type);
         Ok(true)
     }
 
-    pub fn get_enqueue_trait(self) -> (Rc<RefCell<dyn Enqueue<Message>>>, Self) {
+    pub fn get_enqueue_trait(self) -> (Rc<RefCell<dyn RouteMessage<Message>>>, Self) {
         (self.message_queue.clone(), self)
     }
 }
 
-impl Enqueue<Message> for MessageRouter {
-    fn enqueue(&mut self, m: Message) -> Result<bool, String> {
+impl RouteMessage<Message> for MessageRouter {
+    fn route_message(&mut self, m: Message) -> Result<bool, String> {
         let mut q = self.message_queue.deref().borrow_mut();
         q.push_back(m);
         Ok(true)
@@ -50,7 +50,7 @@ impl Enqueue<Message> for MessageRouter {
 }
 
 impl Poll for MessageRouter {
-    fn poll(&mut self, q_ref: Rc<RefCell<dyn Enqueue<Message>>>) -> Result<bool, String> {
+    fn poll(&mut self, q_ref: Rc<RefCell<dyn RouteMessage<Message>>>) -> Result<bool, String> {
         libc_println!("in MessageRouter: Poll");
         let mut q = self.message_queue.deref().borrow_mut();
         for m in q.drain(..) {

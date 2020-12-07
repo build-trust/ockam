@@ -11,7 +11,7 @@ use core::cell::RefCell;
 use core::ops::Deref;
 use core::time;
 use ockam_message_router::MessageRouter;
-use ockam_no_std_traits::{Enqueue, MessageHandler, Poll};
+use ockam_no_std_traits::{RouteMessage, HandleMessage, Poll};
 use ockam_tcp_manager::tcp_manager::TcpManager;
 use std::thread;
 use ockam_worker_manager::WorkerManager;
@@ -27,7 +27,7 @@ impl Node {
 
     pub fn register_worker(&mut self,
                            address: String,
-                           message_handler: Option<Rc<RefCell<dyn MessageHandler>>>,
+                           message_handler: Option<Rc<RefCell<dyn HandleMessage>>>,
                            poll_handler: Option<Rc<RefCell<dyn Poll>>>) -> Result<bool, String> {
 
         let mut wm = self.worker_manager.deref().borrow_mut();
@@ -49,18 +49,23 @@ impl Node {
 
         modules_to_poll.push_back(self.worker_manager.clone());
 
+        let mut stop = false;
         loop {
             for p_ref in modules_to_poll.iter() {
                 let mut p = p_ref.deref().borrow_mut();
                 match p.poll(q.clone()) {
                     Ok(keep_going) => {
-                        if !keep_going { break; }
+                        if !keep_going {
+                            stop = true;
+                            break;
+                        }
                     }
                     Err(s) => {
                         return Err(s);
                     }
                 }
             }
+            if stop { break; }
             thread::sleep(time::Duration::from_millis(500));
         }
         Ok(())
