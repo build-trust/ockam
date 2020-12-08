@@ -3,7 +3,10 @@ use crate::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_vault::types::{
     SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use ockam_vault::{error::VaultFailError, types::PublicKey, Secret, Vault};
+use ockam_vault::{
+    error::VaultFailError, types::PublicKey, AsymmetricVault, HashVault, Secret, SecretVault,
+    SignerVault, SymmetricVault, VerifierVault,
+};
 use std::{
     convert::TryFrom,
     sync::{Arc, Mutex},
@@ -97,6 +100,23 @@ const CSUITE: &[u8] = b"X3DH_25519_AESGCM_SHA256\0\0\0\0\0\0\0\0";
 /// EK, Hash(EIK), IK, EdDSA, AES_GCM_TAG
 const ENROLLMENT_MSG_SIZE: usize = 32 + 32 + 32 + 64 + 16;
 
+/// Vault with X3DH required functionality
+pub trait X3dhVault:
+    SecretVault + SignerVault + VerifierVault + AsymmetricVault + SymmetricVault + HashVault + Send
+{
+}
+
+impl<D> X3dhVault for D where
+    D: SecretVault
+        + SignerVault
+        + VerifierVault
+        + AsymmetricVault
+        + SymmetricVault
+        + HashVault
+        + Send
+{
+}
+
 /// The responder of X3DH creates a prekey bundle that can be used to establish a shared
 /// secret key with another party that can use
 pub struct X3dhResponder {
@@ -107,12 +127,12 @@ pub struct X3dhResponder {
     one_time_prekey: Option<Box<dyn Secret>>,
     expected_enrollment_key: Option<PublicKey>,
     state: ResponderState,
-    vault: Arc<Mutex<dyn Vault + Send>>,
+    vault: Arc<Mutex<dyn X3dhVault>>,
     completed_key_exchange: Option<CompletedKeyExchange>,
 }
 
 impl X3dhResponder {
-    fn new(v: Arc<Mutex<dyn Vault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
+    fn new(v: Arc<Mutex<dyn X3dhVault>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
         Self {
             identity_key,
             signed_prekey: None,
@@ -181,13 +201,13 @@ pub struct X3dhInitiator {
     ephemeral_identity_key: Option<Box<dyn Secret>>,
     prekey_bundle: Option<PreKeyBundle>,
     state: InitiatorState,
-    vault: Arc<Mutex<dyn Vault + Send>>,
+    vault: Arc<Mutex<dyn X3dhVault>>,
     completed_key_exchange: Option<CompletedKeyExchange>,
     identity_key: Option<Arc<Box<dyn Secret>>>,
 }
 
 impl X3dhInitiator {
-    fn new(v: Arc<Mutex<dyn Vault + Send>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
+    fn new(v: Arc<Mutex<dyn X3dhVault>>, identity_key: Option<Arc<Box<dyn Secret>>>) -> Self {
         Self {
             ephemeral_identity_key: None,
             prekey_bundle: None,
@@ -359,7 +379,7 @@ impl KeyExchanger for X3dhResponder {
                     aad.as_slice(),
                 )?;
                 let ikb = PublicKey::new(array_ref![plaintext, 0, 32].to_vec());
-                let signature = *array_ref![plaintext, 32, 64];
+                let signature = array_ref![plaintext, 32, 64];
                 vault.verify(signature, eik.as_ref(), &plaintext[..32])?;
 
                 self.completed_key_exchange = Some(CompletedKeyExchange {
@@ -414,7 +434,7 @@ impl KeyExchanger for X3dhInitiator {
 
                 // Check the prekey_bundle signature
                 vault.verify(
-                    prekey_bundle.signature_prekey.as_ref().clone(), /* FIXME */
+                    prekey_bundle.signature_prekey.as_ref(),
                     prekey_bundle.identity_key.as_ref(),
                     prekey_bundle.signed_prekey.as_ref(),
                 )?;
@@ -520,8 +540,8 @@ impl KeyExchanger for X3dhInitiator {
 
 /// Represents an XX NewKeyExchanger
 pub struct X3dhNewKeyExchanger {
-    vault_initiator: Arc<Mutex<dyn Vault + Send>>,
-    vault_responder: Arc<Mutex<dyn Vault + Send>>,
+    vault_initiator: Arc<Mutex<dyn X3dhVault>>,
+    vault_responder: Arc<Mutex<dyn X3dhVault>>,
 }
 
 impl std::fmt::Debug for X3dhNewKeyExchanger {
@@ -536,8 +556,8 @@ impl std::fmt::Debug for X3dhNewKeyExchanger {
 impl X3dhNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
     pub fn new(
-        vault_initiator: Arc<Mutex<dyn Vault + Send>>,
-        vault_responder: Arc<Mutex<dyn Vault + Send>>,
+        vault_initiator: Arc<Mutex<dyn X3dhVault>>,
+        vault_responder: Arc<Mutex<dyn X3dhVault>>,
     ) -> Self {
         Self {
             vault_initiator,

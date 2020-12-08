@@ -2,7 +2,8 @@ use crate::software::DefaultVaultSecret;
 use crate::types::SecretAttributes;
 use crate::types::*;
 use crate::{
-    error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, Secret, Vault,
+    error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, AsymmetricVault,
+    HashVault, Secret, SecretVault, SymmetricVault,
 };
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr};
 use std::slice;
@@ -41,9 +42,13 @@ impl SecretFfiConverter for DefaultVaultSecretFfiConverter {
     }
 }
 
+trait FfiVault: SecretVault + HashVault + SymmetricVault + AsymmetricVault {}
+
+impl<D> FfiVault for D where D: SecretVault + HashVault + SymmetricVault + AsymmetricVault {}
+
 /// Wraps a vault that can be used as a trait object
 struct BoxVault {
-    vault: Box<dyn Vault + Send>,
+    vault: Box<dyn FfiVault + Send>,
     secret_ffi_converter: Box<dyn SecretFfiConverter + Send>,
 }
 
@@ -81,40 +86,6 @@ pub extern "C" fn ockam_vault_file_init(context: &mut u64, path: FfiStr<'_>) -> 
         ERROR_NONE
     } else {
         ERROR
-    }
-}
-
-/// Fill a preallocated buffer with random data.
-/// Can still cause memory seg fault if `buffer` doesn't have enough space to match
-/// `buffer_len`. Unfortunately, there is no way to check for this.
-#[no_mangle]
-pub extern "C" fn ockam_vault_random_bytes_generate(
-    context: u64,
-    buffer: *mut u8,
-    buffer_len: u32,
-) -> VaultError {
-    check_buffer!(buffer, buffer_len);
-
-    let mut err = ExternError::success();
-
-    let output = VAULTS.call_with_result_mut(
-        &mut err,
-        context,
-        |v| -> Result<ByteBuffer, VaultFailError> {
-            let mut data = vec![0u8; buffer_len as usize];
-            v.vault.random(data.as_mut_slice())?;
-            let byte_buffer = ByteBuffer::from_vec(data);
-            Ok(byte_buffer)
-        },
-    );
-    if err.get_code().is_success() {
-        let output = output.destroy_into_vec();
-        unsafe {
-            std::ptr::copy_nonoverlapping(output.as_ptr(), buffer, buffer_len as usize);
-        }
-        ERROR_NONE
-    } else {
-        VaultFailErrorKind::Random.into()
     }
 }
 

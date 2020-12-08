@@ -61,16 +61,6 @@ uint32_t ockam_vault_default_init(ockam_vault_t* vault);
 uint32_t ockam_vault_file_init(ockam_vault_t* vault, const unsigned char* const path);
 
 /**
- * @brief   Generate a random number of desired size.
- * @param   vault[in]       Vault object to use for random number generation.
- * @param   buffer[out]     Buffer that is filled
- * @param   buffer_size[in] Size of the data
- * @return  OCKAM_ERROR_NONE on success.
- */
-uint32_t ockam_vault_random_bytes_generate(ockam_vault_t vault, uint8_t* buffer, size_t buffer_size);
-
-
-/**
  * @brief   Compute a SHA-256 hash based on input data.
  * @param   vault[in]           Vault object to use for SHA-256.
  * @param   input[in]           Buffer containing data to run through SHA-256.

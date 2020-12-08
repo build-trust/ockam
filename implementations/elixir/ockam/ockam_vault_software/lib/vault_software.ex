@@ -59,10 +59,6 @@ defmodule Ockam.Vault.Software do
     raise "natively implemented sha256/2 not loaded"
   end
 
-  def random_bytes(_a, _b) do
-    raise "natively implemented random_bytes/2 not loaded"
-  end
-
   def secret_generate(_a, _b) do
     raise "natively implemented secret_generate/2 not loaded"
   end

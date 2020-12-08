@@ -12,8 +12,6 @@ use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, Worker
 use ockam_transport::tcp::TcpManager;
 use ockam_transport::udp::UdpTransport;
 use ockam_vault::software::DefaultVault;
-use rand;
-use rand::random;
 use std::io::stdin;
 use std::iter::FromIterator;
 use std::net::SocketAddr;

@@ -71,12 +71,8 @@ pub trait Secret: Debug + Sync + Send + 'static + downcast::Any + Zeroize {}
 
 downcast!(dyn Secret);
 
-/// Represents the methods available to a Vault
-pub trait Vault: Zeroize {
-    /// Generate random bytes and fill them into `data`
-    fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError>;
-    /// Compute the SHA-256 digest given input `data`
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError>;
+/// Vault trait with secret management functionality
+pub trait SecretVault: Zeroize {
     /// Create a new secret key
     fn secret_generate(
         &mut self,
@@ -102,33 +98,31 @@ pub trait Vault: Zeroize {
     ) -> Result<PublicKey, VaultFailError>;
     /// Remove a secret key from the vault
     fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError>;
-    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
-    /// and the specified uncompressed public key
-    fn ec_diffie_hellman(
+}
+
+/// Trait with sign functionality
+pub trait SignerVault: Zeroize {
+    /// Generate a signature
+    fn sign(
         &mut self,
-        context: &Box<dyn Secret>,
-        peer_public_key: &[u8],
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
-    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
-    /// and the specified uncompressed public key and return the HKDF-SHA256
-    /// output using the DH value as the HKDF ikm
-    fn ec_diffie_hellman_hkdf_sha256(
+        secret_key: &Box<dyn Secret>,
+        data: &[u8],
+    ) -> Result<[u8; 64], VaultFailError>;
+}
+
+/// Trait with verify functionality
+pub trait VerifierVault: Zeroize {
+    /// Verify a signature
+    fn verify(
         &mut self,
-        context: &Box<dyn Secret>,
-        peer_public_key: &[u8],
-        salt: &Box<dyn Secret>,
-        info: &[u8],
-        output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
-    /// Compute the HKDF-SHA256 using the specified salt and input key material
-    /// and return the output key material of the specified length
-    fn hkdf_sha256(
-        &mut self,
-        salt: &Box<dyn Secret>,
-        info: &[u8],
-        ikm: Option<&Box<dyn Secret>>,
-        output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
+        signature: &[u8; 64],
+        public_key: &[u8],
+        data: &[u8],
+    ) -> Result<(), VaultFailError>;
+}
+
+/// Trait with symmetric encryption
+pub trait SymmetricVault: Zeroize {
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt(
         &mut self,
@@ -145,19 +139,30 @@ pub trait Vault: Zeroize {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, VaultFailError>;
-    /// Close and release all resources in use by the vault
-    fn deinit(&mut self);
-    /// Generate a signature
-    fn sign(
+}
+
+/// Vault with asymmetric encryption functionality
+pub trait AsymmetricVault: Zeroize {
+    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
+    /// and the specified uncompressed public key
+    fn ec_diffie_hellman(
         &mut self,
-        secret_key: &Box<dyn Secret>,
-        data: &[u8],
-    ) -> Result<[u8; 64], VaultFailError>;
-    /// Verify a signature
-    fn verify(
+        context: &Box<dyn Secret>,
+        peer_public_key: &[u8],
+    ) -> Result<Box<dyn Secret>, VaultFailError>;
+}
+
+/// Vault with hashing functionality
+pub trait HashVault: Zeroize {
+    /// Compute the SHA-256 digest given input `data`
+    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError>;
+    /// Compute the HKDF-SHA256 using the specified salt and input key material
+    /// and return the output key material of the specified length
+    fn hkdf_sha256(
         &mut self,
-        signature: [u8; 64],
-        public_key: &[u8],
-        data: &[u8],
-    ) -> Result<(), VaultFailError>;
+        salt: &Box<dyn Secret>,
+        info: &[u8],
+        ikm: Option<&Box<dyn Secret>>,
+        output_attributes: Vec<SecretAttributes>,
+    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
 }

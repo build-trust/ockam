@@ -229,36 +229,6 @@ static ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
     return ok(env, term);
 }
 
-static ERL_NIF_TERM random_bytes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (2 != argc) {
-        return enif_make_badarg(env);
-    }
-
-    ErlNifUInt64 vault;
-    if (0 == enif_get_uint64(env, argv[0], &vault)) {
-        return enif_make_badarg(env);
-    }
-
-    uint32_t size;
-    if (0 == enif_get_uint(env, argv[1], &size)) {
-        return enif_make_badarg(env);
-    }
-
-    ERL_NIF_TERM term;
-    uint8_t* bytes = enif_make_new_binary(env, size, &term);
-
-    if (0 == bytes) {
-        return err(env, "failed to create buffer for random bytes");
-    }
-
-    memset(bytes, 0, size);
-    if (0 != ockam_vault_random_bytes_generate(vault, bytes, size)) {
-        return err(env, "failed to generate random bytes");
-    }
-
-    return ok(env, term);
-}
-
 static ERL_NIF_TERM secret_generate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (2 != argc) {
         return enif_make_badarg(env);
@@ -675,7 +645,6 @@ static ErlNifFunc nifs[] = {
   // {erl_function_name, erl_function_arity, c_function}
   {"default_init", 0, default_init},
   {"file_init", 1, file_init},
-  {"random_bytes", 2, random_bytes},
   {"sha256", 2, sha256},
   {"secret_generate", 2, secret_generate},
   {"secret_import", 3, secret_import},

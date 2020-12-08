@@ -128,7 +128,7 @@ mod tests {
     use super::*;
     use crate::xx::XXNewKeyExchanger;
     use ockam_vault::software::DefaultVault;
-    use ockam_vault::Vault;
+    use ockam_vault::SecretVault;
     use std::sync::{Arc, Mutex};
 
     #[allow(non_snake_case)]

@@ -7,7 +7,7 @@ use ockam_vault::types::{
 use ockam_vault::{
     error::{VaultFailError, VaultFailErrorKind},
     types::{PublicKey, SecretAttributes, SecretPersistence, SecretType},
-    Secret, Vault,
+    AsymmetricVault, HashVault, Secret, SecretVault, SymmetricVault,
 };
 use std::sync::{Arc, Mutex};
 use zeroize::Zeroize;
@@ -17,6 +17,11 @@ struct KeyPair {
     public_key: PublicKey,
     secret_handle: Box<dyn Secret>,
 }
+
+/// Vault with XX required functionality
+pub trait XXVault: SecretVault + HashVault + AsymmetricVault + SymmetricVault + Send {}
+
+impl<D> XXVault for D where D: SecretVault + HashVault + AsymmetricVault + SymmetricVault + Send {}
 
 /// Represents the XX Handshake]
 struct SymmetricState {
@@ -30,7 +35,7 @@ struct SymmetricState {
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
     ck: Option<Box<dyn Secret>>,
-    vault: Arc<Mutex<dyn Vault>>,
+    vault: Arc<Mutex<dyn XXVault>>,
 }
 
 impl Zeroize for SymmetricState {
@@ -93,7 +98,7 @@ impl SymmetricState {
 
     pub fn new(
         cipher_suite: CipherSuite,
-        vault: Arc<Mutex<dyn Vault>>,
+        vault: Arc<Mutex<dyn XXVault>>,
         identity_key: Option<Arc<Box<dyn Secret>>>,
     ) -> Self {
         Self {
@@ -204,13 +209,10 @@ impl KeyExchange for SymmetricState {
             length: symmetric_secret_info.1,
         };
 
-        let mut hkdf_output = vault.ec_diffie_hellman_hkdf_sha256(
-            secret_handle,
-            public_key,
-            &ck,
-            b"",
-            vec![attributes_ck, attributes_k],
-        )?;
+        let ecdh = vault.ec_diffie_hellman(secret_handle, public_key)?;
+
+        let mut hkdf_output =
+            vault.hkdf_sha256(&ck, b"", Some(&ecdh), vec![attributes_ck, attributes_k])?;
 
         if hkdf_output.len() != 2 {
             return Err(VaultFailError::from(VaultFailErrorKind::Ecdh));
@@ -595,8 +597,8 @@ pub struct XXInitiator {
 /// Represents an XX NewKeyExchanger
 pub struct XXNewKeyExchanger {
     cipher_suite: CipherSuite,
-    vault_initiator: Arc<Mutex<dyn Vault + Send>>,
-    vault_responder: Arc<Mutex<dyn Vault + Send>>,
+    vault_initiator: Arc<Mutex<dyn XXVault>>,
+    vault_responder: Arc<Mutex<dyn XXVault>>,
 }
 
 impl std::fmt::Debug for XXNewKeyExchanger {
@@ -609,8 +611,8 @@ impl XXNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
     pub fn new(
         cipher_suite: CipherSuite,
-        vault_initiator: Arc<Mutex<dyn Vault + Send>>,
-        vault_responder: Arc<Mutex<dyn Vault + Send>>,
+        vault_initiator: Arc<Mutex<dyn XXVault>>,
+        vault_responder: Arc<Mutex<dyn XXVault>>,
     ) -> Self {
         Self {
             cipher_suite,

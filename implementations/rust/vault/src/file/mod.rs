@@ -2,7 +2,10 @@ use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::{error::*, software::DefaultVault, types::*, Secret, Vault};
+use crate::{
+    error::*, software::DefaultVault, types::*, AsymmetricVault, HashVault, Secret, SecretVault,
+    SignerVault, SymmetricVault, VerifierVault,
+};
 
 use crate::software::DefaultVaultSecret;
 use zeroize::Zeroize;
@@ -117,17 +120,7 @@ fn fs_write_secret(
     return Ok(());
 }
 
-impl Vault for FilesystemVault {
-    /// Generate random bytes and fill them into `data`
-    fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
-        self.v.random(data)
-    }
-
-    /// Compute the SHA-256 digest given input `data`
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
-        self.v.sha256(data)
-    }
-
+impl SecretVault for FilesystemVault {
     /// Create a new secret key
     fn secret_generate(
         &mut self,
@@ -191,7 +184,9 @@ impl Vault for FilesystemVault {
 
         Ok(())
     }
+}
 
+impl AsymmetricVault for FilesystemVault {
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
     ///
     /// and the specified uncompressed public key
@@ -202,42 +197,9 @@ impl Vault for FilesystemVault {
     ) -> Result<Box<dyn Secret>, VaultFailError> {
         self.v.ec_diffie_hellman(context, peer_public_key)
     }
+}
 
-    /// Compute Elliptic-Curve Diffie-Hellman using this secret key
-    ///
-    /// and the specified uncompressed public key and return the HKDF-SHA256
-    ///
-    /// output using the DH value as the HKDF ikm
-    fn ec_diffie_hellman_hkdf_sha256(
-        &mut self,
-        context: &Box<dyn Secret>,
-        peer_public_key: &[u8],
-        salt: &Box<dyn Secret>,
-        info: &[u8],
-        output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
-        self.v.ec_diffie_hellman_hkdf_sha256(
-            context,
-            peer_public_key,
-            salt,
-            info,
-            output_attributes,
-        )
-    }
-
-    /// Compute the HKDF-SHA256 using the specified salt and input key material
-    ///
-    /// and return the output key material of the specified length
-    fn hkdf_sha256(
-        &mut self,
-        salt: &Box<dyn Secret>,
-        info: &[u8],
-        ikm: Option<&Box<dyn Secret>>,
-        output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
-        self.v.hkdf_sha256(salt, info, ikm, output_attributes)
-    }
-
+impl SymmetricVault for FilesystemVault {
     /// Encrypt a payload using AES-GCM
     fn aead_aes_gcm_encrypt(
         &mut self,
@@ -260,12 +222,9 @@ impl Vault for FilesystemVault {
         self.v
             .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad)
     }
+}
 
-    /// Close and release all resources in use by the vault
-    fn deinit(&mut self) {
-        self.v.deinit()
-    }
-
+impl SignerVault for FilesystemVault {
     fn sign(
         &mut self,
         secret_key: &Box<dyn Secret>,
@@ -273,14 +232,35 @@ impl Vault for FilesystemVault {
     ) -> Result<[u8; 64], VaultFailError> {
         self.v.sign(secret_key, data)
     }
+}
 
+impl VerifierVault for FilesystemVault {
     fn verify(
         &mut self,
-        signature: [u8; 64],
+        signature: &[u8; 64],
         public_key: &[u8],
         data: &[u8],
     ) -> Result<(), VaultFailError> {
         self.v.verify(signature, public_key, data)
+    }
+}
+
+impl HashVault for FilesystemVault {
+    /// Compute the SHA-256 digest given input `data`
+    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
+        self.v.sha256(data)
+    }
+    /// Compute the HKDF-SHA256 using the specified salt and input key material
+    ///
+    /// and return the output key material of the specified length
+    fn hkdf_sha256(
+        &mut self,
+        salt: &Box<dyn Secret>,
+        info: &[u8],
+        ikm: Option<&Box<dyn Secret>>,
+        output_attributes: Vec<SecretAttributes>,
+    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
+        self.v.hkdf_sha256(salt, info, ikm, output_attributes)
     }
 }
 
@@ -313,8 +293,6 @@ mod tests {
         let sk_data1 = vault.secret_export(&sk1).unwrap();
         let sk_data2 = vault.secret_export(&sk2).unwrap();
         let sk_data3 = vault.secret_export(&sk3).unwrap();
-
-        vault.deinit();
 
         let mut vault2 = FilesystemVault::new(path).unwrap();
         let sk2_data_1 = vault2.secret_export(&sk1).unwrap();

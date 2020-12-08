@@ -28,6 +28,7 @@ extern crate ockam_common;
 use core::marker::PhantomData;
 use error::*;
 use ockam_kex::error::KeyExchangeFailErrorKind;
+use ockam_kex::xx::XXVault;
 use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_message::message::{
     Address, AddressType, Codec, Message, MessageType, Route, RouterAddress,
@@ -35,7 +36,7 @@ use ockam_message::message::{
 use ockam_system::commands::OckamCommand::Router;
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand};
 use ockam_vault::types::PublicKey;
-use ockam_vault::{Secret, Vault};
+use ockam_vault::Secret;
 use rand::{thread_rng, Rng};
 use std::{
     collections::BTreeMap,
@@ -65,7 +66,7 @@ pub struct ChannelManager<
     rx: Receiver<OckamCommand>,
     tx: Sender<OckamCommand>,
     router_tx: Sender<OckamCommand>,
-    vault: Arc<Mutex<dyn Vault + Send>>,
+    vault: Arc<Mutex<dyn XXVault>>,
     new_key_exchanger: E,
     phantom_i: PhantomData<I>,
     phantom_r: PhantomData<R>,
@@ -91,7 +92,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         rx: Receiver<OckamCommand>,
         tx: Sender<OckamCommand>,
         router_tx: Sender<OckamCommand>,
-        vault: Arc<Mutex<dyn Vault + Send>>,
+        vault: Arc<Mutex<dyn XXVault>>,
         new_key_exchanger: E,
         resp_key_ctx: Option<Arc<Box<dyn Secret>>>,
         init_key_ctx: Option<Arc<Box<dyn Secret>>>,

@@ -1,7 +1,7 @@
 use crate::{
     error::{VaultFailError, VaultFailErrorKind},
     types::*,
-    Secret, Vault,
+    AsymmetricVault, HashVault, Secret, SecretVault, SignerVault, SymmetricVault, VerifierVault,
 };
 use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
@@ -236,18 +236,7 @@ macro_rules! encrypt_impl {
     }};
 }
 
-impl Vault for DefaultVault {
-    fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError> {
-        let mut rng = OsRng {};
-        rng.fill_bytes(data);
-        Ok(())
-    }
-
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
-        let digest = Sha256::digest(data);
-        Ok(*array_ref![digest, 0, 32])
-    }
-
+impl SecretVault for DefaultVault {
     fn secret_generate(
         &mut self,
         attributes: SecretAttributes,
@@ -362,37 +351,12 @@ impl Vault for DefaultVault {
         }
         Ok(())
     }
+}
 
-    fn ec_diffie_hellman(
-        &mut self,
-        context: &Box<dyn Secret>,
-        peer_public_key: &[u8],
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
-        let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
-
-        let dh = Self::ecdh_internal(entry, peer_public_key)?;
-
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: dh.len(),
-        };
-        self.secret_import(&dh, attributes)
-    }
-
-    fn ec_diffie_hellman_hkdf_sha256(
-        &mut self,
-        context: &Box<dyn Secret>,
-        peer_public_key: &[u8],
-        salt: &Box<dyn Secret>,
-        info: &[u8],
-        output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
-        let private_key_entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
-
-        let dh = Self::ecdh_internal(private_key_entry, peer_public_key)?;
-
-        self.hkdf_sha256_internal(salt, info, &dh, output_attributes)
+impl HashVault for DefaultVault {
+    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
+        let digest = Sha256::digest(data);
+        Ok(*array_ref![digest, 0, 32])
     }
 
     fn hkdf_sha256(
@@ -419,7 +383,28 @@ impl Vault for DefaultVault {
 
         self.hkdf_sha256_internal(salt, info, &ikm_slice, output_attributes)
     }
+}
 
+impl AsymmetricVault for DefaultVault {
+    fn ec_diffie_hellman(
+        &mut self,
+        context: &Box<dyn Secret>,
+        peer_public_key: &[u8],
+    ) -> Result<Box<dyn Secret>, VaultFailError> {
+        let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
+
+        let dh = Self::ecdh_internal(entry, peer_public_key)?;
+
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
+            persistence: SecretPersistence::Ephemeral,
+            length: dh.len(),
+        };
+        self.secret_import(&dh, attributes)
+    }
+}
+
+impl SymmetricVault for DefaultVault {
     fn aead_aes_gcm_encrypt(
         &mut self,
         context: &Box<dyn Secret>,
@@ -456,11 +441,9 @@ impl Vault for DefaultVault {
             VaultFailErrorKind::AeadAesGcmDecrypt
         )
     }
+}
 
-    fn deinit(&mut self) {
-        self.zeroize();
-    }
-
+impl SignerVault for DefaultVault {
     fn sign(
         &mut self,
         secret_key: &Box<dyn Secret>,
@@ -489,10 +472,12 @@ impl Vault for DefaultVault {
             )),
         }
     }
+}
 
+impl VerifierVault for DefaultVault {
     fn verify(
         &mut self,
-        signature: [u8; 64],
+        signature: &[u8; 64],
         public_key: &[u8],
         data: &[u8],
     ) -> Result<(), VaultFailError> {
@@ -652,77 +637,11 @@ mod tests {
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();
         let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
-        let salt_value = b"ec_diffie_hellman_p256";
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: salt_value.len(),
-        };
-        let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
 
-        let output_attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: 32,
-        };
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_1,
-            pk_2.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
+        let res = vault.ec_diffie_hellman(&sk_ctx_1, pk_2.as_ref());
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        assert_eq!(ss.as_ref().len(), 32);
-
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_2,
-            pk_1.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        // FIXME: Check actual value
-        assert_eq!(ss.as_ref().len(), 32);
-
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_1,
-            pk_1.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        // FIXME: Check actual value
-        assert_eq!(ss.as_ref().len(), 32);
-
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_2,
-            pk_2.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        // FIXME: Check actual value
-        assert_eq!(ss.as_ref().len(), 32);
+        // TODO: Check result against test vector
     }
 
     #[test]
@@ -737,77 +656,11 @@ mod tests {
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();
         let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
-        let salt_value = b"ec_diffie_hellman_curve25519";
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: salt_value.len(),
-        };
-        let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
-        let output_attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: 32,
-        };
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_1,
-            pk_2.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        // FIXME: Check actual value
-        assert_eq!(ss.as_ref().len(), 32);
 
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_2,
-            pk_1.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
+        let res = vault.ec_diffie_hellman(&sk_ctx_1, pk_2.as_ref());
         assert!(res.is_ok());
         let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        // FIXME: Check actual value
-        assert_eq!(ss.as_ref().len(), 32);
-
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_1,
-            pk_1.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        // FIXME: Check actual value
-        assert_eq!(ss.as_ref().len(), 32);
-
-        let res = vault.ec_diffie_hellman_hkdf_sha256(
-            &sk_ctx_2,
-            pk_2.as_ref(),
-            &salt,
-            b"",
-            vec![output_attributes.clone()],
-        );
-        assert!(res.is_ok());
-        let ss = res.unwrap();
-        assert_eq!(ss.len(), 1);
-        let ss = &ss[0];
-        let ss = vault.secret_export(ss).unwrap();
-        // FIXME: Check actual value
-        assert_eq!(ss.as_ref().len(), 32);
+        // TODO: Check result against test vector
     }
 
     #[test]
@@ -871,7 +724,7 @@ mod tests {
         assert!(res.is_ok());
         let pubkey = vault.secret_public_key_get(&secret).unwrap();
         let signature = res.unwrap();
-        let res = vault.verify(signature, pubkey.as_ref(), b"hello world!");
+        let res = vault.verify(&signature, pubkey.as_ref(), b"hello world!");
         assert!(res.is_ok());
     }
 }

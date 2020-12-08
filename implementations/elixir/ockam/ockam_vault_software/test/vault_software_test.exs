@@ -49,19 +49,6 @@ defmodule Ockam.Vault.Software.Tests do
     end
   end
 
-  describe "Ockam.Vault.Software.random_bytes/2" do
-    test "can run natively implemented functions" do
-      {:ok, handle} = SoftwareVault.default_init()
-      {:ok, random1} = SoftwareVault.random_bytes(handle, 32)
-      assert random1 != nil
-      assert byte_size(random1) == 32
-      {:ok, random2} = SoftwareVault.random_bytes(handle, 32)
-      assert random2 != nil
-      assert byte_size(random2) == 32
-      assert random1 != random2
-    end
-  end
-
   describe "Ockam.Vault.Software.secret_generate/2" do
     test "can run natively implemented functions" do
       {:ok, handle} = SoftwareVault.default_init()
