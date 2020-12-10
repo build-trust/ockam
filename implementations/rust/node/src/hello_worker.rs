@@ -1,4 +1,4 @@
-use ockam_channel::CHANNEL_ZERO;
+use ockam::secure_channel::CHANNEL_ZERO;
 use ockam_message::message::{Address, AddressType, Message, MessageType, Route, RouterAddress};
 use ockam_system::commands::{OckamCommand, RouterCommand, WorkerCommand};
 use std::str;

@@ -22,9 +22,6 @@ while_true
 
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
 
-#[macro_use]
-extern crate ockam_common;
-
 use core::marker::PhantomData;
 use error::*;
 use ockam_kex::error::KeyExchangeFailErrorKind;
@@ -401,7 +398,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let pending = channel.pending.clone();
         match pending {
             Some(mut p) => {
-                // send the remote public key and remote channel cleartext address as the message body
+                // send the remote public key and remote channel cleartext address as the message
+                // body
                 p.message_body = channel_cleartext_addr_encoded;
                 p.message_body.append(&mut static_public_key);
                 self.router_tx

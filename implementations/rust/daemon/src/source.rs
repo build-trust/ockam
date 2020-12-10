@@ -3,7 +3,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use crate::config::Config;
 
 use hex::encode;
-use ockam_channel::CHANNEL_ZERO;
+use ockam::secure_channel::CHANNEL_ZERO;
 use ockam_message::message::{
     Address, AddressType, Codec, Message as OckamMessage, Message, MessageType, Route,
     RouterAddress,

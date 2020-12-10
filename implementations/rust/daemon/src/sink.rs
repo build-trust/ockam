@@ -2,7 +2,7 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use crate::config::{AddonKind, Config};
 use attohttpc::post;
-use ockam_channel::CHANNEL_ZERO;
+use ockam::secure_channel::CHANNEL_ZERO;
 use ockam_message::message::{
     Address, AddressType, Codec, Message as OckamMessage, Message, MessageType, Route,
     RouterAddress,

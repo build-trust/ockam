@@ -12,7 +12,7 @@ use crate::source::StdinWorker;
 //     ockam_daemon::initiator::StdinWorker
 // }
 
-use ockam_channel::*;
+use ockam::secure_channel::*;
 use ockam_kex::{
     xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
     CipherSuite,

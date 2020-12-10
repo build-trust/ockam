@@ -1,7 +1,6 @@
 [workspace]
 
 members = [
-    "channel",
     "common",
     "daemon",
     "examples",
@@ -21,7 +20,6 @@ members = [
 ]
 
 default-members = [
-    "channel",
     "common",
     "daemon",
     "examples",

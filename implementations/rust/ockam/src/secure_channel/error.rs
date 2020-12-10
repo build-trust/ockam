@@ -124,13 +124,6 @@ impl From<TryRecvError> for ChannelError {
     }
 }
 
-from_int_impl!(ChannelError, u32);
-from_int_impl!(ChannelError, u64);
-from_int_impl!(ChannelError, u128);
-from_int_impl!(ChannelErrorKind, u32);
-from_int_impl!(ChannelErrorKind, u64);
-from_int_impl!(ChannelErrorKind, u128);
-
 impl Fail for ChannelError {
     fn cause(&self) -> Option<&dyn Fail> {
         self.inner.cause()

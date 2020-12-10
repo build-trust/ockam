@@ -4,12 +4,16 @@ version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 
+[profile.release]
+lto = true
+
 [features]
-default = ["ockam-common/default", "ockam-channel/default", "ockam-message/default", "ockam-kex/default", "ockam-vault/default"]
-ffi = ["ockam-common/default", "ockam-channel/default", "ockam-message/ffi", "ockam-kex/ffi", "ockam-vault/ffi"]
+default = ["ockam-common/default", "ockam-kex/default", "ockam-vault/default"]
+ffi = ["ockam-common/default", "ockam-kex/ffi", "ockam-vault/ffi"]
 
 [dependencies]
-ockam-channel = { version = "0.1", path = "../channel", default-features = false }
+failure = "0.1"
+hex = "0.4"
 ockam-common = { version = "0.1", path = "../common", default-features = false }
 ockam-kex = { version = "0.1", path = "../kex", default-features = false }
 ockam-message = { version = "0.1", path = "../message", default-features = false }
@@ -19,3 +23,4 @@ ockam-queue-topic = { version = "0.1", path = "../queue_topic", default-features
 ockam-transport = { version = "0.1", path = "../transport", default-features = false }
 ockam-vault = { version = "0.1", path = "../vault", default-features = false }
 ockam-worker = { version = "0.1", path = "../worker", default-features = false }
+rand = "0.7"

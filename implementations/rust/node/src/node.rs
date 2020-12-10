@@ -2,7 +2,7 @@
 
 use crate::blast_worker::BlastWorker;
 use crate::hello_worker::HelloWorker;
-use ockam_channel::*;
+use ockam::secure_channel::*;
 use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
 use ockam_kex::CipherSuite;
 use ockam_message::message::*;
