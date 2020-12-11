@@ -737,7 +737,7 @@ impl KeyExchanger for XXResponder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_vault::software::DefaultVault;
+    use ockam_vault_software::DefaultVault;
 
     #[test]
     fn prologue() {

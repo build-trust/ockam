@@ -1,10 +1,12 @@
-use crate::{
+use crate::error::*;
+use crate::xeddsa::*;
+use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
+use aes_gcm::{Aes128Gcm, Aes256Gcm};
+use ockam_vault::{
     error::{VaultFailError, VaultFailErrorKind},
     types::*,
     AsymmetricVault, HashVault, Secret, SecretVault, SignerVault, SymmetricVault, VerifierVault,
 };
-use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
-use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use p256::{
     elliptic_curve::{sec1::FromEncodedPoint, Group},
     AffinePoint, ProjectivePoint, Scalar,
@@ -12,15 +14,25 @@ use p256::{
 use rand::{prelude::*, rngs::OsRng};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use xeddsa::*;
 use zeroize::Zeroize;
+
+pub extern crate ockam_vault;
+
+mod xeddsa;
+
+mod error;
+
+#[macro_use]
+extern crate ockam_common;
+#[macro_use]
+extern crate arrayref;
 
 /// Default vault secret
 #[derive(Debug, Copy, Clone)]
-pub struct DefaultVaultSecret(pub usize);
+pub struct DefaultVaultSecret(usize);
 
 impl DefaultVaultSecret {
-    pub(crate) fn downcast_secret(
+    pub fn downcast_secret(
         context: &Box<dyn Secret>,
     ) -> Result<&DefaultVaultSecret, VaultFailError> {
         context
@@ -42,13 +54,13 @@ impl Secret for DefaultVaultSecret {}
 /// and shouldn't be used for production
 ///
 /// ```
-/// use ockam_vault::software::DefaultVault;
+/// use ockam_vault_software::DefaultVault;
 /// let vault = DefaultVault::default();
 /// ```
 #[derive(Debug)]
 pub struct DefaultVault {
     entries: BTreeMap<usize, VaultEntry>,
-    pub(crate) next_id: usize,
+    next_id: usize,
 }
 
 impl Default for DefaultVault {
@@ -141,7 +153,8 @@ impl DefaultVault {
         let okm = {
             let mut okm = vec![0u8; okm_len];
             let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key.as_ref()), ikm);
-            prk.expand(info, okm.as_mut_slice())?;
+            prk.expand(info, okm.as_mut_slice())
+                .map_err(map_hkdf_invalid_length_err)?;
             okm
         };
 
@@ -173,7 +186,7 @@ impl DefaultVault {
         Ok(secrets)
     }
 
-    pub(crate) fn get_ids(&self) -> Vec<usize> {
+    pub fn get_ids(&self) -> Vec<usize> {
         self.entries.keys().map(|i| *i).collect()
     }
 }
@@ -214,7 +227,7 @@ macro_rules! encrypt_op_impl {
             aad: $aad.as_ref(),
             msg: $text.as_ref(),
         };
-        let output = cipher.$op(nonce, payload)?;
+        let output = cipher.$op(nonce, payload).map_err(map_aes_error)?;
         Ok(output)
     }};
 }

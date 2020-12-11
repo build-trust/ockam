@@ -40,9 +40,13 @@ defmodule Ockam.Vault.Software.Tests do
       {:ok, secret} = SoftwareVault.secret_generate(handle, attributes)
       assert secret != 0
       {:ok, data1} = SoftwareVault.secret_export(handle, secret)
+
+      {:ok, persistence_id} = SoftwareVault.get_persistence_id(handle, secret)
+
       SoftwareVault.deinit(handle)
       {:ok, handle2} = SoftwareVault.file_init(vault_dir)
-      {:ok, data} = SoftwareVault.secret_export(handle2, secret)
+      {:ok, secret2} = SoftwareVault.get_persistent_secret(handle2, persistence_id)
+      {:ok, data} = SoftwareVault.secret_export(handle2, secret2)
       assert data == data1
 
       File.rm_rf!(vault_dir)

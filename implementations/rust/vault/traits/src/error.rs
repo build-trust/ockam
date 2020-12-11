@@ -169,31 +169,6 @@ impl From<VaultFailError> for VaultFailErrorKind {
     }
 }
 
-impl From<hkdf::InvalidLength> for VaultFailErrorKind {
-    fn from(_: hkdf::InvalidLength) -> Self {
-        VaultFailErrorKind::HkdfSha256
-    }
-}
-
-impl From<hkdf::InvalidPrkLength> for VaultFailErrorKind {
-    fn from(_: hkdf::InvalidPrkLength) -> Self {
-        VaultFailErrorKind::HkdfSha256
-    }
-}
-
-impl From<aes_gcm::Error> for VaultFailErrorKind {
-    fn from(_: aes_gcm::Error) -> Self {
-        VaultFailErrorKind::AeadAesGcm
-    }
-}
-
-#[cfg(feature = "ffi")]
-impl From<VaultFailErrorKind> for ffi_support::ExternError {
-    fn from(err: VaultFailErrorKind) -> ffi_support::ExternError {
-        ffi_support::ExternError::new_error(ffi_support::ErrorCode::new(err.to_usize() as i32), "")
-    }
-}
-
 impl From<std::num::ParseIntError> for VaultFailErrorKind {
     fn from(_: std::num::ParseIntError) -> Self {
         VaultFailErrorKind::IOError
@@ -212,99 +187,11 @@ impl From<Context<VaultFailErrorKind>> for VaultFailError {
     }
 }
 
-impl From<hkdf::InvalidLength> for VaultFailError {
-    fn from(_: hkdf::InvalidLength) -> Self {
-        VaultFailError::from(VaultFailErrorKind::HkdfSha256)
-    }
-}
-
-impl From<hkdf::InvalidPrkLength> for VaultFailError {
-    fn from(_: hkdf::InvalidPrkLength) -> Self {
-        VaultFailError::from(VaultFailErrorKind::HkdfSha256)
-    }
-}
-
-impl From<aes_gcm::Error> for VaultFailError {
-    fn from(_: aes_gcm::Error) -> Self {
-        VaultFailError::from(VaultFailErrorKind::AeadAesGcm)
-    }
-}
-
 impl From<std::num::ParseIntError> for VaultFailError {
     fn from(_: std::num::ParseIntError) -> Self {
         VaultFailError::from(VaultFailErrorKind::IOError)
     }
 }
-
-#[cfg(all(target_os = "macos", feature = "os"))]
-impl From<security_framework::base::Error> for VaultFailError {
-    fn from(err: security_framework::base::Error) -> Self {
-        match err.code() {
-            -128 => VaultFailErrorKind::AccessDenied.into(),
-            -25300 => VaultFailErrorKind::InvalidContext.into(),
-            _ => VaultFailErrorKind::IOError.into(),
-        }
-    }
-}
-
-#[cfg(all(target_os = "macos", feature = "os"))]
-impl From<keychain_services::Error> for VaultFailError {
-    fn from(err: keychain_services::Error) -> Self {
-        use keychain_services::ErrorKind::*;
-        println!("ErrorKind = {:?}", err.kind());
-        match err.kind() {
-            AuthFailed => VaultFailErrorKind::AccessDenied.into(),
-            BufferTooSmall => VaultFailErrorKind::BufferTooSmall.into(),
-            CreateChainFailed => VaultFailErrorKind::IOError.into(),
-            DataTooLarge => VaultFailErrorKind::InvalidBuffer.into(),
-            DataNotAvailable => VaultFailErrorKind::InvalidContext.into(),
-            DataNotModifiable => VaultFailErrorKind::IOError.into(),
-            DuplicateCallback => VaultFailErrorKind::IOError.into(),
-            DuplicateItem => VaultFailErrorKind::Import.into(),
-            DuplicateKeychain => VaultFailErrorKind::IOError.into(),
-            InDarkWake => VaultFailErrorKind::Init.into(),
-            InteractionNotAllowed => VaultFailErrorKind::AccessDenied.into(),
-            InteractionRequired => VaultFailErrorKind::AccessDenied.into(),
-            InvalidCallback => VaultFailErrorKind::IOError.into(),
-            InvalidItemRef => VaultFailErrorKind::InvalidContext.into(),
-            InvalidKeychain => VaultFailErrorKind::IOError.into(),
-            InvalidPrefsDomain => VaultFailErrorKind::IOError.into(),
-            InvalidSearchRef => VaultFailErrorKind::InvalidContext.into(),
-            ItemNotFound => VaultFailErrorKind::InvalidContext.into(),
-            KeySizeNotAllowed => VaultFailErrorKind::SecretSizeMismatch.into(),
-            MissingEntitlement => VaultFailErrorKind::AccessDenied.into(),
-            NoCertificateModule => VaultFailErrorKind::AccessDenied.into(),
-            NoDefaultKeychain => VaultFailErrorKind::AccessDenied.into(),
-            NoPolicyModule => VaultFailErrorKind::AccessDenied.into(),
-            NoStorageModule => VaultFailErrorKind::AccessDenied.into(),
-            NoSuchAttr => VaultFailErrorKind::InvalidAttributes.into(),
-            NoSuchClass => VaultFailErrorKind::InvalidAttributes.into(),
-            NoSuchKeychain => VaultFailErrorKind::AccessDenied.into(),
-            NotAvailable => VaultFailErrorKind::IOError.into(),
-            ReadOnly => VaultFailErrorKind::AccessDenied.into(),
-            ReadOnlyAttr => VaultFailErrorKind::InvalidAttributes.into(),
-            WrongSecVersion => VaultFailErrorKind::InvalidAttributes.into(),
-            Io { .. } => VaultFailErrorKind::IOError.into(),
-            CFError { .. } => VaultFailErrorKind::IOError.into(),
-            Errno { .. } => VaultFailErrorKind::IOError.into(),
-            OSError { .. } => VaultFailErrorKind::IOError.into(),
-        }
-    }
-}
-
-#[cfg(feature = "ffi")]
-impl From<VaultFailError> for ffi_support::ExternError {
-    fn from(err: VaultFailError) -> ffi_support::ExternError {
-        let err: VaultFailErrorKind = err.into();
-        err.into()
-    }
-}
-
-// impl From<p256::ecdsa::Error> for VaultFailError {
-//     fn from(_: p256::ecdsa::Error) -> Self {
-//         VaultFailErrorKind::Ecdh.into()
-//     }
-// }
 
 from_int_impl!(VaultFailError, u32);
 from_int_impl!(VaultFailError, u64);

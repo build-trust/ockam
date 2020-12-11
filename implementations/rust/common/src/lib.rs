@@ -9,4 +9,23 @@ macro_rules! from_int_impl {
     };
 }
 
+#[macro_export]
+macro_rules! fail {
+    ($err:expr) => {
+        return Err($err.into());
+    };
+}
+
+/// Creates drop implementation with zeroize call
+#[macro_export]
+macro_rules! zdrop_impl {
+    ($name:ident) => {
+        impl Drop for $name {
+            fn drop(&mut self) {
+                self.zeroize();
+            }
+        }
+    };
+}
+
 pub mod error;

@@ -14,5 +14,5 @@ lto = true
 
 [dependencies]
 ockam-message = { version = "0.1", path = "../message" }
-ockam-vault = { version = "0.1", path = "../vault" }
+ockam-vault = { version = "0.1", path = "../vault/traits" }
 

@@ -1,55 +1,50 @@
-use crate::software::DefaultVaultSecret;
-use crate::types::SecretAttributes;
+use crate::default_vault_adapter::DefaultVaultAdapter;
+use crate::error::{map_nul_error, map_vault_error};
 use crate::types::*;
-use crate::{
-    error::*, ffi::types::*, file::FilesystemVault, software::DefaultVault, AsymmetricVault,
-    HashVault, Secret, SecretVault, SymmetricVault,
+use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr, Handle};
+use ockam_vault_file::FilesystemVault;
+use ockam_vault_software::ockam_vault::error::{VaultFailError, VaultFailErrorKind};
+use ockam_vault_software::ockam_vault::types::{PublicKey, SecretAttributes, SecretType};
+use ockam_vault_software::ockam_vault::{
+    AsymmetricVault, HashVault, PersistentVault, Secret, SecretVault, SymmetricVault,
 };
-use ffi_support::{ByteBuffer, ConcurrentHandleMap, ErrorCode, ExternError, FfiStr};
+use ockam_vault_software::DefaultVault;
+use std::collections::BTreeMap;
+use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
 use std::slice;
 
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate ffi_support;
+
+#[macro_use]
+mod macros;
+mod default_vault_adapter;
+mod error;
 mod types;
 
-/// Implementation for this trait is needed to add ffi support for vault implementation
-pub trait SecretFfiConverter {
-    /// Convert secret trait to u64
-    fn secret_into_ffi(&self, secret: &Box<dyn Secret>) -> Result<u64, VaultFailError>;
-    /// Create secret from u64
-    fn secret_from_ffi(&self, secret_handle: u64) -> Result<Box<dyn Secret>, VaultFailError>;
+trait FfiVault: SecretVault + HashVault + SymmetricVault + AsymmetricVault + PersistentVault {}
+
+impl<D> FfiVault for D where
+    D: SecretVault + HashVault + SymmetricVault + AsymmetricVault + PersistentVault
+{
 }
-
-/// SecretFfiConverter implementation for DefaultVault
-struct DefaultVaultSecretFfiConverter {}
-
-/// Default
-impl Default for DefaultVaultSecretFfiConverter {
-    /// Default
-    fn default() -> Self {
-        DefaultVaultSecretFfiConverter {}
-    }
-}
-
-/// SecretFfiConverter implementation for DefaultVault
-impl SecretFfiConverter for DefaultVaultSecretFfiConverter {
-    fn secret_into_ffi(&self, secret: &Box<dyn Secret>) -> Result<u64, VaultFailError> {
-        let secret = DefaultVaultSecret::downcast_secret(secret)?;
-        Ok(secret.0 as u64)
-    }
-
-    fn secret_from_ffi(&self, secret_handle: u64) -> Result<Box<dyn Secret>, VaultFailError> {
-        let secret = DefaultVaultSecret(secret_handle as usize);
-        Ok(Box::new(secret))
-    }
-}
-
-trait FfiVault: SecretVault + HashVault + SymmetricVault + AsymmetricVault {}
-
-impl<D> FfiVault for D where D: SecretVault + HashVault + SymmetricVault + AsymmetricVault {}
 
 /// Wraps a vault that can be used as a trait object
 struct BoxVault {
     vault: Box<dyn FfiVault + Send>,
-    secret_ffi_converter: Box<dyn SecretFfiConverter + Send>,
+    map: BTreeMap<u64, Box<dyn Secret>>,
+    next_id: u64,
+}
+
+impl BoxVault {
+    fn add_secret(&mut self, secret: Box<dyn Secret>) -> u64 {
+        self.next_id += 1;
+        self.map.insert(self.next_id, secret);
+        self.next_id
+    }
 }
 
 lazy_static! {
@@ -62,8 +57,9 @@ pub extern "C" fn ockam_vault_default_init(context: &mut u64) -> VaultError {
     let mut err = ExternError::success();
     // TODO: handle logging
     *context = VAULTS.insert_with_output(&mut err, || BoxVault {
-        vault: Box::new(DefaultVault::default()),
-        secret_ffi_converter: Box::new(DefaultVaultSecretFfiConverter::default()),
+        vault: Box::new(DefaultVaultAdapter::new(DefaultVault::default())),
+        map: BTreeMap::new(),
+        next_id: 0,
     });
     ERROR_NONE
 }
@@ -77,7 +73,8 @@ pub extern "C" fn ockam_vault_file_init(context: &mut u64, path: FfiStr<'_>) -> 
         match FilesystemVault::new(std::path::PathBuf::from(path)) {
             Ok(v) => Ok(BoxVault {
                 vault: Box::new(v),
-                secret_ffi_converter: Box::new(DefaultVaultSecretFfiConverter::default()),
+                map: BTreeMap::new(),
+                next_id: 0,
             }),
             Err(_) => Err(ExternError::new_error(ErrorCode::new(1), "")),
         }
@@ -104,15 +101,12 @@ pub extern "C" fn ockam_vault_sha256(
     let input = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
 
     let mut err = ExternError::success();
-    let output = VAULTS.call_with_result(
-        &mut err,
-        context,
-        |v| -> Result<ByteBuffer, VaultFailError> {
-            let d = v.vault.sha256(input)?;
+    let output =
+        VAULTS.call_with_result(&mut err, context, |v| -> Result<ByteBuffer, ExternError> {
+            let d = v.vault.sha256(input).map_err(map_vault_error)?;
             let byte_buffer = ByteBuffer::from_vec(d.to_vec());
             Ok(byte_buffer)
-        },
-    );
+        });
     if err.get_code().is_success() {
         let output = output.destroy_into_vec();
         unsafe {
@@ -137,10 +131,9 @@ pub extern "C" fn ockam_vault_secret_generate(
     let handle = VAULTS.call_with_result_mut(
         &mut err,
         context,
-        |v| -> Result<SecretKeyHandle, VaultFailError> {
-            let ctx = v.vault.secret_generate(atts)?;
-            let ctx = v.secret_ffi_converter.secret_into_ffi(&ctx)?;
-            Ok(ctx)
+        |v| -> Result<SecretKeyHandle, ExternError> {
+            let ctx = v.vault.secret_generate(atts).map_err(map_vault_error)?;
+            Ok(v.add_secret(ctx))
         },
     );
     if err.get_code().is_success() {
@@ -167,12 +160,14 @@ pub extern "C" fn ockam_vault_secret_import(
     let handle = VAULTS.call_with_result_mut(
         &mut err,
         context,
-        |v| -> Result<SecretKeyHandle, VaultFailError> {
+        |v| -> Result<SecretKeyHandle, ExternError> {
             let secret_data = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
 
-            let ctx = v.vault.secret_import(secret_data, atts)?;
-            let ctx = v.secret_ffi_converter.secret_into_ffi(&ctx)?;
-            Ok(ctx)
+            let ctx = v
+                .vault
+                .secret_import(secret_data, atts)
+                .map_err(map_vault_error)?;
+            Ok(v.add_secret(ctx))
         },
     );
     if err.get_code().is_success() {
@@ -194,15 +189,16 @@ pub extern "C" fn ockam_vault_secret_export(
 ) -> VaultError {
     *output_buffer_length = 0;
     let mut err = ExternError::success();
-    let output = VAULTS.call_with_result_mut(
-        &mut err,
-        context,
-        |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
-            let key = v.vault.secret_export(&ctx)?;
+    let output =
+        VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<ByteBuffer, ExternError> {
+            let ctx = v
+                .map
+                .get(&secret)
+                .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                .map_err(map_vault_error)?;
+            let key = v.vault.secret_export(&ctx).map_err(map_vault_error)?;
             Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
-        },
-    );
+        });
     if err.get_code().is_success() {
         let buffer = output.destroy_into_vec();
         if output_buffer_size < buffer.len() as u32 {
@@ -230,15 +226,19 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
 ) -> VaultError {
     *output_buffer_length = 0;
     let mut err = ExternError::success();
-    let output = VAULTS.call_with_result_mut(
-        &mut err,
-        context,
-        |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
-            let key = v.vault.secret_public_key_get(&ctx)?;
+    let output =
+        VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<ByteBuffer, ExternError> {
+            let ctx = v
+                .map
+                .get(&secret)
+                .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                .map_err(map_vault_error)?;
+            let key = v
+                .vault
+                .secret_public_key_get(&ctx)
+                .map_err(map_vault_error)?;
             Ok(ByteBuffer::from_vec(key.as_ref().to_vec()))
-        },
-    );
+        });
     if err.get_code().is_success() {
         let buffer = output.destroy_into_vec();
         if output_buffer_size < buffer.len() as u32 {
@@ -266,9 +266,16 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
     let output = VAULTS.call_with_result_mut(
         &mut err,
         context,
-        |v| -> Result<FfiSecretAttributes, VaultFailError> {
-            let ctx = v.secret_ffi_converter.secret_from_ffi(secret_handle)?;
-            let atts = v.vault.secret_attributes_get(&ctx)?;
+        |v| -> Result<FfiSecretAttributes, ExternError> {
+            let ctx = v
+                .map
+                .get(&secret_handle)
+                .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                .map_err(map_vault_error)?;
+            let atts = v
+                .vault
+                .secret_attributes_get(ctx)
+                .map_err(map_vault_error)?;
             Ok(atts.into())
         },
     );
@@ -284,9 +291,13 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_destroy(context: u64, secret: u64) -> VaultError {
     let mut err = ExternError::success();
-    VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<(), VaultFailError> {
-        let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
-        v.vault.secret_destroy(ctx)?;
+    VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<(), ExternError> {
+        let ctx = v
+            .map
+            .remove(&secret)
+            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+            .map_err(map_vault_error)?;
+        v.vault.secret_destroy(ctx).map_err(map_vault_error)?;
         Ok(())
     });
     if err.get_code().is_success() {
@@ -313,9 +324,16 @@ pub extern "C" fn ockam_vault_ecdh(
     let handle = VAULTS.call_with_result_mut(
         &mut err,
         context,
-        |v| -> Result<SecretKeyHandle, VaultFailError> {
-            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
-            let atts = v.vault.secret_attributes_get(&ctx)?;
+        |v| -> Result<SecretKeyHandle, ExternError> {
+            let ctx = v
+                .map
+                .get(&secret)
+                .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                .map_err(map_vault_error)?;
+            let atts = v
+                .vault
+                .secret_attributes_get(&ctx)
+                .map_err(map_vault_error)?;
             let pubkey = match atts.stype {
                 SecretType::Curve25519 => {
                     if peer_publickey.len() != 32 {
@@ -332,9 +350,13 @@ pub extern "C" fn ockam_vault_ecdh(
                     }
                 }
                 _ => Err(VaultFailError::from(VaultFailErrorKind::Ecdh)),
-            }?;
-            let shared_ctx = v.vault.ec_diffie_hellman(&ctx, pubkey.as_ref())?;
-            Ok(v.secret_ffi_converter.secret_into_ffi(&shared_ctx)?)
+            }
+            .map_err(map_vault_error)?;
+            let shared_ctx = v
+                .vault
+                .ec_diffie_hellman(&ctx, pubkey.as_ref())
+                .map_err(map_vault_error)?;
+            Ok(v.add_secret(shared_ctx))
         },
     );
     if err.get_code().is_success() {
@@ -361,15 +383,21 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
     let handles = VAULTS.call_with_result_mut(
         &mut err,
         context,
-        |v| -> Result<OckamSecretList, VaultFailError> {
-            let salt_ctx = v.secret_ffi_converter.secret_from_ffi(salt)?;
+        |v| -> Result<OckamSecretList, ExternError> {
+            let salt_ctx = v
+                .map
+                .get(&salt)
+                .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                .map_err(map_vault_error)?;
             let ikm_ctx = if input_key_material.is_null() {
                 None
             } else {
                 unsafe {
                     Some(
-                        v.secret_ffi_converter
-                            .secret_from_ffi(*input_key_material)?,
+                        v.map
+                            .get(&*input_key_material)
+                            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                            .map_err(map_vault_error)?,
                     )
                 }
             };
@@ -392,11 +420,10 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
             // Either way, I don't want to change the API until this decision is finalized.
             let hkdf_output = v
                 .vault
-                .hkdf_sha256(&salt_ctx, b"", ikm_ctx.as_ref(), output_attributes)?
-                .iter()
-                .map(
-                    |x| v.secret_ffi_converter.secret_into_ffi(x).unwrap(), /* FIXME */
-                )
+                .hkdf_sha256(&salt_ctx, b"", ikm_ctx, output_attributes)
+                .map_err(map_vault_error)?
+                .into_iter()
+                .map(|x| v.add_secret(x))
                 .collect();
 
             // FIXME: Double conversion is happening here
@@ -434,19 +461,21 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
     let additional_data =
         unsafe { std::slice::from_raw_parts(additional_data, additional_data_length as usize) };
     let plaintext = unsafe { std::slice::from_raw_parts(plaintext, plaintext_length as usize) };
-    let output = VAULTS.call_with_result_mut(
-        &mut err,
-        context,
-        |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
+    let output =
+        VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<ByteBuffer, ExternError> {
+            let ctx = v
+                .map
+                .get(&secret)
+                .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                .map_err(map_vault_error)?;
             let mut nonce_vec = vec![0; 12 - 2];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
-            let ciphertext =
-                v.vault
-                    .aead_aes_gcm_encrypt(&ctx, plaintext, &nonce_vec, additional_data)?;
+            let ciphertext = v
+                .vault
+                .aead_aes_gcm_encrypt(&ctx, plaintext, &nonce_vec, additional_data)
+                .map_err(map_vault_error)?;
             Ok(ByteBuffer::from_vec(ciphertext))
-        },
-    );
+        });
     if err.get_code().is_success() {
         let buffer = output.destroy_into_vec();
         if ciphertext_and_tag_size < buffer.len() as u32 {
@@ -486,22 +515,21 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     let ciphertext_and_tag = unsafe {
         std::slice::from_raw_parts(ciphertext_and_tag, ciphertext_and_tag_length as usize)
     };
-    let output = VAULTS.call_with_result_mut(
-        &mut err,
-        context,
-        |v| -> Result<ByteBuffer, VaultFailError> {
-            let ctx = v.secret_ffi_converter.secret_from_ffi(secret)?;
+    let output =
+        VAULTS.call_with_result_mut(&mut err, context, |v| -> Result<ByteBuffer, ExternError> {
+            let ctx = v
+                .map
+                .get(&secret)
+                .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+                .map_err(map_vault_error)?;
             let mut nonce_vec = vec![0; 12 - 2];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
-            let plain = v.vault.aead_aes_gcm_decrypt(
-                &ctx,
-                ciphertext_and_tag,
-                &nonce_vec,
-                additional_data,
-            )?;
+            let plain = v
+                .vault
+                .aead_aes_gcm_decrypt(&ctx, ciphertext_and_tag, &nonce_vec, additional_data)
+                .map_err(map_vault_error)?;
             Ok(ByteBuffer::from_vec(plain))
-        },
-    );
+        });
     if err.get_code().is_success() {
         let buffer = output.destroy_into_vec();
         if plaintext_size < buffer.len() as u32 {
@@ -513,6 +541,73 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
         }
     } else {
         VaultFailErrorKind::AeadAesGcmDecrypt.into()
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ockam_vault_get_persistence_id(
+    context: u64,
+    secret: u64,
+    persistence_id: *mut c_char,
+    persistence_id_size: u32,
+) -> VaultError {
+    let handle = match Handle::from_u64(context) {
+        Ok(handle) => handle,
+        Err(_) => return VaultFailErrorKind::InvalidSecret.into(),
+    };
+
+    let output = match VAULTS.get(handle, |v| -> Result<CString, ExternError> {
+        let ctx = v
+            .map
+            .get(&secret)
+            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+            .map_err(map_vault_error)?;
+        let persistence_id = v.vault.get_persistence_id(&ctx).map_err(map_vault_error)?;
+        let persistence_id = CString::new(persistence_id).map_err(map_nul_error)?;
+        Ok(persistence_id)
+    }) {
+        Ok(output) => output,
+        Err(_) => return VaultFailErrorKind::InvalidSecret.into(), // TODO: Fix error propagation
+    };
+    let output = output.to_bytes_with_nul();
+    if persistence_id_size < output.len() as u32 {
+        VaultFailErrorKind::InvalidContext.into()
+    } else {
+        unsafe {
+            std::ptr::copy_nonoverlapping(output.as_ptr(), persistence_id as *mut u8, output.len())
+        };
+        ERROR_NONE
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ockam_vault_get_persistent_secret(
+    context: u64,
+    secret: &mut u64,
+    persistence_id: *mut c_char,
+) -> VaultError {
+    let persistence_id = match unsafe { CStr::from_ptr(persistence_id) }.to_str() {
+        Ok(id) => id,
+        Err(_) => return VaultFailErrorKind::InvalidSecret.into(),
+    };
+
+    let mut err = ExternError::success();
+    let handle = VAULTS.call_with_result_mut(
+        &mut err,
+        context,
+        |v| -> Result<SecretKeyHandle, ExternError> {
+            let ctx = v
+                .vault
+                .get_persistent_secret(persistence_id)
+                .map_err(map_vault_error)?;
+            Ok(v.add_secret(ctx))
+        },
+    );
+    if err.get_code().is_success() {
+        *secret = handle;
+        ERROR_NONE
+    } else {
+        VaultFailErrorKind::SecretGenerate.into()
     }
 }
 

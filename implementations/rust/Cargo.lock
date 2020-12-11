@@ -296,29 +296,13 @@ dependencies = [
 
 [[package]]
 name = "core-foundation"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57d24c7a13c43e870e37c1556b74555437870a04514f7685f5b354e090567171"
-dependencies = [
- "core-foundation-sys 0.7.0",
- "libc",
-]
-
-[[package]]
-name = "core-foundation"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a89e2ae426ea83155dccf10c0fa6b1463ef6d5fcb44cee0b224a408fa640a62"
 dependencies = [
- "core-foundation-sys 0.8.2",
+ "core-foundation-sys",
  "libc",
 ]
-
-[[package]]
-name = "core-foundation-sys"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
 name = "core-foundation-sys"
@@ -789,17 +773,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
 
 [[package]]
-name = "keychain-services"
-version = "0.1.2"
-source = "git+https://github.com/iqlusioninc/keychain-services.rs#7410fb8baf4ecdf04cdcd7d06d02658f4f158d77"
-dependencies = [
- "core-foundation 0.7.0",
- "failure",
- "failure_derive",
- "zeroize",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -906,6 +879,8 @@ dependencies = [
  "ockam-system",
  "ockam-transport",
  "ockam-vault",
+ "ockam-vault-ffi",
+ "ockam-vault-software",
  "ockam-worker",
  "rand",
 ]
@@ -925,6 +900,7 @@ dependencies = [
  "lazy_static",
  "ockam-common",
  "ockam-vault",
+ "ockam-vault-software",
  "subtle",
  "zeroize",
 ]
@@ -948,7 +924,7 @@ dependencies = [
  "ockam-router",
  "ockam-system",
  "ockam-transport",
- "ockam-vault",
+ "ockam-vault-software",
  "ockam-worker",
  "rand",
  "structopt",
@@ -994,29 +970,52 @@ dependencies = [
 name = "ockam-vault"
 version = "0.1.0"
 dependencies = [
+ "arrayref",
+ "cfg-if 1.0.0",
+ "downcast",
+ "failure",
+ "ockam-common",
+ "zeroize",
+]
+
+[[package]]
+name = "ockam-vault-ffi"
+version = "0.1.0"
+dependencies = [
+ "ffi-support",
+ "lazy_static",
+ "ockam-common",
+ "ockam-vault-file",
+ "ockam-vault-software",
+]
+
+[[package]]
+name = "ockam-vault-file"
+version = "0.1.0"
+dependencies = [
+ "ockam-common",
+ "ockam-vault",
+ "ockam-vault-software",
+ "zeroize",
+]
+
+[[package]]
+name = "ockam-vault-software"
+version = "0.1.0"
+dependencies = [
  "aead",
  "aes-gcm",
  "arrayref",
- "c_bindings",
- "c_rust_memory",
- "cfg-if 1.0.0",
  "curve25519-dalek",
- "downcast",
  "ed25519-dalek",
- "failure",
- "ffi-support",
  "hex",
  "hkdf",
- "keychain-services",
- "lazy_static",
  "ockam-common",
+ "ockam-vault",
  "p256",
  "rand",
- "security-framework",
  "sha2",
- "subtle",
  "x25519-dalek",
- "xeddsa",
  "zeroize",
 ]
 
@@ -1045,7 +1044,7 @@ dependencies = [
  "ockam-router",
  "ockam-system",
  "ockam-transport",
- "ockam-vault",
+ "ockam-vault-file",
  "structopt",
  "url",
  "zeroize",
@@ -1334,8 +1333,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1759c2e3c8580017a484a7ac56d3abc5a6c1feadf88db2f3633f12ae4268c69"
 dependencies = [
  "bitflags",
- "core-foundation 0.9.1",
- "core-foundation-sys 0.8.2",
+ "core-foundation",
+ "core-foundation-sys",
  "libc",
  "security-framework-sys",
 ]
@@ -1346,7 +1345,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f99b9d5e26d2a71633cc4f2ebae7cc9f874044e0c351a27e17892d76dce5678b"
 dependencies = [
- "core-foundation-sys 0.8.2",
+ "core-foundation-sys",
  "libc",
 ]
 
@@ -1588,9 +1587,9 @@ dependencies = [
 
 [[package]]
 name = "vcpkg"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6454029bf181f092ad1b853286f23e2c507d8e8194d01d92da4a55c274a5508c"
+checksum = "b00bca6106a5e23f3eee943593759b7fcddb00554332e856d990c893966879fb"
 
 [[package]]
 name = "vec_map"
@@ -1681,18 +1680,6 @@ dependencies = [
  "curve25519-dalek",
  "rand_core",
  "zeroize",
-]
-
-[[package]]
-name = "xeddsa"
-version = "0.1.0"
-dependencies = [
- "curve25519-dalek",
- "ed25519-dalek",
- "rand",
- "sha2",
- "subtle",
- "x25519-dalek",
 ]
 
 [[package]]

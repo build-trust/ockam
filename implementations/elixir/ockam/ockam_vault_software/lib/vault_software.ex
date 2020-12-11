@@ -103,6 +103,14 @@ defmodule Ockam.Vault.Software do
     raise "natively implemented aead_aes_gcm_decrypt/5 not loaded"
   end
 
+  def get_persistence_id(_a, _b) do
+    raise "natively implemented get_persistence_id/2 not loaded"
+  end
+
+  def get_persistent_secret(_a, _b) do
+    raise "natively implemented get_persistent_secret/2 not loaded"
+  end
+
   def deinit(_a) do
     raise "natively implemented deinit/1 not loaded"
   end

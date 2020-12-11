@@ -4,13 +4,13 @@ use std::str::FromStr;
 
 use ockam_message::message::{Route, RouterAddress};
 
+use ockam_vault_file::FILENAME_KEY_SUFFIX;
 use structopt::{clap::ArgSettings::Hidden, StructOpt};
 use url::Url;
 
 /// The port on which the config updater runs and accepts Config messages.
 pub const DEFAULT_CONFIG_PORT: u16 = 11199;
 
-pub const FILENAME_KEY_SUFFIX: &str = ".key";
 pub const FILENAME_KEY_DEFAULT: &str = "1.key";
 
 const DEFAULT_LOCAL_SOCKET: &str = "127.0.0.1:0";

@@ -11,7 +11,7 @@ use ockam_router::router::*;
 use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 use ockam_transport::tcp::TcpManager;
 use ockam_transport::udp::UdpTransport;
-use ockam_vault::software::DefaultVault;
+use ockam_vault_software::DefaultVault;
 use std::io::stdin;
 use std::iter::FromIterator;
 use std::net::SocketAddr;

@@ -229,6 +229,15 @@ uint32_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t       vault,
                                          size_t               plaintext_size,
                                          size_t*              plaintext_length);
 
+uint32_t ockam_vault_get_persistence_id(ockam_vault_t       vault,
+                                        ockam_vault_secret_t key,
+                                        char*                persistence_id,
+                                        size_t               persistence_id_size);
+
+uint32_t ockam_vault_get_persistent_secret(ockam_vault_t         vault,
+                                           ockam_vault_secret_t* key,
+                                           const char*           persistence_id);
+
 /**
  * @brief   Deinitialize the specified ockam vault object
  * @param   vault[in] The ockam vault object to deinitialize.

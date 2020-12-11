@@ -14,7 +14,7 @@ url = "2.1.1"
 ockam = { path = "../ockam", version = "0.1.0" }
 ockam-common = { path = "../common", version = "0.1.0" }
 ockam-message = { path = "../message", version = "0.1.0" }
-ockam-vault = { path = "../vault", version = "0.1.0" }
+ockam-vault-file = { path = "../vault/file", version = "0.1.0" }
 ockam-kex = { path = "../kex", version = "0.1.0" }
 ockam-transport = { path = "../transport", version = "0.1.0" }
 ockam-router = { path = "../router", version = "0.1.0" }

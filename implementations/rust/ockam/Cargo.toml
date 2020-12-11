@@ -8,8 +8,8 @@ edition = "2018"
 lto = true
 
 [features]
-default = ["ockam-common/default", "ockam-kex/default", "ockam-vault/default"]
-ffi = ["ockam-common/default", "ockam-kex/ffi", "ockam-vault/ffi"]
+default = ["ockam-common/default", "ockam-kex/default", "ockam-vault-software"]
+ffi = ["ockam-common/default", "ockam-kex/ffi", "ockam-vault-ffi"]
 
 [dependencies]
 failure = "0.1"
@@ -21,6 +21,8 @@ ockam-router = { version = "0.1", path = "../router", default-features = false }
 ockam-system = { version = "0.1", path = "../system", default-features = false }
 ockam-queue-topic = { version = "0.1", path = "../queue_topic", default-features = false }
 ockam-transport = { version = "0.1", path = "../transport", default-features = false }
-ockam-vault = { version = "0.1", path = "../vault", default-features = false }
+ockam-vault = { version = "0.1", path = "../vault/traits" }
+ockam-vault-software = { version = "0.1", path = "../vault/software", optional = true}
+ockam-vault-ffi = { version = "0.1", path = "../vault/ffi", optional = true }
 ockam-worker = { version = "0.1", path = "../worker", default-features = false }
 rand = "0.7"

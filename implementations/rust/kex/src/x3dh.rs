@@ -579,7 +579,7 @@ impl NewKeyExchanger<X3dhInitiator, X3dhResponder> for X3dhNewKeyExchanger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_vault::software::DefaultVault;
+    use ockam_vault_software::DefaultVault;
 
     #[test]
     fn handshake() {

@@ -22,7 +22,7 @@ ockam-transport = { version = "0.1", path = "../transport"}
 ockam-message = { version = "0.1", path = "../message"}
 ockam-common = { version = "0.1", path = "../common"}
 ockam-kex = { version = "0.1", path = "../kex" }
-ockam-vault = { version = "0.1", path = "../vault" }
+ockam-vault-software = { version = "0.1", path = "../vault/software" }
 ockam-worker = { version = "0.1", path = "../worker"}
 ockam-system = { version = "0.1", path = "../system" }
 

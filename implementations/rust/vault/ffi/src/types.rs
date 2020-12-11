@@ -1,5 +1,5 @@
-use crate::types::*;
 use ffi_support::IntoFfi;
+use ockam_vault_software::ockam_vault::types::*;
 use std::convert::TryInto;
 
 #[derive(Clone, Copy, Debug)]

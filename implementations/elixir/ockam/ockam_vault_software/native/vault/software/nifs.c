@@ -7,6 +7,7 @@ static const size_t MAX_ARG_STR_SIZE         = 32;
 static const size_t MAX_SECRET_EXPORT_SIZE   = 65;
 static const size_t MAX_PUBLICKEY_SIZE       = 65;
 static const size_t MAX_DERIVED_OUTPUT_COUNT = 2;
+static const size_t MAX_PERSISTENCE_ID_SIZE  = 64;
 
 static ERL_NIF_TERM ok_void(ErlNifEnv *env) {
     return enif_make_atom(env, "ok");
@@ -624,6 +625,55 @@ static ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF
     return ok(env, term);
 }
 
+static ERL_NIF_TERM get_persistence_id(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (2 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 key_handle;
+    if (0 == enif_get_uint64(env, argv[1], &key_handle)) {
+        return enif_make_badarg(env);
+    }
+
+    char persistence_id[MAX_PERSISTENCE_ID_SIZE];
+
+    if (0 != ockam_vault_get_persistence_id(vault, key_handle, persistence_id, sizeof(persistence_id))) {
+        return err(env, "failed to ockam_vault_get_persistence_id");
+    }
+
+    return ok(env, enif_make_string(env, persistence_id, ERL_NIF_LATIN1));
+}
+
+static ERL_NIF_TERM get_persistent_secret(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (2 != argc) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifUInt64 vault;
+    if (0 == enif_get_uint64(env, argv[0], &vault)) {
+        return enif_make_badarg(env);
+    }
+
+    char persistence_id[MAX_PERSISTENCE_ID_SIZE];
+    if (0 == enif_get_string(env, argv[1], persistence_id, sizeof(persistence_id), ERL_NIF_LATIN1)) {
+        return enif_make_badarg(env);
+    }
+
+    ockam_vault_secret_t key_handle;
+    if (0 != ockam_vault_get_persistent_secret(vault, &key_handle, persistence_id)) {
+        return err(env, "failed to ockam_vault_get_persistent_secret");
+    }
+
+    ERL_NIF_TERM secret_handle = enif_make_uint64(env, key_handle);
+
+    return ok(env, secret_handle);
+}
+
 static ERL_NIF_TERM deinit(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (1 != argc) {
         return enif_make_badarg(env);
@@ -657,6 +707,8 @@ static ErlNifFunc nifs[] = {
   {"hkdf_sha256", 4, hkdf_sha256},
   {"aead_aes_gcm_encrypt", 5, aead_aes_gcm_encrypt},
   {"aead_aes_gcm_decrypt", 5, aead_aes_gcm_decrypt},
+  {"get_persistence_id", 2, get_persistence_id},
+  {"get_persistent_secret", 2, get_persistent_secret},
   {"deinit", 1, deinit},
 };
 

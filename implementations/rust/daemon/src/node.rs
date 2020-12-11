@@ -21,9 +21,9 @@ use ockam_message::message::{Address, RouterAddress};
 use ockam_router::router::Router;
 use ockam_system::commands::{OckamCommand, WorkerCommand};
 use ockam_transport::tcp::TcpManager;
-use ockam_vault::software::DefaultVaultSecret;
-use ockam_vault::types::*;
-use ockam_vault::{file::FilesystemVault, Secret, SecretVault};
+use ockam_vault_file::ockam_vault::types::*;
+use ockam_vault_file::ockam_vault::*;
+use ockam_vault_file::FilesystemVault;
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -121,26 +121,26 @@ impl<'a> Node<'a> {
 
         // check for re-use of provided identity name from CLI args, if not in on-disk in vault
         // generate a new one to be used
-        let resp_key_ctx = if !contains_key(&mut vault, &config.identity_name()) {
-            // if responder, generate keypair and display static public key
-            if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
-                let attributes = SecretAttributes {
-                    stype: SecretType::Curve25519,
-                    persistence: SecretPersistence::Persistent,
-                    length: CURVE25519_SECRET_LENGTH,
-                };
-                Some(Arc::new(
-                    vault
-                        .secret_generate(attributes)
-                        .expect("failed to generate secret"),
-                ))
-            } else {
-                None
+
+        let resp_key_ctx = match vault.get_persistent_secret(&config.identity_name()) {
+            Ok(secret) => Some(Arc::new(secret)),
+            Err(_) => {
+                // if responder, generate keypair and display static public key
+                if matches!(config.role(), Role::Sink) || matches!(config.role(), Role::Router) {
+                    let attributes = SecretAttributes {
+                        stype: SecretType::Curve25519,
+                        persistence: SecretPersistence::Persistent,
+                        length: CURVE25519_SECRET_LENGTH,
+                    };
+                    Some(Arc::new(
+                        vault
+                            .secret_generate(attributes)
+                            .expect("failed to generate secret"),
+                    ))
+                } else {
+                    None
+                }
             }
-        } else {
-            Some(Arc::new(
-                as_key_ctx(&config.identity_name()).expect("invalid identity name provided"),
-            ))
         };
 
         if matches!(config.role(), Role::Sink) && resp_key_ctx.is_some() {
@@ -257,22 +257,4 @@ impl<'a> Node<'a> {
             }
         }
     }
-}
-
-fn as_key_ctx(key_name: &str) -> Result<Box<dyn Secret>, String> {
-    if let Some(id) = key_name.strip_suffix(cli::FILENAME_KEY_SUFFIX) {
-        return Ok(Box::new(DefaultVaultSecret(
-            id.parse().map_err(|_| format!("bad key name"))?,
-        )));
-    }
-
-    Err("invalid key name format".into())
-}
-
-fn contains_key(v: &mut dyn SecretVault, key_name: &str) -> bool {
-    if let Ok(ctx) = as_key_ctx(key_name) {
-        return v.secret_export(&ctx).is_ok();
-    }
-
-    false
 }

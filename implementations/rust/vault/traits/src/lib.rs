@@ -24,12 +24,6 @@
 
 #[macro_use]
 extern crate arrayref;
-#[cfg(feature = "ffi")]
-#[macro_use]
-extern crate ffi_support;
-#[cfg(any(feature = "ffi", feature = "nif"))]
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate downcast;
 #[macro_use]
@@ -37,33 +31,20 @@ extern crate cfg_if;
 #[macro_use]
 extern crate ockam_common;
 
+pub use zeroize;
+
 use crate::error::VaultFailError;
 use zeroize::Zeroize;
 
 /// Internal macros
 #[macro_use]
 mod macros;
-// #[cfg(feature = "atecc608a")]
-/// C Vault implementations
-// pub mod c;
 /// Represents the errors that occur within a vault
 pub mod error;
-#[cfg(feature = "ffi")]
-/// The ffi functions, structs, and constants
-pub mod ffi;
-/// Software vault where keys are persisted to the filesystem
-/// if permanent
-pub mod file;
-/// Vault backed by the OSX Keychain and Secure-Enclave Processor
-// #[cfg(all(target_os = "macos", feature = "os"))]
-// pub mod osx;
-/// Software implementation of Vault. No persistence
-/// all keys are stored, operations happen in memory
-pub mod software;
 /// The various enumerations of options
 pub mod types;
 
-use failure::_core::fmt::Debug;
+use std::fmt::Debug;
 use types::*;
 
 /// Secret
@@ -165,4 +146,16 @@ pub trait HashVault: Zeroize {
         ikm: Option<&Box<dyn Secret>>,
         output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
+}
+
+/// Trait for vault with persistence capabilities
+pub trait PersistentVault: Zeroize {
+    /// Returns some String id that can be then used to retrieve secret from storage
+    fn get_persistence_id(&self, secret: &Box<dyn Secret>) -> Result<String, VaultFailError>;
+
+    /// Returns persistent secret using id
+    fn get_persistent_secret(
+        &self,
+        persistence_id: &str,
+    ) -> Result<Box<dyn Secret>, VaultFailError>;
 }
