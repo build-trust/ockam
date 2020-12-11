@@ -1,0 +1,17 @@
+[package]
+authors = ["Ockam Developers"]
+name = "okta-plugin"
+version = "0.1.0"
+edition = "2018"
+
+[profile.release]
+lto = true
+
+[dependencies]
+colored = "2.0"
+dirs = "3.0"
+isahc = "0.9"
+rpassword = "5.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+structopt = "0.3"

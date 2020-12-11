@@ -25,6 +25,10 @@ members = [
     "worker_manager",
 ]
 
+exclude = [
+    "okta"
+]
+
 default-members = [
     "common",
     "daemon",
