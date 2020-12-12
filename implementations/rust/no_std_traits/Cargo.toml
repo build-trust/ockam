@@ -1,5 +1,5 @@
 [package]
-name = "ockam-message-router"
+name = "ockam-no-std-traits"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
@@ -13,7 +13,4 @@ lto = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ockam-no-std-traits = { version = "0.1", path = "../no_std_traits" }
-ockam-message = { version = "0.1.0", path = "../../message" }
-libc = "0.2.80"
-libc-print = "0.1.14"
+ockam-message = { version = "0.1", path = "../message" }

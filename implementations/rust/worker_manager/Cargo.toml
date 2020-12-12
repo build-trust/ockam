@@ -12,7 +12,7 @@ lto = true
 
 [dependencies]
 ockam-no-std-traits = { version = "0.1", path = "../no_std_traits" }
-ockam-message = { version = "0.1", path = "../../message" }
+ockam-message = { version = "0.1", path = "../message" }
 hashbrown = "0.9.1"
 libc = "0.2.80"
 libc-print = "0.1.14"
