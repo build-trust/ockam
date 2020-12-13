@@ -37,11 +37,11 @@ impl WorkerManager {
 }
 
 impl ProcessMessage for WorkerManager {
-    fn handle_message(&mut self, message: Message, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
+    fn process_message(&mut self, message: Message, q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         let address = message.onward_route.addresses[0].address.as_string();
         if let Some(h) = self.message_handlers.get_mut(&address) {
             let mut handler = h.deref().borrow_mut();
-            handler.handle_message(message, q_ref)
+            handler.process_message(message, q_ref)
         } else {
             Err("message handler not found".into())
         }

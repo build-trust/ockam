@@ -9,17 +9,22 @@ use core::cell::RefCell;
 use core::ops::Deref;
 use core::time;
 use ockam_message_router::MessageRouter;
-use ockam_no_std_traits::{ProcessMessageHandle, PollHandle};
+use ockam_no_std_traits::{ProcessMessageHandle, PollHandle, Poll};
 use std::thread;
 use ockam_worker_manager::WorkerManager;
 
 pub struct Node {
-    worker_manager: Rc<RefCell<WorkerManager>>
+    message_router: Rc<RefCell<MessageRouter>>,
+    worker_manager: Rc<RefCell<WorkerManager>>,
+    modules_to_poll: VecDeque<PollHandle>,
 }
 
 impl Node {
     pub fn new() -> Result<Self, String> {
-        Ok(Node {worker_manager: Rc::new(RefCell::new(WorkerManager::new()))})
+        Ok(Node {
+            message_router: Rc::new(RefCell::new(MessageRouter::new().unwrap())),
+            worker_manager: Rc::new(RefCell::new(WorkerManager::new())),
+            modules_to_poll: VecDeque::new()})
     }
 
     pub fn register_worker(&mut self,
@@ -33,24 +38,20 @@ impl Node {
 
     pub fn run(&mut self) -> Result<(), String> {
 
-        // 1. Create a queue of poll traits for anything that wants to be polled
-        let mut modules_to_poll: VecDeque<PollHandle> = VecDeque::new();
+        self.modules_to_poll.push_back(self.message_router.clone());
 
-        // 2. Create the message router and get the Enqueue trait, which is used
-        //    by workers and message handlers to queue up any Messages they generate
-        let mut message_router = MessageRouter::new().unwrap();
-        message_router.register_address_type_handler(AddressType::Worker, self.worker_manager.clone())?;
-        let (q, message_router) = message_router.get_enqueue_trait();
-        let mr_ref = Rc::new(RefCell::new(message_router));
-        modules_to_poll.push_back(mr_ref.clone());
-
-        modules_to_poll.push_back(self.worker_manager.clone());
+        {
+            let mut mr = self.message_router.clone();
+            let mut mr = mr.deref().borrow_mut();
+            mr.register_address_type_handler(AddressType::Worker, self.worker_manager.clone())?;
+        }
+        self.modules_to_poll.push_back(self.worker_manager.clone());
 
         let mut stop = false;
         loop {
-            for p_ref in modules_to_poll.iter() {
+            for p_ref in self.modules_to_poll.iter() {
                 let mut p = p_ref.deref().borrow_mut();
-                match p.poll(q.clone()) {
+                match p.poll(self.message_router.clone()) {
                     Ok(keep_going) => {
                         if !keep_going {
                             stop = true;

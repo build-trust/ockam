@@ -7,7 +7,7 @@ use core::cell::RefCell;
 use core::ops::Deref;
 use libc_print::*;
 use ockam_message::message::{AddressType, Message};
-use ockam_no_std_traits::{RouteMessage, Poll, ProcessMessageHandle, RouteMessageHandle};
+use ockam_no_std_traits::{RouteMessage, Poll, ProcessMessageHandle, RouteMessageHandle, ProcessMessage};
 
 pub struct MessageRouter {
     handlers: [Option<ProcessMessageHandle>; 256],
@@ -34,9 +34,6 @@ impl MessageRouter {
         Ok(true)
     }
 
-    pub fn get_enqueue_trait(self) -> (RouteMessageHandle<Message>, Self) {
-        (self.message_queue.clone(), self)
-    }
 }
 
 impl RouteMessage<Message> for MessageRouter {
@@ -58,7 +55,7 @@ impl Poll for MessageRouter {
                 Some( h) => {
                     let handler = h.clone();
                     let mut handler = handler.deref().borrow_mut();
-                    match handler.handle_message(m, q_ref.clone()) {
+                    match handler.process_message(m, q_ref.clone()) {
                         Ok(keep_going) => {
                             if !keep_going { return Ok(false); }
                         }

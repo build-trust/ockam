@@ -43,7 +43,7 @@ impl Poll for TestWorker {
 }
 
 impl ProcessMessage for TestWorker {
-    fn handle_message(&mut self, message: Message, _q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
+    fn process_message(&mut self, message: Message, _q_ref: RouteMessageHandle<Message>) -> Result<bool, String> {
         libc_println!("TestWorker: {}", std::str::from_utf8(&message.message_body).unwrap());
         self.count += 1;
         if self.count > 3 { return Ok(false); }

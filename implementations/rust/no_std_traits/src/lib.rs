@@ -12,7 +12,7 @@ use ockam_message::message::{Message};
 /// will then call the ProcessMessage trait when the next onward_route address is that of
 /// the worker.
 pub trait ProcessMessage {
-    fn handle_message(
+    fn process_message(
         &mut self,
         message: Message, //todo - add context
         queue: RouteMessageHandle<Message>,
