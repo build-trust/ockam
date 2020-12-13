@@ -8,6 +8,9 @@ use ockam_message::message::{Message, Route, RouterAddress, MessageType};
 use alloc::string::String;
 use core::ops::Deref;
 use libc_print::*;
+use std::thread;
+use ockam_tcp_manager::tcp_manager::TcpManager;
+use core::time;
 
 pub struct TestWorker {
     address: String,
@@ -66,4 +69,52 @@ fn test_node() {
     } else {
         assert!(true);
     }
+}
+
+pub struct TestTcpWorker {
+
+}
+
+pub fn responder_thread() {
+    println!("responding");
+    // create node
+    let mut node = Node::new().unwrap();
+
+    let listen_addr = "127.0.0.1:4052";
+    if let Ok(tcp_manager) = TcpManager::new(Some("127.0.0.1:4052")) {
+        println!("created tcp_manager");
+        thread::sleep(time::Duration::from_millis(1000));
+    } else {
+        return;
+    }
+}
+
+pub fn initiator_thread() {
+    println!("initiating");
+    thread::sleep(time::Duration::from_micros(500));
+    // create node
+    let mut node = Node::new().unwrap();
+
+    if let Ok(mut tcp_manager) = TcpManager::new(None) {
+        println!("created tcp_manager");
+        let try_connect = tcp_manager.try_connect("127.0.0.1:4052");
+        match try_connect {
+            Ok(()) => {},
+            Err(e) => {
+                println!("{}", e);
+                assert!(false);
+            }
+        }
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_tcp() {
+    // spin up responder (listener) and initiator (client) threads
+    let responder_handle = thread::spawn(|| responder_thread());
+    let initiator_handle = thread::spawn(|| initiator_thread());
+    initiator_handle.join();
+    responder_handle.join();
 }
