@@ -1,6 +1,6 @@
 #[allow(unused)]
 //pub mod commands {
-use ockam_message::message::*;
+use crate::message::*;
 use ockam_vault::Secret;
 use std::sync::Arc;
 

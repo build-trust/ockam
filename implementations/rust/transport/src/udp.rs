@@ -1,8 +1,7 @@
 #[allow(unused)]
-use ockam_message::message::*;
-use ockam_message::MAX_MESSAGE_SIZE;
-use ockam_system::commands::RouterCommand::ReceiveMessage;
-use ockam_system::commands::{OckamCommand, RouterCommand, TransportCommand};
+use ockam::message::*;
+use ockam::system::commands::RouterCommand::ReceiveMessage;
+use ockam::system::commands::{OckamCommand, RouterCommand, TransportCommand};
 use std::io;
 use std::net::SocketAddr;
 use std::net::UdpSocket;

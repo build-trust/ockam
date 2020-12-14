@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::cli;
 
-use ockam_message::message::Route;
+use ockam::message::Route;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Role {

@@ -22,16 +22,14 @@ while_true
 
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
 
+use crate::message::{Address, AddressType, Codec, Message, MessageType, Route, RouterAddress};
+use crate::system::commands::OckamCommand::Router;
+use crate::system::commands::{ChannelCommand, OckamCommand, RouterCommand};
 use core::marker::PhantomData;
 use error::*;
 use ockam_kex::error::KeyExchangeFailErrorKind;
 use ockam_kex::xx::XXVault;
 use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
-use ockam_message::message::{
-    Address, AddressType, Codec, Message, MessageType, Route, RouterAddress,
-};
-use ockam_system::commands::OckamCommand::Router;
-use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand};
 use ockam_vault::types::PublicKey;
 use ockam_vault::Secret;
 use rand::{thread_rng, Rng};

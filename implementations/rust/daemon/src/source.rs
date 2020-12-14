@@ -3,12 +3,12 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use crate::config::Config;
 
 use hex::encode;
-use ockam::secure_channel::CHANNEL_ZERO;
-use ockam_message::message::{
+use ockam::message::{
     Address, AddressType, Codec, Message as OckamMessage, Message, MessageType, Route,
     RouterAddress,
 };
-use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
+use ockam::secure_channel::CHANNEL_ZERO;
+use ockam::system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 
 pub struct StdinWorker {
     route: Route,

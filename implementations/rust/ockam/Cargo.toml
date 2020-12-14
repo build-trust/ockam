@@ -16,13 +16,8 @@ failure = "0.1"
 hex = "0.4"
 ockam-common = { version = "0.1", path = "../common", default-features = false }
 ockam-kex = { version = "0.1", path = "../kex", default-features = false }
-ockam-message = { version = "0.1", path = "../message", default-features = false }
-ockam-router = { version = "0.1", path = "../router", default-features = false }
-ockam-system = { version = "0.1", path = "../system", default-features = false }
 ockam-queue-topic = { version = "0.1", path = "../queue_topic", default-features = false }
-ockam-transport = { version = "0.1", path = "../transport", default-features = false }
 ockam-vault = { version = "0.1", path = "../vault/traits" }
 ockam-vault-software = { version = "0.1", path = "../vault/software", optional = true}
 ockam-vault-ffi = { version = "0.1", path = "../vault/ffi", optional = true }
-ockam-worker = { version = "0.1", path = "../worker", default-features = false }
 rand = "0.7"

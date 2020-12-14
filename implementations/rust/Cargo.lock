@@ -873,15 +873,10 @@ dependencies = [
  "hex",
  "ockam-common",
  "ockam-kex",
- "ockam-message",
  "ockam-queue-topic",
- "ockam-router",
- "ockam-system",
- "ockam-transport",
  "ockam-vault",
  "ockam-vault-ffi",
  "ockam-vault-software",
- "ockam-worker",
  "rand",
 ]
 
@@ -906,13 +901,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam-message"
-version = "0.1.0"
-dependencies = [
- "hex",
-]
-
-[[package]]
 name = "ockam-node"
 version = "0.1.0"
 dependencies = [
@@ -920,9 +908,7 @@ dependencies = [
  "ockam",
  "ockam-common",
  "ockam-kex",
- "ockam-message",
  "ockam-router",
- "ockam-system",
  "ockam-transport",
  "ockam-vault-software",
  "ockam-worker",
@@ -941,17 +927,8 @@ dependencies = [
 name = "ockam-router"
 version = "0.1.0"
 dependencies = [
+ "ockam",
  "ockam-common",
- "ockam-message",
- "ockam-system",
-]
-
-[[package]]
-name = "ockam-system"
-version = "0.1.0"
-dependencies = [
- "ockam-message",
- "ockam-vault",
 ]
 
 [[package]]
@@ -960,10 +937,9 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "hashbrown",
+ "ockam",
  "ockam-common",
- "ockam-message",
  "ockam-router",
- "ockam-system",
 ]
 
 [[package]]
@@ -1025,10 +1001,9 @@ version = "0.1.0"
 dependencies = [
  "hashbrown",
  "hex",
+ "ockam",
  "ockam-common",
- "ockam-message",
  "ockam-router",
- "ockam-system",
 ]
 
 [[package]]
@@ -1040,9 +1015,7 @@ dependencies = [
  "ockam",
  "ockam-common",
  "ockam-kex",
- "ockam-message",
  "ockam-router",
- "ockam-system",
  "ockam-transport",
  "ockam-vault-file",
  "structopt",

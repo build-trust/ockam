@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use ockam_message::message::{Route, RouterAddress};
+use ockam::message::{Route, RouterAddress};
 
 use ockam_vault_file::FILENAME_KEY_SUFFIX;
 use structopt::{clap::ArgSettings::Hidden, StructOpt};
@@ -378,7 +378,7 @@ impl FromStr for OutputKind {
 
 #[test]
 fn test_cli_args_output() {
-    use ockam_message::message::AddressType;
+    use ockam::message::AddressType;
 
     if let Ok(output_kind) = OutputKind::from_str("udp://127.0.0.1:12345".into()) {
         match output_kind {
@@ -425,16 +425,10 @@ fn test_cli_args_output() {
     for (i, addr) in route.addresses.iter().enumerate() {
         match i {
             0 | 1 => {
-                assert!(matches!(
-                    addr.a_type,
-                    ockam_message::message::AddressType::Udp
-                ));
+                assert!(matches!(addr.a_type, ockam::message::AddressType::Udp));
             }
             2 | 3 => {
-                assert!(matches!(
-                    addr.a_type,
-                    ockam_message::message::AddressType::Channel
-                ));
+                assert!(matches!(addr.a_type, ockam::message::AddressType::Channel));
             }
             _ => unimplemented!("a test for this value is not included"),
         }

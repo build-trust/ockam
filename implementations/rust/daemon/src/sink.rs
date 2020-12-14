@@ -2,12 +2,12 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use crate::config::{AddonKind, Config};
 use attohttpc::post;
-use ockam::secure_channel::CHANNEL_ZERO;
-use ockam_message::message::{
+use ockam::message::{
     Address, AddressType, Codec, Message as OckamMessage, Message, MessageType, Route,
     RouterAddress,
 };
-use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
+use ockam::secure_channel::CHANNEL_ZERO;
+use ockam::system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 use std::io::Write;
 
 type WorkFn = fn(self_worker: &SinkWorker, msg: OckamMessage);

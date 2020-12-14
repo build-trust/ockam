@@ -1,4 +1,4 @@
-use ockam_message::message::Address;
+use ockam::message::Address;
 use ockam_node::node::{start_node, Role};
 use std::net::SocketAddr;
 use std::str::FromStr;

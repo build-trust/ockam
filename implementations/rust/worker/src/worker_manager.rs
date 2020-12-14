@@ -1,8 +1,8 @@
 #[allow(unused_imports)]
 #[allow(unused_variables)]
 #[allow(dead_code)]
-use ockam_message::message::{Address, AddressType, Message, MessageType, Receiver, Route, Sender};
-use ockam_system::commands::{OckamCommand, RouterCommand};
+use ockam::message::{Address, AddressType, Message, MessageType, Receiver, Route, Sender};
+use ockam::system::commands::{OckamCommand, RouterCommand};
 use std::sync::{Arc, Mutex};
 
 pub struct WorkerManager {

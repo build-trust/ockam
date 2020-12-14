@@ -1,6 +1,6 @@
 #[allow(unused)]
 #[allow(dead_code)]
-use ockam_message::message::{Message, Receiver, Route, Sender};
+use ockam::message::{Message, Receiver, Route, Sender};
 use std::sync::{Arc, Mutex};
 
 pub struct SampleWorker {

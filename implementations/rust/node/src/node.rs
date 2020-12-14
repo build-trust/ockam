@@ -2,21 +2,18 @@
 
 use crate::blast_worker::BlastWorker;
 use crate::hello_worker::HelloWorker;
+use ockam::message::*;
 use ockam::secure_channel::*;
+use ockam::system::commands::{ChannelCommand, OckamCommand, WorkerCommand};
 use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
 use ockam_kex::CipherSuite;
-use ockam_message::message::*;
-use ockam_message::MAX_MESSAGE_SIZE;
 use ockam_router::router::*;
-use ockam_system::commands::{ChannelCommand, OckamCommand, RouterCommand, WorkerCommand};
 use ockam_transport::tcp::TcpManager;
 use ockam_transport::udp::UdpTransport;
 use ockam_vault_software::DefaultVault;
-use std::io::stdin;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::{io, str};
 use std::{thread, time};
 
 pub enum IpProtocol {
