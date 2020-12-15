@@ -1,3 +1,8 @@
+#![deny(missing_docs)]
+
+//! Common macros and error
+
+/// From int impl
 #[macro_export]
 macro_rules! from_int_impl {
     ($src:ident, $ty:ty) => {
@@ -9,6 +14,7 @@ macro_rules! from_int_impl {
     };
 }
 
+/// Fail impl
 #[macro_export]
 macro_rules! fail {
     ($err:expr) => {
@@ -28,4 +34,5 @@ macro_rules! zdrop_impl {
     };
 }
 
+/// Error
 pub mod error;
