@@ -2,11 +2,11 @@
 
 use crate::blast_worker::BlastWorker;
 use crate::hello_worker::HelloWorker;
+use ockam::kex::CipherSuite;
 use ockam::message::*;
 use ockam::secure_channel::*;
 use ockam::system::commands::{ChannelCommand, OckamCommand, WorkerCommand};
-use ockam_kex::xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
-use ockam_kex::CipherSuite;
+use ockam_kex_xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
 use ockam_router::router::*;
 use ockam_transport::tcp::TcpManager;
 use ockam_transport::udp::UdpTransport;

@@ -12,13 +12,11 @@ use crate::source::StdinWorker;
 //     ockam_daemon::initiator::StdinWorker
 // }
 
+use ockam::kex::CipherSuite;
 use ockam::message::{Address, RouterAddress};
 use ockam::secure_channel::*;
 use ockam::system::commands::{OckamCommand, WorkerCommand};
-use ockam_kex::{
-    xx::{XXInitiator, XXNewKeyExchanger, XXResponder},
-    CipherSuite,
-};
+use ockam_kex_xx::{XXInitiator, XXNewKeyExchanger, XXResponder};
 use ockam_router::router::Router;
 use ockam_transport::tcp::TcpManager;
 use ockam_vault_file::ockam_vault::types::*;
