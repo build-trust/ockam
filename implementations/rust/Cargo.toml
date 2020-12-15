@@ -4,7 +4,10 @@ members = [
     "common",
     "daemon",
     "examples",
-    "kex",
+    "kex/traits",
+    "kex/xx",
+    "kex/x3dh",
+#    "kex/ffi", Doesn't work
     "vault/traits",
     "vault/software",
     "vault/file",
@@ -26,7 +29,10 @@ default-members = [
     "common",
     "daemon",
     "examples",
-    "kex",
+    "kex/traits",
+    "kex/xx",
+    "kex/x3dh",
+#    "kex/ffi", Doesn't work
     "vault/traits",
     "vault/software",
     "vault/file",

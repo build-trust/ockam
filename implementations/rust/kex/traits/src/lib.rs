@@ -13,16 +13,10 @@
 )]
 //! Handles key exchange using Noise for Ockam channels
 
-#[macro_use]
-extern crate arrayref;
-
 use error::*;
 
 use ockam_vault::{error::VaultFailError, types::PublicKey, Secret};
 use std::sync::Arc;
-
-#[macro_use]
-extern crate ockam_vault;
 
 /// The maximum bytes that will be transmitted in a single message
 pub const MAX_XX_TRANSMIT_SIZE: usize = 16384;
@@ -37,7 +31,7 @@ pub const AES_GCM_TAGSIZE: usize = 16;
 
 /// A KeyExchange implements these methods
 /// A KeyExchange implementation should wrap a vault instance
-trait KeyExchange {
+pub trait KeyExchange {
     /// Returns Noise protocol name
     fn get_protocol_name(&self) -> &'static [u8];
 
@@ -115,61 +109,3 @@ pub struct CompletedKeyExchange {
 
 /// Errors thrown by Key exchange
 pub mod error;
-#[cfg(feature = "ffi")]
-/// FFI module
-pub mod ffi;
-/// Implementation of Signal's X3DH
-pub mod x3dh;
-/// Implementation of Noise XX Pattern
-pub mod xx;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::xx::XXNewKeyExchanger;
-    use ockam_vault::SecretVault;
-    use ockam_vault_software::DefaultVault;
-    use std::sync::{Arc, Mutex};
-
-    #[allow(non_snake_case)]
-    #[test]
-    fn full_flow__correct_credentials__keys_should_match() {
-        let vault_initiator = Arc::new(Mutex::new(DefaultVault::default()));
-        let vault_responder = Arc::new(Mutex::new(DefaultVault::default()));
-        let key_exchanger = XXNewKeyExchanger::new(
-            CipherSuite::P256Aes128GcmSha256,
-            vault_initiator.clone(),
-            vault_responder.clone(),
-        );
-
-        let mut initiator = key_exchanger.initiator(None);
-        let mut responder = key_exchanger.responder(None);
-
-        let m1 = initiator.process(&[]).unwrap();
-        let _ = responder.process(&m1).unwrap();
-        let m2 = responder.process(&[]).unwrap();
-        let _ = initiator.process(&m2).unwrap();
-        let m3 = initiator.process(&[]).unwrap();
-        let _ = responder.process(&m3).unwrap();
-
-        let initiator = Box::new(initiator);
-        let initiator = initiator.finalize().unwrap();
-        let responder = Box::new(responder);
-        let responder = responder.finalize().unwrap();
-
-        let mut vault_in = vault_initiator.lock().unwrap();
-        let mut vault_re = vault_responder.lock().unwrap();
-
-        assert_eq!(initiator.h, responder.h);
-
-        let s1 = vault_in.secret_export(&initiator.encrypt_key).unwrap();
-        let s2 = vault_re.secret_export(&responder.decrypt_key).unwrap();
-
-        assert_eq!(s1, s2);
-
-        let s1 = vault_in.secret_export(&initiator.decrypt_key).unwrap();
-        let s2 = vault_re.secret_export(&responder.encrypt_key).unwrap();
-
-        assert_eq!(s1, s2);
-    }
-}

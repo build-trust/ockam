@@ -1,11 +1,8 @@
-use crate::error::KeyExchangeFailErrorKind;
 use ffi_support::{ByteBuffer, ConcurrentHandleMap, ExternError, IntoFfi};
+use ockam_vault_software::DefaultVault;
+use types::*;
 
 mod types;
-
-use crate::{Initiator, Responder, XXSymmetricState};
-use ockam_vault::software::DefaultVault;
-use types::*;
 
 fn write_bin_to_buffer(
     bin: &[u8],
@@ -27,7 +24,7 @@ fn write_bin_to_buffer(
 pub extern "C" fn ockam_kex_xx_initiator(context: &mut u64, vault: u64) -> KexError {
     // TODO: obtain vault from storage using handle
     let mut vault = DefaultVault::default();
-    let state = match XXSymmetricState::prologue(&mut vault) {
+    let state = match SymmetricState::prologue(&mut vault) {
         Ok(r) => r,
         Err(_) => return 1,
     };

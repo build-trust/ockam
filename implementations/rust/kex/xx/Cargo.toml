@@ -1,0 +1,22 @@
+[package]
+authors = ["Ockam Developers"]
+edition = "2018"
+name = "ockam-kex-xx"
+version = "0.1.0"
+
+[lib]
+crate-type = ["staticlib", "rlib", "cdylib"]
+
+[profile.release]
+lto = true
+
+[dependencies]
+ockam-common = { version = "0.1", path = "../../common" }
+ockam-vault = { version = "0.1", path = "../../vault/traits" }
+ockam-kex = { version = "0.1", path = "../traits" }
+arrayref = "0.3"
+zeroize = { version = "1.1", features = ["zeroize_derive"] }
+
+[dev-dependencies]
+ockam-vault-software = { version = "0.1", path = "../../vault/software" }
+hex = "0.4"

@@ -1,6 +1,8 @@
-use super::{CompletedKeyExchange, KeyExchange, KeyExchanger, SHA256_SIZE};
-use crate::error::KexExchangeFailError;
-use crate::{CipherSuite, NewKeyExchanger, AES_GCM_TAGSIZE};
+use ockam_kex::error::KexExchangeFailError;
+use ockam_kex::{
+    CipherSuite, CompletedKeyExchange, KeyExchange, KeyExchanger, NewKeyExchanger, AES_GCM_TAGSIZE,
+    SHA256_SIZE,
+};
 use ockam_vault::types::{
     AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH, P256_SECRET_LENGTH,
 };
@@ -11,6 +13,9 @@ use ockam_vault::{
 };
 use std::sync::{Arc, Mutex};
 use zeroize::Zeroize;
+
+#[macro_use]
+extern crate arrayref;
 
 #[derive(Debug)]
 struct KeyPair {
@@ -23,7 +28,7 @@ pub trait XXVault: SecretVault + HashVault + AsymmetricVault + SymmetricVault + 
 
 impl<D> XXVault for D where D: SecretVault + HashVault + AsymmetricVault + SymmetricVault + Send {}
 
-/// Represents the XX Handshake]
+/// Represents the XX Handshake
 struct SymmetricState {
     cipher_suite: CipherSuite,
     identity_key: Option<Arc<Box<dyn Secret>>>,
@@ -738,6 +743,48 @@ impl KeyExchanger for XXResponder {
 mod tests {
     use super::*;
     use ockam_vault_software::DefaultVault;
+
+    #[allow(non_snake_case)]
+    #[test]
+    fn full_flow__correct_credentials__keys_should_match() {
+        let vault_initiator = Arc::new(Mutex::new(DefaultVault::default()));
+        let vault_responder = Arc::new(Mutex::new(DefaultVault::default()));
+        let key_exchanger = XXNewKeyExchanger::new(
+            CipherSuite::P256Aes128GcmSha256,
+            vault_initiator.clone(),
+            vault_responder.clone(),
+        );
+
+        let mut initiator = key_exchanger.initiator(None);
+        let mut responder = key_exchanger.responder(None);
+
+        let m1 = initiator.process(&[]).unwrap();
+        let _ = responder.process(&m1).unwrap();
+        let m2 = responder.process(&[]).unwrap();
+        let _ = initiator.process(&m2).unwrap();
+        let m3 = initiator.process(&[]).unwrap();
+        let _ = responder.process(&m3).unwrap();
+
+        let initiator = Box::new(initiator);
+        let initiator = initiator.finalize().unwrap();
+        let responder = Box::new(responder);
+        let responder = responder.finalize().unwrap();
+
+        let mut vault_in = vault_initiator.lock().unwrap();
+        let mut vault_re = vault_responder.lock().unwrap();
+
+        assert_eq!(initiator.h, responder.h);
+
+        let s1 = vault_in.secret_export(&initiator.encrypt_key).unwrap();
+        let s2 = vault_re.secret_export(&responder.decrypt_key).unwrap();
+
+        assert_eq!(s1, s2);
+
+        let s1 = vault_in.secret_export(&initiator.decrypt_key).unwrap();
+        let s2 = vault_re.secret_export(&responder.encrypt_key).unwrap();
+
+        assert_eq!(s1, s2);
+    }
 
     #[test]
     fn prologue() {

@@ -1,0 +1,14 @@
+[package]
+authors = ["Ockam Developers"]
+edition = "2018"
+name = "ockam-kex"
+version = "0.1.0"
+
+[dependencies]
+ockam-common = { version = "0.1", path = "../../common" }
+ockam-vault = { version = "0.1", path = "../../vault/traits" }
+failure = "0.1"
+
+[dev-dependencies]
+ockam-vault-software = { version = "0.1", path = "../../vault/software" }
+hex = "0.4"

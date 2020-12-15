@@ -1,5 +1,5 @@
-use crate::error::{KexExchangeFailError, KeyExchangeFailErrorKind};
-use crate::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
+use ockam_kex::error::{KexExchangeFailError, KeyExchangeFailErrorKind};
+use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_vault::types::{
     SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
@@ -12,6 +12,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 use subtle::ConstantTimeEq;
+
+#[macro_use]
+extern crate arrayref;
 
 /// Represents and (X)EdDSA or ECDSA signature
 /// from Ed25519 or P-256
