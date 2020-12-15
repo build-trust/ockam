@@ -2,19 +2,21 @@
 
 extern crate alloc;
 
+use crate::tcp_worker::TcpWorker;
 use alloc::rc::Rc;
 use libc_print::*;
-use ockam_message::message::{AddressType, Message, MessageType, Route, Address, RouterAddress, Codec, varint_size};
-use ockam_no_std_traits::{RouteMessage, ProcessMessage, Poll, RouteMessageHandle};
+use ockam_message::message::{
+    varint_size, Address, AddressType, Codec, Message, MessageType, Route, RouterAddress,
+};
+use ockam_message::MAX_MESSAGE_SIZE;
+use ockam_no_std_traits::{EnqueueMessage, Poll, ProcessMessage};
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::io;
+use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::ops::Deref;
 use std::str::FromStr;
-use ockam_message::MAX_MESSAGE_SIZE;
-use std::io::{Read, Write};
-use crate::tcp_worker::TcpWorker;
 
 pub struct TcpManager {
     connections: HashMap<String, TcpWorker>,
@@ -36,13 +38,11 @@ impl TcpManager {
                     Err("failed to bind tcp listener".into())
                 }
             }
-            None => {
-                Ok(TcpManager {
-                    connections,
-                    listener: None,
-                })
-            }
-        }
+            None => Ok(TcpManager {
+                connections,
+                listener: None,
+            }),
+        };
     }
 
     fn accept_new_connections(&mut self) -> Result<bool, String> {
@@ -51,7 +51,6 @@ impl TcpManager {
             for s in listener.incoming() {
                 match s {
                     Ok(stream) => {
-                        println!("accepted connection");
                         stream.set_nonblocking(true).unwrap();
                         let peer_addr = stream.peer_addr().unwrap().clone();
                         let tcp_worker = TcpWorker::new_connection(stream);
@@ -84,37 +83,44 @@ impl TcpManager {
             }
             Err(e) => Err(format!("tcp failed to connect: {}", e)),
         }
-
     }
-
 }
 
 impl ProcessMessage for TcpManager {
     fn process_message(
         &mut self,
         message: Message,
-        message_router_handle: RouteMessageHandle<Message>,
+        enqueue_message_ref: Rc<RefCell<dyn EnqueueMessage>>,
     ) -> Result<bool, String> {
+        // if we don't already have a connection for onward address, try to create one
+        let address = &message.onward_route.addresses[0].address;
+        if let None = self.connections.get_mut(&address.as_string()) {
+            self.try_connect(&address.as_string());
+        }
+        if let Some(connection) = self.connections.get_mut(&address.as_string()) {
+            connection.process_message(message, enqueue_message_ref)?;
+        } else {
+            // todo - kick message back with error
+            libc_println!("failed to connect to {:?}", address);
+        }
         Ok(true)
     }
 }
 
 impl Poll for TcpManager {
-    fn poll(&mut self, message_router_handle: RouteMessageHandle<Message>) -> Result<bool, String> {
-        libc_println!("polling for tcpmanager");
-        let m = Message {
-            onward_route: Route { addresses: vec![] },
-            return_route: Route { addresses: vec![] },
-            message_type: MessageType::Payload,
-            message_body: vec![],
-        };
-        let mut q = message_router_handle.deref().borrow_mut();
-        q.route_message(m)?;
+    fn poll(
+        &mut self,
+        enqueue_message_ref: Rc<RefCell<dyn EnqueueMessage>>,
+    ) -> Result<bool, String> {
+        if matches!(self.listener, Some(_)) {
+            self.accept_new_connections()?;
+        }
+        for (_, mut tcp_worker) in self.connections.iter_mut() {
+            tcp_worker.poll(enqueue_message_ref.clone())?;
+        }
         Ok(true)
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

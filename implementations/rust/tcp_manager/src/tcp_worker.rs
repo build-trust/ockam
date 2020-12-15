@@ -3,12 +3,12 @@ extern crate alloc;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use core::ops::Deref;
-use ockam_message::message::{Address, AddressType, Codec, Message, RouterAddress, varint_size};
-use ockam_no_std_traits::{RouteMessage, ProcessMessage, RouteMessageHandle, Poll};
-use std::net::TcpStream;
+use ockam_message::message::{varint_size, Address, AddressType, Codec, Message, RouterAddress};
 use ockam_message::MAX_MESSAGE_SIZE;
-use std::io::{Write, Read};
+use ockam_no_std_traits::{EnqueueMessage, Poll, ProcessMessage};
 use std::io;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 
 pub struct TcpWorker {
     stream: TcpStream,
@@ -18,10 +18,15 @@ pub struct TcpWorker {
 }
 
 impl ProcessMessage for TcpWorker {
-    fn process_message(&mut self, mut message: Message, queue: RouteMessageHandle<Message>) -> Result<bool, String> {
+    fn process_message(
+        &mut self,
+        mut message: Message,
+        queue_ref: Rc<RefCell<dyn EnqueueMessage>>,
+    ) -> Result<bool, String> {
         message.onward_route.addresses.remove(0);
         let local_address = Address::TcpAddress(self.stream.local_addr().unwrap());
-        message.return_route
+        message
+            .return_route
             .addresses
             .insert(0, RouterAddress::from_address(local_address).unwrap());
         let mut v = vec![];
@@ -41,7 +46,10 @@ impl ProcessMessage for TcpWorker {
 }
 
 impl Poll for TcpWorker {
-    fn poll(&mut self, message_router_handle: RouteMessageHandle<Message>) -> Result<bool, String> {
+    fn poll(
+        &mut self,
+        enqueue_message_ref: Rc<RefCell<dyn EnqueueMessage>>,
+    ) -> Result<bool, String> {
         self.stream.set_nonblocking(true);
         let mut tcp_buff: [u8; MAX_MESSAGE_SIZE] = [0u8; MAX_MESSAGE_SIZE];
         match self.stream.read(&mut tcp_buff[0..]) {
@@ -49,7 +57,6 @@ impl Poll for TcpWorker {
                 if tcp_len == 0 {
                     return Ok(false);
                 }
-
                 let mut tcp_vec = tcp_buff[0..tcp_len].to_vec();
                 while tcp_vec.len() > 0 {
                     // if self.message_length is 0, then decode the next byte(s) as message length
@@ -74,7 +81,7 @@ impl Poll for TcpWorker {
                     self.message[self.offset..self.message_length]
                         .clone_from_slice(&tcp_vec[0..bytes_to_clone]);
                     tcp_vec = tcp_vec.split_off(bytes_to_clone);
-                    self.decode_and_route_message(message_router_handle.clone())?;
+                    self.decode_and_route_message(enqueue_message_ref.clone())?;
                     self.offset = 0;
                     self.message_length = 0;
                 }
@@ -85,7 +92,6 @@ impl Poll for TcpWorker {
                 _ => Err("***tcp receive failed".to_string()),
             },
         }
-
     }
 }
 
@@ -93,9 +99,9 @@ impl TcpWorker {
     pub fn new_connection(stream: TcpStream) -> Self {
         TcpWorker {
             stream,
-            message: [0u8;MAX_MESSAGE_SIZE],
+            message: [0u8; MAX_MESSAGE_SIZE],
             offset: 0,
-            message_length: 0
+            message_length: 0,
         }
     }
 
@@ -112,7 +118,10 @@ impl TcpWorker {
         }
     }
 
-    fn decode_and_route_message(&mut self, message_router_handle: RouteMessageHandle<Message>) -> Result<bool, String> {
+    fn decode_and_route_message(
+        &mut self,
+        enqueue_message_ref: Rc<RefCell<dyn EnqueueMessage>>,
+    ) -> Result<bool, String> {
         match Message::decode(&self.message[0..self.message_length]) {
             Ok((mut m_decoded, _)) => {
                 // fix up return tcp address with nat-ed address
@@ -121,23 +130,20 @@ impl TcpWorker {
                     RouterAddress::from_address(tcp_return).unwrap();
                 if !m_decoded.onward_route.addresses.is_empty()
                     && ((m_decoded.onward_route.addresses[0].a_type == AddressType::Udp)
-                    || (m_decoded.onward_route.addresses[0].a_type == AddressType::Tcp))
+                        || (m_decoded.onward_route.addresses[0].a_type == AddressType::Tcp))
                 {
                     self.send_message(m_decoded);
                     Ok(true)
                 } else {
-                    let r = message_router_handle.clone();
-                    let mut r = r.deref().borrow_mut();
-                    r.route_message(m_decoded);
+                    let em = enqueue_message_ref.clone();
+                    let mut em = em.deref().borrow_mut();
+                    em.enqueue_message(m_decoded);
                     Ok(true)
                 }
             }
-            Err(_) => {
-                Err("message decode failed".into())
-            }
+            Err(_) => Err("message decode failed".into()),
         }
     }
-
 
     fn send_message(&mut self, mut m: Message) -> Result<(), String> {
         m.onward_route.addresses.remove(0);
@@ -159,5 +165,4 @@ impl TcpWorker {
             Err(_) => Err("tcp write failed".into()),
         };
     }
-
 }

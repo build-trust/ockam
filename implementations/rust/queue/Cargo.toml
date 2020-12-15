@@ -1,7 +1,7 @@
 [package]
-name = "ockam-message-router"
+name = "ockam-queue"
 version = "0.1.0"
-authors = ["Ockam Developers"]
+authors = ["Robin Budd <robin@ockam.io>"]
 edition = "2018"
 
 [lib]
@@ -14,7 +14,4 @@ lto = true
 
 [dependencies]
 ockam-no-std-traits = { version = "0.1", path = "../no_std_traits" }
-ockam-message = { version = "0.1.0", path = "../message" }
-ockam-queue = { version = "0.1.0", path = "../queue" }
-libc = "0.2.80"
-libc-print = "0.1.14"
+ockam-message = { version = "0.1", path = "../message" }
