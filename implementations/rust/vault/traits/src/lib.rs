@@ -33,7 +33,6 @@ extern crate ockam_common;
 
 pub use zeroize;
 
-use crate::error::VaultFailError;
 use zeroize::Zeroize;
 
 /// Internal macros
@@ -44,6 +43,7 @@ pub mod error;
 /// The various enumerations of options
 pub mod types;
 
+use ockam_common::error::OckamResult;
 use std::fmt::Debug;
 use types::*;
 
@@ -55,51 +55,34 @@ downcast!(dyn Secret);
 /// Vault trait with secret management functionality
 pub trait SecretVault: Zeroize {
     /// Create a new secret key
-    fn secret_generate(
-        &mut self,
-        attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
+    fn secret_generate(&mut self, attributes: SecretAttributes) -> OckamResult<Box<dyn Secret>>;
     /// Import a secret key into the vault
     fn secret_import(
         &mut self,
         secret: &[u8],
         attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
+    ) -> OckamResult<Box<dyn Secret>>;
     /// Export a secret key from the vault
-    fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError>;
+    fn secret_export(&mut self, context: &Box<dyn Secret>) -> OckamResult<SecretKey>;
     /// Get the attributes for a secret key
-    fn secret_attributes_get(
-        &mut self,
-        context: &Box<dyn Secret>,
-    ) -> Result<SecretAttributes, VaultFailError>;
+    fn secret_attributes_get(&mut self, context: &Box<dyn Secret>)
+        -> OckamResult<SecretAttributes>;
     /// Return the associated public key given the secret key
-    fn secret_public_key_get(
-        &mut self,
-        context: &Box<dyn Secret>,
-    ) -> Result<PublicKey, VaultFailError>;
+    fn secret_public_key_get(&mut self, context: &Box<dyn Secret>) -> OckamResult<PublicKey>;
     /// Remove a secret key from the vault
-    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError>;
+    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> OckamResult<()>;
 }
 
 /// Trait with sign functionality
 pub trait SignerVault: Zeroize {
     /// Generate a signature
-    fn sign(
-        &mut self,
-        secret_key: &Box<dyn Secret>,
-        data: &[u8],
-    ) -> Result<[u8; 64], VaultFailError>;
+    fn sign(&mut self, secret_key: &Box<dyn Secret>, data: &[u8]) -> OckamResult<[u8; 64]>;
 }
 
 /// Trait with verify functionality
 pub trait VerifierVault: Zeroize {
     /// Verify a signature
-    fn verify(
-        &mut self,
-        signature: &[u8; 64],
-        public_key: &[u8],
-        data: &[u8],
-    ) -> Result<(), VaultFailError>;
+    fn verify(&mut self, signature: &[u8; 64], public_key: &[u8], data: &[u8]) -> OckamResult<()>;
 }
 
 /// Trait with symmetric encryption
@@ -111,7 +94,7 @@ pub trait SymmetricVault: Zeroize {
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError>;
+    ) -> OckamResult<Vec<u8>>;
     /// Decrypt a payload using AES-GCM
     fn aead_aes_gcm_decrypt(
         &mut self,
@@ -119,7 +102,7 @@ pub trait SymmetricVault: Zeroize {
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError>;
+    ) -> OckamResult<Vec<u8>>;
 }
 
 /// Vault with asymmetric encryption functionality
@@ -130,13 +113,13 @@ pub trait AsymmetricVault: Zeroize {
         &mut self,
         context: &Box<dyn Secret>,
         peer_public_key: &[u8],
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
+    ) -> OckamResult<Box<dyn Secret>>;
 }
 
 /// Vault with hashing functionality
 pub trait HashVault: Zeroize {
     /// Compute the SHA-256 digest given input `data`
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError>;
+    fn sha256(&self, data: &[u8]) -> OckamResult<[u8; 32]>;
     /// Compute the HKDF-SHA256 using the specified salt and input key material
     /// and return the output key material of the specified length
     fn hkdf_sha256(
@@ -145,17 +128,14 @@ pub trait HashVault: Zeroize {
         info: &[u8],
         ikm: Option<&Box<dyn Secret>>,
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError>;
+    ) -> OckamResult<Vec<Box<dyn Secret>>>;
 }
 
 /// Trait for vault with persistence capabilities
 pub trait PersistentVault: Zeroize {
     /// Returns some String id that can be then used to retrieve secret from storage
-    fn get_persistence_id(&self, secret: &Box<dyn Secret>) -> Result<String, VaultFailError>;
+    fn get_persistence_id(&self, secret: &Box<dyn Secret>) -> OckamResult<String>;
 
     /// Returns persistent secret using id
-    fn get_persistent_secret(
-        &self,
-        persistence_id: &str,
-    ) -> Result<Box<dyn Secret>, VaultFailError>;
+    fn get_persistent_secret(&self, persistence_id: &str) -> OckamResult<Box<dyn Secret>>;
 }

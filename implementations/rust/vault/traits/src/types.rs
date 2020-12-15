@@ -1,4 +1,5 @@
-use crate::error::{VaultFailError, VaultFailErrorKind};
+use crate::error::Error;
+use ockam_common::error::{OckamError, OckamResult};
 use zeroize::Zeroize;
 
 /// Curve25519 private key length
@@ -95,13 +96,13 @@ impl SecretType {
     }
 
     /// Try to convert from a number to the rust enum
-    pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
+    pub fn from_usize(value: usize) -> OckamResult<Self> {
         match value {
             0 => Ok(SecretType::Buffer),
             1 => Ok(SecretType::Aes),
             2 => Ok(SecretType::Curve25519),
             3 => Ok(SecretType::P256),
-            _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
+            _ => Err(Error::UnknownSecretTypeValue.into()),
         }
     }
 }
@@ -146,11 +147,11 @@ impl SecretPersistence {
     }
 
     /// Try to convert from a number to the rust enum
-    pub fn from_usize(value: usize) -> Result<Self, VaultFailError> {
+    pub fn from_usize(value: usize) -> OckamResult<Self> {
         match value {
             0 => Ok(SecretPersistence::Ephemeral),
             1 => Ok(SecretPersistence::Persistent),
-            _ => Err(VaultFailErrorKind::InvalidParam(0).into()),
+            _ => Err(Error::UnknownSecretPersistenceValue.into()),
         }
     }
 }
@@ -199,7 +200,7 @@ impl SecretAttributes {
 }
 
 impl std::convert::TryFrom<[u8; 6]> for SecretAttributes {
-    type Error = VaultFailError;
+    type Error = OckamError;
 
     fn try_from(bytes: [u8; 6]) -> Result<Self, Self::Error> {
         let xtype = SecretType::from_usize(u16::from_be_bytes(*array_ref![bytes, 0, 2]) as usize)?;
