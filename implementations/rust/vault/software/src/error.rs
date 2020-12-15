@@ -1,11 +1,32 @@
-use ockam_vault::error::{VaultFailError, VaultFailErrorKind};
+use ockam_common::error::OckamError;
 
-// FIXME: This should be removed after introducing common error
-
-pub(crate) fn map_hkdf_invalid_length_err(_: hkdf::InvalidLength) -> VaultFailError {
-    VaultFailError::from(VaultFailErrorKind::HkdfSha256)
+/// Represents the failures that can occur in
+/// an Ockam Software trait
+#[derive(Clone, Copy, Debug)]
+pub enum Error {
+    None,
+    SecretFromAnotherVault,
+    InvalidPublicKey,
+    Ecdh,
+    UnknownEcdhKeyType,
+    InvalidKeyType,
+    EntryNotFound,
+    InvalidAesKeyLength,
+    InvalidHkdfOutputType,
+    InvalidPrivateKeyLen,
+    AeadAesGcmEncrypt,
+    AeadAesGcmDecrypt,
+    InvalidSignature,
+    HkdfExpandError,
 }
 
-pub(crate) fn map_aes_error(_: aes_gcm::Error) -> VaultFailError {
-    VaultFailError::from(VaultFailErrorKind::AeadAesGcm)
+impl Error {
+    /// Error domain
+    pub const ERROR_DOMAIN: &'static str = "VAULT_SOFTWARE_ERROR_DOMAIN";
+}
+
+impl Into<OckamError> for Error {
+    fn into(self) -> OckamError {
+        OckamError::new(self as u32, Error::ERROR_DOMAIN)
+    }
 }

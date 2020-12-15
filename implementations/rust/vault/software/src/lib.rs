@@ -2,10 +2,10 @@ use crate::error::*;
 use crate::xeddsa::*;
 use aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
+use ockam_common::error::OckamResult;
 use ockam_vault::{
-    error::{VaultFailError, VaultFailErrorKind},
-    types::*,
-    AsymmetricVault, HashVault, Secret, SecretVault, SignerVault, SymmetricVault, VerifierVault,
+    types::*, AsymmetricVault, HashVault, Secret, SecretVault, SignerVault, SymmetricVault,
+    VerifierVault,
 };
 use p256::{
     elliptic_curve::{sec1::FromEncodedPoint, Group},
@@ -20,7 +20,7 @@ pub extern crate ockam_vault;
 
 mod xeddsa;
 
-mod error;
+pub mod error;
 
 #[macro_use]
 extern crate ockam_common;
@@ -32,12 +32,10 @@ extern crate arrayref;
 pub struct DefaultVaultSecret(usize);
 
 impl DefaultVaultSecret {
-    pub fn downcast_secret(
-        context: &Box<dyn Secret>,
-    ) -> Result<&DefaultVaultSecret, VaultFailError> {
+    pub fn downcast_secret(context: &Box<dyn Secret>) -> OckamResult<&DefaultVaultSecret> {
         context
             .downcast_ref::<DefaultVaultSecret>()
-            .map_err(|_| VaultFailErrorKind::InvalidSecret.into())
+            .map_err(|_| Error::SecretFromAnotherVault.into())
     }
 }
 
@@ -73,26 +71,15 @@ impl Default for DefaultVault {
 }
 
 impl DefaultVault {
-    fn get_entry(
-        &self,
-        context: &Box<dyn Secret>,
-        error: VaultFailErrorKind,
-    ) -> Result<&VaultEntry, VaultFailError> {
+    fn get_entry(&self, context: &Box<dyn Secret>) -> OckamResult<&VaultEntry> {
         let id = DefaultVaultSecret::downcast_secret(context)?.0;
 
-        let entry;
-        if let Some(e) = self.entries.get(&id) {
-            entry = e;
-        } else {
-            fail!(error);
-        }
-        Ok(entry)
+        self.entries
+            .get(&id)
+            .ok_or_else(|| Error::EntryNotFound.into())
     }
 
-    fn ecdh_internal(
-        vault_entry: &VaultEntry,
-        peer_public_key: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError> {
+    fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &[u8]) -> OckamResult<Vec<u8>> {
         let key = vault_entry.key.as_ref();
         match vault_entry.key_attributes.stype {
             SecretType::Curve25519
@@ -113,28 +100,21 @@ impl DefaultVault {
                 if peer_public_key.len() == P256_PUBLIC_LENGTH
                     && key.len() == P256_SECRET_LENGTH =>
             {
-                let o_pk_t = p256::elliptic_curve::sec1::EncodedPoint::from_bytes(peer_public_key);
-                if o_pk_t.is_err() {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
-                let pk_t = o_pk_t.unwrap();
-                let o_p_t = AffinePoint::from_encoded_point(&pk_t);
-                if o_p_t.is_none().unwrap_u8() == 1 {
-                    fail!(VaultFailErrorKind::Ecdh);
-                }
+                let pk_t = p256::elliptic_curve::sec1::EncodedPoint::from_bytes(peer_public_key)
+                    .or_else(|_| Err(Error::InvalidPublicKey.into()))?;
+                let o_p_t: Option<AffinePoint> = AffinePoint::from_encoded_point(&pk_t).into();
+                let o_p_t = o_p_t.ok_or(Error::InvalidPublicKey.into())?;
                 let sk = Scalar::from_bytes_reduced(p256::FieldBytes::from_slice(key));
-                let pk_t = ProjectivePoint::from(o_p_t.unwrap());
+                let pk_t = ProjectivePoint::from(o_p_t);
                 let secret = pk_t * sk;
-                if secret.is_identity().unwrap_u8() == 1 {
-                    fail!(VaultFailErrorKind::Ecdh);
+                let is_identity: bool = secret.is_identity().into();
+                if is_identity {
+                    return Err(Error::Ecdh.into());
                 }
                 let ap = p256::elliptic_curve::sec1::EncodedPoint::from(secret.to_affine());
                 Ok(ap.x().as_slice().to_vec())
             }
-            _ => Err(VaultFailError::from_msg(
-                VaultFailErrorKind::Ecdh,
-                "Unknown key type",
-            )),
+            _ => Err(Error::UnknownEcdhKeyType.into()),
         }
     }
 
@@ -144,8 +124,8 @@ impl DefaultVault {
         info: &[u8],
         ikm: &[u8],
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
-        let salt = self.get_entry(salt, VaultFailErrorKind::Ecdh)?;
+    ) -> OckamResult<Vec<Box<dyn Secret>>> {
+        let salt = self.get_entry(salt)?;
 
         // FIXME: Doesn't work for secrets with size more than 32 bytes
         let okm_len = output_attributes.len() * 32;
@@ -154,7 +134,7 @@ impl DefaultVault {
             let mut okm = vec![0u8; okm_len];
             let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key.as_ref()), ikm);
             prk.expand(info, okm.as_mut_slice())
-                .map_err(map_hkdf_invalid_length_err)?;
+                .or(Err(Error::HkdfExpandError.into()))?;
             okm
         };
 
@@ -165,16 +145,10 @@ impl DefaultVault {
             let length = attributes.length;
             if attributes.stype == SecretType::Aes {
                 if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
-                    return Err(VaultFailError::from_msg(
-                        VaultFailErrorKind::HkdfSha256,
-                        "Unknown key type",
-                    ));
+                    return Err(Error::InvalidAesKeyLength.into());
                 }
             } else if attributes.stype != SecretType::Buffer {
-                return Err(VaultFailError::from_msg(
-                    VaultFailErrorKind::HkdfSha256,
-                    "Unknown key type",
-                ));
+                return Err(Error::InvalidHkdfOutputType.into());
             }
             let secret = &okm[index..index + length];
             let secret = self.secret_import(&secret, attributes)?;
@@ -227,7 +201,9 @@ macro_rules! encrypt_op_impl {
             aad: $aad.as_ref(),
             msg: $text.as_ref(),
         };
-        let output = cipher.$op(nonce, payload).map_err(map_aes_error)?;
+        let output = cipher
+            .$op(nonce, payload)
+            .or_else(|_| Err(Error::AeadAesGcmEncrypt.into()))?;
         Ok(output)
     }};
 }
@@ -250,10 +226,7 @@ macro_rules! encrypt_impl {
 }
 
 impl SecretVault for DefaultVault {
-    fn secret_generate(
-        &mut self,
-        attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    fn secret_generate(&mut self, attributes: SecretAttributes) -> OckamResult<Box<dyn Secret>> {
         let mut rng = OsRng {};
         let length = attributes.length;
         let key = match attributes.stype {
@@ -263,10 +236,7 @@ impl SecretVault for DefaultVault {
             }
             SecretType::Aes => {
                 if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
-                    return Err(VaultFailError::from_msg(
-                        VaultFailErrorKind::HkdfSha256,
-                        "Unknown key type",
-                    ));
+                    return Err(Error::InvalidAesKeyLength.into());
                 };
                 let mut key = vec![0u8; length];
                 rng.fill_bytes(&mut key);
@@ -301,7 +271,8 @@ impl SecretVault for DefaultVault {
         &mut self,
         secret: &[u8],
         attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    ) -> OckamResult<Box<dyn Secret>> {
+        // FIXME: Should we check secrets here?
         self.next_id += 1;
         self.entries.insert(
             self.next_id,
@@ -314,30 +285,26 @@ impl SecretVault for DefaultVault {
         Ok(Box::new(DefaultVaultSecret(self.next_id)))
     }
 
-    fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError> {
-        self.get_entry(context, VaultFailErrorKind::InvalidSecret)
-            .map(|i| i.key.clone())
+    fn secret_export(&mut self, context: &Box<dyn Secret>) -> OckamResult<SecretKey> {
+        self.get_entry(context).map(|i| i.key.clone())
     }
 
     fn secret_attributes_get(
         &mut self,
         context: &Box<dyn Secret>,
-    ) -> Result<SecretAttributes, VaultFailError> {
-        self.get_entry(context, VaultFailErrorKind::InvalidSecret)
-            .map(|i| i.key_attributes)
+    ) -> OckamResult<SecretAttributes> {
+        self.get_entry(context).map(|i| i.key_attributes)
     }
 
-    fn secret_public_key_get(
-        &mut self,
-        context: &Box<dyn Secret>,
-    ) -> Result<PublicKey, VaultFailError> {
-        let entry = self.get_entry(context, VaultFailErrorKind::PublicKey)?;
+    fn secret_public_key_get(&mut self, context: &Box<dyn Secret>) -> OckamResult<PublicKey> {
+        let entry = self.get_entry(context)?;
+
+        if entry.key.as_ref().len() != CURVE25519_SECRET_LENGTH {
+            return Err(Error::InvalidPrivateKeyLen.into());
+        }
 
         match entry.key_attributes.stype {
             SecretType::Curve25519 => {
-                if entry.key.as_ref().len() != CURVE25519_SECRET_LENGTH {
-                    return Err(VaultFailErrorKind::PublicKey.into());
-                }
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
                     entry.key.as_ref(),
                     0,
@@ -353,11 +320,11 @@ impl SecretVault for DefaultVault {
                 let ap = p256::elliptic_curve::sec1::EncodedPoint::from(pp.to_affine());
                 Ok(PublicKey::new(ap.as_bytes().to_vec()))
             }
-            _ => Err(VaultFailErrorKind::PublicKey.into()),
+            _ => Err(Error::InvalidKeyType.into()),
         }
     }
 
-    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError> {
+    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> OckamResult<()> {
         let id = DefaultVaultSecret::downcast_secret(&context)?.0;
         if let Some(mut k) = self.entries.remove(&id) {
             k.key.zeroize();
@@ -367,7 +334,7 @@ impl SecretVault for DefaultVault {
 }
 
 impl HashVault for DefaultVault {
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
+    fn sha256(&self, data: &[u8]) -> OckamResult<[u8; 32]> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
     }
@@ -378,17 +345,14 @@ impl HashVault for DefaultVault {
         info: &[u8],
         ikm: Option<&Box<dyn Secret>>,
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
+    ) -> OckamResult<Vec<Box<dyn Secret>>> {
         let ikm_slice = match ikm {
             Some(ikm) => {
-                let ikm = self.get_entry(ikm, VaultFailErrorKind::HkdfSha256)?;
+                let ikm = self.get_entry(ikm)?;
                 if ikm.key_attributes.stype == SecretType::Buffer {
                     Ok(ikm.key.as_ref().to_vec())
                 } else {
-                    Err(VaultFailError::from_msg(
-                        VaultFailErrorKind::HkdfSha256,
-                        "Unknown key type",
-                    ))
+                    Err(Error::InvalidKeyType.into())
                 }
             }
             None => Ok(Vec::new()),
@@ -403,8 +367,8 @@ impl AsymmetricVault for DefaultVault {
         &mut self,
         context: &Box<dyn Secret>,
         peer_public_key: &[u8],
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
-        let entry = self.get_entry(context, VaultFailErrorKind::Ecdh)?;
+    ) -> OckamResult<Box<dyn Secret>> {
+        let entry = self.get_entry(context)?;
 
         let dh = Self::ecdh_internal(entry, peer_public_key)?;
 
@@ -424,8 +388,8 @@ impl SymmetricVault for DefaultVault {
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError> {
-        let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmEncrypt)?;
+    ) -> OckamResult<Vec<u8>> {
+        let entry = self.get_entry(context)?;
 
         encrypt_impl!(
             entry,
@@ -433,7 +397,7 @@ impl SymmetricVault for DefaultVault {
             nonce,
             plaintext,
             encrypt,
-            VaultFailErrorKind::AeadAesGcmEncrypt
+            Error::AeadAesGcmEncrypt
         )
     }
 
@@ -443,26 +407,22 @@ impl SymmetricVault for DefaultVault {
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError> {
-        let entry = self.get_entry(context, VaultFailErrorKind::AeadAesGcmDecrypt)?;
+    ) -> OckamResult<Vec<u8>> {
+        let entry = self.get_entry(context)?;
         encrypt_impl!(
             entry,
             aad,
             nonce,
             cipher_text,
             decrypt,
-            VaultFailErrorKind::AeadAesGcmDecrypt
+            Error::AeadAesGcmDecrypt
         )
     }
 }
 
 impl SignerVault for DefaultVault {
-    fn sign(
-        &mut self,
-        secret_key: &Box<dyn Secret>,
-        data: &[u8],
-    ) -> Result<[u8; 64], VaultFailError> {
-        let entry = self.get_entry(secret_key, VaultFailErrorKind::Ecdh)?;
+    fn sign(&mut self, secret_key: &Box<dyn Secret>, data: &[u8]) -> OckamResult<[u8; 64]> {
+        let entry = self.get_entry(secret_key)?;
         let key = entry.key.as_ref();
         match entry.key_attributes.stype {
             SecretType::Curve25519 if key.len() == CURVE25519_SECRET_LENGTH => {
@@ -479,21 +439,13 @@ impl SignerVault for DefaultVault {
             //     let sig = sign_key.sign(data.as_ref());
             //     Ok(*array_ref![sig.as_ref(), 0, 64])
             // }
-            _ => Err(VaultFailError::from_msg(
-                VaultFailErrorKind::Ecdh,
-                "Unhandled key type",
-            )),
+            _ => Err(Error::InvalidKeyType.into()),
         }
     }
 }
 
 impl VerifierVault for DefaultVault {
-    fn verify(
-        &mut self,
-        signature: &[u8; 64],
-        public_key: &[u8],
-        data: &[u8],
-    ) -> Result<(), VaultFailError> {
+    fn verify(&mut self, signature: &[u8; 64], public_key: &[u8], data: &[u8]) -> OckamResult<()> {
         // FIXME
         if public_key.len() == CURVE25519_PUBLIC_LENGTH {
             if x25519_dalek::PublicKey::from(*array_ref!(public_key, 0, CURVE25519_PUBLIC_LENGTH))
@@ -501,10 +453,10 @@ impl VerifierVault for DefaultVault {
             {
                 Ok(())
             } else {
-                Err(VaultFailErrorKind::PublicKey.into())
+                Err(Error::InvalidSignature.into())
             }
         } else {
-            Err(VaultFailErrorKind::PublicKey.into())
+            Err(Error::InvalidPublicKey.into())
         }
         // match public_key {
         // PublicKey::P256(k) => {
