@@ -14,7 +14,7 @@ lto = true
 
 [dependencies]
 ockam-no-std-traits = { version = "0.1", path = "../no_std_traits" }
-ockam-message = { version = "0.1.0", path = "../message" }
+ockam = { version = "0.1", path = "../ockam" }
 ockam-queue = { version = "0.1.0", path = "../queue" }
 libc = "0.2.80"
 libc-print = "0.1.14"

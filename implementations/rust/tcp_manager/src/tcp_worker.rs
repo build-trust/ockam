@@ -3,8 +3,9 @@ extern crate alloc;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use core::ops::Deref;
-use ockam_message::message::{varint_size, Address, AddressType, Codec, Message, RouterAddress};
-use ockam_message::MAX_MESSAGE_SIZE;
+use ockam::message::{
+    varint_size, Address, AddressType, Codec, Message, RouterAddress, MAX_MESSAGE_SIZE,
+};
 use ockam_no_std_traits::{EnqueueMessage, Poll, ProcessMessage};
 use std::io;
 use std::io::{Read, Write};

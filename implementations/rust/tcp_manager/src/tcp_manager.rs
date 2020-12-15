@@ -5,10 +5,8 @@ extern crate alloc;
 use crate::tcp_worker::TcpWorker;
 use alloc::rc::Rc;
 use libc_print::*;
-use ockam_message::message::{
-    varint_size, Address, AddressType, Codec, Message, MessageType, Route, RouterAddress,
-};
-use ockam_message::MAX_MESSAGE_SIZE;
+use ockam::message::Message;
+use ockam::message::MAX_MESSAGE_SIZE;
 use ockam_no_std_traits::{EnqueueMessage, Poll, ProcessMessage};
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};

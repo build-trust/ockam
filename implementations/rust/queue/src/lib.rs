@@ -1,6 +1,6 @@
 extern crate alloc;
 use alloc::collections::VecDeque;
-use ockam_message::message::Message;
+use ockam::message::Message;
 use ockam_no_std_traits::EnqueueMessage;
 
 pub struct Queue<T> {

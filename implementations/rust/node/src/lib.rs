@@ -2,16 +2,14 @@ extern crate alloc;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 
-use ockam_message::message::{AddressType, Message};
-
 use alloc::string::String;
 use core::cell::RefCell;
 use core::ops::Deref;
 use core::time;
+use ockam::message::{AddressType, Message};
 use ockam_message_router::MessageRouter;
 use ockam_no_std_traits::{PollHandle, ProcessMessageHandle};
 use ockam_queue::Queue;
-use ockam_tcp_manager::tcp_manager::TcpManager;
 use ockam_worker_manager::WorkerManager;
 use std::thread;
 
@@ -35,7 +33,7 @@ impl Node {
     }
 
     pub fn initialize_transport(&mut self, listen_address: Option<&str>) -> Result<bool, String> {
-        let tcp_transport = TcpManager::new(listen_address)?;
+        let tcp_transport = ockam_tcp_manager::tcp_manager::TcpManager::new(listen_address)?;
         let tcp_transport = Rc::new(RefCell::new(tcp_transport));
         self.message_router
             .register_address_type_handler(AddressType::Tcp, tcp_transport.clone())?;

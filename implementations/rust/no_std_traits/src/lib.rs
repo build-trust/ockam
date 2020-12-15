@@ -3,7 +3,7 @@ extern crate alloc;
 use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
-use ockam_message::message::Message;
+use ockam::message::Message;
 
 /// ProcessMessage trait is for workers to process messages addressed to them
 ///

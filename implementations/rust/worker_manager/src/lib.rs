@@ -6,7 +6,7 @@ use alloc::string::String;
 use core::cell::RefCell;
 use core::ops::Deref;
 use hashbrown::HashMap;
-use ockam_message::message::Message;
+use ockam::message::Message;
 use ockam_no_std_traits::{EnqueueMessage, Poll, PollHandle, ProcessMessage, ProcessMessageHandle};
 
 pub struct WorkerManager {

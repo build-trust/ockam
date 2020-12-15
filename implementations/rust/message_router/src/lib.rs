@@ -7,7 +7,7 @@ use alloc::string::String;
 use core::cell::RefCell;
 use core::ops::Deref;
 use libc_print::*;
-use ockam_message::message::{AddressType, Message};
+use ockam::message::{AddressType, Message};
 use ockam_no_std_traits::{EnqueueMessage, Poll, ProcessMessage, ProcessMessageHandle};
 use ockam_queue::Queue;
 

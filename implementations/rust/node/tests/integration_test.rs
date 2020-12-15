@@ -7,12 +7,8 @@ use alloc::vec::*;
 use core::cell::RefCell;
 use core::ops::Deref;
 use core::time;
-use libc_print::*;
-use ockam_message::message::{
-    hex_vec_from_str, Address, Message, MessageType, Route, RouterAddress,
-};
+use ockam::message::{hex_vec_from_str, Address, Message, MessageType, Route, RouterAddress};
 use ockam_no_std_traits::{EnqueueMessage, Poll, ProcessMessage};
-use ockam_tcp_manager::tcp_manager::TcpManager;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::thread;
@@ -38,7 +34,7 @@ impl Poll for TestWorker {
         &mut self,
         enqueue_message_ref: Rc<RefCell<dyn EnqueueMessage>>,
     ) -> Result<bool, String> {
-        libc_println!("{} is polling", self.text);
+        println!("{} is polling", self.text);
         let msg_text = "sent to you by TestWorker".as_bytes();
         let mut onward_addresses = Vec::new();
 
