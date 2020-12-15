@@ -39,5 +39,17 @@ impl OckamError {
     }
 }
 
+cfg_if! {
+    if #[cfg(feature = "ffi")] {
+        use ffi_support::{ErrorCode, ExternError};
+
+        impl From<OckamError> for ExternError {
+            fn from(err: OckamError) -> Self {
+                ExternError::new_error(ErrorCode::new(err.code as i32), err.domain)
+            }
+        }
+    }
+}
+
 /// OckamResult
 pub type OckamResult<T> = Result<T, OckamError>;

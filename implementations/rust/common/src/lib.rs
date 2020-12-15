@@ -2,6 +2,9 @@
 
 //! Common macros and error
 
+#[macro_use]
+extern crate cfg_if;
+
 /// From int impl
 #[macro_export]
 macro_rules! from_int_impl {
