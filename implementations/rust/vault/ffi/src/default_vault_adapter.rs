@@ -1,4 +1,5 @@
-use ockam_vault_software::ockam_vault::error::{VaultFailError, VaultFailErrorKind};
+use crate::error::Error;
+use ockam_common::error::OckamResult;
 use ockam_vault_software::ockam_vault::types::{PublicKey, SecretAttributes, SecretKey};
 use ockam_vault_software::ockam_vault::zeroize::Zeroize;
 use ockam_vault_software::ockam_vault::{
@@ -21,10 +22,7 @@ impl Zeroize for DefaultVaultAdapter {
 }
 
 impl SecretVault for DefaultVaultAdapter {
-    fn secret_generate(
-        &mut self,
-        attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    fn secret_generate(&mut self, attributes: SecretAttributes) -> OckamResult<Box<dyn Secret>> {
         self.0.secret_generate(attributes)
     }
 
@@ -32,35 +30,32 @@ impl SecretVault for DefaultVaultAdapter {
         &mut self,
         secret: &[u8],
         attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    ) -> OckamResult<Box<dyn Secret>> {
         self.0.secret_import(secret, attributes)
     }
 
-    fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError> {
+    fn secret_export(&mut self, context: &Box<dyn Secret>) -> OckamResult<SecretKey> {
         self.0.secret_export(context)
     }
 
     fn secret_attributes_get(
         &mut self,
         context: &Box<dyn Secret>,
-    ) -> Result<SecretAttributes, VaultFailError> {
+    ) -> OckamResult<SecretAttributes> {
         self.0.secret_attributes_get(context)
     }
 
-    fn secret_public_key_get(
-        &mut self,
-        context: &Box<dyn Secret>,
-    ) -> Result<PublicKey, VaultFailError> {
+    fn secret_public_key_get(&mut self, context: &Box<dyn Secret>) -> OckamResult<PublicKey> {
         self.0.secret_public_key_get(context)
     }
 
-    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError> {
+    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> OckamResult<()> {
         self.0.secret_destroy(context)
     }
 }
 
 impl HashVault for DefaultVaultAdapter {
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
+    fn sha256(&self, data: &[u8]) -> OckamResult<[u8; 32]> {
         self.0.sha256(data)
     }
 
@@ -70,7 +65,7 @@ impl HashVault for DefaultVaultAdapter {
         info: &[u8],
         ikm: Option<&Box<dyn Secret>>,
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
+    ) -> OckamResult<Vec<Box<dyn Secret>>> {
         self.0.hkdf_sha256(salt, info, ikm, output_attributes)
     }
 }
@@ -82,7 +77,7 @@ impl SymmetricVault for DefaultVaultAdapter {
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError> {
+    ) -> OckamResult<Vec<u8>> {
         self.0.aead_aes_gcm_encrypt(context, plaintext, nonce, aad)
     }
 
@@ -92,7 +87,7 @@ impl SymmetricVault for DefaultVaultAdapter {
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError> {
+    ) -> OckamResult<Vec<u8>> {
         self.0
             .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad)
     }
@@ -103,26 +98,17 @@ impl AsymmetricVault for DefaultVaultAdapter {
         &mut self,
         context: &Box<dyn Secret>,
         peer_public_key: &[u8],
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    ) -> OckamResult<Box<dyn Secret>> {
         self.0.ec_diffie_hellman(context, peer_public_key)
     }
 }
 
 impl PersistentVault for DefaultVaultAdapter {
-    fn get_persistence_id(&self, _secret: &Box<dyn Secret>) -> Result<String, VaultFailError> {
-        Err(VaultFailError::from_msg(
-            VaultFailErrorKind::InvalidContext,
-            "Default vault cannot have persistent secrets",
-        ))
+    fn get_persistence_id(&self, _secret: &Box<dyn Secret>) -> OckamResult<String> {
+        Err(Error::VaultDoesntSupportPersistence.into())
     }
 
-    fn get_persistent_secret(
-        &self,
-        _persistence_id: &str,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
-        Err(VaultFailError::from_msg(
-            VaultFailErrorKind::InvalidContext,
-            "Default vault cannot have persistent secrets",
-        ))
+    fn get_persistent_secret(&self, _persistence_id: &str) -> OckamResult<Box<dyn Secret>> {
+        Err(Error::VaultDoesntSupportPersistence.into())
     }
 }

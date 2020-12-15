@@ -1,12 +1,34 @@
-use ockam_vault_software::ockam_vault::error::VaultFailError;
-use std::ffi::NulError;
+use ffi_support::{ErrorCode, ExternError};
+use ockam_common::error::OckamError;
 
-// FIXME: This should be removed after introducing common error
-
-pub(crate) fn map_vault_error(err: VaultFailError) -> ffi_support::ExternError {
-    ffi_support::ExternError::new_error(ffi_support::ErrorCode::new(1 as i32), err.to_string())
+/// Represents the failures that can occur in
+/// an Ockam FFI Vault
+#[derive(Clone, Copy, Debug)]
+pub enum Error {
+    None,
+    VaultDoesntSupportPersistence,
+    InvalidParam,
+    EntryNotFound,
+    UnknownPublicKeyType,
+    InvalidString,
+    BufferTooSmall,
+    InvalidPublicKey,
+    VaultNotFound,
 }
 
-pub(crate) fn map_nul_error(err: NulError) -> ffi_support::ExternError {
-    ffi_support::ExternError::new_error(ffi_support::ErrorCode::new(2 as i32), err.to_string())
+impl Error {
+    /// Error domain
+    pub const ERROR_DOMAIN: &'static str = "VAULT_FFI_ERROR_DOMAIN";
+}
+
+impl From<Error> for OckamError {
+    fn from(err: Error) -> Self {
+        OckamError::new(err as u32, Error::ERROR_DOMAIN)
+    }
+}
+
+impl From<Error> for ExternError {
+    fn from(err: Error) -> Self {
+        ExternError::new_error(ErrorCode::new(err as i32), Error::ERROR_DOMAIN)
+    }
 }

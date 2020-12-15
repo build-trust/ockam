@@ -56,14 +56,8 @@ unsafe impl IntoFfi for FfiSecretAttributes {
 pub type VaultId = u32;
 /// Represents a Vault handle
 pub type VaultHandle = u64;
-/// Represents a Vault error code
-pub type VaultError = u32;
 /// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;
-/// No error or success
-pub const ERROR_NONE: u32 = 0;
-/// Error or success
-pub const ERROR: u32 = 1;
 
 /// A context object to interface with C
 #[derive(Clone, Copy, Debug)]
@@ -71,18 +65,4 @@ pub const ERROR: u32 = 1;
 pub struct OckamVaultContext {
     pub(crate) handle: VaultHandle,
     pub(crate) vault_id: VaultId,
-}
-
-pub struct OckamSecretList(pub(crate) Vec<u64>);
-
-unsafe impl IntoFfi for OckamSecretList {
-    type Value = Vec<u64>;
-
-    fn ffi_default() -> Self::Value {
-        Vec::new()
-    }
-
-    fn into_ffi_value(self) -> Self::Value {
-        self.0
-    }
 }
