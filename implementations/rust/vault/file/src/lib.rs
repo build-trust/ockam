@@ -1,4 +1,4 @@
-use ockam_vault::error::{VaultFailError, VaultFailErrorKind};
+use crate::error::*;
 use ockam_vault::types::{PublicKey, SecretAttributes, SecretKey, SecretPersistence};
 use ockam_vault::{
     AsymmetricVault, HashVault, PersistentVault, Secret, SecretVault, SignerVault, SymmetricVault,
@@ -12,7 +12,10 @@ use std::fs;
 use std::path::PathBuf;
 use zeroize::Zeroize;
 
+use ockam_common::error::OckamResult;
 pub use ockam_vault;
+
+pub mod error;
 
 const ATTRS_BYTE_LENGTH: usize = 6;
 
@@ -33,10 +36,10 @@ pub const FILENAME_KEY_SUFFIX: &str = ".key";
 pub struct FilesystemVaultSecret(usize);
 
 impl FilesystemVaultSecret {
-    pub fn downcast_secret(context: &Box<dyn Secret>) -> Result<&Self, VaultFailError> {
+    pub fn downcast_secret(context: &Box<dyn Secret>) -> OckamResult<&Self> {
         context
             .downcast_ref::<FilesystemVaultSecret>()
-            .map_err(|_| VaultFailErrorKind::InvalidSecret.into())
+            .map_err(|_| Error::SecretFromAnotherVault.into())
     }
 }
 
@@ -47,18 +50,26 @@ impl Zeroize for FilesystemVaultSecret {
 impl Secret for FilesystemVaultSecret {}
 
 impl FilesystemVault {
+    fn get_entry_map<'a>(
+        map: &'a BTreeMap<usize, Box<dyn Secret>>,
+        context: &'a Box<dyn Secret>,
+    ) -> OckamResult<&'a Box<dyn Secret>> {
+        let context = FilesystemVaultSecret::downcast_secret(context)?;
+        map.get(&context.0).ok_or(Error::InvalidSecret.into())
+    }
+
     /// Creates a new FilesystemVault using the provided path on disk to store secrets.
-    pub fn new(path: PathBuf) -> std::io::Result<Self> {
+    pub fn new(path: PathBuf) -> OckamResult<Self> {
         let mut map = BTreeMap::<usize, Box<dyn Secret>>::new();
         let mut next_id: usize = 0;
 
         let create_path = path.clone();
-        fs::create_dir_all(create_path)?;
+        fs::create_dir_all(create_path).or_else(|_| Err(Error::IOError.into()))?;
 
         let mut vault = DefaultVault::default();
-        let to_secret = |data: &[u8]| -> Result<(SecretKey, SecretAttributes), VaultFailError> {
+        let to_secret = |data: &[u8]| -> OckamResult<(SecretKey, SecretAttributes)> {
             if data.len() < ATTRS_BYTE_LENGTH {
-                return Err(VaultFailErrorKind::InvalidSecret.into());
+                return Err(Error::InvalidSecret.into());
             }
 
             let mut attrs = [0u8; ATTRS_BYTE_LENGTH];
@@ -72,7 +83,8 @@ impl FilesystemVault {
         };
         let fs_path = path.clone();
 
-        path.read_dir()?
+        path.read_dir()
+            .or_else(|_| Err(Error::IOError.into()))?
             .filter(|r| {
                 // ignore directories within vault path
                 if let Ok(e) = r {
@@ -146,22 +158,19 @@ fn fs_write_secret(
     id: usize,
     key: &[u8],
     attrs: SecretAttributes,
-) -> Result<(), VaultFailError> {
+) -> OckamResult<()> {
     if matches!(attrs.persistence, SecretPersistence::Persistent) {
         let mut bytes = attrs.to_bytes().to_vec();
         bytes.extend_from_slice(key.as_ref());
 
-        fs::write(path.join(id_to_path(id)), bytes)?;
+        fs::write(path.join(id_to_path(id)), bytes).or_else(|_| Err(Error::IOError.into()))?;
     }
     return Ok(());
 }
 
 impl SecretVault for FilesystemVault {
     /// Create a new secret key
-    fn secret_generate(
-        &mut self,
-        attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    fn secret_generate(&mut self, attributes: SecretAttributes) -> OckamResult<Box<dyn Secret>> {
         // write the secret to disk using the context id
         let ctx = self.v.secret_generate(attributes)?;
         let secret = self.v.secret_export(&ctx)?;
@@ -176,7 +185,7 @@ impl SecretVault for FilesystemVault {
         &mut self,
         secret: &[u8],
         attributes: SecretAttributes,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    ) -> OckamResult<Box<dyn Secret>> {
         // write the secret to disk using the context id
         let ctx = self.v.secret_import(secret, attributes)?;
         let id = self.add_secret(ctx);
@@ -186,12 +195,8 @@ impl SecretVault for FilesystemVault {
     }
 
     /// Export a secret key from the vault
-    fn secret_export(&mut self, context: &Box<dyn Secret>) -> Result<SecretKey, VaultFailError> {
-        let context = FilesystemVaultSecret::downcast_secret(context)?;
-        let context = self
-            .map
-            .get(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+    fn secret_export(&mut self, context: &Box<dyn Secret>) -> OckamResult<SecretKey> {
+        let context = Self::get_entry_map(&self.map, context)?;
         self.v.secret_export(context)
     }
 
@@ -199,36 +204,25 @@ impl SecretVault for FilesystemVault {
     fn secret_attributes_get(
         &mut self,
         context: &Box<dyn Secret>,
-    ) -> Result<SecretAttributes, VaultFailError> {
-        let context = FilesystemVaultSecret::downcast_secret(context)?;
-        let context = self
-            .map
-            .get(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+    ) -> OckamResult<SecretAttributes> {
+        let context = Self::get_entry_map(&self.map, context)?;
         self.v.secret_attributes_get(context)
     }
 
     /// Return the associated public key given the secret key
-    fn secret_public_key_get(
-        &mut self,
-        context: &Box<dyn Secret>,
-    ) -> Result<PublicKey, VaultFailError> {
-        let context = FilesystemVaultSecret::downcast_secret(context)?;
-        let context = self
-            .map
-            .get(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+    fn secret_public_key_get(&mut self, context: &Box<dyn Secret>) -> OckamResult<PublicKey> {
+        let context = Self::get_entry_map(&self.map, context)?;
         self.v.secret_public_key_get(context)
     }
 
     /// Remove a secret key from the vault
-    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> Result<(), VaultFailError> {
+    fn secret_destroy(&mut self, context: Box<dyn Secret>) -> OckamResult<()> {
         let id = FilesystemVaultSecret::downcast_secret(&context)?.0;
 
         let path = self.path.join(id_to_path(id));
         match fs::metadata(path.clone()) {
             Ok(md) if md.is_file() => {
-                fs::remove_file(path).map_err(|_| VaultFailErrorKind::IOError)?;
+                fs::remove_file(path).map_err(|_| Error::IOError.into())?;
             }
             _ => {}
         }
@@ -237,7 +231,7 @@ impl SecretVault for FilesystemVault {
         let context = self
             .map
             .remove(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+            .ok_or(Error::EntryNotFound.into())?;
         self.v.secret_destroy(context)?;
 
         Ok(())
@@ -252,12 +246,8 @@ impl AsymmetricVault for FilesystemVault {
         &mut self,
         context: &Box<dyn Secret>,
         peer_public_key: &[u8],
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
-        let context = FilesystemVaultSecret::downcast_secret(context)?;
-        let context = self
-            .map
-            .get(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+    ) -> OckamResult<Box<dyn Secret>> {
+        let context = Self::get_entry_map(&self.map, context)?;
         let ecdh = self.v.ec_diffie_hellman(context, peer_public_key)?;
         let id = self.add_secret(ecdh);
         // TODO: What if ecdh result is persistent?
@@ -274,12 +264,8 @@ impl SymmetricVault for FilesystemVault {
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError> {
-        let context = FilesystemVaultSecret::downcast_secret(context)?;
-        let context = self
-            .map
-            .get(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+    ) -> OckamResult<Vec<u8>> {
+        let context = Self::get_entry_map(&self.map, context)?;
         self.v.aead_aes_gcm_encrypt(context, plaintext, nonce, aad)
     }
 
@@ -290,46 +276,29 @@ impl SymmetricVault for FilesystemVault {
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>, VaultFailError> {
-        let context = FilesystemVaultSecret::downcast_secret(context)?;
-        let context = self
-            .map
-            .get(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+    ) -> OckamResult<Vec<u8>> {
+        let context = Self::get_entry_map(&self.map, context)?;
         self.v
             .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad)
     }
 }
 
 impl SignerVault for FilesystemVault {
-    fn sign(
-        &mut self,
-        secret_key: &Box<dyn Secret>,
-        data: &[u8],
-    ) -> Result<[u8; 64], VaultFailError> {
-        let context = FilesystemVaultSecret::downcast_secret(secret_key)?;
-        let context = self
-            .map
-            .get(&context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+    fn sign(&mut self, secret_key: &Box<dyn Secret>, data: &[u8]) -> OckamResult<[u8; 64]> {
+        let context = Self::get_entry_map(&self.map, secret_key)?;
         self.v.sign(context, data)
     }
 }
 
 impl VerifierVault for FilesystemVault {
-    fn verify(
-        &mut self,
-        signature: &[u8; 64],
-        public_key: &[u8],
-        data: &[u8],
-    ) -> Result<(), VaultFailError> {
+    fn verify(&mut self, signature: &[u8; 64], public_key: &[u8], data: &[u8]) -> OckamResult<()> {
         self.v.verify(signature, public_key, data)
     }
 }
 
 impl HashVault for FilesystemVault {
     /// Compute the SHA-256 digest given input `data`
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError> {
+    fn sha256(&self, data: &[u8]) -> OckamResult<[u8; 32]> {
         self.v.sha256(data)
     }
     /// Compute the HKDF-SHA256 using the specified salt and input key material
@@ -341,24 +310,12 @@ impl HashVault for FilesystemVault {
         info: &[u8],
         ikm: Option<&Box<dyn Secret>>,
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Box<dyn Secret>>, VaultFailError> {
-        let salt_context = FilesystemVaultSecret::downcast_secret(salt)?;
-        let salt_context = self
-            .map
-            .get(&salt_context.0)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
-
+    ) -> OckamResult<Vec<Box<dyn Secret>>> {
         let ikm = match ikm {
-            Some(secret) => {
-                let context = FilesystemVaultSecret::downcast_secret(secret)?;
-                Some(
-                    self.map
-                        .get(&context.0)
-                        .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?,
-                )
-            }
+            Some(secret) => Some(Self::get_entry_map(&self.map, secret)?),
             None => None,
         };
+        let salt_context = Self::get_entry_map(&self.map, salt)?;
 
         self.v
             .hkdf_sha256(salt_context, info, ikm, output_attributes)?
@@ -375,26 +332,21 @@ impl HashVault for FilesystemVault {
     }
 }
 impl PersistentVault for FilesystemVault {
-    fn get_persistence_id(&self, secret: &Box<dyn Secret>) -> Result<String, VaultFailError> {
+    fn get_persistence_id(&self, secret: &Box<dyn Secret>) -> OckamResult<String> {
         let id = FilesystemVaultSecret::downcast_secret(secret)?.0;
         Ok(format!("{}{}", id, FILENAME_KEY_SUFFIX))
     }
 
-    fn get_persistent_secret(
-        &self,
-        persistence_id: &str,
-    ) -> Result<Box<dyn Secret>, VaultFailError> {
+    fn get_persistent_secret(&self, persistence_id: &str) -> OckamResult<Box<dyn Secret>> {
         let id = persistence_id
             .strip_suffix(FILENAME_KEY_SUFFIX)
-            .ok_or(VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
-        let id: usize = id
-            .parse()
-            .map_err(|_| VaultFailError::from(VaultFailErrorKind::InvalidSecret))?;
+            .ok_or(Error::InvalidPersistenceId.into())?;
+        let id: usize = id.parse().map_err(|_| Error::InvalidPersistenceId.into())?;
 
         if self.map.contains_key(&id) {
             Ok(Box::new(FilesystemVaultSecret(id)))
         } else {
-            Err(VaultFailError::from(VaultFailErrorKind::InvalidSecret))
+            Err(Error::InvalidPersistenceId.into())
         }
     }
 }
