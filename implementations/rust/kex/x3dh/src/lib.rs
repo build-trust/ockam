@@ -1,11 +1,12 @@
-use ockam_kex::error::{KexExchangeFailError, KeyExchangeFailErrorKind};
+use crate::error::Error;
+use ockam_common::error::{OckamError, OckamResult};
 use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_vault::types::{
     SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use ockam_vault::{
-    error::VaultFailError, types::PublicKey, AsymmetricVault, HashVault, Secret, SecretVault,
-    SignerVault, SymmetricVault, VerifierVault,
+    types::PublicKey, AsymmetricVault, HashVault, Secret, SecretVault, SignerVault, SymmetricVault,
+    VerifierVault,
 };
 use std::{
     convert::TryFrom,
@@ -15,6 +16,8 @@ use subtle::ConstantTimeEq;
 
 #[macro_use]
 extern crate arrayref;
+
+pub mod error;
 
 /// Represents and (X)EdDSA or ECDSA signature
 /// from Ed25519 or P-256
@@ -68,11 +71,11 @@ impl PreKeyBundle {
 }
 
 impl TryFrom<&[u8]> for PreKeyBundle {
-    type Error = KexExchangeFailError;
+    type Error = OckamError;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         if data.len() != Self::SIZE {
-            return Err(KeyExchangeFailErrorKind::InvalidByteCount(Self::SIZE, data.len()).into());
+            return Err(Error::MessageLenMismatch.into());
         }
         let identity_key = PublicKey::new(array_ref![data, 0, 32].to_vec());
         let signed_prekey = PublicKey::new(array_ref![data, 32, 32].to_vec());
@@ -147,7 +150,7 @@ impl X3dhResponder {
         }
     }
 
-    fn prologue(&mut self) -> Result<(), VaultFailError> {
+    fn prologue(&mut self) -> OckamResult<()> {
         let mut vault = self.vault.lock().unwrap();
         let p_atts = SecretAttributes {
             persistence: SecretPersistence::Persistent,
@@ -221,7 +224,7 @@ impl X3dhInitiator {
         }
     }
 
-    fn prologue(&mut self) -> Result<(), VaultFailError> {
+    fn prologue(&mut self) -> OckamResult<()> {
         let mut vault = self.vault.lock().unwrap();
         let p_atts = SecretAttributes {
             persistence: SecretPersistence::Persistent,
@@ -250,28 +253,23 @@ impl std::fmt::Debug for X3dhInitiator {
 }
 
 impl KeyExchanger for X3dhResponder {
-    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
+    fn process(&mut self, data: &[u8]) -> OckamResult<Vec<u8>> {
         match self.state {
             ResponderState::GenerateBundle => {
                 self.prologue()?;
                 let mut vault = self.vault.lock().unwrap();
-                let identity_secret_key =
-                    self.identity_key
-                        .as_ref()
-                        .ok_or(KeyExchangeFailErrorKind::GeneralError {
-                            msg: "Invalid identity key".to_string(),
-                        })?;
-                let signed_prekey =
-                    self.signed_prekey
-                        .as_ref()
-                        .ok_or(KeyExchangeFailErrorKind::GeneralError {
-                            msg: "Invalid signer prekey".to_string(),
-                        })?;
-                let one_time_prekey = self.one_time_prekey.as_ref().ok_or(
-                    KeyExchangeFailErrorKind::GeneralError {
-                        msg: "Invalid one-time prekey".to_string(),
-                    },
-                )?;
+                let identity_secret_key = self
+                    .identity_key
+                    .as_ref()
+                    .ok_or(Error::InvalidState.into())?;
+                let signed_prekey = self
+                    .signed_prekey
+                    .as_ref()
+                    .ok_or(Error::InvalidState.into())?;
+                let one_time_prekey = self
+                    .one_time_prekey
+                    .as_ref()
+                    .ok_or(Error::InvalidState.into())?;
                 let signed_prekey_pub = vault.secret_public_key_get(signed_prekey)?;
                 let signature = vault.sign(identity_secret_key, signed_prekey_pub.as_ref())?;
                 let identity_key = vault.secret_public_key_get(identity_secret_key)?;
@@ -287,7 +285,7 @@ impl KeyExchanger for X3dhResponder {
             }
             ResponderState::SetEnrollmentKey => {
                 if data.len() != 32 {
-                    return Err(KeyExchangeFailErrorKind::InvalidByteCount(32, data.len()).into());
+                    return Err(Error::MessageLenMismatch.into());
                 }
                 self.expected_enrollment_key =
                     Some(PublicKey::new(array_ref![data, 0, 32].to_vec()));
@@ -297,40 +295,25 @@ impl KeyExchanger for X3dhResponder {
             ResponderState::VerifyEnrollment => {
                 debug_assert!(self.expected_enrollment_key.is_some());
                 if data.len() != ENROLLMENT_MSG_SIZE {
-                    return Err(KeyExchangeFailErrorKind::InvalidByteCount(
-                        ENROLLMENT_MSG_SIZE,
-                        data.len(),
-                    )
-                    .into());
+                    return Err(Error::MessageLenMismatch.into());
                 }
                 let mut vault = self.vault.lock().unwrap();
-                let signed_prekey =
-                    self.signed_prekey
-                        .as_ref()
-                        .ok_or(KeyExchangeFailErrorKind::GeneralError {
-                            msg: "Invalid signer prekey".to_string(),
-                        })?;
-                let one_time_prekey = self.one_time_prekey.as_ref().ok_or(
-                    KeyExchangeFailErrorKind::GeneralError {
-                        msg: "Invalid one-time prekey".to_string(),
-                    },
-                )?;
+                let signed_prekey = self
+                    .signed_prekey
+                    .as_ref()
+                    .ok_or(Error::InvalidState.into())?;
+                let one_time_prekey = self
+                    .one_time_prekey
+                    .as_ref()
+                    .ok_or(Error::InvalidState.into())?;
                 let eik = self.expected_enrollment_key.as_ref().unwrap();
                 let id = vault.sha256(eik.as_ref())?;
                 if id.ct_eq(&data[32..64]).unwrap_u8() != 1 {
-                    return Err(KeyExchangeFailErrorKind::InvalidHash {
-                        expected: hex::encode(id),
-                        actual: hex::encode(&data[32..64]),
-                    }
-                    .into());
+                    return Err(Error::InvalidHash.into());
                 }
                 let ek = PublicKey::new(array_ref![data, 0, 32].to_vec());
                 let local_static_secret =
-                    self.identity_key
-                        .take()
-                        .ok_or(KeyExchangeFailErrorKind::GeneralError {
-                            msg: "Invalid identity key".to_string(),
-                        })?;
+                    self.identity_key.take().ok_or(Error::InvalidState.into())?;
 
                 let dh1 = vault.ec_diffie_hellman(signed_prekey, eik.as_ref())?;
                 let dh2 = vault.ec_diffie_hellman(&local_static_secret, ek.as_ref())?;
@@ -403,13 +386,13 @@ impl KeyExchanger for X3dhResponder {
         matches!(self.state, ResponderState::Done)
     }
 
-    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
+    fn finalize(self: Box<Self>) -> OckamResult<CompletedKeyExchange> {
         Ok(self.completed_key_exchange.unwrap())
     }
 }
 
 impl KeyExchanger for X3dhInitiator {
-    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
+    fn process(&mut self, data: &[u8]) -> OckamResult<Vec<u8>> {
         match self.state {
             InitiatorState::GenerateEphemeralIdentityKey => {
                 self.prologue()?;
@@ -429,11 +412,10 @@ impl KeyExchanger for X3dhInitiator {
 
                 let mut vault = self.vault.lock().unwrap();
 
-                let ephemeral_identity_key = self.ephemeral_identity_key.as_ref().ok_or(
-                    KeyExchangeFailErrorKind::GeneralError {
-                        msg: "Invalid ephemeral identity key".to_string(),
-                    },
-                )?;
+                let ephemeral_identity_key = self
+                    .ephemeral_identity_key
+                    .as_ref()
+                    .ok_or(Error::InvalidState.into())?;
 
                 // Check the prekey_bundle signature
                 vault.verify(
@@ -536,7 +518,7 @@ impl KeyExchanger for X3dhInitiator {
         matches!(self.state, InitiatorState::Done)
     }
 
-    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
+    fn finalize(self: Box<Self>) -> OckamResult<CompletedKeyExchange> {
         Ok(self.completed_key_exchange.unwrap())
     }
 }
