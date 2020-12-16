@@ -27,7 +27,7 @@ use crate::system::commands::OckamCommand::Router;
 use crate::system::commands::{ChannelCommand, OckamCommand, RouterCommand};
 use core::marker::PhantomData;
 use error::*;
-use ockam_kex::error::KeyExchangeFailErrorKind;
+use ockam_common::error::OckamResult;
 use ockam_kex::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_kex_xx::XXVault;
 use ockam_vault::types::PublicKey;
@@ -91,14 +91,14 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         new_key_exchanger: E,
         resp_key_ctx: Option<Arc<Box<dyn Secret>>>,
         init_key_ctx: Option<Arc<Box<dyn Secret>>>,
-    ) -> Result<Self, ChannelError> {
+    ) -> OckamResult<Self> {
         // register ChannelManager with the router as the handler for all Channel address types
         if let Err(_error) = router_tx.send(Router(RouterCommand::Register(
             AddressType::Channel,
             tx.clone(),
         ))) {
             println!("Channel failed ro register with router");
-            return Err(ChannelErrorKind::CantSend.into());
+            return Err(Error::CantSend.into());
         }
 
         Ok(Self {
@@ -116,7 +116,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
     }
 
     /// Check for work to be done and do it
-    pub fn poll(&mut self) -> Result<bool, ChannelError> {
+    pub fn poll(&mut self) -> OckamResult<bool> {
         let keep_going = true;
         let mut got_message = true;
         while got_message {
@@ -139,7 +139,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                     OckamCommand::Channel(ChannelCommand::ReceiveMessage(m)) => {
                         self.handle_recv(m)?;
                     }
-                    _ => return Err(ChannelErrorKind::InvalidParam(0).into()),
+                    _ => return Err(Error::InvalidParam.into()),
                 },
                 Err(_) => {
                     got_message = false;
@@ -149,9 +149,9 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         Ok(keep_going)
     }
 
-    fn handle_send(&mut self, mut m: Message) -> Result<(), ChannelError> {
+    fn handle_send(&mut self, mut m: Message) -> OckamResult<()> {
         if m.onward_route.addresses.is_empty() {
-            return Err(ChannelErrorKind::CantSend.into());
+            return Err(Error::CantSend.into());
         }
         let this_channel_address = &m.onward_route.addresses[0];
         return match self
@@ -173,11 +173,8 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
 
                     // encrypt it
                     let mut encrypted_mb: Vec<u8> = vec![];
-                    if let Err(e) = u16::encode(&channel.nonce, &mut encrypted_mb)
-                        .map_err(|e| ChannelError::from_msg(ChannelErrorKind::CantSend, e))
-                    {
-                        return Err(e);
-                    }
+                    u16::encode(&channel.nonce, &mut encrypted_mb)
+                        .or_else(|_| Err(Error::CantSend.into()))?;
 
                     let cke = channel.completed_key_exchange.as_ref().unwrap();
                     let nonce = Channel::nonce_16_to_96(channel.nonce);
@@ -216,18 +213,18 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                         "got unexapected send on ciphertext address: {:?}",
                         m.message_type
                     );
-                    Err(ChannelErrorKind::NotImplemented.into())
+                    Err(Error::NotImplemented.into())
                 }
             }
-            _ => Err(ChannelErrorKind::NotImplemented.into()),
+            _ => Err(Error::NotImplemented.into()),
         };
     }
 
-    fn handle_recv(&mut self, m: Message) -> Result<(), ChannelError> {
+    fn handle_recv(&mut self, m: Message) -> OckamResult<()> {
         if m.onward_route.addresses.is_empty() {
             // no onward route, how to determine which channel to decrypt message?
             // can't so drop
-            return Err(ChannelErrorKind::RecvError.into());
+            return Err(Error::RecvError.into());
         }
 
         // Pop the first onward address off to get the channel id.
@@ -238,7 +235,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             if let Some((_clear, cipher)) = self.create_channel(ExchangerRole::Responder) {
                 recv_address_str = cipher;
             } else {
-                return Err(ChannelErrorKind::State.into());
+                return Err(Error::InvalidState.into());
             }
         }
         match self.channels.get_mut(&recv_address_str) {
@@ -275,7 +272,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                     }
                     _ => {
                         debug_assert!(false);
-                        Err(ChannelErrorKind::NotImplemented.into())
+                        Err(Error::NotImplemented.into())
                     }
                 };
             }
@@ -286,17 +283,13 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         Ok(())
     }
 
-    fn handle_payload_recv(
-        &self,
-        channel: Arc<Mutex<Channel>>,
-        m: Message,
-    ) -> Result<(), ChannelError> {
+    fn handle_payload_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> OckamResult<()> {
         let channel = channel.lock().unwrap();
 
         match &m.onward_route.addresses[0].address {
             Address::ChannelAddress(ca) => {
                 if ca.as_slice() != channel.ciphertext_address.to_le_bytes() {
-                    return Err(ChannelErrorKind::NotImplemented.into());
+                    return Err(Error::NotImplemented.into());
                 }
             }
             _ => {}
@@ -322,17 +315,14 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         Ok(())
     }
 
-    fn handle_m1_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+    fn handle_m1_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> OckamResult<()> {
         let channel = &mut *channel.lock().unwrap();
         let cleartext_address = channel.as_cleartext_address();
         let ciphertext_address = channel.as_ciphertext_address();
         let agreement = match &mut channel.agreement {
             Some(e) => e.as_mut(),
             None => {
-                return Err(ChannelErrorKind::KeyAgreement(
-                    KeyExchangeFailErrorKind::MethodCalledOutOfSequence,
-                )
-                .into())
+                return Err(Error::InvalidState.into());
             }
         };
 
@@ -358,15 +348,12 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         Ok(())
     }
 
-    fn handle_m2_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+    fn handle_m2_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> OckamResult<()> {
         let mut channel = &mut *channel.lock().unwrap();
         let mut agreement = match channel.agreement.take() {
             Some(e) => e,
             None => {
-                return Err(ChannelErrorKind::KeyAgreement(
-                    KeyExchangeFailErrorKind::MethodCalledOutOfSequence,
-                )
-                .into())
+                return Err(Error::InvalidState.into());
             }
         };
 
@@ -405,21 +392,18 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
                     .unwrap();
             }
             None => {
-                return Err(ChannelErrorKind::NotImplemented.into());
+                return Err(Error::NotImplemented.into());
             }
         }
         Ok(())
     }
 
-    fn handle_m3_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> Result<(), ChannelError> {
+    fn handle_m3_recv(&self, channel: Arc<Mutex<Channel>>, m: Message) -> OckamResult<()> {
         let mut channel = channel.lock().unwrap();
         let mut agreement = match channel.agreement.take() {
             Some(e) => e,
             None => {
-                return Err(ChannelErrorKind::KeyAgreement(
-                    KeyExchangeFailErrorKind::MethodCalledOutOfSequence,
-                )
-                .into())
+                return Err(Error::InvalidState.into());
             }
         };
 
@@ -486,7 +470,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         &mut self,
         route: Route,
         return_address: Address,
-    ) -> Result<Address, ChannelError> {
+    ) -> OckamResult<Address> {
         // Remember who to notify when the channel is secure
         let pending_return = RouterAddress::from_address(return_address).unwrap();
 
@@ -503,10 +487,7 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
         let agreement = match &mut channel.agreement {
             Some(e) => e.as_mut(),
             None => {
-                return Err(ChannelErrorKind::KeyAgreement(
-                    KeyExchangeFailErrorKind::MethodCalledOutOfSequence,
-                )
-                .into())
+                return Err(Error::InvalidState.into());
             }
         };
         channel.pending = Some(Message {
@@ -532,7 +513,9 @@ impl<I: KeyExchanger, R: KeyExchanger, E: NewKeyExchanger<I, R>> ChannelManager<
             message_type: MessageType::KeyAgreementM1,
             message_body: ka_m1,
         };
-        self.router_tx.send(Router(RouterCommand::SendMessage(m)))?;
+        self.router_tx
+            .send(Router(RouterCommand::SendMessage(m)))
+            .map_err(|e| Error::from(e).into())?;
         Ok(Address::channel_address_from_string(&clear_address).unwrap())
     }
 
