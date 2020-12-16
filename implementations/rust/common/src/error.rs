@@ -1,13 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-/// Error king
-pub trait ErrorKind {
-    /// Error interface bit
-    const ERROR_INTERFACE: usize;
-    /// to usize
-    fn to_usize(&self) -> usize;
-}
-
 /// Common error
 #[derive(Debug)]
 pub struct OckamError {
