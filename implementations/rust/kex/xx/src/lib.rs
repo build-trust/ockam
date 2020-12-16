@@ -1,4 +1,5 @@
-use ockam_kex::error::KexExchangeFailError;
+use crate::error::Error;
+use ockam_common::error::OckamResult;
 use ockam_kex::{
     CipherSuite, CompletedKeyExchange, KeyExchange, KeyExchanger, NewKeyExchanger, AES_GCM_TAGSIZE,
     SHA256_SIZE,
@@ -7,15 +8,13 @@ use ockam_vault::types::{
     AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH, P256_SECRET_LENGTH,
 };
 use ockam_vault::{
-    error::{VaultFailError, VaultFailErrorKind},
     types::{PublicKey, SecretAttributes, SecretPersistence, SecretType},
     AsymmetricVault, HashVault, Secret, SecretVault, SymmetricVault,
 };
 use std::sync::{Arc, Mutex};
 use zeroize::Zeroize;
 
-#[macro_use]
-extern crate arrayref;
+pub mod error;
 
 #[derive(Debug)]
 struct KeyPair {
@@ -77,23 +76,6 @@ impl SymmetricState {
         }
     }
 
-    fn create_public_key(&self, public_key: &[u8]) -> Result<PublicKey, VaultFailError> {
-        match self.cipher_suite {
-            CipherSuite::Curve25519AesGcmSha256 => {
-                if public_key.len() != 32 {
-                    return Err(VaultFailError::from(VaultFailErrorKind::InvalidSize));
-                }
-                Ok(PublicKey::new(array_ref![public_key, 0, 32].to_vec()))
-            }
-            CipherSuite::P256Aes128GcmSha256 => {
-                if public_key.len() != 65 {
-                    return Err(VaultFailError::from(VaultFailErrorKind::InvalidSize));
-                }
-                Ok(PublicKey::new(array_ref![public_key, 0, 65].to_vec()))
-            }
-        }
-    }
-
     fn get_public_key_size(&self) -> usize {
         match self.cipher_suite {
             CipherSuite::Curve25519AesGcmSha256 => 32,
@@ -131,7 +113,7 @@ impl KeyExchange for SymmetricState {
     }
 
     /// Create a new `HandshakeState` starting with the prologue
-    fn prologue(&mut self) -> Result<(), VaultFailError> {
+    fn prologue(&mut self) -> OckamResult<()> {
         let asymmetric_secret_info = self.get_secret_key_type_and_length();
 
         let mut attributes = SecretAttributes {
@@ -188,15 +170,8 @@ impl KeyExchange for SymmetricState {
     }
 
     /// Perform the diffie-hellman computation
-    fn dh(
-        &mut self,
-        secret_handle: &Box<dyn Secret>,
-        public_key: &[u8],
-    ) -> Result<(), VaultFailError> {
-        let ck = self
-            .ck
-            .take()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+    fn dh(&mut self, secret_handle: &Box<dyn Secret>, public_key: &[u8]) -> OckamResult<()> {
+        let ck = self.ck.take().ok_or_else(|| Error::InvalidState.into())?;
 
         let mut vault = self.vault.lock().unwrap();
 
@@ -220,7 +195,7 @@ impl KeyExchange for SymmetricState {
             vault.hkdf_sha256(&ck, b"", Some(&ecdh), vec![attributes_ck, attributes_k])?;
 
         if hkdf_output.len() != 2 {
-            return Err(VaultFailError::from(VaultFailErrorKind::Ecdh));
+            return Err(Error::InternalVaultError.into());
         }
 
         let key = self.key.take();
@@ -239,10 +214,8 @@ impl KeyExchange for SymmetricState {
     }
 
     /// mix hash step in Noise protocol
-    fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError> {
-        let h = &self
-            .h
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+    fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> OckamResult<()> {
+        let h = &self.h.ok_or_else(|| Error::InvalidState.into())?;
 
         let mut input = h.to_vec();
         input.extend_from_slice(data.as_ref());
@@ -252,26 +225,15 @@ impl KeyExchange for SymmetricState {
     }
 
     /// Encrypt and mix step in Noise protocol
-    fn encrypt_and_mix_hash<B: AsRef<[u8]>>(
-        &mut self,
-        plaintext: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
-        let h = &self
-            .h
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+    fn encrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, plaintext: B) -> OckamResult<Vec<u8>> {
+        let h = &self.h.ok_or_else(|| Error::InvalidState.into())?;
 
         let mut nonce = [0u8; 12];
         nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
         let ciphertext_and_tag = {
             let mut vault = self.vault.lock().unwrap();
-            vault.aead_aes_gcm_encrypt(
-                self.key
-                    .as_ref()
-                    .ok_or(VaultFailErrorKind::AeadAesGcmEncrypt)?,
-                plaintext.as_ref(),
-                nonce.as_ref(),
-                h,
-            )?
+            let key = self.key.as_ref().ok_or(Error::InvalidState.into())?;
+            vault.aead_aes_gcm_encrypt(key, plaintext.as_ref(), nonce.as_ref(), h)?
         };
         self.mix_hash(&ciphertext_and_tag)?;
         self.nonce += 1;
@@ -279,27 +241,16 @@ impl KeyExchange for SymmetricState {
     }
 
     /// Decrypt and mix step in Noise protocol
-    fn decrypt_and_mix_hash<B: AsRef<[u8]>>(
-        &mut self,
-        ciphertext: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
-        let h = &self
-            .h
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+    fn decrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, ciphertext: B) -> OckamResult<Vec<u8>> {
+        let h = &self.h.ok_or_else(|| Error::InvalidState.into())?;
 
         let mut nonce = [0u8; 12];
         nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
         let ciphertext = ciphertext.as_ref();
         let plaintext = {
             let mut vault = self.vault.lock().unwrap();
-            vault.aead_aes_gcm_decrypt(
-                self.key
-                    .as_ref()
-                    .ok_or(VaultFailErrorKind::AeadAesGcmDecrypt)?,
-                ciphertext,
-                nonce.as_ref(),
-                h,
-            )?
+            let key = self.key.as_ref().ok_or(Error::InvalidState.into())?;
+            vault.aead_aes_gcm_decrypt(key, ciphertext, nonce.as_ref(), h)?
         };
         self.mix_hash(ciphertext)?;
         self.nonce += 1;
@@ -307,11 +258,8 @@ impl KeyExchange for SymmetricState {
     }
 
     /// Split step in Noise protocol
-    fn split(&mut self) -> Result<(Box<dyn Secret>, Box<dyn Secret>), VaultFailError> {
-        let ck = self
-            .ck
-            .as_ref()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+    fn split(&mut self) -> OckamResult<(Box<dyn Secret>, Box<dyn Secret>)> {
+        let ck = self.ck.as_ref().ok_or_else(|| Error::InvalidState.into())?;
 
         let mut vault = self.vault.lock().unwrap();
         let symmetric_key_info = self.get_symmetric_key_type_and_length();
@@ -323,7 +271,7 @@ impl KeyExchange for SymmetricState {
         let mut hkdf_output = vault.hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
 
         if hkdf_output.len() != 2 {
-            return Err(VaultFailError::from(VaultFailErrorKind::HkdfSha256));
+            return Err(Error::InternalVaultError.into());
         }
 
         let res1 = hkdf_output.pop().unwrap();
@@ -337,18 +285,16 @@ impl KeyExchange for SymmetricState {
         self,
         encrypt_key: Box<dyn Secret>,
         decrypt_key: Box<dyn Secret>,
-    ) -> Result<CompletedKeyExchange, VaultFailError> {
-        let h = self
-            .h
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+    ) -> OckamResult<CompletedKeyExchange> {
+        let h = self.h.ok_or_else(|| Error::InvalidState.into())?;
 
         let local_static_secret = self
             .identity_key
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         let remote_static_public_key = self
             .remote_static_public_key
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         Ok(CompletedKeyExchange {
             h,
@@ -366,15 +312,12 @@ struct Initiator(SymmetricState);
 
 impl Initiator {
     /// Encode the first message to be sent
-    pub fn encode_message_1<B: AsRef<[u8]>>(
-        &mut self,
-        payload: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
+    pub fn encode_message_1<B: AsRef<[u8]>>(&mut self, payload: B) -> OckamResult<Vec<u8>> {
         let ephemeral_public_key = self
             .0
             .ephemeral_key_pair
             .as_ref()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?
+            .ok_or_else(|| Error::InvalidState.into())?
             .public_key
             .clone();
 
@@ -388,39 +331,35 @@ impl Initiator {
     }
 
     /// Decode the second message in the sequence, sent from the responder
-    pub fn decode_message_2<B: AsRef<[u8]>>(
-        &mut self,
-        message: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
+    pub fn decode_message_2<B: AsRef<[u8]>>(&mut self, message: B) -> OckamResult<Vec<u8>> {
         let t = &mut self.0;
         let public_key_size = t.get_public_key_size();
         let message = message.as_ref();
         if message.len() < 2 * public_key_size + AES_GCM_TAGSIZE {
-            return Err(VaultFailErrorKind::SecretSizeMismatch.into());
+            return Err(Error::MessageLenMismatch.into());
         }
 
         let ephemeral_key_pair = t
             .ephemeral_key_pair
             .take()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         let ephemeral_secret_handle = &ephemeral_key_pair.secret_handle;
 
         let mut index_l = 0;
         let mut index_r = public_key_size;
         let re = &message[..index_r];
+        let re = PublicKey::new(re.to_vec());
         index_l += public_key_size;
         index_r += public_key_size + AES_GCM_TAGSIZE;
         let encrypted_rs_and_tag = &message[index_l..index_r];
         let encrypted_payload_and_tag = &message[index_r..];
 
-        let re = t.create_public_key(re)?;
-
         t.mix_hash(re.as_ref())?;
         t.dh(ephemeral_secret_handle, re.as_ref())?;
         t.remote_ephemeral_public_key = Some(re);
         let rs = t.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
-        let rs = t.create_public_key(&rs)?;
+        let rs = PublicKey::new(rs);
         t.dh(ephemeral_secret_handle, rs.as_ref())?;
         t.remote_static_public_key = Some(rs);
 
@@ -430,25 +369,22 @@ impl Initiator {
     }
 
     /// Encode the final message to be sent
-    pub fn encode_message_3<B: AsRef<[u8]>>(
-        &mut self,
-        payload: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
+    pub fn encode_message_3<B: AsRef<[u8]>>(&mut self, payload: B) -> OckamResult<Vec<u8>> {
         let t = &mut self.0;
         let static_secret = t
             .identity_key
             .take()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         let static_public = t
             .identity_public_key
             .clone()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         let remote_ephemeral_public_key = t
             .remote_ephemeral_public_key
             .clone()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         let mut encrypted_s_and_tag = t.encrypt_and_mix_hash(static_public.as_ref())?;
         t.dh(&static_secret, remote_ephemeral_public_key.as_ref())?;
@@ -460,7 +396,7 @@ impl Initiator {
 
     /// Setup this initiator to send and receive messages
     /// after encoding message 3
-    pub fn finalize(mut self) -> Result<CompletedKeyExchange, VaultFailError> {
+    pub fn finalize(mut self) -> OckamResult<CompletedKeyExchange> {
         let keys = self.0.split()?;
         self.0.finalize(keys.1, keys.0)
     }
@@ -472,45 +408,40 @@ struct Responder(SymmetricState);
 
 impl Responder {
     /// Decode the first message sent
-    pub fn decode_message_1<B: AsRef<[u8]>>(
-        &mut self,
-        message_1: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
+    pub fn decode_message_1<B: AsRef<[u8]>>(&mut self, message_1: B) -> OckamResult<Vec<u8>> {
         let public_key_size = self.0.get_public_key_size();
         let message_1 = message_1.as_ref();
         if message_1.len() < public_key_size {
-            return Err(VaultFailErrorKind::SecretSizeMismatch.into());
+            return Err(Error::MessageLenMismatch.into());
         }
 
         let re = &message_1[..public_key_size];
-        self.0.remote_ephemeral_public_key = Some(self.0.create_public_key(re)?);
-        self.0.mix_hash(&re)?;
+        let re = PublicKey::new(re.to_vec());
+        self.0.mix_hash(re.as_ref())?;
         self.0.mix_hash(&message_1[public_key_size..])?;
+        self.0.remote_ephemeral_public_key = Some(re);
         Ok(message_1[public_key_size..].to_vec())
     }
 
     /// Encode the second message to be sent
-    pub fn encode_message_2<B: AsRef<[u8]>>(
-        &mut self,
-        payload: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
+    pub fn encode_message_2<B: AsRef<[u8]>>(&mut self, payload: B) -> OckamResult<Vec<u8>> {
         let t = &mut self.0;
         let static_secret = t
             .identity_key
             .take()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
         let static_public = t
             .identity_public_key
             .clone()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
         let ephemeral_key_pair = t
             .ephemeral_key_pair
             .take()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
         let remote_ephemeral_public_key = t
             .remote_ephemeral_public_key
             .take()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         t.mix_hash(ephemeral_key_pair.public_key.as_ref())?;
         t.dh(
@@ -532,24 +463,21 @@ impl Responder {
     }
 
     /// Decode the final message received for the handshake
-    pub fn decode_message_3<B: AsRef<[u8]>>(
-        &mut self,
-        message_3: B,
-    ) -> Result<Vec<u8>, VaultFailError> {
+    pub fn decode_message_3<B: AsRef<[u8]>>(&mut self, message_3: B) -> OckamResult<Vec<u8>> {
         let t = &mut self.0;
         let public_key_size = t.get_public_key_size();
         let message_3 = message_3.as_ref();
         if message_3.len() < public_key_size + AES_GCM_TAGSIZE {
-            return Err(VaultFailErrorKind::SecretSizeMismatch.into());
+            return Err(Error::MessageLenMismatch.into());
         }
 
         let ephemeral_key_pair = t
             .ephemeral_key_pair
             .take()
-            .ok_or_else(|| VaultFailError::from(VaultFailErrorKind::InvalidContext))?;
+            .ok_or_else(|| Error::InvalidState.into())?;
 
         let rs = t.decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])?;
-        let rs = t.create_public_key(&rs)?;
+        let rs = PublicKey::new(rs);
         t.dh(&ephemeral_key_pair.secret_handle, rs.as_ref())?;
         t.ephemeral_key_pair = Some(ephemeral_key_pair);
         let payload = t.decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
@@ -559,7 +487,7 @@ impl Responder {
 
     /// Setup this responder to send and receive messages
     /// after decoding message 3
-    pub fn finalize(mut self) -> Result<CompletedKeyExchange, VaultFailError> {
+    pub fn finalize(mut self) -> OckamResult<CompletedKeyExchange> {
         let keys = self.0.split()?;
         self.0.finalize(keys.0, keys.1)
     }
@@ -666,7 +594,7 @@ pub struct XXResponder {
 }
 
 impl KeyExchanger for XXInitiator {
-    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
+    fn process(&mut self, data: &[u8]) -> OckamResult<Vec<u8>> {
         match self.state {
             InitiatorState::EncodeMessage1 => {
                 if self.run_prologue {
@@ -694,16 +622,16 @@ impl KeyExchanger for XXInitiator {
         matches!(self.state, InitiatorState::Done)
     }
 
-    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
+    fn finalize(self: Box<Self>) -> OckamResult<CompletedKeyExchange> {
         match self.state {
             InitiatorState::Done => self.initiator.finalize(),
-            _ => Err(VaultFailErrorKind::IOError.into()),
+            _ => Err(Error::InvalidState.into()),
         }
     }
 }
 
 impl KeyExchanger for XXResponder {
-    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError> {
+    fn process(&mut self, data: &[u8]) -> OckamResult<Vec<u8>> {
         match self.state {
             ResponderState::DecodeMessage1 => {
                 if self.run_prologue {
@@ -731,10 +659,10 @@ impl KeyExchanger for XXResponder {
         matches!(self.state, ResponderState::Done)
     }
 
-    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError> {
+    fn finalize(self: Box<Self>) -> OckamResult<CompletedKeyExchange> {
         match self.state {
             ResponderState::Done => self.responder.finalize(),
-            _ => Err(VaultFailErrorKind::IOError.into()),
+            _ => Err(Error::InvalidState.into()),
         }
     }
 }
