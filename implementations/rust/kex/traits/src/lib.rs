@@ -13,9 +13,9 @@
 )]
 //! Handles key exchange using Noise for Ockam channels
 
-use error::*;
-
-use ockam_vault::{error::VaultFailError, types::PublicKey, Secret};
+use ockam_common::error::OckamResult;
+use ockam_vault::types::PublicKey;
+use ockam_vault::Secret;
 use std::sync::Arc;
 
 /// The maximum bytes that will be transmitted in a single message
@@ -36,43 +36,33 @@ pub trait KeyExchange {
     fn get_protocol_name(&self) -> &'static [u8];
 
     /// Create a new `HandshakeState` starting with the prologue
-    fn prologue(&mut self) -> Result<(), VaultFailError>;
+    fn prologue(&mut self) -> OckamResult<()>;
     /// Perform the diffie-hellman computation
-    fn dh(
-        &mut self,
-        secret_handle: &Box<dyn Secret>,
-        public_key: &[u8],
-    ) -> Result<(), VaultFailError>;
+    fn dh(&mut self, secret_handle: &Box<dyn Secret>, public_key: &[u8]) -> OckamResult<()>;
     /// mix hash step in Noise protocol
-    fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<(), VaultFailError>;
+    fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> OckamResult<()>;
     /// Encrypt and mix step in Noise protocol
-    fn encrypt_and_mix_hash<B: AsRef<[u8]>>(
-        &mut self,
-        plaintext: B,
-    ) -> Result<Vec<u8>, VaultFailError>;
+    fn encrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, plaintext: B) -> OckamResult<Vec<u8>>;
     /// Decrypt and mix step in Noise protocol
-    fn decrypt_and_mix_hash<B: AsRef<[u8]>>(
-        &mut self,
-        ciphertext: B,
-    ) -> Result<Vec<u8>, VaultFailError>;
+    fn decrypt_and_mix_hash<B: AsRef<[u8]>>(&mut self, ciphertext: B) -> OckamResult<Vec<u8>>;
     /// Split step in Noise protocol
-    fn split(&mut self) -> Result<(Box<dyn Secret>, Box<dyn Secret>), VaultFailError>;
+    fn split(&mut self) -> OckamResult<(Box<dyn Secret>, Box<dyn Secret>)>;
     /// Finish the key exchange and return computed data
     fn finalize(
         self,
         encrypt_key: Box<dyn Secret>,
         decrypt_key: Box<dyn Secret>,
-    ) -> Result<CompletedKeyExchange, VaultFailError>;
+    ) -> OckamResult<CompletedKeyExchange>;
 }
 
 /// Represents either the Initiator or the Responder
 pub trait KeyExchanger {
     /// Handle the current step in the key exchange process
-    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>, KexExchangeFailError>;
+    fn process(&mut self, data: &[u8]) -> OckamResult<Vec<u8>>;
     /// Is the key exchange process completed yet
     fn is_complete(&self) -> bool;
     /// If completed, then return the data and keys needed for channels
-    fn finalize(self: Box<Self>) -> Result<CompletedKeyExchange, VaultFailError>;
+    fn finalize(self: Box<Self>) -> OckamResult<CompletedKeyExchange>;
 }
 
 /// XX cipher suites
