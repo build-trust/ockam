@@ -1,7 +1,13 @@
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Credentials {
+    pub id: String,
+    pub session_token: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Inputs {
     pub email: String,
     pub token: String,

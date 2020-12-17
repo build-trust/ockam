@@ -1,7 +1,7 @@
 [package]
-authors = ["Ockam Developers"]
-name = "okta-plugin"
+name = "management_service"
 version = "0.1.0"
+authors = ["Michael Lodder <mike@ockam.io>"]
 edition = "2018"
 
 [profile.release]
@@ -10,9 +10,12 @@ lto = true
 [dependencies]
 base64-url = "1.4"
 colored = "2.0"
-dirs = "3.0"
 isahc = "0.9"
-rpassword = "5.0"
+lazy_static = "1.4"
+percent-encoding = "2.1"
+rand = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = "0.3"
+tokio = { version = "0.2", features = ["full"] }
+warp = "0.2"

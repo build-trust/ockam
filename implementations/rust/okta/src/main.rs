@@ -4,17 +4,78 @@ mod config;
 mod objects;
 
 use config::*;
+use objects::*;
+use isahc::prelude::*;
 use std::{
     fs,
     io::{self, Write},
     path::Path,
 };
 use structopt::StructOpt;
+use isahc::http::StatusCode;
 
 const FILE_NAME: &str = ".env";
+/// Groups to check against
+/// Enroller => 00g26qjjaQlo67l4s5d6
+const OKTA_GROUPS: [&str; 1] = ["00g26qjjaQlo67l4s5d6"];
 
 fn main() {
     let okta_creds = get_okta_api_info();
+    let session_creds = okta_login(&okta_creds);
+    println!("Session token is valid: {}", is_valid_session_token(&okta_creds, &session_creds));
+    println!("User in Enroller: {}", is_user_in_group(&okta_creds, &session_creds, &OKTA_GROUPS));
+}
+
+fn is_valid_session_token(inputs: &Inputs, creds: &Credentials) -> bool {
+    let mut response = Request::post(format!("{}/api/v1/sessions/me", inputs.url))
+        .header("Content-type", "application/x-www-form-urlencoded")
+        .body(format!(r#"token={}&token_type_hint=access_token"#, creds.session_token)).unwrap()
+        .send().unwrap();
+
+    if response.status() != StatusCode::OK {
+        eprintln!("Unable to check token validity");
+        std::process::exit(1);
+    }
+    let res = response.text().unwrap();
+    println!("introspect: {}", res);
+    let response: TokenCheck = serde_json::from_str(&res).unwrap();
+    response.active
+}
+
+fn is_user_in_group(inputs: &Inputs, creds: &Credentials, groups: &[&str]) -> bool {
+    let mut response = Request::get(format!("{}/api/v1/groups/{}/users", inputs.url, groups[0]))
+        .header("Accept", "application/json")
+        .header("Content-type", "application/json")
+        .header("Authorization", format!("SSWS {}", inputs.token))
+        .body("").unwrap()
+        .send().unwrap();
+
+    if response.status() != StatusCode::OK {
+        eprintln!("Unable to read Okta group information");
+        std::process::exit(1);
+    }
+    let res = response.text().unwrap();
+    let response: Vec<UsersInGroup> = serde_json::from_str(&res).unwrap();
+    response.iter().any(|u| u.id == creds.id)
+}
+
+fn okta_login(inputs: &Inputs) -> Credentials {
+    let mut response = Request::post(format!("{}/api/v1/authn", inputs.url))
+        .header("Accept", "application/json")
+        .header("Content-type", "application/json")
+        .body(format!(r#"{{"username":"{}","password":"{}"}}"#, inputs.email, inputs.password)).unwrap()
+        .send().unwrap();
+    if response.status() != StatusCode::OK {
+        eprintln!("Invalid okta credentials");
+        std::process::exit(1);
+    }
+    let res= response.text().unwrap();
+    let response: LoginAttempt = serde_json::from_str(&res).unwrap();
+
+    Credentials {
+        id: response.embedded.user.id,
+        session_token: response.session_token
+    }
 }
 
 fn get_okta_api_info() -> Inputs {
@@ -59,10 +120,10 @@ fn get_okta_api_info() -> Inputs {
     config.into()
 }
 
-fn prompt(premsg: &str, p: &str, hide: bool) -> String {
+fn prompt(pre_msg: &str, p: &str, hide: bool) -> String {
     let mut buffer = String::new();
     loop {
-        println!("{}", premsg);
+        println!("{}", pre_msg);
 
         if hide {
             buffer = rpassword::read_password_from_tty(None)
