@@ -14,3 +14,17 @@
 # https://github.com/github/linguist#using-gitattributes
 # github.com/github/linguist/issues/2881#issuecomment-231470986
 *.h linguist-language=C
+
+# Ignore from repo language statistics.
+# https://github.com/github/linguist#using-gitattributes
+*.c linguist-vendored=true
+*.h linguist-vendored=true
+CMakeLists.txt linguist-vendored=true
+*.cmake linguist-vendored=true
+*.cmake.in linguist-vendored=true
+*.html linguist-vendored=true
+*.html.eex linguist-vendored=true
+*.py linguist-vendored=true
+*.gradle linguist-vendored=true
+*.js linguist-vendored=true
+tools/** linguist-vendored=true
