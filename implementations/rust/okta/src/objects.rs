@@ -134,7 +134,6 @@ api_obj_impl!(GroupLogo,
               "type" => xtype: String
 );
 
-
 api_obj_impl!(Link,
               "href" => href: String,
               "method" => method: Option<String>,

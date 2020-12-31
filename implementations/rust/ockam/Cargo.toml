@@ -8,7 +8,7 @@ edition = "2018"
 lto = true
 
 [features]
-default = ["ockam-common/default", "ockam-vault-software", "ockam-kex-xx"]
+default = ["ockam-common/default", "ockam-vault-software", "ockam-kex-xx", "ockam-kex-x3dh"]
 ffi = ["ockam-common/default", "ockam-vault-ffi"] #, "ockam-kex-ffi"]
 
 [dependencies]
@@ -17,6 +17,7 @@ hex = "0.4"
 ockam-common = { version = "0.1", path = "../common", default-features = false }
 ockam-kex = { version = "0.1", path = "../kex/traits"}
 ockam-kex-xx = { version = "0.1", path = "../kex/xx", optional = true }
+ockam-kex-x3dh = { version = "0.1", path = "../kex/x3dh", optional = true }
 #ockam-kex-ffi = { version = "0.1", path = "../kex/ffi", optional = true }
 ockam-queue-topic = { version = "0.1", path = "../queue_topic" }
 ockam-vault = { version = "0.1", path = "../vault/traits" }
