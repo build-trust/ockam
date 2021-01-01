@@ -10,7 +10,7 @@ contact_links:
     url: https://github.com/ockam-network/ockam/discussions/new
     about: Ask questions and discuss with other community members
   - name: Learn how to Contribute
-    url: https://www.ockam.io/learn/guides/contributions/CONTRIBUTING/
+    url: https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING/
     about: Read Ockam's Library of How-to guides
   - name: Review or submit a design proposal
     url: https://www.ockam.io/learn/proposals/0001-proposal-process/
