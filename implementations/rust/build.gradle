@@ -1,0 +1,15 @@
+
+task build {
+}
+
+task test {
+}
+
+task clean {
+}
+
+task lint {
+}
+
+task veryClean {
+}
