@@ -1,5 +1,0 @@
-target
-.cargo
-.gitignore
-Cargo.lock
-ockamd_vault

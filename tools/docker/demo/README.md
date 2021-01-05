@@ -3,8 +3,8 @@
 1. build local docker images
 ```sh
 # from `ockam` repo root
-docker build -t ockam/builder -f tools/docker/elixir/builder/Dockerfile . 
-docker build -t ockam/ockamd:0.10.1 -f tools/docker/rust/Dockerfile.ockamd .
+docker build -t ockam/builder -f tools/docker/elixir/builder/Dockerfile .
+docker build -t ockam/ockamd:0.10.1 -f tools/docker/rs/Dockerfile.ockamd .
 docker build -t ockam/influxdb-ockamd-via-hub:0.10.1 -f tools/docker/influxdb/Dockerfile.influxdb-ockamd .
 docker build -t ockam/telegraf-ockamd-via-hub:0.10.1 -f tools/docker/telegraf/Dockerfile.telegraf-ockamd .
 ```

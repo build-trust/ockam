@@ -9,7 +9,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 target_include_directories(ockam_vault_interface INTERFACE ${INCLUDE_DIR})
 
-file(COPY ../../../../../../rust/vault/ffi/include/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
+file(COPY ../../../../../../rs/vault/ffi/include/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
 
 target_sources(
   ockam_vault_interface
@@ -31,20 +31,20 @@ add_library(ockam_vault_software SHARED IMPORTED GLOBAL)
 add_library(ockam::vault_software ALIAS ockam_vault_software)
 
 if(APPLE)
-file(COPY ../../../../../../rust/target/debug/libockam_vault_ffi.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY ../../../../../../rs/target/debug/libockam_vault_ffi.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 set(vault_ffi_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_ffi.dylib")
-file(COPY ../../../../../../rust/target/debug/libockam_vault_file.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY ../../../../../../rs/target/debug/libockam_vault_file.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 set(vault_file_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_file.dylib")
-file(COPY ../../../../../../rust/target/debug/libockam_vault_software.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY ../../../../../../rs/target/debug/libockam_vault_software.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 set(vault_software_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_software.dylib")
 endif()
 
 if(UNIX AND NOT APPLE)
-file(COPY ../../../../../../rust/target/debug/libockam_vault_ffi.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY ../../../../../../rs/target/debug/libockam_vault_ffi.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 set(vault_ffi_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_ffi.so")
-file(COPY ../../../../../../rust/target/debug/libockam_vault_file.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY ../../../../../../rs/target/debug/libockam_vault_file.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 set(vault_file_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_file.so")
-file(COPY ../../../../../../rust/target/debug/libockam_vault_software.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY ../../../../../../rs/target/debug/libockam_vault_software.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 set(vault_software_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_software.so")
 endif()
 

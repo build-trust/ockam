@@ -81,7 +81,7 @@ fn main() {
 
     // Generate bindings if llvm-config is present
     if let Some(llvm_config) = llvm_config {
-        let src_file = root.join("implementations/rust/c/bindings/src/bindings.rs");
+        let src_file = root.join("implementations/rs/c/bindings/src/bindings.rs");
         generate_bindings(llvm_config, include_dirs, &src_file);
     } else {
         println!("cargo:error=LLVM_PREFIX was not set, and cannot find llvm-config, will not regenerate bindings");

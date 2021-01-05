@@ -16,7 +16,7 @@ cmake_install.cmake
 .tool-versions
 
 .git
-implementations/rust/target
-implementations/rust/ockamd_vault
+implementations/rs/target
+implementations/rs/ockamd_vault
 _build
 deps

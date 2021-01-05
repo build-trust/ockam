@@ -2,7 +2,7 @@
 * @mrinalwadhwa
 
 # Request reviews from Robin, Mike, Jared, Sanjo and Mrinal when code in the rust implementation changes.
-implementations/rust/* @robinbudd @mikelodder7 @jared-s @sanjodeundiak @mrinalwadhwa
+implementations/rs/* @robinbudd @mikelodder7 @jared-s @sanjodeundiak @mrinalwadhwa
 
 # Request reviews from Sanjo, Robin and Mrinal when code in the C implementation changes.
 implementations/c/* @robinbudd @sanjodeundiak @mrinalwadhwa
