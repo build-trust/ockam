@@ -13,4 +13,5 @@ pub enum Error {
 pub type Result<T> = core::result::Result<T, Error>;
 
 pub mod address;
+pub mod queue;
 pub mod worker;
