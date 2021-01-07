@@ -1,4 +1,6 @@
 #![no_std]
+
+#[macro_use]
 extern crate alloc;
 
 pub use ockam_macros::*;
@@ -10,4 +12,5 @@ pub enum Error {
 
 pub type Result<T> = core::result::Result<T, Error>;
 
+pub mod address;
 pub mod worker;
