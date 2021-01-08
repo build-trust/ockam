@@ -80,7 +80,5 @@ mod test {
         map.insert(thing.address(), true);
 
         assert!(map.get(&thing.address()).unwrap());
-
-        assert_eq!("test", format!("{}", thing.address()))
     }
 }
