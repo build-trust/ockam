@@ -7,10 +7,10 @@ edition = "2018"
 [lib]
 crate-type = ["rlib"]
 
-[features]
-async = ["ockam_macros/async"]
-executor_async = ["ockam_macros/executor_async"]
-
 [dependencies]
-ockam_macros = {path = "../ockam_macros", version = "*"}
+ockam_node_attribute = {path = "../ockam_node_attribute", version = "*"}
 hashbrown = "*"
+executor = "*"
+
+[dev-dependencies]
+trybuild = {version = "1.0.38", features = ["diff"]}

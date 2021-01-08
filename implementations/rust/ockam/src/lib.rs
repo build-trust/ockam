@@ -2,7 +2,8 @@
 
 extern crate alloc;
 
-pub use ockam_macros::*;
+// re-export the #[node] attribute macro.
+pub use ockam_node_attribute::*;
 
 #[derive(Debug)]
 pub enum Error {
@@ -13,4 +14,5 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 pub mod address;
 pub mod queue;
+pub mod node;
 pub mod worker;

@@ -1,0 +1,12 @@
+[package]
+name = "ockam_node_attribute"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0.8"
+syn = {version = "1.0.58", features = ["full"]}
