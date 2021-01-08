@@ -9,8 +9,8 @@ crate-type = ["rlib"]
 
 [dependencies]
 ockam_node_attribute = {path = "../ockam_node_attribute", version = "*"}
+ockam_node_no_std = {path = "../ockam_node_no_std", version = "*"}
 hashbrown = "*"
-executor = "*"
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}

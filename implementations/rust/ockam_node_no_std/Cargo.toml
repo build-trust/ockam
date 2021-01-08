@@ -1,0 +1,8 @@
+[package]
+name = "ockam_node_no_std"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+executor = "*"
