@@ -4,15 +4,31 @@ use core::fmt::{Display, Formatter};
 use core::hash::{Hash, Hasher};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
+pub enum AddressType {
+    Worker = 0,
+    Undefined = 255,
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Address {
+    address_type: AddressType,
     inner: String,
 }
 
 impl Address {
     pub fn new<T: ToString>(s: T) -> Address {
+        Address::for_type(AddressType::Undefined, s)
+    }
+
+    pub fn for_type<T: ToString>(address_type: AddressType, s: T) -> Address {
         Address {
+            address_type,
             inner: s.to_string(),
         }
+    }
+
+    pub fn for_worker<T: ToString>(s: T) -> Address {
+        Address::for_type(AddressType::Worker, s)
     }
 }
 
@@ -58,20 +74,21 @@ mod test {
     #[test]
     pub fn test_addressable() {
         struct Thing {
-            address: String,
+            address: Address,
         }
+
         impl Addressable for Thing {
             fn address(&self) -> Address {
-                return self.address.clone().into();
+                return self.address.clone();
             }
         }
 
         let test = "test".to_string();
 
         let thing = Thing {
-            address: test.clone(),
+            address: Address::for_worker(test.clone()),
         };
-        assert_eq!(Address::from("test"), thing.address());
+        assert_eq!(Address::for_worker("test"), thing.address());
 
         let addr: String = thing.address().into();
         assert_eq!(test, addr);
