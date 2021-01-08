@@ -1,0 +1,12 @@
+[package]
+name = "ockam_lock_single_thread"
+version = "0.1.0"
+authors = ["Robin Budd <robin@ockam.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.3"
+libc = "0.2.80"
+libc-print = "0.1.14"
