@@ -1,4 +1,5 @@
 use crate::error::Error;
+use crate::ResponderState::DecodeMessage1;
 use ockam_common::error::OckamResult;
 use ockam_kex::{
     CipherSuite, CompletedKeyExchange, KeyExchange, KeyExchanger, NewKeyExchanger, AES_GCM_TAGSIZE,
@@ -28,7 +29,7 @@ pub trait XXVault: SecretVault + HashVault + AsymmetricVault + SymmetricVault + 
 impl<D> XXVault for D where D: SecretVault + HashVault + AsymmetricVault + SymmetricVault + Send {}
 
 /// Represents the XX Handshake
-struct SymmetricState {
+pub struct SymmetricState {
     cipher_suite: CipherSuite,
     identity_key: Option<Arc<Box<dyn Secret>>>,
     identity_public_key: Option<PublicKey>,
@@ -527,6 +528,16 @@ pub struct XXInitiator {
     run_prologue: bool,
 }
 
+impl XXInitiator {
+    pub fn new(symmetric_state: SymmetricState, run_prologue: bool) -> Self {
+        XXInitiator {
+            state: InitiatorState::EncodeMessage1,
+            initiator: Initiator(symmetric_state),
+            run_prologue,
+        }
+    }
+}
+
 /// Represents an XX NewKeyExchanger
 pub struct XXNewKeyExchanger {
     cipher_suite: CipherSuite,
@@ -591,6 +602,16 @@ pub struct XXResponder {
     state: ResponderState,
     responder: Responder,
     run_prologue: bool,
+}
+
+impl XXResponder {
+    pub fn new(symmetric_state: SymmetricState, run_prologue: bool) -> Self {
+        XXResponder {
+            state: DecodeMessage1,
+            responder: Responder(symmetric_state),
+            run_prologue,
+        }
+    }
 }
 
 impl KeyExchanger for XXInitiator {
@@ -935,7 +956,7 @@ mod tests {
     }
 
     fn mock_prologue(
-        vault_mutex: Arc<Mutex<DefaultVault>>,
+        vault_mutex: Arc<Mutex<dyn XXVault>>,
         static_private: &str,
         ephemeral_private: &str,
     ) -> SymmetricState {

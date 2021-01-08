@@ -19,7 +19,7 @@ impl OckamError {
         self.code
     }
     /// Error domain
-    pub fn domain(&self) -> &str {
+    pub fn domain(&self) -> &'static str {
         &self.domain
     }
 }
@@ -28,18 +28,6 @@ impl OckamError {
     /// Create new error
     pub fn new(code: u32, domain: &'static str) -> Self {
         Self { code, domain }
-    }
-}
-
-cfg_if! {
-    if #[cfg(feature = "ffi")] {
-        use ffi_support::{ErrorCode, ExternError};
-
-        impl From<OckamError> for ExternError {
-            fn from(err: OckamError) -> Self {
-                ExternError::new_error(ErrorCode::new(err.code as i32), err.domain)
-            }
-        }
     }
 }
 

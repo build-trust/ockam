@@ -34,7 +34,6 @@ pub const AES_GCM_TAGSIZE: usize = 16;
 pub trait KeyExchange {
     /// Returns Noise protocol name
     fn get_protocol_name(&self) -> &'static [u8];
-
     /// Create a new `HandshakeState` starting with the prologue
     fn prologue(&mut self) -> OckamResult<()>;
     /// Perform the diffie-hellman computation

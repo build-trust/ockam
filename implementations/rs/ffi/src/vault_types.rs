@@ -1,6 +1,21 @@
-use ffi_support::IntoFfi;
+#![allow(conflicting_repr_hints)]
+
 use ockam_vault_software::ockam_vault::types::*;
 use std::convert::TryInto;
+
+#[derive(Clone, Copy, Debug)]
+#[repr(C, u8)]
+pub enum FfiVaultType {
+    Software = 1,
+    Filesystem = 2,
+}
+
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub struct FfiVaultFatPointer {
+    pub(crate) handle: u64,
+    pub(crate) vault_type: FfiVaultType,
+}
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
@@ -36,33 +51,5 @@ impl From<&FfiSecretAttributes> for SecretAttributes {
     }
 }
 
-unsafe impl IntoFfi for FfiSecretAttributes {
-    type Value = FfiSecretAttributes;
-
-    fn ffi_default() -> Self::Value {
-        Self {
-            length: 0,
-            xtype: 0,
-            persistence: 0,
-        }
-    }
-
-    fn into_ffi_value(self) -> Self::Value {
-        self
-    }
-}
-
-/// Represents a Vault id
-pub type VaultId = u32;
-/// Represents a Vault handle
-pub type VaultHandle = u64;
 /// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;
-
-/// A context object to interface with C
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct OckamVaultContext {
-    pub(crate) handle: VaultHandle,
-    pub(crate) vault_id: VaultId,
-}
