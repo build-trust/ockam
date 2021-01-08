@@ -13,4 +13,4 @@ executor_async = ["ockam_macros/executor_async"]
 
 [dependencies]
 ockam_macros = {path = "../ockam_macros", version = "*"}
-hashbrown = "*"
+hashbrown = "0.9.1"
