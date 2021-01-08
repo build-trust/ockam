@@ -3,11 +3,7 @@ use alloc::string::{String, ToString};
 use core::fmt::{Display, Formatter};
 use core::hash::{Hash, Hasher};
 
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub enum AddressType {
-    Worker = 0,
-    Undefined = 255,
-}
+pub type AddressType = u8;
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Address {
@@ -17,7 +13,7 @@ pub struct Address {
 
 impl Address {
     pub fn new<T: ToString>(s: T) -> Address {
-        Address::for_type(AddressType::Undefined, s)
+        Address::for_type(0, s)
     }
 
     pub fn for_type<T: ToString>(address_type: AddressType, s: T) -> Address {
@@ -25,10 +21,6 @@ impl Address {
             address_type,
             inner: s.to_string(),
         }
-    }
-
-    pub fn for_worker<T: ToString>(s: T) -> Address {
-        Address::for_type(AddressType::Worker, s)
     }
 }
 
@@ -86,9 +78,9 @@ mod test {
         let test = "test".to_string();
 
         let thing = Thing {
-            address: Address::for_worker(test.clone()),
+            address: Address::for_type(1, test.clone()),
         };
-        assert_eq!(Address::for_worker("test"), thing.address());
+        assert_eq!(Address::for_type(1, "test"), thing.address());
 
         let addr: String = thing.address().into();
         assert_eq!(test, addr);
