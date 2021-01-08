@@ -7,9 +7,13 @@ edition = "2018"
 [lib]
 crate-type = ["rlib"]
 
+[features]
+default = ["ockam_node_tokio"]
+
 [dependencies]
 ockam_node_attribute = {path = "../ockam_node_attribute", version = "*"}
-ockam_node_no_std = {path = "../ockam_node_no_std", version = "*"}
+ockam_node_no_std = {path = "../ockam_node_no_std", version = "*", optional = true}
+ockam_node_tokio = {path = "../ockam_node_tokio", version = "*", optional = true}
 hashbrown = "*"
 
 [dev-dependencies]
