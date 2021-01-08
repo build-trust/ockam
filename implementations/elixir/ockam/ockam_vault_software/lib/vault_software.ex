@@ -12,7 +12,7 @@ defmodule Ockam.Vault.Software do
   app = Mix.Project.config()[:app]
 
   def load_natively_implemented_functions do
-    path_components = [:code.priv_dir(unquote(app)), 'native', 'libockam_elixir_vault_software']
+    path_components = [:code.priv_dir(unquote(app)), 'native', 'libockam_elixir_ffi']
     path = :filename.join(path_components)
     :ok = :erlang.load_nif(path, 0)
   end
@@ -113,5 +113,25 @@ defmodule Ockam.Vault.Software do
 
   def deinit(_a) do
     raise "natively implemented deinit/1 not loaded"
+  end
+
+  def xx_initiator(_a, _b) do
+    raise "natively implemented xx_initiator/2 not loaded"
+  end
+
+  def xx_responder(_a, _b) do
+    raise "natively implemented xx_responder/2 not loaded"
+  end
+
+  def process(_a, _b) do
+    raise "natively implemented process/2 not loaded"
+  end
+
+  def is_complete(_a) do
+    raise "natively implemented is_complete/1 not loaded"
+  end
+
+  def finalize(_a) do
+    raise "natively implemented finalize/1 not loaded"
   end
 end

@@ -280,4 +280,92 @@ defmodule Ockam.Vault.Software.Tests do
       :ok = SoftwareVault.deinit(handle)
     end
   end
+
+  describe "Ockam.Vault.Software.xx" do
+    test "can run natively implemented functions" do
+      {:ok, vault_handle} = SoftwareVault.default_init()
+
+      attributes = %{type: :curve25519, persistence: :persistent, length: 32}
+
+      {:ok, initiator_key} = SoftwareVault.secret_generate(vault_handle, attributes)
+      {:ok, initiator_pub} = SoftwareVault.secret_publickey_get(vault_handle, initiator_key)
+
+      {:ok, responder_key} = SoftwareVault.secret_generate(vault_handle, attributes)
+      {:ok, responder_pub} = SoftwareVault.secret_publickey_get(vault_handle, responder_key)
+
+      {:ok, initiator_handle} = SoftwareVault.xx_initiator(vault_handle, initiator_key)
+      {:ok, is_somplete_initiator1} = SoftwareVault.is_complete(initiator_handle)
+      assert is_somplete_initiator1 == 0
+
+      {:ok, responder_handle} = SoftwareVault.xx_responder(vault_handle, responder_key)
+      {:ok, is_somplete_responder1} = SoftwareVault.is_complete(responder_handle)
+      assert is_somplete_responder1 == 0
+
+      {:ok, response1} = SoftwareVault.process(initiator_handle, <<>>)
+      {:ok, is_somplete_initiator2} = SoftwareVault.is_complete(initiator_handle)
+      assert is_somplete_initiator2 == 0
+
+      {:ok, payload1} = SoftwareVault.process(responder_handle, response1)
+      assert payload1 == <<>>
+      {:ok, is_somplete_responder2} = SoftwareVault.is_complete(responder_handle)
+      assert is_somplete_responder2 == 0
+
+      {:ok, response2} = SoftwareVault.process(responder_handle, <<>>)
+      {:ok, is_somplete_responder3} = SoftwareVault.is_complete(responder_handle)
+      assert is_somplete_responder3 == 0
+
+      {:ok, payload2} = SoftwareVault.process(initiator_handle, response2)
+      assert payload2 == <<>>
+
+      {:ok, is_somplete_initiator3} = SoftwareVault.is_complete(initiator_handle)
+      assert is_somplete_initiator3 == 0
+
+      {:ok, response3} = SoftwareVault.process(initiator_handle, <<>>)
+      {:ok, is_somplete_initiator4} = SoftwareVault.is_complete(initiator_handle)
+      assert is_somplete_initiator4 == 1
+
+      {:ok, payload3} = SoftwareVault.process(responder_handle, response3)
+      assert payload3 == <<>>
+      {:ok, is_somplete_responder4} = SoftwareVault.is_complete(responder_handle)
+      assert is_somplete_responder4 == 1
+
+      {:ok, initiator} = SoftwareVault.finalize(initiator_handle)
+      {:ok, responder} = SoftwareVault.finalize(responder_handle)
+
+      assert initiator.h == responder.h
+      assert initiator.public_key == responder_pub
+      assert responder.public_key == initiator_pub
+
+      text1 = "Hello, nif"
+      text2 = "Hello, rust"
+
+      {:ok, cipher_text1} =
+        SoftwareVault.aead_aes_gcm_encrypt(vault_handle, initiator.encrypt_key, 5, <<>>, text1)
+
+      {:ok, plain_text1} =
+        SoftwareVault.aead_aes_gcm_decrypt(
+          vault_handle,
+          responder.decrypt_key,
+          5,
+          <<>>,
+          cipher_text1
+        )
+
+      assert plain_text1 == text1
+
+      {:ok, cipher_text2} =
+        SoftwareVault.aead_aes_gcm_encrypt(vault_handle, responder.encrypt_key, 6, <<>>, text2)
+
+      {:ok, plain_text2} =
+        SoftwareVault.aead_aes_gcm_decrypt(
+          vault_handle,
+          initiator.decrypt_key,
+          6,
+          <<>>,
+          cipher_text2
+        )
+
+      assert plain_text2 == text2
+    end
+  end
 end
