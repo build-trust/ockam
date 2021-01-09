@@ -1,4 +1,4 @@
-name: Nightly Builds
+name: Nightly
 
 on:
   repository_dispatch:
@@ -9,35 +9,38 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019, macos-10.15]
-        java: [8, 9, 10, 11, 12, 13]
+        java: [8, 9, 10, 11, 12, 13, 14, 15]
+        otp: [23.2]
+        elixir: [1.11]
+        rust: [stable]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Setup java
+      - name: Setup Java
         uses: actions/setup-java@d202f5dbf7256730fb690ec59f6381650114feb2 # v1.4.3
         with:
           java-version: ${{ matrix.java }}
 
-      - name: Download elixir
-        run: wget https://packages.erlang-solutions.com/erlang/debian/pool/elixir_1.10.4-1~ubuntu~focal_all.deb
+      - name: Setup Elixir
+        uses: actions/setup-elixir@3c118cec41f6c3bfc2c7f2aef9bec886ab0b2324 # v1.5.0
+        with:
+          experimental-otp: true # github.com/actions/setup-elixir/issues/49
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
 
-      - name: Validate elixir download
-        run: echo 'd3d300f24b25eb4383f9437d458eacd9d646719550a85399ee2a6e6d64dadf5c  elixir_1.10.4-1~ubuntu~focal_all.deb' | sha256sum -c
-
-      - name: Install elixir
-        run: sudo dpkg -i 'elixir_1.10.4-1~ubuntu~focal_all.deb'
-
-      - name: Setup hex
-        run: mix local.hex --force
-
-      - name: Setup rebar
-        run: mix local.rebar --force
+      - name: Setup Rust
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1.0.7
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt, clippy
 
       - name: Checkout
-        uses: actions/checkout@a81bbbf8298c0fa03ea29cdc473d45769f953675 # v2.3.3
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
 
       - id: Build_not_windows
         if: "!startsWith(matrix.os, 'windows')"
