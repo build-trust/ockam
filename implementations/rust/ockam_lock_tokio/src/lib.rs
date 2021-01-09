@@ -11,7 +11,7 @@ macro_rules! ockam_lock_new {
     };
 }
 
-macro_rules! ockam_acquire_lock {
+macro_rules! ockam_lock_acquire {
     ($y:expr) => {
         {
             $y.lock()
@@ -31,12 +31,12 @@ mod test {
             let data4 = data1.clone();
 
             let j1 = tokio::spawn(async move {
-                let mut lock = ockam_acquire_lock!(data2).await;
+                let mut lock = ockam_lock_acquire!(data2).await;
                 *lock += 5;
             });
 
             let j2 = tokio::spawn(async move {
-                let mut lock = ockam_acquire_lock!(data3).await;
+                let mut lock = ockam_lock_acquire!(data3).await;
                 *lock += 5;
             });
 
@@ -50,7 +50,7 @@ mod test {
                 _ => {}
             }
 
-            let mut lock = ockam_acquire_lock!(data4).await;
+            let mut lock = ockam_lock_acquire!(data4).await;
             *lock += 1;
             assert_eq!(*lock, 11);
         };
@@ -65,12 +65,12 @@ mod test {
             let data3 = data1.clone();
 
             let j1 = tokio::spawn(async move {
-                let mut lock = ockam_acquire_lock!(data2).await;
+                let mut lock = ockam_lock_acquire!(data2).await;
                 *lock += 5;
             });
 
             let j2 = tokio::spawn(async move {
-                let mut lock = ockam_acquire_lock!(data3).await;
+                let mut lock = ockam_lock_acquire!(data3).await;
                 *lock += 5;
             });
 
@@ -84,7 +84,7 @@ mod test {
                 _ => {}
             }
 
-            let mut lock = ockam_acquire_lock!(data1).await;
+            let mut lock = ockam_lock_acquire!(data1).await;
             *lock += 1;
             assert_eq!(*lock, 11);
 

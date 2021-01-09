@@ -109,7 +109,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_single_thread"
+name = "ockam_lock_tokio"
 version = "0.1.0"
 dependencies = [
  "tokio",
