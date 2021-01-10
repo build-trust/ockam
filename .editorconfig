@@ -15,5 +15,5 @@ indent_style = space
 indent_size = 2
 
 # Let the corresponding language formatters deal with indent size
-[{*.{ex,exs,c,h,rs,cmake,cmake.in},CMakeLists.txt}]
+[{*.{ex,exs,c,h,rs,cmake,cmake.in},CMakeLists.txt,Cargo.lock}]
 indent_size = unset
