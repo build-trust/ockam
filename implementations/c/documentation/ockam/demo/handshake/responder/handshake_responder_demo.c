@@ -59,7 +59,7 @@ OCKAM_VAULT_CFG_s vault_cfg =
      return status;
  }
 
- 
+
  OCKAM_ERR establish_responder_connection( int argc, char* argv[], OCKAM_TRANSPORT_CONNECTION* p_listener,
      OCKAM_TRANSPORT_CONNECTION* p_connection )
  {

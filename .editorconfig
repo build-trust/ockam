@@ -9,20 +9,11 @@ root = true
 [*]
 charset = utf-8
 end_of_line = lf
-indent_size = 2
-indent_style = space
 trim_trailing_whitespace = true
 insert_final_newline = true
-
-
-[*.c, *.h]
 indent_style = space
 indent_size = 2
 
-
-[Makefile]
-indent_style = space
-indent_size = 4
-
-[*.go]
-indent_style = tab
+# Let the corresponding language formatters deal with indent size
+[{*.{ex,exs,c,h,rs,cmake,cmake.in},CMakeLists.txt}]
+indent_size = unset

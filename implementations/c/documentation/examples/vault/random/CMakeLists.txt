@@ -36,6 +36,6 @@ target_link_libraries(example_vault_random
 )
 
 target_include_directories(example_vault_random
-  PUBLIC 
+  PUBLIC
     ${OCKAM_INCLUDES_OUTPUT_DIRECTORY}
   )

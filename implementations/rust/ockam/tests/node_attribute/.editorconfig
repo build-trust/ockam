@@ -1,0 +1,4 @@
+
+[*.stderr]
+indent_size = unset
+trim_trailing_whitespace = unset

@@ -36,6 +36,6 @@ target_link_libraries(example_vault_aead_aes_128_gcm
 )
 
 target_include_directories(example_vault_aead_aes_128_gcm
-  PUBLIC 
+  PUBLIC
     ${OCKAM_INCLUDES_OUTPUT_DIRECTORY}
   )

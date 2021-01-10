@@ -215,7 +215,7 @@ def configure_device(iface='hid', device='ecc', i2c_addr=None, keygen=True, **kw
         print('        Locked')
     else:
         print('    Locked, skipping')
-    
+
     # Check data zone lock
     print('\nActivating Configuration')
     if not data_zone_lock:

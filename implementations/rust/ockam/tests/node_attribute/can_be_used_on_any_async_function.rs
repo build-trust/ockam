@@ -1,5 +1,5 @@
 // This test checks that an attribute macro #[ockam::node]
-// exists and can be used with any async function. 
+// exists and can be used with any async function.
 
 #[ockam::node]
 async fn hundred_times(n: u16) -> u16 {

@@ -32,6 +32,6 @@ target_link_libraries(example_memory
 )
 
 target_include_directories(example_memory
-  PUBLIC 
+  PUBLIC
     ${OCKAM_INCLUDES_OUTPUT_DIRECTORY}
   )

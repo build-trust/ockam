@@ -7,15 +7,16 @@
 # Technical note 2: https://www.iar.com/support/tech-notes/debugger/debugging-an-externally-built-executable-file/
 
 # 'Technical note 2' offers valuable guidance on how to set up "debug only" projects that can load
-# your cmake- (or more generically externally-) built artifacts. 
+# your cmake- (or more generically externally-) built artifacts.
 #
 # If you desire to use IAR EW as native IDE, you'll need to create EW project and then manually add
 # every file using the IDE GUI. To maintain folder structure, use "add group" to mimick/replicate the folder
 # hierarchy. The project config/structure is eventually saved into XML files. So presumably, you could
 # also create by hand (or write a script to generate) the XML files.
 #
-# Note that the ockam c implementation has external library dependencies for which source code is checked out by cmake at build time,
-# these dependencies will need to be resolved to achieve the desired end state of full native IDE usage for this project.
+# Note that the ockam c implementation has external library dependencies for which source code is checked
+# out by cmake at build time, these dependencies will need to be resolved to achieve the desired end state of
+# full native IDE usage for this project.
 #
 # IAR C/C++ Dev Guide: http://ftp.iar.se/WWWfiles/arm/webic/doc/EWARM_DevelopmentGuide.ENU.pdf
 #
@@ -29,7 +30,7 @@
 #
 #       * You need to have MinGW installed and in system path env variable.
 #
-#     Option #2 (Nmake): 
+#     Option #2 (Nmake):
 ##      1. cd <ockam_repo clone>\implementations\c
 #       2. cmake -G "NMake Makefiles" -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/toolchain-iar-arm.cmake -S . -B build
 #       3. nmake
@@ -40,12 +41,12 @@
 #     1. cd <ockam_repo clone>\implementations\c
 #     2. cmake -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/toolchain-iar-arm.cmake -S . -B build
 #     3. make
-#     
+#
 #     * This should also be doable on Windows Linux Subsystem (WSL) assuming you have IAR toolchain there
 #       but I have not tested it.
 
 # DISCLAIMER:
-# This setup is not specific to any board/system, but rather a reference build that 
+# This setup is not specific to any board/system, but rather a reference build that
 # it can be done assuming the user has knowledge of (and performs updates to) the CPU, desired cpu options,
 # and icf linker config file. It also assumes the user has a valid IAR EW license and IAR installed.
 #

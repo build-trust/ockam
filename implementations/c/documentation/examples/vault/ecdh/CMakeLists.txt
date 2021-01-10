@@ -36,6 +36,6 @@ target_link_libraries(example_vault_ecdh
 )
 
 target_include_directories(example_vault_ecdh
-  PUBLIC 
+  PUBLIC
     ${OCKAM_INCLUDES_OUTPUT_DIRECTORY}
   )

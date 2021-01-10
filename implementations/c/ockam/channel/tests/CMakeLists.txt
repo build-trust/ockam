@@ -20,7 +20,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/route.txt
 # ---
 add_executable(ockam_channel_initiator_test
         channel_test.h
-		initiator.c
+    initiator.c
         read_configuration.c)
 
 target_link_libraries(
@@ -41,7 +41,7 @@ target_link_libraries(
 
 add_executable(ockam_channel_responder_test
         channel_test.h
-		responder.c
+    responder.c
         read_configuration.c)
 
 target_link_libraries(

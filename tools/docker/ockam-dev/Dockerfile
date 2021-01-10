@@ -1,7 +1,7 @@
 FROM buildpack-deps:buster-scm
 
 # install base Ockam build system dependencies
-RUN wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb 
+RUN wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb
 RUN echo 'a191b37f11d8133c12ae146d76072f5f1d884d80e1f1bccd8c7aeb55f70a72cb  erlang-solutions_2.0_all.deb' | sha256sum -c
 RUN dpkg -i erlang-solutions_2.0_all.deb
 RUN apt update && apt install -y cmake default-jdk build-essential gcc g++ esl-erlang

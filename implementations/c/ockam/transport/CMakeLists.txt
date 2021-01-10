@@ -38,5 +38,5 @@ target_link_libraries(
     ockam::transport_interface
     ockam::io
     ockam::memory
-	ockam::codec
+  ockam::codec
 )

@@ -44,32 +44,32 @@ ockam_error_t ockam_mutex_deinit(ockam_mutex_t* mutex);
 
 /**
  * @brief   Allocate mutex from the specified mutex module
- * @param   mutex[in] 
- * @param   lock[in]  
+ * @param   mutex[in]
+ * @param   lock[in]
  * @return  OCKAM_ERROR_NONE on success.
  */
 ockam_error_t ockam_mutex_create(ockam_mutex_t* mutex, ockam_mutex_lock_t* lock);
 
 /**
  * @brief   Destroy the specified mutex lock object.
- * @param   mutex[in] 
- * @param   lock[in]  
+ * @param   mutex[in]
+ * @param   lock[in]
  * @return  OCKAM_ERROR_NONE on success.
  */
 ockam_error_t ockam_mutex_destroy(ockam_mutex_t* mutex, ockam_mutex_lock_t lock);
 
 /**
  * @brief   Lock the specified lock object.
- * @param   mutex[in] 
- * @param   lock[in]  
+ * @param   mutex[in]
+ * @param   lock[in]
  * @return  OCKAM_ERROR_NONE on success.
  */
 ockam_error_t ockam_mutex_lock(ockam_mutex_t* mutex, ockam_mutex_lock_t lock);
 
 /**
  * @brief   Unlock the specified lock object.
- * @param   mutex[in] 
- * @param   lock[in]  
+ * @param   mutex[in]
+ * @param   lock[in]
  * @return  OCKAM_ERROR_NONE on success.
  */
 ockam_error_t ockam_mutex_unlock(ockam_mutex_t* mutex, ockam_mutex_lock_t lock);
