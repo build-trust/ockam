@@ -1,8 +1,9 @@
 [package]
 name = "ockam_node_tokio"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
+license = "Apache-2.0"
 
 [dependencies]
-tokio = {version = "*", features = ["rt"]}
+tokio = {version = "1.0.1", features = ["rt"]}
