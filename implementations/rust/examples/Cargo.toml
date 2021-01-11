@@ -1,0 +1,9 @@
+[package]
+name = "examples"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+ockam = {path = "../ockam", version = "*"}
+executor = {version = "*"}
