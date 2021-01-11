@@ -22,3 +22,8 @@ ockam-queue-topic = { version = "0.1", path = "../queue_topic" }
 ockam-vault = { version = "0.1", path = "../vault/traits" }
 ockam-vault-software = { version = "0.1", path = "../vault/software", optional = true}
 rand = "0.7"
+serde_bare = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+chrono = "0.4"
