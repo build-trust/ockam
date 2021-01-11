@@ -3,20 +3,17 @@ extern crate alloc;
 
 #[macro_export]
 macro_rules! ockam_lock_new {
-    ($x:ty, $y:expr) => {
-        {
-            let rcl: alloc::sync::Arc<tokio::sync::Mutex<$x>> = alloc::sync::Arc::new(tokio::sync::Mutex::new($y));
-            rcl
-        }
-    };
+    ($x:ty, $y:expr) => {{
+        let rcl: alloc::sync::Arc<tokio::sync::Mutex<$x>> =
+            alloc::sync::Arc::new(tokio::sync::Mutex::new($y));
+        rcl
+    }};
 }
 
 macro_rules! ockam_lock_acquire {
-    ($y:expr) => {
-        {
-            $y.lock()
-        }
-    };
+    ($y:expr) => {{
+        $y.lock()
+    }};
 }
 
 #[cfg(test)]
@@ -42,11 +39,15 @@ mod test {
 
             let (r1, r2) = tokio::join!(j1, j2);
             match r1 {
-                Err(_) => { assert!(false); }
+                Err(_) => {
+                    assert!(false);
+                }
                 _ => {}
             }
             match r2 {
-                Err(_) => { assert!(false); }
+                Err(_) => {
+                    assert!(false);
+                }
                 _ => {}
             }
 
@@ -76,18 +77,21 @@ mod test {
 
             let (r1, r2) = tokio::join!(j1, j2);
             match r1 {
-                Err(_) => { assert!(false); }
+                Err(_) => {
+                    assert!(false);
+                }
                 _ => {}
             }
             match r2 {
-                Err(_) => { assert!(false); }
+                Err(_) => {
+                    assert!(false);
+                }
                 _ => {}
             }
 
             let mut lock = ockam_lock_acquire!(data1).await;
             *lock += 1;
             assert_eq!(*lock, 11);
-
         };
         f.await;
     }

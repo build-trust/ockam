@@ -7,12 +7,10 @@ use core::ops::Deref;
 
 #[macro_export]
 macro_rules! ockam_lock_new {
-    ($x:ty, $y:expr) => {
-        {
-            let rcl: Rc<RefCell<$x>> = Rc::new(RefCell::new($y));
-            rcl
-        }
-    };
+    ($x:ty, $y:expr) => {{
+        let rcl: Rc<RefCell<$x>> = Rc::new(RefCell::new($y));
+        rcl
+    }};
 }
 
 macro_rules! ockam_lock_acquire {
@@ -55,6 +53,5 @@ mod test {
     fn t1() {
         let test = single_thread();
         block_on(test);
-
     }
 }
