@@ -24,6 +24,27 @@ def mixTasks = [
   [name: 'test', dependsOnRust: true, dependsOnDepsGet: true]
 ]
 
+task localHex(type: Exec) {
+  onlyIf {
+    def userHome = project.gradle.gradleUserHomeDir.parent
+    def archivesPath = java.nio.file.Paths.get(userHome, '.mix', 'archives')
+    def tree = fileTree(archivesPath).matching { include '/hex-*/**' }
+
+    tree.empty
+  }
+  commandLine 'mix', 'local.hex', '--force'
+}
+
+task localRebar(type: Exec) {
+  onlyIf {
+    def userHome = project.gradle.gradleUserHomeDir.parent
+    def rebar = java.nio.file.Paths.get(userHome, '.mix', 'rebar').toFile()
+
+    !rebar.exists()
+  }
+  commandLine 'mix', 'local.rebar', '--force'
+}
+
 mixTasks.each {
   def mixTask = it
   def mixTaskName = mixTask.name
@@ -61,7 +82,7 @@ mixTasks.each {
   // define top level gradle task with all app specific tasks as dependencies.
   task "${gradleTaskName}" {
     group appsDir
-    dependsOn gradleTaskDeps
+    dependsOn localHex, localRebar, gradleTaskDeps
   }
 }
 
