@@ -9,7 +9,9 @@ license = "Apache-2.0"
 crate-type = ["rlib"]
 
 [features]
-default = ["ockam_node_std"]
+default = ["no_std"]
+std = ["ockam_node_std"]
+no_std = ["ockam_node_no_std"]
 
 [dependencies]
 ockam_node_attribute = {path = "../ockam_node_attribute", version = "*"}
