@@ -78,7 +78,7 @@ dependencies = [
  "hashbrown",
  "ockam_node_attribute",
  "ockam_node_no_std",
- "ockam_node_tokio",
+ "ockam_node_std",
  "trybuild",
 ]
 
@@ -98,7 +98,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_node_tokio"
+name = "ockam_node_std"
 version = "0.0.0"
 dependencies = [
  "tokio",
