@@ -25,23 +25,23 @@ def mixTasks = [
 ]
 
 task localHex(type: Exec) {
-  onlyIf {
-    def userHome = project.gradle.gradleUserHomeDir.parent
-    def archivesPath = java.nio.file.Paths.get(userHome, '.mix', 'archives')
-    def tree = fileTree(archivesPath).matching { include '/hex-*/**' }
-
-    tree.empty
-  }
+  // onlyIf {
+  //   def userHome = System.properties['user.home']
+  //   def archivesPath = java.nio.file.Paths.get(userHome, '.mix', 'archives')
+  //   def tree = fileTree(archivesPath).matching { include '/hex-*/**' }
+  //
+  //   tree.empty
+  // }
   commandLine 'mix', 'local.hex', '--force'
 }
 
 task localRebar(type: Exec) {
-  onlyIf {
-    def userHome = project.gradle.gradleUserHomeDir.parent
-    def rebar = java.nio.file.Paths.get(userHome, '.mix', 'rebar').toFile()
-
-    !rebar.exists()
-  }
+  // onlyIf {
+  //   def userHome = System.properties['user.home']
+  //   def rebar = java.nio.file.Paths.get(userHome, '.mix', 'rebar').toFile()
+  //
+  //   !rebar.exists()
+  // }
   commandLine 'mix', 'local.rebar', '--force'
 }
 
