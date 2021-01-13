@@ -5,5 +5,5 @@ authors = ["Ockam Developers"]
 edition = "2018"
 
 [dependencies]
-ockam = {path = "../ockam", version = "*"}
+ockam = {path = "../../ockam/ockam", version = "*"}
 executor = {version = "*"}
