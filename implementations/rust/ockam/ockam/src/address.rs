@@ -3,9 +3,15 @@ use alloc::string::{String, ToString};
 use core::fmt::{Display, Formatter};
 use core::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Eq, Clone, Debug)]
 pub struct Address {
     inner: String,
+}
+
+impl PartialEq<Address> for Address {
+    fn eq(&self, other: &Address) -> bool {
+        other.inner == self.inner
+    }
 }
 
 impl Address {
@@ -13,12 +19,6 @@ impl Address {
         Address {
             inner: s.to_string(),
         }
-    }
-}
-
-impl PartialEq for Address {
-    fn eq(&self, other: &Self) -> bool {
-        self.inner.eq(&other.inner)
     }
 }
 
