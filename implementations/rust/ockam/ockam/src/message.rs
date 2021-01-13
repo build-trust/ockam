@@ -25,8 +25,8 @@ impl From<Payload> for Message {
     fn from(payload: Payload) -> Self {
         Message {
             message_type: MessageType::Payload,
-            onward_route: Route::new(),
-            return_route: Route::new(),
+            onward_route: Route::default(),
+            return_route: Route::default(),
             payload,
         }
     }
@@ -70,8 +70,8 @@ impl MessageBuilder {
         MessageBuilder {
             message_type: None,
             payload: None,
-            onward_route: Route::new(),
-            return_route: Route::new(),
+            onward_route: Route::default(),
+            return_route: Route::default(),
         }
     }
 

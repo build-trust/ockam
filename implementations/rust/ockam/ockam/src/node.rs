@@ -69,21 +69,16 @@ impl MessageDelivery for WorkerContext {
     }
 }
 
+#[derive(Default)]
 pub struct WorkerRegistry {
     workers: HashMap<Address, WorkerContext>,
 }
 
 impl WorkerRegistry {
-    pub fn new() -> Self {
-        WorkerRegistry {
-            workers: HashMap::new(),
-        }
-    }
-
     pub fn insert(&mut self, context: WorkerContext) {
         let mailbox = context.inbox.borrow();
         let address = mailbox.address();
-        self.workers.insert(address.clone(), context.clone());
+        self.workers.insert(address, context.clone());
     }
 
     pub fn get(&mut self, address: &Address) -> Option<&WorkerContext> {
@@ -97,7 +92,7 @@ impl WorkerRegistry {
     pub fn with_worker(
         &mut self,
         address: &Address,
-        mut handler: impl FnMut(Option<&mut WorkerContext>) -> (),
+        mut handler: impl FnMut(Option<&mut WorkerContext>),
     ) {
         handler(self.workers.get_mut(address));
     }
@@ -154,7 +149,7 @@ pub type NodeResult<T> = core::result::Result<T, NodeErr>;
 impl Node {
     pub(crate) fn new() -> Self {
         Node {
-            worker_registry: RefCell::new(WorkerRegistry::new()),
+            worker_registry: RefCell::new(WorkerRegistry::default()),
         }
     }
 
@@ -176,7 +171,7 @@ thread_local! {
     pub static NODE : Rc<RefCell<Node>> = Rc::new(RefCell::new(Node::new()))
 }
 
-pub fn get(f: impl FnOnce(&Rc<RefCell<Node>>) -> ()) {
+pub fn get(f: impl FnOnce(&Rc<RefCell<Node>>)) {
     NODE.with(|node| f(&node))
 }
 
@@ -200,7 +195,7 @@ pub fn register(context: WorkerContext) {
     });
 }
 
-pub fn worker_at(address: &Address, handler: impl FnMut(Option<&mut WorkerContext>) -> ()) {
+pub fn worker_at(address: &Address, handler: impl FnMut(Option<&mut WorkerContext>)) {
     NODE.with(|node| {
         node.borrow_mut()
             .worker_registry

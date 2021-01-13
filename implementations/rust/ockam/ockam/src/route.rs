@@ -14,9 +14,7 @@ impl Addressable for RouteEntry {
 
 impl Into<RouteEntry> for Address {
     fn into(self) -> RouteEntry {
-        RouteEntry {
-            address: self.clone(),
-        }
+        RouteEntry { address: self }
     }
 }
 
@@ -26,18 +24,12 @@ impl Into<RouteEntry> for &str {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Default, Debug, Eq, PartialEq)]
 pub struct Route {
     path: VecDeque<RouteEntry>,
 }
 
 impl Route {
-    pub fn new() -> Self {
-        Route {
-            path: VecDeque::new(),
-        }
-    }
-
     pub fn append(&mut self, entry: RouteEntry) {
         self.path.push_back(entry);
     }
@@ -58,7 +50,7 @@ mod test {
 
     #[test]
     fn route_test() {
-        let mut route = Route::new();
+        let mut route = Route::default();
 
         route.append("sender".into());
         route.append("printer".into());

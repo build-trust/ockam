@@ -25,8 +25,9 @@ pub trait Worker<T> {
     }
 }
 
+type ClosureHandle<T> = Rc<RefCell<dyn FnMut(&T, &mut WorkerContext)>>;
 struct ClosureWorker<T> {
-    message_handler: Option<Rc<RefCell<dyn FnMut(&T, &mut WorkerContext)>>>,
+    message_handler: Option<ClosureHandle<T>>,
 }
 
 impl<T> Worker<T> for ClosureWorker<T> {
@@ -43,7 +44,7 @@ impl<T> Worker<T> for ClosureWorker<T> {
 
 impl ClosureWorker<Message> {
     fn with_closure(
-        f: impl FnMut(&Message, &mut WorkerContext) -> () + 'static,
+        f: impl FnMut(&Message, &mut WorkerContext) + 'static,
     ) -> ClosureWorker<Message> {
         ClosureWorker {
             message_handler: Some(Rc::new(RefCell::new(f))),
@@ -99,7 +100,7 @@ impl WorkerBuilder {
                 inbox: mailbox.clone(),
                 outbox: mailbox.clone(),
                 node,
-                address: address.clone(),
+                address,
             };
             self.built = true;
             let addr = worker_context.inbox.borrow().address();
@@ -140,9 +141,7 @@ pub fn with(worker: impl Worker<Message> + 'static) -> WorkerBuilder {
     builder
 }
 
-pub fn with_closure(
-    handler: impl FnMut(&Message, &mut WorkerContext) -> () + 'static,
-) -> WorkerBuilder {
+pub fn with_closure(handler: impl FnMut(&Message, &mut WorkerContext) + 'static) -> WorkerBuilder {
     let closure = ClosureWorker::with_closure(handler);
     with(closure)
 }
