@@ -106,7 +106,7 @@ impl ProfileEvent {
 
         let previous_self_signature = match previous_event {
             Some(event) => {
-                let private_key: &Box<dyn Secret>;
+                let private_key;
                 if let Some(key) = event.private_key() {
                     private_key = key;
                 } else {
@@ -119,7 +119,7 @@ impl ProfileEvent {
 
         let identifier = format!("E_ID.{}", hex::encode(&identifier));
 
-        Ok(ProfileEvent {
+        Ok(Self {
             version: 1,
             identifier,
             model_binary,

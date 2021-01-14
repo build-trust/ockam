@@ -48,7 +48,7 @@ impl Profile {
     }
 
     pub(crate) fn public_key(&self) -> OckamResult<Option<Vec<u8>>> {
-        let event: &ProfileEvent;
+        let event;
         if let Some(e) = self.events.last() {
             event = e;
         } else {
@@ -59,7 +59,7 @@ impl Profile {
     }
 
     pub(crate) fn rotate(&mut self, attributes: ProfileEventAttributes) -> OckamResult<()> {
-        let event: &ProfileEvent;
+        let event;
         if let Some(e) = self.events.last() {
             event = e;
         } else {
@@ -74,7 +74,7 @@ impl Profile {
     }
 
     pub(crate) fn revoke(&mut self, attributes: ProfileEventAttributes) -> OckamResult<()> {
-        let event: &ProfileEvent;
+        let event;
         if let Some(e) = self.events.last() {
             event = e;
         } else {
@@ -89,14 +89,14 @@ impl Profile {
     }
 
     pub(crate) fn attest(&self, nonce: &[u8]) -> OckamResult<[u8; 64]> {
-        let event: &ProfileEvent;
+        let event;
         if let Some(e) = self.events.last() {
             event = e;
         } else {
             return Err(Error::InvalidInternalState.into());
         }
 
-        let private_key: &Box<dyn Secret>;
+        let private_key;
         if let Some(key) = event.private_key() {
             private_key = key;
         } else {

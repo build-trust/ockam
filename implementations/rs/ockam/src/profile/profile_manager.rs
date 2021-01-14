@@ -9,7 +9,7 @@ pub struct ProfileManager {}
 
 impl ProfileManager {
     pub fn new() -> Self {
-        ProfileManager {}
+        Self {}
     }
 
     pub fn create_profile(
@@ -20,7 +20,7 @@ impl ProfileManager {
         let attributes = attributes.unwrap_or(ProfileEventAttributes::new());
         let event = ProfileEvent::new(false, attributes, None, vault.clone())?;
 
-        let identifier: String;
+        let identifier;
         if let Some(public_key) = event.public_key() {
             let vault = vault.lock().unwrap();
             let hash = vault.sha256(&public_key)?;
