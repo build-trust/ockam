@@ -1,7 +1,7 @@
 use crate::profile::profile::ProfileEventAttributes;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProfileEventBinaryModel {
     version: u8,
     public_key: Option<Vec<u8>>,
