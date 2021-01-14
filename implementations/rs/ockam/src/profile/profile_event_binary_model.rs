@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ProfileEventBinaryModel {
     version: u8,
-    identifier: Option<String>,
     public_key: Option<Vec<u8>>,
     attributes: ProfileEventAttributes,
     prev_event_id: Option<String>,
@@ -14,7 +13,6 @@ pub struct ProfileEventBinaryModel {
 impl ProfileEventBinaryModel {
     pub(crate) fn new(
         version: u8,
-        identifier: Option<String>,
         public_key: Option<Vec<u8>>,
         attributes: ProfileEventAttributes,
         prev_event_id: Option<String>,
@@ -22,7 +20,6 @@ impl ProfileEventBinaryModel {
     ) -> Self {
         ProfileEventBinaryModel {
             version,
-            identifier,
             public_key,
             attributes,
             prev_event_id,
