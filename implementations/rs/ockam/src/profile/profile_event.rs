@@ -9,8 +9,10 @@ use std::sync::{Arc, Mutex};
 
 pub struct ProfileEvent {
     version: u8,
-    identifier: Option<String>,
+    identifier: String,
     model_binary: Vec<u8>,
+    // TODO: Check attributes serialization
+    attributes: ProfileEventAttributes,
     public_key: Option<Vec<u8>>,
     prev_event_id: Option<String>,
     next_event_id: Option<String>,
@@ -23,11 +25,14 @@ impl ProfileEvent {
     pub fn version(&self) -> u8 {
         self.version
     }
-    pub fn identifier(&self) -> &Option<String> {
+    pub fn identifier(&self) -> &str {
         &self.identifier
     }
     pub fn model_binary(&self) -> &Vec<u8> {
         &self.model_binary
+    }
+    pub fn attributes(&self) -> &ProfileEventAttributes {
+        &self.attributes
     }
     pub fn public_key(&self) -> &Option<Vec<u8>> {
         &self.public_key
@@ -64,7 +69,7 @@ impl ProfileEvent {
 
         let keys = (|| {
             if is_revoke {
-                Ok((None, None, None))
+                Ok((None, None))
             } else {
                 let attributes = SecretAttributes {
                     stype: SecretType::Curve25519,
@@ -74,35 +79,28 @@ impl ProfileEvent {
 
                 let private_key = vault.secret_generate(attributes)?;
                 let public_key = vault.secret_public_key_get(&private_key)?.as_ref().to_vec();
-                let identifier = vault.sha256(&public_key)?;
-                let identifier = format!("P_ID.{}", hex::encode(&identifier));
 
-                Ok((Some(private_key), Some(public_key), Some(identifier)))
+                Ok((Some(private_key), Some(public_key)))
             }
         })()?;
 
         let prev_event_id = match previous_event {
-            Some(event) => {
-                if event.identifier.is_none() {
-                    return Err(Error::InvalidInternalState.into());
-                }
-                event.identifier.clone()
-            }
+            Some(event) => Some(event.identifier.clone()),
             None => None,
         };
 
         let model = ProfileEventBinaryModel::new(
             1,
-            keys.2.clone(),
             keys.1.clone(),
-            attributes,
+            attributes.clone(),
             prev_event_id.clone(),
             None,
         );
         let model_binary: Vec<u8> =
             serde_bare::to_vec(&model).map_err(|_| Error::BareError.into())?;
+        let identifier = vault.sha256(&model_binary)?;
         let self_signature = match &keys.0 {
-            Some(s) => Some(vault.sign(s, &model_binary)?),
+            Some(s) => Some(vault.sign(s, &identifier)?),
             None => None,
         };
 
@@ -114,15 +112,18 @@ impl ProfileEvent {
                 } else {
                     return Err(Error::InvalidInternalState.into());
                 }
-                Some(vault.sign(private_key, &model_binary)?)
+                Some(vault.sign(private_key, &identifier)?)
             }
             None => None,
         };
 
+        let identifier = format!("E_ID.{}", hex::encode(&identifier));
+
         Ok(ProfileEvent {
             version: 1,
-            identifier: keys.2,
+            identifier,
             model_binary,
+            attributes,
             public_key: keys.1,
             prev_event_id,
             next_event_id: None,

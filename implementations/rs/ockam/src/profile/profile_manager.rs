@@ -19,9 +19,12 @@ impl ProfileManager {
     ) -> OckamResult<Profile> {
         let attributes = attributes.unwrap_or(ProfileEventAttributes::new());
         let event = ProfileEvent::new(false, attributes, None, vault.clone())?;
+
         let identifier: String;
-        if let Some(id) = event.identifier().clone() {
-            identifier = id;
+        if let Some(public_key) = event.public_key() {
+            let vault = vault.lock().unwrap();
+            let hash = vault.sha256(&public_key)?;
+            identifier = format!("P_ID.{}", hex::encode(&hash));
         } else {
             return Err(Error::InvalidInternalState.into());
         }
