@@ -28,14 +28,14 @@ impl ProfileEvent {
     pub fn identifier(&self) -> &str {
         &self.identifier
     }
-    pub fn model_binary(&self) -> &Vec<u8> {
+    pub fn model_binary(&self) -> &[u8] {
         &self.model_binary
     }
     pub fn attributes(&self) -> &ProfileEventAttributes {
         &self.attributes
     }
-    pub fn public_key(&self) -> &Option<Vec<u8>> {
-        &self.public_key
+    pub fn public_key(&self) -> Option<&[u8]> {
+        self.public_key.as_deref()
     }
     pub fn prev_event_id(&self) -> &Option<String> {
         &self.prev_event_id

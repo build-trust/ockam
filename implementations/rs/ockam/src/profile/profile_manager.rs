@@ -36,7 +36,9 @@ impl ProfileManager {
     }
 
     pub fn get_profile_public_key(&self, profile: &Profile) -> OckamResult<Option<Vec<u8>>> {
-        profile.public_key()
+        profile
+            .public_key()
+            .map(|opt| opt.map(|slice| slice.to_vec()))
     }
 
     pub fn rotate_profile(

@@ -66,6 +66,6 @@ impl ContactManager {
             return None;
         }
 
-        last_event.public_key().clone()
+        last_event.public_key().map(|slice| slice.to_vec())
     }
 }
