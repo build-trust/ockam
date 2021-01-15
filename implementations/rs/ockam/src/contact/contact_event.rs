@@ -23,14 +23,14 @@ impl ContactEvent {
     pub fn identifier(&self) -> &str {
         &self.identifier
     }
-    pub fn model_binary(&self) -> &Vec<u8> {
+    pub fn model_binary(&self) -> &[u8] {
         &self.model_binary
     }
     pub fn attributes(&self) -> &ProfileEventAttributes {
         &self.attributes
     }
-    pub fn public_key(&self) -> &Option<Vec<u8>> {
-        &self.public_key
+    pub fn public_key(&self) -> Option<&[u8]> {
+        self.public_key.as_deref()
     }
     pub fn prev_event_id(&self) -> &Option<String> {
         &self.prev_event_id
@@ -51,9 +51,9 @@ impl ContactEvent {
         Ok(Self {
             version: profile_event.version(),
             identifier: profile_event.identifier().to_string(),
-            model_binary: profile_event.model_binary().clone(),
+            model_binary: profile_event.model_binary().to_vec(),
             attributes: profile_event.attributes().clone(),
-            public_key: profile_event.public_key().clone(),
+            public_key: profile_event.public_key().map(|slice| slice.to_vec()),
             prev_event_id: profile_event.prev_event_id().clone(),
             next_event_id: profile_event.next_event_id().clone(),
             self_signature: profile_event.self_signature().clone(),

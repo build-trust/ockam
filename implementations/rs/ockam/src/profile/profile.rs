@@ -26,7 +26,7 @@ impl Profile {
     pub fn identifier(&self) -> &str {
         &self.identifier
     }
-    pub fn events(&self) -> &Vec<ProfileEvent> {
+    pub fn events(&self) -> &[ProfileEvent] {
         &self.events
     }
     pub fn vault(&self) -> &Arc<Mutex<dyn ProfileVault>> {
@@ -47,7 +47,7 @@ impl Profile {
         }
     }
 
-    pub(crate) fn public_key(&self) -> OckamResult<Option<Vec<u8>>> {
+    pub(crate) fn public_key(&self) -> OckamResult<Option<&[u8]>> {
         let event;
         if let Some(e) = self.events.last() {
             event = e;
@@ -55,7 +55,7 @@ impl Profile {
             return Err(Error::InvalidInternalState.into());
         }
 
-        Ok(event.public_key().clone())
+        Ok(event.public_key())
     }
 
     pub(crate) fn rotate(&mut self, attributes: ProfileEventAttributes) -> OckamResult<()> {

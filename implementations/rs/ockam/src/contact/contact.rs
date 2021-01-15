@@ -30,7 +30,7 @@ impl Contact {
     pub fn identifier(&self) -> &str {
         &self.identifier
     }
-    pub fn events(&self) -> &Vec<ContactEvent> {
+    pub fn events(&self) -> &[ContactEvent] {
         &self.events
     }
     pub fn vault(&self) -> &Arc<Mutex<dyn ContactVault>> {
