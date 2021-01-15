@@ -1,20 +1,18 @@
 
-task build {
-  dependsOn gradle.includedBuilds*.task(':build')
-}
+['lint', 'build', 'test', 'clean', 'veryClean'].each { taskName ->
+  def taskDeps = []
 
-task test {
-  dependsOn gradle.includedBuilds*.task(':test')
-}
+  ['rust', 'rs', 'c', 'elixir'].each { implementation ->
+    def wrapper = "${taskName}_${implementation}"
+    task "${wrapper}" { dependsOn gradle.includedBuild(implementation).task(":${taskName}") }
+    taskDeps.add(wrapper)
+  }
 
-task clean {
-  dependsOn gradle.includedBuilds*.task(':clean')
-}
+  for (int i = 0; i < taskDeps.size() - 1; i++) {
+    def current = project.tasks.named(taskDeps[i]).get()
+    def next = project.tasks.named(taskDeps[i + 1]).get()
+    next.mustRunAfter(current)
+  }
 
-task lint {
-    dependsOn gradle.includedBuilds*.task(':lint')
-}
-
-task veryClean {
-  dependsOn gradle.includedBuilds*.task(':veryClean')
+  task "${taskName}"(group: "ockam", dependsOn: taskDeps) {}
 }

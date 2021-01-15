@@ -1,15 +1,28 @@
 
-task build {
+plugins {
+  id 'network.ockam.gradle.commands' version '1.0.0'
 }
 
-task test {
-}
+commands {
+  group = 'ockam'
 
-task clean {
-}
+  list = [
+    build: 'cargo build',
+    test: 'cargo test',
+    clean: 'cargo clean',
+    veryClean: 'cargo clean',
+    lint: [
+      'cargo check',
+      'cargo fmt --all -- --check',
+      'cargo +nightly clippy --all -- -D warnings'
+    ]
+  ]
 
-task lint {
-}
-
-task veryClean {
+  directories = [
+    'ockam/ockam_node_std',
+    'ockam/ockam_node_no_std',
+    'ockam/ockam_node_attribute',
+    'ockam/ockam',
+    'examples/workers'
+  ]
 }
