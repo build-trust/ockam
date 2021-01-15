@@ -14,7 +14,7 @@ commands {
     lint: [
       'cargo check',
       'cargo fmt --all -- --check',
-      'cargo +nightly clippy --all -- -D warnings'
+      // 'cargo +nightly clippy --all -- -D warnings'
     ]
   ]
 
