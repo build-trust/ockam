@@ -6,7 +6,7 @@ jobs:
     name: Build in Docker
     runs-on: ubuntu-20.04
     container:
-      image: ockam/builder:latest@sha256:5d19913e014f4e3158be63569ac03a628646d9b2549d36b280c5fc296c01d830
+      image: ockam/builder:latest@sha256:c07e7950225d827cd07779d068ae3d5c778605cf82ceb6dc7eb79529e3ee6288
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
