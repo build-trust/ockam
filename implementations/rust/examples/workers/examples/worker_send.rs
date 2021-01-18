@@ -1,25 +1,30 @@
-use ockam::message::Message;
-use ockam::node::WorkerContext;
-use ockam::worker::Worker;
+use ockam::node::Node;
+use ockam::worker::{Worker, WorkerContext};
 use ockam::Result;
 
 struct PrintWorker {}
 
-impl Worker<Message> for PrintWorker {
-    fn handle(&self, message: Message, _context: &mut WorkerContext) -> Result<bool> {
-        println!("{:#?}", message);
+#[derive(Debug)]
+struct Data {
+    val: usize,
+}
+
+impl Worker<Data> for PrintWorker {
+    fn handle(&self, data: Data, _context: &WorkerContext<Data>) -> Result<bool> {
+        println!("{:#?}", data);
         Ok(true)
     }
 }
 
 #[ockam::node]
 async fn main() {
-    if let Some(address) = ockam::worker::with(PrintWorker {})
+    let node = Node::new();
+    if let Some(address) = ockam::worker::with(node.clone(), PrintWorker {})
         .address("printer")
         .start()
     {
         println!("Address: {}", address);
 
-        ockam::node::send(&address, "hello".into());
+        node.borrow().send(&address, Data { val: 123 })
     }
 }
