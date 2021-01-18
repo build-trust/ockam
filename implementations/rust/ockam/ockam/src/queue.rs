@@ -1,5 +1,7 @@
 use crate::address::{Address, Addressable};
 use alloc::collections::VecDeque;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub trait Queue<T> {
     fn enqueue(&mut self, element: T) -> crate::Result<bool>;
@@ -22,15 +24,21 @@ impl<T> Queue<T> for VecDeque<T> {
     }
 }
 
-pub fn new_queue<T: 'static>() -> impl Queue<T> {
-    VecDeque::<T>::new()
-}
-
 pub trait AddressableQueue<T>: Queue<T> + Addressable {}
 
+#[derive(Debug)]
 pub struct AddressedVec<T> {
-    pub(crate) address: Address,
-    pub(crate) vec: VecDeque<T>,
+    pub address: Address,
+    pub vec: VecDeque<T>,
+}
+
+impl<T> AddressedVec<T> {
+    pub fn new(address: Address) -> Self {
+        AddressedVec {
+            address,
+            vec: VecDeque::new(),
+        }
+    }
 }
 
 impl<T> Queue<T> for AddressedVec<T> {
@@ -55,17 +63,42 @@ impl<T> Addressable for AddressedVec<T> {
 
 impl<T> AddressableQueue<T> for AddressedVec<T> {}
 
+pub type QueueHandle<T> = Rc<RefCell<dyn AddressableQueue<T>>>;
+
+pub trait Drain<T> {
+    fn drain(&mut self, f: impl FnMut(T));
+}
+
+impl<T> Drain<T> for dyn AddressableQueue<T> {
+    fn drain(&mut self, mut f: impl FnMut(T)) {
+        while let Some(element) = self.dequeue() {
+            f(element);
+        }
+    }
+}
+
+pub fn new_queue<T: 'static, A: Into<Address>>(address: A) -> Rc<RefCell<dyn AddressableQueue<T>>> {
+    Rc::new(RefCell::new(AddressedVec::<T>::new(address.into())))
+}
+
 #[cfg(test)]
 mod test {
-    use crate::queue::{new_queue, Queue};
+    use crate::queue::new_queue;
 
     #[test]
     fn test_queue() {
         struct Item;
 
-        let mut queue = new_queue();
+        let queue_handle = new_queue("test");
+        let mut queue = queue_handle.borrow_mut();
 
-        queue.enqueue(Item {}).unwrap();
-        queue.dequeue().unwrap();
+        match queue.enqueue(Item {}) {
+            Ok(_) => {}
+            Err(_) => panic!(),
+        };
+        match queue.dequeue() {
+            Some(_) => {}
+            None => panic!(),
+        };
     }
 }
