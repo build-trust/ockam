@@ -3,7 +3,7 @@ use alloc::string::{String, ToString};
 use core::fmt::{Display, Formatter};
 use core::hash::{Hash, Hasher};
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub struct Address {
     inner: String,
 }
@@ -16,6 +16,12 @@ impl Address {
     }
 }
 
+impl PartialEq for Address {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.eq(&other.inner)
+    }
+}
+
 impl Display for Address {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.inner)
@@ -24,7 +30,7 @@ impl Display for Address {
 
 impl From<String> for Address {
     fn from(s: String) -> Self {
-        Address::new(s.clone())
+        Address::new(s)
     }
 }
 
@@ -36,7 +42,7 @@ impl From<&str> for Address {
 
 impl Into<String> for Address {
     fn into(self) -> String {
-        self.inner.clone()
+        self.inner
     }
 }
 

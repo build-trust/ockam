@@ -1,17 +1,19 @@
-use ockam::message::Message;
-use ockam::node::WorkerContext;
-use ockam::worker::Worker;
+use ockam::address::Addressable;
+use ockam::node::Node;
+use ockam::worker::{Worker, WorkerContext};
 use ockam::Result;
 
 struct MyWorker {}
 
-impl Worker<Message> for MyWorker {
-    fn starting(&mut self, context: &mut WorkerContext) -> Result<bool> {
+struct Data {}
+
+impl Worker<Data> for MyWorker {
+    fn starting(&self, context: &WorkerContext<Data>) -> Result<bool> {
         println!("Started on address {}", context.address());
         Ok(true)
     }
 
-    fn stopping(&mut self, _context: &mut WorkerContext) -> Result<bool> {
+    fn stopping(&self, _context: &WorkerContext<Data>) -> Result<bool> {
         println!("Stopping!");
         Ok(true)
     }
@@ -19,8 +21,13 @@ impl Worker<Message> for MyWorker {
 
 #[ockam::node]
 pub async fn main() {
-    if let Some(address) = ockam::worker::with(MyWorker {}).start() {
-        println!("{:?}", address);
+    let node = Node::new();
+
+    if let Some(address) = ockam::worker::with(node.clone(), MyWorker {}).start() {
+        println!("Worker started at {:?}", address);
+
+        let n = node.borrow();
+        n.stop(&address);
     } else {
         panic!("Couldn't start Worker");
     }

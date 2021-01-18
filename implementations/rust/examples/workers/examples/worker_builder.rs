@@ -1,21 +1,25 @@
-use ockam::message::Message;
-use ockam::node::WorkerContext;
-use ockam::worker::Worker;
+use ockam::node::Node;
+use ockam::worker::{Worker, WorkerContext};
 
+use ockam::address::Addressable;
 use ockam::Result;
 
 struct BuiltWorker {}
 
-impl Worker<Message> for BuiltWorker {
-    fn starting(&mut self, context: &mut WorkerContext) -> Result<bool> {
-        println!("Started on address {}", context.address);
+struct Data {}
+
+impl Worker<Data> for BuiltWorker {
+    fn starting(&self, context: &WorkerContext<Data>) -> Result<bool> {
+        println!("Started on address {}", context.address());
         Ok(true)
     }
 }
 
 #[ockam::node]
 pub async fn main() {
-    let address = ockam::worker::with(BuiltWorker {})
+    let node_handle = Node::new();
+
+    let address = ockam::worker::with(node_handle, BuiltWorker {})
         .address("worker123")
         .start();
 
