@@ -1,5 +1,5 @@
 use crate::profile::profile::ProfileEventAttributes;
-use crate::profile::profile_event::ProfileEvent;
+use crate::profile::signed_change_event::SignedChangeEvent;
 use ockam_common::error::OckamResult;
 
 #[derive(Clone)]
@@ -47,7 +47,7 @@ impl ContactEvent {
 }
 
 impl ContactEvent {
-    pub fn from_profile_event(profile_event: &ProfileEvent) -> OckamResult<Self> {
+    pub fn from_profile_event(profile_event: &SignedChangeEvent) -> OckamResult<Self> {
         Ok(Self {
             version: profile_event.version(),
             identifier: profile_event.identifier().to_string(),

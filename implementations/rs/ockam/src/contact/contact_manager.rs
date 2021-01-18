@@ -27,7 +27,7 @@ impl ContactManager {
         vault: Arc<Mutex<dyn ContactVault>>,
     ) -> OckamResult<Contact> {
         let events = profile
-            .events()
+            .change_events()
             .iter()
             .map(
                 |e| ContactEvent::from_profile_event(e).unwrap(), /* FIXME */
