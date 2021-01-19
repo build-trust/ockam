@@ -31,5 +31,5 @@ Further, this bootstrapping can happen in partially connected, asynchronous
 environments where the enroller may connect with an not-yet-connected enrollee
 over protocols that require a wired connection (Ethernet, Serial etc.) or
 those that only work over short distances (Bluetooth, NFC etc.) to provide
-it with cryptographic material needed to enroll along with credentials an
+it with cryptographic material needed to enroll along with credentials and
 other information needed to connect the local network and to the end service.
