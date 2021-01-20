@@ -1,4 +1,7 @@
 #[macro_use]
+extern crate arrayref;
+
+#[macro_use]
 pub mod message;
 // pub mod contact;
 pub mod profile;

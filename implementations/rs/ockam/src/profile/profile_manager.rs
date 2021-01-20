@@ -1,9 +1,11 @@
 use crate::profile::change_event::{
-    ChangeEvent, ChangeEventType, CreateKeyEvent, ProfileKeyPurpose, ProfileKeyType,
+    Change, ChangeEventType, CreateKeyEvent, ProfileKeyPurpose, ProfileKeyType,
 };
 use crate::profile::error::Error;
-use crate::profile::profile::Profile;
-use crate::profile::signed_change_event::{Signature, SignatureType, SignedChangeEvent};
+use crate::profile::profile::{KeyEntry, Profile};
+use crate::profile::signed_change_event::{
+    Changes, Proof, Signature, SignatureType, SignedChangeEvent,
+};
 use crate::profile::{EventId, ProfileEventAttributes, ProfileId, ProfileVault};
 use ockam_common::error::OckamResult;
 use ockam_vault::types::{SecretAttributes, SecretPersistence, SecretType};
@@ -41,32 +43,39 @@ impl ProfileManager {
         let event = CreateKeyEvent::new(key_type, key_purpose, public_key.as_ref().to_vec());
         let prev_id = v.sha256(&[])?;
         let prev_id = EventId::from_hash(&prev_id);
-        let change_event =
-            ChangeEvent::new(1, prev_id, attributes, ChangeEventType::CreateKey(event));
-        let change_event_binary =
-            serde_bare::to_vec(&change_event).map_err(|_| Error::BareError.into())?;
+        let change = Change::new(1, prev_id, attributes, ChangeEventType::CreateKey(event));
+        let changes = Changes::new_single(change);
+        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| Error::BareError.into())?;
 
-        let event_id = v.sha256(&change_event_binary)?;
+        let event_id = v.sha256(&changes_binary)?;
 
         let self_signature = v.sign(&private_key, &event_id)?;
-        let self_signature = Signature::new(SignatureType::SelfSign, self_signature);
+        let self_signature =
+            Proof::Signature(Signature::new(SignatureType::SelfSign, self_signature));
 
         let event_id = EventId::from_hash(&event_id);
 
         let signed_change_event = SignedChangeEvent::new(
             1,
             event_id.clone(),
-            change_event_binary,
-            change_event,
+            changes_binary,
+            changes,
             vec![self_signature],
         );
 
         let public_kid = v.sha256(public_key.as_ref())?;
         let public_kid = ProfileId::from_hash(&public_kid);
 
-        let mut profile = Profile::new(public_kid, Vec::new(), HashMap::new(), vault.clone());
+        let mut profile = Profile::new(public_kid, Vec::new(), Vec::new(), vault.clone());
 
-        profile.add_event(signed_change_event, Some(Arc::new(Mutex::new(private_key))))?;
+        let key_entry = KeyEntry::new(
+            event_id,
+            key_type,
+            key_purpose,
+            Arc::new(Mutex::new(private_key)),
+        );
+
+        profile.add_event(signed_change_event, vec![key_entry])?;
 
         Ok(profile)
     }
@@ -133,7 +142,7 @@ impl ProfileManager {
         let last_event_id = profile
             .find_last_key_event(key_type, key_purpose)?
             .identifier();
-        let private_key = profile.get_private_key(last_event_id)?;
+        let private_key = profile.get_private_key(key_type, key_purpose, last_event_id)?;
         let private_key = private_key.lock().unwrap();
 
         let mut vault = vault.lock().unwrap();

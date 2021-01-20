@@ -21,7 +21,7 @@ pub enum ProfileKeyPurpose {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ChangeEvent {
+pub struct Change {
     version: u8,
     prev_event_id: EventId,
     // TODO: Check attributes serialization
@@ -29,7 +29,7 @@ pub struct ChangeEvent {
     etype: ChangeEventType,
 }
 
-impl ChangeEvent {
+impl Change {
     pub fn version(&self) -> u8 {
         self.version
     }
@@ -44,14 +44,14 @@ impl ChangeEvent {
     }
 }
 
-impl ChangeEvent {
+impl Change {
     pub(crate) fn new(
         version: u8,
         prev_event_id: EventId,
         attributes: ProfileEventAttributes,
         etype: ChangeEventType,
     ) -> Self {
-        ChangeEvent {
+        Change {
             version,
             prev_event_id,
             attributes,

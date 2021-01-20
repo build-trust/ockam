@@ -8,10 +8,48 @@ use ockam_vault::Secret;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+pub struct KeyEntry {
+    event_id: EventId,
+    key_type: ProfileKeyType,
+    key_purpose: ProfileKeyPurpose,
+    key: Arc<Mutex<Box<dyn Secret>>>,
+}
+
+impl KeyEntry {
+    pub fn event_id(&self) -> &EventId {
+        &self.event_id
+    }
+    pub fn key_type(&self) -> ProfileKeyType {
+        self.key_type
+    }
+    pub fn key_purpose(&self) -> ProfileKeyPurpose {
+        self.key_purpose
+    }
+    pub fn key(&self) -> &Arc<Mutex<Box<dyn Secret>>> {
+        &self.key
+    }
+}
+
+impl KeyEntry {
+    pub fn new(
+        event_id: EventId,
+        key_type: ProfileKeyType,
+        key_purpose: ProfileKeyPurpose,
+        key: Arc<Mutex<Box<dyn Secret>>>,
+    ) -> Self {
+        KeyEntry {
+            event_id,
+            key_type,
+            key_purpose,
+            key,
+        }
+    }
+}
+
 pub struct Profile {
     identifier: ProfileId, // First public key id
     change_events: Vec<SignedChangeEvent>,
-    keys: HashMap<EventId, Arc<Mutex<Box<dyn Secret>>>>,
+    keys: Vec<KeyEntry>,
     vault: Arc<Mutex<dyn ProfileVault>>,
 }
 
@@ -22,7 +60,7 @@ impl Profile {
     pub fn change_events(&self) -> &[SignedChangeEvent] {
         &self.change_events
     }
-    pub fn keys(&self) -> &HashMap<EventId, Arc<Mutex<Box<dyn Secret>>>> {
+    pub fn keys(&self) -> &[KeyEntry] {
         &self.keys
     }
     pub fn vault(&self) -> &Arc<Mutex<dyn ProfileVault>> {
@@ -34,7 +72,7 @@ impl Profile {
     pub(crate) fn new(
         identifier: ProfileId,
         change_events: Vec<SignedChangeEvent>,
-        keys: HashMap<EventId, Arc<Mutex<Box<dyn Secret>>>>,
+        keys: Vec<KeyEntry>,
         vault: Arc<Mutex<dyn ProfileVault>>,
     ) -> Self {
         Profile {
@@ -55,13 +93,24 @@ impl Profile {
 
     pub(crate) fn get_private_key(
         &self,
+        key_type: ProfileKeyType,
+        key_purpose: ProfileKeyPurpose,
         event_id: &EventId,
     ) -> OckamResult<Arc<Mutex<Box<dyn Secret>>>> {
-        if let Some(k) = self.keys().get(event_id) {
-            Ok(k.clone())
-        } else {
-            Err(Error::InvalidInternalState.into())
-        }
+        self.keys()
+            .iter()
+            .rev()
+            .find_map(|k| {
+                if k.key_purpose() == key_purpose
+                    && k.key_type() == key_type
+                    && k.event_id() == event_id
+                {
+                    Some(k.key().clone())
+                } else {
+                    None
+                }
+            })
+            .ok_or(Error::InvalidInternalState.into())
     }
 
     pub(crate) fn find_last_key_event(
@@ -72,27 +121,35 @@ impl Profile {
         self.change_events
             .iter()
             .rev()
-            .find(|e| match e.change_event().etype() {
-                CreateKey(event) => {
-                    event.key_type() == key_type && event.key_purpose() == key_purpose
-                }
-                RotateKey(event) => {
-                    event.key_type() == key_type && event.key_purpose() == key_purpose
-                }
-                RevokeKey(event) => {
-                    event.key_type() == key_type && event.key_purpose() == key_purpose
-                }
-                _ => false,
+            .find(|e| {
+                e.changes()
+                    .as_ref()
+                    .iter()
+                    .rev()
+                    .find(|c| match c.etype() {
+                        CreateKey(event) => {
+                            event.key_type() == key_type && event.key_purpose() == key_purpose
+                        }
+                        RotateKey(event) => {
+                            event.key_type() == key_type && event.key_purpose() == key_purpose
+                        }
+                        RevokeKey(event) => {
+                            event.key_type() == key_type && event.key_purpose() == key_purpose
+                        }
+                        _ => false,
+                    })
+                    .is_some()
             })
             .ok_or(Error::InvalidInternalState.into())
     }
 
     pub(crate) fn get_event_public_key(event: &SignedChangeEvent) -> OckamResult<&[u8]> {
-        match event.change_event().etype() {
-            CreateKey(event) => Ok(event.public_key()),
-            RotateKey(event) => Ok(event.public_key()),
-            _ => Err(Error::InvalidInternalState.into()),
-        }
+        unimplemented!()
+        // match event.change_event().etype() {
+        //     CreateKey(event) => Ok(event.public_key()),
+        //     RotateKey(event) => Ok(event.public_key()),
+        //     _ => Err(Error::InvalidInternalState.into()),
+        // }
     }
 
     pub(crate) fn public_key(
@@ -108,13 +165,10 @@ impl Profile {
     pub(crate) fn add_event(
         &mut self,
         event: SignedChangeEvent,
-        key: Option<Arc<Mutex<Box<dyn Secret>>>>,
+        mut keys: Vec<KeyEntry>,
     ) -> OckamResult<()> {
-        let event_id = event.identifier().clone();
         self.change_events.push(event);
-        if let Some(key) = key {
-            self.keys.insert(event_id, key);
-        }
+        self.keys.append(&mut keys);
 
         Ok(())
     }
