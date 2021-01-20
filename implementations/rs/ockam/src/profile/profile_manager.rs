@@ -9,7 +9,6 @@ use crate::profile::signed_change_event::{
 use crate::profile::{EventId, ProfileEventAttributes, ProfileId, ProfileVault};
 use ockam_common::error::OckamResult;
 use ockam_vault::types::{SecretAttributes, SecretPersistence, SecretType};
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub struct ProfileManager {}

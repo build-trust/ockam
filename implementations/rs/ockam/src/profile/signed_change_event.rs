@@ -1,7 +1,6 @@
 use crate::profile::change_event::Change;
 use crate::profile::EventId;
 use serde::de::Visitor;
-use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

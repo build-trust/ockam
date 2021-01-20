@@ -57,6 +57,7 @@ mod tests {
     };
     use crate::profile::profile_manager::ProfileManager;
     use crate::profile::ProfileEventAttributes;
+    use ockam_vault::VerifierVault;
     use ockam_vault_software::DefaultVault;
     use std::sync::{Arc, Mutex};
 
@@ -117,7 +118,7 @@ mod tests {
         let signature = manager
             .attest_profile(
                 &profile,
-                ProfileKeyType::Main,
+                ProfileKeyType::Additional,
                 ProfileKeyPurpose::Kex,
                 nonce,
                 vault.clone(),
@@ -138,5 +139,17 @@ mod tests {
                 vault.clone(),
             )
             .unwrap();
+
+        let public_key =
+            manager.get_profile_public_key(&profile, ProfileKeyType::Main, ProfileKeyPurpose::Kex);
+        assert!(public_key.is_none());
+
+        let public_key = manager
+            .get_profile_public_key(&profile, ProfileKeyType::Additional, ProfileKeyPurpose::Kex)
+            .unwrap();
+
+        let mut v = vault.lock().unwrap();
+
+        assert!(v.verify(&signature, &public_key, nonce).is_ok());
     }
 }

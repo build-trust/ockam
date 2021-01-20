@@ -1,11 +1,10 @@
 use crate::profile::change_event::ChangeEventType::{CreateKey, RevokeKey, RotateKey};
-use crate::profile::change_event::{ProfileKeyPurpose, ProfileKeyType};
+use crate::profile::change_event::{Change, ProfileKeyPurpose, ProfileKeyType};
 use crate::profile::error::Error;
 use crate::profile::signed_change_event::SignedChangeEvent;
 use crate::profile::{EventId, ProfileId, ProfileVault};
 use ockam_common::error::OckamResult;
 use ockam_vault::Secret;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub struct KeyEntry {
@@ -143,13 +142,37 @@ impl Profile {
             .ok_or(Error::InvalidInternalState.into())
     }
 
-    pub(crate) fn get_event_public_key(event: &SignedChangeEvent) -> OckamResult<&[u8]> {
-        unimplemented!()
-        // match event.change_event().etype() {
-        //     CreateKey(event) => Ok(event.public_key()),
-        //     RotateKey(event) => Ok(event.public_key()),
-        //     _ => Err(Error::InvalidInternalState.into()),
-        // }
+    pub(crate) fn find_last_key_change(
+        &self,
+        key_type: ProfileKeyType,
+        key_purpose: ProfileKeyPurpose,
+    ) -> OckamResult<&Change> {
+        self.change_events
+            .iter()
+            .rev()
+            .find_map(|e| {
+                e.changes().as_ref().iter().rev().find(|c| match c.etype() {
+                    CreateKey(event) => {
+                        event.key_type() == key_type && event.key_purpose() == key_purpose
+                    }
+                    RotateKey(event) => {
+                        event.key_type() == key_type && event.key_purpose() == key_purpose
+                    }
+                    RevokeKey(event) => {
+                        event.key_type() == key_type && event.key_purpose() == key_purpose
+                    }
+                    _ => false,
+                })
+            })
+            .ok_or(Error::InvalidInternalState.into())
+    }
+
+    pub(crate) fn get_change_public_key(change: &Change) -> OckamResult<&[u8]> {
+        match change.etype() {
+            CreateKey(event) => Ok(event.public_key()),
+            RotateKey(event) => Ok(event.public_key()),
+            _ => Err(Error::InvalidInternalState.into()),
+        }
     }
 
     pub(crate) fn public_key(
@@ -157,9 +180,9 @@ impl Profile {
         key_type: ProfileKeyType,
         key_purpose: ProfileKeyPurpose,
     ) -> OckamResult<&[u8]> {
-        let last_event = self.find_last_key_event(key_type, key_purpose)?;
+        let last_change = self.find_last_key_change(key_type, key_purpose)?;
 
-        Self::get_event_public_key(last_event)
+        Self::get_change_public_key(last_change)
     }
 
     pub(crate) fn add_event(
