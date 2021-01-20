@@ -4,10 +4,14 @@ pub use identifier::*;
 mod change;
 pub use change::*;
 
+mod verification;
+pub use verification::*;
+
 #[derive(Clone, Debug)]
 pub struct Profile {
     pub identifier: ProfileIdentifier,
     pub change_history: ProfileChangeHistory,
+    pub verification_policies: Vec<ProfileVerificationPolicy>,
 }
 
 impl Profile {
@@ -15,6 +19,7 @@ impl Profile {
         Profile {
             identifier: ProfileIdentifier::new(),
             change_history: ProfileChangeHistory::new(),
+            verification_policies: vec![],
         }
     }
 
