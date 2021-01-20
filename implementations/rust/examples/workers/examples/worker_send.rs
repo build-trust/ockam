@@ -19,12 +19,13 @@ impl Worker<Data> for PrintWorker {
 #[ockam::node]
 async fn main() {
     let node = Node::new();
-    if let Some(address) = ockam::worker::with(node.clone(), PrintWorker {})
-        .address("printer")
-        .start()
-    {
-        println!("Address: {}", address);
 
-        node.borrow().send(&address, Data { val: 123 })
+    let mut worker = ockam::worker::with(node.clone(), PrintWorker {});
+    let starting = worker.address("printer").start();
+
+    if let Some(address) = starting.await {
+        if let Ok(n) = node.lock() {
+            n.send(&address, Data { val: 123 });
+        }
     }
 }

@@ -1,8 +1,9 @@
 use crate::address::{Address, Addressable};
-use crate::node::{NodeHandle, Registry};
-use crate::queue::{new_queue, AddressableQueue, QueueHandle};
-use alloc::rc::Rc;
-use core::cell::RefCell;
+use crate::node::NodeHandle;
+use crate::queue::{new_queue, QueueHandle};
+use crate::Error::WorkerRuntime;
+use hashbrown::HashMap;
+use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum WorkerState {
@@ -15,17 +16,9 @@ pub trait Worker<T> {
     fn handle(&self, _message: T, _worker: &WorkerContext<T>) -> crate::Result<bool> {
         unimplemented!()
     }
-
-    fn starting(&self, _worker: &WorkerContext<T>) -> crate::Result<bool> {
-        Ok(true)
-    }
-
-    fn stopping(&self, _worker: &WorkerContext<T>) -> crate::Result<bool> {
-        Ok(true)
-    }
 }
 
-pub type WorkerHandler<T> = Rc<RefCell<dyn Worker<T>>>;
+pub type WorkerHandler<T> = Arc<Mutex<dyn Worker<T> + Send>>;
 
 /// High level Worker.
 #[derive(Clone)]
@@ -44,55 +37,25 @@ impl<T> Addressable for WorkerContext<T> {
 
 impl<T> Worker<T> for WorkerContext<T> {
     fn handle(&self, message: T, context: &WorkerContext<T>) -> crate::Result<bool> {
-        self.worker.borrow_mut().handle(message, context)
-    }
-
-    fn starting(&self, worker: &WorkerContext<T>) -> crate::Result<bool> {
-        self.worker.borrow().starting(worker)
-    }
-
-    fn stopping(&self, worker: &WorkerContext<T>) -> crate::Result<bool> {
-        self.worker.borrow().stopping(worker)
-    }
-}
-
-/// Wrapper type for creating a Worker given only a closure.
-type ClosureHandle<T> = Rc<RefCell<dyn FnMut(&T, &WorkerContext<T>)>>;
-struct ClosureCallbacks<T> {
-    message_handler: Option<ClosureHandle<T>>,
-}
-
-impl<T> Worker<T> for ClosureCallbacks<T> {
-    fn handle(&self, message: T, context: &WorkerContext<T>) -> crate::Result<bool> {
-        if let Some(handler) = self.message_handler.clone() {
-            let mut h = handler.borrow_mut();
-            h(&message, context);
-            Ok(true)
+        if let Ok(worker) = self.worker.lock() {
+            worker.handle(message, context)
         } else {
-            Err(crate::Error::WorkerRuntime) // We should discuss public api error patterns.
+            Err(WorkerRuntime)
         }
     }
 }
 
-impl<T> ClosureCallbacks<T> {
-    fn with_closure(f: impl FnMut(&T, &WorkerContext<T>) + 'static) -> ClosureCallbacks<T> {
-        ClosureCallbacks {
-            message_handler: Some(Rc::new(RefCell::new(f))),
-        }
-    }
-}
-
-pub type Mailbox<T> = Rc<RefCell<dyn AddressableQueue<T>>>;
+pub type Mailbox<T> = QueueHandle<T>;
 
 pub struct WorkerBuilder<T> {
     node: NodeHandle<T>,
-    callbacks: Option<WorkerHandler<T>>,
+    delegate: Option<WorkerHandler<T>>,
     address: Option<Address>,
     inbox: Option<Mailbox<T>>,
     address_counter: usize,
 }
 
-impl<T: 'static> WorkerBuilder<T> {
+impl<T: 'static + Send> WorkerBuilder<T> {
     pub fn address(&mut self, address_str: &str) -> &mut Self {
         self.address = Some(Address::from(address_str));
         self
@@ -104,7 +67,7 @@ impl<T: 'static> WorkerBuilder<T> {
     }
 
     pub fn build(&mut self) -> Option<WorkerContext<T>> {
-        if self.callbacks.is_none() || self.address.is_none() {
+        if self.delegate.is_none() || self.address.is_none() {
             panic!("Tried to build Context with no Worker or Address")
         }
 
@@ -120,12 +83,14 @@ impl<T: 'static> WorkerBuilder<T> {
         ));
 
         if let Some(external_inbox) = which_inbox.clone() {
-            which_address = Some(external_inbox.borrow().address())
+            if let Ok(ext) = external_inbox.lock() {
+                which_address = Some(ext.address());
+            }
         } else {
             which_inbox = Some(default_queue);
         }
 
-        if let Some(delegate) = self.callbacks.clone() {
+        if let Some(delegate) = self.delegate.clone() {
             if let Some(address) = which_address {
                 if let Some(inbox) = which_inbox {
                     return Some(WorkerContext {
@@ -140,14 +105,17 @@ impl<T: 'static> WorkerBuilder<T> {
         None
     }
 
-    pub fn start(&mut self) -> Option<Address> {
+    pub async fn start(&mut self) -> Option<Address> {
         if let Some(worker) = self.build() {
             let address = worker.address.clone();
             let node = worker.node.clone();
 
-            node.borrow().workers.borrow_mut().register(worker);
+            if let Ok(n) = node.lock() {
+                if let Ok(mut workers) = n.workers.lock() {
+                    workers.register(worker);
+                }
+            }
 
-            node.borrow().start(&address);
             Some(address)
         } else {
             panic!("Unable to build and start Worker");
@@ -155,68 +123,53 @@ impl<T: 'static> WorkerBuilder<T> {
     }
 }
 
+#[derive(Clone)]
+pub struct WorkerRegistry<T> {
+    workers: HashMap<Address, WorkerContext<T>>,
+}
+
+pub type RegistryHandle<T> = Arc<Mutex<WorkerRegistry<T>>>;
+
+pub trait Registry<T> {
+    fn register(&mut self, element: T);
+
+    fn get(&mut self, key: &Address) -> Option<&mut T>;
+}
+
+impl<T> WorkerRegistry<T> {
+    pub(crate) fn new() -> RegistryHandle<T> {
+        Arc::new(Mutex::new(WorkerRegistry {
+            workers: HashMap::new(),
+        }))
+    }
+}
+
+impl<T> Registry<WorkerContext<T>> for WorkerRegistry<T> {
+    fn register(&mut self, worker: WorkerContext<T>) {
+        let address = worker.address();
+        self.workers.insert(address, worker);
+    }
+
+    fn get(&mut self, key: &Address) -> Option<&mut WorkerContext<T>> {
+        if let Some(worker) = self.workers.get_mut(key) {
+            Some(worker)
+        } else {
+            None
+        }
+    }
+}
+
 /// Build a new Worker from the given implementation of Message Callbacks.
-pub fn with<T>(node: NodeHandle<T>, worker: impl Worker<T> + 'static) -> WorkerBuilder<T> {
+pub fn with<T>(node: NodeHandle<T>, worker: impl Worker<T> + 'static + Send) -> WorkerBuilder<T> {
     let mut builder = WorkerBuilder {
         address: None,
         inbox: None,
         address_counter: 1000,
-        callbacks: None,
+        delegate: None,
         node,
     };
 
-    builder.callbacks = Some(Rc::new(RefCell::new(worker)));
+    builder.delegate = Some(Arc::new(Mutex::new(worker)));
     builder.address = Some(Address::new(builder.address_counter));
     builder
-}
-
-/// Build a Worker from a closure.
-pub fn with_closure<T: 'static>(
-    node: NodeHandle<T>,
-    handler: impl FnMut(&T, &WorkerContext<T>) + 'static,
-) -> WorkerBuilder<T> {
-    let closure = ClosureCallbacks::with_closure(handler);
-    with(node, closure)
-}
-
-#[cfg(test)]
-mod test {
-    use crate::address::Address;
-    use crate::node::Node;
-    use crate::queue::AddressedVec;
-    use crate::worker::{ClosureCallbacks, WorkerContext};
-    use alloc::collections::VecDeque;
-    use alloc::rc::Rc;
-    use core::cell::RefCell;
-
-    #[derive(Clone)]
-    struct Thing {}
-
-    #[test]
-    fn test_worker() {
-        let node = Node::new();
-
-        let work = Rc::new(RefCell::new(
-            |_message: &Thing, _context: &WorkerContext<Thing>| {},
-        ));
-
-        let worker = WorkerContext {
-            node,
-            address: Address::from("test"),
-            worker: Rc::new(RefCell::new(ClosureCallbacks {
-                message_handler: Some(work),
-            })),
-            inbox: Rc::new(RefCell::new(AddressedVec {
-                address: Address::from("test_inbox"),
-                vec: VecDeque::new(),
-            })),
-        };
-
-        let delegate = worker.worker.borrow_mut();
-
-        match delegate.handle(Thing {}, &mut worker.clone()) {
-            Ok(x) => x,
-            Err(_) => panic!(),
-        };
-    }
 }

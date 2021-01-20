@@ -6,4 +6,5 @@ edition = "2018"
 
 [dependencies]
 ockam = {path = "../../ockam/ockam", version = "*"}
+ockam_node_std = {path = "../../ockam/ockam_node_std", version = "*"}
 executor = {version = "*"}

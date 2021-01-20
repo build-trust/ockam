@@ -1,7 +1,6 @@
 use crate::address::{Address, Addressable};
 use alloc::collections::VecDeque;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 pub trait Queue<T> {
     fn enqueue(&mut self, element: T) -> crate::Result<bool>;
@@ -63,7 +62,7 @@ impl<T> Addressable for AddressedVec<T> {
 
 impl<T> AddressableQueue<T> for AddressedVec<T> {}
 
-pub type QueueHandle<T> = Rc<RefCell<dyn AddressableQueue<T>>>;
+pub type QueueHandle<T> = Arc<Mutex<dyn AddressableQueue<T> + Send>>;
 
 pub trait Drain<T> {
     fn drain(&mut self, f: impl FnMut(T));
@@ -77,8 +76,8 @@ impl<T> Drain<T> for dyn AddressableQueue<T> {
     }
 }
 
-pub fn new_queue<T: 'static, A: Into<Address>>(address: A) -> Rc<RefCell<dyn AddressableQueue<T>>> {
-    Rc::new(RefCell::new(AddressedVec::<T>::new(address.into())))
+pub fn new_queue<T: 'static + Send, A: Into<Address>>(address: A) -> QueueHandle<T> {
+    Arc::new(Mutex::new(AddressedVec::<T>::new(address.into())))
 }
 
 #[cfg(test)]
@@ -90,15 +89,15 @@ mod test {
         struct Item;
 
         let queue_handle = new_queue("test");
-        let mut queue = queue_handle.borrow_mut();
-
-        match queue.enqueue(Item {}) {
-            Ok(_) => {}
-            Err(_) => panic!(),
-        };
-        match queue.dequeue() {
-            Some(_) => {}
-            None => panic!(),
+        if let Ok(mut queue) = queue_handle.lock() {
+            match queue.enqueue(Item {}) {
+                Ok(_) => {}
+                Err(_) => panic!(),
+            };
+            match queue.dequeue() {
+                Some(_) => {}
+                None => panic!(),
+            };
         };
     }
 }
