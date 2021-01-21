@@ -29,8 +29,8 @@ pub enum ProfileChangeProof {}
 
 #[derive(Clone, Debug)]
 pub struct ProfileChangeEvent {
-    pub changes: Vec<ProfileChange>,
-    pub proofs: Vec<ProfileChangeProof>,
+    changes: Changes,
+    proofs: Vec<ProfileChangeProof>,
 }
 
 impl ProfileChangeEvent {

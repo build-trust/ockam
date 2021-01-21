@@ -5,7 +5,7 @@ use hashbrown::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Entity {
-    pub profiles: HashMap<ProfileIdentifier, Profile>,
+    profiles: HashMap<ProfileIdentifier, Profile>,
 }
 
 impl Entity {
