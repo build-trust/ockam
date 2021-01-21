@@ -1,15 +1,19 @@
-#[derive(Clone, Debug)]
-pub struct ProfileIdentifier(Vec<u8>);
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ProfileIdentifier([u8; 32]);
 
-impl ProfileIdentifier {
-    pub fn new() -> Self {
-        ProfileIdentifier(vec![])
+impl AsRef<[u8]> for ProfileIdentifier {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 
-impl Default for ProfileIdentifier {
-    fn default() -> Self {
-        Self::new()
+impl ProfileIdentifier {
+    pub fn from_hash(hash: [u8; 32]) -> Self {
+        Self { 0: hash }
+    }
+
+    pub fn string_representation(&self) -> String {
+        format!("P_ID.{}", hex::encode(&self.0))
     }
 }
 
@@ -19,6 +23,6 @@ mod test {
 
     #[test]
     fn test_new() {
-        let _identifier = ProfileIdentifier::new();
+        let _identifier = ProfileIdentifier::from_hash([0u8; 32]);
     }
 }
