@@ -15,22 +15,46 @@ pub struct Profile {
 }
 
 impl Profile {
-    pub fn new() -> Self {
-        Profile {
-            identifier: ProfileIdentifier::new(),
-            change_history: ProfileChangeHistory::new(),
-            verification_policies: vec![],
-        }
+    pub fn identifier(&self) -> &ProfileIdentifier {
+        &self.identifier
     }
-
-    pub fn apply(&mut self, change_event: ProfileChangeEvent) {
-        change_event.apply(self)
+    pub fn change_history(&self) -> &ProfileChangeHistory {
+        &self.change_history
+    }
+    pub fn verification_policies(&self) -> &[ProfileVerificationPolicy] {
+        &self.verification_policies
     }
 }
 
-impl Default for Profile {
-    fn default() -> Self {
-        Self::new()
+impl Profile {
+    pub fn new(
+        identifier: ProfileIdentifier,
+        change_history: ProfileChangeHistory,
+        verification_policies: Vec<ProfileVerificationPolicy>,
+    ) -> Self {
+        Profile {
+            identifier,
+            change_history,
+            verification_policies,
+        }
+    }
+}
+
+impl Profile {
+    pub fn apply(&mut self, change_event: ProfileChangeEvent) {
+        if !self.verify(&change_event) {
+            return; // TODO: Throw error
+        }
+
+        for _change in change_event.changes() {
+            // TODO: apply change
+            unimplemented!()
+        }
+    }
+
+    pub fn verify(&self, _change_event: &ProfileChangeEvent) -> bool {
+        // loop over all proofs and verify them
+        unimplemented!()
     }
 }
 
@@ -40,6 +64,7 @@ mod test {
 
     #[test]
     fn test_new() {
-        let _profile = Profile::new();
+        let id = ProfileIdentifier::from_hash([0u8; 32]);
+        let _profile = Profile::new(id, ProfileChangeHistory::default(), Vec::new());
     }
 }
