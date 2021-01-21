@@ -57,6 +57,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
+
+[[package]]
 name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -76,6 +82,7 @@ name = "ockam"
 version = "0.0.0"
 dependencies = [
  "hashbrown",
+ "hex",
  "ockam_node_attribute",
  "ockam_node_no_std",
  "ockam_node_std",
