@@ -9,16 +9,20 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn new() -> Self {
-        Entity {
-            profiles: HashMap::new(),
-        }
+    pub fn profiles(&self) -> &HashMap<ProfileIdentifier, Profile> {
+        &self.profiles
+    }
+}
+
+impl Entity {
+    pub fn new(profiles: HashMap<ProfileIdentifier, Profile>) -> Self {
+        Entity { profiles }
     }
 }
 
 impl Default for Entity {
     fn default() -> Self {
-        Self::new()
+        Self::new(HashMap::new())
     }
 }
 
@@ -28,6 +32,6 @@ mod test {
 
     #[test]
     fn test_new() {
-        let _id = Entity::new();
+        let _id = Entity::default();
     }
 }
