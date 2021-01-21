@@ -1,7 +1,7 @@
 use crate::profile::change_event::ChangeEventType::{CreateKey, RevokeKey, RotateKey};
 use crate::profile::change_event::{Change, ProfileKeyPurpose, ProfileKeyType};
 use crate::profile::error::Error;
-use crate::profile::signed_change_event::SignedChangeEvent;
+use crate::profile::signed_change_event::ProfileChangeEvent;
 use crate::profile::{EventId, ProfileId, ProfileVault};
 use ockam_common::error::OckamResult;
 use ockam_vault::Secret;
@@ -47,7 +47,7 @@ impl KeyEntry {
 
 pub struct Profile {
     identifier: ProfileId, // First public key id
-    change_events: Vec<SignedChangeEvent>,
+    change_events: Vec<ProfileChangeEvent>,
     keys: Vec<KeyEntry>,
     vault: Arc<Mutex<dyn ProfileVault>>,
 }
@@ -56,7 +56,7 @@ impl Profile {
     pub fn identifier(&self) -> &ProfileId {
         &self.identifier
     }
-    pub fn change_events(&self) -> &[SignedChangeEvent] {
+    pub fn change_events(&self) -> &[ProfileChangeEvent] {
         &self.change_events
     }
     pub fn keys(&self) -> &[KeyEntry] {
@@ -70,7 +70,7 @@ impl Profile {
 impl Profile {
     pub(crate) fn new(
         identifier: ProfileId,
-        change_events: Vec<SignedChangeEvent>,
+        change_events: Vec<ProfileChangeEvent>,
         keys: Vec<KeyEntry>,
         vault: Arc<Mutex<dyn ProfileVault>>,
     ) -> Self {
@@ -116,7 +116,7 @@ impl Profile {
         &self,
         key_type: ProfileKeyType,
         key_purpose: ProfileKeyPurpose,
-    ) -> OckamResult<&SignedChangeEvent> {
+    ) -> OckamResult<&ProfileChangeEvent> {
         self.change_events
             .iter()
             .rev()
@@ -187,7 +187,7 @@ impl Profile {
 
     pub(crate) fn add_event(
         &mut self,
-        event: SignedChangeEvent,
+        event: ProfileChangeEvent,
         mut keys: Vec<KeyEntry>,
     ) -> OckamResult<()> {
         self.change_events.push(event);

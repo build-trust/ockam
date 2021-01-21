@@ -101,41 +101,36 @@ impl Changes {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SignedChangeEvent {
+pub struct ProfileChangeEvent {
     version: u8,
     identifier: EventId,
-    binary: Vec<u8>, // May be removed if needed, but may be useful
+    // binary: Vec<u8>, // May be removed if needed, but may be useful
     changes: Changes,
     proofs: Vec<Proof>,
 }
 
-impl SignedChangeEvent {
+impl ProfileChangeEvent {
     pub(crate) fn new(
         version: u8,
         identifier: EventId,
-        binary: Vec<u8>,
         changes: Changes,
         proofs: Vec<Proof>,
     ) -> Self {
-        SignedChangeEvent {
+        ProfileChangeEvent {
             version,
             identifier,
-            binary,
             changes,
             proofs,
         }
     }
 }
 
-impl SignedChangeEvent {
+impl ProfileChangeEvent {
     pub fn version(&self) -> u8 {
         self.version
     }
     pub fn identifier(&self) -> &EventId {
         &self.identifier
-    }
-    pub fn binary(&self) -> &[u8] {
-        &self.binary
     }
     pub fn changes(&self) -> &Changes {
         &self.changes

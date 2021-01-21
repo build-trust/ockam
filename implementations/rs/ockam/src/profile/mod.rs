@@ -13,36 +13,40 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 pub type ProfileEventAdditionalData = HashMap<String, String>;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Hash)]
-pub struct ProfileId(String);
+pub struct ProfileId([u8; 32]);
 
-impl AsRef<String> for ProfileId {
-    fn as_ref(&self) -> &String {
+impl AsRef<[u8]> for ProfileId {
+    fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
 impl ProfileId {
-    pub fn from_hash(hash: &[u8]) -> Self {
-        Self {
-            0: format!("P_ID.{}", hex::encode(&hash)),
-        }
+    pub fn from_hash(hash: [u8; 32]) -> Self {
+        Self { 0: hash }
+    }
+
+    pub fn string_representation(&self) -> String {
+        format!("P_ID.{}", hex::encode(&self.0))
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Hash)]
-pub struct EventId(String);
+pub struct EventId([u8; 32]);
 
-impl AsRef<String> for EventId {
-    fn as_ref(&self) -> &String {
+impl AsRef<[u8]> for EventId {
+    fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
 impl EventId {
-    pub fn from_hash(hash: &[u8]) -> Self {
-        Self {
-            0: format!("E_ID.{}", hex::encode(&hash)),
-        }
+    pub fn from_hash(hash: [u8; 32]) -> Self {
+        Self { 0: hash }
+    }
+
+    pub fn string_representation(&self) -> String {
+        format!("E_ID.{}", hex::encode(&self.0))
     }
 }
 
