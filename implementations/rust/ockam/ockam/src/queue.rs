@@ -1,15 +1,16 @@
 use crate::address::{Address, Addressable};
 use alloc::collections::VecDeque;
+use ockam_error::OckamResult;
 use std::sync::{Arc, Mutex};
 
 pub trait Queue<T> {
-    fn enqueue(&mut self, element: T) -> crate::Result<bool>;
+    fn enqueue(&mut self, element: T) -> OckamResult<bool>;
     fn dequeue(&mut self) -> Option<T>;
     fn is_empty(&self) -> bool;
 }
 
 impl<T> Queue<T> for VecDeque<T> {
-    fn enqueue(&mut self, element: T) -> crate::Result<bool> {
+    fn enqueue(&mut self, element: T) -> OckamResult<bool> {
         self.push_back(element);
         Ok(true)
     }
@@ -41,7 +42,7 @@ impl<T> AddressedVec<T> {
 }
 
 impl<T> Queue<T> for AddressedVec<T> {
-    fn enqueue(&mut self, element: T) -> crate::Result<bool> {
+    fn enqueue(&mut self, element: T) -> OckamResult<bool> {
         self.vec.enqueue(element)
     }
 

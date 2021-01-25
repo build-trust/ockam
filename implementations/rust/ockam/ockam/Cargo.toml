@@ -17,6 +17,7 @@ no_std = ["ockam_node_no_std"]
 ockam_node_attribute = {path = "../ockam_node_attribute", version = "*"}
 ockam_node_no_std = {path = "../ockam_node_no_std", version = "*", optional = true}
 ockam_node_std = {path = "../ockam_node_std", version = "*", optional = true}
+ockam_error = {path = "../ockam_error", version = "*"}
 hex = "0.4"
 hashbrown = "0.9.1"
 

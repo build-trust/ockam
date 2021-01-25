@@ -1,6 +1,6 @@
 use ockam::node::Node;
 use ockam::worker::{Worker, WorkerContext};
-use ockam::Result;
+use ockam::OckamResult;
 
 struct PrintWorker {}
 
@@ -10,7 +10,7 @@ struct Data {
 }
 
 impl Worker<Data> for PrintWorker {
-    fn handle(&self, data: Data, _context: &WorkerContext<Data>) -> Result<bool> {
+    fn handle(&self, data: Data, _context: &WorkerContext<Data>) -> OckamResult<bool> {
         println!("{:#?}", data);
         Ok(true)
     }

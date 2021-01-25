@@ -3,6 +3,7 @@ use crate::node::NodeHandle;
 use crate::queue::{new_queue, QueueHandle};
 use crate::Error::WorkerRuntime;
 use hashbrown::HashMap;
+use ockam_error::OckamResult;
 use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -13,7 +14,7 @@ pub enum WorkerState {
 
 /// Worker callbacks.
 pub trait Worker<T> {
-    fn handle(&self, _message: T, _worker: &WorkerContext<T>) -> crate::Result<bool> {
+    fn handle(&self, _message: T, _worker: &WorkerContext<T>) -> OckamResult<bool> {
         unimplemented!()
     }
 }
@@ -36,11 +37,11 @@ impl<T> Addressable for WorkerContext<T> {
 }
 
 impl<T> Worker<T> for WorkerContext<T> {
-    fn handle(&self, message: T, context: &WorkerContext<T>) -> crate::Result<bool> {
+    fn handle(&self, message: T, context: &WorkerContext<T>) -> OckamResult<bool> {
         if let Ok(worker) = self.worker.lock() {
             worker.handle(message, context)
         } else {
-            Err(WorkerRuntime)
+            Err(WorkerRuntime.into())
         }
     }
 }
