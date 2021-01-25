@@ -12,12 +12,27 @@ pub enum WorkerState {
     Failed,
 }
 
-/// Worker callbacks.
-pub trait Worker<T> {
-    fn handle(&self, _message: T, _worker: &WorkerContext<T>) -> OckamResult<bool> {
-        unimplemented!()
+// Starting and stopping callbacks.
+pub trait Starting<T> {
+    fn starting(&self, _worker: &WorkerContext<T>) -> OckamResult<bool> {
+        Ok(true)
     }
 }
+
+pub trait Stopping<T> {
+    fn stopping(&self, _worker: &WorkerContext<T>) -> OckamResult<bool> {
+        Ok(true)
+    }
+}
+
+/// Data handler callback.
+pub trait Handler<T> {
+    fn handle(&self, _message: T, _worker: &WorkerContext<T>) -> OckamResult<bool> {
+        Ok(true)
+    }
+}
+
+pub trait Worker<T>: Starting<T> + Stopping<T> + Handler<T> {}
 
 pub type WorkerHandler<T> = Arc<Mutex<dyn Worker<T> + Send>>;
 
@@ -36,7 +51,11 @@ impl<T> Addressable for WorkerContext<T> {
     }
 }
 
-impl<T> Worker<T> for WorkerContext<T> {
+impl<T> Starting<T> for WorkerContext<T> {}
+
+impl<T> Stopping<T> for WorkerContext<T> {}
+
+impl<T> Handler<T> for WorkerContext<T> {
     fn handle(&self, message: T, context: &WorkerContext<T>) -> OckamResult<bool> {
         if let Ok(worker) = self.worker.lock() {
             worker.handle(message, context)

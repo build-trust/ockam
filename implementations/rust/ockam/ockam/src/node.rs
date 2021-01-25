@@ -5,7 +5,7 @@ pub use ockam_node_no_std::block_on;
 pub use ockam_node_std::block_on;
 
 use crate::address::Address;
-use crate::worker::{Registry, RegistryHandle, Worker, WorkerRegistry};
+use crate::worker::{Handler, Registry, RegistryHandle, WorkerRegistry};
 
 use std::sync::{Arc, Mutex};
 

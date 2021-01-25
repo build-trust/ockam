@@ -1,5 +1,5 @@
 use ockam::node::Node;
-use ockam::worker::{Worker, WorkerContext};
+use ockam::worker::{Handler, Starting, Stopping, Worker, WorkerContext};
 use ockam::OckamResult;
 
 struct PrintWorker {}
@@ -9,12 +9,27 @@ struct Data {
     val: usize,
 }
 
-impl Worker<Data> for PrintWorker {
+// Not called by anything, just example.
+impl Starting<Data> for PrintWorker {
+    fn starting(&self, _worker: &WorkerContext<Data>) -> OckamResult<bool> {
+        unimplemented!()
+    }
+}
+
+impl Stopping<Data> for PrintWorker {
+    fn stopping(&self, _worker: &WorkerContext<Data>) -> OckamResult<bool> {
+        unimplemented!()
+    }
+}
+
+impl Handler<Data> for PrintWorker {
     fn handle(&self, data: Data, _context: &WorkerContext<Data>) -> OckamResult<bool> {
         println!("{:#?}", data);
         Ok(true)
     }
 }
+
+impl Worker<Data> for PrintWorker {}
 
 #[ockam::node]
 async fn main() {

@@ -1,9 +1,13 @@
 use ockam::node::Node;
-use ockam::worker::Worker;
+use ockam::worker::{Handler, Starting, Stopping, Worker};
 
 struct BuiltWorker {}
 
 struct Data {}
+
+impl Starting<Data> for BuiltWorker {}
+impl Stopping<Data> for BuiltWorker {}
+impl Handler<Data> for BuiltWorker {}
 
 impl Worker<Data> for BuiltWorker {}
 

@@ -83,11 +83,16 @@ version = "0.0.0"
 dependencies = [
  "hashbrown",
  "hex",
+ "ockam_error",
  "ockam_node_attribute",
  "ockam_node_no_std",
  "ockam_node_std",
  "trybuild",
 ]
+
+[[package]]
+name = "ockam_error"
+version = "0.0.0"
 
 [[package]]
 name = "ockam_node_attribute"
