@@ -12,7 +12,7 @@ impl ProfileIdentifier {
         Self { 0: hash }
     }
 
-    pub fn string_representation(&self) -> String {
+    pub fn to_string_representation(&self) -> String {
         format!("P_ID.{}", hex::encode(&self.0))
     }
 }
