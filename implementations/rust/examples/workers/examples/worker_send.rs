@@ -9,27 +9,20 @@ struct Data {
     val: usize,
 }
 
-// Not called by anything, just example.
-impl Starting<Data> for PrintWorker {
+impl Worker<Data> for PrintWorker {
     fn starting(&self, _worker: &WorkerContext<Data>) -> OckamResult<bool> {
         unimplemented!()
     }
-}
 
-impl Stopping<Data> for PrintWorker {
     fn stopping(&self, _worker: &WorkerContext<Data>) -> OckamResult<bool> {
         unimplemented!()
     }
-}
 
-impl Handler<Data> for PrintWorker {
     fn handle(&self, data: Data, _context: &WorkerContext<Data>) -> OckamResult<bool> {
         println!("{:#?}", data);
         Ok(true)
     }
 }
-
-impl Worker<Data> for PrintWorker {}
 
 #[ockam::node]
 async fn main() {
