@@ -1,0 +1,15 @@
+[package]
+name = "ockam_vault_core"
+version = "0.0.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+ockam_core = {path = "../ockam_core", version = "*"}
+ockam_macro = {path = "../ockam_macro", version = "*"}
+zeroize = { version = "1.1", features = ["zeroize_derive"] }
+cfg-if = "1.0"

@@ -1,0 +1,9 @@
+[package]
+name = "ockam_macro"
+version = "0.0.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["rlib"]
