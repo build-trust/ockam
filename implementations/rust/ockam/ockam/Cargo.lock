@@ -107,6 +107,10 @@ dependencies = [
 [[package]]
 name = "autocfg"
 version = "1.0.1"
+=======
+name = "async-trait"
+version = "0.1.42"
+>>>>>>> feat(rust): implement connection trait for tcp transport:implementations/rust/ockam/ockam_transport/tcp/Cargo.lock
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
@@ -1213,6 +1217,7 @@ dependencies = [
 ]
 
 [[package]]
+>>>>>>> feat(rust): implement connection trait for tcp transport
 name = "termcolor"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
