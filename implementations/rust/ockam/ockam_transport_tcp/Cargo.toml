@@ -1,0 +1,16 @@
+[package]
+name = "ockam_transport_tcp"
+version = "0.1.0"
+authors = ["Robin Budd <robin@ockam.io>"]
+edition = "2018"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+ockam_node_std = {path = "../../ockam_node_std", version = "*"}
+tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros"]}
+async-trait = "0.1.42"
+
+[dev-dependencies]
+trybuild = {version = "1.0.38", features = ["diff"]}
