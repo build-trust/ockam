@@ -13,29 +13,32 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
 
     // Fail if the function is not declared async
     if input_function.sig.asyncness.is_none() {
-        let message = "a function tagged with '#[ockam::node]' must be declared as 'async'";
+        let message = "a function with attribute '#[ockam::node]' must be declared as 'async'";
+        let token = input_function.sig.fn_token;
+        return Error::new_spanned(token, message).to_compile_error().into();
+    }
+
+    // Fail if the function does not have exactly one argument
+    if input_function.sig.inputs.len() != 1 {
+        let message = "a function with '#[ockam::node]' must have exactly one argument";
         let token = input_function.sig.fn_token;
         return Error::new_spanned(token, message).to_compile_error().into();
     }
 
     let input_function_attrs = &input_function.attrs;
     let input_function_ident = &input_function.sig.ident;
-    let input_function_inputs = &input_function.sig.inputs;
-    let input_function_output = &input_function.sig.output;
     let input_function_block = &input_function.block;
 
     // Transform the input_function to the output_function:
     // - Remove async
     // - Keep the same attributes, ident, inputs and output
-    // - Put the body block of the input_functio inside an async block
-    // - Invoke ockam::node::block_on() with this async block as an argument
+    // - Put the body block of the input_function inside an async block
 
     let output_function = quote! {
         #(#input_function_attrs)*
-        fn #input_function_ident(#input_function_inputs) #input_function_output {
-            ockam::node::block_on(async move {
-                #input_function_block
-            })
+        fn #input_function_ident() {
+            let (context, mut executor) = ockam::node();
+            executor.execute(async move { #input_function_block }).unwrap()
         }
     };
 
