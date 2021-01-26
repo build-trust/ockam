@@ -25,27 +25,28 @@ impl TcpConnection {
     /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
     /// let connection = TcpConnection::create(address);
     /// ```
-    pub fn create(remote_address: SocketAddr) -> Arc<Mutex<dyn Connection + Send>> {
+    pub fn create(remote_address: SocketAddr) -> Box<dyn Connection + Send> {
         Arc::new(Mutex::new(TcpConnection {
             remote_address,
             _blocking: true,
             stream: None,
         }))
     }
-
-    pub async fn new_from_stream(stream: TcpStream) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(TcpConnection {
+    pub async fn new_from_stream(stream: TcpStream) -> Box<Self> {
+        Box::new(TcpConnection {
             remote_address: stream.peer_addr().unwrap(),
             _blocking: true,
             stream: Some(stream),
-        }))
+        })
     }
 }
 
 #[async_trait]
 impl Connection for TcpConnection {
     async fn connect(&mut self) -> Result<(), String> {
-        self.stream = Some(TcpStream::connect(self.remote_address).await.unwrap());
+        self.stream = Some(Box::new(
+            TcpStream::connect(self.remote_address).await.unwrap(),
+        ));
         Ok(())
     }
 
