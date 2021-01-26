@@ -56,10 +56,8 @@ pub fn main() {
                 let f = client_worker();
                 f.await;
                 return;
-            })
-            .await
-            .unwrap();
-            tokio::join!(j1);
+            });
+            futures::join!(j1, j2);
         })
     }
 }
