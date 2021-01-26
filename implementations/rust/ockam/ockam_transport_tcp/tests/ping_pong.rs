@@ -99,14 +99,12 @@ pub fn main() {
                 return;
             });
 
-            let _j2 = task::spawn(async {
+            let j2 = task::spawn(async {
                 let f = client_worker();
                 f.await;
                 return;
-            })
-            .await
-            .unwrap();
-            tokio::join!(j1);
+            });
+            tokio::join!(j1, j2);
         })
     }
 }
