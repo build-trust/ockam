@@ -14,14 +14,15 @@ commands {
     lint: [
       'cargo check',
       'cargo fmt --all -- --check',
-      // 'cargo +nightly clippy --all -- -D warnings'
+      // 'cargo +nightly clippy --all -- -D warnings',
     ]
   ]
 
   directories = [
+    'ockam/ockam_core',
     'ockam/ockam_node_std',
     'ockam/ockam_node_no_std',
     'ockam/ockam_node_attribute',
-    'ockam/ockam'
+    'ockam/ockam',
   ]
 }
