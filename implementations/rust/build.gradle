@@ -20,7 +20,7 @@ commands {
 
   directories = [
     'ockam/ockam_core',
-    'ockam/ockam_node_std',
+    'ockam/ockam_node',
     'ockam/ockam_node_no_std',
     'ockam/ockam_node_attribute',
     'ockam/ockam',

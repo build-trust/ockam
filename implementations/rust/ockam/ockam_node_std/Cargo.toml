@@ -1,9 +1,0 @@
-[package]
-name = "ockam_node_std"
-version = "0.0.0"
-authors = ["Ockam Developers"]
-edition = "2018"
-license = "Apache-2.0"
-
-[dependencies]
-tokio = {version = "1.0.1", features = ["rt"]}
