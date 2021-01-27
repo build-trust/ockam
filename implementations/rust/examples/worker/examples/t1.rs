@@ -4,7 +4,7 @@ async fn main(context: ockam::Context) {
 
     node.create_worker(async move {
         println!("test");
-    });
+    }).await;
 
     node.stop().await.unwrap();
 }

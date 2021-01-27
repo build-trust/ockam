@@ -21,11 +21,18 @@ impl Node {
         }
     }
 
-    pub fn create_worker<T>(&self, w: impl Future<Output = T> + 'static + Send)
+    pub async fn create_worker<T>(&self, w: impl Future<Output = T> + 'static + Send)
     where
         T: Send + 'static,
     {
+        // TODO: move thsi into the node executor
         tokio::spawn(w);
+
+        match self.sender.send(Command::create_worker()).await {
+            _ => (),
+            // Ok(()) => Ok(()),
+            // Err(_e) => Err(NodeError::CouldNotStop.into()),
+        }
     }
 }
 

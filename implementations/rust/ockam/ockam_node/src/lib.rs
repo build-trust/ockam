@@ -1,7 +1,3 @@
-// commands are internal to this crate
-mod command;
-use command::*;
-
 mod context;
 pub use context::*;
 

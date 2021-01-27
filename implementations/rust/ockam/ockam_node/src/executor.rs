@@ -1,4 +1,5 @@
-use super::Command;
+mod command;
+pub use command::*;
 
 use std::future::Future;
 
@@ -25,16 +26,17 @@ impl NodeExecutor {
         T: Send + 'static,
     {
         let runtime = Runtime::new().unwrap();
+
+        // TODO: turn app into a worker with an address
         runtime.spawn(application);
+
         runtime.block_on(async move {
             loop {
                 if let Some(command) = self.receiver.recv().await {
-                    match command {
-                        Command::Stop(command) => {
-                            command.run();
-                            break;
-                        }
-                    }
+                    let should_break = command.run(self);
+                    if should_break {
+                        break;
+                    };
                 }
             }
         });
