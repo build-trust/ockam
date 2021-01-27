@@ -21,7 +21,7 @@ impl Node {
         }
     }
 
-    pub async fn create_worker<T>(w: impl Future<Output = T> + 'static + Send)
+    pub fn create_worker<T>(&self, w: impl Future<Output = T> + 'static + Send)
     where
         T: Send + 'static,
     {
