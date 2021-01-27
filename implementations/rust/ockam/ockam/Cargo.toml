@@ -1,12 +1,18 @@
 [package]
-name = "ockam"
-version = "0.0.0"
 authors = ["Ockam Developers"]
+description = """
+"""
 edition = "2018"
+exclude = [
+    "tests/**"
+]
+homepage = "https://www.ockam.io/"
+keywords = []
 license = "Apache-2.0"
-
-[lib]
-crate-type = ["rlib"]
+name = "ockam"
+readme = "README.md"
+repository = "https://github.com/ockam-network/ockam"
+version = "0.0.0"
 
 [features]
 default = ["no_std"]
@@ -14,12 +20,12 @@ std = ["ockam_node_std"]
 no_std = ["ockam_node_no_std"]
 
 [dependencies]
+hashbrown = "0.9"
+hex = "0.4"
 ockam_node_attribute = {path = "../ockam_node_attribute", version = "*"}
 ockam_node_no_std = {path = "../ockam_node_no_std", version = "*", optional = true}
 ockam_node_std = {path = "../ockam_node_std", version = "*", optional = true}
 ockam_core = {path = "../ockam_core", version = "*"}
-hex = "0.4"
-hashbrown = "0.9.1"
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}
