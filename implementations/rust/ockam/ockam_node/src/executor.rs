@@ -1,3 +1,5 @@
+use super::{Context, Node};
+
 mod command;
 pub use command::*;
 
@@ -5,17 +7,23 @@ use std::future::Future;
 
 use ockam_core::Error;
 use tokio::runtime::Runtime;
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 #[derive(Debug)]
 pub struct NodeExecutor {
+    sender: Sender<Command>,
     receiver: Receiver<Command>,
     // registry: HashMap<String, WorkerContext>,
 }
 
 impl NodeExecutor {
-    pub fn new(receiver: Receiver<Command>) -> Self {
-        NodeExecutor { receiver }
+    pub fn new() -> Self {
+        let (sender, receiver) = channel(32);
+        NodeExecutor { sender, receiver }
+    }
+
+    pub fn new_worker_context(&self) -> Context {
+        Context::new(Node::new(self.sender.clone()))
     }
 
     pub fn execute<T>(

@@ -1,8 +1,8 @@
-use super::{Command, Context, NodeError, NodeExecutor};
+use super::{Command, NodeError};
 
 use ockam_core::Error;
 use std::future::Future;
-use tokio::sync::mpsc::{channel, Sender};
+use tokio::sync::mpsc::Sender;
 
 #[derive(Clone, Debug)]
 pub struct Node {
@@ -34,15 +34,6 @@ impl Node {
             // Err(_e) => Err(NodeError::CouldNotStop.into()),
         }
     }
-}
-
-pub fn node() -> (Context, NodeExecutor) {
-    let (node_sender, node_receiver) = channel(32);
-
-    let node_executor = NodeExecutor::new(node_receiver);
-    let context = Context::new(Node::new(node_sender));
-
-    (context, node_executor)
 }
 
 // use std::collections::HashMap;
