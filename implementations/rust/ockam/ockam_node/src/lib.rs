@@ -10,8 +10,13 @@ pub use executor::*;
 mod node;
 pub use node::*;
 
-pub fn node() -> (Context, NodeExecutor) {
+mod worker;
+pub use worker::*;
+
+pub type Address = String;
+
+pub fn node<T>() -> (Context<T>, NodeExecutor<T>) {
     let executor = NodeExecutor::new();
-    let context = executor.new_worker_context();
+    let context = executor.new_worker_context("node");
     (context, executor)
 }

@@ -1,17 +1,14 @@
+use super::Address;
 use super::Node;
 
 #[derive(Clone, Debug)]
-pub struct Context {
-    address: String,
-    node: Node,
+pub struct Context<T> {
+    pub address: Address,
+    pub node: Node<T>,
 }
 
-impl Context {
-    pub fn new(node: Node) -> Self {
-        Self { node }
-    }
-
-    pub fn node(&self) -> Node {
-        self.node.clone()
+impl<T> Context<T> {
+    pub fn new(node: Node<T>, address: Address) -> Self {
+        Self { node, address }
     }
 }

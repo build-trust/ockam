@@ -1,5 +1,7 @@
+use ockam::NodeExecutor;
+
 fn main() {
-    let executor = NodeExecutor::new();
+    let mut executor = NodeExecutor::new();
     let context = executor.new_worker_context();
 
     executor.execute(async move {

@@ -1,16 +1,16 @@
-use super::{Command, NodeError};
+use super::{Address, Command, NodeError};
 
+use crate::WorkerHandle;
 use ockam_core::Error;
-use std::future::Future;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Clone, Debug)]
-pub struct Node {
-    sender: Sender<Command>,
+pub struct Node<T> {
+    sender: Sender<Command<T>>,
 }
 
-impl Node {
-    pub fn new(sender: Sender<Command>) -> Self {
+impl<T> Node<T> {
+    pub fn new(sender: Sender<Command<T>>) -> Self {
         Self { sender }
     }
 
@@ -21,17 +21,11 @@ impl Node {
         }
     }
 
-    pub async fn create_worker<T>(&self, w: impl Future<Output = T> + 'static + Send)
-    where
-        T: Send + 'static,
-    {
-        // TODO: move thsi into the node executor
-        tokio::spawn(w);
+    pub async fn create_worker(&self, worker: WorkerHandle<T>, address: Address) {
+        let create_worker_command = Command::create_worker(worker, address);
 
-        match self.sender.send(Command::create_worker()).await {
-            _ => (),
-            // Ok(()) => Ok(()),
-            // Err(_e) => Err(NodeError::CouldNotStop.into()),
+        if let Err(_ignored) = self.sender.send(create_worker_command).await {
+            // TODO should `create_worker` return a Result, or should we have a global error handler?
         }
     }
 }
