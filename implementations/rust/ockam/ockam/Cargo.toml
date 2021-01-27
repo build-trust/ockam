@@ -1,12 +1,18 @@
 [package]
-name = "ockam"
-version = "0.0.0"
 authors = ["Ockam Developers"]
+description = """
+"""
 edition = "2018"
+exclude = [
+    "tests/**"
+]
+homepage = "https://www.ockam.io/"
+keywords = []
 license = "Apache-2.0"
-
-[lib]
-crate-type = ["rlib"]
+name = "ockam"
+readme = "README.md"
+repository = "https://github.com/ockam-network/ockam"
+version = "0.0.0"
 
 [features]
 default = ["std"]
