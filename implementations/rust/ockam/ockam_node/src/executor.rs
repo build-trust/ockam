@@ -13,7 +13,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 pub struct NodeExecutor {
     sender: Sender<Command>,
     receiver: Receiver<Command>,
-    // registry: HashMap<String, WorkerContext>,
+    registry: HashMap<String, NodeWorker>,
 }
 
 impl NodeExecutor {
@@ -50,5 +50,17 @@ impl NodeExecutor {
         });
 
         Ok(())
+    }
+
+    pub fn register_worker(&mut self, address: String, worker: Context) {
+        self.registry.insert(address, worker);
+    }
+
+    pub fn has_registered_worker(&self, address: &str) -> bool {
+        self.registry.contains_key(address)
+    }
+
+    pub fn unregister_worker(&mut self, address: &str) {
+        self.registry.remove(address);
     }
 }

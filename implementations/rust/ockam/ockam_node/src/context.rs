@@ -2,6 +2,7 @@ use super::Node;
 
 #[derive(Clone, Debug)]
 pub struct Context {
+    address: String,
     node: Node,
 }
 
