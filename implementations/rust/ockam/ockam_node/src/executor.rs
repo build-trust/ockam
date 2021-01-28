@@ -1,4 +1,6 @@
+use std::any::Any;
 use std::future::Future;
+use std::sync::Arc;
 
 use hashbrown::HashMap;
 use ockam_core::Error;
@@ -10,18 +12,18 @@ pub use command::*;
 use crate::{Address, Worker, WorkerHandle};
 
 use super::{Context, Node};
-use std::sync::Arc;
 
 mod command;
 
+/// Binds a [`Context`] and [`Worker`] implementation together.
 #[derive(Clone)]
-pub struct NodeWorker<T> {
-    context: Arc<Context<T>>,
-    worker: WorkerHandle<T>,
+pub struct NodeWorker {
+    context: Arc<Context>,
+    worker: WorkerHandle,
 }
 
-impl<T> NodeWorker<T> {
-    fn new(context: Context<T>, worker: WorkerHandle<T>) -> Self {
+impl NodeWorker {
+    fn new(context: Context, worker: WorkerHandle) -> Self {
         NodeWorker {
             context: Arc::new(context),
             worker,
@@ -29,10 +31,10 @@ impl<T> NodeWorker<T> {
     }
 }
 
-impl<T> Worker<T> for NodeWorker<T> {
-    fn starting(&mut self, _context: &Context<T>) {
+impl Worker for NodeWorker {
+    fn initializing(&mut self, _context: &Context) {
         if let Ok(mut worker) = self.worker.lock() {
-            worker.starting(_context)
+            worker.initializing(_context)
         }
     }
 
@@ -42,21 +44,22 @@ impl<T> Worker<T> for NodeWorker<T> {
         }
     }
 
-    fn handle(&mut self, _data: T, _context: &Context<T>) {
+    fn handle(&mut self, _data: Box<dyn Any>, _context: &Context) {
         println!("handle");
     }
 }
 
-pub struct NodeExecutor<T> {
-    sender: Sender<Command<T>>,
-    receiver: Receiver<Command<T>>,
-    registry: HashMap<Address, NodeWorker<T>>,
+/// Runtime environment for [`Node`] command execution.
+pub struct NodeExecutor {
+    sender: Sender<Command>,
+    receiver: Receiver<Command>,
+    registry: HashMap<Address, NodeWorker>,
 }
 
-impl<T> Default for NodeExecutor<T> {
+impl Default for NodeExecutor {
     fn default() -> Self {
         let (sender, receiver) = channel(32);
-        let registry: HashMap<String, NodeWorker<T>> = HashMap::new();
+        let registry: HashMap<String, NodeWorker> = HashMap::new();
         NodeExecutor {
             sender,
             receiver,
@@ -65,15 +68,19 @@ impl<T> Default for NodeExecutor<T> {
     }
 }
 
-impl<T> NodeExecutor<T> {
+impl NodeExecutor {
+    /// Create a new [`NodeExecutor`].
     pub fn new() -> Self {
         NodeExecutor::default()
     }
 
-    pub fn new_worker_context<S: ToString>(&self, address: S) -> Context<T> {
+    /// Create a new [`Context`] for a [`Worker`] at the given [`Address`].
+    pub fn new_worker_context<S: ToString>(&self, address: S) -> Context {
         Context::new(Node::new(self.sender.clone()), address.to_string())
     }
 
+    /// Execute a stream of [`Command`]s. This function blocks until a [`Command`] signals a request
+    /// to break, by returning `true`.
     pub fn execute<S>(
         &mut self,
         application: impl Future<Output = S> + 'static + Send,
@@ -100,17 +107,20 @@ impl<T> NodeExecutor<T> {
         Ok(())
     }
 
-    pub fn register_worker(&mut self, address: Address, mut worker: NodeWorker<T>) {
+    /// Register a [`Worker`] at the given [`Address`].
+    pub fn register_worker(&mut self, address: Address, mut worker: NodeWorker) {
         let context = worker.context.clone();
-        worker.starting(&context);
+        worker.initializing(&context);
 
         self.registry.insert(address, worker);
     }
 
+    /// Returns true if there is a [`Worker`] associated with the given [`Address`].
     pub fn has_registered_worker(&self, address: &str) -> bool {
         self.registry.contains_key(address)
     }
 
+    /// Remove a [`Worker`] from the registry.
     pub fn unregister_worker(&mut self, address: &str) {
         self.registry.remove(address);
     }

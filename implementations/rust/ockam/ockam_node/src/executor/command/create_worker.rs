@@ -5,20 +5,21 @@ use crate::{Address, NodeWorker, WorkerHandle};
 
 use super::NodeExecutor;
 
+/// Implementation of the CreateWorker [`Command`]. Creates and registers a new [`super::Worker`].
 #[derive(Clone)]
-pub struct CreateWorker<T> {
+pub struct CreateWorker {
     pub address: Address,
-    pub worker: WorkerHandle<T>,
+    pub worker: WorkerHandle,
 }
 
-impl<T> Debug for CreateWorker<T> {
+impl Debug for CreateWorker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.address.as_str())
     }
 }
 
-impl<T> CreateWorker<T> {
-    pub fn run(&self, executor: &mut NodeExecutor<T>) -> bool {
+impl CreateWorker {
+    pub fn run(&self, executor: &mut NodeExecutor) -> bool {
         let context = executor.new_worker_context(self.address.clone());
 
         let node_worker = NodeWorker::new(context, self.worker.clone());

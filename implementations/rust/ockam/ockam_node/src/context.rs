@@ -1,14 +1,18 @@
 use super::Address;
 use super::Node;
 
+/// Execution context. Meta-information and [`Node`] API references.
 #[derive(Clone, Debug)]
-pub struct Context<T> {
+pub struct Context {
+    /// [`Address`] of this Context.
     pub address: Address,
-    pub node: Node<T>,
+    /// The Ockam [`Node`] API.
+    pub node: Node,
 }
 
-impl<T> Context<T> {
-    pub fn new(node: Node<T>, address: Address) -> Self {
+impl Context {
+    /// Create a new [`Context`] on the [`Node`], registered at [`Address`].
+    pub fn new(node: Node, address: Address) -> Self {
         Self { node, address }
     }
 }

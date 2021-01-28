@@ -1,19 +1,23 @@
-use super::{Address, Command, NodeError};
-
-use crate::WorkerHandle;
 use ockam_core::Error;
 use tokio::sync::mpsc::Sender;
 
+use crate::WorkerHandle;
+
+use super::{Address, Command, NodeError};
+
+/// The Ockam Node API.
 #[derive(Clone, Debug)]
-pub struct Node<T> {
-    sender: Sender<Command<T>>,
+pub struct Node {
+    sender: Sender<Command>,
 }
 
-impl<T> Node<T> {
-    pub fn new(sender: Sender<Command<T>>) -> Self {
+impl Node {
+    /// Create a new [`Node`].
+    pub fn new(sender: Sender<Command>) -> Self {
         Self { sender }
     }
 
+    /// Stop the [`Node`].
     pub async fn stop(&self) -> Result<(), Error> {
         match self.sender.send(Command::stop()).await {
             Ok(()) => Ok(()),
@@ -21,7 +25,8 @@ impl<T> Node<T> {
         }
     }
 
-    pub async fn create_worker(&self, worker: WorkerHandle<T>, address: Address) {
+    /// Create and start the [`WorkerHandle`] at [`Address`].
+    pub async fn create_worker(&self, worker: WorkerHandle, address: Address) {
         let create_worker_command = Command::create_worker(worker, address);
 
         if let Err(_ignored) = self.sender.send(create_worker_command).await {
