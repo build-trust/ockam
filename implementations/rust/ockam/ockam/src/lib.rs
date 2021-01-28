@@ -19,8 +19,9 @@ pub use ockam_node_no_std::*;
 
 // ---
 
-mod entity;
+mod profile;
+pub use profile::*;
 mod error;
+pub use error::*;
 
-pub use entity::*;
 pub use ockam_core::{Error, Result, Worker};

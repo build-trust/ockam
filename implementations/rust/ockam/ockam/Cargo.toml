@@ -23,8 +23,14 @@ std = ["ockam_node"]
 ockam_core = {path = "../ockam_core", version = "0.2.0"}
 ockam_node = {path = "../ockam_node", version = "0.1.2", optional = true}
 ockam_node_attribute = {path = "../ockam_node_attribute", version = "0.1.3"}
+ockam_vault_core = {path = "../ockam_vault_core", version = "*"}
+ockam_vault = {path = "../ockam_vault", version = "*"}
+arrayref = "0.3"
 hex = "0.4"
-hashbrown = "0.9.1"
+hashbrown = { version = "0.9.1", features = ["serde"] }
+serde_bare = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde-big-array = "0.3"
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}
