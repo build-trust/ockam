@@ -1,0 +1,12 @@
+[package]
+name = "tmp"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+ockam = {path = "../../ockam/ockam", version = "*"}
+ockam_node_std = {path = "../../ockam/ockam_node_std", version = "*"}
+ockam_transport_tcp = {path = "../../ockam/ockam_transport_tcp", version = "*"}
+tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros"]}
+executor = {version = "*"}

@@ -6,7 +6,7 @@ use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
 pub struct OckamTcpListener {
-    listener: Arc<Mutex<TcpListener>>,
+    listener: TcpListener,
 }
 
 impl OckamTcpListener {
@@ -16,7 +16,7 @@ impl OckamTcpListener {
         let listener = TcpListener::bind(listen_address).await;
         match listener {
             Ok(l) => Ok(Arc::new(Mutex::new(OckamTcpListener {
-                listener: Arc::new(Mutex::new(l)),
+                listener: l,
             }))),
             Err(_) => Err(format!("failed to bind to {:?}", listen_address)),
         }
@@ -26,8 +26,7 @@ impl OckamTcpListener {
 #[async_trait]
 impl Listener for OckamTcpListener {
     async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, String> {
-        let listener = self.listener.lock().await;
-        let stream = listener.accept().await;
+        let stream = self.listener.accept().await;
         if stream.is_err() {
             Err("accept failed".into())
         } else {

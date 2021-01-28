@@ -81,7 +81,6 @@ async fn listen_worker() {
     }
 }
 
-#[test]
 pub fn main() {
     let runtime: [Runtime; 2] = [
         Builder::new_multi_thread().enable_io().build().unwrap(),
