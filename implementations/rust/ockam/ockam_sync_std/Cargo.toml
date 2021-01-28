@@ -1,0 +1,13 @@
+[package]
+name = "ockam_sync_std"
+version = "0.1.0"
+authors = ["Robin Budd <robin@ockam.io>"]
+edition = "2018"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros"]}
+async-trait = "0.1.42"
+futures = " 0.3.10"
