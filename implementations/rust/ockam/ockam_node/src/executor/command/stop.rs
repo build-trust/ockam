@@ -1,11 +1,11 @@
 use super::NodeExecutor;
 
-#[derive(Clone, Debug)]
-pub struct Stop;
+/// Implementation of the Stop [`Command`]. Stops all [`super::Worker`]s.
+pub struct StopCommand;
 
-impl Stop {
-    pub fn run(&self, _executor: &NodeExecutor) -> bool {
-        println!("stopping");
+impl StopCommand {
+    /// Stop all workers.
+    pub fn run(self, _executor: &mut NodeExecutor) -> bool {
         true
     }
 }

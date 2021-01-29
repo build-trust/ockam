@@ -1,11 +1,16 @@
 use super::NodeExecutor;
+use crate::Address;
+use std::any::Any;
 
-#[derive(Clone, Debug)]
-pub struct CreateWorker;
+/// Implementation of the CreateWorker [`Command`]. Creates and registers a new [`super::Worker`].
+pub struct CreateWorkerCommand {
+    pub address: Address,
+    pub handler: Box<dyn Any + Send>,
+}
 
-impl CreateWorker {
-    pub fn run(&self, _executor: &NodeExecutor) -> bool {
-        println!("create worker");
+impl CreateWorkerCommand {
+    pub fn run(self, executor: &mut NodeExecutor) -> bool {
+        executor.register(self.address, self.handler);
         false
     }
 }
