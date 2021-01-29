@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::{Address, Context, Node};
 
+/// A message within the Ockam network.
 pub trait Message {}
 
 /// A message handling unit of work in the Ockam [`Node`].
@@ -10,16 +11,22 @@ pub trait Worker: Send {
     fn initialize(&mut self, _context: &mut Context) {}
 }
 
+/// Worker message handler interface.
 pub trait Handler<M>: Worker {
+    /// Handle a message of type `M`
     fn handle(&mut self, _context: &mut Context, _message: M) {}
 }
 
+/// High level trait for a Worker that can handle data.
 pub trait WorkerHandler<M>: Worker + Handler<M> {}
 
 /// A [`Worker`] builder.
 pub struct WorkerBuilder<T> {
+    /// Data handler.
     pub handler: Arc<Mutex<dyn Handler<T>>>,
+    /// [`Node`] to run on.
     pub node: Option<Node>,
+    /// [`Address`] of the Worker.
     pub address: Option<Address>,
 }
 

@@ -6,7 +6,7 @@
 // ---
 // Export the #[node] attribute macro.
 
-pub use ockam_node_attribute::*;
+pub use ockam_core_macros::*;
 
 // ---
 // Export node implementation

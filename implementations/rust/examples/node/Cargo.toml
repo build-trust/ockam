@@ -1,5 +1,5 @@
 [package]
-name = "node_examples"
+name = "examples"
 version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
@@ -9,3 +9,4 @@ crate-type = ["rlib"]
 
 [dependencies]
 ockam = {path = "../../ockam/ockam", version = "*"}
+ockam_node = {path = "../../ockam/ockam_node", version = "*"}

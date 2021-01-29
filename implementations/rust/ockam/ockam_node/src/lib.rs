@@ -1,28 +1,25 @@
 //! ockam_node - Ockam Node API
-// #![deny(
-//     missing_docs,
-//     trivial_casts,
-//     trivial_numeric_casts,
-//     unsafe_code,
-//     unused_import_braces,
-//     unused_qualifications,
-//     warnings
-// )]
+#![deny(
+    missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_import_braces,
+    unused_qualifications,
+    warnings
+)]
+
+pub use context::*;
+pub use error::*;
+pub use executor::*;
+pub use node::*;
+pub use worker::*;
 
 mod context;
-pub use context::*;
-
 mod error;
-pub use error::*;
-
 mod executor;
-pub use executor::*;
-
 mod node;
-pub use node::*;
-
 mod worker;
-pub use worker::*;
 
 /// A unique identifier for entities in the Ockam Node.
 pub type Address = String;

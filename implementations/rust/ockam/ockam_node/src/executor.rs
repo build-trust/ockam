@@ -6,8 +6,9 @@ use ockam_core::Error;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use super::{Context, Node, Handler};
 pub use command::*;
+
+use super::{Context, Handler, Node};
 
 mod command;
 
@@ -36,7 +37,7 @@ impl NodeExecutor {
         NodeExecutor::default()
     }
 
-    /// Create a new [`Context`] for a [`Worker`] at the given [`Address`].
+    /// Create a new [`Context`] at the given address.
     pub fn new_worker_context<S: ToString>(&self, address: S) -> Context {
         Context::new(Node::new(self.sender.clone()), address.to_string())
     }
@@ -69,20 +70,19 @@ impl NodeExecutor {
         Ok(())
     }
 
-    pub fn register<T>(&mut self, address: String, handler: T)
-    where
-        T: Any,
-    {
+    /// Register a Handler at an address.
+    pub fn register<T: Any, S: ToString>(&mut self, s: S, handler: T) {
+        let address = s.to_string();
         let context = self.new_worker_context(address.clone());
         self.registry.insert(address, (context, Box::new(handler)));
     }
 
-
-    pub fn send<M: 'static>(&mut self, address: String, message: M) {
+    /// Send a message to the entity at an address.
+    pub fn send<M: 'static, S: ToString>(&mut self, s: S, message: M) {
+        let address = s.to_string();
         let (context, handler) = self.registry.get_mut(&address).unwrap();
-        let h = handler.downcast_mut::<Box <dyn Handler<M>>>().unwrap();
+        let h = handler.downcast_mut::<Box<dyn Handler<M>>>().unwrap();
         h.handle(context, message);
-
 
         // let (_c, _h) = self.get::<Box <dyn Handler<M>>>(address.to_string()).unwrap();
     }

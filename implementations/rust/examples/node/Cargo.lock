@@ -31,6 +31,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "examples"
+version = "0.0.0"
+dependencies = [
+ "ockam",
+ "ockam_node",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -117,13 +125,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "node_examples"
-version = "0.0.0"
-dependencies = [
- "ockam",
-]
-
-[[package]]
 name = "ntapi"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -149,8 +150,8 @@ dependencies = [
  "hashbrown",
  "hex",
  "ockam_core",
+ "ockam_core_macros",
  "ockam_node",
- "ockam_node_attribute",
 ]
 
 [[package]]
@@ -158,19 +159,20 @@ name = "ockam_core"
 version = "0.0.0"
 
 [[package]]
-name = "ockam_node"
-version = "0.0.0"
-dependencies = [
- "ockam_core",
- "tokio",
-]
-
-[[package]]
-name = "ockam_node_attribute"
+name = "ockam_core_macros"
 version = "0.0.0"
 dependencies = [
  "quote",
  "syn",
+]
+
+[[package]]
+name = "ockam_node"
+version = "0.0.0"
+dependencies = [
+ "hashbrown",
+ "ockam_core",
+ "tokio",
 ]
 
 [[package]]

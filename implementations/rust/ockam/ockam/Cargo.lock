@@ -192,8 +192,8 @@ dependencies = [
  "hashbrown",
  "hex",
  "ockam_core",
+ "ockam_core_macros",
  "ockam_node",
- "ockam_node_attribute",
  "ockam_node_no_std",
  "trybuild",
 ]
@@ -203,19 +203,20 @@ name = "ockam_core"
 version = "0.0.0"
 
 [[package]]
-name = "ockam_node"
-version = "0.0.0"
-dependencies = [
- "ockam_core",
- "tokio",
-]
-
-[[package]]
-name = "ockam_node_attribute"
+name = "ockam_core_macros"
 version = "0.0.0"
 dependencies = [
  "quote",
  "syn",
+]
+
+[[package]]
+name = "ockam_node"
+version = "0.0.0"
+dependencies = [
+ "hashbrown",
+ "ockam_core",
+ "tokio",
 ]
 
 [[package]]
