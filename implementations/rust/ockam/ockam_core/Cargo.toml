@@ -1,10 +1,24 @@
 [package]
 name = "ockam_core"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_core"
+readme = "README.md"
+keywords = ["ockam"]
+categories = ["no-std"]
+description = """
+Core types of the Ockam library.
+"""
+exclude = [
+    "DEVELOP.md",
+    "LICENSE"
+]
 
 [features]
 default = ["std"]
+
+# Requires the Rust Standard Library.
 std = []

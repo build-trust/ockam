@@ -2,4 +2,4 @@
 # It is not intended for manual editing.
 [[package]]
 name = "ockam_core"
-version = "0.0.0"
+version = "0.1.0"

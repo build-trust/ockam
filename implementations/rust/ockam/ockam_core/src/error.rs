@@ -1,15 +1,138 @@
-// ---
-// Export std_error if standard library is present.
+//! Error and Result types
 
 #[cfg(feature = "std")]
-mod std_error;
+use std::fmt::{Display, Formatter};
+
+/// The type of errors returned by Ockam functions.
+///
+/// This type has two implementations that are switched depending on
+/// whether the `"std"` Cargo feature is enabled.
+///
+/// # std
+/// When the `"std"` feature is enabled and the Rust Standard Library is
+/// available, the `Error` stores:
+///
+/// 1. __Error Code__: A `u32` representing the the presise error.
+/// 2. __Error Domain__: An error domain string.
+///
+/// # no_std
+/// When the `"std"` feature is not enabled we assume that the Rust Standard
+/// Library is not available, the `Error` stores:
+///
+/// 1. __Error Code__: A `u32` representing the the presise error.
+///
+#[derive(Debug)]
+pub struct Error {
+    code: u32,
+
+    #[cfg(feature = "std")]
+    domain: &'static str,
+}
+
+/// The type returned by Ockam functions.
 #[cfg(feature = "std")]
-pub use std_error::*;
+pub type Result<T> = std::result::Result<T, Error>;
 
-// ---
-// Export no_std_error if standard library is not present.
+/// The type returned by Ockam functions.
+#[cfg(not(feature = "std"))]
+pub type Result<T> = core::result::Result<T, Error>;
+
+impl Error {
+    /// Creates a new [`Error`].
+    #[cfg(not(feature = "std"))]
+    pub fn new(code: u32) -> Self {
+        Self { code }
+    }
+
+    /// Creates a new [`Error`].
+    #[cfg(feature = "std")]
+    pub fn new(code: u32, domain: &'static str) -> Self {
+        Self { code, domain }
+    }
+
+    /// Returns an error's domain.
+    #[cfg(feature = "std")]
+    #[inline]
+    pub fn domain(&self) -> &'static str {
+        &self.domain
+    }
+
+    /// Returns an error's code.
+    #[inline]
+    pub fn code(&self) -> u32 {
+        self.code
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Error {{ code: {}, domain: \"{}\" }}",
+            self.code, self.domain
+        )
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
+#[cfg(feature = "std")]
+#[cfg(test)]
+mod std_test {
+    use super::*;
+
+    #[test]
+    fn can_be_created() {
+        let _error = Error::new(1000, "SOME_ERROR_DOMAIN");
+    }
+
+    #[test]
+    fn code_returns_provided_code() {
+        let error = Error::new(1000, "SOME_ERROR_DOMAIN");
+        assert_eq!(error.code(), 1000);
+        assert_eq!(error.code, 1000);
+    }
+
+    #[test]
+    fn domain_returns_provided_domain() {
+        let error = Error::new(1000, "SOME_ERROR_DOMAIN");
+        assert_eq!(error.domain(), "SOME_ERROR_DOMAIN");
+        assert_eq!(error.domain, "SOME_ERROR_DOMAIN");
+    }
+
+    #[test]
+    fn can_be_displayed() {
+        let error = Error::new(1000, "SOME_ERROR_DOMAIN");
+        assert_eq!(
+            format!("{}", error),
+            "Error { code: 1000, domain: \"SOME_ERROR_DOMAIN\" }"
+        );
+    }
+
+    #[test]
+    fn can_be_debugged() {
+        let error = Error::new(1000, "SOME_ERROR_DOMAIN");
+        assert_eq!(
+            format!("{:?}", error),
+            "Error { code: 1000, domain: \"SOME_ERROR_DOMAIN\" }"
+        );
+    }
+}
 
 #[cfg(not(feature = "std"))]
-mod no_std_error;
-#[cfg(not(feature = "std"))]
-pub use no_std_error::*;
+#[cfg(test)]
+mod no_std_test {
+    // These following tests are only run when the std feature in not enabled
+    // cargo test --no-default-features
+
+    use super::*;
+
+    #[test]
+    fn can_be_created_and_code_returns_provided_code() {
+        let error = Error::new(1000);
+        assert_eq!(error.code(), 1000);
+        assert_eq!(error.code, 1000);
+    }
+}
