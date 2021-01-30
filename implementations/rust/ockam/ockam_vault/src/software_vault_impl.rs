@@ -1,5 +1,5 @@
 use crate::error::Error;
-use ockam_macro::zdrop_impl;
+use ockam_core_macros::zdrop_impl;
 use ockam_vault_core::secret::Secret;
 use ockam_vault_core::types::{SecretAttributes, SecretKey};
 use std::collections::BTreeMap;
