@@ -1,4 +1,4 @@
-error: a function tagged with '#[ockam::node]' must be declared as 'async'
+error: a function with attribute '#[ockam::node]' must be declared as 'async'
  --> $DIR/fails_if_function_is_not_async.rs:5:1
   |
 5 | fn main() {}

@@ -2,4 +2,6 @@
 // and can be used with an async main function
 
 #[ockam::node]
-async fn main() {}
+async fn main(context: ockam::Context) {
+    context.node.stop().await.unwrap();
+}
