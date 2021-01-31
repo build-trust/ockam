@@ -9,3 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `node` - a proc macro that defines a custom `#[node]` attribute.
+
+## v0.1.1 - 2021-01-30
+### Changed
+
+- README and docs
+
+## v0.1.2 - 2021-01-30
+### Changed
+
+- README

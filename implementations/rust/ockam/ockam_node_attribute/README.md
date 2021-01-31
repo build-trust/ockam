@@ -12,8 +12,9 @@ This crate provides the `#[node]` attribute proc_macro. This macro transforms
 an async input main function into a regular output main function that sets up
 an ockam node and executes the body of the input function inside the node.
 
-The main [Ockam][main-ockam-crate-link] crate re-exports this macro and its
-intended to be used as `#[ockam::node]`.
+The main [Ockam][main-ockam-crate-link] crate re-exports this macro and it is
+intended to be used as `#[ockam::node]`, see [Ockam][main-ockam-crate-link]
+crate.
 
 ## License
 
