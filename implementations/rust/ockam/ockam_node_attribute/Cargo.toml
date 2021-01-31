@@ -1,6 +1,6 @@
 [package]
 name = "ockam_node_attribute"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -9,7 +9,7 @@ repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/
 readme = "README.md"
 keywords = ["ockam", "proc_macro"]
 description = """
-Node attribute proc_macro.
+Ockam node attribute proc_macro.
 """
 exclude = [
     "DEVELOP.md",

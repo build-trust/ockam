@@ -8,21 +8,12 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-This crate contains the core types of the [Ockam][main-ockam-crate-link]
-library and is intended for use by crates that provide features and add-ons
-to the main [Ockam][main-ockam-crate-link] library.
+This crate provides the `#[node]` attribute proc_macro. This macro transforms
+an async input main function into a regular output main function that sets up
+an ockam node and executes the body of the input function inside the node.
 
-The main [Ockam][main-ockam-crate-link] crate re-exports types defined in
-this crate.
-
-## Usage
-
-Add this to your `Cargo.toml`:
-
-```
-[dependencies]
-ockam_node_attribute = "0.1.0"
-```
+The main [Ockam][main-ockam-crate-link] crate re-exports this macro and its
+intended to be used as `#[ockam::node]`.
 
 ## License
 
