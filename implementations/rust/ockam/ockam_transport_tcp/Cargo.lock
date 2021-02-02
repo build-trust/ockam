@@ -4,17 +4,13 @@
 name = "async-trait"
 version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d3a45e77e34375a7923b1e8febb049bb011f064714a8e17a1a616fef01da13d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
+checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
+=======
+>>>>>>> fix(rust): fix ockam_transport_tcp crate name
 
 [[package]]
 name = "autocfg"
 version = "1.0.1"
->>>>>>> feat(rust): move tcp transport crate to rust/ockam/ockam_transport_tcp
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
@@ -257,11 +253,10 @@ checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 ]
 
 [[package]]
-name = "pin-project-lite"
-version = "0.2.4"
+name = "proc-macro-hack"
+version = "0.5.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "439697af366c49a6d0a010c56a0d97685bc140ce0d377b13a2ea2aa42d64a827"
->>>>>>> feat(rust): move tcp transport crate to rust/ockam/ockam_transport_tcp
 
 [[package]]
 name = "proc-macro2"
@@ -348,6 +343,7 @@ dependencies = [
 
 [[package]]
 >>>>>>> feat(rust): move tcp transport crate to rust/ockam/ockam_transport_tcp
+>>>>>>> fix(rust): fix ockam_transport_tcp crate name
 name = "termcolor"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
