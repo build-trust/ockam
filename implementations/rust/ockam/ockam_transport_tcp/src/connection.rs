@@ -14,7 +14,7 @@ pub struct TcpConnection {
 }
 
 impl TcpConnection {
-    pub fn new(remote_address: SocketAddr) -> Arc<Mutex<dyn Connection + Send>> {
+    pub fn create(remote_address: SocketAddr) -> Arc<Mutex<dyn Connection + Send>> {
         Arc::new(Mutex::new(TcpConnection {
             remote_address,
             _blocking: true,
@@ -92,14 +92,14 @@ impl Connection for TcpConnection {
 #[cfg(test)]
 mod test {
     use crate::connection::TcpConnection;
-    use crate::listener::OckamTcpListener;
+    use crate::listener::TcpListener;
     use std::net::SocketAddr;
     use std::str::FromStr;
     use tokio::runtime::Builder;
     use tokio::task;
 
     async fn client_worker(address: String) {
-        let connection = TcpConnection::new(SocketAddr::from_str(&address).unwrap());
+        let connection = TcpConnection::create(SocketAddr::from_str(&address).unwrap());
         let mut connection = connection.lock().await;
         let r = connection.connect().await;
         assert!(!r.is_err());
@@ -121,7 +121,7 @@ mod test {
 
     async fn listen_worker(address: String) {
         {
-            let r = OckamTcpListener::new(SocketAddr::from_str(&address).unwrap()).await;
+            let r = TcpListener::create(SocketAddr::from_str(&address).unwrap()).await;
             assert!(r.is_ok());
 
             let listener = r.unwrap();

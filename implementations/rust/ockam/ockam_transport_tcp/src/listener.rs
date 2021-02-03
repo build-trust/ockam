@@ -2,30 +2,27 @@ use crate::connection::TcpConnection;
 use crate::traits::{Connection, Listener};
 use async_trait::async_trait;
 use std::sync::Arc;
-use tokio::net::TcpListener;
+use tokio::net::TcpListener as TokioTcpListener;
 use tokio::sync::Mutex;
 
-pub struct OckamTcpListener {
-    listener: TcpListener,
+pub struct TcpListener {
+    listener: TokioTcpListener,
 }
 
-impl OckamTcpListener {
-    pub async fn new(
+impl TcpListener {
+    pub async fn create(
         listen_address: std::net::SocketAddr,
     ) -> Result<Arc<Mutex<dyn Listener + Send>>, String> {
-        let listener = TcpListener::bind(listen_address).await;
+        let listener = TokioTcpListener::bind(listen_address).await;
         match listener {
-            Ok(l) => Ok(Arc::new(Mutex::new(OckamTcpListener { listener: l }))),
-            Err(e) => {
-                println!("******{:?}", e);
-                Err(format!("failed to bind to {:?}", listen_address))
-            }
+            Ok(l) => Ok(Arc::new(Mutex::new(TcpListener { listener: l }))),
+            Err(e) => Err(format!("{:?}", e)),
         }
     }
 }
 
 #[async_trait]
-impl Listener for OckamTcpListener {
+impl Listener for TcpListener {
     async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, String> {
         let stream = self.listener.accept().await;
         if stream.is_err() {
@@ -40,7 +37,7 @@ impl Listener for OckamTcpListener {
 #[cfg(test)]
 mod test {
     use crate::connection::TcpConnection;
-    use crate::listener::OckamTcpListener;
+    use crate::listener::TcpListener;
     use std::net::SocketAddr;
     use std::str::FromStr;
     use tokio::runtime::{Builder, Runtime};
@@ -48,7 +45,7 @@ mod test {
 
     async fn client_worker() {
         let connection =
-            TcpConnection::new(SocketAddr::from_str("127.0.0.1:4052").unwrap()).clone();
+            TcpConnection::create(SocketAddr::from_str("127.0.0.1:4052").unwrap()).clone();
         let mut connection = connection.lock().await;
         connection.connect().await.unwrap();
         println!("client connected");
@@ -56,7 +53,7 @@ mod test {
 
     async fn listen_worker() {
         {
-            let listener = OckamTcpListener::new(SocketAddr::from_str("127.0.0.1:4052").unwrap())
+            let listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4052").unwrap())
                 .await
                 .unwrap();
             let mut listener = listener.lock().await;

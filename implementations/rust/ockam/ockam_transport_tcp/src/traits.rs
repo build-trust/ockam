@@ -9,7 +9,6 @@ pub trait Connection {
     async fn connect(&mut self) -> Result<(), String>;
     async fn send(&mut self, message: &[u8]) -> Result<usize, String>;
     async fn receive(&mut self, message: &mut [u8]) -> Result<usize, String>;
-    //    fn close(&mut self);
 }
 
 #[async_trait]
