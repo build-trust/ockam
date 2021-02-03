@@ -1,4 +1,4 @@
-# ockam_core
+# ockam_vault_core
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -8,7 +8,7 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-This crate contains the core types of the [Ockam][main-ockam-crate-link]
+This crate contains the core types of the Vault abstraction for [Ockam][main-ockam-crate-link]
 library and is intended for use by crates that provide features and add-ons
 to the main [Ockam][main-ockam-crate-link] library.
 
@@ -21,24 +21,24 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_core = "0.1.0"
+ockam_vault_core = "0.1.0"
 ```
 
 ## Crate Features
 
-The `ockam_core` crate has a Cargo feature named `"std"` that is enabled by
+The `ockam_vault_core` crate has a Cargo feature named `"std"` that is enabled by
 default. In order to use this crate in a `no_std` context this feature can
 disabled as follows
 
 ```
 [dependencies]
-ockam_core = { version = "0.1.0", default-features = false }
+ockam_vault_core = { version = "0.1.0", default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
 graph of a project. If any other crate you depend on has not opted out of
-`ockam_core` default features, Cargo will build `ockam_core` with the std
-feature enabled whether or not your direct dependency on `ockam_core`
+`ockam_vault_core` default features, Cargo will build `ockam_vault_core` with the std
+feature enabled whether or not your direct dependency on `ockam_vault_core`
 has `default-features = false`.
 
 ## License
@@ -47,11 +47,11 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
 
-[crate-image]: https://img.shields.io/crates/v/ockam_core.svg
-[crate-link]: https://crates.io/crates/ockam_core
+[crate-image]: https://img.shields.io/crates/v/ockam_vault_core.svg
+[crate-link]: https://crates.io/crates/ockam_vault_core
 
-[docs-image]: https://docs.rs/ockam_core/badge.svg
-[docs-link]: https://docs.rs/ockam_core
+[docs-image]: https://docs.rs/ockam_vault_core/badge.svg
+[docs-link]: https://docs.rs/ockam_vault_core
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE
