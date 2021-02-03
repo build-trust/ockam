@@ -119,6 +119,7 @@ defmodule Ockam.Node do
 
     case onward_route do
       [] -> handle_control_message(message)
+      [{0, <<_::8, _::8, rest::binary>>} | _rest] -> __MODULE__.send(rest, message)
       [first | _rest] -> __MODULE__.send(first, message)
       unexpected_onward_route -> {:error, {:unexpected_onward_route, unexpected_onward_route}}
     end

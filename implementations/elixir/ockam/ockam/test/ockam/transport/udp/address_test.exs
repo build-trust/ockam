@@ -8,7 +8,7 @@ defmodule Ockam.Transport.UDPAddress.Tests do
       address = %UDPAddress{ip: {127, 0, 0, 1}, port: 4000}
 
       serialized = Ockam.Serializable.serialize(address)
-      deserialized = Ockam.Transport.UDPAddress.deserialize(serialized)
+      deserialized = UDPAddress.deserialize(serialized)
 
       assert address === deserialized
     end
