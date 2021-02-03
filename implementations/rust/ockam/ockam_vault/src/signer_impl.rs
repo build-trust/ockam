@@ -24,3 +24,30 @@ impl SignerVault for SoftwareVault {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::SoftwareVault;
+    use ockam_vault_core::{
+        SecretAttributes, SecretPersistence, SecretType, SecretVault, SignerVault, VerifierVault,
+        CURVE25519_SECRET_LENGTH,
+    };
+
+    #[test]
+    fn sign() {
+        let mut vault = SoftwareVault::default();
+        let secret = vault
+            .secret_generate(SecretAttributes {
+                persistence: SecretPersistence::Ephemeral,
+                stype: SecretType::Curve25519,
+                length: CURVE25519_SECRET_LENGTH,
+            })
+            .unwrap();
+        let res = vault.sign(&secret, b"hello world!");
+        assert!(res.is_ok());
+        let pubkey = vault.secret_public_key_get(&secret).unwrap();
+        let signature = res.unwrap();
+        let res = vault.verify(&signature, pubkey.as_ref(), b"hello world!");
+        assert!(res.is_ok());
+    }
+}

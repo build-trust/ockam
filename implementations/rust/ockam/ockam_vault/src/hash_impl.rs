@@ -74,3 +74,60 @@ impl HashVault for SoftwareVault {
         Ok(secrets)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::SoftwareVault;
+    use ockam_vault_core::{
+        HashVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    };
+
+    #[test]
+    fn sha256() {
+        let vault = SoftwareVault::default();
+        let res = vault.sha256(b"a");
+        assert!(res.is_ok());
+        let digest = res.unwrap();
+        assert_eq!(
+            hex::encode(digest),
+            "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        );
+    }
+
+    #[test]
+    fn hkdf() {
+        let mut vault = SoftwareVault::default();
+
+        let salt_value = b"hkdf_test";
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
+            persistence: SecretPersistence::Ephemeral,
+            length: salt_value.len(),
+        };
+        let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
+
+        let ikm_value = b"a";
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
+            persistence: SecretPersistence::Ephemeral,
+            length: ikm_value.len(),
+        };
+        let ikm = vault.secret_import(&ikm_value[..], attributes).unwrap();
+
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
+            persistence: SecretPersistence::Ephemeral,
+            length: 24,
+        };
+
+        let res = vault.hkdf_sha256(&salt, b"", Some(&ikm), vec![attributes]);
+        assert!(res.is_ok());
+        let digest = res.unwrap();
+        assert_eq!(digest.len(), 1);
+        let digest = vault.secret_export(&digest[0]).unwrap();
+        assert_eq!(
+            hex::encode(digest.as_ref()),
+            "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
+        );
+    }
+}
