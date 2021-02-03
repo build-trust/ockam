@@ -26,10 +26,12 @@ cfg_if! {
         pub type SmallBuffer<T> = heapless::Vec<T, U4>;
         /// Buffer for large binaries (e.g. encrypted data). Max size - 512
         pub type Buffer<T> = heapless::Vec<T, U512>;
+        pub type Kid = heapless::String;
     }
     else {
         extern crate alloc;
         use alloc::vec::Vec;
+        use alloc::string::String;
         /// Secret Key Vector
         pub type SecretKeyVec = Vec<u8>;
         /// Public Key Vector
@@ -38,6 +40,7 @@ cfg_if! {
         pub type SmallBuffer<T> = Vec<T>;
         /// Buffer for large binaries (e.g. encrypted data)
         pub type Buffer<T> = Vec<T>;
+        pub type Kid = String;
     }
 }
 
