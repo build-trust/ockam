@@ -1,7 +1,6 @@
 use crate::error::Error;
-use ockam_vault_core::secret::Secret;
-use ockam_vault_core::types::{SecretAttributes, SecretKey};
 use ockam_vault_core::zdrop_impl;
+use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use std::collections::BTreeMap;
 use zeroize::Zeroize;
 
@@ -86,14 +85,14 @@ zdrop_impl!(VaultEntry);
 #[cfg(test)]
 mod tests {
     use crate::software_vault::SoftwareVault;
-    use ockam_vault_core::hash_vault::HashVault;
-    use ockam_vault_core::secret_vault::SecretVault;
-    use ockam_vault_core::signer_vault::SignerVault;
-    use ockam_vault_core::types::{
+    use ockam_vault_core::HashVault;
+    use ockam_vault_core::SecretVault;
+    use ockam_vault_core::SignerVault;
+    use ockam_vault_core::VerifierVault;
+    use ockam_vault_core::{
         SecretAttributes, SecretPersistence, SecretType, CURVE25519_PUBLIC_LENGTH,
         CURVE25519_SECRET_LENGTH,
     };
-    use ockam_vault_core::verifier_vault::VerifierVault;
 
     #[test]
     fn new_vault() {

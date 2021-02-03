@@ -1,11 +1,9 @@
 use crate::error::Error;
 use crate::software_vault::{SoftwareVault, VaultEntry};
 use arrayref::array_ref;
-use ockam_vault_core::hash_vault::HashVault;
-use ockam_vault_core::secret::Secret;
-use ockam_vault_core::secret_vault::SecretVault;
-use ockam_vault_core::types::{
-    PublicKey, SecretAttributes, SecretKey, SecretType, CURVE25519_SECRET_LENGTH,
+use ockam_vault_core::{
+    HashVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretType, SecretVault,
+    CURVE25519_SECRET_LENGTH,
 };
 use rand::rngs::OsRng;
 use rand::RngCore;
