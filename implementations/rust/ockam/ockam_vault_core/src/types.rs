@@ -39,12 +39,11 @@ cfg_if! {
     }
 }
 
-/// Secret Key
+/// Binary representation of a [`Secret`]
 #[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
 pub struct SecretKey(SecretKeyVec);
 
 impl SecretKey {
-    /// Constructor
     pub fn new(data: SecretKeyVec) -> Self {
         Self(data)
     }
@@ -56,12 +55,10 @@ impl AsRef<[u8]> for SecretKey {
     }
 }
 
-/// Public key
 #[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
 pub struct PublicKey(PublicKeyVec);
 
 impl PublicKey {
-    /// Constructor
     pub fn new(data: PublicKeyVec) -> Self {
         Self(data)
     }
@@ -73,36 +70,27 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
-/// The types of secret keys that the vault supports
+/// All possible types of [`Secret`]s
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub enum SecretType {
-    /// Raw buffer of bytes
     Buffer,
-    /// AES key
     Aes,
-    /// x25519 secret key
     Curve25519,
-    /// NIST P-256 (secp256r1, prime256v1) secret key
     P256,
 }
 
-/// Persistence allowed by Secrets
+/// Possible [`Secret`]'s persistence
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub enum SecretPersistence {
-    /// Secret is temporary
     Ephemeral,
-    /// Secret is permanent
     Persistent,
 }
 
-/// Attributes for a specific vault secret
+/// Attributes for a specific vault [`Secret`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub struct SecretAttributes {
-    /// The type of key
     pub stype: SecretType,
-    /// How the key is persisted
     pub persistence: SecretPersistence,
-    /// The purpose of the secret key
     pub length: usize,
 }
 
