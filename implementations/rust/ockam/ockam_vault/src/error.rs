@@ -16,6 +16,7 @@ pub enum Error {
     AeadAesGcmDecrypt,
     InvalidSignature,
     HkdfExpandError,
+    SecretNotFound,
 }
 
 impl Error {

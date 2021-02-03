@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::software_vault_impl::SoftwareVaultImpl;
+use crate::software_vault::SoftwareVault;
 use arrayref::array_ref;
 use ockam_vault_core::hash_vault::HashVault;
 use ockam_vault_core::secret::Secret;
@@ -9,7 +9,7 @@ use ockam_vault_core::types::{
 };
 use sha2::{Digest, Sha256};
 
-impl SoftwareVaultImpl {
+impl SoftwareVault {
     fn hkdf_sha256_internal(
         &mut self,
         salt: &Secret,
@@ -53,7 +53,7 @@ impl SoftwareVaultImpl {
     }
 }
 
-impl HashVault for SoftwareVaultImpl {
+impl HashVault for SoftwareVault {
     fn sha256(&self, data: &[u8]) -> Result<[u8; 32], ockam_core::Error> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])

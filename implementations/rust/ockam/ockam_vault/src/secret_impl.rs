@@ -1,6 +1,7 @@
 use crate::error::Error;
-use crate::software_vault_impl::{SoftwareVaultImpl, VaultEntry};
+use crate::software_vault::{SoftwareVault, VaultEntry};
 use arrayref::array_ref;
+use ockam_vault_core::hash_vault::HashVault;
 use ockam_vault_core::secret::Secret;
 use ockam_vault_core::secret_vault::SecretVault;
 use ockam_vault_core::types::{
@@ -10,27 +11,32 @@ use rand::rngs::OsRng;
 use rand::RngCore;
 use zeroize::Zeroize;
 
-impl SecretVault for SoftwareVaultImpl {
+impl SecretVault for SoftwareVault {
     fn secret_generate(
         &mut self,
         attributes: SecretAttributes,
     ) -> Result<Secret, ockam_core::Error> {
         let mut rng = OsRng {};
-        let key = match attributes.stype {
+        let (key, kid) = match attributes.stype {
             SecretType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
-                SecretKey::new(sk.to_bytes().to_vec())
+                let public = x25519_dalek::PublicKey::from(&sk);
+                let private = SecretKey::new(sk.to_bytes().to_vec());
+                let kid = self.sha256(public.as_bytes())?;
+
+                // FIXME: kid computation should be in one place
+                (private, Some(hex::encode(kid)))
             }
             SecretType::Buffer => {
                 let mut key = vec![0u8; attributes.length];
                 rng.fill_bytes(key.as_mut_slice());
-                SecretKey::new(key)
+                (SecretKey::new(key), None)
             }
             _ => unimplemented!(),
         };
         self.next_id += 1;
         self.entries
-            .insert(self.next_id, VaultEntry::new(attributes, key));
+            .insert(self.next_id, VaultEntry::new(kid, attributes, key));
 
         Ok(Secret::new(self.next_id))
     }
@@ -44,7 +50,11 @@ impl SecretVault for SoftwareVaultImpl {
         self.next_id += 1;
         self.entries.insert(
             self.next_id,
-            VaultEntry::new(attributes, SecretKey::new(secret.to_vec())),
+            VaultEntry::new(
+                /* FIXME */ None,
+                attributes,
+                SecretKey::new(secret.to_vec()),
+            ),
         );
         Ok(Secret::new(self.next_id))
     }
