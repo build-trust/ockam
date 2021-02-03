@@ -1,8 +1,8 @@
 use zeroize::Zeroize;
 
-/// Trait with verify functionality
+/// Signature verification vault functionality
 pub trait VerifierVault: Zeroize {
-    /// Verify a signature
+    /// Verify a signature for given data using given public key
     fn verify(
         &mut self,
         signature: &[u8; 64],

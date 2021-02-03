@@ -1,4 +1,4 @@
-/// Creates drop implementation with zeroize call
+/// Create drop implementation with zeroize call
 #[macro_export]
 macro_rules! zdrop_impl {
     ($name:ident) => {
