@@ -1,5 +1,5 @@
+use crate::zdrop_impl;
 use cfg_if::cfg_if;
-use ockam_core_macros::zdrop_impl;
 use zeroize::Zeroize;
 
 /// Curve25519 private key length

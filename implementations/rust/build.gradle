@@ -19,7 +19,6 @@ commands {
   ]
 
   directories = [
-    'ockam/ockam_core_macros',
     'ockam/ockam_core',
 
     'ockam/ockam_node',

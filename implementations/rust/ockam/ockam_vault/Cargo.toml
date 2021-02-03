@@ -10,7 +10,6 @@ crate-type = ["rlib"]
 
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "*"}
-ockam_core_macros = {path = "../ockam_core_macros", version = "*"}
 ockam_vault_core = {path = "../ockam_vault_core", version = "*"}
 arrayref = "0.3"
 curve25519-dalek = "3.0"

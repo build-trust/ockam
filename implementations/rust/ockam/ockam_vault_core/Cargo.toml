@@ -10,6 +10,5 @@ crate-type = ["rlib"]
 
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "*"}
-ockam_core_macros = {path = "../ockam_core_macros", version = "*"}
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 cfg-if = "1.0"
