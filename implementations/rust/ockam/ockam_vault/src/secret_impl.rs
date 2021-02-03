@@ -93,3 +93,67 @@ impl SecretVault for SoftwareVault {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::SoftwareVault;
+    use ockam_vault_core::{
+        SecretAttributes, SecretPersistence, SecretType, SecretVault, CURVE25519_PUBLIC_LENGTH,
+        CURVE25519_SECRET_LENGTH,
+    };
+
+    #[test]
+    fn new_public_keys() {
+        let mut vault = SoftwareVault::default();
+        let mut attributes = SecretAttributes {
+            stype: SecretType::Curve25519,
+            persistence: SecretPersistence::Ephemeral,
+            length: CURVE25519_SECRET_LENGTH,
+        };
+
+        let res = vault.secret_generate(attributes);
+        assert!(res.is_ok());
+        let p256_ctx_1 = res.unwrap();
+
+        let res = vault.secret_public_key_get(&p256_ctx_1);
+        assert!(res.is_ok());
+        let pk_1 = res.unwrap();
+        assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
+        assert_eq!(vault.entries.len(), 1);
+        assert_eq!(vault.next_id, 1);
+
+        attributes.stype = SecretType::Curve25519;
+
+        let res = vault.secret_generate(attributes);
+        assert!(res.is_ok());
+        let c25519_ctx_1 = res.unwrap();
+        let res = vault.secret_public_key_get(&c25519_ctx_1);
+        assert!(res.is_ok());
+        let pk_1 = res.unwrap();
+        assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
+        assert_eq!(vault.entries.len(), 2);
+        assert_eq!(vault.next_id, 2);
+    }
+
+    #[test]
+    fn new_secret_keys() {
+        let mut vault = SoftwareVault::default();
+        let mut attributes = SecretAttributes {
+            stype: SecretType::Curve25519,
+            persistence: SecretPersistence::Ephemeral,
+            length: CURVE25519_SECRET_LENGTH,
+        };
+        let types = [(SecretType::Curve25519, 32), (SecretType::Buffer, 24)];
+        for (t, s) in &types {
+            attributes.stype = *t;
+            attributes.length = *s;
+            let res = vault.secret_generate(attributes);
+            assert!(res.is_ok());
+            let sk_ctx = res.unwrap();
+            let sk = vault.secret_export(&sk_ctx).unwrap();
+            assert_eq!(sk.as_ref().len(), *s);
+            vault.secret_destroy(sk_ctx).unwrap();
+            assert_eq!(vault.entries.len(), 0);
+        }
+    }
+}
