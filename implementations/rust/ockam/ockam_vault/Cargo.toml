@@ -1,12 +1,21 @@
 [package]
-name = "ockam_vault"
-version = "0.0.0"
 authors = ["Ockam Developers"]
+description = """
+"""
 edition = "2018"
+homepage = "https://www.ockam.io/"
+keywords = ["ockam"]
 license = "Apache-2.0"
+name = "ockam_vault"
+readme = "README.md"
+repository = "https://github.com/ockam-network/ockam"
+version = "0.0.0"
 
-[lib]
-crate-type = ["rlib"]
+[features]
+default = ["std"]
+
+# Requires the Rust Standard Library.
+std = []
 
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "*"}
