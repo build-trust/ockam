@@ -4,15 +4,16 @@ defprotocol Ockam.Message do
   """
 
   alias Ockam.Serializable
+  alias Ockam.Route
 
   @fallback_to_any true
 
   @doc "Returns the onward_route of a message."
-  @spec onward_route(t()) :: [Address.t()]
+  @spec onward_route(t()) :: Route.t()
   def onward_route(message)
 
   @doc "Returns the return_route of a message."
-  @spec return_route(t()) :: [Address.t()]
+  @spec return_route(t()) :: Route.t()
   def return_route(message)
 
   @doc "Returns the payload of a message."

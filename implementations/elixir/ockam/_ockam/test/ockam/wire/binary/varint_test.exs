@@ -30,7 +30,7 @@ defmodule Ockam.Wire.Binary.VarInt.Tests do
       Enum.each(@invalid_integers, fn i ->
         assert {:error, %EncodeError{reason: reason}} = VarInt.encode(i)
         assert {:argument_is_not_an_integer_in_expected_range, metadata} = reason
-        assert [expected_range: 0..16_383, argument: ^i] = metadata
+        assert [expected_range: 0..16_383, argument: i] = metadata
       end)
     end
   end
