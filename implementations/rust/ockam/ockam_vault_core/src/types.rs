@@ -16,8 +16,8 @@ pub const AES256_SECRET_LENGTH: usize = 32;
 pub const AES128_SECRET_LENGTH: usize = 16;
 
 cfg_if! {
-    if #[cfg(feature = "heapless")] {
-        use crate::heapless::consts::*;
+    if #[cfg(feature = "no-std")] {
+        use heapless::consts::*;
         /// Secret Key Vector
         pub type SecretKeyVec = heapless::Vec<u8, U32>;
         /// Public Key Vector
@@ -28,6 +28,8 @@ cfg_if! {
         pub type Buffer<T> = heapless::Vec<T, U512>;
     }
     else {
+        extern crate alloc;
+        use alloc::vec::Vec;
         /// Secret Key Vector
         pub type SecretKeyVec = Vec<u8>;
         /// Public Key Vector
