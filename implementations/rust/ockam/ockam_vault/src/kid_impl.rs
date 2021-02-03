@@ -22,7 +22,7 @@ impl KidVault for SoftwareVault {
 
     fn compute_kid_for_public_key(&self, public_key: &PublicKey) -> ockam_core::Result<Kid> {
         let kid = self.sha256(public_key.as_ref())?;
-        Ok(hex::encode(kid))
+        Ok(hex::encode(kid).into())
     }
 }
 
@@ -30,12 +30,29 @@ impl KidVault for SoftwareVault {
 mod tests {
     use crate::SoftwareVault;
     use ockam_vault_core::{
-        KidVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+        KidVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
         CURVE25519_SECRET_LENGTH,
     };
 
     #[test]
-    fn get_by_kid() {
+    fn compute_kid_for_public_key() {
+        let vault = SoftwareVault::new();
+
+        let public =
+            hex::decode("68858ea1ea4e1ade755df7fb6904056b291d9781eb5489932f46e32f12dd192a")
+                .unwrap();
+        let public = PublicKey::new(public.to_vec().into());
+
+        let kid = vault.compute_kid_for_public_key(&public).unwrap();
+
+        assert_eq!(
+            kid,
+            "732af49a0b47c820c0a4cac428d6cb80c1fa70622f4a51708163dd87931bc942"
+        );
+    }
+
+    #[test]
+    fn get_secret_by_kid() {
         let mut vault = SoftwareVault::new();
 
         let attributes = SecretAttributes {
