@@ -7,11 +7,18 @@
 // #![no_std] if the std feature is disabled.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod hash_vault;
-pub mod kid_vault;
+mod hash_vault;
+pub use hash_vault::*;
+mod kid_vault;
+pub use kid_vault::*;
 pub mod macros;
-pub mod secret;
-pub mod secret_vault;
-pub mod signer_vault;
-pub mod types;
-pub mod verifier_vault;
+mod secret;
+pub use secret::*;
+mod secret_vault;
+pub use secret_vault::*;
+mod signer_vault;
+pub use signer_vault::*;
+mod types;
+pub use types::*;
+mod verifier_vault;
+pub use verifier_vault::*;

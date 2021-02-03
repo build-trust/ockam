@@ -1,11 +1,9 @@
 use crate::error::Error;
 use crate::software_vault::SoftwareVault;
 use arrayref::array_ref;
-use ockam_vault_core::hash_vault::HashVault;
-use ockam_vault_core::secret::Secret;
-use ockam_vault_core::secret_vault::SecretVault;
-use ockam_vault_core::types::{
-    SecretAttributes, SecretType, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
+use ockam_vault_core::{
+    HashVault, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
+    AES256_SECRET_LENGTH,
 };
 use sha2::{Digest, Sha256};
 
