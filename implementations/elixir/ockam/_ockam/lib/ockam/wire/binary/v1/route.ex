@@ -41,8 +41,7 @@ defmodule Ockam.Wire.Binary.V1.Route do
   """
 
   @spec decode(encoded :: binary()) ::
-          {:ok, route :: [Ockam.Address.t()], rest :: binary()}
-          | {:error, error :: DecodeError.t()}
+          {:ok, route :: Ockam.Route.t(), rest :: binary()} | {:error, error :: DecodeError.t()}
 
   def decode(<<number_of_addresses::unsigned-integer-8, rest::binary>>) do
     case decode_addressses(number_of_addresses, [], rest) do

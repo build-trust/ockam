@@ -1,7 +1,7 @@
 defmodule Ockam.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.10.1"
 
   @elixir_requirement "~> 1.10"
 
@@ -39,13 +39,16 @@ defmodule Ockam.MixProject do
   def application do
     [
       mod: {Ockam, []},
-      extra_applications: [:logger]
+      extra_applications: [:logger, :gen_state_machine]
     ]
   end
 
   defp deps do
     [
+      {:ockam_vault_software, path: "../ockam_vault_software", optional: true},
       {:telemetry, "~> 0.4.2", optional: true},
+      {:gen_state_machine, "~> 3.0"},
+      {:ranch, "~> 2.0", optional: true},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false}

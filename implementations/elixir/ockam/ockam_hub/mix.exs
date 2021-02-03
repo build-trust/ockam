@@ -45,7 +45,7 @@ defmodule Ockam.Hub.MixProject do
 
   defp deps do
     [
-      {:ockam, path: "../ockam"},
+      {:ockam, path: "../_ockam"},
       {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ranch, "~> 2.0"},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
