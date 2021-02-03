@@ -1,7 +1,9 @@
+use ockam_core::Error;
+
 /// Represents the failures that can occur in
-/// an Ockam Software trait
+/// an Ockam vault
 #[derive(Clone, Copy, Debug)]
-pub enum Error {
+pub enum VaultError {
     None,
     SecretFromAnotherVault,
     InvalidPublicKey,
@@ -19,13 +21,15 @@ pub enum Error {
     SecretNotFound,
 }
 
-impl Error {
-    /// Error domain
-    pub const ERROR_DOMAIN: &'static str = "VAULT_SOFTWARE_ERROR_DOMAIN";
+impl VaultError {
+    /// Integer code associated with the error domain.
+    pub const DOMAIN_CODE: u32 = 12_000;
+    /// Descriptive name for the error domain.
+    pub const DOMAIN_NAME: &'static str = "OCKAM_VAULT";
 }
 
-impl Into<ockam_core::Error> for Error {
-    fn into(self) -> ockam_core::Error {
-        ockam_core::Error::new(self as u32, Error::ERROR_DOMAIN)
+impl Into<Error> for VaultError {
+    fn into(self) -> Error {
+        Error::new(Self::DOMAIN_CODE + (self as u32), Self::DOMAIN_NAME)
     }
 }

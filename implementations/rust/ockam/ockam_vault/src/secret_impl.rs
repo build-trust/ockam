@@ -1,5 +1,5 @@
-use crate::error::Error;
 use crate::software_vault::{SoftwareVault, VaultEntry};
+use crate::VaultError;
 use arrayref::array_ref;
 use ockam_vault_core::{
     HashVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretType, SecretVault,
@@ -72,7 +72,7 @@ impl SecretVault for SoftwareVault {
         let entry = self.get_entry(context)?;
 
         if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH {
-            return Err(Error::InvalidPrivateKeyLen.into());
+            return Err(VaultError::InvalidPrivateKeyLen.into());
         }
 
         match entry.key_attributes().stype {
@@ -85,7 +85,7 @@ impl SecretVault for SoftwareVault {
                 let pk = x25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec()))
             }
-            _ => Err(Error::InvalidKeyType.into()),
+            _ => Err(VaultError::InvalidKeyType.into()),
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::VaultError;
 use ockam_vault_core::zdrop_impl;
 use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use std::collections::BTreeMap;
@@ -29,7 +29,7 @@ impl SoftwareVault {
     pub(crate) fn get_entry(&self, context: &Secret) -> Result<&VaultEntry, ockam_core::Error> {
         self.entries
             .get(&context.index())
-            .ok_or_else(|| Error::EntryNotFound.into())
+            .ok_or_else(|| VaultError::EntryNotFound.into())
     }
 }
 

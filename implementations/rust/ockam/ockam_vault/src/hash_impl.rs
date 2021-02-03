@@ -1,5 +1,5 @@
-use crate::error::Error;
 use crate::software_vault::SoftwareVault;
+use crate::VaultError;
 use arrayref::array_ref;
 use ockam_vault_core::{
     HashVault, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
@@ -24,7 +24,7 @@ impl SoftwareVault {
             let mut okm = vec![0u8; okm_len];
             let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key().as_ref()), ikm);
             prk.expand(info, okm.as_mut_slice())
-                .or(Err(Error::HkdfExpandError.into()))?;
+                .or(Err(VaultError::HkdfExpandError.into()))?;
             okm
         };
 
@@ -35,10 +35,10 @@ impl SoftwareVault {
             let length = attributes.length;
             if attributes.stype == SecretType::Aes {
                 if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
-                    return Err(Error::InvalidAesKeyLength.into());
+                    return Err(VaultError::InvalidAesKeyLength.into());
                 }
             } else if attributes.stype != SecretType::Buffer {
-                return Err(Error::InvalidHkdfOutputType.into());
+                return Err(VaultError::InvalidHkdfOutputType.into());
             }
             let secret = &okm[index..index + length];
             let secret = self.secret_import(&secret, attributes)?;
@@ -70,7 +70,7 @@ impl HashVault for SoftwareVault {
                 if ikm.key_attributes().stype == SecretType::Buffer {
                     Ok(ikm.key().as_ref().to_vec())
                 } else {
-                    Err(Error::InvalidKeyType.into())
+                    Err(VaultError::InvalidKeyType.into())
                 }
             }
             None => Ok(Vec::new()),

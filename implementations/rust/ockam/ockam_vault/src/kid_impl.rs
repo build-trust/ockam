@@ -1,5 +1,5 @@
-use crate::error::Error;
 use crate::software_vault::SoftwareVault;
+use crate::VaultError;
 use ockam_vault_core::{KidVault, Secret};
 
 impl KidVault for SoftwareVault {
@@ -14,7 +14,7 @@ impl KidVault for SoftwareVault {
                     false
                 }
             })
-            .ok_or(Error::SecretNotFound.into())?
+            .ok_or(VaultError::SecretNotFound.into())?
             .0;
 
         Ok(Secret::new(*index))

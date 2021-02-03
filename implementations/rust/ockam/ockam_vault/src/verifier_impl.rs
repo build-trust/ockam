@@ -1,6 +1,6 @@
-use crate::error::Error;
 use crate::software_vault::SoftwareVault;
 use crate::xeddsa::XEddsaVerifier;
+use crate::VaultError;
 use arrayref::array_ref;
 use ockam_vault_core::{VerifierVault, CURVE25519_PUBLIC_LENGTH};
 
@@ -18,10 +18,10 @@ impl VerifierVault for SoftwareVault {
             {
                 Ok(())
             } else {
-                Err(Error::InvalidSignature.into())
+                Err(VaultError::InvalidSignature.into())
             }
         } else {
-            Err(Error::InvalidPublicKey.into())
+            Err(VaultError::InvalidPublicKey.into())
         }
     }
 }
