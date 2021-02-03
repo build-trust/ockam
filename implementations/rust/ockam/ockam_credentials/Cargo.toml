@@ -1,0 +1,27 @@
+[package]
+authors = ["Ockam Developers"]
+categories = []
+description = ""
+documentation = "https://docs.rs/ockam_credentials"
+edition = "2018"
+exclude = [
+    "tests/**"
+]
+homepage = "https://ockam.io"
+keywords = []
+license = "Apache-2.0"
+name = "ockam_credentials"
+readme = "README.md"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_credentials"
+version = "0.0.0"
+
+[features]
+default = ["std"]
+alloc = ["serde/alloc"]
+no-std = ["heapless"]
+std = ["alloc", "ockam_core/std"]
+
+[dependencies]
+heapless = { version = "0.6", optional = true }
+ockam_core = { version = "0.1.0", default-features = false, path = "../ockam_core" }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
