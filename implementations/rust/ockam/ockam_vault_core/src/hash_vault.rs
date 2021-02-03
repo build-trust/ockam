@@ -1,5 +1,6 @@
 use crate::secret::Secret;
 use crate::types::SecretAttributes;
+use crate::SmallBuffer;
 use zeroize::Zeroize;
 
 /// Hashing-related vault functionality
@@ -13,6 +14,6 @@ pub trait HashVault: Zeroize {
         salt: &Secret,
         info: &[u8],
         ikm: Option<&Secret>,
-        output_attributes: Vec<SecretAttributes>,
-    ) -> ockam_core::Result<Vec<Secret>>;
+        output_attributes: SmallBuffer<SecretAttributes>,
+    ) -> ockam_core::Result<SmallBuffer<Secret>>;
 }

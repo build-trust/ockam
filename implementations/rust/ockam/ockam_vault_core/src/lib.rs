@@ -4,8 +4,7 @@
 //! for use by other crates that either provide implementations for those traits,
 //! or use traits and types as an abstract dependency.
 
-// #![no_std] if the std feature is disabled.
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 mod hash_vault;
 pub use hash_vault::*;

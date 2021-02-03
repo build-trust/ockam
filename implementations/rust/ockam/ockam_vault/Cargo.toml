@@ -13,7 +13,7 @@ version = "0.0.0"
 
 [features]
 default = ["std"]
-
+no-std = ["ockam_vault_core/heapless"]
 # Requires the Rust Standard Library.
 std = []
 

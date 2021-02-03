@@ -13,11 +13,12 @@ version = "0.0.0"
 
 [features]
 default = ["std"]
-
+no-std = ["heapless"]
 # Requires the Rust Standard Library.
 std = []
 
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "*"}
+heapless = { version = "0.6", optional = true }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 cfg-if = "1.0"
