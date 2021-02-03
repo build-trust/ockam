@@ -16,6 +16,10 @@ end
 defimpl Ockam.Serializable, for: BitString do
   @moduledoc false
 
-  def serialize(value) when is_binary(value), do: value
+  def serialize(value) when is_binary(value) do
+    length = byte_size(value)
+    <<0>> <> <<length::8>> <> value
+  end
+
   def serialize(value) when is_bitstring(value), do: {:error, :value_is_a_bitstring}
 end
