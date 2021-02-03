@@ -26,7 +26,7 @@ impl Default for SoftwareVault {
 }
 
 impl SoftwareVault {
-    pub(crate) fn get_entry(&self, context: &Secret) -> Result<&VaultEntry, ockam_core::Error> {
+    pub(crate) fn get_entry(&self, context: &Secret) -> ockam_core::Result<&VaultEntry> {
         self.entries
             .get(&context.index())
             .ok_or_else(|| VaultError::EntryNotFound.into())

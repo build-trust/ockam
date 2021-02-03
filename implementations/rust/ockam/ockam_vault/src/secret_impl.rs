@@ -10,10 +10,7 @@ use rand::RngCore;
 use zeroize::Zeroize;
 
 impl SecretVault for SoftwareVault {
-    fn secret_generate(
-        &mut self,
-        attributes: SecretAttributes,
-    ) -> Result<Secret, ockam_core::Error> {
+    fn secret_generate(&mut self, attributes: SecretAttributes) -> ockam_core::Result<Secret> {
         let mut rng = OsRng {};
         let (key, kid) = match attributes.stype {
             SecretType::Curve25519 => {
@@ -43,7 +40,7 @@ impl SecretVault for SoftwareVault {
         &mut self,
         secret: &[u8],
         attributes: SecretAttributes,
-    ) -> Result<Secret, ockam_core::Error> {
+    ) -> ockam_core::Result<Secret> {
         // FIXME: Should we check secrets here?
         self.next_id += 1;
         self.entries.insert(
@@ -57,18 +54,15 @@ impl SecretVault for SoftwareVault {
         Ok(Secret::new(self.next_id))
     }
 
-    fn secret_export(&mut self, context: &Secret) -> Result<SecretKey, ockam_core::Error> {
+    fn secret_export(&mut self, context: &Secret) -> ockam_core::Result<SecretKey> {
         self.get_entry(context).map(|i| i.key().clone())
     }
 
-    fn secret_attributes_get(
-        &mut self,
-        context: &Secret,
-    ) -> Result<SecretAttributes, ockam_core::Error> {
+    fn secret_attributes_get(&mut self, context: &Secret) -> ockam_core::Result<SecretAttributes> {
         self.get_entry(context).map(|i| i.key_attributes())
     }
 
-    fn secret_public_key_get(&mut self, context: &Secret) -> Result<PublicKey, ockam_core::Error> {
+    fn secret_public_key_get(&mut self, context: &Secret) -> ockam_core::Result<PublicKey> {
         let entry = self.get_entry(context)?;
 
         if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH {
@@ -89,7 +83,7 @@ impl SecretVault for SoftwareVault {
         }
     }
 
-    fn secret_destroy(&mut self, context: Secret) -> Result<(), ockam_core::Error> {
+    fn secret_destroy(&mut self, context: Secret) -> ockam_core::Result<()> {
         if let Some(mut k) = self.entries.remove(&context.index()) {
             k.zeroize();
         }

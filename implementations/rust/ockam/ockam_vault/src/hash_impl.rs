@@ -14,7 +14,7 @@ impl SoftwareVault {
         info: &[u8],
         ikm: &[u8],
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Secret>, ockam_core::Error> {
+    ) -> ockam_core::Result<Vec<Secret>> {
         let salt = self.get_entry(salt)?;
 
         // FIXME: Doesn't work for secrets with size more than 32 bytes
@@ -52,7 +52,7 @@ impl SoftwareVault {
 }
 
 impl HashVault for SoftwareVault {
-    fn sha256(&self, data: &[u8]) -> Result<[u8; 32], ockam_core::Error> {
+    fn sha256(&self, data: &[u8]) -> ockam_core::Result<[u8; 32]> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
     }
@@ -63,7 +63,7 @@ impl HashVault for SoftwareVault {
         info: &[u8],
         ikm: Option<&Secret>,
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Secret>, ockam_core::Error> {
+    ) -> ockam_core::Result<Vec<Secret>> {
         let ikm_slice = match ikm {
             Some(ikm) => {
                 let ikm = self.get_entry(ikm)?;
