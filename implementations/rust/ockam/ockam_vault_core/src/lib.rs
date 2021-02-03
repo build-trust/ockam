@@ -1,4 +1,5 @@
 pub mod hash_vault;
+pub mod macros;
 pub mod open_close_vault;
 pub mod secret;
 pub mod secret_vault;
