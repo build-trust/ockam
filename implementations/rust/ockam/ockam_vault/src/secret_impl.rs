@@ -156,4 +156,66 @@ mod tests {
             assert_eq!(vault.entries.len(), 0);
         }
     }
+
+    #[test]
+    fn secret_import_export() {
+        let mut vault = SoftwareVault::default();
+        let attributes = SecretAttributes {
+            stype: SecretType::Curve25519,
+            persistence: SecretPersistence::Ephemeral,
+            length: CURVE25519_SECRET_LENGTH,
+        };
+
+        let secret_str = "98d589b0dce92c9e2442b3093718138940bff71323f20b9d158218b89c3cec6e";
+
+        let secret = vault
+            .secret_import(hex::decode(secret_str).unwrap().as_slice(), attributes)
+            .unwrap();
+
+        assert_eq!(secret.index(), 1);
+        assert_eq!(
+            hex::encode(vault.secret_export(&secret).unwrap().as_ref()),
+            secret_str
+        );
+
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
+            persistence: SecretPersistence::Ephemeral,
+            length: 24,
+        };
+        let secret_str = "5f791cc52297f62c7b8829b15f828acbdb3c613371d21aa1";
+        let secret = vault
+            .secret_import(hex::decode(secret_str).unwrap().as_slice(), attributes)
+            .unwrap();
+
+        assert_eq!(secret.index(), 2);
+
+        assert_eq!(
+            hex::encode(vault.secret_export(&secret).unwrap().as_ref()),
+            secret_str
+        );
+    }
+
+    #[test]
+    fn secret_attributes_get() {
+        let mut vault = SoftwareVault::default();
+
+        let attributes = SecretAttributes {
+            stype: SecretType::Curve25519,
+            persistence: SecretPersistence::Ephemeral,
+            length: CURVE25519_SECRET_LENGTH,
+        };
+
+        let secret = vault.secret_generate(attributes).unwrap();
+        assert_eq!(vault.secret_attributes_get(&secret).unwrap(), attributes);
+
+        let attributes = SecretAttributes {
+            stype: SecretType::Buffer,
+            persistence: SecretPersistence::Ephemeral,
+            length: 24,
+        };
+
+        let secret = vault.secret_generate(attributes).unwrap();
+        assert_eq!(vault.secret_attributes_get(&secret).unwrap(), attributes);
+    }
 }
