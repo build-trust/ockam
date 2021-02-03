@@ -12,6 +12,8 @@ defmodule Ockam.Transport.UDPAddress do
   @ipv4 0
   @ipv6 1
 
+  def deserialize(value) when is_list(value), do: deserialize(IO.iodata_to_binary(value))
+
   def deserialize(
         <<@udp::8, 7::8, @ipv4::8, a::8, b::8, c::8, d::8, port::unsigned-little-integer-16>>
       ) do
