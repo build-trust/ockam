@@ -1,11 +1,11 @@
 use crate::error::Error;
-use crate::software_vault_impl::SoftwareVaultImpl;
+use crate::software_vault::SoftwareVault;
 use crate::xeddsa::XEddsaVerifier;
 use arrayref::array_ref;
 use ockam_vault_core::types::CURVE25519_PUBLIC_LENGTH;
 use ockam_vault_core::verifier_vault::VerifierVault;
 
-impl VerifierVault for SoftwareVaultImpl {
+impl VerifierVault for SoftwareVault {
     fn verify(
         &mut self,
         signature: &[u8; 64],
