@@ -10,7 +10,7 @@ impl VerifierVault for SoftwareVault {
         signature: &[u8; 64],
         public_key: &[u8],
         data: &[u8],
-    ) -> Result<(), ockam_core::Error> {
+    ) -> ockam_core::Result<()> {
         // FIXME
         if public_key.len() == CURVE25519_PUBLIC_LENGTH {
             if x25519_dalek::PublicKey::from(*array_ref!(public_key, 0, CURVE25519_PUBLIC_LENGTH))

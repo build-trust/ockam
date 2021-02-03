@@ -3,7 +3,7 @@ use crate::VaultError;
 use ockam_vault_core::{KidVault, Secret};
 
 impl KidVault for SoftwareVault {
-    fn get_secret_by_kid(&self, kid: &str) -> Result<Secret, ockam_core::Error> {
+    fn get_secret_by_kid(&self, kid: &str) -> ockam_core::Result<Secret> {
         let index = self
             .entries
             .iter()
