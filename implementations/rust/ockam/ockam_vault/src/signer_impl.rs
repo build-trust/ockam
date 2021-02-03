@@ -6,6 +6,7 @@ use ockam_vault_core::{Secret, SecretType, SignerVault, CURVE25519_SECRET_LENGTH
 use rand::{thread_rng, RngCore};
 
 impl SignerVault for SoftwareVault {
+    /// Sign data with xeddsa algorithm. Only curve25519 is supported.
     fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> ockam_core::Result<[u8; 64]> {
         let entry = self.get_entry(secret_key)?;
         let key = entry.key().as_ref();

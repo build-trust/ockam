@@ -4,6 +4,7 @@ use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use std::collections::BTreeMap;
 use zeroize::Zeroize;
 
+/// Vault implementation that stores secrets in memory and uses software crypto.
 #[derive(Debug)]
 pub struct SoftwareVault {
     pub(crate) entries: BTreeMap<usize, VaultEntry>,

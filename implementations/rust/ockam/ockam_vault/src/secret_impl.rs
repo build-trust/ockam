@@ -10,6 +10,7 @@ use rand::RngCore;
 use zeroize::Zeroize;
 
 impl SecretVault for SoftwareVault {
+    /// Generate fresh secret. Only Curve25519 and Buffer types are supported
     fn secret_generate(&mut self, attributes: SecretAttributes) -> ockam_core::Result<Secret> {
         let mut rng = OsRng {};
         let (key, kid) = match attributes.stype {
@@ -62,6 +63,7 @@ impl SecretVault for SoftwareVault {
         self.get_entry(context).map(|i| i.key_attributes())
     }
 
+    /// Extract public key from secret. Only Curve25519 type is supported
     fn secret_public_key_get(&mut self, context: &Secret) -> ockam_core::Result<PublicKey> {
         let entry = self.get_entry(context)?;
 
@@ -83,6 +85,7 @@ impl SecretVault for SoftwareVault {
         }
     }
 
+    /// Remove secret from memory
     fn secret_destroy(&mut self, context: Secret) -> ockam_core::Result<()> {
         if let Some(mut k) = self.entries.remove(&context.index()) {
             k.zeroize();

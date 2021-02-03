@@ -1,3 +1,8 @@
+//! Software implementation of ockam_vault_core traits.
+//!
+//! This crate contains one of the possible implementation of the vault traits
+//! which you can use with Ockam library.
+
 pub extern crate ockam_vault_core;
 
 mod error;
