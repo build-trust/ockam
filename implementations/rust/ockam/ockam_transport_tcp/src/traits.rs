@@ -15,6 +15,7 @@ pub trait Connection {
 
     /// Receives a message.
     async fn receive(&mut self, message: &mut [u8]) -> Result<usize, String>;
+    //    fn close(&mut self);
 }
 
 /// The `Listerner` trait represents transport connection listeners.
