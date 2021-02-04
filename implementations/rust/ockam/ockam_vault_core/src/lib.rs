@@ -8,8 +8,8 @@
 
 mod hash_vault;
 pub use hash_vault::*;
-mod kid_vault;
-pub use kid_vault::*;
+mod key_id_vault;
+pub use key_id_vault::*;
 pub mod macros;
 mod secret;
 pub use secret::*;
