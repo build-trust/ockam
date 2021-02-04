@@ -9,6 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 
 - Initial Release
-- `Schema` - Describes a credentials attributes and context 
+- `Schema` - Describes a credentials attributes and context
 - `Attribute` - Describes a claims data and labels
 - `AttributeType` - Describes a claims data interpretation
