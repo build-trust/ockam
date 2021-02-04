@@ -72,14 +72,14 @@ zdrop_impl!(SoftwareVault);
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct VaultEntry {
-    kid: Option<String>,
+    key_id: Option<String>,
     key_attributes: SecretAttributes,
     key: SecretKey,
 }
 
 impl VaultEntry {
-    pub fn kid(&self) -> &Option<String> {
-        &self.kid
+    pub fn key_id(&self) -> &Option<String> {
+        &self.key_id
     }
     pub fn key_attributes(&self) -> SecretAttributes {
         self.key_attributes
@@ -90,9 +90,9 @@ impl VaultEntry {
 }
 
 impl VaultEntry {
-    pub fn new(kid: Option<String>, key_attributes: SecretAttributes, key: SecretKey) -> Self {
+    pub fn new(key_id: Option<String>, key_attributes: SecretAttributes, key: SecretKey) -> Self {
         VaultEntry {
-            kid,
+            key_id,
             key_attributes,
             key,
         }

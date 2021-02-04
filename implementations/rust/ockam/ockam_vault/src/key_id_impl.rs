@@ -1,15 +1,15 @@
 use crate::software_vault::SoftwareVault;
 use crate::VaultError;
-use ockam_vault_core::{HashVault, Kid, KidVault, PublicKey, Secret};
+use ockam_vault_core::{HashVault, KeyId, KeyIdVault, PublicKey, Secret};
 
-impl KidVault for SoftwareVault {
-    fn get_secret_by_kid(&self, kid: &str) -> ockam_core::Result<Secret> {
+impl KeyIdVault for SoftwareVault {
+    fn get_secret_by_key_id(&self, key_id: &str) -> ockam_core::Result<Secret> {
         let index = self
             .entries
             .iter()
             .find(|(_, entry)| {
-                if let Some(e_kid) = entry.kid() {
-                    e_kid == kid
+                if let Some(e_key_id) = entry.key_id() {
+                    e_key_id == key_id
                 } else {
                     false
                 }
@@ -20,9 +20,9 @@ impl KidVault for SoftwareVault {
         Ok(Secret::new(*index))
     }
 
-    fn compute_kid_for_public_key(&self, public_key: &PublicKey) -> ockam_core::Result<Kid> {
-        let kid = self.sha256(public_key.as_ref())?;
-        Ok(hex::encode(kid).into())
+    fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> ockam_core::Result<KeyId> {
+        let key_id = self.sha256(public_key.as_ref())?;
+        Ok(hex::encode(key_id).into())
     }
 }
 
@@ -30,12 +30,12 @@ impl KidVault for SoftwareVault {
 mod tests {
     use crate::SoftwareVault;
     use ockam_vault_core::{
-        KidVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+        KeyIdVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
         CURVE25519_SECRET_LENGTH,
     };
 
     #[test]
-    fn compute_kid_for_public_key() {
+    fn compute_key_id_for_public_key() {
         let vault = SoftwareVault::new();
 
         let public =
@@ -43,16 +43,16 @@ mod tests {
                 .unwrap();
         let public = PublicKey::new(public.to_vec().into());
 
-        let kid = vault.compute_kid_for_public_key(&public).unwrap();
+        let key_id = vault.compute_key_id_for_public_key(&public).unwrap();
 
         assert_eq!(
-            kid,
+            key_id,
             "732af49a0b47c820c0a4cac428d6cb80c1fa70622f4a51708163dd87931bc942"
         );
     }
 
     #[test]
-    fn get_secret_by_kid() {
+    fn get_secret_by_key_id() {
         let mut vault = SoftwareVault::new();
 
         let attributes = SecretAttributes {
@@ -64,8 +64,8 @@ mod tests {
         let secret = vault.secret_generate(attributes).unwrap();
         let public = vault.secret_public_key_get(&secret).unwrap();
 
-        let kid = vault.compute_kid_for_public_key(&public).unwrap();
-        let secret2 = vault.get_secret_by_kid(&kid).unwrap();
+        let key_id = vault.compute_key_id_for_public_key(&public).unwrap();
+        let secret2 = vault.get_secret_by_key_id(&key_id).unwrap();
 
         assert_eq!(secret.index(), secret2.index());
     }

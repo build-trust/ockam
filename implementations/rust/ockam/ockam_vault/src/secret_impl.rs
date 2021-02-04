@@ -13,15 +13,15 @@ impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
     fn secret_generate(&mut self, attributes: SecretAttributes) -> ockam_core::Result<Secret> {
         let mut rng = OsRng {};
-        let (key, kid) = match attributes.stype {
+        let (key, key_id) = match attributes.stype {
             SecretType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
                 let public = x25519_dalek::PublicKey::from(&sk);
                 let private = SecretKey::new(sk.to_bytes().to_vec());
-                let kid = self.sha256(public.as_bytes())?;
+                let key_id = self.sha256(public.as_bytes())?;
 
-                // FIXME: kid computation should be in one place
-                (private, Some(hex::encode(kid)))
+                // FIXME: key_id computation should be in one place
+                (private, Some(hex::encode(key_id)))
             }
             SecretType::Buffer => {
                 let mut key = vec![0u8; attributes.length];
@@ -32,7 +32,7 @@ impl SecretVault for SoftwareVault {
         };
         self.next_id += 1;
         self.entries
-            .insert(self.next_id, VaultEntry::new(kid, attributes, key));
+            .insert(self.next_id, VaultEntry::new(key_id, attributes, key));
 
         Ok(Secret::new(self.next_id))
     }
