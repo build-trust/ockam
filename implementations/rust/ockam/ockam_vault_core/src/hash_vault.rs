@@ -3,7 +3,7 @@ use crate::types::SecretAttributes;
 use crate::SmallBuffer;
 use zeroize::Zeroize;
 
-/// Hashing-related vault functionality
+/// A trait for hashing data into fixed length output
 pub trait HashVault: Zeroize {
     /// Compute the SHA-256 digest given input `data`
     fn sha256(&self, data: &[u8]) -> ockam_core::Result<[u8; 32]>;

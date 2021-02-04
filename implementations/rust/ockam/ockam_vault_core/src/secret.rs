@@ -1,6 +1,6 @@
 use zeroize::Zeroize;
 
-/// Handle to any cryptographic Secret
+/// Handle to a cryptographic Secret
 /// Individual Vault implementations should map secret handles
 /// into implementation-specific Secret representations (e.g. binaries, or HSM references)
 /// stored inside Vault (e.g. using HashMap)
