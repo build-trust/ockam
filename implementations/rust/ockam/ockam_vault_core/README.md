@@ -8,9 +8,7 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-This crate contains the core types of the Vault abstraction for [Ockam][main-ockam-crate-link]
-library and is intended for use by crates that provide features and add-ons
-to the main [Ockam][main-ockam-crate-link] library.
+In order to support a variety of cryptographically capable hardware we maintain loose coupling between our protocols and how a specific building block is invoked in a specific hardware. This is achieved using an abstract Vault trait.
 
 The main [Ockam][main-ockam-crate-link] crate re-exports types defined in
 this crate.
