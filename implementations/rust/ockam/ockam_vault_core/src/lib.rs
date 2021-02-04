@@ -5,6 +5,15 @@
 //! or use traits and types as an abstract dependency.
 
 #![no_std]
+#![deny(
+    // missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_import_braces,
+    unused_qualifications,
+    warnings
+)]
 
 mod hash_vault;
 pub use hash_vault::*;

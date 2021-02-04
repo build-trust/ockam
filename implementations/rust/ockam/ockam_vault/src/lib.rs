@@ -3,6 +3,16 @@
 //! This crate contains one of the possible implementation of the vault traits
 //! which you can use with Ockam library.
 
+#![deny(
+    // missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_import_braces,
+    unused_qualifications,
+    warnings
+)]
+
 pub extern crate ockam_vault_core;
 
 mod error;
