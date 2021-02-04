@@ -1,36 +1,38 @@
-use super::{Address, Command, NodeError};
-use ockam_core::Error;
-use std::any::Any;
+use crate::error::Error;
+use crate::message::Message;
+use crate::Context;
+
+use ockam_core::{Result, Worker};
 use tokio::sync::mpsc::Sender;
 
-/// The Ockam Node API.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Node {
-    sender: Sender<Command>,
+    sender: Sender<Message>,
 }
 
 impl Node {
-    /// Create a new [`Node`].
-    pub fn new(sender: Sender<Command>) -> Self {
+    pub fn new(sender: Sender<Message>) -> Self {
         Self { sender }
     }
 
-    /// Stop the [`Node`].
-    pub async fn stop(&self) -> Result<(), Error> {
-        match self.sender.send(Command::stop()).await {
+    pub async fn stop(&self) -> Result<()> {
+        match self.sender.send(Message::stop()).await {
             Ok(()) => Ok(()),
-            Err(_e) => Err(NodeError::CouldNotStop.into()),
+            Err(_e) => Err(Error::FailedStopNode.into()),
         }
     }
 
     /// Create and start the handler at [`Address`].
-    pub async fn start_worker<T>(&self, handler: T, address: Address)
-    where
-        T: Any + Send,
-    {
-        let create_worker_command = Command::create_worker(Box::new(handler), address);
-        if let Err(_ignored) = self.sender.send(create_worker_command).await {
-            // TODO should `create_worker` return a Result, or should we have a global error handler?
+    pub async fn start_worker<S: ToString>(
+        &self,
+        address: S,
+        worker: impl Worker<Context = Context>,
+    ) -> Result<()> {
+        let address = address.to_string();
+        let start_worker_message = Message::start_worker(address, Box::new(worker));
+        match self.sender.send(start_worker_message).await {
+            Ok(()) => Ok(()),
+            Err(_e) => Err(Error::FailedStartWorker.into()),
         }
     }
 }

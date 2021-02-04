@@ -1,24 +1,21 @@
-use ockam_core::Error;
-
 /// Error declarations.
 #[derive(Clone, Copy, Debug)]
-pub enum NodeError {
-    /// No error.
-    None,
-
+pub enum Error {
     /// Unable to gracefully stop the Node.
-    CouldNotStop,
+    FailedStopNode,
+    /// Unable to start a worker
+    FailedStartWorker,
 }
 
-impl NodeError {
+impl Error {
     /// Integer code associated with the error domain.
     pub const DOMAIN_CODE: u32 = 11_000;
     /// Descriptive name for the error domain.
     pub const DOMAIN_NAME: &'static str = "OCKAM_NODE";
 }
 
-impl Into<Error> for NodeError {
-    fn into(self) -> Error {
-        Error::new(Self::DOMAIN_CODE + (self as u32), Self::DOMAIN_NAME)
+impl From<Error> for ockam_core::Error {
+    fn from(e: Error) -> ockam_core::Error {
+        ockam_core::Error::new(Error::DOMAIN_CODE + (e as u32), Error::DOMAIN_NAME)
     }
 }

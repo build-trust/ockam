@@ -8,4 +8,5 @@ license = "Apache-2.0"
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "*"}
 tokio = {version = "1.1.0", features = ["full"]}
+async-trait = "0.1.42"
 hashbrown = "0.9.1"
