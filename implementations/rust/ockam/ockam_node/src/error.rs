@@ -5,6 +5,10 @@ pub enum Error {
     FailedStopNode,
     /// Unable to start a worker
     FailedStartWorker,
+    /// Unable to stop a worker
+    FailedStopWorker,
+    /// Unable to send a message to a worker
+    FailedSendMessage,
 }
 
 impl Error {

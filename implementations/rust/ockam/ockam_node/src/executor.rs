@@ -1,27 +1,32 @@
-use crate::message::Message;
-use crate::node::Node;
-use crate::Context;
+// use crate::message::BaseMessage;
 
-use ockam_core::{Address, Result, Worker};
+use crate::{relay::RelayMessage, Context, Node, NodeMessage, NodeReply};
+use ockam_core::{Address, Result};
 
-use std::collections::HashMap;
-use std::future::Future;
-
+use std::{collections::BTreeMap, future::Future, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 pub struct Executor {
-    sender: Sender<Message>,
-    receiver: Receiver<Message>,
-    registry: HashMap<Address, (Context, Box<dyn Worker<Context = Context>>)>,
+    /// Reference to the runtime needed to spawn tasks
+    rt: Arc<Runtime>,
+    /// Receiver for messages from node
+    receiver: Receiver<NodeMessage>,
+    /// Keeping a copy of node to clone and pass out
+    node: Node,
+    /// Worker handle map
+    registry: BTreeMap<Address, Sender<RelayMessage>>,
 }
 
 impl Default for Executor {
     fn default() -> Self {
         let (sender, receiver) = channel(32);
-        let registry = HashMap::new();
+        let rt = Arc::new(Runtime::new().unwrap());
+        let node = Node::new(sender, Arc::clone(&rt));
+        let registry = BTreeMap::default();
         Self {
-            sender,
+            rt,
+            node,
             receiver,
             registry,
         }
@@ -34,13 +39,13 @@ impl Executor {
         Executor::default()
     }
 
-    pub async fn receive(&mut self) -> Option<Message> {
+    pub async fn receive(&mut self) -> Option<NodeMessage> {
         self.receiver.recv().await
     }
 
     /// Create a new [`Context`] at the given address.
     pub fn new_context<S: ToString>(&self, address: S) -> Context {
-        let node = Node::new(self.sender.clone());
+        let node = self.node.clone();
         Context::new(node, address.to_string())
     }
 
@@ -49,35 +54,47 @@ impl Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        let runtime = Runtime::new().unwrap();
-        let _join = runtime.spawn(future);
-        runtime.block_on(Message::handle(self));
+        let rt = Arc::clone(&self.rt);
+        let _join = rt.spawn(future);
+        rt.block_on(self.handle_incoming());
 
         Ok(())
     }
 
-    /// Register a Handler at an address.
-    pub fn register<S: ToString>(
-        &mut self,
-        address: S,
-        worker: Box<dyn Worker<Context = Context>>,
-    ) -> Result<()> {
-        let address = address.to_string();
-        let context = self.new_context(address.clone());
-        self.registry.insert(address.clone(), (context, worker));
+    async fn handle_incoming(&mut self) {
+        loop {
+            let mut msg = match self.receive().await {
+                Some(msg) => msg,
+                _ => break, // None return means all senders are gone
+            };
 
-        let (context, w) = self.registry.get_mut(&address).unwrap();
-        w.initialize(&mut context.clone()).unwrap();
-
-        Ok(())
+            match msg {
+                NodeMessage::SenderReq(ref address, ref mut reply) => match self
+                    .registry
+                    .get(address)
+                {
+                    Some(sender) => reply.send(NodeReply::sender(address.clone(), sender.clone())),
+                    None => reply.send(NodeReply::no_such_worker(address.clone())),
+                }
+                .await
+                .unwrap(),
+                NodeMessage::StopWorker(ref address, ref mut reply) => {
+                    match self.registry.remove(address) {
+                        Some(_) => reply.send(NodeReply::ok()),
+                        None => reply.send(NodeReply::no_such_worker(address.clone())),
+                    }
+                    .await
+                    .unwrap()
+                }
+                NodeMessage::StopNode => {
+                    self.registry.clear(); // Dropping all senders stops all workers
+                    break;
+                }
+                NodeMessage::StartWorker(address, sender) => {
+                    // TODO: check that no worker with that address already exists?
+                    self.registry.insert(address, sender);
+                }
+            }
+        }
     }
-
-    // pub fn send<M: 'static, S: ToString>(&mut self, s: S, message: M) -> Result<()> {
-    //     let address = s.to_string();
-    //     let (context, handler) = self.registry.get_mut(&address).unwrap();
-    //     let h = handler.downcast_mut::<Box<dyn Handler<M, Context = Context>>>().unwrap();
-    //     h.handle(message, &context);
-    //
-    //     Ok(())
-    // }
 }

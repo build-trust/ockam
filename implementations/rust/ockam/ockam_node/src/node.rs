@@ -1,38 +1,87 @@
-use crate::error::Error;
-use crate::message::Message;
-use crate::Context;
+use crate::{error::Error, relay, Context, NodeMessage, NodeReply};
+use ockam_core::{Message, Result, Worker};
 
-use ockam_core::{Result, Worker};
-use tokio::sync::mpsc::Sender;
+use std::sync::Arc;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc::{channel, Sender};
 
 #[derive(Clone)]
 pub struct Node {
-    sender: Sender<Message>,
+    sender: Sender<NodeMessage>,
+    rt: Arc<Runtime>,
 }
 
 impl Node {
-    pub fn new(sender: Sender<Message>) -> Self {
-        Self { sender }
+    pub fn new(sender: Sender<NodeMessage>, rt: Arc<Runtime>) -> Self {
+        Self { sender, rt }
     }
 
+    /// Shut down a worker with a specific address
+    pub async fn stop_worker<S: ToString>(&self, address: S) -> Result<()> {
+        let (reply_tx, mut reply_rx) = channel(1);
+        let msg = NodeMessage::StopWorker(address.to_string(), reply_tx);
+
+        match self.sender.send(msg).await {
+            Ok(()) => {
+                if let Some(NodeReply::Ok) = reply_rx.recv().await {
+                    Ok(())
+                } else {
+                    Err(Error::FailedStopWorker.into())
+                }
+            }
+            Err(_e) => Err(Error::FailedStopWorker.into()),
+        }
+    }
+
+    /// Send messages to all workers to shut them down
     pub async fn stop(&self) -> Result<()> {
-        match self.sender.send(Message::stop()).await {
+        match self.sender.send(NodeMessage::StopNode).await {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStopNode.into()),
         }
     }
 
-    /// Create and start the handler at [`Address`].
-    pub async fn start_worker<S: ToString>(
-        &self,
-        address: S,
-        worker: impl Worker<Context = Context>,
-    ) -> Result<()> {
+    /// Create and start the handler at [`Address`](ockam_core::Address).
+    pub async fn start_worker<S, W, M>(&self, address: S, worker: W) -> Result<()>
+    where
+        S: ToString,
+        W: Worker<Context = Context, Message = M>,
+        M: Message + Send + 'static,
+    {
         let address = address.to_string();
-        let start_worker_message = Message::start_worker(address, Box::new(worker));
-        match self.sender.send(start_worker_message).await {
+        let ctx = Context::new(self.clone(), address.clone());
+        let sender = relay::build(self.rt.as_ref(), worker, ctx);
+
+        let msg = NodeMessage::start_worker(address, sender);
+        match self.sender.send(msg).await {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStartWorker.into()),
+        }
+    }
+
+    /// Send a message to a particular worker
+    pub async fn send_message<S, M>(&self, address: S, msg: M) -> Result<()>
+    where
+        S: ToString,
+        M: Message + Send + 'static,
+    {
+        let address = address.to_string();
+        let (reply_tx, mut reply_rx) = channel(1);
+        let req = NodeMessage::SenderReq(address, reply_tx);
+
+        match self.sender.send(req).await {
+            Ok(()) => {
+                if let Some(NodeReply::Sender(_, s)) = reply_rx.recv().await {
+                    let msg = msg.encode()?;
+                    match s.send(msg).await {
+                        Ok(()) => Ok(()),
+                        Err(_e) => Err(Error::FailedSendMessage.into()),
+                    }
+                } else {
+                    Err(Error::FailedSendMessage.into())
+                }
+            }
+            Err(_e) => Err(Error::FailedSendMessage.into()),
         }
     }
 }
