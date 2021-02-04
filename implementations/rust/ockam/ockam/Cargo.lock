@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "quote",
  "syn",

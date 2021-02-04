@@ -19,3 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - README
+
+## v0.1.3 - 2021-02-03
+### Changed
+
+- Fix repository URL in Cargo.toml
