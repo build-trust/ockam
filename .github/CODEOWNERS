@@ -1,6 +1,9 @@
 # Request reviews from Mrinal unless one of the specific rules later in this file take precedence.
 * @mrinalwadhwa
 
+# Request reviews from Jared and Mrinal when code in the rust implementation changes.
+implementations/rust/* @jared-s @mrinalwadhwa
+
 # Request reviews from Robin, Mike, Jared, Sanjo and Mrinal when code in the rust implementation changes.
 implementations/rs/* @robinbudd @mikelodder7 @jared-s @sanjodeundiak @mrinalwadhwa
 
