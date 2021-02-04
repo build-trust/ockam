@@ -23,7 +23,7 @@ impl HashVault for SoftwareVault {
         ikm: Option<&Secret>,
         output_attributes: Vec<SecretAttributes>,
     ) -> ockam_core::Result<Vec<Secret>> {
-        let ikm = match ikm {
+        let ikm: ockam_core::Result<&[u8]> = match ikm {
             Some(ikm) => {
                 let ikm = self.get_entry(ikm)?;
                 if ikm.key_attributes().stype == SecretType::Buffer {
@@ -32,8 +32,10 @@ impl HashVault for SoftwareVault {
                     Err(VaultError::InvalidKeyType.into())
                 }
             }
-            None => Ok(&[] as &[u8]),
-        }?;
+            None => Ok(&[0u8; 0]),
+        };
+
+        let ikm = ikm?;
 
         let salt = self.get_entry(salt)?;
 
@@ -48,7 +50,7 @@ impl HashVault for SoftwareVault {
             let mut okm = vec![0u8; okm_len];
             let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key().as_ref()), ikm);
             prk.expand(info, okm.as_mut_slice())
-                .or(Err(VaultError::HkdfExpandError.into()))?;
+                .map_err(|_| VaultError::HkdfExpandError.into())?;
             okm
         };
 

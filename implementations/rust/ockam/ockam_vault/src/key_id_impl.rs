@@ -14,7 +14,7 @@ impl KeyIdVault for SoftwareVault {
                     false
                 }
             })
-            .ok_or(VaultError::SecretNotFound.into())?
+            .ok_or_else(|| VaultError::SecretNotFound.into())?
             .0;
 
         Ok(Secret::new(*index))
@@ -22,7 +22,7 @@ impl KeyIdVault for SoftwareVault {
 
     fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> ockam_core::Result<KeyId> {
         let key_id = self.sha256(public_key.as_ref())?;
-        Ok(hex::encode(key_id).into())
+        Ok(hex::encode(key_id))
     }
 }
 
