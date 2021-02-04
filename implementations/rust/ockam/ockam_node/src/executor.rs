@@ -1,29 +1,26 @@
-use std::any::Any;
+use crate::message::Message;
+use crate::node::Node;
+use crate::Context;
+
+use ockam_core::{Address, Result, Worker};
+
+use std::collections::HashMap;
 use std::future::Future;
 
-use hashbrown::HashMap;
-use ockam_core::Error;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-pub use command::*;
-
-use super::{Context, Handler, Node};
-
-mod command;
-
-/// Runtime environment for [`Node`] command execution.
-pub struct NodeExecutor {
-    sender: Sender<Command>,
-    receiver: Receiver<Command>,
-    registry: HashMap<String, (Context, Box<dyn Any>)>,
+pub struct Executor {
+    sender: Sender<Message>,
+    receiver: Receiver<Message>,
+    registry: HashMap<Address, (Context, Box<dyn Worker<Context = Context>>)>,
 }
 
-impl Default for NodeExecutor {
+impl Default for Executor {
     fn default() -> Self {
         let (sender, receiver) = channel(32);
         let registry = HashMap::new();
-        NodeExecutor {
+        Self {
             sender,
             receiver,
             registry,
@@ -31,59 +28,56 @@ impl Default for NodeExecutor {
     }
 }
 
-impl NodeExecutor {
-    /// Create a new [`NodeExecutor`].
+impl Executor {
+    /// Create a new [`Executor`].
     pub fn new() -> Self {
-        NodeExecutor::default()
+        Executor::default()
+    }
+
+    pub async fn receive(&mut self) -> Option<Message> {
+        self.receiver.recv().await
     }
 
     /// Create a new [`Context`] at the given address.
-    pub fn new_worker_context<S: ToString>(&self, address: S) -> Context {
-        Context::new(Node::new(self.sender.clone()), address.to_string())
+    pub fn new_context<S: ToString>(&self, address: S) -> Context {
+        let node = Node::new(self.sender.clone());
+        Context::new(node, address.to_string())
     }
 
-    /// Execute a stream of [`Command`]s. This function blocks until a [`Command`] signals a request
-    /// to break, by returning `true`.
-    pub fn execute<T>(
-        &mut self,
-        application: impl Future<Output = T> + 'static + Send,
-    ) -> Result<(), Error>
+    pub fn execute<F>(&mut self, future: F) -> Result<()>
     where
-        T: Send + 'static,
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
     {
         let runtime = Runtime::new().unwrap();
-
-        // TODO: turn app into a worker with an address
-        runtime.spawn(application);
-
-        runtime.block_on(async move {
-            loop {
-                if let Some(command) = self.receiver.recv().await {
-                    let should_break = command.run(self);
-                    if should_break {
-                        break;
-                    };
-                }
-            }
-        });
+        let _join = runtime.spawn(future);
+        runtime.block_on(Message::handle(self));
 
         Ok(())
     }
 
     /// Register a Handler at an address.
-    pub fn register<T: Any, S: ToString>(&mut self, s: S, handler: T) {
-        let address = s.to_string();
-        let context = self.new_worker_context(address.clone());
-        self.registry.insert(address, (context, Box::new(handler)));
+    pub fn register<S: ToString>(
+        &mut self,
+        address: S,
+        worker: Box<dyn Worker<Context = Context>>,
+    ) -> Result<()> {
+        let address = address.to_string();
+        let context = self.new_context(address.clone());
+        self.registry.insert(address.clone(), (context, worker));
+
+        let (context, w) = self.registry.get_mut(&address).unwrap();
+        w.initialize(&mut context.clone()).unwrap();
+
+        Ok(())
     }
 
-    /// Send a message to the entity at an address.
-    pub fn send<M: 'static, S: ToString>(&mut self, s: S, message: M) {
-        let address = s.to_string();
-        let (context, handler) = self.registry.get_mut(&address).unwrap();
-        let h = handler.downcast_mut::<Box<dyn Handler<M>>>().unwrap();
-        h.handle(context, message);
-
-        // let (_c, _h) = self.get::<Box <dyn Handler<M>>>(address.to_string()).unwrap();
-    }
+    // pub fn send<M: 'static, S: ToString>(&mut self, s: S, message: M) -> Result<()> {
+    //     let address = s.to_string();
+    //     let (context, handler) = self.registry.get_mut(&address).unwrap();
+    //     let h = handler.downcast_mut::<Box<dyn Handler<M, Context = Context>>>().unwrap();
+    //     h.handle(message, &context);
+    //
+    //     Ok(())
+    // }
 }

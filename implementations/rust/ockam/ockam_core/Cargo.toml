@@ -22,3 +22,6 @@ default = ["std"]
 
 # Requires the Rust Standard Library.
 std = []
+
+[dependencies]
+async-trait = "0.1.42"

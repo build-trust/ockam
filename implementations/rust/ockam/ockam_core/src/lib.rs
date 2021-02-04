@@ -7,7 +7,7 @@
 //! The main Ockam crate re-exports types defined in this crate.
 
 #![deny(
-    missing_docs,
+    // missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,
@@ -18,6 +18,10 @@
 // #![no_std] if the std feature is disabled.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// Export - Error and Result types.
+mod address;
 mod error;
+mod worker;
+
+pub use address::*;
 pub use error::*;
+pub use worker::*;
