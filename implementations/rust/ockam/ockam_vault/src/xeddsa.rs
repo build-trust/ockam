@@ -88,9 +88,15 @@ impl XEddsaSigner for XSecretKey {
 impl XEddsaVerifier for XPublicKey {
     fn verify(&self, msg: &[u8], sig: &[u8; 64]) -> bool {
         let pt = MontgomeryPoint(self.to_bytes());
-        let pk = EPublicKey::from_bytes(&pt.to_edwards(0).unwrap().compress().to_bytes()).unwrap();
-        let sig = Signature::new(*sig);
-        pk.verify(msg, &sig).is_ok()
+
+        if let Some(edwards) = pt.to_edwards(0) {
+            if let Ok(pk) = EPublicKey::from_bytes(&edwards.compress().to_bytes()) {
+                let sig = Signature::new(*sig);
+                return pk.verify(msg, &sig).is_ok();
+            }
+        }
+
+        false
     }
 }
 
