@@ -1,6 +1,7 @@
 [package]
 authors = ["Ockam Developers"]
-description = """
+description = """Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
 """
 edition = "2018"
 exclude = [
@@ -12,7 +13,7 @@ license = "Apache-2.0"
 name = "ockam"
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam"
-version = "0.0.0"
+version = "0.1.0"
 
 [features]
 default = ["std"]
