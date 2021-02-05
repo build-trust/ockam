@@ -36,6 +36,58 @@ impl<D> ProfileVault for D where
 
 pub type ProfileEventAttributes = HashMap<String, String>;
 
+/// Profile is an abstraction responsible for keeping, verifying and modifying
+/// user's data (mainly - public keys). It is used to create new keys, rotate and revoke them.
+/// Public keys as well as some metadata will be organised into events chain, corresponding
+/// secret keys will be saved into the given Vault implementation. Events chain and corresponding
+/// secret keys are what fully determines Profile.
+///
+///
+/// # Examples
+/// ```
+/// use ockam_vault::SoftwareVault;
+/// use std::sync::{Mutex, Arc};
+/// use ockam::{Profile, KeyAttributes, PROFILE_ROOT_KEY_LABEL, ProfileKeyType, ProfileKeyPurpose};
+///
+/// fn example() {
+///     let vault = SoftwareVault::default();
+///     let vault = Arc::new(Mutex::new(vault));
+///     let mut profile = Profile::create(None, vault).unwrap();
+///
+///     let root_key_attributes = KeyAttributes::new(
+///         PROFILE_ROOT_KEY_LABEL.to_string(),
+///         ProfileKeyType::Root,
+///         ProfileKeyPurpose::ProfileUpdate,
+///     );
+///
+///     let _alice_root_secret = profile.get_secret_key(&root_key_attributes).unwrap();
+///
+///     let truck_key_attributes = KeyAttributes::new(
+///         "Truck management".to_string(),
+///         ProfileKeyType::Issuing,
+///         ProfileKeyPurpose::IssueCredentials,
+///     );
+///
+///     profile
+///         .create_key(truck_key_attributes.clone(), None)
+///         .unwrap();
+///
+///     let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
+///
+///     profile.rotate_key(truck_key_attributes.clone(), None).unwrap();
+///
+///     let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
+///
+///     for change_event in profile.change_history().as_ref() {
+///         let id = change_event.identifier().to_string_representation();
+///         if profile.verify(change_event).is_ok() {
+///             println!("{} is valid", id);
+///         } else {
+///             println!("{} is not valid", id);
+///         }
+///     }
+/// }
+/// ```
 #[derive(Clone)]
 pub struct Profile {
     identifier: ProfileIdentifier,
@@ -44,11 +96,13 @@ pub struct Profile {
 }
 
 impl Profile {
+    /// Return unique identifier, which equals to sha256 of the root public key
     pub fn identifier(&self) -> &ProfileIdentifier {
         &self.identifier
     }
-    pub fn change_history(&self) -> &ProfileChangeHistory {
-        &self.change_history
+    /// Return change history chain
+    pub fn change_history(&self) -> &[ProfileChangeEvent] {
+        self.change_history.as_ref()
     }
 }
 
@@ -67,6 +121,7 @@ impl Profile {
 }
 
 impl Profile {
+    /// Generate fresh root key and create new [`Profile`]
     pub fn create(
         attributes: Option<ProfileEventAttributes>,
         vault: Arc<Mutex<dyn ProfileVault>>,
@@ -104,6 +159,8 @@ impl Profile {
         Ok(profile)
     }
 
+    /// Create new key
+    /// Key is uniquely identified by (label, key_type and key_purpose) triplet in [`KeyAttributes`]
     pub fn create_key(
         &mut self,
         key_attributes: KeyAttributes,
@@ -114,6 +171,8 @@ impl Profile {
         self.apply_no_verification(event)
     }
 
+    /// Rotate existing key
+    /// Key is uniquely identified by (label, key_type and key_purpose) triplet in [`KeyAttributes`]
     pub fn rotate_key(
         &mut self,
         key_attributes: KeyAttributes,
@@ -124,8 +183,9 @@ impl Profile {
         self.apply_no_verification(event)
     }
 
+    /// Get [`Secret`] key. Key is uniquely identified by (label, key_type and key_purpose) triplet.
     pub fn get_secret_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
-        let event = self.change_history().find_last_key_event(key_attributes)?;
+        let event = self.change_history.find_last_key_event(key_attributes)?;
         ProfileChangeHistory::get_secret_key_from_event(
             key_attributes,
             event,
@@ -153,13 +213,15 @@ impl Profile {
         Ok(())
     }
 
+    /// Apply new change to the [`Profile`]. Change will be verified
     pub fn apply(&mut self, change_event: ProfileChangeEvent) -> ockam_core::Result<()> {
         self.verify(&change_event)?;
 
         self.apply_no_verification(change_event)
     }
 
-    // WARNING: Checks only one event, assumes all previous events are verified
+    /// Verify change relative to current [`Profile`]'s event chain.
+    /// WARNING: This function assumes all existing events in chain are verified
     pub fn verify(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
         if !Self::check_consistency(&change_event) {
             return Err(OckamError::ConsistencyError.into());
@@ -303,7 +365,11 @@ mod test {
 
         let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
 
-        profile.rotate_key(truck_key_attributes, None).unwrap();
+        profile
+            .rotate_key(truck_key_attributes.clone(), None)
+            .unwrap();
+
+        let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
 
         for change_event in profile.change_history().as_ref() {
             let id = change_event.identifier().to_string_representation();
