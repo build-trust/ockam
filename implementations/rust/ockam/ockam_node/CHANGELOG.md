@@ -8,4 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.1.0 - 2021-02-03
 ### Added
 
+- Added description to Cargo.toml.
+
+## v0.1.0 - 2021-02-03
+### Added
+
 - This document and other meta-information documents.
