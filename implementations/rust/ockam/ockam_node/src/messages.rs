@@ -7,6 +7,8 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 pub enum NodeMessage {
     /// Start a new worker and store the send handle
     StartWorker(Address, Sender<RelayMessage>),
+    /// Return a list of all worker addresses
+    ListWorkers(Sender<NodeReply>),
     /// Stop an existing worker
     StopWorker(Address, Sender<NodeReply>),
     /// Stop the node (and all workers)
@@ -19,6 +21,12 @@ impl NodeMessage {
     /// Create a start worker message
     pub fn start_worker(address: Address, sender: Sender<RelayMessage>) -> Self {
         Self::StartWorker(address, sender)
+    }
+
+    /// Create a list worker message and reply receiver
+    pub fn list_workers() -> (Self, Receiver<NodeReply>) {
+        let (tx, rx) = channel(1);
+        (Self::ListWorkers(tx), rx)
     }
 
     /// Create a stop worker message and reply receiver
@@ -46,6 +54,8 @@ pub enum NodeReply {
     Ok,
     /// Worker address not found
     NoSuchWorker(Address),
+    /// A list of worker addresses
+    Workers(Vec<Address>),
     /// Message sender to a specific worker
     Sender(Address, Sender<RelayMessage>),
 }

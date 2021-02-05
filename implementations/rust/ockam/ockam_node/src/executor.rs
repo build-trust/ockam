@@ -94,6 +94,10 @@ impl Executor {
                     // TODO: check that no worker with that address already exists?
                     self.registry.insert(address, sender);
                 }
+                NodeMessage::ListWorkers(sender) => {
+                    let list = self.registry.keys().cloned().collect();
+                    sender.send(NodeReply::Workers(list)).await.unwrap();
+                }
             }
         }
     }

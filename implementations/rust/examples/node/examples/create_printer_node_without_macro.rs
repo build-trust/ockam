@@ -50,6 +50,8 @@ fn main() {
             .await
             .unwrap();
 
+        println!("{:?}", ctx.node().list_workers().await.unwrap());
+
         ctx.node()
             .send_message(addr.clone(), PrintMessage::new("Hello ockam!"))
             .await

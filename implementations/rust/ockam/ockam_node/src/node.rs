@@ -1,5 +1,5 @@
 use crate::{error::Error, relay, Context, NodeMessage, NodeReply};
-use ockam_core::{Message, Result, Worker};
+use ockam_core::{Address, Message, Result, Worker};
 
 use std::sync::Arc;
 use tokio::runtime::Runtime;
@@ -56,6 +56,22 @@ impl Node {
         match self.sender.send(msg).await {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStartWorker.into()),
+        }
+    }
+
+    /// Return a list of all available worker addresses on a node
+    pub async fn list_workers(&self) -> Result<Vec<Address>> {
+        let (msg, mut reply_rx) = NodeMessage::list_workers();
+
+        match self.sender.send(msg).await {
+            Ok(()) => {
+                if let Some(NodeReply::Workers(list)) = reply_rx.recv().await {
+                    Ok(list)
+                } else {
+                    Ok(vec![])
+                }
+            }
+            Err(_e) => Err(Error::FailedListWorker.into()),
         }
     }
 

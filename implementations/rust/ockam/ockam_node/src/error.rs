@@ -7,6 +7,8 @@ pub enum Error {
     FailedStartWorker,
     /// Unable to stop a worker
     FailedStopWorker,
+    /// Unable to list available workers
+    FailedListWorker,
     /// Unable to send a message to a worker
     FailedSendMessage,
 }
