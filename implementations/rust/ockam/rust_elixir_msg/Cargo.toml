@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 
+[lib]
+crate-type = ["rlib"]
+
 [dependencies]
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}

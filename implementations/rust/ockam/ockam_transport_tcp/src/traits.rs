@@ -1,5 +1,6 @@
 extern crate alloc;
 
+use crate::error::Error;
 use alloc::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex;
@@ -20,5 +21,5 @@ pub trait Connection {
 /// The `Listerner` trait represents transport connection listeners.
 #[async_trait]
 pub trait Listener {
-    async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, String>;
+    async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, Error>;
 }

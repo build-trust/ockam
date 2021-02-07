@@ -1,3 +1,4 @@
+use crate::error::Error;
 use crate::traits::Connection;
 use async_trait::async_trait;
 use std::net::SocketAddr;
@@ -50,12 +51,12 @@ impl Connection for TcpConnection {
         Ok(())
     }
 
-    async fn send(&mut self, buff: &[u8]) -> Result<usize, String> {
+    async fn send(&mut self, buff: &[u8]) -> Result<usize, Error> {
         let mut i = 0;
         return if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.writable().await) {
-                    return Err("Can't send, check connection".into());
+                    return Err(Error::CheckConnection.into());
                 }
                 match stream.try_write(&buff[i..]) {
                     Ok(n) if n == buff.len() => {
@@ -69,20 +70,20 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     Err(_) => {
-                        return Err("write error".into());
+                        return Err(Error::CheckConnection.into());
                     }
                 }
             }
         } else {
-            Err("not connected".into())
+            Err(Error::NotConnected.into())
         };
     }
 
-    async fn receive(&mut self, buff: &mut [u8]) -> Result<usize, String> {
+    async fn receive(&mut self, buff: &mut [u8]) -> Result<usize, Error> {
         if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.readable().await) {
-                    return Err("can't receive, check connection".into());
+                    return Err(Error::CheckConnection.into());
                 }
                 match stream.try_read(buff) {
                     Ok(n) => {
@@ -92,12 +93,12 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     _ => {
-                        return Err("receive failed".into());
+                        return Err(Error::ReceiveFailed.into());
                     }
                 }
             }
         } else {
-            Err("not connected".into())
+            Err(Error::CheckConnection.into())
         }
     }
 }

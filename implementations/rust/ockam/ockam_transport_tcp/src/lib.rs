@@ -6,5 +6,6 @@
 //! end-to-end trust between entities, independently from the underlying transport.
 
 pub mod connection;
+pub mod error;
 pub mod listener;
 pub mod traits;
