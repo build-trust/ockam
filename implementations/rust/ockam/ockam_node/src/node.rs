@@ -100,4 +100,13 @@ impl Node {
             Err(_e) => Err(Error::FailedSendMessage.into()),
         }
     }
+
+    /// Block to receive a message for the current worker
+    pub async fn receive<M>(&self, ctx: &Context) -> Result<M>
+    where
+        M: Message + Send + 'static,
+    {
+        let _addr = ctx.address();
+        todo!()
+    }
 }

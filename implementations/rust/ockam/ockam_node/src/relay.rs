@@ -16,7 +16,7 @@
 //! a type and notifying the companion actor.
 
 use crate::Context;
-use ockam_core::{Encoded, Message, Worker};
+use ockam_core::{Encoded, Message, Result, Worker};
 use std::marker::PhantomData;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -48,20 +48,45 @@ where
         }
     }
 
-    async fn run(mut self) {
-        // Initialise the worker first
-        self.worker.initialize(&mut self.ctx).unwrap();
+    /// A wrapper function around the lifetime of a worker
+    async fn run_inner(&mut self) -> Result<()> {
+        self.worker.initialize(&mut self.ctx)?;
 
+        // Loop until the last sender disappears
         while let Some(ref enc) = self.rx.recv().await {
             let msg = match M::decode(enc) {
                 Ok(msg) => msg,
                 _ => continue,
             };
-            self.worker.handle_message(&mut self.ctx, msg).unwrap();
+
+            self.worker.handle_message(&mut self.ctx, msg)?;
         }
 
-        // Shut down the worker now
-        self.worker.shutdown(&mut self.ctx).unwrap();
+        // Errors that occur during shut-down should be logged, but
+        // not re-start the worker automatically!
+        match self.worker.shutdown(&mut self.ctx) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                eprintln!(
+                    "Worker '{}' error during shutdown: {}",
+                    self.ctx.address(),
+                    e.to_string()
+                );
+                Ok(())
+            }
+        }
+    }
+
+    /// Run the inner worker and restart it if errors occurs
+    async fn run(mut self) {
+        while let Err(e) = (&mut self).run_inner().await {
+            // todo: replace with tracing::warn!
+            eprintln!(
+                "Worker '{}' experienced an error and is re-starting: {}",
+                self.ctx.address(),
+                e.to_string()
+            );
+        }
     }
 }
 
