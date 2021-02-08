@@ -2,7 +2,7 @@ use super::structs::*;
 use crate::{attribute::Attribute, serdes::*};
 use serde::{Deserialize, Serialize};
 
-/// A schema describes the layout of a credential in a similar manner
+/// A Schema describes the layout of a credential in a similar manner
 /// that a schema describes a database table.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Schema {

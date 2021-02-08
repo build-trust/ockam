@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Attributes describe the claims in credentials. The attribute
 /// describes the name of the claim,
-/// its meaning and how it is cryptographically signed
+/// its meaning and how it is cryptographically signed.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Attribute {
     /// The name of the attribute

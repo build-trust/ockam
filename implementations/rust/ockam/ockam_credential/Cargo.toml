@@ -25,3 +25,6 @@ std = ["alloc", "ockam_core/std"]
 heapless = { version = "0.6", optional = true }
 ockam_core = { version = "0.2.0", default-features = false, path = "../ockam_core" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0"

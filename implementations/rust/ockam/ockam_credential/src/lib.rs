@@ -1,8 +1,7 @@
-//! OCKAM-CREDENTIALS: Implements the structures, traits, and protocols
+//! Ockam Credential implements the structures, traits, and protocols
 //! for creating, issuing, and verifying ockam credentials.
 //!
-//! Ockam credentials are used for authentication and authorization among
-//! Ockam compatible connections
+//! Ockam credentials are used for authentication and authorization among Ockam compatible connections.
 #![no_std]
 #![deny(
     missing_docs,
@@ -49,3 +48,69 @@ pub use attribute::Attribute;
 /// Schema used by credentials
 mod schema;
 pub use schema::Schema;
+
+
+#[cfg(test)]
+mod tests {
+    use crate::{Schema, Attribute, AttributeType};
+    use std::string::String;
+    use std::vec::Vec;
+
+    fn create_test_schema() -> Schema {
+        let attribute = Attribute {
+            label: String::from("test_attr"),
+            description: String::from("test attribute"),
+            attribute_type: AttributeType::Utf8String
+        };
+
+        let mut attributes = Vec::new();
+
+        attributes.push(attribute);
+
+        Schema {
+            id: String::from("test_id"),
+            label: String::from("test_label"),
+            description: String::from("test_desc"),
+            attributes
+        }
+    }
+
+    #[test]
+    fn test_schema_creation() {
+        let _schema = create_test_schema();
+    }
+
+    #[test]
+    fn test_schema_serialization() {
+        let mut schema = create_test_schema();
+
+        if let Ok(serialized) = serde_json::to_string(&schema) {
+            assert!(serialized.contains("test_id"));
+            assert!(serialized.contains("test_label"));
+            assert!(serialized.contains("test_desc"));
+            assert!(serialized.contains("test_attr"));
+            assert!(serialized.contains("test attribute"));
+
+            if let Ok(mut rehydrated) = serde_json::from_str::<Schema>(&serialized) {
+                assert_eq!(rehydrated.id, schema.id);
+                assert_eq!(rehydrated.label, schema.label);
+                assert_eq!(rehydrated.description, schema.description);
+                assert_eq!(rehydrated.attributes.len(), schema.attributes.len());
+
+                if let Some(schema_attr) = schema.attributes.pop() {
+                    if let Some(rehydrated_attr) = rehydrated.attributes.pop() {
+                        assert_eq!(schema_attr.attribute_type, rehydrated_attr.attribute_type);
+                        assert_eq!(schema_attr.label, rehydrated_attr.label);
+                        assert_eq!(schema_attr.description, rehydrated_attr.description);
+                    } else {
+                        panic!("Missing rehydrated attribute")
+                    }
+                } else {
+                    panic!("Missing Schema attribute")
+                }
+            }
+        } else {
+            panic!("Couldn't serialize Schema")
+        }
+    }
+}
