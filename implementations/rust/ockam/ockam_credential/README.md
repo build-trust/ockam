@@ -14,7 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_credential = "0.0.0"
+ockam_credential = "0.1.0"
 ```
 
 ## Crate Features
@@ -25,7 +25,7 @@ disabled as follows
 
 ```
 [dependencies]
-ockam_credential = { version = "0.0.0", default-features = false, features = ["no-std"]  }
+ockam_credential = { version = "0.1.0", default-features = false, features = ["no-std"]  }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
