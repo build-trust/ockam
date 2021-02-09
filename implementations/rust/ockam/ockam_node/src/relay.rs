@@ -59,7 +59,7 @@ where
                 _ => continue,
             };
 
-            self.worker.handle_message(&mut self.ctx, msg)?;
+            self.worker.handle_message(&mut self.ctx, msg).await?;
         }
 
         // Errors that occur during shut-down should be logged, but

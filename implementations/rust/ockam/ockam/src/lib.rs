@@ -23,4 +23,4 @@ mod entity;
 mod error;
 
 pub use entity::*;
-pub use ockam_core::{Error, Result, Encoded, Worker, Message};
+pub use ockam_core::{Address, Error, Result, Encoded, Worker, Message};

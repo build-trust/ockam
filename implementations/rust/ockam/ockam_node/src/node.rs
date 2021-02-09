@@ -35,6 +35,8 @@ impl Node {
 
     /// Send messages to all workers to shut them down
     pub async fn stop(&self) -> Result<()> {
+        println!("Node: shutting down all workers");
+        
         match self.sender.send(NodeMessage::StopNode).await {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStopNode.into()),
