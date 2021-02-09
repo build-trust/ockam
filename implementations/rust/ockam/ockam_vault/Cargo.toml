@@ -1,6 +1,6 @@
 [package]
 authors = ["Ockam Developers"]
-description = """
+description = """ A software-only Ockam Vault implementation that can be used when no cryptographic hardware is available.
 """
 edition = "2018"
 homepage = "https://www.ockam.io/"
