@@ -5,10 +5,10 @@ use crate::{
 use ockam_vault_core::{PublicKey, Secret};
 
 #[derive(Clone, Debug)]
-pub struct ProfileChangeHistory(Vec<ProfileChangeEvent>);
+pub(crate) struct ProfileChangeHistory(Vec<ProfileChangeEvent>);
 
 impl ProfileChangeHistory {
-    pub fn new(change_events: Vec<ProfileChangeEvent>) -> Self {
+    pub(crate) fn new(change_events: Vec<ProfileChangeEvent>) -> Self {
         Self(change_events)
     }
 

@@ -4,14 +4,13 @@ use hashbrown::HashMap;
 use ockam_vault_core::{
     HashVault, KeyIdVault, PublicKey, Secret, SecretVault, SignerVault, VerifierVault,
 };
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
 mod identifiers;
 pub use identifiers::*;
 mod key_attributes;
 pub use key_attributes::*;
-mod profile_change_history;
-pub use profile_change_history::*;
 mod profile_change_proof;
 pub use profile_change_proof::*;
 mod profile_change_event;
@@ -19,8 +18,10 @@ pub use profile_change_event::*;
 mod profile_change;
 pub use profile_change::*;
 mod profile_change_type;
+use crate::profile::profile_change_history::ProfileChangeHistory;
 pub use profile_change_type::*;
-use std::ops::{Deref, DerefMut};
+
+mod profile_change_history;
 
 pub const OCKAM_NO_EVENT: &[u8] = "OCKAM_NO_EVENT".as_bytes();
 pub const PROFILE_ROOT_KEY_LABEL: &'static str = "OCKAM_PRK";
@@ -78,7 +79,7 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 ///
 ///     let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
 ///
-///     for change_event in profile.change_history().as_ref() {
+///     for change_event in profile.change_events().as_ref() {
 ///         let id = change_event.identifier().to_string_representation();
 ///         if profile.verify(change_event).is_ok() {
 ///             println!("{} is valid", id);
@@ -101,7 +102,7 @@ impl Profile {
         &self.identifier
     }
     /// Return change history chain
-    pub fn change_history(&self) -> &[ProfileChangeEvent] {
+    pub fn change_events(&self) -> &[ProfileChangeEvent] {
         self.change_history.as_ref()
     }
 }
@@ -109,12 +110,12 @@ impl Profile {
 impl Profile {
     pub fn new(
         identifier: ProfileIdentifier,
-        change_history: ProfileChangeHistory,
+        change_events: Vec<ProfileChangeEvent>,
         vault: Arc<Mutex<dyn ProfileVault>>,
     ) -> Self {
         Profile {
             identifier,
-            change_history,
+            change_history: ProfileChangeHistory::new(change_events),
             vault,
         }
     }
@@ -143,18 +144,14 @@ impl Profile {
             v.deref_mut(),
         )?;
 
-        let change =
-            ProfileChangeHistory::find_key_change_in_event(&change_event, &key_attributes).unwrap(); // FIXME
+        let change = ProfileChangeHistory::find_key_change_in_event(&change_event, &key_attributes)
+            .ok_or_else(|| OckamError::InvalidInternalState)?;
         let public_key = ProfileChangeHistory::get_change_public_key(&change)?;
 
         let public_kid = v.compute_key_id_for_public_key(&public_key)?;
         let public_kid = ProfileIdentifier::from_key_id(public_kid);
 
-        let profile = Profile::new(
-            public_kid,
-            ProfileChangeHistory::new(vec![change_event]),
-            vault.clone(),
-        );
+        let profile = Profile::new(public_kid, vec![change_event], vault.clone());
 
         Ok(profile)
     }
@@ -195,9 +192,10 @@ impl Profile {
 }
 
 impl Profile {
-    fn check_consistency(_change_event: &ProfileChangeEvent) -> bool {
+    fn check_consistency(change_event: &ProfileChangeEvent) -> bool {
         // TODO: check event for consistency: e.g. you cannot rotate the same key twice during one event
-        true
+        // For only allow one change at a time
+        change_event.changes().len() == 1
     }
 
     fn apply_no_verification(
@@ -280,7 +278,7 @@ impl Profile {
                         prev_key_event,
                         c.data().key_attributes(),
                     )
-                    .unwrap(); // FIXME
+                    .ok_or_else(|| OckamError::InvalidInternalState)?;
                     let public_key = ProfileChangeHistory::get_change_public_key(prev_key_change)?;
 
                     vault
@@ -308,7 +306,7 @@ impl Profile {
 
     pub(crate) fn get_root_public_key(&self) -> ockam_core::Result<PublicKey> {
         let root_event;
-        if let Some(re) = self.change_history().as_ref().first() {
+        if let Some(re) = self.change_events().as_ref().first() {
             root_event = re;
         } else {
             return Err(OckamError::InvalidInternalState.into());
@@ -371,7 +369,7 @@ mod test {
 
         let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
 
-        for change_event in profile.change_history().as_ref() {
+        for change_event in profile.change_events().as_ref() {
             let id = change_event.identifier().to_string_representation();
             if profile.verify(change_event).is_ok() {
                 println!("{} is valid", id);

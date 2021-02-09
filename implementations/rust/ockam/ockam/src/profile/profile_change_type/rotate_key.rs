@@ -1,7 +1,8 @@
+use crate::profile::profile_change_history::ProfileChangeHistory;
 use crate::{
     EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange, ProfileChangeEvent,
-    ProfileChangeHistory, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, Signature,
-    SignatureType, PROFILE_CHANGE_CURRENT_VERSION,
+    ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, Signature, SignatureType,
+    PROFILE_CHANGE_CURRENT_VERSION,
 };
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
