@@ -97,12 +97,20 @@ impl ProfileChangeHistory {
         event: &ProfileChangeEvent,
         vault: &dyn ProfileVault,
     ) -> ockam_core::Result<Secret> {
-        let change = Self::find_key_change_in_event(event, key_attributes).unwrap(); // FIXME
-
-        let public_key = Self::get_change_public_key(change).unwrap(); // FIXME
+        let public_key = Self::get_public_key_from_event(key_attributes, event)?;
 
         let public_kid = vault.compute_key_id_for_public_key(&public_key)?;
 
         vault.get_secret_by_key_id(&public_kid)
+    }
+
+    pub(crate) fn get_public_key_from_event(
+        key_attributes: &KeyAttributes,
+        event: &ProfileChangeEvent,
+    ) -> ockam_core::Result<PublicKey> {
+        let change = Self::find_key_change_in_event(event, key_attributes)
+            .ok_or_else(|| OckamError::InvalidInternalState)?;
+
+        Self::get_change_public_key(change)
     }
 }

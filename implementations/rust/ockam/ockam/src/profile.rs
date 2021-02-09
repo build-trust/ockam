@@ -189,6 +189,16 @@ impl Profile {
             self.vault.lock().unwrap().deref(),
         )
     }
+
+    /// Get [`PublicKey`]. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
+    pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
+        let event = self.change_history.find_last_key_event(key_attributes)?;
+        ProfileChangeHistory::get_secret_key_from_event(
+            key_attributes,
+            event,
+            self.vault.lock().unwrap().deref(),
+        )
+    }
 }
 
 impl Profile {
@@ -350,6 +360,7 @@ mod test {
         );
 
         let _alice_root_secret = profile.get_secret_key(&root_key_attributes).unwrap();
+        let _alice_root_public_key = profile.get_public_key(&root_key_attributes).unwrap();
 
         let truck_key_attributes = KeyAttributes::new(
             "Truck management".to_string(),
@@ -362,12 +373,14 @@ mod test {
             .unwrap();
 
         let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
+        let _alice_truck_public_key = profile.get_public_key(&truck_key_attributes).unwrap();
 
         profile
             .rotate_key(truck_key_attributes.clone(), None)
             .unwrap();
 
         let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
+        let _alice_truck_public_key = profile.get_public_key(&truck_key_attributes).unwrap();
 
         for change_event in profile.change_events().as_ref() {
             let id = change_event.identifier().to_string_representation();
