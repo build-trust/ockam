@@ -8,7 +8,7 @@ pub enum SignatureType {
     RootSign,
 }
 
-// Variants of proofs that are allowed on a change event.
+/// Variants of proofs that are allowed on a [`Profile`] change
 #[derive(Clone, Debug)]
 pub enum ProfileChangeProof {
     Signature(Signature),

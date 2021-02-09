@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+/// Type of key.
+/// Root key is the first key in any [`Profile`] and it's used to perform [`Profile`] updates
+/// Issuing key is used to issue credentials
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ProfileKeyType {
     Root,
@@ -12,6 +15,7 @@ pub enum ProfileKeyPurpose {
     IssueCredentials,
 }
 
+/// Attributes that are used to identify key
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct KeyAttributes {
     label: String,
@@ -20,6 +24,7 @@ pub struct KeyAttributes {
 }
 
 impl KeyAttributes {
+    /// Human-readable key name
     pub fn label(&self) -> &str {
         &self.label
     }

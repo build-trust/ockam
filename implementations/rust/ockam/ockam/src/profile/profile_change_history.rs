@@ -4,6 +4,7 @@ use crate::{
 };
 use ockam_vault_core::{PublicKey, Secret};
 
+/// Full history of [`Profile`] changes. History and corresponding secret keys are enough to recreate [`Profile`]
 #[derive(Clone, Debug)]
 pub(crate) struct ProfileChangeHistory(Vec<ProfileChangeEvent>);
 

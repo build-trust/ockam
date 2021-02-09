@@ -39,7 +39,7 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 
 /// Profile is an abstraction responsible for keeping, verifying and modifying
 /// user's data (mainly - public keys). It is used to create new keys, rotate and revoke them.
-/// Public keys as well as some metadata will be organised into events chain, corresponding
+/// Public keys together with metadata will be organised into events chain, corresponding
 /// secret keys will be saved into the given Vault implementation. Events chain and corresponding
 /// secret keys are what fully determines Profile.
 ///
@@ -157,7 +157,7 @@ impl Profile {
     }
 
     /// Create new key
-    /// Key is uniquely identified by (label, key_type and key_purpose) triplet in [`KeyAttributes`]
+    /// Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
     pub fn create_key(
         &mut self,
         key_attributes: KeyAttributes,
@@ -169,7 +169,7 @@ impl Profile {
     }
 
     /// Rotate existing key
-    /// Key is uniquely identified by (label, key_type and key_purpose) triplet in [`KeyAttributes`]
+    /// Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
     pub fn rotate_key(
         &mut self,
         key_attributes: KeyAttributes,
@@ -180,7 +180,7 @@ impl Profile {
         self.apply_no_verification(event)
     }
 
-    /// Get [`Secret`] key. Key is uniquely identified by (label, key_type and key_purpose) triplet.
+    /// Get [`Secret`] key. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
     pub fn get_secret_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
         let event = self.change_history.find_last_key_event(key_attributes)?;
         ProfileChangeHistory::get_secret_key_from_event(
