@@ -1,30 +1,33 @@
 use super::structs::*;
-use crate::{attribute::Attribute, serdes::*};
+use crate::{attribute::Attribute, serde::*};
 use serde::{Deserialize, Serialize};
 
-/// A schema describes the layout of a credential in a similar manner
-/// that a schema describes a database table.
+/// A schema describes the data format of a credential.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Schema {
-    /// The schema unique identifier
+    /// A unique identifier for this schema
     #[serde(
         serialize_with = "write_byte_string",
         deserialize_with = "read_byte_string"
     )]
     pub id: ByteString,
-    /// The user friendly name of the schema
+
+    /// A user friendly name for this schema
     #[serde(
         serialize_with = "write_byte_string",
         deserialize_with = "read_byte_string"
     )]
     pub label: ByteString,
-    /// A longer description about the schema
+
+    /// A longer description about this schema
     #[serde(
         serialize_with = "write_byte_string",
         deserialize_with = "read_byte_string"
     )]
     pub description: ByteString,
-    /// The attributes that are contained in corresponding credentials
+
+    /// A list of attributes that are contained in credentials that
+    /// have this schema.
     #[serde(
         serialize_with = "write_attributes",
         deserialize_with = "read_attributes"

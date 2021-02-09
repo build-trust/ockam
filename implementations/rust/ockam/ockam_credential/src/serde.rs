@@ -5,6 +5,7 @@ use serde::{
     Deserializer, Serializer,
 };
 
+#[allow(clippy::ptr_arg)]
 pub fn write_attributes<S>(v: &Buffer<Attribute>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -12,8 +13,8 @@ where
     let l = if v.is_empty() { None } else { Some(v.len()) };
 
     let mut iter = s.serialize_seq(l)?;
-    for i in 0..v.len() {
-        iter.serialize_element(&v[i])?;
+    for i in v {
+        iter.serialize_element(i)?;
     }
     iter.end()
 }
@@ -38,11 +39,11 @@ where
             let _l = if let Some(l) = s.size_hint() { l } else { 0 };
             let mut buf = Buffer::new();
             while let Some(a) = s.next_element()? {
-                #[cfg(feature = "heapless")]
+                #[cfg(all(feature = "no_std", not(feature = "alloc")))]
                 {
                     buf.push(a).map_err(|_| DError::invalid_length(_l, &self))?;
                 }
-                #[cfg(not(feature = "heapless"))]
+                #[cfg(feature = "alloc")]
                 {
                     buf.push(a);
                 }
@@ -54,6 +55,7 @@ where
     deserializer.deserialize_seq(BufferAttributeVisitor)
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn write_byte_string<S>(v: &ByteString, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
