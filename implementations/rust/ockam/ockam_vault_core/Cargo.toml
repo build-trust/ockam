@@ -1,6 +1,6 @@
 [package]
 authors = ["Ockam Developers"]
-description = """
+description = """The abstract Ockam Vault trait.
 """
 edition = "2018"
 homepage = "https://www.ockam.io/"
