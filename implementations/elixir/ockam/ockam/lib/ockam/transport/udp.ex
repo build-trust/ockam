@@ -4,7 +4,7 @@ defmodule Ockam.Transport.UDP do
   alias Ockam.Transport.UDP.Listener
 
   @doc false
-  def create_listener(options) do
+  def create_listener(options \\ []) do
     Listener.create(options)
   end
 end
