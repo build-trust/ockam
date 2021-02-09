@@ -16,7 +16,7 @@ pub const AES256_SECRET_LENGTH: usize = 32;
 pub const AES128_SECRET_LENGTH: usize = 16;
 
 cfg_if! {
-    if #[cfg(feature = "no-std")] {
+    if #[cfg(feature = "no_std")] {
         use heapless::consts::*;
         /// Secret Key Vector
         pub type SecretKeyVec = heapless::Vec<u8, U32>;

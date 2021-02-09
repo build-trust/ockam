@@ -1,25 +1,25 @@
 [package]
-authors = ["Ockam Developers"]
-description = """ A software-only Ockam Vault implementation that can be used when no cryptographic hardware is available.
-"""
-edition = "2018"
-homepage = "https://www.ockam.io/"
-keywords = ["ockam"]
-license = "Apache-2.0"
 name = "ockam_vault"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
 readme = "README.md"
-repository = "https://github.com/ockam-network/ockam"
-version = "0.0.0"
+keywords = ["ockam"]
+categories = ["no-std"]
+description = """A software-only Ockam Vault implementation.
+"""
 
 [features]
 default = ["std"]
-no-std = ["ockam_vault_core/heapless"]
-# Requires the Rust Standard Library.
-std = ["hex/std"]
+std = ["ockam_core/std", "hex/std"]
+no_std = ["ockam_vault_core/heapless"]
 
 [dependencies]
-ockam_core = {path = "../ockam_core", version = "*"}
-ockam_vault_core = {path = "../ockam_vault_core", version = "*"}
+ockam_core = {path = "../ockam_core", version = "0.2.0"}
+ockam_vault_core = {path = "../ockam_vault_core", version = "0.1.0"}
 arrayref = "0.3"
 curve25519-dalek = "3.0"
 ed25519-dalek = "1.0"

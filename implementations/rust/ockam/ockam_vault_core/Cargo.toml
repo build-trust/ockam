@@ -1,24 +1,24 @@
 [package]
-authors = ["Ockam Developers"]
-description = """The abstract Ockam Vault trait.
-"""
-edition = "2018"
-homepage = "https://www.ockam.io/"
-keywords = ["ockam"]
-license = "Apache-2.0"
 name = "ockam_vault_core"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_core"
 readme = "README.md"
-repository = "https://github.com/ockam-network/ockam"
-version = "0.0.0"
+keywords = ["ockam"]
+categories = ["no-std"]
+description = """The Ockam Vault trait.
+"""
 
 [features]
 default = ["std"]
-no-std = ["heapless"]
-# Requires the Rust Standard Library.
-std = []
+std = ["ockam_core/std"]
+no_std = ["heapless"]
 
 [dependencies]
-ockam_core = {path = "../ockam_core", version = "*"}
+ockam_core = {path = "../ockam_core", version = "0.2.0"}
 heapless = { version = "0.6", optional = true }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 cfg-if = "1.0"
