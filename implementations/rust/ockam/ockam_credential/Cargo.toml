@@ -19,13 +19,18 @@ exclude = [
 
 [features]
 default = ["std"]
-std = ["ockam_core/std", "alloc"]
+std = ["ockam_core/std", "alloc", "bbs", "ff", "pairing-plus"]
 alloc = ["serde/alloc"]
 no_std = ["heapless"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.2.0", default-features = false }
+bbs = { version = "0.4", optional = true }
+digest = { version = "0.8", optional = true }
+ff = { version = "0.6", package = "ff-zeroize", optional = true }
 heapless = { version = "0.6", optional = true }
+ockam_core = { version = "0.2.0", default-features = false, path = "../ockam_core" }
+pairing-plus = { version = "0.19", optional = true }
+rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 [dev-dependencies]

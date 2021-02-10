@@ -28,7 +28,6 @@
 )]
 
 #[cfg_attr(not(feature = "std"), no_std)]
-
 #[cfg(feature = "alloc")]
 extern crate alloc;
 #[cfg(feature = "std")]
@@ -52,12 +51,16 @@ mod structs {
 
 mod attribute;
 mod attribute_type;
+#[cfg(feature = "std")]
+mod credential;
 mod error;
 mod schema;
 mod serde;
 
 pub use attribute::Attribute;
 pub use attribute_type::AttributeType;
+#[cfg(feature = "std")]
+pub use credential::*;
 pub use schema::Schema;
 
 #[cfg(test)]

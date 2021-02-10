@@ -6,6 +6,12 @@ use ockam_core::Error;
 pub enum CredentialError {
     /// No error
     None,
+    /// Mismatched number of attributes in schema and provided claims to be signed
+    MismatchedAttributesAndClaims,
+    /// Mismatched attribute type and provided claim
+    MismatchedAttributeClaimType,
+    /// Data that cannot be converted to a claim
+    InvalidClaim,
 }
 
 impl CredentialError {
