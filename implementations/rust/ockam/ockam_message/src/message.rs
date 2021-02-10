@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_bare;
 use std::net::SocketAddr;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -152,5 +151,32 @@ mod test {
         ])
         .unwrap();
         assert_eq!(m, m2);
+    }
+
+    #[test]
+    fn varint() {
+        let i1 = serde_bare::Uint(255 as u64);
+        let i2 = serde_bare::Uint(127 as u64);
+        let i3 = serde_bare::Uint(128 as u64);
+
+        let mut v1 = serde_bare::to_vec::<serde_bare::Uint>(&i1).unwrap();
+        assert_eq!(v1.len(), 2);
+        v1.append(&mut vec![1u8, 2, 3, 4]);
+
+        let mut v2 = serde_bare::to_vec::<serde_bare::Uint>(&i2).unwrap();
+        assert_eq!(v2.len(), 1);
+        v2.append(&mut vec![1u8, 2, 3, 4]);
+
+        let mut v3 = serde_bare::to_vec::<serde_bare::Uint>(&i3).unwrap();
+        assert_eq!(v3.len(), 2);
+        v3.append(&mut vec![1u8, 2, 3, 4]);
+
+        let Uint(i1) = serde_bare::from_slice::<serde_bare::Uint>(&v1).unwrap();
+        let Uint(i2) = serde_bare::from_slice::<serde_bare::Uint>(&v2).unwrap();
+        let Uint(i3) = serde_bare::from_slice::<serde_bare::Uint>(&v3).unwrap();
+
+        assert_eq!(i1, 255);
+        assert_eq!(i2, 127);
+        assert_eq!(i3, 128);
     }
 }
