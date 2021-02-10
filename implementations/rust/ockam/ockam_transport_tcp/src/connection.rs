@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 pub struct TcpConnection {
     remote_address: std::net::SocketAddr,
     _blocking: bool,
-    stream: Option<TcpStream>,
+    stream: Option<tokio::net::TcpStream>,
 }
 
 impl TcpConnection {
@@ -44,11 +44,17 @@ impl TcpConnection {
 
 #[async_trait]
 impl Connection for TcpConnection {
-    async fn connect(&mut self) -> Result<(), String> {
-        self.stream = Some(Box::new(
-            TcpStream::connect(self.remote_address).await.unwrap(),
-        ));
-        Ok(())
+    async fn connect(&mut self) -> Result<(), Error> {
+        match self.stream {
+            Some(_) => Err(Error::AlreadyConnected.into()),
+            None => match TcpStream::connect(&self.remote_address).await {
+                Ok(s) => {
+                    self.stream = Some(s);
+                    Ok(())
+                }
+                Err(_) => Err(Error::ConnectFailed.into()),
+            },
+        }
     }
 
     async fn send(&mut self, buff: &[u8]) -> Result<usize, Error> {
@@ -67,7 +73,8 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        continue;
+                        //continue;
+                        return Err(Error::CheckConnection.into());
                     }
                     Err(_) => {
                         return Err(Error::CheckConnection.into());
@@ -87,7 +94,11 @@ impl Connection for TcpConnection {
                 }
                 match stream.try_read(buff) {
                     Ok(n) => {
-                        return Ok(n);
+                        return if 0 == n {
+                            Err(Error::ConnectionClosed.into())
+                        } else {
+                            Ok(n)
+                        }
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                         continue;
@@ -107,17 +118,18 @@ impl Connection for TcpConnection {
 mod test {
     use crate::connection::TcpConnection;
     use crate::listener::TcpListener;
+    use std::convert::TryFrom;
     use std::net::SocketAddr;
     use std::str::FromStr;
     use tokio::runtime::Builder;
     use tokio::task;
 
     async fn client_worker(address: String) {
-        let connection = TcpConnection::create(SocketAddr::from_str(&address).unwrap());
+        let connection = TcpConnection::create(std::net::SocketAddr::from_str(&address).unwrap());
         let mut connection = connection.lock().await;
         let r = connection.connect().await;
         assert!(!r.is_err());
-        for _i in 0..5 {
+        for _i in 0u16..5 {
             let r = connection.send(b"ping").await;
             assert!(r.is_ok());
             let bytes = r.unwrap();
@@ -135,7 +147,7 @@ mod test {
 
     async fn listen_worker(address: String) {
         {
-            let r = TcpListener::create(SocketAddr::from_str(&address).unwrap()).await;
+            let r = TcpListener::create(std::net::SocketAddr::from_str(&address).unwrap()).await;
             assert!(r.is_ok());
 
             let listener = r.unwrap();
@@ -145,7 +157,7 @@ mod test {
 
             let connection = connection.unwrap();
             let mut connection = connection.lock().await;
-            for _i in 0..5 {
+            for _i in 0u16..5 {
                 let mut buff: [u8; 32] = [0; 32];
                 let r = connection.receive(&mut buff).await;
                 assert!(r.is_ok());

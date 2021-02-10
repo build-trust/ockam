@@ -11,6 +11,8 @@ pub enum Error {
     ConnectFailed,
     CheckConnection,
     ReceiveFailed,
+    ConnectionClosed,
+    IllFormedMessage,
 }
 
 impl Error {
