@@ -1,16 +1,31 @@
 [package]
 name = "ockam_transport_tcp"
 version = "0.1.0"
-authors = ["Robin Budd <robin@ockam.io>"]
+authors = ["Ockam Developers"]
 edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_tcp"
+readme = "README.md"
+keywords = ["ockam", "tcp", "ockam-transport"]
+categories = ["network-programming", "asynchronous"]
+description = """
+TCP Transport for the Ockam Routing Protocol.
+"""
+exclude = [
+    "DEVELOP.md",
+    "LICENSE"
+]
+autoexamples = false
 
-[lib]
-crate-type = ["rlib"]
+[features]
+default = ["std"]
+std = []
 
 [dependencies]
-tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros"]}
 async-trait = "0.1.42"
 futures = " 0.3.10"
+tokio = {version = "1.1.0", features = ["rt-multi-thread", "sync", "net", "macros"]}
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}

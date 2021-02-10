@@ -14,6 +14,17 @@ pub struct TcpConnection {
 }
 
 impl TcpConnection {
+    /// Creates a [`Connection`] trait object reference for TCP.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use ockam_transport_tcp::connection::TcpConnection;
+    /// use std::net::SocketAddr;
+    /// use std::str::FromStr;
+    ///
+    /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
+    /// let connection = TcpConnection::create(address);
+    /// ```
     pub fn create(remote_address: SocketAddr) -> Arc<Mutex<dyn Connection + Send>> {
         Arc::new(Mutex::new(TcpConnection {
             remote_address,
@@ -21,6 +32,7 @@ impl TcpConnection {
             stream: None,
         }))
     }
+
     pub async fn new_from_stream(stream: TcpStream) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(TcpConnection {
             remote_address: stream.peer_addr().unwrap(),
@@ -150,23 +162,19 @@ mod test {
         let j1 = task::spawn(async {
             let f = listen_worker(a1);
             f.await;
-            return;
         });
 
         let a2 = address.clone();
         let j2 = task::spawn(async {
             let f = client_worker(a2);
             f.await;
-            return;
         });
         let (r1, r2) = tokio::join!(j1, j2);
         if r1.is_err() {
-            println!("{:?}", r1);
-            assert!(false);
+            panic!("{:?}", r1);
         }
         if r2.is_err() {
-            println!("{:?}", r2);
-            assert!(false);
+            panic!("{:?}", r2);
         }
     }
 

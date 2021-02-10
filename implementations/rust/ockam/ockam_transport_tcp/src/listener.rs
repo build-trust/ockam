@@ -10,6 +10,17 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
+    /// Creates a [`Listener`] trait object reference for TCP.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use ockam_transport_tcp::listener::TcpListener;
+    /// use std::net::SocketAddr;
+    /// use std::str::FromStr;
+    ///
+    /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
+    /// let listener = TcpListener::create(address);
+    /// ```
     pub async fn create(
         listen_address: std::net::SocketAddr,
     ) -> Result<Arc<Mutex<dyn Listener + Send>>, String> {
@@ -23,6 +34,19 @@ impl TcpListener {
 
 #[async_trait]
 impl Listener for TcpListener {
+    /// Accepts an incoming connection request and returns a [`Connection`]
+    /// trait object reference.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use ockam_transport_tcp::listener::TcpListener;
+    /// use std::net::SocketAddr;
+    /// use std::str::FromStr;
+    ///
+    /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
+    /// let listener = TcpListener::create(address);
+    /// let connection = listener.accept().await.unwrap();
+    /// ```
     async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, String> {
         let stream = self.listener.accept().await;
         if stream.is_err() {
@@ -79,20 +103,18 @@ mod test {
                 let j1 = task::spawn(async {
                     let f = listen_worker();
                     f.await;
-                    return;
                 });
 
                 let j2 = task::spawn(async {
                     let f = client_worker();
                     f.await;
-                    return;
                 });
                 let (r1, r2) = tokio::join!(j1, j2);
                 if r1.is_err() {
-                    assert!(false);
+                    panic!();
                 }
                 if r2.is_err() {
-                    assert!(false);
+                    panic!();
                 }
             })
         }
