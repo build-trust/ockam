@@ -69,7 +69,7 @@ impl Profile {
         root_key: Option<&Secret>,
         vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        let attributes = attributes.unwrap_or(ProfileEventAttributes::new());
+        let attributes = attributes.unwrap_or_default();
 
         // TODO: Should be customisable
         let secret_attributes = SecretAttributes {

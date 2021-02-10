@@ -78,7 +78,7 @@ impl Profile {
         attributes: Option<ProfileEventAttributes>,
         root_key: &Secret,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        let attributes = attributes.unwrap_or(ProfileEventAttributes::new());
+        let attributes = attributes.unwrap_or_default();
 
         let prev_event_id = self.change_history.get_last_event_id()?;
 

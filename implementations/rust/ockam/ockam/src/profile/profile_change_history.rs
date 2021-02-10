@@ -66,7 +66,7 @@ impl ProfileChangeHistory {
             .iter()
             .rev()
             .find(|e| Self::find_key_change_in_event(e, key_attributes).is_some())
-            .ok_or(OckamError::InvalidInternalState.into())
+            .ok_or_else(|| OckamError::InvalidInternalState.into())
     }
 
     pub(crate) fn find_key_event_before(
@@ -83,7 +83,7 @@ impl ProfileChangeHistory {
             .iter()
             .rev()
             .find(|e| Self::find_key_change_in_event(e, key_attributes).is_some())
-            .ok_or(OckamError::InvalidInternalState.into())
+            .ok_or_else(|| OckamError::InvalidInternalState.into())
     }
 
     pub(crate) fn get_change_public_key(change: &ProfileChange) -> ockam_core::Result<PublicKey> {
@@ -92,7 +92,11 @@ impl ProfileChangeHistory {
             RotateKey(change) => change.data().public_key(),
         };
 
-        Ok(PublicKey::new(data.into()))
+        if data.is_empty() {
+            Err(OckamError::InvalidInternalState.into())
+        } else {
+            Ok(PublicKey::new(data.into()))
+        }
     }
 
     pub(crate) fn get_public_key_from_event(
@@ -100,8 +104,7 @@ impl ProfileChangeHistory {
         event: &ProfileChangeEvent,
     ) -> ockam_core::Result<PublicKey> {
         let change = Self::find_key_change_in_event(event, key_attributes)
-            .ok_or_else(|| OckamError::InvalidInternalState)?;
-
+            .ok_or(OckamError::InvalidInternalState)?;
         Self::get_change_public_key(change)
     }
 }
@@ -130,7 +133,7 @@ impl ProfileChangeHistory {
         }
 
         Ok(PublicKey::new(
-            root_create_key_change.data().public_key().to_vec().into(),
+            root_create_key_change.data().public_key().to_vec(),
         ))
     }
 
@@ -188,11 +191,11 @@ impl ProfileChangeHistory {
                         serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
-                    if !vault
+                    if vault
                         .verify(c.self_signature(), c.data().public_key(), &data_hash)
-                        .is_ok()
+                        .is_err()
                     {
-                        false;
+                        return Err(OckamError::VerifyFailed.into());
                     }
 
                     let prev_key_event =
@@ -201,7 +204,7 @@ impl ProfileChangeHistory {
                         prev_key_event,
                         c.data().key_attributes(),
                     )
-                    .ok_or_else(|| OckamError::InvalidInternalState)?;
+                    .ok_or(OckamError::InvalidInternalState)?;
                     let public_key = ProfileChangeHistory::get_change_public_key(prev_key_change)?;
 
                     vault

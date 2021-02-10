@@ -105,13 +105,11 @@ impl Profile {
         change_events: Vec<ProfileChangeEvent>,
         vault: Arc<Mutex<dyn ProfileVault>>,
     ) -> Self {
-        let profile = Self {
+        Profile {
             identifier,
             change_history: ProfileChangeHistory::new(change_events),
             vault,
-        };
-
-        profile
+        }
     }
 }
 
@@ -139,7 +137,7 @@ impl Profile {
         )?;
 
         let change = ProfileChangeHistory::find_key_change_in_event(&change_event, &key_attributes)
-            .ok_or_else(|| OckamError::InvalidInternalState)?;
+            .ok_or(OckamError::InvalidInternalState)?;
         let public_key = ProfileChangeHistory::get_change_public_key(&change)?;
 
         let public_kid = v.compute_key_id_for_public_key(&public_key)?;
