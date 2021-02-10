@@ -2,8 +2,8 @@ use crate::software_vault::{SoftwareVault, VaultEntry};
 use crate::VaultError;
 use arrayref::array_ref;
 use ockam_vault_core::{
-    HashVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretType, SecretVault,
-    CURVE25519_SECRET_LENGTH,
+    KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
+    SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use rand::rngs::OsRng;
 use rand::RngCore;
@@ -18,17 +18,35 @@ impl SecretVault for SoftwareVault {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
                 let public = x25519_dalek::PublicKey::from(&sk);
                 let private = SecretKey::new(sk.to_bytes().to_vec());
-                let key_id = self.sha256(public.as_bytes())?;
+                let key_id = self
+                    .compute_key_id_for_public_key(&PublicKey::new(public.as_bytes().to_vec()))?;
 
-                // FIXME: key_id computation should be in one place
-                (private, Some(hex::encode(key_id)))
+                (private, Some(key_id))
             }
             SecretType::Buffer => {
+                if attributes.persistence != SecretPersistence::Ephemeral {
+                    return Err(VaultError::InvalidKeyType.into());
+                };
                 let mut key = vec![0u8; attributes.length];
                 rng.fill_bytes(key.as_mut_slice());
                 (SecretKey::new(key), None)
             }
-            _ => unimplemented!(),
+            SecretType::Aes => {
+                if attributes.length != AES256_SECRET_LENGTH
+                    && attributes.length != AES128_SECRET_LENGTH
+                {
+                    return Err(VaultError::InvalidAesKeyLength.into());
+                };
+                if attributes.persistence != SecretPersistence::Ephemeral {
+                    return Err(VaultError::InvalidKeyType.into());
+                };
+                let mut key = vec![0u8; attributes.length];
+                rng.fill_bytes(&mut key);
+                (SecretKey::new(key), None)
+            }
+            SecretType::P256 => {
+                return Err(VaultError::InvalidKeyType.into());
+            }
         };
         self.next_id += 1;
         self.entries

@@ -15,19 +15,23 @@
 
 pub extern crate ockam_vault_core;
 
+mod asymmetric_impl;
 mod error;
 mod hash_impl;
 mod key_id_impl;
 mod secret_impl;
 mod signer_impl;
 mod software_vault;
+mod symmetric_impl;
 mod verifier_impl;
 mod xeddsa;
 
+pub use asymmetric_impl::*;
 pub use error::*;
 pub use hash_impl::*;
 pub use key_id_impl::*;
 pub use secret_impl::*;
 pub use signer_impl::*;
 pub use software_vault::*;
+pub use symmetric_impl::*;
 pub use verifier_impl::*;
