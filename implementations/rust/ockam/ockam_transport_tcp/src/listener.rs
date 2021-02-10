@@ -28,7 +28,7 @@ impl TcpListener {
         let listener = TokioTcpListener::bind(listen_address).await;
         match listener {
             Ok(l) => Ok(Arc::new(Mutex::new(TcpListener { listener: l }))),
-            Err(_) => Err(Error::Bind.into()),
+            Err(_) => Err(Error::Bind),
         }
     }
 }
@@ -51,7 +51,7 @@ impl Listener for TcpListener {
     async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, String> {
         let stream = self.listener.accept().await;
         if stream.is_err() {
-            Err(Error::Accept.into())
+            Err(Error::Accept)
         } else {
             let (stream, _) = stream.unwrap();
             Ok(TcpConnection::new_from_stream(stream).await?)

@@ -46,13 +46,13 @@ impl TcpConnection {
 impl Connection for TcpConnection {
     async fn connect(&mut self) -> Result<(), Error> {
         match self.stream {
-            Some(_) => Err(Error::AlreadyConnected.into()),
+            Some(_) => Err(Error::AlreadyConnected),
             None => match TcpStream::connect(&self.remote_address).await {
                 Ok(s) => {
                     self.stream = Some(s);
                     Ok(())
                 }
-                Err(_) => Err(Error::ConnectFailed.into()),
+                Err(_) => Err(Error::ConnectFailed),
             },
         }
     }
@@ -62,7 +62,7 @@ impl Connection for TcpConnection {
         return if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.writable().await) {
-                    return Err(Error::CheckConnection.into());
+                    return Err(Error::CheckConnection);
                 }
                 match stream.try_write(&buff[i..]) {
                     Ok(n) if n == buff.len() => {
@@ -74,15 +74,15 @@ impl Connection for TcpConnection {
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                         //continue;
-                        return Err(Error::CheckConnection.into());
+                        return Err(Error::CheckConnection);
                     }
                     Err(_) => {
-                        return Err(Error::CheckConnection.into());
+                        return Err(Error::CheckConnection);
                     }
                 }
             }
         } else {
-            Err(Error::NotConnected.into())
+            Err(Error::NotConnected)
         };
     }
 
@@ -90,12 +90,12 @@ impl Connection for TcpConnection {
         if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.readable().await) {
-                    return Err(Error::CheckConnection.into());
+                    return Err(Error::CheckConnection);
                 }
                 match stream.try_read(buff) {
                     Ok(n) => {
                         return if 0 == n {
-                            Err(Error::ConnectionClosed.into())
+                            Err(Error::ConnectionClosed)
                         } else {
                             Ok(n)
                         }
@@ -104,12 +104,12 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     _ => {
-                        return Err(Error::ReceiveFailed.into());
+                        return Err(Error::ReceiveFailed);
                     }
                 }
             }
         } else {
-            Err(Error::CheckConnection.into())
+            Err(Error::CheckConnection)
         }
     }
 }
