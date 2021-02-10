@@ -1,4 +1,3 @@
-use ockam_message::message::Message;
 use ockam_transport_tcp::connection::TcpConnection;
 use ockam_transport_tcp::error::Error;
 use ockam_transport_tcp::listener::TcpListener;
@@ -9,15 +8,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::runtime::Builder;
 use tokio::sync::Mutex;
-use tokio::time::{self, sleep, Duration};
+use tokio::time::Duration;
 
-pub struct TcpWorker {
-    rx: tokio::sync::mpsc::Receiver<Message>,
-    tx: tokio::sync::mpsc::Sender<Message>,
-    connection: Arc<Mutex<dyn Connection>>,
-}
-
-pub async fn random_worker(mut c: Arc<Mutex<dyn Connection>>, text: &str) {
+pub async fn random_worker(c: Arc<Mutex<dyn Connection>>, text: &str) {
     let mut total = 0f64;
     loop {
         let mut rng = rand::thread_rng();
