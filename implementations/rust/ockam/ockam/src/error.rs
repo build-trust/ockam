@@ -15,7 +15,7 @@ impl OckamError {
     /// Integer code associated with the error domain.
     pub const DOMAIN_CODE: u32 = 10_000;
     /// Descriptive name for the error domain.
-    pub const DOMAIN_NAME: &'static str = "OCKAM_NODE";
+    pub const DOMAIN_NAME: &'static str = "OCKAM";
 }
 
 impl From<OckamError> for ockam_core::Error {
