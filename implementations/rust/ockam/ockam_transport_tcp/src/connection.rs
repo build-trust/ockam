@@ -1,5 +1,5 @@
 use crate::error::TransportError;
-use crate::traits::Connection;
+use crate::transport_traits::Connection;
 use async_trait::async_trait;
 use std::net::SocketAddr;
 use std::result::Result;
@@ -16,7 +16,7 @@ impl TcpConnection {
     /// Creates a [`Connection`] trait object reference for TCP.
     ///
     /// # Examples
-    /// ```ignore
+    /// ```
     /// use ockam_transport_tcp::connection::TcpConnection;
     /// use std::net::SocketAddr;
     /// use std::str::FromStr;
