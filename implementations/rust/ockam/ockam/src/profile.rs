@@ -23,7 +23,7 @@ pub use profile_change_type::*;
 pub mod profile_change_history;
 
 pub const OCKAM_NO_EVENT: &[u8] = "OCKAM_NO_EVENT".as_bytes();
-pub const PROFILE_ROOT_KEY_LABEL: &'static str = "OCKAM_PRK";
+pub const PROFILE_ROOT_KEY_LABEL: &str = "OCKAM_PRK";
 pub const OCKAM_PROFILE_VERSION: u8 = 1;
 pub const PROFILE_CHANGE_CURRENT_VERSION: u8 = 1;
 
