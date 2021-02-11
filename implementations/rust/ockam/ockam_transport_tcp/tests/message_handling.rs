@@ -5,17 +5,14 @@ use ockam_transport_tcp::traits::Connection;
 use rand::prelude::*;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::sync::Arc;
 use tokio::runtime::Builder;
-use tokio::sync::Mutex;
 use tokio::time::Duration;
 
-pub async fn random_worker(c: Arc<Mutex<dyn Connection>>, text: &str) {
+pub async fn random_worker(mut c: Box<dyn Connection>, text: &str) {
     let mut total = 0f64;
     loop {
         let mut rng = rand::thread_rng();
         let y: f64 = rng.gen(); // generates a float between 0 and 1
-        let mut c = c.lock().await;
         let mut buff = [0u8; 120];
         let sleep = tokio::time::sleep(Duration::from_millis((y * 100.0) as u64));
         tokio::pin!(sleep);
@@ -58,15 +55,14 @@ pub fn test_message_send() {
 
     runtime.block_on(async {
         let socket_addr = std::net::SocketAddr::from_str("127.0.0.1:4050").unwrap();
-        let m_listener = TcpListener::create(socket_addr.clone()).await.unwrap();
-        let m_connection_1 = TcpConnection::create(SocketAddr::from_str("127.0.0.1:4050").unwrap());
+        let mut m_listener = TcpListener::create(socket_addr.clone()).await.unwrap();
+        let mut m_connection_1 =
+            TcpConnection::create(SocketAddr::from_str("127.0.0.1:4050").unwrap());
 
         let m_connection_2 = {
-            let mut l_connection = m_connection_1.lock().await;
-            let f1 = l_connection.connect();
+            let f1 = m_connection_1.connect();
 
-            let mut l_listener = m_listener.lock().await;
-            let f2 = l_listener.accept();
+            let f2 = m_listener.accept();
             let (r1, r2) = tokio::join!(f1, f2);
             assert!(r1.is_ok(), r2.is_ok());
             r2.unwrap()
