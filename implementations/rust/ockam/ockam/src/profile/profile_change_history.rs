@@ -47,6 +47,7 @@ impl ProfileChangeHistory {
     ) -> Option<&'a ProfileChange> {
         event
             .changes()
+            .data()
             .iter()
             .rev()
             .find(|c| match c.change_type() {

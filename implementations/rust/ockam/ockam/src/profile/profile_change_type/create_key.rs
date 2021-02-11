@@ -89,11 +89,10 @@ impl Profile {
 
         let profile_change = ProfileChange::new(
             PROFILE_CHANGE_CURRENT_VERSION,
-            prev_id,
             attributes,
             ProfileChangeType::CreateKey(change),
         );
-        let changes = vec![profile_change];
+        let changes = Changes::new(prev_id, vec![profile_change]);
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
 
         let event_id = vault.sha256(&changes_binary)?;

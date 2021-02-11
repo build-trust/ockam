@@ -16,7 +16,6 @@ impl ProfileEventAttributeKey {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProfileChange {
     version: u8,
-    prev_event_id: EventIdentifier,
     // TODO: Check attributes serialization
     attributes: ProfileEventAttributes,
     change_type: ProfileChangeType,
@@ -26,10 +25,6 @@ impl ProfileChange {
     /// Protocol version
     pub fn version(&self) -> u8 {
         self.version
-    }
-    /// [`EventIdentifier`] of previous event
-    pub fn prev_event_id(&self) -> &EventIdentifier {
-        &self.prev_event_id
     }
     /// User-specified attributes that will be saved with change
     pub fn attributes(&self) -> &ProfileEventAttributes {
@@ -44,13 +39,11 @@ impl ProfileChange {
 impl ProfileChange {
     pub(crate) fn new(
         version: u8,
-        prev_event_id: EventIdentifier,
         attributes: ProfileEventAttributes,
         change_type: ProfileChangeType,
     ) -> Self {
         Self {
             version,
-            prev_event_id,
             attributes,
             change_type,
         }
