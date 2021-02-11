@@ -78,14 +78,7 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 ///
 ///     let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
 ///
-///     for change_event in profile.change_events().as_ref() {
-///         let id = change_event.identifier().to_string_representation();
-///         if profile.verify(change_event).is_ok() {
-///             println!("{} is valid", id);
-///         } else {
-///             println!("{} is not valid", id);
-///         }
-///     }
+///     profile.verify().unwrap();
 /// }
 /// ```
 #[derive(Clone)]
@@ -112,11 +105,13 @@ impl Profile {
         change_events: Vec<ProfileChangeEvent>,
         vault: Arc<Mutex<dyn ProfileVault>>,
     ) -> Self {
-        Profile {
+        let profile = Self {
             identifier,
             change_history: ProfileChangeHistory::new(change_events),
             vault,
-        }
+        };
+
+        profile
     }
 }
 
@@ -206,28 +201,12 @@ impl Profile {
 }
 
 impl Profile {
-    fn check_consistency(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
-        // TODO: check event for consistency: e.g. you cannot rotate the same key twice during one event
-        // For only allow one change at a time
-        if change_event.changes().data().len() != 1 {
-            return Err(OckamError::ConsistencyError.into());
-        }
-
-        if let Some(e) = self.change_events().last() {
-            // Events should go in correct order as stated in previous_event_identifier field
-            if e.identifier() != change_event.changes().previous_event_identifier() {
-                return Err(OckamError::InvalidChainSequence.into());
-            }
-        }
-
-        Ok(())
-    }
-
     fn apply_no_verification(
         &mut self,
         change_event: ProfileChangeEvent,
     ) -> ockam_core::Result<()> {
-        self.check_consistency(&change_event)?;
+        let slice = std::slice::from_ref(&change_event);
+        ProfileChangeHistory::check_consistency(self.change_events(), &slice)?;
         self.change_history.push_event(change_event);
 
         Ok(())
@@ -235,20 +214,35 @@ impl Profile {
 
     /// Apply new change to the [`Profile`]. Change will be cryptographically verified
     pub fn apply(&mut self, change_event: ProfileChangeEvent) -> ockam_core::Result<()> {
-        self.verify(&change_event)?;
+        self.verify_event(&change_event)?;
 
         self.apply_no_verification(change_event)
     }
 
-    /// Verify cryptographically change relative to current [`Profile`]'s event chain.
+    /// Verify cryptographically event relative to current [`Profile`]'s event chain.
     /// WARNING: This function assumes all existing events in chain are verified.
-    /// WARNING: Correctness of events sequence is not verified here.
-    pub fn verify(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
-        self.check_consistency(&change_event)?;
+    fn verify_event(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
+        let change_events = std::slice::from_ref(change_event);
+        ProfileChangeHistory::check_consistency(self.change_events(), change_events)?;
 
         let mut vault = self.vault.lock().unwrap();
 
-        self.change_history.verify(change_event, vault.deref_mut())
+        self.change_history
+            .verify_event(change_event, vault.deref_mut())
+    }
+
+    /// Verify whole event chain
+    pub fn verify(&self) -> ockam_core::Result<()> {
+        ProfileChangeHistory::check_consistency(&[], self.change_events())?;
+
+        let mut vault = self.vault.lock().unwrap();
+
+        for change_event in self.change_events().as_ref() {
+            self.change_history
+                .verify_event(change_event, vault.deref_mut())?;
+        }
+
+        Ok(())
     }
 }
 
@@ -323,14 +317,6 @@ mod test {
         let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
         let _alice_truck_public_key = profile.get_public_key(&truck_key_attributes).unwrap();
 
-        for change_event in profile.change_events().as_ref() {
-            let id = change_event.identifier().to_string_representation();
-            if profile.verify(change_event).is_ok() {
-                println!("{} is valid", id);
-            } else {
-                println!("{} is not valid", id);
-                assert!(false);
-            }
-        }
+        profile.verify().unwrap();
     }
 }

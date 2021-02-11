@@ -146,7 +146,7 @@ impl ProfileChangeHistory {
 impl ProfileChangeHistory {
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
-    pub(crate) fn verify(
+    pub(crate) fn verify_event(
         &self,
         change_event: &ProfileChangeEvent,
         vault: &mut dyn ProfileVault,
@@ -210,6 +210,38 @@ impl ProfileChangeHistory {
                 }
             } {
                 return Err(OckamError::VerifyFailed.into());
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Check consistency of events that are been added
+    pub(crate) fn check_consistency(
+        existing_events: &[ProfileChangeEvent],
+        new_events: &[ProfileChangeEvent],
+    ) -> ockam_core::Result<()> {
+        // TODO: add more checks: e.g. you cannot rotate the same key twice during one event
+        let mut prev_event;
+        if let Some(e) = existing_events.last() {
+            prev_event = Some(e);
+        } else {
+            prev_event = None;
+        }
+
+        for event in new_events.iter() {
+            // Events should go in correct order as stated in previous_event_identifier field
+            if let Some(prev) = prev_event {
+                if prev.identifier() != event.changes().previous_event_identifier() {
+                    return Err(OckamError::InvalidChainSequence.into());
+                }
+            }
+
+            prev_event = Some(event);
+
+            // For now only allow one change at a time
+            if event.changes().data().len() != 1 {
+                return Err(OckamError::InvalidChainSequence.into());
             }
         }
 

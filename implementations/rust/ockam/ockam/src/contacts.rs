@@ -44,12 +44,14 @@ type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///
 ///     alice_profile.rotate_key(truck_key_attributes.clone(), None).unwrap();
 ///
-///     let new_changes = alice_profile.get_events_starting_from(&last_known_event).unwrap();
+///     let new_changes = alice_profile.get_events_after(&last_known_event).unwrap();
 ///
-///     contacts.update_contact(&alice_id, new_changes.to_vec()).unwrap();
+///     contacts.apply_to_contact(&alice_id, new_changes.to_vec()).unwrap();
 ///
 ///     let alice_contact = contacts.get_contact(&alice_id).unwrap();
 ///     let new_public_key = alice_contact.get_public_key(&truck_key_attributes).unwrap();
+///
+///     contacts.verify(&alice_id).unwrap();
 /// }
 /// ```
 pub struct Contacts {
@@ -81,7 +83,7 @@ impl Contacts {
     }
 
     /// Update [`Contact`] by applying new change events
-    pub fn update_contact(
+    pub fn apply_to_contact(
         &mut self,
         id: &ProfileIdentifier,
         change_events: Vec<ProfileChangeEvent>,
@@ -95,7 +97,21 @@ impl Contacts {
 
         let mut vault = self.vault.lock().unwrap();
 
-        contact.update(change_events, vault.deref_mut())
+        contact.apply(change_events, vault.deref_mut())
+    }
+
+    /// Verify cryptographically whole event chain. Also verify sequence correctness
+    pub fn verify(&self, id: &ProfileIdentifier) -> ockam_core::Result<()> {
+        let contact;
+        if let Some(c) = self.contacts.get(id) {
+            contact = c;
+        } else {
+            return Err(OckamError::ContactNotFound.into());
+        }
+
+        let mut vault = self.vault.lock().unwrap();
+
+        contact.verify(vault.deref_mut())
     }
 }
 
@@ -136,6 +152,8 @@ mod test {
             .unwrap()
             .get_public_key(&truck_key_attributes)
             .unwrap();
+
+        contacts.verify(&alice_id).unwrap();
     }
 
     #[test]
@@ -173,12 +191,14 @@ mod test {
         let new_changes = alice_profile.get_events_after(&last_known_event).unwrap();
 
         contacts
-            .update_contact(&alice_id, new_changes.to_vec())
+            .apply_to_contact(&alice_id, new_changes.to_vec())
             .unwrap();
 
         let alice_contact = contacts.get_contact(&alice_id).unwrap();
         let new_public_key = alice_contact.get_public_key(&truck_key_attributes).unwrap();
 
         assert_ne!(public_key, new_public_key);
+
+        contacts.verify(&alice_id).unwrap();
     }
 }

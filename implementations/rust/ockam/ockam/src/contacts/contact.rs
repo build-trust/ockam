@@ -1,7 +1,5 @@
 use crate::profile_change_history::ProfileChangeHistory;
-use crate::{
-    EventIdentifier, KeyAttributes, OckamError, ProfileChangeEvent, ProfileIdentifier, ProfileVault,
-};
+use crate::{EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
 use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
 
@@ -67,54 +65,27 @@ impl Contact {
 }
 
 impl Contact {
-    /// Verify cryptographically whole event chain
+    /// Verify cryptographically whole event chain. Also verify sequence correctness
     pub fn verify(&self, vault: &mut dyn ProfileVault) -> ockam_core::Result<()> {
-        // TODO: Verify id
+        ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
         for change_event in self.change_events().as_ref() {
-            self.change_history.verify(change_event, vault)?;
-        }
-
-        Ok(())
-    }
-
-    fn check_consistency(&self, change_events: &[ProfileChangeEvent]) -> ockam_core::Result<()> {
-        // TODO: add more checks: e.g. you cannot rotate the same key twice during one event
-
-        let mut prev_event;
-        if let Some(e) = self.change_events().last() {
-            prev_event = e;
-        } else {
-            return Err(OckamError::InvalidInternalState.into());
-        }
-
-        for event in change_events.iter() {
-            // Events should go in correct order as stated in previous_event_identifier field
-            if prev_event.identifier() != event.changes().previous_event_identifier() {
-                return Err(OckamError::InvalidChainSequence.into());
-            }
-
-            prev_event = event;
-
-            // For now only allow one change at a time
-            if event.changes().data().len() != 1 {
-                return Err(OckamError::InvalidChainSequence.into());
-            }
+            self.change_history.verify_event(change_event, vault)?;
         }
 
         Ok(())
     }
 
     /// Update [`Contact`] by applying new change events
-    pub fn update(
+    pub fn apply(
         &mut self,
         change_events: Vec<ProfileChangeEvent>,
         vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<()> {
-        self.check_consistency(&change_events)?;
+        ProfileChangeHistory::check_consistency(self.change_events(), &change_events)?;
 
         for event in change_events.iter() {
-            self.change_history.verify(event, vault)?;
+            self.change_history.verify_event(event, vault)?;
             self.change_history.push_event(event.clone());
         }
 
