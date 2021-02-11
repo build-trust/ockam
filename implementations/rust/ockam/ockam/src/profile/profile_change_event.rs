@@ -1,6 +1,31 @@
 use crate::{EventIdentifier, ProfileChange, ProfileChangeProof};
+use serde::{Deserialize, Serialize};
 
-pub type Changes = Vec<ProfileChange>;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Changes {
+    prev_event_id: EventIdentifier,
+    data: Vec<ProfileChange>,
+}
+
+impl Changes {
+    /// [`EventIdentifier`] of previous event
+    pub fn previous_event_identifier(&self) -> &EventIdentifier {
+        &self.prev_event_id
+    }
+    /// Set of changes been applied
+    pub fn data(&self) -> &[ProfileChange] {
+        &self.data
+    }
+}
+
+impl Changes {
+    pub fn new(prev_event_id: EventIdentifier, data: Vec<ProfileChange>) -> Self {
+        Changes {
+            prev_event_id,
+            data,
+        }
+    }
+}
 
 /// [`Profile`]s are modified using change events mechanism. One event may have 1 or more [`ProfileChange`]s
 /// Proof is used to check whether this event comes from a party authorized to perform such updated
