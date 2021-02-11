@@ -4,6 +4,18 @@ version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_node_no_std"
+readme = "README.md"
+keywords = ["ockam"]
+categories = ["no-std"]
+description = """
+Ockam library types that do not need `std`.
+"""
+exclude = [
+    "DEVELOP.md",
+    "LICENSE"
+]
 
 [dependencies]
 executor = "0.7.0"
