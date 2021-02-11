@@ -1,7 +1,7 @@
 use ockam_vault_core::KeyId;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct ProfileIdentifier(KeyId);
 
 /// Unique [`Profile`] identifier, computed as SHA256 of root public key

@@ -1,4 +1,4 @@
-use crate::{EventIdentifier, ProfileChangeType, ProfileEventAttributes};
+use crate::{ProfileChangeType, ProfileEventAttributes};
 use serde::{Deserialize, Serialize};
 
 /// Pre-defined keys in [`ProfileEventAttributes`] map

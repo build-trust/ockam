@@ -1,7 +1,7 @@
 use crate::{
-    EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange, ProfileChangeEvent,
-    ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileVault, Signature,
-    SignatureType, PROFILE_CHANGE_CURRENT_VERSION,
+    Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
+    ProfileVault, Signature, SignatureType, PROFILE_CHANGE_CURRENT_VERSION,
 };
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
@@ -118,7 +118,7 @@ impl Profile {
     }
 
     pub(crate) fn create_key_event(
-        &mut self,
+        &self,
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
         root_key: Option<&Secret>,
