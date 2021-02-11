@@ -1,11 +1,11 @@
 use super::structs::*;
-use crate::{attribute_type::AttributeType, serde::*};
+use crate::{credential_attribute_type::CredentialAttributeType, serde::*};
 use serde::{Deserialize, Serialize};
 
 /// An attribute describes a statement that the issuer of a credential is
 /// signing about the subject of the credential.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Attribute {
+pub struct CredentialAttributeSchema {
     /// A label for the attribute.
     #[serde(
         serialize_with = "write_byte_string",
@@ -21,5 +21,5 @@ pub struct Attribute {
     pub description: ByteString,
 
     /// The data type of the attribute value.
-    pub attribute_type: AttributeType,
+    pub attribute_type: CredentialAttributeType,
 }

@@ -1,4 +1,4 @@
-use super::{structs::*, Attribute};
+use super::{structs::*, CredentialAttributeSchema};
 use serde::{
     de::{Error as DError, SeqAccess, Visitor},
     ser::SerializeSeq,
@@ -6,7 +6,7 @@ use serde::{
 };
 
 #[allow(clippy::ptr_arg)]
-pub fn write_attributes<S>(v: &Buffer<Attribute>, s: S) -> Result<S::Ok, S::Error>
+pub fn write_attributes<S>(v: &Buffer<CredentialAttributeSchema>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -19,20 +19,22 @@ where
     iter.end()
 }
 
-pub fn read_attributes<'de, D>(deserializer: D) -> Result<Buffer<Attribute>, D::Error>
+pub fn read_attributes<'de, D>(
+    deserializer: D,
+) -> Result<Buffer<CredentialAttributeSchema>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct BufferAttributeVisitor;
 
     impl<'de> Visitor<'de> for BufferAttributeVisitor {
-        type Value = Buffer<Attribute>;
+        type Value = Buffer<CredentialAttributeSchema>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("expected array of attributes")
         }
 
-        fn visit_seq<A>(self, mut s: A) -> Result<Buffer<Attribute>, A::Error>
+        fn visit_seq<A>(self, mut s: A) -> Result<Buffer<CredentialAttributeSchema>, A::Error>
         where
             A: SeqAccess<'de>,
         {

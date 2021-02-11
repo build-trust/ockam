@@ -49,33 +49,33 @@ mod structs {
     pub type ByteString = String;
 }
 
-mod attribute;
-mod attribute_data;
-mod attribute_type;
 #[cfg(feature = "std")]
 mod credential;
+mod credential_attribute;
+mod credential_attribute_schema;
+mod credential_attribute_type;
+mod credential_schema;
 mod error;
-mod schema;
 mod serde;
 
-pub use attribute::Attribute;
-pub use attribute_data::AttributeData;
-pub use attribute_type::AttributeType;
 #[cfg(feature = "std")]
 pub use credential::*;
-pub use schema::Schema;
+pub use credential_attribute::CredentialAttribute;
+pub use credential_attribute_schema::CredentialAttributeSchema;
+pub use credential_attribute_type::CredentialAttributeType;
+pub use credential_schema::CredentialSchema;
 
 #[cfg(test)]
 mod tests {
-    use crate::{Attribute, AttributeType, Schema};
+    use crate::{CredentialAttributeSchema, CredentialAttributeType, Schema};
     use std::string::String;
     use std::vec;
 
     fn create_test_schema() -> Schema {
-        let attribute = Attribute {
+        let attribute = CredentialAttributeSchema {
             label: String::from("test_attr"),
             description: String::from("test attribute"),
-            attribute_type: AttributeType::Utf8String,
+            attribute_type: CredentialAttributeType::Utf8String,
         };
 
         let attributes = vec![attribute];

@@ -1,10 +1,10 @@
 use super::structs::*;
-use crate::{attribute::Attribute, serde::*};
+use crate::{credential_attribute_schema::CredentialAttributeSchema, serde::*};
 use serde::{Deserialize, Serialize};
 
 /// A schema describes the data format of a credential.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Schema {
+pub struct CredentialSchema {
     /// A unique identifier for this schema
     #[serde(
         serialize_with = "write_byte_string",
@@ -32,5 +32,5 @@ pub struct Schema {
         serialize_with = "write_attributes",
         deserialize_with = "read_attributes"
     )]
-    pub attributes: Buffer<Attribute>,
+    pub attributes: Buffer<CredentialAttributeSchema>,
 }
