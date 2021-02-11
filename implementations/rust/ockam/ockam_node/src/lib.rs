@@ -12,11 +12,13 @@
 mod context;
 mod error;
 mod executor;
-mod message;
+mod messages;
 mod node;
+mod relay;
 
 pub use context::*;
 pub use executor::*;
+pub use messages::*;
 pub use node::*;
 
 pub fn node() -> (Context, Executor) {

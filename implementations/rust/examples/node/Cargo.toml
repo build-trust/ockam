@@ -10,3 +10,9 @@ crate-type = ["rlib"]
 [dependencies]
 ockam = {path = "../../ockam/ockam", version = "*"}
 ockam_node = {path = "../../ockam/ockam_node", version = "*"}
+
+# TODO: this dependency here is required because rustc doesn't yet
+# support re-exporting attributes from crates.  Tracking issue:
+# https://github.com/rust-lang/rust/issues/27812
+serde = { version = "1.0", features = ["derive"] }
+async-trait = "0.1"

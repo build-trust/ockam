@@ -9,7 +9,7 @@ pub struct Context {
 
 impl Context {
     pub fn new(node: Node, address: Address) -> Self {
-        Self { address, node }
+        Self { node, address }
     }
 
     pub fn address(&self) -> Address {

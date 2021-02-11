@@ -24,4 +24,4 @@ pub use profile::*;
 mod error;
 pub use error::*;
 
-pub use ockam_core::{Error, Result, Worker};
+pub use ockam_core::{Address, Encoded, Error, Message, Result, Worker};
