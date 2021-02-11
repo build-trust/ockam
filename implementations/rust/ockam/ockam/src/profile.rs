@@ -1,5 +1,4 @@
-use crate::OckamError;
-use crate::ProfileChangeType::{CreateKey, RotateKey};
+use crate::{Contact, OckamError};
 use hashbrown::HashMap;
 use ockam_vault_core::{
     HashVault, KeyIdVault, PublicKey, Secret, SecretVault, SignerVault, VerifierVault,
@@ -21,7 +20,7 @@ mod profile_change_type;
 use crate::profile::profile_change_history::ProfileChangeHistory;
 pub use profile_change_type::*;
 
-mod profile_change_history;
+pub mod profile_change_history;
 
 pub const OCKAM_NO_EVENT: &[u8] = "OCKAM_NO_EVENT".as_bytes();
 pub const PROFILE_ROOT_KEY_LABEL: &'static str = "OCKAM_PRK";
@@ -175,29 +174,34 @@ impl Profile {
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
     ) -> ockam_core::Result<()> {
-        let root_key = self.get_root_secret()?;
-        let event = self.rotate_key_event(key_attributes, attributes, &root_key)?;
+        let root_secret = self.get_root_secret()?;
+        let event = self.rotate_key_event(key_attributes, attributes, &root_secret)?;
         self.apply_no_verification(event)
     }
 
     /// Get [`Secret`] key. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
     pub fn get_secret_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
         let event = self.change_history.find_last_key_event(key_attributes)?;
-        ProfileChangeHistory::get_secret_key_from_event(
-            key_attributes,
-            event,
-            self.vault.lock().unwrap().deref(),
-        )
+        Self::get_secret_key_from_event(key_attributes, event, self.vault.lock().unwrap().deref())
     }
 
     /// Get [`PublicKey`]. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
-    pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
-        let event = self.change_history.find_last_key_event(key_attributes)?;
-        ProfileChangeHistory::get_secret_key_from_event(
-            key_attributes,
-            event,
-            self.vault.lock().unwrap().deref(),
-        )
+    pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<PublicKey> {
+        self.change_history.get_public_key(key_attributes)
+    }
+
+    /// Return change history chain after event with given [`EventIdentifier`]
+    pub fn get_events_after(
+        &self,
+        id: &EventIdentifier,
+    ) -> ockam_core::Result<&[ProfileChangeEvent]> {
+        let pos = self
+            .change_events()
+            .iter()
+            .rev()
+            .position(|e| e.identifier() == id)
+            .ok_or_else(|| OckamError::EventNotFound)?;
+        Ok(&self.change_events()[pos + 1..])
     }
 }
 
@@ -221,124 +225,57 @@ impl Profile {
         Ok(())
     }
 
-    /// Apply new change to the [`Profile`]. Change will be verified
+    /// Apply new change to the [`Profile`]. Change will be cryptographically verified
     pub fn apply(&mut self, change_event: ProfileChangeEvent) -> ockam_core::Result<()> {
         self.verify(&change_event)?;
 
         self.apply_no_verification(change_event)
     }
 
-    /// Verify change relative to current [`Profile`]'s event chain.
-    /// WARNING: This function assumes all existing events in chain are verified
+    /// Verify cryptographically change relative to current [`Profile`]'s event chain.
+    /// WARNING: This function assumes all existing events in chain are verified.
+    /// WARNING: Correctness of events sequence is not verified here.
     pub fn verify(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
         if !Self::check_consistency(&change_event) {
             return Err(OckamError::ConsistencyError.into());
         }
 
-        let changes = change_event.changes();
-        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
+        self.check_consistency(&change_event)?;
 
         let mut vault = self.vault.lock().unwrap();
 
-        let event_id = vault.sha256(&changes_binary)?;
-        let event_id = EventIdentifier::from_hash(event_id);
-
-        if &event_id != change_event.identifier() {
-            return Err(OckamError::EventIdDoesntMatch.into());
-        }
-
-        match change_event.proof() {
-            ProfileChangeProof::Signature(s) => match s.stype() {
-                SignatureType::RootSign => {
-                    let root_public_key = self.get_root_public_key()?;
-                    vault.verify(s.data(), root_public_key.as_ref(), event_id.as_ref())?;
-                }
-            },
-        }
-
-        for change in change_event.changes() {
-            if !match change.change_type() {
-                CreateKey(c) => {
-                    // Should have 1 self signature
-                    let data_binary =
-                        serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
-                    let data_hash = vault.sha256(data_binary.as_slice())?;
-
-                    vault
-                        .verify(c.self_signature(), c.data().public_key(), &data_hash)
-                        .is_ok()
-                }
-                RotateKey(c) => {
-                    // Should have 1 self signature and 1 prev signature
-                    let data_binary =
-                        serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
-                    let data_hash = vault.sha256(data_binary.as_slice())?;
-
-                    if !vault
-                        .verify(c.self_signature(), c.data().public_key(), &data_hash)
-                        .is_ok()
-                    {
-                        false;
-                    }
-
-                    let prev_key_event = self
-                        .change_history
-                        .find_key_event_before(&event_id, c.data().key_attributes())?;
-                    let prev_key_change = ProfileChangeHistory::find_key_change_in_event(
-                        prev_key_event,
-                        c.data().key_attributes(),
-                    )
-                    .ok_or_else(|| OckamError::InvalidInternalState)?;
-                    let public_key = ProfileChangeHistory::get_change_public_key(prev_key_change)?;
-
-                    vault
-                        .verify(c.prev_signature(), public_key.as_ref(), &data_hash)
-                        .is_ok()
-                }
-            } {
-                return Err(OckamError::VerifyFailed.into());
-            }
-        }
-
-        Ok(())
+        self.change_history.verify(change_event, vault.deref_mut())
     }
 }
 
 impl Profile {
     pub(crate) fn get_root_secret(&self) -> ockam_core::Result<Secret> {
-        let public_key = self.get_root_public_key()?;
+        let public_key = self.change_history.get_root_public_key()?;
 
         let vault = self.vault.lock().unwrap();
-
         let key_id = vault.compute_key_id_for_public_key(&public_key)?;
         vault.get_secret_by_key_id(&key_id)
     }
 
-    pub(crate) fn get_root_public_key(&self) -> ockam_core::Result<PublicKey> {
-        let root_event;
-        if let Some(re) = self.change_events().as_ref().first() {
-            root_event = re;
-        } else {
-            return Err(OckamError::InvalidInternalState.into());
-        }
+    pub(crate) fn get_secret_key_from_event(
+        key_attributes: &KeyAttributes,
+        event: &ProfileChangeEvent,
+        vault: &dyn ProfileVault,
+    ) -> ockam_core::Result<Secret> {
+        let public_key = ProfileChangeHistory::get_public_key_from_event(key_attributes, event)?;
 
-        let root_change;
-        if let Some(rc) = root_event.changes().first() {
-            root_change = rc;
-        } else {
-            return Err(OckamError::InvalidInternalState.into());
-        }
+        let public_kid = vault.compute_key_id_for_public_key(&public_key)?;
 
-        let root_create_key_change;
-        if let ProfileChangeType::CreateKey(c) = root_change.change_type() {
-            root_create_key_change = c;
-        } else {
-            return Err(OckamError::InvalidInternalState.into());
-        }
+        vault.get_secret_by_key_id(&public_kid)
+    }
+}
 
-        Ok(PublicKey::new(
-            root_create_key_change.data().public_key().to_vec().into(),
-        ))
+impl Profile {
+    pub fn to_contact(&self) -> Contact {
+        Contact::new(
+            self.identifier.clone(),
+            self.change_history.as_ref().to_vec(),
+        )
     }
 }
 

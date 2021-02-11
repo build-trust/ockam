@@ -5,7 +5,7 @@ pub type Changes = Vec<ProfileChange>;
 /// [`Profile`]s are modified using change events mechanism. One event may have 1 or more [`ProfileChange`]s
 /// Proof is used to check whether this event comes from a party authorized to perform such updated
 /// Individual changes may include additional proofs, if needed
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProfileChangeEvent {
     identifier: EventIdentifier,
     changes: Changes,

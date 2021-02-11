@@ -1,11 +1,13 @@
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
-    EventIdentifier, KeyAttributes, OckamError, ProfileChange, ProfileChangeEvent, ProfileVault,
+    EventIdentifier, KeyAttributes, OckamError, ProfileChange, ProfileChangeEvent,
+    ProfileChangeProof, ProfileChangeType, ProfileVault, SignatureType,
 };
-use ockam_vault_core::{PublicKey, Secret};
+use ockam_vault_core::PublicKey;
+use serde::{Deserialize, Serialize};
 
 /// Full history of [`Profile`] changes. History and corresponding secret keys are enough to recreate [`Profile`]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ProfileChangeHistory(Vec<ProfileChangeEvent>);
 
 impl ProfileChangeHistory {
@@ -92,18 +94,6 @@ impl ProfileChangeHistory {
         Ok(PublicKey::new(data.into()))
     }
 
-    pub(crate) fn get_secret_key_from_event(
-        key_attributes: &KeyAttributes,
-        event: &ProfileChangeEvent,
-        vault: &dyn ProfileVault,
-    ) -> ockam_core::Result<Secret> {
-        let public_key = Self::get_public_key_from_event(key_attributes, event)?;
-
-        let public_kid = vault.compute_key_id_for_public_key(&public_key)?;
-
-        vault.get_secret_by_key_id(&public_kid)
-    }
-
     pub(crate) fn get_public_key_from_event(
         key_attributes: &KeyAttributes,
         event: &ProfileChangeEvent,
@@ -112,5 +102,116 @@ impl ProfileChangeHistory {
             .ok_or_else(|| OckamError::InvalidInternalState)?;
 
         Self::get_change_public_key(change)
+    }
+}
+
+impl ProfileChangeHistory {
+    pub(crate) fn get_root_public_key(&self) -> ockam_core::Result<PublicKey> {
+        let root_event;
+        if let Some(re) = self.as_ref().first() {
+            root_event = re;
+        } else {
+            return Err(OckamError::InvalidInternalState.into());
+        }
+
+        let root_change;
+        if let Some(rc) = root_event.changes().data().first() {
+            root_change = rc;
+        } else {
+            return Err(OckamError::InvalidInternalState.into());
+        }
+
+        let root_create_key_change;
+        if let ProfileChangeType::CreateKey(c) = root_change.change_type() {
+            root_create_key_change = c;
+        } else {
+            return Err(OckamError::InvalidInternalState.into());
+        }
+
+        Ok(PublicKey::new(
+            root_create_key_change.data().public_key().to_vec().into(),
+        ))
+    }
+
+    pub(crate) fn get_public_key(
+        &self,
+        key_attributes: &KeyAttributes,
+    ) -> ockam_core::Result<PublicKey> {
+        let event = self.find_last_key_event(key_attributes)?;
+        Self::get_public_key_from_event(key_attributes, event)
+    }
+}
+
+impl ProfileChangeHistory {
+    /// WARNING: This function assumes all existing events in chain are verified.
+    /// WARNING: Correctness of events sequence is not verified here.
+    pub(crate) fn verify(
+        &self,
+        change_event: &ProfileChangeEvent,
+        vault: &mut dyn ProfileVault,
+    ) -> ockam_core::Result<()> {
+        let changes = change_event.changes();
+        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
+
+        let event_id = vault.sha256(&changes_binary)?;
+        let event_id = EventIdentifier::from_hash(event_id);
+
+        if &event_id != change_event.identifier() {
+            return Err(OckamError::EventIdDoesntMatch.into());
+        }
+
+        match change_event.proof() {
+            ProfileChangeProof::Signature(s) => match s.stype() {
+                SignatureType::RootSign => {
+                    let root_public_key = self.get_root_public_key()?;
+                    vault.verify(s.data(), root_public_key.as_ref(), event_id.as_ref())?;
+                }
+            },
+        }
+
+        for change in change_event.changes().data() {
+            if !match change.change_type() {
+                CreateKey(c) => {
+                    // Should have 1 self signature
+                    let data_binary =
+                        serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
+                    let data_hash = vault.sha256(data_binary.as_slice())?;
+
+                    vault
+                        .verify(c.self_signature(), c.data().public_key(), &data_hash)
+                        .is_ok()
+                }
+                RotateKey(c) => {
+                    // Should have 1 self signature and 1 prev signature
+                    let data_binary =
+                        serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
+                    let data_hash = vault.sha256(data_binary.as_slice())?;
+
+                    if !vault
+                        .verify(c.self_signature(), c.data().public_key(), &data_hash)
+                        .is_ok()
+                    {
+                        false;
+                    }
+
+                    let prev_key_event =
+                        self.find_key_event_before(&event_id, c.data().key_attributes())?;
+                    let prev_key_change = ProfileChangeHistory::find_key_change_in_event(
+                        prev_key_event,
+                        c.data().key_attributes(),
+                    )
+                    .ok_or_else(|| OckamError::InvalidInternalState)?;
+                    let public_key = ProfileChangeHistory::get_change_public_key(prev_key_change)?;
+
+                    vault
+                        .verify(c.prev_signature(), public_key.as_ref(), &data_hash)
+                        .is_ok()
+                }
+            } {
+                return Err(OckamError::VerifyFailed.into());
+            }
+        }
+
+        Ok(())
     }
 }

@@ -9,7 +9,7 @@ pub enum SignatureType {
 }
 
 /// Variants of proofs that are allowed on a [`Profile`] change
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ProfileChangeProof {
     Signature(Signature),
 }

@@ -9,6 +9,10 @@ pub enum OckamError {
     ComplexEventsAreNotSupported,
     EventIdDoesntMatch,
     EmptyChange,
+    ContactNotFound,
+    EventNotFound,
+    InvalidChainSequence,
+    InvalidEventId,
 }
 
 impl OckamError {
