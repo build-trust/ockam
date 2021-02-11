@@ -118,8 +118,6 @@ impl Connection for TcpConnection {
 mod test {
     use crate::connection::TcpConnection;
     use crate::listener::TcpListener;
-    use std::convert::TryFrom;
-    use std::net::SocketAddr;
     use std::str::FromStr;
     use tokio::runtime::Builder;
     use tokio::task;
