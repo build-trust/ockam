@@ -1,5 +1,5 @@
 use crate::structs::*;
-use crate::AttributeType;
+use crate::CredentialAttributeType;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "std")]
@@ -11,7 +11,7 @@ mod fields {
 
 /// The attribute data that is signed by
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum AttributeData {
+pub enum CredentialAttribute {
     /// The attribute is allowed to not be specified
     NotSpecified,
     /// The attribute value is specified as empty
@@ -24,11 +24,11 @@ pub enum AttributeData {
     Blob([u8; 32]),
 }
 
-impl AttributeData {
+impl CredentialAttribute {
     /// Is `self` NotSpecified or Empty
     pub fn can_be_empty(&self) -> bool {
         match *self {
-            AttributeData::NotSpecified | AttributeData::Empty => true,
+            CredentialAttribute::NotSpecified | CredentialAttribute::Empty => true,
             _ => false,
         }
     }
@@ -47,15 +47,15 @@ impl AttributeData {
         .unwrap();
 
         match self {
-            AttributeData::NotSpecified => {
+            CredentialAttribute::NotSpecified => {
                 SignatureMessage::from(Fr::from_repr(FrRepr::from(1u64)).unwrap())
             }
-            AttributeData::Empty => {
+            CredentialAttribute::Empty => {
                 SignatureMessage::from(Fr::from_repr(FrRepr::from(2u64)).unwrap())
             }
-            AttributeData::Blob(v) => SignatureMessage::from(v),
-            AttributeData::String(s) => SignatureMessage::hash(s),
-            AttributeData::Numeric(n) => {
+            CredentialAttribute::Blob(v) => SignatureMessage::from(v),
+            CredentialAttribute::String(s) => SignatureMessage::hash(s),
+            CredentialAttribute::Numeric(n) => {
                 let d = Fr::from_repr(FrRepr::from(*n as u64)).unwrap();
                 let mut m = f_2_254;
                 if *n < 0 {
@@ -69,12 +69,12 @@ impl AttributeData {
     }
 }
 
-impl PartialEq<AttributeType> for AttributeData {
-    fn eq(&self, other: &AttributeType) -> bool {
+impl PartialEq<CredentialAttributeType> for CredentialAttribute {
+    fn eq(&self, other: &CredentialAttributeType) -> bool {
         match (other, self) {
-            (&AttributeType::Blob, &AttributeData::Blob(_)) => true,
-            (&AttributeType::Number, &AttributeData::Numeric(_)) => true,
-            (&AttributeType::Utf8String, &AttributeData::String(_)) => true,
+            (&CredentialAttributeType::Blob, &CredentialAttribute::Blob(_)) => true,
+            (&CredentialAttributeType::Number, &CredentialAttribute::Numeric(_)) => true,
+            (&CredentialAttributeType::Utf8String, &CredentialAttribute::String(_)) => true,
             (_, _) => false,
         }
     }
