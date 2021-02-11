@@ -32,8 +32,8 @@ impl Message for Action {}
 
 #[async_trait::async_trait]
 impl Worker for Player {
-    type Context = Context;
     type Message = Action;
+    type Context = Context;
 
     fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         println!("Starting player {}", ctx.address());

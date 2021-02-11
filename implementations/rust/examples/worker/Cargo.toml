@@ -9,3 +9,6 @@ crate-type = ["rlib"]
 
 [dependencies]
 ockam = {path = "../../ockam/ockam", version = "*"}
+ockam_node = {path = "../../ockam/ockam_node", version = "*"}
+serde = { version = "1.0", features = ["derive"] }
+async-trait = "0.1"
