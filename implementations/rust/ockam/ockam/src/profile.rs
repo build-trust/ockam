@@ -206,20 +206,28 @@ impl Profile {
 }
 
 impl Profile {
-    fn check_consistency(change_event: &ProfileChangeEvent) -> bool {
+    fn check_consistency(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
         // TODO: check event for consistency: e.g. you cannot rotate the same key twice during one event
         // For only allow one change at a time
-        change_event.changes().len() == 1
+        if change_event.changes().data().len() != 1 {
+            return Err(OckamError::ConsistencyError.into());
+        }
+
+        if let Some(e) = self.change_events().last() {
+            // Events should go in correct order as stated in previous_event_identifier field
+            if e.identifier() != change_event.changes().previous_event_identifier() {
+                return Err(OckamError::InvalidChainSequence.into());
+            }
+        }
+
+        Ok(())
     }
 
     fn apply_no_verification(
         &mut self,
         change_event: ProfileChangeEvent,
     ) -> ockam_core::Result<()> {
-        if !Self::check_consistency(&change_event) {
-            return Err(OckamError::InvalidInternalState.into());
-        }
-
+        self.check_consistency(&change_event)?;
         self.change_history.push_event(change_event);
 
         Ok(())
@@ -236,10 +244,6 @@ impl Profile {
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
     pub fn verify(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
-        if !Self::check_consistency(&change_event) {
-            return Err(OckamError::ConsistencyError.into());
-        }
-
         self.check_consistency(&change_event)?;
 
         let mut vault = self.vault.lock().unwrap();
