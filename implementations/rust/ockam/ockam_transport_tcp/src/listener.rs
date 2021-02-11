@@ -1,6 +1,6 @@
 use crate::connection::TcpConnection;
 use crate::error::TransportError;
-use crate::traits::{Connection, Listener};
+use crate::transport_traits::{Connection, Listener};
 use async_trait::async_trait;
 use tokio::net::TcpListener as TokioTcpListener;
 
