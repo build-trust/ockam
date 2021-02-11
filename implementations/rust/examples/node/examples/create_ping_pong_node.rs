@@ -84,9 +84,6 @@ impl Worker for Player {
     }
 }
 
-
-
-
 fn main() {
     let (ctx, mut exe) = ockam::node();
 

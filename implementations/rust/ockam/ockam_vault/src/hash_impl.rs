@@ -49,8 +49,9 @@ impl HashVault for SoftwareVault {
         let okm = {
             let mut okm = vec![0u8; okm_len];
             let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key().as_ref()), ikm);
+
             prk.expand(info, okm.as_mut_slice())
-                .map_err(|_| VaultError::HkdfExpandError.into())?;
+                .map_err(|_| Into::<ockam_core::Error>::into(VaultError::HkdfExpandError))?;
             okm
         };
 

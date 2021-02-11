@@ -14,9 +14,11 @@ macro_rules! encrypt_op_impl {
             aad: $aad.as_ref(),
             msg: $text.as_ref(),
         };
-        let output = cipher
-            .$op(nonce, payload)
-            .or_else(|_| Err(VaultError::AeadAesGcmEncrypt.into()))?;
+        let output = cipher.$op(nonce, payload).or_else(|_| {
+            Err(Into::<ockam_core::Error>::into(
+                VaultError::AeadAesGcmEncrypt,
+            ))
+        })?;
         Ok(output)
     }};
 }

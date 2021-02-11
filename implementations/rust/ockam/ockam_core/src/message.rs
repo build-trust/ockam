@@ -9,6 +9,8 @@ pub trait Message: Serialize + DeserializeOwned + Send + 'static {
     fn encode(&self) -> Result<Encoded> {
         Ok(bincode::serialize(self)?)
     }
+
+    #[allow(clippy::ptr_arg)]
     fn decode(e: &Encoded) -> Result<Self> {
         Ok(bincode::deserialize(e)?)
     }
