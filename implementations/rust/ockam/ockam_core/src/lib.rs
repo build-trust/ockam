@@ -20,8 +20,10 @@
 
 mod address;
 mod error;
+mod message;
 mod worker;
 
 pub use address::*;
 pub use error::*;
+pub use message::*;
 pub use worker::*;

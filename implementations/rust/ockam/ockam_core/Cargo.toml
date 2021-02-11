@@ -25,3 +25,10 @@ std = []
 
 [dependencies]
 async-trait = "0.1.42"
+serde = "1.0"
+
+# TODO: this dependency was added to provide a quick and dirty way to
+# serialise message types in the default trait implementation.  In the
+# future we may want to either: a) change to the main ockam encoder
+# which works in no_std, or b) swap encoder based on the std feature
+bincode = "1.0"
