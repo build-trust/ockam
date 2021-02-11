@@ -50,6 +50,7 @@ mod structs {
 }
 
 mod attribute;
+mod attribute_data;
 mod attribute_type;
 #[cfg(feature = "std")]
 mod credential;
@@ -58,6 +59,7 @@ mod schema;
 mod serde;
 
 pub use attribute::Attribute;
+pub use attribute_data::AttributeData;
 pub use attribute_type::AttributeType;
 #[cfg(feature = "std")]
 pub use credential::*;
