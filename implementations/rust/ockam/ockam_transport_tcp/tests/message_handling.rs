@@ -1,5 +1,5 @@
 use ockam_transport_tcp::connection::TcpConnection;
-use ockam_transport_tcp::error::Error;
+use ockam_transport_tcp::error::TransportError;
 use ockam_transport_tcp::listener::TcpListener;
 use ockam_transport_tcp::traits::Connection;
 use rand::prelude::*;
@@ -30,8 +30,8 @@ pub async fn random_worker(mut c: Box<dyn Connection>, text: &str) {
                         println!("{} {}", String::from_utf8(buff[0..n].to_vec()).unwrap(),y);
                     }
                     Err(e) => {
-                        if !matches!(e, Error::ConnectionClosed) {
-                            assert!(false);
+                        if !matches!(e, TransportError::ConnectionClosed) {
+                            panic!(format!("{:?}", e));
                         }
                         return;
                     }

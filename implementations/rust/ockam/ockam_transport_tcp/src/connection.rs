@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::TransportError;
 use crate::traits::Connection;
 use async_trait::async_trait;
 use std::net::SocketAddr;
@@ -31,39 +31,39 @@ impl TcpConnection {
             stream: None,
         })
     }
-    pub async fn new_from_stream(stream: TcpStream) -> Result<Box<Self>, Error> {
+    pub async fn new_from_stream(stream: TcpStream) -> Result<Box<Self>, TransportError> {
         match stream.peer_addr() {
             Ok(peer) => Ok(Box::new(TcpConnection {
                 remote_address: peer,
                 _blocking: true,
                 stream: Some(stream),
             })),
-            Err(_) => Err(Error::PeerNotFound),
+            Err(_) => Err(TransportError::PeerNotFound),
         }
     }
 }
 
 #[async_trait]
 impl Connection for TcpConnection {
-    async fn connect(&mut self) -> Result<(), Error> {
+    async fn connect(&mut self) -> Result<(), TransportError> {
         match self.stream {
-            Some(_) => Err(Error::AlreadyConnected),
+            Some(_) => Err(TransportError::AlreadyConnected),
             None => match TcpStream::connect(&self.remote_address).await {
                 Ok(s) => {
                     self.stream = Some(s);
                     Ok(())
                 }
-                Err(_) => Err(Error::ConnectFailed),
+                Err(_) => Err(TransportError::ConnectFailed),
             },
         }
     }
 
-    async fn send(&mut self, buff: &[u8]) -> Result<usize, Error> {
+    async fn send(&mut self, buff: &[u8]) -> Result<usize, TransportError> {
         let mut i = 0;
         return if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.writable().await) {
-                    return Err(Error::CheckConnection);
+                    return Err(TransportError::CheckConnection);
                 }
                 match stream.try_write(&buff[i..]) {
                     Ok(n) if n == buff.len() => {
@@ -74,28 +74,28 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        return Err(Error::CheckConnection);
+                        return Err(TransportError::CheckConnection);
                     }
                     Err(_) => {
-                        return Err(Error::CheckConnection);
+                        return Err(TransportError::CheckConnection);
                     }
                 }
             }
         } else {
-            Err(Error::NotConnected)
+            Err(TransportError::NotConnected)
         };
     }
 
-    async fn receive(&mut self, buff: &mut [u8]) -> Result<usize, Error> {
+    async fn receive(&mut self, buff: &mut [u8]) -> Result<usize, TransportError> {
         if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.readable().await) {
-                    return Err(Error::CheckConnection);
+                    return Err(TransportError::CheckConnection);
                 }
                 match stream.try_read(buff) {
                     Ok(n) => {
                         return if 0 == n {
-                            Err(Error::ConnectionClosed)
+                            Err(TransportError::ConnectionClosed)
                         } else {
                             Ok(n)
                         }
@@ -104,12 +104,12 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     _ => {
-                        return Err(Error::ReceiveFailed);
+                        return Err(TransportError::ReceiveFailed);
                     }
                 }
             }
         } else {
-            Err(Error::CheckConnection)
+            Err(TransportError::CheckConnection)
         }
     }
 }
