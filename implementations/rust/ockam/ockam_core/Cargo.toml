@@ -23,12 +23,13 @@ default = ["std"]
 # Requires the Rust Standard Library.
 std = []
 
+# Requires the Rust alloc library
+alloc = []
+
+# No alloc and no standard library
+no_std = ["heapless"]
+
 [dependencies]
 async-trait = "0.1.42"
-serde = "1.0"
-
-# TODO: this dependency was added to provide a quick and dirty way to
-# serialise message types in the default trait implementation.  In the
-# future we may want to either: a) change to the main ockam encoder
-# which works in no_std, or b) swap encoder based on the std feature
-bincode = "1.0"
+hashbrown = "0.9"
+heapless = { version = "0.6", optional = true }

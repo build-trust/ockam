@@ -1,7 +1,6 @@
 //! Error and Result types
 
-#[cfg(feature = "std")]
-use std::fmt::{Display, Formatter};
+use crate::lib::{fmt::Formatter, Display};
 
 /// The type of errors returned by Ockam functions.
 ///
@@ -30,12 +29,7 @@ pub struct Error {
 }
 
 /// The type returned by Ockam functions.
-#[cfg(feature = "std")]
-pub type Result<T> = std::result::Result<T, Error>;
-
-/// The type returned by Ockam functions.
-#[cfg(not(feature = "std"))]
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T> = crate::lib::Result<T, Error>;
 
 impl Error {
     /// Creates a new [`Error`].
@@ -64,19 +58,25 @@ impl Error {
     }
 }
 
-#[cfg(feature = "std")]
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Error {{ code: {}, domain: \"{}\" }}",
-            self.code, self.domain
-        )
+    fn fmt(&self, f: &mut Formatter<'_>) -> crate::lib::fmt::Result {
+        #[cfg(feature = "std")]
+        {
+            write!(
+                f,
+                "Error {{ code: {}, domain: \"{}\" }}",
+                self.code, self.domain
+            )
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            write!(f, "Error {{ code: {} }}", self.code)
+        }
     }
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for Error {}
+impl crate::lib::error::Error for Error {}
 
 #[cfg(feature = "std")]
 #[cfg(test)]
