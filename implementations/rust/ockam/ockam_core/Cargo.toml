@@ -23,5 +23,13 @@ default = ["std"]
 # Requires the Rust Standard Library.
 std = []
 
+# Requires the Rust alloc library
+alloc = []
+
+# No alloc and no standard library
+no_std = ["heapless"]
+
 [dependencies]
 async-trait = "0.1.42"
+hashbrown = "0.9"
+heapless = { version = "0.6", optional = true }
