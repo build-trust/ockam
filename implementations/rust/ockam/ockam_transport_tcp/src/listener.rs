@@ -1,5 +1,5 @@
 use crate::connection::TcpConnection;
-use crate::error::Error;
+use crate::error::TransportError;
 use crate::traits::{Connection, Listener};
 use async_trait::async_trait;
 use tokio::net::TcpListener as TokioTcpListener;
@@ -22,11 +22,11 @@ impl TcpListener {
     /// ```
     pub async fn create(
         listen_address: std::net::SocketAddr,
-    ) -> Result<Box<dyn Listener + Send>, Error> {
+    ) -> Result<Box<dyn Listener + Send>, TransportError> {
         let listener = TokioTcpListener::bind(listen_address).await;
         match listener {
             Ok(l) => Ok(Box::new(TcpListener { listener: l })),
-            Err(_) => Err(Error::Bind),
+            Err(_) => Err(TransportError::Bind),
         }
     }
 }
@@ -46,10 +46,10 @@ impl Listener for TcpListener {
     /// let listener = TcpListener::create(address);
     /// let connection = listener.accept().await.unwrap();
     /// ```
-    async fn accept(&mut self) -> Result<Box<dyn Connection + Send>, Error> {
+    async fn accept(&mut self) -> Result<Box<dyn Connection + Send>, TransportError> {
         let stream = self.listener.accept().await;
         if stream.is_err() {
-            Err(Error::Accept)
+            Err(TransportError::Accept)
         } else {
             let (stream, _) = stream.unwrap();
             Ok(TcpConnection::new_from_stream(stream).await?)

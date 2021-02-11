@@ -1,7 +1,9 @@
+use ockam_core::Error;
+
 /// Represents the failures that can occur in
 /// Ockam Connection and Listener traits
 #[derive(Clone, Copy, Debug)]
-pub enum Error {
+pub enum TransportError {
     None,
     PeerNotFound,
     Accept,
@@ -15,13 +17,15 @@ pub enum Error {
     IllFormedMessage,
 }
 
-impl Error {
+impl TransportError {
+    /// Integer code associated with the error domain.
+    pub const DOMAIN_CODE: u32 = 15_000;
     /// Error domain
-    pub const ERROR_DOMAIN: &'static str = "TRANSPORT_ERROR_DOMAIN";
+    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT";
 }
 
-impl Into<ockam_core::Error> for Error {
-    fn into(self) -> ockam_core::Error {
-        ockam_core::Error::new(self as u32, Error::ERROR_DOMAIN)
+impl Into<Error> for TransportError {
+    fn into(self) -> Error {
+        Error::new(Self::DOMAIN_CODE + (self as u32), Self::DOMAIN_NAME)
     }
 }
