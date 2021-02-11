@@ -3,10 +3,8 @@ use crate::traits::Connection;
 use async_trait::async_trait;
 use std::net::SocketAddr;
 use std::result::Result;
-use std::sync::Arc;
 use tokio::io;
 use tokio::net::TcpStream;
-use tokio::sync::Mutex;
 
 pub struct TcpConnection {
     remote_address: std::net::SocketAddr,
@@ -27,18 +25,21 @@ impl TcpConnection {
     /// let connection = TcpConnection::create(address);
     /// ```
     pub fn create(remote_address: SocketAddr) -> Box<dyn Connection + Send> {
-        Arc::new(Mutex::new(TcpConnection {
+        Box::new(TcpConnection {
             remote_address,
             _blocking: true,
             stream: None,
-        }))
-    }
-    pub async fn new_from_stream(stream: TcpStream) -> Box<Self> {
-        Box::new(TcpConnection {
-            remote_address: stream.peer_addr().unwrap(),
-            _blocking: true,
-            stream: Some(stream),
         })
+    }
+    pub async fn new_from_stream(stream: TcpStream) -> Result<Box<Self>, Error> {
+        match stream.peer_addr() {
+            Ok(peer) => Ok(Box::new(TcpConnection {
+                remote_address: peer,
+                _blocking: true,
+                stream: Some(stream),
+            })),
+            Err(_) => Err(Error::PeerNotFound),
+        }
     }
 }
 
@@ -73,7 +74,6 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        //continue;
                         return Err(Error::CheckConnection);
                     }
                     Err(_) => {
@@ -125,8 +125,8 @@ mod test {
     use tokio::task;
 
     async fn client_worker(address: String) {
-        let connection = TcpConnection::create(std::net::SocketAddr::from_str(&address).unwrap());
-        let mut connection = connection.lock().await;
+        let mut connection =
+            TcpConnection::create(std::net::SocketAddr::from_str(&address).unwrap());
         let r = connection.connect().await;
         assert!(!r.is_err());
         for _i in 0u16..5 {
@@ -150,13 +150,11 @@ mod test {
             let r = TcpListener::create(std::net::SocketAddr::from_str(&address).unwrap()).await;
             assert!(r.is_ok());
 
-            let listener = r.unwrap();
-            let mut listener = listener.lock().await;
+            let mut listener = r.unwrap();
             let connection = listener.accept().await;
             assert!(connection.is_ok());
 
-            let connection = connection.unwrap();
-            let mut connection = connection.lock().await;
+            let mut connection = connection.unwrap();
             for _i in 0u16..5 {
                 let mut buff: [u8; 32] = [0; 32];
                 let r = connection.receive(&mut buff).await;
