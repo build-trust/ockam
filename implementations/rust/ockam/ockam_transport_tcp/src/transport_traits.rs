@@ -9,20 +9,21 @@ pub trait Connection {
     /// transports suchs as TCP, blocks until a connection with the remote
     /// is established. For connectionless transports such as UDP, returns immediately.
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use crate::ockam_transport_tcp::connection::TcpConnection;
+    /// use std::net::SocketAddr;
     /// use std::str::FromStr;
-    /// let mut connection =
-    /// TcpConnection::create(std::net::SocketAddr::from_str(&address).unwrap());
-    /// let r = connection.connect().await;
+    /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
+    /// let mut connection = TcpConnection::new(address).await.unwrap();
+    /// let r = connection.connect().await.unwrap();
     /// ```
     async fn connect(&mut self) -> Result<(), TransportError>;
 
-    /// Sends a message.
-    async fn send(&mut self, message: &[u8]) -> Result<usize, TransportError>;
+    /// Sends a u8 buffer.
+    async fn send(&mut self, buff: &[u8]) -> Result<usize, TransportError>;
 
-    /// Receives a message.
-    async fn receive(&mut self, message: &mut [u8]) -> Result<usize, TransportError>;
+    /// Receives a u8 buffer.
+    async fn receive(&mut self, buff: &mut [u8]) -> Result<usize, TransportError>;
 }
 
 /// The `Listener` trait represents transport connection listeners.

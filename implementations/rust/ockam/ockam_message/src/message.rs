@@ -5,10 +5,10 @@ use std::net::SocketAddr;
 #[repr(C)]
 
 pub struct Message {
-    version: u8,
-    onward_route: Route,
-    return_route: Route,
-    message_body: MessageBody,
+    pub version: u8,
+    pub onward_route: Route,
+    pub return_route: Route,
+    pub message_body: MessageBody,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -31,7 +31,7 @@ pub enum Address {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct Route {
-    addrs: Vec<Address>,
+    pub addrs: Vec<Address>,
 }
 
 #[cfg(test)]

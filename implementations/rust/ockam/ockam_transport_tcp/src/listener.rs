@@ -1,6 +1,6 @@
-use crate::connection::TcpConnection;
 use crate::error::TransportError;
 use crate::transport_traits::{Connection, Listener};
+use crate::TcpConnection;
 use async_trait::async_trait;
 use tokio::net::TcpListener as TokioTcpListener;
 
@@ -12,15 +12,19 @@ impl TcpListener {
     /// Creates a [`Listener`] trait object reference for TCP.
     ///
     /// # Examples
-    /// ```ignore
+    /// ```
     /// use ockam_transport_tcp::listener::TcpListener;
     /// use std::net::SocketAddr;
     /// use std::str::FromStr;
+    /// use tokio::runtime::{Builder, Runtime};
     ///
-    /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    /// let listener = TcpListener::create(address);
+    /// let runtime = Builder::new_current_thread().enable_io().build().unwrap();
+    /// runtime.block_on( async {
+    ///    let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
+    ///    let listener = TcpListener::new(address).await.unwrap();
+    /// });
     /// ```
-    pub async fn create(
+    pub async fn new(
         listen_address: std::net::SocketAddr,
     ) -> Result<Box<dyn Listener + Send>, TransportError> {
         let listener = TokioTcpListener::bind(listen_address).await;
@@ -41,9 +45,9 @@ impl Listener for TcpListener {
     /// use ockam_transport_tcp::listener::TcpListener;
     /// use std::net::SocketAddr;
     /// use std::str::FromStr;
-    ///
+    ///         
     /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    /// let listener = TcpListener::create(address);
+    /// let mut  listener = TcpListener::new(address).await.unwrap();
     /// let connection = listener.accept().await.unwrap();
     /// ```
     async fn accept(&mut self) -> Result<Box<dyn Connection + Send>, TransportError> {
@@ -67,13 +71,13 @@ mod test {
     use tokio::task;
 
     async fn client_worker() {
-        let mut connection = TcpConnection::create(SocketAddr::from_str("127.0.0.1:4052").unwrap());
+        let mut connection = TcpConnection::new(SocketAddr::from_str("127.0.0.1:4052").unwrap());
         connection.connect().await.unwrap();
     }
 
     async fn listen_worker() {
         {
-            let mut listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4052").unwrap())
+            let mut listener = TcpListener::new(SocketAddr::from_str("127.0.0.1:4052").unwrap())
                 .await
                 .unwrap();
             let _connection = listener.accept().await.unwrap();

@@ -55,9 +55,9 @@ pub fn test_message_send() {
 
     runtime.block_on(async {
         let socket_addr = std::net::SocketAddr::from_str("127.0.0.1:4050").unwrap();
-        let mut m_listener = TcpListener::create(socket_addr.clone()).await.unwrap();
+        let mut m_listener = TcpListener::new(socket_addr.clone()).await.unwrap();
         let mut m_connection_1 =
-            TcpConnection::create(SocketAddr::from_str("127.0.0.1:4050").unwrap());
+            TcpConnection::new(SocketAddr::from_str("127.0.0.1:4050").unwrap());
 
         let m_connection_2 = {
             let f1 = m_connection_1.connect();

@@ -13,7 +13,7 @@ pub struct TcpConnection {
 }
 
 impl TcpConnection {
-    /// Creates a [`Connection`] trait object reference for TCP.
+    /// Creates a heap-allocated [`Connection`] trait object reference for TCP.
     ///
     /// # Examples
     /// ```
@@ -22,9 +22,9 @@ impl TcpConnection {
     /// use std::str::FromStr;
     ///
     /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    /// let connection = TcpConnection::create(address);
+    /// let connection = TcpConnection::new(address);
     /// ```
-    pub fn create(remote_address: SocketAddr) -> Box<dyn Connection + Send> {
+    pub fn new(remote_address: SocketAddr) -> Box<dyn Connection + Send> {
         Box::new(TcpConnection {
             remote_address,
             _blocking: true,
@@ -123,8 +123,7 @@ mod test {
     use tokio::task;
 
     async fn client_worker(address: String) {
-        let mut connection =
-            TcpConnection::create(std::net::SocketAddr::from_str(&address).unwrap());
+        let mut connection = TcpConnection::new(std::net::SocketAddr::from_str(&address).unwrap());
         let r = connection.connect().await;
         assert!(!r.is_err());
         for _i in 0u16..5 {
@@ -145,7 +144,7 @@ mod test {
 
     async fn listen_worker(address: String) {
         {
-            let r = TcpListener::create(std::net::SocketAddr::from_str(&address).unwrap()).await;
+            let r = TcpListener::new(std::net::SocketAddr::from_str(&address).unwrap()).await;
             assert!(r.is_ok());
 
             let mut listener = r.unwrap();
