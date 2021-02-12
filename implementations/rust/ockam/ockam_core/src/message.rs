@@ -1,3 +1,4 @@
+use crate::lib::Vec;
 use crate::Result;
 use serde::{de::DeserializeOwned, Serialize};
 

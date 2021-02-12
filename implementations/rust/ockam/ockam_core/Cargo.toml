@@ -21,7 +21,7 @@ exclude = [
 default = ["std"]
 
 # Requires the Rust Standard Library.
-std = []
+std = ["bincode", "serde", "async-trait"]
 
 # Requires the Rust alloc library
 alloc = []
@@ -30,6 +30,8 @@ alloc = []
 no_std = ["heapless"]
 
 [dependencies]
-async-trait = "0.1.42"
-hashbrown = "0.9"
+async-trait =  { version = "0.1.42", optional = true }
+bincode = { version =  "1.0", optional = true }
+hashbrown =  { version = "0.9"}
 heapless = { version = "0.6", optional = true }
+serde =  { version = "1.0", optional = true }
