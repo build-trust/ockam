@@ -48,6 +48,10 @@
     <a href="https://www.ockam.io/learn/how-to-guides/contributing/">
       Contribute
     </a>
+    <span> | </span>
+    <a href="https://www.ockam.io/team#open-roles">
+      Join The Team
+    </a>
   </h3>
 </div>
 
