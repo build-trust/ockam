@@ -188,25 +188,26 @@ impl ProfileChangeHistory {
                         serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
-                    if !vault
+                    if vault
                         .verify(c.self_signature(), c.data().public_key(), &data_hash)
-                        .is_ok()
+                        .is_err()
                     {
-                        false;
+                        false
+                    } else {
+                        let prev_key_event =
+                            self.find_key_event_before(&event_id, c.data().key_attributes())?;
+                        let prev_key_change = ProfileChangeHistory::find_key_change_in_event(
+                            prev_key_event,
+                            c.data().key_attributes(),
+                        )
+                        .ok_or_else(|| OckamError::InvalidInternalState)?;
+                        let public_key =
+                            ProfileChangeHistory::get_change_public_key(prev_key_change)?;
+
+                        vault
+                            .verify(c.prev_signature(), public_key.as_ref(), &data_hash)
+                            .is_ok()
                     }
-
-                    let prev_key_event =
-                        self.find_key_event_before(&event_id, c.data().key_attributes())?;
-                    let prev_key_change = ProfileChangeHistory::find_key_change_in_event(
-                        prev_key_event,
-                        c.data().key_attributes(),
-                    )
-                    .ok_or_else(|| OckamError::InvalidInternalState)?;
-                    let public_key = ProfileChangeHistory::get_change_public_key(prev_key_change)?;
-
-                    vault
-                        .verify(c.prev_signature(), public_key.as_ref(), &data_hash)
-                        .is_ok()
                 }
             } {
                 return Err(OckamError::VerifyFailed.into());
