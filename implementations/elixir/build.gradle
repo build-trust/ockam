@@ -58,7 +58,7 @@ mixTasks.each {
   gradleTaskName = gradleTaskName == 'compile' ? 'build' : gradleTaskName
 
   // depend on rust build
-  def appGradleTaskDeps = mixTask.dependsOnRust ? [gradle.includedBuild('rs').task(':build')] : []
+  def appGradleTaskDeps = mixTask.dependsOnRust ? [gradle.includedBuild('rust').task(':build')] : []
 
   def gradleTaskDeps = []
 
