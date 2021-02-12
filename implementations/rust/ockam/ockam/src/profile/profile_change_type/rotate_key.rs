@@ -90,11 +90,11 @@ impl Profile {
             Self::get_secret_key_from_event(&key_attributes, last_event_in_chain, v.deref())?;
 
         // TODO: Should be customisable
-        let secret_attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Persistent,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+        let secret_attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Persistent,
+            CURVE25519_SECRET_LENGTH,
+        );
 
         let secret_key = v.secret_generate(secret_attributes)?;
         let public_key = v.secret_public_key_get(&secret_key)?.as_ref().to_vec();

@@ -55,11 +55,11 @@ mod tests {
     fn get_secret_by_key_id() {
         let mut vault = SoftwareVault::new();
 
-        let attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Ephemeral,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        );
 
         let secret = vault.secret_generate(attributes).unwrap();
         let public = vault.secret_public_key_get(&secret).unwrap();

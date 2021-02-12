@@ -94,9 +94,31 @@ pub enum SecretPersistence {
 /// Attributes for a specific vault [`Secret`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub struct SecretAttributes {
-    pub stype: SecretType,
-    pub persistence: SecretPersistence,
-    pub length: usize,
+    stype: SecretType,
+    persistence: SecretPersistence,
+    length: usize,
+}
+
+impl SecretAttributes {
+    pub fn stype(&self) -> SecretType {
+        self.stype
+    }
+    pub fn persistence(&self) -> SecretPersistence {
+        self.persistence
+    }
+    pub fn length(&self) -> usize {
+        self.length
+    }
+}
+
+impl SecretAttributes {
+    pub fn new(stype: SecretType, persistence: SecretPersistence, length: usize) -> Self {
+        SecretAttributes {
+            stype,
+            persistence,
+            length,
+        }
+    }
 }
 
 zdrop_impl!(SecretKey);

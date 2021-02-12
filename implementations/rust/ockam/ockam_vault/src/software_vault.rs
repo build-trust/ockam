@@ -14,11 +14,11 @@ use zeroize::Zeroize;
 /// fn example() -> ockam_core::Result<()> {
 ///     let mut vault = SoftwareVault::default();
 ///
-///     let mut attributes = SecretAttributes {
-///         stype: SecretType::Curve25519,
-///         persistence: SecretPersistence::Ephemeral,
-///         length: CURVE25519_SECRET_LENGTH,
-///     };
+///     let mut attributes = SecretAttributes::new(
+///         SecretType::Curve25519,
+///         SecretPersistence::Ephemeral,
+///         CURVE25519_SECRET_LENGTH,
+///     );
 ///
 ///     let secret = vault.secret_generate(attributes)?;
 ///     let public = vault.secret_public_key_get(&secret)?;

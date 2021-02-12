@@ -25,10 +25,10 @@ macro_rules! encrypt_op_impl {
 
 macro_rules! encrypt_impl {
     ($entry:expr, $aad:expr, $nonce: expr, $text:expr, $op:ident, $err:expr) => {{
-        if $entry.key_attributes().stype != SecretType::Aes {
+        if $entry.key_attributes().stype() != SecretType::Aes {
             return Err($err.into());
         }
-        match $entry.key_attributes().length {
+        match $entry.key_attributes().length() {
             AES128_SECRET_LENGTH => {
                 encrypt_op_impl!($entry.key().as_ref(), $aad, $nonce, $text, Aes128Gcm, $op)
             }
@@ -94,11 +94,11 @@ mod tests {
         let message = b"Ockam Test Message";
         let nonce = b"TestingNonce";
         let aad = b"Extra payload data";
-        let attributes = SecretAttributes {
-            stype: SecretType::Aes,
-            persistence: SecretPersistence::Ephemeral,
-            length: AES128_SECRET_LENGTH,
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Aes,
+            SecretPersistence::Ephemeral,
+            AES128_SECRET_LENGTH,
+        );
 
         let ctx = &vault.secret_generate(attributes).unwrap();
         let res = vault.aead_aes_gcm_encrypt(ctx, message.as_ref(), nonce.as_ref(), aad.as_ref());

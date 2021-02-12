@@ -10,7 +10,7 @@ impl SignerVault for SoftwareVault {
     fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> ockam_core::Result<[u8; 64]> {
         let entry = self.get_entry(secret_key)?;
         let key = entry.key().as_ref();
-        match entry.key_attributes().stype {
+        match entry.key_attributes().stype() {
             SecretType::Curve25519 if key.len() == CURVE25519_SECRET_LENGTH => {
                 let mut rng = thread_rng();
                 let mut nonce = [0u8; 64];
@@ -37,11 +37,11 @@ mod tests {
     fn sign() {
         let mut vault = SoftwareVault::default();
         let secret = vault
-            .secret_generate(SecretAttributes {
-                persistence: SecretPersistence::Ephemeral,
-                stype: SecretType::Curve25519,
-                length: CURVE25519_SECRET_LENGTH,
-            })
+            .secret_generate(SecretAttributes::new(
+                SecretType::Curve25519,
+                SecretPersistence::Ephemeral,
+                CURVE25519_SECRET_LENGTH,
+            ))
             .unwrap();
         let res = vault.sign(&secret, b"hello world!");
         assert!(res.is_ok());

@@ -12,7 +12,7 @@ impl SoftwareVault {
         peer_public_key: &[u8],
     ) -> ockam_core::Result<Buffer<u8>> {
         let key = vault_entry.key();
-        match vault_entry.key_attributes().stype {
+        match vault_entry.key_attributes().stype() {
             SecretType::Curve25519 => {
                 if peer_public_key.len() != CURVE25519_PUBLIC_LENGTH
                     || key.as_ref().len() != CURVE25519_SECRET_LENGTH
@@ -50,11 +50,8 @@ impl AsymmetricVault for SoftwareVault {
 
         let dh = Self::ecdh_internal(entry, peer_public_key)?;
 
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: dh.len(),
-        };
+        let attributes =
+            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());
         self.secret_import(&dh, attributes)
     }
 }
@@ -70,11 +67,11 @@ mod tests {
     #[test]
     fn ec_diffie_hellman_curve25519() {
         let mut vault = SoftwareVault::default();
-        let attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Ephemeral,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        );
         let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
         let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
         let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();

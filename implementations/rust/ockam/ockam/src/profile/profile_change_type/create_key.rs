@@ -72,11 +72,11 @@ impl Profile {
         let attributes = attributes.unwrap_or(ProfileEventAttributes::new());
 
         // TODO: Should be customisable
-        let secret_attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Persistent,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+        let secret_attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Persistent,
+            CURVE25519_SECRET_LENGTH,
+        );
 
         let secret_key = vault.secret_generate(secret_attributes)?;
         let public_key = vault.secret_public_key_get(&secret_key)?;

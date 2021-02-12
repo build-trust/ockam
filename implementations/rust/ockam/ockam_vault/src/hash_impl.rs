@@ -26,7 +26,7 @@ impl HashVault for SoftwareVault {
         let ikm: ockam_core::Result<&[u8]> = match ikm {
             Some(ikm) => {
                 let ikm = self.get_entry(ikm)?;
-                if ikm.key_attributes().stype == SecretType::Buffer {
+                if ikm.key_attributes().stype() == SecretType::Buffer {
                     Ok(ikm.key().as_ref())
                 } else {
                     Err(VaultError::InvalidKeyType.into())
@@ -39,7 +39,7 @@ impl HashVault for SoftwareVault {
 
         let salt = self.get_entry(salt)?;
 
-        if salt.key_attributes().stype != SecretType::Buffer {
+        if salt.key_attributes().stype() != SecretType::Buffer {
             return Err(VaultError::InvalidKeyType.into());
         }
 
@@ -59,12 +59,12 @@ impl HashVault for SoftwareVault {
         let mut index = 0;
 
         for attributes in output_attributes {
-            let length = attributes.length;
-            if attributes.stype == SecretType::Aes {
+            let length = attributes.length();
+            if attributes.stype() == SecretType::Aes {
                 if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
                     return Err(VaultError::InvalidAesKeyLength.into());
                 }
-            } else if attributes.stype != SecretType::Buffer {
+            } else if attributes.stype() != SecretType::Buffer {
                 return Err(VaultError::InvalidHkdfOutputType.into());
             }
             let secret = &okm[index..index + length];
@@ -102,26 +102,23 @@ mod tests {
         let mut vault = SoftwareVault::default();
 
         let salt_value = b"hkdf_test";
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: salt_value.len(),
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Buffer,
+            SecretPersistence::Ephemeral,
+            salt_value.len(),
+        );
         let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
 
         let ikm_value = b"a";
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: ikm_value.len(),
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Buffer,
+            SecretPersistence::Ephemeral,
+            ikm_value.len(),
+        );
         let ikm = vault.secret_import(&ikm_value[..], attributes).unwrap();
 
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: 24,
-        };
+        let attributes =
+            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24);
 
         let res = vault.hkdf_sha256(&salt, b"", Some(&ikm), vec![attributes]);
         assert!(res.is_ok());

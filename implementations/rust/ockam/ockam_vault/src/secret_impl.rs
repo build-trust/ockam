@@ -13,7 +13,7 @@ impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
     fn secret_generate(&mut self, attributes: SecretAttributes) -> ockam_core::Result<Secret> {
         let mut rng = OsRng {};
-        let (key, key_id) = match attributes.stype {
+        let (key, key_id) = match attributes.stype() {
             SecretType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::new(&mut rng);
                 let public = x25519_dalek::PublicKey::from(&sk);
@@ -24,23 +24,23 @@ impl SecretVault for SoftwareVault {
                 (private, Some(key_id))
             }
             SecretType::Buffer => {
-                if attributes.persistence != SecretPersistence::Ephemeral {
+                if attributes.persistence() != SecretPersistence::Ephemeral {
                     return Err(VaultError::InvalidKeyType.into());
                 };
-                let mut key = vec![0u8; attributes.length];
+                let mut key = vec![0u8; attributes.length()];
                 rng.fill_bytes(key.as_mut_slice());
                 (SecretKey::new(key), None)
             }
             SecretType::Aes => {
-                if attributes.length != AES256_SECRET_LENGTH
-                    && attributes.length != AES128_SECRET_LENGTH
+                if attributes.length() != AES256_SECRET_LENGTH
+                    && attributes.length() != AES128_SECRET_LENGTH
                 {
                     return Err(VaultError::InvalidAesKeyLength.into());
                 };
-                if attributes.persistence != SecretPersistence::Ephemeral {
+                if attributes.persistence() != SecretPersistence::Ephemeral {
                     return Err(VaultError::InvalidKeyType.into());
                 };
-                let mut key = vec![0u8; attributes.length];
+                let mut key = vec![0u8; attributes.length()];
                 rng.fill_bytes(&mut key);
                 (SecretKey::new(key), None)
             }
@@ -89,7 +89,7 @@ impl SecretVault for SoftwareVault {
             return Err(VaultError::InvalidPrivateKeyLen.into());
         }
 
-        match entry.key_attributes().stype {
+        match entry.key_attributes().stype() {
             SecretType::Curve25519 => {
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
                     entry.key().as_ref(),
@@ -123,11 +123,11 @@ mod tests {
     #[test]
     fn new_public_keys() {
         let mut vault = SoftwareVault::default();
-        let mut attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Ephemeral,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        );
 
         let res = vault.secret_generate(attributes);
         assert!(res.is_ok());
@@ -139,8 +139,6 @@ mod tests {
         assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
         assert_eq!(vault.entries.len(), 1);
         assert_eq!(vault.next_id, 1);
-
-        attributes.stype = SecretType::Curve25519;
 
         let res = vault.secret_generate(attributes);
         assert!(res.is_ok());
@@ -156,15 +154,10 @@ mod tests {
     #[test]
     fn new_secret_keys() {
         let mut vault = SoftwareVault::default();
-        let mut attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Ephemeral,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+
         let types = [(SecretType::Curve25519, 32), (SecretType::Buffer, 24)];
         for (t, s) in &types {
-            attributes.stype = *t;
-            attributes.length = *s;
+            let attributes = SecretAttributes::new(*t, SecretPersistence::Ephemeral, *s);
             let res = vault.secret_generate(attributes);
             assert!(res.is_ok());
             let sk_ctx = res.unwrap();
@@ -178,11 +171,11 @@ mod tests {
     #[test]
     fn secret_import_export() {
         let mut vault = SoftwareVault::default();
-        let attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Ephemeral,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        );
 
         let secret_str = "98d589b0dce92c9e2442b3093718138940bff71323f20b9d158218b89c3cec6e";
 
@@ -196,11 +189,8 @@ mod tests {
             secret_str
         );
 
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: 24,
-        };
+        let attributes =
+            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24);
         let secret_str = "5f791cc52297f62c7b8829b15f828acbdb3c613371d21aa1";
         let secret = vault
             .secret_import(hex::decode(secret_str).unwrap().as_slice(), attributes)
@@ -218,20 +208,17 @@ mod tests {
     fn secret_attributes_get() {
         let mut vault = SoftwareVault::default();
 
-        let attributes = SecretAttributes {
-            stype: SecretType::Curve25519,
-            persistence: SecretPersistence::Ephemeral,
-            length: CURVE25519_SECRET_LENGTH,
-        };
+        let attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        );
 
         let secret = vault.secret_generate(attributes).unwrap();
         assert_eq!(vault.secret_attributes_get(&secret).unwrap(), attributes);
 
-        let attributes = SecretAttributes {
-            stype: SecretType::Buffer,
-            persistence: SecretPersistence::Ephemeral,
-            length: 24,
-        };
+        let attributes =
+            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24);
 
         let secret = vault.secret_generate(attributes).unwrap();
         assert_eq!(vault.secret_attributes_get(&secret).unwrap(), attributes);
