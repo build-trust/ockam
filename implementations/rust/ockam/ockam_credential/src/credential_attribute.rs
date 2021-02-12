@@ -1,5 +1,5 @@
-use crate::structs::*;
 use crate::CredentialAttributeType;
+use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "std")]
@@ -17,7 +17,7 @@ pub enum CredentialAttribute {
     /// The attribute value is specified as empty
     Empty,
     /// The attribute is a UTF-8 String
-    String(ByteString),
+    String(String),
     /// The attribute is numeric
     Numeric(i64),
     /// The attribute is a sequence of bytes
