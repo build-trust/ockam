@@ -28,6 +28,8 @@ commands {
     'ockam/ockam_vault',
     'ockam/ockam_vault_core',
 
+    'ockam/ockam_ffi',
+
     'ockam/ockam',
 
     'examples/node',
