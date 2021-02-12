@@ -1,5 +1,5 @@
-use super::structs::*;
 use crate::{credential_attribute_schema::CredentialAttributeSchema, serde::*};
+use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 
 /// A schema describes the data format of a credential.
@@ -10,21 +10,21 @@ pub struct CredentialSchema {
         serialize_with = "write_byte_string",
         deserialize_with = "read_byte_string"
     )]
-    pub id: ByteString,
+    pub id: String,
 
     /// A user friendly name for this schema
     #[serde(
         serialize_with = "write_byte_string",
         deserialize_with = "read_byte_string"
     )]
-    pub label: ByteString,
+    pub label: String,
 
     /// A longer description about this schema
     #[serde(
         serialize_with = "write_byte_string",
         deserialize_with = "read_byte_string"
     )]
-    pub description: ByteString,
+    pub description: String,
 
     /// A list of attributes that are contained in credentials that
     /// have this schema.
@@ -32,5 +32,5 @@ pub struct CredentialSchema {
         serialize_with = "write_attributes",
         deserialize_with = "read_attributes"
     )]
-    pub attributes: Buffer<CredentialAttributeSchema>,
+    pub attributes: Vec<CredentialAttributeSchema>,
 }

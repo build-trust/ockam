@@ -1,6 +1,6 @@
-use super::structs::*;
 use crate::{credential_attribute::CredentialAttribute, credential_schema::CredentialSchema};
 use bbs::prelude::*;
+use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 
 /// A credential offer is how an issuer informs a potential holder that
@@ -17,7 +17,7 @@ pub struct CredentialOffer {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Credential {
     /// The signed attributes in the credential
-    pub attributes: Buffer<CredentialAttribute>,
+    pub attributes: Vec<CredentialAttribute>,
     /// The cryptographic signature
     pub signature: Signature,
 }
@@ -26,7 +26,7 @@ pub struct Credential {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlindCredential {
     /// The signed attributes in the credential
-    pub attributes: Buffer<CredentialAttribute>,
+    pub attributes: Vec<CredentialAttribute>,
     /// The cryptographic signature
     pub signature: BlindSignature,
 }

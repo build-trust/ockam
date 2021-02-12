@@ -27,28 +27,6 @@
     warnings
 )]
 
-#[cfg_attr(not(feature = "std"), no_std)]
-#[cfg(feature = "alloc")]
-extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std;
-
-#[cfg(all(feature = "no_std", not(feature = "alloc")))]
-mod structs {
-    pub use core::fmt::{self, Debug, Display};
-    use heapless::{consts::*, String, Vec};
-    pub type Buffer<T> = Vec<T, U32>;
-    pub type ByteString = String<U32>;
-}
-
-#[cfg(feature = "alloc")]
-mod structs {
-    pub use alloc::fmt::{self, Debug, Display};
-    use alloc::{string::String, vec::Vec};
-    pub type Buffer<T> = Vec<T>;
-    pub type ByteString = String;
-}
-
 #[cfg(feature = "std")]
 mod credential;
 mod credential_attribute;
@@ -67,20 +45,19 @@ pub use credential_schema::CredentialSchema;
 
 #[cfg(test)]
 mod tests {
-    use crate::{CredentialAttributeSchema, CredentialAttributeType, Schema};
-    use std::string::String;
-    use std::vec;
+    use crate::{CredentialAttributeSchema, CredentialAttributeType, CredentialSchema};
+    use ockam_core::lib::*;
 
-    fn create_test_schema() -> Schema {
+    fn create_test_schema() -> CredentialSchema {
         let attribute = CredentialAttributeSchema {
             label: String::from("test_attr"),
             description: String::from("test attribute"),
             attribute_type: CredentialAttributeType::Utf8String,
         };
 
-        let attributes = vec![attribute];
+        let attributes = [attribute].to_vec();
 
-        Schema {
+        CredentialSchema {
             id: String::from("test_id"),
             label: String::from("test_label"),
             description: String::from("test_desc"),
@@ -104,7 +81,7 @@ mod tests {
             assert!(serialized.contains("test_attr"));
             assert!(serialized.contains("test attribute"));
 
-            if let Ok(mut rehydrated) = serde_json::from_str::<Schema>(&serialized) {
+            if let Ok(mut rehydrated) = serde_json::from_str::<CredentialSchema>(&serialized) {
                 assert_eq!(rehydrated.id, schema.id);
                 assert_eq!(rehydrated.label, schema.label);
                 assert_eq!(rehydrated.description, schema.description);
