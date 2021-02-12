@@ -15,6 +15,7 @@ pub enum TransportError {
     ReceiveFailed,
     ConnectionClosed,
     IllFormedMessage,
+    BufferTooSmall,
 }
 
 impl TransportError {
