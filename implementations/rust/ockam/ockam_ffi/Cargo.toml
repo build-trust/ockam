@@ -1,0 +1,17 @@
+[package]
+authors = ["Ockam Developers"]
+edition = "2018"
+name = "ockam-ffi"
+version = "0.0.0"
+
+[lib]
+crate-type = ["staticlib", "rlib", "cdylib"]
+
+[profile.release]
+lto = true
+
+[dependencies]
+ockam_core = { path = "../ockam_core", version = "0.2.0" }
+ockam_vault_core = {path = "../ockam_vault_core", version = "0.1.0" }
+ockam_vault = { path = "../ockam_vault", version = "0.1" }
+lazy_static = { version = "1.4" }
