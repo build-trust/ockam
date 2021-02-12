@@ -34,6 +34,8 @@ mod credential_attribute_schema;
 mod credential_attribute_type;
 mod credential_schema;
 mod error;
+#[cfg(feature = "std")]
+mod issuer;
 mod serde;
 
 #[cfg(feature = "std")]
@@ -42,6 +44,8 @@ pub use credential_attribute::CredentialAttribute;
 pub use credential_attribute_schema::CredentialAttributeSchema;
 pub use credential_attribute_type::CredentialAttributeType;
 pub use credential_schema::CredentialSchema;
+#[cfg(feature = "std")]
+pub use issuer::Issuer;
 
 #[cfg(test)]
 mod tests {
