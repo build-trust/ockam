@@ -9,104 +9,65 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 target_include_directories(ockam_ffi_interface INTERFACE ${INCLUDE_DIR})
 
-file(COPY ../../../../../../rs/ffi/include/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
-file(COPY ../../../../../../rs/ffi/include/kex.h DESTINATION ${INCLUDE_DIR}/ockam)
+file(COPY ../../../../../../rust/ockam/ockam_ffi/include/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
 
 target_sources(
   ockam_ffi_interface
   INTERFACE
     ${INCLUDE_DIR}/ockam/vault.h
-    ${INCLUDE_DIR}/ockam/kex.h
 )
-
-# ---
-# ockam::vault_rust_default
-# ---
 
 add_library(ockam_ffi SHARED IMPORTED GLOBAL)
 add_library(ockam::ffi ALIAS ockam_ffi)
 
-add_library(ockam_vault_file SHARED IMPORTED GLOBAL)
-add_library(ockam::vault_file ALIAS ockam_vault_file)
+add_library(ockam_vault SHARED IMPORTED GLOBAL)
+add_library(ockam::vault ALIAS ockam_vault)
 
-add_library(ockam_vault_software SHARED IMPORTED GLOBAL)
-add_library(ockam::vault_software ALIAS ockam_vault_software)
+file(GLOB
+        FFI_LIB_PATH
+        ${CMAKE_CURRENT_LIST_DIR}/../../../../../../rust/ockam/ockam_ffi/target/debug/libockam_ffi${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${CMAKE_CURRENT_LIST_DIR}/../../../../../../rust/target/debug/libockam_ffi${CMAKE_SHARED_LIBRARY_SUFFIX})
 
-add_library(ockam_kex_xx SHARED IMPORTED GLOBAL)
-add_library(ockam::kex_xx ALIAS ockam_kex_xx)
+file(GLOB
+        VAULT_LIB_PATH
+        ${CMAKE_CURRENT_LIST_DIR}/../../../../../../rust/ockam/ockam_vault/target/debug/libockam_vault${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${CMAKE_CURRENT_LIST_DIR}/../../../../../../rust/target/debug/libockam_vault${CMAKE_SHARED_LIBRARY_SUFFIX})
 
-if(APPLE)
-file(COPY ../../../../../../rs/target/debug/libockam_ffi.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(ffi_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_ffi.dylib")
-file(COPY ../../../../../../rs/target/debug/libockam_vault_file.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(vault_file_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_file.dylib")
-file(COPY ../../../../../../rs/target/debug/libockam_vault_software.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(vault_software_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_software.dylib")
-file(COPY ../../../../../../rs/target/debug/libockam_kex_xx.dylib DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(kex_xx_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_kex_xx.dylib")
-endif()
+file(COPY ${FFI_LIB_PATH} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(COPY ${VAULT_LIB_PATH} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 
-if(UNIX AND NOT APPLE)
-file(COPY ../../../../../../rs/target/debug/libockam_ffi.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(ffi_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_ffi.so")
-file(COPY ../../../../../../rs/target/debug/libockam_vault_file.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(vault_file_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_file.so")
-file(COPY ../../../../../../rs/target/debug/libockam_vault_software.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(vault_software_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault_software.so")
-file(COPY ../../../../../../rs/target/debug/libockam_kex_xx.so DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
-set(kex_xx_lib_path "${CMAKE_CURRENT_BINARY_DIR}/libockam_kex_xx.so")
-endif()
+set(FFI_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libockam_ffi${CMAKE_SHARED_LIBRARY_SUFFIX}")
+set(VAULT_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libockam_vault${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
-get_filename_component(real_ffi_lib_path "${ffi_lib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+get_filename_component(FFI_LIB_PATH "${FFI_LIB_PATH}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 set_target_properties(
         ockam_ffi
         PROPERTIES
-        IMPORTED_LOCATION "${real_ffi_lib_path}"
+        IMPORTED_LOCATION "${FFI_LIB_PATH}"
 )
 
-get_filename_component(real_vault_file_lib_path "${vault_file_lib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+get_filename_component(VAULT_LIB_PATH "${VAULT_LIB_PATH}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 set_target_properties(
-        ockam_vault_file
+        ockam_vault
         PROPERTIES
-        IMPORTED_LOCATION "${real_vault_file_lib_path}"
+        IMPORTED_LOCATION "${VAULT_LIB_PATH}"
 )
 
-get_filename_component(real_vault_software_lib_path "${vault_software_lib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-set_target_properties(
-        ockam_vault_software
-        PROPERTIES
-        IMPORTED_LOCATION "${real_vault_software_lib_path}"
-)
-
-get_filename_component(real_kex_xx_lib_path "${kex_xx_lib_path}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-set_target_properties(
-        ockam_kex_xx
-        PROPERTIES
-        IMPORTED_LOCATION "${real_kex_xx_lib_path}"
-)
-
-# ---
-# ockam::elixir_vault_software
-# ---
 add_library(ockam_elixir_ffi)
 add_library(ockam::elixir_ffi ALIAS ockam_elixir_ffi)
 
-target_sources(ockam_elixir_ffi PRIVATE nifs.c kex.c vault.c vault.h kex.h common.c common.h)
+target_sources(ockam_elixir_ffi PRIVATE nifs.c vault.c vault.h common.c common.h)
 
 target_include_directories(ockam_elixir_ffi PUBLIC $ENV{ERL_INCLUDE_DIR})
 
 if(APPLE)
 set_target_properties(ockam_elixir_ffi PROPERTIES LINK_FLAGS "-dynamiclib -undefined dynamic_lookup")
-set_target_properties(ockam_vault_software PROPERTIES LINK_FLAGS "-dynamiclib -undefined dynamic_lookup")
-set_target_properties(ockam_vault_file PROPERTIES LINK_FLAGS "-dynamiclib -undefined dynamic_lookup")
-set_target_properties(ockam_kex_xx PROPERTIES LINK_FLAGS "-dynamiclib -undefined dynamic_lookup")
+set_target_properties(ockam_vault PROPERTIES LINK_FLAGS "-dynamiclib -undefined dynamic_lookup")
 endif()
 
 if(UNIX AND NOT APPLE)
 set_target_properties(ockam_elixir_ffi PROPERTIES LINK_FLAGS "-fPIC -shared")
-set_target_properties(ockam_vault_software PROPERTIES LINK_FLAGS "-fPIC -shared")
-set_target_properties(ockam_vault_file PROPERTIES LINK_FLAGS "-fPIC -shared")
-set_target_properties(ockam_kex_xx PROPERTIES LINK_FLAGS "-fPIC -shared")
+set_target_properties(ockam_vault PROPERTIES LINK_FLAGS "-fPIC -shared")
 endif()
 
 target_link_libraries(
@@ -114,7 +75,5 @@ target_link_libraries(
   PUBLIC
     ockam::ffi_interface
     ockam::ffi
-    ockam::vault_file
-    ockam::vault_software
-    ockam::kex_xx
+    ockam::vault
 )

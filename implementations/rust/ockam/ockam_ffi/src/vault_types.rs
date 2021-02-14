@@ -38,29 +38,29 @@ impl FfiVaultFatPointer {
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct FfiSecretAttributes {
+    stype: u8,
+    persistence: u8,
     length: u32,
-    stype: u32,
-    persistence: u32,
 }
 
 impl FfiSecretAttributes {
+    pub fn stype(&self) -> u8 {
+        self.stype
+    }
+    pub fn persistence(&self) -> u8 {
+        self.persistence
+    }
     pub fn length(&self) -> u32 {
         self.length
     }
-    pub fn stype(&self) -> u32 {
-        self.stype
-    }
-    pub fn persistence(&self) -> u32 {
-        self.persistence
-    }
 }
 
 impl FfiSecretAttributes {
-    pub fn new(length: u32, stype: u32, persistence: u32) -> Self {
-        FfiSecretAttributes {
-            length,
+    pub fn new(stype: u8, persistence: u8, length: u32) -> Self {
+        Self {
             stype,
             persistence,
+            length,
         }
     }
 }

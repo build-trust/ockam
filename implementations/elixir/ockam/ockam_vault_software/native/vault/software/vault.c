@@ -158,40 +158,6 @@ ERL_NIF_TERM default_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return ok(env, vault_handle);
 }
 
-ERL_NIF_TERM file_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (1 != argc) {
-        return enif_make_badarg(env);
-    }
-
-    ockam_vault_t vault;
-
-    ErlNifBinary file;
-    if (0 == enif_inspect_binary(env, argv[0], &file)) {
-        return enif_make_badarg(env);
-    }
-    ERL_NIF_TERM term;
-    uint8_t* buffer = enif_make_new_binary(env, file.size+1, &term);
-
-    if (NULL == buffer) {
-        return err(env, "failed to create path buffer");
-    }
-
-    memset(buffer, 0, file.size+1);
-    memcpy(buffer, file.data, file.size);
-
-    ockam_vault_extern_error_t error = ockam_vault_file_init(&vault, buffer);
-    if (extern_error_has_error(&error)) {
-        return err(env, "failed to create vault connection");
-    }
-
-    ERL_NIF_TERM handle = enif_make_uint64(env, vault.handle);
-    ERL_NIF_TERM vault_type = enif_make_uint64(env, vault.vault_type);
-
-    ERL_NIF_TERM vault_handle = enif_make_list2(env, handle, vault_type);
-
-    return ok(env, vault_handle);
-}
-
 ERL_NIF_TERM sha256(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (2 != argc) {
         return enif_make_badarg(env);
@@ -627,57 +593,6 @@ ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
     }
 
     return ok(env, term);
-}
-
-ERL_NIF_TERM get_persistence_id(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (2 != argc) {
-        return enif_make_badarg(env);
-    }
-
-    ockam_vault_t vault;
-    if (0 != parse_vault_handle(env, argv[0], &vault)) {
-        return enif_make_badarg(env);
-    }
-
-    ErlNifUInt64 key_handle;
-    if (0 == enif_get_uint64(env, argv[1], &key_handle)) {
-        return enif_make_badarg(env);
-    }
-
-    char persistence_id[MAX_PERSISTENCE_ID_SIZE];
-
-    ockam_vault_extern_error_t error = ockam_vault_get_persistence_id(vault, key_handle, persistence_id, sizeof(persistence_id));
-    if (extern_error_has_error(&error)) {
-        return err(env, "failed to ockam_vault_get_persistence_id");
-    }
-
-    return ok(env, enif_make_string(env, persistence_id, ERL_NIF_LATIN1));
-}
-
-ERL_NIF_TERM get_persistent_secret(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (2 != argc) {
-        return enif_make_badarg(env);
-    }
-
-    ockam_vault_t vault;
-    if (0 != parse_vault_handle(env, argv[0], &vault)) {
-        return enif_make_badarg(env);
-    }
-
-    char persistence_id[MAX_PERSISTENCE_ID_SIZE];
-    if (0 == enif_get_string(env, argv[1], persistence_id, sizeof(persistence_id), ERL_NIF_LATIN1)) {
-        return enif_make_badarg(env);
-    }
-
-    ockam_vault_secret_t key_handle;
-    ockam_vault_extern_error_t error = ockam_vault_get_persistent_secret(vault, &key_handle, persistence_id);
-    if (extern_error_has_error(&error)) {
-        return err(env, "failed to ockam_vault_get_persistent_secret");
-    }
-
-    ERL_NIF_TERM secret_handle = enif_make_uint64(env, key_handle);
-
-    return ok(env, secret_handle);
 }
 
 ERL_NIF_TERM deinit(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {

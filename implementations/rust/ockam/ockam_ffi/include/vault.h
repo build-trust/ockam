@@ -46,9 +46,9 @@ typedef enum {
  * @brief   Attributes for a specific ockam vault secret.
  */
 typedef struct {
-    uint32_t                         length;
-    ockam_vault_secret_type_t        type;
-    ockam_vault_secret_persistence_t persistence;
+    uint8_t  type;
+    uint8_t  persistence;
+    uint32_t length;
 } ockam_vault_secret_attributes_t;
 
 /**
@@ -57,14 +57,6 @@ typedef struct {
  * @return  error.
  */
 ockam_vault_extern_error_t ockam_vault_default_init(ockam_vault_t* vault);
-
-/**
- * @brief   Initialize the specified ockam vault object
- * @param   vault[out] The ockam vault object to initialize with the file vault.
- * @param   path[in] The path to the folder for the file vault.
- * @return  error.
- */
-ockam_vault_extern_error_t ockam_vault_file_init(ockam_vault_t* vault, const unsigned char* const path);
 
 /**
  * @brief   Compute a SHA-256 hash based on input data.

@@ -12,6 +12,9 @@ keywords = ["ockam", "cryptography", "crypto", "curve25519", "xeddsa", "aes", "g
 description = """A software-only Ockam Vault implementation.
 """
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [features]
 default = ["std"]
 std = ["ockam_core/std", "hex/std"]
