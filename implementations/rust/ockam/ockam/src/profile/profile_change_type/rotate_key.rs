@@ -1,7 +1,7 @@
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, Signature,
-    SignatureType, PROFILE_CHANGE_CURRENT_VERSION,
+    SignatureType,
 };
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
@@ -78,7 +78,7 @@ impl Profile {
         attributes: Option<ProfileEventAttributes>,
         root_key: &Secret,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        let attributes = attributes.unwrap_or(ProfileEventAttributes::new());
+        let attributes = attributes.unwrap_or_default();
 
         let prev_event_id = self.change_history.get_last_event_id()?;
 
@@ -107,7 +107,7 @@ impl Profile {
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
-            PROFILE_CHANGE_CURRENT_VERSION,
+            Profile::CHANGE_CURRENT_VERSION,
             attributes.clone(),
             ProfileChangeType::RotateKey(change),
         );

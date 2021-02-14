@@ -22,11 +22,6 @@ pub use profile_change_type::*;
 
 pub mod profile_change_history;
 
-pub const OCKAM_NO_EVENT: &[u8] = "OCKAM_NO_EVENT".as_bytes();
-pub const PROFILE_ROOT_KEY_LABEL: &'static str = "OCKAM_PRK";
-pub const OCKAM_PROFILE_VERSION: u8 = 1;
-pub const PROFILE_CHANGE_CURRENT_VERSION: u8 = 1;
-
 pub trait ProfileVault: SecretVault + KeyIdVault + HashVault + SignerVault + VerifierVault {}
 
 impl<D> ProfileVault for D where
@@ -47,7 +42,7 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 /// ```
 /// use ockam_vault::SoftwareVault;
 /// use std::sync::{Mutex, Arc};
-/// use ockam::{Profile, KeyAttributes, PROFILE_ROOT_KEY_LABEL, ProfileKeyType, ProfileKeyPurpose};
+/// use ockam::{Profile, KeyAttributes, ProfileKeyType, ProfileKeyPurpose};
 ///
 /// fn example() {
 ///     let vault = SoftwareVault::default();
@@ -55,7 +50,7 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 ///     let mut profile = Profile::create(None, vault).unwrap();
 ///
 ///     let root_key_attributes = KeyAttributes::new(
-///         PROFILE_ROOT_KEY_LABEL.to_string(),
+///         Profile::ROOT_KEY_LABEL.to_string(),
 ///         ProfileKeyType::Root,
 ///         ProfileKeyPurpose::ProfileUpdate,
 ///     );
@@ -86,6 +81,13 @@ pub struct Profile {
     identifier: ProfileIdentifier,
     change_history: ProfileChangeHistory,
     vault: Arc<Mutex<dyn ProfileVault>>,
+}
+
+impl Profile {
+    pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
+    pub const ROOT_KEY_LABEL: &'static str = "OCKAM_PRK";
+    pub const CURRENT_VERSION: u8 = 1;
+    pub const CHANGE_CURRENT_VERSION: u8 = 1;
 }
 
 impl Profile {
@@ -122,11 +124,11 @@ impl Profile {
         vault: Arc<Mutex<dyn ProfileVault>>,
     ) -> ockam_core::Result<Self> {
         let mut v = vault.lock().unwrap();
-        let prev_id = v.sha256(OCKAM_NO_EVENT)?;
+        let prev_id = v.sha256(Profile::NO_EVENT)?;
         let prev_id = EventIdentifier::from_hash(prev_id);
 
         let key_attributes = KeyAttributes::new(
-            PROFILE_ROOT_KEY_LABEL.to_string(),
+            Profile::ROOT_KEY_LABEL.to_string(),
             ProfileKeyType::Root,
             ProfileKeyPurpose::ProfileUpdate,
         );
@@ -139,7 +141,7 @@ impl Profile {
         )?;
 
         let change = ProfileChangeHistory::find_key_change_in_event(&change_event, &key_attributes)
-            .ok_or_else(|| OckamError::InvalidInternalState)?;
+            .ok_or(OckamError::InvalidInternalState)?;
         let public_key = ProfileChangeHistory::get_change_public_key(&change)?;
 
         let public_kid = v.compute_key_id_for_public_key(&public_key)?;
@@ -195,7 +197,7 @@ impl Profile {
             .iter()
             .rev()
             .position(|e| e.identifier() == id)
-            .ok_or_else(|| OckamError::EventNotFound)?;
+            .ok_or(OckamError::EventNotFound)?;
         Ok(&self.change_events()[pos + 1..])
     }
 }
@@ -289,7 +291,7 @@ mod test {
         let mut profile = Profile::create(None, vault).unwrap();
 
         let root_key_attributes = KeyAttributes::new(
-            PROFILE_ROOT_KEY_LABEL.to_string(),
+            Profile::ROOT_KEY_LABEL.to_string(),
             ProfileKeyType::Root,
             ProfileKeyPurpose::ProfileUpdate,
         );

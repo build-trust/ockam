@@ -1,7 +1,7 @@
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
-    ProfileVault, Signature, SignatureType, PROFILE_CHANGE_CURRENT_VERSION,
+    ProfileVault, Signature, SignatureType,
 };
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
@@ -69,7 +69,7 @@ impl Profile {
         root_key: Option<&Secret>,
         vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        let attributes = attributes.unwrap_or(ProfileEventAttributes::new());
+        let attributes = attributes.unwrap_or_default();
 
         // TODO: Should be customisable
         let secret_attributes = SecretAttributes::new(
@@ -88,7 +88,7 @@ impl Profile {
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
-            PROFILE_CHANGE_CURRENT_VERSION,
+            Profile::CHANGE_CURRENT_VERSION,
             attributes,
             ProfileChangeType::CreateKey(change),
         );

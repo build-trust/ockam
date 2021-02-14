@@ -28,8 +28,11 @@ impl VaultError {
     pub const DOMAIN_NAME: &'static str = "OCKAM_VAULT";
 }
 
-impl Into<Error> for VaultError {
-    fn into(self) -> Error {
-        Error::new(Self::DOMAIN_CODE + (self as u32), Self::DOMAIN_NAME)
+impl From<VaultError> for Error {
+    fn from(err: VaultError) -> Self {
+        Self::new(
+            VaultError::DOMAIN_CODE + (err as u32),
+            VaultError::DOMAIN_NAME,
+        )
     }
 }
