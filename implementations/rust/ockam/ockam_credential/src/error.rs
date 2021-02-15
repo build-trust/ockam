@@ -18,6 +18,10 @@ pub enum CredentialError {
     InvalidCredentialOffer,
     /// A manifest that requests to reveal a bad credential attribute
     InvalidPresentationManifest,
+    /// An challenge calculation was different than expected
+    InvalidPresentationChallenge,
+    /// Returns the index of the first failed credential presentation
+    InvalidCredentialPresentation(u32),
 }
 
 impl CredentialError {
@@ -32,8 +36,19 @@ impl CredentialError {
 #[cfg(feature = "std")]
 impl From<CredentialError> for Error {
     fn from(v: CredentialError) -> Error {
+        let t = match v {
+            CredentialError::None => 0,
+            CredentialError::MismatchedAttributesAndClaims => 1000,
+            CredentialError::MismatchedAttributeClaimType => 2000,
+            CredentialError::InvalidCredentialAttribute => 3000,
+            CredentialError::InvalidCredentialSchema => 4000,
+            CredentialError::InvalidCredentialOffer => 5000,
+            CredentialError::InvalidPresentationManifest => 6000,
+            CredentialError::InvalidPresentationChallenge => 7000,
+            CredentialError::InvalidCredentialPresentation(i) => 8000u32 + i,
+        };
         Error::new(
-            CredentialError::DOMAIN_CODE + (v as u32),
+            CredentialError::DOMAIN_CODE + t,
             CredentialError::DOMAIN_NAME,
         )
     }
