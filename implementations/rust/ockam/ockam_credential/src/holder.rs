@@ -96,11 +96,11 @@ impl Holder {
 
         for (cred, pm) in credential.iter().zip(presentation_manifests.iter()) {
             let mut messages = Vec::new();
-            let verkey = pm
-                .public_key
+            let dpk = DeterministicPublicKey::from(pm.public_key);
+            let verkey = dpk
                 .to_public_key(pm.credential_schema.attributes.len())
                 .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
-            let pr = Verifier::new_proof_request(pm.revealed.as_slice(), &verkey)
+            let pr = bbs::prelude::Verifier::new_proof_request(pm.revealed.as_slice(), &verkey)
                 .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
             let revealed_indices = pm.revealed.iter().map(|i| *i).collect::<BTreeSet<usize>>();
             for i in 0..cred.attributes.len() {

@@ -47,6 +47,8 @@ mod issuer;
 #[cfg(feature = "std")]
 mod presentation_manifest;
 mod serde;
+#[cfg(feature = "std")]
+mod verifier;
 
 #[cfg(feature = "std")]
 pub use credential::*;
@@ -66,6 +68,8 @@ pub use holder::*;
 pub use issuer::Issuer;
 #[cfg(feature = "std")]
 pub use presentation_manifest::PresentationManifest;
+#[cfg(feature = "std")]
+pub use verifier::Verifier;
 
 #[cfg(test)]
 mod tests {
