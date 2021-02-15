@@ -73,7 +73,7 @@ mod test {
                 assert_eq!(r, route);
             }
             _ => {
-                assert!(false);
+                panic!("Message crate: test ip4_route_from_slice failed");
             }
         }
     }
@@ -86,7 +86,7 @@ mod test {
                 assert_eq!(mbv, vec![2, 5, 104, 101, 108, 108, 111]);
             }
             Err(_) => {
-                assert!(false);
+                panic!("Message crate: test_payload failed");
             }
         }
     }

@@ -21,10 +21,10 @@ impl TcpListener {
     /// let runtime = Builder::new_current_thread().enable_io().build().unwrap();
     /// runtime.block_on( async {
     ///    let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    ///    let listener = TcpListener::new(address).await.unwrap();
+    ///    let listener = TcpListener::create(address).await.unwrap();
     /// });
     /// ```
-    pub async fn new(
+    pub async fn create(
         listen_address: std::net::SocketAddr,
     ) -> Result<Box<dyn Listener + Send>, TransportError> {
         let listener = TokioTcpListener::bind(listen_address).await;
@@ -45,7 +45,7 @@ impl Listener for TcpListener {
     /// use ockam_transport_tcp::listener::TcpListener;
     /// use std::net::SocketAddr;
     /// use std::str::FromStr;
-    ///         
+    ///
     /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
     /// let mut  listener = TcpListener::new(address).await.unwrap();
     /// let connection = listener.accept().await.unwrap();
@@ -71,13 +71,13 @@ mod test {
     use tokio::task;
 
     async fn client_worker() {
-        let mut connection = TcpConnection::new(SocketAddr::from_str("127.0.0.1:4052").unwrap());
+        let mut connection = TcpConnection::create(SocketAddr::from_str("127.0.0.1:4055").unwrap());
         connection.connect().await.unwrap();
     }
 
     async fn listen_worker() {
         {
-            let mut listener = TcpListener::new(SocketAddr::from_str("127.0.0.1:4052").unwrap())
+            let mut listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4055").unwrap())
                 .await
                 .unwrap();
             let _connection = listener.accept().await.unwrap();
@@ -96,8 +96,8 @@ mod test {
             Builder::new_current_thread().enable_io().build().unwrap(),
         ];
 
-        for r in runtime.iter() {
-            r.block_on(async {
+        for rt in runtime.iter() {
+            rt.block_on(async {
                 let j1 = task::spawn(async {
                     let f = listen_worker();
                     f.await;
