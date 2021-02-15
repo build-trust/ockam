@@ -1,8 +1,7 @@
 use crate::error::CredentialError;
 use crate::*;
 use bbs::prelude::{
-    BlindSignatureContext, DeterministicPublicKey, Issuer as BbsIssuer, KeyGenOption, ProofNonce,
-    RandomElem, SecretKey,
+    DeterministicPublicKey, Issuer as BbsIssuer, KeyGenOption, ProofNonce, RandomElem, SecretKey,
 };
 use digest::generic_array::{typenum::U48, GenericArray};
 use ockam_core::lib::*;
@@ -109,7 +108,7 @@ impl Issuer {
     /// Blind sign assumes certain claims have already been committed and signs the remaining claims
     pub fn blind_sign_credential(
         &self,
-        ctx: &BlindSignatureContext,
+        ctx: &CredentialRequest,
         schema: &CredentialSchema,
         attributes: &BTreeMap<String, CredentialAttribute>,
         nonce: &ProofNonce,
@@ -141,8 +140,9 @@ impl Issuer {
             .to_public_key(schema.attributes.len())
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
 
-        let signature = BbsIssuer::blind_sign(ctx, &messages, &self.signing_key, &pk, nonce)
-            .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
+        let signature =
+            BbsIssuer::blind_sign(&ctx.context, &messages, &self.signing_key, &pk, nonce)
+                .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
         Ok(BlindCredential {
             attributes: attributes.iter().map(|(_, v)| v.clone()).collect(),
             signature,

@@ -33,6 +33,10 @@ mod credential_attribute;
 mod credential_attribute_schema;
 mod credential_attribute_type;
 #[cfg(feature = "std")]
+mod credential_blinding;
+#[cfg(feature = "std")]
+mod credential_presentation;
+#[cfg(feature = "std")]
 mod credential_request;
 mod credential_schema;
 mod error;
@@ -40,6 +44,8 @@ mod error;
 mod holder;
 #[cfg(feature = "std")]
 mod issuer;
+#[cfg(feature = "std")]
+mod presentation_manifest;
 mod serde;
 
 #[cfg(feature = "std")]
@@ -48,12 +54,18 @@ pub use credential_attribute::CredentialAttribute;
 pub use credential_attribute_schema::CredentialAttributeSchema;
 pub use credential_attribute_type::CredentialAttributeType;
 #[cfg(feature = "std")]
+pub use credential_blinding::CredentialBlinding;
+#[cfg(feature = "std")]
+pub use credential_presentation::CredentialPresentation;
+#[cfg(feature = "std")]
 pub use credential_request::CredentialRequest;
 pub use credential_schema::CredentialSchema;
 #[cfg(feature = "std")]
-pub use holder::Holder;
+pub use holder::*;
 #[cfg(feature = "std")]
 pub use issuer::Issuer;
+#[cfg(feature = "std")]
+pub use presentation_manifest::PresentationManifest;
 
 #[cfg(test)]
 mod tests {
