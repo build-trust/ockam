@@ -29,11 +29,16 @@ impl Holder {
     ) -> Result<(CredentialRequest, CredentialBlinding), CredentialError> {
         let nonce = ProofNonce::from(offer.id);
         let mut i = 0;
+        let mut found = false;
         for (j, att) in offer.schema.attributes.iter().enumerate() {
             if att.label == SECRET_ID {
                 i = j;
+                found = true;
                 break;
             }
+        }
+        if !found {
+            return Err(CredentialError::InvalidCredentialSchema);
         }
 
         let pk = issuer_pk
