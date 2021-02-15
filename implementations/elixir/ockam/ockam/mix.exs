@@ -45,6 +45,7 @@ defmodule Ockam.MixProject do
 
   defp deps do
     [
+      {:bare, "~> 0.1.1"},
       {:ockam_vault_software, path: "../ockam_vault_software", optional: true},
       {:telemetry, "~> 0.4.2", optional: true},
       {:ranch, "~> 2.0", optional: true},

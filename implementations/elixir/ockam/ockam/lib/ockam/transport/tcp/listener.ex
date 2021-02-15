@@ -9,7 +9,7 @@ if Code.ensure_loaded?(:ranch) do
 
     @tcp 1
     # TODO: modify this for tcp
-    @wire_encoder_decoder Ockam.Wire.Binary.V1
+    @wire_encoder_decoder Ockam.Wire.Binary.V2
 
     @doc false
     @impl true
@@ -75,7 +75,6 @@ if Code.ensure_loaded?(:ranch) do
       message = create_outgoing_message(message)
 
       with {:ok, destination, message} <- pick_destination_and_set_onward_route(message, state.address),
-           {:ok, message} <- set_return_route(message, state.address),
            {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, message),
            {:ok, encoded_message_with_length_prepended} <- prepend_varint_length(encoded_message),
            :ok <- send_over_tcp(encoded_message_with_length_prepended, destination) do
@@ -101,7 +100,6 @@ if Code.ensure_loaded?(:ranch) do
     defp create_outgoing_message(message) do
       %{
         onward_route: Message.onward_route(message),
-        return_route: Message.return_route(message),
         payload: Message.payload(message)
       }
     end
@@ -128,9 +126,6 @@ if Code.ensure_loaded?(:ranch) do
       end
     end
 
-    defp set_return_route(%{return_route: return_route} = message, address) do
-      {:ok, %{message | return_route: [address | return_route]}}
-    end
 
 
     defp default_ip, do: {127, 0, 0, 1}
@@ -142,6 +137,8 @@ if Code.ensure_loaded?(:ranch) do
 
     use GenServer
 
+    @wire_encoder_decoder Ockam.Wire.Binary.V2
+
     def start_link(ref, transport, opts) do
       pid = :proc_lib.spawn_link(__MODULE__, :init, [[ref, transport, opts]])
       {:ok, pid}
@@ -152,22 +149,32 @@ if Code.ensure_loaded?(:ranch) do
     def init([ref, transport, opts]) do
       {:ok, socket} = :ranch.handshake(ref, opts)
       :ok = transport.setopts(socket, [{:active, true}])
-      :gen_server.enter_loop(__MODULE__, [], %{socket: socket, transport: transport})
+      :gen_server.enter_loop(__MODULE__, [], %{socket: socket, transport: transport, enqueued_data: []})
     end
 
     @impl true
-    def handle_info({:tcp, socket, data}, %{socket: socket, transport: transport} = state) do
+    def handle_info({:tcp, socket, data}, %{socket: socket, enqueued_data: enqueued_data} = state) do
       # this will repeatedly try to decode the length even if the decoding succeeds.
       # TODO: we should probably only decode the length once
-      with {bytesize, rest} <- Ockam.Wire.Binary.VarInt.decode(data),
-          {:ok, _data} <- check_length(data, bytesize) do
-            send_to_router(rest)
+      reconstructed_fragments = [enqueued_data, data]
+      result = with {bytesize, message} when is_number(bytesize) <- Ockam.Wire.Binary.VarInt.decode(reconstructed_fragments),
+          :ok <- check_length(message, bytesize),
+          {:ok, decoded} <- Ockam.Wire.decode(@wire_encoder_decoder, message)
+           do
+            send_to_router(decoded)
+            :clear
         else
-            {:error, %Ockam.Wire.DecodeError{}} -> enqueue_data(data)
-            :not_enough_data -> enqueue_data(data)
+            {:error, %Ockam.Wire.DecodeError{} = _e} ->
+              # how did we get a full length packet that is not decodable? close the connection.
+              raise "Apparently I can't raise a DecodeError and we should fix that before merging this code"
+            :not_enough_data -> :enqueue
         end
-      # This echoes back to the client as a test. We should not be doing that.
-      transport.send(socket, data)
+      # not a fan of this pattern but it'll work for now.
+      # probably should make a function for it.
+      state = case result do
+        :clear -> Map.put(state, :enqueued_data, [])
+        :enqueue -> Map.put(state, :enqueued_data, reconstructed_fragments)
+      end
       {:noreply, state}
     end
 
@@ -213,12 +220,8 @@ if Code.ensure_loaded?(:ranch) do
       end
     end
 
-    defp enqueue_data(_data) do
-      # TODO: do this
-    end
-
-    defp send_to_router(_message) do
-      # TODO: do this
+    defp send_to_router(message) do
+      Ockam.Router.route(message)
     end
   end
 end

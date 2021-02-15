@@ -57,7 +57,7 @@ defimpl Ockam.Serializable, for: Ockam.Transport.TCPAddress do
     with {:ok, serialized_ip} <- serialize_ip(ip),
          {:ok, serialized_port} <- serialize_port(port) do
       length = byte_size(serialized_ip) + byte_size(serialized_port)
-      [@tcp, <<length::8>>, [serialized_ip, serialized_port]]
+      :binary.list_to_bin([@tcp, <<length::8>>, [serialized_ip, serialized_port]])
     end
   end
 

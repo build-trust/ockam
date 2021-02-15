@@ -1,11 +1,11 @@
-defmodule Ockam.Wire.Binary.V1 do
+defmodule Ockam.Wire.Binary.V2 do
   @moduledoc false
 
   @behaviour Ockam.Wire
 
   alias Ockam.Message
   alias Ockam.Serializable
-  alias Ockam.Wire.Binary.V1.Route
+  alias Ockam.Wire.Binary.V2.Route
   alias Ockam.Wire.Binary.VarInt
   alias Ockam.Wire.DecodeError
   alias Ockam.Wire.EncodeError
@@ -13,7 +13,22 @@ defmodule Ockam.Wire.Binary.V1 do
   require DecodeError
   require EncodeError
 
-  @version 1
+  @version 2
+
+  # TODO: I hate bare_spec/1 thing but let's make it work first
+  # because I don't want to break V1 or spend a bunch of time
+  # hunting for the right solution yet.
+  def bare_spec(:address) do
+    {:struct, [type: :uint, value: :data]}
+  end
+
+  def bare_spec(:route) do
+    {:array, bare_spec(:address)}
+  end
+
+  def bare_spec(:message) do
+    {:struct, [version: :uint, onward_route: bare_spec(:route), return_route: bare_spec(:route), payload: :data]}
+  end
 
   @doc """
   Encodes a message into a binary.
@@ -29,11 +44,14 @@ defmodule Ockam.Wire.Binary.V1 do
     return_route = Message.return_route(message)
     payload = Message.payload(message)
 
-    with {:ok, encoded_version} <- encode_version(),
-         {:ok, encoded_onward_route} <- Route.encode(onward_route),
-         {:ok, encoded_return_route} <- Route.encode(return_route),
-         {:ok, encoded_payload} <- encode_payload(payload) do
-      {:ok, [encoded_version, encoded_onward_route, encoded_return_route, encoded_payload]}
+    with {:ok, encoded_onward_route} <- Route.encode(onward_route),
+         {:ok, encoded_return_route} <- Route.encode(return_route) do
+      :bare.encode(%{
+        version: @version,
+        onward_route: encoded_onward_route,
+        return_route: encoded_return_route,
+        payload: payload
+        }, bare_spec(:message))
     end
   end
 

@@ -45,8 +45,9 @@ defmodule Ockam.Hub.MixProject do
 
   defp deps do
     [
-      {:ockam, path: "../_ockam"},
+      {:ockam, path: "../ockam"},
       {:ockam_vault_software, path: "../ockam_vault_software"},
+      {:ranch, "~> 2.0"},
       {:telemetry, "~> 0.4.2"},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
@@ -74,11 +75,12 @@ defmodule Ockam.Hub.MixProject do
   defp aliases do
     [
       docs: "docs --output _build/docs --formatter html",
-      "test.cover": "test --no-start --cover",
+      run: "run --no-halt",
       "lint.format": "format --check-formatted",
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",
-      lint: ["lint.format", "lint.credo"]
+      lint: ["lint.format", "lint.credo"],
+      "test.cover": "test --no-start --cover"
     ]
   end
 end

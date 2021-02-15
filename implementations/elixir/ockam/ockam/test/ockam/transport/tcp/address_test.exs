@@ -26,7 +26,7 @@ defmodule Ockam.Transport.TCPAddress.Tests do
 
     test "Serializing an address produces expected binary" do
       address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
-      assert [@tcp, @length_with_port, [@localhost_binary, @four_thousand_encoded]] == Ockam.Serializable.serialize(address)
+      assert <<@tcp, @length_with_port, @localhost_binary, @four_thousand_encoded>> == Ockam.Serializable.serialize(address)
     end
 
     test "Deserializing an address produces expected struct" do
