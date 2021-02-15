@@ -32,8 +32,12 @@ mod credential;
 mod credential_attribute;
 mod credential_attribute_schema;
 mod credential_attribute_type;
+#[cfg(feature = "std")]
+mod credential_request;
 mod credential_schema;
 mod error;
+#[cfg(feature = "std")]
+mod holder;
 #[cfg(feature = "std")]
 mod issuer;
 mod serde;
@@ -43,7 +47,11 @@ pub use credential::*;
 pub use credential_attribute::CredentialAttribute;
 pub use credential_attribute_schema::CredentialAttributeSchema;
 pub use credential_attribute_type::CredentialAttributeType;
+#[cfg(feature = "std")]
+pub use credential_request::CredentialRequest;
 pub use credential_schema::CredentialSchema;
+#[cfg(feature = "std")]
+pub use holder::Holder;
 #[cfg(feature = "std")]
 pub use issuer::Issuer;
 

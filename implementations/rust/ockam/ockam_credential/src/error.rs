@@ -11,7 +11,11 @@ pub enum CredentialError {
     /// Mismatched attribute type and provided claim
     MismatchedAttributeClaimType,
     /// Data that cannot be converted to a claim
-    InvalidClaim,
+    InvalidCredentialAttribute,
+    /// A schema with no attributes
+    InvalidCredentialSchema,
+    /// Invalid Credential offer
+    InvalidCredentialOffer,
 }
 
 impl CredentialError {

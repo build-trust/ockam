@@ -126,7 +126,9 @@ impl Issuer {
         let mut messages = BTreeMap::new();
 
         for (label, data) in attributes {
-            let (i, a) = atts.get(label).ok_or(CredentialError::InvalidClaim)?;
+            let (i, a) = atts
+                .get(label)
+                .ok_or(CredentialError::InvalidCredentialAttribute)?;
             if *data != a.attribute_type {
                 return Err(CredentialError::MismatchedAttributeClaimType);
             }
@@ -140,7 +142,7 @@ impl Issuer {
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
 
         let signature = BbsIssuer::blind_sign(ctx, &messages, &self.signing_key, &pk, nonce)
-            .map_err(|_| CredentialError::InvalidClaim)?;
+            .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
         Ok(BlindCredential {
             attributes: attributes.iter().map(|(_, v)| v.clone()).collect(),
             signature,
