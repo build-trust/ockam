@@ -22,9 +22,9 @@ impl TcpConnection {
     /// use std::str::FromStr;
     ///
     /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    /// let connection = TcpConnection::new(address);
+    /// let connection = TcpConnection::create(address);
     /// ```
-    pub fn new(remote_address: SocketAddr) -> Box<dyn Connection + Send> {
+    pub fn create(remote_address: SocketAddr) -> Box<dyn Connection + Send> {
         Box::new(TcpConnection {
             remote_address,
             _blocking: true,
@@ -123,7 +123,8 @@ mod test {
     use tokio::task;
 
     async fn client_worker(address: String) {
-        let mut connection = TcpConnection::new(std::net::SocketAddr::from_str(&address).unwrap());
+        let mut connection =
+            TcpConnection::create(std::net::SocketAddr::from_str(&address).unwrap());
         let r = connection.connect().await;
         assert!(!r.is_err());
         for _i in 0u16..5 {
@@ -144,10 +145,10 @@ mod test {
 
     async fn listen_worker(address: String) {
         {
-            let r = TcpListener::new(std::net::SocketAddr::from_str(&address).unwrap()).await;
-            assert!(r.is_ok());
+            let res = TcpListener::create(std::net::SocketAddr::from_str(&address).unwrap()).await;
+            assert!(res.is_ok());
 
-            let mut listener = r.unwrap();
+            let mut listener = res.unwrap();
             let connection = listener.accept().await;
             assert!(connection.is_ok());
 
@@ -192,7 +193,7 @@ mod test {
         let runtime = Builder::new_multi_thread().enable_io().build().unwrap();
 
         runtime.block_on(async {
-            run_test(String::from("127.0.0.1:4050")).await;
+            run_test(String::from("127.0.0.1:4053")).await;
         });
     }
 
@@ -201,7 +202,7 @@ mod test {
         let runtime = Builder::new_current_thread().enable_io().build().unwrap();
 
         runtime.block_on(async {
-            run_test(String::from("127.0.0.1:4051")).await;
+            run_test(String::from("127.0.0.1:4054")).await;
         });
     }
 }

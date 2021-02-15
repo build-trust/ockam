@@ -32,6 +32,10 @@ commands {
 
     'ockam/ockam',
 
+    'ockam/ockam_message',
+
+    'ockam/ockam_transport_tcp',
+
     'examples/node',
     'examples/worker',
   ]

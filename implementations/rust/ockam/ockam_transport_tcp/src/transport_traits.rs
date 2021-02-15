@@ -1,4 +1,3 @@
-extern crate alloc;
 use crate::error::TransportError;
 use async_trait::async_trait;
 
