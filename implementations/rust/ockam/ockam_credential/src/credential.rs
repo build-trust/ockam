@@ -14,7 +14,7 @@ pub struct CredentialOffer {
 }
 
 /// A credential that can be presented
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credential {
     /// The signed attributes in the credential
     pub attributes: Vec<CredentialAttribute>,
@@ -23,7 +23,7 @@ pub struct Credential {
 }
 
 /// A blind credential that will be unblinded by the holder
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlindCredential {
     /// The signed attributes in the credential
     pub attributes: Vec<CredentialAttribute>,

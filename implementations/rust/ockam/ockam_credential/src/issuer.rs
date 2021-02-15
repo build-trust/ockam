@@ -3,15 +3,16 @@ use crate::*;
 use bbs::prelude::{
     DeterministicPublicKey, Issuer as BbsIssuer, KeyGenOption, ProofNonce, RandomElem, SecretKey,
 };
-use digest::generic_array::{typenum::U48, GenericArray};
 use ockam_core::lib::*;
 use pairing_plus::{
     bls12_381::{Fr, G1},
     hash_to_curve::HashToCurve,
-    hash_to_field::{ExpandMsgXmd, FromRO},
+    hash_to_field::ExpandMsgXmd,
     serdes::SerDes,
     CurveProjective,
 };
+
+pub(crate) const CSUITE_POP: &'static [u8] = b"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 
 /// Represents an issuer of a credential
 #[derive(Debug)]
@@ -28,8 +29,16 @@ impl Issuer {
     }
 
     /// Return the signing key associated with this Issuer
-    pub fn get_signing_key(&self) -> &SecretKey {
-        &self.signing_key
+    pub fn get_signing_key(&self) -> [u8; 32] {
+        self.signing_key.to_bytes_compressed_form()
+    }
+
+    /// Return the public key
+    pub fn get_public_key(&self) -> [u8; 96] {
+        let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
+            self.signing_key.clone(),
+        )));
+        dpk.to_bytes_compressed_form()
     }
 
     /// Initialize an issuer with an already generated key
@@ -48,18 +57,15 @@ impl Issuer {
 
     /// Create a proof of possession for this issuers signing key
     pub fn create_proof_of_possession(&self) -> [u8; 48] {
-        const CSUITE_POP: &'static [u8] = b"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
-        let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
-            self.signing_key.clone(),
-        )));
         let mut p = <G1 as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
-            &dpk.to_bytes_compressed_form(),
+            &self.get_public_key(),
             CSUITE_POP,
         );
-        let mut s = [0u8; 48];
-        s[..32].copy_from_slice(&self.signing_key.to_bytes_compressed_form());
-        let fr = Fr::from_ro(GenericArray::<u8, U48>::from_slice(&s));
+
+        let mut c = std::io::Cursor::new(self.signing_key.to_bytes_compressed_form());
+        let fr = Fr::deserialize(&mut c, true).unwrap();
         p.mul_assign(fr);
+        let mut s = [0u8; 48];
         let _ = p.serialize(&mut s.as_mut(), true);
         s
     }
@@ -111,9 +117,9 @@ impl Issuer {
         ctx: &CredentialRequest,
         schema: &CredentialSchema,
         attributes: &BTreeMap<String, CredentialAttribute>,
-        nonce: &ProofNonce,
+        nonce: [u8; 32],
     ) -> Result<BlindCredential, CredentialError> {
-        if attributes.len() < schema.attributes.len() {
+        if attributes.len() >= schema.attributes.len() {
             return Err(CredentialError::MismatchedAttributesAndClaims);
         }
         let atts = schema
@@ -124,6 +130,7 @@ impl Issuer {
             .collect::<BTreeMap<String, (usize, CredentialAttributeSchema)>>();
         let mut messages = BTreeMap::new();
 
+        let mut blind_atts = BTreeMap::new();
         for (label, data) in attributes {
             let (i, a) = atts
                 .get(label)
@@ -131,6 +138,7 @@ impl Issuer {
             if *data != a.attribute_type {
                 return Err(CredentialError::MismatchedAttributeClaimType);
             }
+            blind_atts.insert(*i, data.clone());
             messages.insert(*i, data.to_signature_message());
         }
         let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
@@ -140,11 +148,17 @@ impl Issuer {
             .to_public_key(schema.attributes.len())
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
 
-        let signature =
-            BbsIssuer::blind_sign(&ctx.context, &messages, &self.signing_key, &pk, nonce)
-                .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
+        let signature = BbsIssuer::blind_sign(
+            &ctx.context,
+            &messages,
+            &self.signing_key,
+            &pk,
+            &ProofNonce::from(nonce),
+        )
+        .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
+
         Ok(BlindCredential {
-            attributes: attributes.iter().map(|(_, v)| v.clone()).collect(),
+            attributes: blind_atts.iter().map(|(_, v)| v.clone()).collect(),
             signature,
         })
     }

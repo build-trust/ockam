@@ -10,7 +10,7 @@ pub const SECRET_ID: &'static str = "secretid";
 /// Represents a holder of a credential
 #[derive(Debug)]
 pub struct Holder {
-    id: SignatureMessage,
+    pub(crate) id: SignatureMessage,
 }
 
 impl Holder {
@@ -25,7 +25,7 @@ impl Holder {
     pub fn accept_credential_offer(
         &self,
         offer: &CredentialOffer,
-        issuer_pk: &DeterministicPublicKey,
+        issuer_pk: [u8; 96],
     ) -> Result<(CredentialRequest, CredentialBlinding), CredentialError> {
         let nonce = ProofNonce::from(offer.id);
         let mut i = 0;
@@ -41,7 +41,8 @@ impl Holder {
             return Err(CredentialError::InvalidCredentialSchema);
         }
 
-        let pk = issuer_pk
+        let dpk = DeterministicPublicKey::from(issuer_pk);
+        let pk = dpk
             .to_public_key(offer.schema.attributes.len())
             .map_err(|_| CredentialError::InvalidCredentialSchema)?;
         let mut messages = BTreeMap::new();
@@ -60,10 +61,10 @@ impl Holder {
     /// Convert a blinded credential to an unblinded one
     pub fn unblind_credential(
         &self,
-        blind_credential: &BlindCredential,
-        credential_blinding: &CredentialBlinding,
+        blind_credential: BlindCredential,
+        credential_blinding: CredentialBlinding,
     ) -> Credential {
-        let mut attributes = blind_credential.attributes.clone();
+        let mut attributes = blind_credential.attributes;
         for i in 0..credential_blinding.schema.attributes.len() {
             if credential_blinding.schema.attributes[i].label == SECRET_ID {
                 attributes.insert(
@@ -79,6 +80,21 @@ impl Holder {
                 .signature
                 .to_unblinded(&credential_blinding.blinding),
         }
+    }
+
+    /// Check a credential to make sure its valid
+    pub fn is_valid_credential(&self, credential: &Credential, verkey: [u8; 96]) -> bool {
+        // credential cannot have zero attributes so unwrap is okay
+        let vk = DeterministicPublicKey::from(verkey)
+            .to_public_key(credential.attributes.len())
+            .unwrap();
+        let msgs = credential
+            .attributes
+            .iter()
+            .map(|a| a.to_signature_message())
+            .collect::<Vec<SignatureMessage>>();
+        let res = credential.signature.verify(msgs.as_slice(), &vk);
+        res.unwrap_or_else(|_| false)
     }
 
     /// Given a list of credentials, and a list of manifests
@@ -140,6 +156,7 @@ impl Holder {
         hasher.input(&bytes);
         hasher.input(&proof_request_id);
         let challenge = ProofChallenge::hash(&hasher.result());
+        let presentation_id = challenge.to_bytes_compressed_form();
 
         let mut proofs = Vec::new();
         for i in 0..commitments.len() {
@@ -148,6 +165,7 @@ impl Holder {
             let pm = &presentation_manifests[i];
 
             proofs.push(CredentialPresentation {
+                presentation_id,
                 revealed_attributes: pm
                     .revealed
                     .iter()

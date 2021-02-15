@@ -22,6 +22,10 @@ pub enum CredentialError {
     InvalidPresentationChallenge,
     /// Returns the index of the first failed credential presentation
     InvalidCredentialPresentation(u32),
+    /// Invalid public key provided
+    InvalidPublicKey,
+    /// The number of presentations does not match the number of manifests
+    MismatchedPresentationAndManifests,
 }
 
 impl CredentialError {
@@ -31,22 +35,28 @@ impl CredentialError {
     #[cfg(feature = "std")]
     /// Descriptive name for the error domain
     pub const DOMAIN_NAME: &'static str = "OCKAM_CREDENTIAL";
+
+    pub(crate) const fn as_u32(self) -> u32 {
+        match self {
+            CredentialError::None => 0,
+            CredentialError::MismatchedAttributesAndClaims => 100,
+            CredentialError::MismatchedAttributeClaimType => 200,
+            CredentialError::InvalidCredentialAttribute => 300,
+            CredentialError::InvalidCredentialSchema => 400,
+            CredentialError::InvalidCredentialOffer => 500,
+            CredentialError::InvalidPresentationManifest => 600,
+            CredentialError::InvalidPresentationChallenge => 700,
+            CredentialError::InvalidCredentialPresentation(i) => 800u32 + i,
+            CredentialError::InvalidPublicKey => 900,
+            CredentialError::MismatchedPresentationAndManifests => 1000,
+        }
+    }
 }
 
 #[cfg(feature = "std")]
 impl From<CredentialError> for Error {
     fn from(v: CredentialError) -> Error {
-        let t = match v {
-            CredentialError::None => 0,
-            CredentialError::MismatchedAttributesAndClaims => 1000,
-            CredentialError::MismatchedAttributeClaimType => 2000,
-            CredentialError::InvalidCredentialAttribute => 3000,
-            CredentialError::InvalidCredentialSchema => 4000,
-            CredentialError::InvalidCredentialOffer => 5000,
-            CredentialError::InvalidPresentationManifest => 6000,
-            CredentialError::InvalidPresentationChallenge => 7000,
-            CredentialError::InvalidCredentialPresentation(i) => 8000u32 + i,
-        };
+        let t = v.as_u32();
         Error::new(
             CredentialError::DOMAIN_CODE + t,
             CredentialError::DOMAIN_NAME,
@@ -57,6 +67,6 @@ impl From<CredentialError> for Error {
 #[cfg(not(feature = "std"))]
 impl From<CredentialError> for Error {
     fn from(v: CredentialError) -> Error {
-        Error::new(CredentialError::DOMAIN_CODE + (v as u32))
+        Error::new(CredentialError::DOMAIN_CODE + v.as_u32())
     }
 }
