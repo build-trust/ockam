@@ -16,6 +16,8 @@ pub enum CredentialError {
     InvalidCredentialSchema,
     /// Invalid Credential offer
     InvalidCredentialOffer,
+    /// A manifest that requests to reveal a bad credential attribute
+    InvalidPresentationManifest,
 }
 
 impl CredentialError {
