@@ -1,8 +1,16 @@
 [package]
+name = "ockam-ffi"
+version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
-name = "ockam-ffi"
-version = "0.0.0"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_ffi"
+readme = "README.md"
+categories = ["cryptography"]
+keywords = ["ockam", "ffi", "cryptography", "crypto", "curve25519", "xeddsa", "aes", "gcm", "encryption", "aead", "iot"]
+description = """FFI layer for ockam_vault.
+"""
 
 [lib]
 crate-type = ["staticlib", "rlib", "cdylib"]
