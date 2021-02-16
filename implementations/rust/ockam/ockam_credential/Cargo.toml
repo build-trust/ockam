@@ -24,11 +24,11 @@ alloc = ["ockam_core/alloc", "serde/alloc"]
 no_std = ["ockam_core/no_std"]
 
 [dependencies]
+ockam_core = { version = "0.3.0", default-features = false, path = "../ockam_core" }
 bbs = { version = "0.4", optional = true }
 digest = { version = "0.8", optional = true }
 ff = { version = "0.6", package = "ff-zeroize", optional = true }
 heapless = { version = "0.6", optional = true }
-ockam_core = { version = "0.2.0", default-features = false, path = "../ockam_core" }
 pairing-plus = { version = "0.19", optional = true }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
