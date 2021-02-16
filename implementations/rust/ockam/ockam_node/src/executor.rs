@@ -44,9 +44,9 @@ impl Executor {
     }
 
     /// Create a new [`Context`] at the given address.
-    pub fn new_context<S: ToString>(&self, address: S) -> Context {
+    pub fn new_context<S: Into<Address>>(&self, address: S) -> Context {
         let node = self.node.clone();
-        Context::new(node, address.to_string())
+        Context::new(node, address.into())
     }
 
     pub fn execute<F>(&mut self, future: F) -> Result<()>

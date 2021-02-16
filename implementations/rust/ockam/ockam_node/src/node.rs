@@ -32,9 +32,9 @@ impl Node {
     }
 
     /// Shut down a worker with a specific address
-    pub fn stop_worker<S: ToString>(self: &Arc<Self>, address: S) -> Result<()> {
+    pub fn stop_worker<S: Into<Address>>(self: &Arc<Self>, address: S) -> Result<()> {
         let this = Arc::clone(self);
-        let address = address.to_string();
+        let address = address.into();
 
         tokio::spawn(async move {
             let (reply_tx, mut reply_rx) = channel(1);
@@ -73,12 +73,12 @@ impl Node {
     /// Create and start the handler at [`Address`](ockam_core::Address).
     pub fn start_worker<S, W, M>(&self, address: S, worker: W) -> Result<()>
     where
-        S: ToString,
+        S: Into<Address>,
         W: Worker<Context = Context, Message = M>,
         M: Message + Send + 'static,
     {
         let this = self.clone();
-        let address = address.to_string();
+        let address = address.into();
 
         // Wait for a worker to have started to avoid data races when
         // sending messages to it in subsequent api calls
@@ -119,10 +119,10 @@ impl Node {
     /// Send a message to a particular worker
     pub fn send_message<S, M>(&self, address: S, msg: M) -> Result<()>
     where
-        S: ToString,
+        S: Into<Address>,
         M: Message + Send + 'static,
     {
-        let address = address.to_string();
+        let address = address.into();
         let this = self.clone();
         tokio::spawn(async move {
             let (reply_tx, mut reply_rx) = channel(1);
