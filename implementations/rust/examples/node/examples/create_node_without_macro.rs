@@ -2,7 +2,7 @@ fn main() {
     let (context, mut executor) = ockam::node();
     executor
         .execute(async move {
-            context.node().stop().await.unwrap();
+            context.node().stop().unwrap();
         })
         .unwrap();
 }
