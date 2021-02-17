@@ -1,6 +1,6 @@
 use ockam_core::Encoded;
 
-use tokio::sync::mpsc::{Receiver, Sender, channel};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 /// A mailbox for encoded messages
 ///
@@ -18,11 +18,6 @@ impl Mailbox {
         Self { rx, tx }
     }
 
-    pub(crate) fn fake() -> Self {
-        let (tx, rx) = channel(1);
-        Self { tx, rx }
-    }
-    
     pub fn sender(&self) -> Sender<Encoded> {
         self.tx.clone()
     }

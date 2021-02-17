@@ -1,6 +1,6 @@
 //! Spawn to workers that play some ping-pong
 
-use ockam::{Address, Context, Message, Result, Worker};
+use ockam::{Address, Context, Result, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Player {
@@ -70,7 +70,7 @@ impl Worker for Player {
 }
 
 fn main() {
-    let (ctx, mut exe) = ockam::node();
+    let (ctx, mut exe) = ockam::start_node();
 
     exe.execute(async move {
         let a1: Address = "player1".into();

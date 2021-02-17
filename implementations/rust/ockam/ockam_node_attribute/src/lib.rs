@@ -55,7 +55,7 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
     let output_function = quote! {
         #(#input_function_attrs)*
         fn #input_function_ident() {
-            let (context, mut executor) = ockam::node();
+            let (context, mut executor) = ockam::start_node();
             executor.execute(async move { #input_function_block }).unwrap()
         }
     };

@@ -7,11 +7,11 @@ use tokio::sync::mpsc::{channel, Sender};
 pub struct App;
 
 impl ockam_core::Worker for App {
-    type Context = Context<App>;
+    type Context = Context;
     type Message = (); // This message type is never used
 }
 
-pub fn start_node() -> (Context<App>, Executor) {
+pub fn start_node() -> (Context, Executor) {
     let mut exe = Executor::new();
     let addr = "app".into();
 
@@ -28,7 +28,7 @@ pub fn start_node() -> (Context<App>, Executor) {
     (ctx, exe)
 }
 
-fn root_app_context(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context<App> {
+fn root_app_context(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
     let (mb_tx, mb_rx) = channel(32);
     let mb = Mailbox::new(mb_rx, mb_tx.clone());
     let ctx = Context::new(rt, tx, addr.clone(), mb);

@@ -14,6 +14,7 @@ mod error;
 mod executor;
 mod mailbox;
 mod messages;
+mod node;
 mod relay;
 
 pub use context::*;
@@ -21,8 +22,4 @@ pub use executor::*;
 pub use mailbox::*;
 pub use messages::*;
 
-pub fn node() -> (Context, Executor) {
-    let executor = Executor::new();
-    let context = executor.new_context("app");
-    (context, executor)
-}
+pub use node::start_node;

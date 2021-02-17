@@ -15,9 +15,9 @@
 //! The `Relay` is then responsible for turning the message back into
 //! a type and notifying the companion actor.
 
-use crate::Context;
+use crate::{Context, Mailbox};
 use ockam_core::{Encoded, Message, Worker};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -82,5 +82,22 @@ where
 
     rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
     rt.spawn(relay.run());
+    tx
+}
+
+/// Build and spawn the root application relay
+///
+/// The root relay is different from normal worker relays because its
+/// message inbox is never automatically run, and instead needs to be
+/// polled via a `receive()` call.
+pub(crate) fn build_root<W, M>(rt: Arc<Runtime>, mailbox: &Mailbox) -> Sender<RelayMessage>
+where
+    W: Worker<Context = Context, Message = M>,
+    M: Message + Send + 'static,
+{
+    let (tx, rx) = channel(32);
+
+    let mb_tx = mailbox.sender();
+    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
     tx
 }
