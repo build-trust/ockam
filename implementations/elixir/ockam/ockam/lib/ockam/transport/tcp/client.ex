@@ -15,7 +15,7 @@ defmodule Ockam.Transport.TCP.Client do
   end
 
   def handle_info(:connect, %{ip: ip, port: port} = state) do
-    {:ok, socket} = :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 0])
+    {:ok, socket} = :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 2])
     :gen_tcp.controlling_process(socket, self())
 
     {:noreply, Map.put(state, :socket, socket)}

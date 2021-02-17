@@ -26,7 +26,7 @@ defmodule Ockam.Wire.Binary.V2.Address do
   defp encode_serializable_address(address) do
     case Serializable.serialize(address) do
       {:error, reason} -> {:error, EncodeError.new({reason, address})}
-      serialized -> serialized |> IO.inspect
+      serialized -> serialized
     end
   end
 

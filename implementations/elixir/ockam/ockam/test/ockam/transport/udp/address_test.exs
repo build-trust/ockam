@@ -26,7 +26,7 @@ defmodule Ockam.Transport.UDPAddress.Tests do
 
     test "Serializing an address produces expected binary" do
       address = %UDPAddress{ip: {127, 0, 0, 1}, port: 4000}
-      assert [@udp, @length_with_port, [@localhost_binary, @four_thousand_encoded]] == Ockam.Serializable.serialize(address)
+      assert <<@udp, @length_with_port, @localhost_binary, @four_thousand_encoded>> == Ockam.Serializable.serialize(address)
     end
 
     test "Deserializing an address produces expected struct" do

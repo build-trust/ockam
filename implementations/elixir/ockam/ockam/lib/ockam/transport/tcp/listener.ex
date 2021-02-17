@@ -144,37 +144,28 @@ if Code.ensure_loaded?(:ranch) do
       {:ok, pid}
     end
 
-
     @impl true
     def init([ref, transport, opts]) do
       {:ok, socket} = :ranch.handshake(ref, opts)
-      :ok = transport.setopts(socket, [{:active, true}])
-      :gen_server.enter_loop(__MODULE__, [], %{socket: socket, transport: transport, enqueued_data: []})
+      :ok = transport.setopts(socket, [{:active, true}, {:packet, 2}])
+
+      :gen_server.enter_loop(__MODULE__, [], %{
+        socket: socket,
+        transport: transport,
+        enqueued_data: []
+      })
     end
 
     @impl true
-    def handle_info({:tcp, socket, data}, %{socket: socket, enqueued_data: enqueued_data} = state) do
-      # this will repeatedly try to decode the length even if the decoding succeeds.
-      # TODO: we should probably only decode the length once
-      reconstructed_fragments = [enqueued_data, data]
-      result = with {bytesize, message} when is_number(bytesize) <- Ockam.Wire.Binary.VarInt.decode(reconstructed_fragments),
-          :ok <- check_length(message, bytesize),
-          {:ok, decoded} <- Ockam.Wire.decode(@wire_encoder_decoder, message)
-           do
-            send_to_router(decoded)
-            :clear
-        else
-            {:error, %Ockam.Wire.DecodeError{} = _e} ->
-              # how did we get a full length packet that is not decodable? close the connection.
-              raise "Apparently I can't raise a DecodeError and we should fix that before merging this code"
-            :not_enough_data -> :enqueue
-        end
-      # not a fan of this pattern but it'll work for now.
-      # probably should make a function for it.
-      state = case result do
-        :clear -> Map.put(state, :enqueued_data, [])
-        :enqueue -> Map.put(state, :enqueued_data, reconstructed_fragments)
+    def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
+      with {:ok, decoded} <- Ockam.Wire.decode(@wire_encoder_decoder, data) do
+        send_to_router(decoded)
+      else
+        {:error, %Ockam.Wire.DecodeError{} = _e} ->
+          # how did we get a full length packet that is not decodable? close the connection.
+          raise "Apparently I can't raise a DecodeError and we should fix that before merging this code"
       end
+
       {:noreply, state}
     end
 
@@ -190,34 +181,29 @@ if Code.ensure_loaded?(:ranch) do
 
     def handle_call(:peername, _from, %{socket: socket} = state) do
       {ip, port} = :inet.peername(socket)
-      {:reply, {ip, port, self()} , state}
+      {:reply, {ip, port, self()}, state}
     end
 
     def send(ref, {ip, port}, data) do
       # TODO: this needs to do something other than
       # just look up by source IP and source port.
       peernames = peernames(ref)
-      {_ip, _port, pid} = Enum.find(peernames, fn {peer_ip, peer_port, _pid} ->
-        peer_ip == ip and peer_port == port
-      end)
+
+      {_ip, _port, pid} =
+        Enum.find(peernames, fn {peer_ip, peer_port, _pid} ->
+          peer_ip == ip and peer_port == port
+        end)
+
       GenServer.call(pid, {:send, data})
     end
 
     def peernames(ref) do
       connections = :ranch.procs(ref, :connections)
-      Enum.map(connections, fn(conn) ->
+
+      Enum.map(connections, fn conn ->
         {:ok, {ip, port, pid}} = GenServer.call(conn, :peername)
         {ip, port, pid}
       end)
-    end
-
-
-
-    defp check_length(data, size) do
-      case IO.iodata_length(data) == size do
-        true -> :ok
-        false -> :not_enough_data
-      end
     end
 
     defp send_to_router(message) do
