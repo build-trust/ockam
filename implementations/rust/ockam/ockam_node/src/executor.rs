@@ -62,12 +62,7 @@ impl Executor {
     }
 
     async fn handle_incoming(&mut self) {
-        loop {
-            let mut msg = match self.receive().await {
-                Some(msg) => msg,
-                _ => break, // None return means all senders are gone
-            };
-
+        while let Some(mut msg) = self.receive().await {
             match msg {
                 NodeMessage::SenderReq(ref address, ref mut reply) => match self
                     .registry

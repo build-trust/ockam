@@ -1,10 +1,12 @@
 [package]
 authors = ["Ockam Developers"]
+categories = ["cryptography", "authentication", "algorithms", "network-programming", "asynchronous"]
 description = "Ockam Node implementation crate"
 edition = "2018"
+keywords = ["ockam"]
 license = "Apache-2.0"
 name = "ockam_node"
-version = "0.1.2"
+version = "0.2.0"
 
 [dependencies]
 async-trait = "0.1.42"

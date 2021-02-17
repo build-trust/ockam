@@ -15,7 +15,7 @@ pub struct Node {
 }
 
 /// Execute a future without blocking the executor
-fn block_future<'r, F>(rt: &'r Runtime, f: F) -> <F as Future>::Output
+fn block_future<F>(rt: &Runtime, f: F) -> <F as Future>::Output
 where
     F: Future + Send + 'static,
     F::Output: Send + 'static,
