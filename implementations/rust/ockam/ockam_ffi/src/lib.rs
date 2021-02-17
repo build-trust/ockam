@@ -1,9 +1,22 @@
+//! Ockam Vault Foreign Function Interface (FFI) for library integration.
+#![deny(
+// missing_docs,
+trivial_casts,
+trivial_numeric_casts,
+unused_import_braces,
+unused_qualifications,
+warnings
+)]
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+
+mod error;
 mod macros;
 mod mutex_storage;
-use mutex_storage::*;
-mod error;
-pub use error::*;
-mod vault_types;
-use vault_types::*;
 mod vault;
+mod vault_types;
+
+pub use error::*;
 pub use vault::*;
+
+use mutex_storage::*;
+use vault_types::*;

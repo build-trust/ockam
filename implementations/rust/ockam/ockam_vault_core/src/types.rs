@@ -44,7 +44,7 @@ cfg_if! {
     }
 }
 
-/// Binary representation of a [`Secret`]
+/// Binary representation of a Secret.
 #[derive(Clone, Debug, Eq, PartialEq, Zeroize)]
 pub struct SecretKey(SecretKeyVec);
 
@@ -75,7 +75,7 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
-/// All possible types of [`Secret`]s
+/// All possible [`SecretType`]s
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub enum SecretType {
     Buffer,
@@ -84,14 +84,14 @@ pub enum SecretType {
     P256,
 }
 
-/// Possible [`Secret`]'s persistence
+/// Possible [`SecretKey`]'s persistence
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub enum SecretPersistence {
     Ephemeral,
     Persistent,
 }
 
-/// Attributes for a specific vault [`Secret`]
+/// Attributes for a specific vault [`SecretKey`]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub struct SecretAttributes {
     stype: SecretType,

@@ -3,14 +3,14 @@ use std::os::raw::c_char;
 
 #[repr(C)]
 #[derive(Debug, PartialEq)]
-/// Ffi error
+/// Error type relating to FFI specific failures.
 pub struct FfiOckamError {
     code: i32,
     domain: *const c_char,
 }
 
 impl FfiOckamError {
-    /// Create new error
+    /// Create a new error.
     pub fn new(code: i32, domain: &'static str) -> Self {
         Self {
             code,
@@ -18,7 +18,7 @@ impl FfiOckamError {
         }
     }
 
-    /// No error
+    /// No error.
     pub fn none() -> Self {
         Self {
             code: 0,
@@ -33,8 +33,7 @@ impl From<Error> for FfiOckamError {
     }
 }
 
-/// Represents the failures that can occur in
-/// an Ockam FFI Vault
+/// Represents the failures that can occur in an Ockam FFI Vault.
 #[derive(Clone, Copy, Debug)]
 pub enum FfiError {
     None,

@@ -1,3 +1,4 @@
+/// Safety macro which ensures a buffer is not null and not empty.
 #[macro_export]
 macro_rules! check_buffer {
     ($buffer:expr) => {

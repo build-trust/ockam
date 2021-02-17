@@ -12,9 +12,7 @@ In order to support a variety of cryptographically capable hardware we maintain 
 
 A concrete implementation of the Vault trait is called an Ockam Vault. Over time, and with help from the Ockam open source community, we plan to add vaults for several TEEs, TPMs, HSMs, and Secure Enclaves.
 
-This crate provides a software-only Vault implementation that can be used when no cryptographic hardware is available. The primary Ockam crate uses this as the default Vault implementation.
-
-The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.
+This crate provides the Vault FFI bindings following the  "C" calling convention, and generates static and dynamic C linkable libraries.
 
 ## Usage
 

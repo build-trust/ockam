@@ -12,6 +12,7 @@ use ockam_vault_core::{
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
+/// FFI Vault trait. See documentation for individual sub-traits for details.
 pub trait FfiVault: SecretVault + HashVault + SymmetricVault + AsymmetricVault + Send {}
 
 impl<D> FfiVault for D where D: SecretVault + HashVault + SymmetricVault + AsymmetricVault + Send {}
@@ -35,7 +36,7 @@ where
     }
 }
 
-/// Create a new Ockam Default vault and return it
+/// Create and return a default Ockam Vault.
 #[no_mangle]
 pub extern "C" fn ockam_vault_default_init(context: &mut FfiVaultFatPointer) -> FfiOckamError {
     // TODO: handle logging
@@ -51,7 +52,7 @@ pub extern "C" fn ockam_vault_default_init(context: &mut FfiVaultFatPointer) -> 
 }
 
 /// Compute the SHA-256 hash on `input` and put the result in `digest`.
-/// `digest` must be 32 bytes in length
+/// `digest` must be 32 bytes in length.
 #[no_mangle]
 pub extern "C" fn ockam_vault_sha256(
     context: FfiVaultFatPointer,
@@ -74,12 +75,12 @@ pub extern "C" fn ockam_vault_sha256(
         Ok(())
     }) {
         Ok(_) => FfiOckamError::none(),
-        Err(err) => err.into(),
+        Err(err) => err,
     }
 }
 
 /// Generate a secret key with the specific attributes.
-/// Returns a handle for the secret
+/// Returns a handle for the secret.
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_generate(
     context: FfiVaultFatPointer,
@@ -92,13 +93,13 @@ pub extern "C" fn ockam_vault_secret_generate(
         Ok(ctx.index() as u64)
     }) {
         Ok(h) => h,
-        Err(err) => return err.into(),
+        Err(err) => return err,
     };
 
     FfiOckamError::none()
 }
 
-/// Import a secret key with the specific handle and attributes
+/// Import a secret key with the specific handle and attributes.
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_import(
     context: FfiVaultFatPointer,
@@ -111,19 +112,20 @@ pub extern "C" fn ockam_vault_secret_import(
 
     *secret = match call(context, |v| -> Result<SecretKeyHandle, FfiOckamError> {
         let atts = attributes.try_into()?;
+
         let secret_data = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
 
         let ctx = v.secret_import(secret_data, atts)?;
         Ok(ctx.index() as u64)
     }) {
         Ok(s) => s,
-        Err(err) => return err.into(),
+        Err(err) => return err,
     };
 
     FfiOckamError::none()
 }
 
-/// Export a secret key with the specific handle to the output buffer
+/// Export a secret key with the specific handle to the `output_buffer`.
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_export(
     context: FfiVaultFatPointer,
@@ -140,17 +142,18 @@ pub extern "C" fn ockam_vault_secret_export(
             return Err(FfiError::BufferTooSmall.into());
         }
         *output_buffer_length = key.as_ref().len() as u32;
+
         unsafe {
             std::ptr::copy_nonoverlapping(key.as_ref().as_ptr(), output_buffer, key.as_ref().len());
         };
         Ok(())
     }) {
         Ok(_) => FfiOckamError::none(),
-        Err(err) => err.into(),
+        Err(err) => err,
     }
 }
 
-/// Get the public key from a secret key to the output buffer
+/// Get the public key, given a secret key, and copy it to the output buffer.
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_publickey_get(
     context: FfiVaultFatPointer,
@@ -167,17 +170,18 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
             return Err(FfiError::BufferTooSmall.into());
         }
         *output_buffer_length = key.as_ref().len() as u32;
+
         unsafe {
             std::ptr::copy_nonoverlapping(key.as_ref().as_ptr(), output_buffer, key.as_ref().len());
         };
         Ok(())
     }) {
         Ok(_) => FfiOckamError::none(),
-        Err(err) => err.into(),
+        Err(err) => err,
     }
 }
 
-/// Retrieve the attributes for a specified secret
+/// Retrieve the attributes for a specified secret.
 #[no_mangle]
 pub extern "C" fn ockam_vault_secret_attributes_get(
     context: FfiVaultFatPointer,
@@ -190,7 +194,7 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
         Ok(atts.into())
     }) {
         Ok(a) => a,
-        Err(err) => return err.into(),
+        Err(err) => return err,
     };
 
     FfiOckamError::none()
@@ -208,12 +212,12 @@ pub extern "C" fn ockam_vault_secret_destroy(
         Ok(())
     }) {
         Ok(_) => FfiOckamError::none(),
-        Err(err) => err.into(),
+        Err(err) => err,
     }
 }
 
-/// Perform an ECDH operation on the supplied ockam vault secret and peer_publickey. The result is
-/// another ockam vault secret of type unknown.
+/// Perform an ECDH operation on the supplied Ockam Vault `secret` and `peer_publickey`. The result
+/// is an Ockam Vault secret of unknown type.
 #[no_mangle]
 pub extern "C" fn ockam_vault_ecdh(
     context: FfiVaultFatPointer,
@@ -223,6 +227,7 @@ pub extern "C" fn ockam_vault_ecdh(
     shared_secret: &mut SecretKeyHandle,
 ) -> FfiOckamError {
     check_buffer!(peer_publickey, peer_publickey_length);
+
     let peer_publickey =
         unsafe { std::slice::from_raw_parts(peer_publickey, peer_publickey_length as usize) };
     *shared_secret = match call(context, |v| -> Result<u64, FfiOckamError> {
@@ -249,7 +254,7 @@ pub extern "C" fn ockam_vault_ecdh(
         Ok(shared_ctx.index() as u64)
     }) {
         Ok(s) => s,
-        Err(err) => return err.into(),
+        Err(err) => return err,
     };
 
     FfiOckamError::none()
@@ -276,6 +281,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
             Some(ctx)
         };
         let ikm_ctx = ikm_ctx.as_ref();
+
         let array: &[FfiSecretAttributes] =
             unsafe { slice::from_raw_parts(derived_outputs_attributes, derived_outputs_count) };
 
@@ -310,7 +316,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
         Ok(())
     }) {
         Ok(_) => FfiOckamError::none(),
-        Err(err) => err.into(),
+        Err(err) => err,
     }
 }
 
@@ -331,8 +337,10 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
     check_buffer!(additional_data);
     check_buffer!(plaintext);
     *ciphertext_and_tag_length = 0;
+
     let additional_data =
         unsafe { std::slice::from_raw_parts(additional_data, additional_data_length as usize) };
+
     let plaintext = unsafe { std::slice::from_raw_parts(plaintext, plaintext_length as usize) };
     match call(context, |v| -> Result<(), FfiOckamError> {
         let ctx = Secret::new(secret as usize);
@@ -344,13 +352,14 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
             return Err(FfiError::BufferTooSmall.into());
         }
         *ciphertext_and_tag_length = ciphertext.len() as u32;
+
         unsafe {
             std::ptr::copy_nonoverlapping(ciphertext.as_ptr(), ciphertext_and_tag, ciphertext.len())
         };
         Ok(())
     }) {
         Ok(_) => FfiOckamError::none(),
-        Err(err) => err.into(),
+        Err(err) => err,
     }
 }
 
@@ -371,8 +380,10 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     check_buffer!(ciphertext_and_tag, ciphertext_and_tag_length);
     check_buffer!(additional_data);
     *plaintext_length = 0;
+
     let additional_data =
         unsafe { std::slice::from_raw_parts(additional_data, additional_data_length as usize) };
+
     let ciphertext_and_tag = unsafe {
         std::slice::from_raw_parts(ciphertext_and_tag, ciphertext_and_tag_length as usize)
     };
@@ -386,15 +397,16 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
             return Err(FfiError::BufferTooSmall.into());
         }
         *plaintext_length = plain.len() as u32;
+
         unsafe { std::ptr::copy_nonoverlapping(plain.as_ptr(), plaintext, plain.len()) };
         Ok(())
     }) {
         Ok(_) => FfiOckamError::none(),
-        Err(err) => err.into(),
+        Err(err) => err,
     }
 }
 
-/// Deinitialize an Ockam vault
+/// De-initialize an Ockam Vault.
 #[no_mangle]
 pub extern "C" fn ockam_vault_deinit(context: FfiVaultFatPointer) -> FfiOckamError {
     match context.vault_type() {
