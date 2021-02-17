@@ -1,22 +1,12 @@
-# from .gitignore
-.env
-.gradle
-.vagrant
-.envrc
-.builder
-.apple-codesign
-CMakeCache.txt
-CMakeFiles
-Makefile
-cmake_install.cmake
-*.a
-*.DS_store
-*.gch
-.idea
-.tool-versions
+# All directories that start with `.`
+**/.*
 
-.git
-implementations/rs/target
-implementations/rs/ockamd_vault
-_build
-deps
+# Rust builds
+**/target
+
+# ELixir builds
+**/_build
+**/deps
+
+# Gradle builds
+**/build
