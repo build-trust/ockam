@@ -42,35 +42,27 @@ impl Worker for Player {
         match msg {
             Action::Intro(addr) if self.friend.is_none() => {
                 self.friend = Some(addr);
-                ctx.node()
-                    .send_message(self.friend(), Action::Intro(ctx.address()))
+                ctx.send_message(self.friend(), Action::Intro(ctx.address()))
                     .unwrap();
             }
 
             // Redundant intro -> start the game
-            Action::Intro(_) => ctx
-                .node()
-                .send_message(self.friend(), Action::Ping)
-                .unwrap(),
+            Action::Intro(_) => ctx.send_message(self.friend(), Action::Ping).unwrap(),
 
             // Ping -> Pong
             Action::Ping if self.count < 5 => {
-                ctx.node()
-                    .send_message(self.friend(), Action::Pong)
-                    .unwrap();
+                ctx.send_message(self.friend(), Action::Pong).unwrap();
                 self.count += 1;
             }
 
             // Pong -> Ping
             Action::Pong if self.count < 5 => {
-                ctx.node()
-                    .send_message(self.friend(), Action::Ping)
-                    .unwrap();
+                ctx.send_message(self.friend(), Action::Ping).unwrap();
                 self.count += 1;
             }
 
             // When the count >= 5
-            _ => ctx.node().stop().unwrap(),
+            _ => ctx.stop().unwrap(),
         }
 
         Ok(())
@@ -84,14 +76,12 @@ fn main() {
         let a1: Address = "player1".into();
         let a2: Address = "player2".into();
 
-        let node = ctx.node();
-
         // Create two players
-        node.start_worker(a1.clone(), Player::new()).unwrap();
-        node.start_worker(a2.clone(), Player::new()).unwrap();
+        ctx.start_worker(a1.clone(), Player::new()).unwrap();
+        ctx.start_worker(a2.clone(), Player::new()).unwrap();
 
         // Tell player1 to start the match with player2
-        node.send_message(a1, Action::Intro(a2)).unwrap();
+        ctx.send_message(a1, Action::Intro(a2)).unwrap();
 
         // Block until all workers are done
     })

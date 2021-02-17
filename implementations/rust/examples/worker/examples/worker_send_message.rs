@@ -1,43 +1,35 @@
-use ockam::{Context, Message, Result, Worker};
+use ockam::{Context, Result, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Printer;
 
+// Types that are Serialize + Deserialize are automatically Message
 #[derive(Debug, Serialize, Deserialize)]
 struct PrintMessage(String);
-
-impl Message for PrintMessage {}
 
 impl Worker for Printer {
     type Message = PrintMessage;
     type Context = Context;
 
     fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
-        println!("Printer starting");
+        println!("[PRINTER]: starting");
         Ok(())
     }
 
     fn handle_message(&mut self, _context: &mut Context, msg: PrintMessage) -> Result<()> {
-        println!("{}", msg.0);
+        println!("[PRINTER]: {}", msg.0);
         Ok(())
     }
 }
 
 fn main() {
-    let (ctx, mut exe) = ockam::node();
+    let (app, mut exe) = ockam::node();
 
     exe.execute(async move {
-        let node = ctx.node();
-
-        node.start_worker("printer", Printer {}).unwrap();
-        node.send_message(
-            "printer",
-            PrintMessage {
-                0: "hi".to_string(),
-            },
-        )
-        .unwrap();
-        node.stop().unwrap();
+        app.start_worker("io.ockam.printer", Printer {}).unwrap();
+        app.send_message("io.ockam.printer", PrintMessage("Hello, ockam!".into()))
+            .unwrap();
+        app.stop().unwrap();
     })
     .unwrap();
 }

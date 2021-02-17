@@ -1,6 +1,6 @@
 // use crate::message::BaseMessage;
 
-use crate::{relay::RelayMessage, Context, Node, NodeMessage, NodeReply};
+use crate::{relay::RelayMessage, Context, NodeMessage, NodeReply};
 use ockam_core::{Address, Result};
 
 use std::{collections::BTreeMap, future::Future, sync::Arc};
@@ -13,7 +13,7 @@ pub struct Executor {
     /// Receiver for messages from node
     receiver: Receiver<NodeMessage>,
     /// Keeping a copy of node to clone and pass out
-    node: Node,
+    sender: Sender<NodeMessage>,
     /// Worker handle map
     registry: BTreeMap<Address, Sender<RelayMessage>>,
 }
@@ -22,11 +22,10 @@ impl Default for Executor {
     fn default() -> Self {
         let (sender, receiver) = channel(32);
         let rt = Arc::new(Runtime::new().unwrap());
-        let node = Node::new(sender, Arc::clone(&rt));
         let registry = BTreeMap::default();
         Self {
             rt,
-            node,
+            sender,
             receiver,
             registry,
         }
@@ -45,8 +44,8 @@ impl Executor {
 
     /// Create a new [`Context`] at the given address.
     pub fn new_context<S: Into<Address>>(&self, address: S) -> Context {
-        let node = self.node.clone();
-        Context::new(node, address.into())
+        let sender = self.sender.clone();
+        Context::new(self.rt.clone(), sender, address.into())
     }
 
     pub fn execute<F>(&mut self, future: F) -> Result<()>

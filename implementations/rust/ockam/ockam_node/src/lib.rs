@@ -13,13 +13,11 @@ mod context;
 mod error;
 mod executor;
 mod messages;
-mod node;
 mod relay;
 
 pub use context::*;
 pub use executor::*;
 pub use messages::*;
-pub use node::*;
 
 pub fn node() -> (Context, Executor) {
     let executor = Executor::new();
