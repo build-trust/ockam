@@ -1,4 +1,4 @@
-use crate::{error::Error, relay, NodeMessage, NodeReply};
+use crate::{error::Error, relay, Mailbox, NodeMessage, NodeReply};
 use ockam_core::{Address, Message, Result, Worker};
 use std::{future::Future, sync::Arc};
 use tokio::{
@@ -23,14 +23,21 @@ pub struct Context {
     address: Address,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
+    pub(crate) mailbox: Mailbox,
 }
 
 impl Context {
-    pub(crate) fn new(rt: Arc<Runtime>, sender: Sender<NodeMessage>, address: Address) -> Self {
+    pub(crate) fn new(
+        rt: Arc<Runtime>,
+        sender: Sender<NodeMessage>,
+        address: Address,
+        mailbox: Mailbox,
+    ) -> Self {
         Self {
             rt,
             sender,
             address,
+            mailbox,
         }
     }
 
@@ -52,7 +59,14 @@ impl Context {
         // Wait for a worker to have started to avoid data races when
         // sending messages to it in subsequent api calls
         block_future(&self.rt, async move {
-            let ctx = Context::new(rt.clone(), tx.clone(), address.clone());
+            // Build the mailbox first
+            let (mb_tx, mb_rx) = channel(32);
+            let mb = Mailbox::new(mb_rx, mb_tx.clone());
+
+            // Pass it to the context
+            let ctx = Context::new(rt.clone(), tx.clone(), address.clone(), mb);
+
+            // Then initialise the worker message relay
             let sender = relay::build::<NW, NM>(rt.as_ref(), worker, ctx);
 
             let msg = NodeMessage::start_worker(address, sender);
@@ -87,7 +101,7 @@ impl Context {
     {
         let address = address.into();
         let tx = self.sender.clone();
-        tokio::spawn(async move {
+        block_future(&self.rt, async move {
             let (reply_tx, mut reply_rx) = channel(1);
             let req = NodeMessage::SenderReq(address, reply_tx);
 
@@ -109,6 +123,18 @@ impl Context {
         });
 
         Ok(())
+    }
+
+    /// Block the current worker to wait for a typed message
+    ///
+    /// Will return `None` if the corresponding worker has been
+    /// stopped, or the underlying Node has shut down.
+    pub fn receive<M: Message>(&mut self) -> Option<M> {
+        let mb = &mut self.mailbox;
+
+        block_future(&self.rt, async {
+            mb.next().await.and_then(|enc| M::decode(&enc).ok())
+        })
     }
 
     /// Return a list of all available worker addresses on a node
