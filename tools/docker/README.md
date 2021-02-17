@@ -1,5 +1,5 @@
 
-From the [root directory](../..) of the ockam codebase:
+From the root directory of the ockam codebase:
 
 ## Base
 
@@ -36,11 +36,11 @@ docker run --rm -it -e LOCAL_USER_ID=$(id -u) --volume $(pwd):/work ockam/builde
 ## Hub
 
 ```
-docker build --tag ockam/ockam_hub:latest --file tools/docker/hub/Dockerfile .
+docker build --tag ockam/hub:latest --file tools/docker/hub/Dockerfile .
 ```
 
 Run the hub:
 
 ```
-docker run --rm -it ockam/ockam_hub:latest
+docker run --rm -it ockam/hub:latest
 ```
