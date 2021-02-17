@@ -1,5 +1,5 @@
 [package]
-name = "ockam_message"
+name = "ockam_router"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
@@ -7,10 +7,16 @@ edition = "2018"
 [lib]
 crate-type = ["rlib"]
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}
 serde_json = "1.0.61"
+tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros","time"]}
 url = "2.2.0"
 hex = "0.4.2"
-
+ockam_core = {path = "../ockam_core", version = "*"}
+hashbrown = "0.9.1"
