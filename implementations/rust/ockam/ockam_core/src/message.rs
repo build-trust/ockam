@@ -17,6 +17,9 @@ pub trait Message: Serialize + DeserializeOwned + Send + 'static {
     }
 }
 
+// Auto-implement message trait for types that _can_ be messages
+impl<T> Message for T where T: Serialize + DeserializeOwned + Send + 'static {}
+
 // TODO: see comment in Cargo.toml about this dependency
 impl From<bincode::Error> for crate::Error {
     fn from(_: bincode::Error) -> Self {
