@@ -1,4 +1,8 @@
 
+plugins {
+  id 'network.ockam.gradle.commands' version '1.0.0'
+}
+
 def appsDir = 'ockam'
 
 def apps = [

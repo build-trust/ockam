@@ -1,4 +1,5 @@
 
 rootProject.name = 'elixir'
 
+includeBuild '../../tools/gradle/plugins/commands'
 includeBuild '../rust'
