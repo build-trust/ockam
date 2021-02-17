@@ -1,6 +1,6 @@
 // use crate::message::BaseMessage;
 
-use crate::{relay::RelayMessage, Context, NodeMessage, NodeReply};
+use crate::{relay::RelayMessage, Context, Mailbox, NodeMessage, NodeReply};
 use ockam_core::{Address, Result};
 
 use std::{collections::BTreeMap, future::Future, sync::Arc};
@@ -45,7 +45,7 @@ impl Executor {
     /// Create a new [`Context`] at the given address.
     pub fn new_context<S: Into<Address>>(&self, address: S) -> Context {
         let sender = self.sender.clone();
-        Context::new(self.rt.clone(), sender, address.into())
+        Context::new(self.rt.clone(), sender, address.into(), Mailbox::fake())
     }
 
     pub fn execute<F>(&mut self, future: F) -> Result<()>

@@ -16,7 +16,7 @@
 //! a type and notifying the companion actor.
 
 use crate::Context;
-use ockam_core::{Encoded, Message, Result, Worker};
+use ockam_core::{Encoded, Message, Worker};
 use std::marker::PhantomData;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -28,10 +28,9 @@ where
     W: Worker<Context = Context>,
     M: Message,
 {
-    rx: Receiver<RelayMessage>,
     worker: W,
     ctx: Context,
-    _msg: PhantomData<M>,
+    _phantom: PhantomData<M>,
 }
 
 impl<W, M> Relay<W, M>
@@ -39,53 +38,34 @@ where
     W: Worker<Context = Context, Message = M>,
     M: Message + Send + 'static,
 {
-    pub fn new(rx: Receiver<RelayMessage>, worker: W, ctx: Context) -> Self {
+    pub fn new(worker: W, ctx: Context) -> Self {
         Self {
-            rx,
             worker,
             ctx,
-            _msg: PhantomData,
+            _phantom: PhantomData,
         }
     }
 
-    /// A wrapper function around the lifetime of a worker
-    async fn run_inner(&mut self) -> Result<()> {
-        self.worker.initialize(&mut self.ctx)?;
+    async fn run(mut self) {
+        self.worker.initialize(&mut self.ctx).unwrap();
 
-        // Loop until the last sender disappears
-        while let Some(ref enc) = self.rx.recv().await {
+        while let Some(ref enc) = self.ctx.mailbox.next().await {
             let msg = match M::decode(enc) {
                 Ok(msg) => msg,
-                _ => continue,
+                Err(_) => continue,
             };
 
-            self.worker.handle_message(&mut self.ctx, msg)?;
+            self.worker.handle_message(&mut self.ctx, msg).unwrap();
         }
 
-        // Errors that occur during shut-down should be logged, but
-        // not re-start the worker automatically!
-        match self.worker.shutdown(&mut self.ctx) {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                eprintln!(
-                    "Worker '{}' error during shutdown: {}",
-                    self.ctx.address(),
-                    e.to_string()
-                );
-                Ok(())
-            }
-        }
+        self.worker.shutdown(&mut self.ctx).unwrap();
     }
 
     /// Run the inner worker and restart it if errors occurs
-    async fn run(mut self) {
-        while let Err(e) = (&mut self).run_inner().await {
-            // todo: replace with tracing::warn!
-            eprintln!(
-                "Worker '{}' experienced an error and is re-starting: {}",
-                self.ctx.address(),
-                e.to_string()
-            );
+    async fn run_mailbox(mut rx: Receiver<RelayMessage>, mb_tx: Sender<RelayMessage>) {
+        // Relay messages into the worker mailbox
+        while let Some(enc) = rx.recv().await {
+            mb_tx.send(enc).await.unwrap();
         }
     }
 }
@@ -97,7 +77,10 @@ where
     M: Message + Send + 'static,
 {
     let (tx, rx) = channel(32);
-    let relay = Relay::<W, M>::new(rx, worker, ctx);
+    let mb_tx = ctx.mailbox.sender();
+    let relay = Relay::<W, M>::new(worker, ctx);
+
+    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
     rt.spawn(relay.run());
     tx
 }
