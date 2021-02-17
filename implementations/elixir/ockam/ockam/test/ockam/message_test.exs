@@ -30,7 +30,9 @@ defmodule Ockam.Message.Tests do
         ],
         payload: "hello"
       }
-      assert [%Ockam.Transport.UDPAddress{ip: {127, 0, 0, 1}, port: 3000}] == Message.onward_route(message)
+
+      assert [%Ockam.Transport.UDPAddress{ip: {127, 0, 0, 1}, port: 3000}] ==
+               Message.onward_route(message)
     end
 
     test "onward_route/1 does what I expect for TCP" do
@@ -40,7 +42,9 @@ defmodule Ockam.Message.Tests do
         ],
         payload: "hello"
       }
-      assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] == Message.onward_route(message)
+
+      assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] ==
+               Message.onward_route(message)
     end
 
     test "return_route/1 does what I expect for UDP" do
@@ -50,7 +54,9 @@ defmodule Ockam.Message.Tests do
         ],
         payload: "hello"
       }
-      assert [%Ockam.Transport.UDPAddress{ip: {127, 0, 0, 1}, port: 3000}] = Message.return_route(message)
+
+      assert [%Ockam.Transport.UDPAddress{ip: {127, 0, 0, 1}, port: 3000}] =
+               Message.return_route(message)
     end
 
     test "return_route/1 does what I expect for TCP" do
@@ -60,7 +66,9 @@ defmodule Ockam.Message.Tests do
         ],
         payload: "hello"
       }
-      assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] = Message.return_route(message)
+
+      assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] =
+               Message.return_route(message)
     end
   end
 end

@@ -74,6 +74,7 @@ defmodule Ockam.MixProject do
 
   defp aliases do
     [
+      credo: "credo --strict",
       docs: "docs --output _build/docs --formatter html",
       "test.cover": "test --no-start --cover",
       "lint.format": "format --check-formatted",

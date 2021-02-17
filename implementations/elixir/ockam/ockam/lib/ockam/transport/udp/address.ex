@@ -12,16 +12,16 @@ defmodule Ockam.Transport.UDPAddress do
   @ipv4 0
   @ipv6 1
 
+  def deserialize(%{type: @udp, value: value}), do: deserialize(value)
+
   def deserialize(value) when is_list(value), do: deserialize(IO.iodata_to_binary(value))
 
-  def deserialize(
-        <<@udp::8, 7::8, @ipv4::8, a::8, b::8, c::8, d::8, port::unsigned-little-integer-16>>
-      ) do
+  def deserialize(<<@ipv4::8, a::8, b::8, c::8, d::8, port::unsigned-little-integer-16>>) do
     %UDPAddress{ip: {a, b, c, d}, port: port}
   end
 
   def deserialize(
-        <<@udp::8, 17::8, @ipv6::8, a::8, b::8, c::8, d::8, e::8, f::8, g::8, h::8,
+        <<@ipv6::8, a::8, b::8, c::8, d::8, e::8, f::8, g::8, h::8,
           port::unsigned-little-integer-16>>
       ) do
     %UDPAddress{ip: {a, b, c, d, e, f, g, h}, port: port}
@@ -41,7 +41,7 @@ defimpl Ockam.Serializable, for: Ockam.Transport.UDPAddress do
   alias Ockam.Transport.UDPAddress
 
   # udp address type
-  @udp 2
+  # @udp 2
 
   # ip address type tags
   @ipv4 0
@@ -50,8 +50,7 @@ defimpl Ockam.Serializable, for: Ockam.Transport.UDPAddress do
   def serialize(%UDPAddress{ip: ip, port: port}) do
     with {:ok, serialized_ip} <- serialize_ip(ip),
          {:ok, serialized_port} <- serialize_port(port) do
-      length = byte_size(serialized_ip) + byte_size(serialized_port)
-      %{type: 2, value: :binary.list_to_bin([@udp, <<length::8>>, serialized_ip, serialized_port])}
+      %{type: 2, value: :binary.list_to_bin([serialized_ip, serialized_port])}
     end
   end
 

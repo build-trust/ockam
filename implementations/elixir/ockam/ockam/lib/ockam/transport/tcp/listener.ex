@@ -3,8 +3,10 @@ if Code.ensure_loaded?(:ranch) do
     @moduledoc false
 
     use Ockam.Worker
-    alias Ockam.Transport.TCPAddress
+
     alias Ockam.Message
+    alias Ockam.Transport.TCP.Client
+    alias Ockam.Transport.TCPAddress
     alias Ockam.Wire
 
     @tcp 1
@@ -26,7 +28,7 @@ if Code.ensure_loaded?(:ranch) do
       transport = :ranch_tcp
       transport_options = [port: port]
       protocol = __MODULE__.Handler
-      protocol_options = []
+      protocol_options = [packet: 2]
 
       with {:ok, _apps} <- Application.ensure_all_started(:ranch),
            :ok <- start_listener(ref, transport, transport_options, protocol, protocol_options),
@@ -71,36 +73,27 @@ if Code.ensure_loaded?(:ranch) do
       {:ok, state}
     end
 
-    defp encode_and_send_over_tcp(message, state) do
+    defp encode_and_send_over_tcp(message, %{address: address}) do
       message = create_outgoing_message(message)
 
-      with {:ok, destination, message} <- pick_destination_and_set_onward_route(message, state.address),
+      with {:ok, destination, message} <- pick_destination_and_set_onward_route(message, address),
+           {:ok, message} <- set_return_route(message, address),
            {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, message),
-           {:ok, encoded_message_with_length_prepended} <- prepend_varint_length(encoded_message),
-           :ok <- send_over_tcp(encoded_message_with_length_prepended, destination) do
+           :ok <- send_over_tcp(encoded_message, destination) do
         :ok
       end
     end
 
-    defp prepend_varint_length(message) do
-      bytesize = IO.iodata_length(message)
-      case Ockam.Wire.Binary.VarInt.encode(bytesize) do
-        {:error, reason} -> {:error, reason}
-        varint_length -> {:ok, [varint_length, message]}
-      end
-    end
-
     defp send_over_tcp(message, %{ip: ip, port: port}) do
-      {:ok, pid} = Ockam.Transport.TCP.Client.start_link(%{ip: ip, port: port})
-      Ockam.Transport.TCP.Client.send(pid, message)
-      :ok
+      {:ok, pid} = Client.start_link(%{ip: ip, port: port})
+      Client.send(pid, message)
     end
-
 
     defp create_outgoing_message(message) do
       %{
         onward_route: Message.onward_route(message),
-        payload: Message.payload(message)
+        payload: Message.payload(message),
+        return_route: Message.return_route(message)
       }
     end
 
@@ -126,7 +119,9 @@ if Code.ensure_loaded?(:ranch) do
       end
     end
 
-
+    defp set_return_route(%{return_route: return_route} = message, address) do
+      {:ok, %{message | return_route: [address | return_route]}}
+    end
 
     defp default_ip, do: {127, 0, 0, 1}
     defp default_port, do: 4000
@@ -147,23 +142,29 @@ if Code.ensure_loaded?(:ranch) do
     @impl true
     def init([ref, transport, opts]) do
       {:ok, socket} = :ranch.handshake(ref, opts)
-      :ok = transport.setopts(socket, [{:active, true}, {:packet, 2}])
+      :ok = :inet.setopts(socket, [{:active, true}, {:packet, 2}])
 
-      :gen_server.enter_loop(__MODULE__, [], %{
-        socket: socket,
-        transport: transport,
-        enqueued_data: []
-      })
+      address = Ockam.Node.get_random_unregistered_address()
+
+      Ockam.Node.Registry.register_name(address, self())
+
+      :gen_server.enter_loop(
+        __MODULE__,
+        [],
+        %{
+          socket: socket,
+          transport: transport,
+          address: address
+        },
+        {:via, Ockam.Node.process_registry(), address}
+      )
     end
 
     @impl true
     def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
-      with {:ok, decoded} <- Ockam.Wire.decode(@wire_encoder_decoder, data) do
-        send_to_router(decoded)
-      else
-        {:error, %Ockam.Wire.DecodeError{} = _e} ->
-          # how did we get a full length packet that is not decodable? close the connection.
-          raise "Apparently I can't raise a DecodeError and we should fix that before merging this code"
+      case Ockam.Wire.decode(@wire_encoder_decoder, data) do
+        {:ok, decoded} -> send_to_router(decoded)
+        {:error, %Ockam.Wire.DecodeError{} = e} -> raise e
       end
 
       {:noreply, state}

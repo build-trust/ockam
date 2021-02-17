@@ -14,8 +14,10 @@ defmodule Ockam.Router.Tests do
   doctest Ockam.Router
 
   alias Ockam.Router.Tests.Printer
-  alias Ockam.Transport.UDPAddress
+  alias Ockam.Transport.TCP
   alias Ockam.Transport.TCPAddress
+  alias Ockam.Transport.UDP
+  alias Ockam.Transport.UDPAddress
 
   setup_all do
     {:ok, "printer"} = Printer.create(address: "printer")
@@ -32,23 +34,23 @@ defmodule Ockam.Router.Tests do
         ],
         payload: "hello"
       }
+
       :erlang.trace(printer, true, [:receive])
 
+      assert {:ok, _address_a} = UDP.create_listener(port: 3000, route_outgoing: true)
 
-
-      assert {:ok, _address_a} =
-               Ockam.Transport.UDP.create_listener(port: 3000, route_outgoing: true)
-      assert {:ok, _address_b} =
-               Ockam.Transport.UDP.create_listener(port: 4000)
+      assert {:ok, _address_b} = UDP.create_listener(port: 4000)
 
       Ockam.Router.route(message)
 
-      assert_receive {:trace, ^printer, :receive, result}
+      assert_receive({:trace, ^printer, :receive, result}, 1_000)
+
       assert result == %{
-               onward_route: [{0, <<0, 7, 112, 114, 105, 110, 116, 101, 114>>}],
-               payload: "\0\x05hello",
+               version: 1,
+               onward_route: ["printer"],
+               payload: "hello",
                return_route: [
-                 {2, "\x02\a\0\d\0\0\x01\xB8\v"},
+                 %UDPAddress{ip: {127, 0, 0, 1}, port: 3000}
                ]
              }
     end
@@ -59,25 +61,26 @@ defmodule Ockam.Router.Tests do
           %TCPAddress{ip: {127, 0, 0, 1}, port: 4000},
           "printer"
         ],
+        return_route: [],
         payload: "hello"
       }
 
       :erlang.trace(printer, true, [:receive])
 
+      assert {:ok, _address_a} = TCP.create_listener(port: 3000, route_outgoing: true)
 
-      assert {:ok, _address_a} =
-               Ockam.Transport.TCP.create_listener(port: 3000, route_outgoing: true)
-      assert {:ok, _address_b} =
-               Ockam.Transport.TCP.create_listener(port: 4000)
+      assert {:ok, _address_b} = TCP.create_listener(port: 4000)
 
       Ockam.Router.route(message)
 
-      assert_receive {:trace, ^printer, :receive, result}
-      assert result == %{
-               onward_route: [{0, <<0, 7, 112, 114, 105, 110, 116, 101, 114>>}],
-               payload: "\0\x05hello",
-               return_route: []
-             }
+      assert_receive({:trace, ^printer, :receive, result}, 1_000)
+
+      assert %{
+               version: 1,
+               onward_route: ["printer"],
+               payload: "hello",
+               return_route: [_address]
+             } = result
     end
   end
 end

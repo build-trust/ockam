@@ -2,12 +2,19 @@ defmodule Ockam.Wire.Binary.V2.Address do
   @moduledoc false
 
   alias Ockam.Serializable
+  alias Ockam.Transport.TCPAddress
+  alias Ockam.Transport.UDPAddress
   alias Ockam.Wire.DecodeError
   alias Ockam.Wire.EncodeError
 
   require DecodeError
   require EncodeError
 
+  # TODO: this should be refactored
+  @tcp 1
+  @udp 2
+
+  @spec encode(any) :: binary | maybe_improper_list() | {:error, Ockam.Wire.EncodeError.t()}
   def encode({_address_type, address}) when is_binary(address) do
     address
   end
@@ -30,15 +37,12 @@ defmodule Ockam.Wire.Binary.V2.Address do
     end
   end
 
-  def decode(<<address_type::unsigned-integer-8, length::8, encoded::binary>>) do
-    case encoded do
-      <<value::binary-size(length), rest::binary>> ->
-        address = <<address_type::unsigned-integer-8, length::8, value::binary-size(length)>>
-        {{address_type, address}, rest}
-
-      _else ->
-        reason = {:could_not_decode_address_of_detected_length, length, encoded}
-        {:error, DecodeError.new(reason)}
+  def decode(%{type: type, value: value}) do
+    # TODO: there needs to be a way to do this programmatically
+    case type do
+      @tcp -> TCPAddress.deserialize(value)
+      @udp -> UDPAddress.deserialize(value)
+      0 -> value
     end
   end
 

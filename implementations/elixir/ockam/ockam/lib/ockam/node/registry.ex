@@ -13,12 +13,14 @@ defmodule Ockam.Node.Registry do
     %{id: __MODULE__, start: start, type: :worker, restart: :permanent, shutdown: 500}
   end
 
+  @spec start_link(any) :: {:error, any} | {:ok, pid}
   @doc false
   def start_link(_options) do
     # TODO: investigte other registry options like listeners and partitions
     Registry.start_link(keys: :unique, name: __MODULE__)
   end
 
+  @spec register_name(any, any) :: :no | :yes
   @doc false
   # This function is used when a process is registed using the `:via` option.
   #
@@ -26,6 +28,7 @@ defmodule Ockam.Node.Registry do
   # See the "Name registration" section of the `GenServer` module.
   def register_name(address, pid), do: Registry.register_name({__MODULE__, address}, pid)
 
+  @spec whereis_name(any) :: :undefined | pid
   @doc false
   # This function is used when a process is registed using the `:via` option.
   #
@@ -33,6 +36,7 @@ defmodule Ockam.Node.Registry do
   # See the "Name registration" section of the `GenServer` module.
   def whereis_name(address), do: Registry.whereis_name({__MODULE__, address})
 
+  @spec unregister_name(any) :: :ok
   @doc false
   # This function is used when a process is registed using the `:via` option.
   #
