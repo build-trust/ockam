@@ -1,6 +1,6 @@
 // use crate::message::BaseMessage;
 
-use crate::{relay::RelayMessage, Context, Mailbox, NodeMessage, NodeReply};
+use crate::{relay::RelayMessage, NodeMessage, NodeReply};
 use ockam_core::{Address, Result};
 
 use std::{collections::BTreeMap, future::Future, sync::Arc};
@@ -12,7 +12,7 @@ pub struct Executor {
     rt: Arc<Runtime>,
     /// Receiver for messages from node
     receiver: Receiver<NodeMessage>,
-    /// Keeping a copy of node to clone and pass out
+    /// Keeping a copy of the channel sender to pass out
     sender: Sender<NodeMessage>,
     /// Worker handle map
     registry: BTreeMap<Address, Sender<RelayMessage>>,
@@ -25,8 +25,8 @@ impl Default for Executor {
         let registry = BTreeMap::default();
         Self {
             rt,
-            sender,
             receiver,
+            sender,
             registry,
         }
     }
@@ -42,10 +42,21 @@ impl Executor {
         self.receiver.recv().await
     }
 
-    /// Create a new [`Context`] at the given address.
-    pub fn new_context<S: Into<Address>>(&self, address: S) -> Context {
-        let sender = self.sender.clone();
-        Context::new(self.rt.clone(), sender, address.into(), Mailbox::fake())
+    pub(crate) fn sender(&self) -> Sender<NodeMessage> {
+        self.sender.clone()
+    }
+
+    pub(crate) fn runtime(&self) -> Arc<Runtime> {
+        self.rt.clone()
+    }
+
+    /// Initialize the root application worker
+    pub fn initialize_system<S: Into<Address>>(
+        &mut self,
+        address: S,
+        mailbox: Sender<RelayMessage>,
+    ) {
+        self.registry.insert(address.into(), mailbox);
     }
 
     pub fn execute<F>(&mut self, future: F) -> Result<()>
