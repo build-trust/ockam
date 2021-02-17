@@ -8,7 +8,7 @@ homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
 readme = "README.md"
 categories = ["cryptography", "no-std", "authentication", "algorithms"]
-keywords = ["ockam", "cryptography", "crypto", "curve25519", "xeddsa", "aes", "gcm", "encryption", "aead", "iot"]
+keywords = ["ockam", "cryptography", "crypto", "encryption", "iot"]
 description = """A software-only Ockam Vault implementation.
 """
 
