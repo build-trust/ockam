@@ -1,5 +1,7 @@
-use ockam_core::Encoded;
-
+use crate::{block_future, Context};
+use ockam_core::{Encoded, Message};
+use std::sync::Arc;
+use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 /// A mailbox for encoded messages
@@ -30,5 +32,43 @@ impl Mailbox {
     /// If a message wasn't expected, requeue it
     pub async fn requeue(&self, msg: Encoded) {
         self.tx.send(msg).await.unwrap();
+    }
+}
+
+/// A message wraper type that allows users to cancel message receival
+///
+/// A worker can block in place to wait for a message.  If the next
+/// message is not the desired type, it can be cancelled which
+/// re-queues it into the mailbox.
+pub struct Cancel<'ctx, M: Message> {
+    inner: M,
+    rt: Arc<Runtime>,
+    ctx: &'ctx Context,
+}
+
+impl<'ctx, M: Message> Cancel<'ctx, M> {
+    pub(crate) fn new(inner: M, rt: Arc<Runtime>, ctx: &'ctx Context) -> Self {
+        Self { inner, rt, ctx }
+    }
+
+    /// Cancel this message
+    pub fn cancel(self) {
+        let ctx = self.ctx;
+        let enc = self.inner.encode().unwrap();
+        block_future(&self.rt, async move { ctx.mailbox.requeue(enc).await });
+    }
+}
+
+impl<'ctx, M: Message> std::ops::Deref for Cancel<'ctx, M> {
+    type Target = M;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<'ctx, M: Message + PartialEq> PartialEq<M> for Cancel<'ctx, M> {
+    fn eq(&self, o: &M) -> bool {
+        &self.inner == o
     }
 }
