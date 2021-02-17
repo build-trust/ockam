@@ -28,8 +28,6 @@ enum Action {
     Pong,
 }
 
-impl Message for Action {}
-
 impl Worker for Player {
     type Message = Action;
     type Context = Context;
