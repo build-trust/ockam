@@ -1,23 +1,10 @@
-use crate::{error::Error, relay, Mailbox, NodeMessage, NodeReply};
+use crate::{block_future, error::Error, relay, Cancel, Mailbox, NodeMessage, NodeReply};
 use ockam_core::{Address, Message, Result, Worker};
-use std::{future::Future, sync::Arc};
+use std::sync::Arc;
 use tokio::{
     runtime::Runtime,
     sync::mpsc::{channel, Sender},
-    task::{self, LocalSet},
 };
-
-/// Execute a future without blocking the executor
-fn block_future<'r, F>(rt: &'r Runtime, f: F) -> <F as Future>::Output
-where
-    F: Future + Send,
-    F::Output: Send,
-{
-    task::block_in_place(move || {
-        let local = LocalSet::new();
-        local.block_on(&rt, f)
-    })
-}
 
 pub struct Context {
     address: Address,
@@ -129,12 +116,13 @@ impl Context {
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
-    pub fn receive<M: Message>(&mut self) -> Option<M> {
+    pub fn receive<'ctx, M: Message>(&'ctx mut self) -> Option<Cancel<'ctx, M>> {
         let mb = &mut self.mailbox;
 
         block_future(&self.rt, async {
             mb.next().await.and_then(|enc| M::decode(&enc).ok())
         })
+        .map(move |msg| Cancel::new(msg, self.rt.clone(), self))
     }
 
     /// Return a list of all available worker addresses on a node
