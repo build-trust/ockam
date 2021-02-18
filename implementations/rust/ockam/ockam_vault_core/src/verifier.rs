@@ -1,7 +1,7 @@
 use zeroize::Zeroize;
 
-/// Signature verification vault functionality
-pub trait VerifierVault: Zeroize {
+/// Signature verification functionality
+pub trait Verifier: Zeroize {
     /// Verify a signature for given data using given public key
     fn verify(
         &mut self,
