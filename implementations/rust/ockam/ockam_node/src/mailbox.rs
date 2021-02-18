@@ -1,6 +1,9 @@
 use crate::{block_future, Context};
 use ockam_core::{Encoded, Message};
-use std::sync::Arc;
+use std::{
+    fmt::{self, Debug, Display, Formatter},
+    sync::Arc,
+};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -70,5 +73,17 @@ impl<'ctx, M: Message> std::ops::Deref for Cancel<'ctx, M> {
 impl<'ctx, M: Message + PartialEq> PartialEq<M> for Cancel<'ctx, M> {
     fn eq(&self, o: &M) -> bool {
         &self.inner == o
+    }
+}
+
+impl<'ctx, M: Message + Debug> Debug for Cancel<'ctx, M> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
+impl<'ctx, M: Message + Display> Display for Cancel<'ctx, M> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
