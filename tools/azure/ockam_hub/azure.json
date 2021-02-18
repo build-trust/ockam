@@ -44,15 +44,7 @@
                   "name": "secrets-volume-influx",
                   "mountPath": "/mnt/secrets/influx"
                 }
-              ],
-              "livenessProbe": {
-                "exec": {
-                  "command": [
-                    "/opt/ockam/implementations/elixir/ockam/ockam_hub/_build/prod/rel/ockam_hub/bin/ockam_hub",
-                    "pid"
-                  ]
-                },
-              }
+              ]
             }
           }
         ],
