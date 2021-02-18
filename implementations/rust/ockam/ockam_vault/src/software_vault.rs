@@ -9,7 +9,7 @@ use zeroize::Zeroize;
 /// # Examples
 /// ```
 /// use ockam_vault::SoftwareVault;
-/// use ockam_vault_core::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, SignerVault, VerifierVault};
+/// use ockam_vault_core::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, Signer, Verifier};
 ///
 /// fn example() -> ockam_core::Result<()> {
 ///     let mut vault = SoftwareVault::default();
