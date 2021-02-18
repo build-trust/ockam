@@ -4,7 +4,7 @@ use crate::SmallBuffer;
 use zeroize::Zeroize;
 
 /// A trait for hashing data into fixed length output
-pub trait HashVault: Zeroize {
+pub trait Hasher: Zeroize {
     /// Compute the SHA-256 digest given input `data`
     fn sha256(&self, data: &[u8]) -> ockam_core::Result<[u8; 32]>;
     /// Derive multiple output [`Secret`]s with given attributes using the HKDF-SHA256 using
