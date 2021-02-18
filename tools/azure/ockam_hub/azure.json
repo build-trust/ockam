@@ -24,11 +24,6 @@
             "name": "ockam-hub",
             "properties": {
               "image": "ockam/ockam_hub:latest",
-              "command": [
-                "/bin/bash",
-                "-c",
-                "/opt/ockam/implementations/elixir/ockam/ockam_hub/_build/prod/rel/ockam_hub/bin/ockam_hub start"
-              ],
               "resources": {
                 "requests": {
                   "cpu": 1,
