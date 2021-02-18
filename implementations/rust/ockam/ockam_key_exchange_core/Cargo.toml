@@ -1,0 +1,18 @@
+[package]
+name = "ockam_key_exchange_core"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_key_exchange_core"
+readme = "README.md"
+categories = ["cryptography", "no-std", "authentication", "algorithms"]
+keywords = ["ockam", "cryptography", "crypto", "iot"]
+description = """The Ockam Key Exchange trait.
+"""
+
+[dependencies]
+ockam_core = { version = "0.3.0", path = "../ockam_core" }
+ockam_vault_core = { version = "0.2.0", path = "../ockam_vault_core" }
+zeroize = { version = "1.1", features = ["zeroize_derive"] }
