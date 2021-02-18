@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_bare::Uint;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[repr(C)]
@@ -14,13 +15,13 @@ pub const ROUTER_MSG_PING: u8 = 0;
 pub const ROUTER_MSG_PONG: u8 = 1;
 pub const ROUTER_MSG_PAYLOAD: u8 = 2;
 
-pub const ROUTER_ADDRESS_LOCAL: u8 = 0;
-pub const ROUTER_ADDRESS_TCP: u8 = 1;
+pub const ROUTER_ADDRESS_LOCAL: Uint = serde_bare::Uint(0);
+pub const ROUTER_ADDRESS_TCP: Uint = serde_bare::Uint(1);
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub struct RouterAddress {
-    pub address_type: u8,
+    pub address_type: Uint,
     pub address: Vec<u8>,
 }
 
@@ -116,7 +117,7 @@ mod test {
         let local_addr = b"printer".to_vec();
 
         let m = RouterMessage {
-            version: 0,
+            version: 1,
             onward_route: Route {
                 addrs: vec![
                     RouterAddress {

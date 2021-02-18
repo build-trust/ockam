@@ -1,6 +1,6 @@
 use crate::error::TransportError;
 use async_trait::async_trait;
-use ockam_router::message::RouterMessage;
+use ockam_router::message::{RouterAddress, RouterMessage};
 
 /// The `Connection` trait represents transport connections.
 #[async_trait]
@@ -30,6 +30,9 @@ pub trait Connection {
 
     /// Receives a RouterMessage.
     async fn receive_message(&mut self) -> Result<RouterMessage, TransportError>;
+
+    fn get_local_address(&self) -> RouterAddress;
+    fn get_remote_address(&self) -> RouterAddress;
 }
 
 /// The `Listener` trait represents transport connection listeners.
