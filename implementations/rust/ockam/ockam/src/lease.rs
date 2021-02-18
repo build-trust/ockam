@@ -1,4 +1,3 @@
-use crate::LeaseSignature;
 use ockam_core::lib::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -16,8 +15,6 @@ where
     pub renewable: bool,
     /// Any tags that the issuer applied to this lease
     pub tags: Vec<String>,
-    /// The signature of the issuer lease
-    pub signature: LeaseSignature,
     /// The value thats leased
     #[serde(serialize_with = "T::serialize", deserialize_with = "T::deserialize")]
     pub value: T,
@@ -31,7 +28,6 @@ fn test_serialization() {
         issued: 1613519081,
         renewable: true,
         tags: [String::from("can-write"), String::from("can-read")].to_vec(),
-        signature: LeaseSignature::HmacSha256([0x22u8; 32]),
         value: secret,
     };
 
@@ -45,7 +41,6 @@ fn test_serialization() {
     assert_eq!(lease.id, lease2.id);
     assert_eq!(lease.issued, lease2.issued);
     assert_eq!(lease.tags, lease2.tags);
-    assert_eq!(lease.signature, lease2.signature);
     assert_eq!(lease.value, lease2.value);
 
     let res = serde_bare::to_vec(&lease);
@@ -58,6 +53,5 @@ fn test_serialization() {
     assert_eq!(lease.id, lease2.id);
     assert_eq!(lease.issued, lease2.issued);
     assert_eq!(lease.tags, lease2.tags);
-    assert_eq!(lease.signature, lease2.signature);
     assert_eq!(lease.value, lease2.value);
 }
