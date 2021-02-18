@@ -24,7 +24,7 @@ mod secret_vault;
 mod signer;
 mod symmetric_vault;
 mod types;
-mod verifier_vault;
+mod verifier;
 
 pub use asymmetric_vault::*;
 pub use hasher::*;
@@ -35,4 +35,4 @@ pub use secret_vault::*;
 pub use signer::*;
 pub use symmetric_vault::*;
 pub use types::*;
-pub use verifier_vault::*;
+pub use verifier::*;
