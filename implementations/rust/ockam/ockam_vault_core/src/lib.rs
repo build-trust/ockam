@@ -16,7 +16,7 @@
 )]
 
 mod asymmetric_vault;
-mod hash_vault;
+mod hasher;
 mod key_id_vault;
 mod macros;
 mod secret;
@@ -27,7 +27,7 @@ mod types;
 mod verifier_vault;
 
 pub use asymmetric_vault::*;
-pub use hash_vault::*;
+pub use hasher::*;
 pub use key_id_vault::*;
 pub use macros::*;
 pub use secret::*;
