@@ -2,12 +2,12 @@ use crate::software_vault::SoftwareVault;
 use crate::VaultError;
 use arrayref::array_ref;
 use ockam_vault_core::{
-    HashVault, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
+    Hasher, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
     AES256_SECRET_LENGTH,
 };
 use sha2::{Digest, Sha256};
 
-impl HashVault for SoftwareVault {
+impl Hasher for SoftwareVault {
     fn sha256(&self, data: &[u8]) -> ockam_core::Result<[u8; 32]> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
@@ -81,9 +81,7 @@ impl HashVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
-    use ockam_vault_core::{
-        HashVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
-    };
+    use ockam_vault_core::{Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 
     #[test]
     fn sha256() {

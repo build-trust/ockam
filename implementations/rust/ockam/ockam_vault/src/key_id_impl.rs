@@ -1,6 +1,6 @@
 use crate::software_vault::SoftwareVault;
 use crate::VaultError;
-use ockam_vault_core::{HashVault, KeyId, KeyIdVault, PublicKey, Secret};
+use ockam_vault_core::{Hasher, KeyId, KeyIdVault, PublicKey, Secret};
 
 impl KeyIdVault for SoftwareVault {
     fn get_secret_by_key_id(&self, key_id: &str) -> ockam_core::Result<Secret> {
