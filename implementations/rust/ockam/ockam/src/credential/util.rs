@@ -40,11 +40,11 @@ where
             let _l = if let Some(l) = s.size_hint() { l } else { 0 };
             let mut buf = Vec::new();
             while let Some(a) = s.next_element()? {
-                #[cfg(all(feature = "no_std", not(feature = "alloc")))]
+                #[cfg(all(feature = "no_std", not(feature = "std")))]
                 {
                     buf.push(a).map_err(|_| DError::invalid_length(_l, &self))?;
                 }
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     buf.push(a);
                 }

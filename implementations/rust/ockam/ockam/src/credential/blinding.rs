@@ -1,4 +1,4 @@
-use crate::CredentialSchema;
+use super::CredentialSchema;
 use bbs::prelude::*;
 
 /// The information needed to convert a BlindCredential to a Credential

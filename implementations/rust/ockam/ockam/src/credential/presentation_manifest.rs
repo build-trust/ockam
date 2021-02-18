@@ -1,4 +1,4 @@
-use crate::CredentialSchema;
+use super::CredentialSchema;
 use ockam_core::lib::*;
 
 /// A list of the accepted schemas, public keys, and required to be revealed

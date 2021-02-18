@@ -1,5 +1,4 @@
-use crate::error::CredentialError;
-use crate::*;
+use super::*;
 use bbs::prelude::{
     DeterministicPublicKey, Issuer as BbsIssuer, KeyGenOption, ProofNonce, RandomElem, SecretKey,
 };

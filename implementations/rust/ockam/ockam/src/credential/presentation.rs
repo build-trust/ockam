@@ -1,4 +1,4 @@
-use crate::CredentialAttribute;
+use super::CredentialAttribute;
 use bbs::prelude::*;
 use ockam_core::lib::*;
 
