@@ -1,24 +1,3 @@
-
-# Build Containers
-
-```
-docker build -t ockam/builder -f tools/docker/elixir/builder/Dockerfile .
-```
-
-```
-docker build -t ockam/ockam_hub/build -f tools/docker/elixir/ockam_hub/Dockerfile.build .
-```
-
-```
-docker build -t ockam/ockam_hub -f tools/docker/elixir/ockam_hub/Dockerfile.run .
-```
-
-# Test
-
-```
-docker run -p 4000:4000 --rm -it ockam/ockam_hub:latest
-```
-
 # Publish
 
 ```
