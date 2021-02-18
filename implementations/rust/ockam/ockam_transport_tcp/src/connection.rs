@@ -1,16 +1,20 @@
 use crate::error::TransportError;
 use crate::transport_traits::Connection;
 use async_trait::async_trait;
-use ockam_router::message::RouterMessage;
+use ockam_core::lib::str::FromStr;
+use ockam_router::message::{RouterAddress, RouterMessage, ROUTER_ADDRESS_TCP};
 use std::net::SocketAddr;
 use std::result::Result;
 use tokio::io;
 use tokio::net::TcpStream;
 
+// todo - revisit these values
 const MAX_MESSAGE_SIZE: usize = 2048;
+const DEFAULT_TCP_ADDRESS: &str = "127.0.0.1:4050";
 
 pub struct TcpConnection {
     remote_address: std::net::SocketAddr,
+    local_address: std::net::SocketAddr,
     _blocking: bool,
     message_buff: Vec<u8>,
     message_length: usize,
@@ -32,6 +36,7 @@ impl TcpConnection {
     pub fn create(remote_address: SocketAddr) -> Box<dyn Connection + Send> {
         Box::new(TcpConnection {
             remote_address,
+            local_address: SocketAddr::from_str(&DEFAULT_TCP_ADDRESS).unwrap(),
             _blocking: true,
             message_buff: vec![],
             message_length: 0,
@@ -42,6 +47,7 @@ impl TcpConnection {
         match stream.peer_addr() {
             Ok(peer) => Ok(Box::new(TcpConnection {
                 remote_address: peer,
+                local_address: SocketAddr::from_str(&DEFAULT_TCP_ADDRESS).unwrap(),
                 _blocking: true,
                 message_buff: vec![],
                 message_length: 0,
@@ -148,6 +154,7 @@ impl Connection for TcpConnection {
             // if not, read additional bytes
             if self.message_buff.len() <= self.message_length as usize {
                 let bytes_received = self.receive(&mut recv_buff).await?;
+                println!("Received: {:?}", recv_buff[0..bytes_received].to_vec());
                 self.message_buff
                     .append(&mut recv_buff[0..bytes_received].to_vec());
             }
@@ -163,7 +170,7 @@ impl Connection for TcpConnection {
             if self.message_length as usize <= self.message_buff.len() {
                 // we have a complete message
                 match serde_bare::from_slice::<RouterMessage>(&self.message_buff) {
-                    Ok(m) => {
+                    Ok(mut m) => {
                         // scoot any remaining bytes to the beginning of the buffer
                         for i in 0..self.message_buff.len() - self.message_length {
                             self.message_buff[i] = self.message_buff[i + self.message_length];
@@ -171,6 +178,23 @@ impl Connection for TcpConnection {
                         self.message_buff
                             .truncate(self.message_buff.len() - self.message_length);
                         self.message_length = 0;
+
+                        // first address in onward route should be ours, remove it
+                        let addr = m.onward_route.addrs.remove(0);
+                        let addr = serde_bare::from_slice::<SocketAddr>(&addr.address).unwrap();
+
+                        if !m.onward_route.addrs.is_empty() {
+                            if m.onward_route.addrs[0].address_type == ROUTER_ADDRESS_TCP {
+                                let router_addr =
+                                    serde_bare::to_vec::<SocketAddr>(&self.local_address).unwrap();
+                                m.return_route.addrs.push(RouterAddress {
+                                    address_type: ROUTER_ADDRESS_TCP,
+                                    address: router_addr,
+                                });
+                                self.send_message(m).await?;
+                                continue;
+                            }
+                        }
                         return Ok(m);
                     }
                     Err(_) => {
@@ -178,6 +202,22 @@ impl Connection for TcpConnection {
                     }
                 }
             }
+        }
+    }
+
+    fn get_local_address(&self) -> RouterAddress {
+        let ra = serde_bare::to_vec::<SocketAddr>(&self.local_address).unwrap();
+        RouterAddress {
+            address_type: ROUTER_ADDRESS_TCP,
+            address: ra,
+        }
+    }
+
+    fn get_remote_address(&self) -> RouterAddress {
+        let ra = serde_bare::to_vec::<SocketAddr>(&self.remote_address).unwrap();
+        RouterAddress {
+            address_type: ROUTER_ADDRESS_TCP,
+            address: ra,
         }
     }
 }
@@ -306,9 +346,9 @@ mod test {
                 assert_eq!(
                     m,
                     RouterMessage {
-                        version: 0,
+                        version: 1,
                         onward_route: Route {
-                            addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
+                            addrs: vec![router_local_addr.clone()],
                         },
                         return_route: Route {
                             addrs: vec![router_sock_addr, router_local_addr],
@@ -341,7 +381,7 @@ mod test {
         };
 
         let m = RouterMessage {
-            version: 0,
+            version: 1,
             onward_route: Route {
                 addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
             },
@@ -405,9 +445,9 @@ mod test {
                 assert_eq!(
                     m,
                     RouterMessage {
-                        version: 0,
+                        version: 1,
                         onward_route: Route {
-                            addrs: vec![router_sock_addr.clone(), router_local_addr.clone()]
+                            addrs: vec![router_local_addr.clone()]
                         },
                         return_route: Route {
                             addrs: vec![router_sock_addr, router_local_addr]
@@ -423,7 +463,7 @@ mod test {
     }
 
     async fn big_message_sender(a: String) {
-        println!("sender addres: {}", a);
+        println!("sender address: {}", a);
         let mut connection = TcpConnection::create(std::net::SocketAddr::from_str(&a).unwrap());
         let r = connection.connect().await;
         assert!(!r.is_err());
@@ -440,7 +480,7 @@ mod test {
         };
 
         let m = RouterMessage {
-            version: 0,
+            version: 1,
             onward_route: Route {
                 addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
             },
@@ -492,7 +532,7 @@ mod test {
         };
 
         let m1 = RouterMessage {
-            version: 0,
+            version: 1,
             onward_route: Route {
                 addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
             },
@@ -502,7 +542,7 @@ mod test {
             payload: vec![0xfu8; 32],
         };
         let m2 = RouterMessage {
-            version: 0,
+            version: 1,
             onward_route: Route {
                 addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
             },
@@ -523,13 +563,15 @@ mod test {
         assert!(connection.is_ok());
         let mut connection = connection.unwrap();
 
-        let messages = get_messages();
+        let mut messages = get_messages();
 
         // expect 2 messages, each with 32-byte payload
-        for msg in messages.iter() {
+        for mut msg in messages.iter() {
+            let mut msg = msg.clone();
+            msg.onward_route.addrs.remove(0);
             match connection.receive_message().await {
                 Ok(m) => {
-                    assert_eq!(&m, msg);
+                    assert_eq!(m, msg);
                 }
                 Err(e) => {
                     panic!(format!("{:?}", e));
