@@ -20,14 +20,14 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Error, ItemFn};
+use syn::{parse_macro_input, Error, Ident, ItemFn};
 
 /// Marks an async function to be run in an ockam node.
 #[proc_macro_attribute]
 pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
     // Parse the item that #[ockam::node] is defined on.
     // Expect that this item is a function and fail if it isn't a function
-    let input_function = parse_macro_input!(item as ItemFn);
+    let mut input_function = parse_macro_input!(item as ItemFn);
 
     // Fail if the function is not declared async
     if input_function.sig.asyncness.is_none() {
@@ -43,23 +43,24 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         return Error::new_spanned(token, message).to_compile_error().into();
     }
 
-    let input_function_attrs = &input_function.attrs;
-    let input_function_ident = &input_function.sig.ident;
-    let input_function_block = &input_function.block;
-
     // Transform the input_function to the output_function:
-    // - Remove async
+    // - Rename the user function
     // - Keep the same attributes, ident, inputs and output
-    // - Put the body block of the input_function inside an async block
+    // - Generate a new main function with executor initialization
+    // - Call the renamed user function via async/ await
+
+    let output_fn_ident = Ident::new("trampoline", input_function.sig.ident.span());
+    input_function.sig.ident = output_fn_ident.clone();
 
     let output_function = quote! {
-        #(#input_function_attrs)*
-        fn #input_function_ident() {
+        #[inline(always)]
+        #input_function
+
+        fn main() -> ockam::Result<()> {
             let (context, mut executor) = ockam::start_node();
-            executor.execute(async move { #input_function_block }).unwrap()
+            executor.execute(async move { #output_fn_ident(context).await })
         }
     };
-
     // Create a token stream of the transformed output_function and return it.
     TokenStream::from(output_function)
 }
