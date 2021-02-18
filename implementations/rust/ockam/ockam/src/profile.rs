@@ -8,17 +8,9 @@ mod identifiers;
 pub use identifiers::*;
 mod key_attributes;
 pub use key_attributes::*;
-mod profile_change_proof;
-pub use profile_change_proof::*;
-mod profile_change_event;
-pub use profile_change_event::*;
-mod profile_change;
-pub use profile_change::*;
-mod profile_change_type;
-use crate::profile::profile_change_history::ProfileChangeHistory;
-pub use profile_change_type::*;
-
-pub mod profile_change_history;
+mod change;
+use crate::history::ProfileChangeHistory;
+pub use change::*;
 
 pub trait ProfileVault: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 

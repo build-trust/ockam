@@ -1,5 +1,14 @@
-use crate::{ProfileChangeType, ProfileEventAttributes};
+use crate::ProfileEventAttributes;
 use serde::{Deserialize, Serialize};
+
+mod proof;
+pub use proof::*;
+mod event;
+pub use event::*;
+mod ctype;
+pub use ctype::*;
+
+pub mod history;
 
 /// Pre-defined keys in [`ProfileEventAttributes`] map
 #[non_exhaustive]
