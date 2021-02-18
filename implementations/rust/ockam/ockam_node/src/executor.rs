@@ -66,8 +66,10 @@ impl Executor {
     {
         let rt = Arc::clone(&self.rt);
         let _join = rt.spawn(future);
-        rt.block_on(self.handle_incoming());
 
+        // We may want to let handle_incoming return results to the
+        // user about critical failures that occured running the node
+        rt.block_on(self.handle_incoming());
         Ok(())
     }
 
