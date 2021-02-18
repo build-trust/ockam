@@ -1,5 +1,4 @@
-use crate::error::CredentialError;
-use crate::*;
+use super::*;
 use bbs::prelude::*;
 use digest::{generic_array::GenericArray, Digest, FixedOutput};
 use ockam_core::lib::*;

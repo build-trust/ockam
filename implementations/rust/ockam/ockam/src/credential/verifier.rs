@@ -1,4 +1,4 @@
-use crate::{error::*, CredentialPresentation, PresentationManifest};
+use crate::*;
 use bbs::prelude::{DeterministicPublicKey, HashElem, PoKOfSignatureProofStatus, ProofChallenge};
 use digest::{generic_array::GenericArray, Digest, FixedOutput};
 use ff::Field;
@@ -23,12 +23,10 @@ impl Verifier {
 
     /// Verify a proof of possession
     pub fn verify_proof_of_possession(issuer_vk: [u8; 96], proof: [u8; 48]) -> bool {
-        let p = <G1 as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
-            &issuer_vk,
-            crate::issuer::CSUITE_POP,
-        )
-        .into_affine()
-        .prepare();
+        let p =
+            <G1 as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(&issuer_vk, CSUITE_POP)
+                .into_affine()
+                .prepare();
         let g2 = {
             let mut t = G2::one();
             t.negate();
@@ -55,7 +53,7 @@ impl Verifier {
         presentations: &[CredentialPresentation],
         presentation_manifests: &[PresentationManifest],
         proof_request_id: [u8; 32],
-    ) -> Result<(), CredentialError> {
+    ) -> ockam_core::lib::Result<(), CredentialError> {
         if presentations.len() != presentation_manifests.len() || presentations.len() == 0 {
             return Err(CredentialError::MismatchedPresentationAndManifests);
         }

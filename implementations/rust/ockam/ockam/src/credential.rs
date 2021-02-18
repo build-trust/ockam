@@ -1,82 +1,72 @@
-//! Attribute based, privacy preserving, anonymous credentials.
-//!
-//! This crate provides the ability to issue and verify attribute based,
-//! privacy preserving, anonymous credentials.
-//!
-//! The issuer of a credential signs a collection of statements that attest to
-//! attributes of the subject of that credential. The subject (or a holder on
-//! their behalf) can then selectively disclose these signed statements to a
-//! verifier by presenting a cryptographic proof of knowledge of the issuer's
-//! signature without revealing the actual signature or any of the other
-//! statements that they didn't wish to disclose to this verifier.
-//!
-//! Applications can decide if a subject is authorized to take an action based
-//! on the attributes of the subject that were proven to be signed by trusted
-//! issuers. Since only limited and necessary information is revealed about
-//! subjects this improves efficiency, security and privacy of applications.
-//!
-//! The main Ockam crate re-exports types defined in this crate.
-#![no_std]
-#![deny(
-    missing_docs,
-    trivial_casts,
-    trivial_numeric_casts,
-    unsafe_code,
-    unused_import_braces,
-    unused_qualifications,
-    warnings
-)]
-
+mod attribute;
+mod attribute_schema;
+mod attribute_type;
 #[cfg(feature = "std")]
-extern crate std;
-
-#[cfg(feature = "std")]
-mod credential;
-mod credential_attribute;
-mod credential_attribute_schema;
-mod credential_attribute_type;
-#[cfg(feature = "std")]
-mod credential_blinding;
-#[cfg(feature = "std")]
-mod credential_presentation;
-#[cfg(feature = "std")]
-mod credential_request;
-mod credential_schema;
+mod blinding;
 mod error;
 #[cfg(feature = "std")]
 mod holder;
 #[cfg(feature = "std")]
 mod issuer;
-#[cfg(feature = "std")]
+mod presentation;
 mod presentation_manifest;
-mod serde;
+mod request;
+mod schema;
+mod util;
 #[cfg(feature = "std")]
 mod verifier;
 
+pub use attribute::*;
+pub use attribute_schema::*;
+pub use attribute_type::*;
 #[cfg(feature = "std")]
-pub use credential::*;
-pub use credential_attribute::CredentialAttribute;
-pub use credential_attribute_schema::CredentialAttributeSchema;
-pub use credential_attribute_type::CredentialAttributeType;
-#[cfg(feature = "std")]
-pub use credential_blinding::CredentialBlinding;
-#[cfg(feature = "std")]
-pub use credential_presentation::CredentialPresentation;
-#[cfg(feature = "std")]
-pub use credential_request::CredentialRequest;
-pub use credential_schema::CredentialSchema;
+pub use blinding::*;
+pub use error::*;
 #[cfg(feature = "std")]
 pub use holder::*;
 #[cfg(feature = "std")]
-pub use issuer::Issuer;
+pub use issuer::*;
+pub use presentation::*;
+pub use presentation_manifest::*;
+pub use request::*;
+pub use schema::*;
+use util::*;
 #[cfg(feature = "std")]
-pub use presentation_manifest::PresentationManifest;
-#[cfg(feature = "std")]
-pub use verifier::Verifier;
+pub use verifier::*;
+
+use serde::{Deserialize, Serialize};
+
+/// A credential offer is how an issuer informs a potential holder that
+/// a credential is available to them
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CredentialOffer {
+    /// The credential offer id is a cryptographic nonce, this must never repeat
+    pub id: [u8; 32],
+    /// The schema for the credential that the issuer is offering to sign
+    pub schema: CredentialSchema,
+}
+
+/// A credential that can be presented
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Credential {
+    /// The signed attributes in the credential
+    pub attributes: Vec<CredentialAttribute>,
+    /// The cryptographic signature
+    pub signature: bbs::prelude::Signature,
+}
+
+/// A blind credential that will be unblinded by the holder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlindCredential {
+    /// The signed attributes in the credential
+    pub attributes: Vec<CredentialAttribute>,
+    /// The cryptographic signature
+    pub signature: bbs::prelude::BlindSignature,
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use super::*;
     use ockam_core::lib::*;
 
     fn create_test_schema() -> CredentialSchema {

@@ -1,4 +1,4 @@
-use crate::CredentialAttributeType;
+use super::CredentialAttributeType;
 use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 
