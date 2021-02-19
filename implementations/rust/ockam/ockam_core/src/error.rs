@@ -1,6 +1,6 @@
 //! Error and Result types
 
-use crate::lib::{fmt::Formatter, Display};
+use crate::lib::{fmt::Formatter, Display, String};
 
 /// The type of errors returned by Ockam functions.
 ///
@@ -25,7 +25,7 @@ pub struct Error {
     code: u32,
 
     #[cfg(feature = "std")]
-    domain: &'static str,
+    domain: String,
 }
 
 /// The type returned by Ockam functions.
@@ -40,14 +40,17 @@ impl Error {
 
     /// Creates a new [`Error`].
     #[cfg(feature = "std")]
-    pub fn new(code: u32, domain: &'static str) -> Self {
-        Self { code, domain }
+    pub fn new<S: Into<String>>(code: u32, domain: S) -> Self {
+        Self {
+            code,
+            domain: domain.into(),
+        }
     }
 
     /// Returns an error's domain.
     #[cfg(feature = "std")]
     #[inline]
-    pub fn domain(&self) -> &'static str {
+    pub fn domain(&self) -> &String {
         &self.domain
     }
 
