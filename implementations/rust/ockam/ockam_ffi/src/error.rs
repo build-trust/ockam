@@ -1,4 +1,5 @@
 use ockam_core::Error;
+use std::ffi::CString;
 use std::os::raw::c_char;
 
 #[repr(C)]
@@ -29,7 +30,19 @@ impl FfiOckamError {
 
 impl From<Error> for FfiOckamError {
     fn from(err: Error) -> Self {
-        Self::new(err.code() as i32, err.domain())
+        // Construct a head-allocated C string representation from the
+        // domain, return a pointer to its location, and then
+        // std::mem::forget, which will cause rustc _not_ to run drop
+        // code when the function ends.
+        let boxed = Box::new(CString::new(err.domain().as_bytes()).unwrap());
+        let domain = boxed.as_ptr();
+        std::mem::forget(boxed);
+
+        // Past this point C is responsible for freeing up its memory!
+        Self {
+            code: err.code() as i32,
+            domain,
+        }
     }
 }
 
