@@ -16,8 +16,8 @@ fn main() {
     let (app, mut exe) = ockam::start_node();
 
     exe.execute(async move {
-        app.start_worker("io.ockam.nothing", Nothing).unwrap();
-        app.stop().unwrap();
+        app.start_worker("io.ockam.nothing", Nothing).await.unwrap();
+        app.stop().await.unwrap();
     })
     .unwrap();
 }

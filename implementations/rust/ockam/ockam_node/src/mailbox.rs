@@ -1,10 +1,6 @@
-use crate::{block_future, Context};
+use crate::Context;
 use ockam_core::{Encoded, Message};
-use std::{
-    fmt::{self, Debug, Display, Formatter},
-    sync::Arc,
-};
-use tokio::runtime::Runtime;
+use std::fmt::{self, Debug, Display, Formatter};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 /// A mailbox for encoded messages
@@ -45,20 +41,19 @@ impl Mailbox {
 /// re-queues it into the mailbox.
 pub struct Cancel<'ctx, M: Message> {
     inner: M,
-    rt: Arc<Runtime>,
     ctx: &'ctx Context,
 }
 
 impl<'ctx, M: Message> Cancel<'ctx, M> {
-    pub(crate) fn new(inner: M, rt: Arc<Runtime>, ctx: &'ctx Context) -> Self {
-        Self { inner, rt, ctx }
+    pub(crate) fn new(inner: M, ctx: &'ctx Context) -> Self {
+        Self { inner, ctx }
     }
 
     /// Cancel this message
-    pub fn cancel(self) {
+    pub async fn cancel(self) {
         let ctx = self.ctx;
         let enc = self.inner.encode().unwrap();
-        block_future(&self.rt, async move { ctx.mailbox.requeue(enc).await });
+        ctx.mailbox.requeue(enc).await;
     }
 }
 

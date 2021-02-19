@@ -55,7 +55,10 @@ where
                 Err(_) => continue,
             };
 
-            self.worker.handle_message(&mut self.ctx, msg).unwrap();
+            self.worker
+                .handle_message(&mut self.ctx, msg)
+                .await
+                .unwrap();
         }
 
         self.worker.shutdown(&mut self.ctx).unwrap();
