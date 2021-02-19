@@ -14,5 +14,5 @@ ockam_router = {path = "../../ockam/ockam_router", version = "*"}
 ockam_transport_tcp = {path = "../../ockam/ockam_transport_tcp", version = "*"}
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}
-async-trait = "0.1"
+async-trait =  { version = "0.1.42" }
 tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros","time"]}

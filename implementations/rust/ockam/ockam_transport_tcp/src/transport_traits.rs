@@ -4,7 +4,7 @@ use ockam_router::message::{RouterAddress, RouterMessage};
 
 /// The `Connection` trait represents transport connections.
 #[async_trait]
-pub trait Connection {
+pub trait Connection: Send + 'static {
     /// Establishes the transport connection. For connections-oriented
     /// transports suchs as TCP, blocks until a connection with the remote
     /// is established. For connectionless transports such as UDP, returns immediately.
@@ -37,6 +37,6 @@ pub trait Connection {
 
 /// The `Listener` trait represents transport connection listeners.
 #[async_trait]
-pub trait Listener {
+pub trait Listener: Send + 'static {
     async fn accept(&mut self) -> Result<Box<dyn Connection + Send>, TransportError>;
 }

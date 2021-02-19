@@ -7,6 +7,4 @@ pub struct Channel {
     cipher_address: Vec<u8>,
 }
 
-impl Channel {
-    pub fn new()
-}
+impl Channel {}
