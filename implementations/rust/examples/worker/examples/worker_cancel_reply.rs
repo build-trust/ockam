@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use ockam::{Context, Result, Worker};
 use serde::{Deserialize, Serialize};
 
@@ -10,21 +11,22 @@ enum Message {
 /// This worker requests more data and is very picky about what data it accepts.
 struct Picky;
 
+#[async_trait]
 impl Worker for Picky {
     type Message = Message;
     type Context = Context;
 
-    fn handle_message(&mut self, ctx: &mut Context, msg: Message) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Message) -> Result<()> {
         match msg {
             Message::Good => {
                 println!("[PICKY]: I got a good message!  I want another one");
-                ctx.send_message("io.ockam.echo", Message::Good).unwrap();
+                ctx.send_message("io.ockam.echo", Message::Good).await?;
 
                 loop {
-                    let msg = ctx.receive::<Message>().unwrap();
+                    let msg = ctx.receive::<Message>().await.unwrap();
                     if msg == Message::Bad {
                         println!("[PICKY]: Ignoring bad message");
-                        msg.cancel();
+                        msg.cancel().await;
                     } else {
                         println!("[PICKY]: Yay, another good message!");
                         break;
@@ -33,7 +35,7 @@ impl Worker for Picky {
             }
             Message::Bad => {
                 println!("[PICKY]: Oh, a bad message...");
-                ctx.stop().unwrap();
+                ctx.stop().await?;
             }
         }
 
@@ -43,26 +45,25 @@ impl Worker for Picky {
 
 struct Echo;
 
+#[async_trait]
 impl Worker for Echo {
     type Message = Message;
     type Context = Context;
 
-    fn handle_message(&mut self, ctx: &mut Context, _: Message) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, _: Message) -> Result<()> {
         println!("[ECHO]: Received message: sending one Bad, then one Good");
-        ctx.send_message("io.ockam.picky", Message::Bad).unwrap();
-        ctx.send_message("io.ockam.picky", Message::Good).unwrap();
+        ctx.send_message("io.ockam.picky", Message::Bad).await?;
+        ctx.send_message("io.ockam.picky", Message::Good).await?;
         Ok(())
     }
 }
 
-fn main() {
-    let (app, mut exe) = ockam::start_node();
+#[ockam::node]
+async fn main(app: Context) -> Result<()> {
+    app.start_worker("io.ockam.picky", Picky).await?;
+    app.start_worker("io.ockam.echo", Echo).await?;
 
-    exe.execute(async move {
-        app.start_worker("io.ockam.picky", Picky).unwrap();
-        app.start_worker("io.ockam.echo", Echo).unwrap();
+    app.send_message("io.ockam.picky", Message::Good).await?;
 
-        app.send_message("io.ockam.picky", Message::Good).unwrap();
-    })
-    .unwrap();
+    Ok(())
 }

@@ -10,23 +10,28 @@ struct RingWorker {
     next: Option<Address>,
 }
 
+#[async_trait::async_trait]
 impl Worker for RingWorker {
     type Context = Context;
     type Message = RingMessage;
 
-    fn handle_message(&mut self, context: &mut Self::Context, msg: Self::Message) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        context: &mut Self::Context,
+        msg: Self::Message,
+    ) -> Result<()> {
         self.ctr += 1;
         if self.ctr <= 1024 {
             context
                 .send_message(self.next.as_ref().unwrap().clone(), msg)
-                .unwrap();
+                .await?;
         } else {
             let now = Utc::now();
             println!(
                 "Worker ring took {}ms to execute",
                 (now - msg.0).num_milliseconds()
             );
-            context.stop().unwrap();
+            context.stop().await?;
         }
 
         Ok(())
@@ -52,12 +57,12 @@ async fn main(ctx: Context) {
     }
 
     // Start all the workers
-    workers.into_iter().enumerate().for_each(|(idx, worker)| {
+    for (idx, worker) in workers.into_iter().enumerate() {
         let addr: Address = format!("io.ockam.ring{}", idx).into();
-        ctx.start_worker(addr, worker).unwrap();
-    });
+        ctx.start_worker(addr, worker).await.unwrap();
+    }
 
     // Create the first message in the system
     let msg = RingMessage(Utc::now());
-    ctx.send_message("io.ockam.ring0", msg).unwrap();
+    ctx.send_message("io.ockam.ring0", msg).await.unwrap();
 }

@@ -2,5 +2,5 @@
 //
 #[ockam::node]
 async fn foo(c: ockam::Context, _x: u64) {
-    c.stop().unwrap();
+    c.stop().await.unwrap();
 }

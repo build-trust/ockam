@@ -3,5 +3,5 @@ use ockam::{self as o};
 
 #[ockam::node]
 async fn foo(c: o::Context) {
-    c.stop().unwrap();
+    c.stop().await.unwrap();
 }

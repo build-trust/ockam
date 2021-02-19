@@ -1,4 +1,4 @@
 #[ockam::node]
 async fn foo(c: ockam::Context) {
-    c.stop().unwrap();
+    c.stop().await.unwrap();
 }
