@@ -1,4 +1,4 @@
-use crate::{block_future, error::Error, relay, Cancel, Mailbox, NodeMessage, NodeReply};
+use crate::{error::Error, relay, Cancel, Mailbox, NodeMessage, NodeReply};
 use ockam_core::{Address, Message, Result, Worker};
 use std::sync::Arc;
 use tokio::{
@@ -33,81 +33,70 @@ impl Context {
     }
 
     /// Start a new worker handle at [`Address`](ockam_core::Address)
-    pub fn start_worker<NM, NW, S>(&self, address: S, worker: NW) -> Result<()>
+    pub async fn start_worker<NM, NW, S>(&self, address: S, worker: NW) -> Result<()>
     where
         S: Into<Address>,
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        let tx = self.sender.clone();
-        let rt = self.rt.clone();
         let address = address.into();
 
-        // Wait for a worker to have started to avoid data races when
-        // sending messages to it in subsequent api calls
-        block_future(&self.rt, async move {
-            // Build the mailbox first
-            let (mb_tx, mb_rx) = channel(32);
-            let mb = Mailbox::new(mb_rx, mb_tx.clone());
+        // Build the mailbox first
+        let (mb_tx, mb_rx) = channel(32);
+        let mb = Mailbox::new(mb_rx, mb_tx.clone());
 
-            // Pass it to the context
-            let ctx = Context::new(rt.clone(), tx.clone(), address.clone(), mb);
+        // Pass it to the context
+        let ctx = Context::new(self.rt.clone(), self.sender.clone(), address.clone(), mb);
 
-            // Then initialise the worker message relay
-            let sender = relay::build::<NW, NM>(rt.as_ref(), worker, ctx);
+        // Then initialise the worker message relay
+        let sender = relay::build::<NW, NM>(self.rt.as_ref(), worker, ctx);
 
-            let msg = NodeMessage::start_worker(address, sender);
-            let _result: Result<()> = match tx.send(msg).await {
-                Ok(()) => Ok(()),
-                Err(_e) => Err(Error::FailedStartWorker.into()),
-            };
-        });
+        let msg = NodeMessage::start_worker(address, sender);
+        let _result: Result<()> = match self.sender.send(msg).await {
+            Ok(()) => Ok(()),
+            Err(_e) => Err(Error::FailedStartWorker.into()),
+        };
 
         Ok(())
     }
 
     /// Signal to the local application runner to shut down
-    pub fn stop(&self) -> Result<()> {
+    pub async fn stop(&self) -> Result<()> {
         let tx = self.sender.clone();
-        tokio::spawn(async move {
-            println!("App: shutting down all workers");
-            let _result: Result<()> = match tx.send(NodeMessage::StopNode).await {
-                Ok(()) => Ok(()),
-                Err(_e) => Err(Error::FailedStopNode.into()),
-            };
-        });
+        println!("App: shutting down all workers");
+        let _result: Result<()> = match tx.send(NodeMessage::StopNode).await {
+            Ok(()) => Ok(()),
+            Err(_e) => Err(Error::FailedStopNode.into()),
+        };
 
         Ok(())
     }
 
     /// Send a message to a particular worker
-    pub fn send_message<S, M>(&self, address: S, msg: M) -> Result<()>
+    pub async fn send_message<S, M>(&self, address: S, msg: M) -> Result<()>
     where
         S: Into<Address>,
         M: Message + Send + 'static,
     {
         let address = address.into();
-        let tx = self.sender.clone();
-        block_future(&self.rt, async move {
-            let (reply_tx, mut reply_rx) = channel(1);
-            let req = NodeMessage::SenderReq(address, reply_tx);
+        let (reply_tx, mut reply_rx) = channel(1);
+        let req = NodeMessage::SenderReq(address, reply_tx);
 
-            // FIXME/ DESIGN: error communication concept
-            let _result: Result<()> = match tx.send(req).await {
-                Ok(()) => {
-                    if let Some(NodeReply::Sender(_, s)) = reply_rx.recv().await {
-                        let msg = msg.encode().unwrap();
-                        match s.send(msg).await {
-                            Ok(()) => Ok(()),
-                            Err(_e) => Err(Error::FailedSendMessage.into()),
-                        }
-                    } else {
-                        Err(Error::FailedSendMessage.into())
+        // FIXME/ DESIGN: error communication concept
+        let _result: Result<()> = match self.sender.send(req).await {
+            Ok(()) => {
+                if let Some(NodeReply::Sender(_, s)) = reply_rx.recv().await {
+                    let msg = msg.encode().unwrap();
+                    match s.send(msg).await {
+                        Ok(()) => Ok(()),
+                        Err(_e) => Err(Error::FailedSendMessage.into()),
                     }
+                } else {
+                    Err(Error::FailedSendMessage.into())
                 }
-                Err(_e) => Err(Error::FailedSendMessage.into()),
-            };
-        });
+            }
+            Err(_e) => Err(Error::FailedSendMessage.into()),
+        };
 
         Ok(())
     }
@@ -116,32 +105,27 @@ impl Context {
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
-    pub fn receive<'ctx, M: Message>(&'ctx mut self) -> Option<Cancel<'ctx, M>> {
-        let mb = &mut self.mailbox;
-
-        block_future(&self.rt, async {
-            mb.next().await.and_then(|enc| M::decode(&enc).ok())
-        })
-        .map(move |msg| Cancel::new(msg, self.rt.clone(), self))
+    pub async fn receive<'ctx, M: Message>(&'ctx mut self) -> Option<Cancel<'ctx, M>> {
+        self.mailbox
+            .next()
+            .await
+            .and_then(|enc| M::decode(&enc).ok())
+            .map(move |msg| Cancel::new(msg, self))
     }
 
     /// Return a list of all available worker addresses on a node
-    pub fn list_workers(&self) -> Result<Vec<Address>> {
-        let tx = self.sender.clone();
+    pub async fn list_workers(&self) -> Result<Vec<Address>> {
+        let (msg, mut reply_rx) = NodeMessage::list_workers();
 
-        block_future(&self.rt, async move {
-            let (msg, mut reply_rx) = NodeMessage::list_workers();
-
-            match tx.send(msg).await {
-                Ok(()) => {
-                    if let Some(NodeReply::Workers(list)) = reply_rx.recv().await {
-                        Ok(list)
-                    } else {
-                        Ok(vec![])
-                    }
+        match self.sender.send(msg).await {
+            Ok(()) => {
+                if let Some(NodeReply::Workers(list)) = reply_rx.recv().await {
+                    Ok(list)
+                } else {
+                    Ok(vec![])
                 }
-                Err(_e) => Err(Error::FailedListWorker.into()),
             }
-        })
+            Err(_e) => Err(Error::FailedListWorker.into()),
+        }
     }
 }
