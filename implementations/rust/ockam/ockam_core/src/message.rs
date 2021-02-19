@@ -1,5 +1,5 @@
-use crate::lib::Vec;
-use crate::Result;
+use crate::{lib::Vec, Address, Context, Result};
+use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 
 // TODO: swap this for a non-heaped data structure
@@ -25,4 +25,11 @@ impl From<bincode::Error> for crate::Error {
     fn from(_: bincode::Error) -> Self {
         Self::new(1, "bincode")
     }
+}
+
+#[async_trait]
+pub trait SupervisorMessage {
+    fn prepare(&mut self, _ctx: &mut impl Context, _supervisor_address: Address);
+
+    fn propagate(&self);
 }

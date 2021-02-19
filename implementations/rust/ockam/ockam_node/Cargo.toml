@@ -13,3 +13,4 @@ async-trait = "0.1.42"
 hashbrown = "0.9.1"
 ockam_core = {path = "../ockam_core", version = "0.3.0"}
 tokio = {version = "1.1.0", features = ["full"]}
+futures = "0.3"
