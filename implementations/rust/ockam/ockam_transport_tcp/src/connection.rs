@@ -128,7 +128,17 @@ impl Connection for TcpConnection {
         }
     }
 
-    async fn send_message(&mut self, msg: RouterMessage) -> Result<usize, TransportError> {
+    async fn send_message(&mut self, mut msg: RouterMessage) -> Result<usize, TransportError> {
+        let remote_addr = serde_bare::to_vec::<SocketAddr>(&self.remote_address).unwrap();
+        let remote_addr = RouterAddress {
+            address_type: ROUTER_ADDRESS_TCP,
+            address: remote_addr,
+        };
+        if msg.onward_route.addrs[0] != remote_addr {
+            msg.onward_route.addrs.insert(0, remote_addr);
+        }
+        println!("Onward route: {:?}", msg.onward_route);
+        println!("Return route: {:?}", msg.return_route);
         return match serde_bare::to_vec::<RouterMessage>(&msg) {
             Ok(mut msg_vec) => {
                 if msg_vec.len() > MAX_MESSAGE_SIZE - 2 {

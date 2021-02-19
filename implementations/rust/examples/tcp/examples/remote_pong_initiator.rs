@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Spawn two workers that play some ping-pong
 
 use ockam::{Address, Context, Result, Worker};
@@ -38,7 +39,9 @@ fn main() {
                     address: "receiver".into(),
                 }],
             }),
-        );
+        )
+        .await
+        .unwrap();
         println!("serve sent");
     })
     .unwrap();
