@@ -1,4 +1,5 @@
 use ockam_core::Error;
+use std::ffi::CString;
 use std::os::raw::c_char;
 
 #[repr(C)]
@@ -11,10 +12,11 @@ pub struct FfiOckamError {
 
 impl FfiOckamError {
     /// Create a new error.
-    pub fn new(code: i32, domain: &'static str) -> Self {
+    pub fn new(code: i32, domain: &str) -> Self {
         Self {
             code,
-            domain: domain.as_ptr() as *const c_char,
+            // TODO: Should this graciously fail?
+            domain: CString::new(domain.as_bytes()).unwrap().into_raw(),
         }
     }
 
@@ -29,7 +31,14 @@ impl FfiOckamError {
 
 impl From<Error> for FfiOckamError {
     fn from(err: Error) -> Self {
-        Self::new(err.code() as i32, err.domain())
+        // TODO: Should this graciously fail?
+        let heaped = CString::new(err.domain().as_bytes()).unwrap();
+
+        // Past this point C is responsible for freeing up its memory!
+        Self {
+            code: err.code() as i32,
+            domain: heaped.into_raw(),
+        }
     }
 }
 
