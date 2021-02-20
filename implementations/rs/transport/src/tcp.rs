@@ -1,4 +1,3 @@
-use futures::io::Error;
 use ockam::message::MAX_MESSAGE_SIZE;
 #[allow(unused)]
 use ockam::message::*;
@@ -133,7 +132,7 @@ impl TcpManager {
                         } else {
                             println!("can't find connection {}", addr);
                             println!("{} connections in hashmap", self.connections.len());
-                            for (c, t) in &self.connections {
+                            for (c, _t) in &self.connections {
                                 println!("{}", c);
                             }
                         }
@@ -193,7 +192,6 @@ impl TcpTransport {
         stream: TcpStream,
         router_tx: std::sync::mpsc::Sender<OckamCommand>,
     ) -> Result<TcpTransport, String> {
-        let local_address = Address::TcpAddress(stream.local_addr().unwrap());
         Ok(TcpTransport {
             stream,
             router_tx,
@@ -225,7 +223,7 @@ impl TcpTransport {
     }
 
     fn set_msg_len(&mut self, varint: &mut Vec<u8>) -> Result<(), String> {
-        if let Ok((l, b)) = u16::decode(varint) {
+        if let Ok((l, _)) = u16::decode(varint) {
             self.message_length = l as usize;
             varint.remove(0);
             if varint_size(l) == 2 {
@@ -266,7 +264,7 @@ impl TcpTransport {
         self.stream.set_nonblocking(true);
         let mut tcp_buff: [u8; MAX_MESSAGE_SIZE] = [0u8; MAX_MESSAGE_SIZE];
         match self.stream.read(&mut tcp_buff[0..]) {
-            Ok(mut tcp_len) => {
+            Ok(tcp_len) => {
                 if tcp_len == 0 {
                     return Ok(false);
                 }
@@ -280,7 +278,7 @@ impl TcpTransport {
 
                     // we have a message length and an offset into the message buffer,
                     // try to read enough bytes to fill the message
-                    let mut remaining_msg_bytes = self.message_length - self.offset;
+                    let remaining_msg_bytes = self.message_length - self.offset;
 
                     if tcp_vec.len() < remaining_msg_bytes {
                         // not enough bytes to complete message, copy what there is and return
