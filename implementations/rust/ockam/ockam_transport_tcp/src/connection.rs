@@ -43,7 +43,7 @@ impl TcpConnection {
             stream: None,
         })
     }
-    pub async fn new_from_stream(stream: TcpStream) -> Result<Box<Self>, TransportError> {
+    pub async fn new_from_stream(stream: TcpStream) -> ockam_core::Result<(Box<Self>)> {
         match stream.peer_addr() {
             Ok(peer) => Ok(Box::new(TcpConnection {
                 remote_address: peer,

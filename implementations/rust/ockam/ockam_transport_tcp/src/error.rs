@@ -18,6 +18,11 @@ pub enum TransportError {
     BufferTooSmall,
 }
 
+pub enum ChannelError {
+    None,
+    KeyExchange,
+}
+
 impl TransportError {
     /// Integer code associated with the error domain.
     pub const DOMAIN_CODE: u32 = 15_000;

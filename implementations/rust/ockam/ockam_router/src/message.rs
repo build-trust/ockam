@@ -1,5 +1,8 @@
+use ockam_core::lib::convert::TryInto;
 use serde::{Deserialize, Serialize};
 use serde_bare::Uint;
+use std::convert::TryFrom;
+use std::net::SocketAddr;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[repr(C)]
@@ -14,9 +17,19 @@ pub struct RouterMessage {
 pub const ROUTER_MSG_PING: u8 = 0;
 pub const ROUTER_MSG_PONG: u8 = 1;
 pub const ROUTER_MSG_PAYLOAD: u8 = 2;
+pub const ROUTER_MSG_REQUEST_CHANNEL: u8 = 3;
+pub const ROUTER_MSG_M2: u8 = 4;
+pub const ROUTER_MSG_M3: u8 = 5;
 
 pub const ROUTER_ADDRESS_LOCAL: Uint = serde_bare::Uint(0);
 pub const ROUTER_ADDRESS_TCP: Uint = serde_bare::Uint(1);
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[repr(C)]
+pub enum RoutableAddress {
+    Local(Vec<u8>),
+    Tcp(SocketAddr),
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[repr(C)]
@@ -25,16 +38,52 @@ pub struct RouterAddress {
     pub address: Vec<u8>,
 }
 
+impl From<RoutableAddress> for RouterAddress {
+    fn from(ra: RoutableAddress) -> Self {
+        return match ra {
+            RoutableAddress::Local(v) => RouterAddress {
+                address_type: ROUTER_ADDRESS_LOCAL,
+                address: v.clone(),
+            },
+            RoutableAddress::Tcp(socket) => {
+                let serialized = serde_bare::to_vec::<SocketAddr>(&socket).unwrap();
+                RouterAddress {
+                    address_type: ROUTER_ADDRESS_TCP,
+                    address: serialized,
+                }
+            }
+        };
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct Route {
     pub addrs: Vec<RouterAddress>,
+}
+
+impl RouterMessage {
+    pub fn new() -> Self {
+        RouterMessage {
+            version: 1,
+            onward_route: Route { addrs: vec![] },
+            return_route: Route { addrs: vec![] },
+            payload: vec![],
+        }
+    }
+    pub fn onward_address(&mut self, addr: RoutableAddress) {
+        self.onward_route.addrs.push(addr.into());
+    }
+    pub fn return_address(&mut self, addr: RoutableAddress) {
+        self.return_route.addrs.push(addr.into());
+    }
 }
 
 #[cfg(test)]
 
 mod test {
     use crate::message::{
-        Route, RouterAddress, RouterMessage, ROUTER_ADDRESS_LOCAL, ROUTER_ADDRESS_TCP,
+        RoutableAddress, Route, RouterAddress, RouterMessage, ROUTER_ADDRESS_LOCAL,
+        ROUTER_ADDRESS_TCP,
     };
     use serde_bare::Uint;
     use std::net::SocketAddr;
@@ -175,5 +224,15 @@ mod test {
         assert_eq!(i1, 255);
         assert_eq!(i2, 127);
         assert_eq!(i3, 128);
+    }
+
+    #[test]
+    fn try_to() {
+        let mut m = RouterMessage::new();
+        let ra_local = RoutableAddress::Local(vec![1, 2, 3, 4]);
+        m.onward_address(ra_local);
+        let ra_socket = RoutableAddress::Tcp(SocketAddr::from_str("127.0.0.1:4050").unwrap());
+        m.onward_address(ra_socket);
+        println!("{:?}", m);
     }
 }
