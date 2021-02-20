@@ -1,7 +1,7 @@
 # Publish
 
 ```
-docker push ockam/ockam_hub:latest
+docker push ghcr.io/ockam-network/ockam/hub:latest
 ```
 
 # Deploy

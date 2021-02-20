@@ -23,7 +23,7 @@
           {
             "name": "ockam-hub",
             "properties": {
-              "image": "ockam/hub:latest",
+              "image": "ghcr.io/ockam-network/ockam/hub:latest",
               "resources": {
                 "requests": {
                   "cpu": 1,
