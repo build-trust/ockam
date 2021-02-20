@@ -1,14 +1,11 @@
-#![allow(unused)]
 //! Spawn two workers that play some ping-pong
 
-use ockam::{Address, Context, Result, Worker};
-use ockam_router::message::{Route, RouterAddress, RouterMessage, ROUTER_ADDRESS_LOCAL};
-use ockam_transport_tcp::{Connection, Listener, TcpConnection};
-use serde::{Deserialize, Serialize};
+use ockam::Address;
+use ockam_router::message::{Route, RouterAddress, ROUTER_ADDRESS_LOCAL};
+use ockam_transport_tcp::TcpConnection;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tcp_examples::{Player, PlayerMessage};
-use tokio::net::TcpListener;
 
 fn main() {
     let (ctx, mut exe) = ockam::start_node();
@@ -29,7 +26,7 @@ fn main() {
             counter: 0,
         };
         let address: Address = "initiator".into();
-        ctx.start_worker(address, player);
+        ctx.start_worker(address, player).await.unwrap();
         println!("initiator started");
         ctx.send_message(
             "initiator",

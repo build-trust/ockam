@@ -137,22 +137,17 @@ impl Connection for TcpConnection {
         if msg.onward_route.addrs[0] != remote_addr {
             msg.onward_route.addrs.insert(0, remote_addr);
         }
-        println!("Onward route: {:?}", msg.onward_route);
-        println!("Return route: {:?}", msg.return_route);
         return match serde_bare::to_vec::<RouterMessage>(&msg) {
             Ok(mut msg_vec) => {
                 if msg_vec.len() > MAX_MESSAGE_SIZE - 2 {
-                    return Err(TransportError::IllFormedMessage.into());
+                    return Err(TransportError::IllFormedMessage);
                 }
                 let len = msg_vec.len() as u16;
                 let mut msg_len_vec = serde_bare::to_vec::<u16>(&len).unwrap();
                 msg_len_vec.append(&mut msg_vec);
-                return match self.send(&msg_len_vec).await {
-                    Ok(l) => Ok(l),
-                    Err(e) => Err(e.into()),
-                };
+                return self.send(&msg_len_vec).await;
             }
-            Err(_) => Err(TransportError::IllFormedMessage.into()),
+            Err(_) => Err(TransportError::IllFormedMessage),
         };
     }
 
@@ -164,7 +159,6 @@ impl Connection for TcpConnection {
             // if not, read additional bytes
             if self.message_buff.len() <= self.message_length as usize {
                 let bytes_received = self.receive(&mut recv_buff).await?;
-                println!("Received: {:?}", recv_buff[0..bytes_received].to_vec());
                 self.message_buff
                     .append(&mut recv_buff[0..bytes_received].to_vec());
             }
@@ -179,7 +173,7 @@ impl Connection for TcpConnection {
             // see if we have a complete message
             if self.message_length as usize <= self.message_buff.len() {
                 // we have a complete message
-                match serde_bare::from_slice::<RouterMessage>(&self.message_buff) {
+                return match serde_bare::from_slice::<RouterMessage>(&self.message_buff) {
                     Ok(mut m) => {
                         // scoot any remaining bytes to the beginning of the buffer
                         for i in 0..self.message_buff.len() - self.message_length {
@@ -190,27 +184,24 @@ impl Connection for TcpConnection {
                         self.message_length = 0;
 
                         // first address in onward route should be ours, remove it
-                        let addr = m.onward_route.addrs.remove(0);
-                        let addr = serde_bare::from_slice::<SocketAddr>(&addr.address).unwrap();
+                        m.onward_route.addrs.remove(0);
 
-                        if !m.onward_route.addrs.is_empty() {
-                            if m.onward_route.addrs[0].address_type == ROUTER_ADDRESS_TCP {
-                                let router_addr =
-                                    serde_bare::to_vec::<SocketAddr>(&self.local_address).unwrap();
-                                m.return_route.addrs.push(RouterAddress {
-                                    address_type: ROUTER_ADDRESS_TCP,
-                                    address: router_addr,
-                                });
-                                self.send_message(m).await?;
-                                continue;
-                            }
+                        if !m.onward_route.addrs.is_empty()
+                            && m.onward_route.addrs[0].address_type == ROUTER_ADDRESS_TCP
+                        {
+                            let router_addr =
+                                serde_bare::to_vec::<SocketAddr>(&self.local_address).unwrap();
+                            m.return_route.addrs.push(RouterAddress {
+                                address_type: ROUTER_ADDRESS_TCP,
+                                address: router_addr,
+                            });
+                            self.send_message(m).await?;
+                            continue;
                         }
-                        return Ok(m);
+                        Ok(m)
                     }
-                    Err(_) => {
-                        return Err(TransportError::IllFormedMessage);
-                    }
-                }
+                    Err(_) => Err(TransportError::IllFormedMessage),
+                };
             }
         }
     }
@@ -573,10 +564,10 @@ mod test {
         assert!(connection.is_ok());
         let mut connection = connection.unwrap();
 
-        let mut messages = get_messages();
+        let messages = get_messages();
 
         // expect 2 messages, each with 32-byte payload
-        for mut msg in messages.iter() {
+        for msg in messages.iter() {
             let mut msg = msg.clone();
             msg.onward_route.addrs.remove(0);
             match connection.receive_message().await {
