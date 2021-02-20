@@ -6,16 +6,16 @@ use ockam_core::lib::convert::{TryFrom, TryInto};
 use ockam_core::lib::slice;
 use ockam_vault::SoftwareVault;
 use ockam_vault_core::{
-    AsymmetricVault, HashVault, PublicKey, Secret, SecretAttributes, SecretType, SecretVault,
+    AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretType, SecretVault,
     SymmetricVault,
 };
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 /// FFI Vault trait. See documentation for individual sub-traits for details.
-pub trait FfiVault: SecretVault + HashVault + SymmetricVault + AsymmetricVault + Send {}
+pub trait FfiVault: SecretVault + Hasher + SymmetricVault + AsymmetricVault + Send {}
 
-impl<D> FfiVault for D where D: SecretVault + HashVault + SymmetricVault + AsymmetricVault + Send {}
+impl<D> FfiVault for D where D: SecretVault + Hasher + SymmetricVault + AsymmetricVault + Send {}
 
 lazy_static! {
     pub(crate) static ref DEFAULT_VAULTS: FfiObjectMutexStorage<SoftwareVault> =

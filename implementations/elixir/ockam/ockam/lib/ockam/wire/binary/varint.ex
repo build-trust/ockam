@@ -48,7 +48,9 @@ defmodule Ockam.Wire.Binary.VarInt do
   Returns `{:error, %DecodeError{}}` if it fails.
   """
 
-  @spec decode(binary) :: {encodable, binary} | {:error, DecodeError.t()}
+  @spec decode(binary | list) :: {encodable, binary} | {:error, DecodeError.t()}
+
+  def decode(data) when is_list(data), do: decode(IO.iodata_to_binary(data))
 
   def decode(<<0::1, b1::unsigned-integer-7, rest::binary>>), do: {b1, rest}
 

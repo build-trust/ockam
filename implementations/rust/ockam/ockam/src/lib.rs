@@ -25,5 +25,10 @@ mod contacts;
 pub use contacts::*;
 mod error;
 pub use error::*;
+mod credential;
+mod lease;
+
+pub use credential::*;
+pub use lease::*;
 
 pub use ockam_core::{Address, Encoded, Error, Message, Result, Worker};

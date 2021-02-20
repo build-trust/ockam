@@ -2,9 +2,9 @@ use crate::software_vault::SoftwareVault;
 use crate::xeddsa::XEddsaVerifier;
 use crate::VaultError;
 use arrayref::array_ref;
-use ockam_vault_core::{VerifierVault, CURVE25519_PUBLIC_LENGTH};
+use ockam_vault_core::{Verifier, CURVE25519_PUBLIC_LENGTH};
 
-impl VerifierVault for SoftwareVault {
+impl Verifier for SoftwareVault {
     /// Verify signature with xeddsa algorithm. Only curve25519 is supported.
     fn verify(
         &mut self,

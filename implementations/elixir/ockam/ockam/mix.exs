@@ -45,11 +45,13 @@ defmodule Ockam.MixProject do
 
   defp deps do
     [
+      {:bare, "~> 0.1.1"},
       {:ockam_vault_software, path: "../ockam_vault_software", optional: true},
       {:telemetry, "~> 0.4.2", optional: true},
+      {:ranch, "~> 2.0", optional: true},
       {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
+      {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
     ]
   end
 
@@ -72,6 +74,7 @@ defmodule Ockam.MixProject do
 
   defp aliases do
     [
+      credo: "credo --strict",
       docs: "docs --output _build/docs --formatter html",
       "test.cover": "test --no-start --cover",
       "lint.format": "format --check-formatted",

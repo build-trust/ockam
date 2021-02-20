@@ -7,7 +7,7 @@ defmodule Ockam.Transport.UDP.Listener do
   alias Ockam.Transport.UDPAddress
   alias Ockam.Wire
 
-  @wire_encoder_decoder Ockam.Wire.Binary.V1
+  @wire_encoder_decoder Ockam.Wire.Binary.V2
 
   # udp address type
   @udp 2

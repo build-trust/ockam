@@ -1,6 +1,6 @@
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_vault_core::{
-    AsymmetricVault, HashVault, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
+    AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
     SecretVault, SymmetricVault, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use std::sync::{Arc, Mutex};
@@ -21,9 +21,9 @@ struct KeyPair {
 }
 
 /// Vault with XX required functionality
-pub trait XXVault: SecretVault + HashVault + AsymmetricVault + SymmetricVault + Send {}
+pub trait XXVault: SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send {}
 
-impl<D> XXVault for D where D: SecretVault + HashVault + AsymmetricVault + SymmetricVault + Send {}
+impl<D> XXVault for D where D: SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send {}
 
 /// Represents the XX Handshake
 pub struct SymmetricState {

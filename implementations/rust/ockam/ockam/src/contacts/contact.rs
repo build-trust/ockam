@@ -1,4 +1,4 @@
-use crate::profile_change_history::ProfileChangeHistory;
+use crate::profile::history::ProfileChangeHistory;
 use crate::{EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
 use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};

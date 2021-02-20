@@ -1,8 +1,6 @@
 use crate::{Contact, OckamError};
 use hashbrown::HashMap;
-use ockam_vault_core::{
-    HashVault, KeyIdVault, PublicKey, Secret, SecretVault, SignerVault, VerifierVault,
-};
+use ockam_vault_core::{Hasher, KeyIdVault, PublicKey, Secret, SecretVault, Signer, Verifier};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
@@ -10,24 +8,13 @@ mod identifiers;
 pub use identifiers::*;
 mod key_attributes;
 pub use key_attributes::*;
-mod profile_change_proof;
-pub use profile_change_proof::*;
-mod profile_change_event;
-pub use profile_change_event::*;
-mod profile_change;
-pub use profile_change::*;
-mod profile_change_type;
-use crate::profile::profile_change_history::ProfileChangeHistory;
-pub use profile_change_type::*;
+mod change;
+use crate::history::ProfileChangeHistory;
+pub use change::*;
 
-pub mod profile_change_history;
+pub trait ProfileVault: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 
-pub trait ProfileVault: SecretVault + KeyIdVault + HashVault + SignerVault + VerifierVault {}
-
-impl<D> ProfileVault for D where
-    D: SecretVault + KeyIdVault + HashVault + SignerVault + VerifierVault
-{
-}
+impl<D> ProfileVault for D where D: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 
 pub type ProfileEventAttributes = HashMap<String, String>;
 
