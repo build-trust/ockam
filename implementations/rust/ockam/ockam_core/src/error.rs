@@ -1,7 +1,6 @@
 //! Error and Result types
 
-use crate::lib::{fmt::Formatter, Display, String};
-use serde::{Deserialize, Serialize};
+use crate::lib::{fmt::Formatter, Display};
 
 /// The type of errors returned by Ockam functions.
 ///
@@ -21,12 +20,12 @@ use serde::{Deserialize, Serialize};
 ///
 /// 1. __Error Code__: A `u32` representing the the presise error.
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Error {
     code: u32,
 
     #[cfg(feature = "std")]
-    domain: String,
+    domain: &'static str,
 }
 
 /// The type returned by Ockam functions.
@@ -42,17 +41,14 @@ impl Error {
     /// Creates a new [`Error`].
     #[cfg(feature = "std")]
     pub fn new(code: u32, domain: &'static str) -> Self {
-        Self {
-            code,
-            domain: domain.into(),
-        }
+        Self { code, domain }
     }
 
     /// Returns an error's domain.
     #[cfg(feature = "std")]
     #[inline]
-    pub fn domain(&self) -> &str {
-        self.domain.as_str()
+    pub fn domain(&self) -> &'static str {
+        &self.domain
     }
 
     /// Returns an error's code.

@@ -16,21 +16,12 @@
 //! a type and notifying the companion actor.
 
 use crate::{Context, Mailbox};
-use futures::{
-    future::{select, Either},
-    pin_mut,
-};
-use ockam_core::{Address, Encoded, Error, Message, Worker};
+use ockam_core::{Encoded, Message, Worker};
 use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 pub type RelayMessage = Encoded;
-
-enum Incoming {
-    Msg(RelayMessage),
-    Err(Error),
-}
 
 pub struct Relay<W, M>
 where
@@ -39,7 +30,6 @@ where
 {
     worker: W,
     ctx: Context,
-    sv_address: Option<Address>,
     _phantom: PhantomData<M>,
 }
 
@@ -48,36 +38,22 @@ where
     W: Worker<Context = Context, Message = M>,
     M: Message + Send + 'static,
 {
-    /// Utility function to optionally notify supervisors
-    #[inline]
-    fn sv_notify(&self, e: Error) {
-        if let Some(ref addr) = self.sv_address {
-            self.ctx.send_message(addr.clone(), e).unwrap();
-        }
-    }
-
-    pub fn new(worker: W, ctx: Context, sv_address: Option<Address>) -> Self {
+    pub fn new(worker: W, ctx: Context) -> Self {
         Self {
             worker,
             ctx,
-            sv_address,
             _phantom: PhantomData,
         }
     }
 
-    async fn get_next(&mut self, sv_rx: &mut Receiver<Error>) -> Option<Incoming> {
-        let sv = sv_rx.recv();
-        let mb = self.ctx.mailbox.next();
+    async fn run(mut self) {
+        self.worker.initialize(&mut self.ctx).unwrap();
 
-        pin_mut!(sv);
-        pin_mut!(mb);
-
-        match select(sv, mb).await {
-            Either::Left((Some(err), _)) => Some(Incoming::Err(err)),
-            Either::Right((Some(enc), _)) => Some(Incoming::Msg(enc)),
-            _ => None,
-        }
-    }
+        while let Some(ref enc) = self.ctx.mailbox.next().await {
+            let msg = match M::decode(enc) {
+                Ok(msg) => msg,
+                Err(_) => continue,
+            };
 
             self.worker
                 .handle_message(&mut self.ctx, msg)
@@ -85,68 +61,30 @@ where
                 .unwrap();
         }
 
-        // Accept messages from both the mailbox, and supervisor error
-        // back-channel.  Execute this loop whenever either of them
-        // has a new message, and exit the loop when messages run out
-        while let Some(inc) = self.get_next(&mut sv_rx).await {
-            match inc {
-                Incoming::Msg(enc) => {
-                    let msg = match M::decode(&enc) {
-                        Ok(m) => m,
-                        Err(_) => continue,
-                    };
-
-                    // Notify the supervisor if any errors occured
-                    if let Err(e) = self.worker.handle_message(&mut self.ctx, msg) {
-                        self.sv_notify(e);
-                    }
-                }
-                Incoming::Err(e) => self.worker.handle_failures(&mut self.ctx, e),
-            }
-        }
-
-        if let Err(e) = self.worker.shutdown(&mut self.ctx) {
-            self.sv_notify(e);
-        }
+        self.worker.shutdown(&mut self.ctx).unwrap();
     }
 
     /// Run the inner worker and restart it if errors occurs
-    async fn run_mailbox(
-        mut rx: Receiver<RelayMessage>,
-        mb_tx: Sender<RelayMessage>,
-        sv_tx: Sender<Error>,
-    ) {
-        // Check every message for a supervisor error and handle them
-        // separately.  Other messages can be queued in the mailbox
+    async fn run_mailbox(mut rx: Receiver<RelayMessage>, mb_tx: Sender<RelayMessage>) {
+        // Relay messages into the worker mailbox
         while let Some(enc) = rx.recv().await {
-            if let Ok(err) = Error::decode(&enc) {
-                sv_tx.send(err).await.unwrap();
-            } else {
-                mb_tx.send(enc).await.unwrap();
-            }
+            mb_tx.send(enc).await.unwrap();
         }
     }
 }
 
 /// Build and spawn a new worker relay, returning a send handle to it
-pub(crate) fn build<W, M>(
-    rt: &Runtime,
-    worker: W,
-    ctx: Context,
-    sv_address: Option<Address>,
-) -> Sender<RelayMessage>
+pub(crate) fn build<W, M>(rt: &Runtime, worker: W, ctx: Context) -> Sender<RelayMessage>
 where
     W: Worker<Context = Context, Message = M>,
     M: Message + Send + 'static,
 {
     let (tx, rx) = channel(32);
     let mb_tx = ctx.mailbox.sender();
-    let relay = Relay::<W, M>::new(worker, ctx, sv_address);
+    let relay = Relay::<W, M>::new(worker, ctx);
 
-    let (sv_tx, sv_rx) = channel(32);
-
-    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx, sv_tx));
-    rt.spawn(relay.run(sv_rx));
+    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
+    rt.spawn(relay.run());
     tx
 }
 
@@ -161,9 +99,8 @@ where
     M: Message + Send + 'static,
 {
     let (tx, rx) = channel(32);
-    let (sv_tx, _) = channel(1);
 
     let mb_tx = mailbox.sender();
-    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx, sv_tx));
+    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
     tx
 }
