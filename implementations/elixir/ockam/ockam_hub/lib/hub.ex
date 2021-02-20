@@ -5,6 +5,7 @@ defmodule Ockam.Hub do
 
   use Application
 
+  alias Ockam.Hub.Echoer
   alias Ockam.Transport.TCP
 
   require Logger
@@ -21,6 +22,10 @@ defmodule Ockam.Hub do
     # Add a TCP listener on port 4000
     # TODO: add to supervision tree.
     TCP.create_listener(port: 4000)
+
+    # Create an echo_service worker.
+    # TODO: add to supervision tree.
+    Echoer.create(address: "echo_service")
 
     # Specifications of child processes that will be started and supervised.
     #
