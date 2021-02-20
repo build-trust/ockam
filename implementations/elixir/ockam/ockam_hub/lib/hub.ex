@@ -5,6 +5,8 @@ defmodule Ockam.Hub do
 
   use Application
 
+  alias Ockam.Transport.TCP
+
   require Logger
 
   # Called when the Ockam application is started.
@@ -15,6 +17,10 @@ defmodule Ockam.Hub do
   @doc false
   def start(_type, _args) do
     Logger.info("Starting Ockam Hub.")
+
+    # Add a TCP listener on port 4000
+    # TODO: add to supervision tree.
+    TCP.create_listener(port: 4000)
 
     # Specifications of child processes that will be started and supervised.
     #
