@@ -1,6 +1,7 @@
 use crate::error::TransportError;
 use crate::transport_traits::Connection;
 use async_trait::async_trait;
+use ockam_core::lib::convert::TryInto;
 use ockam_core::lib::str::FromStr;
 use ockam_router::message::{RouterAddress, RouterMessage, ROUTER_ADDRESS_TCP};
 use std::net::SocketAddr;
@@ -143,7 +144,7 @@ impl Connection for TcpConnection {
                     return Err(TransportError::IllFormedMessage);
                 }
                 let len = msg_vec.len() as u16;
-                let mut msg_len_vec = serde_bare::to_vec::<u16>(&len).unwrap();
+                let mut msg_len_vec = len.to_be_bytes().to_vec();
                 msg_len_vec.append(&mut msg_vec);
                 return self.send(&msg_len_vec).await;
             }
@@ -166,11 +167,12 @@ impl Connection for TcpConnection {
             if self.message_length == 0 {
                 self.message_length =
                     serde_bare::from_slice::<u16>(&recv_buff[0..]).unwrap() as usize;
+                let (len, _) = recv_buff.split_at(2);
+                self.message_length = u16::from_be_bytes(len.try_into().unwrap()) as usize;
                 self.message_buff.remove(0);
                 self.message_buff.remove(0);
             }
 
-            // see if we have a complete message
             if self.message_length as usize <= self.message_buff.len() {
                 // we have a complete message
                 return match serde_bare::from_slice::<RouterMessage>(&self.message_buff) {
@@ -421,7 +423,6 @@ mod test {
     }
 
     async fn big_message_listener(a: String) {
-        println!("listener address: {}", a);
         let r = TcpListener::create(std::net::SocketAddr::from_str(&a).unwrap()).await;
         assert!(r.is_ok());
 
@@ -464,7 +465,6 @@ mod test {
     }
 
     async fn big_message_sender(a: String) {
-        println!("sender address: {}", a);
         let mut connection = TcpConnection::create(std::net::SocketAddr::from_str(&a).unwrap());
         let r = connection.connect().await;
         assert!(!r.is_err());
@@ -492,7 +492,7 @@ mod test {
         };
         let mut vm = serde_bare::to_vec::<RouterMessage>(&m).unwrap();
         let len = vm.len() as u16;
-        let mut vl = serde_bare::to_vec::<u16>(&len).unwrap();
+        let mut vl = len.to_be_bytes().to_vec();
         vl.append(&mut vm);
         connection.send(&vl[0..512]).await.unwrap();
         tokio::time::sleep(Duration::from_millis((1000.0) as u64)).await;
@@ -590,20 +590,20 @@ mod test {
 
         let mut vm1 = serde_bare::to_vec::<RouterMessage>(&messages[0]).unwrap();
         let len1 = vm1.len() as u16;
-        let mut vl1 = serde_bare::to_vec::<u16>(&len1).unwrap();
+        let mut vl1 = len1.to_be_bytes().to_vec();
         vl1.append(&mut vm1);
 
         let mut vm2 = serde_bare::to_vec::<RouterMessage>(&messages[1]).unwrap();
         let len2 = vm2.len() as u16;
-        let mut vl2 = serde_bare::to_vec::<u16>(&len2).unwrap();
+        let mut vl2 = len2.to_be_bytes().to_vec();
         vl2.append(&mut vm2);
 
         vl1.append(&mut vl2);
 
         connection.send(&vl1[0..16]).await.unwrap();
-        tokio::time::sleep(Duration::from_millis((1000.0) as u64)).await;
+        tokio::time::sleep(Duration::from_millis((100.0) as u64)).await;
         connection.send(&vl1[16..58]).await.unwrap();
-        tokio::time::sleep(Duration::from_millis((1000.0) as u64)).await;
+        tokio::time::sleep(Duration::from_millis((100.0) as u64)).await;
         connection.send(&vl1[58..]).await.unwrap();
         tokio::time::sleep(Duration::from_millis((2000.0) as u64)).await;
     }
