@@ -26,11 +26,11 @@ impl TcpListener {
     /// ```
     pub async fn create(
         listen_address: std::net::SocketAddr,
-    ) -> Result<Box<dyn Listener + Send>, TransportError> {
+    ) -> ockam_core::Result<Box<dyn Listener + Send>> {
         let listener = TokioTcpListener::bind(listen_address).await;
         match listener {
             Ok(l) => Ok(Box::new(TcpListener { listener: l })),
-            Err(_) => Err(TransportError::Bind),
+            Err(_) => Err(TransportError::Bind.into()),
         }
     }
 }
@@ -50,10 +50,10 @@ impl Listener for TcpListener {
     /// let mut  listener = TcpListener::new(address).await.unwrap();
     /// let connection = listener.accept().await.unwrap();
     /// ```
-    async fn accept(&mut self) -> Result<Box<dyn Connection + Send>, TransportError> {
+    async fn accept(&mut self) -> ockam_core::Result<Box<dyn Connection + Send>> {
         let stream = self.listener.accept().await;
         if stream.is_err() {
-            Err(TransportError::Accept)
+            Err(TransportError::Accept.into())
         } else {
             let (stream, _) = stream.unwrap();
             Ok(TcpConnection::new_from_stream(stream).await?)

@@ -1,7 +1,6 @@
-use ockam_core::lib::convert::TryInto;
+use crate::message;
 use serde::{Deserialize, Serialize};
 use serde_bare::Uint;
-use std::convert::TryFrom;
 use std::net::SocketAddr;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -40,10 +39,10 @@ pub struct RouterAddress {
 
 impl From<RoutableAddress> for RouterAddress {
     fn from(ra: RoutableAddress) -> Self {
-        return match ra {
+        match ra {
             RoutableAddress::Local(v) => RouterAddress {
                 address_type: ROUTER_ADDRESS_LOCAL,
-                address: v.clone(),
+                address: v,
             },
             RoutableAddress::Tcp(socket) => {
                 let serialized = serde_bare::to_vec::<SocketAddr>(&socket).unwrap();
@@ -52,7 +51,7 @@ impl From<RoutableAddress> for RouterAddress {
                     address: serialized,
                 }
             }
-        };
+        }
     }
 }
 
@@ -75,6 +74,12 @@ impl RouterMessage {
     }
     pub fn return_address(&mut self, addr: RoutableAddress) {
         self.return_route.addrs.push(addr.into());
+    }
+}
+
+impl Default for message::RouterMessage {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

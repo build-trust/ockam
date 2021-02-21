@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use ockam_core::lib::str::FromStr;
 use ockam_router::message::{RouterAddress, RouterMessage, ROUTER_ADDRESS_TCP};
 use std::net::SocketAddr;
-use std::result::Result;
 use tokio::io;
 use tokio::net::TcpStream;
 
@@ -43,7 +42,7 @@ impl TcpConnection {
             stream: None,
         })
     }
-    pub async fn new_from_stream(stream: TcpStream) -> ockam_core::Result<(Box<Self>)> {
+    pub async fn new_from_stream(stream: TcpStream) -> ockam_core::Result<Box<Self>> {
         match stream.peer_addr() {
             Ok(peer) => Ok(Box::new(TcpConnection {
                 remote_address: peer,
@@ -53,32 +52,32 @@ impl TcpConnection {
                 message_length: 0,
                 stream: Some(stream),
             })),
-            Err(_) => Err(TransportError::PeerNotFound),
+            Err(_) => Err(TransportError::PeerNotFound.into()),
         }
     }
 }
 
 #[async_trait]
 impl Connection for TcpConnection {
-    async fn connect(&mut self) -> Result<(), TransportError> {
+    async fn connect(&mut self) -> ockam_core::Result<()> {
         match self.stream {
-            Some(_) => Err(TransportError::AlreadyConnected),
+            Some(_) => Err(TransportError::AlreadyConnected.into()),
             None => match TcpStream::connect(&self.remote_address).await {
                 Ok(s) => {
                     self.stream = Some(s);
                     Ok(())
                 }
-                Err(_) => Err(TransportError::ConnectFailed),
+                Err(_) => Err(TransportError::ConnectFailed.into()),
             },
         }
     }
 
-    async fn send(&mut self, buff: &[u8]) -> Result<usize, TransportError> {
+    async fn send(&mut self, buff: &[u8]) -> ockam_core::Result<usize> {
         let mut i = 0;
         return if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.writable().await) {
-                    return Err(TransportError::CheckConnection);
+                    return Err(TransportError::CheckConnection.into());
                 }
                 match stream.try_write(&buff[i..]) {
                     Ok(n) if n == buff.len() => {
@@ -89,28 +88,28 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        return Err(TransportError::CheckConnection);
+                        return Err(TransportError::CheckConnection.into());
                     }
                     Err(_) => {
-                        return Err(TransportError::CheckConnection);
+                        return Err(TransportError::CheckConnection.into());
                     }
                 }
             }
         } else {
-            Err(TransportError::NotConnected)
+            Err(TransportError::NotConnected.into())
         };
     }
 
-    async fn receive(&mut self, buff: &mut [u8]) -> Result<usize, TransportError> {
+    async fn receive(&mut self, buff: &mut [u8]) -> ockam_core::Result<usize> {
         if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.readable().await) {
-                    return Err(TransportError::CheckConnection);
+                    return Err(TransportError::CheckConnection.into());
                 }
                 match stream.try_read(buff) {
                     Ok(n) => {
                         return if 0 == n {
-                            Err(TransportError::ConnectionClosed)
+                            Err(TransportError::ConnectionClosed.into())
                         } else {
                             Ok(n)
                         }
@@ -119,16 +118,16 @@ impl Connection for TcpConnection {
                         continue;
                     }
                     _ => {
-                        return Err(TransportError::ReceiveFailed);
+                        return Err(TransportError::ReceiveFailed.into());
                     }
                 }
             }
         } else {
-            Err(TransportError::CheckConnection)
+            Err(TransportError::CheckConnection.into())
         }
     }
 
-    async fn send_message(&mut self, mut msg: RouterMessage) -> Result<usize, TransportError> {
+    async fn send_message(&mut self, mut msg: RouterMessage) -> ockam_core::Result<usize> {
         let remote_addr = serde_bare::to_vec::<SocketAddr>(&self.remote_address).unwrap();
         let remote_addr = RouterAddress {
             address_type: ROUTER_ADDRESS_TCP,
@@ -140,18 +139,18 @@ impl Connection for TcpConnection {
         return match serde_bare::to_vec::<RouterMessage>(&msg) {
             Ok(mut msg_vec) => {
                 if msg_vec.len() > MAX_MESSAGE_SIZE - 2 {
-                    return Err(TransportError::IllFormedMessage);
+                    return Err(TransportError::IllFormedMessage.into());
                 }
                 let len = msg_vec.len() as u16;
                 let mut msg_len_vec = serde_bare::to_vec::<u16>(&len).unwrap();
                 msg_len_vec.append(&mut msg_vec);
                 return self.send(&msg_len_vec).await;
             }
-            Err(_) => Err(TransportError::IllFormedMessage),
+            Err(_) => Err(TransportError::IllFormedMessage.into()),
         };
     }
 
-    async fn receive_message(&mut self) -> Result<RouterMessage, TransportError> {
+    async fn receive_message(&mut self) -> ockam_core::Result<RouterMessage> {
         loop {
             let mut recv_buff = [0u8; MAX_MESSAGE_SIZE];
 
@@ -200,7 +199,7 @@ impl Connection for TcpConnection {
                         }
                         Ok(m)
                     }
-                    Err(_) => Err(TransportError::IllFormedMessage),
+                    Err(_) => Err(TransportError::IllFormedMessage.into()),
                 };
             }
         }
