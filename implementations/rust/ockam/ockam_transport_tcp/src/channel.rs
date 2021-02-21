@@ -1,11 +1,10 @@
-use crate::{ChannelError, Connection, TransportError};
-use core::sync::atomic::AtomicI32;
-use ockam_core::lib::net::TcpListener;
-use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
+use crate::{ChannelError, Connection};
+use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
-use ockam_router::message::{RouterMessage, ROUTER_MSG_M2, ROUTER_MSG_REQUEST_CHANNEL};
+use ockam_router::message::{
+    RouteableAddress, RouterMessage, ROUTER_MSG_M2, ROUTER_MSG_REQUEST_CHANNEL,
+};
 use rand::prelude::*;
-use std::sync::{Arc, Mutex};
 
 pub enum ExchangerRole {
     Initiator,
@@ -16,7 +15,14 @@ pub enum ExchangerRole {
 pub struct Channel {
     encrypt_addr: Vec<u8>,
     decrypt_addr: Vec<u8>,
-    key: Option<CompletedKeyExchange>,
+    initiator_key: Option<CompletedKeyExchange>,
+    responder_key: Option<CompletedKeyExchange>,
+}
+
+impl Default for Channel {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Channel {
@@ -26,55 +32,101 @@ impl Channel {
         let encrypt_addr = random.to_le_bytes().to_vec();
         let random = rng.gen::<u32>();
         let decrypt_addr = random.to_le_bytes().to_vec();
-        let key = None;
         Self {
             encrypt_addr,
             decrypt_addr,
-            key,
+            initiator_key: None,
+            responder_key: None,
         }
     }
-    pub async fn initialize(
+
+    pub async fn initialize_responder(
         &mut self,
-        mut exchanger: Box<dyn KeyExchanger>,
+        exchanger: Box<XXNewKeyExchanger>,
         mut connection: Box<dyn Connection>,
-        role: ExchangerRole,
     ) -> ockam_core::Result<()> {
-        let mut m_expected = 0;
+        let mut responder = exchanger.responder();
+        let mut m_expected = ROUTER_MSG_REQUEST_CHANNEL;
 
-        match role {
-            ExchangerRole::Initiator => {
-                let mut m = RouterMessage::new();
-                m.payload.insert(0, ROUTER_MSG_REQUEST_CHANNEL);
-                m.payload = exchanger.process(&[]).unwrap();
-                m_expected = ROUTER_MSG_M2;
-            }
-            ExchangerRole::Responder => {
-                m_expected = ROUTER_MSG_REQUEST_CHANNEL;
-            }
-        }
-
-        while !exchanger.is_complete() {
+        while !responder.is_complete() {
             // 1. wait for a message to arrive.
-            let m = connection.receive_message().await?;
+            let mut m1 = connection.receive_message().await?;
             // 2. verify that it's the expected message
-            if m.payload[0] != m_expected {
-                return Err(ChannelError::KeyExchange);
+            if m1.payload[0] != m_expected {
+                return Err(ChannelError::KeyExchange.into());
             }
+            m1.payload.remove(0);
 
             // 3. discard whatever payload there was
-            let _ = exchanger.process(&m.payload)?;
+            let _ = responder.process(&m1.payload)?;
+            if responder.is_complete() {
+                break;
+            }
 
-            // 4. get and send the next message
-            let mut m = RouterMessage::new();
-            m.payload = exchanger.process(&[])?;
+            // 4. construct and send the next message
+            let mut m2 = RouterMessage::new();
+            m2.onward_route = m1.return_route.clone();
+            m2.payload = responder.process(&[])?;
             m_expected += 1;
-            m.payload.insert(0, m_expected);
-            connection.send_message(m).await?;
-
+            m2.payload.insert(0, m_expected);
+            connection.send_message(m2).await?;
             m_expected += 1;
         }
 
-        self.key = Some(exchanger.finalize()?);
+        let key = responder.finalize()?;
+        self.initiator_key = Some(key);
+
+        println!("Responder successful!!!");
+
+        Ok(())
+    }
+
+    pub async fn initialize_initiator(
+        &mut self,
+        exchanger: Box<XXNewKeyExchanger>,
+        mut connection: Box<dyn Connection>,
+    ) -> ockam_core::Result<()> {
+        let mut initiator = exchanger.initiator();
+        let mut m_expected = ROUTER_MSG_M2;
+
+        while !initiator.is_complete() {
+            // 1. construct request-channel message
+            let mut m1 = RouterMessage::new();
+            m1.onward_address(RouteableAddress::Local(vec![]));
+            m1.return_address(RouteableAddress::Local(vec![]));
+            m1.payload = initiator.process(&[])?;
+            m1.payload.insert(0, ROUTER_MSG_REQUEST_CHANNEL);
+            let m1_return = m1.return_route.clone();
+            connection.send_message(m1).await?;
+
+            let mut m2 = connection.receive_message().await?;
+            // 2. verify that it's the expected message
+            if m2.payload[0] != m_expected {
+                return Err(ChannelError::KeyExchange.into());
+            }
+            m2.payload.remove(0);
+
+            // 3. discard whatever payload there was
+            let _ = initiator.process(&m2.payload)?;
+            if initiator.is_complete() {
+                break;
+            }
+
+            // 4. construct and send the next message
+            let mut m3 = RouterMessage::new();
+            m3.onward_route = m1_return;
+            m3.return_address(RouteableAddress::Local(vec![]));
+            m3.payload = initiator.process(&[])?;
+            m_expected += 1;
+            m3.payload.insert(0, m_expected);
+            connection.send_message(m3).await?;
+            m_expected += 1;
+        }
+
+        let key = initiator.finalize()?;
+        self.initiator_key = Some(key);
+
+        println!("Initiator successful!!");
 
         Ok(())
     }
@@ -83,7 +135,7 @@ impl Channel {
 #[cfg(test)]
 mod tests {
     use crate::listener::TcpListener;
-    use crate::Channel;
+    use crate::{Channel, TcpConnection};
     use ockam_core::lib::net::SocketAddr;
     use ockam_core::lib::str::FromStr;
     use ockam_key_exchange_xx::XXNewKeyExchanger;
@@ -91,10 +143,25 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use tokio::runtime::Builder;
 
-    async fn initiator_key_exchange() {}
+    async fn initiator_key_exchange() {
+        let mut connection = TcpConnection::create(SocketAddr::from_str("127.0.0.1:4060").unwrap());
+        connection.connect().await.unwrap();
+
+        let vault_initiator = Arc::new(Mutex::new(SoftwareVault::default()));
+        let vault_responder = Arc::new(Mutex::new(SoftwareVault::default()));
+        let key_exchanger =
+            XXNewKeyExchanger::new(vault_initiator.clone(), vault_responder.clone());
+
+        let mut channel = Channel::new();
+
+        channel
+            .initialize_initiator(Box::new(key_exchanger), connection)
+            .await
+            .unwrap();
+    }
 
     async fn responder_key_exchange() {
-        let mut listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4051").unwrap())
+        let mut listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4060").unwrap())
             .await
             .unwrap();
         let connection = listener.accept().await.unwrap();
@@ -103,6 +170,12 @@ mod tests {
         let vault_responder = Arc::new(Mutex::new(SoftwareVault::default()));
         let key_exchanger =
             XXNewKeyExchanger::new(vault_initiator.clone(), vault_responder.clone());
+
+        let mut channel = Channel::new();
+        channel
+            .initialize_responder(Box::new(key_exchanger), connection)
+            .await
+            .unwrap();
     }
 
     #[test]
@@ -114,7 +187,21 @@ mod tests {
             .unwrap();
 
         runtime.block_on(async {
-            let j1 = responder_key_exchange();
+            let j1 = tokio::task::spawn(async {
+                let f = responder_key_exchange();
+                f.await;
+            });
+            let j2 = tokio::task::spawn(async {
+                let f = initiator_key_exchange();
+                f.await;
+            });
+            let (r1, r2) = tokio::join!(j1, j2);
+            if r1.is_err() {
+                panic!("{:?}", r1);
+            }
+            if r2.is_err() {
+                panic!("{:?}", r2);
+            }
         });
     }
 }
