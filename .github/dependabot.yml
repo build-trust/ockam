@@ -36,7 +36,7 @@ updates:
 
   # Maintain dependencies for rust ockam crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam"
+    directory: "/implementations/rust/ockam/ockam"
     commit-message:
       prefix: "build:"
     schedule:
@@ -44,7 +44,7 @@ updates:
 
   # Maintain dependencies for rust ockam_core crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_core"
+    directory: "/implementations/rust/ockam/ockam_core"
     commit-message:
       prefix: "build:"
     schedule:
@@ -52,7 +52,7 @@ updates:
 
   # Maintain dependencies for rust ockam_ffi crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_ffi"
+    directory: "/implementations/rust/ockam/ockam_ffi"
     commit-message:
       prefix: "build:"
     schedule:
@@ -60,7 +60,7 @@ updates:
 
   # Maintain dependencies for rust ockam_node crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_node"
+    directory: "/implementations/rust/ockam/ockam_node"
     commit-message:
       prefix: "build:"
     schedule:
@@ -68,7 +68,7 @@ updates:
 
   # Maintain dependencies for rust ockam_node_attribute crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_node_attribute"
+    directory: "/implementations/rust/ockam/ockam_node_attribute"
     commit-message:
       prefix: "build:"
     schedule:
@@ -76,7 +76,7 @@ updates:
 
   # Maintain dependencies for rust ockam_node_no_std crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_node_no_std"
+    directory: "/implementations/rust/ockam/ockam_node_no_std"
     commit-message:
       prefix: "build:"
     schedule:
@@ -84,7 +84,7 @@ updates:
 
   # Maintain dependencies for rust ockam_node_tcp crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_node_tcp"
+    directory: "/implementations/rust/ockam/ockam_node_tcp"
     commit-message:
       prefix: "build:"
     schedule:
@@ -92,7 +92,7 @@ updates:
 
   # Maintain dependencies for rust ockam_vault crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_vault"
+    directory: "/implementations/rust/ockam/ockam_vault"
     commit-message:
       prefix: "build:"
     schedule:
@@ -100,7 +100,7 @@ updates:
 
   # Maintain dependencies for rust ockam_vault_core crate
   - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam_vault_core"
+    directory: "/implementations/rust/ockam/ockam_vault_core"
     commit-message:
       prefix: "build:"
     schedule:
