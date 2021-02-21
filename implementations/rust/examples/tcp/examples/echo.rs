@@ -1,9 +1,8 @@
 use ockam::Address;
-use ockam_router::message::{Route, RouterAddress, ROUTER_ADDRESS_LOCAL};
+use ockam_router::message::{Route, RouterAddress, RouterMessage, ROUTER_ADDRESS_LOCAL};
 use ockam_transport_tcp::TcpConnection;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use tcp_examples::ping_pong_player::{Player, PlayerMessage};
 use tcp_examples::{Player, PlayerMessage};
 
 fn main() {
@@ -14,17 +13,10 @@ fn main() {
         let mut connection = TcpConnection::create(connect_addr);
         connection.connect().await.unwrap();
         println!("connected to {:?}", connection.get_remote_address());
-        let player = Player {
-            connection,
-            return_route: Route {
-                addrs: vec![RouterAddress {
-                    address_type: ROUTER_ADDRESS_LOCAL,
-                    address: "server".into(),
-                }],
-            },
-            counter: 0,
-        };
-        let address: Address = "initiator".into();
+
+        let mut message = RouterMessage::new();
+        message.onward_address(RouterAddress::Local(b"echoer".to_vec()));
+
         ctx.start_worker(address, player).await.unwrap();
         println!("initiator started");
         ctx.send_message(

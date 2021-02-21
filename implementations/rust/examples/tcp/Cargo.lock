@@ -849,6 +849,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_key_exchange_core"
+version = "0.1.0"
+dependencies = [
+ "ockam_core",
+ "ockam_vault_core",
+ "zeroize",
+]
+
+[[package]]
+name = "ockam_key_exchange_xx"
+version = "0.1.0"
+dependencies = [
+ "ockam_core",
+ "ockam_key_exchange_core",
+ "ockam_vault_core",
+ "zeroize",
+]
+
+[[package]]
 name = "ockam_node"
 version = "0.2.0"
 dependencies = [
@@ -887,7 +906,10 @@ dependencies = [
  "async-trait",
  "futures",
  "ockam_core",
+ "ockam_key_exchange_core",
+ "ockam_key_exchange_xx",
  "ockam_router",
+ "ockam_vault_core",
  "rand 0.7.3",
  "serde",
  "serde_bare",

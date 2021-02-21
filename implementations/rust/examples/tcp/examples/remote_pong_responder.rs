@@ -1,10 +1,13 @@
 //! Spawn two workers that play some ping-pong over TCP
 
-use ockam::Address;
-use ockam_router::message::{Route, RouterAddress, ROUTER_ADDRESS_LOCAL};
+use ockam::{Address, Context, Error, Worker};
+use ockam_router::message::{
+    Route, RouteableAddress, RouterAddress, RouterMessage, ROUTER_ADDRESS_LOCAL,
+};
+use ockam_transport_tcp::Connection;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use tcp_examples::{Player, PlayerMessage};
+use tcp_examples::ping_pong_player::{Player, PlayerMessage};
 
 fn main() {
     let (ctx, mut exe) = ockam::start_node();

@@ -25,7 +25,7 @@ pub const ROUTER_ADDRESS_TCP: Uint = serde_bare::Uint(1);
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[repr(C)]
-pub enum RoutableAddress {
+pub enum RouteableAddress {
     Local(Vec<u8>),
     Tcp(SocketAddr),
 }
@@ -37,14 +37,14 @@ pub struct RouterAddress {
     pub address: Vec<u8>,
 }
 
-impl From<RoutableAddress> for RouterAddress {
-    fn from(ra: RoutableAddress) -> Self {
+impl From<RouteableAddress> for RouterAddress {
+    fn from(ra: RouteableAddress) -> Self {
         match ra {
-            RoutableAddress::Local(v) => RouterAddress {
+            RouteableAddress::Local(v) => RouterAddress {
                 address_type: ROUTER_ADDRESS_LOCAL,
                 address: v,
             },
-            RoutableAddress::Tcp(socket) => {
+            RouteableAddress::Tcp(socket) => {
                 let serialized = serde_bare::to_vec::<SocketAddr>(&socket).unwrap();
                 RouterAddress {
                     address_type: ROUTER_ADDRESS_TCP,
@@ -69,10 +69,10 @@ impl RouterMessage {
             payload: vec![],
         }
     }
-    pub fn onward_address(&mut self, addr: RoutableAddress) {
+    pub fn onward_address(&mut self, addr: RouteableAddress) {
         self.onward_route.addrs.push(addr.into());
     }
-    pub fn return_address(&mut self, addr: RoutableAddress) {
+    pub fn return_address(&mut self, addr: RouteableAddress) {
         self.return_route.addrs.push(addr.into());
     }
 }
@@ -87,7 +87,7 @@ impl Default for message::RouterMessage {
 
 mod test {
     use crate::message::{
-        RoutableAddress, Route, RouterAddress, RouterMessage, ROUTER_ADDRESS_LOCAL,
+        Route, RouteableAddress, RouterAddress, RouterMessage, ROUTER_ADDRESS_LOCAL,
         ROUTER_ADDRESS_TCP,
     };
     use serde_bare::Uint;
@@ -234,9 +234,9 @@ mod test {
     #[test]
     fn try_to() {
         let mut m = RouterMessage::new();
-        let ra_local = RoutableAddress::Local(vec![1, 2, 3, 4]);
+        let ra_local = RouteableAddress::Local(vec![1, 2, 3, 4]);
         m.onward_address(ra_local);
-        let ra_socket = RoutableAddress::Tcp(SocketAddr::from_str("127.0.0.1:4050").unwrap());
+        let ra_socket = RouteableAddress::Tcp(SocketAddr::from_str("127.0.0.1:4050").unwrap());
         m.onward_address(ra_socket);
         println!("{:?}", m);
     }
