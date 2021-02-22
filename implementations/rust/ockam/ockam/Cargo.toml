@@ -37,7 +37,7 @@ pairing-plus = { version = "0.19", optional = true }
 serde_bare = "0.3"
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 serde-big-array = "0.3"
-sha2 = { version = "0.8", optional = true }
+sha2 = { version = "0.9", optional = true }
 
 [dev-dependencies]
 trybuild = {version = "1.0.41", features = ["diff"]}

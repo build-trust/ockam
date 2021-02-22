@@ -167,32 +167,11 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0940dc441f31689269e10ac70eb1002a3a1d3ad1390e030043662eb7fe4688b"
-dependencies = [
- "block-padding",
- "byte-tools",
- "byteorder",
- "generic-array 0.12.3",
-]
-
-[[package]]
-name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
  "generic-array 0.14.4",
-]
-
-[[package]]
-name = "block-padding"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa79dedbb091f449f1f39e53edf88d5dbe95f895dae6135a8d7b881fb5af73f5"
-dependencies = [
- "byte-tools",
 ]
 
 [[package]]
@@ -383,7 +362,7 @@ dependencies = [
  "ed25519",
  "rand 0.7.3",
  "serde",
- "sha2 0.9.3",
+ "sha2",
  "zeroize",
 ]
 
@@ -414,12 +393,6 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[package]]
-name = "fake-simd"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 
 [[package]]
 name = "ff-zeroize"
@@ -768,7 +741,7 @@ dependencies = [
  "serde-big-array",
  "serde_bare",
  "serde_json",
- "sha2 0.8.2",
+ "sha2",
  "trybuild",
 ]
 
@@ -815,7 +788,7 @@ dependencies = [
  "ockam_core",
  "ockam_vault_core",
  "rand 0.7.3",
- "sha2 0.9.3",
+ "sha2",
  "x25519-dalek",
  "zeroize",
 ]
@@ -1116,23 +1089,11 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a256f46ea78a0c0d9ff00077504903ac881a1dafdc20da66545699e7776b3e69"
-dependencies = [
- "block-buffer 0.7.3",
- "digest 0.8.1",
- "fake-simd",
- "opaque-debug 0.2.3",
-]
-
-[[package]]
-name = "sha2"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa827a14b29ab7f44778d14a88d3cb76e949c45083f7dbfa507d0cb699dc12de"
 dependencies = [
- "block-buffer 0.9.0",
+ "block-buffer",
  "cfg-if 1.0.0",
  "cpuid-bool 0.1.2",
  "digest 0.9.0",
