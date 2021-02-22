@@ -2,7 +2,7 @@ use ockam::Address;
 use ockam_transport_tcp::TcpConnection;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use tcp_examples::echoer::{EchoMessage, Echoer};
+use tcp_examples::printer::{Printer, PrinterMessage};
 
 fn main() {
     let (ctx, mut exe) = ockam::start_node();
@@ -12,19 +12,19 @@ fn main() {
         let mut connection = TcpConnection::create(connect_addr);
         connection.connect().await.unwrap();
 
-        let echoer = Echoer {
+        let printer = Printer {
             connection,
             count: 0,
         };
 
-        let address: Address = "echoer".into();
-        ctx.start_worker(address, echoer).await.unwrap();
+        let address: Address = "printer".into();
+        ctx.start_worker(address, printer).await.unwrap();
 
-        ctx.send_message("echoer", EchoMessage::Send("Hello".into()))
+        ctx.send_message("printer", PrinterMessage::Send("Hello".into()))
             .await
             .unwrap();
 
-        ctx.send_message("echoer", EchoMessage::Receive)
+        ctx.send_message("printer", PrinterMessage::Receive)
             .await
             .unwrap();
     })

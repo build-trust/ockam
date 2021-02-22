@@ -5,20 +5,20 @@ use ockam_router::message::{RouteableAddress, RouterMessage};
 use ockam_transport_tcp::Connection;
 use serde::{Deserialize, Serialize};
 
-pub struct Echoer {
+pub struct Printer {
     pub connection: Box<dyn Connection>,
     pub count: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub enum EchoMessage {
+pub enum PrinterMessage {
     Send(Vec<u8>),
     Receive,
 }
 
 #[async_trait]
-impl Worker for Echoer {
-    type Message = EchoMessage;
+impl Worker for Printer {
+    type Message = PrinterMessage;
     type Context = Context;
 
     fn initialize(&mut self, _context: &mut Self::Context) -> ockam::Result<()> {
@@ -35,10 +35,10 @@ impl Worker for Echoer {
         msg: Self::Message,
     ) -> ockam::Result<()> {
         return match (msg) {
-            EchoMessage::Send(text) => {
+            PrinterMessage::Send(text) => {
                 let mut reply = RouterMessage::new();
-                reply.onward_address(RouteableAddress::Local(b"echoer".to_vec()));
-                reply.return_address(RouteableAddress::Local(b"echoer".to_vec()));
+                reply.onward_address(RouteableAddress::Local(b"printer".to_vec()));
+                reply.return_address(RouteableAddress::Local(b"printer".to_vec()));
                 reply.payload = text;
                 self.connection.send_message(reply).await?;
                 println!("sent \"hello\"");
@@ -48,7 +48,7 @@ impl Worker for Echoer {
                 }
                 Ok(())
             }
-            EchoMessage::Receive => {
+            PrinterMessage::Receive => {
                 let m = self.connection.receive_message().await?;
                 println!("received \"{}\"", String::from_utf8(m.payload).unwrap());
                 self.count += 1;
