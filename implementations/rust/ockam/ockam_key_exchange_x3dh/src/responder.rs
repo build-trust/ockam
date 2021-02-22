@@ -127,7 +127,6 @@ impl KeyExchanger for Responder {
                 Ok(vec![])
             }
             ResponderState::VerifyEnrollment => {
-                debug_assert!(self.expected_enrollment_key.is_some());
                 if data.len() != ENROLLMENT_MSG_SIZE {
                     return Err(X3DHError::MessageLenMismatch.into());
                 }
@@ -137,7 +136,10 @@ impl KeyExchanger for Responder {
                     .one_time_prekey
                     .as_ref()
                     .ok_or(X3DHError::InvalidState)?;
-                let eik = self.expected_enrollment_key.as_ref().unwrap();
+                let eik = self
+                    .expected_enrollment_key
+                    .as_ref()
+                    .ok_or(X3DHError::InvalidState)?;
                 let id = vault.sha256(eik.as_ref())?;
                 if id.ct_eq(&data[32..64]).unwrap_u8() != 1 {
                     return Err(X3DHError::InvalidHash.into());
@@ -175,8 +177,8 @@ impl KeyExchanger for Responder {
                 );
 
                 let mut keyrefs = vault.hkdf_sha256(&salt, CSUITE, Some(&ikm), vec![atts, atts])?;
-                let decrypt_key = keyrefs.pop().unwrap();
-                let encrypt_key = keyrefs.pop().unwrap();
+                let decrypt_key = keyrefs.pop().ok_or(X3DHError::InvalidState)?;
+                let encrypt_key = keyrefs.pop().ok_or(X3DHError::InvalidState)?;
                 let mut state_hash = vault.sha256(CSUITE)?.to_vec();
                 state_hash.append(&mut ikm_bytes);
                 let state_hash = vault.sha256(state_hash.as_slice())?;
@@ -205,7 +207,7 @@ impl KeyExchanger for Responder {
                 self.state = ResponderState::Done;
                 Ok(vec![])
             }
-            ResponderState::Done => Ok(vec![]),
+            ResponderState::Done => Err(X3DHError::InvalidState.into()),
         }
     }
 
@@ -214,6 +216,7 @@ impl KeyExchanger for Responder {
     }
 
     fn finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
-        Ok(self.completed_key_exchange.unwrap())
+        self.completed_key_exchange
+            .ok_or_else(|| X3DHError::InvalidState.into())
     }
 }

@@ -134,8 +134,8 @@ impl KeyExchanger for Initiator {
                 );
 
                 let mut keyrefs = vault.hkdf_sha256(&salt, CSUITE, Some(&ikm), vec![atts, atts])?;
-                let encrypt_key = keyrefs.pop().unwrap();
-                let decrypt_key = keyrefs.pop().unwrap();
+                let encrypt_key = keyrefs.pop().ok_or(X3DHError::InvalidState)?;
+                let decrypt_key = keyrefs.pop().ok_or(X3DHError::InvalidState)?;
                 let ek = vault.secret_public_key_get(&esk)?;
                 let pubkey = vault.secret_public_key_get(ephemeral_identity_key)?;
 
@@ -154,11 +154,10 @@ impl KeyExchanger for Initiator {
                     CURVE25519_SECRET_LENGTH,
                 );
 
-                let identity_key = self.identity_key.take();
-                let skb = if identity_key.is_none() {
-                    vault.secret_generate(atts)?
+                let skb = if let Some(ik) = &self.identity_key {
+                    ik.clone()
                 } else {
-                    identity_key.unwrap()
+                    vault.secret_generate(atts)?
                 };
                 let ikb = vault.secret_public_key_get(&skb)?;
 
@@ -183,7 +182,7 @@ impl KeyExchanger for Initiator {
                 self.state = InitiatorState::Done;
                 Ok(output)
             }
-            InitiatorState::Done => Ok(vec![]),
+            InitiatorState::Done => Err(X3DHError::InvalidState.into()),
         }
     }
 
@@ -192,6 +191,7 @@ impl KeyExchanger for Initiator {
     }
 
     fn finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
-        Ok(self.completed_key_exchange.unwrap())
+        self.completed_key_exchange
+            .ok_or_else(|| X3DHError::InvalidState.into())
     }
 }
