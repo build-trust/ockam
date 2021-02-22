@@ -29,7 +29,7 @@ curve25519-dalek = "3.0"
 ed25519-dalek = "1.0"
 hkdf = "0.10"
 hex = {version = "0.4", default-features = false }
-rand = "0.7"
+rand = "0.8"
 sha2 = "0.9"
 x25519-dalek = "1.0"
 hashbrown = "0.9.1"
