@@ -283,13 +283,13 @@ impl State {
         let remote_static_public_key =
             self.remote_static_public_key.ok_or(XXError::InvalidState)?;
 
-        Ok(CompletedKeyExchange {
+        Ok(CompletedKeyExchange::new(
             h,
             encrypt_key,
             decrypt_key,
             local_static_secret,
             remote_static_public_key,
-        })
+        ))
     }
 }
 

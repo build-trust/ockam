@@ -54,15 +54,15 @@ mod tests {
         let mut vault_in = vault_initiator.lock().unwrap();
         let mut vault_re = vault_responder.lock().unwrap();
 
-        assert_eq!(initiator.h, responder.h);
+        assert_eq!(initiator.h(), responder.h());
 
-        let s1 = vault_in.secret_export(&initiator.encrypt_key).unwrap();
-        let s2 = vault_re.secret_export(&responder.decrypt_key).unwrap();
+        let s1 = vault_in.secret_export(&initiator.encrypt_key()).unwrap();
+        let s2 = vault_re.secret_export(&responder.decrypt_key()).unwrap();
 
         assert_eq!(s1, s2);
 
-        let s1 = vault_in.secret_export(&initiator.decrypt_key).unwrap();
-        let s2 = vault_re.secret_export(&responder.encrypt_key).unwrap();
+        let s1 = vault_in.secret_export(&initiator.decrypt_key()).unwrap();
+        let s2 = vault_re.secret_export(&responder.encrypt_key()).unwrap();
 
         assert_eq!(s1, s2);
     }
