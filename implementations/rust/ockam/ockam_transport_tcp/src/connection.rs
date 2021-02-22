@@ -2,7 +2,7 @@ use crate::error::TransportError;
 use async_trait::async_trait;
 use ockam_core::lib::str::FromStr;
 use ockam_router::message::{RouterAddress, RouterMessage, ROUTER_ADDRESS_TCP};
-use ockam_transport::transport_traits::Connection;
+use ockam_transport::traits::Connection;
 use std::net::SocketAddr;
 use tokio::io;
 use tokio::net::TcpStream;
@@ -185,6 +185,7 @@ impl Connection for TcpConnection {
                         // first address in onward route should be ours, remove it
                         m.onward_route.addrs.remove(0);
 
+                        // if the next onward address is another tcp address, route it
                         if !m.onward_route.addrs.is_empty()
                             && m.onward_route.addrs[0].address_type == ROUTER_ADDRESS_TCP
                         {

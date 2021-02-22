@@ -9,7 +9,7 @@ pub use channel::*;
 pub use connection::*;
 pub use error::*;
 pub use listener::*;
-pub use ockam_transport::transport_traits::*;
+pub use ockam_transport::traits::*;
 
 pub mod channel;
 pub mod connection;
