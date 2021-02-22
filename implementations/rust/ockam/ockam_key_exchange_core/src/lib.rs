@@ -32,14 +32,50 @@ pub trait NewKeyExchanger<E: KeyExchanger = Self, F: KeyExchanger = Self> {
 /// A Completed Key Exchange elements
 #[derive(Debug, Zeroize)]
 pub struct CompletedKeyExchange {
+    h: [u8; 32],
+    encrypt_key: Secret,
+    decrypt_key: Secret,
+    local_static_secret: Secret,
+    remote_static_public_key: PublicKey,
+}
+
+impl CompletedKeyExchange {
     /// The state hash
-    pub h: [u8; 32],
+    pub fn h(&self) -> &[u8; 32] {
+        &self.h
+    }
     /// The derived encryption key handle
-    pub encrypt_key: Secret,
+    pub fn encrypt_key(&self) -> &Secret {
+        &self.encrypt_key
+    }
     /// The derived decryption key handle
-    pub decrypt_key: Secret,
+    pub fn decrypt_key(&self) -> &Secret {
+        &self.decrypt_key
+    }
     /// The long term static key handle
-    pub local_static_secret: Secret,
+    pub fn local_static_secret(&self) -> &Secret {
+        &self.local_static_secret
+    }
     /// The long term static public key from remote party
-    pub remote_static_public_key: PublicKey,
+    pub fn remote_static_public_key(&self) -> &PublicKey {
+        &self.remote_static_public_key
+    }
+}
+
+impl CompletedKeyExchange {
+    pub fn new(
+        h: [u8; 32],
+        encrypt_key: Secret,
+        decrypt_key: Secret,
+        local_static_secret: Secret,
+        remote_static_public_key: PublicKey,
+    ) -> Self {
+        CompletedKeyExchange {
+            h,
+            encrypt_key,
+            decrypt_key,
+            local_static_secret,
+            remote_static_public_key,
+        }
+    }
 }
