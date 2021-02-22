@@ -754,7 +754,7 @@ version = "0.2.0"
 dependencies = [
  "arrayref",
  "bbs",
- "digest 0.8.1",
+ "digest 0.9.0",
  "ff-zeroize",
  "hashbrown",
  "hex",
