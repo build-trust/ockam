@@ -1,5 +1,4 @@
-use crate::lib::Vec;
-use crate::Result;
+use crate::{lib::Vec, Result};
 use serde::{de::DeserializeOwned, Serialize};
 
 // TODO: swap this for a non-heaped data structure
