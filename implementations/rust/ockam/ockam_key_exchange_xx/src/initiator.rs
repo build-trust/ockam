@@ -1,0 +1,66 @@
+use crate::state::State;
+use crate::XXError;
+use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
+
+#[derive(Debug)]
+enum InitiatorState {
+    EncodeMessage1,
+    DecodeMessage2,
+    EncodeMessage3,
+    Done,
+}
+
+/// Represents an XX initiator
+#[derive(Debug)]
+pub struct Initiator {
+    state: InitiatorState,
+    state_data: State,
+    run_prologue: bool,
+}
+
+impl Initiator {
+    pub(crate) fn new(state_data: State) -> Self {
+        Initiator {
+            state: InitiatorState::EncodeMessage1,
+            state_data,
+            run_prologue: true,
+        }
+    }
+}
+
+impl KeyExchanger for Initiator {
+    fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
+        match self.state {
+            InitiatorState::EncodeMessage1 => {
+                if self.run_prologue {
+                    self.state_data.prologue()?;
+                }
+                let msg = self.state_data.encode_message_1(data)?;
+                self.state = InitiatorState::DecodeMessage2;
+                Ok(msg)
+            }
+            InitiatorState::DecodeMessage2 => {
+                let msg = self.state_data.decode_message_2(data)?;
+                self.state = InitiatorState::EncodeMessage3;
+                Ok(msg)
+            }
+            InitiatorState::EncodeMessage3 => {
+                let msg = self.state_data.encode_message_3(data)?;
+                self.state = InitiatorState::Done;
+                Ok(msg)
+            }
+            InitiatorState::Done => Ok(vec![]),
+        }
+    }
+
+    fn is_complete(&self) -> bool {
+        matches!(self.state, InitiatorState::Done)
+    }
+
+    fn finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
+        match self.state {
+            InitiatorState::Done => self.state_data.finalize_initiator(),
+            _ => Err(XXError::InvalidState.into()),
+        }
+    }
+}
