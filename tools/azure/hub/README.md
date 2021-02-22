@@ -18,8 +18,8 @@ Create the container group and its only container
 az deployment group create \
   --name ockam-hub-deployment \
   --resource-group ockam-hub \
-  --template-file tools/azure/ockam_hub/azure.json \
-  --parameters @tools/azure/ockam_hub/secret.parameters.json
+  --template-file tools/azure/hub/azure.json \
+  --parameters @tools/azure/hub/secret.parameters.json
 ```
 
 Attach to container
@@ -33,6 +33,12 @@ Shell into container
 ```
 az container exec --name ockam-hub --resource-group ockam-hub --exec-command "/bin/bash"
 ```
+
+> If your terminal size is different than standard 80x24 when typing inside your container you can expirence bizzare behaviour. To fix this use additional parameters like `--terminal-col-size` and `--terminal-row-size`.
+>
+`az container exec --name ockam-hub --resource-group piotrek --exec-command "/bin/bash" --terminal-col-size $(tput cols) --terminal-row-size $(tput lines)`
+>
+> If you missing `tput` command then follow [this](https://command-not-found.com/tput) instructions to install it.
 
 Show container IP
 
