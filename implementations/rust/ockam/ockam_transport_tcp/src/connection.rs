@@ -1,8 +1,8 @@
 use crate::error::TransportError;
-use crate::transport_traits::Connection;
 use async_trait::async_trait;
 use ockam_core::lib::str::FromStr;
 use ockam_router::message::{RouterAddress, RouterMessage, ROUTER_ADDRESS_TCP};
+use ockam_transport::transport_traits::Connection;
 use std::net::SocketAddr;
 use tokio::io;
 use tokio::net::TcpStream;

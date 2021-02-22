@@ -1,7 +1,7 @@
+use ockam_transport::transport_traits::Connection;
 use ockam_transport_tcp::connection::TcpConnection;
 use ockam_transport_tcp::error::TransportError;
 use ockam_transport_tcp::listener::TcpListener;
-use ockam_transport_tcp::transport_traits::Connection;
 use rand::prelude::*;
 use std::net::SocketAddr;
 use std::str::FromStr;

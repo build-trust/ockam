@@ -900,6 +900,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_transport"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "futures",
+ "ockam",
+ "ockam_key_exchange_core",
+ "ockam_key_exchange_xx",
+ "ockam_node",
+ "ockam_router",
+ "ockam_vault_core",
+ "rand 0.7.3",
+ "serde",
+ "serde_bare",
+ "tokio",
+]
+
+[[package]]
 name = "ockam_transport_tcp"
 version = "0.1.0"
 dependencies = [
@@ -909,6 +927,7 @@ dependencies = [
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_router",
+ "ockam_transport",
  "ockam_vault_core",
  "rand 0.7.3",
  "serde",

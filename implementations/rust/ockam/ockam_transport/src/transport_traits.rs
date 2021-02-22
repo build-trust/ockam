@@ -16,19 +16,19 @@ pub trait Connection: Send + 'static {
     /// let mut connection = TcpConnection::new(address).await.unwrap();
     /// let r = connection.connect().await.unwrap();
     /// ```
-    async fn connect(&mut self) -> ockam_core::Result<()>;
+    async fn connect(&mut self) -> ockam::Result<()>;
 
     /// Sends a u8 buffer.
-    async fn send(&mut self, buff: &[u8]) -> ockam_core::Result<usize>;
+    async fn send(&mut self, buff: &[u8]) -> ockam::Result<usize>;
 
     /// Receives a u8 buffer.
-    async fn receive(&mut self, buff: &mut [u8]) -> ockam_core::Result<usize>;
+    async fn receive(&mut self, buff: &mut [u8]) -> ockam::Result<usize>;
 
     /// Sends a RouterMessage.
-    async fn send_message(&mut self, msg: RouterMessage) -> ockam_core::Result<usize>;
+    async fn send_message(&mut self, msg: RouterMessage) -> ockam::Result<usize>;
 
     /// Receives a RouterMessage.
-    async fn receive_message(&mut self) -> ockam_core::Result<RouterMessage>;
+    async fn receive_message(&mut self) -> ockam::Result<RouterMessage>;
 
     fn get_local_address(&self) -> RouterAddress;
     fn get_remote_address(&self) -> RouterAddress;
@@ -37,5 +37,5 @@ pub trait Connection: Send + 'static {
 /// The `Listener` trait represents transport connection listeners.
 #[async_trait]
 pub trait Listener: Send + 'static {
-    async fn accept(&mut self) -> ockam_core::Result<Box<dyn Connection + Send>>;
+    async fn accept(&mut self) -> ockam::Result<Box<dyn Connection + Send>>;
 }
