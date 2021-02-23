@@ -15,7 +15,6 @@ enum InitiatorState {
 pub struct Initiator {
     state: InitiatorState,
     state_data: State,
-    run_prologue: bool,
 }
 
 impl Initiator {
@@ -23,7 +22,6 @@ impl Initiator {
         Initiator {
             state: InitiatorState::EncodeMessage1,
             state_data,
-            run_prologue: true,
         }
     }
 }
@@ -32,9 +30,7 @@ impl KeyExchanger for Initiator {
     fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
         match self.state {
             InitiatorState::EncodeMessage1 => {
-                if self.run_prologue {
-                    self.state_data.prologue()?;
-                }
+                self.state_data.run_prologue()?;
                 let msg = self.state_data.encode_message_1(data)?;
                 self.state = InitiatorState::DecodeMessage2;
                 Ok(msg)

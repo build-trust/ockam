@@ -15,7 +15,6 @@ enum ResponderState {
 pub struct Responder {
     state: ResponderState,
     state_data: State,
-    run_prologue: bool,
 }
 
 impl Responder {
@@ -23,7 +22,6 @@ impl Responder {
         Responder {
             state: ResponderState::DecodeMessage1,
             state_data,
-            run_prologue: true,
         }
     }
 }
@@ -32,9 +30,7 @@ impl KeyExchanger for Responder {
     fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
         match self.state {
             ResponderState::DecodeMessage1 => {
-                if self.run_prologue {
-                    self.state_data.prologue()?;
-                }
+                self.state_data.run_prologue()?;
                 let msg = self.state_data.decode_message_1(data)?;
                 self.state = ResponderState::EncodeMessage2;
                 Ok(msg)
