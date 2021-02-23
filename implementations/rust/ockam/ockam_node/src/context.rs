@@ -116,13 +116,14 @@ impl Context {
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
-    pub fn receive<'ctx, M: Message>(&'ctx mut self) -> Option<Cancel<'ctx, M>> {
+    pub fn receive<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
         let mb = &mut self.mailbox;
 
         block_future(&self.rt, async {
             mb.next().await.and_then(|enc| M::decode(&enc).ok())
         })
         .map(move |msg| Cancel::new(msg, self.rt.clone(), self))
+        .ok_or_else(|| Error::FailedLoadData.into())
     }
 
     /// Return a list of all available worker addresses on a node

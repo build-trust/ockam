@@ -11,6 +11,8 @@ pub enum Error {
     FailedListWorker,
     /// Unable to send a message to a worker
     FailedSendMessage,
+    /// Unable to receive the desired piece of data
+    FailedLoadData,
 }
 
 impl Error {
