@@ -48,7 +48,13 @@ defmodule Ockam.Node do
   @doc """
   Send a message to the process registered with an address.
   """
-  defdelegate send(address, message), to: Registry
+  def send(address, message) do
+    case Registry.whereis_name(address) do
+      # dead letters
+      :undefined -> :ok
+      _pid -> Registry.send(address, message)
+    end
+  end
 
   @doc """
   Returns a random address that is currently not registed on the node.
