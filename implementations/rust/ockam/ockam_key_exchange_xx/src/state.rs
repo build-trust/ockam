@@ -191,7 +191,7 @@ impl State {
         let mut h = [0u8; SHA256_SIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
         self.dh_state = DhState::new(&h, vault.deref_mut())?;
-        self.h = Some(h);
+        self.h = Some(vault.sha256(&h)?);
 
         Ok(())
     }
