@@ -3,6 +3,7 @@ defmodule Ockam.Hub.Service.Echo do
 
   use Ockam.Worker
 
+  alias Ockam.Message
   alias Ockam.Router
 
   require Logger
@@ -10,9 +11,9 @@ defmodule Ockam.Hub.Service.Echo do
   @impl true
   def handle_message(message, state) do
     reply = %{
-      onward_route: message.return_route,
+      onward_route: Message.return_route(message),
       return_route: [state.address],
-      payload: message.payload
+      payload: Message.payload(message)
     }
 
     Logger.info("\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
