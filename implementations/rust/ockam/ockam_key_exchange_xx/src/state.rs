@@ -100,6 +100,7 @@ impl DhState {
 
 /// Represents the XX Handshake
 pub(crate) struct State {
+    run_prologue: bool,
     identity_key: Option<Secret>,
     identity_public_key: Option<PublicKey>,
     ephemeral_secret: Option<Secret>,
@@ -135,6 +136,7 @@ impl std::fmt::Debug for State {
 impl State {
     pub(crate) fn new(vault: Arc<Mutex<dyn XXVault>>) -> Self {
         Self {
+            run_prologue: true,
             identity_key: None,
             identity_public_key: None,
             ephemeral_secret: None,
@@ -159,7 +161,7 @@ impl State {
     }
 
     /// Create a new `HandshakeState` starting with the prologue
-    pub(crate) fn prologue(&mut self) -> ockam_core::Result<()> {
+    fn prologue(&mut self) -> ockam_core::Result<()> {
         let attributes = SecretAttributes::new(
             SecretType::Curve25519,
             SecretPersistence::Ephemeral,
@@ -290,6 +292,16 @@ impl State {
             local_static_secret,
             remote_static_public_key,
         ))
+    }
+}
+
+impl State {
+    pub(crate) fn run_prologue(&mut self) -> ockam_core::Result<()> {
+        if self.run_prologue {
+            self.prologue()
+        } else {
+            Ok(())
+        }
     }
 }
 
