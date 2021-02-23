@@ -288,6 +288,7 @@ dependencies = [
 name = "ockam_key_exchange_xx"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_vault",
