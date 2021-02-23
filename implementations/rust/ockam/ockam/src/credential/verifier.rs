@@ -13,9 +13,9 @@ use pairing_plus::{
 
 /// Methods for verifying presentations
 #[derive(Debug)]
-pub struct Verifier;
+pub struct CredentialVerifier;
 
-impl Verifier {
+impl CredentialVerifier {
     /// Create a unique proof request id so the holder must create a fresh proof
     pub fn create_proof_request_id() -> [u8; 32] {
         bbs::verifier::Verifier::generate_proof_nonce().to_bytes_compressed_form()

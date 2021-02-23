@@ -160,19 +160,19 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_proof_of_possession() {
-        let issuer = Issuer::new();
+        let issuer = CredentialIssuer::new();
 
         let proof = issuer.create_proof_of_possession();
         let pk = issuer.get_public_key();
-        assert!(Verifier::verify_proof_of_possession(pk, proof));
+        assert!(CredentialVerifier::verify_proof_of_possession(pk, proof));
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_credential_issuance() {
         let schema = get_test_issuance_schema();
-        let issuer = Issuer::new();
-        let holder = Holder::new();
+        let issuer = CredentialIssuer::new();
+        let holder = CredentialHolder::new();
 
         let pk = issuer.get_public_key();
         let offer = issuer.create_offer(&schema);
@@ -208,8 +208,8 @@ mod tests {
     #[test]
     fn test_credential_presentation() {
         let schema = get_test_issuance_schema();
-        let issuer = Issuer::new();
-        let holder = Holder::new();
+        let issuer = CredentialIssuer::new();
+        let holder = CredentialHolder::new();
 
         let cred = issuer
             .sign_credential(
@@ -233,14 +233,18 @@ mod tests {
             public_key: issuer.get_public_key(),
             revealed: [0, 1].to_vec(),
         };
-        let pr_id = Verifier::create_proof_request_id();
+        let pr_id = CredentialVerifier::create_proof_request_id();
         let res = holder.present_credentials(&[cred.clone()], &[manifest.clone()], pr_id);
         assert!(res.is_err());
         manifest.revealed = [1].to_vec();
         let res = holder.present_credentials(&[cred.clone()], &[manifest.clone()], pr_id);
         assert!(res.is_ok());
         let prez = res.unwrap();
-        let res = Verifier::verify_credential_presentations(prez.as_slice(), &[manifest], pr_id);
+        let res = CredentialVerifier::verify_credential_presentations(
+            prez.as_slice(),
+            &[manifest],
+            pr_id,
+        );
         assert!(res.is_ok());
     }
 }

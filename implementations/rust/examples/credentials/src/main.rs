@@ -1,6 +1,6 @@
 use ockam::{
-    CredentialAttribute, CredentialAttributeSchema, CredentialAttributeType, CredentialSchema,
-    Holder, Issuer, PresentationManifest, Verifier,
+    CredentialAttribute, CredentialAttributeSchema, CredentialAttributeType, CredentialHolder,
+    CredentialIssuer, CredentialSchema, CredentialVerifier, PresentationManifest,
 };
 use std::collections::BTreeMap;
 
@@ -39,25 +39,25 @@ fn main() {
     };
 
     // Create a new issuer.
-    // Issuer has a credential signature public key.
-    // Issuer creates a proof of possession
+    // CredentialIssuer has a credential signature public key.
+    // CredentialIssuer creates a proof of possession
     // so users can verify it.
     // These should be posted such that verifiers and
     // holders can check them
-    let issuer = Issuer::new();
+    let issuer = CredentialIssuer::new();
     let pk = issuer.get_public_key();
     let pop = issuer.create_proof_of_possession();
 
     // A verifying service that receives the public key can check the proof of possession
     // Or a holder can check it prior to accepting a credential offer
-    assert!(Verifier::verify_proof_of_possession(pk, pop));
+    assert!(CredentialVerifier::verify_proof_of_possession(pk, pop));
 
-    let holder = Holder::new();
+    let holder = CredentialHolder::new();
 
-    // Issuer offers holder a credential
+    // CredentialIssuer offers holder a credential
     let offer = issuer.create_offer(&schema);
 
-    // Holder accepts the credential
+    // CredentialHolder accepts the credential
     // Accepting the offer yields a request to send back to the issuer
     // and a blinding. The blinding is held until the issuer sends
     // a blinded credential. The blinding is used to unblind it and
@@ -68,7 +68,7 @@ fn main() {
     let (request, blinding) = holder.accept_credential_offer(&offer, pk).unwrap();
 
     // Send request to the issuer
-    // Issuer processes the credential request
+    // CredentialIssuer processes the credential request
     // Issuer knows all of the attributes that were not blinded
     // by the holder
     let mut attributes = BTreeMap::new();
@@ -93,10 +93,10 @@ fn main() {
         .unwrap();
 
     // Send the blind credential back to the holder
-    // who unblinds it. Holder can then use the credential to prove to a verifier
+    // who unblinds it. CredentialHolder can then use the credential to prove to a verifier
     let credential = holder.unblind_credential(blind_credential, blinding);
 
-    // Holder no proves to be a robot in Acme Factory without revealing anything else
+    // CredentialHolder no proves to be a robot in Acme Factory without revealing anything else
     // but first a relying party sends a presentation manifest that indicates what should be
     // revealed and what is allowed to be withheld.
     // Relying party also sends a presentation session number so the
@@ -107,17 +107,17 @@ fn main() {
         public_key: pk,            // only accept credentials issued by this authority
         revealed: vec![2],         // location is required to be revealed
     };
-    let request_id = Verifier::create_proof_request_id();
+    let request_id = CredentialVerifier::create_proof_request_id();
 
     // Send manifest and id to holder
-    // Holder creates a presentation
+    // CredentialHolder creates a presentation
     let presentation = holder
         .present_credentials(&[credential], &[presentation_manifest.clone()], request_id)
         .unwrap();
 
-    // Holder sends the presentation back to the relying party
+    // CredentialHolder sends the presentation back to the relying party
     // who can verify it
-    assert!(Verifier::verify_credential_presentations(
+    assert!(CredentialVerifier::verify_credential_presentations(
         presentation.as_slice(),
         &[presentation_manifest],
         request_id

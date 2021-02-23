@@ -15,11 +15,11 @@ pub(crate) const CSUITE_POP: &'static [u8] = b"BLS_POP_BLS12381G2_XMD:SHA-256_SS
 
 /// Represents an issuer of a credential
 #[derive(Debug)]
-pub struct Issuer {
+pub struct CredentialIssuer {
     signing_key: SecretKey,
 }
 
-impl Issuer {
+impl CredentialIssuer {
     /// Create issuer with a new issuing key
     pub fn new() -> Self {
         Self {
@@ -27,7 +27,7 @@ impl Issuer {
         }
     }
 
-    /// Return the signing key associated with this Issuer
+    /// Return the signing key associated with this CredentialIssuer
     pub fn get_signing_key(&self) -> [u8; 32] {
         self.signing_key.to_bytes_compressed_form()
     }
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn create_proof_of_possession_test() {
-        let issuer = Issuer::new();
+        let issuer = CredentialIssuer::new();
 
         let proof = issuer.create_proof_of_possession();
 

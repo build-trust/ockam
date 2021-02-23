@@ -4,16 +4,16 @@ use digest::{generic_array::GenericArray, Digest, FixedOutput};
 use ockam_core::lib::*;
 
 /// The label to indicate the secretid attribute in a schema/credential
-pub const SECRET_ID: &'static str = "secretid";
+pub const SECRET_ID: &'static str = "secret_id";
 
 /// Represents a holder of a credential
 #[derive(Debug)]
-pub struct Holder {
+pub struct CredentialHolder {
     pub(crate) id: SignatureMessage,
 }
 
-impl Holder {
-    /// Create a new Holder with a new unique id
+impl CredentialHolder {
+    /// Create a new CredentialHolder with a new unique id
     pub fn new() -> Self {
         Self {
             id: Prover::new_link_secret(),
