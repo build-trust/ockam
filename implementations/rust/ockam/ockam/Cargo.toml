@@ -43,3 +43,4 @@ async-trait = "0.1"
 [dev-dependencies]
 trybuild = {version = "1.0.41", features = ["diff"]}
 serde_json = "1.0"
+rand = "0.8"

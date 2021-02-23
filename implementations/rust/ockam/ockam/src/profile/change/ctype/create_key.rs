@@ -8,7 +8,6 @@ use ockam_vault_core::{
 };
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
-use std::ops::DerefMut;
 
 big_array! { BigArray; }
 
@@ -121,6 +120,7 @@ impl Profile {
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
         root_key: Option<&Secret>,
+        vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // Creating key after it was revoked is forbidden
         if self
@@ -133,12 +133,6 @@ impl Profile {
 
         let prev_id = self.change_history.get_last_event_id()?;
 
-        Self::create_key_event_static(
-            prev_id,
-            key_attributes,
-            attributes,
-            root_key,
-            self.vault.lock().unwrap().deref_mut(),
-        )
+        Self::create_key_event_static(prev_id, key_attributes, attributes, root_key, vault)
     }
 }

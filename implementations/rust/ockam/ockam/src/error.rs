@@ -13,6 +13,8 @@ pub enum OckamError {
     EventNotFound,
     InvalidChainSequence,
     InvalidEventId,
+    AttestationRequesterDoesntMatch,
+    AttestationNonceDoesntMatch,
 }
 
 impl OckamError {

@@ -1,9 +1,13 @@
-use crate::{Contact, OckamError};
+use crate::OckamError;
 use hashbrown::HashMap;
 use ockam_vault_core::{Hasher, KeyIdVault, PublicKey, Secret, SecretVault, Signer, Verifier};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
+mod authentication;
+pub use authentication::*;
+mod contact;
+pub use contact::*;
 mod identifiers;
 pub use identifiers::*;
 mod key_attributes;
@@ -17,6 +21,7 @@ pub trait ProfileVault: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 impl<D> ProfileVault for D where D: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 
 pub type ProfileEventAttributes = HashMap<String, String>;
+pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 
 /// Profile is an abstraction responsible for keeping, verifying and modifying
 /// user's data (mainly - public keys). It is used to create new keys, rotate and revoke them.
@@ -63,10 +68,53 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 ///     profile.verify().unwrap();
 /// }
 /// ```
+///
+/// ```
+/// use std::sync::{Arc, Mutex};
+/// use ockam_vault::SoftwareVault;
+/// use ockam::Profile;
+///
+/// fn alice_main() -> ockam_core::Result<()> {
+///     let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+///
+///     // Alice generates profile
+///     let mut alice = Profile::create(None, vault.clone())?;
+///
+///     // Key agreement happens here
+///     let key_agreement_hash = [0u8; 32];
+///
+///     // Send this over the network to Bob
+///     let contact_alice = alice.serialize_to_contact()?;
+///     let auth_factor = alice.generate_authentication_factor(&key_agreement_hash)?;
+///
+///     Ok(())
+/// }
+///
+/// fn bob_main() -> ockam_core::Result<()> {
+///     let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+///
+///     // Bob generates profile
+///     let mut bob = Profile::create(None, vault.clone())?;
+///
+///     // Key agreement happens here
+///     let key_agreement_hash = [0u8; 32];
+///
+///     // Receive this from Alice over the network
+///     let contact_alice = [0u8; 32];
+///     let contact_alice = bob.deserialize_and_verify_contact(&contact_alice)?;
+///
+///     let factor_alice = [0u8; 32];
+///     bob.verify_authentication_factor(&key_agreement_hash, &contact_alice, &factor_alice)?;
+///
+///     // Bob adds Alice to contact list
+///     bob.add_contact(contact_alice)
+/// }
+/// ```
 #[derive(Clone)]
 pub struct Profile {
     identifier: ProfileIdentifier,
     change_history: ProfileChangeHistory,
+    contacts: ContactsDb,
     vault: Arc<Mutex<dyn ProfileVault>>,
 }
 
@@ -86,17 +134,22 @@ impl Profile {
     pub fn change_events(&self) -> &[ProfileChangeEvent] {
         self.change_history.as_ref()
     }
+    pub fn contacts(&self) -> &ContactsDb {
+        &self.contacts
+    }
 }
 
 impl Profile {
     pub fn new(
         identifier: ProfileIdentifier,
         change_events: Vec<ProfileChangeEvent>,
+        contacts: ContactsDb,
         vault: Arc<Mutex<dyn ProfileVault>>,
     ) -> Self {
         let profile = Self {
             identifier,
             change_history: ProfileChangeHistory::new(change_events),
+            contacts,
             vault,
         };
 
@@ -134,7 +187,12 @@ impl Profile {
         let public_kid = v.compute_key_id_for_public_key(&public_key)?;
         let public_kid = ProfileIdentifier::from_key_id(public_kid);
 
-        let profile = Profile::new(public_kid, vec![change_event], vault.clone());
+        let profile = Profile::new(
+            public_kid,
+            vec![change_event],
+            Default::default(),
+            vault.clone(),
+        );
 
         Ok(profile)
     }
@@ -146,8 +204,16 @@ impl Profile {
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
     ) -> ockam_core::Result<()> {
-        let root_secret = self.get_root_secret()?;
-        let event = self.create_key_event(key_attributes, attributes, Some(&root_secret))?;
+        let event = {
+            let mut vault = self.vault.lock().unwrap();
+            let root_secret = self.get_root_secret(vault.deref())?;
+            self.create_key_event(
+                key_attributes,
+                attributes,
+                Some(&root_secret),
+                vault.deref_mut(),
+            )?
+        };
         self.apply_no_verification(event)
     }
 
@@ -158,8 +224,11 @@ impl Profile {
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
     ) -> ockam_core::Result<()> {
-        let root_secret = self.get_root_secret()?;
-        let event = self.rotate_key_event(key_attributes, attributes, &root_secret)?;
+        let event = {
+            let mut vault = self.vault.lock().unwrap();
+            let root_secret = self.get_root_secret(vault.deref())?;
+            self.rotate_key_event(key_attributes, attributes, &root_secret, vault.deref_mut())?
+        };
         self.apply_no_verification(event)
     }
 
@@ -236,10 +305,9 @@ impl Profile {
 }
 
 impl Profile {
-    pub(crate) fn get_root_secret(&self) -> ockam_core::Result<Secret> {
+    pub(crate) fn get_root_secret(&self, vault: &dyn ProfileVault) -> ockam_core::Result<Secret> {
         let public_key = self.change_history.get_root_public_key()?;
 
-        let vault = self.vault.lock().unwrap();
         let key_id = vault.compute_key_id_for_public_key(&public_key)?;
         vault.get_secret_by_key_id(&key_id)
     }
@@ -257,11 +325,96 @@ impl Profile {
     }
 }
 
+// Contacts
 impl Profile {
     pub fn to_contact(&self) -> Contact {
         Contact::new(
             self.identifier.clone(),
             self.change_history.as_ref().to_vec(),
+        )
+    }
+
+    pub fn serialize_to_contact(&self) -> ockam_core::Result<Vec<u8>> {
+        let contact = self.to_contact();
+
+        serde_bare::to_vec(&contact).map_err(|_| OckamError::BareError.into())
+    }
+
+    pub fn deserialize_and_verify_contact(&self, contact: &[u8]) -> ockam_core::Result<Contact> {
+        let contact: Contact =
+            serde_bare::from_slice(contact).map_err(|_| OckamError::BareError)?;
+
+        self.verify_contact(&contact)?;
+
+        Ok(contact)
+    }
+
+    /// Return [`Contact`]
+    pub fn get_contact(&self, id: &ProfileIdentifier) -> Option<&Contact> {
+        self.contacts.get(id)
+    }
+
+    /// Verify cryptographically whole event chain. Also verify sequence correctness
+    pub fn verify_contact(&self, contact: &Contact) -> ockam_core::Result<()> {
+        let mut vault = self.vault.lock().unwrap();
+        contact.verify(vault.deref_mut())
+    }
+
+    /// Add new [`Contact`]
+    pub fn add_contact(&mut self, contact: Contact) -> ockam_core::Result<()> {
+        let mut vault = self.vault.lock().unwrap();
+        contact.verify(vault.deref_mut())?;
+
+        let _ = self.contacts.insert(contact.identifier().clone(), contact);
+
+        Ok(())
+    }
+
+    /// Update [`Contact`] by applying new change events
+    pub fn apply_to_contact(
+        &mut self,
+        id: &ProfileIdentifier,
+        change_events: Vec<ProfileChangeEvent>,
+    ) -> ockam_core::Result<()> {
+        let contact;
+        if let Some(c) = self.contacts.get_mut(id) {
+            contact = c;
+        } else {
+            return Err(OckamError::ContactNotFound.into());
+        }
+
+        let mut vault = self.vault.lock().unwrap();
+
+        contact.apply(change_events, vault.deref_mut())
+    }
+}
+
+// Authentication
+impl Profile {
+    pub fn generate_authentication_factor(
+        &self,
+        channel_state: &[u8],
+    ) -> ockam_core::Result<Vec<u8>> {
+        let mut vault = self.vault.lock().unwrap();
+
+        let root_secret = self.get_root_secret(vault.deref())?;
+
+        Authentication::generate_factor(channel_state, &root_secret, vault.deref_mut())
+    }
+
+    pub fn verify_authentication_factor(
+        &self,
+        channel_state: &[u8],
+        responder_contact: &Contact,
+        factor: &[u8],
+    ) -> ockam_core::Result<()> {
+        let mut vault = self.vault.lock().unwrap();
+
+        Authentication::verify_factor(
+            channel_state,
+            &responder_contact.get_root_public_key()?,
+            factor,
+            vault.deref_mut(),
         )
     }
 }

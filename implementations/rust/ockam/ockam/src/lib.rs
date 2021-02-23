@@ -26,8 +26,6 @@ pub use ockam_node_no_std::*;
 
 mod profile;
 pub use profile::*;
-mod contacts;
-pub use contacts::*;
 mod error;
 pub use error::*;
 mod credential;

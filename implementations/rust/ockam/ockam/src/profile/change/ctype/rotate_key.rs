@@ -1,7 +1,7 @@
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, Signature,
-    SignatureType,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
+    ProfileVault, Signature, SignatureType,
 };
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
@@ -77,6 +77,7 @@ impl Profile {
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
         root_key: &Secret,
+        vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         let attributes = attributes.unwrap_or_default();
 
@@ -84,10 +85,8 @@ impl Profile {
 
         let last_event_in_chain = self.change_history.find_last_key_event(&key_attributes)?;
 
-        let mut v = self.vault.lock().unwrap();
-
         let last_key_in_chain =
-            Self::get_secret_key_from_event(&key_attributes, last_event_in_chain, v.deref())?;
+            Self::get_secret_key_from_event(&key_attributes, last_event_in_chain, vault.deref())?;
 
         // TODO: Should be customisable
         let secret_attributes = SecretAttributes::new(
@@ -96,14 +95,14 @@ impl Profile {
             CURVE25519_SECRET_LENGTH,
         );
 
-        let secret_key = v.secret_generate(secret_attributes)?;
-        let public_key = v.secret_public_key_get(&secret_key)?.as_ref().to_vec();
+        let secret_key = vault.secret_generate(secret_attributes)?;
+        let public_key = vault.secret_public_key_get(&secret_key)?.as_ref().to_vec();
 
         let data = RotateKeyChangeData::new(key_attributes, public_key);
         let data_binary = serde_bare::to_vec(&data).map_err(|_| OckamError::BareError)?;
-        let data_hash = v.sha256(data_binary.as_slice())?;
-        let self_signature = v.sign(&secret_key, &data_hash)?;
-        let prev_signature = v.sign(&last_key_in_chain, &data_hash)?;
+        let data_hash = vault.sha256(data_binary.as_slice())?;
+        let self_signature = vault.sign(&secret_key, &data_hash)?;
+        let prev_signature = vault.sign(&last_key_in_chain, &data_hash)?;
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
@@ -114,10 +113,10 @@ impl Profile {
         let changes = Changes::new(prev_event_id, vec![profile_change]);
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
 
-        let event_id = v.sha256(&changes_binary)?;
+        let event_id = vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);
 
-        let signature = v.sign(root_key, event_id.as_ref())?;
+        let signature = vault.sign(root_key, event_id.as_ref())?;
 
         // TODO: Find root key and sign with it
         let proof =

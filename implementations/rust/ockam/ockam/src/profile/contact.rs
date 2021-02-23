@@ -67,6 +67,7 @@ impl Contact {
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
     pub fn verify(&self, vault: &mut dyn ProfileVault) -> ockam_core::Result<()> {
+        // TODO: check if id is correct
         ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
         for change_event in self.change_events().as_ref() {
@@ -94,6 +95,10 @@ impl Contact {
 }
 
 impl Contact {
+    /// Get root [`PublicKey`]
+    pub fn get_root_public_key(&self) -> ockam_core::Result<PublicKey> {
+        self.change_history.get_root_public_key()
+    }
     /// Get [`PublicKey`]. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
     pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<PublicKey> {
         self.change_history.get_public_key(key_attributes)
