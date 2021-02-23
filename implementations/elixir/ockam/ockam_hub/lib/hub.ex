@@ -6,6 +6,7 @@ defmodule Ockam.Hub do
   use Application
 
   alias Ockam.Hub.Service.Echo, as: EchoService
+  alias Ockam.Hub.Service.Forward, as: ForwardingService
   alias Ockam.Transport.TCP
 
   require Logger
@@ -26,6 +27,10 @@ defmodule Ockam.Hub do
     # Create an echo_service worker.
     # TODO: add to supervision tree.
     EchoService.create(address: "echo_service")
+
+    # Create an forwarding_service worker.
+    # TODO: add to supervision tree.
+    ForwardingService.create(address: "forwarding_service")
 
     # Specifications of child processes that will be started and supervised.
     #
