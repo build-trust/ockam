@@ -1,6 +1,7 @@
 use crate::error::TransportError;
 use crate::TcpConnection;
 use async_trait::async_trait;
+use ockam::Result;
 use ockam_transport::traits::{Connection, Listener};
 use tokio::net::TcpListener as TokioTcpListener;
 
@@ -24,9 +25,7 @@ impl TcpListener {
     ///    let listener = TcpListener::create(address).await.unwrap();
     /// });
     /// ```
-    pub async fn create(
-        listen_address: std::net::SocketAddr,
-    ) -> ockam_core::Result<Box<dyn Listener + Send>> {
+    pub async fn create(listen_address: std::net::SocketAddr) -> Result<Box<dyn Listener + Send>> {
         let listener = TokioTcpListener::bind(listen_address).await;
         match listener {
             Ok(l) => Ok(Box::new(TcpListener { listener: l })),
@@ -50,7 +49,7 @@ impl Listener for TcpListener {
     /// let mut  listener = TcpListener::new(address).await.unwrap();
     /// let connection = listener.accept().await.unwrap();
     /// ```
-    async fn accept(&mut self) -> ockam_core::Result<Box<dyn Connection + Send>> {
+    async fn accept(&mut self) -> Result<Box<dyn Connection + Send>> {
         let stream = self.listener.accept().await;
         if stream.is_err() {
             Err(TransportError::Accept.into())

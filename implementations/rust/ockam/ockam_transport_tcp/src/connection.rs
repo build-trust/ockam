@@ -1,9 +1,11 @@
 use crate::error::TransportError;
 use async_trait::async_trait;
-use ockam_core::lib::str::FromStr;
+use ockam::Result;
 use ockam_router::message::{RouterAddress, RouterMessage, ROUTER_ADDRESS_TCP};
 use ockam_transport::traits::Connection;
+use std::convert::TryInto;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use tokio::io;
 use tokio::net::TcpStream;
 
@@ -42,7 +44,7 @@ impl TcpConnection {
             stream: None,
         })
     }
-    pub async fn new_from_stream(stream: TcpStream) -> ockam_core::Result<Box<Self>> {
+    pub async fn new_from_stream(stream: TcpStream) -> Result<Box<Self>> {
         match stream.peer_addr() {
             Ok(peer) => Ok(Box::new(TcpConnection {
                 remote_address: peer,
@@ -59,7 +61,7 @@ impl TcpConnection {
 
 #[async_trait]
 impl Connection for TcpConnection {
-    async fn connect(&mut self) -> ockam_core::Result<()> {
+    async fn connect(&mut self) -> Result<()> {
         match self.stream {
             Some(_) => Err(TransportError::AlreadyConnected.into()),
             None => match TcpStream::connect(&self.remote_address).await {
@@ -72,7 +74,7 @@ impl Connection for TcpConnection {
         }
     }
 
-    async fn send(&mut self, buff: &[u8]) -> ockam_core::Result<usize> {
+    async fn send(&mut self, buff: &[u8]) -> Result<usize> {
         let mut i = 0;
         return if let Some(stream) = &self.stream {
             loop {
@@ -100,7 +102,7 @@ impl Connection for TcpConnection {
         };
     }
 
-    async fn receive(&mut self, buff: &mut [u8]) -> ockam_core::Result<usize> {
+    async fn receive(&mut self, buff: &mut [u8]) -> Result<usize> {
         if let Some(stream) = &self.stream {
             loop {
                 if std::result::Result::is_err(&stream.readable().await) {
@@ -127,14 +129,11 @@ impl Connection for TcpConnection {
         }
     }
 
-    async fn send_message(&mut self, mut msg: RouterMessage) -> ockam_core::Result<usize> {
-        let remote_addr = serde_bare::to_vec::<SocketAddr>(&self.remote_address).unwrap();
-        let remote_addr = RouterAddress {
-            address_type: ROUTER_ADDRESS_TCP,
-            address: remote_addr,
-        };
-        if msg.onward_route.addrs[0] != remote_addr {
-            msg.onward_route.addrs.insert(0, remote_addr);
+    async fn send_message(&mut self, mut msg: RouterMessage) -> Result<usize> {
+        if !msg.onward_route.addrs.is_empty() {
+            if msg.onward_route.addrs[0] == self.get_remote_address() {
+                msg.onward_route.addrs.remove(0);
+            }
         }
         return match serde_bare::to_vec::<RouterMessage>(&msg) {
             Ok(mut msg_vec) => {
@@ -142,15 +141,16 @@ impl Connection for TcpConnection {
                     return Err(TransportError::IllFormedMessage.into());
                 }
                 let len = msg_vec.len() as u16;
-                let mut msg_len_vec = serde_bare::to_vec::<u16>(&len).unwrap();
+                let mut msg_len_vec = len.to_be_bytes().to_vec();
                 msg_len_vec.append(&mut msg_vec);
+                println!("sent: {:?}", msg_len_vec[0..10].to_vec());
                 return self.send(&msg_len_vec).await;
             }
             Err(_) => Err(TransportError::IllFormedMessage.into()),
         };
     }
 
-    async fn receive_message(&mut self) -> ockam_core::Result<RouterMessage> {
+    async fn receive_message(&mut self) -> Result<RouterMessage> {
         loop {
             let mut recv_buff = [0u8; MAX_MESSAGE_SIZE];
 
@@ -163,13 +163,17 @@ impl Connection for TcpConnection {
             }
 
             if self.message_length == 0 {
-                self.message_length =
-                    serde_bare::from_slice::<u16>(&recv_buff[0..]).unwrap() as usize;
+                let (len, _) = recv_buff.split_at(2);
+                self.message_length = u16::from_be_bytes(len.try_into().unwrap()) as usize;
                 self.message_buff.remove(0);
                 self.message_buff.remove(0);
             }
 
-            // see if we have a complete message
+            println!(
+                "message_length {} message_buff.len {}",
+                self.message_length,
+                self.message_buff.len()
+            );
             if self.message_length as usize <= self.message_buff.len() {
                 // we have a complete message
                 return match serde_bare::from_slice::<RouterMessage>(&self.message_buff) {
@@ -178,14 +182,25 @@ impl Connection for TcpConnection {
                         for i in 0..self.message_buff.len() - self.message_length {
                             self.message_buff[i] = self.message_buff[i + self.message_length];
                         }
+                        println!("{:?}", self.message_buff[0..10].to_vec());
                         self.message_buff
                             .truncate(self.message_buff.len() - self.message_length);
                         self.message_length = 0;
+                        if self.message_buff.len() >= 2 {
+                            let len = &self.message_buff[..2];
+                            self.message_length =
+                                u16::from_be_bytes(len.try_into().unwrap()) as usize;
+                            self.message_buff.remove(0);
+                            self.message_buff.remove(0);
+                        }
 
-                        // first address in onward route should be ours, remove it
-                        m.onward_route.addrs.remove(0);
+                        // if first address in onward route is ours, remove it
+                        if !m.onward_route.addrs.is_empty()
+                            && m.onward_route.addrs[0] == self.get_local_address()
+                        {
+                            m.onward_route.addrs.remove(0);
+                        }
 
-                        // if the next onward address is another tcp address, route it
                         if !m.onward_route.addrs.is_empty()
                             && m.onward_route.addrs[0].address_type == ROUTER_ADDRESS_TCP
                         {
@@ -198,9 +213,21 @@ impl Connection for TcpConnection {
                             self.send_message(m).await?;
                             continue;
                         }
+                        println!("OK!");
+                        println!(
+                            "self.message_length {} self.message_buffer {:?}",
+                            self.message_length, self.message_buff
+                        );
                         Ok(m)
                     }
-                    Err(_) => Err(TransportError::IllFormedMessage.into()),
+                    Err(_) => {
+                        println!(
+                            "self.message_length {} self.message_buff {:?}",
+                            self.message_length,
+                            self.message_buff[0..32].to_vec()
+                        );
+                        Err(TransportError::IllFormedMessage.into())
+                    }
                 };
             }
         }
@@ -320,8 +347,6 @@ mod test {
         });
     }
 
-    //----------------
-
     async fn ok_listener(a: String) {
         let r = TcpListener::create(std::net::SocketAddr::from_str(&a).unwrap()).await;
         assert!(r.is_ok());
@@ -421,7 +446,6 @@ mod test {
     }
 
     async fn big_message_listener(a: String) {
-        println!("listener address: {}", a);
         let r = TcpListener::create(std::net::SocketAddr::from_str(&a).unwrap()).await;
         assert!(r.is_ok());
 
@@ -432,10 +456,6 @@ mod test {
 
         let sock_addr = SocketAddr::from_str(&a).unwrap();
         let sock_addr_as_vec = serde_bare::to_vec::<SocketAddr>(&sock_addr).unwrap();
-        let router_sock_addr = RouterAddress {
-            address_type: ROUTER_ADDRESS_TCP,
-            address: sock_addr_as_vec,
-        };
         let router_local_addr = RouterAddress {
             address_type: ROUTER_ADDRESS_LOCAL,
             address: b"0123".to_vec(),
@@ -443,6 +463,7 @@ mod test {
 
         match connection.receive_message().await {
             Ok(m) => {
+                println!("{:?} {:?}", m.onward_route, m.return_route);
                 assert_eq!(
                     m,
                     RouterMessage {
@@ -451,7 +472,7 @@ mod test {
                             addrs: vec![router_local_addr.clone()]
                         },
                         return_route: Route {
-                            addrs: vec![router_sock_addr, router_local_addr]
+                            addrs: vec![router_local_addr]
                         },
                         payload: vec![0xfu8; 1024]
                     }
@@ -464,17 +485,10 @@ mod test {
     }
 
     async fn big_message_sender(a: String) {
-        println!("sender address: {}", a);
         let mut connection = TcpConnection::create(std::net::SocketAddr::from_str(&a).unwrap());
         let r = connection.connect().await;
         assert!(!r.is_err());
 
-        let sock_addr = SocketAddr::from_str(&a).unwrap();
-        let sock_addr_as_vec = serde_bare::to_vec::<SocketAddr>(&sock_addr).unwrap();
-        let router_sock_addr = RouterAddress {
-            address_type: ROUTER_ADDRESS_TCP,
-            address: sock_addr_as_vec,
-        };
         let router_local_addr = RouterAddress {
             address_type: ROUTER_ADDRESS_LOCAL,
             address: b"0123".to_vec(),
@@ -483,16 +497,16 @@ mod test {
         let m = RouterMessage {
             version: 1,
             onward_route: Route {
-                addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
+                addrs: vec![router_local_addr.clone()],
             },
             return_route: Route {
-                addrs: vec![router_sock_addr, router_local_addr],
+                addrs: vec![router_local_addr],
             },
             payload: vec![0xfu8; 1024],
         };
         let mut vm = serde_bare::to_vec::<RouterMessage>(&m).unwrap();
         let len = vm.len() as u16;
-        let mut vl = serde_bare::to_vec::<u16>(&len).unwrap();
+        let mut vl = len.to_be_bytes().to_vec();
         vl.append(&mut vm);
         connection.send(&vl[0..512]).await.unwrap();
         tokio::time::sleep(Duration::from_millis((1000.0) as u64)).await;
@@ -521,37 +535,21 @@ mod test {
     }
 
     fn get_messages() -> [RouterMessage; 2] {
-        let sock_addr = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-        let sock_addr_as_vec = serde_bare::to_vec::<SocketAddr>(&sock_addr).unwrap();
-        let router_sock_addr = RouterAddress {
-            address_type: ROUTER_ADDRESS_TCP,
-            address: sock_addr_as_vec,
-        };
         let router_local_addr = RouterAddress {
             address_type: ROUTER_ADDRESS_LOCAL,
             address: b"0123".to_vec(),
         };
-
         let m1 = RouterMessage {
             version: 1,
             onward_route: Route {
-                addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
+                addrs: vec![router_local_addr.clone()],
             },
             return_route: Route {
-                addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
+                addrs: vec![router_local_addr.clone()],
             },
             payload: vec![0xfu8; 32],
         };
-        let m2 = RouterMessage {
-            version: 1,
-            onward_route: Route {
-                addrs: vec![router_sock_addr.clone(), router_local_addr.clone()],
-            },
-            return_route: Route {
-                addrs: vec![router_sock_addr, router_local_addr],
-            },
-            payload: vec![0x8u8; 32],
-        };
+        let m2 = m1.clone();
         [m1, m2]
     }
 
@@ -568,10 +566,11 @@ mod test {
 
         // expect 2 messages, each with 32-byte payload
         for msg in messages.iter() {
-            let mut msg = msg.clone();
-            msg.onward_route.addrs.remove(0);
+            let msg = msg.clone();
             match connection.receive_message().await {
                 Ok(m) => {
+                    println!("m  : {:?}", m);
+                    println!("msg: {:?}", msg);
                     assert_eq!(m, msg);
                 }
                 Err(e) => {
@@ -590,20 +589,20 @@ mod test {
 
         let mut vm1 = serde_bare::to_vec::<RouterMessage>(&messages[0]).unwrap();
         let len1 = vm1.len() as u16;
-        let mut vl1 = serde_bare::to_vec::<u16>(&len1).unwrap();
+        let mut vl1 = len1.to_be_bytes().to_vec();
         vl1.append(&mut vm1);
 
         let mut vm2 = serde_bare::to_vec::<RouterMessage>(&messages[1]).unwrap();
         let len2 = vm2.len() as u16;
-        let mut vl2 = serde_bare::to_vec::<u16>(&len2).unwrap();
+        let mut vl2 = len2.to_be_bytes().to_vec();
         vl2.append(&mut vm2);
 
         vl1.append(&mut vl2);
 
         connection.send(&vl1[0..16]).await.unwrap();
-        tokio::time::sleep(Duration::from_millis((1000.0) as u64)).await;
+        tokio::time::sleep(Duration::from_millis((100.0) as u64)).await;
         connection.send(&vl1[16..58]).await.unwrap();
-        tokio::time::sleep(Duration::from_millis((1000.0) as u64)).await;
+        tokio::time::sleep(Duration::from_millis((100.0) as u64)).await;
         connection.send(&vl1[58..]).await.unwrap();
         tokio::time::sleep(Duration::from_millis((2000.0) as u64)).await;
     }

@@ -1,4 +1,4 @@
-use ockam_core::Error;
+use ockam::Error;
 
 /// Represents the failures that can occur in
 /// Ockam Connection and Listener traits

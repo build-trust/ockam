@@ -1,3 +1,4 @@
+use ockam::{Error, Result};
 use ockam_transport::traits::Connection;
 use ockam_transport_tcp::connection::TcpConnection;
 use ockam_transport_tcp::error::TransportError;
@@ -30,7 +31,7 @@ pub async fn random_worker(mut c: Box<dyn Connection>, text: &str) {
                         println!("{} {}", String::from_utf8(buff[0..n].to_vec()).unwrap(),y);
                     }
                     Err(e) => {
-                        let _te: ockam_core::Error = TransportError::ConnectionClosed.into();
+                        let _te: Error = TransportError::ConnectionClosed.into();
                         if !matches!(&e, _te) {
                             panic!(format!("{:?}", e));
                         }

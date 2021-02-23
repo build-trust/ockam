@@ -55,6 +55,16 @@ impl From<RouteableAddress> for RouterAddress {
     }
 }
 
+impl From<SocketAddr> for RouterAddress {
+    fn from(s: SocketAddr) -> Self {
+        let a = serde_bare::to_vec::<SocketAddr>(&s).unwrap();
+        RouterAddress {
+            address_type: ROUTER_ADDRESS_TCP,
+            address: a,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct Route {
     pub addrs: Vec<RouterAddress>,
