@@ -45,13 +45,13 @@ defmodule Ockam.Hub.MixProject do
 
   defp deps do
     [
-      {:ockam, path: "../ockam"},
-      {:ockam_vault_software, path: "../ockam_vault_software"},
-      {:ranch, "~> 2.0"},
-      {:telemetry, "~> 0.4.2"},
-      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
+      {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
+      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
+      {:ockam_vault_software, path: "../ockam_vault_software"},
+      {:ockam, path: "../ockam"},
+      {:ranch, "~> 2.0"},
+      {:telemetry, "~> 0.4.2"}
     ]
   end
 
