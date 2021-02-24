@@ -25,7 +25,7 @@ impl CredentialHolder {
         &self,
         offer: &CredentialOffer,
         issuer_pk: [u8; 96],
-    ) -> Result<(CredentialRequest, CredentialBlinding), CredentialError> {
+    ) -> Result<(CredentialRequest, CredentialFragment1), CredentialError> {
         let nonce = ProofNonce::from(offer.id);
         let mut i = 0;
         let mut found = false;
@@ -50,22 +50,22 @@ impl CredentialHolder {
             .map_err(|_| CredentialError::InvalidCredentialOffer)?;
         Ok((
             CredentialRequest { context },
-            CredentialBlinding {
+            CredentialFragment1 {
                 schema: offer.schema.clone(),
                 blinding,
             },
         ))
     }
 
-    /// Convert a blinded credential to an unblinded one
-    pub fn unblind_credential(
+    /// Combine credential fragments to yield a completed credential
+    pub fn combine_credential_fragments(
         &self,
-        blind_credential: BlindCredential,
-        credential_blinding: CredentialBlinding,
+        credential_fragment1: CredentialFragment1,
+        credential_fragment2: CredentialFragment2,
     ) -> Credential {
-        let mut attributes = blind_credential.attributes;
-        for i in 0..credential_blinding.schema.attributes.len() {
-            if credential_blinding.schema.attributes[i].label == SECRET_ID {
+        let mut attributes = credential_fragment2.attributes;
+        for i in 0..credential_fragment1.schema.attributes.len() {
+            if credential_fragment1.schema.attributes[i].label == SECRET_ID {
                 attributes.insert(
                     i,
                     CredentialAttribute::Blob(self.id.to_bytes_compressed_form()),
@@ -75,9 +75,9 @@ impl CredentialHolder {
         }
         Credential {
             attributes,
-            signature: blind_credential
+            signature: credential_fragment2
                 .signature
-                .to_unblinded(&credential_blinding.blinding),
+                .to_unblinded(&credential_fragment1.blinding),
         }
     }
 

@@ -1,13 +1,17 @@
 mod attribute;
 mod attribute_schema;
 mod attribute_type;
-#[cfg(feature = "std")]
-mod blinding;
 mod error;
+#[cfg(feature = "std")]
+mod fragment1;
+#[cfg(feature = "std")]
+mod fragment2;
 #[cfg(feature = "std")]
 mod holder;
 #[cfg(feature = "std")]
 mod issuer;
+#[cfg(feature = "std")]
+mod offer;
 mod presentation;
 mod presentation_manifest;
 mod request;
@@ -19,13 +23,16 @@ mod verifier;
 pub use attribute::*;
 pub use attribute_schema::*;
 pub use attribute_type::*;
-#[cfg(feature = "std")]
-pub use blinding::*;
 pub use error::*;
+#[cfg(feature = "std")]
+pub use fragment1::*;
+#[cfg(feature = "std")]
+pub use fragment2::*;
 #[cfg(feature = "std")]
 pub use holder::*;
 #[cfg(feature = "std")]
 pub use issuer::*;
+pub use offer::*;
 pub use presentation::*;
 pub use presentation_manifest::*;
 pub use request::*;
@@ -36,16 +43,6 @@ pub use verifier::*;
 
 use serde::{Deserialize, Serialize};
 
-/// A credential offer is how an issuer informs a potential holder that
-/// a credential is available to them
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CredentialOffer {
-    /// The credential offer id is a cryptographic nonce, this must never repeat
-    pub id: [u8; 32],
-    /// The schema for the credential that the issuer is offering to sign
-    pub schema: CredentialSchema,
-}
-
 /// A credential that can be presented
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credential {
@@ -53,15 +50,6 @@ pub struct Credential {
     pub attributes: Vec<CredentialAttribute>,
     /// The cryptographic signature
     pub signature: bbs::prelude::Signature,
-}
-
-/// A blind credential that will be unblinded by the holder
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BlindCredential {
-    /// The signed attributes in the credential
-    pub attributes: Vec<CredentialAttribute>,
-    /// The cryptographic signature
-    pub signature: bbs::prelude::BlindSignature,
 }
 
 #[cfg(test)]
@@ -178,7 +166,7 @@ mod tests {
         let offer = issuer.create_offer(&schema);
         let res = holder.accept_credential_offer(&offer, pk);
         assert!(res.is_ok());
-        let (request, blinding) = res.unwrap();
+        let (request, fragment1) = res.unwrap();
         let mut attributes = BTreeMap::new();
         attributes.insert(
             schema.attributes[1].label.clone(),
@@ -197,10 +185,10 @@ mod tests {
                     .as_secs() as i64,
             ),
         );
-        let res = issuer.blind_sign_credential(&request, &schema, &attributes, offer.id);
+        let res = issuer.sign_credential_request(&request, &schema, &attributes, offer.id);
         assert!(res.is_ok());
-        let bc = res.unwrap();
-        let cred = holder.unblind_credential(bc, blinding);
+        let fragment2 = res.unwrap();
+        let cred = holder.combine_credential_fragments(fragment1, fragment2);
         assert!(holder.is_valid_credential(&cred, pk));
     }
 

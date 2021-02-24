@@ -110,14 +110,14 @@ impl CredentialIssuer {
         })
     }
 
-    /// Blind sign assumes certain claims have already been committed and signs the remaining claims
-    pub fn blind_sign_credential(
+    /// Sign a credential request where certain claims have already been committed and signs the remaining claims
+    pub fn sign_credential_request(
         &self,
         ctx: &CredentialRequest,
         schema: &CredentialSchema,
         attributes: &BTreeMap<String, CredentialAttribute>,
-        nonce: [u8; 32],
-    ) -> Result<BlindCredential, CredentialError> {
+        offer_id: [u8; 32],
+    ) -> Result<CredentialFragment2, CredentialError> {
         if attributes.len() >= schema.attributes.len() {
             return Err(CredentialError::MismatchedAttributesAndClaims);
         }
@@ -152,11 +152,11 @@ impl CredentialIssuer {
             &messages,
             &self.signing_key,
             &pk,
-            &ProofNonce::from(nonce),
+            &ProofNonce::from(offer_id),
         )
         .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
 
-        Ok(BlindCredential {
+        Ok(CredentialFragment2 {
             attributes: blind_atts.iter().map(|(_, v)| v.clone()).collect(),
             signature,
         })
