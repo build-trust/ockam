@@ -80,36 +80,21 @@ defmodule Ockam.Worker do
 
         return_value = handle_message(message, state)
 
-        with {:ok, instruction, state} <- return_value,
-             {:ok, state} <- handle_instruction(instruction, state) do
-          metadata = Map.put(metadata, :return_value, return_value)
-          Telemetry.emit_stop_event([__MODULE__, :handle_message], start_time, metadata: metadata)
-        end
+        new_state =
+          case return_value do
+            {:ok, returned_state} ->
+              returned_state
 
-        {:noreply, state}
-      end
+            _anything_else ->
+              state
+          end
 
-      defp handle_instruction({:route, messages}, state) when is_list(messages) do
-        Enum.map(messages, &send_to_router/1)
-      end
+        return_value = {:noreply, new_state}
 
-      defp handle_instruction({:route, message}, state) do
-        case send_to_router(message) do
-          :ok -> {:ok, state}
-          {:error, reason} -> {:error, reason}
-        end
-      end
+        metadata = Map.put(metadata, :return_value, return_value)
+        Telemetry.emit_stop_event([__MODULE__, :handle_message], start_time, metadata: metadata)
 
-      defp handle_instruction(nil, state), do: {:ok, state}
-
-      defp handle_instruction(instruction, state),
-        do: {:error, {:unknown_instruction, instruction}}
-
-      defp send_to_router(message) do
-        case Router.route(message) do
-          :ok -> {:ok, message}
-          {:error, reason} -> {:error, {:could_not_route, {message, reason}}}
-        end
+        return_value
       end
 
       @doc false
