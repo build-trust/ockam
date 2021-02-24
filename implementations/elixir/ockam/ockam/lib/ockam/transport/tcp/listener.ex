@@ -75,9 +75,9 @@ if Code.ensure_loaded?(:ranch) do
 
     defp encode_and_send_over_tcp(message, %{address: address}) do
       message = create_outgoing_message(message)
+      {:ok, _message} = set_return_route(message, address)
 
       with {:ok, destination, message} <- pick_destination_and_set_onward_route(message, address),
-           {:ok, message} <- set_return_route(message, address),
            {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, message),
            :ok <- send_over_tcp(encoded_message, destination) do
         :ok
@@ -131,6 +131,7 @@ if Code.ensure_loaded?(:ranch) do
     @moduledoc false
 
     use GenServer
+    alias Ockam.Message
 
     @wire_encoder_decoder Ockam.Wire.Binary.V2
 
@@ -161,10 +162,13 @@ if Code.ensure_loaded?(:ranch) do
     end
 
     @impl true
-    def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
-      case Ockam.Wire.decode(@wire_encoder_decoder, data) do
-        {:ok, decoded} -> send_to_router(decoded)
+    def handle_info({:tcp, socket, data}, %{socket: socket, address: address} = state) do
+      with {:ok, decoded} <- Ockam.Wire.decode(@wire_encoder_decoder, data),
+           {:ok, decoded} <- set_return_route(decoded, address) do
+        send_to_router(decoded)
+      else
         {:error, %Ockam.Wire.DecodeError{} = e} -> raise e
+        e -> raise e
       end
 
       {:noreply, state}
@@ -173,6 +177,21 @@ if Code.ensure_loaded?(:ranch) do
     def handle_info({:tcp_closed, socket}, %{socket: socket, transport: transport} = state) do
       transport.close(socket)
       {:stop, :normal, state}
+    end
+
+    def handle_info(
+          %{payload: _payload} = message,
+          %{transport: transport, socket: socket, address: address} = state
+        ) do
+      with {:ok, message} <- set_onward_route(message, address),
+           {:ok, encoded} <- Ockam.Wire.encode(@wire_encoder_decoder, message) do
+        transport.send(socket, encoded)
+      else
+        a ->
+          raise a
+      end
+
+      {:noreply, state}
     end
 
     @impl true
@@ -205,6 +224,19 @@ if Code.ensure_loaded?(:ranch) do
         {:ok, {ip, port, pid}} = GenServer.call(conn, :peername)
         {ip, port, pid}
       end)
+    end
+
+    defp set_onward_route(message, address) do
+      onward_route =
+        message
+        |> Message.onward_route()
+        |> Enum.drop_while(fn a -> a === address end)
+
+      {:ok, %{message | onward_route: onward_route}}
+    end
+
+    defp set_return_route(%{return_route: return_route} = message, address) do
+      {:ok, %{message | return_route: [address | return_route]}}
     end
 
     defp send_to_router(message) do
