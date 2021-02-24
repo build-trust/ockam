@@ -60,7 +60,7 @@ defmodule Ockam.Node do
   Returns a random address that is currently not registed on the node.
   """
   def get_random_unregistered_address(length_in_bytes \\ @default_address_length_in_bytes) do
-    candidate = :crypto.strong_rand_bytes(length_in_bytes)
+    candidate = length_in_bytes |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
 
     case whereis(candidate) do
       nil -> candidate

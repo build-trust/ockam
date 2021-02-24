@@ -14,8 +14,12 @@ defmodule Ockam.Node.Tests do
 
   describe "#{Node}.get_random_unregistered_address/{0,1}" do
     test "keeps trying" do
-      Enum.each(0..254, fn x -> Node.register_address(<<x>>, self()) end)
-      assert <<255>> === Node.get_random_unregistered_address(1)
+      Enum.each(0..254, fn x ->
+        x = Base.encode16(<<x>>, case: :lower)
+        Node.register_address(x, self())
+      end)
+
+      assert "ff" === Node.get_random_unregistered_address(1)
     end
   end
 end
