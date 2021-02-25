@@ -36,7 +36,87 @@ defmodule Ockam.Hub do
     #
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
-    children = []
+    children = [
+      {
+        :telemetry_poller,
+        [
+          period: :timer.seconds(5)
+        ]
+      },
+      %{
+        id: TelemetryInfluxDB,
+        start: {
+          TelemetryInfluxDB,
+          :start_link,
+          [
+            [
+              version: :v2,
+              protocol: :http,
+              reporter_name: "Ockam Hub",
+              host: Application.get_env(:telemetry_influxdb, :host) || "http://127.0.0.1",
+              port: String.to_integer(Application.get_env(:telemetry_influxdb, :port) || "8086"),
+              bucket: Application.get_env(:telemetry_influxdb, :bucket) || "ockam_hub",
+              org: Application.get_env(:telemetry_influxdb, :org) || "ockam",
+              token: Application.get_env(:telemetry_influxdb, :token) || "TOKEN NOT CONFIGURED",
+              events: [
+                %{
+                  name: [:vm, :memory],
+                  metadata_tag_keys: [
+                    :total,
+                    :processes,
+                    :processes_used,
+                    :system,
+                    :atom,
+                    :atom_used,
+                    :binary,
+                    :code,
+                    :ets,
+                    :maximum
+                  ]
+                },
+                %{
+                  name: [:vm, :total_run_queue_lengths],
+                  metadata_tag_keys: [:total, :cpu, :io]
+                },
+                %{
+                  name: [:vm, :system_counts],
+                  metadata_tag_keys: [:process_count, :atom_count, :port_count]
+                },
+                %{
+                  name: [:ockam, Ockam.Transport.TCP.Listener, :init],
+                  metadata_tag_keys: [:options, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Router, :route, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Router, :route, :start_link],
+                  metadata_tag_keys: [:options, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Transport.TCP.Listener, :handle_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Transport.UDP.Listener, :handle_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Node, :handle_routed_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, :init],
+                  metadata_tag_keys: [:options, :return_value]
+                }
+              ],
+              tags: %{test: :value}
+            ]
+          ]
+        }
+      }
+    ]
 
     # Start a supervisor with the given children. The supervisor will inturn
     # start the given children.
