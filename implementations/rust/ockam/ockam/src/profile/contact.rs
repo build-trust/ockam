@@ -1,5 +1,7 @@
 use crate::profile::history::ProfileChangeHistory;
-use crate::{EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
+use crate::{
+    EventIdentifier, KeyAttributes, OckamError, ProfileChangeEvent, ProfileIdentifier, ProfileVault,
+};
 use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
 
@@ -67,11 +69,19 @@ impl Contact {
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
     pub fn verify(&self, vault: &mut dyn ProfileVault) -> ockam_core::Result<()> {
-        // TODO: check if id is correct
         ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
         for change_event in self.change_events().as_ref() {
             self.change_history.verify_event(change_event, vault)?;
+        }
+
+        let root_public_key = self.change_history.get_root_public_key()?;
+
+        let root_key_id = vault.compute_key_id_for_public_key(&root_public_key)?;
+        let profile_id = ProfileIdentifier::from_key_id(root_key_id);
+
+        if &profile_id != self.identifier() {
+            return Err(OckamError::ProfileIdDoesntMatch.into());
         }
 
         Ok(())

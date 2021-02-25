@@ -118,7 +118,6 @@ impl Profile {
 
         let signature = vault.sign(root_key, event_id.as_ref())?;
 
-        // TODO: Find root key and sign with it
         let proof =
             ProfileChangeProof::Signature(Signature::new(SignatureType::RootSign, signature));
         let signed_change_event = ProfileChangeEvent::new(event_id, changes, proof);
