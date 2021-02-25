@@ -121,6 +121,19 @@ impl CredentialIssuer {
         if attributes.len() >= schema.attributes.len() {
             return Err(CredentialError::MismatchedAttributesAndClaims);
         }
+        // Check if any blinded messages are allowed to be unknown
+        // If allowed, proceed
+        // otherwise abort
+        for att in &schema.attributes {
+            // missing schema attribute means it's hidden by the holder
+            // or unknown to the issuer
+            if let None = attributes.get(&att.label) {
+                if !att.unknown {
+                    return Err(CredentialError::InvalidCredentialAttribute);
+                }
+            }
+        }
+
         let atts = schema
             .attributes
             .iter()
@@ -129,7 +142,7 @@ impl CredentialIssuer {
             .collect::<BTreeMap<String, (usize, CredentialAttributeSchema)>>();
         let mut messages = BTreeMap::new();
 
-        let mut blind_atts = BTreeMap::new();
+        let mut remaining_atts = BTreeMap::new();
         for (label, data) in attributes {
             let (i, a) = atts
                 .get(label)
@@ -137,7 +150,7 @@ impl CredentialIssuer {
             if *data != a.attribute_type {
                 return Err(CredentialError::MismatchedAttributeClaimType);
             }
-            blind_atts.insert(*i, data.clone());
+            remaining_atts.insert(*i, data.clone());
             messages.insert(*i, data.to_signature_message());
         }
         let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
@@ -157,7 +170,7 @@ impl CredentialIssuer {
         .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
 
         Ok(CredentialFragment2 {
-            attributes: blind_atts.iter().map(|(_, v)| v.clone()).collect(),
+            attributes: remaining_atts.iter().map(|(_, v)| v.clone()).collect(),
             signature,
         })
     }

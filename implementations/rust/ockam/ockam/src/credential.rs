@@ -62,6 +62,7 @@ mod tests {
             label: String::from("test_attr"),
             description: String::from("test attribute"),
             attribute_type: CredentialAttributeType::Utf8String,
+            unknown: false,
         };
 
         let attributes = [attribute].to_vec();
@@ -124,21 +125,25 @@ mod tests {
                     label: String::from(SECRET_ID),
                     description: String::from(""),
                     attribute_type: CredentialAttributeType::Blob,
+                    unknown: true,
                 },
                 CredentialAttributeSchema {
                     label: String::from("device-name"),
                     description: String::from(""),
                     attribute_type: CredentialAttributeType::Utf8String,
+                    unknown: false,
                 },
                 CredentialAttributeSchema {
                     label: String::from("manufacturer"),
                     description: String::from(""),
                     attribute_type: CredentialAttributeType::Utf8String,
+                    unknown: false,
                 },
                 CredentialAttributeSchema {
                     label: String::from("issued"),
                     description: String::from("Unix timestamp of datetime issued"),
                     attribute_type: CredentialAttributeType::Number,
+                    unknown: false,
                 },
             ]
             .to_vec(),
