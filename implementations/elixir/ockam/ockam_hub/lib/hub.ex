@@ -36,7 +36,62 @@ defmodule Ockam.Hub do
     #
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
-    children = []
+    children = [
+      %{
+        id: TelemetryInfluxDB,
+        start: {
+          TelemetryInfluxDB,
+          :start_link,
+          [
+            [
+              version: :v2,
+              protocol: :http,
+              reporter_name: "Ockam Hub",
+              host: Application.get_env(:telemetry_influxdb, :host, "http://127.0.0.1"),
+              port: String.to_integer(Application.get_env(:telemetry_influxdb, :port, "8086")),
+              bucket: Application.get_env(:telemetry_influxdb, :bucket, "ockam_hub"),
+              org: Application.get_env(:telemetry_influxdb, :org, "ockam"),
+              token: Application.get_env(:telemetry_influxdb, :token, "TOKEN NOT CONFIGURED"),
+              events: [
+                %{
+                  name: [:memory, :usage],
+                  metadata_tag_keys: [:host, :ip_address]
+                },
+                %{
+                  name: [:ockam, Ockam.Transport.TCP.Listener, :init],
+                  metadata_tag_keys: [:options, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Router, :route, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Router, :route, :start_link],
+                  metadata_tag_keys: [:options, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Transport.TCP.Listener, :handle_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Transport.UDP.Listener, :handle_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Node, :handle_routed_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, :init],
+                  metadata_tag_keys: [:options, :return_value]
+                }
+              ],
+              tags: %{test: :value}
+            ]
+          ]
+        }
+      }
+    ]
 
     # Start a supervisor with the given children. The supervisor will inturn
     # start the given children.
