@@ -81,7 +81,7 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///
 ///     // Send this over the network to Bob
 ///     let contact_alice = alice.serialize_to_contact()?;
-///     let auth_factor = alice.generate_authentication_factor(&key_agreement_hash)?;
+///     let auth_proof = alice.generate_authentication_proof(&key_agreement_hash)?;
 ///
 ///     Ok(())
 /// }
@@ -99,8 +99,8 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     let contact_alice = [0u8; 32];
 ///     let contact_alice = bob.deserialize_and_verify_contact(&contact_alice)?;
 ///
-///     let factor_alice = [0u8; 32];
-///     bob.verify_authentication_factor(&key_agreement_hash, &contact_alice, &factor_alice)?;
+///     let proof_alice = [0u8; 32];
+///     bob.verify_authentication_proof(&key_agreement_hash, &contact_alice, &proof_alice)?;
 ///
 ///     // Bob adds Alice to contact list
 ///     bob.add_contact(contact_alice)
@@ -392,7 +392,7 @@ impl Profile {
 
 // Authentication
 impl Profile {
-    pub fn generate_authentication_factor(
+    pub fn generate_authentication_proof(
         &self,
         channel_state: &[u8],
     ) -> ockam_core::Result<Vec<u8>> {
@@ -400,21 +400,21 @@ impl Profile {
 
         let root_secret = self.get_root_secret(vault.deref())?;
 
-        Authentication::generate_factor(channel_state, &root_secret, vault.deref_mut())
+        Authentication::generate_proof(channel_state, &root_secret, vault.deref_mut())
     }
 
-    pub fn verify_authentication_factor(
+    pub fn verify_authentication_proof(
         &self,
         channel_state: &[u8],
         responder_contact: &Contact,
-        factor: &[u8],
+        proof: &[u8],
     ) -> ockam_core::Result<()> {
         let mut vault = self.vault.lock().unwrap();
 
-        Authentication::verify_factor(
+        Authentication::verify_proof(
             channel_state,
             &responder_contact.get_profile_update_public_key()?,
-            factor,
+            proof,
             vault.deref_mut(),
         )
     }

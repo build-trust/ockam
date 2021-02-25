@@ -6,49 +6,49 @@ use serde_big_array::big_array;
 big_array! { BigArray; }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct AuthenticationFactor {
+pub(crate) struct AuthenticationProof {
     #[serde(with = "BigArray")]
     signature: [u8; 64],
 }
 
-impl AuthenticationFactor {
+impl AuthenticationProof {
     pub(crate) fn signature(&self) -> &[u8; 64] {
         &self.signature
     }
 }
 
-impl AuthenticationFactor {
+impl AuthenticationProof {
     pub(crate) fn new(signature: [u8; 64]) -> Self {
-        AuthenticationFactor { signature }
+        AuthenticationProof { signature }
     }
 }
 
 pub(crate) struct Authentication {}
 
 impl Authentication {
-    pub(crate) fn generate_factor(
+    pub(crate) fn generate_proof(
         channel_state: &[u8],
         secret: &Secret,
         vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<Vec<u8>> {
         let signature = vault.sign(secret, channel_state)?;
 
-        let factor = AuthenticationFactor::new(signature);
+        let proof = AuthenticationProof::new(signature);
 
-        serde_bare::to_vec(&factor).map_err(|_| OckamError::BareError.into())
+        serde_bare::to_vec(&proof).map_err(|_| OckamError::BareError.into())
     }
 
-    pub(crate) fn verify_factor(
+    pub(crate) fn verify_proof(
         channel_state: &[u8],
         responder_public_key: &PublicKey,
-        factor: &[u8],
+        proof: &[u8],
         vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<()> {
-        let factor: AuthenticationFactor =
-            serde_bare::from_slice(factor).map_err(|_| OckamError::BareError)?;
+        let proof: AuthenticationProof =
+            serde_bare::from_slice(proof).map_err(|_| OckamError::BareError)?;
 
         vault.verify(
-            &factor.signature(),
+            &proof.signature(),
             responder_public_key.as_ref(),
             channel_state,
         )
@@ -74,16 +74,16 @@ mod test {
         let mut rng = thread_rng();
         rng.fill_bytes(&mut key_agreement_hash);
 
-        // Network transfer: contact_alice, factor_alice -> B
+        // Network transfer: contact_alice, proof_alice -> B
         let contact_alice = alice.serialize_to_contact().unwrap();
-        let factor_alice = alice
-            .generate_authentication_factor(&key_agreement_hash)
+        let proof_alice = alice
+            .generate_authentication_proof(&key_agreement_hash)
             .unwrap();
 
-        // Network transfer: contact_bob, factor_bob -> A
+        // Network transfer: contact_bob, proof_bob -> A
         let contact_bob = bob.serialize_to_contact().unwrap();
-        let factor_bob = bob
-            .generate_authentication_factor(&key_agreement_hash)
+        let proof_bob = bob
+            .generate_authentication_proof(&key_agreement_hash)
             .unwrap();
 
         let contact_alice = alice
@@ -95,12 +95,12 @@ mod test {
 
         // If those calls succeed - we're good
         alice
-            .verify_authentication_factor(&key_agreement_hash, &contact_bob, factor_bob.as_slice())
+            .verify_authentication_proof(&key_agreement_hash, &contact_bob, proof_bob.as_slice())
             .unwrap();
-        bob.verify_authentication_factor(
+        bob.verify_authentication_proof(
             &key_agreement_hash,
             &contact_alice,
-            factor_alice.as_slice(),
+            proof_alice.as_slice(),
         )
         .unwrap();
 
@@ -126,16 +126,16 @@ mod test {
         let mut rng = thread_rng();
         rng.fill_bytes(&mut key_agreement_hash);
 
-        // Network transfer: contact_alice, factor_alice -> B
+        // Network transfer: contact_alice, proof_alice -> B
         let contact_alice = alice.serialize_to_contact().unwrap();
-        let factor_alice = alice
-            .generate_authentication_factor(&key_agreement_hash)
+        let proof_alice = alice
+            .generate_authentication_proof(&key_agreement_hash)
             .unwrap();
 
-        // Network transfer: contact_bob, factor_bob -> A
+        // Network transfer: contact_bob, proof_bob -> A
         let contact_bob = bob.serialize_to_contact().unwrap();
-        let factor_bob = bob
-            .generate_authentication_factor(&key_agreement_hash)
+        let proof_bob = bob
+            .generate_authentication_proof(&key_agreement_hash)
             .unwrap();
 
         let contact_alice = alice
@@ -147,12 +147,12 @@ mod test {
 
         // If those calls succeed - we're good
         alice
-            .verify_authentication_factor(&key_agreement_hash, &contact_bob, factor_bob.as_slice())
+            .verify_authentication_proof(&key_agreement_hash, &contact_bob, proof_bob.as_slice())
             .unwrap();
-        bob.verify_authentication_factor(
+        bob.verify_authentication_proof(
             &key_agreement_hash,
             &contact_alice,
-            factor_alice.as_slice(),
+            proof_alice.as_slice(),
         )
         .unwrap();
 

@@ -107,7 +107,7 @@ impl CredentialHolder {
         proof_request_id: [u8; 32],
     ) -> Result<Vec<CredentialPresentation>, CredentialError> {
         // To prove the id-secret is the same across credentials we use a Schnorr proof
-        // which requires that the proof blinding factor be the same. If there's only one credential
+        // which requires that the proof blinding proof be the same. If there's only one credential
         // it makes no difference
         let id_bf = ProofNonce::random();
 
