@@ -1,6 +1,6 @@
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
-    EventIdentifier, KeyAttributes, OckamError, ProfileChange, ProfileChangeEvent,
+    EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange, ProfileChangeEvent,
     ProfileChangeProof, ProfileChangeType, ProfileVault, SignatureType,
 };
 use ockam_vault_core::PublicKey;
@@ -58,32 +58,24 @@ impl ProfileChangeHistory {
             })
     }
 
-    pub(crate) fn find_last_key_event(
-        &self,
+    pub(crate) fn find_last_key_event<'a>(
+        existing_events: &'a [ProfileChangeEvent],
         key_attributes: &KeyAttributes,
-    ) -> ockam_core::Result<&ProfileChangeEvent> {
-        self.0
+    ) -> ockam_core::Result<&'a ProfileChangeEvent> {
+        existing_events
             .iter()
             .rev()
             .find(|e| Self::find_key_change_in_event(e, key_attributes).is_some())
             .ok_or_else(|| OckamError::InvalidInternalState.into())
     }
 
-    pub(crate) fn find_key_event_before(
-        &self,
-        event_id: &EventIdentifier,
+    pub(crate) fn find_last_key_event_public_key(
+        existing_events: &[ProfileChangeEvent],
         key_attributes: &KeyAttributes,
-    ) -> ockam_core::Result<&ProfileChangeEvent> {
-        let before_index = self
-            .0
-            .iter()
-            .position(|e| e.identifier() == event_id)
-            .unwrap_or(self.0.len());
-        self.0[..before_index]
-            .iter()
-            .rev()
-            .find(|e| Self::find_key_change_in_event(e, key_attributes).is_some())
-            .ok_or_else(|| OckamError::InvalidInternalState.into())
+    ) -> ockam_core::Result<PublicKey> {
+        let last_key_event = Self::find_last_key_event(existing_events, key_attributes)?;
+
+        Self::get_public_key_from_event(&key_attributes, &last_key_event)
     }
 
     pub(crate) fn get_change_public_key(change: &ProfileChange) -> ockam_core::Result<PublicKey> {
@@ -111,7 +103,15 @@ impl ProfileChangeHistory {
 }
 
 impl ProfileChangeHistory {
-    pub(crate) fn get_root_public_key(&self) -> ockam_core::Result<PublicKey> {
+    pub(crate) fn get_current_profile_update_public_key(
+        existing_events: &[ProfileChangeEvent],
+    ) -> ockam_core::Result<PublicKey> {
+        let key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
+        Self::find_last_key_event_public_key(existing_events, &key_attributes)
+    }
+
+    pub(crate) fn get_first_root_public_key(&self) -> ockam_core::Result<PublicKey> {
+        // TODO: Support root key rotation
         let root_event;
         if let Some(re) = self.as_ref().first() {
             root_event = re;
@@ -142,39 +142,57 @@ impl ProfileChangeHistory {
         &self,
         key_attributes: &KeyAttributes,
     ) -> ockam_core::Result<PublicKey> {
-        let event = self.find_last_key_event(key_attributes)?;
+        let event = Self::find_last_key_event(self.as_ref(), key_attributes)?;
         Self::get_public_key_from_event(key_attributes, event)
     }
 }
 
 impl ProfileChangeHistory {
+    pub(crate) fn verify_all_existing_events(
+        &self,
+        vault: &mut dyn ProfileVault,
+    ) -> ockam_core::Result<()> {
+        for i in 0..self.0.len() {
+            let existing_events = &self.as_ref()[..i];
+            let new_event = &self.as_ref()[i];
+            Self::verify_event(existing_events, new_event, vault)?;
+        }
+
+        Ok(())
+    }
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
     pub(crate) fn verify_event(
-        &self,
-        change_event: &ProfileChangeEvent,
+        existing_events: &[ProfileChangeEvent],
+        new_change_event: &ProfileChangeEvent,
         vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<()> {
-        let changes = change_event.changes();
+        let changes = new_change_event.changes();
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
 
         let event_id = vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);
 
-        if &event_id != change_event.identifier() {
+        if &event_id != new_change_event.identifier() {
             return Err(OckamError::EventIdDoesntMatch.into());
         }
 
-        match change_event.proof() {
+        match new_change_event.proof() {
             ProfileChangeProof::Signature(s) => match s.stype() {
                 SignatureType::RootSign => {
-                    let root_public_key = self.get_root_public_key()?;
+                    let events_to_look = if existing_events.is_empty() {
+                        std::slice::from_ref(new_change_event)
+                    } else {
+                        existing_events
+                    };
+                    let root_public_key =
+                        Self::get_current_profile_update_public_key(events_to_look)?;
                     vault.verify(s.data(), root_public_key.as_ref(), event_id.as_ref())?;
                 }
             },
         }
 
-        for change in change_event.changes().data() {
+        for change in new_change_event.changes().data() {
             if !match change.change_type() {
                 CreateKey(c) => {
                     // Should have 1 self signature
@@ -199,7 +217,7 @@ impl ProfileChangeHistory {
                         false
                     } else {
                         let prev_key_event =
-                            self.find_key_event_before(&event_id, c.data().key_attributes())?;
+                            Self::find_last_key_event(existing_events, c.data().key_attributes())?;
                         let prev_key_change = ProfileChangeHistory::find_key_change_in_event(
                             prev_key_event,
                             c.data().key_attributes(),

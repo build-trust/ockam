@@ -1,3 +1,4 @@
+use crate::history::ProfileChangeHistory;
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
@@ -83,7 +84,8 @@ impl Profile {
 
         let prev_event_id = self.change_history.get_last_event_id()?;
 
-        let last_event_in_chain = self.change_history.find_last_key_event(&key_attributes)?;
+        let last_event_in_chain =
+            ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes)?;
 
         let last_key_in_chain =
             Self::get_secret_key_from_event(&key_attributes, last_event_in_chain, vault.deref())?;

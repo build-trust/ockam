@@ -57,17 +57,69 @@ impl Authentication {
 
 #[cfg(test)]
 mod test {
-    use crate::Profile;
+    use crate::{KeyAttributes, Profile};
     use ockam_vault::SoftwareVault;
     use rand::prelude::*;
     use std::sync::{Arc, Mutex};
 
     #[test]
-    fn attestation() {
+    fn authentication() {
         let vault = Arc::new(Mutex::new(SoftwareVault::default()));
 
         let mut alice = Profile::create(None, vault.clone()).unwrap();
         let mut bob = Profile::create(None, vault).unwrap();
+
+        // Secure channel is created here
+        let mut key_agreement_hash = [0u8; 32];
+        let mut rng = thread_rng();
+        rng.fill_bytes(&mut key_agreement_hash);
+
+        // Network transfer: contact_alice, factor_alice -> B
+        let contact_alice = alice.serialize_to_contact().unwrap();
+        let factor_alice = alice
+            .generate_authentication_factor(&key_agreement_hash)
+            .unwrap();
+
+        // Network transfer: contact_bob, factor_bob -> A
+        let contact_bob = bob.serialize_to_contact().unwrap();
+        let factor_bob = bob
+            .generate_authentication_factor(&key_agreement_hash)
+            .unwrap();
+
+        let contact_alice = alice
+            .deserialize_and_verify_contact(contact_alice.as_slice())
+            .unwrap();
+        let contact_bob = bob
+            .deserialize_and_verify_contact(contact_bob.as_slice())
+            .unwrap();
+
+        // If those calls succeed - we're good
+        alice
+            .verify_authentication_factor(&key_agreement_hash, &contact_bob, factor_bob.as_slice())
+            .unwrap();
+        bob.verify_authentication_factor(
+            &key_agreement_hash,
+            &contact_alice,
+            factor_alice.as_slice(),
+        )
+        .unwrap();
+
+        // Alice&Bob add each other to contact list
+        alice.add_contact(contact_bob).unwrap();
+        bob.add_contact(contact_alice).unwrap();
+    }
+
+    #[test]
+    fn authentication_profile_update_key_rotated() {
+        let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+
+        let mut alice = Profile::create(None, vault.clone()).unwrap();
+        let mut bob = Profile::create(None, vault).unwrap();
+
+        let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
+
+        alice.rotate_key(root_key_attributes.clone(), None).unwrap();
+        bob.rotate_key(root_key_attributes.clone(), None).unwrap();
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];

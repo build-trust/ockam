@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 /// ```
 /// use ockam_vault::SoftwareVault;
 /// use std::sync::{Mutex, Arc};
-/// use ockam::{Profile, KeyAttributes, ProfileKeyType, ProfileKeyPurpose};
+/// use ockam::{Profile, KeyAttributes};
 ///
 /// fn example() {
 ///     let vault = SoftwareVault::default();
@@ -27,8 +27,6 @@ use serde::{Deserialize, Serialize};
 ///
 ///     let truck_key_attributes = KeyAttributes::new(
 ///         "Truck management".to_string(),
-///         ProfileKeyType::Issuing,
-///         ProfileKeyPurpose::IssueCredentials,
 ///     );
 ///
 ///     alice_profile
@@ -71,11 +69,9 @@ impl Contact {
     pub fn verify(&self, vault: &mut dyn ProfileVault) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
-        for change_event in self.change_events().as_ref() {
-            self.change_history.verify_event(change_event, vault)?;
-        }
+        self.change_history.verify_all_existing_events(vault)?;
 
-        let root_public_key = self.change_history.get_root_public_key()?;
+        let root_public_key = self.change_history.get_first_root_public_key()?;
 
         let root_key_id = vault.compute_key_id_for_public_key(&root_public_key)?;
         let profile_id = ProfileIdentifier::from_key_id(root_key_id);
@@ -96,7 +92,7 @@ impl Contact {
         ProfileChangeHistory::check_consistency(self.change_events(), &change_events)?;
 
         for event in change_events.iter() {
-            self.change_history.verify_event(event, vault)?;
+            ProfileChangeHistory::verify_event(self.change_events(), event, vault)?;
             self.change_history.push_event(event.clone());
         }
 
@@ -106,8 +102,8 @@ impl Contact {
 
 impl Contact {
     /// Get root [`PublicKey`]
-    pub fn get_root_public_key(&self) -> ockam_core::Result<PublicKey> {
-        self.change_history.get_root_public_key()
+    pub fn get_profile_update_public_key(&self) -> ockam_core::Result<PublicKey> {
+        ProfileChangeHistory::get_current_profile_update_public_key(self.change_events())
     }
     /// Get [`PublicKey`]. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
     pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<PublicKey> {

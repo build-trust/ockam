@@ -1,3 +1,4 @@
+use crate::history::ProfileChangeHistory;
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
@@ -123,10 +124,7 @@ impl Profile {
         vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // Creating key after it was revoked is forbidden
-        if self
-            .change_history
-            .find_last_key_event(&key_attributes)
-            .is_ok()
+        if ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes).is_ok()
         {
             return Err(OckamError::InvalidInternalState.into());
         }

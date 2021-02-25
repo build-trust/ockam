@@ -34,7 +34,7 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 /// ```
 /// use ockam_vault::SoftwareVault;
 /// use std::sync::{Mutex, Arc};
-/// use ockam::{Profile, KeyAttributes, ProfileKeyType, ProfileKeyPurpose};
+/// use ockam::{Profile, KeyAttributes};
 ///
 /// fn example() {
 ///     let vault = SoftwareVault::default();
@@ -42,17 +42,13 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     let mut profile = Profile::create(None, vault).unwrap();
 ///
 ///     let root_key_attributes = KeyAttributes::new(
-///         Profile::ROOT_KEY_LABEL.to_string(),
-///         ProfileKeyType::Root,
-///         ProfileKeyPurpose::ProfileUpdate,
+///         Profile::PROFILE_UPDATE.to_string(),
 ///     );
 ///
 ///     let _alice_root_secret = profile.get_secret_key(&root_key_attributes).unwrap();
 ///
 ///     let truck_key_attributes = KeyAttributes::new(
 ///         "Truck management".to_string(),
-///         ProfileKeyType::Issuing,
-///         ProfileKeyPurpose::IssueCredentials,
 ///     );
 ///
 ///     profile
@@ -78,7 +74,7 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     let vault = Arc::new(Mutex::new(SoftwareVault::default()));
 ///
 ///     // Alice generates profile
-///     let mut alice = Profile::create(None, vault.clone())?;
+///     let alice = Profile::create(None, vault)?;
 ///
 ///     // Key agreement happens here
 ///     let key_agreement_hash = [0u8; 32];
@@ -94,7 +90,7 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     let vault = Arc::new(Mutex::new(SoftwareVault::default()));
 ///
 ///     // Bob generates profile
-///     let mut bob = Profile::create(None, vault.clone())?;
+///     let mut bob = Profile::create(None, vault)?;
 ///
 ///     // Key agreement happens here
 ///     let key_agreement_hash = [0u8; 32];
@@ -120,7 +116,8 @@ pub struct Profile {
 
 impl Profile {
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
-    pub const ROOT_KEY_LABEL: &'static str = "OCKAM_PRK";
+    pub const PROFILE_UPDATE: &'static str = "OCKAM_PUK";
+    pub const CREDENTIALS_ISSUE: &'static str = "OCKAM_CIK";
     pub const CURRENT_VERSION: u8 = 1;
     pub const CHANGE_CURRENT_VERSION: u8 = 1;
 }
@@ -167,11 +164,7 @@ impl Profile {
         let prev_id = v.sha256(Profile::NO_EVENT)?;
         let prev_id = EventIdentifier::from_hash(prev_id);
 
-        let key_attributes = KeyAttributes::new(
-            Profile::ROOT_KEY_LABEL.to_string(),
-            ProfileKeyType::Root,
-            ProfileKeyPurpose::ProfileUpdate,
-        );
+        let key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
         let change_event = Self::create_key_event_static(
             prev_id,
             key_attributes.clone(),
@@ -234,7 +227,8 @@ impl Profile {
 
     /// Get [`Secret`] key. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
     pub fn get_secret_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
-        let event = self.change_history.find_last_key_event(key_attributes)?;
+        let event =
+            ProfileChangeHistory::find_last_key_event(self.change_events(), key_attributes)?;
         Self::get_secret_key_from_event(key_attributes, event, self.vault.lock().unwrap().deref())
     }
 
@@ -285,8 +279,7 @@ impl Profile {
 
         let mut vault = self.vault.lock().unwrap();
 
-        self.change_history
-            .verify_event(change_event, vault.deref_mut())
+        ProfileChangeHistory::verify_event(self.change_events(), change_event, vault.deref_mut())
     }
 
     /// Verify whole event chain
@@ -295,9 +288,16 @@ impl Profile {
 
         let mut vault = self.vault.lock().unwrap();
 
-        for change_event in self.change_events().as_ref() {
-            self.change_history
-                .verify_event(change_event, vault.deref_mut())?;
+        self.change_history
+            .verify_all_existing_events(vault.deref_mut())?;
+
+        let root_public_key = self.change_history.get_first_root_public_key()?;
+
+        let root_key_id = vault.compute_key_id_for_public_key(&root_public_key)?;
+        let profile_id = ProfileIdentifier::from_key_id(root_key_id);
+
+        if &profile_id != self.identifier() {
+            return Err(OckamError::ProfileIdDoesntMatch.into());
         }
 
         Ok(())
@@ -306,7 +306,8 @@ impl Profile {
 
 impl Profile {
     pub(crate) fn get_root_secret(&self, vault: &dyn ProfileVault) -> ockam_core::Result<Secret> {
-        let public_key = self.change_history.get_root_public_key()?;
+        let public_key =
+            ProfileChangeHistory::get_current_profile_update_public_key(self.change_events())?;
 
         let key_id = vault.compute_key_id_for_public_key(&public_key)?;
         vault.get_secret_by_key_id(&key_id)
@@ -412,7 +413,7 @@ impl Profile {
 
         Authentication::verify_factor(
             channel_state,
-            &responder_contact.get_root_public_key()?,
+            &responder_contact.get_profile_update_public_key()?,
             factor,
             vault.deref_mut(),
         )
@@ -430,24 +431,20 @@ mod test {
         let vault = Arc::new(Mutex::new(vault));
         let mut profile = Profile::create(None, vault).unwrap();
 
-        let root_key_attributes = KeyAttributes::new(
-            Profile::ROOT_KEY_LABEL.to_string(),
-            ProfileKeyType::Root,
-            ProfileKeyPurpose::ProfileUpdate,
-        );
+        profile.verify().unwrap();
+
+        let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
         let _alice_root_secret = profile.get_secret_key(&root_key_attributes).unwrap();
         let _alice_root_public_key = profile.get_public_key(&root_key_attributes).unwrap();
 
-        let truck_key_attributes = KeyAttributes::new(
-            "Truck management".to_string(),
-            ProfileKeyType::Issuing,
-            ProfileKeyPurpose::IssueCredentials,
-        );
+        let truck_key_attributes = KeyAttributes::new("Truck management".to_string());
 
         profile
             .create_key(truck_key_attributes.clone(), None)
             .unwrap();
+
+        profile.verify().unwrap();
 
         let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
         let _alice_truck_public_key = profile.get_public_key(&truck_key_attributes).unwrap();
@@ -456,9 +453,18 @@ mod test {
             .rotate_key(truck_key_attributes.clone(), None)
             .unwrap();
 
+        profile.verify().unwrap();
+
         let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes).unwrap();
         let _alice_truck_public_key = profile.get_public_key(&truck_key_attributes).unwrap();
 
+        profile
+            .rotate_key(root_key_attributes.clone(), None)
+            .unwrap();
+
         profile.verify().unwrap();
+
+        let _alice_root_secret = profile.get_secret_key(&root_key_attributes).unwrap();
+        let _alice_root_public_key = profile.get_public_key(&root_key_attributes).unwrap();
     }
 }
