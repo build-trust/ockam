@@ -22,4 +22,7 @@ pub struct CredentialAttributeSchema {
 
     /// The data type of the attribute value.
     pub attribute_type: CredentialAttributeType,
+
+    /// If the attribute is allowed to be unknown when signed to the issuer
+    pub unknown: bool,
 }

@@ -3,6 +3,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[macro_use]
+extern crate serde_big_array;
+
+big_array! { BigArray; 96 }
+
 // ---
 // Export the #[node] attribute macro.
 

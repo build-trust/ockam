@@ -1,9 +1,10 @@
 use super::CredentialAttribute;
 use bbs::prelude::*;
 use ockam_core::lib::*;
+use serde::{Deserialize, Serialize};
 
 /// Indicates how to present a credential
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CredentialPresentation {
     /// The presentation id or challenge hash
     pub presentation_id: [u8; 32],
