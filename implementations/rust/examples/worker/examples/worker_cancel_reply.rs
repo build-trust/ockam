@@ -1,5 +1,4 @@
-use async_trait::async_trait;
-use ockam::{Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Worker};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
@@ -11,7 +10,7 @@ enum Message {
 /// This worker requests more data and is very picky about what data it accepts.
 struct Picky;
 
-#[async_trait]
+#[async_worker]
 impl Worker for Picky {
     type Message = Message;
     type Context = Context;
@@ -45,7 +44,7 @@ impl Worker for Picky {
 
 struct Echo;
 
-#[async_trait]
+#[async_worker]
 impl Worker for Echo {
     type Message = Message;
     type Context = Context;

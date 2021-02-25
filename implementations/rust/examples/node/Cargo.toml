@@ -15,4 +15,3 @@ ockam_node = {path = "../../ockam/ockam_node", version = "*"}
 # support re-exporting attributes from crates.  Tracking issue:
 # https://github.com/rust-lang/rust/issues/27812
 serde = { version = "1.0", features = ["derive"] }
-async-trait = "0.1"

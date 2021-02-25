@@ -9,6 +9,6 @@ error[E0601]: `main` function not found in crate `$CRATE`
   |
 3 | / #[ockam::node]
 4 | | async fn foo(c: ockam::Context, _x: u64) {
-5 | |     c.stop().unwrap();
+5 | |     c.stop().await.unwrap();
 6 | | }
   | |_^ consider adding a `main` function to `$DIR/tests/node_attribute/fails_if_more_than_one_arg.rs`

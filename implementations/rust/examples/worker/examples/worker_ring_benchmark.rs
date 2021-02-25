@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use ockam::{Address, Context, Result, Worker};
+use ockam::{async_worker, Address, Context, Result, Worker};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -10,7 +10,7 @@ struct RingWorker {
     next: Option<Address>,
 }
 
-#[async_trait::async_trait]
+#[async_worker]
 impl Worker for RingWorker {
     type Context = Context;
     type Message = RingMessage;

@@ -1,5 +1,4 @@
-use async_trait::async_trait;
-use ockam::{Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Printer;
@@ -8,7 +7,7 @@ struct Printer;
 #[derive(Debug, Serialize, Deserialize)]
 struct PrintMessage(String);
 
-#[async_trait]
+#[async_worker]
 impl Worker for Printer {
     type Message = PrintMessage;
     type Context = Context;
