@@ -1,39 +1,26 @@
 use ockam::{
     CredentialAttribute, CredentialAttributeSchema, CredentialAttributeType, CredentialHolder,
-    CredentialIssuer, CredentialSchema, CredentialVerifier, PresentationManifest,
+    CredentialIssuer, CredentialSchema, CredentialVerifier, PresentationManifest, SECRET_ID,
 };
 use std::collections::BTreeMap;
 
 fn main() {
     let schema = CredentialSchema {
-        id: "77777777-7777-7777-7777-777777777777".to_string(),
+        id: "file:///truck-schema-20210227-1_0_0".to_string(),
         label: "Truck Management".to_string(),
         description: "A Demoable schema".to_string(),
         attributes: vec![
             CredentialAttributeSchema {
-                label: "secretid".to_string(),
-                description: "A unique device identifier. ".to_string(),
+                label: SECRET_ID.to_string(),
+                description: "A unique identifier for maintenance worker. ".to_string(),
                 attribute_type: CredentialAttributeType::Blob,
+                unknown: true,
             },
             CredentialAttributeSchema {
-                label: "device_name".to_string(),
-                description: "A friendly name for the device".to_string(),
-                attribute_type: CredentialAttributeType::Utf8String,
-            },
-            CredentialAttributeSchema {
-                label: "location".to_string(),
-                description: "Where the device is physically located".to_string(),
-                attribute_type: CredentialAttributeType::Utf8String,
-            },
-            CredentialAttributeSchema {
-                label: "slot".to_string(),
-                description: "Which slot the device is plugged in".to_string(),
+                label: "can_access".to_string(),
+                description: "Can worker access the truck maintenance codes?".to_string(),
                 attribute_type: CredentialAttributeType::Number,
-            },
-            CredentialAttributeSchema {
-                label: "interface".to_string(),
-                description: "Enumeration for the communication interface".to_string(),
-                attribute_type: CredentialAttributeType::Number,
+                unknown: false,
             },
         ],
     };
@@ -59,42 +46,34 @@ fn main() {
 
     // CredentialHolder accepts the credential
     // Accepting the offer yields a request to send back to the issuer
-    // and a blinding. The blinding is held until the issuer sends
-    // a blinded credential. The blinding is used to unblind it and
-    // produce the credential.
-    // The blinding is a cryptographic commitment that hides the
+    // and the first credential fragment. The first fragment is held until the issuer sends
+    // the second credential fragment. The fragments are combined to produce the credential.
+    // Fragment 1 is a cryptographic commitment that hides the
     // the holder's unique id. The unique id is used to prove
     // that multiple credentials were issued to the same holder.
-    let (request, blinding) = holder.accept_credential_offer(&offer, pk).unwrap();
+    let (request, credential_fragment1) = holder.accept_credential_offer(&offer, pk).unwrap();
 
     // Send request to the issuer
+
     // CredentialIssuer processes the credential request
     // Issuer knows all of the attributes that were not blinded
     // by the holder
     let mut attributes = BTreeMap::new();
     attributes.insert(
         schema.attributes[1].label.clone(),
-        CredentialAttribute::String("Robot 1".to_string()),
+        CredentialAttribute::Numeric(1), // TRUE, the device has access
     );
-    attributes.insert(
-        schema.attributes[2].label.clone(),
-        CredentialAttribute::String("Acme Factory".to_string()),
-    );
-    attributes.insert(
-        schema.attributes[3].label.clone(),
-        CredentialAttribute::Numeric(1),
-    );
-    attributes.insert(
-        schema.attributes[4].label.clone(),
-        CredentialAttribute::Numeric(1),
-    );
-    let blind_credential = issuer
-        .blind_sign_credential(&request, &schema, &attributes, offer.id)
+
+    // Fragment 2 is a partial signature
+    let credential_fragment2 = issuer
+        .sign_credential_request(&request, &schema, &attributes, offer.id)
         .unwrap();
 
-    // Send the blind credential back to the holder
-    // who unblinds it. CredentialHolder can then use the credential to prove to a verifier
-    let credential = holder.unblind_credential(blind_credential, blinding);
+    // Send the second credential fragment back to the holder
+    // who can combine it with the first fragment.
+    // CredentialHolder can then use the credential to prove to a verifier
+    let credential =
+        holder.combine_credential_fragments(credential_fragment1, credential_fragment2);
 
     // CredentialHolder no proves to be a robot in Acme Factory without revealing anything else
     // but first a relying party sends a presentation manifest that indicates what should be
@@ -105,7 +84,7 @@ fn main() {
     let presentation_manifest = PresentationManifest {
         credential_schema: schema, // only accept credentials that match this schema
         public_key: pk,            // only accept credentials issued by this authority
-        revealed: vec![2],         // location is required to be revealed
+        revealed: vec![1],         // location is required to be revealed
     };
     let request_id = CredentialVerifier::create_proof_request_id();
 
