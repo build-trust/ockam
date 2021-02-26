@@ -83,8 +83,8 @@ impl Contact {
         Ok(())
     }
 
-    /// Update [`Contact`] by applying new change events
-    pub fn apply(
+    /// Update [`Contact`] by updating using new change events
+    pub fn verify_and_update(
         &mut self,
         change_events: Vec<ProfileChangeEvent>,
         vault: &mut dyn ProfileVault,

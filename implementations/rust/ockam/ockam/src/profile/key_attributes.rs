@@ -6,6 +6,12 @@ pub struct KeyAttributes {
     label: String,
 }
 
+impl From<&str> for KeyAttributes {
+    fn from(str: &str) -> Self {
+        Self::new(str.to_string())
+    }
+}
+
 impl KeyAttributes {
     /// Human-readable key name
     pub fn label(&self) -> &str {
