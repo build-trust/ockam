@@ -31,6 +31,6 @@ pub fn start_node() -> (Context, Executor) {
 fn root_app_context(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
     let (mb_tx, mb_rx) = channel(32);
     let mb = Mailbox::new(mb_rx, mb_tx.clone());
-    let ctx = Context::new(rt, tx, addr.clone(), mb);
+    let ctx = Context::new(rt, tx, addr.into(), mb);
     ctx
 }
