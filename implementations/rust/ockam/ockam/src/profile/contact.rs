@@ -15,28 +15,48 @@ use serde::{Deserialize, Serialize};
 /// Public keys from Contact can be used for many purposes, e.g. running key exchange, or signing&encrypting data.
 ///
 /// # Examples
+///
+/// Creating [`Contact`] from [`crate::Profile`]
+///
 /// ```
-/// use ockam_vault::SoftwareVault;
-/// use std::sync::{Mutex, Arc};
-/// use ockam::{Profile, KeyAttributes};
+/// # use ockam_vault::SoftwareVault;
+/// # use std::sync::{Mutex, Arc};
+/// # use ockam::{Profile, KeyAttributes};
+/// #
+/// let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+/// let mut alice = Profile::create(None, vault)?;
 ///
-/// fn example() {
-///     let vault = SoftwareVault::default();
-///     let vault = Arc::new(Mutex::new(vault));
-///     let mut alice_profile = Profile::create(None, vault.clone()).unwrap();
+/// let truck_key_attributes = KeyAttributes::new(
+///     "Truck management".to_string(),
+/// );
 ///
-///     let truck_key_attributes = KeyAttributes::new(
-///         "Truck management".to_string(),
-///     );
+/// alice.create_key(truck_key_attributes.clone(), None)?;
 ///
-///     alice_profile
-///         .create_key(truck_key_attributes.clone(), None)
-///         .unwrap();
+/// let alice_contact = alice.to_contact();
 ///
-///     let alice_contact = alice_profile.to_contact();
+/// let public_key = alice.get_public_key(&truck_key_attributes)?;
+/// # Ok::<(), ockam_core::Error>(())
+/// ```
 ///
-///     let public_key = alice_contact.get_public_key(&truck_key_attributes).unwrap();
-/// }
+/// Sending Contact over the network
+///
+/// ```
+/// # use ockam_vault::SoftwareVault;
+/// # use std::sync::{Mutex, Arc};
+/// # use ockam::{Profile, KeyAttributes};
+/// #
+/// # let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+/// # let mut alice = Profile::create(None, vault)?;
+/// #
+/// # let truck_key_attributes = KeyAttributes::new(
+/// #     "Truck management".to_string(),
+/// # );
+/// #
+/// # alice.create_key(truck_key_attributes.clone(), None)?;
+/// #
+/// // Send this over the network
+/// let alice_contact_binary = alice.serialize_to_contact()?;
+/// # Ok::<(), ockam_core::Error>(())
 /// ```
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Contact {
@@ -45,7 +65,7 @@ pub struct Contact {
 }
 
 impl Contact {
-    /// Return unique identifier, which equals to [`crate::Profile`]s identifier
+    /// Return unique identifier, which equals to [`crate::Profile`]'s identifier
     pub fn identifier(&self) -> &ProfileIdentifier {
         &self.identifier
     }
@@ -83,7 +103,7 @@ impl Contact {
         Ok(())
     }
 
-    /// Update [`Contact`] by updating using new change events
+    /// Update [`Contact`] by using new change events
     pub fn verify_and_update(
         &mut self,
         change_events: Vec<ProfileChangeEvent>,
@@ -101,11 +121,11 @@ impl Contact {
 }
 
 impl Contact {
-    /// Get root [`PublicKey`]
+    /// Get [`crate::Profile`] Update [`PublicKey`]
     pub fn get_profile_update_public_key(&self) -> ockam_core::Result<PublicKey> {
         ProfileChangeHistory::get_current_profile_update_public_key(self.change_events())
     }
-    /// Get [`PublicKey`]. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
+    /// Get [`PublicKey`]. Key is uniquely identified by label in [`KeyAttributes`]
     pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<PublicKey> {
         self.change_history.get_public_key(key_attributes)
     }

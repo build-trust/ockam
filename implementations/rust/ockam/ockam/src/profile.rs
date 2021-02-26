@@ -5,7 +5,6 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
 mod authentication;
-pub use authentication::*;
 mod contact;
 pub use contact::*;
 mod identifiers;
@@ -13,14 +12,16 @@ pub use identifiers::*;
 mod key_attributes;
 pub use key_attributes::*;
 mod change;
-use crate::history::ProfileChangeHistory;
+use authentication::Authentication;
 pub use change::*;
+use history::ProfileChangeHistory;
 
 pub trait ProfileVault: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 
 impl<D> ProfileVault for D where D: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 
 pub type ProfileEventAttributes = HashMap<String, String>;
+/// Contacts Database
 pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 
 /// Profile is an abstraction responsible for keeping, verifying and modifying
@@ -154,15 +155,18 @@ pub struct Profile {
 }
 
 impl Profile {
+    /// Sha256 of that value is used as previous event id for first event in a [`Profile`]
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
+    /// Label for [`Profile`] update key
     pub const PROFILE_UPDATE: &'static str = "OCKAM_PUK";
+    /// Label for key used to issue credentials
     pub const CREDENTIALS_ISSUE: &'static str = "OCKAM_CIK";
-    pub const CURRENT_VERSION: u8 = 1;
-    pub const CHANGE_CURRENT_VERSION: u8 = 1;
+    /// Current version of change structure
+    pub const CURRENT_CHANGE_VERSION: u8 = 1;
 }
 
 impl Profile {
-    /// Return unique identifier, which equals to sha256 of the root public key
+    /// Return unique [`Profile`] identifier, which is equal to sha256 of the root public key
     pub fn identifier(&self) -> &ProfileIdentifier {
         &self.identifier
     }
@@ -170,6 +174,7 @@ impl Profile {
     pub fn change_events(&self) -> &[ProfileChangeEvent] {
         self.change_history.as_ref()
     }
+    /// Return all known to this profile [`Contact`]s
     pub fn contacts(&self) -> &ContactsDb {
         &self.contacts
     }
@@ -194,7 +199,7 @@ impl Profile {
 }
 
 impl Profile {
-    /// Generate fresh root key and create new [`Profile`]
+    /// Generate fresh [`Profile`] update key key and create new [`Profile`] using it
     pub fn create(
         attributes: Option<ProfileEventAttributes>,
         vault: Arc<Mutex<dyn ProfileVault>>,
@@ -229,8 +234,7 @@ impl Profile {
         Ok(profile)
     }
 
-    /// Create new key
-    /// Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
+    /// Create new key. Key is uniquely identified by label in [`KeyAttributes`]
     pub fn create_key(
         &mut self,
         key_attributes: KeyAttributes,
@@ -249,8 +253,7 @@ impl Profile {
         self.update_no_verification(event)
     }
 
-    /// Rotate existing key
-    /// Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
+    /// Rotate existing key. Key is uniquely identified by label in [`KeyAttributes`]
     pub fn rotate_key(
         &mut self,
         key_attributes: KeyAttributes,
@@ -264,30 +267,16 @@ impl Profile {
         self.update_no_verification(event)
     }
 
-    /// Get [`Secret`] key. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
+    /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
     pub fn get_secret_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
         let event =
             ProfileChangeHistory::find_last_key_event(self.change_events(), key_attributes)?;
         Self::get_secret_key_from_event(key_attributes, event, self.vault.lock().unwrap().deref())
     }
 
-    /// Get [`PublicKey`]. Key is uniquely identified by (label, key_type, key_purpose) triplet in [`KeyAttributes`]
+    /// Get [`PublicKey`]. Key is uniquely identified by label in [`KeyAttributes`]
     pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<PublicKey> {
         self.change_history.get_public_key(key_attributes)
-    }
-
-    /// Return change history chain after event with given [`EventIdentifier`]
-    pub fn get_events_after(
-        &self,
-        id: &EventIdentifier,
-    ) -> ockam_core::Result<&[ProfileChangeEvent]> {
-        let pos = self
-            .change_events()
-            .iter()
-            .rev()
-            .position(|e| e.identifier() == id)
-            .ok_or(OckamError::EventNotFound)?;
-        Ok(&self.change_events()[pos + 1..])
     }
 }
 
@@ -303,25 +292,7 @@ impl Profile {
         Ok(())
     }
 
-    /// Update [`Profile`] using new changes. Changes will be cryptographically verified
-    pub fn update(&mut self, change_event: ProfileChangeEvent) -> ockam_core::Result<()> {
-        self.verify_event(&change_event)?;
-
-        self.update_no_verification(change_event)
-    }
-
-    /// Verify cryptographically event relative to current [`Profile`]'s event chain.
-    /// WARNING: This function assumes all existing events in chain are verified.
-    fn verify_event(&self, change_event: &ProfileChangeEvent) -> ockam_core::Result<()> {
-        let change_events = std::slice::from_ref(change_event);
-        ProfileChangeHistory::check_consistency(self.change_events(), change_events)?;
-
-        let mut vault = self.vault.lock().unwrap();
-
-        ProfileChangeHistory::verify_event(self.change_events(), change_event, vault.deref_mut())
-    }
-
-    /// Verify whole event chain
+    /// Verify whole event chain of current [`Profile`]
     pub fn verify(&self) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
@@ -367,6 +338,7 @@ impl Profile {
 
 // Contacts
 impl Profile {
+    /// Convert [`Profile`] to [`Contact`]
     pub fn to_contact(&self) -> Contact {
         Contact::new(
             self.identifier.clone(),
@@ -374,12 +346,19 @@ impl Profile {
         )
     }
 
+    /// Serialize [`Profile`] to [`Contact`] in binary form for storing/transferring over the network
     pub fn serialize_to_contact(&self) -> ockam_core::Result<Vec<u8>> {
         let contact = self.to_contact();
 
+        Profile::serialize_contact(&contact)
+    }
+
+    /// Serialize [`Contact`] in binary form for storing/transferring over the network
+    pub fn serialize_contact(contact: &Contact) -> ockam_core::Result<Vec<u8>> {
         serde_bare::to_vec(&contact).map_err(|_| OckamError::BareError.into())
     }
 
+    /// Deserialize [`Contact`] from binary form
     pub fn deserialize_contact(contact: &[u8]) -> ockam_core::Result<Contact> {
         let contact: Contact =
             serde_bare::from_slice(contact).map_err(|_| OckamError::BareError)?;
@@ -387,12 +366,14 @@ impl Profile {
         Ok(contact)
     }
 
+    /// Serialize [`ProfileChangeEvent`]s to binary form for storing/transferring over the network
     pub fn serialize_change_events(
         change_events: &[ProfileChangeEvent],
     ) -> ockam_core::Result<Vec<u8>> {
         serde_bare::to_vec(&change_events).map_err(|_| OckamError::BareError.into())
     }
 
+    /// Deserialize [`ProfileChangeEvent`]s from binary form
     pub fn deserialize_change_events(
         change_events: &[u8],
     ) -> ockam_core::Result<Vec<ProfileChangeEvent>> {
@@ -402,7 +383,7 @@ impl Profile {
         Ok(change_events)
     }
 
-    /// Return [`Contact`]
+    /// Return [`Contact`] with given [`ProfileIdentifier`]
     pub fn get_contact(&self, id: &ProfileIdentifier) -> Option<&Contact> {
         self.contacts.get(id)
     }
@@ -413,16 +394,16 @@ impl Profile {
         contact.verify(vault.deref_mut())
     }
 
-    /// Add new [`Contact`]
+    /// Verify and add new [`Contact`] to [`Profile`]'s Contact list
     pub fn verify_and_add_contact(&mut self, contact: Contact) -> ockam_core::Result<()> {
-        let mut vault = self.vault.lock().unwrap();
-        contact.verify(vault.deref_mut())?;
+        self.verify_contact(&contact)?;
 
         let _ = self.contacts.insert(contact.identifier().clone(), contact);
 
         Ok(())
     }
 
+    /// Verify and update known [`Contact`] with new [`ProfileChangeEvent`]s
     pub fn verify_and_update_contact(
         &mut self,
         profile_id: &ProfileIdentifier,
@@ -440,6 +421,8 @@ impl Profile {
 
 // Authentication
 impl Profile {
+    /// Generate Proof of possession of [`Profile`].
+    /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
     pub fn generate_authentication_proof(
         &self,
         channel_state: &[u8],
@@ -451,6 +434,8 @@ impl Profile {
         Authentication::generate_proof(channel_state, &root_secret, vault.deref_mut())
     }
 
+    /// Verify Proof of possession of [`Profile`] with given [`ProfileIdentifier`].
+    /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
     pub fn verify_authentication_proof(
         &self,
         channel_state: &[u8],

@@ -108,7 +108,7 @@ impl Profile {
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CHANGE_CURRENT_VERSION,
+            Profile::CURRENT_CHANGE_VERSION,
             attributes.clone(),
             ProfileChangeType::RotateKey(change),
         );

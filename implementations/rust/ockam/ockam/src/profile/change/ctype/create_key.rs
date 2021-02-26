@@ -88,7 +88,7 @@ impl Profile {
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CHANGE_CURRENT_VERSION,
+            Profile::CURRENT_CHANGE_VERSION,
             attributes,
             ProfileChangeType::CreateKey(change),
         );
