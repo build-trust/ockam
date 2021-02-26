@@ -753,6 +753,7 @@ name = "ockam"
 version = "0.2.0"
 dependencies = [
  "arrayref",
+ "async-trait",
  "bbs",
  "digest 0.8.1",
  "ff-zeroize",
@@ -1105,9 +1106,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.61"
+version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fceb2595057b6891a4ee808f70054bd2d12f0e97f1cbb78689b59f676df325a"
+checksum = "43535db9747a4ba938c0ce0a98cc631a46ebf943c9e1d604e091df6007620bf6"
 dependencies = [
  "itoa",
  "ryu",
