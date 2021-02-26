@@ -8,7 +8,7 @@ pub trait Worker: Send + 'static {
     type Context: Send + 'static;
 
     /// Override initialisation behaviour
-    fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
         Ok(())
     }
 

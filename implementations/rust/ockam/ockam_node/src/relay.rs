@@ -47,7 +47,7 @@ where
     }
 
     async fn run(mut self) {
-        self.worker.initialize(&mut self.ctx).unwrap();
+        self.worker.initialize(&mut self.ctx).await.unwrap();
 
         while let Some(ref enc) = self.ctx.mailbox.next().await {
             let msg = match M::decode(enc) {

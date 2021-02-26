@@ -33,7 +33,7 @@ impl Worker for Player {
     type Message = Action;
     type Context = Context;
 
-    fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         println!("Starting player {}", ctx.address());
         Ok(())
     }

@@ -1,12 +1,13 @@
-use ockam::{Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Worker};
 
 struct Nothing;
 
+#[async_worker]
 impl Worker for Nothing {
     type Message = ();
     type Context = Context;
 
-    fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
         println!("Worker that does nothing is starting");
         Ok(())
     }
