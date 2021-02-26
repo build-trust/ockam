@@ -1,5 +1,4 @@
 use crate::OckamError;
-use hashbrown::HashMap;
 use ockam_vault_core::{Hasher, KeyIdVault, PublicKey, Secret, SecretVault, Signer, Verifier};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
@@ -15,6 +14,7 @@ mod change;
 use authentication::Authentication;
 pub use change::*;
 use history::ProfileChangeHistory;
+use ockam_core::lib::HashMap;
 
 pub trait ProfileVault: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 
