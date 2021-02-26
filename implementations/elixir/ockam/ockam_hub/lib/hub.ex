@@ -53,11 +53,11 @@ defmodule Ockam.Hub do
               version: :v2,
               protocol: :http,
               reporter_name: "Ockam Hub",
-              host: Application.get_env(:telemetry_influxdb, :host, "http://127.0.0.1"),
-              port: String.to_integer(Application.get_env(:telemetry_influxdb, :port, "8086")),
-              bucket: Application.get_env(:telemetry_influxdb, :bucket, "ockam_hub"),
-              org: Application.get_env(:telemetry_influxdb, :org, "ockam"),
-              token: Application.get_env(:telemetry_influxdb, :token, "TOKEN NOT CONFIGURED"),
+              host: Application.get_env(:telemetry_influxdb, :host) || "http://127.0.0.1",
+              port: String.to_integer(Application.get_env(:telemetry_influxdb, :port) || "8086"),
+              bucket: Application.get_env(:telemetry_influxdb, :bucket) || "ockam_hub",
+              org: Application.get_env(:telemetry_influxdb, :org) || "ockam",
+              token: Application.get_env(:telemetry_influxdb, :token) || "TOKEN NOT CONFIGURED",
               events: [
                 %{
                   name: [:vm, :memory],
