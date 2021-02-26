@@ -80,7 +80,7 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///
 ///     // Send this over the network to Bob
 ///     let contact_alice = alice.serialize_to_contact()?;
-///     let auth_proof = alice.generate_authentication_proof(&key_agreement_hash)?;
+///     let proof_alice = alice.generate_authentication_proof(&key_agreement_hash)?;
 ///
 ///     Ok(())
 /// }
@@ -95,14 +95,15 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     let key_agreement_hash = [0u8; 32];
 ///
 ///     // Receive this from Alice over the network
-///     let contact_alice = [0u8; 32];
+///     # let contact_alice = [0u8; 32];
 ///     let contact_alice = Profile::deserialize_contact(&contact_alice)?;
 ///     let alice_id = contact_alice.identifier().clone();
 ///
 ///     // Bob adds Alice to contact list
 ///     bob.verify_and_add_contact(contact_alice)?;
 ///
-///     let proof_alice = [0u8; 32];
+///     # let proof_alice = [0u8; 32];
+///     // Bob verifies Alice
 ///     bob.verify_authentication_proof(&key_agreement_hash, &alice_id, &proof_alice)
 /// }
 /// ```

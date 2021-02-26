@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 
 /// Contact is an abstraction responsible for storing user's public data (mainly - public keys).
 /// It is designed to share users' public keys in cryptographically verifiable way.
-/// Public keys together with metadata are organised into verifiable events chain exactly like [`Profile`].
+/// Public keys together with metadata are organised into verifiable events chain exactly like [`crate::Profile`].
 /// There are two ways to get Contact:
 ///   1. From another user (in this case Contact will be cryptographically verified)
-///   2. Generate one from user's own [`Profile`]
+///   2. Generate one from user's own [`crate::Profile`]
 ///
 /// Public keys from Contact can be used for many purposes, e.g. running key exchange, or signing&encrypting data.
 ///
@@ -45,7 +45,7 @@ pub struct Contact {
 }
 
 impl Contact {
-    /// Return unique identifier, which equals to [`Profile`]s identifier
+    /// Return unique identifier, which equals to [`crate::Profile`]s identifier
     pub fn identifier(&self) -> &ProfileIdentifier {
         &self.identifier
     }

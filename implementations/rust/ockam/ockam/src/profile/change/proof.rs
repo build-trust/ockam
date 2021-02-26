@@ -8,7 +8,7 @@ pub enum SignatureType {
     RootSign,
 }
 
-/// Variants of proofs that are allowed on a [`Profile`] change
+/// Variants of proofs that are allowed on a [`crate::Profile`] change
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ProfileChangeProof {
     Signature(Signature),

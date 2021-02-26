@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct ProfileIdentifier(KeyId);
 
-/// Unique [`Profile`] identifier, computed as SHA256 of root public key
+/// Unique [`crate::Profile`] identifier, computed as SHA256 of root public key
 impl ProfileIdentifier {
     pub fn from_key_id(key_id: KeyId) -> Self {
         Self { 0: key_id }
@@ -15,7 +15,7 @@ impl ProfileIdentifier {
     }
 }
 
-/// Unique [`ProfileChangeEvent`] identifier, computed as SHA256 of the event data
+/// Unique [`crate::ProfileChangeEvent`] identifier, computed as SHA256 of the event data
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct EventIdentifier([u8; 32]);
 
