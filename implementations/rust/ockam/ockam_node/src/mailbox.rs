@@ -1,5 +1,5 @@
-use crate::Context;
-use ockam_core::{Encoded, Message};
+use crate::{relay::RelayMessage, Context};
+use ockam_core::{Address, Message};
 use std::fmt::{self, Debug, Display, Formatter};
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -10,26 +10,26 @@ use tokio::sync::mpsc::{Receiver, Sender};
 /// the worker's [`Context`](crate::Context).
 #[derive(Debug)]
 pub struct Mailbox {
-    rx: Receiver<Encoded>,
-    tx: Sender<Encoded>,
+    rx: Receiver<RelayMessage>,
+    tx: Sender<RelayMessage>,
 }
 
 impl Mailbox {
-    pub fn new(rx: Receiver<Encoded>, tx: Sender<Encoded>) -> Self {
+    pub fn new(rx: Receiver<RelayMessage>, tx: Sender<RelayMessage>) -> Self {
         Self { rx, tx }
     }
 
-    pub fn sender(&self) -> Sender<Encoded> {
+    pub fn sender(&self) -> Sender<RelayMessage> {
         self.tx.clone()
     }
 
     /// Get the next message from the mailbox
-    pub async fn next(&mut self) -> Option<Encoded> {
+    pub async fn next(&mut self) -> Option<RelayMessage> {
         self.rx.recv().await
     }
 
     /// If a message wasn't expected, requeue it
-    pub async fn requeue(&self, msg: Encoded) {
+    pub async fn requeue(&self, msg: RelayMessage) {
         self.tx.send(msg).await.unwrap();
     }
 }
@@ -41,19 +41,20 @@ impl Mailbox {
 /// re-queues it into the mailbox.
 pub struct Cancel<'ctx, M: Message> {
     inner: M,
+    addr: Address,
     ctx: &'ctx Context,
 }
 
 impl<'ctx, M: Message> Cancel<'ctx, M> {
-    pub(crate) fn new(inner: M, ctx: &'ctx Context) -> Self {
-        Self { inner, ctx }
+    pub(crate) fn new(inner: M, addr: Address, ctx: &'ctx Context) -> Self {
+        Self { inner, addr, ctx }
     }
 
     /// Cancel this message
     pub async fn cancel(self) {
         let ctx = self.ctx;
         let enc = self.inner.encode().unwrap();
-        ctx.mailbox.requeue(enc).await;
+        ctx.mailbox.requeue(RelayMessage::new(self.addr, enc)).await;
     }
 }
 

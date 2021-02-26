@@ -1,12 +1,12 @@
 use crate::relay::RelayMessage;
-use ockam_core::Address;
+use ockam_core::{Address, AddressSet};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]
 pub enum NodeMessage {
     /// Start a new worker and store the send handle
-    StartWorker(Address, Sender<RelayMessage>),
+    StartWorker(AddressSet, Sender<RelayMessage>),
     /// Return a list of all worker addresses
     ListWorkers(Sender<NodeReply>),
     /// Stop an existing worker
@@ -19,7 +19,7 @@ pub enum NodeMessage {
 
 impl NodeMessage {
     /// Create a start worker message
-    pub fn start_worker(address: Address, sender: Sender<RelayMessage>) -> Self {
+    pub fn start_worker(address: AddressSet, sender: Sender<RelayMessage>) -> Self {
         Self::StartWorker(address, sender)
     }
 

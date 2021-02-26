@@ -1,7 +1,7 @@
 // use crate::message::BaseMessage;
 
 use crate::{relay::RelayMessage, NodeMessage, NodeReply};
-use ockam_core::{Address, Result};
+use ockam_core::{Address, AddressSet, Result};
 
 use std::{collections::BTreeMap, future::Future, sync::Arc};
 use tokio::runtime::Runtime;
@@ -16,6 +16,13 @@ pub struct Executor {
     sender: Sender<NodeMessage>,
     /// Worker handle map
     registry: BTreeMap<Address, Sender<RelayMessage>>,
+    /// Additional address map
+    ///
+    /// Each worker has a primary address, with secondary addresses
+    /// that are stored in this map.  When shutting down a worker,
+    /// secondary address senders also need to be cleared for the
+    /// worker to shut down
+    addr_map: BTreeMap<Address, AddressSet>,
 }
 
 impl Default for Executor {
@@ -23,11 +30,13 @@ impl Default for Executor {
         let (sender, receiver) = channel(32);
         let rt = Arc::new(Runtime::new().unwrap());
         let registry = BTreeMap::default();
+        let addr_map = BTreeMap::default();
         Self {
             rt,
             receiver,
             sender,
             registry,
+            addr_map,
         }
     }
 }
@@ -86,12 +95,20 @@ impl Executor {
                 .await
                 .unwrap(),
                 NodeMessage::StopWorker(ref address, ref mut reply) => {
-                    match self.registry.remove(address) {
+                    let addresses = self.addr_map.remove(address).unwrap();
+
+                    match addresses.iter().fold(Some(()), |opt, addr| {
+                        match (opt, self.registry.remove(addr)) {
+                            (Some(_), Some(_)) => Some(()),
+                            (Some(_), None) => None,
+                            (None, _) => None,
+                        }
+                    }) {
                         Some(_) => reply.send(NodeReply::ok()),
                         None => reply.send(NodeReply::no_such_worker(address.clone())),
                     }
                     .await
-                    .unwrap()
+                    .unwrap();
                 }
                 NodeMessage::StopNode => {
                     self.registry.clear(); // Dropping all senders stops all workers
@@ -99,7 +116,10 @@ impl Executor {
                 }
                 NodeMessage::StartWorker(address, sender) => {
                     // TODO: check that no worker with that address already exists?
-                    self.registry.insert(address, sender);
+                    address.iter().for_each(|address| {
+                        self.registry.insert(address.clone(), sender.clone());
+                    });
+                    self.addr_map.insert(address.first(), address);
                 }
                 NodeMessage::ListWorkers(sender) => {
                     let list = self.registry.keys().cloned().collect();

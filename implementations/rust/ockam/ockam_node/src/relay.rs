@@ -16,12 +16,25 @@
 //! a type and notifying the companion actor.
 
 use crate::{Context, Mailbox};
-use ockam_core::{Encoded, Message, Worker};
+use ockam_core::{Address, Encoded, Message, Worker};
 use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-pub type RelayMessage = Encoded;
+/// A message addressed to a relay
+#[derive(Debug)]
+pub struct RelayMessage {
+    /// The address this message was sent to
+    pub addr: Address,
+    /// The encoded message payload
+    pub data: Encoded,
+}
+
+impl RelayMessage {
+    pub fn new(addr: Address, data: Encoded) -> Self {
+        Self { addr, data }
+    }
+}
 
 pub struct Relay<W, M>
 where
@@ -49,8 +62,8 @@ where
     async fn run(mut self) {
         self.worker.initialize(&mut self.ctx).await.unwrap();
 
-        while let Some(ref enc) = self.ctx.mailbox.next().await {
-            let msg = match M::decode(enc) {
+        while let Some(RelayMessage { addr, ref data }) = self.ctx.mailbox.next().await {
+            let msg = match M::decode(data) {
                 Ok(msg) => msg,
                 Err(e) => {
                     println!("Message decode failed: {}", e);
@@ -58,10 +71,16 @@ where
                 }
             };
 
+            // Set the message address for this transaction chain
+            self.ctx.message_address(addr);
+
             self.worker
                 .handle_message(&mut self.ctx, msg)
                 .await
                 .unwrap();
+
+            // Unset the message address
+            self.ctx.message_address(None);
         }
 
         self.worker.shutdown(&mut self.ctx).unwrap();

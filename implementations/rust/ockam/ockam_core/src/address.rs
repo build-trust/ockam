@@ -1,9 +1,48 @@
 use crate::lib::{
     fmt::{self, Display},
+    iter::Iterator,
     String, Vec,
 };
 use core::ops::Deref;
 use serde::{Deserialize, Serialize};
+
+/// A collection of Addresses
+#[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AddressSet(Vec<Address>);
+
+impl AddressSet {
+    pub fn iter(&self) -> impl Iterator<Item = &Address> {
+        self.0.iter()
+    }
+
+    pub fn first(&self) -> Address {
+        self.0.first().cloned().unwrap()
+    }
+}
+
+impl<T: Into<Address>> From<Vec<T>> for AddressSet {
+    fn from(v: Vec<T>) -> Self {
+        Self(v.into_iter().map(Into::into).collect())
+    }
+}
+
+impl From<Address> for AddressSet {
+    fn from(a: Address) -> Self {
+        Self(vec![a])
+    }
+}
+
+impl<'a> From<&'a Address> for AddressSet {
+    fn from(a: &'a Address) -> Self {
+        Self(vec![a.clone()])
+    }
+}
+
+impl<'a> From<&'a str> for AddressSet {
+    fn from(a: &'a str) -> Self {
+        Self(vec![a.into()])
+    }
+}
 
 /// An external identifier for message routing.
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
