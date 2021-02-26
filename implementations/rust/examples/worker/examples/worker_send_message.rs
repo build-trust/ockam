@@ -12,7 +12,7 @@ impl Worker for Printer {
     type Message = PrintMessage;
     type Context = Context;
 
-    fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
         println!("[PRINTER]: starting");
         Ok(())
     }
