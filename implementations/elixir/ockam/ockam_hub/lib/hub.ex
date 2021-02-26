@@ -37,6 +37,12 @@ defmodule Ockam.Hub do
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
     children = [
+      {
+        :telemetry_poller,
+        [
+          period: :timer.seconds(5)
+        ]
+      },
       %{
         id: TelemetryInfluxDB,
         start: {
@@ -54,8 +60,27 @@ defmodule Ockam.Hub do
               token: Application.get_env(:telemetry_influxdb, :token, "TOKEN NOT CONFIGURED"),
               events: [
                 %{
-                  name: [:memory, :usage],
-                  metadata_tag_keys: [:host, :ip_address]
+                  name: [:vm, :memory],
+                  metadata_tag_keys: [
+                    :total,
+                    :processes,
+                    :processes_used,
+                    :system,
+                    :atom,
+                    :atom_used,
+                    :binary,
+                    :code,
+                    :ets,
+                    :maximum
+                  ]
+                },
+                %{
+                  name: [:vm, :total_run_queue_lengths],
+                  metadata_tag_keys: [:total, :cpu, :io]
+                },
+                %{
+                  name: [:vm, :system_counts],
+                  metadata_tag_keys: [:process_count, :atom_count, :port_count]
                 },
                 %{
                   name: [:ockam, Ockam.Transport.TCP.Listener, :init],

@@ -52,6 +52,7 @@ defmodule Ockam.Hub.MixProject do
       {:ockam, path: "../ockam"},
       {:ranch, "~> 2.0"},
       {:telemetry, "~> 0.4.2"},
+      {:telemetry_poller, "~> 0.5.1"},
       {:telemetry_influxdb, "~> 0.2.0"}
     ]
   end
