@@ -35,6 +35,24 @@
                   "port": 4000
                 }
               ],
+              "environmentVariables": [
+                {
+                  "name": "INFLUXDB_HOST",
+                  "value": "https://us-west-2-1.aws.cloud2.influxdata.com"
+                },
+                {
+                  "name": "INFLUXDB_PORT",
+                  "value": "443"
+                },
+                {
+                  "name": "INFLUXDB_BUCKET",
+                  "value": "ockam_hub"
+                },
+                {
+                  "name": "INFLUXDB_ORG",
+                  "value": "ockam"
+                }
+              ],
               "volumeMounts": [
                 {
                   "name": "secrets-volume-ockam-vault",
