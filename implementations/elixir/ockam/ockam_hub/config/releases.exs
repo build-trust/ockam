@@ -5,4 +5,4 @@ config :telemetry_influxdb,
   port: System.get_env("INFLUXDB_PORT"),
   bucket: System.get_env("INFLUXDB_BUCKET"),
   org: System.get_env("INFLUXDB_ORG"),
-  token: File.read("/mnt/secrets/influx/token")
+  token: File.read!("/mnt/secrets/influx/token")
