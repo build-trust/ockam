@@ -52,7 +52,10 @@ where
         while let Some(ref enc) = self.ctx.mailbox.next().await {
             let msg = match M::decode(enc) {
                 Ok(msg) => msg,
-                Err(_) => continue,
+                Err(e) => {
+                    println!("Message decode failed: {}", e);
+                    continue;
+                }
             };
 
             self.worker
