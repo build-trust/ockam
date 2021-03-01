@@ -49,7 +49,10 @@ impl CredentialHolder {
         let (context, blinding) = Prover::new_blind_signature_context(&pk, &messages, &nonce)
             .map_err(|_| CredentialError::InvalidCredentialOffer)?;
         Ok((
-            CredentialRequest { context },
+            CredentialRequest {
+                offer_id: offer.id,
+                context,
+            },
             CredentialFragment1 {
                 schema: offer.schema.clone(),
                 blinding,
