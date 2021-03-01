@@ -1,0 +1,74 @@
+name: Check CLA
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+jobs:
+  check-submitter-for-cla:
+    name: Check submitter for CLA
+    env:
+      MESSAGE: "Thank you <USER> for creating this <EVENT>. Before you continue you will need to sign our CLA.
+To do it please create a new PR to the https://github.com/ockam-network/contributors repo adding yourself to the CSV file."
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone CONTRIBUTORS
+        uses: actions/checkout@v2.3.4
+        with:
+          repository: ockam-network/contributors
+          path: contributors
+
+      # Gather necessary information
+      - name: Setup
+        run: |
+          if [ ${{ github.event_name }} = "issues" ]; then
+            USER=${{ github.event.issue.user.login }}
+            EVENT=issue
+          else
+            USER=${{ github.event.pull_request.user.login }}
+            EVENT=PR
+          fi
+
+          # Export variable
+          # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
+          echo "USER=$USER" >> $GITHUB_ENV
+          echo "EVENT=$EVENT" >> $GITHUB_ENV
+
+      - name: Check submitter
+        continue-on-error: true
+        shell: bash
+        run: |
+          # Below attempt is to prevent following situation
+          # https://github.community/t/github-actions-using-grep-when-no-lines-selected/126719
+          CVS_USER=$(grep --max-count=1 --only-matching ${{ env.USER }} contributors/CONTRIBUTORS.csv || echo '<MISSING>')
+
+          if [[ "$CVS_USER" == "<MISSING>" ]]
+          then
+            echo "CLA_NOT_SIGNED=1" >> $GITHUB_ENV
+          else
+            echo "INFO: User $USER signed the CLA"
+            echo "CLA_NOT_SIGNED=0" >> $GITHUB_ENV
+          fi
+
+      - name: Prepare message
+        if: env.CLA_NOT_SIGNED == 1
+        run: |
+          OUTPUT=$(echo $MESSAGE | sed -e "s#<USER>#$USER#g" -e "s#<EVENT>#$EVENT#g")
+          echo "MESSAGE=$OUTPUT" >> $GITHUB_ENV
+
+      - name: Add PR comment
+        if: env.CLA_NOT_SIGNED == 1  &&  github.event_name == 'pull_request'
+        uses: mshick/add-pr-comment@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token-user-login: 'Ockam[bot]' # The user.login for temporary GitHub tokens
+          message: |
+            ${{ env.MESSAGE }}
+
+      - name: Add ISSUE comment
+        if: env.CLA_NOT_SIGNED == 1  &&  github.event_name == 'issues'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            ${{ env.MESSAGE }}
