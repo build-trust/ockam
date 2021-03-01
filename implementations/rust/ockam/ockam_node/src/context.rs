@@ -82,8 +82,7 @@ impl Context {
         let (reply_tx, mut reply_rx) = channel(1);
         let req = NodeMessage::SenderReq(address, reply_tx);
 
-        // FIXME/ DESIGN: error communication concept
-        let _result: Result<()> = match self.sender.send(req).await {
+        match self.sender.send(req).await {
             Ok(()) => {
                 if let Some(NodeReply::Sender(_, s)) = reply_rx.recv().await {
                     let msg = msg.encode().unwrap();
@@ -96,9 +95,7 @@ impl Context {
                 }
             }
             Err(_e) => Err(Error::FailedSendMessage.into()),
-        };
-
-        Ok(())
+        }
     }
 
     /// Block the current worker to wait for a typed message
