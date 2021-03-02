@@ -1,9 +1,9 @@
-use crate::connection::TcpConnection;
-use crate::traits::{Connection, Listener};
+use crate::error::TransportError;
+use crate::traits::Listener;
+use crate::TcpConnection;
 use async_trait::async_trait;
-use std::sync::Arc;
+use ockam_core::Result;
 use tokio::net::TcpListener as TokioTcpListener;
-use tokio::sync::Mutex;
 
 pub struct TcpListener {
     listener: TokioTcpListener,
@@ -13,21 +13,23 @@ impl TcpListener {
     /// Creates a [`Listener`] trait object reference for TCP.
     ///
     /// # Examples
-    /// ```ignore
+    /// ```
     /// use ockam_transport_tcp::listener::TcpListener;
     /// use std::net::SocketAddr;
     /// use std::str::FromStr;
+    /// use tokio::runtime::{Builder, Runtime};
     ///
-    /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    /// let listener = TcpListener::create(address);
+    /// let runtime = Builder::new_current_thread().enable_io().build().unwrap();
+    /// runtime.block_on( async {
+    ///    let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
+    ///    let listener = TcpListener::create(address).await.unwrap();
+    /// });
     /// ```
-    pub async fn create(
-        listen_address: std::net::SocketAddr,
-    ) -> Result<Arc<Mutex<dyn Listener + Send>>, String> {
+    pub async fn create(listen_address: std::net::SocketAddr) -> Result<Box<dyn Listener + Send>> {
         let listener = TokioTcpListener::bind(listen_address).await;
         match listener {
-            Ok(l) => Ok(Arc::new(Mutex::new(TcpListener { listener: l }))),
-            Err(e) => Err(format!("{:?}", e)),
+            Ok(l) => Ok(Box::new(TcpListener { listener: l })),
+            Err(_) => Err(TransportError::Bind.into()),
         }
     }
 }
@@ -44,16 +46,16 @@ impl Listener for TcpListener {
     /// use std::str::FromStr;
     ///
     /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    /// let listener = TcpListener::create(address);
+    /// let mut  listener = TcpListener::new(address).await.unwrap();
     /// let connection = listener.accept().await.unwrap();
     /// ```
-    async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, String> {
+    async fn accept(&mut self) -> Result<Box<TcpConnection>> {
         let stream = self.listener.accept().await;
         if stream.is_err() {
-            Err("accept failed".into())
+            Err(TransportError::Accept.into())
         } else {
             let (stream, _) = stream.unwrap();
-            Ok(TcpConnection::new_from_stream(stream).await)
+            Ok(TcpConnection::new_from_stream(stream).await?)
         }
     }
 }
@@ -68,21 +70,16 @@ mod test {
     use tokio::task;
 
     async fn client_worker() {
-        let connection =
-            TcpConnection::create(SocketAddr::from_str("127.0.0.1:4052").unwrap()).clone();
-        let mut connection = connection.lock().await;
+        let mut connection = TcpConnection::create(SocketAddr::from_str("127.0.0.1:4055").unwrap());
         connection.connect().await.unwrap();
-        println!("client connected");
     }
 
     async fn listen_worker() {
         {
-            let listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4052").unwrap())
+            let mut listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4055").unwrap())
                 .await
                 .unwrap();
-            let mut listener = listener.lock().await;
             let _connection = listener.accept().await.unwrap();
-            println!("...listener accepted connection");
         }
     }
     #[test]
@@ -98,8 +95,8 @@ mod test {
             Builder::new_current_thread().enable_io().build().unwrap(),
         ];
 
-        for r in runtime.iter() {
-            r.block_on(async {
+        for rt in runtime.iter() {
+            rt.block_on(async {
                 let j1 = task::spawn(async {
                     let f = listen_worker();
                     f.await;

@@ -1,24 +1,18 @@
-extern crate alloc;
-
-use alloc::sync::Arc;
+use crate::connection::TcpConnection;
 use async_trait::async_trait;
-use tokio::sync::Mutex;
+use ockam_router::message::TransportMessage;
+use serde::{Deserialize, Serialize};
 
-/// The `Connection` trait represents transport connections.
-#[async_trait]
-pub trait Connection {
-    /// Establishes the transport connection.
-    async fn connect(&mut self) -> Result<(), String>;
-
-    /// Sends a message.
-    async fn send(&mut self, message: &[u8]) -> Result<usize, String>;
-
-    /// Receives a message.
-    async fn receive(&mut self, message: &mut [u8]) -> Result<usize, String>;
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub enum ConnectionMessage {
+    Connect,
+    SendMessage(TransportMessage),
+    ReceiveMessage,
+    Alive,
 }
 
-/// The `Listerner` trait represents transport connection listeners.
+/// The `Listener` trait represents transport connection listeners.
 #[async_trait]
-pub trait Listener {
-    async fn accept(&mut self) -> Result<Arc<Mutex<dyn Connection + Send>>, String>;
+pub trait Listener: Send + 'static {
+    async fn accept(&mut self) -> ockam::Result<Box<TcpConnection>>;
 }

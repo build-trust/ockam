@@ -5,6 +5,16 @@
 //! the underlying transport protocols. This allows applications to establish
 //! end-to-end trust between entities, independently from the underlying transport.
 
+// pub use channel::*;
+pub use connection::*;
+pub use error::*;
+pub use listener::*;
+pub use tcp_router::*;
+pub use traits::*;
+
+// pub mod channel;
 pub mod connection;
+pub mod error;
 pub mod listener;
+pub mod tcp_router;
 pub mod traits;
