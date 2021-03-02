@@ -41,7 +41,8 @@ impl CredentialIssuer {
     }
 
     /// Initialize an issuer with an already generated key
-    pub fn with_signing_key(signing_key: SecretKey) -> Self {
+    pub fn with_signing_key(signing_key: [u8; 32]) -> Self {
+        let signing_key = SecretKey::from(signing_key);
         Self { signing_key }
     }
 
