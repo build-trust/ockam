@@ -30,9 +30,13 @@ commands {
 
     'ockam/ockam_ffi',
 
+    'ockam/ockam_router',
+    'ockam/ockam_transport_tcp',
+
     'ockam/ockam',
 
     'examples/node',
     'examples/worker',
+    'examples/tcp',
   ]
 }
