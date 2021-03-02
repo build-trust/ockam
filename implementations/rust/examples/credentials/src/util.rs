@@ -5,7 +5,7 @@ use ockam::{
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{Shutdown, TcpListener, TcpStream};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
 
@@ -70,11 +70,46 @@ pub enum Stream {
 }
 
 impl Stream {
+    pub fn connect(socket: Option<PathBuf>, port: Option<usize>) -> Result<Self, String> {
+        match (socket, port) {
+            (_, Some(port)) => {
+                println!("Connecting on 127.0.0.1:{}", port);
+                Ok(Self::Tcp(
+                    TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap(),
+                ))
+            }
+            (Some(socket), None) => {
+                if !socket.as_path().exists() {
+                    return Err(format!("Cannot connect to socket: {:?}", socket.as_path()));
+                }
+                println!("Connecting to {:?}", socket.clone());
+                Ok(Self::Unix(UnixStream::connect(socket).unwrap()))
+            }
+            (None, None) => {
+                let mut socket = PathBuf::new();
+                socket.push("issuer.socket");
+                if !socket.as_path().exists() {
+                    return Err(format!("Cannot connect to socket: {:?}", socket.as_path()));
+                }
+                println!("Connecting to {:?}", socket.clone());
+                Ok(Stream::Unix(UnixStream::connect("issuer.socket").unwrap()))
+            }
+        }
+    }
+
     pub fn try_clone(&self) -> std::io::Result<Self> {
         match self {
             #[cfg(any(target_os = "linux", target_os = "macos"))]
             Stream::Unix(u) => Ok(Self::Unix(u.try_clone()?)),
             Stream::Tcp(t) => Ok(Self::Tcp(t.try_clone()?)),
+        }
+    }
+
+    pub fn shutdown(&mut self) -> std::io::Result<()> {
+        match self {
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            Stream::Unix(u) => u.shutdown(Shutdown::Both),
+            Stream::Tcp(t) => t.shutdown(Shutdown::Both),
         }
     }
 }

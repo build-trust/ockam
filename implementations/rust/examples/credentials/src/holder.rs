@@ -1,20 +1,71 @@
 mod util;
 
-use ockam::{
-    CredentialFragment2, CredentialHolder, CredentialOffer, CredentialPresentation,
-    CredentialRequest, CredentialVerifier, PresentationManifest,
-};
+use ockam::{CredentialHolder, CredentialVerifier, PresentationManifest};
 
-use std::time::{SystemTime, UNIX_EPOCH};
-use util::example_schema;
+use std::{
+    io::Write,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
+use structopt::StructOpt;
+use util::{example_schema, CredentialMessage, Stream};
+
+#[derive(StructOpt)]
+struct Args {
+    #[structopt(long)]
+    issuer_port: Option<usize>,
+    #[structopt(long, parse(from_os_str))]
+    issuer_socket: Option<PathBuf>,
+    #[structopt(long)]
+    verifier_port: Option<usize>,
+    #[structopt(long, parse(from_os_str))]
+    verifier_socket: Option<PathBuf>,
+}
 
 fn main() {
+    let args = Args::from_args();
+
     let holder = CredentialHolder::new();
 
-    let (pk, pop, offer) = contact_issuer();
-    // A verifying service that receives the public key can check the proof of possession
-    // Or a holder can check it prior to accepting a credential offer
-    assert!(CredentialVerifier::verify_proof_of_possession(pk, pop));
+    let mut stream = Stream::connect(args.issuer_socket, args.issuer_port).unwrap();
+
+    serde_bare::to_writer(&mut stream, &CredentialMessage::CredentialConnection)
+        .expect("Unable to contact the issuer");
+    stream.flush().unwrap();
+
+    let reader = stream.try_clone().unwrap();
+    let msg = serde_bare::from_reader::<Stream, CredentialMessage>(reader)
+        .expect("Unable to read message from issuer");
+
+    let pk;
+    if let CredentialMessage::CredentialIssuer { public_key, proof } = msg {
+        // A verifying service that receives the public key can check the proof of possession
+        // Or a holder can check it prior to accepting a credential offer
+        assert!(CredentialVerifier::verify_proof_of_possession(
+            public_key, proof
+        ));
+        pk = public_key;
+    } else {
+        eprintln!("Unexpected message returned from Issuer");
+        return;
+    }
+
+    // Ask for a new credential
+    serde_bare::to_writer(&mut stream, &CredentialMessage::NewCredential)
+        .expect("Unable to ask for new credential from issuer");
+    stream.flush().unwrap();
+
+    let offer;
+    let reader = stream.try_clone().unwrap();
+    let msg = serde_bare::from_reader::<Stream, CredentialMessage>(reader)
+        .expect("Unable to read message from issuer");
+
+    if let CredentialMessage::CredentialOffer(o) = msg {
+        offer = o;
+    } else {
+        eprintln!("Unexpected message returned from Issuer");
+        return;
+    }
 
     // CredentialHolder accepts the credential
     // Accepting the offer yields a request to send back to the issuer
@@ -26,13 +77,29 @@ fn main() {
     let (request, credential_fragment1) = holder.accept_credential_offer(&offer, pk).unwrap();
 
     // Send the request
-    let credential_fragment2 = send_credential_request(request);
+    serde_bare::to_writer(&mut stream, &CredentialMessage::CredentialRequest(request))
+        .expect("Unable to send credential request");
+    stream.flush().unwrap();
 
-    let credential =
-        holder.combine_credential_fragments(credential_fragment1, credential_fragment2);
+    let reader = stream.try_clone().unwrap();
+    let msg = serde_bare::from_reader::<Stream, CredentialMessage>(reader)
+        .expect("Unable to read message from issuer");
+
+    let credential;
+    if let CredentialMessage::CredentialResponse(credential_fragment2) = msg {
+        credential =
+            holder.combine_credential_fragments(credential_fragment1, credential_fragment2);
+    } else {
+        eprintln!("Unexpected message returned from Issuer");
+        return;
+    }
+
+    stream
+        .shutdown()
+        .expect("Unable to close connection to issuer");
 
     // Connect to a service now
-    connect_to_service();
+    let mut stream = Stream::connect(args.verifier_socket, args.verifier_port).unwrap();
 
     // Use credential to prove to service
     // The manifest is common to everyone so it can be
@@ -65,19 +132,8 @@ fn main() {
     let presentation = holder
         .present_credentials(&[credential], &[presentation_manifest.clone()], request_id)
         .unwrap();
-    send_presentation(presentation);
-}
-
-fn contact_issuer() -> ([u8; 96], [u8; 48], CredentialOffer) {
-    unimplemented!();
-}
-
-fn send_credential_request(_request: CredentialRequest) -> CredentialFragment2 {
-    unimplemented!();
-}
-
-fn connect_to_service() {}
-
-fn send_presentation(_presentation: Vec<CredentialPresentation>) {
-    unimplemented!();
+    serde_bare::to_writer(&mut stream, &CredentialMessage::Presentation(presentation))
+        .expect("Unable to send presentation");
+    stream.flush().unwrap();
+    //TODO: what to do now?
 }
