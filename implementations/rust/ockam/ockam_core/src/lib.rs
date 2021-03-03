@@ -7,7 +7,7 @@
 //! The main Ockam crate re-exports types defined in this crate.
 #![no_std]
 #![deny(
-    // missing_docs,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,

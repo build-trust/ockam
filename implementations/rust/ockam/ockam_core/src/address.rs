@@ -5,6 +5,7 @@ use crate::lib::{
 use core::ops::Deref;
 use serde::{Deserialize, Serialize};
 
+/// An external identifier for message routing.
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Address(Vec<u8>);
 
