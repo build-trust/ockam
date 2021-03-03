@@ -36,4 +36,4 @@ hashbrown =  { version = "0.9"}
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}
-ockam_vault = { version = "0.2.0", path = "../ockam_vault" }
+ockam_vault = { version = "0.2.1", path = "../ockam_vault" }
