@@ -36,16 +36,37 @@ impl From<Error> for FfiOckamError {
 /// Represents the failures that can occur in an Ockam FFI Vault.
 #[derive(Clone, Copy, Debug)]
 pub enum FfiError {
+    /// No error.
     None,
+
+    /// Persistence is not supported for this Vault implementation.
     VaultDoesntSupportPersistence,
+
+    /// An underlying filesystem error prevented Vault creation.
     ErrorCreatingFilesystemVault,
+
+    /// Invalid parameter.
     InvalidParam,
+
+    /// Entry not found.
     EntryNotFound,
+
+    /// Unknown public key type.
     UnknownPublicKeyType,
+
+    /// Invalid string.
     InvalidString,
+
+    /// Buffer is too small.
     BufferTooSmall,
+
+    /// A public key is invalid.
     InvalidPublicKey,
+
+    /// No such Vault.
     VaultNotFound,
+
+    /// Ownership error.
     OwnershipError,
 }
 
