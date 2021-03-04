@@ -1,4 +1,4 @@
-//! Spawn two workers that play some ping-pong
+//! Spawn to workers that play some ping-pong
 
 use ockam::{async_worker, Address, Context, Result, Worker};
 use serde::{Deserialize, Serialize};

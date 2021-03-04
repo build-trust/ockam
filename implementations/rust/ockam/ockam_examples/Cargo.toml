@@ -12,4 +12,18 @@ chrono = { version = "0", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_bare = "0"
 serde-big-array = "0"
+hex = "0.4"
+structopt = "0.3"
+
+[[bin]]
+name = "issuer"
+path = "src/issuer.rs"
+
+[[bin]]
+name = "holder"
+path = "src/holder.rs"
+
+[[bin]]
+name = "verifier"
+path = "src/verifier.rs"
 
