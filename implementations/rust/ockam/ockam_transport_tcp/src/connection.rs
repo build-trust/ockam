@@ -3,9 +3,7 @@ use async_trait::async_trait;
 use ockam::{Address, Context, Worker};
 use ockam_core::Result;
 use ockam_router::message::{RouterAddress, TransportMessage};
-use ockam_router::{
-    print_route, RouteTransportMessage, RouterError, ROUTER_ADDRESS, ROUTER_ADDRESS_TYPE_TCP,
-};
+use ockam_router::{RouteTransportMessage, RouterError, ROUTER_ADDRESS, ROUTER_ADDRESS_TYPE_TCP};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::net::SocketAddr;
@@ -168,18 +166,8 @@ impl TcpConnection {
 
             if self.message_length as usize <= self.message_buff.len() {
                 // we have a complete message
-                println!(
-                    "connection: complete message, len {} self.message_buff len {}: ",
-                    self.message_length,
-                    self.message_buff.len()
-                );
                 return match serde_bare::from_slice::<TransportMessage>(&self.message_buff) {
                     Ok(mut m) => {
-                        println!(
-                            "connection: message received with payload len {} and onward route:",
-                            m.payload.len()
-                        );
-                        print_route(&m.onward_route.addrs);
                         // scoot any remaining bytes to the beginning of the buffer
                         for i in 0..self.message_buff.len() - self.message_length {
                             self.message_buff[i] = self.message_buff[i + self.message_length];
@@ -293,7 +281,6 @@ impl Worker for Box<TcpConnection> {
     }
 
     async fn handle_message(&mut self, ctx: &mut Self::Context, msg: Self::Message) -> Result<()> {
-        println!("in tcp_worker");
         return match msg {
             TcpWorkerMessage::SendMessage(m) => {
                 if self.send_message(m).await.is_err() {
@@ -303,12 +290,7 @@ impl Worker for Box<TcpConnection> {
                 }
             }
             TcpWorkerMessage::Receive => {
-                println!("tcp_worker receive pending...");
                 return if let Ok(msg) = self.receive_message().await {
-                    println!(
-                        "tcp_worker got message, payload length {}",
-                        msg.payload.len()
-                    );
                     if msg.onward_route.addrs.is_empty() {
                         return Err(RouterError::NoRoute.into());
                     }

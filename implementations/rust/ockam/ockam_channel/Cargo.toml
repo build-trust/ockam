@@ -15,11 +15,12 @@ ockam_core = {path = "../ockam_core", version = "*"}
 ockam_router = {path = "../ockam_router", version = "*"}
 ockam_transport_tcp = {path = "../ockam_transport_tcp", version = "*"}
 serde_bare = "0.3.0"
-serde = {version = "1.0.120", features = ["derive"]}
 rand = "0.7"
 ockam_key_exchange_xx = {path = "../ockam_key_exchange_xx", version = "*"}
 ockam_key_exchange_core = {path = "../ockam_key_exchange_core", version = "*"}
 ockam_vault_core = { version = "0.2.0", path = "../ockam_vault_core" }
+async-trait = "0.1.42"
+serde = {version = "1.0.120", features = ["derive"]}
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}
