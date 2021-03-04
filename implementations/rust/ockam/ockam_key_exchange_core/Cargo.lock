@@ -50,7 +50,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "bincode",
@@ -69,7 +69,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
