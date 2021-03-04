@@ -11,10 +11,12 @@ use serde::{Deserialize, Serialize};
 pub struct AddressSet(Vec<Address>);
 
 impl AddressSet {
+    /// Retrieve the set's iterator.
     pub fn iter(&self) -> impl Iterator<Item = &Address> {
         self.0.iter()
     }
 
+    /// Take the first address of the set.
     pub fn first(&self) -> Address {
         self.0.first().cloned().unwrap()
     }
