@@ -35,14 +35,14 @@ pub extern crate hex;
 #[macro_use]
 pub extern crate async_trait;
 
-mod address;
 mod error;
 mod message;
+mod routing;
 mod worker;
 
-pub use address::*;
 pub use error::*;
 pub use message::*;
+pub use routing::*;
 pub use worker::*;
 
 /// A facade around the various collections and primitives needed
