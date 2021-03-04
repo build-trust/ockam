@@ -8,7 +8,7 @@ homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_ffi"
 readme = "README.md"
 categories = ["cryptography"]
-keywords = ["ockam", "ffi", "cryptography", "crypto", "curve25519", "xeddsa", "aes", "gcm", "encryption", "aead", "iot"]
+keywords = ["ockam", "ffi", "cryptography", "crypto", "encryption"]
 description = """FFI layer for ockam_vault.
 """
 
