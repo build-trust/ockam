@@ -6,7 +6,7 @@ edition = "2018"
 keywords = ["ockam"]
 license = "Apache-2.0"
 name = "ockam_node"
-version = "0.2.0"
+version = "0.3.0"
 
 [dependencies]
 async-trait = "0.1.42"
