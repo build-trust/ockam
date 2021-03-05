@@ -1,0 +1,19 @@
+[package]
+name = "truck"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[profile.release]
+lto = true
+
+[dependencies]
+colored = "2.0"
+rand = "0.7"
+ockam = { version = "0.3", path = "../../../ockam/ockam" }
+ockam_vault = { version = "0.3", path = "../../../ockam/ockam_vault"}
+ockam_key_exchange_core = { version = "0.1", path = "../../../ockam/ockam_key_exchange_core" }
+ockam_key_exchange_x3dh = { version = "0.1", path = "../../../ockam/ockam_key_exchange_x3dh" }
+okta-plugin = { version = "0.1", path = "../" }
+serde_bare = "0.3"
+
