@@ -9,7 +9,7 @@ name = "ockam_node"
 version = "0.3.0"
 
 [dependencies]
-async-trait = "0.1.42"
+async-trait = "0.1.43"
 hashbrown = "0.9.1"
 ockam_core = {path = "../ockam_core", version = "0.5.0"}
 tokio = {version = "1.2.0", features = ["full"]}
