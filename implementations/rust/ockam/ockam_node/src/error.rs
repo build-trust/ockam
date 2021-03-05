@@ -1,3 +1,6 @@
+use std::fmt::Debug;
+use tokio::sync::mpsc::error::SendError;
+
 /// Error declarations.
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
@@ -13,6 +16,8 @@ pub enum Error {
     FailedSendMessage,
     /// Unable to receive the desired piece of data
     FailedLoadData,
+    /// An umbrella for internal I/O failures
+    InternalIOFailure,
 }
 
 impl Error {
@@ -27,3 +32,10 @@ impl From<Error> for ockam_core::Error {
         ockam_core::Error::new(Error::DOMAIN_CODE + (e as u32), Error::DOMAIN_NAME)
     }
 }
+
+impl From<crate::NodeError> for ockam_core::Error {
+    fn from(_: crate::NodeError) -> Self {
+        Error::InternalIOFailure.into()
+    }
+}
+
