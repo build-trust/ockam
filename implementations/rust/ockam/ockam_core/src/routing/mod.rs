@@ -3,5 +3,8 @@
 mod address;
 pub use address::*;
 
+mod data;
+pub use data::*;
+
 mod route;
 pub use route::*;
