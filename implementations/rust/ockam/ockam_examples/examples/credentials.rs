@@ -1,10 +1,9 @@
-
 use ockam::{
     CredentialAttribute, CredentialHolder, CredentialIssuer, CredentialVerifier,
     PresentationManifest,
 };
-use std::collections::BTreeMap;
 use ockam_examples::util::example_schema;
+use std::collections::BTreeMap;
 
 fn main() {
     let schema = example_schema();

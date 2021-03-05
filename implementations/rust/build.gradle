@@ -21,6 +21,7 @@ commands {
   directories = [
     'ockam/ockam',
     'ockam/ockam_core',
+    'ockam/ockam_examples',
     'ockam/ockam_ffi',
     'ockam/ockam_key_exchange_core',
     'ockam/ockam_key_exchange_x3dh',

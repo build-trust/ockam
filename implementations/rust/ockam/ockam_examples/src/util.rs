@@ -1,3 +1,4 @@
+#[allow(dead_code)] // lint doesn't know about the examples usage
 use ockam::{
     CredentialAttributeSchema, CredentialAttributeType, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialRequest, CredentialSchema, PresentationManifest, SECRET_ID,
