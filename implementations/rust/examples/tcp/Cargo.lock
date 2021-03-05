@@ -808,7 +808,7 @@ checksum = "a9a7ab5d64814df0fe4a4b5ead45ed6c5f181ee3ff04ba344313a6c80446c5d4"
 
 [[package]]
 name = "ockam"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -831,7 +831,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "async-trait",
  "bincode",
@@ -841,7 +841,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "hashbrown",

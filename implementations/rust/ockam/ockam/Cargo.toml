@@ -13,7 +13,7 @@ license = "Apache-2.0"
 name = "ockam"
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam"
-version = "0.2.0"
+version = "0.3.0"
 
 [features]
 default = ["std"]
