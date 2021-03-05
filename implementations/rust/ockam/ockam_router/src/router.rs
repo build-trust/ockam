@@ -9,6 +9,7 @@ pub const ROUTER_ADDRESS: &str = "router";
 pub const LOCAL_ROUTER_ADDRESS: &str = "local_router";
 
 pub const MAX_ROUTER_TYPES: usize = 256;
+
 pub const ROUTER_ADDRESS_TYPE_LOCAL: u8 = 0;
 pub const ROUTER_ADDRESS_TYPE_TCP: u8 = 1;
 

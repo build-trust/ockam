@@ -8,9 +8,14 @@
 //     ExchangeComplete(CompletedKeyExchange),
 // }
 
+pub mod channel;
+pub mod channel_factory;
 pub mod initiator;
 pub mod responder;
 
 mod error;
 pub use error::*;
+
 //use ockam_key_exchange_core::CompletedKeyExchange;
+
+pub const CHANNEL_FACTORY_ADDRESS: &str = "channel_factory";
