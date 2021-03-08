@@ -20,5 +20,5 @@ exclude = [
 proc-macro = true
 
 [dependencies]
-quote = "1.0.8"
+quote = "1.0.9"
 syn = {version = "1.0.58", features = ["full", "extra-traits"]}
