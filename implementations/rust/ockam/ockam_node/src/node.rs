@@ -12,6 +12,8 @@ impl ockam_core::Worker for App {
 }
 
 pub fn start_node() -> (Context, Executor) {
+    info!("Initializing ockam node");
+
     let mut exe = Executor::new();
     let addr = "app".into();
 

@@ -9,6 +9,9 @@
     warnings
 )]
 
+#[macro_use]
+extern crate tracing;
+
 mod context;
 mod error;
 mod executor;
