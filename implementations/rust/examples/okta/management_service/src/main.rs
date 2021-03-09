@@ -10,7 +10,7 @@ mod objects;
 
 use colored::Colorize;
 use isahc::prelude::*;
-use objects::UsersInGroup;
+// use objects::UsersInGroup;
 use rand::RngCore;
 use ockam::{CredentialSchema, CredentialAttributeSchema, CredentialAttributeType};
 use ockam_vault::{
@@ -71,9 +71,9 @@ struct StateData {
     stream: TcpStream,
 }
 
-/// Groups to check against
-/// Enroller => 00g26qjjaQlo67l4s5d6
-const OKTA_GROUPS: [&str; 1] = ["00g26qjjaQlo67l4s5d6"];
+// /// Groups to check against
+// /// Enroller => 00g26qjjaQlo67l4s5d6
+// const OKTA_GROUPS: [&str; 1] = ["00g26qjjaQlo67l4s5d6"];
 
 #[derive(Debug, Deserialize)]
 struct OktaOpenIdResponse {
@@ -116,18 +116,18 @@ struct OktaIntrospectResponse {
 }
 
 impl OktaIntrospectResponse {
-    pub fn id(&self) -> String {
-        self.uid.clone().unwrap_or(String::new())
-    }
+    //pub fn id(&self) -> String {
+    //    self.uid.clone().unwrap_or(String::new())
+    //}
 
     pub fn username(&self) -> String {
         self.username.clone().unwrap_or(String::new())
     }
 
-    /// An example of extracting the scope
-    pub fn scopes(&self) -> BTreeSet<String> {
-        self.scope.clone().unwrap_or(String::new()).split(',').map(|s| s.to_string()).collect()
-    }
+    // /// An example of extracting the scope
+    //pub fn scopes(&self) -> BTreeSet<String> {
+    //    self.scope.clone().unwrap_or(String::new()).split(',').map(|s| s.to_string()).collect()
+    //}
 }
 
 async fn parse_query_params(query: OktaOpenIdResponse) -> WarpResult<impl warp::Reply> {
@@ -227,22 +227,22 @@ fn introspect(cfg: &config::Config, access_token: &str) -> Result<OktaIntrospect
     serde_json::from_str(&text).map_err(|e| format!("{:?}", e))
 }
 
-fn is_user_in_group(cfg: &config::Config, id: &str, groups: &[&str]) -> bool {
-    let mut response = Request::get(format!("{}/api/v1/groups/{}/users", cfg.okta_url, groups[0]))
-        .header("Accept", "application/json")
-        .header("Content-type", "application/json")
-        .header("Authorization", format!("SSWS {}", cfg.api_token))
-        .body("").unwrap()
-        .send().unwrap();
-
-    if response.status() != isahc::http::StatusCode::OK {
-        eprintln!("Unable to read Okta group information");
-        return false;
-    }
-    let text = response.text().unwrap();
-    let response: Vec<UsersInGroup> = serde_json::from_str(&text).unwrap();
-    response.iter().any(|u| u.id == id)
-}
+//fn is_user_in_group(cfg: &config::Config, id: &str, groups: &[&str]) -> bool {
+//    let mut response = Request::get(format!("{}/api/v1/groups/{}/users", cfg.okta_url, groups[0]))
+//        .header("Accept", "application/json")
+//        .header("Content-type", "application/json")
+//        .header("Authorization", format!("SSWS {}", cfg.api_token))
+//        .body("").unwrap()
+//        .send().unwrap();
+//
+//    if response.status() != isahc::http::StatusCode::OK {
+//        eprintln!("Unable to read Okta group information");
+//        return false;
+//    }
+//    let text = response.text().unwrap();
+//    let response: Vec<UsersInGroup> = serde_json::from_str(&text).unwrap();
+//    response.iter().any(|u| u.id == id)
+//}
 
 #[cfg(target_os = "windows")]
 fn pass(s: &str) {

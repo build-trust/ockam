@@ -9,7 +9,7 @@ use ockam_vault::{
     },
     SoftwareVault,
 };
-use oktaplugin::{Messages, OckamMessages, OckamRole, KeyEstablishment};
+use oktaplugin::{Messages, OckamMessages, OckamRole, KeyEstablishment, EstablishmentBundle};
 use rand::prelude::*;
 use std::{
     fs,
@@ -62,7 +62,7 @@ fn main() {
     }
 
     let mut services_data = BTreeMap::new();
-    let mut x3dh_bundles = BTreeMap::new();
+    let mut x3dh_bundles: BTreeMap<u32, EstablishmentBundle>;
     let mut access_token = String::new();
     let mut credential_key: Option<Secret> = None;
 
