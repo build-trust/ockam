@@ -197,7 +197,7 @@ fn start(cfg: &config::Config, data: &OktaData, query: OktaOpenIdResponse) {
     stdout.flush().unwrap();
     let mut stream = &data.state[rx_state.as_slice()].stream;
     let msg = Messages::OktaAccessToken { token: creds.access_token };
-    let res = serde_bare::to_writer(stream, &msg);
+    let res = serde_json::to_writer(stream, &msg);
     if res.is_err() {
         fail("fail");
         eprintln!("Unable to send code back to client");
@@ -331,7 +331,7 @@ fn channel_listener() {
             match err.kind() {
                 io::ErrorKind::WouldBlock => {
                     if connections.is_empty() {
-                        sleep(std::time::Duration::from_millis(50));
+                        sleep(std::time::Duration::from_millis(1000));
                     }
                 },
                 _ => {
@@ -348,33 +348,26 @@ fn channel_listener() {
         while i < connections.len() {
             let mut stream = connections.get_mut(i).unwrap();
             stream.set_nonblocking(true).unwrap();
+            let mut de = serde_json::Deserializer::from_reader(stream.try_clone().unwrap());
 
-            let res = serde_bare::from_reader::<&TcpStream, Messages>(&stream);
+            let res = Messages::deserialize(&mut de);
             if res.is_err() {
-                match res.unwrap_err() {
-                    serde_bare::Error::Io(e) => {
-                        match e.kind() {
-                            io::ErrorKind::WouldBlock => {
-                                sleep(std::time::Duration::from_millis(50));
-                                i += 1;
-                                continue;
-                            },
-                            io::ErrorKind::UnexpectedEof => {
-                                eprintln!("Client closed connection");
-                                connections.remove(i);
-                                continue;
-                            }
-                            _ => {
-                                i += 1;
-                                eprintln!("Unknown message type");
-                                continue;
-                            }
-                        }
+                let err = res.unwrap_err();
+                match err.classify() {
+                    serde_json::error::Category::Io => {
+                        sleep(std::time::Duration::from_millis(1000));
+                        i += 1;
+                        continue;
+                    },
+                    serde_json::error::Category::Eof => {
+                        eprintln!("Client closed connection");
+                        connections.remove(i);
+                        continue;
                     }
-                    _ => {
+                    err => {
 
                         i += 1;
-                        eprintln!("Unknown message type");
+                        eprintln!("Unknown message type: {:?}", err);
                         continue;
                     }
                 }
@@ -414,7 +407,7 @@ fn channel_listener() {
                                      base64_url::encode(&state),
                                      base64_url::encode(&nonce))
                     };
-                    stream.write(&serde_bare::to_vec(&msg).unwrap()).unwrap();
+                    serde_json::to_writer(&mut stream, &msg).unwrap();
                     stream.flush().unwrap();
                 },
                 Messages::OktaRequest { token, msg } => {
@@ -437,23 +430,23 @@ fn channel_listener() {
                         OckamMessages::BecomeRequest {role} => {
                             match role {
                                 OckamRole::Enroller {public_key, proof} => {
-                                    if !is_user_in_group(&cfg, &introspect_res.id(), &OKTA_GROUPS) {
-                                        println!("Access Denied, no Enroller group associated with user");
-                                        let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: false, msg: "Access Denied, no Enroller group associated with user".to_string() } };
-                                        stream.write(&serde_bare::to_vec(&msg).unwrap()).unwrap();
-                                        stream.flush().unwrap();
-                                        continue;
-                                    }
+                                    // if !is_user_in_group(&cfg, &introspect_res.id(), &OKTA_GROUPS) {
+                                    //     println!("Access Denied, no Enroller group associated with user");
+                                    //     let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: false, msg: "Access Denied, no Enroller group associated with user".to_string() } };
+                                    //     stream.write(&serde_bare::to_vec(&msg).unwrap()).unwrap();
+                                    //     stream.flush().unwrap();
+                                    //     continue;
+                                    // }
                                     let mut vault = SoftwareVault::default();
                                     if vault.verify(&proof, &public_key, &public_key).is_err() {
                                         println!("Invalid enroller key");
                                         let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: false, msg: "Invalid enroller key".to_string() } };
-                                        stream.write(&serde_bare::to_vec(&msg).unwrap()).unwrap();
+                                        serde_json::to_writer(&mut stream, &msg).unwrap();
                                         stream.flush().unwrap();
                                         continue;
                                     }
                                     let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: true, msg: String::new() } };
-                                    stream.write(&serde_bare::to_vec(&msg).unwrap()).unwrap();
+                                    serde_json::to_writer(&mut stream, &msg).unwrap();
                                     stream.flush().unwrap();
                                     let uid = introspect_res.uid.clone().unwrap();
                                     if let Some(keys) = enrollers.get_mut(&uid) {
@@ -495,7 +488,7 @@ fn channel_listener() {
                             }];
 
                             let msg = OktaResponse { msg: OckamMessages::ListServicesResponse { services }};
-                            serde_bare::to_writer(&mut stream, &msg).unwrap();
+                            serde_json::to_writer(&mut stream, &msg).unwrap();
                             stream.flush().unwrap();
                         },
                         OckamMessages::GetEstablishmentBundlesRequest { services } => {
@@ -513,7 +506,7 @@ fn channel_listener() {
                                             }]
                                         }
                                     };
-                                    serde_bare::to_writer(&mut stream, &msg).unwrap();
+                                    serde_json::to_writer(&mut stream, &msg).unwrap();
                                     stream.flush().unwrap();
                                     break;
                                 } else {
@@ -534,12 +527,12 @@ fn channel_listener() {
                                 match resp.process(&data) {
                                     Err(e) => eprintln!("{}", e.to_string()),
                                     Ok(d) => {
-                                        serde_bare::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(d)).unwrap();
+                                        serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(d)).unwrap();
                                     }
                                 }
                             } else {
                                 eprintln!("Enrollment bundle already used.");
-                                serde_bare::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(vec![])).unwrap();
+                                serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(vec![])).unwrap();
                             }
                         },
                         OckamMessages::ServiceEnrollmentMessage2(data) => {
@@ -550,14 +543,14 @@ fn channel_listener() {
                                 match res {
                                     Err(e) => {
                                         eprintln!("{}", e.to_string());
-                                        serde_bare::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(vec![0])).unwrap();
+                                        serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(vec![0])).unwrap();
                                     },
                                     Ok(_) => {
                                         let kex = resp.finalize().unwrap();
                                         let mut v = xxvault.lock().unwrap();
                                         let ctt = v.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[1], &[0u8; 12], &kex.h()[..]).unwrap();
                                         completed_key_exchange = Some(kex);
-                                        serde_bare::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
+                                        serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
                                         responder = None;
                                     }
                                 }
@@ -572,7 +565,7 @@ fn channel_listener() {
                             match res {
                                 Err(e) => eprintln!("{}", e.to_string()),
                                 Ok(plaintext) => {
-                                    match serde_bare::from_slice::<Attestation>(plaintext.as_slice()) {
+                                    match serde_json::from_slice::<Attestation>(plaintext.as_slice()) {
                                         Err(e) => eprintln!("{:?}", e),
                                         Ok(attestation) => {
                                             let mut sig_data = Vec::new();
@@ -597,7 +590,7 @@ fn channel_listener() {
                                             n[11] = 2;
                                             let ctt = v.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[verified as u8], &n, &kex.h()[..]).unwrap();
 
-                                            serde_bare::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
+                                            serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
                                             stream.flush().unwrap();
                                         }
                                     }

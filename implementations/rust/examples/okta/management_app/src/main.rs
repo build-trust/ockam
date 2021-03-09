@@ -18,6 +18,7 @@ use std::{
     path::Path,
     sync::Mutex,
 };
+use serde::Deserialize;
 use structopt::StructOpt;
 use oktaplugin::Messages::OktaRequest;
 use std::collections::BTreeMap;
@@ -47,7 +48,7 @@ fn main() {
     let mut service_stream = res.unwrap();
     let login_id = thread_rng().gen::<u64>() as usize;
     let msg = Messages::OktaLogin(login_id);
-    let res = service_stream.write(&serde_bare::to_vec(&msg).unwrap());
+    let res = serde_json::to_writer(&service_stream, &msg);
     if res.is_err() {
         eprintln!("Unable to send login notice");
         service_stream.shutdown(std::net::Shutdown::Both).unwrap();
@@ -65,17 +66,15 @@ fn main() {
     let mut access_token = String::new();
     let mut credential_key: Option<Secret> = None;
 
+    let mut de = serde_json::Deserializer::from_reader(service_stream.try_clone().unwrap());
     loop {
-        let res = serde_bare::from_reader::<&TcpStream, Messages>(&service_stream);
+        let res = Messages::deserialize(&mut de);
         if res.is_err() {
-            match res.unwrap_err() {
-                serde_bare::Error::Io(e) => {
-                    if e.kind() == io::ErrorKind::UnexpectedEof {
-                        eprintln!("Server closed connection");
-                        return;
-                    }
-                    eprintln!("Unknown message type");
-                    continue;
+            let err = res.unwrap_err();
+            match err.classify() {
+                serde_json::error::Category::Eof => {
+                    eprintln!("Server closed connection");
+                    return;
                 }
                 _ => {
                     eprintln!("Unknown message type");
@@ -100,7 +99,7 @@ fn main() {
                         limit: 1000,
                         offset: 0
                     }};
-                    serde_bare::to_writer(&mut service_stream, &msg).unwrap();
+                    serde_json::to_writer(&mut service_stream, &msg).unwrap();
                     service_stream.flush().unwrap();
                     continue;
                 }
@@ -129,7 +128,7 @@ fn main() {
                         }
                     }
                 };
-                serde_bare::to_writer(&mut service_stream, &msg).unwrap();
+                serde_json::to_writer(&mut service_stream, &msg).unwrap();
                 service_stream.flush().unwrap();
                 credential_key = Some(secret);
             },
@@ -138,7 +137,7 @@ fn main() {
                     OckamMessages::AccessDenied => {
                         let login_id = thread_rng().gen::<u64>() as usize;
                         let msg = Messages::OktaLogin(login_id);
-                        serde_bare::to_writer(&mut service_stream, &msg).unwrap();
+                        serde_json::to_writer(&mut service_stream, &msg).unwrap();
                         service_stream.flush().unwrap();
                     },
                     OckamMessages::BecomeResponse { result, msg } => {
@@ -149,7 +148,7 @@ fn main() {
                                 limit: 1000,
                                 offset: 0
                             }};
-                            serde_bare::to_writer(&mut service_stream, &msg).unwrap();
+                            serde_json::to_writer(&mut service_stream, &msg).unwrap();
                             service_stream.flush().unwrap();
                         } else {
                             println!("Become Enroller failure: {:?}", msg);
@@ -169,7 +168,7 @@ fn main() {
                         let req = OktaRequest { token: access_token.clone(), msg: OckamMessages::GetEstablishmentBundlesRequest {
                             services: bundles
                         }};
-                        serde_bare::to_writer(&mut service_stream, &req).unwrap();
+                        serde_json::to_writer(&mut service_stream, &req).unwrap();
                         service_stream.flush().unwrap();
                     },
                     OckamMessages::GetEstablishmentBundlesResponse { services } => {
@@ -192,10 +191,11 @@ fn main() {
                         let mut cred_id = [0u8; 16];
                         rand::thread_rng().fill_bytes(&mut cred_id);
 
-                        serde_bare::to_writer(&truck_stream, &OckamMessages::BeginDeviceEnrollment {
+                        serde_json::to_writer(&truck_stream, &OckamMessages::BeginDeviceEnrollment {
                             nonce: cred_id
                         }).unwrap();
-                        let res = serde_bare::from_reader::<&TcpStream, OckamMessages>(&truck_stream);
+                        let mut truck_de = serde_json::Deserializer::from_reader(truck_stream.try_clone().unwrap());
+                        let res = OckamMessages::deserialize(&mut truck_de);
                         if res.is_err() {
                             println!("fail");
                             println!("{:?}", res.unwrap_err());
@@ -234,7 +234,7 @@ fn main() {
                                 let sig_data = vault.sha256(&sig_data).unwrap();
                                 let sig_key = credential_key.as_ref().unwrap();
                                 let signature = vault.sign(sig_key, &sig_data).unwrap();
-                                serde_bare::to_writer(&mut truck_stream, &OckamMessages::DeviceEnrollmentResponse {
+                                serde_json::to_writer(&mut truck_stream, &OckamMessages::DeviceEnrollmentResponse {
                                     schema: services_data[&1].schemas[0].clone(),
                                     service: x3dh_bundles[&1].clone(),
                                     attributes,

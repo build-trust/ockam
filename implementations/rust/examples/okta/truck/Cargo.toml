@@ -15,5 +15,6 @@ ockam_vault = { version = "0.3", path = "../../../ockam/ockam_vault"}
 ockam_key_exchange_core = { version = "0.1", path = "../../../ockam/ockam_key_exchange_core" }
 ockam_key_exchange_x3dh = { version = "0.1", path = "../../../ockam/ockam_key_exchange_x3dh" }
 okta-plugin = { version = "0.1", path = "../" }
-serde_bare = "0.3"
+serde = "1.0"
+serde_json = "1.0"
 

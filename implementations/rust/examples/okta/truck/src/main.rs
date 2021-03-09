@@ -13,6 +13,7 @@ use std::{
     sync::{Arc, Mutex}
 };
 use colored::Colorize;
+use serde::Deserialize;
 
 
 #[cfg(target_os = "windows")]
@@ -56,22 +57,16 @@ fn main() {
     }
     let (mut stream, addr) = res.unwrap();
     println!("Connection from {:?}", addr);
+    let mut de = serde_json::Deserializer::from_reader(stream.try_clone().unwrap());
     loop {
-        match serde_bare::from_reader::<&TcpStream, OckamMessages>(&stream) {
-            Err(e) => match e {
-                serde_bare::Error::Io(err) => match err.kind() {
-                    std::io::ErrorKind::UnexpectedEof => {
+        match OckamMessages::deserialize(&mut de) {
+            Err(e) => match e.classify() {
+                serde_json::error::Category::Eof => {
                         eprintln!("Client closed connection");
                         return;
-                    },
-                    _ => {
-                        eprintln!("Unknown message type");
-                        stream.shutdown(std::net::Shutdown::Both).unwrap();
-                        return;
-                    }
                 },
                 _ => {
-                    eprintln!("Unknown message type");
+                    eprintln ! ("Unknown message type");
                     stream.shutdown(std::net::Shutdown::Both).unwrap();
                     return;
                 }
@@ -87,7 +82,7 @@ fn main() {
                             blind_device_secret: device_id,
                             proof_of_secret: [0u8; 32]
                         };
-                        serde_bare::to_writer(&mut stream, &msg).unwrap();
+                        serde_json::to_writer(&mut stream, &msg).unwrap();
                         stream.flush().unwrap();
                     },
                     OckamMessages::DeviceEnrollmentResponse {schema, service, attributes, attestation} => {
@@ -123,6 +118,7 @@ fn main() {
     }
     pass("success");
     let mut stream = res.unwrap();
+    let mut de = serde_json::Deserializer::from_reader(stream.try_clone().unwrap());
     let x3dh_kex = X3dhNewKeyExchanger::new(vault.clone(), vault.clone());
     let mut initiator = Box::new(x3dh_kex.initiator());
     let prekey = initiator.process(b"").unwrap();
@@ -130,10 +126,10 @@ fn main() {
     print!("Sending service enrollment message 1...");
     io::stdout().flush().unwrap();
     let enroll_msg = Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage1(prekey));
-    serde_bare::to_writer(&mut stream, &enroll_msg).unwrap();
+    serde_json::to_writer(&mut stream, &enroll_msg).unwrap();
     stream.flush().unwrap();
 
-    let res = serde_bare::from_reader::<&TcpStream, OckamMessages>(&stream);
+    let res = OckamMessages::deserialize(&mut de);
     if res.is_err() {
         fail("fail");
         fail(&format!("{:?}", res.unwrap_err()));
@@ -147,9 +143,9 @@ fn main() {
 
     print!("Sending service enrollment message 2...");
     io::stdout().flush().unwrap();
-    serde_bare::to_writer(&mut stream, &enroll_msg).unwrap();
+    serde_json::to_writer(&mut stream, &enroll_msg).unwrap();
 
-    let res = serde_bare::from_reader::<&TcpStream, OckamMessages>(&stream);
+    let res = OckamMessages::deserialize(&mut de);
     if res.is_err() {
         fail("fail");
         fail(&format!("{:?}", res.unwrap_err()));
@@ -191,15 +187,15 @@ fn main() {
     io::stdout().flush().unwrap();
     let mut attestation = attestation_info.unwrap();
     attestation.attributes.insert(0, id.to_vec());
-    let plaintext = serde_bare::to_vec(&attestation).unwrap();
+    let plaintext = serde_json::to_string(&attestation).unwrap();
     let mut nonce = [0u8; 12];
     nonce[11] = 1;
     let ciphertext_and_tag = vv.aead_aes_gcm_encrypt(
-        &completed_key_exchange.encrypt_key(), plaintext.as_slice(), &nonce, &completed_key_exchange.h()[..]).unwrap();
-    serde_bare::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage3(ciphertext_and_tag))).unwrap();
+        &completed_key_exchange.encrypt_key(), plaintext.as_bytes(), &nonce, &completed_key_exchange.h()[..]).unwrap();
+    serde_json::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage3(ciphertext_and_tag))).unwrap();
     stream.flush().unwrap();
 
-    let res = serde_bare::from_reader::<&TcpStream, OckamMessages>(&stream);
+    let res = OckamMessages::deserialize(&mut de);
 
     if res.is_err() {
         fail("fail");
@@ -250,7 +246,7 @@ fn main() {
             n[10..].copy_from_slice(&nonce.to_be_bytes());
 
             let ctt = vv.aead_aes_gcm_encrypt(&completed_key_exchange.encrypt_key(), text.as_bytes(), &n, &completed_key_exchange.h()[..]).unwrap();
-            serde_bare::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::GeneralMessage(ctt))).unwrap();
+            serde_json::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::GeneralMessage(ctt))).unwrap();
             stream.flush().unwrap();
             buffer = String::new();
         }

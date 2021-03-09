@@ -1847,7 +1847,8 @@ dependencies = [
  "ockam_vault",
  "okta-plugin",
  "rand 0.7.3",
- "serde_bare",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
