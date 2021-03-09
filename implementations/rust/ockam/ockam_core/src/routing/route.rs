@@ -9,16 +9,17 @@ pub struct Route {
 
 impl Route {
     /// Create an empty RouteBuilder
-    pub fn new() -> RouteBuilder {
+    pub fn new() -> RouteBuilder<'static> {
         RouteBuilder::new()
     }
 
     /// Create a new [`RouteBuilder`] from the current Route
     ///
     /// [`RouteBuilder`]: crate::RouteBuilder
-    pub fn modify(&self) -> RouteBuilder {
+    pub fn modify(&mut self) -> RouteBuilder {
         RouteBuilder {
             inner: self.inner.clone(),
+            write_back: Some(self),
         }
     }
 
@@ -42,9 +43,11 @@ impl Route {
 }
 
 // Easily turn a RouteBuilder into a Route
-impl From<RouteBuilder> for Route {
-    fn from(RouteBuilder { inner }: RouteBuilder) -> Self {
-        Self { inner }
+impl From<RouteBuilder<'_>> for Route {
+    fn from(RouteBuilder { ref inner, .. }: RouteBuilder) -> Self {
+        Self {
+            inner: inner.clone(),
+        }
     }
 }
 
@@ -57,14 +60,16 @@ impl<T: Into<Address>> From<T> for Route {
 }
 
 /// Utility type to build and manipulate routes
-pub struct RouteBuilder {
+pub struct RouteBuilder<'r> {
     inner: VecDeque<Address>,
+    write_back: Option<&'r mut Route>,
 }
 
-impl RouteBuilder {
+impl RouteBuilder<'_> {
     fn new() -> Self {
         Self {
             inner: VecDeque::new(),
+            write_back: None,
         }
     }
 
@@ -88,5 +93,15 @@ impl RouteBuilder {
         self.inner.pop_front();
         self.inner.push_front(addr.into());
         self
+    }
+}
+
+impl Drop for RouteBuilder<'_> {
+    fn drop(&mut self) {
+        if self.write_back.is_some() {
+            **self.write_back.as_mut().unwrap() = Route {
+                inner: self.inner.clone(),
+            };
+        }
     }
 }
