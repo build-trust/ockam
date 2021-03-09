@@ -90,8 +90,6 @@ impl Worker for Consumer {
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    tracing_subscriber::fmt().with_env_filter("trace").init();
-
     // Create a simple router worker
     ctx.start_worker("simple.router", Router::default()).await?;
 

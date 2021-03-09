@@ -12,5 +12,5 @@ ockam = {path = "../../ockam/ockam", version = "*"}
 ockam_node = {path = "../../ockam/ockam_node", version = "*"}
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"] }
 tracing = "0.1"
+
