@@ -103,7 +103,7 @@ impl Context {
 
         // First resolve the next hop in the route
         self.sender.send(req).await.map_err(|e| Error::from(e))?;
-        let (addr, sender) = reply_rx
+        let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
             .ok_or(Error::InternalIOFailure)??
@@ -111,11 +111,16 @@ impl Context {
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
-        let trans_msg = TransportMessage::v1(route, payload);
+        let data = TransportMessage::v1(route.clone(), payload);
 
-        // Pack and send the relay message
-        let msg = RelayMessage::new(addr, trans_msg);
+        // Pack transport message into relay message wrapper
+        let msg = if needs_wrapping {
+            RelayMessage::pre_router(addr, data)
+        } else {
+            RelayMessage::direct(addr, data)
+        };
 
+        // Send the packed user message with associated route
         sender.send(msg).await.map_err(|e| Error::from(e))?;
 
         Ok(())
@@ -129,7 +134,9 @@ impl Context {
         self.mailbox
             .next()
             .await
-            .and_then(|RelayMessage { addr, data }| {
+            .and_then(|relay_msg| {
+                let (addr, data) = relay_msg.transport();
+
                 M::decode(&data.payload)
                     .ok()
                     .map(move |msg| (msg, data, addr))

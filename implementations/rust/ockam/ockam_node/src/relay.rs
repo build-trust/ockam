@@ -16,7 +16,7 @@
 //! a type and notifying the companion actor.
 
 use crate::{Context, Mailbox};
-use ockam_core::{Address, Message, TransportMessage, Worker};
+use ockam_core::{Address, Message, Result, RouterMessage, TransportMessage, Worker};
 use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -24,16 +24,45 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 /// A message addressed to a relay
 #[derive(Debug)]
 pub struct RelayMessage {
-    /// The address this message was sent to
-    pub addr: Address,
-    /// The encoded message payload
-    pub data: TransportMessage,
+    addr: Address,
+    data: RelayPayload,
 }
 
 impl RelayMessage {
-    pub fn new(addr: Address, data: TransportMessage) -> Self {
-        Self { addr, data }
+    /// Construct a message addressed to a user worker
+    pub fn direct(addr: Address, data: TransportMessage) -> Self {
+        Self {
+            addr,
+            data: RelayPayload::Direct(data),
+        }
     }
+
+    /// Construct a message addressed to an middleware router
+    pub fn pre_router(addr: Address, data: TransportMessage) -> Self {
+        let r_msg = RouterMessage::Route(data);
+
+        Self {
+            addr,
+            data: RelayPayload::PreRouter(r_msg.encode().unwrap()),
+        }
+    }
+
+    /// Consume this message into its base components
+    pub fn transport(self) -> (Address, TransportMessage) {
+        (
+            self.addr,
+            match self.data {
+                RelayPayload::Direct(msg) => msg,
+                _ => panic!("Called transport() on invalid RelayMessage type!"),
+            },
+        )
+    }
+}
+
+#[derive(Debug)]
+pub enum RelayPayload {
+    Direct(TransportMessage),
+    PreRouter(Vec<u8>),
 }
 
 pub struct Relay<W, M>
@@ -59,21 +88,52 @@ where
         }
     }
 
+    /// Convenience function to handle an incoming direct message
+    fn handle_direct(&mut self, msg: TransportMessage) -> Result<M> {
+        M::decode(&msg.payload).map_err(|e| {
+            error!(
+                "Failed to decode message payload for worker {}",
+                self.ctx.address()
+            );
+
+            e.into()
+        })
+    }
+
+    fn handle_pre_router(&mut self, msg: Vec<u8>) -> Result<M> {
+        M::decode(&msg).map_err(|e| {
+            error!(
+                "Failed to decode wrapped router message for worker {}.  \
+Is your router accepting the correct message type? (ockam_core::RouterMessage)",
+                self.ctx.address()
+            );
+            e.into()
+        })
+    }
+
     async fn run(mut self) {
         self.worker.initialize(&mut self.ctx).await.unwrap();
 
-        while let Some(RelayMessage { addr, ref data }) = self.ctx.mailbox.next().await {
-            let msg = match M::decode(&data.payload) {
-                Ok(msg) => msg,
-                Err(e) => {
-                    println!("Message decode failed: {}", e);
-                    continue;
-                }
-            };
-
+        while let Some(RelayMessage { addr, data }) = self.ctx.mailbox.next().await {
             // Set the message address for this transaction chain
             self.ctx.message_address(addr);
 
+            // Extract the message type based on the relay message
+            // wrap state.  Messages addressed to a router will be of
+            // type `RouterMessage`, while generic userspace workers
+            // can provide any type they want.
+            let msg = match (|data| -> Result<M> {
+                Ok(match data {
+                    RelayPayload::Direct(trans_msg) => self.handle_direct(trans_msg)?,
+                    RelayPayload::PreRouter(enc_msg) => self.handle_pre_router(enc_msg)?,
+                })
+            })(data)
+            {
+                Ok(msg) => msg,
+                Err(_) => continue, // Handler functions must log
+            };
+
+            // Call the worker handle function
             self.worker
                 .handle_message(&mut self.ctx, msg)
                 .await

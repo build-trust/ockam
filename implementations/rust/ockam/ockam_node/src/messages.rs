@@ -59,7 +59,15 @@ pub enum NodeReply {
     /// A list of worker addresses
     Workers(Vec<Address>),
     /// Message sender to a specific worker
-    Sender(Address, Sender<RelayMessage>),
+    Sender {
+        /// The address a message is being sent to
+        addr: Address,
+        /// The relay sender
+        sender: Sender<RelayMessage>,
+        /// Indicate whether the relay message needs to be constructed
+        /// with router wrapping.
+        wrap: bool,
+    },
 }
 
 /// Failure states from a router command
@@ -86,13 +94,13 @@ impl NodeReply {
         Ok(Self::Workers(v))
     }
 
-    pub fn sender(a: Address, s: Sender<RelayMessage>) -> NodeReplyResult {
-        Ok(NodeReply::Sender(a, s))
+    pub fn sender(addr: Address, sender: Sender<RelayMessage>, wrap: bool) -> NodeReplyResult {
+        Ok(NodeReply::Sender { addr, sender, wrap })
     }
 
-    pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>), Error> {
+    pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>, bool), Error> {
         match self {
-            Self::Sender(addr, s) => Ok((addr, s)),
+            Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
             _ => Err(Error::InternalIOFailure.into()),
         }
     }
