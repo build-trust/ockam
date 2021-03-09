@@ -39,3 +39,8 @@ impl From<crate::NodeError> for ockam_core::Error {
     }
 }
 
+impl<T: Debug> From<SendError<T>> for Error {
+    fn from(_: SendError<T>) -> Error {
+        Error::InternalIOFailure
+    }
+}

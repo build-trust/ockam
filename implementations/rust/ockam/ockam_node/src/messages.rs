@@ -1,5 +1,5 @@
-use crate::relay::RelayMessage;
-use ockam_core::{Address, AddressSet};
+use crate::{error::Error, relay::RelayMessage};
+use ockam_core::{Address, AddressSet, Route};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// Messages sent from the Node to the Executor
@@ -8,13 +8,13 @@ pub enum NodeMessage {
     /// Start a new worker and store the send handle
     StartWorker(AddressSet, Sender<RelayMessage>),
     /// Return a list of all worker addresses
-    ListWorkers(Sender<NodeReply>),
+    ListWorkers(Sender<NodeReplyResult>),
     /// Stop an existing worker
-    StopWorker(Address, Sender<NodeReply>),
+    StopWorker(Address, Sender<NodeReplyResult>),
     /// Stop the node (and all workers)
     StopNode,
     /// Request the sender for an existing worker
-    SenderReq(Address, Sender<NodeReply>),
+    SenderReq(Route, Sender<NodeReplyResult>),
 }
 
 impl NodeMessage {
@@ -24,13 +24,13 @@ impl NodeMessage {
     }
 
     /// Create a list worker message and reply receiver
-    pub fn list_workers() -> (Self, Receiver<NodeReply>) {
+    pub fn list_workers() -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
         (Self::ListWorkers(tx), rx)
     }
 
     /// Create a stop worker message and reply receiver
-    pub fn stop_worker(address: Address) -> (Self, Receiver<NodeReply>) {
+    pub fn stop_worker(address: Address) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
         (Self::StopWorker(address, tx), rx)
     }
@@ -41,35 +41,59 @@ impl NodeMessage {
     }
 
     /// Create a sender request message and reply receiver
-    pub fn sender_request(address: Address) -> (Self, Receiver<NodeReply>) {
+    pub fn sender_request(route: Route) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
-        (Self::SenderReq(address, tx), rx)
+        (Self::SenderReq(route, tx), rx)
     }
 }
 
-/// Return value of some executor commands
+pub type NodeReplyResult = Result<NodeReply, NodeError>;
+
+/// Successful return values from a router command
 #[derive(Debug)]
 pub enum NodeReply {
-    /// Everything went ok
+    /// Success with no payload
     Ok,
-    /// Worker address not found
-    NoSuchWorker(Address),
     /// A list of worker addresses
     Workers(Vec<Address>),
     /// Message sender to a specific worker
     Sender(Address, Sender<RelayMessage>),
 }
 
+/// Failure states from a router command
+#[derive(Debug)]
+pub enum NodeError {
+    NoSuchWorker(Address),
+}
+
 impl NodeReply {
-    pub fn ok() -> Self {
-        Self::Ok
+    pub fn ok() -> NodeReplyResult {
+        Ok(NodeReply::Ok)
     }
 
-    pub fn no_such_worker(address: Address) -> Self {
-        Self::NoSuchWorker(address)
+    pub fn no_such_worker(a: Address) -> NodeReplyResult {
+        Err(NodeError::NoSuchWorker(a))
     }
 
-    pub fn sender(address: Address, sender: Sender<RelayMessage>) -> Self {
-        Self::Sender(address, sender)
+    pub fn workers(v: Vec<Address>) -> NodeReplyResult {
+        Ok(Self::Workers(v))
+    }
+
+    pub fn sender(a: Address, s: Sender<RelayMessage>) -> NodeReplyResult {
+        Ok(NodeReply::Sender(a, s))
+    }
+
+    pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>), Error> {
+        match self {
+            Self::Sender(addr, s) => Ok((addr, s)),
+            _ => Err(Error::InternalIOFailure.into()),
+        }
+    }
+
+    pub fn take_workers(self) -> Result<Vec<Address>, Error> {
+        match self {
+            Self::Workers(w) => Ok(w),
+            _ => Err(Error::InternalIOFailure.into()),
+        }
     }
 }

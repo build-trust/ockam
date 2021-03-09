@@ -16,7 +16,7 @@
 //! a type and notifying the companion actor.
 
 use crate::{Context, Mailbox};
-use ockam_core::{Address, Encoded, Message, Worker};
+use ockam_core::{Address, Message, TransportMessage, Worker};
 use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -27,11 +27,11 @@ pub struct RelayMessage {
     /// The address this message was sent to
     pub addr: Address,
     /// The encoded message payload
-    pub data: Encoded,
+    pub data: TransportMessage,
 }
 
 impl RelayMessage {
-    pub fn new(addr: Address, data: Encoded) -> Self {
+    pub fn new(addr: Address, data: TransportMessage) -> Self {
         Self { addr, data }
     }
 }
@@ -63,7 +63,7 @@ where
         self.worker.initialize(&mut self.ctx).await.unwrap();
 
         while let Some(RelayMessage { addr, ref data }) = self.ctx.mailbox.next().await {
-            let msg = match M::decode(data) {
+            let msg = match M::decode(&data.payload) {
                 Ok(msg) => msg,
                 Err(e) => {
                     println!("Message decode failed: {}", e);
