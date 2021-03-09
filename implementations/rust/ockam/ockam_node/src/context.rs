@@ -91,7 +91,15 @@ impl Context {
         Ok(())
     }
 
-    /// Send a message to a particular worker
+    /// Send a message via a fully qualified route
+    ///
+    /// Routes can be constructed from a set of [`Address`]es, or via
+    /// the [`RouteBuilder`] type.  Routes can contain middleware
+    /// router addresses, which will re-address messages that need to
+    /// be handled by specific domain workers.
+    ///
+    /// [`Address`]: ockam_core::Address
+    /// [`RouteBuilder`]: ockem_core::RouteBuilder
     pub async fn send_message<R, M>(&self, route: R, msg: M) -> Result<()>
     where
         R: Into<Route>,
@@ -121,6 +129,39 @@ impl Context {
         };
 
         // Send the packed user message with associated route
+        sender.send(msg).await.map_err(|e| Error::from(e))?;
+
+        Ok(())
+    }
+
+    /// Forward a transport message to its next routing destination
+    ///
+    /// Similar to [`Context::send_message`], but taking a
+    /// [`TransportMessage`], which contains the full destination
+    /// route, and calculated return route for this hop.
+    ///
+    /// **Note:** you most likely want to use
+    /// [`Context::send_message`] instead, unless you are writing an
+    /// external router implementation for ockam node.
+    ///
+    /// [`Context::send_message`]: crate::Context::send_message
+    /// [`TransportMessage`]: ockam_core::TransportMessage
+    pub async fn forward_message(&self, data: TransportMessage) -> Result<()> {
+        // Resolve the sender for the next hop in the messages route
+        let route = data.onward.clone();
+        let (reply_tx, mut reply_rx) = channel(1);
+        let req = NodeMessage::SenderReq(route, reply_tx);
+
+        // First resolve the next hop in the route
+        self.sender.send(req).await.map_err(|e| Error::from(e))?;
+        let (addr, sender, _) = reply_rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)??
+            .take_sender()?;
+
+        // Pack the transport message into a relay message
+        let msg = RelayMessage::direct(addr, data);
         sender.send(msg).await.map_err(|e| Error::from(e))?;
 
         Ok(())
