@@ -16,6 +16,7 @@ mod mailbox;
 mod messages;
 mod node;
 mod relay;
+mod router;
 
 pub use context::*;
 pub use executor::*;

@@ -1,9 +1,9 @@
 use crate::{
     error::Error,
     relay::{self, RelayMessage},
-    Cancel, Mailbox, NodeMessage, NodeReply,
+    Cancel, Mailbox, NodeMessage,
 };
-use ockam_core::{Address, AddressSet, Message, Result, Worker};
+use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker};
 use std::sync::Arc;
 use tokio::{
     runtime::Runtime,
@@ -92,29 +92,33 @@ impl Context {
     }
 
     /// Send a message to a particular worker
-    pub async fn send_message<S, M>(&self, address: S, msg: M) -> Result<()>
+    pub async fn send_message<R, M>(&self, route: R, msg: M) -> Result<()>
     where
-        S: Into<Address>,
+        R: Into<Route>,
         M: Message + Send + 'static,
     {
-        let address = address.into();
+        let route = route.into();
         let (reply_tx, mut reply_rx) = channel(1);
-        let req = NodeMessage::SenderReq(address.clone(), reply_tx);
+        let req = NodeMessage::SenderReq(route.clone(), reply_tx);
 
-        match self.sender.send(req).await {
-            Ok(()) => {
-                if let Some(NodeReply::Sender(_, s)) = reply_rx.recv().await {
-                    let msg = msg.encode().unwrap();
-                    match s.send(RelayMessage::new(address, msg)).await {
-                        Ok(()) => Ok(()),
-                        Err(_e) => Err(Error::FailedSendMessage.into()),
-                    }
-                } else {
-                    Err(Error::FailedSendMessage.into())
-                }
-            }
-            Err(_e) => Err(Error::FailedSendMessage.into()),
-        }
+        // First resolve the next hop in the route
+        self.sender.send(req).await.map_err(|e| Error::from(e))?;
+        let (addr, sender) = reply_rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)??
+            .take_sender()?;
+
+        // Pack the payload into a TransportMessage
+        let payload = msg.encode().unwrap();
+        let trans_msg = TransportMessage::v1(route, payload);
+
+        // Pack and send the relay message
+        let msg = RelayMessage::new(addr, trans_msg);
+
+        sender.send(msg).await.map_err(|e| Error::from(e))?;
+
+        Ok(())
     }
 
     /// Block the current worker to wait for a typed message
@@ -126,9 +130,11 @@ impl Context {
             .next()
             .await
             .and_then(|RelayMessage { addr, data }| {
-                M::decode(&data).ok().map(move |msg| (msg, addr))
+                M::decode(&data.payload)
+                    .ok()
+                    .map(move |msg| (msg, data, addr))
             })
-            .map(move |(msg, addr)| Cancel::new(msg, addr, self))
+            .map(move |(msg, data, addr)| Cancel::new(msg, data, addr, self))
             .ok_or_else(|| Error::FailedLoadData.into())
     }
 
@@ -136,15 +142,12 @@ impl Context {
     pub async fn list_workers(&self) -> Result<Vec<Address>> {
         let (msg, mut reply_rx) = NodeMessage::list_workers();
 
-        match self.sender.send(msg).await {
-            Ok(()) => {
-                if let Some(NodeReply::Workers(list)) = reply_rx.recv().await {
-                    Ok(list)
-                } else {
-                    Ok(vec![])
-                }
-            }
-            Err(_e) => Err(Error::FailedListWorker.into()),
-        }
+        self.sender.send(msg).await.map_err(|e| Error::from(e))?;
+
+        Ok(reply_rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)??
+            .take_workers()?)
     }
 }

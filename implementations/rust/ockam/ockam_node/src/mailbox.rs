@@ -1,5 +1,5 @@
 use crate::{relay::RelayMessage, Context};
-use ockam_core::{Address, Message};
+use ockam_core::{Address, Message, TransportMessage};
 use std::fmt::{self, Debug, Display, Formatter};
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -41,20 +41,32 @@ impl Mailbox {
 /// re-queues it into the mailbox.
 pub struct Cancel<'ctx, M: Message> {
     inner: M,
+    trans: TransportMessage,
     addr: Address,
     ctx: &'ctx Context,
 }
 
 impl<'ctx, M: Message> Cancel<'ctx, M> {
-    pub(crate) fn new(inner: M, addr: Address, ctx: &'ctx Context) -> Self {
-        Self { inner, addr, ctx }
+    pub(crate) fn new(
+        inner: M,
+        trans: TransportMessage,
+        addr: Address,
+        ctx: &'ctx Context,
+    ) -> Self {
+        Self {
+            inner,
+            trans,
+            addr,
+            ctx,
+        }
     }
 
     /// Cancel this message
     pub async fn cancel(self) {
         let ctx = self.ctx;
-        let enc = self.inner.encode().unwrap();
-        ctx.mailbox.requeue(RelayMessage::new(self.addr, enc)).await;
+        ctx.mailbox
+            .requeue(RelayMessage::new(self.addr, self.trans))
+            .await;
     }
 }
 
