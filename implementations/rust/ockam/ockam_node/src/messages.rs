@@ -15,6 +15,8 @@ pub enum NodeMessage {
     StopNode,
     /// Request the sender for an existing worker
     SenderReq(Route, Sender<NodeReplyResult>),
+    /// Register a new router for a route id type
+    Router(u8, Address, Sender<NodeReplyResult>),
 }
 
 impl NodeMessage {
@@ -64,6 +66,7 @@ pub enum NodeReply {
 #[derive(Debug)]
 pub enum NodeError {
     NoSuchWorker(Address),
+    RouterExists,
 }
 
 impl NodeReply {
@@ -73,6 +76,10 @@ impl NodeReply {
 
     pub fn no_such_worker(a: Address) -> NodeReplyResult {
         Err(NodeError::NoSuchWorker(a))
+    }
+
+    pub fn router_exists() -> NodeReplyResult {
+        Err(NodeError::RouterExists)
     }
 
     pub fn workers(v: Vec<Address>) -> NodeReplyResult {
@@ -93,6 +100,13 @@ impl NodeReply {
     pub fn take_workers(self) -> Result<Vec<Address>, Error> {
         match self {
             Self::Workers(w) => Ok(w),
+            _ => Err(Error::InternalIOFailure.into()),
+        }
+    }
+
+    pub fn is_ok(self) -> Result<(), Error> {
+        match self {
+            Self::Ok => Ok(()),
             _ => Err(Error::InternalIOFailure.into()),
         }
     }

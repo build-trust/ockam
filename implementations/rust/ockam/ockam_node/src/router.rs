@@ -71,6 +71,21 @@ impl Router {
         use NodeMessage::*;
         while let Some(mut msg) = self.receiver.recv().await {
             match msg {
+                // Internal registration commands
+                Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
+                    trace!("Registering new router for type {}", tt);
+
+                    self.external.insert(tt, addr);
+                    sender
+                        .send(NodeReply::ok())
+                        .await
+                        .map_err(|_| Error::InternalIOFailure)?
+                }
+                Router(_, _, sender) => sender
+                    .send(NodeReply::router_exists())
+                    .await
+                    .map_err(|_| Error::InternalIOFailure)?,
+
                 // Basic worker control
                 StartWorker(addr, sender) => self.start_worker(addr, sender).await?,
                 StopWorker(ref addr, ref mut reply) => self.stop_worker(addr, reply).await?,
@@ -116,6 +131,8 @@ impl Router {
         addr: &Address,
         reply: &mut Sender<NodeReplyResult>,
     ) -> Result<()> {
+        trace!("Stopping worker '{}'", addr);
+
         let addrs = self.addr_map.remove(addr).unwrap();
 
         match addrs.iter().fold(Some(()), |opt, addr| {
@@ -139,11 +156,9 @@ impl Router {
     /// This function only applies to local address types, and will
     /// fail to resolve a correct address if it given a remote
     /// address.
-    async fn resolve(
-        &mut self,
-        addr: &Address,
-        reply: &mut Sender<NodeReplyResult>,
-    ) -> Result<()> {
+    async fn resolve(&mut self, addr: &Address, reply: &mut Sender<NodeReplyResult>) -> Result<()> {
+        trace!("Resolvivg worker address '{}'", addr);
+
         match self.internal.get(addr) {
             Some(sender) => reply.send(NodeReply::sender(addr.clone(), sender.clone())),
             None => reply.send(NodeReply::no_such_worker(addr.clone())),
