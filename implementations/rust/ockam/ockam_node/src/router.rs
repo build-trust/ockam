@@ -102,10 +102,10 @@ impl Router {
 
                 // Handle route/ sender requests
                 SenderReq(ref route, ref mut reply) => match determine_type(route) {
-                    RouteType::Internal(ref addr) => self.resolve(addr, reply).await?,
+                    RouteType::Internal(ref addr) => self.resolve(addr, reply, false).await?,
                     RouteType::External(tt) => {
                         let addr = self.router_addr(tt)?;
-                        self.resolve(&addr, reply).await?
+                        self.resolve(&addr, reply, true).await?
                     }
                 },
             }
@@ -156,11 +156,14 @@ impl Router {
     /// This function only applies to local address types, and will
     /// fail to resolve a correct address if it given a remote
     /// address.
-    async fn resolve(&mut self, addr: &Address, reply: &mut Sender<NodeReplyResult>) -> Result<()> {
-        trace!("Resolvivg worker address '{}'", addr);
-
+    async fn resolve(
+        &mut self,
+        addr: &Address,
+        reply: &mut Sender<NodeReplyResult>,
+        wrap: bool,
+    ) -> Result<()> {
         match self.internal.get(addr) {
-            Some(sender) => reply.send(NodeReply::sender(addr.clone(), sender.clone())),
+            Some(sender) => reply.send(NodeReply::sender(addr.clone(), sender.clone(), wrap)),
             None => reply.send(NodeReply::no_such_worker(addr.clone())),
         }
         .await
