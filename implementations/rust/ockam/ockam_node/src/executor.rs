@@ -42,6 +42,7 @@ impl Executor {
         address: S,
         mailbox: Sender<RelayMessage>,
     ) {
+        trace!("Initializing node executor");
         self.router.init(address.into(), mailbox);
     }
 
