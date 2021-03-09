@@ -150,4 +150,16 @@ impl Context {
             .ok_or(Error::InternalIOFailure)??
             .take_workers()?)
     }
+
+    /// Register a router for a specific address type
+    pub async fn register<A: Into<Address>>(&self, type_: u8, addr: A) -> Result<()> {
+        let addr = addr.into();
+        let (tx, mut rx) = channel(1);
+        self.sender
+            .send(NodeMessage::Router(type_, addr, tx))
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
+
+        Ok(rx.recv().await.ok_or(Error::InternalIOFailure)??.is_ok()?)
+    }
 }
