@@ -6,8 +6,8 @@ use tokio::sync::mpsc::{Receiver, Sender};
 /// A mailbox for encoded messages
 ///
 /// Message type information can't be exposed at this stage because
-/// they need to either be typed in the [`Relay`](crate::Relay) or in
-/// the worker's [`Context`](crate::Context).
+/// they need to either be typed in the `Relay` or in the worker's
+/// [`Context`](crate::Context).
 #[derive(Debug)]
 pub struct Mailbox {
     rx: Receiver<RelayMessage>,

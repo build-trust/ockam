@@ -82,7 +82,7 @@ impl Context {
     /// Signal to the local application runner to shut down
     pub async fn stop(&self) -> Result<()> {
         let tx = self.sender.clone();
-        println!("App: shutting down all workers");
+        info!("Shutting down all workers");
         let _result: Result<()> = match tx.send(NodeMessage::StopNode).await {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStopNode.into()),

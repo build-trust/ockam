@@ -119,6 +119,7 @@ impl Router {
         addrs: AddressSet,
         sender: Sender<RelayMessage>,
     ) -> Result<()> {
+        trace!("Starting new worker '{}'", addrs.first());
         addrs.iter().for_each(|addr| {
             self.internal.insert(addr.clone(), sender.clone());
         });
@@ -162,6 +163,8 @@ impl Router {
         reply: &mut Sender<NodeReplyResult>,
         wrap: bool,
     ) -> Result<()> {
+        trace!("Resolvivg worker address '{}'", addr);
+
         match self.internal.get(addr) {
             Some(sender) => reply.send(NodeReply::sender(addr.clone(), sender.clone(), wrap)),
             None => reply.send(NodeReply::no_such_worker(addr.clone())),

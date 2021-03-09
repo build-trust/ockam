@@ -3,6 +3,7 @@ use ockam_core::Address;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Sender};
+use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub struct App;
 
@@ -12,6 +13,8 @@ impl ockam_core::Worker for App {
 }
 
 pub fn start_node() -> (Context, Executor) {
+    setup_tracing();
+
     info!("Initializing ockam node");
 
     let mut exe = Executor::new();
@@ -28,6 +31,17 @@ pub fn start_node() -> (Context, Executor) {
     exe.initialize_system("app", sender);
 
     (ctx, exe)
+}
+
+/// Utility to setup tracing-subscriber from the environment
+fn setup_tracing() {
+    fmt()
+        .with_env_filter(EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
+            EnvFilter::default()
+                .add_directive(LevelFilter::INFO.into())
+                .add_directive("ockam_node=info".parse().unwrap())
+        }))
+        .init();
 }
 
 fn root_app_context(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {

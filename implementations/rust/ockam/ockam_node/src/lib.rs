@@ -6,7 +6,7 @@
     unsafe_code,
     unused_import_braces,
     unused_qualifications,
-    warnings
+    // warnings
 )]
 
 #[macro_use]
