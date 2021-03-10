@@ -1,6 +1,6 @@
 use crate::router::RouteTransportMessage;
 use crate::RouterError;
-use ockam::{Address, Context, Worker};
+use ockam::{Address, Context, Routed, Worker};
 use ockam_core::async_trait::async_trait;
 use ockam_core::hashbrown::HashMap;
 use ockam_core::Result;
@@ -37,7 +37,13 @@ impl Worker for LocalRouter {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Self::Context, msg: Self::Message) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let msg = msg.take();
+
         return match msg {
             RouteTransportMessage::Route(mut msg) => {
                 let local_addr = msg.onward_route.addrs.remove(0);

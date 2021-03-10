@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Routed, Worker};
 
 struct MultiAddressWorker;
 
@@ -12,7 +12,7 @@ impl Worker for MultiAddressWorker {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: String) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         println!("Addr '{}' received: '{}'", ctx.address(), msg);
         Ok(())
     }

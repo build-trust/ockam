@@ -1,4 +1,4 @@
-use crate::{lib::Box, Message, Result};
+use crate::{lib::Box, Message, Result, Routed};
 use async_trait::async_trait;
 
 /// Base ockam worker trait.
@@ -24,7 +24,7 @@ pub trait Worker: Send + 'static {
     async fn handle_message(
         &mut self,
         _context: &mut Self::Context,
-        _msg: Self::Message,
+        _msg: Routed<Self::Message>,
     ) -> Result<()> {
         Ok(())
     }

@@ -16,7 +16,9 @@
 //! a type and notifying the companion actor.
 
 use crate::{Context, Mailbox};
-use ockam_core::{Address, Message, Result, RouterMessage, TransportMessage, Worker};
+use ockam_core::{
+    Address, Message, Result, Route, Routed, RouterMessage, TransportMessage, Worker,
+};
 use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -38,16 +40,18 @@ impl RelayMessage {
     }
 
     /// Construct a message addressed to an middleware router
+    #[inline]
     pub fn pre_router(addr: Address, data: TransportMessage) -> Self {
+        let route = data.return_.clone();
         let r_msg = RouterMessage::Route(data);
-
         Self {
             addr,
-            data: RelayPayload::PreRouter(r_msg.encode().unwrap()),
+            data: RelayPayload::PreRouter(r_msg.encode().unwrap(), route),
         }
     }
 
     /// Consume this message into its base components
+    #[inline]
     pub fn transport(self) -> (Address, TransportMessage) {
         (
             self.addr,
@@ -62,7 +66,7 @@ impl RelayMessage {
 #[derive(Debug)]
 pub enum RelayPayload {
     Direct(TransportMessage),
-    PreRouter(Vec<u8>),
+    PreRouter(Vec<u8>, Route),
 }
 
 pub struct Relay<W, M>
@@ -89,17 +93,20 @@ where
     }
 
     /// Convenience function to handle an incoming direct message
-    fn handle_direct(&mut self, msg: TransportMessage) -> Result<M> {
-        M::decode(&msg.payload).map_err(|e| {
-            error!(
-                "Failed to decode message payload for worker {}",
-                self.ctx.address()
-            );
-
-            e.into()
-        })
+    #[inline]
+    fn handle_direct(&mut self, msg: TransportMessage) -> Result<(M, Route)> {
+        M::decode(&msg.payload)
+            .map_err(|e| {
+                error!(
+                    "Failed to decode message payload for worker {}",
+                    self.ctx.address()
+                );
+                e.into()
+            })
+            .map(|m| (m, msg.return_.clone()))
     }
 
+    #[inline]
     fn handle_pre_router(&mut self, msg: Vec<u8>) -> Result<M> {
         M::decode(&msg).map_err(|e| {
             error!(
@@ -122,20 +129,26 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             // wrap state.  Messages addressed to a router will be of
             // type `RouterMessage`, while generic userspace workers
             // can provide any type they want.
-            let msg = match (|data| -> Result<M> {
+            let (msg, route) = match (|data| -> Result<(M, Route)> {
                 Ok(match data {
                     RelayPayload::Direct(trans_msg) => self.handle_direct(trans_msg)?,
-                    RelayPayload::PreRouter(enc_msg) => self.handle_pre_router(enc_msg)?,
+                    RelayPayload::PreRouter(enc_msg, route) => {
+                        self.handle_pre_router(enc_msg).map(|m| (m, route))?
+                    }
                 })
             })(data)
             {
-                Ok(msg) => msg,
+                Ok((msg, route)) => (msg, route),
                 Err(_) => continue, // Handler functions must log
             };
 
+            // Wrap the user message in a `Routed` to provide return
+            // route information via a composition side-channel
+            let routed = Routed::new(msg, route);
+
             // Call the worker handle function
             self.worker
-                .handle_message(&mut self.ctx, msg)
+                .handle_message(&mut self.ctx, routed)
                 .await
                 .unwrap();
 

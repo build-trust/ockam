@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
@@ -15,8 +15,8 @@ impl Worker for Picky {
     type Message = Message;
     type Context = Context;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Message) -> Result<()> {
-        match msg {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Message>) -> Result<()> {
+        match *msg {
             Message::Good => {
                 println!("[PICKY]: I got a good message!  I want another one");
                 ctx.send_message("io.ockam.echo", Message::Good).await?;
@@ -49,7 +49,7 @@ impl Worker for Echo {
     type Message = Message;
     type Context = Context;
 
-    async fn handle_message(&mut self, ctx: &mut Context, _: Message) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, _: Routed<Message>) -> Result<()> {
         println!("[ECHO]: Received message: sending one Bad, then one Good");
         ctx.send_message("io.ockam.picky", Message::Bad).await?;
         ctx.send_message("io.ockam.picky", Message::Good).await?;

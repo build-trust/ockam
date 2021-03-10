@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Printer;
@@ -17,8 +17,12 @@ impl Worker for Printer {
         Ok(())
     }
 
-    async fn handle_message(&mut self, _context: &mut Context, msg: PrintMessage) -> Result<()> {
-        println!("[PRINTER]: {}", msg.0);
+    async fn handle_message(
+        &mut self,
+        _context: &mut Context,
+        msg: Routed<PrintMessage>,
+    ) -> Result<()> {
+        println!("[{:?}]: {}", msg.sender(), msg.0);
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Square;
@@ -11,9 +11,9 @@ impl Worker for Square {
     type Message = Num;
     type Context = Context;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Num) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Num>) -> Result<()> {
         println!("Getting square request for number {}", msg.0);
-        ctx.send_message("app", Num(msg.0 * msg.0)).await
+        ctx.send_message(msg.sender(), Num(msg.0 * msg.0)).await
     }
 }
 

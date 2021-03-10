@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
-use ockam::{async_worker, Address, Context, Result, Route, RouterMessage, Worker};
+use ockam::{async_worker, Address, Context, Result, Route, Routed, RouterMessage, Worker};
 use std::collections::BTreeMap;
 
 /// A simple external router
@@ -12,6 +12,8 @@ struct Router {
 
 #[async_worker]
 impl Worker for Router {
+    // Routers must handle `RouterMessage` provided by ockam_core, to
+    // create a consistent interface across all router implementations
     type Message = RouterMessage;
     type Context = Context;
 
@@ -20,9 +22,18 @@ impl Worker for Router {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: RouterMessage) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Context,
+        msg: Routed<RouterMessage>,
+    ) -> Result<()> {
+        let msg = msg.take();
+
         use RouterMessage::*;
         match msg {
+            // Handle requests to route messages to the next hop in
+            // the route.  This will usually be some kind of
+            // domain-specific connection worker.
             Route(mut msg) => {
                 info!("Router route request: {}", msg.onward.next().unwrap());
                 let onward = msg.onward.step().unwrap();
@@ -37,6 +48,11 @@ impl Worker for Router {
                 // Forward the message to the next hop
                 ctx.forward_message(msg).await?;
             }
+            // Handle new domain-specific worker registrations.  The
+            // `accepts` address is the one provided by the message
+            // sender (in this case `10#proxy_me_0:...`).  The
+            // self_addr is local worker address used by the router to
+            // forward the message.
             Register { accepts, self_addr } => {
                 info!(
                     "Router register: `{}` address to worker `{}`",
@@ -59,7 +75,7 @@ impl Worker for Consumer {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        info!("Starting consumer...");
+        info!("Starting consumer '{}'...", ctx.address());
 
         // Register this consumer with the router by its accept scope
         // (which is used in a look-up table in the router to forward
@@ -81,7 +97,7 @@ impl Worker for Consumer {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: String) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         info!("Consumer {}: {}", ctx.address(), msg);
         ctx.send_message("app", String::from("")).await?;
         Ok(())
@@ -100,12 +116,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Now we create two consumer workers that will register
     // themselves with the domain specific router
     ctx.start_worker("cons1", Consumer).await?;
+    ctx.start_worker("cons2", Consumer).await?;
 
-    // Block until the consumer has reported back as being ready
+    // Block until the two consumers have reported back as being ready
+    let _ = ctx.receive::<String>().await?;
     let _ = ctx.receive::<String>().await?;
 
     ctx.send_message(
-        Route::new().append("10#proxy_me_0:cons1"),
+        Route::new().append("10#proxy_me_0:cons2"),
         String::from("Hello consumer!"),
     )
     .await?;
