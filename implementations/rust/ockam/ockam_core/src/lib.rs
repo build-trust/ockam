@@ -62,7 +62,7 @@ pub mod lib {
     pub use self::core::fmt::{self, Debug, Display};
     pub use self::core::marker::{self, PhantomData};
     pub use self::core::num::Wrapping;
-    pub use self::core::ops::Range;
+    pub use self::core::ops::{Deref, Range};
     pub use self::core::option::{self, Option};
     pub use self::core::result::{self, Result};
     pub use self::core::{cmp, iter, mem, num, slice, str};

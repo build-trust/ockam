@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Worker};
+use ockam::{async_worker, Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct StatefulWorker {
@@ -13,7 +13,7 @@ impl Worker for StatefulWorker {
     type Context = Context;
     type Message = Message;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Message) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Message>) -> Result<()> {
         self.inner += msg.0;
         ctx.send_message("app", Message(self.inner)).await?;
         Ok(())

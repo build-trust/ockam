@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use ockam::{Address, Context, Result, Worker};
+use ockam::{Address, Context, Result, Routed, Worker};
 use ockam_router::{
     LocalRouter, RouteTransportMessage, RouteableAddress, Router, TransportMessage,
     LOCAL_ROUTER_ADDRESS, ROUTER_ADDRESS, ROUTER_ADDRESS_TYPE_LOCAL, ROUTER_ADDRESS_TYPE_TCP,
@@ -30,8 +30,12 @@ impl Worker for InitiatorEchoRelay {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Self::Context, msg: Self::Message) -> Result<()> {
-        return match msg {
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        return match msg.take() {
             RouteTransportMessage::Route(m) => {
                 println!("{}", String::from_utf8(m.payload).unwrap());
                 ctx.stop().await.unwrap();

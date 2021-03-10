@@ -1,5 +1,5 @@
 use crate::error::TransportError;
-use ockam::{Address, Context, Worker};
+use ockam::{Address, Context, Routed, Worker};
 use ockam_core::async_trait::async_trait;
 use ockam_core::Result;
 use ockam_router::message::{RouterAddress, TransportMessage};
@@ -280,7 +280,12 @@ impl Worker for Box<TcpConnection> {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Self::Context, msg: Self::Message) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let msg = msg.take();
         return match msg {
             TcpWorkerMessage::SendMessage(m) => {
                 if self.send_message(m).await.is_err() {

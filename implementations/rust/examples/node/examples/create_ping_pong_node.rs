@@ -1,6 +1,6 @@
 //! Spawn to workers that play some ping-pong
 
-use ockam::{async_worker, Address, Context, Result, Worker};
+use ockam::{async_worker, Address, Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Player {
@@ -38,7 +38,8 @@ impl Worker for Player {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Action) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Action>) -> Result<()> {
+        let msg = msg.take();
         println!("{}: {:?}", ctx.address(), msg);
         match msg {
             Action::Intro(addr) if self.friend.is_none() => {

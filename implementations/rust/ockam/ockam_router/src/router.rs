@@ -1,5 +1,5 @@
 use crate::{RouterAddress, RouterError, TransportMessage};
-use ockam::{Address, Context, Worker};
+use ockam::{Address, Context, Routed, Worker};
 use ockam_core::async_trait::async_trait;
 use ockam_core::hashbrown::HashMap;
 use ockam_core::Result;
@@ -69,8 +69,10 @@ impl Worker for Router {
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,
-        router_msg: Self::Message,
+        router_msg: Routed<Self::Message>,
     ) -> Result<()> {
+        let router_msg = router_msg.take();
+
         return match router_msg {
             RouteTransportMessage::Route(m) => {
                 if m.onward_route.addrs.is_empty() {

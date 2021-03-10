@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use ockam::{async_worker, Address, Context, Result, Worker};
+use ockam::{async_worker, Address, Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -18,12 +18,12 @@ impl Worker for RingWorker {
     async fn handle_message(
         &mut self,
         context: &mut Self::Context,
-        msg: Self::Message,
+        msg: Routed<Self::Message>,
     ) -> Result<()> {
         self.ctr += 1;
         if self.ctr <= 1024 {
             context
-                .send_message(self.next.as_ref().unwrap().clone(), msg)
+                .send_message(self.next.as_ref().unwrap().clone(), msg.take())
                 .await?;
         } else {
             let now = Utc::now();

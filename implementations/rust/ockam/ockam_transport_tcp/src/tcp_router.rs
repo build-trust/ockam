@@ -1,5 +1,5 @@
 use crate::{TcpWorkerMessage, TransportError};
-use ockam::{Address, Context, Worker};
+use ockam::{Address, Context, Routed, Worker};
 use ockam_core::async_trait::async_trait;
 use ockam_core::Result;
 use ockam_router::router::RouteTransportMessage;
@@ -43,7 +43,13 @@ impl Worker for TcpMessageRouter {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Self::Context, msg: Self::Message) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let msg = msg.take();
+
         return match msg {
             RouteTransportMessage::Route(mut msg) => {
                 let tcp_addr = msg.onward_route.addrs.remove(0);
