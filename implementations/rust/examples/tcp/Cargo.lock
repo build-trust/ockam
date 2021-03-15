@@ -827,7 +827,6 @@ name = "ockam"
 version = "0.3.0"
 dependencies = [
  "arrayref",
- "async-trait",
  "bbs",
  "digest 0.8.1",
  "ff-zeroize",
@@ -858,7 +857,6 @@ dependencies = [
 name = "ockam_node"
 version = "0.3.0"
 dependencies = [
- "async-trait",
  "ockam_core",
  "tokio",
 ]
@@ -875,7 +873,6 @@ dependencies = [
 name = "ockam_router"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "ockam",
  "ockam_core",
  "ockam_node",
@@ -890,7 +887,6 @@ dependencies = [
 name = "ockam_transport_tcp"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "futures",
  "ockam",
  "ockam_core",

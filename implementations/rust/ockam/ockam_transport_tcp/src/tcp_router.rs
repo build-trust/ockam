@@ -1,6 +1,6 @@
 use crate::{TcpWorkerMessage, TransportError};
-use async_trait::async_trait;
 use ockam::{Address, Context, Worker};
+use ockam_core::async_trait::async_trait;
 use ockam_core::Result;
 use ockam_router::router::RouteTransportMessage;
 use ockam_router::{RouterAddress, RouterError};

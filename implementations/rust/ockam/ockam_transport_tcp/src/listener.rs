@@ -1,7 +1,7 @@
 use crate::error::TransportError;
 use crate::traits::Listener;
 use crate::TcpConnection;
-use async_trait::async_trait;
+use ockam_core::async_trait::async_trait;
 use ockam_core::Result;
 use tokio::net::TcpListener as TokioTcpListener;
 

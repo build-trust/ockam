@@ -31,6 +31,10 @@ pub extern crate hashbrown;
 #[macro_use]
 pub extern crate hex;
 
+#[allow(unused_imports)]
+#[macro_use]
+pub extern crate async_trait;
+
 mod address;
 mod error;
 mod message;

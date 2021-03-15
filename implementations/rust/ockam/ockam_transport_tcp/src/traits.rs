@@ -1,5 +1,5 @@
 use crate::connection::TcpConnection;
-use async_trait::async_trait;
+use ockam_core::async_trait::async_trait;
 use ockam_router::message::TransportMessage;
 use serde::{Deserialize, Serialize};
 

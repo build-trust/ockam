@@ -1,7 +1,7 @@
 use crate::router::RouteTransportMessage;
 use crate::RouterError;
-use async_trait::async_trait;
 use ockam::{Address, Context, Worker};
+use ockam_core::async_trait::async_trait;
 use ockam_core::hashbrown::HashMap;
 use ockam_core::Result;
 
