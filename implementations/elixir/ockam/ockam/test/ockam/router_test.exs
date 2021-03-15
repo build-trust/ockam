@@ -43,7 +43,7 @@ defmodule Ockam.Router.Tests do
 
       Ockam.Router.route(message)
 
-      assert_receive({:trace, ^printer, :receive, result}, 1_000)
+      assert_receive({:trace, ^printer, :receive, result}, 5_000)
 
       assert result == %{
                version: 1,
@@ -73,7 +73,7 @@ defmodule Ockam.Router.Tests do
 
       Ockam.Router.route(message)
 
-      assert_receive({:trace, ^printer, :receive, result}, 1_000)
+      assert_receive({:trace, ^printer, :receive, result}, 5_000)
 
       assert %{
                version: 1,
