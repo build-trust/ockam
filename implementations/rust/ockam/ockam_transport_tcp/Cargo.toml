@@ -29,6 +29,8 @@ serde = {version = "1.0.120", features = ["derive"]}
 tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros","time"]}
 futures = " 0.3.10"
 rand = "0.7"
+hashbrown =  { version = "0.9"}
+tracing = "0.1"
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}
