@@ -36,5 +36,6 @@ pub use lease::*;
 
 pub use ockam_core::async_trait::async_trait as async_worker;
 pub use ockam_core::{
-    Address, Encoded, Error, Message, Result, Route, Routed, RouterMessage, Worker,
+    Address, Encoded, Error, Message, Result, Route, Routed, RouterMessage, TransportMessage,
+    Worker,
 };

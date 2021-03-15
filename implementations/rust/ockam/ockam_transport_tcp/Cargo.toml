@@ -24,8 +24,6 @@ std = []
 
 [dependencies]
 ockam = {path = "../ockam", version = "*"}
-ockam_core = {path = "../ockam_core", version = "*"}
-ockam_router = {path = "../ockam_router", version = "*"}
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}
 tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros","time"]}
