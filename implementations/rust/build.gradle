@@ -29,7 +29,6 @@ commands {
     'ockam/ockam_node',
     'ockam/ockam_node_attribute',
     'ockam/ockam_node_no_std',
-    'ockam/ockam_router',
     'ockam/ockam_transport_tcp',
     'ockam/ockam_vault',
     'ockam/ockam_vault_core',
