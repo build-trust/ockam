@@ -83,12 +83,27 @@ impl Context {
     pub async fn stop(&self) -> Result<()> {
         let tx = self.sender.clone();
         info!("Shutting down all workers");
-        let _result: Result<()> = match tx.send(NodeMessage::StopNode).await {
+        match tx.send(NodeMessage::StopNode).await {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStopNode.into()),
-        };
+        }
+    }
 
-        Ok(())
+    /// Shut down a worker by its primary address
+    pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
+        let addr = addr.into();
+        debug!("Shutting down worker {}", addr);
+
+        // Send the stop request
+        let (req, mut rx) = NodeMessage::stop_worker(addr);
+        self.sender.send(req).await.map_err(|e| Error::from(e))?;
+
+        // Then check that the worker was properly shut down
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)?
+            .map(|_| ())?)
     }
 
     /// Send a message via a fully qualified route
