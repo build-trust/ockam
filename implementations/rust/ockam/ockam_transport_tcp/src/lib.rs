@@ -19,10 +19,12 @@
 //     unused_qualifications,
 // )]
 
+mod error;
 mod init;
 mod receiver;
 mod sender;
 
+pub use error::TcpError;
 pub use init::start_tcp_worker;
 pub use receiver::TcpRecvWorker;
 pub use sender::TcpSendWorker;
