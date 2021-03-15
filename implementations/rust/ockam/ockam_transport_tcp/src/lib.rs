@@ -19,12 +19,18 @@
 //     unused_qualifications,
 // )]
 
+#[macro_use]
+extern crate tracing;
+
+pub(crate) mod atomic;
 mod error;
 mod init;
 mod receiver;
+mod router;
 mod sender;
 
 pub use error::TcpError;
-pub use init::start_tcp_worker;
+pub use init::{start_tcp_worker, WorkerPair};
 pub use receiver::TcpRecvWorker;
+pub use router::{TcpRouter, TcpRouterHandle};
 pub use sender::TcpSendWorker;

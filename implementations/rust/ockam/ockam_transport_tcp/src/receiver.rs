@@ -1,9 +1,9 @@
-use crate::TcpError;
-use ockam::{async_worker, Context, Result, TransportMessage, Worker};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use crate::{
+    atomic::{self, ArcBool},
+    TcpError,
 };
+use ockam::{async_worker, Context, Result, TransportMessage, Worker};
+use std::sync::Arc;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 
 /// A TCP receiving message worker
@@ -16,13 +16,15 @@ use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 /// the node message system.
 pub struct TcpRecvWorker {
     pub(crate) rx: OwnedReadHalf,
-    pub(crate) run: Arc<AtomicBool>,
+    pub(crate) run: ArcBool,
 }
 
 #[async_worker]
 impl Worker for TcpRecvWorker {
     type Context = Context;
-    type Message = TransportMessage;
+
+    // Do not actually listen for messages
+    type Message = ();
 
     // We are using the initialize function here to run a custom loop,
     // while never listening for messages sent to our address
@@ -36,7 +38,8 @@ impl Worker for TcpRecvWorker {
         let self_addr = ctx.address();
 
         // Run in a loop until TcpWorkerPair::stop() is called
-        while self.run.load(Ordering::Relaxed) {
+        // FIXME: see ArcBool future note
+        while atomic::check(&self.run) {
             // First read a message length header...
             let len = self.rx.read_u16().await.unwrap();
 
@@ -47,7 +50,7 @@ impl Worker for TcpRecvWorker {
             match self.rx.read_exact(&mut buf).await {
                 Ok(_) => {}
                 _ => {
-                    // Log failure?
+                    error!("Failed to receive message of length: {}", len);
                     continue;
                 }
             }
