@@ -3,7 +3,6 @@ use crate::{
     TcpError,
 };
 use ockam::{async_worker, Context, Result, TransportMessage, Worker};
-use std::sync::Arc;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 
 /// A TCP receiving message worker
