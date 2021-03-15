@@ -32,7 +32,6 @@ tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros",
 async-trait = "0.1.42"
 futures = " 0.3.10"
 rand = "0.7"
-hashbrown =  { version = "0.9"}
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}

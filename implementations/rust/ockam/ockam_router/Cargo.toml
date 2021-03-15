@@ -21,5 +21,4 @@ tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros",
 url = "2.2.0"
 hex = "0.4.2"
 ockam_core = {path = "../ockam_core", version = "*"}
-hashbrown = "0.9.1"
 async-trait = "0.1.42"

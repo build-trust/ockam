@@ -25,6 +25,8 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
+pub extern crate hashbrown;
+
 mod address;
 mod error;
 mod message;

@@ -1,7 +1,7 @@
 use crate::{RouterAddress, RouterError, TransportMessage};
 use async_trait::async_trait;
-use hashbrown::HashMap;
 use ockam::{Address, Context, Worker};
+use ockam_core::hashbrown::HashMap;
 use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 
