@@ -843,7 +843,6 @@ dependencies = [
  "bbs",
  "digest 0.8.1",
  "ff-zeroize",
- "hex",
  "ockam_core",
  "ockam_node",
  "ockam_node_attribute",
@@ -863,6 +862,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "hashbrown",
+ "hex",
  "serde",
 ]
 
@@ -888,7 +888,6 @@ name = "ockam_router"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "hex",
  "ockam",
  "ockam_core",
  "ockam_node",
@@ -924,7 +923,6 @@ dependencies = [
  "arrayref",
  "curve25519-dalek",
  "ed25519-dalek",
- "hex",
  "hkdf 0.10.0",
  "ockam_core",
  "ockam_vault_core",

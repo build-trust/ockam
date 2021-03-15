@@ -115,6 +115,7 @@ impl SecretVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
+    use ockam_core::hex::{decode, encode};
     use ockam_vault_core::{
         SecretAttributes, SecretPersistence, SecretType, SecretVault, CURVE25519_PUBLIC_LENGTH,
         CURVE25519_SECRET_LENGTH,
@@ -180,12 +181,12 @@ mod tests {
         let secret_str = "98d589b0dce92c9e2442b3093718138940bff71323f20b9d158218b89c3cec6e";
 
         let secret = vault
-            .secret_import(hex::decode(secret_str).unwrap().as_slice(), attributes)
+            .secret_import(decode(secret_str).unwrap().as_slice(), attributes)
             .unwrap();
 
         assert_eq!(secret.index(), 1);
         assert_eq!(
-            hex::encode(vault.secret_export(&secret).unwrap().as_ref()),
+            encode(vault.secret_export(&secret).unwrap().as_ref()),
             secret_str
         );
 
@@ -193,13 +194,13 @@ mod tests {
             SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24);
         let secret_str = "5f791cc52297f62c7b8829b15f828acbdb3c613371d21aa1";
         let secret = vault
-            .secret_import(hex::decode(secret_str).unwrap().as_slice(), attributes)
+            .secret_import(decode(secret_str).unwrap().as_slice(), attributes)
             .unwrap();
 
         assert_eq!(secret.index(), 2);
 
         assert_eq!(
-            hex::encode(vault.secret_export(&secret).unwrap().as_ref()),
+            encode(vault.secret_export(&secret).unwrap().as_ref()),
             secret_str
         );
     }

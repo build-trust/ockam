@@ -27,6 +27,10 @@ extern crate std;
 
 pub extern crate hashbrown;
 
+#[allow(unused_imports)]
+#[macro_use]
+pub extern crate hex;
+
 mod address;
 mod error;
 mod message;

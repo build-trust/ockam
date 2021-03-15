@@ -289,6 +289,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "hashbrown",
+ "hex",
  "serde",
 ]
 
@@ -305,7 +306,6 @@ dependencies = [
 name = "ockam_key_exchange_xx"
 version = "0.1.0"
 dependencies = [
- "hex",
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_vault",
@@ -321,7 +321,6 @@ dependencies = [
  "arrayref",
  "curve25519-dalek",
  "ed25519-dalek",
- "hex",
  "hkdf",
  "ockam_core",
  "ockam_vault_core",

@@ -6,13 +6,13 @@ edition = "2018"
 
 [dependencies]
 ockam = { path = "../ockam", version = "0" }
+ockam_core = { path = "../ockam_core", version = "0" }
 ockam_node = { path = "../ockam_node", version = "0" }
 async-trait = "0"
 chrono = { version = "0", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_bare = "0"
 serde-big-array = "0"
-hex = "0.4"
 structopt = "0.3"
 
 [[bin]]

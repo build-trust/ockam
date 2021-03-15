@@ -1,4 +1,5 @@
 use arrayref::array_ref;
+use ockam_core::hex::encode;
 use ockam_core::lib::convert::TryFrom;
 use ockam_vault_core::{
     AsymmetricVault, Hasher, PublicKey, SecretVault, Signer, SymmetricVault, Verifier,
@@ -39,7 +40,7 @@ impl From<&[u8; 64]> for Signature {
 
 impl std::fmt::Debug for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Signature {{ {} }}", hex::encode(self.0.as_ref()))
+        write!(f, "Signature {{ {} }}", encode(self.0.as_ref()))
     }
 }
 

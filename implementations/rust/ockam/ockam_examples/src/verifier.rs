@@ -1,6 +1,7 @@
 mod util;
 
 use ockam::{CredentialVerifier, PresentationManifest};
+use ockam_core::hex::decode;
 use std::{
     convert::TryFrom,
     path::PathBuf,
@@ -25,7 +26,7 @@ fn main() {
 
     // TODO: retrieve public key from published location
     // Placeholder for now
-    let pk = <[u8; 96]>::try_from(hex::decode(args.issuer_pk).unwrap()).unwrap();
+    let pk = <[u8; 96]>::try_from(decode(args.issuer_pk).unwrap()).unwrap();
 
     // Use credential to prove to service
     // The manifest is common to everyone so it can be

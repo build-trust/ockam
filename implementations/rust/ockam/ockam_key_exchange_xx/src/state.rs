@@ -527,6 +527,7 @@ impl State {
 mod tests {
     use crate::state::{DhState, State};
     use crate::{Initiator, Responder, XXVault};
+    use ockam_core::hex::{decode, encode};
     use ockam_key_exchange_core::KeyExchanger;
     use ockam_vault::SoftwareVault;
     use ockam_vault_core::{
@@ -604,25 +605,25 @@ mod tests {
         // let mut initiator = Initiator::new(ss_init);
         // let mut responder = Responder::new(ss_resp);
 
-        let res = initiator.encode_message_1(hex::decode(msg_1_payload).unwrap());
+        let res = initiator.encode_message_1(decode(msg_1_payload).unwrap());
         assert!(res.is_ok());
         let msg1 = res.unwrap();
-        assert_eq!(hex::encode(&msg1), msg_1_ciphertext);
+        assert_eq!(encode(&msg1), msg_1_ciphertext);
 
         let res = responder.decode_message_1(msg1);
         assert!(res.is_ok());
 
-        let res = responder.encode_message_2(hex::decode(msg_2_payload).unwrap());
+        let res = responder.encode_message_2(decode(msg_2_payload).unwrap());
         assert!(res.is_ok());
         let msg2 = res.unwrap();
-        assert_eq!(hex::encode(&msg2), msg_2_ciphertext);
+        assert_eq!(encode(&msg2), msg_2_ciphertext);
 
         let res = initiator.decode_message_2(msg2);
         assert!(res.is_ok());
-        let res = initiator.encode_message_3(hex::decode(msg_3_payload).unwrap());
+        let res = initiator.encode_message_3(decode(msg_3_payload).unwrap());
         assert!(res.is_ok());
         let msg3 = res.unwrap();
-        assert_eq!(hex::encode(&msg3), msg_3_ciphertext);
+        assert_eq!(encode(&msg3), msg_3_ciphertext);
 
         let res = responder.decode_message_3(msg3);
         assert!(res.is_ok());
@@ -690,24 +691,24 @@ mod tests {
 
         let res = responder.process(&[]);
         assert!(res.is_err());
-        let res = initiator.process(&hex::decode(MSG_1_PAYLOAD).unwrap());
+        let res = initiator.process(&decode(MSG_1_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg1 = res.unwrap();
-        assert_eq!(hex::encode(&msg1), MSG_1_CIPHERTEXT);
+        assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
 
         let res = responder.process(&msg1);
         assert!(res.is_ok());
-        let res = responder.process(&hex::decode(MSG_2_PAYLOAD).unwrap());
+        let res = responder.process(&decode(MSG_2_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg2 = res.unwrap();
-        assert_eq!(hex::encode(&msg2), MSG_2_CIPHERTEXT);
+        assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
 
         let res = initiator.process(&msg2);
         assert!(res.is_ok());
-        let res = initiator.process(&hex::decode(MSG_3_PAYLOAD).unwrap());
+        let res = initiator.process(&decode(MSG_3_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg3 = res.unwrap();
-        assert_eq!(hex::encode(&msg3), MSG_3_CIPHERTEXT);
+        assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
 
         let res = responder.process(&msg3);
         assert!(res.is_ok());
@@ -760,13 +761,13 @@ mod tests {
         // Static x25519 for this handshake, `s`
         let mut vault = vault_mutex.lock().unwrap();
         let static_secret_handle = vault
-            .secret_import(&hex::decode(static_private).unwrap(), attributes)
+            .secret_import(&decode(static_private).unwrap(), attributes)
             .unwrap();
         let static_public_key = vault.secret_public_key_get(&static_secret_handle).unwrap();
 
         // Ephemeral x25519 for this handshake, `e`
         let ephemeral_secret_handle = vault
-            .secret_import(&hex::decode(ephemeral_private).unwrap(), attributes)
+            .secret_import(&decode(ephemeral_private).unwrap(), attributes)
             .unwrap();
         let ephemeral_public_key = vault
             .secret_public_key_get(&ephemeral_secret_handle)

@@ -1,6 +1,7 @@
 mod util;
 
 use ockam::{CredentialAttribute, CredentialIssuer};
+use ockam_core::hex::decode;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;
 use std::io::Write;
@@ -32,7 +33,7 @@ fn main() {
         CredentialIssuer::new()
     } else {
         let sk = <[u8; 32]>::try_from(
-            hex::decode(args.secret_key.as_ref().unwrap())
+            decode(args.secret_key.as_ref().unwrap())
                 .unwrap()
                 .as_slice(),
         )

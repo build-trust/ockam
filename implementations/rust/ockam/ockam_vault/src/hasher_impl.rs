@@ -81,6 +81,7 @@ impl Hasher for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
+    use ockam_core::hex::encode;
     use ockam_vault_core::{Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 
     #[test]
@@ -90,7 +91,7 @@ mod tests {
         assert!(res.is_ok());
         let digest = res.unwrap();
         assert_eq!(
-            hex::encode(digest),
+            encode(digest),
             "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
         );
     }
@@ -124,7 +125,7 @@ mod tests {
         assert_eq!(digest.len(), 1);
         let digest = vault.secret_export(&digest[0]).unwrap();
         assert_eq!(
-            hex::encode(digest.as_ref()),
+            encode(digest.as_ref()),
             "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
         );
     }

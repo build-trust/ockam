@@ -305,6 +305,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "hashbrown",
+ "hex",
  "serde",
 ]
 
@@ -316,7 +317,6 @@ dependencies = [
  "arrayref",
  "curve25519-dalek",
  "ed25519-dalek",
- "hex",
  "hkdf",
  "ockam_core",
  "ockam_vault_core",

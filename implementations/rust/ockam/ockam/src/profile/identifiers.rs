@@ -1,3 +1,4 @@
+use ockam_core::hex::encode;
 use ockam_vault_core::KeyId;
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +33,7 @@ impl EventIdentifier {
     }
     /// Human-readable form of the id
     pub fn to_string_representation(&self) -> String {
-        format!("E_ID.{}", hex::encode(&self.0))
+        format!("E_ID.{}", encode(&self.0))
     }
 }
 

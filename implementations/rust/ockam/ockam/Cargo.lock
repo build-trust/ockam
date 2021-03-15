@@ -773,7 +773,6 @@ dependencies = [
  "bbs",
  "digest 0.8.1",
  "ff-zeroize",
- "hex",
  "ockam_core",
  "ockam_node",
  "ockam_node_attribute",
@@ -797,6 +796,7 @@ dependencies = [
  "bincode",
  "hashbrown",
  "heapless",
+ "hex",
  "serde",
 ]
 
@@ -825,7 +825,6 @@ dependencies = [
  "arrayref",
  "curve25519-dalek",
  "ed25519-dalek",
- "hex",
  "hkdf 0.10.0",
  "ockam_core",
  "ockam_vault_core",

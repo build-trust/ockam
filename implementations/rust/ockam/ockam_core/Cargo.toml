@@ -21,7 +21,7 @@ exclude = [
 default = ["std"]
 
 # Requires the Rust Standard Library.
-std = ["bincode", "serde", "async-trait"]
+std = ["bincode", "serde", "async-trait", "hex/std"]
 
 # Requires the Rust alloc library
 alloc = []
@@ -34,4 +34,5 @@ async-trait =  { version = "0.1.42", optional = true }
 bincode = { version =  "1.3", optional = true }
 hashbrown =  { version = "0.11", features = ["serde"]}
 heapless = { version = "0.6", optional = true }
+hex = { version = "0.4", default-features = false }
 serde =  { version = "1.0", features = ["derive"], optional = true }

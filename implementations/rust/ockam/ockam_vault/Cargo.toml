@@ -17,7 +17,7 @@ crate-type = ["rlib", "cdylib"]
 
 [features]
 default = ["std"]
-std = ["ockam_core/std", "hex/std"]
+std = ["ockam_core/std"]
 no_std = ["ockam_vault_core/heapless"]
 
 [dependencies]
@@ -28,7 +28,6 @@ aes-gcm = "0.8"
 curve25519-dalek = "3.0"
 ed25519-dalek = "1.0"
 hkdf = "0.10"
-hex = {version = "0.4", default-features = false }
 rand = "0.7"
 sha2 = "0.9"
 x25519-dalek = "1.0"

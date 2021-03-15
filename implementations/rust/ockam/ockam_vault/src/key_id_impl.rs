@@ -1,5 +1,6 @@
 use crate::software_vault::SoftwareVault;
 use crate::VaultError;
+use ockam_core::hex::encode;
 use ockam_vault_core::{Hasher, KeyId, KeyIdVault, PublicKey, Secret};
 
 impl KeyIdVault for SoftwareVault {
@@ -22,13 +23,14 @@ impl KeyIdVault for SoftwareVault {
 
     fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> ockam_core::Result<KeyId> {
         let key_id = self.sha256(public_key.as_ref())?;
-        Ok(hex::encode(key_id))
+        Ok(encode(key_id))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
+    use ockam_core::hex::decode;
     use ockam_vault_core::{
         KeyIdVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
         CURVE25519_SECRET_LENGTH,
@@ -39,8 +41,7 @@ mod tests {
         let vault = SoftwareVault::new();
 
         let public =
-            hex::decode("68858ea1ea4e1ade755df7fb6904056b291d9781eb5489932f46e32f12dd192a")
-                .unwrap();
+            decode("68858ea1ea4e1ade755df7fb6904056b291d9781eb5489932f46e32f12dd192a").unwrap();
         let public = PublicKey::new(public.to_vec());
 
         let key_id = vault.compute_key_id_for_public_key(&public).unwrap();
