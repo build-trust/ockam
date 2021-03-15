@@ -1,6 +1,11 @@
-use crate::atomic::{self, ArcBool};
+use crate::{
+    atomic::{self, ArcBool},
+    listener::TcpListenWorker,
+};
 use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
 use std::{collections::BTreeMap, net::SocketAddr};
+
+const DEFAULT_ADDRESS: &'static str = "io.ockam.router.tcp";
 
 /// A TCP address router and connection listener
 ///
@@ -85,11 +90,13 @@ impl Worker for TcpRouter {
 }
 
 impl TcpRouter {
-    fn create() -> Self {
-        Self {
+    async fn start(ctx: &Context, waddr: &Address, run: Option<ArcBool>) -> Result<()> {
+        let router = Self {
             map: BTreeMap::new(),
-            run: atomic::new(true),
-        }
+            run: run.unwrap_or_else(|| atomic::new(true)),
+        };
+        ctx.start_worker(waddr.clone(), router).await?;
+        Ok(())
     }
 
     /// Create and register a new TCP router with the node context
@@ -97,10 +104,8 @@ impl TcpRouter {
     /// To also handle incoming connections, use
     /// [`TcpRouter::bind`](TcpRouter::bind)
     pub async fn register<'c>(ctx: &'c Context) -> Result<TcpRouterHandle<'c>> {
-        let addr = Address::from("io.ockam.router.tcp");
-        let worker = Self::create();
-
-        ctx.start_worker(addr.clone(), worker).await?;
+        let addr = Address::from(DEFAULT_ADDRESS);
+        Self::start(ctx, &addr, None).await?;
         Ok(TcpRouterHandle { ctx, addr })
     }
 
@@ -111,9 +116,16 @@ impl TcpRouter {
     /// for connections themselves, use
     /// [`TcpRouter::register`](TcpRouter::register).
     pub async fn bind<'c, S: Into<SocketAddr>>(
-        _ctx: &'c Context,
-        _addr: S,
+        ctx: &'c Context,
+        socket_addr: S,
     ) -> Result<TcpRouterHandle<'c>> {
-        todo!()
+        let run = atomic::new(true);
+        let addr = Address::from(DEFAULT_ADDRESS);
+
+        // Bind and start the connection listen worker
+        TcpListenWorker::start(ctx, socket_addr.into(), run.clone()).await?;
+
+        Self::start(ctx, &addr, Some(run)).await?;
+        Ok(TcpRouterHandle { ctx, addr })
     }
 }

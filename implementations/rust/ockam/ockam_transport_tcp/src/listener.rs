@@ -1,119 +1,44 @@
-use crate::error::TransportError;
-use crate::traits::Listener;
-use crate::TcpConnection;
-use ockam_core::async_trait::async_trait;
-use ockam_core::Result;
-use tokio::net::TcpListener as TokioTcpListener;
+use crate::{
+    atomic::{self, ArcBool},
+    WorkerPair,
+};
+use ockam::{async_worker, Context, Result, Worker};
+use std::net::SocketAddr;
+use tokio::net::TcpListener;
 
-pub struct TcpListener {
-    listener: TokioTcpListener,
+pub struct TcpListenWorker {
+    inner: TcpListener,
+    run: ArcBool,
 }
 
-impl TcpListener {
-    /// Creates a [`Listener`] trait object reference for TCP.
-    ///
-    /// # Examples
-    /// ```
-    /// use ockam_transport_tcp::listener::TcpListener;
-    /// use std::net::SocketAddr;
-    /// use std::str::FromStr;
-    /// use tokio::runtime::{Builder, Runtime};
-    ///
-    /// let runtime = Builder::new_current_thread().enable_io().build().unwrap();
-    /// runtime.block_on( async {
-    ///    let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    ///    let listener = TcpListener::create(address).await.unwrap();
-    /// });
-    /// ```
-    pub async fn create(listen_address: std::net::SocketAddr) -> Result<Box<dyn Listener + Send>> {
-        let listener = TokioTcpListener::bind(listen_address).await;
-        match listener {
-            Ok(l) => Ok(Box::new(TcpListener { listener: l })),
-            Err(_) => Err(TransportError::Bind.into()),
-        }
+impl TcpListenWorker {
+    pub(crate) async fn start(ctx: &Context, addr: SocketAddr, run: ArcBool) -> Result<()> {
+        let waddr = format!("{}_listener", addr);
+        let inner = TcpListener::bind(addr).await.unwrap();
+        let worker = Self { inner, run };
+
+        ctx.start_worker(waddr.as_str(), worker).await?;
+        Ok(())
     }
 }
 
-#[async_trait]
-impl Listener for TcpListener {
-    /// Accepts an incoming connection request and returns a [`Connection`]
-    /// trait object reference.
-    ///
-    /// # Examples
-    /// ```ignore
-    /// use ockam_transport_tcp::listener::TcpListener;
-    /// use std::net::SocketAddr;
-    /// use std::str::FromStr;
-    ///
-    /// let address = SocketAddr::from_str("127.0.0.1:8080").unwrap();
-    /// let mut  listener = TcpListener::new(address).await.unwrap();
-    /// let connection = listener.accept().await.unwrap();
-    /// ```
-    async fn accept(&mut self) -> Result<Box<TcpConnection>> {
-        let stream = self.listener.accept().await;
-        if stream.is_err() {
-            Err(TransportError::Accept.into())
-        } else {
-            let (stream, _) = stream.unwrap();
-            Ok(TcpConnection::new_from_stream(stream).await?)
+#[async_worker]
+impl Worker for TcpListenWorker {
+    type Context = Context;
+
+    // Do not actually listen for messages
+    type Message = ();
+
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        // FIXME: see ArcBool future note
+        while atomic::check(&self.run) {
+            // Wait for an incoming connection
+            let (stream, peer) = self.inner.accept().await.unwrap();
+
+            // And spawn a connection worker for it
+            WorkerPair::with_stream(ctx, stream, peer).await.unwrap();
         }
-    }
-}
 
-#[cfg(test)]
-mod test {
-    use crate::connection::TcpConnection;
-    use crate::listener::TcpListener;
-    use std::net::SocketAddr;
-    use std::str::FromStr;
-    use tokio::runtime::{Builder, Runtime};
-    use tokio::task;
-
-    async fn client_worker() {
-        let mut connection = TcpConnection::create(SocketAddr::from_str("127.0.0.1:4055").unwrap());
-        connection.connect().await.unwrap();
-    }
-
-    async fn listen_worker() {
-        {
-            let mut listener = TcpListener::create(SocketAddr::from_str("127.0.0.1:4055").unwrap())
-                .await
-                .unwrap();
-            let _connection = listener.accept().await.unwrap();
-        }
-    }
-    // #[test] Breaking in CI, likely due to contention with other instances binding the port
-    pub fn connect() {
-        let runtime: [Runtime; 2] = [
-            Builder::new_multi_thread()
-                .worker_threads(4)
-                .thread_name("ockam-tcp")
-                .thread_stack_size(3 * 1024 * 1024)
-                .enable_io()
-                .build()
-                .unwrap(),
-            Builder::new_current_thread().enable_io().build().unwrap(),
-        ];
-
-        for rt in runtime.iter() {
-            rt.block_on(async {
-                let j1 = task::spawn(async {
-                    let f = listen_worker();
-                    f.await;
-                });
-
-                let j2 = task::spawn(async {
-                    let f = client_worker();
-                    f.await;
-                });
-                let (r1, r2) = tokio::join!(j1, j2);
-                if r1.is_err() {
-                    panic!();
-                }
-                if r2.is_err() {
-                    panic!();
-                }
-            })
-        }
+        ctx.stop_worker(ctx.address()).await
     }
 }
