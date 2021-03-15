@@ -14,6 +14,8 @@ pub struct TcpListenWorker {
 impl TcpListenWorker {
     pub(crate) async fn start(ctx: &Context, addr: SocketAddr, run: ArcBool) -> Result<()> {
         let waddr = format!("{}_listener", addr);
+
+        debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr).await.unwrap();
         let worker = Self { inner, run };
 
@@ -32,6 +34,8 @@ impl Worker for TcpListenWorker {
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         // FIXME: see ArcBool future note
         while atomic::check(&self.run) {
+            trace!("Waiting for incoming TCP connection...");
+
             // Wait for an incoming connection
             let (stream, peer) = self.inner.accept().await.unwrap();
 

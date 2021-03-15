@@ -46,6 +46,7 @@ impl Worker for TcpRouter {
     type Message = RouterMessage;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        trace!("Registering TCP router for type = 1");
         ctx.register(1, ctx.address()).await?;
         Ok(())
     }
@@ -59,7 +60,7 @@ impl Worker for TcpRouter {
         use RouterMessage::*;
         match msg {
             Route(mut msg) => {
-                debug!("TCP route request: {:?}", msg.onward.next());
+                trace!("TCP route request: {:?}", msg.onward.next());
 
                 // Get the next hop
                 let onward = msg.onward.step().unwrap();
@@ -75,6 +76,7 @@ impl Worker for TcpRouter {
                 ctx.forward_message(msg).await?;
             }
             Register { accepts, self_addr } => {
+                trace!("TCP registration request: {} => {}", accepts, self_addr);
                 self.map.insert(accepts, self_addr);
             }
         };
@@ -91,6 +93,8 @@ impl Worker for TcpRouter {
 
 impl TcpRouter {
     async fn start(ctx: &Context, waddr: &Address, run: Option<ArcBool>) -> Result<()> {
+        debug!("Creating new TcpRouter");
+
         let router = Self {
             map: BTreeMap::new(),
             run: run.unwrap_or_else(|| atomic::new(true)),
@@ -121,7 +125,7 @@ impl TcpRouter {
     ) -> Result<TcpRouterHandle<'c>> {
         let run = atomic::new(true);
         let addr = Address::from(DEFAULT_ADDRESS);
-
+        
         // Bind and start the connection listen worker
         TcpListenWorker::start(ctx, socket_addr.into(), run.clone()).await?;
 

@@ -42,6 +42,8 @@ impl WorkerPair {
             run,
         } = WorkerPair::from_peer(&peer);
 
+        trace!("Creating new worker pair from stream");
+
         // Create two workers based on the split TCP I/O streams
         let (rx, tx) = stream.into_split();
         let sender = TcpSendWorker { tx };
@@ -63,6 +65,8 @@ impl WorkerPair {
     }
 
     async fn start(ctx: &Context, peer: SocketAddr) -> Result<Self> {
+        debug!("Starting worker connection to remote {}", peer);
+
         // TODO: make i/o errors into ockam_error
         let stream = TcpStream::connect(peer.clone()).await.unwrap();
         Self::with_stream(ctx, stream, peer).await
