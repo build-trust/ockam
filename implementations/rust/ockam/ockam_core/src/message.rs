@@ -1,7 +1,7 @@
 use crate::{
     lib::{
         fmt::{self, Debug, Display, Formatter},
-        Deref, Vec,
+        Deref, DerefMut, Vec,
     },
     Address, Result, Route,
 };
@@ -76,6 +76,12 @@ impl<M: Message> Deref for Routed<M> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl<M: Message> DerefMut for Routed<M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
