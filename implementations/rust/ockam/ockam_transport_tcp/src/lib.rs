@@ -9,15 +9,14 @@
 //! key lifecycle, credetial exchange, enrollment, etc, without having
 //! to worry about the transport specifics.
 
-// FIXME: un-comment these when the code is ready
-// #![deny(
-//     // missing_docs,
-//     trivial_casts,
-//     trivial_numeric_casts,
-//     unsafe_code,
-//     unused_import_braces,
-//     unused_qualifications,
-// )]
+#![deny(
+    // missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_import_braces,
+    unused_qualifications,
+)]
 
 #[macro_use]
 extern crate tracing;
