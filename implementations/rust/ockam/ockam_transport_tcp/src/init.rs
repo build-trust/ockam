@@ -7,8 +7,9 @@ use std::net::SocketAddr;
 use tokio::net::TcpStream;
 
 pub struct WorkerPair {
-    tx_addr: Address,
-    rx_addr: Address,
+    pub(crate) peer: SocketAddr,
+    pub(crate) tx_addr: Address,
+    pub(crate) rx_addr: Address,
     run: ArcBool,
 }
 
@@ -23,6 +24,7 @@ impl WorkerPair {
 
     fn from_peer(addr: &SocketAddr) -> Self {
         Self {
+            peer: addr.clone(),
             tx_addr: format!("{}_tx", addr).into(),
             rx_addr: format!("{}_rx", addr).into(),
             run: atomic::new(true),
@@ -37,6 +39,7 @@ impl WorkerPair {
         peer: SocketAddr,
     ) -> Result<Self> {
         let WorkerPair {
+            peer,
             rx_addr,
             tx_addr,
             run,
@@ -50,6 +53,7 @@ impl WorkerPair {
         let receiver = TcpRecvWorker {
             rx,
             run: run.clone(),
+            peer_addr: format!("1#{}", peer).into(),
         };
 
         // Derive local worker addresses, and start them
@@ -58,6 +62,7 @@ impl WorkerPair {
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
+            peer,
             rx_addr,
             tx_addr,
             run,
