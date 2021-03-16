@@ -2,7 +2,7 @@ use crate::{
     atomic::{self, ArcBool},
     TcpError,
 };
-use ockam::{async_worker, Context, Result, TransportMessage, Worker};
+use ockam::{async_worker, Address, Context, Result, TransportMessage, Worker};
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 
 /// A TCP receiving message worker
@@ -16,6 +16,7 @@ use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 pub struct TcpRecvWorker {
     pub(crate) rx: OwnedReadHalf,
     pub(crate) run: ArcBool,
+    pub(crate) peer_addr: Address,
 }
 
 #[async_worker]
@@ -42,6 +43,8 @@ impl Worker for TcpRecvWorker {
             // First read a message length header...
             let len = self.rx.read_u16().await.unwrap();
 
+            trace!("Received message header for {} bytes", len);
+
             // Allocate a buffer of that size
             let mut buf = vec![0; len as usize];
 
@@ -55,14 +58,25 @@ impl Worker for TcpRecvWorker {
             }
 
             // Deserialize the message now
-            let msg: TransportMessage =
+            let mut msg: TransportMessage =
                 serde_bare::from_slice(buf.as_slice()).map_err(|_| TcpError::RecvBadMessage)?;
 
-            // Figure out the next hop in the route
-            let addr = msg.onward.next().unwrap();
+            // Insert the peer address into the return route so that
+            // reply routing can be properly resolved
+            msg.return_.modify().prepend(self.peer_addr.clone());
 
-            // Send the message
-            ctx.send_message(addr.clone(), msg).await?;
+            // Some verbose logging we may want to remove
+            trace!("Message onward route: {}", msg.onward);
+            trace!("Message return route: {}", msg.return_);
+
+            // FIXME: if we need to re-route (i.e. send it to another
+            // domain specific router) the message here, use
+            // send_message, instead of forward_message.
+
+            // Forward the message to the final destination worker,
+            // which consumes the TransportMessage and yields the
+            // final message type
+            ctx.forward_message(msg).await?;
         }
 
         // Stop the worker to not fall into the next read loop

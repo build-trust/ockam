@@ -1,6 +1,7 @@
 use crate::{
     atomic::{self, ArcBool},
     listener::TcpListenWorker,
+    WorkerPair,
 };
 use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
 use std::{collections::BTreeMap, net::SocketAddr};
@@ -30,7 +31,10 @@ pub struct TcpRouterHandle<'c> {
 
 impl<'c> TcpRouterHandle<'c> {
     /// Register a new connection worker with this router
-    pub async fn register(&self, accepts: Address, self_addr: Address) -> Result<()> {
+    pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
+        let accepts = format!("1#{}", pair.peer.clone()).into();
+        let self_addr = pair.tx_addr.clone();
+
         self.ctx
             .send_message(
                 self.addr.clone(),
@@ -70,10 +74,9 @@ impl Worker for TcpRouter {
 
                 // Modify the transport message route
                 msg.onward.modify().prepend(next.clone());
-                msg.return_.modify().prepend(onward);
 
-                // Forward the message to the connection worker
-                ctx.forward_message(msg).await?;
+                // Send the transport message to the connection worker
+                ctx.send_message(next.clone(), msg).await?;
             }
             Register { accepts, self_addr } => {
                 trace!("TCP registration request: {} => {}", accepts, self_addr);
@@ -125,9 +128,9 @@ impl TcpRouter {
     ) -> Result<TcpRouterHandle<'c>> {
         let run = atomic::new(true);
         let addr = Address::from(DEFAULT_ADDRESS);
-        
+
         // Bind and start the connection listen worker
-        TcpListenWorker::start(ctx, socket_addr.into(), run.clone()).await?;
+        TcpListenWorker::start(ctx, addr.clone(), socket_addr.into(), run.clone()).await?;
 
         Self::start(ctx, &addr, Some(run)).await?;
         Ok(TcpRouterHandle { ctx, addr })

@@ -43,8 +43,12 @@ impl Worker for TcpSendWorker {
     async fn handle_message(
         &mut self,
         _: &mut Context,
-        msg: Routed<TransportMessage>,
+        mut msg: Routed<TransportMessage>,
     ) -> Result<()> {
+        // Remove our own address from the route so the other end
+        // knows what to do with the incoming message
+        msg.onward.step();
+
         // Create a message buffer with pre-pended length
         let msg = prepare_message(msg.take())?;
 
