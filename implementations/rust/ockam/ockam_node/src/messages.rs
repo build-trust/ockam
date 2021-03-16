@@ -1,5 +1,5 @@
 use crate::{error::Error, relay::RelayMessage};
-use ockam_core::{Address, AddressSet, Route};
+use ockam_core::{Address, AddressSet};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// Messages sent from the Node to the Executor
@@ -13,8 +13,8 @@ pub enum NodeMessage {
     StopWorker(Address, Sender<NodeReplyResult>),
     /// Stop the node (and all workers)
     StopNode,
-    /// Request the sender for an existing worker
-    SenderReq(Route, Sender<NodeReplyResult>),
+    /// Request the sender for a worker address
+    SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type
     Router(u8, Address, Sender<NodeReplyResult>),
 }
@@ -43,7 +43,7 @@ impl NodeMessage {
     }
 
     /// Create a sender request message and reply receiver
-    pub fn sender_request(route: Route) -> (Self, Receiver<NodeReplyResult>) {
+    pub fn sender_request(route: Address) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
         (Self::SenderReq(route, tx), rx)
     }
