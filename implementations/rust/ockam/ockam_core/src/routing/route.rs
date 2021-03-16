@@ -1,4 +1,10 @@
-use crate::{lib::VecDeque, Address};
+use crate::{
+    lib::{
+        fmt::{self, Display},
+        Vec, VecDeque,
+    },
+    Address,
+};
 use serde::{Deserialize, Serialize};
 
 /// A full route to a peer
@@ -39,6 +45,20 @@ impl Route {
             .back()
             .cloned()
             .expect("Route::recipient failed on invalid Route!")
+    }
+}
+
+impl Display for Route {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.inner
+                .iter()
+                .map(|a| format!("{}", a))
+                .collect::<Vec<_>>()
+                .join(" => ")
+        )
     }
 }
 
