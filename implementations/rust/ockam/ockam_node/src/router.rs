@@ -1,5 +1,5 @@
 use crate::{error::Error, relay::RelayMessage, NodeMessage, NodeReply, NodeReplyResult};
-use ockam_core::{Address, AddressSet, Result, Route};
+use ockam_core::{Address, AddressSet, Result};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -35,10 +35,7 @@ enum RouteType {
     External(u8),
 }
 
-fn determine_type(r: &Route) -> RouteType {
-    // If this fails, the route was empty :(
-    let next = r.next().unwrap();
-
+fn determine_type(next: &Address) -> RouteType {
     if next.tt == 0 {
         RouteType::Internal(next.clone())
     } else {
@@ -101,7 +98,7 @@ impl Router {
                     .map_err(|_| Error::InternalIOFailure)?,
 
                 // Handle route/ sender requests
-                SenderReq(ref route, ref mut reply) => match determine_type(route) {
+                SenderReq(ref addr, ref mut reply) => match determine_type(addr) {
                     RouteType::Internal(ref addr) => self.resolve(addr, reply, false).await?,
                     RouteType::External(tt) => {
                         let addr = self.router_addr(tt)?;

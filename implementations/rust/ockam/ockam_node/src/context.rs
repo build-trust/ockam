@@ -122,7 +122,8 @@ impl Context {
     {
         let route = route.into();
         let (reply_tx, mut reply_rx) = channel(1);
-        let req = NodeMessage::SenderReq(route.clone(), reply_tx);
+        let next = route.next().unwrap(); // TODO: communicate bad routes
+        let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
         self.sender.send(req).await.map_err(|e| Error::from(e))?;
@@ -164,9 +165,9 @@ impl Context {
     /// [`TransportMessage`]: ockam_core::TransportMessage
     pub async fn forward_message(&self, data: TransportMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route
-        let route = data.onward.clone();
         let (reply_tx, mut reply_rx) = channel(1);
-        let req = NodeMessage::SenderReq(route, reply_tx);
+        let next = data.onward.next().unwrap(); // TODO: communicate bad routes
+        let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
         self.sender.send(req).await.map_err(|e| Error::from(e))?;
