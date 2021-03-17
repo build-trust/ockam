@@ -1,134 +1,107 @@
-mod util;
+use std::net::SocketAddr;
 
-use ockam::{CredentialAttribute, CredentialIssuer};
-use std::collections::{BTreeMap, BTreeSet};
-use std::convert::TryFrom;
-use std::io::Write;
-use std::path::PathBuf;
+use ockam::{
+    async_worker, Context, CredentialAttribute, CredentialIssuer, CredentialSchema, OckamError,
+    Result, Routed, Worker,
+};
+use ockam_transport_tcp::TcpRouter;
+
+use credentials::message::CredentialMessage;
+use credentials::message::CredentialMessage::{CredentialOffer, CredentialResponse};
+use credentials::{example_schema, DEFAULT_ISSUER_PORT};
+use std::collections::BTreeMap;
 use structopt::StructOpt;
-use util::{example_schema, CredentialMessage, Listener, Stream};
+
+pub struct Issuer {
+    credential_issuer: CredentialIssuer,
+    schema: CredentialSchema,
+}
+
+#[async_worker]
+impl Worker for Issuer {
+    type Message = CredentialMessage;
+    type Context = Context;
+
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        println!("Issuer listening on {}.", ctx.address());
+        Ok(())
+    }
+
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> ockam::Result<()> {
+        let issuer = &self.credential_issuer;
+
+        let route = msg.reply();
+        let msg = msg.take();
+
+        let public_key = issuer.get_public_key();
+        let proof = issuer.create_proof_of_possession();
+
+        let response = match msg {
+            CredentialMessage::CredentialConnection => {
+                CredentialMessage::CredentialIssuer { public_key, proof }
+            }
+            CredentialMessage::NewCredential => {
+                let offer = issuer.create_offer(&self.schema);
+                CredentialOffer(offer)
+            }
+            CredentialMessage::CredentialRequest(request) => {
+                let mut attributes = BTreeMap::new();
+                attributes.insert(
+                    self.schema.attributes[1].label.clone(),
+                    CredentialAttribute::Numeric(1), // TRUE, the device has access
+                );
+
+                let credential_fragment2 = issuer
+                    .sign_credential_request(&request, &self.schema, &attributes, request.offer_id)
+                    .unwrap();
+
+                CredentialResponse(credential_fragment2)
+            }
+            _ => unimplemented!(),
+        };
+
+        ctx.send_message(route, response).await
+    }
+}
 
 #[derive(StructOpt)]
 struct Args {
-    /// HEX encoded issuer signing key
-    #[structopt(long)]
-    secret_key: Option<String>,
-    #[structopt(long)]
+    #[structopt(long, short = "k")]
+    signing_key: Option<String>,
+
+    #[structopt(long, short)]
     port: Option<usize>,
-    #[structopt(long, parse(from_os_str))]
-    socket: Option<PathBuf>,
 }
 
-fn main() {
-    let args = Args::from_args();
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    let args: Args = Args::from_args();
+    let port = args.port.unwrap_or(DEFAULT_ISSUER_PORT);
 
-    // Create a new issuer.
-    // CredentialIssuer has a credential signature public key.
-    // CredentialIssuer creates a proof of possession
-    // so users can verify it.
-    // These should be posted such that verifiers and
-    // holders can check them
-    let issuer = if args.secret_key.is_none() {
-        CredentialIssuer::new()
+    let local_tcp: SocketAddr = format!("0.0.0.0:{}", port)
+        .parse()
+        .map_err(|_| OckamError::InvalidInternalState)?;
+
+    let _router = TcpRouter::bind(&ctx, local_tcp).await?;
+
+    let credential_issuer = if let Some(signing_key) = args.signing_key {
+        CredentialIssuer::with_signing_key_hex(signing_key).unwrap()
     } else {
-        let sk = <[u8; 32]>::try_from(
-            hex::decode(args.secret_key.as_ref().unwrap())
-                .unwrap()
-                .as_slice(),
-        )
-        .unwrap();
-        CredentialIssuer::with_signing_key(sk)
+        CredentialIssuer::new()
     };
-    let pk = issuer.get_public_key();
-    let pop = issuer.create_proof_of_possession();
+
     let schema = example_schema();
-    let mut pending_offers = BTreeSet::new();
 
-    //TODO: publish public key and proof of possession for verifiers
-    let listener = Listener::bind(args.socket, args.port).unwrap();
-
-    loop {
-        let mut stream = listener.accept();
-
-        loop {
-            let reader = stream.try_clone().unwrap();
-            let res = serde_bare::from_reader::<Stream, CredentialMessage>(reader);
-            if res.is_err() {
-                match res.unwrap_err() {
-                    serde_bare::Error::Io(e) => match e.kind() {
-                        std::io::ErrorKind::UnexpectedEof => {
-                            eprintln!("Client closed connection");
-                            break;
-                        }
-                        _ => {
-                            eprintln!("Unknown message type");
-                            continue;
-                        }
-                    },
-                    _ => {
-                        eprintln!("Unknown message type");
-                        continue;
-                    }
-                }
-            }
-            let m = res.unwrap();
-
-            match m {
-                CredentialMessage::CredentialConnection => {
-                    serde_bare::to_writer(
-                        &mut stream,
-                        &CredentialMessage::CredentialIssuer {
-                            public_key: pk,
-                            proof: pop,
-                        },
-                    )
-                    .unwrap();
-                    stream.flush().unwrap();
-                }
-                CredentialMessage::NewCredential => {
-                    // CredentialIssuer offers holder a credential
-                    let offer = issuer.create_offer(&schema);
-                    pending_offers.insert(offer.id);
-                    serde_bare::to_writer(&mut stream, &CredentialMessage::CredentialOffer(offer))
-                        .unwrap();
-                    stream.flush().unwrap();
-                }
-                CredentialMessage::CredentialRequest(request) => {
-                    if !pending_offers.contains(&request.offer_id) {
-                        eprintln!("Unexpected offer id: {:?}", request.offer_id);
-                        serde_bare::to_writer(
-                            &mut stream,
-                            &CredentialMessage::InvalidCredentialRequest,
-                        )
-                        .unwrap();
-                        stream.flush().unwrap();
-                        continue;
-                    }
-                    // CredentialIssuer processes the credential request
-                    // Issuer knows all of the attributes that were not blinded
-                    // by the holder
-                    let mut attributes = BTreeMap::new();
-                    attributes.insert(
-                        schema.attributes[1].label.clone(),
-                        CredentialAttribute::Numeric(1), // TRUE, the device has access
-                    );
-
-                    // Fragment 2 is a partial signature
-                    let credential_fragment2 = issuer
-                        .sign_credential_request(&request, &schema, &attributes, request.offer_id)
-                        .unwrap();
-                    serde_bare::to_writer(
-                        &mut stream,
-                        &CredentialMessage::CredentialResponse(credential_fragment2),
-                    )
-                    .unwrap();
-                    stream.flush().unwrap();
-                    pending_offers.remove(&request.offer_id);
-                }
-                _ => {
-                    eprintln!("Unhandled message: {:?}", m);
-                }
-            }
-        }
-    }
+    ctx.start_worker(
+        "issuer",
+        Issuer {
+            credential_issuer,
+            schema,
+        },
+    )
+    .await
 }

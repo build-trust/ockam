@@ -1,101 +1,98 @@
-mod util;
-
-use ockam::{CredentialVerifier, PresentationManifest};
-use std::{
-    convert::TryFrom,
-    path::PathBuf,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+use ockam::{
+    async_worker, Context, CredentialVerifier, OckamError, PublicKeyBytes, Result, Route, Routed,
+    Worker,
 };
+
+use credentials::message::CredentialMessage;
+use credentials::{on_or_default, DEFAULT_VERIFIER_PORT};
+use ockam_transport_tcp::{self as tcp, TcpRouter};
+use std::net::SocketAddr;
 use structopt::StructOpt;
-use util::{example_schema, CredentialMessage, Listener, Stream};
+
+struct Verifier {
+    issuer: SocketAddr,
+    issuer_pubkey: Option<PublicKeyBytes>,
+}
+
+#[async_worker]
+impl Worker for Verifier {
+    type Message = CredentialMessage;
+    type Context = Context;
+
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        let issuer = self.issuer;
+
+        println!("Verifier starting. Discovering Issuer");
+
+        // Send a New Credential Connection message
+        ctx.send_message(
+            Route::new()
+                .append(format!("1#{}", issuer))
+                .append("issuer"),
+            CredentialMessage::CredentialConnection,
+        )
+        .await
+    }
+
+    async fn handle_message(
+        &mut self,
+        _context: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let msg = msg.take();
+
+        match msg {
+            CredentialMessage::CredentialIssuer { public_key, proof } => {
+                if CredentialVerifier::verify_proof_of_possession(public_key, proof) {
+                    self.issuer_pubkey = Some(public_key);
+                    println!("Discovered Issuer Pubkey: {}", hex::encode(public_key));
+                    Ok(())
+                } else {
+                    Err(OckamError::InvalidProof.into())
+                }
+            }
+            CredentialMessage::Presentation(_presentation) => {
+                println!("Holder presented credentials.");
+                println!("TODO: Verify!");
+
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+}
 
 #[derive(StructOpt)]
 struct Args {
-    /// HEX encoded issuer signing key
-    #[structopt(long)]
-    issuer_pk: String,
-    #[structopt(long)]
+    #[structopt(long, short = "i")]
+    issuer: Option<String>,
+
+    #[structopt(long, short)]
     port: Option<usize>,
-    #[structopt(long, parse(from_os_str))]
-    socket: Option<PathBuf>,
 }
 
-fn main() {
-    let args = Args::from_args();
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    let args: Args = Args::from_args();
+    let port = args.port.unwrap_or(DEFAULT_VERIFIER_PORT);
 
-    // TODO: retrieve public key from published location
-    // Placeholder for now
-    let pk = <[u8; 96]>::try_from(hex::decode(args.issuer_pk).unwrap()).unwrap();
+    let local_tcp: SocketAddr = format!("0.0.0.0:{}", port)
+        .parse()
+        .map_err(|_| OckamError::InvalidInternalState)?;
 
-    // Use credential to prove to service
-    // The manifest is common to everyone so it can be
-    // hardcoded. The manifest only asks for the presenter
-    // to prove they have a credential signed by a trusted authority
-    // and they can_access is set to true
-    let presentation_manifest = PresentationManifest {
-        credential_schema: example_schema(), // only accept credentials that match this schema
-        public_key: pk,                      // only accept credentials issued by this authority
-        revealed: vec![1],                   // location is required to be revealed
-    };
+    let router = TcpRouter::bind(&ctx, local_tcp).await?;
 
-    let listener = Listener::bind(args.socket, args.port).unwrap();
+    let issuer = on_or_default(args.issuer);
+    let pair = tcp::start_tcp_worker(&ctx, issuer).await?;
 
-    loop {
-        let stream = listener.accept();
+    router.register(&pair).await?;
 
-        loop {
-            let reader = stream.try_clone().unwrap();
-            let res = serde_bare::from_reader::<Stream, CredentialMessage>(reader);
-            if res.is_err() {
-                match res.unwrap_err() {
-                    serde_bare::Error::Io(e) => match e.kind() {
-                        std::io::ErrorKind::UnexpectedEof => {
-                            eprintln!("Client closed connection");
-                            break;
-                        }
-                        _ => {
-                            eprintln!("Unknown message type");
-                            continue;
-                        }
-                    },
-                    _ => {
-                        eprintln!("Unknown message type");
-                        continue;
-                    }
-                }
-            }
-            let m = res.unwrap();
-
-            match m {
-                CredentialMessage::Presentation(presentations) => {
-                    // 1-pass protocol checks the timestamp if its been seen before and fresh enough
-                    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-                    let timestamp = u64::from_be_bytes(
-                        <[u8; 8]>::try_from(&presentations[0].presentation_id[24..]).unwrap(),
-                    );
-                    let valid_timestamp = match now.checked_sub(Duration::from_millis(timestamp)) {
-                        None => false,
-                        Some(d) => d.as_secs() < 60,
-                    };
-
-                    if valid_timestamp {
-                        // TODO: save for another minute to prevent replay
-
-                        // CredentialHolder sends the presentation to the service
-                        // who can verify it
-                        assert!(CredentialVerifier::verify_credential_presentations(
-                            presentations.as_slice(),
-                            &[presentation_manifest.clone()],
-                            presentations[0].presentation_id
-                        )
-                        .is_ok());
-                        // TODO: Send message back for success or failure
-                    }
-                }
-                _ => {
-                    eprintln!("Unhandled message: {:?}", m);
-                }
-            }
-        }
-    }
+    ctx.start_worker(
+        "verifier",
+        Verifier {
+            issuer,
+            issuer_pubkey: None,
+        },
+    )
+    .await
 }

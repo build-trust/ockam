@@ -2,6 +2,7 @@ use super::*;
 use bbs::prelude::{
     DeterministicPublicKey, Issuer as BbsIssuer, KeyGenOption, ProofNonce, RandomElem, SecretKey,
 };
+use core::convert::TryFrom;
 use ockam_core::lib::*;
 use pairing_plus::{
     bls12_381::{Fr, G1},
@@ -19,6 +20,18 @@ pub struct CredentialIssuer {
     signing_key: SecretKey,
 }
 
+/// Alias for an array of 32 bytes.
+pub type SigningKeyBytes = [u8; 32];
+
+/// Alias for an array of 96 bytes.
+pub type PublicKeyBytes = [u8; 96];
+
+/// Alias for an array of 48 bytes.
+pub type ProofBytes = [u8; 48];
+
+/// Alias for an array of 32 bytes.
+pub type OfferIdBytes = [u8; 32];
+
 impl CredentialIssuer {
     /// Create issuer with a new issuing key
     pub fn new() -> Self {
@@ -28,12 +41,12 @@ impl CredentialIssuer {
     }
 
     /// Return the signing key associated with this CredentialIssuer
-    pub fn get_signing_key(&self) -> [u8; 32] {
+    pub fn get_signing_key(&self) -> SigningKeyBytes {
         self.signing_key.to_bytes_compressed_form()
     }
 
     /// Return the public key
-    pub fn get_public_key(&self) -> [u8; 96] {
+    pub fn get_public_key(&self) -> PublicKeyBytes {
         let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
             self.signing_key.clone(),
         )));
@@ -41,9 +54,22 @@ impl CredentialIssuer {
     }
 
     /// Initialize an issuer with an already generated key
-    pub fn with_signing_key(signing_key: [u8; 32]) -> Self {
+    pub fn with_signing_key(signing_key: SigningKeyBytes) -> Self {
         let signing_key = SecretKey::from(signing_key);
         Self { signing_key }
+    }
+
+    /// Initialize an issuer with a hex encoded, already generated key
+    pub fn with_signing_key_hex(signing_key_hex: String) -> Option<Self> {
+        if let Ok(key) = ockam_core::hex::decode(signing_key_hex) {
+            if let Ok(key) = <SigningKeyBytes>::try_from(key.as_slice()) {
+                Some(CredentialIssuer::with_signing_key(key))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     /// Create a credential offer
@@ -56,7 +82,7 @@ impl CredentialIssuer {
     }
 
     /// Create a proof of possession for this issuers signing key
-    pub fn create_proof_of_possession(&self) -> [u8; 48] {
+    pub fn create_proof_of_possession(&self) -> ProofBytes {
         let mut p = <G1 as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
             &self.get_public_key(),
             CSUITE_POP,
@@ -117,7 +143,7 @@ impl CredentialIssuer {
         ctx: &CredentialRequest,
         schema: &CredentialSchema,
         attributes: &BTreeMap<String, CredentialAttribute>,
-        offer_id: [u8; 32],
+        offer_id: OfferIdBytes,
     ) -> Result<CredentialFragment2, CredentialError> {
         if attributes.len() >= schema.attributes.len() {
             return Err(CredentialError::MismatchedAttributesAndClaims);

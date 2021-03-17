@@ -24,7 +24,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// A message addressed to a relay
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct RelayMessage {
     addr: Address,
     data: RelayPayload,
@@ -63,7 +63,7 @@ impl RelayMessage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RelayPayload {
     Direct(TransportMessage),
     PreRouter(Vec<u8>, Route),
@@ -163,7 +163,10 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
     async fn run_mailbox(mut rx: Receiver<RelayMessage>, mb_tx: Sender<RelayMessage>) {
         // Relay messages into the worker mailbox
         while let Some(enc) = rx.recv().await {
-            mb_tx.send(enc).await.unwrap();
+            match mb_tx.send(enc.clone()).await {
+                Ok(x) => x,
+                Err(_) => panic!("Failed to route message to address '{}'", enc.addr),
+            };
         }
     }
 }
