@@ -4,6 +4,7 @@ defmodule Ockam.Transport.UDP.Listener do
   use Ockam.Worker
 
   alias Ockam.Message
+  alias Ockam.Telemetry
   alias Ockam.Transport.UDPAddress
   alias Ockam.Wire
 
@@ -58,22 +59,28 @@ defmodule Ockam.Transport.UDP.Listener do
   end
 
   defp decode_and_send_to_router(udp_message, _state) do
+    {function_name, _} = __ENV__.function
     {:udp, _socket, _from_ip, _from_port, packet} = udp_message
 
     with {:ok, decoded} <- Wire.decode(@wire_encoder_decoder, packet),
          :ok <- Router.route(decoded) do
-      :ok
+      Telemetry.emit_event(function_name, metadata: %{name: "successfully_decoded"})
+    else
+      {:error, reason} -> {:error, Telemetry.emit_event(function_name, metadata: %{name: reason})}
     end
   end
 
   defp encode_and_send_over_udp(message, %{socket: socket, udp_address: address}) do
     message = create_outgoing_message(message)
+    {function_name, _} = __ENV__.function
 
     with {:ok, destination, message} <- pick_destination_and_set_onward_route(message, address),
          {:ok, message} <- set_return_route(message, address),
          {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, message),
          :ok <- :gen_udp.send(socket, destination.ip, destination.port, encoded_message) do
-      :ok
+      Telemetry.emit_event(function_name, metadata: %{name: "successfully_encoded_and_sent"})
+    else
+      {:error, reason} -> {:error, Telemetry.emit_event(function_name, metadata: %{name: reason})}
     end
   end
 
