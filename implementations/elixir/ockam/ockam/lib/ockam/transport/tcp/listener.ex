@@ -131,6 +131,7 @@ if Code.ensure_loaded?(:ranch) do
     use GenServer
 
     alias Ockam.Message
+    alias Ockam.Telemetry
 
     require Logger
 
@@ -150,6 +151,9 @@ if Code.ensure_loaded?(:ranch) do
 
       Ockam.Node.Registry.register_name(address, self())
 
+      {function_name, _} = __ENV__.function
+      Telemetry.emit_event(function_name)
+
       :gen_server.enter_loop(
         __MODULE__,
         [],
@@ -164,12 +168,20 @@ if Code.ensure_loaded?(:ranch) do
 
     @impl true
     def handle_info({:tcp, socket, data}, %{socket: socket, address: address} = state) do
+      {function_name, _} = __ENV__.function
+
       with {:ok, decoded} <- Ockam.Wire.decode(@wire_encoder_decoder, data),
            {:ok, decoded} <- set_return_route(decoded, address) do
         send_to_router(decoded)
+        Telemetry.emit_event(function_name, metadata: %{name: "decoded_data"})
       else
-        {:error, %Ockam.Wire.DecodeError{} = e} -> raise e
-        e -> raise e
+        {:error, %Ockam.Wire.DecodeError{} = e} ->
+          start_time = Telemetry.emit_start_event(function_name)
+          Telemetry.emit_exception_event(function_name, start_time, e)
+          raise e
+
+        e ->
+          raise e
       end
 
       {:noreply, state}
@@ -177,6 +189,8 @@ if Code.ensure_loaded?(:ranch) do
 
     def handle_info({:tcp_closed, socket}, %{socket: socket, transport: transport} = state) do
       transport.close(socket)
+      {function_name, _} = __ENV__.function
+      Telemetry.emit_event(function_name, metadata: %{name: "transport_close"})
       {:stop, :normal, state}
     end
 
