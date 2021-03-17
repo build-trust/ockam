@@ -2,6 +2,8 @@ defmodule Ockam.Transport.TCP.Client do
   @moduledoc false
   use GenServer
 
+  @wire_encoder_decoder Ockam.Wire.Binary.V2
+
   @impl true
   def init(%{ip: ip, port: port} = state) do
     # TODO: connect/3 and controlling_process/2 should be in a callback.
@@ -18,14 +20,22 @@ defmodule Ockam.Transport.TCP.Client do
 
   @impl true
   def handle_info(:connect, %{ip: ip, port: port} = state) do
-    {:ok, socket} = :gen_tcp.connect(ip, port, [:binary, :inet, {:active, true}, {:packet, 2}])
-    :inet.setopts(socket, [{:packet, 2}])
+    {:ok, socket} = :gen_tcp.connect(ip, port, [:binary, :inet, {:packet, 2}])
+    :inet.setopts(socket, [{:active, true}, {:packet, 2}])
     :gen_tcp.controlling_process(socket, self())
 
     {:noreply, Map.put(state, :socket, socket)}
   end
 
-  def handle_info({:tcp, _socket, _data}, state) do
+  def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
+    ## TODO: add return address with registered client
+
+    case Ockam.Wire.decode(@wire_encoder_decoder, data) do
+      {:ok, message} -> Ockam.Router.route(message)
+      {:error, %Ockam.Wire.DecodeError{} = e} -> raise e
+      e -> raise e
+    end
+
     {:noreply, state}
   end
 

@@ -9,6 +9,8 @@ if Code.ensure_loaded?(:ranch) do
     alias Ockam.Transport.TCPAddress
     alias Ockam.Wire
 
+    require Logger
+
     @tcp 1
     # TODO: modify this for tcp
     @wire_encoder_decoder Ockam.Wire.Binary.V2
@@ -131,7 +133,11 @@ if Code.ensure_loaded?(:ranch) do
     @moduledoc false
 
     use GenServer
+
     alias Ockam.Message
+    alias Ockam.Transport.TCPAddress
+
+    require Logger
 
     @wire_encoder_decoder Ockam.Wire.Binary.V2
 
@@ -183,14 +189,24 @@ if Code.ensure_loaded?(:ranch) do
           %{payload: _payload} = message,
           %{transport: transport, socket: socket, address: address} = state
         ) do
+      {:ok, {ip, port}} = transport.sockname(socket)
+      return_address = %TCPAddress{ip: ip, port: port}
+
       with {:ok, message} <- set_onward_route(message, address),
+           {:ok, message} <- set_return_route(message, return_address),
            {:ok, encoded} <- Ockam.Wire.encode(@wire_encoder_decoder, message) do
         transport.send(socket, encoded)
       else
         a ->
+          Logger.error("TCP transport send error #{inspect(a)}")
           raise a
       end
 
+      {:noreply, state}
+    end
+
+    def handle_info(other, state) do
+      Logger.warn("TCP HANDLER Received unkown message #{inspect(other)} #{inspect(state)}")
       {:noreply, state}
     end
 
