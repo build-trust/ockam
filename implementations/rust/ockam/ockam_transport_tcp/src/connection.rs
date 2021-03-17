@@ -246,11 +246,7 @@ impl TcpConnection {
     }
 
     pub fn get_router_address(&self) -> RouterAddress {
-        let v = serde_bare::to_vec::<SocketAddr>(&self.remote_address).unwrap();
-        RouterAddress {
-            address_type: 1,
-            address: v,
-        }
+        self.get_remote_address()
     }
 
     pub fn get_remote_socket(&self) -> SocketAddr {
