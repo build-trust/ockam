@@ -45,7 +45,7 @@ impl KeyExchanger for Responder {
                 self.state = ResponderState::Done;
                 Ok(msg)
             }
-            ResponderState::Done => Ok(vec![]),
+            ResponderState::Done => Err(XXError::InvalidState.into()),
         }
     }
 
