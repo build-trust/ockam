@@ -45,7 +45,7 @@ impl KeyExchanger for Initiator {
                 self.state = InitiatorState::Done;
                 Ok(msg)
             }
-            InitiatorState::Done => Ok(vec![]),
+            InitiatorState::Done => Err(XXError::InvalidState.into()),
         }
     }
 
