@@ -79,6 +79,21 @@ defmodule Ockam.Node do
   end
 
   @doc false
+  def stop(pid) when is_pid(pid) do
+    DynamicSupervisor.terminate_child(@processes_supervisor, pid)
+  end
+
+  def stop(address) do
+    case Registry.whereis_name(address) do
+      pid when is_pid(pid) ->
+        stop(pid)
+
+      _other ->
+        :ok
+    end
+  end
+
+  @doc false
   @impl true
   def init(nil) do
     with :ok <- Router.set_message_handler(:default, &handle_routed_message/1),

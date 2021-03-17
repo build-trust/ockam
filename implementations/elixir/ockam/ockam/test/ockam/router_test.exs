@@ -56,7 +56,7 @@ defmodule Ockam.Router.Tests.Forwarder do
       [^address | rest] ->
         forward = %{
           onward_route: rest,
-          return_route: [address],
+          return_route: [address | Message.return_route(message)],
           payload: Message.payload(message)
         }
 
@@ -69,8 +69,10 @@ defmodule Ockam.Router.Tests.Forwarder do
 end
 
 defmodule Ockam.Router.Tests do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   doctest Ockam.Router
+
+  require Logger
 
   alias Ockam.Router.Tests.Echo
   alias Ockam.Router.Tests.Forwarder
@@ -80,13 +82,20 @@ defmodule Ockam.Router.Tests do
   alias Ockam.Transport.UDP
   alias Ockam.Transport.UDPAddress
 
-  setup_all do
+  setup do
     {:ok, "printer"} = Printer.create(address: "printer")
     {:ok, "echo"} = Echo.create(address: "echo")
     {:ok, "client_forwarder"} = Forwarder.create(address: "client_forwarder")
     printer_pid = Ockam.Node.whereis("printer")
     echo_pid = Ockam.Node.whereis("echo")
     forwarder_pid = Ockam.Node.whereis("client_forwarder")
+
+    on_exit(fn ->
+      Ockam.Node.stop("printer")
+      Ockam.Node.stop("echo")
+      Ockam.Node.stop("client_forwarder")
+    end)
+
     [printer_pid: printer_pid, echo_pid: echo_pid, forwarder_pid: forwarder_pid]
   end
 
@@ -163,9 +172,9 @@ defmodule Ockam.Router.Tests do
       :erlang.trace(echo, true, [:receive])
       :erlang.trace(client_forwarder, true, [:receive])
 
-      assert {:ok, _address_a} = TCP.create_listener(port: 6000, route_outgoing: true)
+      assert {:ok, listener_address_a} = TCP.create_listener(port: 6000, route_outgoing: true)
 
-      assert {:ok, _address_b} = TCP.create_listener(port: 5000)
+      assert {:ok, listener_address_b} = TCP.create_listener(port: 5000)
 
       Ockam.Router.route(request)
 
@@ -193,13 +202,13 @@ defmodule Ockam.Router.Tests do
            onward_route: [
              "echo"
            ],
-           return_route: [registered_tcp_thing, "client_forwarder"],
+           return_route: [registered_server_tcp, "client_forwarder"],
            payload: _
          }},
         1_000
       )
 
-      tcp_pid = Ockam.Node.whereis(registered_tcp_thing)
+      tcp_pid = Ockam.Node.whereis(registered_server_tcp)
 
       assert is_pid(tcp_pid)
 
@@ -209,7 +218,7 @@ defmodule Ockam.Router.Tests do
       assert_receive(
         {:trace, ^tcp_pid, :receive,
          %{
-           onward_route: [^registered_tcp_thing, "client_forwarder"],
+           onward_route: [^registered_server_tcp, "client_forwarder"],
            return_route: ["echo"]
          }},
         1_000
@@ -222,7 +231,124 @@ defmodule Ockam.Router.Tests do
           :receive,
           %{
             onward_route: ["client_forwarder"],
-            return_route: [%TCPAddress{ip: {127, 0, 0, 1}, port: 5000}, "echo"]
+            return_route: [registered_client_tcp, "echo"]
+          }
+        },
+        1_000
+      )
+
+      client_tcp_pid = Ockam.Node.whereis(registered_client_tcp)
+
+      assert is_pid(client_tcp_pid)
+    end
+
+    test "TCP ping pong test", %{echo_pid: echo, forwarder_pid: client_forwarder} do
+      # client
+      request = %{
+        onward_route: [
+          "client_forwarder",
+          %TCPAddress{ip: {127, 0, 0, 1}, port: 5001},
+          "echo"
+        ],
+        return_route: ["echo"],
+        payload: "hello"
+      }
+
+      :erlang.trace(echo, true, [:receive])
+      :erlang.trace(client_forwarder, true, [:receive])
+
+      assert {:ok, listener_address_a} = TCP.create_listener(port: 6001, route_outgoing: true)
+
+      assert {:ok, listener_address_b} = TCP.create_listener(port: 5001)
+
+      Ockam.Router.route(request)
+
+      assert_receive(
+        {
+          :trace,
+          ^client_forwarder,
+          :receive,
+          %{
+            onward_route: [
+              "client_forwarder",
+              %TCPAddress{ip: {127, 0, 0, 1}, port: 5001},
+              "echo"
+            ],
+            return_route: ["echo"]
+          }
+        },
+        1_000
+      )
+
+      # tcp sends to echo on hub
+      assert_receive(
+        {:trace, ^echo, :receive,
+         %{
+           onward_route: [
+             "echo"
+           ],
+           return_route: [registered_server_tcp, "client_forwarder", "echo"],
+           payload: _
+         }},
+        1_000
+      )
+
+      tcp_pid = Ockam.Node.whereis(registered_server_tcp)
+
+      assert is_pid(tcp_pid)
+
+      :erlang.trace(tcp_pid, true, [:receive])
+
+      # echo service response
+      assert_receive(
+        {:trace, ^tcp_pid, :receive,
+         %{
+           onward_route: [^registered_server_tcp, "client_forwarder", "echo"],
+           return_route: ["echo"]
+         }},
+        1_000
+      )
+
+      assert_receive(
+        {
+          :trace,
+          ^client_forwarder,
+          :receive,
+          %{
+            onward_route: ["client_forwarder", "echo"],
+            return_route: [registered_client_tcp, "echo"]
+          }
+        },
+        1_000
+      )
+
+      client_tcp_pid = Ockam.Node.whereis(registered_client_tcp)
+
+      assert is_pid(client_tcp_pid)
+
+      :erlang.trace(client_tcp_pid, true, [:receive])
+
+      assert_receive(
+        {
+          :trace,
+          ^client_tcp_pid,
+          :receive,
+          %{
+            onward_route: [^registered_client_tcp, "echo"],
+            return_route: ["client_forwarder", "echo"]
+          }
+        },
+        1_000
+      )
+
+      assert_receive(
+        {
+          :trace,
+          ^echo,
+          :receive,
+          %{
+            onward_route: ["echo"],
+            return_route: [^registered_server_tcp, "client_forwarder", "echo"]
           }
         },
         1_000
