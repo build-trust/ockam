@@ -15,8 +15,8 @@ ockam_transport_tcp = {path = "../../ockam/ockam_transport_tcp", version = "*"}
 ockam_channel = {path = "../../ockam/ockam_channel", version = "*"}
 ockam_key_exchange_xx = {path = "../../ockam/ockam_key_exchange_xx", version = "*"}
 ockam_key_exchange_core = {path = "../../ockam/ockam_key_exchange_core", version = "*"}
-ockam_vault_core = { version = "0.2.0", path = "../../ockam/ockam_vault_core" }
-ockam_vault = { version = "0.2.0", path = "../../ockam/ockam_vault" }
+ockam_vault_core = { version = "0.3.0", path = "../../ockam/ockam_vault_core" }
+ockam_vault = { version = "0.3.0", path = "../../ockam/ockam_vault" }
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}
 async-trait =  { version = "0.1.42" }
