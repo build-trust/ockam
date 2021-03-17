@@ -49,7 +49,7 @@ defmodule Ockam.Node.Web.MixProject do
       {:plug, "~> 1.11"},
       {:plug_cowboy, "~> 2.4"},
       {:jason, "~> 1.2"},
-      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.24.0", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
     ]
