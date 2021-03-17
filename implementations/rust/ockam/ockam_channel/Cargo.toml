@@ -18,11 +18,11 @@ serde_bare = "0.3.0"
 rand = "0.7"
 ockam_key_exchange_xx = {path = "../ockam_key_exchange_xx", version = "*"}
 ockam_key_exchange_core = {path = "../ockam_key_exchange_core", version = "*"}
-ockam_vault_core = { version = "0.2.0", path = "../ockam_vault_core" }
+ockam_vault_core = { version = "0.3.0", path = "../ockam_vault_core" }
+ockam_vault = { version = "0.3.0", path = "../ockam_vault" }
 async-trait = "0.1.42"
 serde = {version = "1.0.120", features = ["derive"]}
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}
-ockam_vault = { version = "0.2.0", path = "../ockam_vault" }
 

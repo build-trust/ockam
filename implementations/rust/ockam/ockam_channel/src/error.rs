@@ -3,6 +3,7 @@ use ockam_core::Error;
 pub enum ChannelError {
     None,
     KeyExchange,
+    InvalidInternalState,
 }
 
 impl ChannelError {
