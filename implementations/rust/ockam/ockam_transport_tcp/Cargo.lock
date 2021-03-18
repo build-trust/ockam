@@ -844,7 +844,7 @@ checksum = "a9a7ab5d64814df0fe4a4b5ead45ed6c5f181ee3ff04ba344313a6c80446c5d4"
 
 [[package]]
 name = "ockam"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "arrayref",
  "bbs",
@@ -898,7 +898,6 @@ dependencies = [
  "futures",
  "hashbrown 0.9.1",
  "ockam",
- "ockam_vault",
  "rand 0.7.3",
  "serde",
  "serde_bare",
