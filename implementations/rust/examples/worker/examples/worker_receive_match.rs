@@ -39,6 +39,5 @@ async fn main(mut ctx: Context) -> Result<()> {
     let reply = ctx.receive_match::<Number, _>(|msg| msg == &num).await?;
     info!("Received correct reply: {:?}", reply);
 
-
     ctx.stop().await
 }
