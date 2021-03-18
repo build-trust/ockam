@@ -135,7 +135,6 @@ if Code.ensure_loaded?(:ranch) do
     use GenServer
 
     alias Ockam.Message
-    alias Ockam.Transport.TCPAddress
 
     require Logger
 
@@ -189,11 +188,7 @@ if Code.ensure_loaded?(:ranch) do
           %{payload: _payload} = message,
           %{transport: transport, socket: socket, address: address} = state
         ) do
-      {:ok, {ip, port}} = transport.sockname(socket)
-      return_address = %TCPAddress{ip: ip, port: port}
-
       with {:ok, message} <- set_onward_route(message, address),
-           {:ok, message} <- set_return_route(message, return_address),
            {:ok, encoded} <- Ockam.Wire.encode(@wire_encoder_decoder, message) do
         transport.send(socket, encoded)
       else

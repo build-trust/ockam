@@ -2,6 +2,9 @@ defmodule Ockam.Transport.TCP.Client do
   @moduledoc false
   use GenServer
 
+  alias Ockam.Message
+  alias Ockam.Transport.TCPAddress
+
   @wire_encoder_decoder Ockam.Wire.Binary.V2
 
   @impl true
@@ -28,10 +31,10 @@ defmodule Ockam.Transport.TCP.Client do
   end
 
   def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
-    ## TODO: add return address with registered client
-
-    case Ockam.Wire.decode(@wire_encoder_decoder, data) do
-      {:ok, message} -> Ockam.Router.route(message)
+    with {:ok, message} <- Ockam.Wire.decode(@wire_encoder_decoder, data),
+         {:ok, message} <- update_return_route(message, state) do
+      Ockam.Router.route(message)
+    else
       {:error, %Ockam.Wire.DecodeError{} = e} -> raise e
       e -> raise e
     end
@@ -50,5 +53,10 @@ defmodule Ockam.Transport.TCP.Client do
   @spec send(atom | pid | {atom, any} | {:via, atom, any}, any) :: any
   def send(pid, data) do
     GenServer.call(pid, {:send, data})
+  end
+
+  defp update_return_route(message, %{ip: ip, port: port}) do
+    return_route = Message.return_route(message)
+    {:ok, Map.put(message, :return_route, [%TCPAddress{ip: ip, port: port} | return_route])}
   end
 end
