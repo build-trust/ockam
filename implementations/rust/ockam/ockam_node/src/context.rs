@@ -189,18 +189,33 @@ impl Context {
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
     pub async fn receive<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
-        self.mailbox
-            .next()
-            .await
-            .and_then(|relay_msg| {
-                let (addr, data) = relay_msg.transport();
+        let (msg, data, addr) = self.next_from_mailbox().await?;
+        Ok(Cancel::new(msg, data, addr, self))
+    }
 
-                M::decode(&data.payload)
-                    .ok()
-                    .map(move |msg| (msg, data, addr))
-            })
-            .map(move |(msg, data, addr)| Cancel::new(msg, data, addr, self))
-            .ok_or_else(|| Error::FailedLoadData.into())
+    /// Block the current worker to wait for a message satisfying a conditional
+    ///
+    /// Will return `Err` if the corresponding worker has been
+    /// stopped, or the underlying node has shut down.
+    ///
+    /// Internally this function calls `receive` and `.cancel()` in a
+    /// loop until a matching message is found.
+    pub async fn receive_match<'ctx, M, F>(&'ctx mut self, check: F) -> Result<Cancel<'ctx, M>>
+    where
+        M: Message,
+        F: Fn(&M) -> bool,
+    {
+        while let Ok((m, data, addr)) = self.next_from_mailbox().await {
+            if check(&m) {
+                // Return a Cancel if the check succeeded
+                return Ok(Cancel::new(m, data, addr, self));
+            } else {
+                // Requeue the message into the mailbox if it didn't
+                self.mailbox.requeue(RelayMessage::direct(addr, data)).await;
+            }
+        }
+
+        Err(Error::FailedLoadData.into())
     }
 
     /// Return a list of all available worker addresses on a node
@@ -226,5 +241,24 @@ impl Context {
             .map_err(|_| Error::InternalIOFailure)?;
 
         Ok(rx.recv().await.ok_or(Error::InternalIOFailure)??.is_ok()?)
+    }
+
+    /// A convenience function to get a data 3-tuple from the mailbox
+    ///
+    /// The reason this function doesn't construct a `Cancel<_, M>` is
+    /// to avoid the lifetime collision between the mutation on `self` and the ref to `Context`
+    /// passed to `Cancel::new(..)`
+    async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, TransportMessage, Address)> {
+        self.mailbox
+            .next()
+            .await
+            .and_then(|relay_msg| {
+                let (addr, data) = relay_msg.transport();
+
+                M::decode(&data.payload)
+                    .ok()
+                    .map(move |msg| (msg, data, addr))
+            })
+            .ok_or_else(|| Error::FailedLoadData.into())
     }
 }
