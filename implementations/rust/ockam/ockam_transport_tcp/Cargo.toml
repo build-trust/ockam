@@ -34,4 +34,3 @@ tracing = "0.1"
 
 [dev-dependencies]
 trybuild = {version = "1.0.38", features = ["diff"]}
-ockam_vault = { version = "0", path = "../ockam_vault" }
