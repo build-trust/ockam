@@ -63,15 +63,16 @@ if Code.ensure_loaded?(:ranch) do
 
     @impl true
     def handle_message(message, %{address: address} = state) do
-      with {:ok, destination, onward_route} <- get_destination_and_onward_route(message, address) do
-        ## Remove tcp address from onward route
-        message_to_forward =
-          create_outgoing_message(message) |> Map.put(:onward_route, onward_route)
+      case get_destination_and_onward_route(message, address) do
+        {:ok, destination, onward_route} ->
+          ## Remove tcp address from onward route
+          message_to_forward =
+            Map.put(create_outgoing_message(message), :onward_route, onward_route)
 
-        ## TODO: do we want to pass a configured address?
-        {:ok, client_address} = Client.create(destination: destination)
-        Ockam.Node.send(client_address, message_to_forward)
-      else
+          ## TODO: do we want to pass a configured address?
+          {:ok, client_address} = Client.create(destination: destination)
+          Ockam.Node.send(client_address, message_to_forward)
+
         e ->
           Logger.error(
             "Cannot forward message to tcp client: #{inspect(message)} reason: #{inspect(e)}"

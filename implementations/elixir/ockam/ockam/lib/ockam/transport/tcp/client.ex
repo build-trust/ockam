@@ -3,7 +3,6 @@ defmodule Ockam.Transport.TCP.Client do
   use Ockam.Worker
 
   alias Ockam.Message
-  alias Ockam.Transport.TCPAddress
   alias Ockam.Wire
 
   require Logger
