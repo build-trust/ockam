@@ -36,7 +36,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.send_message(
         Route::new()
             .append(format!("1#{}", peer_addr))
-            .append("simple.responder"),
+            .append("echo_service"),
         String::from("Hello you over there!"),
     )
     .await?;
