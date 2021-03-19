@@ -49,7 +49,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _r = TcpRouter::bind(&ctx, bind_addr).await?;
 
     // Create the responder worker
-    ctx.start_worker("simple.responder", Responder).await?;
+    ctx.start_worker("echo_service", Responder).await?;
 
     // The server never shuts down
     Ok(())
