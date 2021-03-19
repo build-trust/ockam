@@ -8,6 +8,7 @@ edition = "2018"
 ockam = { path = "../ockam", version = "0" }
 ockam_core = { path = "../ockam_core", version = "0" }
 ockam_node = { path = "../ockam_node", version = "0" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "0" }
 chrono = { version = "0", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_bare = "0"
