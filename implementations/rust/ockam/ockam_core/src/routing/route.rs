@@ -1,7 +1,7 @@
 use crate::{
     lib::{
         fmt::{self, Display},
-        Vec, VecDeque,
+        String, Vec, VecDeque,
     },
     Address,
 };
@@ -96,6 +96,13 @@ impl RouteBuilder<'_> {
     /// Push a new item to the back of the route
     pub fn append<A: Into<Address>>(mut self, addr: A) -> Self {
         self.inner.push_back(addr.into());
+        self
+    }
+
+    /// Push an item with an explicit type to the back of the route
+    pub fn append_t<A: Into<String>>(mut self, t: u8, addr: A) -> Self {
+        self.inner
+            .push_back(format!("{}#{}", t, addr.into()).into());
         self
     }
 
