@@ -854,7 +854,7 @@ checksum = "a9a7ab5d64814df0fe4a4b5ead45ed6c5f181ee3ff04ba344313a6c80446c5d4"
 
 [[package]]
 name = "ockam"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "arrayref",
  "bbs",
@@ -919,7 +919,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -936,7 +936,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "cfg-if",
  "ockam_core",
