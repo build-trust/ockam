@@ -71,19 +71,27 @@ defmodule Ockam.Wire do
   @spec decode(decoder :: atom, encoded :: binary) ::
           {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
 
+  def decode!(decoder, encoded) do
+    case decode(decoder, encoded) do
+      {:ok, message} -> {:ok, message}
+      {:error, reason} -> raise reason
+    end
+  end
+
   def decode(decoder \\ nil, encoded)
 
   def decode(nil, encoded) when is_binary(encoded) do
     case default_implementation() do
       nil -> {:error, DecodeError.new(:decoder_is_nil_and_no_default_decoder)}
-      decoder -> decode(decoder, encoded)
+      decoder -> decode!(decoder, encoded)
     end
   end
 
   def decode(decoder, encoded) when is_atom(decoder) and is_binary(encoded) do
     with :ok <- ensure_loaded(:decoder, decoder),
-         :ok <- ensure_exported(decoder, :decode, 1) do
-      decoder.decode(encoded)
+         :ok <- ensure_exported(decoder, :decode, 1),
+         {:ok, message} <- decoder.decode(encoded) do
+      {:ok, message}
     else
       {:error, reason} -> {:error, DecodeError.new(reason)}
     end
