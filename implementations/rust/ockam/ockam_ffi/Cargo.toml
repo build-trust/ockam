@@ -19,7 +19,7 @@ crate-type = ["staticlib", "rlib", "cdylib"]
 lto = true
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.5.0" }
+ockam_core = { path = "../ockam_core", version = "0.6.0" }
 ockam_vault_core = {path = "../ockam_vault_core", version = "0.3.0" }
 ockam_vault = { path = "../ockam_vault", version = "0.3.0" }
 lazy_static = { version = "1.4" }

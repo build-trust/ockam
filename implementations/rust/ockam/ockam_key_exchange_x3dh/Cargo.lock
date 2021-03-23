@@ -284,7 +284,7 @@ checksum = "b7282d924be3275cec7f6756ff4121987bc6481325397dde6ba3e7802b1a8b1c"
 
 [[package]]
 name = "ockam_core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "bincode",

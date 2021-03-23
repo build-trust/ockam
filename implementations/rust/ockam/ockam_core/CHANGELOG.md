@@ -5,6 +5,18 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.6.0 - 2021-03-22
+### Added
+- Routable message abstraction.
+- Builder for Routable messags.
+- Route metadata for messages.
+- Generic transport message.
+
+### Changed
+
+- Updated dependencies.
+- Core dependencies, such as hashbrown and hex have been re-exported from this crate.
+
 ## v0.5.0 - 2021-03-04
 ### Added
 
@@ -15,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Auto-implementation of the `Message` trait for certain types.
 
-### Modified
+### Changed
 
 - The `Worker` trait and its methods are now async.
 - Updated dependencies.
@@ -28,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global crate lib facade wrapper around `std` and `core` re-exports, for cross-feature compatibility.
 - Message trait base implementation.
 
-### Modified
+### Changed
 
 - Updated dependencies.
 - Improved documentation.
@@ -45,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 -  Worker Builder
 
-### Modified
+### Changed
 
 -  Moved Worker and Address types to this crate.
 -  Renamed executor commands to messages
