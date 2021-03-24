@@ -12,22 +12,22 @@ defmodule Ockam.Hub.Service.Forward do
 
   @impl true
   def handle_message(message, state) do
-    Logger.info("MESSAGE: #{inspect(message)}")
+    Logger.info("FORWARD\nMESSAGE: #{inspect(message)}")
     forward_route = Message.return_route(message)
 
     with {:ok, inbox} <- Inbox.create(forward_route: forward_route),
          outbox <- Inbox.outbox_address(inbox),
          {:ok, _} <- Outbox.create(address: outbox, inbox_address: state.address),
-         :ok <- send_reply(inbox, message, state) do
+         :ok <- send_reply(inbox, message) do
       {:ok, state}
     end
   end
 
-  def send_reply(inbox_address, message, state) do
+  def send_reply(inbox_address, message) do
     reply = %{
       onward_route: Message.return_route(message),
-      return_route: [state.address],
-      payload: inbox_address
+      return_route: [inbox_address],
+      payload: Message.payload(message)
     }
 
     Logger.info("REPLY: #{inspect(reply)}")
