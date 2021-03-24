@@ -16,7 +16,7 @@ defmodule Ockam.Hub.Service.Echo do
       payload: Message.payload(message)
     }
 
-    Logger.info("\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
+    Logger.info("\nECHO\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
     Router.route(reply)
 
     {:ok, state}
