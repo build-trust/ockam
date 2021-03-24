@@ -68,6 +68,14 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
             .requeue(RelayMessage::direct(self.addr, self.trans))
             .await;
     }
+
+    /// Consume the Cancel wrapper to take the underlying message
+    ///
+    /// After calling this function it is no longer possible to
+    /// re-queue the message into the worker mailbox.
+    pub fn take(self) -> M {
+        self.inner
+    }
 }
 
 impl<'ctx, M: Message> std::ops::Deref for Cancel<'ctx, M> {
