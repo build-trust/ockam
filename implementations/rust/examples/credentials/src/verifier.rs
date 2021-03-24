@@ -1,10 +1,9 @@
 use ockam::{
-    async_worker, Context, CredentialVerifier, OckamError, PublicKeyBytes, Result, Route, Routed,
-    Worker,
+    async_worker, Context, CredentialVerifier, OckamError, PresentationManifest, PublicKeyBytes,
+    Result, Route, Routed, Worker,
 };
 
-use credentials::message::CredentialMessage;
-use credentials::{on_or_default, DEFAULT_VERIFIER_PORT};
+use credentials::{example_schema, issuer_on_or_default, CredentialMessage, DEFAULT_VERIFIER_PORT};
 use ockam_transport_tcp::{self as tcp, TcpRouter};
 use std::net::SocketAddr;
 use structopt::StructOpt;
@@ -51,10 +50,24 @@ impl Worker for Verifier {
                     Err(OckamError::InvalidProof.into())
                 }
             }
-            CredentialMessage::Presentation(_presentation) => {
+            CredentialMessage::Presentation(_presentation, proof_request_id) => {
                 println!("Holder presented credentials.");
-                println!("TODO: Verify!");
 
+                let presentation_manifest = PresentationManifest {
+                    credential_schema: example_schema(),
+                    public_key: self.issuer_pubkey.unwrap(),
+                    revealed: vec![1],
+                };
+
+                if let Ok(_) = CredentialVerifier::verify_credential_presentations(
+                    _presentation.as_slice(),
+                    &[presentation_manifest.clone()],
+                    proof_request_id,
+                ) {
+                    println!("Credential is valid!");
+                } else {
+                    println!("Invalid credential.");
+                }
                 Ok(())
             }
             _ => Ok(()),
@@ -82,7 +95,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let router = TcpRouter::bind(&ctx, local_tcp).await?;
 
-    let issuer = on_or_default(args.issuer);
+    let issuer = issuer_on_or_default(args.issuer);
     let pair = tcp::start_tcp_worker(&ctx, issuer).await?;
 
     router.register(&pair).await?;

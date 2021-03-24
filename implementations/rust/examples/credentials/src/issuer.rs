@@ -6,9 +6,8 @@ use ockam::{
 };
 use ockam_transport_tcp::TcpRouter;
 
-use credentials::message::CredentialMessage;
-use credentials::message::CredentialMessage::{CredentialOffer, CredentialResponse};
-use credentials::{example_schema, DEFAULT_ISSUER_PORT};
+use credentials::CredentialMessage::{CredentialOffer, CredentialResponse};
+use credentials::{example_schema, CredentialMessage, DEFAULT_ISSUER_PORT};
 use std::collections::BTreeMap;
 use structopt::StructOpt;
 

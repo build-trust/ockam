@@ -3,8 +3,7 @@ use ockam::{
     OckamError, OfferIdBytes, PresentationManifest, PublicKeyBytes, Result, Route, Routed, Worker,
 };
 
-use credentials::message::CredentialMessage;
-use credentials::{example_schema, on_or_default, DEFAULT_VERIFIER_PORT};
+use credentials::{example_schema, issuer_on_or_default, CredentialMessage, DEFAULT_VERIFIER_PORT};
 use ockam_transport_tcp::{self as tcp, TcpRouter};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -73,6 +72,7 @@ impl Worker for Holder {
                     if let Ok((request, frag1)) =
                         self.holder.accept_credential_offer(&offer, issuer_key)
                     {
+                        self.offer_id = Some(offer.id);
                         self.frag1 = Some(frag1);
                         return ctx
                             .send_message(route, CredentialMessage::CredentialRequest(request))
@@ -96,44 +96,36 @@ impl Worker for Holder {
                         revealed: vec![1],
                     };
 
-                    let offer_id = Holder::generate_offer_id();
-                    self.offer_id = Some(offer_id);
+                    let n = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as u64;
+                    let mut request_id = [0u8; 32];
+                    request_id[24..].copy_from_slice(&n.to_be_bytes()[..]);
 
-                    let presentation = holder
-                        .present_credentials(
-                            &[credential],
-                            &[presentation_manifest.clone()],
-                            offer_id,
+                    if let Ok(presentation) = holder.present_credentials(
+                        &[credential],
+                        &[presentation_manifest.clone()],
+                        request_id,
+                    ) {
+                        println!("Presenting credentials to Verifier");
+
+                        ctx.send_message(
+                            Route::new()
+                                .append(format!("1#{}", self.verifier))
+                                .append("verifier"),
+                            CredentialMessage::Presentation(presentation, request_id),
                         )
-                        .unwrap();
-
-                    println!("Presenting credentials to Verifier");
-
-                    ctx.send_message(
-                        Route::new()
-                            .append(format!("1#{}", self.verifier))
-                            .append("verifier"),
-                        CredentialMessage::Presentation(presentation),
-                    )
-                    .await
-                    .unwrap();
+                        .await
+                        .unwrap()
+                    } else {
+                        println!("Failed to create presentation")
+                    }
                 }
                 Ok(())
             }
             _ => Ok(()),
         }
-    }
-}
-
-impl Holder {
-    fn generate_offer_id() -> OfferIdBytes {
-        let n = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
-        let mut request_id = [0u8; 32];
-        request_id[24..].copy_from_slice(&n.to_be_bytes()[..]);
-        request_id
     }
 }
 
@@ -152,7 +144,7 @@ async fn main(ctx: Context) -> Result<()> {
         .parse()
         .unwrap();
 
-    let issuer = on_or_default(args.issuer);
+    let issuer = issuer_on_or_default(args.issuer);
 
     let holder = CredentialHolder::new();
 
