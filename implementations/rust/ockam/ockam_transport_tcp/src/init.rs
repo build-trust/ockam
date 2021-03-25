@@ -1,6 +1,6 @@
 use crate::{
     atomic::{self, ArcBool},
-    TcpRecvWorker, TcpSendWorker,
+    TcpError, TcpRecvWorker, TcpSendWorker,
 };
 use ockam::{Address, Context, Result};
 use std::net::SocketAddr;
@@ -49,7 +49,10 @@ impl WorkerPair {
 
         // Create two workers based on the split TCP I/O streams
         let (rx, tx) = stream.into_split();
-        let sender = TcpSendWorker { tx };
+        let sender = TcpSendWorker {
+            tx,
+            peer: peer.clone(),
+        };
         let receiver = TcpRecvWorker {
             rx,
             run: run.clone(),
@@ -73,7 +76,9 @@ impl WorkerPair {
         debug!("Starting worker connection to remote {}", peer);
 
         // TODO: make i/o errors into ockam_error
-        let stream = TcpStream::connect(peer.clone()).await.unwrap();
+        let stream = TcpStream::connect(peer.clone())
+            .await
+            .map_err(|e| TcpError::from(e))?;
         Self::with_stream(ctx, stream, peer).await
     }
 }
