@@ -140,9 +140,9 @@ impl Context {
 
         // Pack transport message into relay message wrapper
         let msg = if needs_wrapping {
-            RelayMessage::pre_router(addr, data)
+            RelayMessage::pre_router(addr, data, route)
         } else {
-            RelayMessage::direct(addr, data)
+            RelayMessage::direct(addr, data, route)
         };
 
         // Send the packed user message with associated route
@@ -178,7 +178,8 @@ impl Context {
             .take_sender()?;
 
         // Pack the transport message into a relay message
-        let msg = RelayMessage::direct(addr, data);
+        let onward = data.onward.clone();
+        let msg = RelayMessage::direct(addr, data, onward);
         sender.send(msg).await.map_err(|e| Error::from(e))?;
 
         Ok(())
@@ -211,7 +212,10 @@ impl Context {
                 return Ok(Cancel::new(m, data, addr, self));
             } else {
                 // Requeue the message into the mailbox if it didn't
-                self.mailbox.requeue(RelayMessage::direct(addr, data)).await;
+                let onward = data.onward.clone();
+                self.mailbox
+                    .requeue(RelayMessage::direct(addr, data, onward))
+                    .await;
             }
         }
 
