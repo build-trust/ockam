@@ -14,13 +14,13 @@ pub type Encoded = Vec<u8>;
 pub trait Message: Serialize + DeserializeOwned + Send + 'static {
     /// Encode the type representation into an [`Encoded`] type.
     fn encode(&self) -> Result<Encoded> {
-        Ok(bincode::serialize(self)?)
+        Ok(serde_bare::to_vec(self)?)
     }
 
     /// Decode an [`Encoded`] type into the Message's type.
     #[allow(clippy::ptr_arg)]
     fn decode(e: &Encoded) -> Result<Self> {
-        Ok(bincode::deserialize(e)?)
+        Ok(serde_bare::from_slice(e.as_slice())?)
     }
 }
 
@@ -28,9 +28,9 @@ pub trait Message: Serialize + DeserializeOwned + Send + 'static {
 impl<T> Message for T where T: Serialize + DeserializeOwned + Send + 'static {}
 
 // TODO: see comment in Cargo.toml about this dependency
-impl From<bincode::Error> for crate::Error {
-    fn from(_: bincode::Error) -> Self {
-        Self::new(1, "bincode")
+impl From<serde_bare::Error> for crate::Error {
+    fn from(_: serde_bare::Error) -> Self {
+        Self::new(1, "serde_bare")
     }
 }
 
