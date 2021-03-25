@@ -20,7 +20,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{self, parse_macro_input, Error, Ident, ItemFn};
+use syn::{self, parse_macro_input, Error, Ident, ItemFn, ReturnType};
 
 /// Marks an async function to be run in an ockam node.
 #[proc_macro_attribute]
@@ -131,6 +131,17 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
 
     let output_fn_ident = Ident::new("trampoline", input_function.sig.ident.span());
     input_function.sig.ident = output_fn_ident.clone();
+    let returns_unit = input_function.sig.output == ReturnType::Default;
+
+    let input_function_call = if returns_unit {
+        quote! {
+            #output_fn_ident(#ctx_ident).await;
+        }
+    } else {
+        quote! {
+            #output_fn_ident(#ctx_ident).await.unwrap();
+        }
+    };
 
     let output_function = quote! {
         #[inline(always)]
@@ -138,7 +149,9 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
 
         fn main() -> ockam::Result<()> {
             let (#ctx_ident, mut executor) = ockam::start_node();
-            executor.execute(async move { #output_fn_ident(#ctx_ident).await })
+            executor.execute(async move {
+                #input_function_call
+            })
         }
     };
     // Create a token stream of the transformed output_function and return it.
