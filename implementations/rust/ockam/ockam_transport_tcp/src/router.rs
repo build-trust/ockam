@@ -6,6 +6,7 @@ use crate::{
 use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
 use std::{collections::BTreeMap, net::SocketAddr};
 
+const ADDRESS_TYPE_TCP: u8 = 1;
 const DEFAULT_ADDRESS: &'static str = "io.ockam.router.tcp";
 
 /// A TCP address router and connection listener
@@ -32,9 +33,8 @@ pub struct TcpRouterHandle<'c> {
 impl<'c> TcpRouterHandle<'c> {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let accepts = format!("1#{}", pair.peer.clone()).into();
+        let accepts = TcpRouter::peer_addr(pair.peer.ip());
         let self_addr = pair.tx_addr.clone();
-
         self.ctx
             .send_message(
                 self.addr.clone(),
@@ -46,12 +46,18 @@ impl<'c> TcpRouterHandle<'c> {
 
 #[async_worker]
 impl Worker for TcpRouter {
-    type Context = Context;
     type Message = RouterMessage;
+    type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        trace!("Registering TCP router for type = 1");
-        ctx.register(1, ctx.address()).await?;
+        trace!("Registering TCP router for type = {}", ADDRESS_TYPE_TCP);
+        ctx.register(ADDRESS_TYPE_TCP, ctx.address()).await?;
+        Ok(())
+    }
+
+    fn shutdown(&mut self, _: &mut Context) -> Result<()> {
+        // Shut down the ListeningWorker if it exists
+        atomic::stop(&self.run);
         Ok(())
     }
 
@@ -84,12 +90,6 @@ impl Worker for TcpRouter {
             }
         };
 
-        Ok(())
-    }
-
-    fn shutdown(&mut self, _: &mut Context) -> Result<()> {
-        // Shut down the ListeningWorker if it exists
-        atomic::stop(&self.run);
         Ok(())
     }
 }
@@ -135,4 +135,22 @@ impl TcpRouter {
         Self::start(ctx, &addr, Some(run)).await?;
         Ok(TcpRouterHandle { ctx, addr })
     }
+}
+
+/// Format an address of for a peer in this address type
+pub trait PeerAddressFormatter {
+    fn peer_addr<S: ToString>(_: S) -> Address;
+}
+
+/// Address format for TCP peers
+impl PeerAddressFormatter for TcpRouter {
+    fn peer_addr<S: ToString>(s: S) -> Address {
+        format!("{}#{}", ADDRESS_TYPE_TCP, s.to_string()).into()
+    }
+}
+
+#[test]
+fn test_tcp_peer_formatter() {
+    let local_tcp: Address = "1#127.0.0.1".into();
+    assert_eq!(local_tcp, TcpRouter::peer_addr("127.0.0.1"))
 }
