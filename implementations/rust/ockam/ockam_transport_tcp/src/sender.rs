@@ -1,5 +1,6 @@
 use crate::TcpError;
 use ockam::{async_worker, Context, Result, Routed, TransportMessage, Worker};
+use std::net::SocketAddr;
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 
 /// A TCP sending message worker
@@ -12,6 +13,7 @@ use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 /// to dispatch to a remote peer.
 pub struct TcpSendWorker {
     pub(crate) tx: OwnedWriteHalf,
+    pub(crate) peer: SocketAddr,
 }
 
 fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
@@ -42,7 +44,7 @@ impl Worker for TcpSendWorker {
     // across the TcpStream to our friend
     async fn handle_message(
         &mut self,
-        _: &mut Context,
+        ctx: &mut Context,
         mut msg: Routed<TransportMessage>,
     ) -> Result<()> {
         // Remove our own address from the route so the other end
@@ -52,10 +54,11 @@ impl Worker for TcpSendWorker {
         // Create a message buffer with pre-pended length
         let msg = prepare_message(msg.take())?;
 
-        match self.tx.write(msg.as_slice()).await {
-            Ok(_) => Ok(()),
-            // TODO: match different error types here!
-            Err(_) => Err(TcpError::SendBadMessage.into()),
+        if let Err(_) = self.tx.write(msg.as_slice()).await {
+            warn!("Failed to send message to peer {}", self.peer);
+            ctx.stop_worker(ctx.address()).await?;
         }
+
+        Ok(())
     }
 }

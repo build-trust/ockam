@@ -21,6 +21,8 @@ pub enum TcpError {
     PeerNotFound,
     /// Peer requected the incoming connection
     PeerBusy,
+    /// A generic I/O failure
+    GenericIo,
 }
 
 impl TcpError {
@@ -33,5 +35,16 @@ impl TcpError {
 impl From<TcpError> for Error {
     fn from(e: TcpError) -> Error {
         Error::new(TcpError::DOMAIN_CODE + (e as u32), TcpError::DOMAIN_NAME)
+    }
+}
+
+impl From<std::io::Error> for TcpError {
+    fn from(e: std::io::Error) -> Self {
+        use std::io::ErrorKind::*;
+        dbg!();
+        match e.kind() {
+            ConnectionRefused => Self::PeerNotFound,
+            _ => Self::GenericIo,
+        }
     }
 }

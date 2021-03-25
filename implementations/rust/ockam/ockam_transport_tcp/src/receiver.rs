@@ -41,7 +41,13 @@ impl Worker for TcpRecvWorker {
         // FIXME: see ArcBool future note
         while atomic::check(&self.run) {
             // First read a message length header...
-            let len = self.rx.read_u16().await.unwrap();
+            let len = match self.rx.read_u16().await {
+                Ok(len) => len,
+                Err(e) => {
+                    error!("Failed to receive message: {}", e);
+                    break;
+                }
+            };
 
             trace!("Received message header for {} bytes", len);
 
