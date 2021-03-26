@@ -1183,7 +1183,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_examples"
-version = "0.0.0"
+version = "0.1.0"
 
 [[package]]
 name = "ockam_node"

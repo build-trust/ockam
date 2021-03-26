@@ -1,8 +1,15 @@
 [package]
-name = "ockam_examples"
-version = "0.1.0"
 authors = ["Ockam Developers"]
+description = """Example projects using the Ockam APIs"""
+version = "0.1.0"
 edition = "2018"
+homepage = "https://www.ockam.io/"
+keywords = ["ockam", "crypto", "cryptography"]
+license = "Apache-2.0"
+name = "ockam_examples"
+readme = "README.md"
+repository = "https://github.com/ockam-network/ockam"
+
 
 [workspace]
 members = ["example_projects/*"]
