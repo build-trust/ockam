@@ -83,16 +83,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bincode"
-version = "1.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f30d3a39baa26f9651f17b375061f3233dde33424a8b72b0dbe93a68a0bc896d"
-dependencies = [
- "byteorder",
- "serde",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -287,10 +277,10 @@ name = "ockam_core"
 version = "0.6.0"
 dependencies = [
  "async-trait",
- "bincode",
  "hashbrown",
  "hex",
  "serde",
+ "serde_bare",
 ]
 
 [[package]]
@@ -317,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -334,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -436,6 +426,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92d5161132722baa40d802cc70b15262b98258453e85e5d1d365c757c73869ae"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde_bare"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01db2255aa98fb93ad74272d8b2e6fd4851860e733e944b9439cf148127164b2"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

@@ -8,7 +8,7 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-This crate contains a series of examples and a step by step guide to getting started with Ockam.
+This crate contains example usages of the Ockam APIs.
 
 ## License
 

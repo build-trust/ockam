@@ -1,29 +1,9 @@
 [package]
 name = "ockam_examples"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 
-[dependencies]
-ockam = { path = "../ockam", version = "0" }
-ockam_core = { path = "../ockam_core", version = "0" }
-ockam_node = { path = "../ockam_node", version = "0" }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "0" }
-chrono = { version = "0", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
-serde_bare = "0"
-serde-big-array = "0"
-structopt = "0.3"
-
-[[bin]]
-name = "issuer"
-path = "src/issuer.rs"
-
-[[bin]]
-name = "holder"
-path = "src/holder.rs"
-
-[[bin]]
-name = "verifier"
-path = "src/verifier.rs"
-
+[workspace]
+members = ["example_projects/*"]
+default-members = ["example_projects/*"]

@@ -32,7 +32,5 @@ commands {
     'ockam/ockam_transport_tcp',
     'ockam/ockam_vault',
     'ockam/ockam_vault_core',
-    'examples/node',
-    'examples/worker',
   ]
 }
