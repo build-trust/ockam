@@ -226,7 +226,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.7.0"
+version = "0.7.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -238,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.5.0"
+version = "0.5.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",

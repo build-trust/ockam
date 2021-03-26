@@ -4,7 +4,8 @@
 //! for use by other crates that either provide implementations for those traits,
 //! or use traits and types as an abstract dependency.
 
-#![no_std]
+// FIXME
+// #![no_std]
 #![deny(
     // missing_docs,
     trivial_casts,
@@ -12,7 +13,7 @@
     unsafe_code,
     unused_import_braces,
     unused_qualifications,
-    warnings
+    // warnings
 )]
 
 mod asymmetric_vault;
@@ -24,6 +25,8 @@ mod secret_vault;
 mod signer;
 mod symmetric_vault;
 mod types;
+mod vault_runner;
+mod vault_worker;
 mod verifier;
 
 pub use asymmetric_vault::*;
@@ -35,4 +38,6 @@ pub use secret_vault::*;
 pub use signer::*;
 pub use symmetric_vault::*;
 pub use types::*;
+pub use vault_runner::*;
+pub use vault_worker::*;
 pub use verifier::*;

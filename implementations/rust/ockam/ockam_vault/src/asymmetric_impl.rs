@@ -59,10 +59,8 @@ impl AsymmetricVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
-    use ockam_vault_core::{
-        AsymmetricVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
-        CURVE25519_SECRET_LENGTH,
-    };
+    use ockam_vault_core::{AsymmetricVault, SecretAttributes, SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH, VaultRunner, VaultWorker};
+    use tracing::info;
 
     #[test]
     fn ec_diffie_hellman_curve25519() {
@@ -85,5 +83,45 @@ mod tests {
         assert!(res2.is_ok());
         let _ss2 = res2.unwrap();
         // TODO: Check result against test vector
+    }
+
+    #[test]
+    fn ec_diffie_hellman_curve25519_worker() {
+        let (ctx, mut executor) = ockam_node::start_node();
+        info!("0");
+        executor.execute(async move {
+            info!("1");
+            let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await.unwrap();
+            info!("2");
+            let mut vault = VaultRunner::start(&ctx, vault_address).await.unwrap();
+            info!("3");
+            let attributes = SecretAttributes::new(
+                SecretType::Curve25519,
+                SecretPersistence::Ephemeral,
+                CURVE25519_SECRET_LENGTH,
+            );
+            let sk_ctx_1 = vault.secret_generate(attributes).unwrap();
+            info!("4");
+            let sk_ctx_2 = vault.secret_generate(attributes).unwrap();
+            info!("5");
+            let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();
+            info!("6");
+            let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
+            info!("7");
+
+            let res1 = vault.ec_diffie_hellman(&sk_ctx_1, pk_2.as_ref());
+            info!("7");
+            assert!(res1.is_ok());
+            let _ss1 = res1.unwrap();
+
+            let res2 = vault.ec_diffie_hellman(&sk_ctx_2, pk_1.as_ref());
+            info!("9");
+            assert!(res2.is_ok());
+            let _ss2 = res2.unwrap();
+            info!("10");
+            // TODO: Check result against test vector
+
+            ctx.stop().await.unwrap()
+        }).unwrap();
     }
 }

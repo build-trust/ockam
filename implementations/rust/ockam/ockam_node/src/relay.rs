@@ -172,16 +172,13 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
 
         self.worker.shutdown(&mut self.ctx).unwrap();
     }
+}
 
-    /// Run the inner worker and restart it if errors occurs
-    async fn run_mailbox(mut rx: Receiver<RelayMessage>, mb_tx: Sender<RelayMessage>) {
-        // Relay messages into the worker mailbox
-        while let Some(enc) = rx.recv().await {
-            match mb_tx.send(enc.clone()).await {
-                Ok(x) => x,
-                Err(_) => panic!("Failed to route message to address '{}'", enc.addr),
-            };
-        }
+/// Run the inner worker and restart it if errors occurs
+pub(crate) async fn run_mailbox(mut rx: Receiver<RelayMessage>, mb_tx: Sender<RelayMessage>) {
+    // Relay messages into the worker mailbox
+    while let Some(enc) = rx.recv().await {
+        mb_tx.send(enc).await.unwrap();
     }
 }
 
@@ -195,7 +192,7 @@ where
     let mb_tx = ctx.mailbox.sender();
     let relay = Relay::<W, M>::new(worker, ctx);
 
-    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
+    rt.spawn(run_mailbox(rx, mb_tx));
     rt.spawn(relay.run());
     tx
 }
@@ -213,6 +210,6 @@ where
     let (tx, rx) = channel(32);
 
     let mb_tx = mailbox.sender();
-    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
+    rt.spawn(run_mailbox(rx, mb_tx));
     tx
 }

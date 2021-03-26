@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault"
-version = "0.3.2"
+version = "0.3.2-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -21,8 +21,10 @@ std = ["ockam_core/std"]
 no_std = ["ockam_vault_core/heapless"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.7.0" }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.3.2" }
+ockam_core = { path = "../ockam_core", version = "0.7.0-dev" }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.3.2-dev" }
+ockam_node = {path = "../ockam_node", version = "0.5.0-dev"}
+tracing = "0.1"
 arrayref = "0.3"
 aes-gcm = "0.8"
 curve25519-dalek = "3.0"

@@ -130,7 +130,7 @@ checksum = "03b07a082330a35e43f63177cc01689da34fbffa0105e1246cf0311472cac73a"
 
 [[package]]
 name = "ockam_core"
-version = "0.7.0"
+version = "0.7.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",

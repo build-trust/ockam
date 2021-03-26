@@ -1,10 +1,11 @@
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// Handle to a cryptographic Secret
 /// Individual Vault implementations should map secret handles
 /// into implementation-specific Secret representations (e.g. binaries, or HSM references)
 /// stored inside Vault (e.g. using HashMap)
-#[derive(Clone, Debug, Zeroize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Zeroize)]
 pub struct Secret {
     index: usize,
 }

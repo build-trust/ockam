@@ -6,10 +6,10 @@ edition = "2018"
 keywords = ["ockam", "crypto", "cryptography", "network-programming", "p2p", "encryption"]
 license = "Apache-2.0"
 name = "ockam_node"
-version = "0.5.0"
+version = "0.5.0-dev"
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.7.0" }
+ockam_core = { path = "../ockam_core", version = "0.7.0-dev" }
 tokio = {version = "1.4.0", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"] }

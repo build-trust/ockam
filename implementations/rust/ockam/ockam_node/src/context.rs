@@ -1,10 +1,5 @@
-use crate::{
-    error::Error,
-    parser,
-    relay::{self, RelayMessage},
-    Cancel, Mailbox, NodeMessage,
-};
-use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker};
+use crate::{error::Error, parser, relay::{self, RelayMessage}, Cancel, Mailbox, NodeMessage, runner_relay};
+use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker, Runner};
 use std::sync::Arc;
 use tokio::{
     runtime::Runtime,
@@ -17,6 +12,12 @@ pub struct Context {
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
     pub(crate) mailbox: Mailbox,
+}
+
+impl Context {
+    pub fn runtime(&self) -> Arc<Runtime> {
+        self.rt.clone()
+    }
 }
 
 impl Context {
@@ -70,6 +71,33 @@ impl Context {
 
         // Then initialise the worker message relay
         let sender = relay::build::<NW, NM>(self.rt.as_ref(), worker, ctx);
+
+        let msg = NodeMessage::start_worker(address, sender);
+        let _result: Result<()> = match self.sender.send(msg).await {
+            Ok(()) => Ok(()),
+            Err(_e) => Err(Error::FailedStartWorker.into()),
+        };
+
+        Ok(())
+    }
+
+    /// Start a new worker handle at [`Address`](ockam_core::Address)
+    pub async fn start_runner<R, S>(&self, address: S, runner: &mut R) -> Result<()>
+        where
+            S: Into<AddressSet>,
+            R: Runner<Context = Context>,
+    {
+        let address = address.into();
+
+        // Build the mailbox first
+        let (mb_tx, mb_rx) = channel(32);
+        let mb = Mailbox::new(mb_rx, mb_tx);
+
+        // Pass it to the context
+        let ctx = Context::new(self.rt.clone(), self.sender.clone(), address.clone(), mb);
+
+        // Then initialise the worker message relay
+        let sender = runner_relay::build::<R>(self.rt.as_ref(), runner, ctx);
 
         let msg = NodeMessage::start_worker(address, sender);
         let _result: Result<()> = match self.sender.send(msg).await {

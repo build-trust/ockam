@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_core"
-version = "0.3.2"
+version = "0.3.2-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -18,7 +18,13 @@ std = ["ockam_core/std"]
 no_std = ["heapless"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.7.0" }
+ockam_core = { path = "../ockam_core", version = "0.7.0-dev" }
+ockam_node = {path = "../ockam_node", version = "0.5.0-dev"}
+tracing = "0.1"
+async-trait = "0.1.42"
 heapless = { version = "0.6", optional = true }
+serde = {version = "1.0.120", features = ["derive"]}
+serde-big-array = "0.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 cfg-if = "1.0"
+rand = "0.8"
