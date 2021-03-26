@@ -12,6 +12,7 @@
 #[macro_use]
 extern crate tracing;
 
+mod parser;
 mod context;
 mod error;
 mod executor;
