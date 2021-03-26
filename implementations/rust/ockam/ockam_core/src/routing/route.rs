@@ -19,6 +19,28 @@ impl Route {
         RouteBuilder::new()
     }
 
+    /// Parse a route from a string
+    pub fn parse<S: Into<String>>(s: S) -> Option<Route> {
+        let s = s.into();
+        if s == "" {
+            return None;
+        }
+
+        let addrs = s.split("=>").collect::<Vec<_>>();
+
+        // Invalid route
+        if addrs.len() == 0 {
+            return None;
+        }
+
+        Some(
+            addrs
+                .into_iter()
+                .fold(Route::new(), |r, addr| r.append(addr.trim()))
+                .into(),
+        )
+    }
+
     /// Create a new [`RouteBuilder`] from the current Route
     ///
     /// [`RouteBuilder`]: crate::RouteBuilder

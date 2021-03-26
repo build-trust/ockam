@@ -40,7 +40,7 @@ fn get_bind_addr() -> SocketAddr {
 }
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Get either the default socket address, or a user-input
     let bind_addr = get_bind_addr();
     debug!("Binding to: {}", bind_addr);

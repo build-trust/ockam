@@ -44,16 +44,11 @@ impl Worker for ProxiedWorker {
         .await
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, _: &mut Context, msg: Routed<Self::Message>) -> Result<()> {
         // This condition is true when we receive the forwarding route
-        // from our registration - forward this to the app.
+        // from registration - print this route for the user to copy
         if &msg.as_str() == &"register" {
-            println!("Receiving message: {}", msg);
-            ctx.send_message("app", msg.reply()).await?;
+            info!("You can reach me via this route: {}", msg.reply());
         }
         // This condition is true when we receive a message that is
         // being forwarded
@@ -66,7 +61,7 @@ impl Worker for ProxiedWorker {
 }
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Get our peer address
     let peer = get_peer_addr();
 
@@ -77,15 +72,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let w_pair = tcp::start_tcp_worker(&ctx, peer.clone()).await?;
     rh.register(&w_pair).await?;
 
-    ctx.start_worker("not.always.there", ProxiedWorker { peer })
-        .await?;
-
-    // Receive the forwarding address from our worker
-    let fwd_route = ctx.receive::<Route>().await?.take();
-
-    // Then send a message to our worker, via the hub
-    ctx.send_message(fwd_route, "Hello you!".to_string())
-        .await?;
+    // Start the worker we want to reach via proxy
+    ctx.start_worker("worker", ProxiedWorker { peer }).await?;
 
     Ok(())
 }
