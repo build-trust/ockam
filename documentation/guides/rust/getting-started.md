@@ -12,14 +12,19 @@ This guide walks you through the steps necessary to use the Ockam Rust SDK.
 The Ockam Rust SDK supports the rust `stable` branch.
 
 1. Install rust and cargo using your preferred method, such as [rustup](https://rustup.rs/).
-1. Create a new cargo application project: `cargo new ockam_example`
+1. Our examples build an "echo service", so `echo` may be a good name for your project. Create a new cargo application project: `cargo new echo`
 
 ## Adding The Ockam Dependencies
 
 ### Ockam SDK Structure
 
-The Ockam Rust SDK is divided into multiple crates. Most application developers will only need to include the top level
-`ockam` crate.
+The Ockam Rust SDK is divided into multiple crates.
+
+- [ockam](https://crates.io/crates/ockam) - The core Ockam API and dependencies.
+- [ockam_node](https://crates.io/crates/ockam_node) - an asynchronous worker environment called a Node. The Worker API is central to building
+  applications on an Ockam network.
+- [ockam_transport_tcp](https://crates.io/crates/ockam_transport_tcp) - TCP implementation of the Ockam Transport protocol.
+- [ockam_vault](https://crates.io/crates/ockam_vault) - A software-only Ockam Vault implementation.
 
 The SDK supports the following features:
 
@@ -29,28 +34,23 @@ The SDK supports the following features:
 
 ### Adding Ockam to a Rust Project
 
-Add this to your `Cargo.toml`:
+Add the Ockam dependencies to your `Cargo.toml`:
 
 ```
 [dependencies]
 ockam = "0"
+ockam_node = "0"
+ockam_transport_tcp = "0"
+ockam_vault = "0"
 ```
 
-This will provide the core Rust SDK including:
+This will provide the core Rust SDK types and traits, including:
 
 - Credentials, Profiles, and Leases.
 - The Ockam Vault for secure storage of secrets.
-- The Ockam Node, Worker and Context APIs.
+- The Ockam Node, Worker and Context APIs for asynchronous message processing.
 
 ## Downloading Example Source Code
 
-All example source code is available in the [ockam_examples](TODO) crate. You can also browse the examples in the ockam
-repository: [https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_examples](https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_examples)
-
-## Running Examples With Cargo
-
-Examples in the `examples` directory can be run with cargo:
-
-`cargo run --example credentials`
-
-Some examples may also have standalone binaries with source in `src`.
+All example source code is available in the [ockam_examples](https://crates.io/crates/ockam_examples) crate. You can also browse the examples in the [Ockam
+repository](https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_examples)
