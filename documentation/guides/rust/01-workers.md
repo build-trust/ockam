@@ -116,7 +116,7 @@ The Ockam Node can be stopped by calling the `Context` trait `stop` API.
 ctx.stop().await?;
 ```
 
-# Putting it all together - echo_service
+## Putting it all together - echo_service
 
 ```rust
 use ockam::{async_worker, Context, Result, Routed, Worker};
