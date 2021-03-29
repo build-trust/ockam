@@ -14,7 +14,7 @@ Add the Ockam TCP Transport dependency to your project:
 ockam_transport_tcp = "0"
 ```
 
-# Listening for messages over TCP
+## Listening for messages over TCP
 
 To extend the `echo_service` to listen on a TCP port, we add one API call to `TcpRouter::bind`.
 
@@ -34,7 +34,7 @@ The `echo_service` initialization executes the bind call:
   }
 ```
 
-## Putting it all together - echo_service
+## Putting it all together - Echo Service
 
 ```rust
 use ockam::{async_worker, Context, Result, Routed, Worker};
@@ -67,7 +67,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-# echo_client
+## Echo Client
 
 The `echo_client` does not need to implement a worker, it uses the APIs available on the node's context.
 
@@ -104,7 +104,7 @@ The route built here will be sent to:
 1. The remote node address over TCP.
 1. The local address "echo_service" on the remote node.
 
-## Putting it all together - echo_client
+## Putting it all together - Echo Client
 
 ```rust
 use ockam::{Context, Result, Route};

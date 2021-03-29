@@ -68,7 +68,7 @@ impl Worker for EchoService {
 }
 ```
 
-# Starting a Worker
+## Starting a Worker
 
 Workers must be registered on a node in order to receive messages. This is done using the `Context::start_worker` API.
 This function starts a worker on the given address.
@@ -116,7 +116,7 @@ The Ockam Node can be stopped by calling the `Context` trait `stop` API.
 ctx.stop().await?;
 ```
 
-## Putting it all together - echo_service
+## Putting it all together - Echo Service
 
 ```rust
 use ockam::{async_worker, Context, Result, Routed, Worker};
