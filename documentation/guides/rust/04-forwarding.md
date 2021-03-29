@@ -1,9 +1,9 @@
 ---
-title: Message Forwarding with Ockam Hub
+title: Forwarding
 order: 4
 ---
 
-# Message Forwarding with Ockam Hub
+# Forwarding
 
 This example forwards messages from a worker on one node to a remote worker on a different node, through the Ockam Hub.
 

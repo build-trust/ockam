@@ -1,9 +1,9 @@
 ---
-title: Nodes and Workers
+title: Workers
 order: 2
 ---
 
-# Nodes and Workers
+# Workers
 
 ## Creating a Node
 

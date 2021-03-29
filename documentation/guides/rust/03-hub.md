@@ -1,9 +1,9 @@
 ---
-title: Node and Ockam Hub
+title: Hub
 order: 4
 ---
 
-# Node and Ockam Hub
+# Hub
 
 Ockam Hub is a service provided by Ockam that allows you to easily test Ockam Node based networks. Registering on
 Hub creates an Ockam Node in the cloud, where you can relay messages between nodes.
