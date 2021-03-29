@@ -144,6 +144,8 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let output_function = quote! {
+        use ockam::Result;
+
         #[inline(always)]
         #input_function
 
