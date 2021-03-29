@@ -1,13 +1,16 @@
 defmodule Ockam.Hub do
+  # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+
   @moduledoc """
   Implements the Ockam Hub.
   """
 
   use Application
 
+  alias Ockam.Hub.Service.Alias, as: AliasService
   alias Ockam.Hub.Service.Echo, as: EchoService
-  alias Ockam.Hub.Service.Forward, as: ForwardingService
-  alias Ockam.Transport.TCP
+
+  alias Ockam.Transport
 
   require Logger
 
@@ -22,15 +25,13 @@ defmodule Ockam.Hub do
 
     # Add a TCP listener on port 4000
     # TODO: add to supervision tree.
-    TCP.create_listener(port: 4000)
+    Transport.TCP.create_listener(port: 4000)
 
     # Create an echo_service worker.
     # TODO: add to supervision tree.
     EchoService.create(address: "echo_service")
 
-    # Create an forwarding_service worker.
-    # TODO: add to supervision tree.
-    ForwardingService.create(address: "forwarding_service")
+    AliasService.create(address: "forwarding_service")
 
     # Specifications of child processes that will be started and supervised.
     #
@@ -91,7 +92,11 @@ defmodule Ockam.Hub do
                   metadata_tag_keys: [:options, :return_value]
                 },
                 %{
-                  name: [:ockam, Ockam.Hub.Service.Forward, :init, :start],
+                  name: [:ockam, Ockam.Hub.Service.Alias, :init, :start],
+                  metadata_tag_keys: [:options, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Hub.Service.Alias.Forwarder, :init, :start],
                   metadata_tag_keys: [:options, :return_value]
                 },
                 %{
@@ -119,7 +124,11 @@ defmodule Ockam.Hub do
                   metadata_tag_keys: [:message, :onward_route, :return_route, :version]
                 },
                 %{
-                  name: [:ockam, Ockam.Hub.Service.Forward, :handle_message, :start],
+                  name: [:ockam, Ockam.Hub.Service.Alias, :handle_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Hub.Service.Alias.Forwarder, :handle_message, :start],
                   metadata_tag_keys: [:message, :return_value]
                 }
               ]
