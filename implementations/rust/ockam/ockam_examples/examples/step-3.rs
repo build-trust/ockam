@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let remote_node = "127.0.0.1:4000"; // Ockam Hub
+    let remote_node = "Paste the address of the node you created on Ockam Hub here.";
 
     // Create and register a connection
     let router = TcpRouter::register(&ctx).await?;

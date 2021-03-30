@@ -3,43 +3,40 @@ title: Forwarding
 order: 6
 ---
 
+# Have questions? Let us help!
+
+**We are here to help.** See the [Guides And Demos](https://github.com/ockam-network/ockam/discussions/1134) in
+GitHub Discussions.
+
 # Forwarding
 
-This example shows how you can send messages to remote workers through the hub. With message forwarding, only the forwarding
-address is needed to send messages to a worker. By using a forwarding address, workers do not need to know the details of
-the network connection of other nodes and workers.
+This example shows how you can route messages through remote nodes. With message forwarding, only the forwarding
+address is needed to send messages to a worker. A forwarding address is an alias to a route. By using a forwarding address,
+messages don't need to contain the entire route to a worker.
 
-## Registering with Ockam Hub forwarding service
+## Register with Ockam Hub Forwarding Service
 
-Send a registry message from your worker to the forwarding service running on Ockam Hub.
-
-We can now use the `Worker::initialized` function in `echo_service` to perform this registration.
+Send a `register` message from your worker to the forwarding service running on Ockam Hub.
 
 ```rust
-async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-    let hub = "127.0.0.1:4000";
-
-    let router = TcpRouter::register(&ctx).await?;
-    let hub_connection =
-        tcp::start_tcp_worker(&ctx, hub.parse::<SocketAddr>().unwrap()).await?;
-
-    router.register(&hub_connection).await?;
-
-    let forwarding_route = Route::new().append_t(1, hub).append("forwarding_service");
-
-    // Send a "register" event to the Hub. The hub will reply with a forwarding address.
-    ctx.send_message(forwarding_route, "register".to_string())
-        .await
-}
+ctx.send_message(
+    Route::new()
+        .append_t(1, "Paste the address of the node you created on Ockam Hub here.")
+        .append("forwarding_service"),
+    "register".to_string(),
+).await
 ```
 
-## Getting the forwarding address
+## Get the forwarding address
 
 Your worker will be notified with its forwarding address. This is done when the message body consists of the word `register`.
 The forwarding address is given in the `reply` field. Messages sent to this address on the Hub will be forwarded to the
 local worker.
 
 When we receive a message indicating successful registration, the forwarding address of the `echo_service` is printed.
+
+Copy the address printed after registration succeeds. The address is hexadecimal with a prefix of '0.'. You do not need
+to copy the '0.' portion of the address.
 
 ```rust
 async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
@@ -56,10 +53,11 @@ async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Re
 }
 ```
 
-## Sending a message to the forwarding address
+## Send a message to the forwarding address
 
-The `echo_client` from Step 3 can be re-used to send messages to the `echo_service` forwarding address in the hub. The remote
-node address should be set to your hub address. After the hub entry in the route, copy and paste the `echo_service` forwarding address.
+The `echo_client` that you built in the previous example can be used to send messages to the forwarding address of the
+`echo_service` in the hub. The remote node address should be set to your hub address. After the hub entry in the route,
+copy and paste the `echo_service` forwarding address.
 
 ```rust
 use ockam::{Context, Result, Route};
@@ -68,8 +66,8 @@ use std::net::SocketAddr;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let remote_node = "<Ockam Hub address>";
-    let echo_service = "<hex address>"; // Replace with hub forwarding address
+    let remote_node = "Paste the address of the node you created on Ockam Hub here.";
+    let echo_service = "Paste the forwarded address that the server received from registration here.";
 
     // Create and register a connection
     let router = TcpRouter::register(&ctx).await?;
@@ -91,7 +89,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
-## Putting it all Together - Forwarded Echo Service
+# Putting it all Together - Forwarded Echo Service
 
 ```rust
 use ockam::{async_worker, Context, Result, Route, Routed, Worker};
@@ -100,25 +98,22 @@ use std::net::SocketAddr;
 
 struct EchoService;
 
+const HUB_ADDRESS: &str = "Paste the address of the node you created on Ockam Hub here.";
+
 #[async_worker]
 impl Worker for EchoService {
-type Message = String;
-type Context = Context;
+    type Message = String;
+    type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let hub = "127.0.0.1:4000";
-
-        let router = TcpRouter::register(&ctx).await?;
-        let hub_connection =
-            tcp::start_tcp_worker(&ctx, hub.parse::<SocketAddr>().unwrap()).await?;
-
-        router.register(&hub_connection).await?;
-
-        let forwarding_route = Route::new().append_t(1, hub).append("forwarding_service");
-
         // Send a "register" event to the Hub. The hub will reply with a forwarding address.
-        ctx.send_message(forwarding_route, "register".to_string())
-            .await
+        ctx.send_message(
+            Route::new()
+                .append_t(1, HUB_ADDRESS)
+                .append("forwarding_service"),
+            "register".to_string(),
+        )
+        .await
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
@@ -137,11 +132,18 @@ type Context = Context;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-ctx.start_worker("echo_service", EchoService).await
+    let router = TcpRouter::register(&ctx).await?;
+    let hub_connection =
+        tcp::start_tcp_worker(&ctx, HUB_ADDRESS.parse::<SocketAddr>().unwrap()).await?;
+
+    router.register(&hub_connection).await?;
+
+    ctx.start_worker("echo_service", EchoService).await
 }
+
 ```
 
-## Putting it all together - Echo Client
+# Putting it all together - Echo Client
 
 ```rust
 use ockam::{Context, Result, Route};
@@ -150,8 +152,8 @@ use std::net::SocketAddr;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-let remote_node = "127.0.0.1:4000"; // Ockam Hub
-let echo_service = "8f0e82ca"; // Replace with hub forwarding address
+let remote_node = "Paste the address of the node you created on Ockam Hub here.";
+let echo_service = "Paste the forwarded address that the server received from registration here.";
 
     // Create and register a connection
     let router = TcpRouter::register(&ctx).await?;

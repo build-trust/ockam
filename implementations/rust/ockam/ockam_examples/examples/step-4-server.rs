@@ -4,25 +4,22 @@ use std::net::SocketAddr;
 
 struct EchoService;
 
+const HUB_ADDRESS: &str = "127.0.0.1:4000";
+
 #[async_worker]
 impl Worker for EchoService {
     type Message = String;
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let hub = "127.0.0.1:4000";
-
-        let router = TcpRouter::register(&ctx).await?;
-        let hub_connection =
-            tcp::start_tcp_worker(&ctx, hub.parse::<SocketAddr>().unwrap()).await?;
-
-        router.register(&hub_connection).await?;
-
-        let forwarding_route = Route::new().append_t(1, hub).append("forwarding_service");
-
         // Send a "register" event to the Hub. The hub will reply with a forwarding address.
-        ctx.send_message(forwarding_route, "register".to_string())
-            .await
+        ctx.send_message(
+            Route::new()
+                .append_t(1, HUB_ADDRESS)
+                .append("forwarding_service"),
+            "register".to_string(),
+        )
+        .await
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
@@ -41,5 +38,11 @@ impl Worker for EchoService {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
+    let router = TcpRouter::register(&ctx).await?;
+    let hub_connection =
+        tcp::start_tcp_worker(&ctx, HUB_ADDRESS.parse::<SocketAddr>().unwrap()).await?;
+
+    router.register(&hub_connection).await?;
+
     ctx.start_worker("echo_service", EchoService).await
 }

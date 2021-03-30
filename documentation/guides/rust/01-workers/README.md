@@ -3,18 +3,22 @@ title: Workers
 order: 3
 ---
 
-# Nodes and Workers
+# Have questions? Let us help!
 
-Nodes and workers are central concepts in the Ockam SDK. A node is an asynchronous execution environment. The node handles
-messages, and routes these messages to individual workers. Workers are similar to actors. They receive messages and can
-perform actions in response.
+**We are here to help.** See the [Guides And Demos](https://github.com/ockam-network/ockam/discussions/1134) in
+GitHub Discussions.
+
+# Nodes and workers
+
+Ockam provides an asynchronous execution environment called a node. The node routes messages to individual workers. Workers
+are similar to actors. They receive messages and can perform actions in response.
 
 When a message with a worker's address is received on a node, the message is forwarded to the worker. The worker's `handle_message`
 function is called with the message as a parameter.
 
 Workers can send messages using the `Context::send_message` API.
 
-## Creating a Node
+## Create a node
 
 The Ockam API provides an asynchronous message passing runtime called a node.
 Bootstrapping a node is done like a normal rust program, with a slightly different `main` function. The attribute `#[ockam::node]` hides
@@ -37,7 +41,7 @@ async fn main(context: ockam::Context) -> ockam::Result<()> {
 }
 ```
 
-## Creating a Worker
+## Create a worker
 
 An Ockam Worker is any struct that implements the `Worker` trait. Workers have two associated types, which represent the
 kind of messages the worker processes, and the API that is available when a message arrives. These associated types are
@@ -68,7 +72,7 @@ impl Worker for EchoService {
 }
 ```
 
-# Starting a Worker
+# Start the worker
 
 Workers must be registered on a node in order to receive messages. This is done using the `Context::start_worker` API.
 This function starts a worker on the given address.
@@ -82,7 +86,7 @@ place to add additional setup code.
 
 If you don't need to perform any special steps during startup, you can omit the `initialize` function and use the default of no operation.
 
-## Sending a Message
+## Send a message
 
 The `echo_service` takes the incoming message and use the `send_message` API to echo the message back to
 the sender.
@@ -96,7 +100,7 @@ Likewise, the app sends the initial message to the `echo_service` using this API
 ctx.send_message("echo_service", "Hello Ockam!".to_string()).await?;
 ```
 
-## Receiving a Message
+## Receive a message
 
 Workers have message handling callbacks that are invoked when a new message arrives for the worker's address.
 
@@ -108,7 +112,7 @@ There are two ways to receive a message as a worker:
 let reply = ctx.receive::<String>().await?;
 ```
 
-## Stopping
+## Stop the mode
 
 The Ockam Node can be stopped by calling the `Context` trait `stop` API.
 
@@ -116,7 +120,7 @@ The Ockam Node can be stopped by calling the `Context` trait `stop` API.
 ctx.stop().await?;
 ```
 
-# Putting it all together - echo_service
+# Putting it all together - Echo Service
 
 ```rust
 use ockam::{async_worker, Context, Result, Routed, Worker};

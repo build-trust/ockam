@@ -3,6 +3,11 @@ title: Start Here
 order: 2
 ---
 
+# Have questions? Let us help!
+
+**We are here to help.** See the [Guides And Demos](https://github.com/ockam-network/ockam/discussions/1134) in
+GitHub Discussions.
+
 # Get Started with the Ockam Rust SDK
 
 This guide walks you through the steps necessary to use the Ockam Rust SDK.
@@ -25,8 +30,8 @@ ockam = "0"
 
 ## Working with multiple binaries
 
-There are several ways you can configure your project to have two binaries. The easiest way, and the way that we will use
-in this guide is to use the `examples` directory.
+Some of the Ockam examples need two programs. There are several ways you can configure your project to have multiple binaries.
+The easiest way, and the way that we will use in this guide is to use the `examples` directory.
 
 For example:
 
