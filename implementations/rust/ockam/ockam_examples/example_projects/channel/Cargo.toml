@@ -1,0 +1,17 @@
+[package]
+name = "channel_examples"
+version = "0.0.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+ockam = {path = "../../../ockam", version = "*"}
+ockam_node = {path = "../../../ockam_node", version = "*"}
+tracing = "0.1"
+ockam_transport_tcp = {path = "../../../ockam_transport_tcp", version = "*"}
+ockam_channel = {path = "../../../ockam_channel", version = "*"}
+tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros","time"]}
+rand = "0.8.3"
