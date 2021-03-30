@@ -39,4 +39,4 @@ For example:
 1. Create `client.rs` and `server.rs` source files in the `examples` directory.
 1. The programs can be executed using cargo: `cargo run --example server` and `cargo run --example client`.
 
-Now we are ready to <a href="documentation/guides/rust/01-workers">Start building the Echo Service</a>
+Now we are ready to [Start building the Echo Service](../01-workers)

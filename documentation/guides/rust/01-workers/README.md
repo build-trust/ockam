@@ -153,4 +153,4 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
-Now we are ready to <a href="02-transports">Use a transport</a> to connect to remote nodes.
+Now we are ready to [Use a transport](../02-transports) to connect to remote nodes.
