@@ -1,7 +1,7 @@
-<div>
-  <b>InfluxDays 2020 - Ockam Demo:</b>
+<div id="getting-started">
+  <b>Getting Started Guide:</b>
   <em>
-    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub/">End-to-end encrypted connections between Telegraf and InfluxDB.</a>
+    <a href="documentation/guides/rust/README.md#rust-guide">for Rust developers.</a>
   </em>
   </div>
 <hr>
@@ -9,7 +9,7 @@
 <p>
   <a href="https://ockam.io">
     <img alt="Ockam"
-      src="https://www.ockam.io/0dc9e19beab4d96b8350d09be78361df/logo_white_background_preview.svg"
+      src="logo.png"
       width="450">
   </a>
 </p>
@@ -30,7 +30,7 @@
   src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square">
 </a>
 
-<a>
+<a href="#">
 <img alt="Developer Preview"
   src="https://img.shields.io/badge/Status-Preview-6BE3CF.svg?style=flat-square">
 </a>
@@ -38,22 +38,18 @@
 
 <div>
   <h3>
-    <a href="https://www.ockam.io/learn/how-to-guides/using-add-ons/enterprise/influxdb/connect-and-use-ockam-hub/">
-      Try a demo
+    <a href="documentation/guides/rust/README.md#rust-guide">
+      Getting Started
     </a>
-    <span> | </span>
-    <a href="https://www.ockam.io/learn/concepts">
+    <span> • </span>
+    <a href="documentation/concepts/index.md">
       Learn
     </a>
-    <span> | </span>
+    <span> • </span>
     <a href="https://github.com/ockam-network/ockam/discussions">
       Discuss
     </a>
-    <span> | </span>
-    <a href="https://www.ockam.io/learn/how-to-guides/contributing/">
-      Contribute
-    </a>
-    <span> | </span>
+    <span> • </span>
     <a href="https://www.ockam.io/team#open-roles">
       Join The Team
     </a>
@@ -62,53 +58,44 @@
 
 <hr>
 
-Ockam is a suite of tools, programming libraries and infrastructure that make
-it easy to build devices that communicate securely, privately and trustfully
-with cloud services and other devices.
+Rust and Elixir libraries for end-to-end encrypted, mutually authenticated
+communication between edge devices and cloud services.
 
-## Features
+Machines, within the Internet of Things, operate by exchanging messages, with
+cloud services and other connected machines. Secure, private, and trustworthy
+connected applications must protect these messages from eavesdropping,
+tampering, and forgery.
 
-* End-to-end encrypted messages.
-* Mutually authenticated secure channels.
-* Key Lifecycle and Credential Exchange protocols.
-* Add-Ons for a variety of transport protocols, hardware cryptography, and
-  enterprise integrations.
-* Libraries for multiple languages - C, Rust, Elixir (more on the roadmap).
+Ockam is a suite of programming libraries and infrastructure that make it
+simple for applications to dynamically create end-to-end encrypted, mutually
+authenticated, mutually authorized, lightweight secure channels that protect
+messages, end-to-end — from their source to their destination.
 
 <hr>
 
+## Features
+
+* End-to-end encrypted, mutually authenticated secure channels.
+* Key Lifecycle and Credential Exchange protocols.
+* Attribute based access control with credentials that support Selective Disclosure.
+* Add-Ons for a variety of transport protocols, hardware cryptography, and
+  enterprise integrations.
+* Libraries for multiple languages - Rust, Elixir (more on the roadmap).
+
+<hr>
+
+## Getting Started
+
+* [Core Concepts](documentation/concepts/index.md)
+* [Getting Started Guide for Rust developers](documentation/guides/rust/README.md)
+
 <p>
-  <a href="https://ockam.io/learn/concepts/">
+  <a href="documentation/concepts/index.md">
     <img alt="Ockam"
       src="./documentation/concepts/assets/ockam-features.png"
       width="900">
   </a>
 </p>
-
-<hr>
-
-We believe that Security, Privacy and Trust are application layer concerns and
-IoT developers should have simple tools to granularly control these aspects
-of their applications.
-
-Cryptographic protocols can be a powerful tool to solve many complex, real world
-challenges in deploying dependable IoT at scale. Such protocols, however, must
-be designed and implemented with extreme care.
-
-In Ockam, we're taking proven cryptographic building blocks and applying them
-to build solutions for common IoT and edge computing problems like:
-
-* Secure, easy and rapid __enrollment of large fleets__ of devices.
-* Scalable provisioning, proof of possession, rotation, and revocation
-  of __identity keys and credentials__.
-* __End-to-end encrypted communication__ over low-bandwidth, intermittently
-  connected, multi-protocol IoT network topologies.
-
-Our goal is to provide this functionality in multiple programming languages with
-secure, high level application interfaces that are easy to use correctly and
-hard to misuse.
-
-[An introduction to the core concepts.](https://www.ockam.io/learn/concepts/secure_channels/)
 
 ## License
 
