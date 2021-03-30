@@ -83,7 +83,15 @@ defmodule Ockam.Hub do
                   metadata_tag_keys: [:process_count, :atom_count, :port_count]
                 },
                 %{
-                  name: [:ockam, Ockam.Transport.TCP.Listener, :init],
+                  name: [:ockam, Ockam.Transport.TCP.Listener, :init, :start],
+                  metadata_tag_keys: [:options, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Hub.Service.Echo, :init, :start],
+                  metadata_tag_keys: [:options, :return_value]
+                },
+                %{
+                  name: [:ockam, Ockam.Hub.Service.Forward, :init, :start],
                   metadata_tag_keys: [:options, :return_value]
                 },
                 %{
@@ -107,11 +115,14 @@ defmodule Ockam.Hub do
                   metadata_tag_keys: [:message, :return_value]
                 },
                 %{
-                  name: [:ockam, :init],
-                  metadata_tag_keys: [:options, :return_value]
+                  name: [:ockam, Ockam.Hub.Service.Echo, :handle_message, :start],
+                  metadata_tag_keys: [:message, :onward_route, :return_route, :version]
+                },
+                %{
+                  name: [:ockam, Ockam.Hub.Service.Forward, :handle_message, :start],
+                  metadata_tag_keys: [:message, :return_value]
                 }
-              ],
-              tags: %{test: :value}
+              ]
             ]
           ]
         }
