@@ -53,3 +53,6 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
+Sending messages to workers is even easier with <a href="04-forwarding">forwarding addresses</a>. The next step registers the
+`echo_service` with the forwarding service. The forwarding service sends a forwarding address, that we can use to send
+messages to the worker. The forwarding address is an alias for a route to a worker.
