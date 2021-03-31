@@ -3,7 +3,7 @@ title: Transports
 order: 4
 ---
 
-# Have questions? Let us help!
+#### Have questions? Let us help!
 
 **We are here to help.** See the [Guides And Demos](https://github.com/ockam-network/ockam/discussions/1134) in
 GitHub Discussions.
@@ -53,6 +53,12 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("echo_service", EchoService).await
 }
 
+```
+
+Run the example:
+
+```shell
+cargo run --example echo_service
 ```
 
 ## Echo Client
@@ -124,4 +130,12 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
-The Ockam Hub  [creates a node for you instantly](../03-hub). Let's move the `echo_service` to a node on the hub.
+Make sure the `echo_server` is started first.
+
+Run the example:
+
+```shell
+cargo run --example echo_client
+```
+
+The Ockam Hub [creates a node for you instantly](../03-hub). Let's move the `echo_service` to a node on the hub.

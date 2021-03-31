@@ -3,7 +3,7 @@ title: Hub
 order: 5
 ---
 
-# Have questions? Let us help!
+#### Have questions? Let us help!
 
 **We are here to help.** See the [Guides And Demos](https://github.com/ockam-network/ockam/discussions/1134) in
 GitHub Discussions.
@@ -53,6 +53,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.stop().await
 }
 
+```
+
+Run the example:
+
+```shell
+cargo run --example echo_client
 ```
 
 It's even easier to send messages to remote nodes using a [forwarding addresses](../04-forwarding). The next step registers the
