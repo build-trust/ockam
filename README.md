@@ -124,7 +124,7 @@ within modern enterprise architectures.
 
 We've put together a short walk through of building your first
 Ockam application,
-[click here to begin]("documentation/guides/rust/README.md#rust-guide").
+[click here to begin](documentation/guides/rust/README.md#rust-guide).
 
 ## License
 
