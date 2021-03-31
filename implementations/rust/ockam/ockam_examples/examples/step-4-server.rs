@@ -24,9 +24,10 @@ impl Worker for EchoService {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         if &msg.as_str() == &"register" {
+            let address = msg.reply().recipient().to_string();
             println!(
                 "echo_service: My address on the hub is {}",
-                msg.reply().recipient()
+                address.strip_prefix("0:").unwrap()
             );
             Ok(())
         } else {

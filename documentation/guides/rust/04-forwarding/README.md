@@ -35,15 +35,13 @@ local worker.
 
 When we receive a message indicating successful registration, the forwarding address of the `echo_service` is printed.
 
-Copy the address printed after registration succeeds. The address is hexadecimal with a prefix of '0.'. You do not need
-to copy the '0.' portion of the address.
-
 ```rust
 async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
     if &msg.as_str() == &"register" {
+        let address = msg.reply().recipient().to_string();
         println!(
             "echo_service: My address on the hub is {}",
-            msg.reply().recipient()
+            address.strip_prefix("0:").unwrap()
         );
         Ok(())
     } else {
@@ -56,8 +54,13 @@ async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Re
 In your console logs, you will see a line similar to:
 
 ```shell
-echo_service: My address on the hub is 0.d7234c4b
+echo_service: My address on the hub is d7234c4b
 ```
+
+## Using the forwarding address
+
+Paste the forwarding address into the `echo_client`, as the destination service address. This will replace the `"echo_service"`
+address.
 
 ## Send a message to the forwarding address
 
@@ -94,9 +97,10 @@ impl Worker for EchoService {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         if &msg.as_str() == &"register" {
+            let address = msg.reply().recipient().to_string();
             println!(
                 "echo_service: My address on the hub is {}",
-                msg.reply().recipient()
+                address.strip_prefix("0:").unwrap()
             );
             Ok(())
         } else {

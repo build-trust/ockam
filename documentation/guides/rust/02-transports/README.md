@@ -130,7 +130,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
-Make sure the `echo_server` is started first.
+Make sure the `echo_service` is started first.
 
 Run the example:
 

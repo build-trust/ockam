@@ -30,13 +30,13 @@ ockam = "0"
 
 ## Working with multiple binaries
 
-Some of the Ockam examples need two programs. There are several ways you can configure your project to have multiple binaries.
+Some Ockam examples need two programs. There are several ways you can configure your project to have multiple binaries.
 The easiest way, and the way that we will use in this guide is to use the `examples` directory.
 
 For example:
 
 1. Create an `examples` directory.
-1. Create `client.rs` and `server.rs` source files in the `examples` directory.
-1. The programs can be executed using cargo: `cargo run --example server` and `cargo run --example client`.
+1. Create `echo_client.rs` and `echo_server.rs` source files in the `examples` directory.
+1. The programs can be executed using cargo: `cargo run --example echo_server` and `cargo run --example echo_client`.
 
 Now we are ready to [Start building the Echo Service](../01-workers)
