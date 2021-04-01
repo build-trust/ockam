@@ -43,36 +43,36 @@ impl From<serde_bare::Error> for crate::Error {
 /// without requiring changes in the user message types.
 pub struct Routed<M: Message> {
     inner: M,
-    return_: Route,
-    onward: Route,
+    return_route: Route,
+    onward_route: Route,
 }
 
 impl<M: Message> Routed<M> {
     /// Create a new Routed message wrapper
-    pub fn new(inner: M, return_: Route, onward: Route) -> Self {
+    pub fn new(inner: M, return_route: Route, onward_route: Route) -> Self {
         Self {
             inner,
-            return_,
-            onward,
+            return_route,
+            onward_route,
         }
     }
 
     /// Return a copy of the full return route of the wrapped message
     #[inline]
     pub fn reply(&self) -> Route {
-        self.return_.clone()
+        self.return_route.clone()
     }
 
     /// Return a copy of the onward route for this message
     #[inline]
     pub fn onward(&self) -> Route {
-        self.onward.clone()
+        self.onward_route.clone()
     }
 
     /// Get a copy of the message sender address
     #[inline]
     pub fn sender(&self) -> Address {
-        self.return_.recipient()
+        self.return_route.recipient()
     }
 
     /// Consume the message wrapper
