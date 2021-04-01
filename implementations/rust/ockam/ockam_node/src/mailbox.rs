@@ -1,5 +1,5 @@
 use crate::{relay::RelayMessage, Context};
-use ockam_core::{Address, Message, TransportMessage};
+use ockam_core::{Address, Message, Routed, TransportMessage};
 use std::fmt::{self, Debug, Display, Formatter};
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -74,8 +74,8 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     ///
     /// After calling this function it is no longer possible to
     /// re-queue the message into the worker mailbox.
-    pub fn take(self) -> M {
-        self.inner
+    pub fn take(self) -> Routed<M> {
+        Routed::new(self.inner, self.trans.return_, self.trans.onward)
     }
 }
 
