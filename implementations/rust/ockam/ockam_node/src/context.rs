@@ -252,17 +252,32 @@ impl Context {
     /// The reason this function doesn't construct a `Cancel<_, M>` is
     /// to avoid the lifetime collision between the mutation on `self` and the ref to `Context`
     /// passed to `Cancel::new(..)`
+    ///
+    /// This function will block and re-queue messages into the
+    /// mailbox until it can receive the correct message payload.
+    ///
+    /// WARNING: this will temporarily create a busyloop, this
+    /// mechanism should be replaced with a waker system that lets the
+    /// mailbox work not yield another message until the relay worker
+    /// has woken it.
     async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, TransportMessage, Address)> {
-        self.mailbox
-            .next()
-            .await
-            .and_then(|relay_msg| {
-                let (addr, data) = relay_msg.transport();
+        loop {
+            let msg = self
+                .mailbox
+                .next()
+                .await
+                .ok_or_else(|| Error::FailedLoadData)?;
+            let (addr, data) = msg.transport();
 
-                M::decode(&data.payload)
-                    .ok()
-                    .map(move |msg| (msg, data, addr))
-            })
-            .ok_or_else(|| Error::FailedLoadData.into())
+            match M::decode(&data.payload).ok() {
+                Some(msg) => return Ok((msg, data, addr)),
+                None => {
+                    let onward = data.onward.clone();
+                    self.mailbox
+                        .requeue(RelayMessage::direct(addr, data, onward))
+                        .await;
+                }
+            }
+        }
     }
 }
