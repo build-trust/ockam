@@ -150,10 +150,17 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             let routed = Routed::new(msg, return_, onward);
 
             // Call the worker handle function
-            self.worker
-                .handle_message(&mut self.ctx, routed)
-                .await
-                .unwrap();
+            match self.worker.handle_message(&mut self.ctx, routed).await {
+                Ok(()) => {}
+                Err(e) => {
+                    error!(
+                        "Worker {} error while handling message: {}",
+                        self.ctx.address(),
+                        e
+                    );
+                    continue;
+                }
+            }
 
             // Unset the message address
             self.ctx.message_address(None);
