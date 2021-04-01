@@ -5,12 +5,18 @@
 [![license][license-image]][license-link]
 [![discuss][discuss-image]][discuss-link]
 
-Ockam is a library for building devices that communicate securely, privately
-and trustfully with cloud services and other devices.
+End-to-end encrypted communication between edge devices and cloud services.
 
-This crate provides all dependencies needed to use Ockam in your application.
+Get started with our step-by-step [hands-on guide][guide].
 
-Types from other Ockam crates are re-exported by this crate.
+## Features
+
+* End-to-end encrypted secure channels.
+* Muti-hop, multi-transport, application layer routing.
+* Node - an asynchronous worker runtime.
+* Workers - actors that can handle routed messages.
+* Entities and Profiles.
+* Attribute-based credentials with selective disclosure.
 
 ## Usage
 
@@ -18,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam = "0.4.0"
+ockam = "0.4.1"
 ```
 
 ## Crate Features
@@ -29,7 +35,7 @@ disabled as follows
 
 ```
 [dependencies]
-ockam = { version = "0.4.0", default-features = false }
+ockam = { version = "0.4.1", default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
@@ -55,3 +61,5 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
 [discuss-link]: https://github.com/ockam-network/ockam/discussions
+
+[guide]: https://github.com/ockam-network/ockam/blob/develop/documentation/guides/rust/README.md#rust-guide
