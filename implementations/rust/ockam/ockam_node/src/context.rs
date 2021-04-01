@@ -1,5 +1,6 @@
 use crate::{
     error::Error,
+    parser,
     relay::{self, RelayMessage},
     Cancel, Mailbox, NodeMessage,
 };
@@ -269,7 +270,8 @@ impl Context {
                 .ok_or_else(|| Error::FailedLoadData)?;
             let (addr, data) = msg.transport();
 
-            match M::decode(&data.payload).ok() {
+            // FIXME: make message parsing idempotent to avoid cloning
+            match parser::message(data.payload.clone()).ok() {
                 Some(msg) => return Ok((msg, data, addr)),
                 None => {
                     let onward = data.onward.clone();

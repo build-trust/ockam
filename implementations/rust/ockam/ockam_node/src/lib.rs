@@ -18,6 +18,7 @@ mod executor;
 mod mailbox;
 mod messages;
 mod node;
+mod parser;
 mod relay;
 mod router;
 
