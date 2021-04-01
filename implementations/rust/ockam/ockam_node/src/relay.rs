@@ -100,17 +100,26 @@ where
     fn handle_direct(&mut self, msg: TransportMessage) -> Result<(M, Route)> {
         let TransportMessage {
             payload, return_, ..
-        } = msg;
+        } = msg.clone();
 
-        parser::message::<M>(payload)
-            .map_err(|e| {
-                error!(
-                    "Failed to decode message payload for worker {}",
-                    self.ctx.address()
-                );
-                e.into()
-            })
-            .map(|m| (m, return_.clone()))
+        if self.ctx.peeling() {
+            parser::message::<M>(payload)
+                .map_err(|e| {
+                    error!(
+                        "Failed to decode message payload for worker {}",
+                        self.ctx.address()
+                    );
+                    e.into()
+                })
+                .map(|m| (m, return_.clone()))
+        } else {
+            // If message peeling is disabled, we reserialise the
+            // whole message, then decode it as if it was the payload
+            // to make rustc happy.
+            println!("Running new code point...");
+            let enc = msg.encode().unwrap();
+            parser::message::<M>(enc).map(|m| (m, msg.return_.clone()))
+        }
     }
 
     #[inline]

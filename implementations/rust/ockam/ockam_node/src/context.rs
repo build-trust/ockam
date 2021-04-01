@@ -5,7 +5,10 @@ use crate::{
     Cancel, Mailbox, NodeMessage,
 };
 use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tokio::{
     runtime::Runtime,
     sync::mpsc::{channel, Sender},
@@ -16,6 +19,7 @@ pub struct Context {
     msg_addr: Option<Address>,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
+    peeling: AtomicBool,
     pub(crate) mailbox: Mailbox,
 }
 
@@ -31,6 +35,7 @@ impl Context {
             sender,
             address,
             msg_addr: None,
+            peeling: AtomicBool::new(true),
             mailbox,
         }
     }
@@ -38,6 +43,15 @@ impl Context {
     /// Override the worker address for a specific message address
     pub(crate) fn message_address<A: Into<Option<Address>>>(&mut self, a: A) {
         self.msg_addr = a.into();
+    }
+
+    pub(crate) fn peeling(&self) -> bool {
+        self.peeling.load(Ordering::Relaxed)
+    }
+
+    /// Specify whether this worker's relay should use message peeling
+    pub fn use_peeling(&self, p: bool) {
+        self.peeling.store(p, Ordering::Relaxed);
     }
 
     /// Return the current context address
