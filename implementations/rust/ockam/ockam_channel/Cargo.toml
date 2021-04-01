@@ -3,7 +3,15 @@ name = "ockam_channel"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
-autoexamples = false
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
+readme = "README.md"
+categories = ["cryptography", "no-std", "authentication", "algorithms"]
+keywords = ["ockam", "cryptography", "crypto", "encryption", "iot"]
+description = """Channel is an abstraction responsible for sending messages (usually over the network)
+in encrypted and authenticated way.
+"""
 
 [features]
 default = ["std"]
