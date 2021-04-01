@@ -28,25 +28,28 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 pub struct RelayMessage {
     addr: Address,
     data: RelayPayload,
+    onward: Route,
 }
 
 impl RelayMessage {
     /// Construct a message addressed to a user worker
-    pub fn direct(addr: Address, data: TransportMessage) -> Self {
+    pub fn direct(addr: Address, data: TransportMessage, onward: Route) -> Self {
         Self {
             addr,
             data: RelayPayload::Direct(data),
+            onward,
         }
     }
 
     /// Construct a message addressed to an middleware router
     #[inline]
-    pub fn pre_router(addr: Address, data: TransportMessage) -> Self {
+    pub fn pre_router(addr: Address, data: TransportMessage, onward: Route) -> Self {
         let route = data.return_.clone();
         let r_msg = RouterMessage::Route(data);
         Self {
             addr,
             data: RelayPayload::PreRouter(r_msg.encode().unwrap(), route),
+            onward,
         }
     }
 
@@ -121,7 +124,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
     async fn run(mut self) {
         self.worker.initialize(&mut self.ctx).await.unwrap();
 
-        while let Some(RelayMessage { addr, data }) = self.ctx.mailbox.next().await {
+        while let Some(RelayMessage { addr, data, onward }) = self.ctx.mailbox.next().await {
             // Set the message address for this transaction chain
             self.ctx.message_address(addr);
 
@@ -129,7 +132,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             // wrap state.  Messages addressed to a router will be of
             // type `RouterMessage`, while generic userspace workers
             // can provide any type they want.
-            let (msg, route) = match (|data| -> Result<(M, Route)> {
+            let (msg, return_) = match (|data| -> Result<(M, Route)> {
                 Ok(match data {
                     RelayPayload::Direct(trans_msg) => self.handle_direct(trans_msg)?,
                     RelayPayload::PreRouter(enc_msg, route) => {
@@ -144,7 +147,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
 
             // Wrap the user message in a `Routed` to provide return
             // route information via a composition side-channel
-            let routed = Routed::new(msg, route);
+            let routed = Routed::new(msg, return_, onward);
 
             // Call the worker handle function
             self.worker

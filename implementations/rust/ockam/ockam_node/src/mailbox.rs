@@ -64,8 +64,9 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     /// Cancel this message
     pub async fn cancel(self) {
         let ctx = self.ctx;
+        let onward = self.trans.onward.clone();
         ctx.mailbox
-            .requeue(RelayMessage::direct(self.addr, self.trans))
+            .requeue(RelayMessage::direct(self.addr, self.trans, onward))
             .await;
     }
 
