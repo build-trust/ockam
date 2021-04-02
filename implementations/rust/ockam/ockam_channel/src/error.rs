@@ -6,6 +6,7 @@ pub enum ChannelError {
     InvalidInternalState,
     InvalidNonce,
     KeyExchangeNotComplete,
+    InvalidHubResponse,
 }
 
 impl ChannelError {
