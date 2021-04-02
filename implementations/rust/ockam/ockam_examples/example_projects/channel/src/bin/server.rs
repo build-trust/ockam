@@ -1,13 +1,15 @@
-use channel_examples::hub_proxy::HubProxy;
 use channel_examples::server_worker::Server;
 use ockam::Result;
-use ockam_channel::{ChannelListenerMessage, XXChannelListener, XX_CHANNEL_LISTENER_ADDRESS};
+use ockam_channel::{
+    ChannelListenerMessage, HubProxy, ProxyRegistered, XXChannelListener,
+    XX_CHANNEL_LISTENER_ADDRESS,
+};
 use ockam_transport_tcp::{start_tcp_worker, TcpRouter};
 use std::net::SocketAddr;
 use std::str::FromStr;
 
 #[ockam::node]
-async fn main(ctx: ockam::Context) -> Result<()> {
+async fn main(mut ctx: ockam::Context) -> Result<()> {
     let xx_channel_listener = XXChannelListener::new();
     ctx.start_worker(XX_CHANNEL_LISTENER_ADDRESS, xx_channel_listener)
         .await
@@ -27,10 +29,15 @@ async fn main(ctx: ockam::Context) -> Result<()> {
     // Create the responder worker
     ctx.start_worker("echo_server", server).await?;
 
-    let hub_proxy =
-        HubProxy::<ChannelListenerMessage>::new(hub_addr, XX_CHANNEL_LISTENER_ADDRESS.into());
-    // Create the responder worker
-    ctx.start_worker("hub_proxy", hub_proxy).await?;
+    HubProxy::<ChannelListenerMessage>::register_proxy(
+        &ctx,
+        "proxy".into(),
+        hub_addr,
+        XX_CHANNEL_LISTENER_ADDRESS.into(),
+    )
+    .await?;
+    let proxy_address = ctx.receive::<ProxyRegistered>().await?.take().take();
+    println!("PROXY ADDRESS: {}", proxy_address.address());
 
     // Crashes: ctx.stop().await
 
