@@ -1,0 +1,30 @@
+[package]
+name = "ockam_signatures_core"
+version = "0.1.0"
+authors = ["Ockam Deveopers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_signatures_core"
+readme = "README.md"
+keywords = ["ockam", "cryptography"]
+categories = ["no-std"]
+description = """
+Signature core types of the Ockam library.
+"""
+exclude = [
+    "DEVELOP.md",
+    "LICENSE"
+]
+
+
+[dependencies]
+bls12_381_plus = "0.4"
+digest = "0.9"
+ff = "0.9"
+group = "0.9"
+heapless = "0.6"
+rand_core = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+subtle = "2.4"
+typenum = "1.13"
