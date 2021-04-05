@@ -67,6 +67,10 @@
                 {
                   "name": "secrets-volume-influx",
                   "mountPath": "/mnt/secrets/influx"
+                },
+                {
+                  "name": "secrets-volume-auth",
+                  "mountPath": "/mnt/secrets/auth"
                 }
               ],
               "livenessProbe": {

@@ -22,6 +22,7 @@ defmodule Ockam.Hub.TelemetryForwarder do
       # {"message": {"version": 1,"onward_route": ["a","b","c"],"return_route": ["1","2","3"],"payload": "asdf"}}
       # """
       payload = Jason.encode!(metadata)
+      token = URI.encode_www_form(token)
 
       HTTPoison.post("#{host}/messages?token=#{token}", payload, [
         {"Content-Type", "application/json"}
