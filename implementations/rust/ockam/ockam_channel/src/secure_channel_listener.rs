@@ -4,7 +4,8 @@ use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
-/// SecureChannel listener
+/// SecureChannelListener listens for messages from SecureChannel initiators
+/// and creates responder SecureChannels
 pub struct SecureChannelListener;
 
 impl SecureChannelListener {
