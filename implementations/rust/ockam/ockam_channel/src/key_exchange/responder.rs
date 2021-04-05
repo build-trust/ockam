@@ -1,5 +1,5 @@
 use crate::key_exchange::{KeyExchangeRequestMessage, KeyExchangeResponseMessage, Keys};
-use crate::ChannelError;
+use crate::SecureChannelError;
 use async_trait::async_trait;
 use ockam::{Context, Result, Worker};
 use ockam_core::Routed;
@@ -33,14 +33,14 @@ impl Worker for XResponder {
         let reply = msg.reply();
         match msg.take() {
             KeyExchangeRequestMessage::InitiatorFirstMessage { req_id: _ } => {
-                return Err(ChannelError::InvalidInternalState.into());
+                return Err(SecureChannelError::InvalidInternalState.into());
             }
             KeyExchangeRequestMessage::Payload { req_id, payload } => {
                 let responder;
                 if let Some(i) = self.responder.as_mut() {
                     responder = i;
                 } else {
-                    return Err(ChannelError::InvalidInternalState.into());
+                    return Err(SecureChannelError::InvalidInternalState.into());
                 }
 
                 // discard any payload and get the next message
@@ -59,7 +59,7 @@ impl Worker for XResponder {
                     if let Some(r) = self.responder.take() {
                         responder = r;
                     } else {
-                        return Err(ChannelError::InvalidInternalState.into());
+                        return Err(SecureChannelError::InvalidInternalState.into());
                     }
 
                     let keys = responder.finalize()?;

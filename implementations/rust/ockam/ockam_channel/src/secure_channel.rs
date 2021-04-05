@@ -1,8 +1,7 @@
-use crate::channel_listener::ChannelListenerMessage;
 use crate::key_exchange::{
     KeyExchangeRequestMessage, KeyExchangeResponseMessage, XInitiator, XResponder,
 };
-use crate::ChannelError;
+use crate::{SecureChannelError, SecureChannelListenerMessage};
 use async_trait::async_trait;
 use ockam::{Address, Context, Message, TransportMessage, Worker};
 use ockam_core::{Result, Route, Routed};
@@ -20,10 +19,10 @@ struct ChannelKeys {
     nonce: u16,
 }
 
-/// Channel is an abstraction responsible for sending messages (usually over the network) in
+/// SecureChannel is an abstraction responsible for sending messages (usually over the network) in
 /// encrypted and authenticated way.
-/// Channel always has two ends: initiator and responder.
-pub struct Channel {
+/// SecureChannel always has two ends: initiator and responder.
+pub struct SecureChannel {
     is_initiator: bool,
     route: Route,
     channel_id: String,
@@ -33,7 +32,7 @@ pub struct Channel {
     vault: Arc<Mutex<SoftwareVault>>,
 }
 
-impl Channel {
+impl SecureChannel {
     pub(crate) fn new(
         is_initiator: bool,
         route: Route,
@@ -42,7 +41,7 @@ impl Channel {
     ) -> Self {
         // TODO: Replace with worker
         let vault = Arc::new(Mutex::new(SoftwareVault::new()));
-        Channel {
+        SecureChannel {
             is_initiator,
             route,
             channel_id,
@@ -61,7 +60,7 @@ impl Channel {
     ) -> Result<()> {
         let address: Address = channel_id.clone().into();
 
-        let channel = Channel::new(
+        let channel = SecureChannel::new(
             true,
             route.into(),
             channel_id,
@@ -84,7 +83,7 @@ impl Channel {
 
     fn convert_nonce_small(b: &[u8]) -> Result<[u8; 12]> {
         if b.len() != 2 {
-            return Err(ChannelError::InvalidNonce.into());
+            return Err(SecureChannelError::InvalidNonce.into());
         }
         let mut n: [u8; 12] = [0; 12];
         n[10] = b[0];
@@ -97,7 +96,7 @@ impl Channel {
         if let Some(k) = keys.as_mut() {
             Ok(k)
         } else {
-            return Err(ChannelError::KeyExchangeNotComplete.into());
+            return Err(SecureChannelError::KeyExchangeNotComplete.into());
         }
     }
 
@@ -108,15 +107,15 @@ impl Channel {
         is_first_initiator_msg: bool,
     ) -> Result<()> {
         // Handles response from KeyExchange Worker
-        debug!("Channel received KeyExchangeLocal");
+        debug!("SecureChannel received KeyExchangeLocal");
 
         if let Some(payload) = response.payload().clone() {
-            debug!("Channel received Payload");
+            debug!("SecureChannel received Payload");
             if is_first_initiator_msg {
                 // First message from initiator goes to the channel listener
                 ctx.send_message(
                     self.route.clone(),
-                    ChannelListenerMessage::CreateResponderChannel {
+                    SecureChannelListenerMessage::CreateResponderChannel {
                         channel_id: self.channel_id.clone(),
                         payload,
                     },
@@ -124,16 +123,19 @@ impl Channel {
                 .await?;
             } else {
                 // Other messages go to the channel worker itself
-                ctx.send_message(self.route.clone(), ChannelMessage::KeyExchange { payload })
-                    .await?;
+                ctx.send_message(
+                    self.route.clone(),
+                    SecureChannelMessage::KeyExchange { payload },
+                )
+                .await?;
             };
         }
         if let Some(keys) = response.keys().clone() {
             // We now have shared encryption keys
-            debug!("Channel received ExchangeComplete");
+            debug!("SecureChannel received ExchangeComplete");
 
             if self.keys.is_some() {
-                return Err(ChannelError::InvalidInternalState.into());
+                return Err(SecureChannelError::InvalidInternalState.into());
             }
 
             let auth_hash = keys.h();
@@ -161,16 +163,16 @@ impl Channel {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub enum ChannelMessage {
+pub enum SecureChannelMessage {
     KeyExchange { payload: Vec<u8> },
     Encrypt { m: Vec<u8> },
     Decrypt { payload: Vec<u8> },
 }
 
-impl ChannelMessage {
+impl SecureChannelMessage {
     /// Create message that if sent to the Channel worker, will be encrypted and sent to the remote Channel
-    pub fn encrypt<M: Message>(m: M) -> Result<ChannelMessage> {
-        let m = ChannelMessage::Encrypt { m: m.encode()? };
+    pub fn encrypt<M: Message>(m: M) -> Result<SecureChannelMessage> {
+        let m = SecureChannelMessage::Encrypt { m: m.encode()? };
 
         Ok(m)
     }
@@ -195,8 +197,8 @@ impl KeyExchangeCompleted {
 }
 
 #[async_trait]
-impl Worker for Channel {
-    type Message = ChannelMessage;
+impl Worker for SecureChannel {
+    type Message = SecureChannelMessage;
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
@@ -255,14 +257,14 @@ impl Worker for Channel {
         let reply = msg.reply().clone();
         let mut onward_route = msg.onward();
         match msg.take() {
-            ChannelMessage::KeyExchange { payload } => {
+            SecureChannelMessage::KeyExchange { payload } => {
                 // Received key exchange message from remote channel, need to forward it to local key exchange
-                debug!("Channel received KeyExchangeRemote");
+                debug!("SecureChannel received KeyExchangeRemote");
                 let key_exchange_route;
                 if let Some(a) = self.key_exchange_route.clone() {
                     key_exchange_route = a;
                 } else {
-                    return Err(ChannelError::InvalidInternalState.into());
+                    return Err(SecureChannelError::InvalidInternalState.into());
                 }
 
                 // Update route to a remote
@@ -287,8 +289,8 @@ impl Worker for Channel {
 
                 self.handle_key_exchange_local(ctx, m, false).await?;
             }
-            ChannelMessage::Encrypt { m } => {
-                debug!("Channel received Encrypt");
+            SecureChannelMessage::Encrypt { m } => {
+                debug!("SecureChannel received Encrypt");
 
                 let _ = onward_route.step();
 
@@ -306,7 +308,7 @@ impl Worker for Channel {
                     let nonce = keys.nonce;
 
                     if nonce == u16::max_value() {
-                        return Err(ChannelError::InvalidNonce.into());
+                        return Err(SecureChannelError::InvalidNonce.into());
                     }
 
                     keys.nonce += 1;
@@ -328,16 +330,19 @@ impl Worker for Channel {
                     res
                 };
 
-                ctx.send_message(self.route.clone(), ChannelMessage::Decrypt { payload })
-                    .await?;
+                ctx.send_message(
+                    self.route.clone(),
+                    SecureChannelMessage::Decrypt { payload },
+                )
+                .await?;
             }
-            ChannelMessage::Decrypt { payload } => {
-                debug!("Channel received Decrypt");
+            SecureChannelMessage::Decrypt { payload } => {
+                debug!("SecureChannel received Decrypt");
                 let payload = {
                     let keys = Self::get_keys(&mut self.keys)?;
 
                     if payload.len() < 2 {
-                        return Err(ChannelError::InvalidNonce.into());
+                        return Err(SecureChannelError::InvalidNonce.into());
                     }
 
                     let nonce = Self::convert_nonce_small(&payload.as_slice()[..2])?;

@@ -1,5 +1,5 @@
 use crate::key_exchange::{KeyExchangeRequestMessage, KeyExchangeResponseMessage, Keys};
-use crate::ChannelError;
+use crate::SecureChannelError;
 use async_trait::async_trait;
 use ockam::{Context, Worker};
 use ockam_core::{Result, Routed};
@@ -36,7 +36,7 @@ impl Worker for XInitiator {
                 if let Some(i) = self.initiator.as_mut() {
                     initiator = i;
                 } else {
-                    return Err(ChannelError::InvalidInternalState.into());
+                    return Err(SecureChannelError::InvalidInternalState.into());
                 }
 
                 // discard any payload and get the next message
@@ -50,7 +50,7 @@ impl Worker for XInitiator {
                 if let Some(i) = self.initiator.as_mut() {
                     initiator = i;
                 } else {
-                    return Err(ChannelError::InvalidInternalState.into());
+                    return Err(SecureChannelError::InvalidInternalState.into());
                 }
 
                 // discard any payload and get the next message
@@ -69,7 +69,7 @@ impl Worker for XInitiator {
                     if let Some(i) = self.initiator.take() {
                         initiator = i;
                     } else {
-                        return Err(ChannelError::InvalidInternalState.into());
+                        return Err(SecureChannelError::InvalidInternalState.into());
                     }
 
                     let keys = initiator.finalize()?;
