@@ -1224,7 +1224,6 @@ dependencies = [
  "ockam_core 0.6.0",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
- "ockam_transport_tcp 0.2.0",
  "ockam_vault 0.3.1",
  "ockam_vault_core 0.3.1",
  "rand 0.7.3",

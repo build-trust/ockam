@@ -20,7 +20,6 @@ std = []
 [dependencies]
 ockam = {path = "../ockam", version = "*"}
 ockam_core = {path = "../ockam_core", version = "*"}
-ockam_transport_tcp = {path = "../ockam_transport_tcp", version = "*"}
 serde_bare = "0.3.0"
 rand = "0.7"
 ockam_key_exchange_xx = {path = "../ockam_key_exchange_xx", version = "*"}
