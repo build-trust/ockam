@@ -9,15 +9,20 @@ use serde::{Deserialize, Serialize};
 pub struct SecureChannelListener;
 
 impl SecureChannelListener {
+    /// Create a new SecureChannelListener.
     pub fn new() -> Self {
         Self {}
     }
 }
 
+/// SecureChannelListener message wrapper.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum SecureChannelListenerMessage {
+    /// Create a new responder channel.
     CreateResponderChannel {
+        /// Channel ID.
         channel_id: String,
+        /// Channel information.
         payload: Vec<u8>,
     },
 }

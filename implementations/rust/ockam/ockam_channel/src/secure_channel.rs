@@ -30,9 +30,11 @@ pub struct SecureChannelInfo {
 }
 
 impl SecureChannelInfo {
+    /// Return the address of the worker.
     pub fn worker_address(&self) -> &Address {
         &self.worker_address
     }
+    /// Return the auth hash.
     pub fn auth_hash(&self) -> [u8; 32] {
         self.auth_hash
     }
@@ -195,11 +197,24 @@ impl SecureChannel {
     }
 }
 
+/// A message in the secure channel protocol.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum SecureChannelMessage {
-    KeyExchange { payload: Vec<u8> },
-    Encrypt { m: Vec<u8> },
-    Decrypt { payload: Vec<u8> },
+    /// Key exchange requested.
+    KeyExchange {
+        /// Information for key exchange.
+        payload: Vec<u8>,
+    },
+    /// Encrypted data.
+    Encrypt {
+        /// Encrypted data.
+        m: Vec<u8>,
+    },
+    /// Decrypted data.
+    Decrypt {
+        /// Decrypted payload.
+        payload: Vec<u8>,
+    },
 }
 
 impl SecureChannelMessage {

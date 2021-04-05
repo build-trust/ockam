@@ -1,3 +1,19 @@
+//! XX (Noise Protocol) implementation of an Ockam Key Exchanger.
+//!
+//! This crate contains the key exchange types of the Ockam library and is intended
+//! for use by other crates that provide features and add-ons to the main
+//! Ockam library.
+//!
+//! The main Ockam crate re-exports types defined in this crate.
+#![deny(
+    missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_import_braces,
+    unused_qualifications,
+    warnings
+)]
 use ockam_vault_core::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
 
 mod error;

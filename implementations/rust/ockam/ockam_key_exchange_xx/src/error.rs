@@ -4,9 +4,13 @@ use ockam_core::Error;
 /// an Ockam XX Key Agreement
 #[derive(Clone, Copy, Debug)]
 pub enum XXError {
+    /// No error.
     None,
+    /// The key exchange protocol is in an invalid state.
     InvalidState,
+    /// An internal Vault error has occurred.
     InternalVaultError,
+    /// A message had an unexpected length.
     MessageLenMismatch,
 }
 

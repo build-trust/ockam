@@ -14,5 +14,5 @@ description = """The Ockam Key Exchange trait.
 
 [dependencies]
 ockam_core = { version = "0.6.0", path = "../ockam_core" }
-ockam_vault_core = { version = "0.3.0", path = "../ockam_vault_core" }
+ockam_vault_core = { version = "0.3.1", path = "../ockam_vault_core" }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
