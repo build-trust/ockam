@@ -1,4 +1,4 @@
-# ockam\_signature\_bls
+# ockam_signature_bls
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
