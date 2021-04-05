@@ -1,6 +1,5 @@
 use channel_examples::server_worker::Server;
-use ockam::Result;
-use ockam_channel::{ChannelListenerMessage, HubProxy, ProxyRegistered, XXChannelListener};
+use ockam::{RemoteMailbox, Result, SecureChannel, SecureChannelListenerMessage};
 use ockam_transport_tcp::{start_tcp_worker, TcpRouter};
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -9,10 +8,7 @@ const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
 
 #[ockam::node]
 async fn main(mut ctx: ockam::Context) -> Result<()> {
-    let xx_channel_listener = XXChannelListener::new();
-    ctx.start_worker(XX_CHANNEL_LISTENER_ADDRESS, xx_channel_listener)
-        .await
-        .unwrap();
+    SecureChannel::create_listener(&mut ctx, XX_CHANNEL_LISTENER_ADDRESS.into()).await?;
 
     // Create and register a TcpRouter
     let rh = TcpRouter::register(&ctx).await?;
@@ -28,15 +24,13 @@ async fn main(mut ctx: ockam::Context) -> Result<()> {
     // Create the responder worker
     ctx.start_worker("echo_server", server).await?;
 
-    HubProxy::<ChannelListenerMessage>::register_proxy(
-        &ctx,
-        "proxy".into(),
+    let info = RemoteMailbox::<SecureChannelListenerMessage>::start(
+        &mut ctx,
         hub_addr,
         XX_CHANNEL_LISTENER_ADDRESS.into(),
     )
     .await?;
-    let proxy_address = ctx.receive::<ProxyRegistered>().await?.take().take();
-    println!("PROXY ADDRESS: {}", proxy_address.address());
+    println!("PROXY ADDRESS: {}", info.alias_address());
 
     // Crashes: ctx.stop().await
 

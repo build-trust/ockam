@@ -1,5 +1,6 @@
-use ockam::{async_worker, Context, Result, Route, Routed, Worker};
-use ockam_channel::{Channel, ChannelMessage, KeyExchangeCompleted};
+use ockam::{
+    async_worker, Context, Result, Route, Routed, SecureChannel, SecureChannelMessage, Worker,
+};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::net::SocketAddr;
@@ -9,15 +10,15 @@ use tracing::info;
 const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
 
 pub struct Client {
-    channel_id: String,
+    route: Option<Route>,
     hub_addr: SocketAddr,
     hub_handle: String,
 }
 
 impl Client {
-    pub fn new(channel_id: String, hub_addr: SocketAddr, hub_handle: String) -> Self {
+    pub fn new(hub_addr: SocketAddr, hub_handle: String) -> Self {
         Client {
-            channel_id,
+            route: None,
             hub_addr,
             hub_handle,
         }
@@ -32,20 +33,21 @@ impl Worker for Client {
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         info!("Starting channel");
 
-        Channel::start_initiator_channel(
-            &ctx,
-            self.channel_id.clone(),
+        let channel_info = SecureChannel::create(
+            ctx,
             Route::new()
                 .append(format!("1#{}", self.hub_addr))
                 .append(format!("0#{}", self.hub_handle))
                 .append(XX_CHANNEL_LISTENER_ADDRESS.to_string()),
         )
         .await?;
-
-        let _ = ctx
-            .receive_match(|m: &KeyExchangeCompleted| m.channel_id() == self.channel_id)
-            .await?;
         info!("Key exchange completed");
+        self.route = Some(
+            Route::new()
+                .append(channel_info.worker_address().clone())
+                .append("echo_server")
+                .into(),
+        );
 
         ctx.send_message(ctx.address(), "recursion".to_string())
             .await?;
@@ -66,10 +68,8 @@ impl Worker for Client {
                 ctx.send_message(ctx.address(), "recursion".to_string())
                     .await?;
                 ctx.send_message(
-                    Route::new()
-                        .append(self.channel_id.clone())
-                        .append("echo_server"),
-                    ChannelMessage::encrypt(rand_string)?,
+                    self.route.clone().unwrap(),
+                    SecureChannelMessage::create_encrypt_message(rand_string)?,
                 )
                 .await?;
                 tokio::time::sleep(Duration::from_secs(2)).await;

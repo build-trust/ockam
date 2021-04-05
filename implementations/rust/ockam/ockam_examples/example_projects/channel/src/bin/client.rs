@@ -15,8 +15,7 @@ async fn main(ctx: ockam::Context) -> Result<()> {
     let w_pair = start_tcp_worker(&ctx, hub_addr).await?;
     rh.register(&w_pair).await?;
 
-    let channel_id = "random_id".to_string();
-    let client = Client::new(channel_id, hub_addr, "91e7e94c".to_string());
+    let client = Client::new(hub_addr, "27164a70".to_string());
 
     ctx.start_worker("echo_client", client).await?;
 
