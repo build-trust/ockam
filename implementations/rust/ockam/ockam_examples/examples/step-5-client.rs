@@ -1,5 +1,4 @@
-use ockam::{Context, Result, Route};
-use ockam_channel::{SecureChannel, SecureChannelMessage};
+use ockam::{Context, Result, Route, SecureChannel, SecureChannelMessage};
 use ockam_transport_tcp::{self as tcp, TcpRouter};
 use std::net::SocketAddr;
 

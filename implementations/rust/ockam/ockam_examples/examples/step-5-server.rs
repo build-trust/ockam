@@ -1,5 +1,7 @@
-use ockam::{async_worker, Context, RemoteMailbox, Result, Routed, Worker};
-use ockam_channel::{SecureChannel, SecureChannelListenerMessage, SecureChannelMessage};
+use ockam::{
+    async_worker, Context, RemoteMailbox, Result, Routed, SecureChannel,
+    SecureChannelListenerMessage, SecureChannelMessage, Worker,
+};
 use ockam_transport_tcp::{self as tcp, TcpRouter};
 use std::net::SocketAddr;
 
