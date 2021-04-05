@@ -1,6 +1,9 @@
 use ockam::{Context, Result, Route};
+use ockam_channel::{SecureChannel, SecureChannelMessage};
 use ockam_transport_tcp::{self as tcp, TcpRouter};
 use std::net::SocketAddr;
+
+const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -14,9 +17,20 @@ async fn main(mut ctx: Context) -> Result<()> {
         tcp::start_tcp_worker(&ctx, remote_node.parse::<SocketAddr>().unwrap()).await?;
     router.register(&connection).await?;
 
+    let channel_info = SecureChannel::create(
+        &mut ctx,
+        Route::new()
+            .append_t(1, remote_node)
+            .append(echo_service)
+            .append(XX_CHANNEL_LISTENER_ADDRESS),
+    )
+    .await?;
+
     ctx.send_message(
-        Route::new().append_t(1, remote_node).append(echo_service),
-        "Hello Ockam!".to_string(),
+        Route::new()
+            .append(channel_info.worker_address().clone())
+            .append("echo_service"),
+        SecureChannelMessage::create_encrypt_message("Hello Ockam!".to_string()).unwrap(),
     )
     .await?;
 

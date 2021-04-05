@@ -1209,10 +1209,12 @@ dependencies = [
  "ockam_vault 0.3.1",
  "ockam_vault_core 0.3.1",
  "pairing-plus",
+ "rand 0.8.3",
  "serde",
  "serde-big-array",
  "serde_bare",
  "sha2 0.8.2",
+ "tracing",
 ]
 
 [[package]]
@@ -1226,7 +1228,7 @@ dependencies = [
  "ockam_key_exchange_xx",
  "ockam_vault 0.3.1",
  "ockam_vault_core 0.3.1",
- "rand 0.7.3",
+ "rand 0.8.3",
  "serde",
  "serde_bare",
  "tracing",
@@ -1239,6 +1241,7 @@ dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
  "hex",
+ "rand 0.8.3",
  "serde",
  "serde_bare",
 ]
