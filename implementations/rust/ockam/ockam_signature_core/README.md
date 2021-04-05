@@ -1,4 +1,4 @@
-# ockam_core
+# ockam_signature_core
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
