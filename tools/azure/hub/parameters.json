@@ -7,6 +7,12 @@
     },
     "identityKey1": {
       "value": "UExBQ0VIT0xERVI="
+    },
+    "authMessage": {
+      "value": "UExBQ0VIT0xERVI="
+    },
+    "authHost": {
+      "value": "UExBQ0VIT0xERVI="
     }
   }
 }

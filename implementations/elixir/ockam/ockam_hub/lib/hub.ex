@@ -10,6 +10,7 @@ defmodule Ockam.Hub do
   alias Ockam.Hub.Service.Alias, as: AliasService
   alias Ockam.Hub.Service.Echo, as: EchoService
 
+  alias Ockam.Hub.TelemetryForwarder
   alias Ockam.Transport
 
   require Logger
@@ -33,6 +34,11 @@ defmodule Ockam.Hub do
 
     AliasService.create(address: "forwarding_service")
 
+    # send some events to our UI to aid end-user development
+    token = Application.get_env(:ockam_hub, :auth_message)
+    host = Application.get_env(:ockam_hub, :auth_host)
+    TelemetryForwarder.attach_send_to_ui(host, token)
+
     # Specifications of child processes that will be started and supervised.
     #
     # See the "Child specification" section in the `Supervisor` module for more
@@ -43,100 +49,15 @@ defmodule Ockam.Hub do
         [
           period: :timer.seconds(5)
         ]
-      },
-      %{
-        id: TelemetryInfluxDB,
-        start: {
-          TelemetryInfluxDB,
-          :start_link,
-          [
-            [
-              version: :v2,
-              protocol: :http,
-              reporter_name: "Ockam Hub",
-              host: Application.get_env(:telemetry_influxdb, :host) || "http://127.0.0.1",
-              port: String.to_integer(Application.get_env(:telemetry_influxdb, :port) || "8086"),
-              bucket: Application.get_env(:telemetry_influxdb, :bucket) || "ockam_hub",
-              org: Application.get_env(:telemetry_influxdb, :org) || "ockam",
-              token: Application.get_env(:telemetry_influxdb, :token) || "TOKEN NOT CONFIGURED",
-              events: [
-                %{
-                  name: [:vm, :memory],
-                  metadata_tag_keys: [
-                    :total,
-                    :processes,
-                    :processes_used,
-                    :system,
-                    :atom,
-                    :atom_used,
-                    :binary,
-                    :code,
-                    :ets,
-                    :maximum
-                  ]
-                },
-                %{
-                  name: [:vm, :total_run_queue_lengths],
-                  metadata_tag_keys: [:total, :cpu, :io]
-                },
-                %{
-                  name: [:vm, :system_counts],
-                  metadata_tag_keys: [:process_count, :atom_count, :port_count]
-                },
-                %{
-                  name: [:ockam, Ockam.Transport.TCP.Listener, :init, :start],
-                  metadata_tag_keys: [:options, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Hub.Service.Echo, :init, :start],
-                  metadata_tag_keys: [:options, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Hub.Service.Alias, :init, :start],
-                  metadata_tag_keys: [:options, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Hub.Service.Alias.Forwarder, :init, :start],
-                  metadata_tag_keys: [:options, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Router, :route, :start],
-                  metadata_tag_keys: [:message, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Router, :route, :start_link],
-                  metadata_tag_keys: [:options, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Transport.TCP.Listener, :handle_message, :start],
-                  metadata_tag_keys: [:message, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Transport.UDP.Listener, :handle_message, :start],
-                  metadata_tag_keys: [:message, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Node, :handle_routed_message, :start],
-                  metadata_tag_keys: [:message, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Hub.Service.Echo, :handle_message, :start],
-                  metadata_tag_keys: [:message, :onward_route, :return_route, :version]
-                },
-                %{
-                  name: [:ockam, Ockam.Hub.Service.Alias, :handle_message, :start],
-                  metadata_tag_keys: [:message, :return_value]
-                },
-                %{
-                  name: [:ockam, Ockam.Hub.Service.Alias.Forwarder, :handle_message, :start],
-                  metadata_tag_keys: [:message, :return_value]
-                }
-              ]
-            ]
-          ]
-        }
       }
     ]
+
+    children =
+      if Application.get_env(:telemetry_influxdb, :host, nil) do
+        [influxdb_telemetry_config() | children]
+      else
+        children
+      end
 
     # Start a supervisor with the given children. The supervisor will inturn
     # start the given children.
@@ -147,5 +68,100 @@ defmodule Ockam.Hub do
     # See the "Strategies" section in the `Supervisor` module for more
     # detailed information.
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
+  end
+
+  defp influxdb_telemetry_config() do
+    %{
+      id: TelemetryInfluxDB,
+      start: {
+        TelemetryInfluxDB,
+        :start_link,
+        [
+          [
+            version: :v2,
+            protocol: :http,
+            reporter_name: "Ockam Hub",
+            host: Application.get_env(:telemetry_influxdb, :host) || "http://127.0.0.1",
+            port: String.to_integer(Application.get_env(:telemetry_influxdb, :port) || "8086"),
+            bucket: Application.get_env(:telemetry_influxdb, :bucket) || "ockam_hub",
+            org: Application.get_env(:telemetry_influxdb, :org) || "ockam",
+            token: Application.get_env(:telemetry_influxdb, :token) || "TOKEN NOT CONFIGURED",
+            events: [
+              %{
+                name: [:vm, :memory],
+                metadata_tag_keys: [
+                  :total,
+                  :processes,
+                  :processes_used,
+                  :system,
+                  :atom,
+                  :atom_used,
+                  :binary,
+                  :code,
+                  :ets,
+                  :maximum
+                ]
+              },
+              %{
+                name: [:vm, :total_run_queue_lengths],
+                metadata_tag_keys: [:total, :cpu, :io]
+              },
+              %{
+                name: [:vm, :system_counts],
+                metadata_tag_keys: [:process_count, :atom_count, :port_count]
+              },
+              %{
+                name: [:ockam, Ockam.Transport.TCP.Listener, :init, :start],
+                metadata_tag_keys: [:options, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Hub.Service.Echo, :init, :start],
+                metadata_tag_keys: [:options, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Hub.Service.Alias, :init, :start],
+                metadata_tag_keys: [:options, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Hub.Service.Alias.Forwarder, :init, :start],
+                metadata_tag_keys: [:options, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Router, :route, :start],
+                metadata_tag_keys: [:message, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Router, :route, :start_link],
+                metadata_tag_keys: [:options, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Transport.TCP.Listener, :handle_message, :start],
+                metadata_tag_keys: [:message, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Transport.UDP.Listener, :handle_message, :start],
+                metadata_tag_keys: [:message, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Node, :handle_routed_message, :start],
+                metadata_tag_keys: [:message, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Hub.Service.Echo, :handle_message, :start],
+                metadata_tag_keys: [:message, :onward_route, :return_route, :version]
+              },
+              %{
+                name: [:ockam, Ockam.Hub.Service.Alias, :handle_message, :start],
+                metadata_tag_keys: [:message, :return_value]
+              },
+              %{
+                name: [:ockam, Ockam.Hub.Service.Alias.Forwarder, :handle_message, :start],
+                metadata_tag_keys: [:message, :return_value]
+              }
+            ]
+          ]
+        ]
+      }
+    }
   end
 end

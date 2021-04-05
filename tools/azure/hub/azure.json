@@ -9,6 +9,12 @@
     "identityKey1": {
       "type": "string",
       "defaultValue": ""
+    },
+    "authMessage": {
+      "type": "string"
+    },
+    "authHost": {
+      "type": "string"
     }
   },
   "variables": {},
@@ -96,6 +102,13 @@
             "name": "secrets-volume-influx",
             "secret": {
               "token": "[parameters('influxToken')]"
+            }
+          },
+          {
+            "name": "secrets-volume-auth",
+            "secret": {
+              "message": "[parameters('authMessage')]",
+              "host": "[parameters('authHost')]"
             }
           }
         ]
