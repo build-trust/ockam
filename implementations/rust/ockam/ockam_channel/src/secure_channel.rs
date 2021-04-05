@@ -1,7 +1,7 @@
 use crate::key_exchange::{
     KeyExchangeRequestMessage, KeyExchangeResponseMessage, XInitiator, XResponder,
 };
-use crate::{SecureChannelError, SecureChannelListenerMessage};
+use crate::{SecureChannelError, SecureChannelListener, SecureChannelListenerMessage};
 use async_trait::async_trait;
 use ockam::{Address, Context, Message, TransportMessage, Worker};
 use ockam_core::{Result, Route, Routed};
@@ -9,6 +9,7 @@ use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_vault::SoftwareVault;
 use ockam_vault_core::{Secret, SymmetricVault};
+use rand::random;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tracing::debug;
@@ -19,12 +20,30 @@ struct ChannelKeys {
     nonce: u16,
 }
 
+/// SecureChannel info returned from start_initiator_channel
+/// Auth hash can be used for further authentication of the channel
+/// and tying it up cryptographically to some source of Trust. (e.g. Entities)
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct SecureChannelInfo {
+    worker_address: Address,
+    auth_hash: [u8; 32],
+}
+
+impl SecureChannelInfo {
+    pub fn worker_address(&self) -> &Address {
+        &self.worker_address
+    }
+    pub fn auth_hash(&self) -> [u8; 32] {
+        self.auth_hash
+    }
+}
+
 /// SecureChannel is an abstraction responsible for sending messages (usually over the network) in
 /// encrypted and authenticated way.
 /// SecureChannel always has two ends: initiator and responder.
 pub struct SecureChannel {
     is_initiator: bool,
-    route: Route,
+    remote_route: Route,
     channel_id: String,
     key_exchange_route: Option<Route>, // this address is used to send messages to key exchange worker
     keys: Option<ChannelKeys>,
@@ -35,7 +54,7 @@ pub struct SecureChannel {
 impl SecureChannel {
     pub(crate) fn new(
         is_initiator: bool,
-        route: Route,
+        remote_route: Route,
         channel_id: String,
         key_exchange_completed_callback_route: Option<Route>,
     ) -> Self {
@@ -43,7 +62,7 @@ impl SecureChannel {
         let vault = Arc::new(Mutex::new(SoftwareVault::new()));
         SecureChannel {
             is_initiator,
-            route,
+            remote_route,
             channel_id,
             key_exchange_route: None,
             keys: None,
@@ -52,24 +71,37 @@ impl SecureChannel {
         }
     }
 
+    pub async fn create_listener(ctx: &Context, address: Address) -> Result<()> {
+        let channel_listener = SecureChannelListener::new();
+        ctx.start_worker(address, channel_listener).await
+    }
+
     /// Create initiator channel with given channel id and route to a remote channel listener.
-    pub async fn start_initiator_channel<A: Into<Route>>(
-        ctx: &Context,
-        channel_id: String,
-        route: A,
-    ) -> Result<()> {
-        let address: Address = channel_id.clone().into();
+    pub async fn create<A: Into<Route>>(ctx: &mut Context, route: A) -> Result<SecureChannelInfo> {
+        let address: Address = random();
+        let address_str: String = address.clone().into();
 
         let channel = SecureChannel::new(
             true,
             route.into(),
-            channel_id,
+            address_str.clone(),
             Some(Route::new().append(ctx.address()).into()),
         );
 
-        ctx.start_worker(address, channel).await?;
+        ctx.start_worker(address.clone(), channel).await?;
 
-        Ok(())
+        let resp = ctx
+            .receive_match(|m: &KeyExchangeCompleted| m.channel_id == address_str)
+            .await?
+            .take()
+            .take();
+
+        let info = SecureChannelInfo {
+            worker_address: address,
+            auth_hash: resp.auth_hash,
+        };
+
+        Ok(info)
     }
 
     fn convert_nonce_u16(nonce: u16) -> ([u8; 2], [u8; 12]) {
@@ -114,7 +146,7 @@ impl SecureChannel {
             if is_first_initiator_msg {
                 // First message from initiator goes to the channel listener
                 ctx.send_message(
-                    self.route.clone(),
+                    self.remote_route.clone(),
                     SecureChannelListenerMessage::CreateResponderChannel {
                         channel_id: self.channel_id.clone(),
                         payload,
@@ -124,7 +156,7 @@ impl SecureChannel {
             } else {
                 // Other messages go to the channel worker itself
                 ctx.send_message(
-                    self.route.clone(),
+                    self.remote_route.clone(),
                     SecureChannelMessage::KeyExchange { payload },
                 )
                 .await?;
@@ -171,29 +203,17 @@ pub enum SecureChannelMessage {
 
 impl SecureChannelMessage {
     /// Create message that if sent to the Channel worker, will be encrypted and sent to the remote Channel
-    pub fn encrypt<M: Message>(m: M) -> Result<SecureChannelMessage> {
+    pub fn create_encrypt_message<M: Message>(m: M) -> Result<SecureChannelMessage> {
         let m = SecureChannelMessage::Encrypt { m: m.encode()? };
 
         Ok(m)
     }
 }
 
-/// Message sent to the interested Worker about completed Key Exchange.
-/// Auth hash can be used for further authentication of the channel
-/// and tying it up cryptographically to some source of Trust. (e.g. Entities)
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct KeyExchangeCompleted {
+struct KeyExchangeCompleted {
     channel_id: String,
     auth_hash: [u8; 32],
-}
-
-impl KeyExchangeCompleted {
-    pub fn channel_id(&self) -> &str {
-        &self.channel_id
-    }
-    pub fn auth_hash(&self) -> [u8; 32] {
-        self.auth_hash
-    }
 }
 
 #[async_trait]
@@ -268,7 +288,7 @@ impl Worker for SecureChannel {
                 }
 
                 // Update route to a remote
-                self.route = reply;
+                self.remote_route = reply;
 
                 // FIXME: Remove req_id in the future when we fix message without length decode
                 let req_id = b"CHANNEL_REQ".to_vec();
@@ -331,7 +351,7 @@ impl Worker for SecureChannel {
                 };
 
                 ctx.send_message(
-                    self.route.clone(),
+                    self.remote_route.clone(),
                     SecureChannelMessage::Decrypt { payload },
                 )
                 .await?;
