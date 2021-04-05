@@ -18,7 +18,7 @@ default = ["std"]
 std = []
 
 [dependencies]
-ockam = {path = "../ockam", version = "*"}
+ockam_node = {path = "../ockam_node", version = "*"}
 ockam_core = {path = "../ockam_core", version = "*"}
 serde_bare = "0.3.0"
 rand = "0.8"

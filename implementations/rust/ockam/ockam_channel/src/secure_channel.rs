@@ -3,10 +3,10 @@ use crate::key_exchange::{
 };
 use crate::{SecureChannelError, SecureChannelListener, SecureChannelListenerMessage};
 use async_trait::async_trait;
-use ockam::{Address, Context, Message, TransportMessage, Worker};
-use ockam_core::{Result, Route, Routed};
+use ockam_core::{Address, Message, Result, Route, Routed, TransportMessage, Worker};
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
+use ockam_node::Context;
 use ockam_vault::SoftwareVault;
 use ockam_vault_core::{Secret, SymmetricVault};
 use rand::random;

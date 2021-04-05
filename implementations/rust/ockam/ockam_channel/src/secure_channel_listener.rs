@@ -1,7 +1,7 @@
 use crate::{SecureChannel, SecureChannelMessage};
 use async_trait::async_trait;
-use ockam::{Context, TransportMessage, Worker};
-use ockam_core::{Address, Message, Result, Routed};
+use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
+use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 
 /// SecureChannel listener

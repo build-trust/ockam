@@ -1,10 +1,10 @@
 use crate::key_exchange::{KeyExchangeRequestMessage, KeyExchangeResponseMessage, Keys};
 use crate::SecureChannelError;
 use async_trait::async_trait;
-use ockam::{Context, Result, Worker};
-use ockam_core::Routed;
+use ockam_core::{Result, Routed, Worker};
 use ockam_key_exchange_core::KeyExchanger;
 use ockam_key_exchange_xx::Responder;
+use ockam_node::Context;
 
 // TODO: Move to key exchange crate
 pub(crate) struct XResponder {
