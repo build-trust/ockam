@@ -4,9 +4,6 @@ use ockam::{Context, TransportMessage, Worker};
 use ockam_core::{Address, Message, Result, Routed};
 use serde::{Deserialize, Serialize};
 
-/// Address that is usually used for XXChannelListener worker, but it's not a requirement
-pub const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
-
 /// Channel listener for XX key agreement
 pub struct XXChannelListener;
 

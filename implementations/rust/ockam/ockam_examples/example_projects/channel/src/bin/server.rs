@@ -1,12 +1,11 @@
 use channel_examples::server_worker::Server;
 use ockam::Result;
-use ockam_channel::{
-    ChannelListenerMessage, HubProxy, ProxyRegistered, XXChannelListener,
-    XX_CHANNEL_LISTENER_ADDRESS,
-};
+use ockam_channel::{ChannelListenerMessage, HubProxy, ProxyRegistered, XXChannelListener};
 use ockam_transport_tcp::{start_tcp_worker, TcpRouter};
 use std::net::SocketAddr;
 use std::str::FromStr;
+
+const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
 
 #[ockam::node]
 async fn main(mut ctx: ockam::Context) -> Result<()> {

@@ -1,10 +1,12 @@
 use ockam::{async_worker, Context, Result, Route, Routed, Worker};
-use ockam_channel::{Channel, ChannelMessage, KeyExchangeCompleted, XX_CHANNEL_LISTENER_ADDRESS};
+use ockam_channel::{Channel, ChannelMessage, KeyExchangeCompleted};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::net::SocketAddr;
 use tokio::time::Duration;
 use tracing::info;
+
+const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
 
 pub struct Client {
     channel_id: String,
