@@ -42,3 +42,5 @@ pub use ockam_core::{
     Address, Encoded, Error, Message, Result, Route, Routed, RouterMessage, TransportMessage,
     Worker,
 };
+
+pub use ockam_channel::{SecureChannel, SecureChannelListenerMessage, SecureChannelMessage};
