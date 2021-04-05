@@ -796,6 +796,7 @@ dependencies = [
  "serde_bare",
  "serde_json",
  "sha2 0.8.2",
+ "tracing",
  "trybuild",
 ]
 
@@ -807,6 +808,7 @@ dependencies = [
  "hashbrown",
  "heapless",
  "hex",
+ "rand 0.8.3",
  "serde",
  "serde_bare",
 ]

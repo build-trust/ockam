@@ -164,7 +164,7 @@ impl From<Address> for String {
 
 impl Distribution<Address> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Address {
-        let address: [u8; 8] = rng.gen();
+        let address: [u8; 16] = rng.gen();
         hex::encode(address).as_bytes().into()
     }
 }
