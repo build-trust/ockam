@@ -768,7 +768,7 @@ dependencies = [
  "ockam_key_exchange_xx",
  "ockam_vault",
  "ockam_vault_core",
- "rand 0.7.3",
+ "rand 0.8.3",
  "serde",
  "serde_bare",
  "tracing",
