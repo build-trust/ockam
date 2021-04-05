@@ -1,0 +1,35 @@
+[package]
+name = "bbs"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_signature_bbs"
+readme = "README.md"
+categories = ["cryptography", "asynchronous", "authentication","no-std","algorithms"]
+keywords = ["ockam", "crypto", "signature", "signing", "bls"]
+description = """The Ockam BLS signature impementation.
+"""
+
+[features]
+
+[dependencies]
+bls = { version = "0.1", path = "../ockam_signature_bls", package = "ockam_signature_bls" }
+bls12_381_plus = "0.4"
+blake2 = { version = "0.9", default-features = false }
+digest = { version = "0.9", default-features = false }
+ff = "0.9"
+group = "0.9"
+hmac-drbg = "0.3"
+managed = { version = "0.8", features = ["map"] }
+pairing = "0.19"
+rand_core = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+short_group_signatures_core = { version = "0.1", path = "../ockam_signature_core", package = "ockam_signature_core" }
+subtle = { version = "2.4", default-features = false }
+typenum = "1.13"
+zeroize = { version = "1.2", features = ["zeroize_derive"] }
+
+[dev-dependencies]
+rand_xorshift = "0.3"

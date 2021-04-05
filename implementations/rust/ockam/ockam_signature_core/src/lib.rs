@@ -42,4 +42,6 @@ pub mod lib {
     pub use heapless::ArrayLength;
     pub use heapless::String;
     pub use heapless::Vec;
+
+    pub use hashbrown::{HashMap, HashSet};
 }
