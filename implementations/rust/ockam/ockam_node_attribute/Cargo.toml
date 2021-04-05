@@ -1,5 +1,6 @@
 [package]
 name = "ockam_node_attribute"
+categories = ["cryptography", "asynchronous", "authentication","network-programming"]
 version = "0.1.4"
 authors = ["Ockam Developers"]
 edition = "2018"
@@ -7,7 +8,7 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_node_attribute"
 readme = "README.md"
-keywords = ["ockam", "proc_macro"]
+keywords = ["ockam", "crypto", "macro", "proc-macro", "attribute"]
 description = """
 Ockam node attribute proc_macro.
 """

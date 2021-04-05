@@ -4,11 +4,11 @@ version = "0.1.0"
 authors = ["Ockam Deveopers"]
 edition = "2018"
 license = "Apache-2.0"
-homepage = "https://github.com/ockam-ockam-network/ockam"
+homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_signatures_core"
 readme = "README.md"
-keywords = ["ockam", "cryptography"]
-categories = ["no-std"]
+keywords = ["ockam", "crypto", "cryptography", "signatures", "signing"]
+categories = ["cryptography", "asynchronous", "authentication","no-std", "algorithms"]
 description = """
 Signature core types of the Ockam library.
 """

@@ -1,9 +1,9 @@
 [package]
 authors = ["Ockam Developers"]
-categories = ["cryptography", "authentication", "algorithms", "network-programming", "asynchronous"]
+categories = ["cryptography", "asynchronous", "authentication","peer-to-peer", "network-programming"]
 description = "Ockam Node implementation crate"
 edition = "2018"
-keywords = ["ockam"]
+keywords = ["ockam", "crypto", "p2p", "async", "distributed"]
 license = "Apache-2.0"
 name = "ockam_node"
 version = "0.4.0"

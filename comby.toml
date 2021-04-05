@@ -1,0 +1,12 @@
+[ockam-categories]
+
+match='categories = [:[cat]]'
+rewrite='categories = ["cryptography", "asynchronous", "authentication",:[cat]]'
+
+[ockam-keywords]
+match='keywords = [:[key]]'
+rewrite='keywords = ["ockam", "crypto", :[key]]'
+
+[ockam-homepage]
+match='homepage = ":[_]"'
+rewrite='homepage = "https://github.com/ockam-network/ockam"'
