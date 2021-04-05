@@ -4,6 +4,9 @@ use crate::lib::{
     String, ToString, Vec,
 };
 use core::ops::Deref;
+use rand::distributions::Standard;
+use rand::prelude::Distribution;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 /// A collection of Addresses
@@ -156,6 +159,13 @@ impl<'a> From<&'a [&u8]> for Address {
 impl From<Address> for String {
     fn from(addr: Address) -> Self {
         addr.to_string()
+    }
+}
+
+impl Distribution<Address> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Address {
+        let address: [u8; 8] = rng.gen();
+        hex::encode(address).as_bytes().into()
     }
 }
 
