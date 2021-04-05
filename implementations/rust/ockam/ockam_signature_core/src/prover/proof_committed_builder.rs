@@ -129,9 +129,6 @@ where
             }
         }
 
-        for point in &self.points {
-            hasher.update(&point.to_affine().to_uncompressed());
-        }
         hasher.update(self.cache.commitment.to_affine().to_uncompressed());
     }
 
@@ -146,7 +143,7 @@ where
             return Err(Error::new(1, "secrets is not equal to blinding factors"));
         }
         for i in 0..self.cache.scalars.len() {
-            self.cache.scalars[i] -= secrets[i] * challenge;
+            self.cache.scalars[i] += secrets[i] * challenge;
         }
         Ok(self.cache.scalars)
     }
