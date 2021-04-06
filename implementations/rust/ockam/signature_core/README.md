@@ -1,4 +1,4 @@
-# ockam_signature_core
+# signature_core
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -21,18 +21,12 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_signature_core = "0.1.0"
+signature_core = "0.1.0"
 ```
 
 ## Crate Features
 
-The `ockam_signature_core` crate has no features
-
-Please note that Cargo features are unioned across the entire dependency
-graph of a project. If any other crate you depend on has not opted out of
-`ockam_core` default features, Cargo will build `ockam_core` with the std
-feature enabled whether or not your direct dependency on `ockam_core`
-has `default-features = false`.
+The `signature_core` crate has no features
 
 ## License
 

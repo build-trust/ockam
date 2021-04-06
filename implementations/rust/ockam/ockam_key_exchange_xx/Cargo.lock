@@ -306,7 +306,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -323,7 +323,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "cfg-if",
  "ockam_core",

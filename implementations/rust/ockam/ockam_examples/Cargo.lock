@@ -302,7 +302,7 @@ name = "channel_examples"
 version = "0.0.0"
 dependencies = [
  "ockam 0.4.1",
- "ockam_node 0.4.0",
+ "ockam_node 0.5.0",
  "ockam_transport_tcp 0.2.0",
  "rand 0.8.3",
  "tokio",
@@ -382,7 +382,7 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "ockam 0.4.1",
- "ockam_node 0.4.0",
+ "ockam_node 0.5.0",
  "ockam_transport_tcp 0.2.0",
  "serde",
  "serde-big-array",
@@ -588,7 +588,7 @@ name = "examples"
 version = "0.0.0"
 dependencies = [
  "ockam 0.4.1",
- "ockam_node 0.4.0",
+ "ockam_node 0.5.0",
  "serde",
 ]
 
@@ -1183,10 +1183,10 @@ dependencies = [
  "digest 0.8.1",
  "ff-zeroize",
  "ockam_core 0.6.0",
- "ockam_node 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ockam_node 0.4.0",
  "ockam_node_attribute 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "ockam_vault 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ockam_vault_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ockam_vault 0.3.1",
+ "ockam_vault_core 0.3.1",
  "pairing-plus",
  "serde",
  "serde-big-array",
@@ -1204,10 +1204,10 @@ dependencies = [
  "ff-zeroize",
  "ockam_channel",
  "ockam_core 0.7.0",
- "ockam_node 0.4.0",
+ "ockam_node 0.5.0",
  "ockam_node_attribute 0.1.4",
- "ockam_vault 0.3.1",
- "ockam_vault_core 0.3.1",
+ "ockam_vault 0.3.2",
+ "ockam_vault_core 0.3.2",
  "pairing-plus",
  "rand 0.8.3",
  "serde",
@@ -1225,9 +1225,9 @@ dependencies = [
  "ockam_core 0.7.0",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
- "ockam_node 0.4.0",
- "ockam_vault 0.3.1",
- "ockam_vault_core 0.3.1",
+ "ockam_node 0.5.0",
+ "ockam_vault 0.3.2",
+ "ockam_vault_core 0.3.2",
  "rand 0.8.3",
  "serde",
  "serde_bare",
@@ -1269,31 +1269,21 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ockam_core 0.7.0",
- "ockam_vault_core 0.3.1",
+ "ockam_vault_core 0.3.2",
  "zeroize",
 ]
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ockam_core 0.7.0",
  "ockam_key_exchange_core",
- "ockam_vault_core 0.3.1",
+ "ockam_vault_core 0.3.2",
  "zeroize",
-]
-
-[[package]]
-name = "ockam_node"
-version = "0.4.0"
-dependencies = [
- "ockam_core 0.7.0",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -1303,6 +1293,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35cf1b1aad6e43ec10916f06aca3cd19e3f682ea16b4be58b37547fe32c10d34"
 dependencies = [
  "ockam_core 0.6.0",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "ockam_node"
+version = "0.5.0"
+dependencies = [
+ "ockam_core 0.7.0",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1359,23 +1359,6 @@ dependencies = [
 [[package]]
 name = "ockam_vault"
 version = "0.3.1"
-dependencies = [
- "aes-gcm",
- "arrayref",
- "curve25519-dalek",
- "ed25519-dalek",
- "hkdf 0.10.0",
- "ockam_core 0.7.0",
- "ockam_vault_core 0.3.1",
- "rand 0.7.3",
- "sha2 0.9.3",
- "x25519-dalek",
- "zeroize",
-]
-
-[[package]]
-name = "ockam_vault"
-version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11acb4a91171836dd7d50941844acfde1793789e17242fc62bf0a4222bc0d862"
 dependencies = [
@@ -1385,7 +1368,7 @@ dependencies = [
  "ed25519-dalek",
  "hkdf 0.10.0",
  "ockam_core 0.6.0",
- "ockam_vault_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ockam_vault_core 0.3.1",
  "rand 0.7.3",
  "sha2 0.9.3",
  "x25519-dalek",
@@ -1393,11 +1376,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_vault_core"
-version = "0.3.1"
+name = "ockam_vault"
+version = "0.3.2"
 dependencies = [
- "cfg-if",
+ "aes-gcm",
+ "arrayref",
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "hkdf 0.10.0",
  "ockam_core 0.7.0",
+ "ockam_vault_core 0.3.2",
+ "rand 0.7.3",
+ "sha2 0.9.3",
+ "x25519-dalek",
  "zeroize",
 ]
 
@@ -1409,6 +1400,15 @@ checksum = "5d5c6676d519992783d44a0763588ce180eda06433efa25993a15a6cf7ef4a6f"
 dependencies = [
  "cfg-if",
  "ockam_core 0.6.0",
+ "zeroize",
+]
+
+[[package]]
+name = "ockam_vault_core"
+version = "0.3.2"
+dependencies = [
+ "cfg-if",
+ "ockam_core 0.7.0",
  "zeroize",
 ]
 
@@ -2093,7 +2093,7 @@ name = "tcp_examples"
 version = "0.0.0"
 dependencies = [
  "ockam 0.4.1",
- "ockam_node 0.4.0",
+ "ockam_node 0.5.0",
  "ockam_transport_tcp 0.2.0",
  "serde",
  "tracing",
@@ -2387,7 +2387,7 @@ version = "0.0.0"
 dependencies = [
  "chrono",
  "ockam 0.4.1",
- "ockam_node 0.4.0",
+ "ockam_node 0.5.0",
  "serde",
  "tracing",
 ]

@@ -186,23 +186,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_signature_bls"
-version = "0.1.0"
-dependencies = [
- "bls12_381_plus",
- "ff",
- "group",
- "hkdf",
- "pairing",
- "rand_core",
- "rand_xorshift",
- "serde",
- "sha2",
- "subtle",
- "zeroize",
-]
-
-[[package]]
 name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -288,6 +271,23 @@ dependencies = [
  "cpuid-bool",
  "digest",
  "opaque-debug",
+]
+
+[[package]]
+name = "signature_bls"
+version = "0.1.0"
+dependencies = [
+ "bls12_381_plus",
+ "ff",
+ "group",
+ "hkdf",
+ "pairing",
+ "rand_core",
+ "rand_xorshift",
+ "serde",
+ "sha2",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]

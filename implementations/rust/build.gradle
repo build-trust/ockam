@@ -20,6 +20,7 @@ commands {
 
   directories = [
     'ockam/ockam',
+    'ockam/ockam_channel',
     'ockam/ockam_core',
     'ockam/ockam_examples',
     'ockam/ockam_ffi',
@@ -32,5 +33,9 @@ commands {
     'ockam/ockam_transport_tcp',
     'ockam/ockam_vault',
     'ockam/ockam_vault_core',
+    'ockam/signature_core',
+    'ockam/signature_bls',
+    'ockam/signature_bbs_plus',
+
   ]
 }

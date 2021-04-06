@@ -1,5 +1,5 @@
 [package]
-name = "ockam_signature_core"
+name = "signature_core"
 version = "0.1.0"
 authors = ["Ockam Deveopers"]
 edition = "2018"
