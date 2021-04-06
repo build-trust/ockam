@@ -7,7 +7,7 @@
 extern crate tracing;
 
 use ockam::{async_worker, Context, Result, Routed, Worker};
-use ockam_transport_tcp::TcpRouter;
+use ockam_transport_tcp::TcpTransport;
 use std::net::SocketAddr;
 
 struct Responder;
@@ -44,9 +44,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Get either the default socket address, or a user-input
     let bind_addr = get_bind_addr();
     debug!("Binding to: {}", bind_addr);
-
-    // Create a new _binding_ TcpRouter
-    let _r = TcpRouter::bind(&ctx, bind_addr).await?;
+    TcpTransport::create_listener(&ctx, bind_addr).await?;
 
     // Create the responder worker
     ctx.start_worker("echo_service", Responder).await?;

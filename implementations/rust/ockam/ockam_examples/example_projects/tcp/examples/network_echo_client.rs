@@ -2,7 +2,7 @@
 extern crate tracing;
 
 use ockam::{Context, Result, Route};
-use ockam_transport_tcp::{self as tcp, TcpRouter};
+use ockam_transport_tcp::TcpTransport;
 use std::net::SocketAddr;
 
 fn get_peer_addr() -> SocketAddr {
@@ -25,12 +25,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Get our peer address
     let peer_addr = get_peer_addr();
 
-    // Create and register a TcpRouter
-    let rh = TcpRouter::register(&ctx).await?;
-
-    // Create and register a connection worker pair
-    let w_pair = tcp::start_tcp_worker(&ctx, peer_addr).await?;
-    rh.register(&w_pair).await?;
+    // Initialize the TCP stack by opening a connection to a the remote
+    TcpTransport::create(&ctx, peer_addr).await.unwrap();
 
     // Send a message to the remote
     ctx.send_message(

@@ -4,7 +4,7 @@ use ockam::{
 };
 
 use credentials::{example_schema, issuer_on_or_default, CredentialMessage, DEFAULT_VERIFIER_PORT};
-use ockam_transport_tcp::{self as tcp, TcpRouter};
+use ockam_transport_tcp::TcpTransport;
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
@@ -28,15 +28,8 @@ impl Worker for Holder {
         let issuer = self.issuer;
         let verifier = self.verifier;
 
-        let router = TcpRouter::register(&ctx).await?;
-
-        let issuer_pair = tcp::start_tcp_worker(&ctx, issuer).await?;
-
-        router.register(&issuer_pair).await?;
-
-        let verifier_pair = tcp::start_tcp_worker(&ctx, verifier).await?;
-
-        router.register(&verifier_pair).await?;
+        let issuer_pair = TcpTransport::create(&ctx, issuer).await?;
+        let verifier_pair = TcpTransport::create(&ctx, verifier).await?;
 
         // Send a New Credential Connection message
         ctx.send_message(
