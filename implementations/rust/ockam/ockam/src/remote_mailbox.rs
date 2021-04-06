@@ -51,7 +51,7 @@ impl<T: Message> RemoteMailbox<T> {
 
     /// Create and start new RemoteMailbox with given Ockam Hub address
     /// and Address of destionation Worker that should receive forwarded messages
-    pub async fn start<A: Into<Address>>(
+    pub async fn create<A: Into<Address>>(
         ctx: &mut Context,
         hub_addr: SocketAddr,
         destination: A,

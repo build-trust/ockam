@@ -36,7 +36,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("echo_service", EchoService).await?;
 
     SecureChannel::create_listener(&ctx, XX_CHANNEL_LISTENER_ADDRESS).await?;
-    let remote_mailbox_info = RemoteMailbox::<SecureChannelListenerMessage>::start(
+    let remote_mailbox_info = RemoteMailbox::<SecureChannelListenerMessage>::create(
         &mut ctx,
         HUB_ADDRESS.parse::<SocketAddr>().unwrap(),
         XX_CHANNEL_LISTENER_ADDRESS,

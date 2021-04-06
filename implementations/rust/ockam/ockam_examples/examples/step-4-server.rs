@@ -27,7 +27,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.start_worker("echo_service", EchoService).await?;
 
-    let remote_mailbox_info = RemoteMailbox::<String>::start(
+    let remote_mailbox_info = RemoteMailbox::<String>::create(
         &mut ctx,
         HUB_ADDRESS.parse::<SocketAddr>().unwrap(),
         "echo_service",

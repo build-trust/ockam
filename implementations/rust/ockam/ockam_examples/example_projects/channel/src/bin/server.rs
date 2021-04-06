@@ -21,7 +21,7 @@ async fn main(mut ctx: ockam::Context) -> Result<()> {
     // Create the responder worker
     ctx.start_worker("echo_server", server).await?;
 
-    let info = RemoteMailbox::<SecureChannelListenerMessage>::start(
+    let info = RemoteMailbox::<SecureChannelListenerMessage>::create(
         &mut ctx,
         hub_addr,
         XX_CHANNEL_LISTENER_ADDRESS,
