@@ -61,6 +61,14 @@ impl Context {
     {
         let address = address.into();
 
+        // Check if the address set is available
+        let (check_addrs, mut check_rx) = NodeMessage::check_address(address.clone());
+        self.sender
+            .send(check_addrs)
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
+        check_rx.recv().await.ok_or(Error::InternalIOFailure)??;
+
         // Build the mailbox first
         let (mb_tx, mb_rx) = channel(32);
         let mb = Mailbox::new(mb_rx, mb_tx.clone());
@@ -71,13 +79,19 @@ impl Context {
         // Then initialise the worker message relay
         let sender = relay::build::<NW, NM>(self.rt.as_ref(), worker, ctx);
 
-        let msg = NodeMessage::start_worker(address, sender);
-        let _result: Result<()> = match self.sender.send(msg).await {
-            Ok(()) => Ok(()),
-            Err(_e) => Err(Error::FailedStartWorker.into()),
-        };
+        // Send start request to router
+        let (msg, mut rx) = NodeMessage::start_worker(address, sender);
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|_| Error::FailedStartWorker)?;
 
-        Ok(())
+        // Wait for the actual return code
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)?
+            .map(|_| ())?)
     }
 
     /// Signal to the local application runner to shut down
