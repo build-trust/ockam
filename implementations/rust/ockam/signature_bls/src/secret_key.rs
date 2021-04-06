@@ -98,14 +98,3 @@ fn generate_secret_key(ikm: &[u8]) -> Option<SecretKey> {
         Some(SecretKey(Scalar::from_okm(&output)))
     }
 }
-
-#[test]
-fn test_from_seed() {
-    let seed = [0u8; 32];
-    let sk = SecretKey::hash(seed);
-    let expected = [
-        184, 141, 14, 25, 196, 12, 5, 65, 222, 229, 103, 132, 86, 28, 224, 249, 100, 61, 100, 238,
-        234, 250, 153, 140, 126, 148, 80, 19, 66, 92, 178, 14,
-    ];
-    assert_eq!(sk.unwrap().0.to_bytes(), expected);
-}
