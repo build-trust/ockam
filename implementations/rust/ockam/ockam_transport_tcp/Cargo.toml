@@ -8,7 +8,7 @@ homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_tcp"
 readme = "README.md"
 keywords = ["ockam", "crypto", "network", "networking", "tcp"]
-categories = ["cryptography", "asynchronous", "authentication","network-programming", "peer-to-peer"]
+categories = ["cryptography", "asynchronous", "authentication","network-programming", "embedded"]
 description = """
 TCP Transport for the Ockam Routing Protocol.
 """

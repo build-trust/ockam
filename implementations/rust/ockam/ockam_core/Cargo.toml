@@ -7,7 +7,7 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_core"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","network-programming", "embedded-development"]
+categories = ["cryptography", "asynchronous", "authentication","network-programming", "embedded"]
 keywords = ["ockam", "crypto", "p2p", "cryptography", "encryption"]
 description = """
 Core types of the Ockam library.

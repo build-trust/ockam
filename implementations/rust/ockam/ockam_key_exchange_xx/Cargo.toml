@@ -7,8 +7,8 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_key_exchange_xx"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","peer-to-peer", "no-std"]
-keywords = ["ockam", "crypto", "p2p", "xx"]
+categories = ["cryptography", "asynchronous", "authentication","embedded", "no-std"]
+keywords = ["ockam", "crypto", "xx", "cryptography", "encryption", "iot"]
 description = """The Ockam Noise XX impementation.
 """
 
