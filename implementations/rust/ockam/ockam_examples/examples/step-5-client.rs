@@ -29,7 +29,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         Route::new()
             .append(channel_info.worker_address().clone())
             .append("echo_service"),
-        SecureChannelMessage::create_encrypt_message("Hello Ockam!".to_string()).unwrap(),
+        SecureChannelMessage::create("Hello Ockam!".to_string()).unwrap(),
     )
     .await?;
 

@@ -19,7 +19,7 @@ impl Worker for EchoService {
         println!("echo_service: {}", msg);
         ctx.send_message(
             msg.reply(),
-            SecureChannelMessage::create_encrypt_message(msg.take()).unwrap(),
+            SecureChannelMessage::create(msg.take()).unwrap(),
         )
         .await
     }

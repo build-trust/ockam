@@ -69,7 +69,7 @@ impl Worker for Client {
                     .await?;
                 ctx.send_message(
                     self.route.clone().unwrap(),
-                    SecureChannelMessage::create_encrypt_message(rand_string)?,
+                    SecureChannelMessage::create(rand_string)?,
                 )
                 .await?;
                 tokio::time::sleep(Duration::from_secs(2)).await;

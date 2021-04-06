@@ -219,7 +219,7 @@ pub enum SecureChannelMessage {
 
 impl SecureChannelMessage {
     /// Create message that if sent to the Channel worker, will be encrypted and sent to the remote Channel
-    pub fn create_encrypt_message<M: Message>(m: M) -> Result<SecureChannelMessage> {
+    pub fn create<M: Message>(m: M) -> Result<SecureChannelMessage> {
         let m = SecureChannelMessage::Encrypt { m: m.encode()? };
 
         Ok(m)
