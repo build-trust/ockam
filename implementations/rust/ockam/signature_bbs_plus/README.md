@@ -1,4 +1,4 @@
-# signature_bbs
+# signature_bbs_plus
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -18,20 +18,20 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-signature_bbs = "0.1.0"
+signature_bbs_plus = "0.1.1"
 ```
 
 ## Crate Features
 
 ```
 [dependencies]
-signature_bbs = { version = "0.1.0", default-features = false }
+signature_bbs_plus = { version = "0.1.1", default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
 graph of a project. If any other crate you depend on has not opted out of
-`signature_bbs` default features, Cargo will build `signature_bbs` with the std
-feature enabled whether or not your direct dependency on `signature_bbs`
+`signature_bbs_plus` default features, Cargo will build `signature_bbs_plus` with the std
+feature enabled whether or not your direct dependency on `signature_bbs_plus`
 has `default-features = false`.
 
 ## License
