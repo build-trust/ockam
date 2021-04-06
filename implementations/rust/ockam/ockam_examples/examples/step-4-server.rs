@@ -39,7 +39,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let remote_mailbox_info = RemoteMailbox::<String>::start(
         &mut ctx,
         HUB_ADDRESS.parse::<SocketAddr>().unwrap(),
-        "echo_service".into(),
+        "echo_service",
     )
     .await?;
     println!("PROXY ADDRESS: {}", remote_mailbox_info.alias_address());

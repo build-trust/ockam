@@ -51,12 +51,12 @@ impl<T: Message> RemoteMailbox<T> {
 
     /// Create and start new RemoteMailbox with given Ockam Hub address
     /// and Address of destionation Worker that should receive forwarded messages
-    pub async fn start(
+    pub async fn start<A: Into<Address>>(
         ctx: &mut Context,
         hub_addr: SocketAddr,
-        destination: Address,
+        destination: A,
     ) -> Result<RemoteMailboxInfo> {
-        let remote_mailbox = Self::new(hub_addr, destination, ctx.primary_address());
+        let remote_mailbox = Self::new(hub_addr, destination.into(), ctx.primary_address());
 
         let worker_address: Address = random();
         ctx.start_worker(worker_address, remote_mailbox).await?;

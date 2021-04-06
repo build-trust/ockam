@@ -8,7 +8,7 @@ const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
 
 #[ockam::node]
 async fn main(mut ctx: ockam::Context) -> Result<()> {
-    SecureChannel::create_listener(&mut ctx, XX_CHANNEL_LISTENER_ADDRESS.into()).await?;
+    SecureChannel::create_listener(&mut ctx, XX_CHANNEL_LISTENER_ADDRESS).await?;
 
     // let hub_addr = SocketAddr::from_str("138.91.152.195:4000").unwrap();
     let hub_addr = SocketAddr::from_str("127.0.0.1:4000").unwrap();
@@ -24,7 +24,7 @@ async fn main(mut ctx: ockam::Context) -> Result<()> {
     let info = RemoteMailbox::<SecureChannelListenerMessage>::start(
         &mut ctx,
         hub_addr,
-        XX_CHANNEL_LISTENER_ADDRESS.into(),
+        XX_CHANNEL_LISTENER_ADDRESS,
     )
     .await?;
     println!("PROXY ADDRESS: {}", info.alias_address());

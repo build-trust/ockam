@@ -35,11 +35,11 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.start_worker("echo_service", EchoService).await?;
 
-    SecureChannel::create_listener(&ctx, XX_CHANNEL_LISTENER_ADDRESS.into()).await?;
+    SecureChannel::create_listener(&ctx, XX_CHANNEL_LISTENER_ADDRESS).await?;
     let remote_mailbox_info = RemoteMailbox::<SecureChannelListenerMessage>::start(
         &mut ctx,
         HUB_ADDRESS.parse::<SocketAddr>().unwrap(),
-        XX_CHANNEL_LISTENER_ADDRESS.into(),
+        XX_CHANNEL_LISTENER_ADDRESS,
     )
     .await?;
     println!("PROXY ADDRESS: {}", remote_mailbox_info.alias_address());

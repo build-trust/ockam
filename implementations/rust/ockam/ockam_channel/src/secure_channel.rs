@@ -74,9 +74,9 @@ impl SecureChannel {
     }
 
     /// Create and start channel listener with given address.
-    pub async fn create_listener(ctx: &Context, address: Address) -> Result<()> {
+    pub async fn create_listener<A: Into<Address>>(ctx: &Context, address: A) -> Result<()> {
         let channel_listener = SecureChannelListener::new();
-        ctx.start_worker(address, channel_listener).await
+        ctx.start_worker(address.into(), channel_listener).await
     }
 
     /// Create initiator channel with given route to a remote channel listener.
