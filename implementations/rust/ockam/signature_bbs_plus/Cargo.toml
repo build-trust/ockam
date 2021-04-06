@@ -9,7 +9,7 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 readme = "README.md"
 categories = ["cryptography", "asynchronous", "authentication","no-std","algorithms"]
 keywords = ["ockam", "crypto", "signature", "signing", "bls"]
-description = """The Ockam BLS signature impementation.
+description = """The Ockam BBS+ signature impementation.
 """
 
 [features]
