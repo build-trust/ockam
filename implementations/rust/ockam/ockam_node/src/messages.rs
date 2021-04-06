@@ -6,7 +6,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 #[derive(Debug)]
 pub enum NodeMessage {
     /// Start a new worker and store the send handle
-    StartWorker(AddressSet, Sender<RelayMessage>),
+    StartWorker(AddressSet, Sender<RelayMessage>, Sender<NodeReplyResult>),
     /// Return a list of all worker addresses
     ListWorkers(Sender<NodeReplyResult>),
     /// Stop an existing worker
@@ -17,12 +17,18 @@ pub enum NodeMessage {
     SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type
     Router(u8, Address, Sender<NodeReplyResult>),
+    /// Check if a given address is already registered
+    CheckAddress(AddressSet, Sender<NodeReplyResult>),
 }
 
 impl NodeMessage {
     /// Create a start worker message
-    pub fn start_worker(address: AddressSet, sender: Sender<RelayMessage>) -> Self {
-        Self::StartWorker(address, sender)
+    pub fn start_worker(
+        address: AddressSet,
+        sender: Sender<RelayMessage>,
+    ) -> (Self, Receiver<NodeReplyResult>) {
+        let (tx, rx) = channel(1);
+        (Self::StartWorker(address, sender, tx), rx)
     }
 
     /// Create a list worker message and reply receiver
@@ -46,6 +52,12 @@ impl NodeMessage {
     pub fn sender_request(route: Address) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
         (Self::SenderReq(route, tx), rx)
+    }
+
+    /// Create a message to check the availability of an address set
+    pub fn check_address(addrs: AddressSet) -> (Self, Receiver<NodeReplyResult>) {
+        let (tx, rx) = channel(1);
+        (Self::CheckAddress(addrs, tx), rx)
     }
 }
 
@@ -74,6 +86,7 @@ pub enum NodeReply {
 #[derive(Debug)]
 pub enum NodeError {
     NoSuchWorker(Address),
+    WorkerExists(Address),
     RouterExists,
 }
 
@@ -84,6 +97,10 @@ impl NodeReply {
 
     pub fn no_such_worker(a: Address) -> NodeReplyResult {
         Err(NodeError::NoSuchWorker(a))
+    }
+
+    pub fn worker_exists(a: Address) -> NodeReplyResult {
+        Err(NodeError::WorkerExists(a))
     }
 
     pub fn router_exists() -> NodeReplyResult {
