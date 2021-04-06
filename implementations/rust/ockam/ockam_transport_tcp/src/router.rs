@@ -96,7 +96,7 @@ impl Worker for TcpRouter {
 
 impl TcpRouter {
     async fn start(ctx: &Context, waddr: &Address, run: Option<ArcBool>) -> Result<()> {
-        debug!("Creating new TcpRouter");
+        debug!("Initialising new TcpRouter with address {}", waddr);
 
         let router = Self {
             map: BTreeMap::new(),
@@ -104,6 +104,15 @@ impl TcpRouter {
         };
         ctx.start_worker(waddr.clone(), router).await?;
         Ok(())
+    }
+
+    /// Either register a new router or return a handle to the existing one
+    pub(crate) async fn register_or_get<'c>(ctx: &'c Context) -> Result<TcpRouterHandle<'c>> {
+        let addr = Address::from(DEFAULT_ADDRESS);
+        Self::register(ctx).await.or_else(|_| {
+            debug!("Using pre-existing TCP router...");
+            Ok(TcpRouterHandle { ctx, addr })
+        })
     }
 
     /// Create and register a new TCP router with the node context
