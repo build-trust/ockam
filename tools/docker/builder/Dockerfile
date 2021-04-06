@@ -43,6 +43,7 @@ RUN set -xe; \
     rustup toolchain install nightly-x86_64-unknown-linux-gnu; \
     rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu; \
     rustup component add clippy --toolchain nightly-x86_64-unknown-linux-gnu; \
+    cargo install cargo-audit; \
 # Setup erlang
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
