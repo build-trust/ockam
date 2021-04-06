@@ -14,8 +14,8 @@ commands {
     lint: [
       'cargo check',
       'cargo fmt --all -- --check',
-      // 'cargo +nightly clippy --all -- -D warnings',
-    ]
+      'cargo clippy --all --all-targets -- --cap-lints=warn',
+    ],
   ]
 
   directories = [
