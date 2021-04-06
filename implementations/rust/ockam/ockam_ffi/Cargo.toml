@@ -1,5 +1,5 @@
 [package]
-name = "ockam-ffi"
+name = "ockam_ffi"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
