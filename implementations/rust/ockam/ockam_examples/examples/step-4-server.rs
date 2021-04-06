@@ -12,17 +12,8 @@ impl Worker for EchoService {
     type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        if &msg.as_str() == &"register" {
-            let address = msg.reply().recipient().to_string();
-            println!(
-                "echo_service: My address on the hub is {}",
-                address.strip_prefix("0:").unwrap()
-            );
-            Ok(())
-        } else {
-            println!("echo_service: {}", msg);
-            ctx.send_message(msg.reply(), msg.take()).await
-        }
+        println!("echo_service: {}", msg);
+        ctx.send_message(msg.reply(), msg.take()).await
     }
 }
 
@@ -42,7 +33,10 @@ async fn main(mut ctx: Context) -> Result<()> {
         "echo_service",
     )
     .await?;
-    println!("PROXY ADDRESS: {}", remote_mailbox_info.alias_address());
+    println!(
+        "echo_service: My address on the hub is {}",
+        remote_mailbox_info.alias_address()
+    );
 
     Ok(())
 }

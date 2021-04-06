@@ -42,7 +42,10 @@ async fn main(mut ctx: Context) -> Result<()> {
         XX_CHANNEL_LISTENER_ADDRESS,
     )
     .await?;
-    println!("PROXY ADDRESS: {}", remote_mailbox_info.alias_address());
+    println!(
+        "echo_service: My address on the hub is {}",
+        remote_mailbox_info.alias_address()
+    );
 
     Ok(())
 }
