@@ -11,8 +11,17 @@ use serde::{de::DeserializeOwned, Serialize};
 pub type Encoded = Vec<u8>;
 
 /// A user defined message that can be serialised and deserialised
-pub trait Message: Serialize + DeserializeOwned + Send + 'static {
+pub trait Message: Sized + Send + 'static {
     /// Encode the type representation into an [`Encoded`] type.
+    fn encode(&self) -> Result<Encoded>;
+
+    /// Decode an [`Encoded`] type into the Message's type.
+    #[allow(clippy::ptr_arg)]
+    fn decode(e: &Encoded) -> Result<Self>;
+}
+
+// Auto-implement message trait for types that _can_ be messages
+impl<T> Message for T where T: Serialize + DeserializeOwned + Sized + Send + 'static {
     fn encode(&self) -> Result<Encoded> {
         Ok(serde_bare::to_vec(self)?)
     }
@@ -23,9 +32,6 @@ pub trait Message: Serialize + DeserializeOwned + Send + 'static {
         Ok(serde_bare::from_slice(e.as_slice())?)
     }
 }
-
-// Auto-implement message trait for types that _can_ be messages
-impl<T> Message for T where T: Serialize + DeserializeOwned + Send + 'static {}
 
 // TODO: see comment in Cargo.toml about this dependency
 impl From<serde_bare::Error> for crate::Error {

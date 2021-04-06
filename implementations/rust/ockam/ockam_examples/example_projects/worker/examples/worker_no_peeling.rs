@@ -1,28 +1,27 @@
-use ockam::{async_worker, Context, Result, Routed, TransportMessage, Worker};
+use ockam::{async_worker, Context, Result, Routed, Worker, AnyMessage};
 
 struct MyWorker;
 
 #[async_worker]
 impl Worker for MyWorker {
     type Context = Context;
-    type Message = TransportMessage;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.use_peeling(false);
-        println!("Disable message peeling...");
-        Ok(())
-    }
+    type Message = AnyMessage;
 
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        println!("TransportMessage onward: {:?}", msg.onward);
-        println!("TransportMessage return: {:?}", msg.return_);
-        println!("TransportMessage payload: {:?}", msg.payload);
+        // Transport message is accessed via msg.transport()
+        // println!("TransportMessage onward: {:?}", msg.onward);
+        // println!("TransportMessage return: {:?}", msg.return_);
+        // println!("TransportMessage payload: {:?}", msg.payload);
 
-        ctx.stop().await
+        println!("Received message");
+
+        // ctx.stop().await
+
+        Ok(())
     }
 }
 
@@ -31,6 +30,10 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("worker", MyWorker).await?;
 
     ctx.send_message("worker", "Hello World!".to_string())
+        .await?;
+    ctx.send_message("worker", [0u8; 32])
+        .await?;
+    ctx.send_message("worker", 5)
         .await?;
 
     Ok(())
