@@ -332,8 +332,8 @@ impl Worker for SecureChannel {
 
                 let msg = TransportMessage {
                     version: 1,
-                    onward: onward_route,
-                    return_: reply,
+                    onward_route,
+                    return_route: reply,
                     payload: m,
                 };
                 let payload = msg.encode()?;
@@ -397,7 +397,7 @@ impl Worker for SecureChannel {
                 let mut transport_message = TransportMessage::decode(&payload)?;
 
                 transport_message
-                    .return_
+                    .return_route
                     .modify()
                     .prepend(self.channel_id.clone());
 

@@ -44,7 +44,7 @@ impl RelayMessage {
     /// Construct a message addressed to an middleware router
     #[inline]
     pub fn pre_router(addr: Address, data: TransportMessage, onward: Route) -> Self {
-        let route = data.return_.clone();
+        let route = data.return_route.clone();
         let r_msg = RouterMessage::Route(data);
         Self {
             addr,
@@ -99,7 +99,9 @@ where
     #[inline]
     fn handle_direct(&mut self, msg: TransportMessage) -> Result<(M, Route)> {
         let TransportMessage {
-            payload, return_, ..
+            payload,
+            return_route,
+            ..
         } = msg;
 
         parser::message::<M>(payload)
@@ -110,7 +112,7 @@ where
                 );
                 e.into()
             })
-            .map(|m| (m, return_.clone()))
+            .map(|m| (m, return_route.clone()))
     }
 
     #[inline]
