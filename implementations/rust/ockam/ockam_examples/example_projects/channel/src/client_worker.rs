@@ -49,7 +49,7 @@ impl Worker for Client {
                 .into(),
         );
 
-        ctx.send_message(ctx.address(), "recursion".to_string())
+        ctx.send_message(ctx.primary_address(), "recursion".to_string())
             .await?;
 
         Ok(())
@@ -65,7 +65,7 @@ impl Worker for Client {
                     .map(char::from)
                     .collect();
                 info!("Client sent message: {}", rand_string);
-                ctx.send_message(ctx.address(), "recursion".to_string())
+                ctx.send_message(ctx.primary_address(), "recursion".to_string())
                     .await?;
                 ctx.send_message(
                     self.route.clone().unwrap(),

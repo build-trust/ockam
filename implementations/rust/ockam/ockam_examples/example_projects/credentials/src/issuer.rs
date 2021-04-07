@@ -21,7 +21,7 @@ impl Worker for Issuer {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        println!("Issuer listening on {}.", ctx.address());
+        println!("Issuer listening on {}.", ctx.primary_address());
         Ok(())
     }
 

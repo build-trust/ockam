@@ -88,7 +88,7 @@ impl SecureChannel {
             true,
             route.into(),
             address_str.clone(),
-            Some(Route::new().append(ctx.address()).into()),
+            Some(Route::new().append(ctx.primary_address()).into()),
         );
 
         ctx.start_worker(address.clone(), channel).await?;
