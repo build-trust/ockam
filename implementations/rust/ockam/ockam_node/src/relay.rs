@@ -97,17 +97,17 @@ where
 
     /// Convenience function to handle an incoming direct message
     #[inline]
-    fn handle_direct(&mut self, msg: TransportMessage) -> Result<(M, Route)> {
+    fn handle_direct(&mut self, msg: &TransportMessage) -> Result<(M, Route)> {
         let TransportMessage {
-            payload,
-            return_route,
+            ref payload,
+            ref return_route,
             ..
         } = msg;
 
         parser::message::<M>(payload)
             .map_err(|e| {
                 error!(
-                    "Failed to decode message payload for worker {}",
+                    "Failed to decode message payload for worker '{}'",
                     self.ctx.address()
                 );
                 e.into()
@@ -116,8 +116,8 @@ where
     }
 
     #[inline]
-    fn handle_pre_router(&mut self, msg: Vec<u8>) -> Result<M> {
-        M::decode(&msg).map_err(|e| {
+    fn handle_pre_router(&mut self, msg: &Vec<u8>) -> Result<M> {
+        M::decode(msg).map_err(|e| {
             error!(
                 "Failed to decode wrapped router message for worker {}.  \
 Is your router accepting the correct message type? (ockam_core::RouterMessage)",
@@ -130,7 +130,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
     async fn run(mut self) {
         self.worker.initialize(&mut self.ctx).await.unwrap();
 
-        while let Some(RelayMessage { addr, data, onward }) = self.ctx.mailbox.next().await {
+        while let Some(RelayMessage { addr, data, .. }) = self.ctx.mailbox.next().await {
             // Set the message address for this transaction chain
             self.ctx.message_address(addr);
 
@@ -138,22 +138,36 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             // wrap state.  Messages addressed to a router will be of
             // type `RouterMessage`, while generic userspace workers
             // can provide any type they want.
-            let (msg, return_) = match (|data| -> Result<(M, Route)> {
-                Ok(match data {
-                    RelayPayload::Direct(trans_msg) => self.handle_direct(trans_msg)?,
-                    RelayPayload::PreRouter(enc_msg, route) => {
-                        self.handle_pre_router(enc_msg).map(|m| (m, route))?
-                    }
-                })
-            })(data)
-            {
-                Ok((msg, route)) => (msg, route),
-                Err(_) => continue, // Handler functions must log
-            };
+            let (msg, _, transport_message) =
+                match (|data| -> Result<(M, Route, TransportMessage)> {
+                    Ok(match data {
+                        RelayPayload::Direct(trans_msg) => self
+                            .handle_direct(&trans_msg)
+                            .map(|(msg, r)| (msg, r, trans_msg))?,
+                        RelayPayload::PreRouter(enc_msg, route) => {
+                            self.handle_pre_router(&enc_msg).map(|m| {
+                                (
+                                    m,
+                                    route.clone(),
+                                    TransportMessage {
+                                        version: 0,
+                                        return_route: Route::new().into(),
+                                        onward_route: route,
+                                        payload: enc_msg,
+                                    },
+                                )
+                            })?
+                        }
+                    })
+                })(data)
+                {
+                    Ok((msg, route, transport)) => (msg, route, transport),
+                    Err(_) => continue, // Handler functions must log
+                };
 
             // Wrap the user message in a `Routed` to provide return
             // route information via a composition side-channel
-            let routed = Routed::new(msg, return_, onward);
+            let routed = Routed::v1(msg, transport_message);
 
             // Call the worker handle function
             match self.worker.handle_message(&mut self.ctx, routed).await {
