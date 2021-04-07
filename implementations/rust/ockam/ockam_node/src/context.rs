@@ -137,7 +137,7 @@ impl Context {
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
         let mut data = TransportMessage::v1(route.clone(), payload);
-        data.return_.modify().append(self.address());
+        data.return_route.modify().append(self.address());
 
         // Pack transport message into relay message wrapper
         let msg = if needs_wrapping {
@@ -167,7 +167,7 @@ impl Context {
     pub async fn forward_message(&self, data: TransportMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route
         let (reply_tx, mut reply_rx) = channel(1);
-        let next = data.onward.next().unwrap(); // TODO: communicate bad routes
+        let next = data.onward_route.next().unwrap(); // TODO: communicate bad routes
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
@@ -179,7 +179,7 @@ impl Context {
             .take_sender()?;
 
         // Pack the transport message into a relay message
-        let onward = data.onward.clone();
+        let onward = data.onward_route.clone();
         let msg = RelayMessage::direct(addr, data, onward);
         sender.send(msg).await.map_err(|e| Error::from(e))?;
 
@@ -213,7 +213,7 @@ impl Context {
                 return Ok(Cancel::new(m, data, addr, self));
             } else {
                 // Requeue the message into the mailbox if it didn't
-                let onward = data.onward.clone();
+                let onward = data.onward_route.clone();
                 self.mailbox
                     .requeue(RelayMessage::direct(addr, data, onward))
                     .await;
@@ -274,7 +274,7 @@ impl Context {
             match parser::message(data.payload.clone()).ok() {
                 Some(msg) => return Ok((msg, data, addr)),
                 None => {
-                    let onward = data.onward.clone();
+                    let onward = data.onward_route.clone();
                     self.mailbox
                         .requeue(RelayMessage::direct(addr, data, onward))
                         .await;

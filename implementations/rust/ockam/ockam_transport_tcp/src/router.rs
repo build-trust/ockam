@@ -64,16 +64,16 @@ impl Worker for TcpRouter {
         use RouterMessage::*;
         match msg {
             Route(mut msg) => {
-                trace!("TCP route request: {:?}", msg.onward.next());
+                trace!("TCP route request: {:?}", msg.onward_route.next());
 
                 // Get the next hop
-                let onward = msg.onward.step().unwrap();
+                let onward = msg.onward_route.step().unwrap();
 
                 // Look up the connection worker responsible
                 let next = self.map.get(&onward).unwrap();
 
                 // Modify the transport message route
-                msg.onward.modify().prepend(next.clone());
+                msg.onward_route.modify().prepend(next.clone());
 
                 // Send the transport message to the connection worker
                 ctx.send_message(next.clone(), msg).await?;

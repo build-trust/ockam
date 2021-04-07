@@ -69,11 +69,11 @@ impl Worker for TcpRecvWorker {
 
             // Insert the peer address into the return route so that
             // reply routing can be properly resolved
-            msg.return_.modify().prepend(self.peer_addr.clone());
+            msg.return_route.modify().prepend(self.peer_addr.clone());
 
             // Some verbose logging we may want to remove
-            trace!("Message onward route: {}", msg.onward);
-            trace!("Message return route: {}", msg.return_);
+            trace!("Message onward route: {}", msg.onward_route);
+            trace!("Message return route: {}", msg.return_route);
 
             // FIXME: if we need to re-route (i.e. send it to another
             // domain specific router) the message here, use

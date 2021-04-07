@@ -53,8 +53,8 @@ impl Worker for SecureChannelListener {
                 let payload = SecureChannelMessage::KeyExchange { payload }.encode()?;
                 let msg = TransportMessage {
                     version: 1,
-                    onward: address.into(),
-                    return_: reply,
+                    onward_route: address.into(),
+                    return_route: reply,
                     payload,
                 };
 
