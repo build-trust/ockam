@@ -285,7 +285,7 @@ impl Context {
             let (addr, data) = msg.transport();
 
             // FIXME: make message parsing idempotent to avoid cloning
-            match parser::message(data.payload.clone()).ok() {
+            match parser::message(&data.payload).ok() {
                 Some(msg) => return Ok((msg, data, addr)),
                 None => {
                     let onward = data.onward_route.clone();

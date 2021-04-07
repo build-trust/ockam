@@ -75,7 +75,7 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     /// After calling this function it is no longer possible to
     /// re-queue the message into the worker mailbox.
     pub fn take(self) -> Routed<M> {
-        Routed::new(self.inner, self.trans.return_route, self.trans.onward_route)
+        Routed::v1(self.inner, self.trans)
     }
 }
 
