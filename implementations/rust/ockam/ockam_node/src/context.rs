@@ -57,7 +57,7 @@ impl Context {
 
         // Build the mailbox first
         let (mb_tx, mb_rx) = channel(32);
-        let mb = Mailbox::new(mb_rx, mb_tx.clone());
+        let mb = Mailbox::new(mb_rx, mb_tx);
 
         // Pass it to the context
         let ctx = Context::new(self.rt.clone(), self.sender.clone(), address.clone(), mb);
