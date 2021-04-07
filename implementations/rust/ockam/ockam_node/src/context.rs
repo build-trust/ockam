@@ -135,6 +135,33 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
+        self.send_message_from_address(route, msg, self.address())
+            .await
+    }
+
+    /// Send a message via a fully qualified route using specific Worker address
+    ///
+    /// Routes can be constructed from a set of [`Address`]es, or via
+    /// the [`RouteBuilder`] type.  Routes can contain middleware
+    /// router addresses, which will re-address messages that need to
+    /// be handled by specific domain workers.
+    ///
+    /// [`Address`]: ockam_core::Address
+    /// [`RouteBuilder`]: ockem_core::RouteBuilder
+    pub async fn send_message_from_address<R, M>(
+        &self,
+        route: R,
+        msg: M,
+        sending_address: Address,
+    ) -> Result<()>
+    where
+        R: Into<Route>,
+        M: Message + Send + 'static,
+    {
+        if !self.address.as_ref().contains(&sending_address) {
+            return Err(Error::SenderAddressDoesntExist.into());
+        }
+
         let route = route.into();
         let (reply_tx, mut reply_rx) = channel(1);
         let next = route.next().unwrap(); // TODO: communicate bad routes
