@@ -75,7 +75,7 @@ impl Worker for Consumer {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        info!("Starting consumer '{}'...", ctx.address());
+        info!("Starting consumer '{}'...", ctx.primary_address());
 
         // Register this consumer with the router by its accept scope
         // (which is used in a look-up table in the router to forward
@@ -87,8 +87,8 @@ impl Worker for Consumer {
         ctx.send_message(
             "simple.router",
             RouterMessage::Register {
-                accepts: format!("10#proxy_me_{}", ctx.address()).into(),
-                self_addr: ctx.address(),
+                accepts: format!("10#proxy_me_{}", ctx.primary_address()).into(),
+                self_addr: ctx.primary_address(),
             },
         )
         .await?;
@@ -98,7 +98,7 @@ impl Worker for Consumer {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        info!("Consumer {}: {}", ctx.address(), msg);
+        info!("Consumer {}: {}", msg.msg_addr(), msg);
         ctx.send_message("app", String::from("")).await?;
         Ok(())
     }

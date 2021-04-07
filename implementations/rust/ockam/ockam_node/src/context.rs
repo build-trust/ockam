@@ -13,7 +13,6 @@ use tokio::{
 
 pub struct Context {
     address: AddressSet,
-    msg_addr: Option<Address>,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
     pub(crate) mailbox: Mailbox,
@@ -30,26 +29,13 @@ impl Context {
             rt,
             sender,
             address,
-            msg_addr: None,
             mailbox,
         }
     }
 
-    /// Override the worker address for a specific message address
-    pub(crate) fn message_address<A: Into<Option<Address>>>(&mut self, a: A) {
-        self.msg_addr = a.into();
-    }
-
-    /// Return the current context address
-    ///
-    /// During initialisation and shutdown this will return the
-    /// primary worker address.  During message handling it will
-    /// return the address the message was addressed to.
-    pub fn address(&self) -> Address {
-        self.msg_addr
-            .clone()
-            .or(Some(self.address.first().clone()))
-            .unwrap()
+    /// Return the primary worker address
+    pub fn primary_address(&self) -> Address {
+        self.address.first().clone()
     }
 
     /// Start a new worker handle at [`Address`](ockam_core::Address)
@@ -121,7 +107,7 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_message_from_address(route, msg, self.address())
+        self.send_message_from_address(route, msg, self.primary_address())
             .await
     }
 

@@ -97,29 +97,26 @@ where
 
     /// Convenience function to handle an incoming direct message
     #[inline]
-    fn handle_direct(&mut self, msg: TransportMessage) -> Result<(M, Route)> {
+    fn handle_direct(&mut self, msg: TransportMessage, msg_addr: Address) -> Result<(M, Route)> {
         let TransportMessage {
             payload, return_, ..
         } = msg;
 
         parser::message::<M>(payload)
             .map_err(|e| {
-                error!(
-                    "Failed to decode message payload for worker {}",
-                    self.ctx.address()
-                );
+                error!("Failed to decode message payload for worker {}", msg_addr);
                 e.into()
             })
             .map(|m| (m, return_.clone()))
     }
 
     #[inline]
-    fn handle_pre_router(&mut self, msg: Vec<u8>) -> Result<M> {
+    fn handle_pre_router(&mut self, msg: Vec<u8>, msg_addr: Address) -> Result<M> {
         M::decode(&msg).map_err(|e| {
             error!(
                 "Failed to decode wrapped router message for worker {}.  \
 Is your router accepting the correct message type? (ockam_core::RouterMessage)",
-                self.ctx.address()
+                msg_addr
             );
             e.into()
         })
@@ -129,19 +126,18 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
         self.worker.initialize(&mut self.ctx).await.unwrap();
 
         while let Some(RelayMessage { addr, data, onward }) = self.ctx.mailbox.next().await {
-            // Set the message address for this transaction chain
-            self.ctx.message_address(addr);
-
             // Extract the message type based on the relay message
             // wrap state.  Messages addressed to a router will be of
             // type `RouterMessage`, while generic userspace workers
             // can provide any type they want.
             let (msg, return_) = match (|data| -> Result<(M, Route)> {
                 Ok(match data {
-                    RelayPayload::Direct(trans_msg) => self.handle_direct(trans_msg)?,
-                    RelayPayload::PreRouter(enc_msg, route) => {
-                        self.handle_pre_router(enc_msg).map(|m| (m, route))?
+                    RelayPayload::Direct(trans_msg) => {
+                        self.handle_direct(trans_msg, addr.clone())?
                     }
+                    RelayPayload::PreRouter(enc_msg, route) => self
+                        .handle_pre_router(enc_msg, addr.clone())
+                        .map(|m| (m, route))?,
                 })
             })(data)
             {
@@ -151,23 +147,16 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
 
             // Wrap the user message in a `Routed` to provide return
             // route information via a composition side-channel
-            let routed = Routed::new(msg, return_, onward);
+            let routed = Routed::new(msg, addr.clone(), return_, onward);
 
             // Call the worker handle function
             match self.worker.handle_message(&mut self.ctx, routed).await {
                 Ok(()) => {}
                 Err(e) => {
-                    error!(
-                        "Worker {} error while handling message: {}",
-                        self.ctx.address(),
-                        e
-                    );
+                    error!("Worker {} error while handling message: {}", addr, e);
                     continue;
                 }
             }
-
-            // Unset the message address
-            self.ctx.message_address(None);
         }
 
         self.worker.shutdown(&mut self.ctx).unwrap();

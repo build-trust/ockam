@@ -35,7 +35,7 @@ impl Worker for TcpRecvWorker {
     // Also: we must stop the TcpReceive loop when the worker gets
     // killed by the user or node.
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let self_addr = ctx.address();
+        let self_addr = ctx.primary_address();
 
         // Run in a loop until TcpWorkerPair::stop() is called
         // FIXME: see ArcBool future note

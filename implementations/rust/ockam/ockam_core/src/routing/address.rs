@@ -25,6 +25,12 @@ impl AddressSet {
     }
 }
 
+impl AsRef<Vec<Address>> for AddressSet {
+    fn as_ref(&self) -> &Vec<Address> {
+        &self.0
+    }
+}
+
 impl<T: Into<Address>> From<Vec<T>> for AddressSet {
     fn from(v: Vec<T>) -> Self {
         Self(v.into_iter().map(Into::into).collect())

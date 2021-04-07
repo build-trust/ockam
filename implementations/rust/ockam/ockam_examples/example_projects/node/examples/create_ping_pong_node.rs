@@ -34,17 +34,18 @@ impl Worker for Player {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        println!("Starting player {}", ctx.address());
+        println!("Starting player {}", ctx.primary_address());
         Ok(())
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Action>) -> Result<()> {
+        let msg_addr = msg.msg_addr();
         let msg = msg.take();
-        println!("{}: {:?}", ctx.address(), msg);
+        println!("{}: {:?}", msg_addr, msg);
         match msg {
             Action::Intro(addr) if self.friend.is_none() => {
                 self.friend = Some(addr);
-                ctx.send_message(self.friend(), Action::Intro(ctx.address()))
+                ctx.send_message(self.friend(), Action::Intro(msg_addr))
                     .await?;
             }
 

@@ -18,6 +18,8 @@ pub enum Error {
     FailedLoadData,
     /// An umbrella for internal I/O failures
     InternalIOFailure,
+    /// Worker tried to send message from foreign address
+    SenderAddressDoesntExist,
 }
 
 impl Error {
