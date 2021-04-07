@@ -7,10 +7,9 @@ then
 fi
 
 pushd $OCKAM_ROOT/implementations/rust/ockam/ >/dev/null
-echo "crate,version"
 for d in *
-do 
-  echo -n "$d,"
-  perl -ne '/^version = "([^"]+)"/ and print "$1\n"' < $d/Cargo.toml 
+do
+  echo -n "$d "
+  perl -ne '/^version = "([^"]+)"/ and print "$1\n"' < $d/Cargo.toml
 done
 popd >/dev/null

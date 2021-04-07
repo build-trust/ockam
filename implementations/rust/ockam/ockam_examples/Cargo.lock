@@ -301,7 +301,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "channel_examples"
 version = "0.0.0"
 dependencies = [
- "ockam 0.4.1",
+ "ockam 0.4.2",
  "ockam_node 0.5.0",
  "ockam_transport_tcp 0.2.0",
  "rand 0.8.3",
@@ -381,7 +381,7 @@ name = "credentials"
 version = "0.1.0"
 dependencies = [
  "hex",
- "ockam 0.4.1",
+ "ockam 0.4.2",
  "ockam_node 0.5.0",
  "ockam_transport_tcp 0.2.0",
  "serde",
@@ -587,7 +587,7 @@ dependencies = [
 name = "examples"
 version = "0.0.0"
 dependencies = [
- "ockam 0.4.1",
+ "ockam 0.4.2",
  "ockam_node 0.5.0",
  "serde",
 ]
@@ -1196,7 +1196,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "arrayref",
  "bbs",
@@ -1332,7 +1332,7 @@ version = "0.2.0"
 dependencies = [
  "futures",
  "hashbrown 0.9.1",
- "ockam 0.4.1",
+ "ockam 0.4.2",
  "rand 0.7.3",
  "serde",
  "serde_bare",
@@ -1421,7 +1421,7 @@ dependencies = [
  "dirs",
  "generic-array 0.12.4",
  "isahc",
- "ockam 0.4.1",
+ "ockam 0.4.2",
  "rpassword",
  "serde",
  "serde-big-array",
@@ -2092,7 +2092,7 @@ dependencies = [
 name = "tcp_examples"
 version = "0.0.0"
 dependencies = [
- "ockam 0.4.1",
+ "ockam 0.4.2",
  "ockam_node 0.5.0",
  "ockam_transport_tcp 0.2.0",
  "serde",
@@ -2386,7 +2386,7 @@ name = "worker_examples"
 version = "0.0.0"
 dependencies = [
  "chrono",
- "ockam 0.4.1",
+ "ockam 0.4.2",
  "ockam_node 0.5.0",
  "serde",
  "tracing",
