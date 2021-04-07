@@ -4,6 +4,8 @@ use tokio::sync::mpsc::error::SendError;
 /// Error declarations.
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
+    /// No error
+    None,
     /// Unable to gracefully stop the Node.
     FailedStopNode,
     /// Unable to start a worker
