@@ -1,18 +1,9 @@
 use super::*;
-use bbs::prelude::{
-    DeterministicPublicKey, Issuer as BbsIssuer, KeyGenOption, ProofNonce, RandomElem, SecretKey,
-};
+use bbs::{Issuer as BbsIssuer, MessageGenerators, Nonce, PublicKey, SecretKey};
+use bls::ProofOfPossession;
 use core::convert::TryFrom;
-use ockam_core::lib::*;
-use pairing_plus::{
-    bls12_381::{Fr, G1},
-    hash_to_curve::HashToCurve,
-    hash_to_field::ExpandMsgXmd,
-    serdes::SerDes,
-    CurveProjective,
-};
-
-pub(crate) const CSUITE_POP: &'static [u8] = b"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
+use ockam_core::lib::{HashMap, String, Vec};
+use rand::{CryptoRng, RngCore};
 
 /// Represents an issuer of a credential
 #[derive(Debug)]
@@ -34,28 +25,26 @@ pub type OfferIdBytes = [u8; 32];
 
 impl CredentialIssuer {
     /// Create issuer with a new issuing key
-    pub fn new() -> Self {
+    pub fn new(rng: impl RngCore + CryptoRng) -> Self {
         Self {
-            signing_key: SecretKey::random(),
+            signing_key: SecretKey::random(rng).expect("bad random number generator"),
         }
     }
 
     /// Return the signing key associated with this CredentialIssuer
     pub fn get_signing_key(&self) -> SigningKeyBytes {
-        self.signing_key.to_bytes_compressed_form()
+        self.signing_key.to_bytes()
     }
 
     /// Return the public key
     pub fn get_public_key(&self) -> PublicKeyBytes {
-        let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
-            self.signing_key.clone(),
-        )));
-        dpk.to_bytes_compressed_form()
+        let pk = PublicKey::from(&self.signing_key);
+        pk.to_bytes()
     }
 
     /// Initialize an issuer with an already generated key
     pub fn with_signing_key(signing_key: SigningKeyBytes) -> Self {
-        let signing_key = SecretKey::from(signing_key);
+        let signing_key = SecretKey::from_bytes(&signing_key).unwrap();
         Self { signing_key }
     }
 
@@ -73,8 +62,12 @@ impl CredentialIssuer {
     }
 
     /// Create a credential offer
-    pub fn create_offer(&self, schema: &CredentialSchema) -> CredentialOffer {
-        let id = BbsIssuer::generate_signing_nonce().to_bytes_compressed_form();
+    pub fn create_offer(
+        &self,
+        schema: &CredentialSchema,
+        rng: impl RngCore + CryptoRng,
+    ) -> CredentialOffer {
+        let id = Nonce::random(rng).to_bytes();
         CredentialOffer {
             id,
             schema: schema.clone(),
@@ -83,17 +76,9 @@ impl CredentialIssuer {
 
     /// Create a proof of possession for this issuers signing key
     pub fn create_proof_of_possession(&self) -> ProofBytes {
-        let mut p = <G1 as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
-            &self.get_public_key(),
-            CSUITE_POP,
-        );
-
-        let mut c = std::io::Cursor::new(self.signing_key.to_bytes_compressed_form());
-        let fr = Fr::deserialize(&mut c, true).unwrap();
-        p.mul_assign(fr);
-        let mut s = [0u8; 48];
-        let _ = p.serialize(&mut s.as_mut(), true);
-        s
+        ProofOfPossession::new(&self.signing_key)
+            .expect("bad signing key")
+            .to_bytes()
     }
 
     /// Sign the claims into the credential
@@ -123,13 +108,10 @@ impl CredentialIssuer {
             }
         }
 
-        let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
-            self.signing_key.clone(),
-        )));
-        let pk = dpk
-            .to_public_key(schema.attributes.len())
-            .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
-        let signature = BbsIssuer::sign(messages.as_slice(), &self.signing_key, &pk)
+        let generators =
+            MessageGenerators::from_secret_key(&self.signing_key, schema.attributes.len());
+
+        let signature = BbsIssuer::sign(&self.signing_key, &generators, &messages)
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
         Ok(Credential {
             attributes: attributes.to_vec(),
@@ -142,57 +124,54 @@ impl CredentialIssuer {
         &self,
         ctx: &CredentialRequest,
         schema: &CredentialSchema,
-        attributes: &BTreeMap<String, CredentialAttribute>,
+        attributes: &[(String, CredentialAttribute)],
         offer_id: OfferIdBytes,
     ) -> Result<CredentialFragment2, CredentialError> {
         if attributes.len() >= schema.attributes.len() {
             return Err(CredentialError::MismatchedAttributesAndClaims);
         }
+
+        let mut atts = HashMap::new();
+
+        for (name, att) in attributes {
+            atts.insert(name, att);
+        }
+
+        let mut messages = Vec::<(usize, bbs::Message)>::new();
+        let mut remaining_atts = Vec::<(usize, CredentialAttribute)>::new();
+
         // Check if any blinded messages are allowed to be unknown
         // If allowed, proceed
         // otherwise abort
-        for att in &schema.attributes {
+        for i in 0..schema.attributes.len() {
+            let att = &schema.attributes[i];
             // missing schema attribute means it's hidden by the holder
             // or unknown to the issuer
-            if let None = attributes.get(&att.label) {
-                if !att.unknown {
-                    return Err(CredentialError::InvalidCredentialAttribute);
+            match atts.get(&att.label) {
+                None => {
+                    if !att.unknown {
+                        return Err(CredentialError::InvalidCredentialAttribute);
+                    }
+                }
+                Some(data) => {
+                    if **data != att.attribute_type {
+                        return Err(CredentialError::MismatchedAttributeClaimType);
+                    }
+                    remaining_atts.push((i, (*data).clone()));
+                    messages.push((i, (*data).to_signature_message()));
                 }
             }
         }
 
-        let atts = schema
-            .attributes
-            .iter()
-            .enumerate()
-            .map(|(i, a)| (a.label.clone(), (i, a.clone())))
-            .collect::<BTreeMap<String, (usize, CredentialAttributeSchema)>>();
-        let mut messages = BTreeMap::new();
-
-        let mut remaining_atts = BTreeMap::new();
-        for (label, data) in attributes {
-            let (i, a) = atts
-                .get(label)
-                .ok_or(CredentialError::InvalidCredentialAttribute)?;
-            if *data != a.attribute_type {
-                return Err(CredentialError::MismatchedAttributeClaimType);
-            }
-            remaining_atts.insert(*i, data.clone());
-            messages.insert(*i, data.to_signature_message());
-        }
-        let (dpk, _) = DeterministicPublicKey::new(Some(KeyGenOption::FromSecretKey(
-            self.signing_key.clone(),
-        )));
-        let pk = dpk
-            .to_public_key(schema.attributes.len())
-            .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
+        let generators =
+            MessageGenerators::from_secret_key(&self.signing_key, schema.attributes.len());
 
         let signature = BbsIssuer::blind_sign(
             &ctx.context,
-            &messages,
             &self.signing_key,
-            &pk,
-            &ProofNonce::from(offer_id),
+            &generators,
+            &messages,
+            Nonce::from_bytes(&offer_id).unwrap(),
         )
         .map_err(|_| CredentialError::InvalidCredentialAttribute)?;
 
@@ -205,11 +184,15 @@ impl CredentialIssuer {
 
 #[cfg(test)]
 mod tests {
+    use super::util::MockRng;
     use super::*;
+    use rand::SeedableRng;
 
     #[test]
     fn create_proof_of_possession_test() {
-        let issuer = CredentialIssuer::new();
+        let seed = [3u8; 16];
+        let mut rng = MockRng::from_seed(seed);
+        let issuer = CredentialIssuer::new(&mut rng);
 
         let proof = issuer.create_proof_of_possession();
 

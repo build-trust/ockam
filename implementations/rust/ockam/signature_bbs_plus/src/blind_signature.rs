@@ -10,7 +10,7 @@ use hmac_drbg::HmacDRBG;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use short_group_signatures_core::{error::Error, lib::*};
 use subtle::CtOption;
-use typenum::{marker_traits::NonZero, U64};
+use typenum::U64;
 
 /// A BBS+ blind signature
 /// structurally identical to `Signature` but is used to
@@ -59,16 +59,13 @@ impl BlindSignature {
 
     /// Generate a blind signature where only a subset of messages are known to the signer
     /// The rest are encoded as a commitment
-    pub fn new<N>(
+    pub fn new(
         commitment: Commitment,
         sk: &SecretKey,
-        generators: &MessageGenerators<N>,
+        generators: &MessageGenerators,
         msgs: &[(usize, Message)],
-    ) -> Result<Self, Error>
-    where
-        N: ArrayLength<G1Projective> + NonZero,
-    {
-        if N::to_usize() < msgs.len() {
+    ) -> Result<Self, Error> {
+        if generators.len() < msgs.len() {
             return Err(Error::new(1, "not enough message generators"));
         }
         if sk.0.is_zero() {
@@ -77,8 +74,8 @@ impl BlindSignature {
 
         let mut hasher = Blake2b::new();
         hasher.update(generators.h0.to_affine().to_uncompressed());
-        for h in &generators.h {
-            hasher.update(h.to_affine().to_uncompressed());
+        for i in 0..generators.len() {
+            hasher.update(generators.get(i).to_affine().to_uncompressed());
         }
         for (_, m) in msgs.iter() {
             hasher.update(m.to_bytes())
@@ -104,7 +101,7 @@ impl BlindSignature {
 
         let mut i = 3;
         for (idx, m) in msgs.iter() {
-            points[i] = generators.h[*idx];
+            points[i] = generators.get(*idx);
             scalars[i] = m.0;
             i += 1;
         }

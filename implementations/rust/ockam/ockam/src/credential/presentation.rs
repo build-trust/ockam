@@ -1,5 +1,5 @@
 use super::CredentialAttribute;
-use bbs::prelude::*;
+use bbs::PokSignatureProof;
 use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 
@@ -11,5 +11,5 @@ pub struct CredentialPresentation {
     /// The revealed attribute values in the same canonical ordering as the presentation manifest
     pub revealed_attributes: Vec<CredentialAttribute>,
     /// The zero-knowledge proof associated with this credential
-    pub proof: PoKOfSignatureProof,
+    pub proof: PokSignatureProof,
 }

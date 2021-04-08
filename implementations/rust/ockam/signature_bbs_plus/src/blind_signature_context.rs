@@ -1,21 +1,25 @@
-use crate::{Challenge, Commitment, MessageGenerators, Nonce, COMMITMENT_BYTES, FIELD_BYTES};
+use crate::{
+    util::VecSerializer, Challenge, Commitment, MessageGenerators, Nonce, COMMITMENT_BYTES,
+    FIELD_BYTES,
+};
 use blake2::VarBlake2b;
 use bls12_381_plus::{G1Projective, Scalar};
 use core::convert::TryFrom;
 use digest::{Update, VariableOutput};
 use group::Curve;
+use serde::{Deserialize, Serialize};
 use short_group_signatures_core::{error::Error, lib::*};
 use subtle::ConstantTimeEq;
-use typenum::NonZero;
 
 /// Contains the data used for computing a blind signature and verifying
 /// proof of hidden messages from a prover
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlindSignatureContext {
     /// The blinded signature commitment
     pub commitment: Commitment,
     /// The challenge hash for the Fiat-Shamir heuristic
     pub challenge: Challenge,
+    #[serde(with = "VecSerializer")]
     /// The proofs for the hidden messages
     pub proofs: Vec<Challenge, U16>,
 }
@@ -91,36 +95,33 @@ impl BlindSignatureContext {
 
     /// Assumes the proof of hidden messages
     /// If other proofs were included, those will need to be verified another way
-    pub fn verify<S>(
+    pub fn verify(
         &self,
         known_messages: &[usize],
-        generators: &MessageGenerators<S>,
+        generators: &MessageGenerators,
         nonce: Nonce,
-    ) -> Result<bool, Error>
-    where
-        S: ArrayLength<G1Projective> + NonZero,
-    {
+    ) -> Result<bool, Error> {
         let mut known = HashSet::new();
         let mut points = Vec::<G1Projective, U32>::new();
         for idx in known_messages {
-            if *idx >= S::to_usize() {
+            if *idx >= generators.len() {
                 return Err(Error::new(1, "index out of bounds"));
             }
             known.insert(*idx);
         }
-        for i in 0..S::to_usize() {
+        for i in 0..generators.len() {
             if !known.contains(&i) {
                 points
-                    .push(generators.h[i])
+                    .push(generators.get(i))
                     .map_err(|_| Error::new((i + 1) as u32, "allocate more space"))?;
             }
         }
         points
             .push(generators.h0)
-            .map_err(|_| Error::new(S::to_u32(), "allocate more space"))?;
+            .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
         points
             .push(self.commitment.0)
-            .map_err(|_| Error::new(S::to_u32(), "allocate more space"))?;
+            .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
 
         let mut scalars = self
             .proofs
@@ -129,7 +130,7 @@ impl BlindSignatureContext {
             .collect::<Vec<Scalar, U32>>();
         scalars
             .push(self.challenge.0.neg())
-            .map_err(|_| Error::new(S::to_u32(), "allocate more space"))?;
+            .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
 
         let mut res = [0u8; COMMITMENT_BYTES];
         let mut hasher = VarBlake2b::new(COMMITMENT_BYTES).unwrap();

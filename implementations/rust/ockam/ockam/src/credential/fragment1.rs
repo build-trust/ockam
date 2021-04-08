@@ -1,5 +1,5 @@
 use super::CredentialSchema;
-use bbs::prelude::*;
+use bbs::SignatureBlinding;
 use serde::{Deserialize, Serialize};
 
 /// The information needed to convert a CredentialFragment2 to a Credential

@@ -1,10 +1,8 @@
 use crate::{BlindSignature, BlindSignatureContext, Message, MessageGenerators, Nonce, Signature};
 use bls::{PublicKey, SecretKey};
-use bls12_381_plus::G1Projective;
 use rand_core::{CryptoRng, RngCore};
 use short_group_signatures_core::error::Error;
 use short_group_signatures_core::lib::*;
-use typenum::NonZero;
 
 /// This struct represents an Issuer of signatures or Signer.
 /// Provided are methods for signing regularly where all messages are known
@@ -30,29 +28,25 @@ impl Issuer {
     }
 
     /// Create a signature with no hidden messages
-    pub fn sign<N, M>(
+    pub fn sign<M>(
         sk: &SecretKey,
-        generators: &MessageGenerators<N>,
+        generators: &MessageGenerators,
         msgs: M,
     ) -> Result<Signature, Error>
     where
-        N: ArrayLength<G1Projective> + NonZero,
         M: AsRef<[Message]>,
     {
         Signature::new(sk, generators, msgs)
     }
 
     /// Verify a proof of committed messages and generate a blind signature
-    pub fn blind_sign<N>(
+    pub fn blind_sign(
         ctx: &BlindSignatureContext,
         sk: &SecretKey,
-        generators: &MessageGenerators<N>,
+        generators: &MessageGenerators,
         msgs: &[(usize, Message)],
         nonce: Nonce,
-    ) -> Result<BlindSignature, Error>
-    where
-        N: ArrayLength<G1Projective> + NonZero,
-    {
+    ) -> Result<BlindSignature, Error> {
         // Known messages are less than total, max at 128
         let tv1 = msgs.iter().map(|(i, _)| *i).collect::<Vec<usize, U128>>();
         if ctx.verify(tv1.as_ref(), generators, nonce)? {

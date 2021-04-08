@@ -2,35 +2,25 @@ mod attribute;
 mod attribute_schema;
 mod attribute_type;
 mod error;
-#[cfg(feature = "std")]
 mod fragment1;
-#[cfg(feature = "std")]
 mod fragment2;
-#[cfg(feature = "std")]
 mod holder;
-#[cfg(feature = "std")]
 mod issuer;
-#[cfg(feature = "std")]
 mod offer;
 mod presentation;
 mod presentation_manifest;
 mod request;
 mod schema;
 mod util;
-#[cfg(feature = "std")]
 mod verifier;
 
 pub use attribute::*;
 pub use attribute_schema::*;
 pub use attribute_type::*;
 pub use error::*;
-#[cfg(feature = "std")]
 pub use fragment1::*;
-#[cfg(feature = "std")]
 pub use fragment2::*;
-#[cfg(feature = "std")]
 pub use holder::*;
-#[cfg(feature = "std")]
 pub use issuer::*;
 pub use offer::*;
 pub use presentation::*;
@@ -38,9 +28,9 @@ pub use presentation_manifest::*;
 pub use request::*;
 pub use schema::*;
 use util::*;
-#[cfg(feature = "std")]
 pub use verifier::*;
 
+use bbs::Signature;
 use serde::{Deserialize, Serialize};
 
 /// A credential that can be presented
@@ -49,13 +39,16 @@ pub struct Credential {
     /// The signed attributes in the credential
     pub attributes: Vec<CredentialAttribute>,
     /// The cryptographic signature
-    pub signature: bbs::prelude::Signature,
+    pub signature: Signature,
 }
 
 #[cfg(test)]
 mod tests {
+    use super::util::MockRng;
     use super::*;
     use ockam_core::lib::*;
+    use rand::SeedableRng;
+    const SEED: [u8; 16] = [3u8; 16];
 
     fn create_test_schema() -> CredentialSchema {
         let attribute = CredentialAttributeSchema {
@@ -114,7 +107,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "std")]
     fn get_test_issuance_schema() -> CredentialSchema {
         CredentialSchema {
             id: String::from("test_id"),
@@ -150,46 +142,47 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "std")]
     #[test]
     fn test_proof_of_possession() {
-        let issuer = CredentialIssuer::new();
+        let rng = MockRng::from_seed(SEED);
+        let issuer = CredentialIssuer::new(rng);
 
         let proof = issuer.create_proof_of_possession();
         let pk = issuer.get_public_key();
         assert!(CredentialVerifier::verify_proof_of_possession(pk, proof));
     }
 
-    #[cfg(feature = "std")]
     #[test]
     fn test_credential_issuance() {
+        let mut rng = MockRng::from_seed(SEED);
         let schema = get_test_issuance_schema();
-        let issuer = CredentialIssuer::new();
-        let holder = CredentialHolder::new();
+        let issuer = CredentialIssuer::new(&mut rng);
+        let holder = CredentialHolder::new(&mut rng);
 
         let pk = issuer.get_public_key();
-        let offer = issuer.create_offer(&schema);
-        let res = holder.accept_credential_offer(&offer, pk);
+        let offer = issuer.create_offer(&schema, &mut rng);
+        let res = holder.accept_credential_offer(&offer, pk, &mut rng);
         assert!(res.is_ok());
         let (request, fragment1) = res.unwrap();
-        let mut attributes = BTreeMap::new();
-        attributes.insert(
-            schema.attributes[1].label.clone(),
-            CredentialAttribute::String(String::from("local-test")),
-        );
-        attributes.insert(
-            schema.attributes[2].label.clone(),
-            CredentialAttribute::String(String::from("ockam.io")),
-        );
-        attributes.insert(
-            schema.attributes[3].label.clone(),
-            CredentialAttribute::Numeric(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs() as i64,
+        let attributes = [
+            (
+                schema.attributes[1].label.clone(),
+                CredentialAttribute::String(String::from("local-test")),
             ),
-        );
+            (
+                schema.attributes[2].label.clone(),
+                CredentialAttribute::String(String::from("ockam.io")),
+            ),
+            (
+                schema.attributes[3].label.clone(),
+                CredentialAttribute::Numeric(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs() as i64,
+                ),
+            ),
+        ];
         let res = issuer.sign_credential_request(&request, &schema, &attributes, offer.id);
         assert!(res.is_ok());
         let fragment2 = res.unwrap();
@@ -197,18 +190,18 @@ mod tests {
         assert!(holder.is_valid_credential(&cred, pk));
     }
 
-    #[cfg(feature = "std")]
     #[test]
     fn test_credential_presentation() {
+        let mut rng = MockRng::from_seed(SEED);
         let schema = get_test_issuance_schema();
-        let issuer = CredentialIssuer::new();
-        let holder = CredentialHolder::new();
+        let issuer = CredentialIssuer::new(&mut rng);
+        let holder = CredentialHolder::new(&mut rng);
 
         let cred = issuer
             .sign_credential(
                 &schema,
                 &[
-                    CredentialAttribute::Blob(holder.id.to_bytes_compressed_form()),
+                    CredentialAttribute::Blob(holder.id.to_bytes()),
                     CredentialAttribute::String(String::from("local-test")),
                     CredentialAttribute::String(String::from("ockam.io")),
                     CredentialAttribute::Numeric(
@@ -226,18 +219,14 @@ mod tests {
             public_key: issuer.get_public_key(),
             revealed: [0, 1].to_vec(),
         };
-        let pr_id = CredentialVerifier::create_proof_request_id();
-        let res = holder.present_credentials(&[cred.clone()], &[manifest.clone()], pr_id);
+        let pr_id = CredentialVerifier::create_proof_request_id(&mut rng);
+        let res = holder.present_credentials(&[cred.clone()], &[manifest.clone()], pr_id, &mut rng);
         assert!(res.is_err());
         manifest.revealed = [1].to_vec();
-        let res = holder.present_credentials(&[cred.clone()], &[manifest.clone()], pr_id);
+        let res = holder.present_credentials(&[cred.clone()], &[manifest.clone()], pr_id, &mut rng);
         assert!(res.is_ok());
         let prez = res.unwrap();
-        let res = CredentialVerifier::verify_credential_presentations(
-            prez.as_slice(),
-            &[manifest],
-            pr_id,
-        );
+        let res = CredentialVerifier::verify_credential_presentations(&prez, &[manifest], pr_id);
         assert!(res.is_ok());
     }
 }
