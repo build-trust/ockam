@@ -5,9 +5,22 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Sender};
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
-pub struct App;
+/// A minimal worker implementation that does nothing
+pub struct NullWorker;
 
-impl ockam_core::Worker for App {
+impl NullWorker {
+    /// Create and register a new NullWorker context
+    pub(crate) fn new(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
+        // Create a new Mailbox and Context
+        let (mb_tx, mb_rx) = channel(32);
+        let mb = Mailbox::new(mb_rx, mb_tx.clone());
+        let ctx = Context::new(rt, tx, addr.into(), mb);
+
+        ctx
+    }
+}
+
+impl ockam_core::Worker for NullWorker {
     type Context = Context;
     type Message = (); // This message type is never used
 }
@@ -22,10 +35,10 @@ pub fn start_node() -> (Context, Executor) {
 
     // The root application worker needs a mailbox and relay to accept
     // messages from workers, and to buffer incoming transcoded data.
-    let ctx = root_app_context(exe.runtime(), &addr, exe.sender());
+    let ctx = NullWorker::new(exe.runtime(), &addr, exe.sender());
 
     // Build a mailbox worker to buffer messages
-    let sender = relay::build_root::<App, _>(exe.runtime(), &ctx.mailbox);
+    let sender = relay::build_root::<NullWorker, _>(exe.runtime(), &ctx.mailbox);
 
     // Register this mailbox handle with the executor
     exe.initialize_system("app", sender);
@@ -42,11 +55,4 @@ fn setup_tracing() {
                 .add_directive("ockam_node=info".parse().unwrap())
         }))
         .init();
-}
-
-fn root_app_context(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
-    let (mb_tx, mb_rx) = channel(32);
-    let mb = Mailbox::new(mb_rx, mb_tx.clone());
-    let ctx = Context::new(rt, tx, addr.into(), mb);
-    ctx
 }

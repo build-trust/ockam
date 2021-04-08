@@ -2629,6 +2629,7 @@ dependencies = [
  "ockam 0.4.2",
  "ockam_node 0.5.0",
  "serde",
+ "tokio",
  "tracing",
 ]
 

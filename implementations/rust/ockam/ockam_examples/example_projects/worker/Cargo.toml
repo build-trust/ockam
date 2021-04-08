@@ -13,4 +13,5 @@ ockam_node = { path = "../../../ockam_node", version = "0.5.0" }
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
+tokio = { version = "1.0", features = ["full"] }
 
