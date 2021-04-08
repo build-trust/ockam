@@ -1,5 +1,7 @@
 use crate::{
+    block_future,
     error::Error,
+    node::NullWorker,
     parser,
     relay::{self, RelayMessage},
     Cancel, Mailbox, NodeMessage,
@@ -16,6 +18,17 @@ pub struct Context {
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
     pub(crate) mailbox: Mailbox,
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        let addr = self.address.first();
+        trace!("Running Context::drop()");
+
+        if let Err(e) = block_future(self.rt.as_ref(), async { self.stop_worker(addr).await }) {
+            error!("Error occured during Context::drop(): {}", e);
+        };
+    }
 }
 
 impl Context {
@@ -36,6 +49,26 @@ impl Context {
     /// Return the primary worker address
     pub fn primary_address(&self) -> Address {
         self.address.first().clone()
+    }
+
+    /// Create a new context without spawning a full worker
+    pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
+        let addr = addr.into();
+        let ctx = NullWorker::new(Arc::clone(&self.rt), &addr, self.sender.clone());
+
+        // Create a small relay and register it with the internal router
+        let sender = relay::build_root::<NullWorker, _>(Arc::clone(&self.rt), &ctx.mailbox);
+        let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender);
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|_| Error::FailedStartWorker)?;
+
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)?
+            .map(|_| ctx)?)
     }
 
     /// Start a new worker handle at [`Address`](ockam_core::Address)
