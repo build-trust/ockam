@@ -33,3 +33,4 @@ zeroize = { version = "1.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 rand_xorshift = "0.3"
+rand = "0.8.3"
