@@ -8,7 +8,6 @@ use ockam_transport_tcp::TcpRouter;
 
 use credentials::CredentialMessage::{CredentialOffer, CredentialResponse};
 use credentials::{example_schema, CredentialMessage, DEFAULT_ISSUER_PORT};
-use std::collections::BTreeMap;
 use structopt::StructOpt;
 
 pub struct Issuer {
@@ -44,15 +43,17 @@ impl Worker for Issuer {
                 CredentialMessage::CredentialIssuer { public_key, proof }
             }
             CredentialMessage::NewCredential => {
-                let offer = issuer.create_offer(&self.schema);
+                let rng = rand::thread_rng();
+                let offer = issuer.create_offer(&self.schema, rng);
                 CredentialOffer(offer)
             }
             CredentialMessage::CredentialRequest(request) => {
-                let mut attributes = BTreeMap::new();
-                attributes.insert(
-                    self.schema.attributes[1].label.clone(),
-                    CredentialAttribute::Numeric(1), // TRUE, the device has access
-                );
+                let attributes = [
+                    (
+                        self.schema.attributes[1].label.clone(),
+                        CredentialAttribute::Numeric(1),
+                    ), // TRUE, the device has access
+                ];
 
                 let credential_fragment2 = issuer
                     .sign_credential_request(&request, &self.schema, &attributes, request.offer_id)
@@ -90,7 +91,8 @@ async fn main(ctx: Context) -> Result<()> {
     let credential_issuer = if let Some(signing_key) = args.signing_key {
         CredentialIssuer::with_signing_key_hex(signing_key).unwrap()
     } else {
-        CredentialIssuer::new()
+        let rng = rand::thread_rng();
+        CredentialIssuer::new(rng)
     };
 
     let schema = example_schema();
