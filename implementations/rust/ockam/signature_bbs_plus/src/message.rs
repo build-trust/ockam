@@ -7,7 +7,7 @@ use subtle::CtOption;
 
 /// A message that is signed into a signature
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Message(pub(crate) Scalar);
+pub struct Message(pub Scalar);
 
 impl Message {
     /// The number of bytes in a message

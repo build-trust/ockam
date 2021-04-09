@@ -1,7 +1,9 @@
 use crate::{error::Error, relay::RelayMessage, NodeMessage, NodeReply, NodeReplyResult};
 use ockam_core::{Address, AddressSet, Result};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+
+type RelaySender = Arc<Sender<RelayMessage>>;
 
 /// A combined address type and local worker router
 ///
@@ -14,7 +16,11 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 /// registered per address type.
 pub struct Router {
     /// Primary mapping of worker senders
-    internal: BTreeMap<Address, Sender<RelayMessage>>,
+    ///
+    /// For each address a worker listens to a reference to the same
+    /// sender will be store in this map, as to allow alias addresses
+    /// to be checked for collisions.
+    internal: BTreeMap<Address, RelaySender>,
     /// Additional address map
     ///
     /// Each worker has a primary address, with secondary addresses
@@ -56,7 +62,7 @@ impl Router {
     }
 
     pub fn init(&mut self, addr: Address, mb: Sender<RelayMessage>) {
-        self.internal.insert(addr, mb);
+        self.internal.insert(addr, Arc::new(mb));
     }
 
     pub fn sender(&self) -> Sender<NodeMessage> {
@@ -66,7 +72,7 @@ impl Router {
     /// Block current task running this router.  Return fatal errors
     pub async fn run(&mut self) -> Result<()> {
         use NodeMessage::*;
-        while let Some(mut msg) = self.receiver.recv().await {
+        while let Some(msg) = self.receiver.recv().await {
             match msg {
                 // Internal registration commands
                 Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
@@ -84,8 +90,15 @@ impl Router {
                     .map_err(|_| Error::InternalIOFailure)?,
 
                 // Basic worker control
-                StartWorker(addr, sender) => self.start_worker(addr, sender).await?,
-                StopWorker(ref addr, ref mut reply) => self.stop_worker(addr, reply).await?,
+                StartWorker(addr, sender, ref reply) => {
+                    self.start_worker(addr, sender, reply).await?
+                }
+                StopWorker(ref addr, ref reply) => self.stop_worker(addr, reply).await?,
+
+                // Check whether a set of addresses is available
+                CheckAddress(ref addrs, ref reply) => {
+                    self.check_addr_collisions(addrs, reply).await?
+                }
 
                 // Basic node control
                 StopNode => {
@@ -98,7 +111,7 @@ impl Router {
                     .map_err(|_| Error::InternalIOFailure)?,
 
                 // Handle route/ sender requests
-                SenderReq(ref addr, ref mut reply) => match determine_type(addr) {
+                SenderReq(ref addr, ref reply) => match determine_type(addr) {
                     RouteType::Internal(ref addr) => self.resolve(addr, reply, false).await?,
                     RouteType::External(tt) => {
                         let addr = self.router_addr(tt)?;
@@ -115,20 +128,25 @@ impl Router {
         &mut self,
         addrs: AddressSet,
         sender: Sender<RelayMessage>,
+        reply: &Sender<NodeReplyResult>,
     ) -> Result<()> {
         trace!("Starting new worker '{}'", addrs.first());
+        let sender = Arc::new(sender);
         addrs.iter().for_each(|addr| {
-            self.internal.insert(addr.clone(), sender.clone());
+            self.internal.insert(addr.clone(), Arc::clone(&sender));
         });
         self.addr_map.insert(addrs.first(), addrs);
+
+        // For now we just send an OK back -- in the future we need to
+        // communicate the current executor state
+        reply
+            .send(NodeReply::ok())
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
         Ok(())
     }
 
-    async fn stop_worker(
-        &mut self,
-        addr: &Address,
-        reply: &mut Sender<NodeReplyResult>,
-    ) -> Result<()> {
+    async fn stop_worker(&mut self, addr: &Address, reply: &Sender<NodeReplyResult>) -> Result<()> {
         trace!("Stopping worker '{}'", addr);
 
         let addrs = self.addr_map.remove(addr).unwrap();
@@ -157,13 +175,17 @@ impl Router {
     async fn resolve(
         &mut self,
         addr: &Address,
-        reply: &mut Sender<NodeReplyResult>,
+        reply: &Sender<NodeReplyResult>,
         wrap: bool,
     ) -> Result<()> {
         trace!("Resolvivg worker address '{}'", addr);
 
         match self.internal.get(addr) {
-            Some(sender) => reply.send(NodeReply::sender(addr.clone(), sender.clone(), wrap)),
+            Some(sender) => reply.send(NodeReply::sender(
+                addr.clone(),
+                sender.as_ref().clone(),
+                wrap,
+            )),
             None => reply.send(NodeReply::no_such_worker(addr.clone())),
         }
         .await
@@ -177,5 +199,27 @@ impl Router {
             .get(&tt)
             .cloned()
             .ok_or(Error::InternalIOFailure.into())
+    }
+
+    /// Check if an address is already in-use by another worker
+    async fn check_addr_collisions(
+        &self,
+        addrs: &AddressSet,
+        reply: &Sender<NodeReplyResult>,
+    ) -> Result<()> {
+        if let Some(addr) = addrs.iter().fold(None, |acc, addr| {
+            match (acc, self.internal.contains_key(&addr)) {
+                (None, true) => Some(addr.clone()),
+                (None, false) => None,
+                // If a collision was already found, ignore further collisions
+                (Some(addr), _) => Some(addr),
+            }
+        }) {
+            reply.send(NodeReply::worker_exists(addr))
+        } else {
+            reply.send(NodeReply::ok())
+        }
+        .await
+        .map_err(|_| Error::InternalIOFailure.into())
     }
 }

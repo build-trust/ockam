@@ -1,6 +1,6 @@
 [package]
 name = "signature_bbs_plus"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -33,3 +33,4 @@ zeroize = { version = "1.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 rand_xorshift = "0.3"
+rand = "0.8.3"

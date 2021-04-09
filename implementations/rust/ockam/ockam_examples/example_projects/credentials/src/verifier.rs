@@ -4,7 +4,7 @@ use ockam::{
 };
 
 use credentials::{example_schema, issuer_on_or_default, CredentialMessage, DEFAULT_VERIFIER_PORT};
-use ockam_transport_tcp::{self as tcp, TcpRouter};
+use ockam_transport_tcp::TcpTransport;
 use std::net::SocketAddr;
 use structopt::StructOpt;
 
@@ -93,10 +93,10 @@ async fn main(ctx: Context) -> Result<()> {
         .parse()
         .map_err(|_| OckamError::InvalidInternalState)?;
 
-    let router = TcpRouter::bind(&ctx, local_tcp).await?;
+    let router = TcpTransport::create_listener(&ctx, local_tcp).await?;
 
     let issuer = issuer_on_or_default(args.issuer);
-    let pair = tcp::start_tcp_worker(&ctx, issuer).await?;
+    let pair = TcpTransport::create(&ctx, issuer).await?;
 
     router.register(&pair).await?;
 

@@ -47,6 +47,14 @@ impl Context {
     {
         let address = address.into();
 
+        // Check if the address set is available
+        let (check_addrs, mut check_rx) = NodeMessage::check_address(address.clone());
+        self.sender
+            .send(check_addrs)
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
+        check_rx.recv().await.ok_or(Error::InternalIOFailure)??;
+
         // Build the mailbox first
         let (mb_tx, mb_rx) = channel(32);
         let mb = Mailbox::new(mb_rx, mb_tx);
@@ -57,13 +65,19 @@ impl Context {
         // Then initialise the worker message relay
         let sender = relay::build::<NW, NM>(self.rt.as_ref(), worker, ctx);
 
-        let msg = NodeMessage::start_worker(address, sender);
-        let _result: Result<()> = match self.sender.send(msg).await {
-            Ok(()) => Ok(()),
-            Err(_e) => Err(Error::FailedStartWorker.into()),
-        };
+        // Send start request to router
+        let (msg, mut rx) = NodeMessage::start_worker(address, sender);
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|_| Error::FailedStartWorker)?;
 
-        Ok(())
+        // Wait for the actual return code
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)?
+            .map(|_| ())?)
     }
 
     /// Signal to the local application runner to shut down
@@ -150,7 +164,7 @@ impl Context {
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
         let mut data = TransportMessage::v1(route.clone(), payload);
-        data.return_.modify().append(sending_address);
+        data.return_route.modify().append(self.address());
 
         // Pack transport message into relay message wrapper
         let msg = if needs_wrapping {
@@ -180,7 +194,7 @@ impl Context {
     pub async fn forward_message(&self, data: TransportMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route
         let (reply_tx, mut reply_rx) = channel(1);
-        let next = data.onward.next().unwrap(); // TODO: communicate bad routes
+        let next = data.onward_route.next().unwrap(); // TODO: communicate bad routes
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
@@ -192,7 +206,7 @@ impl Context {
             .take_sender()?;
 
         // Pack the transport message into a relay message
-        let onward = data.onward.clone();
+        let onward = data.onward_route.clone();
         let msg = RelayMessage::direct(addr, data, onward);
         sender.send(msg).await.map_err(|e| Error::from(e))?;
 
@@ -226,7 +240,7 @@ impl Context {
                 return Ok(Cancel::new(m, data, addr, self));
             } else {
                 // Requeue the message into the mailbox if it didn't
-                let onward = data.onward.clone();
+                let onward = data.onward_route.clone();
                 self.mailbox
                     .requeue(RelayMessage::direct(addr, data, onward))
                     .await;
@@ -284,10 +298,10 @@ impl Context {
             let (addr, data) = msg.transport();
 
             // FIXME: make message parsing idempotent to avoid cloning
-            match parser::message(data.payload.clone()).ok() {
+            match parser::message(&data.payload).ok() {
                 Some(msg) => return Ok((msg, data, addr)),
                 None => {
-                    let onward = data.onward.clone();
+                    let onward = data.onward_route.clone();
                     self.mailbox
                         .requeue(RelayMessage::direct(addr, data, onward))
                         .await;

@@ -17,7 +17,7 @@ use serde::{
 };
 use short_group_signatures_core::{error::Error, lib::*};
 use subtle::{Choice, ConditionallySelectable, CtOption};
-use typenum::{marker_traits::NonZero, U128, U64};
+use typenum::{U128, U64};
 
 /// A BBS+ signature
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -106,17 +106,12 @@ impl Signature {
     pub const BYTES: usize = 112;
 
     /// Generate a new signature where all messages are known to the signer
-    pub fn new<M, N>(
-        sk: &SecretKey,
-        generators: &MessageGenerators<N>,
-        msgs: M,
-    ) -> Result<Self, Error>
+    pub fn new<M>(sk: &SecretKey, generators: &MessageGenerators, msgs: M) -> Result<Self, Error>
     where
         M: AsRef<[Message]>,
-        N: ArrayLength<G1Projective> + NonZero,
     {
         let msgs = msgs.as_ref();
-        if N::to_usize() < msgs.len() {
+        if generators.len() < msgs.len() {
             return Err(Error::new(1, "not enough message generators"));
         }
         if sk.0.is_zero() {
@@ -125,8 +120,8 @@ impl Signature {
 
         let mut hasher = Blake2b::new();
         hasher.update(generators.h0.to_affine().to_uncompressed());
-        for h in &generators.h {
-            hasher.update(h.to_affine().to_uncompressed());
+        for i in 0..generators.len() {
+            hasher.update(generators.get(i).to_affine().to_uncompressed());
         }
         for m in msgs {
             hasher.update(m.to_bytes())
@@ -148,13 +143,12 @@ impl Signature {
     }
 
     /// Verify a signature. During proof of knowledge also, this method is used after extending the verkey
-    pub fn verify<M, N>(&self, pk: &PublicKey, generators: &MessageGenerators<N>, msgs: M) -> Choice
+    pub fn verify<M>(&self, pk: &PublicKey, generators: &MessageGenerators, msgs: M) -> Choice
     where
         M: AsRef<[Message]>,
-        N: ArrayLength<G1Projective> + NonZero,
     {
         let msgs = msgs.as_ref();
-        if N::to_usize() < msgs.len() {
+        if generators.len() < msgs.len() {
             return Choice::from(0);
         }
         // Identity point will always return true which is not what we want
@@ -204,19 +198,16 @@ impl Signature {
 
     /// computes g1 + s * h0 + msgs[0] * h[0] + msgs[1] * h[1] ...
     /// hard limit at 128 for no-std
-    pub(crate) fn compute_b<N>(
+    pub(crate) fn compute_b(
         s: Scalar,
         msgs: &[Message],
-        generators: &MessageGenerators<N>,
-    ) -> G1Projective
-    where
-        N: ArrayLength<G1Projective> + NonZero,
-    {
+        generators: &MessageGenerators,
+    ) -> G1Projective {
         // Can't go more than 128, but that's quite a bit
         let points = [G1Projective::generator(), generators.h0]
             .iter()
             .map(|g| *g)
-            .chain(generators.h.iter().map(|g| *g))
+            .chain(generators.iter().map(|g| g))
             .collect::<Vec<G1Projective, U128>>();
         let mut scalars = [Scalar::one(), s]
             .iter()

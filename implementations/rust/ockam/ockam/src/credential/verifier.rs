@@ -1,15 +1,9 @@
 use crate::*;
-use bbs::prelude::{DeterministicPublicKey, HashElem, PoKOfSignatureProofStatus, ProofChallenge};
-use digest::{generic_array::GenericArray, Digest, FixedOutput};
-use ff::Field;
-use ockam_core::lib::*;
-use pairing_plus::{
-    bls12_381::{Bls12, Fq12, G1, G2},
-    hash_to_curve::HashToCurve,
-    hash_to_field::ExpandMsgXmd,
-    serdes::SerDes,
-    CurveAffine, CurveProjective, Engine,
-};
+use bbs::{Challenge, Message, MessageGenerators, Nonce, PublicKey};
+use bls::ProofOfPossession;
+use rand::RngCore;
+use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
+use signature_core::lib::*;
 
 /// Methods for verifying presentations
 #[derive(Debug)]
@@ -17,35 +11,22 @@ pub struct CredentialVerifier;
 
 impl CredentialVerifier {
     /// Create a unique proof request id so the holder must create a fresh proof
-    pub fn create_proof_request_id() -> [u8; 32] {
-        bbs::verifier::Verifier::generate_proof_nonce().to_bytes_compressed_form()
+    pub fn create_proof_request_id(rng: impl RngCore) -> [u8; 32] {
+        Nonce::random(rng).to_bytes()
     }
 
     /// Verify a proof of possession
     pub fn verify_proof_of_possession(issuer_vk: [u8; 96], proof: [u8; 48]) -> bool {
-        let p =
-            <G1 as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(&issuer_vk, CSUITE_POP)
-                .into_affine()
-                .prepare();
-        let g2 = {
-            let mut t = G2::one();
-            t.negate();
-            t.into_affine().prepare()
-        };
-        let mut c = std::io::Cursor::new(issuer_vk);
-        if let Ok(pk) = G2::deserialize(&mut c, true) {
-            let mut c = std::io::Cursor::new(proof);
-            if let Ok(sig) = G1::deserialize(&mut c, true) {
-                return match Bls12::final_exponentiation(&Bls12::miller_loop(&[
-                    (&p, &pk.into_affine().prepare()),
-                    (&sig.into_affine().prepare(), &g2),
-                ])) {
-                    None => false,
-                    Some(pp) => pp == Fq12::one(),
-                };
-            }
+        let vk = PublicKey::from_bytes(&issuer_vk);
+        let proof = ProofOfPossession::from_bytes(&proof);
+
+        if vk.is_some().unwrap_u8() == 1 && proof.is_some().unwrap_u8() == 1 {
+            let pk = vk.unwrap();
+            let p = proof.unwrap();
+            p.verify(pk).unwrap_u8() == 1
+        } else {
+            false
         }
-        false
     }
 
     /// Check if the credential presentations are valid
@@ -66,61 +47,42 @@ impl CredentialVerifier {
         }
 
         let mut bytes = GenericArray::<u8, <sha2::Sha256 as FixedOutput>::OutputSize>::default();
+        let challenge = Challenge::from_bytes(&presentations[0].presentation_id).unwrap();
 
-        let mut vks = Vec::new();
         for i in 0..presentations.len() {
             let prez = &presentations[i];
             let pm = &presentation_manifests[i];
-            let vk = DeterministicPublicKey::from(pm.public_key)
-                .to_public_key(presentation_manifests[i].credential_schema.attributes.len())
-                .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
+            let vk = PublicKey::from_bytes(&pm.public_key).unwrap();
+
+            if !prez.proof.verify(vk) {
+                return Err(CredentialError::InvalidCredentialPresentation(i as u32));
+            }
+
+            let generators =
+                MessageGenerators::from_public_key(vk, pm.credential_schema.attributes.len());
+            let msgs = pm
+                .revealed
+                .iter()
+                .zip(prez.revealed_attributes.iter())
+                .map(|(i, r)| (*i, r.to_signature_message()))
+                .collect::<Vec<(usize, Message), U64>>();
 
             let mut hasher = sha2::Sha256::new();
-            hasher.input(&bytes);
-            hasher.input(
-                prez.proof
-                    .get_bytes_for_challenge(pm.revealed.iter().map(|i| *i).collect(), &vk),
-            );
-            bytes = hasher.result();
-            vks.push(vk);
+            hasher.update(&bytes);
+            prez.proof
+                .add_challenge_contribution(&generators, &msgs, challenge, &mut hasher);
+            bytes = hasher.finalize();
         }
 
         let mut hasher = sha2::Sha256::new();
-        hasher.input(&bytes);
-        hasher.input(&proof_request_id);
-        let challenge_verifier = ProofChallenge::hash(&hasher.result());
-        let challenge = ProofChallenge::from(presentations[0].presentation_id);
+        hasher.update(&bytes);
+        hasher.update(&proof_request_id);
+        let challenge_verifier = Challenge::hash(&hasher.finalize());
 
         if challenge != challenge_verifier {
             return Err(CredentialError::InvalidPresentationChallenge);
         }
 
-        for i in 0..vks.len() {
-            let vk = &vks[i];
-            let pm = &presentation_manifests[i];
-            let proof = &presentations[i];
-
-            let msgs = pm
-                .revealed
-                .iter()
-                .zip(proof.revealed_attributes.iter())
-                .map(|(i, a)| (*i, a.to_signature_message()))
-                .collect();
-            match proof.proof.verify(&vk, &msgs, &challenge_verifier) {
-                Ok(status) => {
-                    if !matches!(status, PoKOfSignatureProofStatus::Success) {
-                        return Err(CredentialError::InvalidCredentialPresentation(
-                            (i + 1) as u32,
-                        ));
-                    }
-                }
-                Err(_) => {
-                    return Err(CredentialError::InvalidCredentialPresentation(
-                        (i + 1) as u32,
-                    ))
-                }
-            };
-        }
         Ok(())
     }
 }

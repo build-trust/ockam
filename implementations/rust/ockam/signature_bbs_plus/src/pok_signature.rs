@@ -10,7 +10,6 @@ use group::Curve;
 use rand_core::{CryptoRng, RngCore};
 use short_group_signatures_core::error::Error;
 use short_group_signatures_core::{lib::*, prover::ProofCommittedBuilder};
-use typenum::NonZero;
 
 /// Proof of Knowledge of a Signature that is used by the prover
 /// to construct `PoKOfSignatureProof`.
@@ -35,16 +34,13 @@ pub struct PokSignature {
 
 impl PokSignature {
     /// Creates the initial proof data before a Fiat-Shamir calculation
-    pub fn init<N>(
+    pub fn init(
         signature: Signature,
-        generators: &MessageGenerators<N>,
+        generators: &MessageGenerators,
         messages: &[ProofMessage],
         mut rng: impl RngCore + CryptoRng,
-    ) -> Result<Self, Error>
-    where
-        N: ArrayLength<G1Projective> + NonZero,
-    {
-        if messages.len() != generators.h.len() {
+    ) -> Result<Self, Error> {
+        if messages.len() != generators.len() {
             return Err(Error::new(1, "mismatched messages with and generators"));
         }
 
@@ -85,14 +81,14 @@ impl PokSignature {
         proof2.commit_random(generators.h0, &mut rng);
         secrets2.push(s_prime).expect("allocate more space");
 
-        for i in 0..generators.h.len() {
+        for i in 0..generators.len() {
             match messages[i] {
                 ProofMessage::Hidden(HiddenMessage::ProofSpecificBlinding(m)) => {
-                    proof2.commit_random(generators.h[i], &mut rng);
+                    proof2.commit_random(generators.get(i), &mut rng);
                     secrets2.push(m.0).expect("allocate more space");
                 }
                 ProofMessage::Hidden(HiddenMessage::ExternalBlinding(m, e)) => {
-                    proof2.commit(generators.h[i], e.0);
+                    proof2.commit(generators.get(i), e.0);
                     secrets2.push(m.0).expect("allocate more space");
                 }
                 _ => {}
@@ -137,7 +133,6 @@ impl PokSignature {
             d: self.d,
             proofs1,
             proofs2,
-            challenge,
         })
     }
 }

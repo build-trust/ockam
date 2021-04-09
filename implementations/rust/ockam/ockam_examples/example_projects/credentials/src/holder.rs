@@ -2,8 +2,11 @@ use ockam::{
     async_worker, Context, Credential, CredentialFragment1, CredentialHolder, CredentialVerifier,
     OckamError, OfferIdBytes, PresentationManifest, PublicKeyBytes, Result, Route, Routed, Worker,
 };
+use ockam_transport_tcp::TcpTransport;
 
-use credentials::{example_schema, issuer_on_or_default, CredentialMessage, DEFAULT_VERIFIER_PORT};
+use credentials::{
+    example_schema, issuer_on_or_default, CredentialMessage, CredentialRng, DEFAULT_VERIFIER_PORT,
+};
 use ockam_transport_tcp::{self as tcp, TcpRouter};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,15 +31,8 @@ impl Worker for Holder {
         let issuer = self.issuer;
         let verifier = self.verifier;
 
-        let router = TcpRouter::register(&ctx).await?;
-
-        let issuer_pair = tcp::start_tcp_worker(&ctx, issuer).await?;
-
-        router.register(&issuer_pair).await?;
-
-        let verifier_pair = tcp::start_tcp_worker(&ctx, verifier).await?;
-
-        router.register(&verifier_pair).await?;
+        let issuer_pair = TcpTransport::create(&ctx, issuer).await?;
+        let verifier_pair = TcpTransport::create(&ctx, verifier).await?;
 
         // Send a New Credential Connection message
         ctx.send_message(
@@ -69,8 +65,9 @@ impl Worker for Holder {
             }
             CredentialMessage::CredentialOffer(offer) => {
                 if let Some(issuer_key) = self.issuer_pubkey {
+                    let rng = CredentialRng::from_entropy();
                     if let Ok((request, frag1)) =
-                        self.holder.accept_credential_offer(&offer, issuer_key)
+                        self.holder.accept_credential_offer(&offer, issuer_key, rng)
                     {
                         self.offer_id = Some(offer.id);
                         self.frag1 = Some(frag1);
@@ -103,10 +100,12 @@ impl Worker for Holder {
                     let mut request_id = [0u8; 32];
                     request_id[24..].copy_from_slice(&n.to_be_bytes()[..]);
 
+                    let rng = CredentialRng::from_entropy();
                     if let Ok(presentation) = holder.present_credentials(
                         &[credential],
                         &[presentation_manifest.clone()],
                         request_id,
+                        rng,
                     ) {
                         println!("Presenting credentials to Verifier");
 
@@ -146,7 +145,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     let issuer = issuer_on_or_default(args.issuer);
 
-    let holder = CredentialHolder::new();
+    let rng = CredentialRng::from_entropy();
+    let holder = CredentialHolder::new(rng);
 
     ctx.start_worker(
         "holder",

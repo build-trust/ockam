@@ -47,4 +47,6 @@ pub use proof_message::*;
 pub use prover::*;
 pub use signature::*;
 pub use signature_blinding::*;
+#[cfg(test)]
+pub use util::MockRng;
 pub use verifier::*;

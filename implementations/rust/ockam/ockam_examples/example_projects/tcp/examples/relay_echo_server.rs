@@ -2,7 +2,7 @@
 extern crate tracing;
 
 use ockam::{async_worker, Context, Result, Route, Routed, Worker};
-use ockam_transport_tcp::{self as tcp, TcpRouter};
+use ockam_transport_tcp::TcpTransport;
 use std::net::SocketAddr;
 
 fn get_peer_addr() -> SocketAddr {
@@ -65,12 +65,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Get our peer address
     let peer = get_peer_addr();
 
-    // Create and register a TcpRouter
-    let rh = TcpRouter::register(&ctx).await?;
-
     // Create and register a connection worker pair
-    let w_pair = tcp::start_tcp_worker(&ctx, peer.clone()).await?;
-    rh.register(&w_pair).await?;
+    TcpTransport::create(&ctx, peer.clone()).await?;
 
     // Start the worker we want to reach via proxy
     ctx.start_worker("worker", ProxiedWorker { peer }).await?;

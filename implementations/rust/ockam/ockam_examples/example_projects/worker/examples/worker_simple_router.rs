@@ -35,15 +35,15 @@ impl Worker for Router {
             // the route.  This will usually be some kind of
             // domain-specific connection worker.
             Route(mut msg) => {
-                info!("Router route request: {}", msg.onward.next().unwrap());
-                let onward = msg.onward.step().unwrap();
+                info!("Router route request: {}", msg.onward_route.next().unwrap());
+                let onward = msg.onward_route.step().unwrap();
 
                 // Look up the next address in the local routing table
                 let next = self.routes.get(&onward).unwrap();
 
                 // Modify the transport message route
-                msg.onward.modify().prepend(next.clone());
-                msg.return_.modify().prepend(onward);
+                msg.onward_route.modify().prepend(next.clone());
+                msg.return_route.modify().prepend(onward);
 
                 // Forward the message to the next hop
                 ctx.forward_message(msg).await?;

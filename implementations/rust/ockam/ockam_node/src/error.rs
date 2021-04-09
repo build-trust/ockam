@@ -10,6 +10,10 @@ pub enum Error {
     FailedStopNode,
     /// Unable to start a worker
     FailedStartWorker,
+    /// Worker start failed because the address was already taken
+    WorkerAddressTaken,
+    /// The requested worker address is unknown
+    UnknownWorker,
     /// Unable to stop a worker
     FailedStopWorker,
     /// Unable to list available workers
@@ -38,8 +42,14 @@ impl From<Error> for ockam_core::Error {
 }
 
 impl From<crate::NodeError> for ockam_core::Error {
-    fn from(_: crate::NodeError) -> Self {
-        Error::InternalIOFailure.into()
+    fn from(err: crate::NodeError) -> Self {
+        use crate::NodeError::*;
+        match err {
+            NoSuchWorker(_) => Error::UnknownWorker,
+            WorkerExists(_) => Error::WorkerAddressTaken,
+            RouterExists => Error::InternalIOFailure,
+        }
+        .into()
     }
 }
 

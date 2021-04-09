@@ -111,8 +111,8 @@ impl<T: Message> Worker for RemoteMailbox<T> {
 
         let msg = TransportMessage {
             version: 1,
-            onward: self.destination.clone(),
-            return_: return_route,
+            onward_route: self.destination.clone(),
+            return_route,
             payload,
         };
 

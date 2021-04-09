@@ -64,7 +64,7 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     /// Cancel this message
     pub async fn cancel(self) {
         let ctx = self.ctx;
-        let onward = self.trans.onward.clone();
+        let onward = self.trans.onward_route.clone();
         ctx.mailbox
             .requeue(RelayMessage::direct(self.addr, self.trans, onward))
             .await;
@@ -75,7 +75,7 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     /// After calling this function it is no longer possible to
     /// re-queue the message into the worker mailbox.
     pub fn take(self) -> Routed<M> {
-        Routed::new(self.inner, self.addr, self.trans.return_, self.trans.onward)
+        Routed::v1(self.inner, self.addr, self.trans)
     }
 }
 

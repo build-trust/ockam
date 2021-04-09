@@ -1,12 +1,92 @@
 use blake2::VarBlake2b;
 use bls12_381_plus::{G1Projective, Scalar};
 use digest::{Update, VariableOutput};
+use serde::{
+    de::{Error as DError, SeqAccess, Visitor},
+    ser::SerializeSeq,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use short_group_signatures_core::lib::*;
 use subtle::CtOption;
 
 macro_rules! slicer {
     ($d:expr, $b:expr, $e:expr, $s:expr) => {
         &<[u8; $s]>::try_from(&$d[$b..$e]).unwrap();
     };
+}
+
+pub(crate) trait VecSerializer<'de>: Sized {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer;
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>;
+}
+
+impl<'de, T, L> VecSerializer<'de> for Vec<T, L>
+where
+    T: Default + Serialize + Deserialize<'de>,
+    L: ArrayLength<T>,
+{
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self.len() {
+            0 => {
+                let seq = s.serialize_seq(None)?;
+                seq.end()
+            }
+            l => {
+                let mut seq = s.serialize_seq(Some(l))?;
+                for i in 0..l {
+                    seq.serialize_element(&self[i])?;
+                }
+                seq.end()
+            }
+        }
+    }
+
+    fn deserialize<D>(d: D) -> Result<Vec<T, L>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct VecVisitor<T, L> {
+            element: PhantomData<T>,
+            length: PhantomData<L>,
+        }
+
+        impl<'de, T, L> Visitor<'de> for VecVisitor<T, L>
+        where
+            T: Default + Deserialize<'de>,
+            L: ArrayLength<T>,
+        {
+            type Value = Vec<T, L>;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "an array of {}", stringify!(T))
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut arr = Vec::new();
+                while let Some(c) = seq.next_element()? {
+                    arr.push(c)
+                        .map_err(|_| A::Error::invalid_length(arr.len(), &self))?;
+                }
+                Ok(arr)
+            }
+        }
+
+        let visitor = VecVisitor {
+            element: PhantomData,
+            length: PhantomData,
+        };
+        d.deserialize_seq(visitor)
+    }
 }
 
 pub fn hash_to_scalar<B: AsRef<[u8]>>(data: B) -> Scalar {

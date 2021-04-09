@@ -1,4 +1,4 @@
-use bbs::prelude::*;
+use bbs::BlindSignatureContext;
 use serde::{Deserialize, Serialize};
 
 /// A request for a credential generated from a credential offer

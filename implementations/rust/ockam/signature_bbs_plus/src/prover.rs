@@ -1,6 +1,6 @@
 use crate::{
-    BlindSignatureContext, Challenge, Commitment, Message, MessageGenerators, Nonce,
-    SignatureBlinding,
+    BlindSignatureContext, Challenge, Commitment, Message, MessageGenerators, Nonce, PokSignature,
+    ProofMessage, Signature, SignatureBlinding,
 };
 use blake2::VarBlake2b;
 use bls12_381_plus::{G1Projective, Scalar};
@@ -8,7 +8,6 @@ use digest::{Update, VariableOutput};
 use group::Curve;
 use rand_core::{CryptoRng, RngCore};
 use short_group_signatures_core::{error::Error, lib::*, prover::*};
-use typenum::NonZero;
 
 /// A Prover is whomever receives signatures or uses them to generate proofs.
 /// Provided are methods for 2PC where some are only known to the prover and a blind signature
@@ -19,15 +18,12 @@ pub struct Prover;
 impl Prover {
     /// Create the structures need to send to an issuer to complete a blinded signature
     /// `messages` is an index to message map where the index corresponds to the index in `generators`
-    pub fn new_blind_signature_context<M>(
+    pub fn new_blind_signature_context(
         messages: &[(usize, Message)],
-        generators: &MessageGenerators<M>,
+        generators: &MessageGenerators,
         nonce: Nonce,
         mut rng: impl RngCore + CryptoRng,
-    ) -> Result<(BlindSignatureContext, SignatureBlinding), Error>
-    where
-        M: ArrayLength<G1Projective> + NonZero,
-    {
+    ) -> Result<(BlindSignatureContext, SignatureBlinding), Error> {
         const BYTES: usize = 48;
         // Very uncommon to blind more than 1 or 2, so 16 should be plenty
         let mut points = Vec::<G1Projective, U16>::new();
@@ -35,7 +31,7 @@ impl Prover {
         let mut committing = ProofCommittedBuilder::<U16, U16>::new();
 
         for (i, m) in messages {
-            if *i > M::to_usize() {
+            if *i > generators.len() {
                 return Err(Error::new(*i as u32, "invalid index"));
             }
             secrets.push(m.0).map_err(|_| {
@@ -44,13 +40,13 @@ impl Prover {
                     "allocate more space: Prover::new_blind_signature_context",
                 )
             })?;
-            points.push(generators.h[*i]).map_err(|_| {
+            points.push(generators.get(*i)).map_err(|_| {
                 Error::new(
                     2,
                     "allocate more space: Prover::new_blind_signature_context",
                 )
             })?;
-            committing.commit_random(generators.h[*i], &mut rng);
+            committing.commit_random(generators.get(*i), &mut rng);
         }
 
         let blinding = SignatureBlinding::random(&mut rng);
@@ -93,6 +89,17 @@ impl Prover {
             blinding,
         ))
     }
+
+    /// Create a new signature proof of knowledge and selective disclosure proof
+    /// from a verifier's request
+    pub fn commit_signature_pok(
+        signature: Signature,
+        generators: &MessageGenerators,
+        messages: &[ProofMessage],
+        rng: impl RngCore + CryptoRng,
+    ) -> Result<PokSignature, Error> {
+        PokSignature::init(signature, generators, messages, rng)
+    }
 }
 
 #[test]
@@ -104,7 +111,7 @@ fn blind_signature_context_test() {
     let mut rng = MockRng::from_seed(seed);
 
     let (pk, sk) = Issuer::new_keys(&mut rng).unwrap();
-    let generators = MessageGenerators::<U4>::from(pk);
+    let generators = MessageGenerators::from_public_key(pk, 4);
     let nonce = Nonce::random(&mut rng);
     // let secret_id = Message::random(&mut rng);
 

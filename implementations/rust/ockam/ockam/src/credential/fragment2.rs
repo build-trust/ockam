@@ -1,4 +1,5 @@
 use super::CredentialAttribute;
+use bbs::BlindSignature;
 use serde::{Deserialize, Serialize};
 
 /// A partial credential that will be completed by the holder
@@ -7,5 +8,5 @@ pub struct CredentialFragment2 {
     /// The signed attributes in the credential
     pub attributes: Vec<CredentialAttribute>,
     /// The cryptographic signature
-    pub signature: bbs::prelude::BlindSignature,
+    pub signature: BlindSignature,
 }

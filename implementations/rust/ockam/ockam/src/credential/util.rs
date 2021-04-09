@@ -1,10 +1,45 @@
 use super::CredentialAttributeSchema;
 use ockam_core::lib::*;
+
 use serde::{
     de::{Error as DError, SeqAccess, Visitor},
     ser::SerializeSeq,
     Deserializer, Serializer,
 };
+
+#[cfg(test)]
+pub struct MockRng(rand_xorshift::XorShiftRng);
+
+#[cfg(test)]
+impl rand::SeedableRng for MockRng {
+    type Seed = [u8; 16];
+
+    fn from_seed(seed: Self::Seed) -> Self {
+        Self(rand_xorshift::XorShiftRng::from_seed(seed))
+    }
+}
+
+#[cfg(test)]
+impl rand::CryptoRng for MockRng {}
+
+#[cfg(test)]
+impl rand::RngCore for MockRng {
+    fn next_u32(&mut self) -> u32 {
+        self.0.next_u32()
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.0.next_u64()
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.0.fill_bytes(dest)
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.0.try_fill_bytes(dest)
+    }
+}
 
 #[allow(clippy::ptr_arg)]
 pub fn write_attributes<S>(v: &Vec<CredentialAttributeSchema>, s: S) -> Result<S::Ok, S::Error>

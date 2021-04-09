@@ -1,13 +1,8 @@
 use super::CredentialAttributeType;
+use bbs::Message;
+use bls12_381_plus::Scalar;
 use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
-
-#[cfg(feature = "std")]
-mod fields {
-    pub use bbs::prelude::*;
-    pub use ff::{Field, PrimeField};
-    pub use pairing_plus::bls12_381::{Fr, FrRepr};
-}
 
 /// The attribute data that is signed by
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -33,37 +28,26 @@ impl CredentialAttribute {
         }
     }
 
-    #[cfg(feature = "std")]
     /// convert the attribute data to a cryptographic value that can be signed
-    pub fn to_signature_message(&self) -> fields::SignatureMessage {
-        use fields::*;
-        // unwraps are okay here since the values are in the finite field
-        let f_2_254: Fr = Fr::from_repr(FrRepr([
-            0x0000_0000_0000_0000u64,
-            0x0000_0000_0000_0000u64,
-            0x0000_0000_0000_0000u64,
-            0x0200_0000_0000_0000u64,
-        ]))
-        .unwrap();
-
+    pub fn to_signature_message(&self) -> Message {
         match self {
-            CredentialAttribute::NotSpecified => {
-                SignatureMessage::from(Fr::from_repr(FrRepr::from(1u64)).unwrap())
-            }
-            CredentialAttribute::Empty => {
-                SignatureMessage::from(Fr::from_repr(FrRepr::from(2u64)).unwrap())
-            }
-            CredentialAttribute::Blob(v) => SignatureMessage::from(v),
-            CredentialAttribute::String(s) => SignatureMessage::hash(s),
+            CredentialAttribute::NotSpecified => Message(Scalar::one()),
+            CredentialAttribute::Empty => Message(Scalar::from_raw([2, 0, 0, 0])),
+            CredentialAttribute::Blob(v) => Message::from_bytes(v).unwrap(),
+            CredentialAttribute::String(s) => Message::hash(s.as_bytes()),
             CredentialAttribute::Numeric(n) => {
-                let d = Fr::from_repr(FrRepr::from(*n as u64)).unwrap();
-                let mut m = f_2_254;
+                let f_2_254: Scalar = Scalar::from_raw([
+                    0x0000_0000_0000_0000u64,
+                    0x0000_0000_0000_0000u64,
+                    0x0000_0000_0000_0000u64,
+                    0x0200_0000_0000_0000u64,
+                ]);
+                let d = Scalar::from_raw([*n as u64, 0, 0, 0]);
                 if *n < 0 {
-                    m.sub_assign(&d);
+                    Message(f_2_254 - d)
                 } else {
-                    m.add_assign(&d);
+                    Message(f_2_254 + d)
                 }
-                SignatureMessage::from(m)
             }
         }
     }
