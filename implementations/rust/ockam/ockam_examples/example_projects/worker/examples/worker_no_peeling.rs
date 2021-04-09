@@ -1,22 +1,16 @@
-use ockam::{async_worker, Context, Passthrough, Result, Routed, Worker};
+use ockam::{async_worker, Any, Context, Result, Routed, Worker};
 
 struct MyWorker;
 
 #[async_worker]
 impl Worker for MyWorker {
     type Context = Context;
-    type Message = Passthrough;
+    type Message = Any;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
-        let transport = msg.to_transport();
-
-        println!("TransportMessage onward: {:?}", transport.onward_route);
-        println!("TransportMessage return: {:?}", transport.return_route);
-        println!("TransportMessage payload: {:?}", transport.payload);
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        println!("TransportMessage onward: {:?}", msg.onward());
+        println!("TransportMessage return: {:?}", msg.reply());
+        println!("TransportMessage payload: {:?}", msg.payload());
 
         ctx.stop().await
     }

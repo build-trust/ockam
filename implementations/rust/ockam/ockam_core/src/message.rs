@@ -70,18 +70,17 @@ impl<M: Message> Routed<M> {
         self.msg_addr.clone()
     }
 
-    /// Return a copy of the full return route of the wrapped message
-    #[inline]
-    pub fn reply(&self) -> Route {
-        self.transport.return_route.clone()
-    }
-
     /// Return a copy of the onward route for this message
     #[inline]
     pub fn onward(&self) -> Route {
         self.transport.onward_route.clone()
     }
 
+    /// Return a copy of the full return route of the wrapped message
+    #[inline]
+    pub fn reply(&self) -> Route {
+        self.transport.return_route.clone()
+    }
     /// Get a copy of the message sender address
     #[inline]
     pub fn sender(&self) -> Address {
@@ -96,8 +95,14 @@ impl<M: Message> Routed<M> {
 
     /// Consume the message wrapper to the underlying transport
     #[inline]
-    pub fn to_transport(self) -> TransportMessage {
+    pub fn into_transport_message(self) -> TransportMessage {
         self.transport
+    }
+
+    /// Get a reference to the underlying binary message payload
+    #[inline]
+    pub fn payload(&self) -> &Vec<u8> {
+        &self.transport.payload
     }
 }
 
@@ -142,9 +147,9 @@ impl<M: Message + Display> Display for Routed<M> {
 /// This is especially useful for implementing middleware workers
 /// which need access to the route information of a message, without
 /// understanding its payload.
-pub struct Passthrough;
+pub struct Any;
 
-impl Message for Passthrough {
+impl Message for Any {
     fn encode(&self) -> Result<Encoded> {
         Ok(vec![])
     }
