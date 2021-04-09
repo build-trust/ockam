@@ -9,7 +9,7 @@ use tracing::info;
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct RemoteMailboxInfo {
     forwarding_route: Route,
-    alias_address: String,
+    remote_address: String,
     worker_address: Address,
 }
 
@@ -17,8 +17,8 @@ impl RemoteMailboxInfo {
     pub fn forwarding_route(&self) -> &Route {
         &self.forwarding_route
     }
-    pub fn alias_address(&self) -> &str {
-        &self.alias_address
+    pub fn remote_address(&self) -> &str {
+        &self.remote_address
     }
     pub fn worker_address(&self) -> &Address {
         &self.worker_address
@@ -95,7 +95,7 @@ impl<T: Message> Worker for RemoteMailbox<T> {
             self.callback_address.clone(),
             RemoteMailboxInfo {
                 forwarding_route: route,
-                alias_address: address,
+                remote_address: address,
                 worker_address: ctx.primary_address(),
             },
         )
