@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
+use rand::random;
 
 /// SecureChannelListener listens for messages from SecureChannel initiators
 /// and creates responder SecureChannels
@@ -20,8 +21,6 @@ impl SecureChannelListener {
 pub enum SecureChannelListenerMessage {
     /// Create a new responder channel.
     CreateResponderChannel {
-        /// Channel ID.
-        channel_id: String,
         /// Channel information.
         payload: Vec<u8>,
     },
@@ -40,12 +39,12 @@ impl Worker for SecureChannelListener {
         let reply = msg.reply().clone();
         match msg.take() {
             SecureChannelListenerMessage::CreateResponderChannel {
-                channel_id,
                 payload,
             } => {
-                let address: Address = channel_id.clone().into();
+                let address: Address = random();
+                let address_str: String = address.clone().into(); // FIXME
 
-                let channel = SecureChannel::new(false, reply.clone(), channel_id, None);
+                let channel = SecureChannel::new(false, reply.clone(), address_str, None);
 
                 ctx.start_worker(address.clone(), channel).await?;
 

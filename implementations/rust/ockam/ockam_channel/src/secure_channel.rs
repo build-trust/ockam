@@ -46,7 +46,7 @@ impl SecureChannelInfo {
 pub struct SecureChannel {
     is_initiator: bool,
     remote_route: Route,
-    channel_id: String,
+    address: String,
     key_exchange_route: Option<Route>, // this address is used to send messages to key exchange worker
     keys: Option<ChannelKeys>,
     key_exchange_completed_callback_route: Option<Route>,
@@ -57,7 +57,7 @@ impl SecureChannel {
     pub(crate) fn new(
         is_initiator: bool,
         remote_route: Route,
-        channel_id: String,
+        address: String,
         key_exchange_completed_callback_route: Option<Route>,
     ) -> Self {
         // TODO: Replace with worker
@@ -65,7 +65,7 @@ impl SecureChannel {
         SecureChannel {
             is_initiator,
             remote_route,
-            channel_id,
+            address,
             key_exchange_route: None,
             keys: None,
             key_exchange_completed_callback_route,
@@ -94,7 +94,7 @@ impl SecureChannel {
         ctx.start_worker(address.clone(), channel).await?;
 
         let resp = ctx
-            .receive_match(|m: &KeyExchangeCompleted| m.channel_id == address_str)
+            .receive_match(|m: &KeyExchangeCompleted| m.address == address_str)
             .await?
             .take()
             .take();
@@ -151,7 +151,6 @@ impl SecureChannel {
                 ctx.send_message(
                     self.remote_route.clone(),
                     SecureChannelListenerMessage::CreateResponderChannel {
-                        channel_id: self.channel_id.clone(),
                         payload,
                     },
                 )
@@ -185,8 +184,8 @@ impl SecureChannel {
                 ctx.send_message(
                     r,
                     KeyExchangeCompleted {
+                        address: self.address.clone(),
                         auth_hash,
-                        channel_id: self.channel_id.clone(),
                     },
                 )
                 .await?;
@@ -228,7 +227,7 @@ impl SecureChannelMessage {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 struct KeyExchangeCompleted {
-    channel_id: String,
+    address: String, // TODO: Remove
     auth_hash: [u8; 32],
 }
 
@@ -242,7 +241,7 @@ impl Worker for SecureChannel {
         let key_exchanger = XXNewKeyExchanger::new(self.vault.clone(), self.vault.clone());
 
         // Spawn Key exchange worker
-        let key_exchange_addr: Address = format!("{}/kex", self.channel_id)
+        let key_exchange_addr: Address = format!("{}/kex", self.address)
             .as_bytes()
             .to_vec()
             .into();
@@ -399,7 +398,7 @@ impl Worker for SecureChannel {
                 transport_message
                     .return_route
                     .modify()
-                    .prepend(self.channel_id.clone());
+                    .prepend(self.address.clone());
 
                 ctx.forward_message(transport_message).await?;
             }
