@@ -30,9 +30,9 @@ pub struct SecureChannelInfo {
 }
 
 impl SecureChannelInfo {
-    /// Return the address of the worker.
-    pub fn worker_address(&self) -> &Address {
-        &self.worker_address
+    /// Return a clone of the worker's address.
+    pub fn address(&self) -> Address {
+        self.worker_address.clone()
     }
     /// Return the auth hash.
     pub fn auth_hash(&self) -> [u8; 32] {

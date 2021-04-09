@@ -44,7 +44,7 @@ impl Worker for Client {
         info!("Key exchange completed");
         self.route = Some(
             Route::new()
-                .append(channel_info.worker_address().clone())
+                .append(channel_info.address())
                 .append("echo_server")
                 .into(),
         );
