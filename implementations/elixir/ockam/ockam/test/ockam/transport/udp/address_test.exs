@@ -1,7 +1,7 @@
 defmodule Ockam.Transport.UDPAddress.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.Transport.UDPAddress
-  alias Ockam.Address
+  alias Ockam.RoutableAddress
   alias Ockam.Transport.UDPAddress
 
   @udp 2
@@ -11,7 +11,7 @@ defmodule Ockam.Transport.UDPAddress.Tests do
   describe "Ockam.Transport.UDPAddress" do
     test "2 is the UDP address type" do
       address = %UDPAddress{ip: {127, 0, 0, 1}, port: 4000}
-      assert 2 === Address.type(address)
+      assert 2 === RoutableAddress.type(address)
     end
 
     test "can be serialized and then deserialized back to the original address" do

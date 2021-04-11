@@ -1,7 +1,7 @@
 defmodule Ockam.Transport.TCPAddress.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.Transport.TCPAddress
-  alias Ockam.Address
+  alias Ockam.RoutableAddress
   alias Ockam.Transport.TCPAddress
 
   @tcp 1
@@ -11,7 +11,7 @@ defmodule Ockam.Transport.TCPAddress.Tests do
   describe "Ockam.Transport.TCPAddress" do
     test "1 is the TCP address type" do
       address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
-      assert 1 == Address.type(address)
+      assert 1 == RoutableAddress.type(address)
     end
 
     test "can be serialized and then deserialized back to the original address" do

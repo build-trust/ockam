@@ -37,7 +37,7 @@ defmodule Ockam.Transport.TCPAddress do
   def deserialize(value), do: {:error, {:not_a_valid_serialized_tcp_address, value}}
 end
 
-defimpl Ockam.Address, for: Ockam.Transport.TCPAddress do
+defimpl Ockam.RoutableAddress, for: Ockam.Transport.TCPAddress do
   alias Ockam.Transport.TCPAddress
 
   def type(_address), do: 1

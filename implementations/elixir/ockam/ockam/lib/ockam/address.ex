@@ -1,4 +1,4 @@
-defprotocol Ockam.Address do
+defprotocol Ockam.RoutableAddress do
   @moduledoc """
   Defines an elixir protocol for an address that can be part of a route.
   """
@@ -28,7 +28,7 @@ defprotocol Ockam.Address do
            when is_atom(term) or (is_integer(term) and term >= 0 and term <= 255)
 end
 
-defimpl Ockam.Address, for: Any do
+defimpl Ockam.RoutableAddress, for: Any do
   @moduledoc false
 
   def type(%address_type{}), do: address_type

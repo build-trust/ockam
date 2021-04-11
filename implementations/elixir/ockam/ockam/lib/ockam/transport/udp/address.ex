@@ -30,7 +30,7 @@ defmodule Ockam.Transport.UDPAddress do
   def deserialize(value), do: {:error, {:not_a_valid_serialized_udp_address, value}}
 end
 
-defimpl Ockam.Address, for: Ockam.Transport.UDPAddress do
+defimpl Ockam.RoutableAddress, for: Ockam.Transport.UDPAddress do
   alias Ockam.Transport.UDPAddress
 
   def type(_address), do: 2
