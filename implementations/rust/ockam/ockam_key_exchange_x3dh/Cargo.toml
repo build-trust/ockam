@@ -15,10 +15,10 @@ description = """The Ockam X3DH impementation.
 [dependencies]
 ockam_core = { version = "0.8.0", path = "../ockam_core" }
 ockam_vault_core = { version = "0.3.3", path = "../ockam_vault_core" }
-ockam_key_exchange_core = { version = "0", path = "../ockam_key_exchange_core" }
+ockam_key_exchange_core = { version = "0.1.2", path = "../ockam_key_exchange_core" }
 arrayref = "0.3"
 subtle = "2.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-ockam_vault = { version = "0", path = "../ockam_vault" }
+ockam_vault = { version = "0.3.3", path = "../ockam_vault" }
