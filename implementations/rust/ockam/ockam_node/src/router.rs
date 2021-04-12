@@ -62,7 +62,8 @@ impl Router {
     }
 
     pub fn init(&mut self, addr: Address, mb: Sender<RelayMessage>) {
-        self.internal.insert(addr, Arc::new(mb));
+        self.internal.insert(addr.clone(), Arc::new(mb));
+        self.addr_map.insert(addr.clone(), addr.into());
     }
 
     pub fn sender(&self) -> Sender<NodeMessage> {
