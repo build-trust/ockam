@@ -21,6 +21,8 @@ pub enum TcpError {
     PeerNotFound,
     /// Peer requected the incoming connection
     PeerBusy,
+    /// Failed to route to an unknown recipient
+    UnknownRoute,
     /// A generic I/O failure
     GenericIo,
 }

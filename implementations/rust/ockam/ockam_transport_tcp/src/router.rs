@@ -1,7 +1,7 @@
 use crate::{
     atomic::{self, ArcBool},
     listener::TcpListenWorker,
-    WorkerPair,
+    TcpError, WorkerPair,
 };
 use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
 use std::{collections::BTreeMap, net::SocketAddr};
@@ -67,10 +67,13 @@ impl Worker for TcpRouter {
                 trace!("TCP route request: {:?}", msg.onward_route.next());
 
                 // Get the next hop
-                let onward = msg.onward_route.step().unwrap();
+                let onward = msg.onward_route.step()?;
 
                 // Look up the connection worker responsible
-                let next = self.map.get(&onward).unwrap();
+                let next = self
+                    .map
+                    .get(&onward)
+                    .ok_or_else(|| TcpError::UnknownRoute)?;
 
                 // Modify the transport message route
                 msg.onward_route.modify().prepend(next.clone());

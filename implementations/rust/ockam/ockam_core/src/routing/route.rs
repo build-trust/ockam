@@ -3,7 +3,7 @@ use crate::{
         fmt::{self, Display},
         String, Vec, VecDeque,
     },
-    Address,
+    Address, Result, RouteError,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,13 +52,17 @@ impl Route {
     }
 
     /// Get the next item from this route
-    pub fn step(&mut self) -> Option<Address> {
-        self.inner.pop_front()
+    pub fn step(&mut self) -> Result<Address> {
+        self.inner
+            .pop_front()
+            .ok_or_else(|| RouteError::IncompleteRoute.into())
     }
 
     /// Get the next item from this route without removing it
-    pub fn next(&self) -> Option<&Address> {
-        self.inner.front()
+    pub fn next(&self) -> Result<&Address> {
+        self.inner
+            .front()
+            .ok_or_else(|| RouteError::IncompleteRoute.into())
     }
 
     /// Get the final recipient address

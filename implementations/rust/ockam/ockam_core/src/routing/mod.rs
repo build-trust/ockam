@@ -1,5 +1,8 @@
 //! Submodule to handle transport-channel generic routing
 
+mod error;
+pub use error::*;
+
 mod address;
 pub use address::*;
 
