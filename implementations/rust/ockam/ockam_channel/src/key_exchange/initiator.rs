@@ -29,8 +29,8 @@ impl Worker for XInitiator {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let reply = msg.reply();
-        match msg.take() {
+        let reply = msg.return_route();
+        match msg.body() {
             KeyExchangeRequestMessage::InitiatorFirstMessage { req_id } => {
                 let initiator;
                 if let Some(i) = self.initiator.as_mut() {

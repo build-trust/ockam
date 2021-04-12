@@ -52,7 +52,7 @@ impl Worker for TcpSendWorker {
         msg.onward_route.step()?;
 
         // Create a message buffer with pre-pended length
-        let msg = prepare_message(msg.take())?;
+        let msg = prepare_message(msg.body())?;
 
         if let Err(_) = self.tx.write(msg.as_slice()).await {
             warn!("Failed to send message to peer {}", self.peer);

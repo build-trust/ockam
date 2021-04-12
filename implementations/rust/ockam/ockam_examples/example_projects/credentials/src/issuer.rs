@@ -32,8 +32,8 @@ impl Worker for Issuer {
     ) -> ockam::Result<()> {
         let issuer = &self.credential_issuer;
 
-        let route = msg.reply();
-        let msg = msg.take();
+        let route = msg.return_route();
+        let msg = msg.body();
 
         let public_key = issuer.get_public_key();
         let proof = issuer.create_proof_of_possession();

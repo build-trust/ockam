@@ -48,12 +48,12 @@ impl Worker for ProxiedWorker {
         // This condition is true when we receive the forwarding route
         // from registration - print this route for the user to copy
         if &msg.as_str() == &"register" {
-            info!("You can reach me via this route: {}", msg.reply());
+            info!("You can reach me via this route: {}", msg.return_route());
         }
         // This condition is true when we receive a message that is
         // being forwarded
         else {
-            println!("Forwarded message: {}", msg.take());
+            println!("Forwarded message: {}", msg.body());
         }
 
         Ok(())

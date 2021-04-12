@@ -30,8 +30,8 @@ impl Worker for XResponder {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         // TODO: copy&paste from initiator
-        let reply = msg.reply();
-        match msg.take() {
+        let reply = msg.return_route();
+        match msg.body() {
             KeyExchangeRequestMessage::InitiatorFirstMessage { req_id: _ } => {
                 return Err(SecureChannelError::InvalidInternalState.into());
             }

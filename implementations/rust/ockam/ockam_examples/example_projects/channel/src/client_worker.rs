@@ -54,7 +54,7 @@ impl Worker for Client {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        let str = msg.take();
+        let str = msg.body();
         match str.as_str() {
             "recursion" => {
                 let rand_string: String = thread_rng()

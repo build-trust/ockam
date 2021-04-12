@@ -72,13 +72,13 @@ impl<M: Message> Routed<M> {
 
     /// Return a copy of the onward route for this message
     #[inline]
-    pub fn onward(&self) -> Route {
+    pub fn onward_route(&self) -> Route {
         self.transport.onward_route.clone()
     }
 
     /// Return a copy of the full return route of the wrapped message
     #[inline]
-    pub fn reply(&self) -> Route {
+    pub fn return_route(&self) -> Route {
         self.transport.return_route.clone()
     }
     /// Get a copy of the message sender address
@@ -89,7 +89,7 @@ impl<M: Message> Routed<M> {
 
     /// Consume the message wrapper
     #[inline]
-    pub fn take(self) -> M {
+    pub fn body(self) -> M {
         self.inner
     }
 

@@ -8,8 +8,8 @@ impl Worker for MyWorker {
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        println!("TransportMessage onward: {:?}", msg.onward());
-        println!("TransportMessage return: {:?}", msg.reply());
+        println!("TransportMessage onward: {:?}", msg.onward_route());
+        println!("TransportMessage return: {:?}", msg.return_route());
         println!("TransportMessage payload: {:?}", msg.payload());
 
         ctx.stop().await

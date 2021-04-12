@@ -61,7 +61,7 @@ impl<T: Message> RemoteMailbox<T> {
         let worker_address: Address = random();
         ctx.start_worker(worker_address, remote_mailbox).await?;
 
-        let resp = ctx.receive::<RemoteMailboxInfo>().await?.take().take();
+        let resp = ctx.receive::<RemoteMailboxInfo>().await?.take().body();
 
         Ok(resp)
     }
@@ -76,8 +76,8 @@ impl<T: Message> Worker for RemoteMailbox<T> {
         info!("RemoteMailbox registering...");
         ctx.send(self.route.clone(), "register".to_string()).await?;
         let resp = ctx.receive::<String>().await?.take();
-        let route = resp.reply();
-        let resp = resp.take();
+        let route = resp.return_route();
+        let resp = resp.body();
         match resp.as_str() {
             "register" => self.route = route.clone(),
             _ => return Err(OckamError::InvalidHubResponse.into()),
@@ -104,8 +104,8 @@ impl<T: Message> Worker for RemoteMailbox<T> {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<T>) -> Result<()> {
-        let return_route = msg.reply();
-        let payload = msg.take().encode()?;
+        let return_route = msg.return_route();
+        let payload = msg.body().encode()?;
         info!("RemoteMailbox received message");
 
         let msg = TransportMessage {

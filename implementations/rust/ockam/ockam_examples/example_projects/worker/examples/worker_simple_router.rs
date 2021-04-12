@@ -27,7 +27,7 @@ impl Worker for Router {
         ctx: &mut Context,
         msg: Routed<RouterMessage>,
     ) -> Result<()> {
-        let msg = msg.take();
+        let msg = msg.body();
 
         use RouterMessage::*;
         match msg {

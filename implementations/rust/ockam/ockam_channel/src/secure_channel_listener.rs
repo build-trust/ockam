@@ -36,8 +36,8 @@ impl Worker for SecureChannelListener {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let reply = msg.reply().clone();
-        match msg.take() {
+        let reply = msg.return_route().clone();
+        match msg.body() {
             SecureChannelListenerMessage::CreateResponderChannel { payload } => {
                 let address_remote: Address = random();
                 let address_local: Address = random();

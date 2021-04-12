@@ -60,7 +60,7 @@ impl Worker for TcpRouter {
         ctx: &mut Context,
         msg: Routed<RouterMessage>,
     ) -> Result<()> {
-        let msg = msg.take();
+        let msg = msg.body();
         use RouterMessage::*;
         match msg {
             Route(mut msg) => {

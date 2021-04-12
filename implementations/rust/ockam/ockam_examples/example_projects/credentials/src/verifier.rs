@@ -38,7 +38,7 @@ impl Worker for Verifier {
         _context: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let msg = msg.take();
+        let msg = msg.body();
 
         match msg {
             CredentialMessage::CredentialIssuer { public_key, proof } => {

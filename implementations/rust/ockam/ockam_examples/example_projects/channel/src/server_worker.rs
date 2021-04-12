@@ -9,8 +9,8 @@ impl Worker for Server {
     type Message = String;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        let return_route = msg.reply();
-        let msg_str = msg.take();
+        let return_route = msg.return_route();
+        let msg_str = msg.body();
         info!("Server received message: {}", msg_str);
 
         ctx.send(return_route, msg_str.clone()).await?;

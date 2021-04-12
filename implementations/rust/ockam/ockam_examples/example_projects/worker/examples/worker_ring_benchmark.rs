@@ -23,7 +23,7 @@ impl Worker for RingWorker {
         self.ctr += 1;
         if self.ctr <= 1024 {
             context
-                .send(self.next.as_ref().unwrap().clone(), msg.take())
+                .send(self.next.as_ref().unwrap().clone(), msg.body())
                 .await?;
         } else {
             let now = Utc::now();

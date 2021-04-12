@@ -40,7 +40,7 @@ impl Worker for Player {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Action>) -> Result<()> {
         let msg_addr = msg.msg_addr();
-        let msg = msg.take();
+        let msg = msg.body();
         println!("{}: {:?}", msg_addr, msg);
         match msg {
             Action::Intro(addr) if self.friend.is_none() => {

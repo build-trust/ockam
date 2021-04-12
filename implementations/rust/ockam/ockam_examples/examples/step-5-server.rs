@@ -18,7 +18,7 @@ impl Worker for EchoService {
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         println!("echo_service: {}", msg);
         ctx.send_message(
-            msg.reply(),
+            msg.return_route(),
             SecureChannelMessage::create(msg.take()).unwrap(),
         )
         .await

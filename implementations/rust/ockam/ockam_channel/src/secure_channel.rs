@@ -102,7 +102,7 @@ impl SecureChannel {
             .receive_match(|m: &KeyExchangeCompleted| m.address == address_local)
             .await?
             .take()
-            .take();
+            .body();
 
         let info = SecureChannelInfo {
             worker_address: address_local,
@@ -249,7 +249,7 @@ impl Worker for SecureChannel {
                 .receive_match(|m: &KeyExchangeResponseMessage| m.req_id() == &req_id)
                 .await?
                 .take()
-                .take();
+                .body();
 
             self.handle_key_exchange_local(ctx, m, true).await?;
         } else {
@@ -267,8 +267,8 @@ impl Worker for SecureChannel {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let reply = msg.reply().clone();
-        let mut onward_route = msg.onward();
+        let reply = msg.return_route().clone();
+        let mut onward_route = msg.onward_route();
         let msg_addr = msg.msg_addr();
         let transport_message = msg.into_transport_message();
         let payload = transport_message.payload;
@@ -351,7 +351,7 @@ impl Worker for SecureChannel {
                     .receive_match(|m: &KeyExchangeResponseMessage| m.req_id() == &req_id)
                     .await?
                     .take()
-                    .take();
+                    .body();
 
                 self.handle_key_exchange_local(ctx, m, false).await?;
             } else {

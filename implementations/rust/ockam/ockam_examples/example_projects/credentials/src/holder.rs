@@ -49,8 +49,8 @@ impl Worker for Holder {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let route = msg.reply();
-        let msg = msg.take();
+        let route = msg.return_route();
+        let msg = msg.body();
 
         match msg {
             CredentialMessage::CredentialIssuer { public_key, proof } => {

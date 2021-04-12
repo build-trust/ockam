@@ -13,8 +13,8 @@ impl Worker for Echo {
     type Message = Number;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Number>) -> Result<()> {
-        let addr = msg.reply();
-        let msg = msg.take();
+        let addr = msg.return_route();
+        let msg = msg.body();
 
         // Send three messages back, but only have the third message
         // be the 'correct' value.
