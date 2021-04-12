@@ -26,7 +26,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let peer_addr = get_peer_addr();
 
     // Initialize the TCP stack by opening a connection to a the remote
-    TcpTransport::create(&ctx, peer_addr).await.unwrap();
+    TcpTransport::create(&ctx, peer_addr).await?;
 
     // Send a message to the remote
     ctx.send(
