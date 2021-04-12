@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated dependencies.
 - `Routed` message wrapper function APIs renamed.
 - `Passthrough` type renamed to `Any`.
-- `msg_addr` moved from `Context` to `Routed`.                                          
+- `msg_addr` moved from `Context` to `Routed`.
 - `Context` address renamed to `primary_address`.
 - Transport message fields renamed.
 

@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "arrayref",
  "bls12_381_plus",
@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -784,7 +784,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "quote",
  "syn",

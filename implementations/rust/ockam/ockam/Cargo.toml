@@ -9,12 +9,12 @@ exclude = [
     "tests/**"
 ]
 homepage = "https://github.com/ockam-network/ockam"
-keywords = ["ockam", "crypto", "cryptography", "network-programming", "p2p", "encryption"]
+keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
 license = "Apache-2.0"
 name = "ockam"
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam"
-version = "0.4.2"
+version = "0.5.0"
 
 [features]
 default = ["std"]
