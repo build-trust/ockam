@@ -114,7 +114,7 @@ impl Context {
     }
 
     /// Signal to the local application runner to shut down
-    pub async fn stop(&self) -> Result<()> {
+    pub async fn stop(&mut self) -> Result<()> {
         let tx = self.sender.clone();
         info!("Shutting down all workers");
         match tx.send(NodeMessage::StopNode).await {
@@ -149,12 +149,12 @@ impl Context {
     ///
     /// [`Address`]: ockam_core::Address
     /// [`RouteBuilder`]: ockem_core::RouteBuilder
-    pub async fn send_message<R, M>(&self, route: R, msg: M) -> Result<()>
+    pub async fn send<R, M>(&self, route: R, msg: M) -> Result<()>
     where
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_message_from_address(route, msg, self.primary_address())
+        self.send_from_address(route, msg, self.primary_address())
             .await
     }
 
@@ -167,7 +167,7 @@ impl Context {
     ///
     /// [`Address`]: ockam_core::Address
     /// [`RouteBuilder`]: ockem_core::RouteBuilder
-    pub async fn send_message_from_address<R, M>(
+    pub async fn send_from_address<R, M>(
         &self,
         route: R,
         msg: M,
@@ -224,7 +224,7 @@ impl Context {
     ///
     /// [`Context::send_message`]: crate::Context::send_message
     /// [`TransportMessage`]: ockam_core::TransportMessage
-    pub async fn forward_message(&self, data: TransportMessage) -> Result<()> {
+    pub async fn forward(&self, data: TransportMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route
         let (reply_tx, mut reply_rx) = channel(1);
         let next = data.onward_route.next().unwrap(); // TODO: communicate bad routes

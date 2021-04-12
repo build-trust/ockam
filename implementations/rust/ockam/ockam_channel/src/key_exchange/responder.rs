@@ -75,7 +75,7 @@ impl Worker for XResponder {
                     None
                 };
 
-                ctx.send_message(
+                ctx.send(
                     reply,
                     KeyExchangeResponseMessage::new(req_id, new_payload, keys),
                 )

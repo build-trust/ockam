@@ -43,7 +43,7 @@ impl Worker for XInitiator {
                 let response =
                     KeyExchangeResponseMessage::new(req_id, Some(initiator.process(&[])?), None);
 
-                ctx.send_message(reply.clone(), response).await?;
+                ctx.send(reply.clone(), response).await?;
             }
             KeyExchangeRequestMessage::Payload { req_id, payload } => {
                 let initiator;
@@ -85,7 +85,7 @@ impl Worker for XInitiator {
                     None
                 };
 
-                ctx.send_message(
+                ctx.send(
                     reply,
                     KeyExchangeResponseMessage::new(req_id, new_payload, keys),
                 )

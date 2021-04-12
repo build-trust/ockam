@@ -28,13 +28,13 @@ impl Worker for Printer {
 }
 
 fn main() {
-    let (app, mut exe) = ockam::start_node();
+    let (mut app, mut exe) = ockam::start_node();
 
     exe.execute(async move {
         app.start_worker("io.ockam.printer", Printer {})
             .await
             .unwrap();
-        app.send_message("io.ockam.printer", PrintMessage("Hello, ockam!".into()))
+        app.send("io.ockam.printer", PrintMessage("Hello, ockam!".into()))
             .await
             .unwrap();
         app.stop().await.unwrap();

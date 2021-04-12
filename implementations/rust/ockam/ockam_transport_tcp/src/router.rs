@@ -36,7 +36,7 @@ impl<'c> TcpRouterHandle<'c> {
         let self_addr = pair.tx_addr.clone();
 
         self.ctx
-            .send_message(
+            .send(
                 self.addr.clone(),
                 RouterMessage::Register { accepts, self_addr },
             )
@@ -76,7 +76,7 @@ impl Worker for TcpRouter {
                 msg.onward_route.modify().prepend(next.clone());
 
                 // Send the transport message to the connection worker
-                ctx.send_message(next.clone(), msg).await?;
+                ctx.send(next.clone(), msg).await?;
             }
             Register { accepts, self_addr } => {
                 trace!("TCP registration request: {} => {}", accepts, self_addr);

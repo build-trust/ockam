@@ -19,7 +19,7 @@ impl Worker for Responder {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         info!("Responder: {}", msg);
-        ctx.send_message(msg.reply(), msg.take()).await?;
+        ctx.send(msg.reply(), msg.take()).await?;
         Ok(())
     }
 }

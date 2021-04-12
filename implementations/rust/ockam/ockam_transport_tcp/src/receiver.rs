@@ -77,12 +77,12 @@ impl Worker for TcpRecvWorker {
 
             // FIXME: if we need to re-route (i.e. send it to another
             // domain specific router) the message here, use
-            // send_message, instead of forward_message.
+            // send_message, instead of forward.
 
             // Forward the message to the final destination worker,
             // which consumes the TransportMessage and yields the
             // final message type
-            ctx.forward_message(msg).await?;
+            ctx.forward(msg).await?;
         }
 
         // Stop the worker to not fall into the next read loop

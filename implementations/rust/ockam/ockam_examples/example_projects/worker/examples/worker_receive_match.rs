@@ -18,9 +18,9 @@ impl Worker for Echo {
 
         // Send three messages back, but only have the third message
         // be the 'correct' value.
-        ctx.send_message(addr.clone(), Number(msg.0 - 2)).await?;
-        ctx.send_message(addr.clone(), Number(msg.0 - 1)).await?;
-        ctx.send_message(addr.clone(), Number(msg.0)).await?;
+        ctx.send(addr.clone(), Number(msg.0 - 2)).await?;
+        ctx.send(addr.clone(), Number(msg.0 - 1)).await?;
+        ctx.send(addr.clone(), Number(msg.0)).await?;
         Ok(())
     }
 }
@@ -33,7 +33,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("echo", Echo).await?;
 
     // Send a message
-    ctx.send_message("echo", num.clone()).await?;
+    ctx.send("echo", num.clone()).await?;
 
     // Wait for the 'correct' reply
     let reply = ctx.receive_match::<Number, _>(|msg| msg == &num).await?;

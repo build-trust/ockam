@@ -154,7 +154,7 @@ impl SecureChannel {
             );
             if is_first_initiator_msg {
                 // First message from initiator goes to the channel listener
-                ctx.send_message_from_address(
+                ctx.send_from_address(
                     self.remote_route.clone(),
                     SecureChannelListenerMessage::CreateResponderChannel { payload },
                     self.address_remote.clone(),
@@ -162,7 +162,7 @@ impl SecureChannel {
                 .await?;
             } else {
                 // Other messages go to the channel worker itself
-                ctx.send_message_from_address(
+                ctx.send_from_address(
                     self.remote_route.clone(),
                     payload,
                     self.address_remote.clone(),
@@ -186,7 +186,7 @@ impl SecureChannel {
             });
             // Notify interested worker about finished key exchange
             if let Some(r) = self.key_exchange_completed_callback_route.take() {
-                ctx.send_message_from_address(
+                ctx.send_from_address(
                     r,
                     KeyExchangeCompleted {
                         address: self.address_local.clone(),
@@ -236,7 +236,7 @@ impl Worker for SecureChannel {
             let req_id = b"CHANNEL_REQ".to_vec();
 
             // Kick in initiator to start key exchange process
-            ctx.send_message_from_address(
+            ctx.send_from_address(
                 key_exchange_route,
                 KeyExchangeRequestMessage::InitiatorFirstMessage {
                     req_id: req_id.clone(),
@@ -314,7 +314,7 @@ impl Worker for SecureChannel {
                 res
             };
 
-            ctx.send_message_from_address(
+            ctx.send_from_address(
                 self.remote_route.clone(),
                 payload,
                 self.address_remote.clone(),
@@ -337,7 +337,7 @@ impl Worker for SecureChannel {
 
                 // FIXME: Remove req_id in the future when we fix message without length decode
                 let req_id = b"CHANNEL_REQ".to_vec();
-                ctx.send_message_from_address(
+                ctx.send_from_address(
                     key_exchange_route,
                     KeyExchangeRequestMessage::Payload {
                         req_id: req_id.clone(),
@@ -383,7 +383,7 @@ impl Worker for SecureChannel {
                     .modify()
                     .prepend(self.address_local.clone());
 
-                ctx.forward_message(transport_message).await?;
+                ctx.forward(transport_message).await?;
             }
         }
         Ok(())

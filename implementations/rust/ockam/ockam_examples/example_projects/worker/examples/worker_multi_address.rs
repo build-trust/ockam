@@ -19,16 +19,16 @@ impl Worker for MultiAddressWorker {
 }
 
 #[ockam::node]
-async fn main(ctx: Context) -> Result<()> {
+async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker(
         vec!["addr.main", "addr.input", "addr.output"],
         MultiAddressWorker,
     )
     .await?;
 
-    ctx.send_message("addr.main", String::from("Hi")).await?;
-    ctx.send_message("addr.input", String::from("Hi")).await?;
-    ctx.send_message("addr.output", String::from("Hi")).await?;
+    ctx.send("addr.main", String::from("Hi")).await?;
+    ctx.send("addr.input", String::from("Hi")).await?;
+    ctx.send("addr.output", String::from("Hi")).await?;
 
     ctx.stop().await
 }

@@ -46,7 +46,7 @@ impl Worker for Router {
                 msg.return_route.modify().prepend(onward);
 
                 // Forward the message to the next hop
-                ctx.forward_message(msg).await?;
+                ctx.forward(msg).await?;
             }
             // Handle new domain-specific worker registrations.  The
             // `accepts` address is the one provided by the message
@@ -84,7 +84,7 @@ impl Worker for Consumer {
         // The accept scope is address type `10`, with a prefix and
         // its own address.  Messages sent to this address will be
         // sent to the 10-type router, which will then forward them.
-        ctx.send_message(
+        ctx.send(
             "simple.router",
             RouterMessage::Register {
                 accepts: format!("10#proxy_me_{}", ctx.primary_address()).into(),
@@ -93,13 +93,13 @@ impl Worker for Consumer {
         )
         .await?;
 
-        ctx.send_message("app", String::from("")).await?;
+        ctx.send("app", String::from("")).await?;
         Ok(())
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         info!("Consumer {}: {}", msg.msg_addr(), msg);
-        ctx.send_message("app", String::from("")).await?;
+        ctx.send("app", String::from("")).await?;
         Ok(())
     }
 }
@@ -122,7 +122,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _ = ctx.receive::<String>().await?;
     let _ = ctx.receive::<String>().await?;
 
-    ctx.send_message(
+    ctx.send(
         Route::new().append("10#proxy_me_0:cons2"),
         String::from("Hello consumer!"),
     )

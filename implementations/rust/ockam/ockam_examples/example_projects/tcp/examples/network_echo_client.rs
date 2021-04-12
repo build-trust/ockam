@@ -29,7 +29,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx, peer_addr).await.unwrap();
 
     // Send a message to the remote
-    ctx.send_message(
+    ctx.send(
         Route::new()
             .append(format!("1#{}", peer_addr))
             .append("echo_service"),

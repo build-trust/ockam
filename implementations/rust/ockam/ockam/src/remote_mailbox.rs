@@ -74,8 +74,7 @@ impl<T: Message> Worker for RemoteMailbox<T> {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> crate::Result<()> {
         info!("RemoteMailbox registering...");
-        ctx.send_message(self.route.clone(), "register".to_string())
-            .await?;
+        ctx.send(self.route.clone(), "register".to_string()).await?;
         let resp = ctx.receive::<String>().await?.take();
         let route = resp.reply();
         let resp = resp.take();
@@ -91,7 +90,7 @@ impl<T: Message> Worker for RemoteMailbox<T> {
             return Err(OckamError::InvalidHubResponse.into());
         }
 
-        ctx.send_message(
+        ctx.send(
             self.callback_address.clone(),
             RemoteMailboxInfo {
                 forwarding_route: route,
@@ -116,7 +115,7 @@ impl<T: Message> Worker for RemoteMailbox<T> {
             payload,
         };
 
-        ctx.forward_message(msg).await?;
+        ctx.forward(msg).await?;
 
         Ok(())
     }

@@ -15,7 +15,7 @@ impl Worker for StatefulWorker {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Message>) -> Result<()> {
         self.inner += msg.0;
-        ctx.send_message("app", Message(self.inner)).await?;
+        ctx.send("app", Message(self.inner)).await?;
         Ok(())
     }
 }
@@ -25,9 +25,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("io.ockam.state", StatefulWorker { inner: 0 })
         .await?;
 
-    ctx.send_message("io.ockam.state", Message(1024)).await?;
-    ctx.send_message("io.ockam.state", Message(256)).await?;
-    ctx.send_message("io.ockam.state", Message(32)).await?;
+    ctx.send("io.ockam.state", Message(1024)).await?;
+    ctx.send("io.ockam.state", Message(256)).await?;
+    ctx.send("io.ockam.state", Message(32)).await?;
 
     assert_eq!(ctx.receive::<Message>().await?, Message(1024));
     assert_eq!(ctx.receive::<Message>().await?, Message(1280));

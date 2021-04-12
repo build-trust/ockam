@@ -13,7 +13,7 @@ impl Worker for Square {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Num>) -> Result<()> {
         println!("Getting square request for number {}", msg.0);
-        ctx.send_message(msg.sender(), Num(msg.0 * msg.0)).await
+        ctx.send(msg.sender(), Num(msg.0 * msg.0)).await
     }
 }
 
@@ -24,7 +24,7 @@ fn main() {
         app.start_worker("io.ockam.square", Square).await.unwrap();
 
         let num = 3;
-        app.send_message("io.ockam.square", Num(num)).await.unwrap();
+        app.send("io.ockam.square", Num(num)).await.unwrap();
 
         // block until it receives a message
         let square = app.receive::<Num>().await.unwrap();

@@ -22,7 +22,7 @@ fn get_peer_addr() -> SocketAddr {
 }
 
 #[ockam::node]
-async fn main(ctx: Context) -> Result<()> {
+async fn main(mut ctx: Context) -> Result<()> {
     // Get our peer address
     let peer = get_peer_addr();
 
@@ -41,7 +41,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     debug!("Sending message to route: {}", route);
 
-    ctx.send_message(route, String::from("Hello you!")).await?;
+    ctx.send(route, String::from("Hello you!")).await?;
 
     // We can't shut down the node here because otherwise a race
     // condition will drop the tcp messages in transit.

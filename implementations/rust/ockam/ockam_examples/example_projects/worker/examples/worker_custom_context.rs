@@ -12,9 +12,7 @@ impl Custom {
     fn run(self) {
         let mut ctx = self.0;
         tokio::spawn(async move {
-            ctx.send_message("app", "Hello 1".to_string())
-                .await
-                .unwrap();
+            ctx.send("app", "Hello 1".to_string()).await.unwrap();
             tokio::time::sleep(Duration::from_millis(500)).await;
 
             // Wait for a reply
@@ -22,9 +20,7 @@ impl Custom {
             info!("Ok: {}", reply);
 
             tokio::time::sleep(Duration::from_millis(500)).await;
-            ctx.send_message("app", "Hello 3".to_string())
-                .await
-                .unwrap();
+            ctx.send("app", "Hello 3".to_string()).await.unwrap();
         });
     }
 }
@@ -38,8 +34,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     assert_eq!(ctx.receive::<String>().await?, "Hello 1".to_string());
     info!("Ok");
 
-    ctx.send_message("some.address", "Hello 2".to_string())
-        .await?;
+    ctx.send("some.address", "Hello 2".to_string()).await?;
 
     assert_eq!(ctx.receive::<String>().await?, "Hello 3".to_string());
     info!("Ok");

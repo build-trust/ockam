@@ -64,7 +64,7 @@ impl Worker for Issuer {
             _ => unimplemented!(),
         };
 
-        ctx.send_message(route, response).await
+        ctx.send(route, response).await
     }
 }
 

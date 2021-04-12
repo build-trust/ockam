@@ -20,7 +20,7 @@ impl Worker for MyWorker {
 async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("worker.middleware", MyWorker).await?;
 
-    ctx.send_message("worker.middleware", "Hello World!".to_string())
+    ctx.send("worker.middleware", "Hello World!".to_string())
         .await?;
 
     Ok(())

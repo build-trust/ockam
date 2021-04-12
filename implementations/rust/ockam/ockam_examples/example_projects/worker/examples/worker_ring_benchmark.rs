@@ -23,7 +23,7 @@ impl Worker for RingWorker {
         self.ctr += 1;
         if self.ctr <= 1024 {
             context
-                .send_message(self.next.as_ref().unwrap().clone(), msg.take())
+                .send(self.next.as_ref().unwrap().clone(), msg.take())
                 .await?;
         } else {
             let now = Utc::now();
@@ -64,5 +64,5 @@ async fn main(ctx: Context) {
 
     // Create the first message in the system
     let msg = RingMessage(Utc::now());
-    ctx.send_message("io.ockam.ring0", msg).await.unwrap();
+    ctx.send("io.ockam.ring0", msg).await.unwrap();
 }

@@ -45,22 +45,21 @@ impl Worker for Player {
         match msg {
             Action::Intro(addr) if self.friend.is_none() => {
                 self.friend = Some(addr);
-                ctx.send_message(self.friend(), Action::Intro(msg_addr))
-                    .await?;
+                ctx.send(self.friend(), Action::Intro(msg_addr)).await?;
             }
 
             // Redundant intro -> start the game
-            Action::Intro(_) => ctx.send_message(self.friend(), Action::Ping).await?,
+            Action::Intro(_) => ctx.send(self.friend(), Action::Ping).await?,
 
             // Ping -> Pong
             Action::Ping if self.count < 5 => {
-                ctx.send_message(self.friend(), Action::Pong).await?;
+                ctx.send(self.friend(), Action::Pong).await?;
                 self.count += 1;
             }
 
             // Pong -> Ping
             Action::Pong if self.count < 5 => {
-                ctx.send_message(self.friend(), Action::Ping).await?;
+                ctx.send(self.friend(), Action::Ping).await?;
                 self.count += 1;
             }
 
@@ -82,7 +81,7 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker(a2.clone(), Player::new()).await?;
 
     // Tell player1 to start the match with player2
-    ctx.send_message(a1, Action::Intro(a2)).await?;
+    ctx.send(a1, Action::Intro(a2)).await?;
 
     Ok(())
 }

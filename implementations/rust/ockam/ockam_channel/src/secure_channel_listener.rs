@@ -61,7 +61,7 @@ impl Worker for SecureChannelListener {
                     payload: payload.encode()?,
                 };
 
-                ctx.forward_message(msg).await?;
+                ctx.forward(msg).await?;
 
                 Ok(())
             }

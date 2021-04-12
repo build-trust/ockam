@@ -35,7 +35,7 @@ impl Worker for ProxiedWorker {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         // Register this service with the hub's forwarding service
-        ctx.send_message(
+        ctx.send(
             Route::new()
                 .append(format!("1#{}", self.peer))
                 .append("forwarding_service"),

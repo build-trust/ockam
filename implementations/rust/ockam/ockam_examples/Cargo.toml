@@ -14,6 +14,6 @@ repository = "https://github.com/ockam-network/ockam"
 ockam = "0"
 ockam_transport_tcp = "0"
 
-[workspace]
-members = ["example_projects/*"]
-default-members = ["example_projects/*"]
+# [workspace]
+# members = ["example_projects/*"]
+# default-members = ["example_projects/*"]

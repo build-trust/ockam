@@ -53,7 +53,7 @@ impl Worker for TcpListenWorker {
             let pair = WorkerPair::with_stream(ctx, stream, peer).await?;
 
             // Register the connection with the local TcpRouter
-            ctx.send_message(
+            ctx.send(
                 self.router_addr.clone(),
                 RouterMessage::Register {
                     accepts: format!("1#{}", peer).into(),

@@ -19,7 +19,7 @@ impl Worker for Picky {
         match *msg {
             Message::Good => {
                 println!("[PICKY]: I got a good message!  I want another one");
-                ctx.send_message("io.ockam.echo", Message::Good).await?;
+                ctx.send("io.ockam.echo", Message::Good).await?;
 
                 loop {
                     let msg = ctx.receive::<Message>().await.unwrap();
@@ -51,8 +51,8 @@ impl Worker for Echo {
 
     async fn handle_message(&mut self, ctx: &mut Context, _: Routed<Message>) -> Result<()> {
         println!("[ECHO]: Received message: sending one Bad, then one Good");
-        ctx.send_message("io.ockam.picky", Message::Bad).await?;
-        ctx.send_message("io.ockam.picky", Message::Good).await?;
+        ctx.send("io.ockam.picky", Message::Bad).await?;
+        ctx.send("io.ockam.picky", Message::Good).await?;
         Ok(())
     }
 }
@@ -62,7 +62,7 @@ async fn main(app: Context) -> Result<()> {
     app.start_worker("io.ockam.picky", Picky).await?;
     app.start_worker("io.ockam.echo", Echo).await?;
 
-    app.send_message("io.ockam.picky", Message::Good).await?;
+    app.send("io.ockam.picky", Message::Good).await?;
 
     Ok(())
 }

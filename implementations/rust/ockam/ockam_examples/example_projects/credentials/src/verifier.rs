@@ -24,7 +24,7 @@ impl Worker for Verifier {
         println!("Verifier starting. Discovering Issuer");
 
         // Send a New Credential Connection message
-        ctx.send_message(
+        ctx.send(
             Route::new()
                 .append(format!("1#{}", issuer))
                 .append("issuer"),

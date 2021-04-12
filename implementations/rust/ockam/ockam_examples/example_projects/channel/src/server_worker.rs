@@ -13,7 +13,7 @@ impl Worker for Server {
         let msg_str = msg.take();
         info!("Server received message: {}", msg_str);
 
-        ctx.send_message(return_route, msg_str.clone()).await?;
+        ctx.send(return_route, msg_str.clone()).await?;
         info!("Server sent message: {}", msg_str);
 
         Ok(())

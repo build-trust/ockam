@@ -35,7 +35,7 @@ impl Worker for Holder {
         let verifier_pair = TcpTransport::create(&ctx, verifier).await?;
 
         // Send a New Credential Connection message
-        ctx.send_message(
+        ctx.send(
             Route::new()
                 .append(format!("1#{}", issuer))
                 .append("issuer"),
@@ -57,8 +57,7 @@ impl Worker for Holder {
                 if CredentialVerifier::verify_proof_of_possession(public_key, proof) {
                     self.issuer_pubkey = Some(public_key);
 
-                    ctx.send_message(route, CredentialMessage::NewCredential)
-                        .await
+                    ctx.send(route, CredentialMessage::NewCredential).await
                 } else {
                     Err(OckamError::InvalidProof.into())
                 }
@@ -72,7 +71,7 @@ impl Worker for Holder {
                         self.offer_id = Some(offer.id);
                         self.frag1 = Some(frag1);
                         return ctx
-                            .send_message(route, CredentialMessage::CredentialRequest(request))
+                            .send(route, CredentialMessage::CredentialRequest(request))
                             .await;
                     }
                 }
@@ -109,7 +108,7 @@ impl Worker for Holder {
                     ) {
                         println!("Presenting credentials to Verifier");
 
-                        ctx.send_message(
+                        ctx.send(
                             Route::new()
                                 .append(format!("1#{}", self.verifier))
                                 .append("verifier"),
