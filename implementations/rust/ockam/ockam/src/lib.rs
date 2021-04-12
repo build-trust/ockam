@@ -43,4 +43,4 @@ pub use ockam_core::{
     Worker,
 };
 
-pub use ockam_channel::{SecureChannel, SecureChannelListenerMessage, SecureChannelMessage};
+pub use ockam_channel::{SecureChannel, SecureChannelListenerMessage};

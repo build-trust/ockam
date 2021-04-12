@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Routed, SecureChannelMessage, Worker};
+use ockam::{async_worker, Context, Result, Routed, Worker};
 use tracing::info;
 
 pub struct Server;
@@ -13,8 +13,7 @@ impl Worker for Server {
         let msg_str = msg.take();
         info!("Server received message: {}", msg_str);
 
-        ctx.send_message(return_route, SecureChannelMessage::create(msg_str.clone())?)
-            .await?;
+        ctx.send_message(return_route, msg_str.clone()).await?;
         info!("Server sent message: {}", msg_str);
 
         Ok(())

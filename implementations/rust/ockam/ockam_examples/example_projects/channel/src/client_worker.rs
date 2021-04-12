@@ -1,6 +1,4 @@
-use ockam::{
-    async_worker, Context, Result, Route, Routed, SecureChannel, SecureChannelMessage, Worker,
-};
+use ockam::{async_worker, Context, Result, Route, Routed, SecureChannel, Worker};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::net::SocketAddr;
@@ -67,11 +65,8 @@ impl Worker for Client {
                 info!("Client sent message: {}", rand_string);
                 ctx.send_message(ctx.primary_address(), "recursion".to_string())
                     .await?;
-                ctx.send_message(
-                    self.route.clone().unwrap(),
-                    SecureChannelMessage::create(rand_string)?,
-                )
-                .await?;
+                ctx.send_message(self.route.clone().unwrap(), rand_string)
+                    .await?;
                 tokio::time::sleep(Duration::from_secs(2)).await;
             }
             _ => info!("Client received msg: {}", str),
