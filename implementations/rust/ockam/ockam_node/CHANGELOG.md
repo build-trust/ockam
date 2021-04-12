@@ -5,6 +5,22 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.6.0 - 2021-04-12
+### Added
+- None to Node Error enum.
+- Re-add block_future functionality.
+- `send_message_from_address` added to Context.
+
+
+### Changed
+- Fixed panic when main Context goes out of scope.
+- Refactored Node Context API.
+- `msg_addr` moved from `Context` to `Routed`.
+- Node won't spawn a worker with a with colliding address.
+
+### Deleted
+- Excess clones.
+
 ## v0.5.0 - 2021-04-05
 ### Added
 - Expose onward route information to user workers.
