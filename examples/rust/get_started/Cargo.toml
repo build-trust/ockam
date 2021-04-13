@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 ockam = {path = "../../../implementations/rust/ockam/ockam"}
+ockam_transport_tcp = {path = "../../../implementations/rust/ockam/ockam_transport_tcp"}
