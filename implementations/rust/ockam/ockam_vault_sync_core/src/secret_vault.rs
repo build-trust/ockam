@@ -105,3 +105,25 @@ impl SecretVault for Vault {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ockam_vault::SoftwareVault;
+    use ockam_vault_test_attribute::*;
+
+    fn new_vault() -> SoftwareVault {
+        SoftwareVault::default()
+    }
+
+    #[vault_test_sync]
+    fn new_public_keys() {}
+
+    #[vault_test_sync]
+    fn new_secret_keys() {}
+
+    #[vault_test_sync]
+    fn secret_import_export() {}
+
+    #[vault_test_sync]
+    fn secret_attributes_get() {}
+}

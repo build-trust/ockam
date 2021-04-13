@@ -26,3 +26,16 @@ impl AsymmetricVault for Vault {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ockam_vault::SoftwareVault;
+    use ockam_vault_test_attribute::*;
+
+    fn new_vault() -> SoftwareVault {
+        SoftwareVault::default()
+    }
+
+    #[vault_test_sync]
+    fn ec_diffie_hellman_curve25519() {}
+}

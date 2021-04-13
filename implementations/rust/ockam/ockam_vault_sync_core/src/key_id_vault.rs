@@ -38,3 +38,19 @@ impl KeyIdVault for Vault {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ockam_vault::SoftwareVault;
+    use ockam_vault_test_attribute::*;
+
+    fn new_vault() -> SoftwareVault {
+        SoftwareVault::default()
+    }
+
+    #[vault_test_sync]
+    fn compute_key_id_for_public_key() {}
+
+    #[vault_test_sync]
+    fn get_secret_by_key_id() {}
+}

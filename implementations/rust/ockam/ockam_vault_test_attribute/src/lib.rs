@@ -5,7 +5,6 @@ use quote::quote;
 use std::str::FromStr;
 use syn::{parse_macro_input, ItemFn, Stmt};
 
-/// Marks an async function to be run in an ockam node.
 #[proc_macro_attribute]
 pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_fn = parse_macro_input!(item as ItemFn);
@@ -21,7 +20,7 @@ pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let import_test: Stmt = syn::parse(import_test.into()).expect("B");
     let run_test =
         TokenStream::from_str(format!("{}(&mut vault);", original_fn_ident.to_string()).as_str())
-            .expect("A");
+            .unwrap();
     let run_test: Stmt = syn::parse(run_test.into()).expect("B");
 
     let output_function = quote! {
