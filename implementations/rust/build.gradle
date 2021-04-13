@@ -7,8 +7,8 @@ commands {
   group = 'ockam'
 
   list = [
-    build: 'cargo build',
-    test: 'cargo test',
+    build: 'cargo --locked build',
+    test: 'cargo --locked test',
     clean: 'cargo clean',
     veryClean: 'cargo clean',
     lint: [
