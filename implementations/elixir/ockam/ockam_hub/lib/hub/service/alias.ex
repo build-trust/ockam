@@ -11,7 +11,7 @@ defmodule Ockam.Hub.Service.Alias do
 
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger
@@ -19,8 +19,8 @@ defmodule Ockam.Hub.Service.Alias do
   @impl true
   def handle_message(message, state) do
     Logger.info("ALIAS service\nMESSAGE: #{inspect(message)}")
-    forward_route = Message.return_route(message)
-    payload = Message.payload(message)
+    forward_route = Routable.return_route(message)
+    payload = Routable.payload(message)
 
     {:ok, _alias_address} =
       __MODULE__.Forwarder.create(
@@ -48,7 +48,7 @@ defmodule Ockam.Hub.Service.Alias.Forwarder do
   """
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger
@@ -76,8 +76,8 @@ defmodule Ockam.Hub.Service.Alias.Forwarder do
 
     Router.route(%{
       onward_route: route,
-      return_route: Message.return_route(message),
-      payload: Message.payload(message)
+      return_route: Routable.return_route(message),
+      payload: Routable.payload(message)
     })
   end
 

@@ -5,7 +5,7 @@ defmodule Ockam.Hub.Service.Forward do
 
   alias Ockam.Hub.Service.Forward.Inbox
   alias Ockam.Hub.Service.Forward.Outbox
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger
@@ -13,7 +13,7 @@ defmodule Ockam.Hub.Service.Forward do
   @impl true
   def handle_message(message, state) do
     Logger.info("FORWARD\nMESSAGE: #{inspect(message)}")
-    forward_route = Message.return_route(message)
+    forward_route = Routable.return_route(message)
 
     with {:ok, inbox} <- Inbox.create(forward_route: forward_route),
          outbox <- Inbox.outbox_address(inbox),
@@ -25,9 +25,9 @@ defmodule Ockam.Hub.Service.Forward do
 
   def send_reply(inbox_address, message) do
     reply = %{
-      onward_route: Message.return_route(message),
+      onward_route: Routable.return_route(message),
       return_route: [inbox_address],
-      payload: Message.payload(message)
+      payload: Routable.payload(message)
     }
 
     Logger.info("REPLY: #{inspect(reply)}")
