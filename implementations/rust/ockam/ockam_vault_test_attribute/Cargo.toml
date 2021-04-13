@@ -1,0 +1,16 @@
+[package]
+name = "ockam_vault_test_attribute"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_core"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+ockam_node = {path = "../ockam_node", version = "0.6.0"}
+quote = "1.0.9"
+syn = {version = "1.0", features = ["full", "extra-traits"]}
