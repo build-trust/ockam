@@ -1,4 +1,5 @@
-use crate::Secret;
+use crate::{PublicKey, Secret};
+use ockam_core::Result;
 use zeroize::Zeroize;
 
 /// Vault with asymmetric encryption functionality
@@ -8,6 +9,6 @@ pub trait AsymmetricVault: Zeroize {
     fn ec_diffie_hellman(
         &mut self,
         context: &Secret,
-        peer_public_key: &[u8],
-    ) -> ockam_core::Result<Secret>;
+        peer_public_key: &PublicKey,
+    ) -> Result<Secret>;
 }

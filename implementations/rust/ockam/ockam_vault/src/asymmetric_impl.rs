@@ -3,18 +3,18 @@ use arrayref::array_ref;
 use ockam_vault_core::Buffer;
 use ockam_vault_core::{
     AsymmetricVault, Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault,
-    CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
+    PublicKey, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 
 impl SoftwareVault {
     fn ecdh_internal(
         vault_entry: &VaultEntry,
-        peer_public_key: &[u8],
+        peer_public_key: &PublicKey,
     ) -> ockam_core::Result<Buffer<u8>> {
         let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
             SecretType::Curve25519 => {
-                if peer_public_key.len() != CURVE25519_PUBLIC_LENGTH
+                if peer_public_key.as_ref().len() != CURVE25519_PUBLIC_LENGTH
                     || key.as_ref().len() != CURVE25519_SECRET_LENGTH
                 {
                     return Err(VaultError::UnknownEcdhKeyType.into());
@@ -26,7 +26,7 @@ impl SoftwareVault {
                     CURVE25519_SECRET_LENGTH
                 ));
                 let pk_t = x25519_dalek::PublicKey::from(*array_ref!(
-                    peer_public_key,
+                    peer_public_key.as_ref(),
                     0,
                     CURVE25519_PUBLIC_LENGTH
                 ));
@@ -44,7 +44,7 @@ impl AsymmetricVault for SoftwareVault {
     fn ec_diffie_hellman(
         &mut self,
         context: &Secret,
-        peer_public_key: &[u8],
+        peer_public_key: &PublicKey,
     ) -> ockam_core::Result<Secret> {
         let entry = self.get_entry(context)?;
 
@@ -77,11 +77,11 @@ mod tests {
         let pk_1 = vault.secret_public_key_get(&sk_ctx_1).unwrap();
         let pk_2 = vault.secret_public_key_get(&sk_ctx_2).unwrap();
 
-        let res1 = vault.ec_diffie_hellman(&sk_ctx_1, pk_2.as_ref());
+        let res1 = vault.ec_diffie_hellman(&sk_ctx_1, &pk_2);
         assert!(res1.is_ok());
         let _ss1 = res1.unwrap();
 
-        let res2 = vault.ec_diffie_hellman(&sk_ctx_2, pk_1.as_ref());
+        let res2 = vault.ec_diffie_hellman(&sk_ctx_2, &pk_1);
         assert!(res2.is_ok());
         let _ss2 = res2.unwrap();
         // TODO: Check result against test vector
