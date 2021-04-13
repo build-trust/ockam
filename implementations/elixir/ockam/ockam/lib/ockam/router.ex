@@ -10,8 +10,8 @@ defmodule Ockam.Router do
   import Ockam.RoutableAddress, only: [is_address_type: 1]
   import Ockam.Router.MessageHandler, only: [is_message_handler: 1]
 
-  alias Ockam.RoutableAddress
   alias Ockam.Message
+  alias Ockam.RoutableAddress
   alias Ockam.Router.MessageHandler
   alias Ockam.Router.Storage
 
