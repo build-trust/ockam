@@ -250,7 +250,7 @@ pub extern "C" fn ockam_vault_ecdh(
             }
             _ => Err(FfiError::UnknownPublicKeyType),
         }?;
-        let shared_ctx = v.ec_diffie_hellman(&ctx, pubkey.as_ref())?;
+        let shared_ctx = v.ec_diffie_hellman(&ctx, &pubkey)?;
         Ok(shared_ctx.index() as u64)
     }) {
         Ok(s) => s,
