@@ -8,7 +8,7 @@ use ockam_vault_core::{
 use sha2::{Digest, Sha256};
 
 impl Hasher for SoftwareVault {
-    fn sha256(&self, data: &[u8]) -> ockam_core::Result<[u8; 32]> {
+    fn sha256(&mut self, data: &[u8]) -> ockam_core::Result<[u8; 32]> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
     }
