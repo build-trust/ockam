@@ -53,4 +53,36 @@ ui_auth_host =
       System.get_env("AUTH_HOST") || "http://localhost:4001"
   end
 
-config :ockam_hub, auth_message: ui_auth_message, auth_host: ui_auth_host
+node_fqdn =
+  case System.get_env("NODE_FQDN") do
+    fqdn when is_binary(fqdn) and length(fqdn) > 0 ->
+      fqdn
+
+    _ ->
+      case config_env() do
+        :dev -> "localhost"
+        :test -> "localhost"
+        _ -> "1.node.ockam.network"
+      end
+  end
+
+node_ip =
+  case config_env() do
+    :prod ->
+      {:ok, {:hostent, _, [_ | _], :inet, 4, [node_ip]}} =
+        :inet.gethostbyname(to_charlist(node_fqdn))
+
+      node_ip
+
+    :test ->
+      {127, 0, 0, 1}
+
+    :dev ->
+      {127, 0, 0, 1}
+  end
+
+config :ockam_hub,
+  auth_message: ui_auth_message,
+  auth_host: ui_auth_host,
+  node_ip: node_ip,
+  node_fqdn: node_fqdn

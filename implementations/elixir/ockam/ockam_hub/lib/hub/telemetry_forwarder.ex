@@ -15,8 +15,8 @@ defmodule Ockam.Hub.TelemetryForwarder do
   def init() do
     settings = get_settings()
 
-    Logger.info("Create node #{inspect(settings)}")
-    create_node(settings.host, settings.token, settings.public_ip)
+    create_node(settings.host, settings.token, settings.public_ip, settings.node_fqdn)
+
     attach_send_to_ui(settings.host, settings.token, settings.public_ip)
   end
 
@@ -24,19 +24,16 @@ defmodule Ockam.Hub.TelemetryForwarder do
     token = Application.get_env(:ockam_hub, :auth_message)
     host = Application.get_env(:ockam_hub, :auth_host)
 
-    # I hate this but Azure seems to rewrite DNS sometimes.
-    # DNS shows public IP but when hitting nginx it shows
-    # 10.92.0.x
-    # additionally, not using azure's IP check because
-    # it outputs a bunch of html instead of plaintext
-    # or json.
-    {:ok, %{body: resp_body}} = HTTPoison.get("https://checkip.amazonaws.com")
-    public_ip = String.trim(resp_body)
+    public_ip = Application.get_env(:ockam_hub, :node_ip)
+    public_ip = :inet.ntoa(public_ip)
+
+    node_fqdn = Application.get_env(:ockam_hub, :node_fqdn)
 
     %{
       host: host,
       token: token,
-      public_ip: public_ip
+      public_ip: public_ip,
+      node_fqdn: node_fqdn
     }
   end
 
@@ -57,33 +54,45 @@ defmodule Ockam.Hub.TelemetryForwarder do
       # payload = """
       # {"message": {"version": 1,"onward_route": ["a","b","c"],"return_route": ["1","2","3"],"payload": "asdf"}}
       # """
-      payload = Jason.encode!(metadata)
+      metadata =
+        case metadata do
+          %{message: %{payload: payload} = message} ->
+            %{metadata | message: %{message | payload: Base.encode64(payload)}}
+
+          other ->
+            other
+        end
+
+      json_payload = Jason.encode!(metadata)
       token = URI.encode_www_form(token)
 
-      HTTPoison.post("#{host}/messages?token=#{token}&public_ip=#{public_ip}", payload, [
+      HTTPoison.post("#{host}/messages?token=#{token}&public_ip=#{public_ip}", json_payload, [
         {"Content-Type", "application/json"}
       ])
     end
 
+    :telemetry.detach(:send_to_ui)
     :telemetry.attach(:send_to_ui, event_name, handler, nil)
   end
 
   def create_node() do
     settings = get_settings()
 
-    create_node(settings.host, settings.token, settings.public_ip)
+    create_node(settings.host, settings.token, settings.public_ip, settings.node_fqdn)
   end
 
-  @spec create_node(any, any, any) :: :ok
-  def create_node(host, token, public_ip) do
+  @spec create_node(any, any, any, any) :: :ok
+  def create_node(host, token, public_ip, node_fqdn) do
     payload =
       Jason.encode!(%{
         node: %{
-          ip: public_ip,
-          hostname: "auto-added",
+          ip: "#{public_ip}",
+          hostname: node_fqdn,
           port: 4000
         }
       })
+
+    token = URI.encode_www_form(token)
 
     case HTTPoison.post("#{host}/nodes?token=#{token}&public_ip=#{public_ip}", payload, [
            {"Content-Type", "application/json"}

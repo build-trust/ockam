@@ -57,6 +57,10 @@
                 {
                   "name": "INFLUXDB_ORG",
                   "value": "ockam"
+                },
+                {
+                  "name": "NODE_FQDN",
+                  "value": "1.node.ockam.network"
                 }
               ],
               "volumeMounts": [
