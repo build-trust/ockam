@@ -8,7 +8,6 @@ extern crate tracing;
 
 use ockam::{async_worker, Context, Result, Routed, Worker};
 use ockam_transport_tcp::TcpTransport;
-use std::net::SocketAddr;
 
 struct Responder;
 
@@ -24,19 +23,12 @@ impl Worker for Responder {
     }
 }
 
-fn get_bind_addr() -> SocketAddr {
+fn get_bind_addr() -> String {
     std::env::args()
         .skip(1)
         .take(1)
         .next()
         .unwrap_or(format!("127.0.0.1:10222"))
-        .parse()
-        .ok()
-        .unwrap_or_else(|| {
-            error!("Failed to parse socket address!");
-            eprintln!("Usage: network_echo_server <ip>:<port>");
-            std::process::exit(1);
-        })
 }
 
 #[ockam::node]

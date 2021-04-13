@@ -23,6 +23,8 @@ pub enum TcpError {
     PeerBusy,
     /// Failed to route to an unknown recipient
     UnknownRoute,
+    /// Failed to parse the socket address
+    InvalidAddress,
     /// A generic I/O failure
     GenericIo,
 }

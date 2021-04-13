@@ -4,7 +4,6 @@ use ockam::{
 };
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
-use std::net::SocketAddr;
 
 big_array! {
     FixedArray;
@@ -15,15 +14,15 @@ pub type RequestId = [u8; 32];
 pub static DEFAULT_ISSUER_PORT: usize = 7967;
 pub static DEFAULT_VERIFIER_PORT: usize = DEFAULT_ISSUER_PORT + 1;
 
-pub fn on<S: ToString>(host: S, port: usize) -> SocketAddr {
-    format!("{}:{}", host.to_string(), port).parse().unwrap()
+pub fn on<S: ToString>(host: S, port: usize) -> String {
+    format!("{}:{}", host.to_string(), port)
 }
 
-pub fn default_issuer_address() -> SocketAddr {
-    on("127.0.0.1", DEFAULT_ISSUER_PORT)
+pub fn default_issuer_address() -> String {
+    format!("127.0.0.1:{}", DEFAULT_ISSUER_PORT)
 }
 
-pub fn issuer_on_or_default<S: ToString>(host: Option<S>) -> SocketAddr {
+pub fn issuer_on_or_default<S: ToString>(host: Option<S>) -> String {
     if let Some(host) = host {
         let host = host.to_string();
         if let Some(_) = host.find(":") {

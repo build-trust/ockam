@@ -7,15 +7,13 @@ use ockam_transport_tcp::TcpTransport;
 use credentials::{
     example_schema, issuer_on_or_default, CredentialMessage, CredentialRng, DEFAULT_VERIFIER_PORT,
 };
-use ockam_transport_tcp::{self as tcp, TcpRouter};
-use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
 
 struct Holder {
     holder: CredentialHolder,
-    issuer: SocketAddr,
-    verifier: SocketAddr,
+    issuer: String,
+    verifier: String,
     issuer_pubkey: Option<PublicKeyBytes>,
     frag1: Option<CredentialFragment1>,
     credential: Option<Credential>,
@@ -28,11 +26,11 @@ impl Worker for Holder {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let issuer = self.issuer;
-        let verifier = self.verifier;
+        let issuer = &self.issuer;
+        let verifier = &self.verifier;
 
-        let issuer_pair = TcpTransport::create(&ctx, issuer).await?;
-        let verifier_pair = TcpTransport::create(&ctx, verifier).await?;
+        let _issuer_pair = TcpTransport::create(&ctx, issuer).await?;
+        let _verifier_pair = TcpTransport::create(&ctx, verifier).await?;
 
         // Send a New Credential Connection message
         ctx.send(
@@ -138,10 +136,7 @@ async fn main(ctx: Context) -> Result<()> {
     let args: Args = Args::from_args();
 
     // Demo hack to get a reference from Holder to Verifier
-    let verifier: SocketAddr = format!("127.0.0.1:{}", DEFAULT_VERIFIER_PORT)
-        .parse()
-        .unwrap();
-
+    let verifier = format!("127.0.0.1:{}", DEFAULT_VERIFIER_PORT);
     let issuer = issuer_on_or_default(args.issuer);
 
     let rng = CredentialRng::from_entropy();

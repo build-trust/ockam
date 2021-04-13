@@ -3,29 +3,21 @@ extern crate tracing;
 
 use ockam::{async_worker, Context, Result, Route, Routed, Worker};
 use ockam_transport_tcp::TcpTransport;
-use std::net::SocketAddr;
 
-fn get_peer_addr() -> SocketAddr {
+fn get_peer_addr() -> String {
     std::env::args()
         .skip(1)
         .take(1)
         .next()
         // This value can be used when running the ockam-hub locally
         .unwrap_or(format!("127.0.0.1:4000"))
-        .parse()
-        .ok()
-        .unwrap_or_else(|| {
-            error!("Failed to parse socket address!");
-            eprintln!("Usage: network_echo_client <ip>:<port>");
-            std::process::exit(1);
-        })
 }
 
 /// A worker who isn't always available.  It registers itself with the
 /// hub forwarding service to never miss a message.
 struct ProxiedWorker {
     /// The hub's address
-    peer: SocketAddr,
+    peer: String,
 }
 
 #[async_worker]
@@ -37,7 +29,7 @@ impl Worker for ProxiedWorker {
         // Register this service with the hub's forwarding service
         ctx.send(
             Route::new()
-                .append(format!("1#{}", self.peer))
+                .append_t(1, &self.peer)
                 .append("forwarding_service"),
             String::from("register"),
         )

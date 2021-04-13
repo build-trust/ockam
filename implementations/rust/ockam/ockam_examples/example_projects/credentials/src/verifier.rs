@@ -5,11 +5,10 @@ use ockam::{
 
 use credentials::{example_schema, issuer_on_or_default, CredentialMessage, DEFAULT_VERIFIER_PORT};
 use ockam_transport_tcp::TcpTransport;
-use std::net::SocketAddr;
 use structopt::StructOpt;
 
 struct Verifier {
-    issuer: SocketAddr,
+    issuer: String,
     issuer_pubkey: Option<PublicKeyBytes>,
 }
 
@@ -19,15 +18,13 @@ impl Worker for Verifier {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let issuer = self.issuer;
+        let issuer = &self.issuer;
 
         println!("Verifier starting. Discovering Issuer");
 
         // Send a New Credential Connection message
         ctx.send(
-            Route::new()
-                .append(format!("1#{}", issuer))
-                .append("issuer"),
+            Route::new().append_t(1, issuer).append("issuer"),
             CredentialMessage::CredentialConnection,
         )
         .await
@@ -89,14 +86,12 @@ async fn main(ctx: Context) -> Result<()> {
     let args: Args = Args::from_args();
     let port = args.port.unwrap_or(DEFAULT_VERIFIER_PORT);
 
-    let local_tcp: SocketAddr = format!("0.0.0.0:{}", port)
-        .parse()
-        .map_err(|_| OckamError::InvalidInternalState)?;
+    let local_tcp = format!("0.0.0.0:{}", port);
 
     let router = TcpTransport::create_listener(&ctx, local_tcp).await?;
 
     let issuer = issuer_on_or_default(args.issuer);
-    let pair = TcpTransport::create(&ctx, issuer).await?;
+    let pair = TcpTransport::create(&ctx, &issuer).await?;
 
     router.register(&pair).await?;
 

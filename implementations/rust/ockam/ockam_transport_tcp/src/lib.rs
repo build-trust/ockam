@@ -43,21 +43,26 @@ pub struct TcpTransport;
 
 impl TcpTransport {
     /// Create a TCP transport and establish an outgoing connection
-    pub async fn create<P>(ctx: &Context, peer: P) -> Result<WorkerPair>
+    pub async fn create<S>(ctx: &Context, peer: S) -> Result<WorkerPair>
     where
-        P: Into<SocketAddr>,
+        S: Into<String>,
     {
-        init::start_connection(ctx, peer).await
+        let address: SocketAddr = peer.into().parse().map_err(|_| TcpError::InvalidAddress)?;
+        init::start_connection(ctx, address).await
     }
 
     /// Create a TCP transport and listen for incoming connections
-    pub async fn create_listener<'c, P>(
+    pub async fn create_listener<'c, S>(
         ctx: &'c Context,
-        socket_addr: P,
+        bind_addr: S,
     ) -> Result<TcpRouterHandle<'c>>
     where
-        P: Into<SocketAddr>,
+        S: Into<String>,
     {
-        TcpRouter::bind(ctx, socket_addr).await
+        let address: SocketAddr = bind_addr
+            .into()
+            .parse()
+            .map_err(|_| TcpError::InvalidAddress)?;
+        TcpRouter::bind(ctx, address).await
     }
 }
