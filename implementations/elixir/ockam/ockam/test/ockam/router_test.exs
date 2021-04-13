@@ -14,7 +14,7 @@ defmodule Ockam.Router.Tests.Echo do
 
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger
@@ -39,7 +39,7 @@ defmodule Ockam.Router.Tests.Forwarder do
   # because the macro uses defp.
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger
@@ -71,7 +71,7 @@ end
 defmodule Ockam.Router.Tests.PingPong do
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger

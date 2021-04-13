@@ -3,7 +3,7 @@ defmodule Ockam.Hub.Service.Forward.Outbox do
 
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   @impl true

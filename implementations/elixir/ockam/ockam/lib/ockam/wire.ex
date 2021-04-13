@@ -3,7 +3,7 @@ defmodule Ockam.Wire do
   Encodes and decodes messages that can be transported on the wire.
   """
 
-  alias Ockam.Message
+  alias Ockam.Routable
 
   alias Ockam.Wire.DecodeError
   alias Ockam.Wire.EncodeError

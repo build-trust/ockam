@@ -4,7 +4,7 @@ defmodule Ockam.Node do
   @doc false
   use Supervisor
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Node.Registry
   alias Ockam.Router
   alias Ockam.Telemetry

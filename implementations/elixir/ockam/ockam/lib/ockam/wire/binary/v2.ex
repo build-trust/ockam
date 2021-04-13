@@ -3,7 +3,7 @@ defmodule Ockam.Wire.Binary.V2 do
 
   @behaviour Ockam.Wire
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Wire.Binary.V2.Route
   alias Ockam.Wire.DecodeError
   alias Ockam.Wire.EncodeError

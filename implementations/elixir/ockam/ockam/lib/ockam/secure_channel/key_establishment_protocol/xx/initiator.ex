@@ -1,7 +1,7 @@
 defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
   @moduledoc false
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol
 

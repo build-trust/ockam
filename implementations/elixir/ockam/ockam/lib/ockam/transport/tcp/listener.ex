@@ -4,7 +4,7 @@ if Code.ensure_loaded?(:ranch) do
 
     use Ockam.Worker
 
-    alias Ockam.Message
+    alias Ockam.Routable
     alias Ockam.Transport.TCP.Client
     alias Ockam.Transport.TCPAddress
 
@@ -130,7 +130,7 @@ if Code.ensure_loaded?(:ranch) do
 
     use GenServer
 
-    alias Ockam.Message
+    alias Ockam.Routable
     alias Ockam.Telemetry
 
     require Logger

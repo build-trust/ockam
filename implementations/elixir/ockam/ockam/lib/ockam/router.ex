@@ -11,7 +11,7 @@ defmodule Ockam.Router do
   import Ockam.Router.MessageHandler, only: [is_message_handler: 1]
 
   alias Ockam.Address
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router.MessageHandler
   alias Ockam.Router.Storage
 

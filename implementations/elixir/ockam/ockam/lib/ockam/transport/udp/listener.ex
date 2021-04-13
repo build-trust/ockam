@@ -3,7 +3,7 @@ defmodule Ockam.Transport.UDP.Listener do
 
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Telemetry
   alias Ockam.Transport.UDPAddress
   alias Ockam.Wire

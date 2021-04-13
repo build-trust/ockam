@@ -5,7 +5,7 @@ defmodule Ockam.Hub.Service.Forward do
 
   alias Ockam.Hub.Service.Forward.Inbox
   alias Ockam.Hub.Service.Forward.Outbox
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger

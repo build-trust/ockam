@@ -1,7 +1,7 @@
 defmodule Ockam.Router.MessageHandler do
   @moduledoc false
 
-  alias Ockam.Message
+  alias Ockam.Routable
 
   @typedoc """
   A function that accepts an address and a message as arguments.

@@ -11,7 +11,7 @@ defmodule Ockam.Hub.Service.Alias do
 
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger
@@ -48,7 +48,7 @@ defmodule Ockam.Hub.Service.Alias.Forwarder do
   """
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   require Logger

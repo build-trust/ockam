@@ -2,7 +2,7 @@ defmodule Ockam.Transport.TCP.Client do
   @moduledoc false
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Wire
 
   require Logger
