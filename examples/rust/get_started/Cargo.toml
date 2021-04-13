@@ -1,0 +1,8 @@
+[package]
+name = "ockam_get_started"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+ockam = {path = "../../../implementations/rust/ockam/ockam"}

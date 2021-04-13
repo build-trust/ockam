@@ -14,3 +14,4 @@ cmake_install.cmake
 .idea
 .tool-versions
 .adr-dir
+target
