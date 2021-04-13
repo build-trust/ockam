@@ -148,10 +148,10 @@ impl KeyExchanger for Responder {
                 let local_static_secret =
                     self.identity_key.take().ok_or(X3DHError::InvalidState)?;
 
-                let dh1 = vault.ec_diffie_hellman(signed_prekey, eik.as_ref())?;
-                let dh2 = vault.ec_diffie_hellman(&local_static_secret, ek.as_ref())?;
-                let dh3 = vault.ec_diffie_hellman(signed_prekey, ek.as_ref())?;
-                let dh4 = vault.ec_diffie_hellman(one_time_prekey, ek.as_ref())?;
+                let dh1 = vault.ec_diffie_hellman(signed_prekey, &eik)?;
+                let dh2 = vault.ec_diffie_hellman(&local_static_secret, &ek)?;
+                let dh3 = vault.ec_diffie_hellman(signed_prekey, &ek)?;
+                let dh4 = vault.ec_diffie_hellman(one_time_prekey, &ek)?;
                 let mut ikm_bytes = vec![0xFFu8; 32];
                 ikm_bytes.extend_from_slice(vault.secret_export(&dh1)?.as_ref());
                 ikm_bytes.extend_from_slice(vault.secret_export(&dh2)?.as_ref());
@@ -195,7 +195,7 @@ impl KeyExchanger for Responder {
                 )?;
                 let ikb = PublicKey::new(array_ref![plaintext, 0, 32].to_vec());
                 let signature = array_ref![plaintext, 32, 64];
-                vault.verify(signature, eik.as_ref(), &plaintext[..32])?;
+                vault.verify(signature, &eik, &plaintext[..32])?;
 
                 self.completed_key_exchange = Some(CompletedKeyExchange::new(
                     state_hash,

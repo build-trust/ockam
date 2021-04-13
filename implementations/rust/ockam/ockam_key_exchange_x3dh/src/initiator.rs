@@ -92,7 +92,7 @@ impl KeyExchanger for Initiator {
                 // Check the prekey_bundle signature
                 vault.verify(
                     prekey_bundle.signature_prekey.as_ref(),
-                    prekey_bundle.identity_key.as_ref(),
+                    &prekey_bundle.identity_key,
                     prekey_bundle.signed_prekey.as_ref(),
                 )?;
                 let atts = SecretAttributes::new(
@@ -101,13 +101,11 @@ impl KeyExchanger for Initiator {
                     CURVE25519_SECRET_LENGTH,
                 );
                 let esk = vault.secret_generate(atts)?;
-                let dh1 = vault.ec_diffie_hellman(
-                    ephemeral_identity_key,
-                    prekey_bundle.signed_prekey.as_ref(),
-                )?;
-                let dh2 = vault.ec_diffie_hellman(&esk, prekey_bundle.identity_key.as_ref())?;
-                let dh3 = vault.ec_diffie_hellman(&esk, prekey_bundle.signed_prekey.as_ref())?;
-                let dh4 = vault.ec_diffie_hellman(&esk, prekey_bundle.one_time_prekey.as_ref())?;
+                let dh1 = vault
+                    .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.signed_prekey)?;
+                let dh2 = vault.ec_diffie_hellman(&esk, &prekey_bundle.identity_key)?;
+                let dh3 = vault.ec_diffie_hellman(&esk, &prekey_bundle.signed_prekey)?;
+                let dh4 = vault.ec_diffie_hellman(&esk, &prekey_bundle.one_time_prekey)?;
                 let mut ikm_bytes = vec![0xFFu8; 32];
                 ikm_bytes.extend_from_slice(vault.secret_export(&dh1)?.as_ref());
                 ikm_bytes.extend_from_slice(vault.secret_export(&dh2)?.as_ref());
