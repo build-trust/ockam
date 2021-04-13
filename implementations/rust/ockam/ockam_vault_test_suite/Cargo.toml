@@ -1,0 +1,13 @@
+[package]
+name = "ockam_vault_test_suite"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_core"
+
+[dependencies]
+ockam_node = {path = "../ockam_node", version = "0.6.0"}
+ockam_core = {path = "../ockam_core", version = "0.8.0"}
+ockam_vault_core = {path = "../ockam_vault_core", version = "0.3.3"}
