@@ -62,7 +62,7 @@ defmodule Ockam.Transport.TCP.Client do
 
   defp remove_itself_from_onward_route(message, %{address: address}) do
     new_onward_route =
-      case Message.onward_route(message) do
+      case Routable.onward_route(message) do
         [^address | rest] -> rest
         ## TODO: error message?
         other -> other
@@ -76,7 +76,7 @@ defmodule Ockam.Transport.TCP.Client do
   end
 
   defp update_return_route(message, %{address: address}) do
-    return_route = Message.return_route(message)
+    return_route = Routable.return_route(message)
     {:ok, Map.put(message, :return_route, [address | return_route])}
   end
 end

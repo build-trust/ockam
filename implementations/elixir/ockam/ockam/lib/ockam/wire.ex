@@ -17,7 +17,7 @@ defmodule Ockam.Wire do
   Returns `{:ok, iodata}`, if it succeeds.
   Returns `{:error, error}`, if it fails.
   """
-  @callback encode(message :: Message.t()) ::
+  @callback encode(message :: Routable.t()) ::
               {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
 
   @doc """
@@ -27,7 +27,7 @@ defmodule Ockam.Wire do
   Returns `{:error, error}`, if it fails.
   """
   @callback decode(encoded :: binary()) ::
-              {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
+              {:ok, message :: Routable.t()} | {:error, error :: DecodeError.t()}
 
   @doc """
   Formats an error returned by `Ockam.Wire.encode/1` or `Ockam.Wire.decode/1`.
@@ -40,7 +40,7 @@ defmodule Ockam.Wire do
   @doc """
   Encode a message to a binary using the provided encoder.
   """
-  @spec encode(encoder :: atom, message :: Message.t()) ::
+  @spec encode(encoder :: atom, message :: Routable.t()) ::
           {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
 
   def encode(encoder \\ nil, message)
@@ -69,7 +69,7 @@ defmodule Ockam.Wire do
   Decode a message from binary using the provided decoder.
   """
   @spec decode(decoder :: atom, encoded :: binary) ::
-          {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
+          {:ok, message :: Routable.t()} | {:error, error :: DecodeError.t()}
 
   def decode!(decoder, encoded) do
     case decode(decoder, encoded) do

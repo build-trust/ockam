@@ -20,7 +20,7 @@ defmodule Ockam.Router do
   @doc """
   Routes the given message.
   """
-  @spec route(Message.t()) :: :ok | {:error, reason :: any()}
+  @spec route(Routable.t()) :: :ok | {:error, reason :: any()}
 
   def route(message) do
     metadata = %{message: message}
@@ -35,7 +35,7 @@ defmodule Ockam.Router do
   end
 
   defp pick_and_invoke_handler(message) do
-    first_address = message |> Message.onward_route() |> List.first()
+    first_address = message |> Routable.onward_route() |> List.first()
     handler_type = if first_address, do: Address.type(first_address), else: :default
 
     case get_message_handler(handler_type) do

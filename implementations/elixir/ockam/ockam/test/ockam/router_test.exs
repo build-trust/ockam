@@ -22,9 +22,9 @@ defmodule Ockam.Router.Tests.Echo do
   @impl true
   def handle_message(message, state) do
     reply = %{
-      onward_route: Message.return_route(message),
+      onward_route: Routable.return_route(message),
       return_route: [state.address],
-      payload: Message.payload(message)
+      payload: Routable.payload(message)
     }
 
     Logger.info("\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
@@ -48,7 +48,7 @@ defmodule Ockam.Router.Tests.Forwarder do
   def handle_message(message, state) do
     address = state.address
 
-    case Message.onward_route(message) do
+    case Routable.onward_route(message) do
       [^address] ->
         Logger.info("\nMESSAGE BACK: #{inspect(message)}}")
         {:ok, state}
@@ -56,8 +56,8 @@ defmodule Ockam.Router.Tests.Forwarder do
       [^address | rest] ->
         forward = %{
           onward_route: rest,
-          return_route: [address | Message.return_route(message)],
-          payload: Message.payload(message)
+          return_route: [address | Routable.return_route(message)],
+          payload: Routable.payload(message)
         }
 
         Logger.info("\nMESSAGE: #{inspect(message)}\nFORWARD: #{inspect(forward)}")
@@ -78,7 +78,7 @@ defmodule Ockam.Router.Tests.PingPong do
 
   @impl true
   def handle_message(message, state) do
-    payload = Message.payload(message)
+    payload = Routable.payload(message)
 
     response_payload =
       case payload do
@@ -91,7 +91,7 @@ defmodule Ockam.Router.Tests.PingPong do
       end
 
     reply = %{
-      onward_route: Message.return_route(message),
+      onward_route: Routable.return_route(message),
       return_route: [state.address],
       payload: response_payload
     }

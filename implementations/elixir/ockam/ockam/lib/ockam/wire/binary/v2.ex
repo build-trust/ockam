@@ -38,13 +38,13 @@ defmodule Ockam.Wire.Binary.V2 do
   Returns `{:ok, iodata}`, if it succeeds.
   Returns `{:error, error}`, if it fails.
   """
-  @spec encode(message :: Message.t()) ::
+  @spec encode(message :: Routable.t()) ::
           {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
 
   def encode(message) do
-    onward_route = Message.onward_route(message)
-    return_route = Message.return_route(message)
-    payload = Message.payload(message)
+    onward_route = Routable.onward_route(message)
+    return_route = Routable.return_route(message)
+    payload = Routable.payload(message)
 
     with {:ok, encoded_onward_route} <- Route.encode(onward_route),
          {:ok, encoded_return_route} <- Route.encode(return_route),
@@ -69,7 +69,7 @@ defmodule Ockam.Wire.Binary.V2 do
   Returns `{:error, error}`, if it fails.
   """
   @spec decode(encoded :: binary()) ::
-          {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
+          {:ok, message :: Routable.t()} | {:error, error :: DecodeError.t()}
 
   def decode(encoded) do
     with {:ok, %{onward_route: onward_route, return_route: return_route} = decoded, _} <-

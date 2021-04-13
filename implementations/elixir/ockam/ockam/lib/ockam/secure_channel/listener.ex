@@ -36,9 +36,9 @@ defmodule Ockam.SecureChannel.Listener do
   end
 
   defp update_routes(message, channel_options) do
-    onward_route = Message.onward_route(message)
-    return_route = Message.return_route(message)
-    payload = Message.payload(message)
+    onward_route = Routable.onward_route(message)
+    return_route = Routable.return_route(message)
+    payload = Routable.payload(message)
 
     {_address, onward_route} = List.pop_at(onward_route, length(onward_route) - 1)
     message = %{onward_route: onward_route, return_route: return_route, payload: payload}

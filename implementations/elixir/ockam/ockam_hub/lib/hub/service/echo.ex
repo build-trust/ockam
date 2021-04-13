@@ -11,9 +11,9 @@ defmodule Ockam.Hub.Service.Echo do
   @impl true
   def handle_message(message, state) do
     reply = %{
-      onward_route: Message.return_route(message),
+      onward_route: Routable.return_route(message),
       return_route: [state.address],
-      payload: Message.payload(message)
+      payload: Routable.payload(message)
     }
 
     Logger.info("\nECHO\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")

@@ -84,16 +84,16 @@ if Code.ensure_loaded?(:ranch) do
 
     defp create_outgoing_message(message) do
       %{
-        onward_route: Message.onward_route(message),
-        payload: Message.payload(message),
-        return_route: Message.return_route(message)
+        onward_route: Routable.onward_route(message),
+        payload: Routable.payload(message),
+        return_route: Routable.return_route(message)
       }
     end
 
     defp get_destination_and_onward_route(message, address) do
       destination_and_onward_route =
         message
-        |> Message.onward_route()
+        |> Routable.onward_route()
         |> Enum.drop_while(fn a -> a === address end)
         |> List.pop_at(0)
 
@@ -250,7 +250,7 @@ if Code.ensure_loaded?(:ranch) do
     defp set_onward_route(message, address) do
       onward_route =
         message
-        |> Message.onward_route()
+        |> Routable.onward_route()
         |> Enum.drop_while(fn a -> a === address end)
 
       {:ok, %{message | onward_route: onward_route}}
