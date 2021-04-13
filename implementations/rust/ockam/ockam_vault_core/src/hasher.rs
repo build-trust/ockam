@@ -16,5 +16,5 @@ pub trait Hasher: Zeroize {
         info: &[u8],
         ikm: Option<&Secret>,
         output_attributes: SmallBuffer<SecretAttributes>,
-    ) -> ockam_core::Result<SmallBuffer<Secret>>;
+    ) -> Result<SmallBuffer<Secret>>;
 }
