@@ -43,7 +43,7 @@ impl Worker for TcpRecvWorker {
             // First read a message length header...
             let len = match self.rx.read_u16().await {
                 Ok(len) => len,
-                Err(e) => {
+                Err(_e) => {
                     info!(
                         "Connection to peer '{}' was closed; dropping stream",
                         self.peer_addr
