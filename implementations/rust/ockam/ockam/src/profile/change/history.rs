@@ -166,7 +166,7 @@ impl ProfileChangeHistory {
         existing_events: &[ProfileChangeEvent],
         new_change_event: &ProfileChangeEvent,
         vault: &mut dyn ProfileVault,
-    ) -> ockam_core::Result<()> {
+    ) -> ockam_core::Result<bool> {
         let changes = new_change_event.changes();
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
 
@@ -187,7 +187,7 @@ impl ProfileChangeHistory {
                     };
                     let root_public_key =
                         Self::get_current_profile_update_public_key(events_to_look)?;
-                    vault.verify(s.data(), root_public_key.as_ref(), event_id.as_ref())?;
+                    vault.verify(s.data(), &root_public_key, event_id.as_ref())?;
                 }
             },
         }
@@ -200,9 +200,11 @@ impl ProfileChangeHistory {
                         serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
-                    vault
-                        .verify(c.self_signature(), c.data().public_key(), &data_hash)
-                        .is_ok()
+                    vault.verify(
+                        c.self_signature(),
+                        &PublicKey::new(c.data().public_key().into()),
+                        &data_hash,
+                    )?
                 }
                 RotateKey(c) => {
                     // Should have 1 self signature and 1 prev signature
@@ -210,10 +212,11 @@ impl ProfileChangeHistory {
                         serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
-                    if vault
-                        .verify(c.self_signature(), c.data().public_key(), &data_hash)
-                        .is_err()
-                    {
+                    if !vault.verify(
+                        c.self_signature(),
+                        &PublicKey::new(c.data().public_key().into()),
+                        &data_hash,
+                    )? {
                         false
                     } else {
                         let prev_key_event =
@@ -226,9 +229,7 @@ impl ProfileChangeHistory {
                         let public_key =
                             ProfileChangeHistory::get_change_public_key(prev_key_change)?;
 
-                        vault
-                            .verify(c.prev_signature(), public_key.as_ref(), &data_hash)
-                            .is_ok()
+                        vault.verify(c.prev_signature(), &public_key, &data_hash)?
                     }
                 }
             } {
@@ -236,7 +237,7 @@ impl ProfileChangeHistory {
             }
         }
 
-        Ok(())
+        Ok(true)
     }
 
     /// Check consistency of events that are been added

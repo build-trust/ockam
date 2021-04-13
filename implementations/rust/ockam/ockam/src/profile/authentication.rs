@@ -43,15 +43,11 @@ impl Authentication {
         responder_public_key: &PublicKey,
         proof: &[u8],
         vault: &mut dyn ProfileVault,
-    ) -> ockam_core::Result<()> {
+    ) -> ockam_core::Result<bool> {
         let proof: AuthenticationProof =
             serde_bare::from_slice(proof).map_err(|_| OckamError::BareError)?;
 
-        vault.verify(
-            &proof.signature(),
-            responder_public_key.as_ref(),
-            channel_state,
-        )
+        vault.verify(&proof.signature(), &responder_public_key, channel_state)
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::OckamError;
 use ockam_vault_core::{Hasher, KeyIdVault, PublicKey, Secret, SecretVault, Signer, Verifier};
-use std::ops::{Deref, DerefMut};
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 mod authentication;
@@ -60,7 +60,7 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///
 /// let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes)?;
 ///
-/// profile.verify()?;
+/// let verified = profile.verify()?;
 /// # Ok::<(), ockam_core::Error>(())
 /// ```
 ///
@@ -105,7 +105,9 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///
 ///     # let proof_alice = [0u8; 32];
 ///     // Bob verifies Alice
-///     bob.verify_authentication_proof(&key_agreement_hash, &alice_id, &proof_alice)
+///     let verified = bob.verify_authentication_proof(&key_agreement_hash, &alice_id, &proof_alice)?;
+///
+///     Ok(())
 /// }
 /// ```
 ///
@@ -242,7 +244,7 @@ impl Profile {
     ) -> ockam_core::Result<()> {
         let event = {
             let mut vault = self.vault.lock().unwrap();
-            let root_secret = self.get_root_secret(vault.deref())?;
+            let root_secret = self.get_root_secret(vault.deref_mut())?;
             self.create_key_event(
                 key_attributes,
                 attributes,
@@ -261,7 +263,7 @@ impl Profile {
     ) -> ockam_core::Result<()> {
         let event = {
             let mut vault = self.vault.lock().unwrap();
-            let root_secret = self.get_root_secret(vault.deref())?;
+            let root_secret = self.get_root_secret(vault.deref_mut())?;
             self.rotate_key_event(key_attributes, attributes, &root_secret, vault.deref_mut())?
         };
         self.update_no_verification(event)
@@ -271,7 +273,11 @@ impl Profile {
     pub fn get_secret_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<Secret> {
         let event =
             ProfileChangeHistory::find_last_key_event(self.change_events(), key_attributes)?;
-        Self::get_secret_key_from_event(key_attributes, event, self.vault.lock().unwrap().deref())
+        Self::get_secret_key_from_event(
+            key_attributes,
+            event,
+            self.vault.lock().unwrap().deref_mut(),
+        )
     }
 
     /// Get [`PublicKey`]. Key is uniquely identified by label in [`KeyAttributes`]
@@ -315,7 +321,10 @@ impl Profile {
 }
 
 impl Profile {
-    pub(crate) fn get_root_secret(&self, vault: &dyn ProfileVault) -> ockam_core::Result<Secret> {
+    pub(crate) fn get_root_secret(
+        &self,
+        vault: &mut dyn ProfileVault,
+    ) -> ockam_core::Result<Secret> {
         let public_key =
             ProfileChangeHistory::get_current_profile_update_public_key(self.change_events())?;
 
@@ -326,7 +335,7 @@ impl Profile {
     pub(crate) fn get_secret_key_from_event(
         key_attributes: &KeyAttributes,
         event: &ProfileChangeEvent,
-        vault: &dyn ProfileVault,
+        vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<Secret> {
         let public_key = ProfileChangeHistory::get_public_key_from_event(key_attributes, event)?;
 
@@ -429,7 +438,7 @@ impl Profile {
     ) -> ockam_core::Result<Vec<u8>> {
         let mut vault = self.vault.lock().unwrap();
 
-        let root_secret = self.get_root_secret(vault.deref())?;
+        let root_secret = self.get_root_secret(vault.deref_mut())?;
 
         Authentication::generate_proof(channel_state, &root_secret, vault.deref_mut())
     }
@@ -441,7 +450,7 @@ impl Profile {
         channel_state: &[u8],
         responder_contact_id: &ProfileIdentifier,
         proof: &[u8],
-    ) -> ockam_core::Result<()> {
+    ) -> ockam_core::Result<bool> {
         let contact = self
             .get_contact(responder_contact_id)
             .ok_or(OckamError::ContactNotFound)?;

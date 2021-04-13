@@ -9,7 +9,6 @@ use ockam_vault_core::{
 };
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
-use std::ops::Deref;
 
 big_array! { BigArray; }
 
@@ -88,7 +87,7 @@ impl Profile {
             ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes)?;
 
         let last_key_in_chain =
-            Self::get_secret_key_from_event(&key_attributes, last_event_in_chain, vault.deref())?;
+            Self::get_secret_key_from_event(&key_attributes, last_event_in_chain, vault)?;
 
         // TODO: Should be customisable
         let secret_attributes = SecretAttributes::new(
