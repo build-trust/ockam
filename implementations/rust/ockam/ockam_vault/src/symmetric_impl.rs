@@ -109,7 +109,8 @@ mod tests {
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, message.to_vec());
-        ciphertext[0] ^= ciphertext[1];
+        ciphertext[0] ^= 0xb4;
+        ciphertext[1] ^= 0xdc;
         let res =
             vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
         assert!(res.is_err());
