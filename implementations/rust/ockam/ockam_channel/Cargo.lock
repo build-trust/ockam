@@ -478,7 +478,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -487,7 +487,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
