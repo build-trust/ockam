@@ -15,6 +15,6 @@ pub fn sign(vault: &mut (impl Signer + Verifier + SecretVault)) {
     assert!(res.is_ok());
     let pubkey = vault.secret_public_key_get(&secret).unwrap();
     let signature = res.unwrap();
-    let res = vault.verify(&signature, &pubkey, b"hello world!");
-    assert!(res.is_ok());
+    let res = vault.verify(&signature, &pubkey, b"hello world!").unwrap();
+    assert!(res);
 }
