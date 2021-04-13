@@ -47,8 +47,18 @@ impl Context {
     }
 
     /// Return the primary worker address
-    pub fn primary_address(&self) -> Address {
+    pub fn address(&self) -> Address {
         self.address.first().clone()
+    }
+
+    /// Return all addresses of this worker
+    pub fn aliases(&self) -> AddressSet {
+        self.address
+            .clone()
+            .into_iter()
+            .skip(1)
+            .collect::<Vec<_>>()
+            .into()
     }
 
     /// Create a new context without spawning a full worker
@@ -154,8 +164,7 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address(route, msg, self.primary_address())
-            .await
+        self.send_from_address(route, msg, self.address()).await
     }
 
     /// Send a message via a fully qualified route using specific Worker address
@@ -197,7 +206,7 @@ impl Context {
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
         let mut data = TransportMessage::v1(route.clone(), payload);
-        data.return_route.modify().append(self.primary_address());
+        data.return_route.modify().append(self.address());
 
         // Pack transport message into relay message wrapper
         let msg = if needs_wrapping {

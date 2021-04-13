@@ -13,7 +13,7 @@ impl Worker for MyRouter {
         println!("Received: {}", msg);
         let mut msg = msg.into_transport_message();
         msg.onward_route.step()?;
-        msg.return_route.modify().prepend(ctx.primary_address());
+        msg.return_route.modify().prepend(ctx.address());
         ctx.forward(msg).await
     }
 }

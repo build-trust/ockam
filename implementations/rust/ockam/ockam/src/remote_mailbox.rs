@@ -56,7 +56,7 @@ impl<T: Message> RemoteMailbox<T> {
         hub_addr: SocketAddr,
         destination: A,
     ) -> Result<RemoteMailboxInfo> {
-        let remote_mailbox = Self::new(hub_addr, destination.into(), ctx.primary_address());
+        let remote_mailbox = Self::new(hub_addr, destination.into(), ctx.address());
 
         let worker_address: Address = random();
         ctx.start_worker(worker_address, remote_mailbox).await?;
@@ -95,7 +95,7 @@ impl<T: Message> Worker for RemoteMailbox<T> {
             RemoteMailboxInfo {
                 forwarding_route: route,
                 remote_address: address,
-                worker_address: ctx.primary_address(),
+                worker_address: ctx.address(),
             },
         )
         .await?;

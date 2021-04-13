@@ -19,6 +19,11 @@ impl AddressSet {
         self.0.iter()
     }
 
+    /// Turn this set into an iterator
+    pub fn into_iter(self) -> impl Iterator<Item = Address> {
+        self.0.into_iter()
+    }
+
     /// Take the first address of the set.
     pub fn first(&self) -> Address {
         self.0.first().cloned().unwrap()

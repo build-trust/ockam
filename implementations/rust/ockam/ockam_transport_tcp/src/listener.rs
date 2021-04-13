@@ -65,6 +65,6 @@ impl Worker for TcpListenWorker {
             .await?;
         }
 
-        ctx.stop_worker(ctx.primary_address()).await
+        ctx.stop_worker(ctx.address()).await
     }
 }

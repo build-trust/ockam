@@ -56,7 +56,7 @@ impl Worker for TcpSendWorker {
 
         if let Err(_) = self.tx.write(msg.as_slice()).await {
             warn!("Failed to send message to peer {}", self.peer);
-            ctx.stop_worker(ctx.primary_address()).await?;
+            ctx.stop_worker(ctx.address()).await?;
         }
 
         Ok(())

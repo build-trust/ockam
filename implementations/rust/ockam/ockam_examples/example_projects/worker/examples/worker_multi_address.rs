@@ -8,12 +8,12 @@ impl Worker for MultiAddressWorker {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        println!("Worker main address: '{}'", ctx.primary_address());
+        println!("Worker main address: '{}'", ctx.address());
         Ok(())
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        println!("Addr '{}' received: '{}'", ctx.primary_address(), msg);
+        println!("Addr '{}' received: '{}'", ctx.address(), msg);
         Ok(())
     }
 }

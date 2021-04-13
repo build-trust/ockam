@@ -51,7 +51,7 @@ impl Worker for TcpRouter {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         trace!("Registering TCP router for type = 1");
-        ctx.register(1, ctx.primary_address()).await?;
+        ctx.register(1, ctx.address()).await?;
         Ok(())
     }
 

@@ -92,7 +92,7 @@ impl Worker for XInitiator {
                 .await?;
 
                 if should_stop {
-                    ctx.stop_worker(ctx.primary_address()).await?;
+                    ctx.stop_worker(ctx.address()).await?;
                 }
             }
         }

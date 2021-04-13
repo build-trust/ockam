@@ -34,7 +34,7 @@ impl Worker for Player {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        println!("Starting player {}", ctx.primary_address());
+        println!("Starting player {}", ctx.address());
         Ok(())
     }
 

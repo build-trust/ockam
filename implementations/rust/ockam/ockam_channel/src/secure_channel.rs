@@ -92,7 +92,7 @@ impl SecureChannel {
             route.into(),
             address_remote.clone(),
             address_local.clone(),
-            Some(Route::new().append(ctx.primary_address()).into()),
+            Some(Route::new().append(ctx.address()).into()),
         );
 
         ctx.start_worker(vec![address_remote, address_local.clone()], channel)
