@@ -619,7 +619,7 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "serde-big-array",
- "serde_bare",
+ "serde_bare 0.4.0",
  "serde_json",
  "sha2",
  "signature_bbs_plus",
@@ -642,7 +642,7 @@ dependencies = [
  "ockam_vault_core",
  "rand 0.8.3",
  "serde",
- "serde_bare",
+ "serde_bare 0.3.0",
  "tracing",
 ]
 
@@ -656,7 +656,7 @@ dependencies = [
  "hex",
  "rand 0.8.3",
  "serde",
- "serde_bare",
+ "serde_bare 0.4.0",
 ]
 
 [[package]]
@@ -981,6 +981,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bare"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1159,9 +1168,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134af885d758d645f0f0505c9a8b3f9bf8a348fd822e112ab5248138348f1722"
+checksum = "83f0c8e7c0addab50b663055baf787d0af7f413a46e6e7fb9559a4e4db7137a5"
 dependencies = [
  "autocfg",
  "bytes",
