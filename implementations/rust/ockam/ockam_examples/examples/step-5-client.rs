@@ -1,5 +1,5 @@
 use ockam::{Context, Result, Route, SecureChannel, SecureChannelMessage};
-use ockam_transport_tcp::{self as tcp, TcpRouter};
+use ockam_transport_tcp::{self as tcp, TcpRouter, TCP};
 use std::net::SocketAddr;
 
 const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
@@ -19,7 +19,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let channel_info = SecureChannel::create(
         &mut ctx,
         Route::new()
-            .append_t(1, remote_node)
+            .append_t(TCP, remote_node)
             .append(echo_service)
             .append(XX_CHANNEL_LISTENER_ADDRESS),
     )

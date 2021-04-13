@@ -4,7 +4,7 @@ use ockam::{
 };
 
 use credentials::{example_schema, issuer_on_or_default, CredentialMessage, DEFAULT_VERIFIER_PORT};
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpTransport, TCP};
 use structopt::StructOpt;
 
 struct Verifier {
@@ -24,7 +24,7 @@ impl Worker for Verifier {
 
         // Send a New Credential Connection message
         ctx.send(
-            Route::new().append_t(1, issuer).append("issuer"),
+            Route::new().append_t(TCP, issuer).append("issuer"),
             CredentialMessage::CredentialConnection,
         )
         .await

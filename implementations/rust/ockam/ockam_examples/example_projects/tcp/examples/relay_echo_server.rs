@@ -2,7 +2,7 @@
 extern crate tracing;
 
 use ockam::{async_worker, Context, Result, Route, Routed, Worker};
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpTransport, TCP};
 
 fn get_peer_addr() -> String {
     std::env::args()
@@ -29,7 +29,7 @@ impl Worker for ProxiedWorker {
         // Register this service with the hub's forwarding service
         ctx.send(
             Route::new()
-                .append_t(1, &self.peer)
+                .append_t(TCP, &self.peer)
                 .append("forwarding_service"),
             String::from("register"),
         )

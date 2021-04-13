@@ -2,7 +2,7 @@
 extern crate tracing;
 
 use ockam::{Context, Result, Route};
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpTransport, TCP};
 
 fn get_peer_addr() -> String {
     std::env::args()
@@ -22,7 +22,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Send a message to the remote
     ctx.send(
-        Route::new().append_t(1, &peer_addr).append("echo_service"),
+        Route::new()
+            .append_t(TCP, &peer_addr)
+            .append("echo_service"),
         String::from("Hello you over there!"),
     )
     .await?;

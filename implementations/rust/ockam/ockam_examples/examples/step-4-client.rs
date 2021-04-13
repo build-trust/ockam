@@ -1,5 +1,5 @@
 use ockam::{Context, Result, Route};
-use ockam_transport_tcp::{self as tcp, TcpRouter};
+use ockam_transport_tcp::{self as tcp, TcpRouter, TCP};
 use std::net::SocketAddr;
 
 #[ockam::node]
@@ -15,7 +15,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     router.register(&connection).await?;
 
     ctx.send_message(
-        Route::new().append_t(1, remote_node).append(echo_service),
+        Route::new().append_t(TCP, remote_node).append(echo_service),
         "Hello Ockam!".to_string(),
     )
     .await?;

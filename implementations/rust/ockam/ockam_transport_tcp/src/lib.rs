@@ -41,6 +41,9 @@ use std::net::SocketAddr;
 /// An API layer object to control Ockam TCP transports
 pub struct TcpTransport;
 
+/// TCP address type constant
+pub const TCP: u8 = 1;
+
 impl TcpTransport {
     /// Create a TCP transport and establish an outgoing connection
     pub async fn create<S>(ctx: &Context, peer: S) -> Result<WorkerPair>
