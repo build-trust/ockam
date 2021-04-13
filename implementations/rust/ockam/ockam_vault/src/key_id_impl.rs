@@ -4,7 +4,7 @@ use ockam_core::hex::encode;
 use ockam_vault_core::{Hasher, KeyId, KeyIdVault, PublicKey, Secret};
 
 impl KeyIdVault for SoftwareVault {
-    fn get_secret_by_key_id(&self, key_id: &str) -> ockam_core::Result<Secret> {
+    fn get_secret_by_key_id(&mut self, key_id: &str) -> ockam_core::Result<Secret> {
         let index = self
             .entries
             .iter()
@@ -21,7 +21,10 @@ impl KeyIdVault for SoftwareVault {
         Ok(Secret::new(*index))
     }
 
-    fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> ockam_core::Result<KeyId> {
+    fn compute_key_id_for_public_key(
+        &mut self,
+        public_key: &PublicKey,
+    ) -> ockam_core::Result<KeyId> {
         let key_id = self.sha256(public_key.as_ref())?;
         Ok(encode(key_id))
     }
