@@ -20,6 +20,13 @@ pub struct Context {
     pub(crate) mailbox: Mailbox,
 }
 
+impl Context {
+    /// Return runtime clone
+    pub fn runtime(&self) -> Arc<Runtime> {
+        self.rt.clone()
+    }
+}
+
 impl Drop for Context {
     fn drop(&mut self) {
         let addr = self.address.first();
