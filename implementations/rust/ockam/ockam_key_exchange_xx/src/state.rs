@@ -4,7 +4,7 @@ use ockam_vault_core::{
     PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use std::ops::{Deref, DerefMut};
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use zeroize::Zeroize;
 
@@ -54,7 +54,7 @@ impl DhState {
     fn dh(
         &mut self,
         secret_handle: &Secret,
-        public_key: &[u8],
+        public_key: &PublicKey,
         vault: &mut dyn XXVault,
     ) -> ockam_core::Result<()> {
         let ck = self.ck.as_ref().ok_or(XXError::InvalidState)?;
@@ -202,7 +202,7 @@ impl State {
     fn mix_hash<B: AsRef<[u8]>>(
         &self,
         data: B,
-        vault: &dyn XXVault,
+        vault: &mut dyn XXVault,
     ) -> ockam_core::Result<[u8; 32]> {
         let h = &self.h.ok_or(XXError::InvalidState)?;
 
@@ -318,9 +318,9 @@ impl State {
             .clone();
 
         let payload = payload.as_ref();
-        let vault = self.vault.lock().unwrap();
-        self.h = Some(self.mix_hash(ephemeral_public_key.as_ref(), vault.deref())?);
-        self.h = Some(self.mix_hash(payload, vault.deref())?);
+        let mut vault = self.vault.lock().unwrap();
+        self.h = Some(self.mix_hash(ephemeral_public_key.as_ref(), vault.deref_mut())?);
+        self.h = Some(self.mix_hash(payload, vault.deref_mut())?);
 
         let mut output = ephemeral_public_key.as_ref().to_vec();
         output.extend_from_slice(payload);
@@ -350,15 +350,15 @@ impl State {
         let encrypted_payload_and_tag = &message[index_r..];
 
         let mut vault = self.vault.lock().unwrap();
-        self.h = Some(self.mix_hash(re.as_ref(), vault.deref())?);
+        self.h = Some(self.mix_hash(re.as_ref(), vault.deref_mut())?);
         self.dh_state
-            .dh(&ephemeral_secret_handle, re.as_ref(), vault.deref_mut())?;
+            .dh(&ephemeral_secret_handle, &re, vault.deref_mut())?;
         self.remote_ephemeral_public_key = Some(re);
         let (rs, h) = self.decrypt_and_mix_hash(encrypted_rs_and_tag, vault.deref_mut())?;
         self.h = Some(h);
         let rs = PublicKey::new(rs);
         self.dh_state
-            .dh(&ephemeral_secret_handle, rs.as_ref(), vault.deref_mut())?;
+            .dh(&ephemeral_secret_handle, &rs, vault.deref_mut())?;
         self.remote_static_public_key = Some(rs);
         self.nonce = 0;
 
@@ -392,7 +392,7 @@ impl State {
         self.h = Some(h);
         self.dh_state.dh(
             &static_secret,
-            remote_ephemeral_public_key.as_ref(),
+            &remote_ephemeral_public_key,
             vault.deref_mut(),
         )?;
         self.nonce = 0;
@@ -428,9 +428,9 @@ impl State {
 
         let re = &message_1[..public_key_size];
         let re = PublicKey::new(re.to_vec());
-        let vault = self.vault.lock().unwrap();
-        self.h = Some(self.mix_hash(re.as_ref(), vault.deref())?);
-        self.h = Some(self.mix_hash(&message_1[public_key_size..], vault.deref())?);
+        let mut vault = self.vault.lock().unwrap();
+        self.h = Some(self.mix_hash(re.as_ref(), vault.deref_mut())?);
+        self.h = Some(self.mix_hash(&message_1[public_key_size..], vault.deref_mut())?);
         self.remote_ephemeral_public_key = Some(re);
         Ok(message_1[public_key_size..].to_vec())
     }
@@ -456,7 +456,7 @@ impl State {
         self.h = Some(self.mix_hash(ephemeral_public.as_ref(), vault.deref_mut())?);
         self.dh_state.dh(
             &ephemeral_secret,
-            remote_ephemeral_public_key.as_ref(),
+            &remote_ephemeral_public_key,
             vault.deref_mut(),
         )?;
 
@@ -465,7 +465,7 @@ impl State {
         self.h = Some(h);
         self.dh_state.dh(
             &static_secret,
-            remote_ephemeral_public_key.as_ref(),
+            &remote_ephemeral_public_key,
             vault.deref_mut(),
         )?;
         self.nonce = 0;
@@ -500,8 +500,7 @@ impl State {
         )?;
         self.h = Some(h);
         let rs = PublicKey::new(rs);
-        self.dh_state
-            .dh(ephemeral_secret, rs.as_ref(), vault.deref_mut())?;
+        self.dh_state.dh(ephemeral_secret, &rs, vault.deref_mut())?;
         self.nonce = 0;
         let (payload, h) = self.decrypt_and_mix_hash(
             &message_3[public_key_size + AES_GCM_TAGSIZE..],
