@@ -1,4 +1,4 @@
-# 5. Rust Crate Publishing Checklist
+# 6. Rust Crate Publishing Checklist
 
 Date: 2021-04-06
 
