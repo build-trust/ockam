@@ -147,7 +147,14 @@ impl<M: Message + Display> Display for Routed<M> {
 /// This is especially useful for implementing middleware workers
 /// which need access to the route information of a message, without
 /// understanding its payload.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Any;
+
+impl Display for Any {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Any Message")
+    }
+}
 
 impl Message for Any {
     fn encode(&self) -> Result<Encoded> {
