@@ -32,3 +32,7 @@ rand = "0.7"
 sha2 = "0.9"
 x25519-dalek = "1.0"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
+
+[dev-dependencies]
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.1.0" }
+ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.1.0" }

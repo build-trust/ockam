@@ -83,36 +83,11 @@ impl SymmetricVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
-    use ockam_vault_core::{
-        SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
-        AES128_SECRET_LENGTH,
-    };
-
-    #[test]
-    fn encryption() {
-        let mut vault = SoftwareVault::default();
-        let message = b"Ockam Test Message";
-        let nonce = b"TestingNonce";
-        let aad = b"Extra payload data";
-        let attributes = SecretAttributes::new(
-            SecretType::Aes,
-            SecretPersistence::Ephemeral,
-            AES128_SECRET_LENGTH,
-        );
-
-        let ctx = &vault.secret_generate(attributes).unwrap();
-        let res = vault.aead_aes_gcm_encrypt(ctx, message.as_ref(), nonce.as_ref(), aad.as_ref());
-        assert!(res.is_ok());
-        let mut ciphertext = res.unwrap();
-        let res =
-            vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
-        assert!(res.is_ok());
-        let plaintext = res.unwrap();
-        assert_eq!(plaintext, message.to_vec());
-        ciphertext[0] ^= 0xb4;
-        ciphertext[1] ^= 0xdc;
-        let res =
-            vault.aead_aes_gcm_decrypt(ctx, ciphertext.as_slice(), nonce.as_ref(), aad.as_ref());
-        assert!(res.is_err());
+    use ockam_vault_test_attribute::*;
+    fn new_vault() -> SoftwareVault {
+        SoftwareVault::default()
     }
+
+    #[vault_test]
+    fn encryption() {}
 }
