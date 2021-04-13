@@ -11,6 +11,5 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 proc-macro = true
 
 [dependencies]
-ockam_node = {path = "../ockam_node", version = "0.6.0"}
 quote = "1.0.9"
 syn = {version = "1.0", features = ["full", "extra-traits"]}
