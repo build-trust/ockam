@@ -16,7 +16,6 @@ pub enum VaultError {
     InvalidPrivateKeyLen,
     AeadAesGcmEncrypt,
     AeadAesGcmDecrypt,
-    InvalidSignature,
     HkdfExpandError,
     SecretNotFound,
 }

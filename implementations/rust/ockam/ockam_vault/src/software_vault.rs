@@ -26,7 +26,9 @@ use zeroize::Zeroize;
 ///     let data = "Very important stuff".as_bytes();
 ///
 ///     let signature = vault.sign(&secret, data)?;
-///     vault.verify(&signature, public.as_ref(), data)
+///     assert!(vault.verify(&signature, &public, data)?);
+///
+///     Ok(())
 /// }
 /// ```
 #[derive(Debug)]
