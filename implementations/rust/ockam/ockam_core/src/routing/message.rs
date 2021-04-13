@@ -1,4 +1,10 @@
-use crate::{lib::Vec, Address, Route};
+use crate::{
+    lib::{
+        fmt::{self, Display, Formatter},
+        Vec,
+    },
+    Address, Route,
+};
 use serde::{Deserialize, Serialize};
 
 /// A generic transport message
@@ -31,6 +37,16 @@ impl TransportMessage {
             return_route: Route::new().into(),
             payload,
         }
+    }
+}
+
+impl Display for TransportMessage {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Message (onward route: {}, return route: {})",
+            self.onward_route, self.return_route
+        )
     }
 }
 
