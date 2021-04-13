@@ -274,7 +274,7 @@ checksum = "b7282d924be3275cec7f6756ff4121987bc6481325397dde6ba3e7802b1a8b1c"
 
 [[package]]
 name = "ockam_core"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -469,9 +469,9 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01db2255aa98fb93ad74272d8b2e6fd4851860e733e944b9439cf148127164b2"
+checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
 dependencies = [
  "serde",
 ]
