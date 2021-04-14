@@ -132,6 +132,11 @@ impl Router {
         reply: &Sender<NodeReplyResult>,
     ) -> Result<()> {
         trace!("Starting new worker '{}'", addrs.first());
+
+        if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
+            trace!("{:#?}", self.internal);
+        }
+
         let sender = Arc::new(sender);
         addrs.iter().for_each(|addr| {
             self.internal.insert(addr.clone(), Arc::clone(&sender));
