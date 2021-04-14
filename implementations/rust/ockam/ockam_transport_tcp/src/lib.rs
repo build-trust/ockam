@@ -35,37 +35,51 @@ pub use receiver::TcpRecvWorker;
 pub use router::{TcpRouter, TcpRouterHandle};
 pub use sender::TcpSendWorker;
 
-use ockam::{Context, Result};
+use ockam::{Address, Context, Result};
 use std::net::SocketAddr;
 
 /// An API layer object to control Ockam TCP transports
-pub struct TcpTransport;
+pub struct TcpTransport<'ctx> {
+    ctx: &'ctx Context,
+    router: TcpRouterHandle<'ctx>,
+}
 
 /// TCP address type constant
 pub const TCP: u8 = 1;
 
-impl TcpTransport {
+fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
+    Ok(s.into().parse().map_err(|_| TcpError::InvalidAddress)?)
+}
+
+impl<'ctx> TcpTransport<'ctx> {
     /// Create a TCP transport and establish an outgoing connection
-    pub async fn create<S>(ctx: &Context, peer: S) -> Result<WorkerPair>
-    where
-        S: Into<String>,
-    {
-        let address: SocketAddr = peer.into().parse().map_err(|_| TcpError::InvalidAddress)?;
-        init::start_connection(ctx, address).await
+    pub async fn create<S: Into<String>>(
+        ctx: &'ctx Context,
+        peer: S,
+    ) -> Result<TcpTransport<'ctx>> {
+        let addr = Address::random(0);
+        let peer = parse_socket_addr(peer)?;
+
+        let router = TcpRouter::register(ctx, addr.clone()).await?;
+        init::start_connection(ctx, &router, peer).await?;
+
+        Ok(Self { ctx, router })
+    }
+
+    /// Establish an outgoing TCP connection on an existing transport
+    pub async fn connect<S: Into<String>>(&self, peer: S) -> Result<()> {
+        let peer = parse_socket_addr(peer)?;
+        init::start_connection(&self.ctx, &self.router, peer).await?;
+        Ok(())
     }
 
     /// Create a TCP transport and listen for incoming connections
-    pub async fn create_listener<'c, S>(
-        ctx: &'c Context,
+    pub async fn create_listener<S: Into<String>>(
+        ctx: &'ctx Context,
         bind_addr: S,
-    ) -> Result<TcpRouterHandle<'c>>
-    where
-        S: Into<String>,
-    {
-        let address: SocketAddr = bind_addr
-            .into()
-            .parse()
-            .map_err(|_| TcpError::InvalidAddress)?;
-        TcpRouter::bind(ctx, address).await
+    ) -> Result<TcpTransport<'ctx>> {
+        let addr = parse_socket_addr(bind_addr)?;
+        let router = TcpRouter::bind(ctx, addr).await?;
+        Ok(Self { ctx, router })
     }
 }

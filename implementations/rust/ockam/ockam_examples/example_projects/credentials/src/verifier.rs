@@ -88,12 +88,10 @@ async fn main(ctx: Context) -> Result<()> {
 
     let local_tcp = format!("0.0.0.0:{}", port);
 
-    let router = TcpTransport::create_listener(&ctx, local_tcp).await?;
-
     let issuer = issuer_on_or_default(args.issuer);
-    let pair = TcpTransport::create(&ctx, &issuer).await?;
 
-    router.register(&pair).await?;
+    let tcp = TcpTransport::create_listener(&ctx, local_tcp).await?;
+    tcp.connect(&issuer).await?;
 
     ctx.start_worker(
         "verifier",

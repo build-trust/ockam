@@ -1,6 +1,6 @@
 use crate::{
     atomic::{self, ArcBool},
-    TcpError, TcpRecvWorker, TcpRouter, TcpSendWorker,
+    TcpError, TcpRecvWorker, TcpRouterHandle, TcpSendWorker,
 };
 use ockam::{Address, Context, Result};
 use std::net::SocketAddr;
@@ -88,12 +88,14 @@ impl WorkerPair {
 /// One worker handles outgoing messages, while another handles
 /// incoming messages.  The local worker address is chosen based on
 /// the peer the worker is meant to be connected to.
-pub async fn start_connection<P>(ctx: &Context, peer: P) -> Result<WorkerPair>
+pub async fn start_connection<P>(
+    ctx: &Context,
+    router: &TcpRouterHandle<'_>,
+    peer: P,
+) -> Result<WorkerPair>
 where
     P: Into<SocketAddr>,
 {
-    let router = TcpRouter::register_or_get(ctx).await?;
-
     let peer = peer.into();
     let pair = WorkerPair::start(ctx, peer).await?;
     router.register(&pair).await?;

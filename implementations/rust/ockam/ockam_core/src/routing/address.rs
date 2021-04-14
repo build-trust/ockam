@@ -109,6 +109,14 @@ impl Address {
 
         Self { tt, inner }
     }
+
+    /// Generate a random address with a specific type
+    pub fn random(tt: u8) -> Self {
+        let mut rng = rand::thread_rng();
+        let address: [u8; 16] = rng.gen();
+        let inner = hex::encode(address).as_bytes().into();
+        Self { tt, inner }
+    }
 }
 
 impl Display for Address {

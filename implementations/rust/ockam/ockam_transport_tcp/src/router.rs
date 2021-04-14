@@ -109,28 +109,18 @@ impl TcpRouter {
         Ok(())
     }
 
-    /// Either register a new router or return a handle to the existing one
-    pub(crate) async fn register_or_get<'c>(ctx: &'c Context) -> Result<TcpRouterHandle<'c>> {
-        let addr = Address::from(DEFAULT_ADDRESS);
-        Self::register(ctx).await.or_else(|_| {
-            debug!("Using pre-existing TCP router...");
-            Ok(TcpRouterHandle { ctx, addr })
-        })
-    }
-
     /// Create and register a new TCP router with the node context
     ///
     /// To also handle incoming connections, use
     /// [`TcpRouter::bind`](TcpRouter::bind)
-    pub async fn register<'c>(ctx: &'c Context) -> Result<TcpRouterHandle<'c>> {
-        let addr = Address::from(DEFAULT_ADDRESS);
+    pub async fn register<'c>(ctx: &'c Context, addr: Address) -> Result<TcpRouterHandle<'c>> {
         Self::start(ctx, &addr, None).await?;
         Ok(TcpRouterHandle { ctx, addr })
     }
 
     /// Register a new TCP router and bind a connection listener
     ///
-    /// Use this function when your node is the server part of your
+    ///  Use this function when your node is the server part of your
     /// connection architecture.  For clients that shouldn't listen
     /// for connections themselves, use
     /// [`TcpRouter::register`](TcpRouter::register).
