@@ -41,7 +41,7 @@
         ## Design Checks
         #
         {Credo.Check.Design.AliasUsage,
-         [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 0]},
+         [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 1]},
         {Credo.Check.Design.TagTODO, false},
         {Credo.Check.Design.TagFIXME, []},
 
@@ -120,7 +120,7 @@
         {Credo.Check.Refactor.ABCSize, false},
         {Credo.Check.Refactor.AppendSingleItem, []},
         {Credo.Check.Refactor.DoubleBooleanNegation, []},
-        {Credo.Check.Refactor.ModuleDependencies, [max_deps: 15]},
+        {Credo.Check.Refactor.ModuleDependencies, [max_deps: 20]},
         {Credo.Check.Refactor.NegatedIsNil, []},
         {Credo.Check.Refactor.PipeChainStart, false},
         {Credo.Check.Refactor.VariableRebinding, false},

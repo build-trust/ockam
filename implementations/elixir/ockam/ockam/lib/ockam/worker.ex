@@ -32,8 +32,6 @@ defmodule Ockam.Worker do
       alias Ockam.Router
       alias Ockam.Telemetry
 
-      defstruct [:address]
-
       @doc false
       def create(options) when is_list(options) do
         options = Keyword.put_new_lazy(options, :address, &Node.get_random_unregistered_address/0)

@@ -11,7 +11,7 @@ defmodule Ockam.Node do
 
   # `get_random_unused_address/1` uses this as the length of the new address
   # that will be generated.
-  @default_address_length_in_bytes 4
+  @default_address_length_in_bytes 8
 
   # Name of the DynamicSupervisor used to supervise processes
   # created with `start_supervised/2`
