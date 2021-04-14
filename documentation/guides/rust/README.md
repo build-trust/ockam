@@ -1,38 +1,48 @@
----
+```yaml
 title: Rust Guide
-order: 1
----
+```
 
-# Rust Guide
+# Build an End-to-End Encrypted Application.
 
-This is a guide to using the Ockam Rust SDK. Over the course of four examples, the guide builds a distributed echo service
-that forwards messages between nodes.
+To protect en-route messages against eavesdropping, tampering, and forgery …
+we usually need a cryptographic secure channel protocol.
 
-The [Get Started](get-started) guide walks developers through the fundamentals of using
-Ockam in a rust project.
+Most message transport protocols support some way to establish a secure
+channel. However, such secure channel protocols have traditionally been tightly
+coupled to their corresponding transport protocols. Their security guarantees
+are limited by the length and duration of a single transport layer connection.
 
-In [Step 1](01-workers) we build a basic Ockam node and worker. The core data types and traits that comprise
-the Ockam API are introduced, along with the asynchronous runtime.
+This constraint, often leads to application architectures that violate the
+foundational security principle of least privilege … exposing applications to
+a vulnerability and liability surface that is a lot bigger than it needs to be.
 
-[Step 2](02-transports) introduces Ockam transports and message routing. The Ockam TCP transport is used to
-send messages between two nodes.
+It is common, for messages in intelligent, connected applications, to traverse
+a complex path that isn’t a simple point-to-point transport protocol connection.
 
-The Ockam Hub is a remote node that can send, receive, and route messages between nodes. [Step 3](03-hub)
-shows you how to use the TCP transport to send messages to a node hosted on the Hub.
+To support occasionally connected devices, low power radio protocols and
+containerized microservices … messages usually travel via a number of message
+queues and caches, often over a series of network layer connections … before
+reaching their end destination.
 
-Message forwarding is discussed in [Step 4](04-forwarding), enabling you to route messages between remote nodes.
+Ockam Application Layer Routing is a compact binary protocol that can carry
+messages over multiple hops of transport layer connections. Each transport hop,
+along the route of a message, may use a different transport protocol.
 
-## Guides
+It is possible to describe a route where the first hop is a TCP connection and
+the second hop is a different TCP connection. Or a route where the first
+hop is bluetooth connection, the second hop is TCP connection, and the third
+hop is a UDP connection and so on.
 
-| Name                                                                                           | Description                                     |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-|[Get Started](get-started)| Get ready to use the Ockam Rust SDK.|
-|[Step 1](01-workers)| Build your first node and worker.|
-|[Step 2](02-transports)| Send messages between nodes.|
-|[Step 3](03-hub)| Learn how to use the Ockam Hub.|
-|[Step 4](04-forwarding)| Use Ockam Hub to forward messages between nodes.|
+This enables end-to-end Secure Channels over complex, multi-hop, multi-protocol
+routes. It also enables en-route encrypted messages to be stored in databases,
+message queues and caches for asynchronous, end-to-end, secure communication
+between entities that may not be online at the same time.
 
-# Have questions? Let us help!
+## Get started.
 
-**We are here to help.** See the [Guides And Demos](https://github.com/ockam-network/ockam/discussions/1134) in
-GitHub Discussions.
+The Ockam Rust libraries make it easy to build such end-to-end encrypted
+applications, so let's build one together.
+
+<div style="display: none; visibility: hidden;">
+<a href="./get-started/00-setup">00. Setup</a>
+</div>

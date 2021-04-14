@@ -1,42 +1,48 @@
----
-title: Start Here
-order: 2
----
-
-#### Have questions? Let us help!
-
-**We are here to help.** See the [Guides And Demos](https://github.com/ockam-network/ockam/discussions/1134) in
-GitHub Discussions.
-
-# Get Started with the Ockam Rust SDK
-
-This guide walks you through the steps necessary to use the Ockam Rust SDK.
-
-## Development Environment
-
-The Ockam Rust SDK supports the rust `stable` branch.
-
-1. Install rust and cargo using your preferred method, such as [rustup](https://rustup.rs/).
-1. Our examples build an "echo service", so `echo_service` may be a good name for your project. Create a new cargo application project: `cargo new echo_service`
-
-### Adding Ockam to a Rust Project
-
-Add the Ockam dependency to your `Cargo.toml`:
-
-```
-[dependencies]
-ockam = "0"
+```yaml
+title: Get Started
 ```
 
-## Working with multiple binaries
+# Build an End-to-End Encrypted Application.
 
-Some Ockam examples need two programs. There are several ways you can configure your project to have multiple binaries.
-The easiest way, and the way that we will use in this guide is to use the `examples` directory.
+To protect en-route messages against eavesdropping, tampering, and forgery …
+we usually need a cryptographic secure channel protocol.
 
-For example:
+Most message transport protocols support some way to establish a secure
+channel. However, such secure channel protocols have traditionally been tightly
+coupled to their corresponding transport protocols. Their security guarantees
+are limited by the length and duration of a single transport layer connection.
 
-1. Create an `examples` directory.
-1. Create `echo_client.rs` and `echo_server.rs` source files in the `examples` directory.
-1. The programs can be executed using cargo: `cargo run --example echo_server` and `cargo run --example echo_client`.
+This constraint, often leads to application architectures that violate the
+foundational security principle of least privilege … exposing applications to
+a vulnerability and liability surface that is a lot bigger than it needs to be.
 
-Now we are ready to [Start building the Echo Service](../01-workers)
+It is common, for messages in intelligent, connected applications, to traverse
+a complex path that isn’t a simple point-to-point transport protocol connection.
+
+To support occasionally connected devices, low power radio protocols and
+containerized microservices … messages usually travel via a number of message
+queues and caches, often over a series of network layer connections … before
+reaching their end destination.
+
+Ockam Application Layer Routing is a compact binary protocol that can carry
+messages over multiple hops of transport layer connections. Each transport hop,
+along the route of a message, may use a different transport protocol.
+
+It is possible to describe a route where the first hop is a TCP connection and
+the second hop is a different TCP connection. Or a route where the first
+hop is bluetooth connection, the second hop is TCP connection, and the third
+hop is a UDP connection and so on.
+
+This enables end-to-end Secure Channels over complex, multi-hop, multi-protocol
+routes. It also enables en-route encrypted messages to be stored in databases,
+message queues and caches for asynchronous, end-to-end, secure communication
+between entities that may not be online at the same time.
+
+## Get started.
+
+The Ockam Rust libraries make it easy to build such end-to-end encrypted
+applications, so let's build one together.
+
+<div style="display: none; visibility: hidden;">
+<a href="./00-setup">00. Setup</a>
+</div>
