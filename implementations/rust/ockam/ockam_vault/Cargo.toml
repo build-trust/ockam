@@ -25,7 +25,7 @@ ockam_core = { path = "../ockam_core", version = "0.10.0" }
 ockam_vault_core = { path = "../ockam_vault_core", version = "0.4.0" }
 arrayref = "0.3"
 aes-gcm = "0.8"
-curve25519-dalek = "3.0"
+curve25519-dalek = "3.1"
 ed25519-dalek = "1.0"
 hkdf = "0.10"
 rand = "0.7"
