@@ -25,6 +25,6 @@ async-trait = "0.1.42"
 rand = "0.8"
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "0.3.3" }
+ockam_vault = { path = "../ockam_vault", version = "0.4.0" }
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.1.0" }
 ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.1.0" }

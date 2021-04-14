@@ -21,5 +21,5 @@ lto = true
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.10.0" }
 ockam_vault_core = { path = "../ockam_vault_core", version = "0.4.0" }
-ockam_vault = { path = "../ockam_vault", version = "0.3.4" }
+ockam_vault = { path = "../ockam_vault", version = "0.4.0" }
 lazy_static = { version = "1.4" }
