@@ -56,6 +56,6 @@ impl Executor {
 
         // Block this task executing the primary message router,
         // returning any critical failures that it encounters.
-        rt.block_on(self.router.run())
+        crate::block_future(&rt, self.router.run())
     }
 }
