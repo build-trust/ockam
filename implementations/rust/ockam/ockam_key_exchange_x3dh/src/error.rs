@@ -13,7 +13,7 @@ pub enum X3DHError {
 
 impl X3DHError {
     /// Integer code associated with the error domain.
-    pub const DOMAIN_CODE: u32 = 15_000;
+    pub const DOMAIN_CODE: u32 = 18_000;
     /// Descriptive name for the error domain.
     pub const DOMAIN_NAME: &'static str = "OCKAM_KEX_X3DH";
 }

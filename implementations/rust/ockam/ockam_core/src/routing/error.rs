@@ -9,7 +9,7 @@ pub enum RouteError {
 
 impl RouteError {
     /// Route error specific domain code
-    pub const DOMAIN_CODE: u32 = 16_000; // ?
+    pub const DOMAIN_CODE: u32 = 19_000;
     /// Route error specific domain name
     pub const DOMAIN_NAME: &'static str = "OCKAM_ROUTE";
 }
