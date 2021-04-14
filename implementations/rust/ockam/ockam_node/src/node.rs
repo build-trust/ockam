@@ -48,11 +48,14 @@ pub fn start_node() -> (Context, Executor) {
 
 /// Utility to setup tracing-subscriber from the environment
 fn setup_tracing() {
-    fmt()
+    if let Err(_) = fmt()
         .with_env_filter(EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
             EnvFilter::default()
                 .add_directive(LevelFilter::INFO.into())
                 .add_directive("ockam_node=info".parse().unwrap())
         }))
-        .init();
+        .try_init()
+    {
+        debug!("Failed to initialise tracing_subscriber.  Is an instance already running?");
+    }
 }
