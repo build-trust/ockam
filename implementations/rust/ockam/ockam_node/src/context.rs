@@ -241,7 +241,7 @@ impl Context {
 
         // First resolve the next hop in the route
         self.sender.send(req).await.map_err(|e| Error::from(e))?;
-        let (addr, sender, _) = reply_rx
+        let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
             .ok_or(Error::InternalIOFailure)??
@@ -249,7 +249,12 @@ impl Context {
 
         // Pack the transport message into a relay message
         let onward = data.onward_route.clone();
-        let msg = RelayMessage::direct(addr, data, onward);
+        // let msg = RelayMessage::direct(addr, data, onward);
+        let msg = if needs_wrapping {
+            RelayMessage::pre_router(addr, data, onward)
+        } else {
+            RelayMessage::direct(addr, data, onward)
+        };
         sender.send(msg).await.map_err(|e| Error::from(e))?;
 
         Ok(())

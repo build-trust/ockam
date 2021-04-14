@@ -78,13 +78,7 @@ impl Worker for TcpRecvWorker {
             trace!("Message onward route: {}", msg.onward_route);
             trace!("Message return route: {}", msg.return_route);
 
-            // FIXME: if we need to re-route (i.e. send it to another
-            // domain specific router) the message here, use
-            // send_message, instead of forward.
-
-            // Forward the message to the final destination worker,
-            // which consumes the TransportMessage and yields the
-            // final message type
+            // Forward the message to the next hop in the route
             ctx.forward(msg).await?;
         }
 
