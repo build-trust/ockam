@@ -6,8 +6,6 @@ use crate::{
 use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
 use std::{collections::BTreeMap, net::SocketAddr};
 
-const DEFAULT_ADDRESS: &'static str = "io.ockam.router.tcp";
-
 /// A TCP address router and connection listener
 ///
 /// In order to create new TCP connection workers you need a router to
@@ -126,10 +124,10 @@ impl TcpRouter {
     /// [`TcpRouter::register`](TcpRouter::register).
     pub async fn bind<'c, S: Into<SocketAddr>>(
         ctx: &'c Context,
+        addr: Address,
         socket_addr: S,
     ) -> Result<TcpRouterHandle<'c>> {
         let run = atomic::new(true);
-        let addr = Address::from(DEFAULT_ADDRESS);
 
         // Bind and start the connection listen worker
         TcpListenWorker::start(ctx, addr.clone(), socket_addr.into(), run.clone()).await?;

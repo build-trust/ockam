@@ -6,6 +6,7 @@ use ockam::{Address, Context, Result};
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 
+#[derive(Debug)]
 pub struct WorkerPair {
     pub(crate) peer: SocketAddr,
     pub(crate) tx_addr: Address,
@@ -22,11 +23,11 @@ impl WorkerPair {
         Ok(())
     }
 
-    fn from_peer(addr: &SocketAddr) -> Self {
+    fn from_peer(peer: SocketAddr) -> Self {
         Self {
-            peer: addr.clone(),
-            tx_addr: format!("{}_tx", addr).into(),
-            rx_addr: format!("{}_rx", addr).into(),
+            peer,
+            tx_addr: Address::random(0),
+            rx_addr: Address::random(0),
             run: atomic::new(true),
         }
     }
@@ -43,7 +44,7 @@ impl WorkerPair {
             rx_addr,
             tx_addr,
             run,
-        } = WorkerPair::from_peer(&peer);
+        } = WorkerPair::from_peer(peer);
 
         trace!("Creating new worker pair from stream");
 

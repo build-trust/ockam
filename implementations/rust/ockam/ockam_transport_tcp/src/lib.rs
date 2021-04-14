@@ -78,8 +78,9 @@ impl<'ctx> TcpTransport<'ctx> {
         ctx: &'ctx Context,
         bind_addr: S,
     ) -> Result<TcpTransport<'ctx>> {
-        let addr = parse_socket_addr(bind_addr)?;
-        let router = TcpRouter::bind(ctx, addr).await?;
+        let addr = Address::random(0);
+        let bind_addr = parse_socket_addr(bind_addr)?;
+        let router = TcpRouter::bind(ctx, addr, bind_addr).await?;
         Ok(Self { ctx, router })
     }
 }

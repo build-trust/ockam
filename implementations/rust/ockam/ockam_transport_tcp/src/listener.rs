@@ -19,7 +19,7 @@ impl TcpListenWorker {
         addr: SocketAddr,
         run: ArcBool,
     ) -> Result<()> {
-        let waddr = format!("{}_listener", addr);
+        let waddr = Address::random(0);
 
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)
@@ -31,7 +31,7 @@ impl TcpListenWorker {
             router_addr,
         };
 
-        ctx.start_worker(waddr.as_str(), worker).await?;
+        ctx.start_worker(waddr, worker).await?;
         Ok(())
     }
 }
