@@ -17,4 +17,4 @@ It has been decided that a proof of possession will be required for now when add
 
 ## Consequences
 
-If a proof of possession is not required, an attacker could add arbirary data to the event log.
+If a proof of possession is not required, an attacker could add arbitrary data to the event log.
