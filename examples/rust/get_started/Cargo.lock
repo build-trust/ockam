@@ -100,9 +100,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.48"
+version = "0.1.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36ea56748e10732c49404c153638a15ec3d6211ec5ff35d9bb20e13b93576adf"
+checksum = "589652ce7ccb335d1e7ecb3be145425702b290dbcb7029bbeaae263fc1d87b48"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -252,9 +252,9 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "3.0.2"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f627126b946c25a4638eec0ea634fc52506dea98db118aae985118ce7c3d723f"
+checksum = "639891fde0dbea823fc3d798a0fdf9d2f9440a42d64a78ab3488b0ca025117b3"
 dependencies = [
  "byteorder",
  "digest",
@@ -700,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "arrayref",
  "bls12_381_plus",
@@ -713,7 +713,7 @@ dependencies = [
  "rand 0.8.3",
  "serde",
  "serde-big-array",
- "serde_bare",
+ "serde_bare 0.4.0",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -723,7 +723,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -734,20 +734,20 @@ dependencies = [
  "ockam_vault_core",
  "rand 0.8.3",
  "serde",
- "serde_bare",
+ "serde_bare 0.3.0",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_core"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
  "hex",
  "rand 0.8.3",
  "serde",
- "serde_bare",
+ "serde_bare 0.4.0",
 ]
 
 [[package]]
@@ -760,7 +760,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -779,7 +779,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -797,21 +797,21 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "futures",
  "hashbrown 0.9.1",
  "ockam",
  "rand 0.7.3",
  "serde",
- "serde_bare",
+ "serde_bare 0.3.0",
  "tokio",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_vault"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -828,10 +828,12 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "cfg-if",
  "ockam_core",
+ "serde",
+ "serde-big-array",
  "zeroize",
 ]
 
@@ -1030,9 +1032,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94341e4e44e24f6b591b59e47a8a027df12e008d73fd5672dbea9cc22f4507d9"
+checksum = "8270314b5ccceb518e7e578952f0b72b88222d02e8f77f5ecf7abbb673539041"
 dependencies = [
  "bitflags",
 ]
@@ -1098,6 +1100,15 @@ name = "serde_bare"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01db2255aa98fb93ad74272d8b2e6fd4851860e733e944b9439cf148127164b2"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_bare"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
 dependencies = [
  "serde",
 ]
@@ -1452,9 +1463,9 @@ checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
 
 [[package]]
 name = "x25519-dalek"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc614d95359fd7afc321b66d2107ede58b246b844cf5d8a0adcca413e439f088"
+checksum = "5a0c105152107e3b96f6a00a65e86ce82d9b125230e1c4302940eca58ff71f4f"
 dependencies = [
  "curve25519-dalek",
  "rand_core 0.5.1",
