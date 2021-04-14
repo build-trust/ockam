@@ -12,8 +12,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Send a message to the echoer worker via the hop1 worker
     ctx.send(
         Route::new().append("hop1").append("echoer"),
-        "Hello Ockam!".to_string()
-    ).await?;
+        "Hello Ockam!".to_string(),
+    )
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

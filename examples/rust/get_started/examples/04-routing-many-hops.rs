@@ -18,8 +18,9 @@ async fn main(mut ctx: Context) -> Result<()> {
             .append("hop2")
             .append("hop3")
             .append("echoer"),
-        "Hello Ockam!".to_string()
-    ).await?;
+        "Hello Ockam!".to_string(),
+    )
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

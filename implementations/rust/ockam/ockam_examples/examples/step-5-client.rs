@@ -1,35 +1,26 @@
-use ockam::{Context, Result, Route, SecureChannel, SecureChannelMessage};
-use ockam_transport_tcp::{self as tcp, TcpRouter, TCP};
-use std::net::SocketAddr;
-
-const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
+use ockam::{Context, Result, Route, SecureChannel};
+use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let remote_node = "Paste the address of the node you created on Ockam Hub here.";
-    let echo_service =
-        "Paste the forwarded address that the server received from registration here.";
+    let remote_node = "104.42.24.183:4000";
+    let echo_service = "0f186d34";
 
-    // Create and register a connection
-    let router = TcpRouter::register(&ctx).await?;
-    let connection =
-        tcp::start_tcp_worker(&ctx, remote_node.parse::<SocketAddr>().unwrap()).await?;
-    router.register(&connection).await?;
-
+    TcpTransport::create(&ctx, remote_node).await?;
     let channel_info = SecureChannel::create(
         &mut ctx,
         Route::new()
             .append_t(TCP, remote_node)
             .append(echo_service)
-            .append(XX_CHANNEL_LISTENER_ADDRESS),
+            .append("secure_channel"),
     )
     .await?;
 
-    ctx.send_message(
+    ctx.send(
         Route::new()
-            .append(channel_info.worker_address().clone())
+            .append(channel_info.address().clone())
             .append("echo_service"),
-        SecureChannelMessage::create("Hello Ockam!".to_string()).unwrap(),
+        "Hello Ockam!".to_string(),
     )
     .await?;
 

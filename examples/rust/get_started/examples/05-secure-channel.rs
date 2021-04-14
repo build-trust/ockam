@@ -11,11 +11,10 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Send a message to the echoer worker via the channel.
     ctx.send(
-        Route::new()
-            .append(channel.address())
-            .append("echoer"),
-        "Hello Ockam!".to_string()
-    ).await?;
+        Route::new().append(channel.address()).append("echoer"),
+        "Hello Ockam!".to_string(),
+    )
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

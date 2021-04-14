@@ -1,36 +1,45 @@
-use channel_examples::server_worker::Server;
-use ockam::{RemoteMailbox, Result, SecureChannel, SecureChannelListenerMessage};
+use ockam::{
+    async_worker, Context, RemoteMailbox, Result, Routed, SecureChannel,
+    SecureChannelListenerMessage, Worker,
+};
 use ockam_transport_tcp::TcpTransport;
-use std::net::SocketAddr;
-use std::str::FromStr;
 
-const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
+const SECURE_CHANNEL: &str = "secure_channel";
+
+struct EchoService;
+
+#[async_worker]
+impl Worker for EchoService {
+    type Message = String;
+    type Context = Context;
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+        let return_route = msg.return_route();
+        let msg_str = msg.body();
+        println!("Server received message: {}", msg_str);
+
+        ctx.send(return_route, msg_str.clone()).await?;
+        println!("Server sent message: {}", msg_str);
+
+        Ok(())
+    }
+}
 
 #[ockam::node]
 async fn main(mut ctx: ockam::Context) -> Result<()> {
-    SecureChannel::create_listener(&mut ctx, XX_CHANNEL_LISTENER_ADDRESS).await?;
-
-    // let hub_addr = SocketAddr::from_str("138.91.152.195:4000").unwrap();
-    let hub_addr = SocketAddr::from_str("127.0.0.1:4000").unwrap();
+    let hub = "104.42.24.183:4000";
+    SecureChannel::create_listener(&mut ctx, SECURE_CHANNEL).await?;
 
     // Create and register a connection worker pair
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.listen("127.0.0.1:4000").await?;
+    tcp.connect(hub).await?;
 
-    let server = Server {};
+    ctx.start_worker("echo_server", EchoService {}).await?;
 
-    // Create the responder worker
-    ctx.start_worker("echo_server", server).await?;
-
-    let mailbox = RemoteMailbox::<SecureChannelListenerMessage>::create(
-        &mut ctx,
-        hub_addr,
-        XX_CHANNEL_LISTENER_ADDRESS,
-    )
-    .await?;
+    let mailbox =
+        RemoteMailbox::<SecureChannelListenerMessage>::create(&mut ctx, hub, SECURE_CHANNEL)
+            .await?;
     println!("PROXY ADDRESS: {}", mailbox.remote_address());
-
-    // Crashes: ctx.stop().await
 
     Ok(())
 }

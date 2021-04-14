@@ -1,18 +1,13 @@
 use ockam::{Context, Result, Route};
-use ockam_transport_tcp::{self as tcp, TcpRouter, TCP};
-use std::net::SocketAddr;
+use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let remote_node = "127.0.0.1:10222";
 
-    // Create and register a connection
-    let router = TcpRouter::register(&ctx).await?;
-    let connection =
-        tcp::start_tcp_worker(&ctx, remote_node.parse::<SocketAddr>().unwrap()).await?;
-    router.register(&connection).await?;
+    TcpTransport::create(&ctx, remote_node).await?;
 
-    ctx.send_message(
+    ctx.send(
         Route::new()
             .append_t(TCP, remote_node)
             .append("echo_service"),

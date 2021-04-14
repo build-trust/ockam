@@ -9,7 +9,7 @@ impl Worker for EchoService {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         println!("echo_service: {}", msg);
-        ctx.send_message(msg.return_route(), msg.take()).await
+        ctx.send(msg.return_route(), msg.body()).await
     }
 }
 
@@ -17,8 +17,7 @@ impl Worker for EchoService {
 async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("echo_service", EchoService).await?;
 
-    ctx.send_message("echo_service", "Hello Ockam!".to_string())
-        .await?;
+    ctx.send("echo_service", "Hello Ockam!".to_string()).await?;
 
     let reply = ctx.receive::<String>().await?;
     println!("Reply: {}", reply);

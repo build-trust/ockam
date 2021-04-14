@@ -1,6 +1,5 @@
 use ockam::{Context, Result, Route};
-use ockam_transport_tcp::{self as tcp, TcpRouter, TCP};
-use std::net::SocketAddr;
+use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -8,13 +7,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     let echo_service =
         "Paste the forwarded address that the server received from registration here.";
 
-    // Create and register a connection
-    let router = TcpRouter::register(&ctx).await?;
-    let connection =
-        tcp::start_tcp_worker(&ctx, remote_node.parse::<SocketAddr>().unwrap()).await?;
-    router.register(&connection).await?;
+    TcpTransport::create(&ctx, remote_node).await?;
 
-    ctx.send_message(
+    ctx.send(
         Route::new().append_t(TCP, remote_node).append(echo_service),
         "Hello Ockam!".to_string(),
     )

@@ -1,6 +1,5 @@
 use ockam::{async_worker, Context, Result, Routed, Worker};
-use ockam_transport_tcp::TcpRouter;
-use std::net::SocketAddr;
+use ockam_transport_tcp::TcpTransport;
 
 struct EchoService;
 
@@ -11,12 +10,12 @@ impl Worker for EchoService {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         println!("echo_service: {}", msg);
-        ctx.send_message(msg.return_route(), msg.take()).await
+        ctx.send(msg.return_route(), msg.body()).await
     }
 }
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let _router = TcpRouter::bind(&ctx, "127.0.0.1:10222".parse::<SocketAddr>().unwrap()).await?;
+    TcpTransport::create_listener(&ctx, "127.0.0.1:10222").await?;
     ctx.start_worker("echo_service", EchoService).await
 }

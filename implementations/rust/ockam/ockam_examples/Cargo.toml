@@ -11,8 +11,8 @@ readme = "README.md"
 repository = "https://github.com/ockam-network/ockam"
 
 [dependencies]
-ockam = "0"
-ockam_transport_tcp = "0"
+ockam = { path = "../ockam", version = "*"}
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "*"}
 
 # [workspace]
 # members = ["example_projects/*"]

@@ -1,51 +1,46 @@
-use ockam::{
-    async_worker, Context, RemoteMailbox, Result, Routed, SecureChannel,
-    SecureChannelListenerMessage, SecureChannelMessage, Worker,
-};
-use ockam_transport_tcp::{self as tcp, TcpRouter};
-use std::net::SocketAddr;
+use ockam::{async_worker, Context, Result, Route, Routed, SecureChannel, Worker};
+use ockam_transport_tcp::{TcpTransport, TCP};
 
 struct EchoService;
 
-const XX_CHANNEL_LISTENER_ADDRESS: &str = "xx_channel_listener";
-const HUB_ADDRESS: &str = "127.0.0.1:4000";
+const HUB_ADDRESS: &str = "104.42.24.183:4000";
 
 #[async_worker]
 impl Worker for EchoService {
     type Message = String;
     type Context = Context;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        println!("echo_service: {}", msg);
-        ctx.send_message(
-            msg.return_route(),
-            SecureChannelMessage::create(msg.take()).unwrap(),
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        ctx.send(
+            Route::new()
+                .append_t(TCP, HUB_ADDRESS)
+                .append("forwarding_service"),
+            "register".to_string(),
         )
-        .await
+        .await?;
+        SecureChannel::create_listener(&ctx, "secure_channel").await
+    }
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+        if "register" == msg.as_str() {
+            let address = msg.return_route().recipient().to_string();
+            println!(
+                "echo_service: My address on the hub is {}",
+                address.strip_prefix("0#").unwrap()
+            );
+            Ok(())
+        } else {
+            println!("echo_service: {}", msg);
+            ctx.send(msg.return_route(), msg.body()).await
+        }
     }
 }
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
-    let router = TcpRouter::register(&ctx).await?;
-    let hub_connection =
-        tcp::start_tcp_worker(&ctx, HUB_ADDRESS.parse::<SocketAddr>().unwrap()).await?;
-
-    router.register(&hub_connection).await?;
+async fn main(ctx: Context) -> Result<()> {
+    TcpTransport::create(&ctx, HUB_ADDRESS).await?;
 
     ctx.start_worker("echo_service", EchoService).await?;
-
-    SecureChannel::create_listener(&ctx, XX_CHANNEL_LISTENER_ADDRESS).await?;
-    let remote_mailbox_info = RemoteMailbox::<SecureChannelListenerMessage>::create(
-        &mut ctx,
-        HUB_ADDRESS.parse::<SocketAddr>().unwrap(),
-        XX_CHANNEL_LISTENER_ADDRESS,
-    )
-    .await?;
-    println!(
-        "echo_service: My address on the hub is {}",
-        remote_mailbox_info.alias_address()
-    );
 
     Ok(())
 }

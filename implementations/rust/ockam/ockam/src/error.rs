@@ -17,6 +17,7 @@ pub enum OckamError {
     AttestationRequesterDoesntMatch,
     AttestationNonceDoesntMatch,
     InvalidHubResponse,
+    InvalidParameter,
 }
 
 impl OckamError {

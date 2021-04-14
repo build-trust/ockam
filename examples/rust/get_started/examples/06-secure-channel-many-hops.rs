@@ -13,21 +13,19 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     SecureChannel::create_listener(&mut ctx, "secure_channel_listener").await?;
 
-    let route_to_listener =
-        Route::new()
-            .append("hop1")
-            .append("hop2")
-            .append("hop3")
-            .append("secure_channel_listener");
+    let route_to_listener = Route::new()
+        .append("hop1")
+        .append("hop2")
+        .append("hop3")
+        .append("secure_channel_listener");
     let channel = SecureChannel::create(&mut ctx, route_to_listener).await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(
-        Route::new()
-            .append(channel.address())
-            .append("echoer"),
-        "Hello Ockam!".to_string()
-    ).await?;
+        Route::new().append(channel.address()).append("echoer"),
+        "Hello Ockam!".to_string(),
+    )
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
