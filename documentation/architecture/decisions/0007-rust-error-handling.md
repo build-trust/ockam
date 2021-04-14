@@ -33,8 +33,8 @@ pub struct Error {
 ```
 
 There are following rules for creating errors:
-  - DOMAIN_NAME is a static &str that is chosen for specific crate and must be unique, therefore its value should be tied to crate name to avoid duplicates.
-  - For no_std environments there is no &str error domain, therefore there is also DOMAIN_CODE, that has same uniqueness constraint and is added to every error code.
+  - DOMAIN_NAME is a static &str that is chosen for specific crate and must be unique, therefore its value should be tied to crate's name to avoid duplicates.
+  - For no_std environments there is no &str error domain, therefore there is also DOMAIN_CODE, that has same uniqueness constraint and is added to every error number.
   - Error code is a number that is sum of DOMAIN_CODE and a unique error number specific to given error cause for this crate. Usually Error number is designed as an enum with first member being None (0).
 
 ## Consequences
