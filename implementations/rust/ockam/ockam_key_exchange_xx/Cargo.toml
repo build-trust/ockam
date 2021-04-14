@@ -13,7 +13,7 @@ description = """The Ockam Noise XX impementation.
 """
 
 [dependencies]
-ockam_core = { version = "0.9.0", path = "../ockam_core" }
+ockam_core = { version = "0.10.0", path = "../ockam_core" }
 ockam_vault_core = { version = "0.3.4", path = "../ockam_vault_core" }
 ockam_key_exchange_core = { version = "0.1.3", path = "../ockam_key_exchange_core" }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
