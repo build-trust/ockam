@@ -1,5 +1,5 @@
 use crate::lib::{
-    fmt::{self, Display},
+    fmt::{self, Debug, Display},
     str::from_utf8,
     String, ToString, Vec,
 };
@@ -72,7 +72,7 @@ impl<'a> From<&'a str> for AddressSet {
 /// string, the first `#` symbol is used to separate the type from the
 /// rest of the address.  If no `#` symbol is found, the address is
 /// assumed to be of `tt = 0` (local worker).
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Address {
     /// The address type
     pub tt: u8,
@@ -112,6 +112,13 @@ impl Address {
 }
 
 impl Display for Address {
+    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
+        let inner: &'a str = from_utf8(&self.inner.as_slice()).unwrap_or("Invalid UTF-8");
+        write!(f, "{}#{}", self.tt, inner)
+    }
+}
+
+impl Debug for Address {
     fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
         let inner: &'a str = from_utf8(&self.inner.as_slice()).unwrap_or("Invalid UTF-8");
         write!(f, "{}#{}", self.tt, inner)
