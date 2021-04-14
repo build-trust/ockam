@@ -1,4 +1,6 @@
-use crate::{ResultMessage, VaultRequestMessage, VaultResponseMessage, VaultSyncCoreError};
+use crate::{
+    ResultMessage, VaultRequestMessage, VaultResponseMessage, VaultWorker, VaultWorkerTrait,
+};
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use rand::random;
@@ -7,6 +9,7 @@ use zeroize::Zeroize;
 pub struct Vault {
     ctx: Context,
     vault_worker_address: Address,
+    error_domain: &'static str,
 }
 
 impl Vault {
@@ -16,6 +19,9 @@ impl Vault {
     pub fn vault_worker_address(&self) -> &Address {
         &self.vault_worker_address
     }
+    pub fn error_domain(&self) -> &'static str {
+        self.error_domain
+    }
 }
 
 impl Vault {
@@ -24,7 +30,7 @@ impl Vault {
         let runtime = self.ctx().runtime();
 
         let clone = block_future(&runtime, async move {
-            Vault::start(&self.ctx, vault_worker_address).await
+            Vault::create(&self.ctx, vault_worker_address, self.error_domain).await
         })?;
 
         Ok(clone)
@@ -36,21 +42,34 @@ impl Zeroize for Vault {
 }
 
 impl Vault {
-    fn new(ctx: Context, vault_worker_address: Address) -> Self {
+    fn new(ctx: Context, vault_worker_address: Address, error_domain: &'static str) -> Self {
         Self {
             ctx,
             vault_worker_address,
+            error_domain,
         }
     }
 
-    pub async fn start(ctx: &Context, vault_worker_address: Address) -> Result<Self> {
+    pub async fn create(
+        ctx: &Context,
+        vault_worker_address: Address,
+        error_domain: &'static str,
+    ) -> Result<Self> {
         let address: Address = random();
 
         let ctx = ctx.new_context(address).await?;
 
-        let runner = Self::new(ctx, vault_worker_address);
+        let runner = Self::new(ctx, vault_worker_address, error_domain);
 
         Ok(runner)
+    }
+
+    pub async fn start<T: VaultWorkerTrait>(ctx: &Context, vault: T) -> Result<Self> {
+        let error_domain = T::error_domain();
+
+        let vault_address = VaultWorker::start(ctx, vault).await?;
+
+        Self::create(ctx, vault_address, error_domain).await
     }
 
     pub(crate) async fn send_message(&self, m: VaultRequestMessage) -> Result<()> {
@@ -60,14 +79,11 @@ impl Vault {
     }
 
     pub(crate) async fn receive_message(&mut self) -> Result<VaultResponseMessage> {
-        let r = self
-            .ctx
+        self.ctx
             .receive::<ResultMessage<VaultResponseMessage>>()
             .await?
             .take()
             .body()
-            .inner();
-
-        r.map_err(|_| VaultSyncCoreError::WorkerError.into())
+            .inner(self.error_domain)
     }
 }

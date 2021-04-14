@@ -6,7 +6,6 @@ use ockam_core::Error;
 pub enum VaultSyncCoreError {
     None,
     InvalidResponseType,
-    WorkerError,
 }
 
 impl VaultSyncCoreError {

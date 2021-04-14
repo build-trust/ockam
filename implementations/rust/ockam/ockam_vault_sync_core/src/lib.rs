@@ -33,5 +33,5 @@ pub use secret_vault::*;
 pub use signer::*;
 pub use symmetric_vault::*;
 pub use vault::*;
-pub use vault_worker::*;
+pub(crate) use vault_worker::*;
 pub use verifier::*;

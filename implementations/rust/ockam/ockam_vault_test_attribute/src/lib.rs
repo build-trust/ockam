@@ -63,10 +63,7 @@ pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
             executor
             .execute(async move {
                 let vault = new_vault();
-                let vault_address = VaultWorker::start(&ctx, vault)
-                    .await
-                    .unwrap();
-                let mut vault = Vault::start(&ctx, vault_address).await.unwrap();
+                let mut vault = Vault::start(&ctx, vault).await.unwrap();
                 #run_test
 
                 ctx.stop().await.unwrap()

@@ -16,8 +16,9 @@ impl<M> ResultMessage<M>
 where
     M: Message,
 {
-    pub fn inner(self) -> Result<M, u32> {
+    pub fn inner(self, error_domain: &'static str) -> ockam_core::Result<M> {
         self.inner
+            .map_err(|e| ockam_core::Error::new(e, error_domain))
     }
 }
 
@@ -25,8 +26,10 @@ impl<M> ResultMessage<M>
 where
     M: Message,
 {
-    pub fn new(inner: Result<M, u32>) -> Self {
-        ResultMessage { inner }
+    pub fn new(inner: ockam_core::Result<M>) -> Self {
+        Self {
+            inner: inner.map_err(|e| e.code()),
+        }
     }
 }
 

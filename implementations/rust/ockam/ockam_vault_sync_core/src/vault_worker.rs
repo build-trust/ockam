@@ -2,11 +2,12 @@ use async_trait::async_trait;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_vault_core::{
-    AsymmetricVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
+    AsymmetricVault, ErrorVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
+use rand::random;
 use zeroize::Zeroize;
 
-pub trait VaultTrait:
+pub trait VaultWorkerTrait:
     AsymmetricVault
     + Hasher
     + KeyIdVault
@@ -14,12 +15,13 @@ pub trait VaultTrait:
     + Signer
     + SymmetricVault
     + Verifier
+    + ErrorVault
     + Send
     + 'static
 {
 }
 
-impl<V> VaultTrait for V where
+impl<V> VaultWorkerTrait for V where
     V: AsymmetricVault
         + Hasher
         + KeyIdVault
@@ -27,35 +29,35 @@ impl<V> VaultTrait for V where
         + Signer
         + SymmetricVault
         + Verifier
+        + ErrorVault
         + Send
         + 'static
 {
 }
 
 mod request_message;
-pub use request_message::*;
+pub(crate) use request_message::*;
 
 mod response_message;
-use rand::random;
-pub use response_message::*;
+pub(crate) use response_message::*;
 
 #[derive(Zeroize)]
-pub struct VaultWorker<V>
+pub(crate) struct VaultWorker<V>
 where
-    V: VaultTrait,
+    V: VaultWorkerTrait,
 {
     inner: V,
 }
 
 impl<V> VaultWorker<V>
 where
-    V: VaultTrait,
+    V: VaultWorkerTrait,
 {
-    pub fn new(inner: V) -> Self {
+    fn new(inner: V) -> Self {
         Self { inner }
     }
 
-    pub async fn start(ctx: &Context, inner: V) -> Result<Address> {
+    pub(crate) async fn start(ctx: &Context, inner: V) -> Result<Address> {
         let address: Address = random();
 
         ctx.start_worker(address.clone(), Self::new(inner)).await?;
@@ -160,7 +162,7 @@ where
 #[async_trait]
 impl<V> Worker for VaultWorker<V>
 where
-    V: VaultTrait,
+    V: VaultWorkerTrait,
 {
     type Message = VaultRequestMessage;
     type Context = Context;
@@ -173,7 +175,7 @@ where
         let return_route = msg.return_route();
         let response = self.handle_request(msg.body());
 
-        let response = ResultMessage::new(response.map_err(|e| e.code()));
+        let response = ResultMessage::new(response);
 
         ctx.send(return_route, response).await?;
 
