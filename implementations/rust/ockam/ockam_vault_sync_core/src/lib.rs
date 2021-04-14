@@ -4,8 +4,6 @@
 //! for use by other crates that either provide implementations for those traits,
 //! or use traits and types as an abstract dependency.
 
-// FIXME
-// #![no_std]
 #![deny(
     // missing_docs,
     trivial_casts,

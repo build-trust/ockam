@@ -5,11 +5,12 @@ authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_core"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_sync_core"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","no-std","algorithms"]
-keywords = ["ockam", "crypto", "cryptography", "authentication", "no-std"]
-description = """The Ockam Vault trait.
+categories = ["cryptography", "asynchronous", "algorithms"]
+keywords = ["ockam", "crypto", "cryptography"]
+description = """Syncronous wrapper that allows to have multiple Vault instances,
+that talk to the same Vault implementation without need for synchronization primitives
 """
 
 [dependencies]

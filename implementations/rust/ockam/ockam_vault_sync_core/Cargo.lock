@@ -506,7 +506,6 @@ dependencies = [
 name = "ockam_vault_test_attribute"
 version = "0.1.0"
 dependencies = [
- "ockam_node",
  "quote",
  "syn",
 ]
@@ -516,7 +515,6 @@ name = "ockam_vault_test_suite"
 version = "0.1.0"
 dependencies = [
  "ockam_core",
- "ockam_node",
  "ockam_vault_core",
 ]
 
@@ -746,9 +744,9 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01db2255aa98fb93ad74272d8b2e6fd4851860e733e944b9439cf148127164b2"
+checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
 dependencies = [
  "serde",
 ]
