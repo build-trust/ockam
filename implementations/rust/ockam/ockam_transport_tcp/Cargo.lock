@@ -838,6 +838,8 @@ version = "0.3.4"
 dependencies = [
  "cfg-if",
  "ockam_core",
+ "serde",
+ "serde-big-array",
  "zeroize",
 ]
 
