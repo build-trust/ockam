@@ -61,3 +61,13 @@ impl TcpTransport {
         TcpRouter::bind(ctx, socket_addr).await
     }
 }
+
+pub async fn establish_tcp_connection(
+    ctx: &mut Context,
+    remote_node: String,
+) -> Result<&mut Context> {
+    let router = TcpRouter::register(ctx).await?;
+    let connection = TcpTransport::create(ctx, remote_node.parse::<SocketAddr>().unwrap()).await?;
+    router.register(&connection).await?;
+    Ok(ctx)
+}
