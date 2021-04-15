@@ -6,12 +6,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.connect("127.0.0.1:4000").await?;
 
-    let route_to_listener = Route::new()
-        // Send a message to node B
-        .append_t(TCP, "127.0.0.1:4000")
-        // Send a message to node C
-        .append_t(TCP, "127.0.0.1:6000")
-        .append("secure_channel_listener");
+    let route_to_listener =
+        Route::new()
+            .append_t(TCP, "127.0.0.1:4000") // middle node
+            .append_t(TCP, "127.0.0.1:6000") // responder node
+            .append("secure_channel_listener"); // secure_channel_listener on responder node
     let channel = SecureChannel::create(&mut ctx, route_to_listener).await?;
 
     // Send a message to the echoer worker via the channel.

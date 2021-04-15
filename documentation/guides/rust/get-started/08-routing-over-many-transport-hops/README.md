@@ -15,7 +15,8 @@ use ockam_transport_tcp::TcpTransport;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    TcpTransport::create_listener(&ctx, "127.0.0.1:6000").await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.listen("127.0.0.1:6000").await?;
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
@@ -35,8 +36,9 @@ use ockam_transport_tcp::TcpTransport;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    TcpTransport::create_listener(&ctx, "127.0.0.1:4000").await?;
-    TcpTransport::create(&ctx, "127.0.0.1:6000").await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.listen("127.0.0.1:4000").await?;
+    tcp.connect("127.0.0.1:6000").await?;
 
     // This node never shuts down.
     Ok(())
@@ -53,16 +55,14 @@ use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    TcpTransport::create(&ctx, "127.0.0.1:4000").await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.connect("127.0.0.1:4000").await?;
 
     ctx.send(
         Route::new()
-            // Send a message to node B
-            .append_t(TCP, "127.0.0.1:4000")
-            // Send a message to node C
-            .append_t(TCP, "127.0.0.1:6000")
-            // Echo worker on node C
-            .append("echoer"),
+            .append_t(TCP, "127.0.0.1:4000") // middle node
+            .append_t(TCP, "127.0.0.1:6000") // responder node
+            .append("echoer"), // echoer worker on responder node
         "Hello Ockam!".to_string(),
     )
     .await?;
