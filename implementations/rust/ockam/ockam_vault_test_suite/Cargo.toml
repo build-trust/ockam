@@ -1,9 +1,15 @@
 [package]
 name = "ockam_vault_test_suite"
+categories = ["cryptography", "asynchronous", "authentication","network-programming", "embedded"]
+description = """Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
+"""
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
+keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
+readme = "README.md"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_test_suite"
 

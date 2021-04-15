@@ -6,6 +6,12 @@ edition = "2018"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_test_attribute"
+readme = "README.md"
+categories = ["cryptography", "asynchronous", "authentication","no-std", "algorithms"]
+keywords = ["ockam", "crypto", "encryption", "authentication"]
+description = """Channel is an abstraction responsible for sending messages (usually over the network)
+in encrypted and authenticated way.
+"""
 
 [lib]
 proc-macro = true
