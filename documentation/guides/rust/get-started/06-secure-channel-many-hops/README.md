@@ -71,20 +71,20 @@ cargo run --example 06-secure-channel-many-hops
 
 In the code above, we create a multi-hop route to the secure channel listener
 and provide that route to `SecureChannel::create(...)`. This internally creates
-a secure channel `initiator` worker that sends protocol messages over the provide
+a `channel_initiator` worker that sends protocol messages over the given
 route to establish the channel.
 
-Once the channel is establish we can send messages along this route: `Route::new().append(channel.address()).append("echoer")`, They are encrypted as
-they enter the channel and cannot be tampered as they flows along
-`hop1 => hop2 => hop3`.
+Once the channel is established, we can send messages via the channel `Route::new().append(channel.address()).append("echoer")`. They are encrypted as
+they enter the channel and cannot be tampered or snooped as they flow along
+`channel_initiator => hop1 => hop2 => hop3 => channel_responder`.
 
 ## Message Flow
 
 ![](./sequence.svg)
 
-The channel that built here was local to one node, and that is of course not very
-useful for a real applications. Next we'll see how messages can be routed to other
-nodes and we can have end-to-end secure channels over many transport layer hops.
+The channel that we built above was local to one node, which is not very
+useful for a real applications. Next, we'll see how messages can be routed to other
+nodes to get end-to-end secure channels over many transport layer hops.
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../07-routing-over-transport">07. Routing over a transport</a>
