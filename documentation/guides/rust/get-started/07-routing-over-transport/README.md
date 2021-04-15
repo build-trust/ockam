@@ -6,6 +6,14 @@ title: Routing over a transport
 
 ## Responder node
 
+Create a new file at:
+
+```
+touch examples/07-routing-over-transport-responder.rs
+```
+
+Add the following code to this file:
+
 ```rust
 // examples/07-routing-over-transport-responder.rs
 
@@ -27,6 +35,14 @@ async fn main(ctx: Context) -> Result<()> {
 ```
 
 ## Initiator node
+
+Create a new file at:
+
+```
+touch examples/07-routing-over-transport-initiator.rs
+```
+
+Add the following code to this file:
 
 ```rust
 // examples/07-routing-over-transport-initiator.rs
@@ -55,7 +71,15 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 ```
 
-Note the message flow.
+## Run
+
+```
+cargo run --example 07-routing-over-transport-responder
+```
+
+```
+cargo run --example 07-routing-over-transport-initiator
+```
 
 ## Message Flow
 

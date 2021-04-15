@@ -6,6 +6,14 @@ title: Routing over many transport hops
 
 ## Responder node
 
+Create a new file at:
+
+```
+touch examples/08-routing-over-transport-many-hops-responder.rs
+```
+
+Add the following code to this file:
+
 ```rust
 // examples/08-routing-over-transport-many-hops-responder.rs
 
@@ -28,6 +36,14 @@ async fn main(ctx: Context) -> Result<()> {
 
 ## Middle node
 
+Create a new file at:
+
+```
+touch examples/08-routing-over-transport-many-hops-middle.rs
+```
+
+Add the following code to this file:
+
 ```rust
 // examples/08-routing-over-transport-many-hops-middle.rs
 
@@ -46,6 +62,14 @@ async fn main(ctx: Context) -> Result<()> {
 ```
 
 ## Initiator node
+
+Create a new file at:
+
+```
+touch examples/08-routing-over-transport-many-hops-initiator.rs
+```
+
+Add the following code to this file:
 
 ```rust
 // examples/08-routing-over-transport-many-hops-initiator.rs
@@ -73,6 +97,20 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.stop().await
 }
+```
+
+## Run
+
+```
+cargo run --example 08-routing-over-transport-many-hops-responder
+```
+
+```
+cargo run --example 08-routing-over-transport-many-hops-middle
+```
+
+```
+cargo run --example 08-routing-over-transport-many-hops-initiator
 ```
 
 <div style="display: none; visibility: hidden;">

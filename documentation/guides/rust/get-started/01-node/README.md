@@ -26,6 +26,7 @@ For your new node, create a new file at `examples/01-node.rs` in your
 [ockam_get_started](../00-setup) project:
 
 ```
+mkdir -p examples
 touch examples/01-node.rs
 ```
 
@@ -57,7 +58,8 @@ To run the node program:
 cargo run --example 01-node
 ```
 
-When this runs, you'll see log output that shows the node starting and then
+This will down various dependencies, compile and then run our code. When it
+runs, you'll see log output that shows the node starting and then
 immediately shutting down.
 
 <div style="display: none; visibility: hidden;">

@@ -6,6 +6,14 @@ title: Secure Channel over many transport hops
 
 ## Responder node
 
+Create a new file at:
+
+```
+touch examples/09-secure-channel-over-many-transport-hops-responder.rs
+```
+
+Add the following code to this file:
+
 ```rust
 // examples/09-secure-channel-over-many-transport-hops-responder.rs
 
@@ -30,6 +38,14 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ## Middle node
 
+Create a new file at:
+
+```
+touch examples/09-secure-channel-over-many-transport-hops-middle.rs
+```
+
+Add the following code to this file:
+
 ```rust
 // examples/09-secure-channel-over-many-transport-hops-middle.rs
 
@@ -48,6 +64,15 @@ async fn main(ctx: Context) -> Result<()> {
 ```
 
 ## Initiator node
+
+
+Create a new file at:
+
+```
+touch examples/09-secure-channel-over-many-transport-hops-initiator.rs
+```
+
+Add the following code to this file:
 
 ```rust
 // examples/09-secure-channel-over-many-transport-hops-initiator.rs
@@ -80,4 +105,18 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.stop().await
 }
+```
+
+## Run
+
+```
+cargo run --example 09-secure-channel-over-many-transport-hops-responder
+```
+
+```
+cargo run --example 09-secure-channel-over-many-transport-hops-middle
+```
+
+```
+cargo run --example 09-secure-channel-over-many-transport-hops-initiator
 ```
