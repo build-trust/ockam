@@ -3,14 +3,16 @@ use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let remote_node = "Paste the address of the node you created on Ockam Hub here.";
+    let hub = "Paste the address of the node you created on Ockam Hub here.";
     let echo_service =
         "Paste the forwarded address that the server received from registration here.";
 
-    TcpTransport::create(&ctx, remote_node).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+
+    tcp.connect(hub).await?;
 
     ctx.send(
-        Route::new().append_t(TCP, remote_node).append(echo_service),
+        Route::new().append_t(TCP, hub).append(echo_service),
         "Hello Ockam!".to_string(),
     )
     .await?;

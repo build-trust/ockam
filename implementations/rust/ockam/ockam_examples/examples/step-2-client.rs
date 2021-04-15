@@ -5,7 +5,8 @@ use ockam_transport_tcp::{TcpTransport, TCP};
 async fn main(mut ctx: Context) -> Result<()> {
     let remote_node = "127.0.0.1:10222";
 
-    TcpTransport::create(&ctx, remote_node).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.connect(remote_node).await?;
 
     ctx.send(
         Route::new()

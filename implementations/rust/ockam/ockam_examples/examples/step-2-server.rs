@@ -16,6 +16,9 @@ impl Worker for EchoService {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    TcpTransport::create_listener(&ctx, "127.0.0.1:10222").await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+
+    tcp.listen("127.0.0.1:10222").await?;
+
     ctx.start_worker("echo_service", EchoService).await
 }
