@@ -30,7 +30,7 @@ This struct:
   * The `Context` type is usually set to `ockam::Context` which is provide by the node implementation.
   * The `Message` type must be set to the type of message the worker wishes to handle.
 
-For a new Echoer worker, create a new file at `src/echoer.rs` in your
+For a new `Echoer` worker, create a new file at `src/echoer.rs` in your
 [ockam_get_started](../00-setup) project. We're creating this inside the `src`
 directory so we can easily reuse the `Echoer` in other examples that we'll
 write later in this guide:
@@ -121,7 +121,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 ```
 
-To run the this new node program:
+To run this new node program:
 
 ```
 cargo run --example 02-worker
