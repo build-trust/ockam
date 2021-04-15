@@ -80,7 +80,7 @@ they enter the channel and cannot be tampered or snooped as they flow along
 
 ## Message Flow
 
-![](./sequence.svg)
+<img src="./sequence.png" width="100%">
 
 The channel that we built above was local to one node, which is not very
 useful for a real applications. Next, we'll see how messages can be routed to other

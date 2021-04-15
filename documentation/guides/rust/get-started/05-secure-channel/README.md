@@ -82,7 +82,7 @@ when it exits.
 
 ## Message Flow
 
-![](./sequence.svg)
+<img src="./sequence.png" width="100%">
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../06-secure-channel-many-hops">06. Secure Channel over many hops</a>

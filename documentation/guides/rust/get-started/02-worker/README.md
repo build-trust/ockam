@@ -132,7 +132,7 @@ You'll see console output that shows `"Hello Ockam!"` received by the
 
 ## Message Flow
 
-![](./sequence.svg)
+<img src="./sequence.png" width="100%">
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../03-routing">03. Routing</a>

@@ -57,7 +57,7 @@ Note the message flow.
 
 ## Message Flow
 
-![](./sequence.svg)
+<img src="./sequence.png" width="100%">
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../08-routing-over-many-transport-hops">08. Routing over many transport hops</a>

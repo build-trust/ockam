@@ -64,7 +64,7 @@ Note the message flow.
 
 ## Message Flow
 
-![](./sequence.svg)
+<img src="./sequence.png" width="100%">
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../05-secure-channel">05. Secure Channel</a>

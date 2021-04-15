@@ -1,5 +1,9 @@
 {
   "sequenceDiagram": {
-    "mirrorActors": false
+    "mirrorActors": false,
+    "actorFontSize": 14,
+    "actorFontFamily": "Courier",
+    "messageFontSize": 14,
+    "messageFontFamily": "Courier"
   }
 }

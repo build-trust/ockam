@@ -132,7 +132,7 @@ travels.
 
 ## Message Flow
 
-![](./sequence.svg)
+<img src="./sequence.png" width="100%">
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../04-routing-many-hops">04. Routing over many hops</a>
