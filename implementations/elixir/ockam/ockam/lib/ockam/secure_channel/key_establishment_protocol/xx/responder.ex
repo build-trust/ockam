@@ -1,7 +1,7 @@
 defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
   @moduledoc false
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol
 
@@ -18,8 +18,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
   end
 
   def handle_message(message, {:key_establishment, @role, :awaiting_message1}, data) do
-    message1 = Message.payload(message)
-    message2_onward_route = Message.return_route(message)
+    message1 = Routable.payload(message)
+    message2_onward_route = Routable.return_route(message)
     message2_return_route = [data.ciphertext_address]
 
     with {:ok, _payload, data} <- Protocol.decode(:message1, message1, data),
@@ -30,8 +30,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
   end
 
   def handle_message(message, {:key_establishment, @role, :awaiting_message3}, data) do
-    message3 = Message.payload(message)
-    data = Map.put(data, :route_to_peer, Message.return_route(message))
+    message3 = Routable.payload(message)
+    data = Map.put(data, :route_to_peer, Routable.return_route(message))
 
     with {:ok, _payload, data} <- Protocol.decode(:message3, message3, data),
          # {:ok, data} <- set_peer_plaintext_address(payload, data),

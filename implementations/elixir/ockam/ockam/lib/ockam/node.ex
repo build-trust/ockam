@@ -4,8 +4,8 @@ defmodule Ockam.Node do
   @doc false
   use Supervisor
 
-  alias Ockam.Message
   alias Ockam.Node.Registry
+  alias Ockam.Routable
   alias Ockam.Router
   alias Ockam.Telemetry
 
@@ -136,7 +136,7 @@ defmodule Ockam.Node do
   end
 
   def route_message(message) do
-    onward_route = Message.onward_route(message)
+    onward_route = Routable.onward_route(message)
 
     case onward_route do
       [] -> handle_control_message(message)
@@ -147,8 +147,8 @@ defmodule Ockam.Node do
   end
 
   def handle_control_message(message) do
-    return_route = Message.return_route(message)
-    payload = Message.payload(message)
+    return_route = Routable.return_route(message)
+    payload = Routable.payload(message)
 
     case payload do
       @ping ->

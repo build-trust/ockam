@@ -1,26 +1,26 @@
-defmodule Ockam.Message.Tests do
+defmodule Ockam.Routable.Tests do
   use ExUnit.Case, async: true
-  doctest Ockam.Message
-  alias Ockam.Message
+  doctest Ockam.Routable
+  alias Ockam.Routable
 
-  describe "Ockam.Router.Message.Any" do
+  describe "Ockam.Router.Routable.Any" do
     test "onward_route/1 is empty by default" do
-      assert [] === Message.onward_route(:test)
-      assert [] === Message.onward_route(100)
-      assert [] === Message.onward_route(%{})
-      assert [] === Message.onward_route("test")
-      assert [] === Message.onward_route([])
-      assert [] === Message.onward_route(100.0)
-      assert [] === Message.onward_route({100, 300})
+      assert [] === Routable.onward_route(:test)
+      assert [] === Routable.onward_route(100)
+      assert [] === Routable.onward_route(%{})
+      assert [] === Routable.onward_route("test")
+      assert [] === Routable.onward_route([])
+      assert [] === Routable.onward_route(100.0)
+      assert [] === Routable.onward_route({100, 300})
     end
 
     test "onward_route/1 key of map is used if it has a list value" do
-      assert [] === Message.onward_route(%{onward_route: []})
-      assert [1, 2, 3] === Message.onward_route(%{onward_route: [1, 2, 3]})
+      assert [] === Routable.onward_route(%{onward_route: []})
+      assert [1, 2, 3] === Routable.onward_route(%{onward_route: [1, 2, 3]})
     end
 
     test "onward_route/1 key of map is not used if it does not have a list value" do
-      assert [] === Message.onward_route(%{onward_route: 100})
+      assert [] === Routable.onward_route(%{onward_route: 100})
     end
 
     test "onward_route/1 does what I expect for UDP" do
@@ -32,7 +32,7 @@ defmodule Ockam.Message.Tests do
       }
 
       assert [%Ockam.Transport.UDPAddress{ip: {127, 0, 0, 1}, port: 3000}] ==
-               Message.onward_route(message)
+               Routable.onward_route(message)
     end
 
     test "onward_route/1 does what I expect for TCP" do
@@ -44,7 +44,7 @@ defmodule Ockam.Message.Tests do
       }
 
       assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] ==
-               Message.onward_route(message)
+               Routable.onward_route(message)
     end
 
     test "return_route/1 does what I expect for UDP" do
@@ -56,7 +56,7 @@ defmodule Ockam.Message.Tests do
       }
 
       assert [%Ockam.Transport.UDPAddress{ip: {127, 0, 0, 1}, port: 3000}] =
-               Message.return_route(message)
+               Routable.return_route(message)
     end
 
     test "return_route/1 does what I expect for TCP" do
@@ -68,7 +68,7 @@ defmodule Ockam.Message.Tests do
       }
 
       assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] =
-               Message.return_route(message)
+               Routable.return_route(message)
     end
   end
 end

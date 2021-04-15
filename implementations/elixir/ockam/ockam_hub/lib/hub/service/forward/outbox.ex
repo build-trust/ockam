@@ -3,7 +3,7 @@ defmodule Ockam.Hub.Service.Forward.Outbox do
 
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
 
   @impl true
@@ -15,11 +15,11 @@ defmodule Ockam.Hub.Service.Forward.Outbox do
 
   @impl true
   def handle_message(message, state) do
-    onward = Message.onward_route(message)
+    onward = Routable.onward_route(message)
     onward = Enum.drop_while(onward, fn a -> a === state.address end)
 
-    return = [state.inbox_address | Message.return_route(message)]
-    payload = Message.payload(message)
+    return = [state.inbox_address | Routable.return_route(message)]
+    payload = Routable.payload(message)
 
     forward = %{onward_route: onward, return_route: return, payload: payload}
 
