@@ -3,7 +3,8 @@ use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    TcpTransport::create(&ctx, "127.0.0.1:4000").await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.connect("127.0.0.1:4000").await?;
 
     // Send a message to the echoer worker, on a different node, over a tcp transport
     ctx.send(

@@ -4,7 +4,8 @@ use ockam_transport_tcp::TcpTransport;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    TcpTransport::create_listener(&ctx, "127.0.0.1:6000").await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.listen("127.0.0.1:6000").await?;
 
     SecureChannel::create_listener(&mut ctx, "secure_channel_listener").await?;
 

@@ -43,13 +43,36 @@ use std::net::SocketAddr;
 ///
 /// Be aware that only one `TcpTransport` can exist per node, as it
 /// registers itself as a router for the `TCP` address type.  Multiple
-/// calls to [`TcpTransport::create`](crate::TcpTransport::create) or
-/// [`TcpTransport::create_listener`](crate::TcpTransport::create_listener)
+/// calls to [`TcpTransport::create`](crate::TcpTransport::create)
 /// will fail.
 ///
 /// To register additional connections on an already initialised
 /// `TcpTransport`, use
-/// [`tcp.connect()`](crate::TcpTransport::connect) instead!
+/// [`tcp.connect()`](crate::TcpTransport::connect).  To listen for
+/// incoming connections use
+/// [`tcp.listen()`](crate::TcpTransport::listen)
+///
+/// ```rust
+/// use ockam_transport_tcp::TcpTransport;
+/// # use ockam::{Context, Result};
+/// # async fn test(ctx: Context) -> Result<()> {
+/// let tcp = TcpTransport::create(&ctx).await?;
+/// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
+/// tcp.connect("127.0.0.1:5000").await?; // And connect to port 5000
+/// # Ok(()) }
+/// ```
+///
+/// The same `TcpTransport` can also bind to multiple ports.
+///
+/// ```rust
+/// # use ockam_transport_tcp::TcpTransport;
+/// # use ockam::{Context, Result};
+/// # async fn test(ctx: Context) -> Result<()> {
+/// let tcp = TcpTransport::create(&ctx).await?;
+/// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
+/// tcp.listen("127.0.0.1:9000").await?; // Listen on port 9000
+/// # Ok(()) }
+/// ```
 pub struct TcpTransport<'ctx> {
     ctx: &'ctx Context,
     router: TcpRouterHandle<'ctx>,
@@ -63,17 +86,10 @@ fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
 }
 
 impl<'ctx> TcpTransport<'ctx> {
-    /// Create a TCP transport and establish an outgoing connection
-    pub async fn create<S: Into<String>>(
-        ctx: &'ctx Context,
-        peer: S,
-    ) -> Result<TcpTransport<'ctx>> {
+    /// Create a new TCP transport and router for the current node
+    pub async fn create(ctx: &'ctx Context) -> Result<TcpTransport<'ctx>> {
         let addr = Address::random(0);
-        let peer = parse_socket_addr(peer)?;
-
         let router = TcpRouter::register(ctx, addr.clone()).await?;
-        init::start_connection(ctx, &router, peer).await?;
-
         Ok(Self { ctx, router })
     }
 
@@ -84,14 +100,10 @@ impl<'ctx> TcpTransport<'ctx> {
         Ok(())
     }
 
-    /// Create a TCP transport and listen for incoming connections
-    pub async fn create_listener<S: Into<String>>(
-        ctx: &'ctx Context,
-        bind_addr: S,
-    ) -> Result<TcpTransport<'ctx>> {
-        let addr = Address::random(0);
+    /// Start listening to incoming connections on an existing transport
+    pub async fn listen<S: Into<String>>(&self, bind_addr: S) -> Result<()> {
         let bind_addr = parse_socket_addr(bind_addr)?;
-        let router = TcpRouter::bind(ctx, addr, bind_addr).await?;
-        Ok(Self { ctx, router })
+        self.router.bind(bind_addr).await?;
+        Ok(())
     }
 }

@@ -9,7 +9,8 @@ async fn main(ctx: ockam::Context) -> Result<()> {
     let hub_addr = SocketAddr::from_str("127.0.0.1:4000").unwrap();
 
     // Create and register a connection worker pair
-    TcpTransport::create(&ctx, "127.0.0.1:4000").await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.connect("127.0.0.1:4000").await?;
 
     let client = Client::new(hub_addr, "27164a70".to_string());
 

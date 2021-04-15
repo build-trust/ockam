@@ -1,10 +1,8 @@
-use std::net::SocketAddr;
-
 use ockam::{
-    async_worker, Context, CredentialAttribute, CredentialIssuer, CredentialSchema, OckamError,
-    Result, Routed, Worker,
+    async_worker, Context, CredentialAttribute, CredentialIssuer, CredentialSchema, Result, Routed,
+    Worker,
 };
-use ockam_transport_tcp::TcpRouter;
+use ockam_transport_tcp::TcpTransport;
 
 use credentials::CredentialMessage::{CredentialOffer, CredentialResponse};
 use credentials::{example_schema, CredentialMessage, DEFAULT_ISSUER_PORT};
@@ -82,11 +80,8 @@ async fn main(ctx: Context) -> Result<()> {
     let args: Args = Args::from_args();
     let port = args.port.unwrap_or(DEFAULT_ISSUER_PORT);
 
-    let local_tcp: SocketAddr = format!("0.0.0.0:{}", port)
-        .parse()
-        .map_err(|_| OckamError::InvalidInternalState)?;
-
-    let _router = TcpRouter::bind(&ctx, local_tcp).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.listen(format!("0.0.0.0:{}", port)).await?;
 
     let credential_issuer = if let Some(signing_key) = args.signing_key {
         CredentialIssuer::with_signing_key_hex(signing_key).unwrap()
