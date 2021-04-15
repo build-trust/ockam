@@ -16,5 +16,5 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let msg = ctx.receive::<String>().await?;
     println!("Received return message: '{}'", msg);
-    Ok(())
+    ctx.stop().await
 }
