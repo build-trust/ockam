@@ -90,7 +90,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     let issuer = issuer_on_or_default(args.issuer);
 
-    let tcp = TcpTransport::create_listener(&ctx, local_tcp).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.listen(local_tcp).await?;
     tcp.connect(&issuer).await?;
 
     ctx.start_worker(

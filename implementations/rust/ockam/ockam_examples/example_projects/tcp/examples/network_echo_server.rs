@@ -36,7 +36,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Get either the default socket address, or a user-input
     let bind_addr = get_bind_addr();
     debug!("Binding to: {}", bind_addr);
-    TcpTransport::create_listener(&ctx, bind_addr).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.listen(bind_addr).await?;
 
     // Create the responder worker
     ctx.start_worker("echo_service", Responder).await?;

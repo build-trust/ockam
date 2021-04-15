@@ -20,7 +20,8 @@ async fn main(ctx: Context) -> Result<()> {
     let peer = get_peer_addr();
 
     // Initialize the TCP stack by opening a connection to a the remote
-    TcpTransport::create(&ctx, peer.clone()).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.connect(peer.clone()).await?;
 
     // Get the forwarding route from user input
     let mut buffer = String::new();

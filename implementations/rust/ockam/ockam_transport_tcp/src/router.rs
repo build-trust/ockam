@@ -4,7 +4,7 @@ use crate::{
     TcpError, WorkerPair,
 };
 use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
-use std::{collections::BTreeMap, net::SocketAddr};
+use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
 
 /// A TCP address router and connection listener
 ///
@@ -25,6 +25,7 @@ pub struct TcpRouter {
 pub struct TcpRouterHandle<'c> {
     ctx: &'c Context,
     addr: Address,
+    run: ArcBool,
 }
 
 impl<'c> TcpRouterHandle<'c> {
@@ -40,6 +41,18 @@ impl<'c> TcpRouterHandle<'c> {
             )
             .await
     }
+
+    /// Bind an incoming connection listener for this router
+    pub async fn bind<S: Into<SocketAddr>>(&self, addr: S) -> Result<()> {
+        let socket_addr = addr.into();
+        TcpListenWorker::start(
+            self.ctx,
+            self.addr.clone(),
+            socket_addr,
+            Arc::clone(&self.run),
+        )
+        .await
+    }
 }
 
 #[async_worker]
@@ -48,8 +61,8 @@ impl Worker for TcpRouter {
     type Message = RouterMessage;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        trace!("Registering TCP router for type = 1");
-        ctx.register(1, ctx.address()).await?;
+        trace!("Registering TCP router for type = {}", crate::TCP);
+        ctx.register(crate::TCP, ctx.address()).await?;
         Ok(())
     }
 
@@ -96,12 +109,12 @@ impl Worker for TcpRouter {
 }
 
 impl TcpRouter {
-    async fn start(ctx: &Context, waddr: &Address, run: Option<ArcBool>) -> Result<()> {
+    async fn start(ctx: &Context, waddr: &Address, run: ArcBool) -> Result<()> {
         debug!("Initialising new TcpRouter with address {}", waddr);
 
         let router = Self {
             map: BTreeMap::new(),
-            run: run.unwrap_or_else(|| atomic::new(true)),
+            run,
         };
         ctx.start_worker(waddr.clone(), router).await?;
         Ok(())
@@ -112,8 +125,9 @@ impl TcpRouter {
     /// To also handle incoming connections, use
     /// [`TcpRouter::bind`](TcpRouter::bind)
     pub async fn register<'c>(ctx: &'c Context, addr: Address) -> Result<TcpRouterHandle<'c>> {
-        Self::start(ctx, &addr, None).await?;
-        Ok(TcpRouterHandle { ctx, addr })
+        let run = atomic::new(true);
+        Self::start(ctx, &addr, Arc::clone(&run)).await?;
+        Ok(TcpRouterHandle { ctx, addr, run })
     }
 
     /// Register a new TCP router and bind a connection listener
@@ -122,6 +136,7 @@ impl TcpRouter {
     /// connection architecture.  For clients that shouldn't listen
     /// for connections themselves, use
     /// [`TcpRouter::register`](TcpRouter::register).
+    #[deprecated(since = "0.4.0", note = "Use TcpRouterHandle.bind instead")]
     pub async fn bind<'c, S: Into<SocketAddr>>(
         ctx: &'c Context,
         addr: Address,
@@ -132,7 +147,7 @@ impl TcpRouter {
         // Bind and start the connection listen worker
         TcpListenWorker::start(ctx, addr.clone(), socket_addr.into(), run.clone()).await?;
 
-        Self::start(ctx, &addr, Some(run)).await?;
-        Ok(TcpRouterHandle { ctx, addr })
+        Self::start(ctx, &addr, Arc::clone(&run)).await?;
+        Ok(TcpRouterHandle { ctx, addr, run })
     }
 }

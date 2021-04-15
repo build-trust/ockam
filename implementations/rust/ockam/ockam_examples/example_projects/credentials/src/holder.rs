@@ -29,8 +29,9 @@ impl Worker for Holder {
         let issuer = &self.issuer;
         let verifier = &self.verifier;
 
-        let _issuer_pair = TcpTransport::create(&ctx, issuer).await?;
-        let _verifier_pair = TcpTransport::create(&ctx, verifier).await?;
+        let tcp = TcpTransport::create(&ctx).await?;
+        tcp.connect(issuer).await?;
+        tcp.connect(verifier).await?;
 
         // Send a New Credential Connection message
         ctx.send(

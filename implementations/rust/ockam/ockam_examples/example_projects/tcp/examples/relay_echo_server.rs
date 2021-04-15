@@ -58,7 +58,8 @@ async fn main(ctx: Context) -> Result<()> {
     let peer = get_peer_addr();
 
     // Create and register a connection worker pair
-    TcpTransport::create(&ctx, peer.clone()).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    tcp.connect(peer.clone()).await?;
 
     // Start the worker we want to reach via proxy
     ctx.start_worker("worker", ProxiedWorker { peer }).await?;
