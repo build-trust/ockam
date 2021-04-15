@@ -57,7 +57,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 To run this new node program:
 
 ```
-cargo run --example 04-routing-many-hops.rs
+cargo run --example 04-routing-many-hops
 ```
 
 Note the message flow.

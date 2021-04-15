@@ -4,9 +4,19 @@ title: Secure Channel over many hops
 
 # Secure Channel over many hops
 
-![](./sequence.svg)
+## App worker
+
+Create a new file at:
+
+```
+touch examples/06-secure-channel-many-hops.rs
+```
+
+Add the following code to this file:
 
 ```rust
+// examples/06-secure-channel-many-hops.rs
+
 use ockam::{Context, Result, Route, SecureChannel};
 use ockam_get_started::{Echoer, Hop};
 
@@ -46,6 +56,18 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 ```
 
+To run this new node program:
+
+```
+cargo run --example 06-secure-channel-many-hops
+```
+
+Note the message flow.
+
+## Message Flow
+
+![](./sequence.svg)
+
 <div style="display: none; visibility: hidden;">
-<a href="../07-routing-over-transport">07. Routing over a transport</a>
+<hr><b>Next:</b> <a href="../07-routing-over-transport">07. Routing over a transport</a>
 </div>
