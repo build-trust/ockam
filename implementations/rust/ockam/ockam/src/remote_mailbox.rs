@@ -38,7 +38,7 @@ impl<T: Message> RemoteMailbox<T> {
     fn new(hub_addr: SocketAddr, destination: Address, callback_address: Address) -> Self {
         let route = Route::new()
             .append(format!("1#{}", hub_addr))
-            .append("alias_service")
+            .append("forwarding_service")
             .into();
         let destination = Route::new().append(destination).into();
         Self {
