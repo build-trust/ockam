@@ -58,10 +58,10 @@ impl<'ctx> TcpTransport<'ctx> {
         ctx: &'ctx Context,
         peer: S,
     ) -> Result<TcpTransport<'ctx>> {
-        let addr = Address::random(0);
+        let _addr = Address::random(0); // TODO
         let peer = parse_socket_addr(peer)?;
 
-        let router = TcpRouter::register(ctx, addr.clone()).await?;
+        let router = TcpRouter::register_or_get(ctx).await?;
         init::start_connection(ctx, &router, peer).await?;
 
         Ok(Self { ctx, router })

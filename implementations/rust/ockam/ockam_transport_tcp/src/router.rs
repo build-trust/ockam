@@ -6,6 +6,8 @@ use crate::{
 use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
 use std::{collections::BTreeMap, net::SocketAddr};
 
+/// A default worker address for the TCP Router.
+const DEFAULT_ADDRESS: &'static str = "io.ockam.router.tcp";
 /// A TCP address router and connection listener
 ///
 /// In order to create new TCP connection workers you need a router to
@@ -116,6 +118,14 @@ impl TcpRouter {
         Ok(TcpRouterHandle { ctx, addr })
     }
 
+    /// Either register a new router or return a handle to the existing one
+    pub(crate) async fn register_or_get<'c>(ctx: &'c Context) -> Result<TcpRouterHandle<'c>> {
+        let addr = Address::from(DEFAULT_ADDRESS);
+        Self::register(ctx, addr.clone()).await.or_else(|_| {
+            debug!("Using pre-existing TCP router...");
+            Ok(TcpRouterHandle { ctx, addr })
+        })
+    }
     /// Register a new TCP router and bind a connection listener
     ///
     ///  Use this function when your node is the server part of your
