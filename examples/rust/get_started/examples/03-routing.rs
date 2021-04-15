@@ -3,10 +3,10 @@ use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start an echoer worker.
+    // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    // Start a hop1 worker.
+    // Start a Hop worker at address "hop1"
     ctx.start_worker("hop1", Hop).await?;
 
     // Send a message to the echoer worker via the hop1 worker
