@@ -4,15 +4,31 @@ title: Routing over many hops
 
 # Routing over many hops
 
-![](./sequence.svg)
+Routing is not limited to [one](../02-worker) or [two hops](../03-routing),
+we can easily create routes with many hops. Let's try that in a quick example:
+
+## App worker
+
+This time we'll create multiple hop workers between the `"app"` and
+the `"echoer"` and route our message through them.
+
+Create a new file at:
+
+```
+touch examples/04-routing-many-hops.rs
+```
+
+Add the following code to this file:
 
 ```rust
-use ockam::{Context, Result, Route, SecureChannel};
+// examples/04-routing-many-hops.rs
+
+use ockam::{Context, Result, Route};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start an echoer worker.
+    // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
     // Start hop workers - hop1, hop2, hop3.
@@ -20,20 +36,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("hop2", Hop).await?;
     ctx.start_worker("hop3", Hop).await?;
 
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener").await?;
-
-    let route_to_listener =
+    // Send a message to the echoer worker via the hop1, hop2, and hop3
+    ctx.send(
         Route::new()
             .append("hop1")
             .append("hop2")
             .append("hop3")
-            .append("secure_channel_listener");
-    let channel = SecureChannel::create(&mut ctx, route_to_listener).await?;
-
-    // Send a message to the echoer worker via the channel.
-    ctx.send(
-        Route::new()
-            .append(channel.address())
             .append("echoer"),
         "Hello Ockam!".to_string()
     ).await?;
@@ -46,6 +54,18 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 ```
 
+To run this new node program:
+
+```
+cargo run --example 04-routing-many-hops.rs
+```
+
+Note the message flow.
+
+## Message Flow
+
+![](./sequence.svg)
+
 <div style="display: none; visibility: hidden;">
-<a href="../05-secure-channel">05. Secure Channel</a>
+<hr><b>Next:</b> <a href="../05-secure-channel">05. Secure Channel</a>
 </div>

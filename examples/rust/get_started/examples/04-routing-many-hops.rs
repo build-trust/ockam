@@ -3,7 +3,7 @@ use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start an echoer worker.
+    // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
     // Start hop workers - hop1, hop2, hop3.

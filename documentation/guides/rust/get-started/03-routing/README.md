@@ -127,8 +127,7 @@ To run this new node program:
 cargo run --example 03-routing
 ```
 
-The output will not look very different from the previous example but note
-the message flow and how routing information is manipulated as the message
+Note the message flow and how routing information is manipulated as the message
 travels.
 
 ## Message Flow
