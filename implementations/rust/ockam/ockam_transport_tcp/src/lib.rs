@@ -39,7 +39,17 @@ pub use sender::TcpSendWorker;
 use ockam::{Address, Context, Result};
 use std::net::SocketAddr;
 
-/// An API layer object to control Ockam TCP transports
+/// High level management interface for TCP transports
+///
+/// Be aware that only one `TcpTransport` can exist per node, as it
+/// registers itself as a router for the `TCP` address type.  Multiple
+/// calls to [`TcpTransport::create`](crate::TcpTransport::create) or
+/// [`TcpTransport::create_listener`](crate::TcpTransport::create_listener)
+/// will fail.
+///
+/// To register additional connections on an already initialised
+/// `TcpTransport`, use
+/// [`tcp.connect()`](crate::TcpTransport::connect) instead!
 pub struct TcpTransport<'ctx> {
     ctx: &'ctx Context,
     router: TcpRouterHandle<'ctx>,
