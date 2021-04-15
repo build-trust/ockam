@@ -4,9 +4,32 @@ title: Routing over a transport
 
 # Routing over a transport
 
-![](./sequence.svg)
+## Responder node
 
 ```rust
+// examples/07-routing-over-transport-responder.rs
+
+use ockam::{Context, Result};
+use ockam_get_started::Echoer;
+use ockam_transport_tcp::TcpTransport;
+
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    TcpTransport::create_listener(&ctx, "127.0.0.1:4000").await?;
+
+    // Create an echoer worker
+    ctx.start_worker("echoer", Echoer).await?;
+
+    // This node never shuts down.
+    Ok(())
+}
+```
+
+## Initiator node
+
+```rust
+// examples/07-routing-over-transport-initiator.rs
+
 use ockam::{Context, Result, Route};
 use ockam_transport_tcp::{TcpTransport, TCP};
 
@@ -30,23 +53,12 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 ```
 
-```rust
-use ockam::{Context, Result};
-use ockam_get_started::Echoer;
-use ockam_transport_tcp::TcpTransport;
+Note the message flow.
 
-#[ockam::node]
-async fn main(ctx: Context) -> Result<()> {
-    TcpTransport::create_listener(&ctx, "127.0.0.1:4000").await?;
+## Message Flow
 
-    // Create an echoer worker
-    ctx.start_worker("echoer", Echoer).await?;
-
-    // This node never shuts down.
-    Ok(())
-}
-```
+![](./sequence.svg)
 
 <div style="display: none; visibility: hidden;">
-<a href="../08-routing-over-many-transport-hops">08. Routing over many transport hops</a>
+<hr><b>Next:</b> <a href="../08-routing-over-many-transport-hops">08. Routing over many transport hops</a>
 </div>
