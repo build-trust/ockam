@@ -24,7 +24,7 @@ not be online at the same time.
 Let's [get started](./get-started/00-setup).
 
 <ul>
-<li></li>
+<li><a href="./get-started/00-setup">00. Setup</a></li>
 <li><a href="./get-started/01-node">01. Node</a></li>
 <li><a href="./get-started/02-worker">02. Worker</a>
 <li><a href="./get-started/03-routing">03. Routing</a></li>
