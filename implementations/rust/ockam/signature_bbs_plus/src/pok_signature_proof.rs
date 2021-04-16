@@ -1,15 +1,12 @@
-use crate::{
-    util::VecSerializer, Challenge, Message, MessageGenerators, ALLOC_MSG, COMMITMENT_BYTES,
-    FIELD_BYTES,
-};
+use crate::MessageGenerators;
 use bls::PublicKey;
 use bls12_381_plus::{multi_miller_loop, G1Affine, G1Projective, G2Affine, G2Prepared, Scalar};
 use core::convert::TryFrom;
 use core::ops::Neg;
 use digest::Update;
-use group::{Curve, Group};
+use group::{Curve, Group, GroupEncoding};
 use serde::{Deserialize, Serialize};
-use short_group_signatures_core::lib::*;
+use short_group_signatures_core::{constants::*, lib::*};
 use subtle::{Choice, CtOption};
 
 /// The actual proof that is sent from prover to verifier.
@@ -134,8 +131,9 @@ impl PokSignatureProof {
 
         let proof1_points = [self.a_bar - self.d, self.a_prime, generators.h0];
         let mut proof1_scalars = [challenge.0, self.proofs1[0].0, self.proofs1[1].0];
-        let commitment_proofs1 = crate::util::sum_of_products(&proof1_points, &mut proof1_scalars);
-        hasher.update(commitment_proofs1.to_affine().to_uncompressed());
+        let commitment_proofs1 =
+            G1Projective::sum_of_products_in_place(&proof1_points, &mut proof1_scalars);
+        hasher.update(commitment_proofs1.to_affine().to_bytes());
 
         let mut r_points = Vec::<G1Projective, U130>::new();
         let mut r_scalars = Vec::<Scalar, U130>::new();
@@ -150,7 +148,7 @@ impl PokSignatureProof {
             r_scalars.push(msg.0).expect(ALLOC_MSG);
         }
 
-        let r = crate::util::sum_of_products(r_points.as_ref(), r_scalars.as_mut());
+        let r = G1Projective::sum_of_products_in_place(r_points.as_ref(), r_scalars.as_mut());
 
         let mut proof2_points = Vec::<G1Projective, U130>::new();
         let mut proof2_scalars = Vec::<Scalar, U130>::new();
@@ -177,8 +175,8 @@ impl PokSignatureProof {
             j += 1;
         }
         let commitment_proofs2 =
-            crate::util::sum_of_products(proof2_points.as_ref(), proof2_scalars.as_mut());
-        hasher.update(commitment_proofs2.to_affine().to_uncompressed());
+            G1Projective::sum_of_products_in_place(proof2_points.as_ref(), proof2_scalars.as_mut());
+        hasher.update(commitment_proofs2.to_affine().to_bytes());
     }
 
     /// Validate the proof, only checks the signature proof

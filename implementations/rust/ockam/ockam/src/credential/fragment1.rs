@@ -1,6 +1,6 @@
 use super::CredentialSchema;
-use bbs::SignatureBlinding;
 use serde::{Deserialize, Serialize};
+use signature_core::lib::SignatureBlinding;
 
 /// The information needed to convert a CredentialFragment2 to a Credential
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -10,10 +10,8 @@ const DST: &'static [u8] = b"BLS12381G1_XMD:BLAKE2B_SSWU_RO_BBS+_SIGNATURES:1_0_
 /// The generators that are used to sign a vector of commitments for a BBS+ bls
 /// These must be the same generators used by sign, verify, prove, and open
 ///
-/// If the desire is to create these once and publish them with the public key
-/// use MessageGenerators<N>::random(rng).
-///
-/// To generate these in a deterministic manner, use MessageGenerators<N>::from
+/// These are generated in a deterministic manner, use MessageGenerators::from_secret_key or
+/// MessageGenerators::from_public_key
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MessageGenerators {
     /// Blinding factor generator

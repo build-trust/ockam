@@ -1,6 +1,6 @@
 [package]
 name = "signature_core"
-version = "0.1.0"
+version = "0.3.0"
 authors = ["Ockam Deveopers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -19,6 +19,7 @@ exclude = [
 
 
 [dependencies]
+blake2 = "0.9"
 bls12_381_plus = "0.4"
 digest = "0.9"
 ff = "0.9"

@@ -1,4 +1,4 @@
-use crate::{Commitment, Message, MessageGenerators, Signature, SignatureBlinding, MAX_MSGS};
+use crate::{MessageGenerators, Signature, MAX_MSGS};
 use blake2::Blake2b;
 use bls::SecretKey;
 use bls12_381_plus::{G1Projective, Scalar};

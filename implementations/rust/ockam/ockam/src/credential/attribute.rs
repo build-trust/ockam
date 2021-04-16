@@ -1,8 +1,8 @@
 use super::CredentialAttributeType;
-use bbs::Message;
 use bls12_381_plus::Scalar;
 use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
+use signature_core::lib::Message;
 
 /// The attribute data that is signed by
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -1,4 +1,5 @@
-use crate::{HiddenMessage, Message};
+use crate::hidden_message::HiddenMessage;
+use crate::message::Message;
 
 /// A message classification by the prover
 #[derive(Copy, Clone, Debug)]

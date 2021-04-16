@@ -1,45 +1,51 @@
 use crate::error::Error;
 use crate::lib::*;
 
-use bls12_381_plus::{G1Projective, Scalar};
+use bls12_381_plus::Scalar;
 use digest::Update;
 use ff::Field;
-use group::Curve;
+use group::{Curve, GroupEncoding};
 use rand_core::RngCore;
 use subtle::ConstantTimeEq;
 use typenum::NonZero;
 
-#[derive(Clone, Debug)]
-struct ProofCommittedBuilderCache<P, S>
+struct ProofCommittedBuilderCache<B, C, P, S>
 where
-    P: ArrayLength<G1Projective> + NonZero + Clone,
+    B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
+    C: GroupEncoding + Debug,
+    P: ArrayLength<B> + NonZero + Clone,
     S: ArrayLength<Scalar> + NonZero + Clone,
 {
-    commitment: G1Projective,
-    points: Vec<G1Projective, P>,
+    commitment: B,
+    points: Vec<B, P>,
     scalars: Vec<Scalar, S>,
 }
 
-impl<P, S> Default for ProofCommittedBuilderCache<P, S>
+impl<B, C, P, S> Default for ProofCommittedBuilderCache<B, C, P, S>
 where
-    P: ArrayLength<G1Projective> + NonZero + Clone,
+    B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
+    C: GroupEncoding + Debug,
+    P: ArrayLength<B> + NonZero + Clone,
     S: ArrayLength<Scalar> + NonZero + Clone,
 {
     fn default() -> Self {
         Self {
-            commitment: G1Projective::identity(),
+            commitment: B::default(),
             points: Vec::new(),
             scalars: Vec::new(),
         }
     }
 }
 
-impl<P, S> PartialEq<ProofCommittedBuilder<P, S>> for ProofCommittedBuilderCache<P, S>
+impl<B, C, P, S> PartialEq<ProofCommittedBuilder<B, C, P, S>>
+    for ProofCommittedBuilderCache<B, C, P, S>
 where
-    P: ArrayLength<G1Projective> + NonZero + Clone,
+    B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
+    C: GroupEncoding + Debug,
+    P: ArrayLength<B> + NonZero + Clone,
     S: ArrayLength<Scalar> + NonZero + Clone,
 {
-    fn eq(&self, other: &ProofCommittedBuilder<P, S>) -> bool {
+    fn eq(&self, other: &ProofCommittedBuilder<B, C, P, S>) -> bool {
         if self.points.len() != other.points.len() {
             return false;
         }
@@ -58,56 +64,63 @@ where
 /// A builder struct for creating a proof of knowledge
 /// of messages in a vector commitment
 /// each message has a blinding factor
-#[derive(Clone, Debug)]
-pub struct ProofCommittedBuilder<P, S>
+pub struct ProofCommittedBuilder<B, C, P, S>
 where
-    P: ArrayLength<G1Projective> + NonZero,
+    B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
+    C: GroupEncoding + Debug,
+    P: ArrayLength<B> + NonZero,
     S: ArrayLength<Scalar> + NonZero,
 {
-    cache: ProofCommittedBuilderCache<P, S>,
-    points: Vec<G1Projective, P>,
+    cache: ProofCommittedBuilderCache<B, C, P, S>,
+    points: Vec<B, P>,
     scalars: Vec<Scalar, S>,
+    sum_of_products: fn(&[B], &mut [Scalar]) -> B,
 }
 
-impl<P, S> Default for ProofCommittedBuilder<P, S>
+impl<B, C, P, S> Default for ProofCommittedBuilder<B, C, P, S>
 where
-    P: ArrayLength<G1Projective> + NonZero,
+    B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
+    C: GroupEncoding + Debug,
+    P: ArrayLength<B> + NonZero,
     S: ArrayLength<Scalar> + NonZero,
 {
     fn default() -> Self {
-        Self::new()
+        Self::new(|_, _| B::default())
     }
 }
 
-impl<P, S> ProofCommittedBuilder<P, S>
+impl<B, C, P, S> ProofCommittedBuilder<B, C, P, S>
 where
-    P: ArrayLength<G1Projective> + NonZero,
+    B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
+    C: GroupEncoding + Debug,
+    P: ArrayLength<B> + NonZero,
     S: ArrayLength<Scalar> + NonZero,
 {
     /// Create a new builder
-    pub fn new() -> Self {
+    pub fn new(sum_of_products: fn(&[B], &mut [Scalar]) -> B) -> Self {
         Self {
             cache: ProofCommittedBuilderCache::default(),
             points: Vec::new(),
             scalars: Vec::new(),
+            sum_of_products,
         }
     }
 
     /// Add a specified point and generate a random blinding factor
-    pub fn commit_random(&mut self, point: G1Projective, rng: impl RngCore) {
+    pub fn commit_random(&mut self, point: B, rng: impl RngCore) {
         let r = Scalar::random(rng);
         self.points.push(point).unwrap();
         self.scalars.push(r).unwrap();
     }
 
     /// Commit a specified point with the specified scalar
-    pub fn commit(&mut self, point: G1Projective, scalar: Scalar) {
+    pub fn commit(&mut self, point: B, scalar: Scalar) {
         self.points.push(point).unwrap();
         self.scalars.push(scalar).unwrap();
     }
 
     /// Return the point and blinding factor at the specified index
-    pub fn get(&self, index: usize) -> Option<(G1Projective, Scalar)> {
+    pub fn get(&self, index: usize) -> Option<(B, Scalar)> {
         let p = self.points.get(index);
         let r = self.scalars.get(index);
         match (p, r) {
@@ -120,8 +133,7 @@ where
     pub fn add_challenge_contribution(&mut self, hasher: &mut impl Update) {
         if !self.cache.eq(self) {
             let mut scalars = self.scalars.clone();
-            let commitment =
-                G1Projective::sum_of_products_in_place(self.points.as_ref(), scalars.as_mut());
+            let commitment = (self.sum_of_products)(self.points.as_ref(), scalars.as_mut());
             self.cache = ProofCommittedBuilderCache {
                 points: self.points.clone(),
                 scalars,
@@ -129,7 +141,7 @@ where
             }
         }
 
-        hasher.update(self.cache.commitment.to_affine().to_uncompressed());
+        hasher.update(self.cache.commitment.to_affine().to_bytes());
     }
 
     /// Generate the Schnorr challenges given the specified secrets

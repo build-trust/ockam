@@ -5,30 +5,30 @@ use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
 use subtle::CtOption;
 
-/// A nonce that is used for zero-knowledge proofs
+/// A message that is signed into a signature
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Nonce(pub(crate) Scalar);
+pub struct SignatureBlinding(pub Scalar);
 
-impl Nonce {
-    /// The number of bytes in a nonce
+impl SignatureBlinding {
+    /// The number of bytes in a message
     pub const BYTES: usize = 32;
 
-    /// Hash arbitrary data to a nonce
+    /// Hash arbitrary data to a signature blinding to be signed into BBS+
     pub fn hash<B: AsRef<[u8]>>(data: B) -> Self {
         Self(hash_to_scalar(data))
     }
 
-    /// Generate a random nonce
+    /// Generate a random signature blinding
     pub fn random(rng: impl RngCore) -> Self {
         Self(Scalar::random(rng))
     }
 
-    /// Get the byte sequence that represents this nonce
+    /// Get the byte sequence that represents this signature blinding
     pub fn to_bytes(&self) -> [u8; Self::BYTES] {
         scalar_to_bytes(self.0)
     }
 
-    /// Convert a big-endian representation of the nonce
+    /// Convert a big-endian representation of the signature blinding
     pub fn from_bytes(bytes: &[u8; Self::BYTES]) -> CtOption<Self> {
         scalar_from_bytes(bytes).map(|s| Self(s))
     }

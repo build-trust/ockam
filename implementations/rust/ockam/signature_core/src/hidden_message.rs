@@ -1,4 +1,5 @@
-use crate::{Message, Nonce};
+use crate::message::Message;
+use crate::nonce::Nonce;
 
 /// Two types of hidden messages
 #[derive(Copy, Clone, Debug)]

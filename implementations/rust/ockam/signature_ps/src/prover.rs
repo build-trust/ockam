@@ -1,9 +1,9 @@
-use crate::{BlindSignatureContext, MessageGenerators, PokSignature, Signature};
+use crate::{BlindSignatureContext, MessageGenerators, PokSignature, PublicKey, Signature};
 use blake2::VarBlake2b;
 use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use digest::{Update, VariableOutput};
 use group::Curve;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::*;
 use short_group_signatures_core::{error::Error, lib::*};
 
 /// A Prover is whomever receives signatures or uses them to generate proofs.
@@ -22,6 +22,7 @@ impl Prover {
         mut rng: impl RngCore + CryptoRng,
     ) -> Result<(BlindSignatureContext, SignatureBlinding), Error> {
         const BYTES: usize = 48;
+
         // Very uncommon to blind more than 1 or 2, so 16 should be plenty
         let mut points = Vec::<G1Projective, U16>::new();
         let mut secrets = Vec::<Scalar, U16>::new();
@@ -30,7 +31,7 @@ impl Prover {
         );
 
         for (i, m) in messages {
-            if *i > generators.len() {
+            if *i > generators.y.len() {
                 return Err(Error::new(*i as u32, "invalid index"));
             }
             secrets.push(m.0).map_err(|_| {
@@ -39,13 +40,13 @@ impl Prover {
                     "allocate more space: Prover::new_blind_signature_context",
                 )
             })?;
-            points.push(generators.get(*i)).map_err(|_| {
+            points.push(generators.y[*i]).map_err(|_| {
                 Error::new(
                     2,
                     "allocate more space: Prover::new_blind_signature_context",
                 )
             })?;
-            committing.commit_random(generators.get(*i), &mut rng);
+            committing.commit_random(generators.y[*i], &mut rng);
         }
 
         let blinding = SignatureBlinding::random(&mut rng);
@@ -55,13 +56,13 @@ impl Prover {
                 "allocate more space: Prover::new_blind_signature_context",
             )
         })?;
-        points.push(generators.h0).map_err(|_| {
+        points.push(G1Projective::generator()).map_err(|_| {
             Error::new(
                 4,
                 "allocate more space: Prover::new_blind_signature_context",
             )
         })?;
-        committing.commit_random(generators.h0, &mut rng);
+        committing.commit_random(G1Projective::generator(), &mut rng);
 
         let mut hasher = VarBlake2b::new(BYTES).unwrap();
         let commitment = G1Projective::sum_of_products_in_place(points.as_ref(), secrets.as_mut());
@@ -93,26 +94,25 @@ impl Prover {
     /// from a verifier's request
     pub fn commit_signature_pok(
         signature: Signature,
-        generators: &MessageGenerators,
+        public_key: &PublicKey,
         messages: &[ProofMessage],
         rng: impl RngCore + CryptoRng,
     ) -> Result<PokSignature, Error> {
-        PokSignature::init(signature, generators, messages, rng)
+        PokSignature::init(signature, public_key, messages, rng)
     }
 }
 
 #[test]
 fn blind_signature_context_test() {
-    use crate::{util::MockRng, Issuer};
+    use crate::*;
     use rand_core::*;
 
     let seed = [1u8; 16];
     let mut rng = MockRng::from_seed(seed);
 
-    let (pk, sk) = Issuer::new_keys(&mut rng).unwrap();
-    let generators = MessageGenerators::from_public_key(pk, 4);
+    let (pk, sk) = Issuer::new_keys(4, &mut rng).unwrap();
+    let generators = MessageGenerators::from(&sk);
     let nonce = Nonce::random(&mut rng);
-    // let secret_id = Message::random(&mut rng);
 
     // try with zero, just means a blinded signature but issuer knows all messages
     let mut blind_messages = [];
@@ -123,19 +123,19 @@ fn blind_signature_context_test() {
 
     let (ctx, blinding) = res.unwrap();
 
-    let mut messages = [
+    let messages = [
         (0, Message::hash(b"firstname")),
         (1, Message::hash(b"lastname")),
         (2, Message::hash(b"age")),
         (3, Message::hash(b"allowed")),
     ];
-    let res = Issuer::blind_sign(&ctx, &sk, &generators, &mut messages[..], nonce);
+    let res = Issuer::blind_sign(&ctx, &sk, &messages[..], nonce);
     assert!(res.is_ok());
     let blind_signature = res.unwrap();
     let signature = blind_signature.to_unblinded(blinding);
 
     let msgs = [messages[0].1, messages[1].1, messages[2].1, messages[3].1];
 
-    let res = signature.verify(&pk, &generators, msgs.as_ref());
+    let res = signature.verify(&pk, msgs.as_ref());
     assert_eq!(res.unwrap_u8(), 1);
 }

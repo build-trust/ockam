@@ -1,5 +1,5 @@
 use crate::*;
-use bbs::{Challenge, Message, MessageGenerators, Nonce, PublicKey};
+use bbs::{MessageGenerators, PublicKey};
 use bls::ProofOfPossession;
 use rand::RngCore;
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
@@ -65,7 +65,7 @@ impl CredentialVerifier {
                 .iter()
                 .zip(prez.revealed_attributes.iter())
                 .map(|(i, r)| (*i, r.to_signature_message()))
-                .collect::<Vec<(usize, Message), U64>>();
+                .collect::<Vec<(usize, signature_core::lib::Message), U64>>();
 
             let mut hasher = sha2::Sha256::new();
             hasher.update(&bytes);
