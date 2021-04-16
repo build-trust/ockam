@@ -10,6 +10,9 @@ COPY tmpl/get_started.sh /
 COPY tmpl/website_guide.sh /
 COPY tmpl/example_projects.sh /
 COPY tmpl/entry.sh /
+COPY tmpl/config.toml /.cargo
+ADD tmpl/sccache-dist-v0.2.15-x86_64-unknown-linux-musl.tar.gz /scc
 RUN /setup.sh
-ENTRYPOINT "/entry.sh"
+ENTRYPOINT bash
+#ENTRYPOINT "/entry.sh"
 

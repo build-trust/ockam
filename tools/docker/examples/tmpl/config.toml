@@ -1,0 +1,6 @@
+[build]
+rustc-wrapper = "/scc/sccache-dist-v0.2.15-x86_64-unknown-linux-musl/sccache-dist"
+
+[target.x86_64-unknown-linux-gnu]
+linker = "/usr/bin/clang"
+rustflags = ["-Clink-arg=-fuse-ld=lld"]
