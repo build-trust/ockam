@@ -34,8 +34,8 @@ mod lease;
 pub use credential::*;
 pub use lease::*;
 
-mod remote_mailbox;
-pub use remote_mailbox::*;
+mod forwarder;
+pub use forwarder::*;
 
 pub use ockam_core::async_trait::async_trait as async_worker;
 pub use ockam_core::{
@@ -43,4 +43,4 @@ pub use ockam_core::{
     Worker,
 };
 
-pub use ockam_channel::{SecureChannel, SecureChannelListenerMessage};
+pub use ockam_channel::SecureChannel;
