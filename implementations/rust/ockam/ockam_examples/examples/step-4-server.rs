@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, RemoteMailbox, Result, Routed, Worker};
+use ockam::{async_worker, Context, RemoteForwarder, Result, Routed, Worker};
 use ockam_transport_tcp::TcpTransport;
 
 struct EchoService;
@@ -24,7 +24,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.start_worker("echo_service", EchoService).await?;
 
-    let mailbox = RemoteMailbox::<String>::create(&mut ctx, hub, "echo_service").await?;
+    let mailbox = RemoteForwarder::create(&mut ctx, hub, "echo_service").await?;
 
     println!(
         "echo_service forwarding address: {}",
