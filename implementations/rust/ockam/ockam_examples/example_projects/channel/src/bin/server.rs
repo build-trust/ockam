@@ -1,7 +1,4 @@
-use ockam::{
-    async_worker, Context, RemoteMailbox, Result, Routed, SecureChannel,
-    SecureChannelListenerMessage, Worker,
-};
+use ockam::{async_worker, Context, Forwarder, Result, Routed, SecureChannel, Worker};
 use ockam_transport_tcp::TcpTransport;
 
 const SECURE_CHANNEL: &str = "secure_channel";
@@ -36,10 +33,8 @@ async fn main(mut ctx: ockam::Context) -> Result<()> {
 
     ctx.start_worker("echo_server", EchoService {}).await?;
 
-    let mailbox =
-        RemoteMailbox::<SecureChannelListenerMessage>::create(&mut ctx, hub, SECURE_CHANNEL)
-            .await?;
-    println!("PROXY ADDRESS: {}", mailbox.remote_address());
+    let forwarder = Forwarder::create(&mut ctx, hub, SECURE_CHANNEL).await?;
+    println!("FORWARDER ADDRESS: {}", forwarder.remote_address());
 
     Ok(())
 }
