@@ -1,16 +1,30 @@
 use crate::lib::*;
+use blake2::VarBlake2b;
+use bls12_381_plus::{G1Projective, Scalar};
+use digest::{Update, VariableOutput};
 use heapless::ArrayLength;
 use serde::{
     de::{Error as DError, SeqAccess, Visitor},
     ser::SerializeSeq,
     Deserialize, Deserializer, Serialize, Serializer,
 };
+use subtle::CtOption;
+
+/// Convert slice to a fixed array
+#[macro_export]
+macro_rules! slicer {
+    ($d:expr, $b:expr, $e:expr, $s:expr) => {
+        &<[u8; $s]>::try_from(&$d[$b..$e]).unwrap()
+    };
+}
 
 /// An internal vector serializer
 pub trait VecSerializer<'de>: Sized {
+    /// Serialize the custom type and size
     fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer;
+    /// Deserialize the custom type and size
     fn deserialize<D>(des: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>;
@@ -79,4 +93,38 @@ where
         };
         des.deserialize_seq(visitor)
     }
+}
+
+/// Hashes a byte sequence to a Scalar
+pub fn hash_to_scalar<B: AsRef<[u8]>>(data: B) -> Scalar {
+    const BYTES: usize = 48;
+    let mut res = [0u8; BYTES];
+    let mut hasher = VarBlake2b::new(BYTES).unwrap();
+    hasher.update(data.as_ref());
+    hasher.finalize_variable(|out| {
+        res.copy_from_slice(out);
+    });
+    Scalar::from_okm(&res)
+}
+
+/// Converts a scalar to big endian bytes
+pub fn scalar_to_bytes(s: Scalar) -> [u8; 32] {
+    let mut bytes = s.to_bytes();
+    // Make big endian
+    bytes.reverse();
+    bytes
+}
+
+/// Convert a big endian byte sequence to a Scalar
+pub fn scalar_from_bytes(bytes: &[u8; 32]) -> CtOption<Scalar> {
+    let mut t = [0u8; 32];
+    t.copy_from_slice(bytes);
+    t.reverse();
+    Scalar::from_bytes(&t)
+}
+
+/// Compute multi-exponeniation which for elliptic curves is the sum of products
+/// using Pippenger's method
+pub fn sum_of_products(points: &[G1Projective], scalars: &mut [Scalar]) -> G1Projective {
+    G1Projective::sum_of_products_in_place(points, scalars)
 }

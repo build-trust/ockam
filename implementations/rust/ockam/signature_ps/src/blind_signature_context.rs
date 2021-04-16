@@ -1,4 +1,4 @@
-use crate::MessageGenerators;
+use crate::SecretKey;
 use blake2::VarBlake2b;
 use bls12_381_plus::{G1Projective, Scalar};
 use core::convert::TryFrom;
@@ -95,30 +95,30 @@ impl BlindSignatureContext {
     pub fn verify(
         &self,
         known_messages: &[usize],
-        generators: &MessageGenerators,
+        sk: &SecretKey,
         nonce: Nonce,
     ) -> Result<bool, Error> {
         let mut known = HashSet::new();
         let mut points = Vec::<G1Projective, U32>::new();
         for idx in known_messages {
-            if *idx >= generators.len() {
+            if *idx >= sk.y.len() {
                 return Err(Error::new(1, "index out of bounds"));
             }
             known.insert(*idx);
         }
-        for i in 0..generators.len() {
+        for i in 0..sk.y.len() {
             if !known.contains(&i) {
                 points
-                    .push(generators.get(i))
-                    .map_err(|_| Error::new((i + 1) as u32, "allocate more space"))?;
+                    .push(G1Projective::generator() * sk.y[i])
+                    .map_err(|_| Error::new((i + 1) as u32, ALLOC_MSG))?;
             }
         }
         points
-            .push(generators.h0)
-            .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
+            .push(G1Projective::generator())
+            .map_err(|_| Error::new(sk.y.len() as u32, ALLOC_MSG))?;
         points
             .push(self.commitment.0)
-            .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
+            .map_err(|_| Error::new(sk.y.len() as u32, ALLOC_MSG))?;
 
         let mut scalars = self
             .proofs
@@ -127,7 +127,7 @@ impl BlindSignatureContext {
             .collect::<Vec<Scalar, U32>>();
         scalars
             .push(self.challenge.0.neg())
-            .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
+            .map_err(|_| Error::new(sk.y.len() as u32, ALLOC_MSG))?;
 
         let mut res = [0u8; COMMITMENT_BYTES];
         let mut hasher = VarBlake2b::new(COMMITMENT_BYTES).unwrap();

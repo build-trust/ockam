@@ -1,11 +1,11 @@
 [package]
-name = "signature_bbs_plus"
-version = "0.3.0"
+name = "signature_ps"
+version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_signature_bbs"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_signature_ps"
 readme = "README.md"
 categories = ["cryptography", "asynchronous", "authentication","no-std","algorithms"]
 keywords = ["ockam", "crypto", "signature", "signing", "bls"]
@@ -15,16 +15,17 @@ description = """The Ockam BBS+ signature impementation.
 [features]
 
 [dependencies]
-bls = { version = "0.1", path = "../signature_bls", package = "signature_bls" }
+blake2 = "0.9"
+bls = { version = "0.1", package = "signature_bls" }
 bls12_381_plus = "0.4"
-blake2 = { version = "0.9", default-features = false }
 digest = { version = "0.9", default-features = false }
 ff = "0.9"
 group = "0.9"
 hmac-drbg = "0.3"
-managed = { version = "0.8", features = ["map"] }
+hkdf = "0.10"
 pairing = "0.19"
 rand_core = "0.6"
+rand_chacha = { version = "0.3", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 short_group_signatures_core = { version = "0.3", path = "../signature_core", package = "signature_core" }
 subtle = { version = "2.4", default-features = false }
@@ -33,4 +34,4 @@ zeroize = { version = "1.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 rand_xorshift = "0.3"
-rand = "0.8.3"
+rand = "0.8"

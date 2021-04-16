@@ -1,4 +1,4 @@
-use crate::{Message, MessageGenerators};
+use crate::MessageGenerators;
 use blake2::Blake2b;
 use bls::{PublicKey, SecretKey};
 use bls12_381_plus::{
@@ -142,7 +142,7 @@ impl Signature {
         Ok(Self { a: b * exp, e, s })
     }
 
-    /// Verify a signature. During proof of knowledge also, this method is used after extending the verkey
+    /// Verify a signature
     pub fn verify<M>(&self, pk: &PublicKey, generators: &MessageGenerators, msgs: M) -> Choice
     where
         M: AsRef<[Message]>,
@@ -215,6 +215,6 @@ impl Signature {
             .chain(msgs.iter().map(|c| c.0))
             .collect::<Vec<Scalar, U128>>();
 
-        crate::util::sum_of_products(&points[..], &mut scalars[..])
+        G1Projective::sum_of_products_in_place(&points[..], &mut scalars[..])
     }
 }

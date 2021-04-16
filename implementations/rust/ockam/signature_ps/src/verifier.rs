@@ -1,9 +1,8 @@
-use crate::{MessageGenerators, PokSignatureProof};
+use crate::{PokSignatureProof, PublicKey};
 use blake2::VarBlake2b;
-use bls::PublicKey;
 use bls12_381_plus::Scalar;
 use digest::{Update, VariableOutput};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::*;
 use short_group_signatures_core::{constants::*, lib::*};
 
 /// This struct represents an Verifier of signatures.
@@ -20,35 +19,33 @@ impl Verifier {
     /// Check a signature proof of knowledge and selective disclosure proof
     pub fn verify_signature_pok(
         revealed_msgs: &[(usize, Message)],
-        public_key: PublicKey,
+        public_key: &PublicKey,
         proof: PokSignatureProof,
-        generators: &MessageGenerators,
         nonce: Nonce,
         challenge: Challenge,
     ) -> bool {
         let mut res = [0u8; COMMITMENT_BYTES];
         let mut hasher = VarBlake2b::new(COMMITMENT_BYTES).unwrap();
-        proof.add_challenge_contribution(generators, revealed_msgs, challenge, &mut hasher);
+        proof.add_challenge_contribution(&public_key, revealed_msgs, challenge, &mut hasher);
         hasher.update(&nonce.to_bytes()[..]);
         hasher.finalize_variable(|out| {
             res.copy_from_slice(out);
         });
         let v_challenge = Scalar::from_okm(&res);
 
-        proof.verify(public_key) && challenge.0 == v_challenge
+        proof.verify(revealed_msgs, &public_key) && challenge.0 == v_challenge
     }
 }
 
 #[test]
 fn pok_sig_proof_works() {
-    use crate::{util::MockRng, Issuer, PokSignature};
+    use crate::{Issuer, MockRng, PokSignature};
     use rand_core::*;
 
     let seed = [1u8; 16];
     let mut rng = MockRng::from_seed(seed);
 
-    let (pk, sk) = Issuer::new_keys(&mut rng).unwrap();
-    let generators = MessageGenerators::from_public_key(pk, 4);
+    let (pk, sk) = Issuer::new_keys(4, &mut rng).unwrap();
     let messages = [
         Message::random(&mut rng),
         Message::random(&mut rng),
@@ -56,7 +53,7 @@ fn pok_sig_proof_works() {
         Message::random(&mut rng),
     ];
 
-    let res = Issuer::sign(&sk, &generators, &messages);
+    let res = Issuer::sign(&sk, &messages);
     assert!(res.is_ok());
 
     let signature = res.unwrap();
@@ -68,7 +65,7 @@ fn pok_sig_proof_works() {
         ProofMessage::Revealed(messages[3]),
     ];
 
-    let res = PokSignature::init(signature, &generators, &proof_messages, &mut rng);
+    let res = PokSignature::init(signature, &pk, &proof_messages, &mut rng);
     assert!(res.is_ok());
 
     let mut tv = [0u8; 48];
@@ -84,16 +81,12 @@ fn pok_sig_proof_works() {
     let res = pok_sig.generate_proof(challenge);
     assert!(res.is_ok());
 
+    let rvl_msgs = &[(2, messages[2]), (3, messages[3])];
     let proof = res.unwrap();
-    assert!(proof.verify(pk));
+    assert!(proof.verify(rvl_msgs, &pk));
 
     let mut hasher = VarBlake2b::new(COMMITMENT_BYTES).unwrap();
-    proof.add_challenge_contribution(
-        &generators,
-        &[(2, messages[2]), (3, messages[3])][..],
-        challenge,
-        &mut hasher,
-    );
+    proof.add_challenge_contribution(&pk, rvl_msgs, challenge, &mut hasher);
     hasher.update(&nonce.to_bytes()[..]);
     hasher.finalize_variable(|out| {
         tv.copy_from_slice(out);
@@ -103,9 +96,8 @@ fn pok_sig_proof_works() {
 
     assert!(Verifier::verify_signature_pok(
         &[(2, messages[2]), (3, messages[3])][..],
-        pk,
+        &pk,
         proof,
-        &generators,
         nonce,
         challenge
     ));

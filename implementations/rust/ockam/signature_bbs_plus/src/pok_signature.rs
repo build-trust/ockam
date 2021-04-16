@@ -1,19 +1,14 @@
-use crate::{
-    Challenge, HiddenMessage, Message, MessageGenerators, PokSignatureProof, ProofMessage,
-    Signature,
-};
-use bls12_381_plus::{G1Projective, Scalar};
+use crate::{MessageGenerators, PokSignatureProof, Signature};
+use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use core::ops::Neg;
 use digest::Update;
 use ff::Field;
 use group::Curve;
 use rand_core::{CryptoRng, RngCore};
-use short_group_signatures_core::error::Error;
-use short_group_signatures_core::{lib::*, prover::ProofCommittedBuilder};
+use short_group_signatures_core::{error::Error, lib::*};
 
 /// Proof of Knowledge of a Signature that is used by the prover
 /// to construct `PoKOfSignatureProof`.
-#[derive(Debug, Clone)]
 pub struct PokSignature {
     /// A' in section 4.5
     a_prime: G1Projective,
@@ -22,12 +17,12 @@ pub struct PokSignature {
     /// d in section 4.5
     d: G1Projective,
     /// For proving relation a_bar / d == a_prime^{-e} * h_0^r2
-    proof1: ProofCommittedBuilder<U2, U2>,
+    proof1: ProofCommittedBuilder<G1Projective, G1Affine, U2, U2>,
     /// The messages
     secrets1: [Scalar; 2],
     /// For proving relation g1 * h1^m1 * h2^m2.... for all disclosed messages m_i == d^r3 * h_0^{-s_prime} * h1^-m1 * h2^-m2.... for all undisclosed messages m_i
     /// 130 because 128 messages + 2 extra for blinding
-    proof2: ProofCommittedBuilder<U130, U130>,
+    proof2: ProofCommittedBuilder<G1Projective, G1Affine, U130, U130>,
     /// The blinding factors
     secrets2: Vec<Scalar, U130>,
 }
@@ -59,20 +54,24 @@ impl PokSignature {
         let a_bar = b * r1 - a_prime * signature.e;
 
         // d = b * r1 + h0 * r2
-        let d = crate::util::sum_of_products(&[b, generators.h0], [r1, r2].as_mut());
+        let d = G1Projective::sum_of_products_in_place(&[b, generators.h0], [r1, r2].as_mut());
 
         // s' = s - r2 r3
         let s_prime = signature.s + r2 * r3;
 
         // For proving relation a_bar / d == a_prime^{-e} * h_0^r2
-        let mut proof1 = ProofCommittedBuilder::new();
+        let mut proof1 = ProofCommittedBuilder::<G1Projective, G1Affine, U2, U2>::new(
+            G1Projective::sum_of_products_in_place,
+        );
         // For a_prime * -e
         proof1.commit_random(a_prime, &mut rng);
         // For h0 * r2
         proof1.commit_random(generators.h0, &mut rng);
         let secrets1 = [signature.e, r2];
 
-        let mut proof2 = ProofCommittedBuilder::new();
+        let mut proof2 = ProofCommittedBuilder::<G1Projective, G1Affine, U130, U130>::new(
+            G1Projective::sum_of_products_in_place,
+        );
         let mut secrets2 = Vec::new();
         // for d * -r3
         proof2.commit_random(d.neg(), &mut rng);

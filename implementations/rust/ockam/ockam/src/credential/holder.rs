@@ -1,10 +1,9 @@
 use super::*;
-use bbs::{
-    Challenge, HiddenMessage, Message, MessageGenerators, Nonce, ProofMessage, Prover, PublicKey,
-};
+use bbs::{MessageGenerators, Prover, PublicKey};
 use ockam_core::lib::{HashSet, Vec};
 use rand::{CryptoRng, RngCore};
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
+use signature_core::lib::*;
 
 /// The label to indicate the secretid attribute in a schema/credential
 pub const SECRET_ID: &'static str = "secret_id";
@@ -159,7 +158,7 @@ impl CredentialHolder {
 
         let mut proofs = Vec::new();
         for i in 0..commitments.len() {
-            let pok = commitments[i].clone();
+            let pok = commitments.remove(0);
             let cred = &credential[i];
             let pm = &presentation_manifests[i];
 

@@ -1,9 +1,10 @@
 use super::*;
-use bbs::{Issuer as BbsIssuer, MessageGenerators, Nonce, PublicKey, SecretKey};
+use bbs::{Issuer as BbsIssuer, MessageGenerators, PublicKey, SecretKey};
 use bls::ProofOfPossession;
 use core::convert::TryFrom;
 use ockam_core::lib::{HashMap, String, Vec};
 use rand::{CryptoRng, RngCore};
+use signature_core::lib::*;
 
 /// Represents an issuer of a credential
 #[derive(Debug)]
@@ -137,7 +138,7 @@ impl CredentialIssuer {
             atts.insert(name, att);
         }
 
-        let mut messages = Vec::<(usize, bbs::Message)>::new();
+        let mut messages = Vec::<(usize, signature_core::lib::Message)>::new();
         let mut remaining_atts = Vec::<(usize, CredentialAttribute)>::new();
 
         // Check if any blinded messages are allowed to be unknown

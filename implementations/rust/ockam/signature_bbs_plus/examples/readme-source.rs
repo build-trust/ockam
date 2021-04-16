@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
-use short_group_signatures_core::error::Error;
-use signature_bbs_plus::{Issuer, Message, MessageGenerators, Nonce, Prover};
+use short_group_signatures_core::{error::Error, lib::*};
+use signature_bbs_plus::{Issuer, MessageGenerators, Prover};
 
 type ExampleResult = Result<(), Error>;
 
