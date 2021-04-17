@@ -51,55 +51,55 @@ defmodule Ockam.Vault.Software do
     raise "natively implemented default_init/0 not loaded"
   end
 
-  def sha256(_a, _b) do
+  def sha256(_vault, _input) do
     raise "natively implemented sha256/2 not loaded"
   end
 
-  def secret_generate(_a, _b) do
+  def secret_generate(_vault, _attributes) do
     raise "natively implemented secret_generate/2 not loaded"
   end
 
-  def secret_import(_a, _b, _c) do
+  def secret_import(_vault, _attributes, _input) do
     raise "natively implemented secret_import/3 not loaded"
   end
 
-  def secret_export(_a, _b) do
+  def secret_export(_vault, _secret_handle) do
     raise "natively implemented secret_export/2 not loaded"
   end
 
-  def secret_publickey_get(_a, _b) do
+  def secret_publickey_get(_vault, _secret_handle) do
     raise "natively implemented secret_publickey_get/2 not loaded"
   end
 
-  def secret_attributes_get(_a, _b) do
+  def secret_attributes_get(_vault, _secret_handle) do
     raise "natively implemented secret_attributes_get/2 not loaded"
   end
 
-  def secret_destroy(_a, _b) do
+  def secret_destroy(_vault, _secret_handle) do
     raise "natively implemented secret_destroy/2 not loaded"
   end
 
-  def ecdh(_a, _b, _c) do
+  def ecdh(_vault, _secret_handle, _input) do
     raise "natively implemented ecdh/3 not loaded"
   end
 
-  def hkdf_sha256(_a, _b, _c, _d) do
+  def hkdf_sha256(_vault, _salt_handle, _ikm_handle, _derived_outputs_count) do
     raise "natively implemented hkdf_sha256/4 not loaded"
   end
 
-  def hkdf_sha256(_a, _b, _c) do
+  def hkdf_sha256(_vault, _salt_handle, _ikm_handle) do
     raise "natively implemented hkdf_sha256/3 not loaded"
   end
 
-  def aead_aes_gcm_encrypt(_a, _b, _c, _d, _e) do
+  def aead_aes_gcm_encrypt(_vault, _key_handle, _nonce, _ad, _plain_text) do
     raise "natively implemented aead_aes_gcm_encrypt/5 not loaded"
   end
 
-  def aead_aes_gcm_decrypt(_a, _b, _c, _d, _e) do
+  def aead_aes_gcm_decrypt(_vault, _key_handle, _nonce, _ad, _cipher_text) do
     raise "natively implemented aead_aes_gcm_decrypt/5 not loaded"
   end
 
-  def deinit(_a) do
+  def deinit(_vault) do
     raise "natively implemented deinit/1 not loaded"
   end
 end

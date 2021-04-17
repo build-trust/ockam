@@ -1,58 +1,135 @@
 defmodule Ockam.Vault do
   @moduledoc false
 
-  def sha256(%vault_module{id: vault_id}, b) do
-    vault_module.sha256(vault_id, b)
+  @doc """
+    Computes a SHA-256 hash based on input data.
+  """
+  @spec sha256(Ockam.Vault, binary | String.t()) :: {:ok, binary} | :error
+  def sha256(%vault_module{id: vault_id}, input) do
+    vault_module.sha256(vault_id, input)
   end
 
-  def random_bytes(%vault_module{id: vault_id}, b) do
-    vault_module.random_bytes(vault_id, b)
+  @doc """
+    Fills output_buffer with randomly generate bytes.
+  """
+  @spec random_bytes(Ockam.Vault, binary) :: :error
+  def random_bytes(%vault_module{id: vault_id}, output_buffer) do
+    vault_module.random_bytes(vault_id, output_buffer)
   end
 
-  def secret_generate(%vault_module{id: vault_id}, b) do
-    vault_module.secret_generate(vault_id, b)
+  @doc """
+    Generates an ockam secret. Attributes struct must specify the
+    configuration for the type of secret to generate.
+  """
+  @spec secret_generate(Ockam.Vault, tuple()) :: {:ok, reference()} | :error
+  def secret_generate(%vault_module{id: vault_id}, attributes) do
+    vault_module.secret_generate(vault_id, attributes)
   end
 
-  def secret_import(%vault_module{id: vault_id}, b, c) do
-    vault_module.secret_import(vault_id, b, c)
+  @doc """
+    Imports the specified data into the supplied ockam vault secret.
+  """
+  @spec secret_import(Ockam.Vault, tuple(), binary) :: {:ok, reference()} | :error
+  def secret_import(%vault_module{id: vault_id}, attributes, input) do
+    vault_module.secret_import(vault_id, attributes, input)
   end
 
-  def secret_export(%vault_module{id: vault_id}, b) do
-    vault_module.secret_export(vault_id, b)
+  @doc """
+    Exports data from an ockam vault secret into the supplied output buffer.
+  """
+  @spec secret_export(Ockam.Vault, reference()) :: {:ok, binary} | :error
+  def secret_export(%vault_module{id: vault_id}, secret_handle) do
+    vault_module.secret_export(vault_id, secret_handle)
   end
 
-  def secret_publickey_get(%vault_module{id: vault_id}, b) do
-    vault_module.secret_publickey_get(vault_id, b)
+  @doc """
+    Retrieves the public key from an ockam vault secret.
+  """
+  @spec secret_publickey_get(Ockam.Vault, reference()) :: {:ok, reference()} | :error
+  def secret_publickey_get(%vault_module{id: vault_id}, secret_handle) do
+    vault_module.secret_publickey_get(vault_id, secret_handle)
   end
 
-  def secret_attributes_get(%vault_module{id: vault_id}, b) do
-    vault_module.secret_attributes_get(vault_id, b)
+  @doc """
+    Retrieves the attributes for a specified secret
+  """
+  @spec secret_attributes_get(Ockam.Vault, reference()) :: {:ok, tuple()} | :error
+  def secret_attributes_get(%vault_module{id: vault_id}, secret_handle) do
+    vault_module.secret_attributes_get(vault_id, secret_handle)
   end
 
-  def secret_destroy(%vault_module{id: vault_id}, b) do
-    vault_module.secret_destroy(vault_id, b)
+  @doc """
+    Deletes an ockam vault secret.
+  """
+  @spec secret_destroy(Ockam.Vault, reference()) :: :ok | :error
+  def secret_destroy(%vault_module{id: vault_id}, secret_handle) do
+    vault_module.secret_destroy(vault_id, secret_handle)
   end
 
-  def ecdh(%vault_module{id: vault_id}, b, c) do
-    vault_module.ecdh(vault_id, b, c)
+  @doc """
+    Performs an ECDH operation on the supplied ockam vault secret and peer_publickey.
+    The result is another ockam vault secret of type unknown.
+  """
+  @spec ecdh(Ockam.Vault, reference(), binary) :: {:ok, reference()} | :error
+  def ecdh(%vault_module{id: vault_id}, secret_handle, peer_public_key) do
+    vault_module.ecdh(vault_id, secret_handle, peer_public_key)
   end
 
-  def hkdf_sha256(%vault_module{id: vault_id}, b, c, d) do
-    vault_module.hkdf_sha256(vault_id, b, c, d)
+  @doc """
+    Performs an HMAC-SHA256 based key derivation function on the supplied salt and input
+    key material.
+    Returns handle to derived_output.
+  """
+  @spec hkdf_sha256(Ockam.Vault, reference(), reference(), non_neg_integer()) ::
+          {:ok, reference()} | :error
+  def hkdf_sha256(%vault_module{id: vault_id}, salt_handle, ikm_handle, derived_outputs_count) do
+    vault_module.hkdf_sha256(vault_id, salt_handle, ikm_handle, derived_outputs_count)
   end
 
-  def hkdf_sha256(%vault_module{id: vault_id}, b, c) do
-    vault_module.hkdf_sha256(vault_id, b, c)
+  @doc """
+    Performs an HMAC-SHA256 based key derivation function on the supplied salt and input key
+    material.
+    Returns handle to derived_output.
+  """
+  @spec hkdf_sha256(Ockam.Vault, reference(), reference()) :: {:ok, reference()} | :error
+  def hkdf_sha256(%vault_module{id: vault_id}, salt_handle, ikm_handle) do
+    vault_module.hkdf_sha256(vault_id, salt_handle, ikm_handle)
   end
 
-  def aead_aes_gcm_encrypt(%vault_module{id: vault_id}, b, c, d, e) do
-    vault_module.aead_aes_gcm_encrypt(vault_id, b, c, d, e)
+  @doc """
+    Encrypts a payload using AES-GCM.
+    Returns cipher_text after an encryption.
+  """
+  @spec aead_aes_gcm_encrypt(
+          Ockam.Vault,
+          reference(),
+          non_neg_integer(),
+          String.t() | binary,
+          binary | String.t()
+        ) :: {:ok, binary} | :error
+  def aead_aes_gcm_encrypt(%vault_module{id: vault_id}, key_handle, nonce, ad, plain_text) do
+    vault_module.aead_aes_gcm_encrypt(vault_id, key_handle, nonce, ad, plain_text)
   end
 
-  def aead_aes_gcm_decrypt(%vault_module{id: vault_id}, b, c, d, e) do
-    vault_module.aead_aes_gcm_decrypt(vault_id, b, c, d, e)
+  @doc """
+    Decrypts a payload using AES-GCM.
+    Returns decrypted payload.
+  """
+  @spec aead_aes_gcm_decrypt(
+          Ockam.Vault,
+          reference(),
+          non_neg_integer(),
+          binary | String.t(),
+          binary
+        ) :: {:ok, binary | String.t()} | :error
+  def aead_aes_gcm_decrypt(%vault_module{id: vault_id}, key_handle, nonce, ad, cipher_text) do
+    vault_module.aead_aes_gcm_decrypt(vault_id, key_handle, nonce, ad, cipher_text)
   end
 
+  @doc """
+    Deinitializes the specified ockam vault object.
+  """
+  @spec deinit(Ockam.Vault) :: :ok | :error
   def deinit(%vault_module{id: vault_id}) do
     vault_module.deinit(vault_id)
   end
