@@ -1,3 +1,5 @@
+// This program creates and then immediately stops a node.
+
 use ockam::{Context, Result};
 
 #[ockam::node]

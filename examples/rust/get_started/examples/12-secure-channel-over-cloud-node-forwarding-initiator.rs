@@ -1,34 +1,34 @@
-// This node creates an end-to-end encrypted secure channel over two tcp transport hops.
-// It then routes a message, to a worker on a different node, through this encrypted channel.
-
 use ockam::{Context, Result, Route, SecureChannel, SoftwareVault, Vault};
 use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
+    // Create a cloud node by going to https://hub.ockam.network
+    let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
+
+    let secure_channel_listener_forwarding_address =
+        "Paste the forwarding address of the secure channel here.";
+
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a TCP connection.
-    tcp.connect("127.0.0.1:3000").await?;
+    // Create a TCP connection to your cloud node.
+    tcp.connect(cloud_node_tcp_address).await?;
 
     let vault = Vault::create(&ctx, SoftwareVault::default()).await?;
 
-    // Connect to a secure channel listener and perform a handshake.
     let channel = SecureChannel::create(
         &mut ctx,
-        // route to the secure channel listener
         Route::new()
-            .append_t(TCP, "127.0.0.1:3000") // middle node
-            .append_t(TCP, "127.0.0.1:4000") // responder node
-            .append("secure_channel_listener"), // secure_channel_listener on responder node,
-        &vault
-    ).await?;
+            .append_t(TCP, cloud_node_tcp_address)
+            .append(secure_channel_listener_forwarding_address),
+        &vault,
+    )
+    .await?;
 
-    // Send a message to the echoer worker via the channel.
     ctx.send(
         Route::new().append(channel.address()).append("echoer"),
-        "Hello Ockam!".to_string(),
+        "Hello world!".to_string(),
     )
     .await?;
 

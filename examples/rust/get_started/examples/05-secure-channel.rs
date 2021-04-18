@@ -1,21 +1,26 @@
+// This node creates a secure channel and routes a message through it.
+
 use ockam::{Context, Result, Route, SecureChannel, SoftwareVault, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start the echoer worker.
+    // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    let vault_address = Vault::create(&ctx, SoftwareVault::default()).await?;
+    let vault = Vault::create(&ctx, SoftwareVault::default()).await?;
 
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault_address).await?;
+    // Create a secure channel listener.
+    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
 
-    let channel =
-        SecureChannel::create(&mut ctx, "secure_channel_listener", &vault_address).await?;
+    // Connect to a secure channel listener and perform a handshake.
+    let channel = SecureChannel::create(&mut ctx, "secure_channel_listener", &vault).await?;
 
-    // Send a message to the echoer worker via the channel.
+    // Send a message to the echoer worker, via the secure channel.
     ctx.send(
+        // route to the "echoer" worker via the secure channel.
         Route::new().append(channel.address()).append("echoer"),
+        // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )
     .await?;
@@ -24,5 +29,6 @@ async fn main(mut ctx: Context) -> Result<()> {
     let reply = ctx.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
+    // Stop all workers, stop the node, cleanup and return.
     ctx.stop().await
 }
