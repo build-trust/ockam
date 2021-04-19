@@ -219,4 +219,8 @@ impl KeyExchanger for Responder {
         self.completed_key_exchange
             .ok_or_else(|| X3DHError::InvalidState.into())
     }
+
+    fn finalize_box(self: Box<Self>) -> ockam_core::Result<CompletedKeyExchange> {
+        self.finalize()
+    }
 }
