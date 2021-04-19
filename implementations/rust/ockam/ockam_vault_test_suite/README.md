@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_vault_test_suite = "0.1.0"
+ockam_vault_test_suite = "0.1.1"
 ```
 
 ## License
