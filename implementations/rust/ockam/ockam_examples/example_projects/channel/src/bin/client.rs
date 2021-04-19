@@ -1,29 +1,24 @@
-use ockam::{Result, Route, SecureChannel};
-use ockam_transport_tcp::{TcpTransport, TCP};
+use channel_examples::client_worker::Client;
+use ockam::Result;
+use ockam_transport_tcp::TcpTransport;
+use ockam_vault::SoftwareVault;
+use ockam_vault_sync_core::VaultWorker;
 
 #[ockam::node]
-async fn main(mut ctx: ockam::Context) -> Result<()> {
-    let hub_addr = "127.0.0.1:4000";
+async fn main(ctx: ockam::Context) -> Result<()> {
+    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+
+    let hub_addr = "104.42.24.183:4000";
 
     // Create and register a connection worker pair
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.connect(hub_addr).await?;
 
-    let channel = SecureChannel::create(
-        &mut ctx,
-        Route::new()
-            .append_t(TCP, hub_addr)
-            .append("40d60f6b")
-            .append("secure_channel"),
-    )
-    .await?;
+    let client = Client::new(hub_addr, "6841596d".to_string(), vault_address);
 
-    let route = Route::new().append(channel.address()).append("echo_server");
+    ctx.start_worker("echo_client", client).await?;
 
-    ctx.send(route, "Hello world!".to_string()).await?;
-
-    let msg = ctx.receive::<String>().await?;
-    println!("Received: {}", msg);
+    // Crashes: ctx.stop().await
 
     Ok(())
 }

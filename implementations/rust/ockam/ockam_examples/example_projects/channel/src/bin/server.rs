@@ -1,43 +1,35 @@
-use ockam::{async_worker, Context, RemoteForwarder, Result, Routed, SecureChannel, Worker};
+use channel_examples::server_worker::Server;
+use ockam::{RemoteForwarder, Result, SecureChannel};
 use ockam_transport_tcp::TcpTransport;
+use ockam_vault::SoftwareVault;
+use ockam_vault_sync_core::VaultWorker;
 
-const SECURE_CHANNEL: &str = "secure_channel";
-
-struct EchoService;
-
-#[async_worker]
-impl Worker for EchoService {
-    type Message = String;
-    type Context = Context;
-
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        let return_route = msg.return_route();
-        let msg_str = msg.body();
-        println!("Server received message: {}", msg_str);
-
-        ctx.send(return_route, msg_str.clone()).await?;
-        println!("Server sent message: {}", msg_str);
-
-        Ok(())
-    }
-}
+const SECURE_CHANNEL: &str = "xx_channel_listener";
 
 #[ockam::node]
 async fn main(mut ctx: ockam::Context) -> Result<()> {
-    let hub = "127.0.0.1:4000";
-    SecureChannel::create_listener(&mut ctx, SECURE_CHANNEL).await?;
+    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+
+    SecureChannel::create_listener(&mut ctx, SECURE_CHANNEL, vault_address).await?;
+
+    let hub_addr = "104.42.24.183:4000";
 
     // Create and register a connection worker pair
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.connect(hub).await?;
+    tcp.connect(hub_addr).await?;
 
-    ctx.start_worker("echo_server", EchoService {}).await?;
+    let server = Server {};
 
-    let remote_forwarder = RemoteForwarder::create(&mut ctx, hub, SECURE_CHANNEL).await?;
+    // Create the responder worker
+    ctx.start_worker("echo_server", server).await?;
+
+    let remote_forwarder = RemoteForwarder::create(&mut ctx, hub_addr, SECURE_CHANNEL).await?;
     println!(
-        "REMOTE_FORWARDER ADDRESS: {}",
+        "PROXY REMOTE_FORWARDER: {}",
         remote_forwarder.remote_address()
     );
+
+    // Crashes: ctx.stop().await
 
     Ok(())
 }
