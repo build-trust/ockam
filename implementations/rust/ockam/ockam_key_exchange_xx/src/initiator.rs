@@ -59,4 +59,8 @@ impl KeyExchanger for Initiator {
             _ => Err(XXError::InvalidState.into()),
         }
     }
+
+    fn finalize_box(self: Box<Self>) -> ockam_core::Result<CompletedKeyExchange> {
+        self.finalize()
+    }
 }
