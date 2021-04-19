@@ -42,7 +42,7 @@ mod response_message;
 pub(crate) use response_message::*;
 
 #[derive(Zeroize)]
-pub(crate) struct VaultWorker<V>
+pub struct VaultWorker<V>
 where
     V: VaultWorkerTrait,
 {
@@ -57,7 +57,7 @@ where
         Self { inner }
     }
 
-    pub(crate) async fn start(ctx: &Context, inner: V) -> Result<Address> {
+    pub async fn start(ctx: &Context, inner: V) -> Result<Address> {
         let address: Address = random();
 
         ctx.start_worker(address.clone(), Self::new(inner)).await?;
