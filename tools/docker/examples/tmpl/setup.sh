@@ -8,6 +8,7 @@ fi
 export REV
 
 
+echo "Checking out $REV"
 git clone https://github.com/ockam-network/ockam.git
 cd ockam
 git checkout $REV -q

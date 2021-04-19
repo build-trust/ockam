@@ -123,7 +123,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _ = ctx.receive::<String>().await?;
 
     ctx.send(
-        Route::new().append("10#proxy_me_0:cons2"),
+        Route::new().append_t(10, "proxy_me").append("cons2"),
         String::from("Hello consumer!"),
     )
     .await?;

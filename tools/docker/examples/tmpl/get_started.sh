@@ -67,6 +67,7 @@ cargo run --example my-10-routing-to-hub
 # Step 11
 cargo run --example my-11-forwarding-through-hub-responder &>responder-11 &
 RESPONDER=$!
+echo "Waiting 10 seconds for forwarding address.."
 sleep 10
 
 # Read the address out of responder output.
@@ -86,6 +87,7 @@ kill $RESPONDER
 # Step 12
 cargo run --example my-12-secure-channel-hub-forwarding-responder &>responder-12 &
 RESPONDER=$!
+echo "Waiting 5 seconds for forwarding address.."
 sleep 5
 
 # Rewrite "Paste" information with the forwarding address of secure channel

@@ -1,3 +1,11 @@
+use std::sync::Arc;
+
+use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker};
+use tokio::{
+    runtime::Runtime,
+    sync::mpsc::{channel, Sender},
+};
+
 use crate::{
     block_future,
     error::Error,
@@ -5,12 +13,6 @@ use crate::{
     parser,
     relay::{self, RelayMessage},
     Cancel, Mailbox, NodeMessage,
-};
-use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker};
-use std::sync::Arc;
-use tokio::{
-    runtime::Runtime,
-    sync::mpsc::{channel, Sender},
 };
 
 pub struct Context {
@@ -165,7 +167,7 @@ impl Context {
     /// be handled by specific domain workers.
     ///
     /// [`Address`]: ockam_core::Address
-    /// [`RouteBuilder`]: ockem_core::RouteBuilder
+    /// [`RouteBuilder`]: ockam_core::RouteBuilder
     pub async fn send<R, M>(&self, route: R, msg: M) -> Result<()>
     where
         R: Into<Route>,
@@ -238,7 +240,7 @@ impl Context {
     /// [`Context::send_message`] instead, unless you are writing an
     /// external router implementation for ockam node.
     ///
-    /// [`Context::send_message`]: crate::Context::send_message
+    /// [`Context::send`]: crate::Context::send
     /// [`TransportMessage`]: ockam_core::TransportMessage
     pub async fn forward(&self, data: TransportMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route

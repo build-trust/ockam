@@ -1,5 +1,7 @@
 use ockam::{Context, Result, Route, SecureChannel};
 use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam_vault::SoftwareVault;
+use ockam_vault_sync_core::VaultWorker;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -11,12 +13,15 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     tcp.connect(remote_node).await?;
 
+    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+
     let channel_info = SecureChannel::create(
         &mut ctx,
         Route::new()
             .append_t(TCP, remote_node)
             .append(secure_channel_forwarded_address)
             .append("echo_service"),
+        vault_address,
     )
     .await?;
 

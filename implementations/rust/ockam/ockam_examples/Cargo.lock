@@ -757,6 +757,8 @@ version = "0.1.0"
 dependencies = [
  "ockam",
  "ockam_transport_tcp",
+ "ockam_vault",
+ "ockam_vault_sync_core",
 ]
 
 [[package]]

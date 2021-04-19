@@ -32,6 +32,7 @@ cargo run --example my-step-3
 
 cargo run --example my-step-4-server &>server-4 &
 SERVER=$!
+echo "Waiting 7 seconds for forwarding address.."
 sleep 7
 export ADDRESS=$(perl -ne 'm/[fF]orwarding.*?: (\S+)$/ and print "$1\n"' server-4)
 
@@ -49,6 +50,7 @@ kill $SERVER
 
 cargo run --example my-step-5-server &>server-5 &
 SERVER=$!
+echo "Waiting 7 seconds for forwarding address.."
 sleep 7
 export ADDRESS=$(perl -ne 'm/address: (\S+)$/ and print "$1\n"' server-5)
 

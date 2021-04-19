@@ -1,5 +1,7 @@
 use ockam::{Context, Result, Route, SecureChannel};
 use ockam_get_started::{Echoer, Hop};
+use ockam_vault::SoftwareVault;
+use ockam_vault_sync_core::VaultWorker;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -11,14 +13,18 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("hop2", Hop).await?;
     ctx.start_worker("hop3", Hop).await?;
 
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener").await?;
+    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+
+    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", vault_address.clone())
+        .await?;
 
     let route_to_listener = Route::new()
         .append("hop1")
         .append("hop2")
         .append("hop3")
         .append("secure_channel_listener");
-    let channel = SecureChannel::create(&mut ctx, route_to_listener).await?;
+
+    let channel = SecureChannel::create(&mut ctx, route_to_listener, vault_address).await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(
