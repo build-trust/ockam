@@ -100,9 +100,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.49"
+version = "0.1.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "589652ce7ccb335d1e7ecb3be145425702b290dbcb7029bbeaae263fc1d87b48"
+checksum = "0b98e84bbb4cbcdd97da190ba0c58a1bb0de2c1fdf67d159e192ed766aeca722"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -712,7 +712,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "arrayref",
  "bls12_381_plus",
@@ -735,7 +735,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -765,7 +765,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -785,7 +785,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "futures",
  "hashbrown 0.9.1",
@@ -1538,18 +1538,18 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a974bcdd357f0dca4d41677db03436324d45a4c9ed2d0b873a5a360ce41c36"
+checksum = "4756f7db3f7b5574938c3eb1c117038b8e07f95ee6718c0efad4ac21508f1efd"
 dependencies = [
  "zeroize_derive",
 ]
 
 [[package]]
 name = "zeroize_derive"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3f369ddb18862aba61aa49bf31e74d29f0f162dec753063200e1dc084345d16"
+checksum = "a2c1e130bebaeab2f23886bf9acbaca14b092408c452543c857f66399cd6dab1"
 dependencies = [
  "proc-macro2",
  "quote",
