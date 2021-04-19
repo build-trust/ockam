@@ -23,7 +23,7 @@ default = ["std"]
 std = []
 
 [dependencies]
-ockam = { path = "../ockam", version = "0.7.0" }
+ockam = { path = "../ockam", version = "0.8.0" }
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}
 tokio = {version = "1.4.0", features = ["rt-multi-thread","sync","net","macros","time"]}
