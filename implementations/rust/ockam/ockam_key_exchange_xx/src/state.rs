@@ -1,102 +1,15 @@
-use crate::{XXError, XXVault, AES_GCM_TAGSIZE, SHA256_SIZE};
+use crate::{XXError, AES_GCM_TAGSIZE, SHA256_SIZE};
+use ockam_core::Result;
 use ockam_key_exchange_core::CompletedKeyExchange;
 use ockam_vault_core::{
-    PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
-    CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
+    Hasher, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    SymmetricVault, AES256_SECRET_LENGTH, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use std::ops::DerefMut;
-use std::sync::{Arc, Mutex};
 use zeroize::Zeroize;
 
-struct DhState {
-    key: Option<Secret>,
-    ck: Option<Secret>,
-}
-
-impl DhState {
-    fn empty() -> Self {
-        Self {
-            key: None,
-            ck: None,
-        }
-    }
-
-    fn new(protocol_name: &[u8; 32], vault: &mut dyn XXVault) -> ockam_core::Result<Self> {
-        let attributes = SecretAttributes::new(
-            SecretType::Buffer,
-            SecretPersistence::Ephemeral,
-            SHA256_SIZE,
-        );
-
-        let ck = vault.secret_import(protocol_name, attributes)?;
-
-        Ok(Self {
-            key: None,
-            ck: Some(ck),
-        })
-    }
-}
-
-impl DhState {
-    pub fn key(&self) -> Option<&Secret> {
-        self.key.as_ref()
-    }
-    pub fn ck(&self) -> Option<&Secret> {
-        self.ck.as_ref()
-    }
-}
-
-impl DhState {
-    fn get_symmetric_key_type_and_length(&self) -> (SecretType, usize) {
-        (SecretType::Aes, AES256_SECRET_LENGTH)
-    }
-    /// Perform the diffie-hellman computation
-    fn dh(
-        &mut self,
-        secret_handle: &Secret,
-        public_key: &PublicKey,
-        vault: &mut dyn XXVault,
-    ) -> ockam_core::Result<()> {
-        let ck = self.ck.as_ref().ok_or(XXError::InvalidState)?;
-
-        let attributes_ck = SecretAttributes::new(
-            SecretType::Buffer,
-            SecretPersistence::Ephemeral,
-            SHA256_SIZE,
-        );
-
-        let symmetric_secret_info = self.get_symmetric_key_type_and_length();
-
-        let attributes_k = SecretAttributes::new(
-            symmetric_secret_info.0,
-            SecretPersistence::Ephemeral,
-            symmetric_secret_info.1,
-        );
-
-        let ecdh = vault.ec_diffie_hellman(secret_handle, public_key)?;
-
-        let mut hkdf_output =
-            vault.hkdf_sha256(ck, b"", Some(&ecdh), vec![attributes_ck, attributes_k])?;
-
-        if hkdf_output.len() != 2 {
-            return Err(XXError::InternalVaultError.into());
-        }
-
-        let key = self.key.take();
-        if key.is_some() {
-            vault.secret_destroy(key.unwrap())?;
-        }
-
-        self.key = Some(hkdf_output.pop().unwrap());
-
-        let ck = self.ck.take();
-
-        vault.secret_destroy(ck.unwrap())?;
-        self.ck = Some(hkdf_output.pop().unwrap());
-
-        Ok(())
-    }
-}
+mod dh_state;
+pub(crate) use dh_state::*;
+use ockam_vault_sync_core::Vault;
 
 /// Represents the XX Handshake
 pub(crate) struct State {
@@ -110,7 +23,7 @@ pub(crate) struct State {
     dh_state: DhState,
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
-    vault: Arc<Mutex<dyn XXVault>>,
+    vault: Vault,
 }
 
 impl Zeroize for State {
@@ -134,8 +47,8 @@ impl std::fmt::Debug for State {
 }
 
 impl State {
-    pub(crate) fn new(vault: Arc<Mutex<dyn XXVault>>) -> Self {
-        Self {
+    pub(crate) fn new(vault: &Vault) -> Result<Self> {
+        Ok(Self {
             run_prologue: true,
             identity_key: None,
             identity_public_key: None,
@@ -143,11 +56,11 @@ impl State {
             ephemeral_public: None,
             remote_static_public_key: None,
             remote_ephemeral_public_key: None,
-            dh_state: DhState::empty(),
+            dh_state: DhState::empty(vault.start_another()?),
             nonce: 0,
             h: None,
-            vault,
-        }
+            vault: vault.start_another()?,
+        })
     }
 }
 
@@ -161,25 +74,25 @@ impl State {
     }
 
     /// Create a new `HandshakeState` starting with the prologue
-    fn prologue(&mut self) -> ockam_core::Result<()> {
+    fn prologue(&mut self) -> Result<()> {
         let attributes = SecretAttributes::new(
             SecretType::Curve25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH,
         );
         // 1. Generate a static key pair for this handshake and set it to `s`
-        let mut vault = self.vault.lock().unwrap();
         if let Some(ik) = &self.identity_key {
-            self.identity_public_key = Some(vault.secret_public_key_get(&ik)?);
+            self.identity_public_key = Some(self.vault.secret_public_key_get(&ik)?);
         } else {
-            let static_secret_handle = vault.secret_generate(attributes)?;
-            self.identity_public_key = Some(vault.secret_public_key_get(&static_secret_handle)?);
+            let static_secret_handle = self.vault.secret_generate(attributes)?;
+            self.identity_public_key =
+                Some(self.vault.secret_public_key_get(&static_secret_handle)?);
             self.identity_key = Some(static_secret_handle)
         };
 
         // 2. Generate an ephemeral key pair for this handshake and set it to e
-        let ephemeral_secret_handle = vault.secret_generate(attributes)?;
-        self.ephemeral_public = Some(vault.secret_public_key_get(&ephemeral_secret_handle)?);
+        let ephemeral_secret_handle = self.vault.secret_generate(attributes)?;
+        self.ephemeral_public = Some(self.vault.secret_public_key_get(&ephemeral_secret_handle)?);
         self.ephemeral_secret = Some(ephemeral_secret_handle);
 
         // 3. Set k to empty, Set n to 0
@@ -192,32 +105,27 @@ impl State {
         // mix_hash(xx, NULL, 0);
         let mut h = [0u8; SHA256_SIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
-        self.dh_state = DhState::new(&h, vault.deref_mut())?;
-        self.h = Some(vault.sha256(&h)?);
+        self.dh_state = DhState::new(&h, self.vault.start_another()?)?;
+        self.h = Some(self.vault.sha256(&h)?);
 
         Ok(())
     }
 
     /// mix hash step in Noise protocol
-    fn mix_hash<B: AsRef<[u8]>>(
-        &self,
-        data: B,
-        vault: &mut dyn XXVault,
-    ) -> ockam_core::Result<[u8; 32]> {
+    fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<[u8; 32]> {
         let h = &self.h.ok_or(XXError::InvalidState)?;
 
         let mut input = h.to_vec();
         input.extend_from_slice(data.as_ref());
-        let h = vault.sha256(&input)?;
+        let h = self.vault.sha256(&input)?;
         Ok(h)
     }
 
     /// Encrypt and mix step in Noise protocol
     fn encrypt_and_mix_hash<B: AsRef<[u8]>>(
-        &self,
+        &mut self,
         plaintext: B,
-        vault: &mut dyn XXVault,
-    ) -> ockam_core::Result<(Vec<u8>, [u8; 32])> {
+    ) -> Result<(Vec<u8>, [u8; 32])> {
         let h = &self.h.ok_or(XXError::InvalidState)?;
 
         let mut nonce = [0u8; 12];
@@ -225,18 +133,18 @@ impl State {
 
         let ciphertext_and_tag = {
             let key = self.dh_state.key().ok_or(XXError::InvalidState)?;
-            vault.aead_aes_gcm_encrypt(key, plaintext.as_ref(), nonce.as_ref(), h)?
+            self.vault
+                .aead_aes_gcm_encrypt(key, plaintext.as_ref(), nonce.as_ref(), h)?
         };
-        let h = self.mix_hash(&ciphertext_and_tag, vault)?;
+        let h = self.mix_hash(&ciphertext_and_tag)?;
         Ok((ciphertext_and_tag, h))
     }
 
     /// Decrypt and mix step in Noise protocol
     fn decrypt_and_mix_hash<B: AsRef<[u8]>>(
-        &self,
+        &mut self,
         ciphertext: B,
-        vault: &mut dyn XXVault,
-    ) -> ockam_core::Result<(Vec<u8>, [u8; 32])> {
+    ) -> Result<(Vec<u8>, [u8; 32])> {
         let h = &self.h.ok_or(XXError::InvalidState)?;
 
         let mut nonce = [0u8; 12];
@@ -244,14 +152,15 @@ impl State {
         let ciphertext = ciphertext.as_ref();
         let plaintext = {
             let key = self.dh_state.key().ok_or(XXError::InvalidState)?;
-            vault.aead_aes_gcm_decrypt(key, ciphertext, nonce.as_ref(), h)?
+            self.vault
+                .aead_aes_gcm_decrypt(key, ciphertext, nonce.as_ref(), h)?
         };
-        let h = self.mix_hash(ciphertext, vault)?;
+        let h = self.mix_hash(ciphertext)?;
         Ok((plaintext, h))
     }
 
     /// Split step in Noise protocol
-    fn split(&self, vault: &mut dyn XXVault) -> ockam_core::Result<(Secret, Secret)> {
+    fn split(&mut self) -> Result<(Secret, Secret)> {
         let ck = self.dh_state.ck().ok_or(XXError::InvalidState)?;
 
         let symmetric_key_info = self.get_symmetric_key_type_and_length();
@@ -260,7 +169,9 @@ impl State {
             SecretPersistence::Ephemeral,
             symmetric_key_info.1,
         );
-        let mut hkdf_output = vault.hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
+        let mut hkdf_output =
+            self.vault
+                .hkdf_sha256(ck, b"", None, vec![attributes, attributes])?;
 
         if hkdf_output.len() != 2 {
             return Err(XXError::InternalVaultError.into());
@@ -273,11 +184,7 @@ impl State {
     }
 
     /// Set this state up to send and receive messages
-    fn finalize(
-        self,
-        encrypt_key: Secret,
-        decrypt_key: Secret,
-    ) -> ockam_core::Result<CompletedKeyExchange> {
+    fn finalize(self, encrypt_key: Secret, decrypt_key: Secret) -> Result<CompletedKeyExchange> {
         let h = self.h.ok_or(XXError::InvalidState)?;
 
         let local_static_secret = self.identity_key.ok_or(XXError::InvalidState)?;
@@ -296,7 +203,7 @@ impl State {
 }
 
 impl State {
-    pub(crate) fn run_prologue(&mut self) -> ockam_core::Result<()> {
+    pub(crate) fn run_prologue(&mut self) -> Result<()> {
         if self.run_prologue {
             self.prologue()
         } else {
@@ -307,10 +214,7 @@ impl State {
 
 impl State {
     /// Encode the first message to be sent
-    pub(crate) fn encode_message_1<B: AsRef<[u8]>>(
-        &mut self,
-        payload: B,
-    ) -> ockam_core::Result<Vec<u8>> {
+    pub(crate) fn encode_message_1<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>> {
         let ephemeral_public_key = self
             .ephemeral_public
             .as_ref()
@@ -318,9 +222,8 @@ impl State {
             .clone();
 
         let payload = payload.as_ref();
-        let mut vault = self.vault.lock().unwrap();
-        self.h = Some(self.mix_hash(ephemeral_public_key.as_ref(), vault.deref_mut())?);
-        self.h = Some(self.mix_hash(payload, vault.deref_mut())?);
+        self.h = Some(self.mix_hash(ephemeral_public_key.as_ref())?);
+        self.h = Some(self.mix_hash(payload)?);
 
         let mut output = ephemeral_public_key.as_ref().to_vec();
         output.extend_from_slice(payload);
@@ -328,10 +231,7 @@ impl State {
     }
 
     /// Decode the second message in the sequence, sent from the responder
-    pub(crate) fn decode_message_2<B: AsRef<[u8]>>(
-        &mut self,
-        message: B,
-    ) -> ockam_core::Result<Vec<u8>> {
+    pub(crate) fn decode_message_2<B: AsRef<[u8]>>(&mut self, message: B) -> Result<Vec<u8>> {
         let public_key_size = CURVE25519_PUBLIC_LENGTH;
         let message = message.as_ref();
         if message.len() < 2 * public_key_size + AES_GCM_TAGSIZE {
@@ -349,31 +249,24 @@ impl State {
         let encrypted_rs_and_tag = &message[index_l..index_r];
         let encrypted_payload_and_tag = &message[index_r..];
 
-        let mut vault = self.vault.lock().unwrap();
-        self.h = Some(self.mix_hash(re.as_ref(), vault.deref_mut())?);
-        self.dh_state
-            .dh(&ephemeral_secret_handle, &re, vault.deref_mut())?;
+        self.h = Some(self.mix_hash(re.as_ref())?);
+        self.dh_state.dh(&ephemeral_secret_handle, &re)?;
         self.remote_ephemeral_public_key = Some(re);
-        let (rs, h) = self.decrypt_and_mix_hash(encrypted_rs_and_tag, vault.deref_mut())?;
+        let (rs, h) = self.decrypt_and_mix_hash(encrypted_rs_and_tag)?;
         self.h = Some(h);
         let rs = PublicKey::new(rs);
-        self.dh_state
-            .dh(&ephemeral_secret_handle, &rs, vault.deref_mut())?;
+        self.dh_state.dh(&ephemeral_secret_handle, &rs)?;
         self.remote_static_public_key = Some(rs);
         self.nonce = 0;
 
-        let (payload, h) =
-            self.decrypt_and_mix_hash(encrypted_payload_and_tag, vault.deref_mut())?;
+        let (payload, h) = self.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
         self.h = Some(h);
         self.nonce += 1;
         Ok(payload)
     }
 
     /// Encode the final message to be sent
-    pub(crate) fn encode_message_3<B: AsRef<[u8]>>(
-        &mut self,
-        payload: B,
-    ) -> ockam_core::Result<Vec<u8>> {
+    pub(crate) fn encode_message_3<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>> {
         let static_secret = self.identity_key.clone().ok_or(XXError::InvalidState)?;
 
         let static_public = self
@@ -386,29 +279,20 @@ impl State {
             .clone()
             .ok_or(XXError::InvalidState)?;
 
-        let mut vault = self.vault.lock().unwrap();
-        let (mut encrypted_s_and_tag, h) =
-            self.encrypt_and_mix_hash(static_public.as_ref(), vault.deref_mut())?;
+        let (mut encrypted_s_and_tag, h) = self.encrypt_and_mix_hash(static_public.as_ref())?;
         self.h = Some(h);
-        self.dh_state.dh(
-            &static_secret,
-            &remote_ephemeral_public_key,
-            vault.deref_mut(),
-        )?;
+        self.dh_state
+            .dh(&static_secret, &remote_ephemeral_public_key)?;
         self.nonce = 0;
-        let (mut encrypted_payload_and_tag, h) =
-            self.encrypt_and_mix_hash(payload, vault.deref_mut())?;
+        let (mut encrypted_payload_and_tag, h) = self.encrypt_and_mix_hash(payload)?;
         self.h = Some(h);
         self.nonce += 1;
         encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
         Ok(encrypted_s_and_tag)
     }
 
-    pub(crate) fn finalize_initiator(self) -> ockam_core::Result<CompletedKeyExchange> {
-        let keys = {
-            let mut vault = self.vault.lock().unwrap();
-            self.split(vault.deref_mut())?
-        };
+    pub(crate) fn finalize_initiator(mut self) -> Result<CompletedKeyExchange> {
+        let keys = { self.split()? };
 
         self.finalize(keys.1, keys.0)
     }
@@ -416,10 +300,7 @@ impl State {
 
 impl State {
     /// Decode the first message sent
-    pub(crate) fn decode_message_1<B: AsRef<[u8]>>(
-        &mut self,
-        message_1: B,
-    ) -> ockam_core::Result<Vec<u8>> {
+    pub(crate) fn decode_message_1<B: AsRef<[u8]>>(&mut self, message_1: B) -> Result<Vec<u8>> {
         let public_key_size = CURVE25519_PUBLIC_LENGTH;
         let message_1 = message_1.as_ref();
         if message_1.len() < public_key_size {
@@ -428,18 +309,14 @@ impl State {
 
         let re = &message_1[..public_key_size];
         let re = PublicKey::new(re.to_vec());
-        let mut vault = self.vault.lock().unwrap();
-        self.h = Some(self.mix_hash(re.as_ref(), vault.deref_mut())?);
-        self.h = Some(self.mix_hash(&message_1[public_key_size..], vault.deref_mut())?);
+        self.h = Some(self.mix_hash(re.as_ref())?);
+        self.h = Some(self.mix_hash(&message_1[public_key_size..])?);
         self.remote_ephemeral_public_key = Some(re);
         Ok(message_1[public_key_size..].to_vec())
     }
 
     /// Encode the second message to be sent
-    pub(crate) fn encode_message_2<B: AsRef<[u8]>>(
-        &mut self,
-        payload: B,
-    ) -> ockam_core::Result<Vec<u8>> {
+    pub(crate) fn encode_message_2<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>> {
         let static_secret = self.identity_key.clone().ok_or(XXError::InvalidState)?;
         let static_public = self
             .identity_public_key
@@ -452,25 +329,16 @@ impl State {
             .clone()
             .ok_or(XXError::InvalidState)?;
 
-        let mut vault = self.vault.lock().unwrap();
-        self.h = Some(self.mix_hash(ephemeral_public.as_ref(), vault.deref_mut())?);
-        self.dh_state.dh(
-            &ephemeral_secret,
-            &remote_ephemeral_public_key,
-            vault.deref_mut(),
-        )?;
+        self.h = Some(self.mix_hash(ephemeral_public.as_ref())?);
+        self.dh_state
+            .dh(&ephemeral_secret, &remote_ephemeral_public_key)?;
 
-        let (mut encrypted_s_and_tag, h) =
-            self.encrypt_and_mix_hash(static_public.as_ref(), vault.deref_mut())?;
+        let (mut encrypted_s_and_tag, h) = self.encrypt_and_mix_hash(static_public.as_ref())?;
         self.h = Some(h);
-        self.dh_state.dh(
-            &static_secret,
-            &remote_ephemeral_public_key,
-            vault.deref_mut(),
-        )?;
+        self.dh_state
+            .dh(&static_secret, &remote_ephemeral_public_key)?;
         self.nonce = 0;
-        let (mut encrypted_payload_and_tag, h) =
-            self.encrypt_and_mix_hash(payload, vault.deref_mut())?;
+        let (mut encrypted_payload_and_tag, h) = self.encrypt_and_mix_hash(payload)?;
         self.h = Some(h);
         self.nonce += 1;
 
@@ -481,10 +349,7 @@ impl State {
     }
 
     /// Decode the final message received for the handshake
-    pub(crate) fn decode_message_3<B: AsRef<[u8]>>(
-        &mut self,
-        message_3: B,
-    ) -> ockam_core::Result<Vec<u8>> {
+    pub(crate) fn decode_message_3<B: AsRef<[u8]>>(&mut self, message_3: B) -> Result<Vec<u8>> {
         let public_key_size = CURVE25519_PUBLIC_LENGTH;
         let message_3 = message_3.as_ref();
         if message_3.len() < public_key_size + AES_GCM_TAGSIZE {
@@ -493,30 +358,21 @@ impl State {
 
         let ephemeral_secret = &self.ephemeral_secret.clone().ok_or(XXError::InvalidState)?;
 
-        let mut vault = self.vault.lock().unwrap();
-        let (rs, h) = self.decrypt_and_mix_hash(
-            &message_3[..public_key_size + AES_GCM_TAGSIZE],
-            vault.deref_mut(),
-        )?;
+        let (rs, h) = self.decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])?;
         self.h = Some(h);
         let rs = PublicKey::new(rs);
-        self.dh_state.dh(ephemeral_secret, &rs, vault.deref_mut())?;
+        self.dh_state.dh(ephemeral_secret, &rs)?;
         self.nonce = 0;
-        let (payload, h) = self.decrypt_and_mix_hash(
-            &message_3[public_key_size + AES_GCM_TAGSIZE..],
-            vault.deref_mut(),
-        )?;
+        let (payload, h) =
+            self.decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
         self.h = Some(h);
         self.nonce += 1;
         self.remote_static_public_key = Some(rs);
         Ok(payload)
     }
 
-    pub(crate) fn finalize_responder(self) -> ockam_core::Result<CompletedKeyExchange> {
-        let keys = {
-            let mut vault = self.vault.lock().unwrap();
-            self.split(vault.deref_mut())?
-        };
+    pub(crate) fn finalize_responder(mut self) -> Result<CompletedKeyExchange> {
+        let keys = { self.split()? };
 
         self.finalize(keys.0, keys.1)
     }
@@ -525,50 +381,60 @@ impl State {
 #[cfg(test)]
 mod tests {
     use crate::state::{DhState, State};
-    use crate::{Initiator, Responder, XXVault};
+    use crate::{Initiator, Responder};
     use ockam_core::hex::{decode, encode};
     use ockam_key_exchange_core::KeyExchanger;
     use ockam_vault::SoftwareVault;
     use ockam_vault_core::{
-        SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
+        Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
         CURVE25519_SECRET_LENGTH,
     };
-    use std::sync::{Arc, Mutex};
+    use ockam_vault_sync_core::Vault;
 
     #[test]
     fn prologue() {
-        let exp_h = [
-            93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79, 126,
-            100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
-        ];
-        let vault = Arc::new(Mutex::new(SoftwareVault::default()));
-        let mut state = State::new(vault.clone());
-        let res = state.prologue();
-        assert!(res.is_ok());
-        assert_eq!(state.h.unwrap(), exp_h);
+        let (mut ctx, mut executor) = ockam_node::start_node();
+        executor
+            .execute(async move {
+                let mut vault = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
 
-        let mut vault = vault.lock().unwrap();
-        let ck = vault.secret_export(&state.dh_state.ck.unwrap()).unwrap();
+                let exp_h = [
+                    93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32,
+                    79, 126, 100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
+                ];
 
-        assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
-        assert_eq!(state.nonce, 0);
+                let mut state = State::new(&vault).unwrap();
+                let res = state.prologue();
+                assert!(res.is_ok());
+                assert_eq!(state.h.unwrap(), exp_h);
+
+                let ck = vault.secret_export(&state.dh_state.ck.unwrap()).unwrap();
+
+                assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
+                assert_eq!(state.nonce, 0);
+
+                ctx.stop().await.unwrap()
+            })
+            .unwrap();
     }
 
     #[test]
     fn handshake_1() {
-        const INIT_STATIC: &str =
+        const INIT_STATIC: &'static str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
-        const RESP_STATIC: &str =
+        const INIT_EPH: &'static str =
+            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
+        const RESP_STATIC: &'static str =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-        const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
-        const MSG_1_CIPHERTEXT: &str =
+        const RESP_EPH: &'static str =
+            "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
+        const MSG_1_CIPHERTEXT: &'static str =
             "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254";
-        const MSG_1_PAYLOAD: &str = "";
-        const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
-        const MSG_2_PAYLOAD: &str = "";
-        const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
-        const MSG_3_PAYLOAD: &str = "";
+        const MSG_1_PAYLOAD: &'static str = "";
+        const MSG_2_CIPHERTEXT: &'static str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
+        const MSG_2_PAYLOAD: &'static str = "";
+        const MSG_3_CIPHERTEXT: &'static str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
+        const MSG_3_PAYLOAD: &'static str = "";
 
         mock_handshake(
             INIT_STATIC,
@@ -585,69 +451,78 @@ mod tests {
     }
 
     fn mock_handshake(
-        init_static: &str,
-        init_eph: &str,
-        resp_static: &str,
-        resp_eph: &str,
-        msg_1_payload: &str,
-        msg_1_ciphertext: &str,
-        msg_2_payload: &str,
-        msg_2_ciphertext: &str,
-        msg_3_payload: &str,
-        msg_3_ciphertext: &str,
+        init_static: &'static str,
+        init_eph: &'static str,
+        resp_static: &'static str,
+        resp_eph: &'static str,
+        msg_1_payload: &'static str,
+        msg_1_ciphertext: &'static str,
+        msg_2_payload: &'static str,
+        msg_2_ciphertext: &'static str,
+        msg_3_payload: &'static str,
+        msg_3_ciphertext: &'static str,
     ) {
-        let vault_init = Arc::new(Mutex::new(SoftwareVault::default()));
-        let vault_resp = Arc::new(Mutex::new(SoftwareVault::default()));
+        let (mut ctx, mut executor) = ockam_node::start_node();
+        executor
+            .execute(async move {
+                let mut vault_init = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
+                let mut vault_resp = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
 
-        let mut initiator = mock_prologue(vault_init.clone(), init_static, init_eph);
-        let mut responder = mock_prologue(vault_resp.clone(), resp_static, resp_eph);
-        // let mut initiator = Initiator::new(ss_init);
-        // let mut responder = Responder::new(ss_resp);
+                let mut initiator = mock_prologue(&mut vault_init, init_static, init_eph);
+                let mut responder = mock_prologue(&mut vault_resp, resp_static, resp_eph);
+                // let mut initiator = Initiator::new(ss_init);
+                // let mut responder = Responder::new(ss_resp);
 
-        let res = initiator.encode_message_1(decode(msg_1_payload).unwrap());
-        assert!(res.is_ok());
-        let msg1 = res.unwrap();
-        assert_eq!(encode(&msg1), msg_1_ciphertext);
+                let res = initiator.encode_message_1(decode(msg_1_payload).unwrap());
+                assert!(res.is_ok());
+                let msg1 = res.unwrap();
+                assert_eq!(encode(&msg1), msg_1_ciphertext);
 
-        let res = responder.decode_message_1(msg1);
-        assert!(res.is_ok());
+                let res = responder.decode_message_1(msg1);
+                assert!(res.is_ok());
 
-        let res = responder.encode_message_2(decode(msg_2_payload).unwrap());
-        assert!(res.is_ok());
-        let msg2 = res.unwrap();
-        assert_eq!(encode(&msg2), msg_2_ciphertext);
+                let res = responder.encode_message_2(decode(msg_2_payload).unwrap());
+                assert!(res.is_ok());
+                let msg2 = res.unwrap();
+                assert_eq!(encode(&msg2), msg_2_ciphertext);
 
-        let res = initiator.decode_message_2(msg2);
-        assert!(res.is_ok());
-        let res = initiator.encode_message_3(decode(msg_3_payload).unwrap());
-        assert!(res.is_ok());
-        let msg3 = res.unwrap();
-        assert_eq!(encode(&msg3), msg_3_ciphertext);
+                let res = initiator.decode_message_2(msg2);
+                assert!(res.is_ok());
+                let res = initiator.encode_message_3(decode(msg_3_payload).unwrap());
+                assert!(res.is_ok());
+                let msg3 = res.unwrap();
+                assert_eq!(encode(&msg3), msg_3_ciphertext);
 
-        let res = responder.decode_message_3(msg3);
-        assert!(res.is_ok());
+                let res = responder.decode_message_3(msg3);
+                assert!(res.is_ok());
 
-        let res = initiator.finalize_initiator();
-        assert!(res.is_ok());
-        let res = responder.finalize_responder();
-        assert!(res.is_ok());
+                let res = initiator.finalize_initiator();
+                assert!(res.is_ok());
+                let res = responder.finalize_responder();
+                assert!(res.is_ok());
+
+                ctx.stop().await.unwrap()
+            })
+            .unwrap();
     }
 
     #[test]
     fn handshake_2() {
-        const INIT_STATIC: &str =
+        const INIT_STATIC: &'static str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        const RESP_STATIC: &str =
+        const RESP_STATIC: &'static str =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-        const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
-        const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
-        const MSG_1_PAYLOAD: &str = "746573745f6d73675f30";
-        const MSG_1_CIPHERTEXT: &str =
+        const INIT_EPH: &'static str =
+            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
+        const RESP_EPH: &'static str =
+            "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
+        const MSG_1_PAYLOAD: &'static str = "746573745f6d73675f30";
+        const MSG_1_CIPHERTEXT: &'static str =
             "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254746573745f6d73675f30";
-        const MSG_2_PAYLOAD: &str = "746573745f6d73675f31";
-        const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8c9f29dcec8d3ab554f4a5330657867fe4917917195c8cf360e08d6dc5f71baf875ec6e3bfc7afda4c9c2";
-        const MSG_3_PAYLOAD: &str = "746573745f6d73675f32";
-        const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
+        const MSG_2_PAYLOAD: &'static str = "746573745f6d73675f31";
+        const MSG_2_CIPHERTEXT: &'static str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8c9f29dcec8d3ab554f4a5330657867fe4917917195c8cf360e08d6dc5f71baf875ec6e3bfc7afda4c9c2";
+        const MSG_3_PAYLOAD: &'static str = "746573745f6d73675f32";
+        const MSG_3_CIPHERTEXT: &'static str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
 
         mock_handshake(
             INIT_STATIC,
@@ -665,100 +540,117 @@ mod tests {
 
     #[test]
     fn handshake_main() {
-        const INIT_STATIC: &str =
+        const INIT_STATIC: &'static str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
-        const RESP_STATIC: &str =
+        const INIT_EPH: &'static str =
+            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
+        const RESP_STATIC: &'static str =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-        const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
-        const MSG_1_CIPHERTEXT: &str =
+        const RESP_EPH: &'static str =
+            "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
+        const MSG_1_CIPHERTEXT: &'static str =
             "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254";
-        const MSG_1_PAYLOAD: &str = "";
-        const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
-        const MSG_2_PAYLOAD: &str = "";
-        const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
-        const MSG_3_PAYLOAD: &str = "";
+        const MSG_1_PAYLOAD: &'static str = "";
+        const MSG_2_CIPHERTEXT: &'static str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
+        const MSG_2_PAYLOAD: &'static str = "";
+        const MSG_3_CIPHERTEXT: &'static str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
+        const MSG_3_PAYLOAD: &'static str = "";
 
-        let vault_init = Arc::new(Mutex::new(SoftwareVault::default()));
-        let vault_resp = Arc::new(Mutex::new(SoftwareVault::default()));
+        let (mut ctx, mut executor) = ockam_node::start_node();
+        executor
+            .execute(async move {
+                let mut vault_init = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
+                let mut vault_resp = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
 
-        let initiator = mock_prologue(vault_init.clone(), INIT_STATIC, INIT_EPH);
-        let responder = mock_prologue(vault_resp.clone(), RESP_STATIC, RESP_EPH);
+                let initiator = mock_prologue(&mut vault_init, INIT_STATIC, INIT_EPH);
+                let responder = mock_prologue(&mut vault_resp, RESP_STATIC, RESP_EPH);
 
-        let mut initiator = Initiator::new(initiator);
-        let mut responder = Responder::new(responder);
+                let mut initiator = Initiator::new(initiator);
+                let mut responder = Responder::new(responder);
 
-        let res = responder.process(&[]);
-        assert!(res.is_err());
-        let res = initiator.process(&decode(MSG_1_PAYLOAD).unwrap());
-        assert!(res.is_ok());
-        let msg1 = res.unwrap();
-        assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
+                let res = responder.process(&[]);
+                assert!(res.is_err());
+                let res = initiator.process(&decode(MSG_1_PAYLOAD).unwrap());
+                assert!(res.is_ok());
+                let msg1 = res.unwrap();
+                assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
 
-        let res = responder.process(&msg1);
-        assert!(res.is_ok());
-        let res = responder.process(&decode(MSG_2_PAYLOAD).unwrap());
-        assert!(res.is_ok());
-        let msg2 = res.unwrap();
-        assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
+                let res = responder.process(&msg1);
+                assert!(res.is_ok());
+                let res = responder.process(&decode(MSG_2_PAYLOAD).unwrap());
+                assert!(res.is_ok());
+                let msg2 = res.unwrap();
+                assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
 
-        let res = initiator.process(&msg2);
-        assert!(res.is_ok());
-        let res = initiator.process(&decode(MSG_3_PAYLOAD).unwrap());
-        assert!(res.is_ok());
-        let msg3 = res.unwrap();
-        assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
+                let res = initiator.process(&msg2);
+                assert!(res.is_ok());
+                let res = initiator.process(&decode(MSG_3_PAYLOAD).unwrap());
+                assert!(res.is_ok());
+                let msg3 = res.unwrap();
+                assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
 
-        let res = responder.process(&msg3);
-        assert!(res.is_ok());
+                let res = responder.process(&msg3);
+                assert!(res.is_ok());
 
-        let initiator = Box::new(initiator);
-        let res = initiator.finalize();
-        assert!(res.is_ok());
-        let alice = res.unwrap();
-        let responder = Box::new(responder);
-        let res = responder.finalize();
-        assert!(res.is_ok());
-        let bob = res.unwrap();
-        assert_eq!(alice.h(), bob.h());
-        let mut vault_in = vault_init.lock().unwrap();
-        let res =
-            vault_in.aead_aes_gcm_encrypt(alice.encrypt_key(), b"hello bob", &[0u8; 12], alice.h());
+                let initiator = Box::new(initiator);
+                let res = initiator.finalize();
+                assert!(res.is_ok());
+                let alice = res.unwrap();
+                let responder = Box::new(responder);
+                let res = responder.finalize();
+                assert!(res.is_ok());
+                let bob = res.unwrap();
+                assert_eq!(alice.h(), bob.h());
+                let res = vault_init.aead_aes_gcm_encrypt(
+                    alice.encrypt_key(),
+                    b"hello bob",
+                    &[0u8; 12],
+                    alice.h(),
+                );
 
-        assert!(res.is_ok());
-        let ciphertext = res.unwrap();
-        let mut vault_re = vault_resp.lock().unwrap();
+                assert!(res.is_ok());
+                let ciphertext = res.unwrap();
 
-        let res =
-            vault_re.aead_aes_gcm_decrypt(bob.decrypt_key(), &ciphertext, &[0u8; 12], bob.h());
-        assert!(res.is_ok());
-        let plaintext = res.unwrap();
-        assert_eq!(plaintext, b"hello bob");
+                let res = vault_resp.aead_aes_gcm_decrypt(
+                    bob.decrypt_key(),
+                    &ciphertext,
+                    &[0u8; 12],
+                    bob.h(),
+                );
+                assert!(res.is_ok());
+                let plaintext = res.unwrap();
+                assert_eq!(plaintext, b"hello bob");
 
-        let res =
-            vault_re.aead_aes_gcm_encrypt(bob.encrypt_key(), b"hello alice", &[1u8; 12], bob.h());
-        assert!(res.is_ok());
-        let ciphertext = res.unwrap();
-        let res =
-            vault_in.aead_aes_gcm_decrypt(alice.decrypt_key(), &ciphertext, &[1u8; 12], alice.h());
-        assert!(res.is_ok());
-        let plaintext = res.unwrap();
-        assert_eq!(plaintext, b"hello alice");
+                let res = vault_resp.aead_aes_gcm_encrypt(
+                    bob.encrypt_key(),
+                    b"hello alice",
+                    &[1u8; 12],
+                    bob.h(),
+                );
+                assert!(res.is_ok());
+                let ciphertext = res.unwrap();
+                let res = vault_init.aead_aes_gcm_decrypt(
+                    alice.decrypt_key(),
+                    &ciphertext,
+                    &[1u8; 12],
+                    alice.h(),
+                );
+                assert!(res.is_ok());
+                let plaintext = res.unwrap();
+                assert_eq!(plaintext, b"hello alice");
+
+                ctx.stop().await.unwrap()
+            })
+            .unwrap();
     }
 
-    fn mock_prologue(
-        vault_mutex: Arc<Mutex<dyn XXVault>>,
-        static_private: &str,
-        ephemeral_private: &str,
-    ) -> State {
+    fn mock_prologue(vault: &mut Vault, static_private: &str, ephemeral_private: &str) -> State {
         let attributes = SecretAttributes::new(
             SecretType::Curve25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH,
         );
-        let v = vault_mutex.clone();
         // Static x25519 for this handshake, `s`
-        let mut vault = vault_mutex.lock().unwrap();
         let static_secret_handle = vault
             .secret_import(&decode(static_private).unwrap(), attributes)
             .unwrap();
@@ -792,10 +684,11 @@ mod tests {
             dh_state: DhState {
                 key: None,
                 ck: Some(ck),
+                vault: vault.start_another().unwrap(),
             },
             nonce: 0,
             h: Some(h),
-            vault: v,
+            vault: vault.start_another().unwrap(),
         }
     }
 }

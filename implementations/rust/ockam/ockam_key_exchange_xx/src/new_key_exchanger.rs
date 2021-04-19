@@ -1,37 +1,33 @@
 use crate::state::State;
-use crate::{Initiator, Responder, XXVault};
+use crate::{Initiator, Responder};
+use ockam_core::Result;
 use ockam_key_exchange_core::NewKeyExchanger;
-use std::sync::{Arc, Mutex};
+use ockam_vault_sync_core::Vault;
 
 /// Represents an XX NewKeyExchanger
 pub struct XXNewKeyExchanger {
-    vault_initiator: Arc<Mutex<dyn XXVault>>,
-    vault_responder: Arc<Mutex<dyn XXVault>>,
+    vault: Vault,
 }
 
 impl XXNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
-    pub fn new(
-        vault_initiator: Arc<Mutex<dyn XXVault>>,
-        vault_responder: Arc<Mutex<dyn XXVault>>,
-    ) -> Self {
-        Self {
-            vault_initiator,
-            vault_responder,
-        }
+    pub fn new(vault: Vault) -> Self {
+        Self { vault }
     }
 }
 
-impl NewKeyExchanger<Initiator, Responder> for XXNewKeyExchanger {
+impl NewKeyExchanger for XXNewKeyExchanger {
+    type Initiator = Initiator;
+    type Responder = Responder;
     /// Create a new initiator using the provided backing vault
-    fn initiator(&self) -> Initiator {
-        let ss = State::new(self.vault_initiator.clone());
-        Initiator::new(ss)
+    fn initiator(&self) -> Result<Initiator> {
+        let ss = State::new(&self.vault)?;
+        Ok(Initiator::new(ss))
     }
 
     /// Create a new responder using the provided backing vault
-    fn responder(&self) -> Responder {
-        let ss = State::new(self.vault_responder.clone());
-        Responder::new(ss)
+    fn responder(&self) -> Result<Responder> {
+        let ss = State::new(&self.vault)?;
+        Ok(Responder::new(ss))
     }
 }
