@@ -15,26 +15,33 @@
     warnings
 )]
 
+use ockam_core::Result;
 use ockam_vault_core::{PublicKey, Secret};
 use zeroize::Zeroize;
 
 /// A trait implemented by both Initiator and Responder peers.
 pub trait KeyExchanger {
     /// Run the current phase of the key exchange process.
-    fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>>;
+    fn process(&mut self, data: &[u8]) -> Result<Vec<u8>>;
     /// Returns true if the key exchange process is complete.
     fn is_complete(&self) -> bool;
-
     /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.
-    fn finalize(self) -> ockam_core::Result<CompletedKeyExchange>;
+    fn finalize(self) -> Result<CompletedKeyExchange>;
+    /// Should call finalize. Added to use KeyExchanger as trait object.
+    fn finalize_box(self: Box<Self>) -> Result<CompletedKeyExchange>;
 }
 
 /// A creator of both initiator and responder peers of a key exchange.
-pub trait NewKeyExchanger<I: KeyExchanger = Self, R: KeyExchanger = Self> {
+pub trait NewKeyExchanger {
+    /// Initiator
+    type Initiator: KeyExchanger + Send + 'static;
+    /// Responder
+    type Responder: KeyExchanger + Send + 'static;
+
     /// Create a new Key Exchanger with the initiator role
-    fn initiator(&self) -> I;
+    fn initiator(&self) -> Result<Self::Initiator>;
     /// Create a new Key Exchanger with the responder role
-    fn responder(&self) -> R;
+    fn responder(&self) -> Result<Self::Responder>;
 }
 
 /// The state of a completed key exchange.
