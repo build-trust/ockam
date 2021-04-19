@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.2.0 - 2021-04-19
 ### Added
+- Add finalize_box to key exchange. 
+
+### Changed
+- Move new key exchanger types to associated types.
+
+## v0.2.0 - 2021-04-19
+### Added
 - Add finalize_box to key exchange.
 
 ### Changed
