@@ -1,18 +1,15 @@
-use crate::key_exchange::{
-    KeyExchangeRequestMessage, KeyExchangeResponseMessage, XInitiator, XResponder,
-};
 use crate::{SecureChannelError, SecureChannelListener, SecureChannelListenerMessage};
 use async_trait::async_trait;
 use ockam_core::{Address, Any, Message, Result, Route, Routed, TransportMessage, Worker};
-use ockam_key_exchange_core::NewKeyExchanger;
+use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
 use ockam_vault::SoftwareVault;
-use ockam_vault_core::{Secret, SymmetricVault};
+use ockam_vault_core::{ErrorVault, Secret, SymmetricVault};
+use ockam_vault_sync_core::Vault;
 use rand::random;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
-use tracing::debug;
+use tracing::{debug, info};
 
 struct ChannelKeys {
     encrypt_key: Secret,
@@ -48,44 +45,74 @@ pub struct SecureChannel {
     remote_route: Route,
     address_remote: Address,
     address_local: Address,
-    key_exchange_route: Option<Route>, // this address is used to send messages to key exchange worker
     keys: Option<ChannelKeys>,
     key_exchange_completed_callback_route: Option<Route>,
-    vault: Arc<Mutex<SoftwareVault>>,
+    vault: Vault,
+    key_exchanger: Option<Box<dyn KeyExchanger + Send + 'static>>,
 }
 
 impl SecureChannel {
-    pub(crate) fn new(
+    pub(crate) fn new<N: NewKeyExchanger>(
         is_initiator: bool,
         remote_route: Route,
         address_remote: Address,
         address_local: Address,
         key_exchange_completed_callback_route: Option<Route>,
-    ) -> Self {
-        // TODO: Replace with worker
-        let vault = Arc::new(Mutex::new(SoftwareVault::new()));
-        SecureChannel {
+        new_key_exchanger: &N,
+        vault: Vault,
+    ) -> Result<Self> {
+        let key_exchanger: Box<dyn KeyExchanger + Send + 'static> = if is_initiator {
+            Box::new(new_key_exchanger.initiator()?)
+        } else {
+            Box::new(new_key_exchanger.responder()?)
+        };
+
+        Ok(SecureChannel {
             is_initiator,
             remote_route,
             address_remote,
             address_local,
-            key_exchange_route: None,
             keys: None,
             key_exchange_completed_callback_route,
+            key_exchanger: Some(key_exchanger),
             vault,
-        }
+        })
     }
 
     /// Create and start channel listener with given address.
-    pub async fn create_listener<A: Into<Address>>(ctx: &Context, address: A) -> Result<()> {
-        let channel_listener = SecureChannelListener::new();
-        ctx.start_worker(address.into(), channel_listener).await
+    pub async fn create_listener<A: Into<Address>>(
+        ctx: &Context,
+        address: A,
+        vault_worker_address: Address,
+    ) -> Result<()> {
+        let channel_listener = SecureChannelListener::new(vault_worker_address);
+        let address = address.into();
+        info!("Starting SecureChannel listener at {}", &address);
+        ctx.start_worker(address, channel_listener).await
     }
 
     /// Create initiator channel with given route to a remote channel listener.
-    pub async fn create<A: Into<Route>>(ctx: &mut Context, route: A) -> Result<SecureChannelInfo> {
+    pub async fn create<A: Into<Route>>(
+        ctx: &mut Context,
+        route: A,
+        vault_worker_address: Address,
+    ) -> Result<SecureChannelInfo> {
         let address_remote: Address = random();
         let address_local: Address = random();
+
+        info!(
+            "Starting SecureChannel initiator at local: {}, remote: {}",
+            &address_local, &address_remote
+        );
+
+        let vault = Vault::create(
+            ctx,
+            vault_worker_address,
+            SoftwareVault::error_domain(), /* FIXME */
+        )
+        .await?;
+
+        let new_key_exchanger = XXNewKeyExchanger::new(vault.start_another()?);
 
         let channel = SecureChannel::new(
             true,
@@ -93,7 +120,9 @@ impl SecureChannel {
             address_remote.clone(),
             address_local.clone(),
             Some(Route::new().append(ctx.address()).into()),
-        );
+            &new_key_exchanger,
+            vault,
+        )?;
 
         ctx.start_worker(vec![address_remote, address_local.clone()], channel)
             .await?;
@@ -140,65 +169,29 @@ impl SecureChannel {
         }
     }
 
-    async fn handle_key_exchange_local(
+    async fn send_key_exchange_payload(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
-        response: KeyExchangeResponseMessage,
+        payload: Vec<u8>,
         is_first_initiator_msg: bool,
     ) -> Result<()> {
-        // Handles response from KeyExchange Worker
-        if let Some(payload) = response.payload().clone() {
-            debug!(
-                "SecureChannel received KeyExchangeLocal::Payload: {}",
-                payload.len()
-            );
-            if is_first_initiator_msg {
-                // First message from initiator goes to the channel listener
-                ctx.send_from_address(
-                    self.remote_route.clone(),
-                    SecureChannelListenerMessage::CreateResponderChannel { payload },
-                    self.address_remote.clone(),
-                )
-                .await?;
-            } else {
-                // Other messages go to the channel worker itself
-                ctx.send_from_address(
-                    self.remote_route.clone(),
-                    payload,
-                    self.address_remote.clone(),
-                )
-                .await?;
-            };
+        if is_first_initiator_msg {
+            // First message from initiator goes to the channel listener
+            ctx.send_from_address(
+                self.remote_route.clone(),
+                SecureChannelListenerMessage::CreateResponderChannel { payload },
+                self.address_remote.clone(),
+            )
+            .await
+        } else {
+            // Other messages go to the channel worker itself
+            ctx.send_from_address(
+                self.remote_route.clone(),
+                payload,
+                self.address_remote.clone(),
+            )
+            .await
         }
-        if let Some(keys) = response.keys().clone() {
-            // We now have shared encryption keys
-            debug!("SecureChannel received KeyExchangeLocal::ExchangeComplete");
-
-            if self.keys.is_some() {
-                return Err(SecureChannelError::InvalidInternalState.into());
-            }
-
-            let auth_hash = keys.h();
-            self.keys = Some(ChannelKeys {
-                encrypt_key: Secret::new(keys.encrypt_key()),
-                decrypt_key: Secret::new(keys.decrypt_key()),
-                nonce: 1,
-            });
-            // Notify interested worker about finished key exchange
-            if let Some(r) = self.key_exchange_completed_callback_route.take() {
-                ctx.send_from_address(
-                    r,
-                    KeyExchangeCompleted {
-                        address: self.address_local.clone(),
-                        auth_hash,
-                    },
-                    self.address_local.clone(),
-                )
-                .await?;
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -214,49 +207,14 @@ impl Worker for SecureChannel {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        // TODO: Replace key_exchanger and vault with worker
-        let key_exchanger = XXNewKeyExchanger::new(self.vault.clone(), self.vault.clone());
-
-        // Spawn Key exchange worker
-        let key_exchange_addr: Address = format!("{}/kex", self.address_local)
-            .as_bytes()
-            .to_vec()
-            .into();
-
-        let key_exchange_route: Route = Route::new().append(key_exchange_addr.clone()).into();
-        self.key_exchange_route = Some(key_exchange_route.clone());
-
         if self.is_initiator {
-            let initiator = key_exchanger.initiator();
-            let initiator = XInitiator::new(initiator);
+            if let Some(initiator) = self.key_exchanger.as_mut() {
+                let payload = initiator.process(&[])?;
 
-            ctx.start_worker(key_exchange_addr, initiator).await?;
-
-            // FIXME: Remove req_id in the future when we fix message without length decode
-            let req_id = b"CHANNEL_REQ".to_vec();
-
-            // Kick in initiator to start key exchange process
-            ctx.send_from_address(
-                key_exchange_route,
-                KeyExchangeRequestMessage::InitiatorFirstMessage {
-                    req_id: req_id.clone(),
-                },
-                self.address_local.clone(),
-            )
-            .await?;
-
-            let m = ctx
-                .receive_match(|m: &KeyExchangeResponseMessage| m.req_id() == &req_id)
-                .await?
-                .take()
-                .body();
-
-            self.handle_key_exchange_local(ctx, m, true).await?;
-        } else {
-            let responder = key_exchanger.responder();
-            let responder = XResponder::new(responder);
-
-            ctx.start_worker(key_exchange_addr, responder).await?;
+                self.send_key_exchange_payload(ctx, payload, true).await?;
+            } else {
+                return Err(SecureChannelError::InvalidInternalState.into());
+            }
         }
 
         Ok(())
@@ -299,8 +257,7 @@ impl Worker for SecureChannel {
 
                 let (small_nonce, nonce) = Self::convert_nonce_u16(nonce);
 
-                let mut vault = self.vault.lock().unwrap();
-                let mut cipher_text = vault.aead_aes_gcm_encrypt(
+                let mut cipher_text = self.vault.aead_aes_gcm_encrypt(
                     &keys.encrypt_key,
                     payload.as_slice(),
                     &nonce,
@@ -325,35 +282,58 @@ impl Worker for SecureChannel {
             if self.keys.is_none() {
                 // Received key exchange message from remote channel, need to forward it to local key exchange
                 debug!("SecureChannel received KeyExchangeRemote");
-                let key_exchange_route;
-                if let Some(a) = self.key_exchange_route.clone() {
-                    key_exchange_route = a;
-                } else {
-                    return Err(SecureChannelError::InvalidInternalState.into());
-                }
-
                 // Update route to a remote
                 self.remote_route = reply;
 
-                // FIXME: Remove req_id in the future when we fix message without length decode
-                let req_id = b"CHANNEL_REQ".to_vec();
-                ctx.send_from_address(
-                    key_exchange_route,
-                    KeyExchangeRequestMessage::Payload {
-                        req_id: req_id.clone(),
-                        payload,
-                    },
-                    self.address_local.clone(),
-                )
-                .await?;
+                let key_exchanger;
+                if let Some(k) = self.key_exchanger.as_mut() {
+                    key_exchanger = k;
+                } else {
+                    return Err(SecureChannelError::InvalidInternalState.into());
+                }
+                let _ = key_exchanger.process(payload.as_slice())?;
 
-                let m = ctx
-                    .receive_match(|m: &KeyExchangeResponseMessage| m.req_id() == &req_id)
-                    .await?
-                    .take()
-                    .body();
+                if !key_exchanger.is_complete() {
+                    let payload = key_exchanger.process(&[])?;
+                    self.send_key_exchange_payload(ctx, payload, false).await?;
+                }
 
-                self.handle_key_exchange_local(ctx, m, false).await?;
+                let key_exchanger;
+                if let Some(k) = self.key_exchanger.as_mut() {
+                    key_exchanger = k;
+                } else {
+                    return Err(SecureChannelError::InvalidInternalState.into());
+                }
+                if key_exchanger.is_complete() {
+                    let key_exchanger;
+                    if let Some(k) = self.key_exchanger.take() {
+                        key_exchanger = k;
+                    } else {
+                        return Err(SecureChannelError::InvalidInternalState.into());
+                    }
+                    let keys = key_exchanger.finalize_box()?;
+
+                    info!("Key exchange completed at {}", &self.address_local);
+
+                    self.keys = Some(ChannelKeys {
+                        encrypt_key: keys.encrypt_key().clone(),
+                        decrypt_key: keys.decrypt_key().clone(),
+                        nonce: 0,
+                    });
+
+                    // Notify interested worker about finished key exchange
+                    if let Some(r) = self.key_exchange_completed_callback_route.take() {
+                        ctx.send_from_address(
+                            r,
+                            KeyExchangeCompleted {
+                                address: self.address_local.clone(),
+                                auth_hash: keys.h().clone(),
+                            },
+                            self.address_local.clone(),
+                        )
+                        .await?;
+                    }
+                }
             } else {
                 debug!("SecureChannel received Decrypt");
                 let payload = {
@@ -365,8 +345,7 @@ impl Worker for SecureChannel {
 
                     let nonce = Self::convert_nonce_small(&payload.as_slice()[..2])?;
 
-                    let mut vault = self.vault.lock().unwrap();
-                    let plain_text = vault.aead_aes_gcm_decrypt(
+                    let plain_text = self.vault.aead_aes_gcm_decrypt(
                         &keys.decrypt_key,
                         &payload[2..],
                         &nonce,
