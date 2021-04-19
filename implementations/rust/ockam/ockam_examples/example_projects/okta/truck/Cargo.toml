@@ -10,11 +10,11 @@ lto = true
 [dependencies]
 colored = "2.0"
 rand = "0.7"
-ockam = { version = "0", path = "../../../ockam/ockam" }
-ockam_vault = { version = "0", path = "../../../ockam/ockam_vault"}
-ockam_key_exchange_core = { version = "0", path = "../../../ockam/ockam_key_exchange_core" }
-ockam_key_exchange_x3dh = { version = "0", path = "../../../ockam/ockam_key_exchange_x3dh" }
-okta-plugin = { version = "0", path = "../" }
+ockam = { path = "../../../ockam/ockam" }
+ockam_vault = { path = "../../../ockam/ockam_vault"}
+ockam_key_exchange_core = { path = "../../../ockam/ockam_key_exchange_core" }
+ockam_key_exchange_x3dh = { path = "../../../ockam/ockam_key_exchange_x3dh" }
+okta-plugin = { path = "../" }
 serde = "1.0"
 serde_json = "1.0"
 

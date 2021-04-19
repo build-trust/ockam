@@ -8,11 +8,11 @@ edition = "2018"
 crate-type = ["rlib"]
 
 [dependencies]
-ockam = { path = "../../../ockam", version = "*" }
-ockam_node = { path = "../../../ockam_node", version = "*" }
-ockam_vault_sync_core = { path = "../../../ockam_vault_sync_core", version = "0.1.0" }
-ockam_vault = { path = "../../../ockam_vault", version = "0.4.0" }
+ockam = { path = "../../../ockam" }
+ockam_node = { path = "../../../ockam_node" }
+ockam_vault_sync_core = { path = "../../../ockam_vault_sync_core" }
+ockam_vault = { path = "../../../ockam_vault" }
 tracing = "0.1"
-ockam_transport_tcp = { path = "../../../ockam_transport_tcp", version = "*" }
+ockam_transport_tcp = { path = "../../../ockam_transport_tcp" }
 tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros","time"]}
 rand = "0.8.3"

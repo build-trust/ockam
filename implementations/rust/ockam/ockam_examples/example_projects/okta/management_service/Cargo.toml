@@ -15,10 +15,10 @@ isahc = "0.9"
 lazy_static = "1.4"
 percent-encoding = "2.1"
 rand = "0.7"
-ockam = { version = "0", path = "../../../ockam/ockam" }
-ockam_vault = { version = "0", path = "../../../ockam/ockam_vault" }
-ockam_key_exchange_core = { version = "0", path = "../../../ockam/ockam_key_exchange_core" }
-ockam_key_exchange_x3dh = { version = "0", path = "../../../ockam/ockam_key_exchange_x3dh" }
+ockam = { path = "../../../ockam/ockam" }
+ockam_vault = { path = "../../../ockam/ockam_vault" }
+ockam_key_exchange_core = { path = "../../../ockam/ockam_key_exchange_core" }
+ockam_key_exchange_x3dh = { path = "../../../ockam/ockam_key_exchange_x3dh" }
 okta-plugin = { version = "0.1", path = "../" }
 serde = { version = "1.0", features = ["derive"] }
 serde_bare = "0.3"
