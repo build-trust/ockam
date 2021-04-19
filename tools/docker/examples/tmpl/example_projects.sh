@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 pushd "$OCKAM_HOME/implementations/rust/ockam/ockam_examples/example_projects" >/dev/null || exit 1
 
 projects=(node worker)

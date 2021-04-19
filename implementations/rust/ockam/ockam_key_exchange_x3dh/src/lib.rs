@@ -130,7 +130,7 @@ mod tests {
         let res = responder.process(eik_bytes.as_slice());
         assert!(res.is_ok(), "{:?}", res);
         let res = responder.process(final_message.as_slice());
-        assert!(res.is_ok(), res);
+        assert!(res.is_ok(), "{:?}", res);
 
         let init = initiator.finalize().unwrap();
         let resp = responder.finalize().unwrap();

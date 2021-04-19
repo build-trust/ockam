@@ -5,7 +5,7 @@
 //! or use traits and types as an abstract dependency.
 
 #![deny(
-    // missing_docs,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,

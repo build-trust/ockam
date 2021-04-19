@@ -8,6 +8,7 @@ use rand::random;
 use tracing::info;
 use zeroize::Zeroize;
 
+/// Super-trait of traits required for a Vault Worker.
 pub trait VaultWorkerTrait:
     AsymmetricVault
     + Hasher
@@ -42,6 +43,7 @@ pub(crate) use request_message::*;
 mod response_message;
 pub(crate) use response_message::*;
 
+/// A Worker that exposes a Vault API.
 #[derive(Zeroize)]
 pub struct VaultWorker<V>
 where
@@ -54,10 +56,12 @@ impl<V> VaultWorker<V>
 where
     V: VaultWorkerTrait,
 {
+    /// Create a new VaultWorker.
     fn new(inner: V) -> Self {
         Self { inner }
     }
 
+    /// Start a VaultWorker.
     pub async fn start(ctx: &Context, inner: V) -> Result<Address> {
         let address: Address = random();
 

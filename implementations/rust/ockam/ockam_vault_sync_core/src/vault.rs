@@ -7,6 +7,7 @@ use rand::random;
 use tracing::info;
 use zeroize::Zeroize;
 
+/// Vault worker reference.
 pub struct Vault {
     ctx: Context,
     vault_worker_address: Address,
@@ -14,18 +15,23 @@ pub struct Vault {
 }
 
 impl Vault {
+    /// The Conttext of the worker.
     pub(crate) fn ctx(&self) -> &Context {
         &self.ctx
     }
+    /// Address of the Vault worker.
     pub fn vault_worker_address(&self) -> &Address {
         &self.vault_worker_address
     }
+
+    /// Error dmain.
     pub fn error_domain(&self) -> &'static str {
         self.error_domain
     }
 }
 
 impl Vault {
+    /// Start another Vault at the same address.
     pub fn start_another(&self) -> Result<Self> {
         let vault_worker_address = self.vault_worker_address.clone();
         let runtime = self.ctx().runtime();
@@ -43,6 +49,7 @@ impl Zeroize for Vault {
 }
 
 impl Vault {
+    /// Create a new Vault.
     fn new(ctx: Context, vault_worker_address: Address, error_domain: &'static str) -> Self {
         Self {
             ctx,
@@ -51,6 +58,7 @@ impl Vault {
         }
     }
 
+    /// Create and start a new Vault.
     pub async fn create(
         ctx: &Context,
         vault_worker_address: Address,
@@ -67,6 +75,7 @@ impl Vault {
         Ok(runner)
     }
 
+    /// Start a Vault.
     pub async fn start<T: VaultWorkerTrait>(ctx: &Context, vault: T) -> Result<Self> {
         let error_domain = T::error_domain();
 

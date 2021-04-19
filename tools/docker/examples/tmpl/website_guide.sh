@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 pushd "$OCKAM_HOME/implementations/rust/ockam/ockam_examples" >/dev/null || exit 1
 
 # Build all examples

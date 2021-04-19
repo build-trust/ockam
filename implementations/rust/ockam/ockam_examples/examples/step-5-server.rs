@@ -1,10 +1,7 @@
-use ockam::{
-    async_worker, Context, RemoteForwarder, Result, Routed, SecureChannel,
-    SecureChannelListenerMessage, Worker,
-};
+use ockam::{async_worker, Context, RemoteForwarder, Result, Routed, SecureChannel, Worker};
 use ockam_transport_tcp::TcpTransport;
-use ockam_vault_sync_core::VaultWorker;
 use ockam_vault::SoftwareVault;
+use ockam_vault_sync_core::VaultWorker;
 
 struct EchoService;
 
@@ -33,8 +30,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.start_worker("echo_service", EchoService).await?;
 
-    let mailbox =  RemoteForwarder::create(&mut ctx, hub, "secure_channel")
-            .await?;
+    let mailbox = RemoteForwarder::create(&mut ctx, hub, "secure_channel").await?;
 
     println!(
         "echo_service secure channel address: {}",

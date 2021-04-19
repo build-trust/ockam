@@ -8,7 +8,7 @@ use syn::{parse_macro_input, ItemFn, Stmt};
 #[proc_macro_attribute]
 pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_fn = parse_macro_input!(item as ItemFn);
-    let original_fn_ident = original_fn.clone().sig.ident;
+    let original_fn_ident = original_fn.sig.ident;
     let import_test = TokenStream::from_str(
         format!(
             "use ockam_vault_test_suite::{};",
@@ -17,11 +17,11 @@ pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .as_str(),
     )
     .unwrap();
-    let import_test: Stmt = syn::parse(import_test.into()).expect("B");
+    let import_test: Stmt = syn::parse(import_test).expect("B");
     let run_test =
         TokenStream::from_str(format!("{}(&mut vault);", original_fn_ident.to_string()).as_str())
             .unwrap();
-    let run_test: Stmt = syn::parse(run_test.into()).expect("B");
+    let run_test: Stmt = syn::parse(run_test).expect("B");
 
     let output_function = quote! {
         #[test]
@@ -38,7 +38,7 @@ pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_fn = parse_macro_input!(item as ItemFn);
-    let original_fn_ident = original_fn.clone().sig.ident;
+    let original_fn_ident = original_fn.sig.ident;
     let import_test = TokenStream::from_str(
         format!(
             "use ockam_vault_test_suite::{};",
@@ -47,11 +47,11 @@ pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .as_str(),
     )
     .unwrap();
-    let import_test: Stmt = syn::parse(import_test.into()).expect("B");
+    let import_test: Stmt = syn::parse(import_test).expect("B");
     let run_test =
         TokenStream::from_str(format!("{}(&mut vault);", original_fn_ident.to_string()).as_str())
             .unwrap();
-    let run_test: Stmt = syn::parse(run_test.into()).expect("B");
+    let run_test: Stmt = syn::parse(run_test).expect("B");
 
     let output_function = quote! {
         #[test]
