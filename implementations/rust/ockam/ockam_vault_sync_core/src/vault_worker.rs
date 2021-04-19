@@ -5,6 +5,7 @@ use ockam_vault_core::{
     AsymmetricVault, ErrorVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
 use rand::random;
+use tracing::info;
 use zeroize::Zeroize;
 
 pub trait VaultWorkerTrait:
@@ -59,6 +60,8 @@ where
 
     pub async fn start(ctx: &Context, inner: V) -> Result<Address> {
         let address: Address = random();
+
+        info!("Starting VaultWorker at {}", &address);
 
         ctx.start_worker(address.clone(), Self::new(inner)).await?;
 

@@ -4,6 +4,7 @@ use crate::{
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use rand::random;
+use tracing::info;
 use zeroize::Zeroize;
 
 pub struct Vault {
@@ -56,6 +57,8 @@ impl Vault {
         error_domain: &'static str,
     ) -> Result<Self> {
         let address: Address = random();
+
+        info!("Starting Vault at {}", &address);
 
         let ctx = ctx.new_context(address).await?;
 

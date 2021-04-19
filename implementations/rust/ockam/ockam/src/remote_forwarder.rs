@@ -56,6 +56,7 @@ impl RemoteForwarder {
             let forwarder = Self::new(hub_addr, destination.into(), ctx.address());
 
             let worker_address: Address = random();
+            info!("Starting RemoteForwarder at {}", &worker_address);
             ctx.start_worker(worker_address, forwarder).await?;
 
             let resp = ctx.receive::<RemoteForwarderInfo>().await?.take().body();
