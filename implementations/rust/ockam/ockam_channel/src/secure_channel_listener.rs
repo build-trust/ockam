@@ -1,18 +1,27 @@
 use crate::SecureChannel;
 use async_trait::async_trait;
 use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
+use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
+use ockam_vault::SoftwareVault;
+use ockam_vault_core::ErrorVault;
+use ockam_vault_sync_core::Vault;
 use rand::random;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 /// SecureChannelListener listens for messages from SecureChannel initiators
 /// and creates responder SecureChannels
-pub struct SecureChannelListener;
+pub struct SecureChannelListener {
+    vault_worker_address: Address,
+}
 
 impl SecureChannelListener {
     /// Create a new SecureChannelListener.
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(vault_worker_address: Address) -> Self {
+        Self {
+            vault_worker_address,
+        }
     }
 }
 
@@ -42,13 +51,29 @@ impl Worker for SecureChannelListener {
                 let address_remote: Address = random();
                 let address_local: Address = random();
 
+                info!(
+                    "Starting SecureChannel responder at local: {}, remote: {}",
+                    &address_local, &address_remote
+                );
+
+                let vault = Vault::create(
+                    ctx,
+                    self.vault_worker_address.clone(),
+                    SoftwareVault::error_domain(), /* FIXME */
+                )
+                .await?;
+
+                let new_key_exchanger = XXNewKeyExchanger::new(vault.start_another()?);
+
                 let channel = SecureChannel::new(
                     false,
                     reply.clone(),
                     address_remote.clone(),
                     address_local.clone(),
                     None,
-                );
+                    &new_key_exchanger,
+                    vault,
+                )?;
 
                 ctx.start_worker(vec![address_remote.clone(), address_local], channel)
                     .await?;

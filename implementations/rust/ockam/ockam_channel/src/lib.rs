@@ -15,7 +15,6 @@
     warnings
 )]
 mod error;
-mod key_exchange;
 mod secure_channel;
 mod secure_channel_listener;
 
@@ -27,15 +26,35 @@ pub use secure_channel_listener::*;
 mod tests {
     use crate::SecureChannel;
     use ockam_core::Route;
+    use ockam_vault::SoftwareVault;
+    use ockam_vault_sync_core::VaultWorker;
 
     #[test]
     fn simplest_channel() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                SecureChannel::create_listener(&ctx, "secure_channel_listener".to_string()).await?;
-                SecureChannel::create(&mut ctx, Route::new().append("secure_channel_listener"))
-                    .await?;
+                let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+                SecureChannel::create_listener(
+                    &ctx,
+                    "secure_channel_listener".to_string(),
+                    vault_address.clone(),
+                )
+                .await?;
+                let initiator = SecureChannel::create(
+                    &mut ctx,
+                    Route::new().append("secure_channel_listener"),
+                    vault_address,
+                )
+                .await?;
+
+                let test_msg = "Hello, channel".to_string();
+                ctx.send(
+                    Route::new().append(initiator.address()).append("app"),
+                    test_msg.clone(),
+                )
+                .await?;
+                assert_eq!(ctx.receive::<String>().await?, test_msg);
                 ctx.stop().await
             })
             .unwrap();
