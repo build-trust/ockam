@@ -34,25 +34,9 @@ defmodule Ockam.Hub do
 
     AliasService.create(address: "forwarding_service")
 
-    # send some events to our UI to aid end-user development
-    token = Application.get_env(:ockam_hub, :auth_message)
-    host = Application.get_env(:ockam_hub, :auth_host)
-
-    # I hate this but Azure seems to rewrite DNS sometimes.
-    # DNS shows public IP but when hitting nginx it shows
-    # 10.92.0.x
-    # additionally, not using azure's IP check because
-    # it outputs a bunch of html instead of plaintext
-    # or json.
-    {:ok, %{body: resp_body}} = HTTPoison.get("https://checkip.amazonaws.com")
-
-    public_ip = String.trim(resp_body)
-
     # on app start, create the node if it does not exist
     # we probably don't care if this errors.
-    TelemetryForwarder.create_node(host, token, public_ip)
-
-    TelemetryForwarder.attach_send_to_ui(host, token, public_ip)
+    TelemetryForwarder.init()
 
     # Specifications of child processes that will be started and supervised.
     #
