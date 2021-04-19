@@ -732,6 +732,7 @@ dependencies = [
  "ockam_node",
  "ockam_vault",
  "ockam_vault_core",
+ "ockam_vault_sync_core",
  "rand 0.8.3",
  "serde",
  "serde_bare 0.3.0",
@@ -774,6 +775,7 @@ dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_vault_core",
+ "ockam_vault_sync_core",
  "zeroize",
 ]
 
@@ -834,6 +836,21 @@ dependencies = [
  "ockam_core",
  "serde",
  "serde-big-array",
+ "zeroize",
+]
+
+[[package]]
+name = "ockam_vault_sync_core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ockam_core",
+ "ockam_node",
+ "ockam_vault_core",
+ "rand 0.8.3",
+ "serde",
+ "serde-big-array",
+ "tracing",
  "zeroize",
 ]
 
