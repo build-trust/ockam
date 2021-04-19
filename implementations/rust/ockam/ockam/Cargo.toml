@@ -26,7 +26,7 @@ no_std = ["ockam_core/no_std", "serde"]
 bbs = { version = "0.2", path = "../signature_bbs_plus", package = "signature_bbs_plus" }
 bls = { version = "0.1", path = "../signature_bls", package = "signature_bls" }
 bls12_381_plus = "0.4"
-ockam_core = {path = "../ockam_core", version = "0.10.0"}
+ockam_core = {path = "../ockam_core", version = "0.11.0"}
 ockam_node = {path = "../ockam_node", version = "0.8.0", optional = true}
 ockam_node_attribute = {path = "../ockam_node_attribute", version = "0.1.5"}
 ockam_vault_core = {path = "../ockam_vault_core", version = "0.4.0"}
