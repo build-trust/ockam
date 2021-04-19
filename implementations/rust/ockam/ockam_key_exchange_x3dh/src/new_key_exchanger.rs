@@ -30,12 +30,15 @@ impl X3dhNewKeyExchanger {
     }
 }
 
-impl NewKeyExchanger<Initiator, Responder> for X3dhNewKeyExchanger {
-    fn initiator(&self) -> Initiator {
-        Initiator::new(self.vault_initiator.clone(), None)
+impl NewKeyExchanger for X3dhNewKeyExchanger {
+    type Initiator = Initiator;
+    type Responder = Responder;
+
+    fn initiator(&self) -> ockam_core::Result<Initiator> {
+        Ok(Initiator::new(self.vault_initiator.clone(), None))
     }
 
-    fn responder(&self) -> Responder {
-        Responder::new(self.vault_responder.clone(), None)
+    fn responder(&self) -> ockam_core::Result<Responder> {
+        Ok(Responder::new(self.vault_responder.clone(), None))
     }
 }
