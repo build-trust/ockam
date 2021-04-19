@@ -20,7 +20,7 @@ no_std = ["heapless"]
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.10.0" }
 heapless = { version = "0.6", optional = true }
-serde = {version = "1.0.120", features = ["derive"]}
+serde = {version = "1.0.125", features = ["derive"]}
 serde-big-array = "0.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 cfg-if = "1.0"
