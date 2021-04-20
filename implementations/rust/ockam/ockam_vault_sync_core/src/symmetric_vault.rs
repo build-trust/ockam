@@ -1,9 +1,11 @@
-use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultSyncCoreError};
+use crate::{
+    VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError, VaultSyncState,
+};
 use ockam_core::Result;
 use ockam_node::block_future;
 use ockam_vault_core::{Buffer, Secret, SymmetricVault};
 
-impl SymmetricVault for Vault {
+impl SymmetricVault for VaultSync {
     fn aead_aes_gcm_encrypt(
         &mut self,
         context: &Secret,
@@ -11,23 +13,30 @@ impl SymmetricVault for Vault {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        block_future(&self.ctx().runtime(), async move {
-            self.send_message(VaultRequestMessage::AeadAesGcmEncrypt {
-                context: context.clone(),
-                plaintext: plaintext.into(),
-                nonce: nonce.into(),
-                aad: aad.into(),
-            })
-            .await?;
+        match &mut self.0 {
+            VaultSyncState::Worker { state } => block_future(&state.ctx().runtime(), async move {
+                state
+                    .send_message(VaultRequestMessage::AeadAesGcmEncrypt {
+                        context: context.clone(),
+                        plaintext: plaintext.into(),
+                        nonce: nonce.into(),
+                        aad: aad.into(),
+                    })
+                    .await?;
 
-            let resp = self.receive_message().await?;
+                let resp = state.receive_message().await?;
 
-            if let VaultResponseMessage::AeadAesGcmEncrypt(s) = resp {
-                Ok(s)
-            } else {
-                Err(VaultSyncCoreError::InvalidResponseType.into())
-            }
-        })
+                if let VaultResponseMessage::AeadAesGcmEncrypt(s) = resp {
+                    Ok(s)
+                } else {
+                    Err(VaultSyncCoreError::InvalidResponseType.into())
+                }
+            }),
+            VaultSyncState::Mutex { mutex } => mutex
+                .lock()
+                .unwrap()
+                .aead_aes_gcm_encrypt(context, plaintext, nonce, aad),
+        }
     }
 
     fn aead_aes_gcm_decrypt(
@@ -37,23 +46,32 @@ impl SymmetricVault for Vault {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        block_future(&self.ctx().runtime(), async move {
-            self.send_message(VaultRequestMessage::AeadAesGcmDecrypt {
-                context: context.clone(),
-                cipher_text: cipher_text.into(),
-                nonce: nonce.into(),
-                aad: aad.into(),
-            })
-            .await?;
+        match &mut self.0 {
+            VaultSyncState::Worker { state } => block_future(&state.ctx().runtime(), async move {
+                state
+                    .send_message(VaultRequestMessage::AeadAesGcmDecrypt {
+                        context: context.clone(),
+                        cipher_text: cipher_text.into(),
+                        nonce: nonce.into(),
+                        aad: aad.into(),
+                    })
+                    .await?;
 
-            let resp = self.receive_message().await?;
+                let resp = state.receive_message().await?;
 
-            if let VaultResponseMessage::AeadAesGcmDecrypt(s) = resp {
-                Ok(s)
-            } else {
-                Err(VaultSyncCoreError::InvalidResponseType.into())
+                if let VaultResponseMessage::AeadAesGcmDecrypt(s) = resp {
+                    Ok(s)
+                } else {
+                    Err(VaultSyncCoreError::InvalidResponseType.into())
+                }
+            }),
+            VaultSyncState::Mutex { mutex } => {
+                mutex
+                    .lock()
+                    .unwrap()
+                    .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad)
             }
-        })
+        }
     }
 }
 

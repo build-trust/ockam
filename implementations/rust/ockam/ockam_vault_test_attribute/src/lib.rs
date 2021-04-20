@@ -57,13 +57,13 @@ pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #[test]
         fn #original_fn_ident() {
             #import_test
-            use crate::{Vault, VaultWorker};
+            use crate::{Vault, VaultSync};
 
             let (mut ctx, mut executor) = ockam_node::start_node();
             executor
             .execute(async move {
                 let vault = new_vault();
-                let mut vault = Vault::start(&ctx, vault).await.unwrap();
+                let mut vault = VaultSync::start(&ctx, vault).await.unwrap();
                 #run_test
 
                 ctx.stop().await.unwrap()

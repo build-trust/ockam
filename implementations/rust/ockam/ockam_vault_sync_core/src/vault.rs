@@ -1,101 +1,191 @@
-use crate::{
-    ResultMessage, VaultRequestMessage, VaultResponseMessage, VaultWorker, VaultWorkerTrait,
+use async_trait::async_trait;
+use ockam_core::{Address, Result, Routed, Worker};
+use ockam_node::Context;
+use ockam_vault_core::{
+    AsymmetricVault, ErrorVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
-use ockam_core::{Address, Result, Route};
-use ockam_node::{block_future, Context};
 use rand::random;
 use tracing::info;
 use zeroize::Zeroize;
 
-/// Vault worker reference.
-pub struct Vault {
-    ctx: Context,
-    vault_worker_address: Address,
-    error_domain: &'static str,
+/// Super-trait of traits required for a Vault Worker.
+pub trait VaultTrait:
+    AsymmetricVault
+    + Hasher
+    + KeyIdVault
+    + SecretVault
+    + Signer
+    + SymmetricVault
+    + Verifier
+    + ErrorVault
+    + Send
+    + 'static
+{
 }
 
-impl Vault {
-    /// The Conttext of the worker.
-    pub(crate) fn ctx(&self) -> &Context {
-        &self.ctx
-    }
-    /// Address of the Vault worker.
-    pub fn vault_worker_address(&self) -> &Address {
-        &self.vault_worker_address
-    }
-
-    /// Error dmain.
-    pub fn error_domain(&self) -> &'static str {
-        self.error_domain
-    }
+impl<V> VaultTrait for V where
+    V: AsymmetricVault
+        + Hasher
+        + KeyIdVault
+        + SecretVault
+        + Signer
+        + SymmetricVault
+        + Verifier
+        + ErrorVault
+        + Send
+        + 'static
+{
 }
 
-impl Vault {
-    /// Start another Vault at the same address.
-    pub fn start_another(&self) -> Result<Self> {
-        let vault_worker_address = self.vault_worker_address.clone();
-        let runtime = self.ctx().runtime();
+mod request_message;
+pub(crate) use request_message::*;
 
-        let clone = block_future(&runtime, async move {
-            Vault::create(&self.ctx, vault_worker_address, self.error_domain).await
-        })?;
+mod response_message;
+pub(crate) use response_message::*;
 
-        Ok(clone)
-    }
+/// A Worker that exposes a Vault API.
+#[derive(Zeroize)]
+pub struct Vault<V>
+where
+    V: VaultTrait,
+{
+    inner: V,
 }
 
-impl Zeroize for Vault {
-    fn zeroize(&mut self) {}
-}
-
-impl Vault {
-    /// Create a new Vault.
-    fn new(ctx: Context, vault_worker_address: Address, error_domain: &'static str) -> Self {
-        Self {
-            ctx,
-            vault_worker_address,
-            error_domain,
-        }
+impl<V> Vault<V>
+where
+    V: VaultTrait,
+{
+    /// Create a new VaultWorker.
+    fn new(inner: V) -> Self {
+        Self { inner }
     }
 
-    /// Create and start a new Vault.
-    pub async fn create(
-        ctx: &Context,
-        vault_worker_address: Address,
-        error_domain: &'static str,
-    ) -> Result<Self> {
+    /// Start a VaultWorker.
+    pub async fn start(ctx: &Context, inner: V) -> Result<Address> {
         let address: Address = random();
 
-        info!("Starting Vault at {}", &address);
+        info!("Starting VaultWorker at {}", &address);
 
-        let ctx = ctx.new_context(address).await?;
+        ctx.start_worker(address.clone(), Self::new(inner)).await?;
 
-        let runner = Self::new(ctx, vault_worker_address, error_domain);
-
-        Ok(runner)
+        Ok(address)
     }
 
-    /// Start a Vault.
-    pub async fn start<T: VaultWorkerTrait>(ctx: &Context, vault: T) -> Result<Self> {
-        let error_domain = T::error_domain();
-
-        let vault_address = VaultWorker::start(ctx, vault).await?;
-
-        Self::create(ctx, vault_address, error_domain).await
+    fn handle_request(&mut self, msg: <Self as Worker>::Message) -> Result<VaultResponseMessage> {
+        Ok(match msg {
+            VaultRequestMessage::EcDiffieHellman {
+                context,
+                peer_public_key,
+            } => {
+                let res = self.inner.ec_diffie_hellman(&context, &peer_public_key)?;
+                VaultResponseMessage::EcDiffieHellman(res)
+            }
+            VaultRequestMessage::Sha256 { data } => {
+                let res = self.inner.sha256(&data)?;
+                VaultResponseMessage::Sha256(res)
+            }
+            VaultRequestMessage::HkdfSha256 {
+                salt,
+                info,
+                ikm,
+                output_attributes,
+            } => {
+                let res = self
+                    .inner
+                    .hkdf_sha256(&salt, &info, ikm.as_ref(), output_attributes)?;
+                VaultResponseMessage::HkdfSha256(res)
+            }
+            VaultRequestMessage::GetSecretByKeyId { key_id } => {
+                let res = self.inner.get_secret_by_key_id(&key_id)?;
+                VaultResponseMessage::GetSecretByKeyId(res)
+            }
+            VaultRequestMessage::ComputeKeyIdForPublicKey { public_key } => {
+                let res = self.inner.compute_key_id_for_public_key(&public_key)?;
+                VaultResponseMessage::ComputeKeyIdForPublicKey(res)
+            }
+            VaultRequestMessage::SecretGenerate { attributes } => {
+                let res = self.inner.secret_generate(attributes)?;
+                VaultResponseMessage::SecretGenerate(res)
+            }
+            VaultRequestMessage::SecretImport { secret, attributes } => {
+                let res = self.inner.secret_import(&secret, attributes)?;
+                VaultResponseMessage::SecretImport(res)
+            }
+            VaultRequestMessage::SecretExport { context } => {
+                let res = self.inner.secret_export(&context)?;
+                VaultResponseMessage::SecretExport(res)
+            }
+            VaultRequestMessage::SecretAttributesGet { context } => {
+                let res = self.inner.secret_attributes_get(&context)?;
+                VaultResponseMessage::SecretAttributesGet(res)
+            }
+            VaultRequestMessage::SecretPublicKeyGet { context } => {
+                let res = self.inner.secret_public_key_get(&context)?;
+                VaultResponseMessage::SecretPublicKeyGet(res)
+            }
+            VaultRequestMessage::SecretDestroy { context } => {
+                self.inner.secret_destroy(context)?;
+                VaultResponseMessage::SecretDestroy
+            }
+            VaultRequestMessage::Sign { secret_key, data } => {
+                let res = self.inner.sign(&secret_key, &data)?;
+                VaultResponseMessage::Sign(res)
+            }
+            VaultRequestMessage::AeadAesGcmEncrypt {
+                context,
+                plaintext,
+                nonce,
+                aad,
+            } => {
+                let res = self
+                    .inner
+                    .aead_aes_gcm_encrypt(&context, &plaintext, &nonce, &aad)?;
+                VaultResponseMessage::AeadAesGcmEncrypt(res)
+            }
+            VaultRequestMessage::AeadAesGcmDecrypt {
+                context,
+                cipher_text,
+                nonce,
+                aad,
+            } => {
+                let res = self
+                    .inner
+                    .aead_aes_gcm_decrypt(&context, &cipher_text, &nonce, &aad)?;
+                VaultResponseMessage::AeadAesGcmDecrypt(res)
+            }
+            VaultRequestMessage::Verify {
+                signature,
+                public_key,
+                data,
+            } => {
+                let res = self.inner.verify(&signature, &public_key, &data).is_ok();
+                VaultResponseMessage::Verify(res)
+            }
+        })
     }
+}
 
-    pub(crate) async fn send_message(&self, m: VaultRequestMessage) -> Result<()> {
-        self.ctx
-            .send(Route::new().append(self.vault_worker_address.clone()), m)
-            .await
-    }
+#[async_trait]
+impl<V> Worker for Vault<V>
+where
+    V: VaultTrait,
+{
+    type Message = VaultRequestMessage;
+    type Context = Context;
 
-    pub(crate) async fn receive_message(&mut self) -> Result<VaultResponseMessage> {
-        self.ctx
-            .receive::<ResultMessage<VaultResponseMessage>>()
-            .await?
-            .take()
-            .body()
-            .inner(self.error_domain)
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let return_route = msg.return_route();
+        let response = self.handle_request(msg.body());
+
+        let response = ResultMessage::new(response);
+
+        ctx.send(return_route, response).await?;
+
+        Ok(())
     }
 }

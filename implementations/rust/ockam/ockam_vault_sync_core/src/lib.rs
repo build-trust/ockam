@@ -22,7 +22,7 @@ mod secret_vault;
 mod signer;
 mod symmetric_vault;
 mod vault;
-mod vault_worker;
+mod vault_sync;
 mod verifier;
 
 pub use asymmetric_vault::*;
@@ -33,5 +33,5 @@ pub use secret_vault::*;
 pub use signer::*;
 pub use symmetric_vault::*;
 pub use vault::*;
-pub use vault_worker::*;
+pub use vault_sync::*;
 pub use verifier::*;
