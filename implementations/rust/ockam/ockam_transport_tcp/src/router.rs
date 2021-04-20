@@ -3,7 +3,9 @@ use crate::{
     listener::TcpListenWorker,
     TcpError, WorkerPair,
 };
-use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
+use async_trait::async_trait;
+use ockam_core::{Address, Result, Routed, RouterMessage, Worker};
+use ockam_node::Context;
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
 
 /// A TCP address router and connection listener
@@ -55,7 +57,7 @@ impl<'c> TcpRouterHandle<'c> {
     }
 }
 
-#[async_worker]
+#[async_trait]
 impl Worker for TcpRouter {
     type Context = Context;
     type Message = RouterMessage;

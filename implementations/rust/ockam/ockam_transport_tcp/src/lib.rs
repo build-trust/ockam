@@ -36,7 +36,8 @@ pub use receiver::TcpRecvWorker;
 pub use router::{TcpRouter, TcpRouterHandle};
 pub use sender::TcpSendWorker;
 
-use ockam::{Address, Context, Result};
+use ockam_core::{Address, Result};
+use ockam_node::Context;
 use std::net::SocketAddr;
 
 /// High level management interface for TCP transports
@@ -54,7 +55,8 @@ use std::net::SocketAddr;
 ///
 /// ```rust
 /// use ockam_transport_tcp::TcpTransport;
-/// # use ockam::{Context, Result};
+/// # use ockam_node::Context;
+/// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let tcp = TcpTransport::create(&ctx).await?;
 /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
@@ -66,7 +68,8 @@ use std::net::SocketAddr;
 ///
 /// ```rust
 /// # use ockam_transport_tcp::TcpTransport;
-/// # use ockam::{Context, Result};
+/// # use ockam_node::Context;
+/// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let tcp = TcpTransport::create(&ctx).await?;
 /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000

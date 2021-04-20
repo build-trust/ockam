@@ -1,5 +1,7 @@
 use crate::TcpError;
-use ockam::{async_worker, Context, Result, Routed, TransportMessage, Worker};
+use async_trait::async_trait;
+use ockam_core::{Result, Routed, TransportMessage, Worker};
+use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 
@@ -35,7 +37,7 @@ fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
     Ok(msg_buf)
 }
 
-#[async_worker]
+#[async_trait]
 impl Worker for TcpSendWorker {
     type Context = Context;
     type Message = TransportMessage;

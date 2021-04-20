@@ -2,7 +2,9 @@ use crate::{
     atomic::{self, ArcBool},
     TcpError, WorkerPair,
 };
-use ockam::{async_worker, Address, Context, Result, RouterMessage, Worker};
+use async_trait::async_trait;
+use ockam_core::{Address, Result, RouterMessage, Worker};
+use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 
@@ -36,7 +38,7 @@ impl TcpListenWorker {
     }
 }
 
-#[async_worker]
+#[async_trait]
 impl Worker for TcpListenWorker {
     type Context = Context;
 

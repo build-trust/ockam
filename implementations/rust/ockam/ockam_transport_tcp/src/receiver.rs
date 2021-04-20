@@ -2,7 +2,9 @@ use crate::{
     atomic::{self, ArcBool},
     TcpError,
 };
-use ockam::{async_worker, Address, Context, Result, TransportMessage, Worker};
+use async_trait::async_trait;
+use ockam_core::{Address, Result, TransportMessage, Worker};
+use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 
 /// A TCP receiving message worker
@@ -19,7 +21,7 @@ pub struct TcpRecvWorker {
     pub(crate) peer_addr: Address,
 }
 
-#[async_worker]
+#[async_trait]
 impl Worker for TcpRecvWorker {
     type Context = Context;
 

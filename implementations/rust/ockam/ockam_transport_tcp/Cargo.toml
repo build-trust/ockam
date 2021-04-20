@@ -23,11 +23,13 @@ default = ["std"]
 std = []
 
 [dependencies]
-ockam = { path = "../ockam", version = "0.8.0" }
+ockam_core = { path = "../ockam_core", version = "0.11.0" }
+ockam_node = { path = "../ockam_node", version = "0.9.0" }
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}
 tokio = {version = "1.4.0", features = ["rt-multi-thread","sync","net","macros","time"]}
 futures = " 0.3.10"
+async-trait = "0.1.42"
 rand = "0.7"
 hashbrown =  { version = "0.9"}
 tracing = "0.1"

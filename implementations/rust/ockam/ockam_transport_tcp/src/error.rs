@@ -1,8 +1,8 @@
-use ockam::Error;
-
 // TODO: we might be able to make this error type more generic and
 // move it to an `ockam_transport` crate which would then aid authors
 // of transport channels in their implementations.
+
+use ockam_core::Error;
 
 /// A TCP connection worker specific error type
 #[derive(Clone, Copy, Debug)]

@@ -2,7 +2,8 @@ use crate::{
     atomic::{self, ArcBool},
     TcpError, TcpRecvWorker, TcpRouterHandle, TcpSendWorker,
 };
-use ockam::{Address, Context, Result};
+use ockam_core::{Address, Result};
+use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 
