@@ -55,15 +55,15 @@ impl Authentication {
 mod test {
     use crate::{KeyAttributes, Profile};
     use ockam_vault::SoftwareVault;
+    use ockam_vault_sync_core::VaultSync;
     use rand::prelude::*;
-    use std::sync::{Arc, Mutex};
 
     #[test]
     fn authentication() {
-        let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-        let mut alice = Profile::create(None, vault.clone()).unwrap();
-        let mut bob = Profile::create(None, vault).unwrap();
+        let mut alice = Profile::create(None, &vault).unwrap();
+        let mut bob = Profile::create(None, &vault).unwrap();
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];
@@ -100,10 +100,10 @@ mod test {
 
     #[test]
     fn authentication_profile_update_key_rotated() {
-        let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-        let mut alice = Profile::create(None, vault.clone()).unwrap();
-        let mut bob = Profile::create(None, vault).unwrap();
+        let mut alice = Profile::create(None, &vault).unwrap();
+        let mut bob = Profile::create(None, &vault).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
@@ -145,10 +145,10 @@ mod test {
 
     #[test]
     fn authentication_profile_update_key_rotated_after_first_handshake() {
-        let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-        let mut alice = Profile::create(None, vault.clone()).unwrap();
-        let mut bob = Profile::create(None, vault).unwrap();
+        let mut alice = Profile::create(None, &vault).unwrap();
+        let mut bob = Profile::create(None, &vault).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 

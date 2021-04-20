@@ -117,11 +117,10 @@ impl Profile {
     }
 
     pub(crate) fn create_key_event(
-        &self,
+        &mut self,
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
         root_key: Option<&Secret>,
-        vault: &mut dyn ProfileVault,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // Creating key after it was revoked is forbidden
         if ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes).is_ok()
@@ -131,6 +130,12 @@ impl Profile {
 
         let prev_id = self.change_history.get_last_event_id()?;
 
-        Self::create_key_event_static(prev_id, key_attributes, attributes, root_key, vault)
+        Self::create_key_event_static(
+            prev_id,
+            key_attributes,
+            attributes,
+            root_key,
+            &mut self.vault,
+        )
     }
 }

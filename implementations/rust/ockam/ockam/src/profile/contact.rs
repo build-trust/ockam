@@ -20,11 +20,11 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use std::sync::{Mutex, Arc};
 /// # use ockam::{Profile, KeyAttributes};
+/// # use ockam_vault_sync_core::VaultSync;
 /// #
-/// let vault = Arc::new(Mutex::new(SoftwareVault::default()));
-/// let mut alice = Profile::create(None, vault)?;
+/// let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+/// let mut alice = Profile::create(None, &vault)?;
 ///
 /// let truck_key_attributes = KeyAttributes::new(
 ///     "Truck management".to_string(),
@@ -42,11 +42,11 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use std::sync::{Mutex, Arc};
 /// # use ockam::{Profile, KeyAttributes};
+/// # use ockam_vault_sync_core::VaultSync;
 /// #
-/// # let vault = Arc::new(Mutex::new(SoftwareVault::default()));
-/// # let mut alice = Profile::create(None, vault)?;
+/// # let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+/// # let mut alice = Profile::create(None, &vault)?;
 /// #
 /// # let truck_key_attributes = KeyAttributes::new(
 /// #     "Truck management".to_string(),
