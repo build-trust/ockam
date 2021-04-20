@@ -55,7 +55,7 @@ impl Worker for SecureChannelListener {
                     &address_local, &address_remote
                 );
 
-                let vault = VaultSync::create(
+                let vault = VaultSync::create_with_worker(
                     ctx,
                     self.vault_worker_address.clone(),
                     SoftwareVault::error_domain_static(), /* FIXME */

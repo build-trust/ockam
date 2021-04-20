@@ -62,7 +62,7 @@ where
     }
 
     /// Start a VaultWorker.
-    pub async fn start(ctx: &Context, inner: V) -> Result<Address> {
+    pub async fn create(ctx: &Context, inner: V) -> Result<Address> {
         let address: Address = random();
 
         info!("Starting VaultWorker at {}", &address);

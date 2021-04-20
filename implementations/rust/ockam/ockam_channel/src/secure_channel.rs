@@ -105,7 +105,7 @@ impl SecureChannel {
             &address_local, &address_remote
         );
 
-        let vault = VaultSync::create(
+        let vault = VaultSync::create_with_worker(
             ctx,
             vault_worker_address,
             SoftwareVault::error_domain_static(), /* FIXME */
