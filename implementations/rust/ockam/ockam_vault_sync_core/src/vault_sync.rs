@@ -43,6 +43,12 @@ pub(crate) enum VaultSyncState {
 /// Vault sync wrapper
 pub struct VaultSync(pub(crate) VaultSyncState);
 
+impl Clone for VaultSync {
+    fn clone(&self) -> Self {
+        self.start_another().unwrap()
+    }
+}
+
 impl VaultSync {
     /// Start another Vault at the same address.
     pub fn start_another(&self) -> Result<Self> {
