@@ -27,14 +27,14 @@ mod tests {
     use crate::SecureChannel;
     use ockam_core::Route;
     use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultWorker;
+    use ockam_vault_sync_core::Vault;
 
     #[test]
     fn simplest_channel() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+                let vault_address = Vault::start(&ctx, SoftwareVault::default()).await?;
                 SecureChannel::create_listener(
                     &ctx,
                     "secure_channel_listener".to_string(),

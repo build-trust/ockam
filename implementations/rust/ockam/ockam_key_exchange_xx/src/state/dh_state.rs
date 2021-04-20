@@ -4,16 +4,16 @@ use ockam_vault_core::{
     AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
     SecretVault, AES256_SECRET_LENGTH,
 };
-use ockam_vault_sync_core::Vault;
+use ockam_vault_sync_core::VaultSync;
 
 pub(crate) struct DhState {
     pub(crate) key: Option<Secret>,
     pub(crate) ck: Option<Secret>,
-    pub(crate) vault: Vault,
+    pub(crate) vault: VaultSync,
 }
 
 impl DhState {
-    pub(crate) fn empty(vault: Vault) -> Self {
+    pub(crate) fn empty(vault: VaultSync) -> Self {
         Self {
             key: None,
             ck: None,
@@ -21,7 +21,7 @@ impl DhState {
         }
     }
 
-    pub(crate) fn new(protocol_name: &[u8; 32], mut vault: Vault) -> Result<Self> {
+    pub(crate) fn new(protocol_name: &[u8; 32], mut vault: VaultSync) -> Result<Self> {
         let attributes = SecretAttributes::new(
             SecretType::Buffer,
             SecretPersistence::Ephemeral,

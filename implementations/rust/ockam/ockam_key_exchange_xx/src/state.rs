@@ -9,7 +9,7 @@ use zeroize::Zeroize;
 
 mod dh_state;
 pub(crate) use dh_state::*;
-use ockam_vault_sync_core::Vault;
+use ockam_vault_sync_core::VaultSync;
 
 /// Represents the XX Handshake
 pub(crate) struct State {
@@ -23,7 +23,7 @@ pub(crate) struct State {
     dh_state: DhState,
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
-    vault: Vault,
+    vault: VaultSync,
 }
 
 impl Zeroize for State {
@@ -47,7 +47,7 @@ impl std::fmt::Debug for State {
 }
 
 impl State {
-    pub(crate) fn new(vault: &Vault) -> Result<Self> {
+    pub(crate) fn new(vault: &VaultSync) -> Result<Self> {
         Ok(Self {
             run_prologue: true,
             identity_key: None,
@@ -389,52 +389,43 @@ mod tests {
         Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
         CURVE25519_SECRET_LENGTH,
     };
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault_sync_core::VaultSync;
 
     #[test]
     fn prologue() {
-        let (mut ctx, mut executor) = ockam_node::start_node();
-        executor
-            .execute(async move {
-                let mut vault = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
+        let mut vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-                let exp_h = [
-                    93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32,
-                    79, 126, 100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
-                ];
+        let exp_h = [
+            93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79, 126,
+            100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
+        ];
 
-                let mut state = State::new(&vault).unwrap();
-                let res = state.prologue();
-                assert!(res.is_ok());
-                assert_eq!(state.h.unwrap(), exp_h);
+        let mut state = State::new(&vault).unwrap();
+        let res = state.prologue();
+        assert!(res.is_ok());
+        assert_eq!(state.h.unwrap(), exp_h);
 
-                let ck = vault.secret_export(&state.dh_state.ck.unwrap()).unwrap();
+        let ck = vault.secret_export(&state.dh_state.ck.unwrap()).unwrap();
 
-                assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
-                assert_eq!(state.nonce, 0);
-
-                ctx.stop().await.unwrap()
-            })
-            .unwrap();
+        assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
+        assert_eq!(state.nonce, 0);
     }
 
     #[test]
     fn handshake_1() {
-        const INIT_STATIC: &'static str =
+        const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        const INIT_EPH: &'static str =
-            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
-        const RESP_STATIC: &'static str =
+        const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
+        const RESP_STATIC: &str =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-        const RESP_EPH: &'static str =
-            "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
-        const MSG_1_CIPHERTEXT: &'static str =
+        const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
+        const MSG_1_CIPHERTEXT: &str =
             "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254";
-        const MSG_1_PAYLOAD: &'static str = "";
-        const MSG_2_CIPHERTEXT: &'static str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
-        const MSG_2_PAYLOAD: &'static str = "";
-        const MSG_3_CIPHERTEXT: &'static str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
-        const MSG_3_PAYLOAD: &'static str = "";
+        const MSG_1_PAYLOAD: &str = "";
+        const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
+        const MSG_2_PAYLOAD: &str = "";
+        const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
+        const MSG_3_PAYLOAD: &str = "";
 
         mock_handshake(
             INIT_STATIC,
@@ -462,67 +453,58 @@ mod tests {
         msg_3_payload: &'static str,
         msg_3_ciphertext: &'static str,
     ) {
-        let (mut ctx, mut executor) = ockam_node::start_node();
-        executor
-            .execute(async move {
-                let mut vault_init = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
-                let mut vault_resp = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
+        let mut vault_init = VaultSync::create_with_mutex(SoftwareVault::default());
+        let mut vault_resp = VaultSync::create_with_mutex(SoftwareVault::default());
 
-                let mut initiator = mock_prologue(&mut vault_init, init_static, init_eph);
-                let mut responder = mock_prologue(&mut vault_resp, resp_static, resp_eph);
-                // let mut initiator = Initiator::new(ss_init);
-                // let mut responder = Responder::new(ss_resp);
+        let mut initiator = mock_prologue(&mut vault_init, init_static, init_eph);
+        let mut responder = mock_prologue(&mut vault_resp, resp_static, resp_eph);
+        // let mut initiator = Initiator::new(ss_init);
+        // let mut responder = Responder::new(ss_resp);
 
-                let res = initiator.encode_message_1(decode(msg_1_payload).unwrap());
-                assert!(res.is_ok());
-                let msg1 = res.unwrap();
-                assert_eq!(encode(&msg1), msg_1_ciphertext);
+        let res = initiator.encode_message_1(decode(msg_1_payload).unwrap());
+        assert!(res.is_ok());
+        let msg1 = res.unwrap();
+        assert_eq!(encode(&msg1), msg_1_ciphertext);
 
-                let res = responder.decode_message_1(msg1);
-                assert!(res.is_ok());
+        let res = responder.decode_message_1(msg1);
+        assert!(res.is_ok());
 
-                let res = responder.encode_message_2(decode(msg_2_payload).unwrap());
-                assert!(res.is_ok());
-                let msg2 = res.unwrap();
-                assert_eq!(encode(&msg2), msg_2_ciphertext);
+        let res = responder.encode_message_2(decode(msg_2_payload).unwrap());
+        assert!(res.is_ok());
+        let msg2 = res.unwrap();
+        assert_eq!(encode(&msg2), msg_2_ciphertext);
 
-                let res = initiator.decode_message_2(msg2);
-                assert!(res.is_ok());
-                let res = initiator.encode_message_3(decode(msg_3_payload).unwrap());
-                assert!(res.is_ok());
-                let msg3 = res.unwrap();
-                assert_eq!(encode(&msg3), msg_3_ciphertext);
+        let res = initiator.decode_message_2(msg2);
+        assert!(res.is_ok());
+        let res = initiator.encode_message_3(decode(msg_3_payload).unwrap());
+        assert!(res.is_ok());
+        let msg3 = res.unwrap();
+        assert_eq!(encode(&msg3), msg_3_ciphertext);
 
-                let res = responder.decode_message_3(msg3);
-                assert!(res.is_ok());
+        let res = responder.decode_message_3(msg3);
+        assert!(res.is_ok());
 
-                let res = initiator.finalize_initiator();
-                assert!(res.is_ok());
-                let res = responder.finalize_responder();
-                assert!(res.is_ok());
-
-                ctx.stop().await.unwrap()
-            })
-            .unwrap();
+        let res = initiator.finalize_initiator();
+        assert!(res.is_ok());
+        let res = responder.finalize_responder();
+        assert!(res.is_ok());
     }
 
     #[test]
     fn handshake_2() {
-        const INIT_STATIC: &'static str =
+        const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        const RESP_STATIC: &'static str =
+        const RESP_STATIC: &str =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-        const INIT_EPH: &'static str =
-            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
-        const RESP_EPH: &'static str =
-            "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
-        const MSG_1_PAYLOAD: &'static str = "746573745f6d73675f30";
-        const MSG_1_CIPHERTEXT: &'static str =
+        const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
+        const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
+        const MSG_1_PAYLOAD: &str = "746573745f6d73675f30";
+        const MSG_1_CIPHERTEXT: &str =
             "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254746573745f6d73675f30";
-        const MSG_2_PAYLOAD: &'static str = "746573745f6d73675f31";
-        const MSG_2_CIPHERTEXT: &'static str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8c9f29dcec8d3ab554f4a5330657867fe4917917195c8cf360e08d6dc5f71baf875ec6e3bfc7afda4c9c2";
-        const MSG_3_PAYLOAD: &'static str = "746573745f6d73675f32";
-        const MSG_3_CIPHERTEXT: &'static str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
+        const MSG_2_PAYLOAD: &str = "746573745f6d73675f31";
+        const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8c9f29dcec8d3ab554f4a5330657867fe4917917195c8cf360e08d6dc5f71baf875ec6e3bfc7afda4c9c2";
+        const MSG_3_PAYLOAD: &str = "746573745f6d73675f32";
+        const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
 
         mock_handshake(
             INIT_STATIC,
@@ -540,111 +522,98 @@ mod tests {
 
     #[test]
     fn handshake_main() {
-        const INIT_STATIC: &'static str =
+        const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        const INIT_EPH: &'static str =
-            "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
-        const RESP_STATIC: &'static str =
+        const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
+        const RESP_STATIC: &str =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-        const RESP_EPH: &'static str =
-            "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
-        const MSG_1_CIPHERTEXT: &'static str =
+        const RESP_EPH: &str = "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60";
+        const MSG_1_CIPHERTEXT: &str =
             "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254";
-        const MSG_1_PAYLOAD: &'static str = "";
-        const MSG_2_CIPHERTEXT: &'static str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
-        const MSG_2_PAYLOAD: &'static str = "";
-        const MSG_3_CIPHERTEXT: &'static str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
-        const MSG_3_PAYLOAD: &'static str = "";
+        const MSG_1_PAYLOAD: &str = "";
+        const MSG_2_CIPHERTEXT: &str = "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d484665393019dbd6f438795da206db0886610b26108e424142c2e9b5fd1f7ea70cde8767ce62d7e3c0e9bcefe4ab872c0505b9e824df091b74ffe10a2b32809cab21f";
+        const MSG_2_PAYLOAD: &str = "";
+        const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
+        const MSG_3_PAYLOAD: &str = "";
 
-        let (mut ctx, mut executor) = ockam_node::start_node();
-        executor
-            .execute(async move {
-                let mut vault_init = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
-                let mut vault_resp = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
+        let mut vault_init = VaultSync::create_with_mutex(SoftwareVault::default());
+        let mut vault_resp = VaultSync::create_with_mutex(SoftwareVault::default());
 
-                let initiator = mock_prologue(&mut vault_init, INIT_STATIC, INIT_EPH);
-                let responder = mock_prologue(&mut vault_resp, RESP_STATIC, RESP_EPH);
+        let initiator = mock_prologue(&mut vault_init, INIT_STATIC, INIT_EPH);
+        let responder = mock_prologue(&mut vault_resp, RESP_STATIC, RESP_EPH);
 
-                let mut initiator = Initiator::new(initiator);
-                let mut responder = Responder::new(responder);
+        let mut initiator = Initiator::new(initiator);
+        let mut responder = Responder::new(responder);
 
-                let res = responder.process(&[]);
-                assert!(res.is_err());
-                let res = initiator.process(&decode(MSG_1_PAYLOAD).unwrap());
-                assert!(res.is_ok());
-                let msg1 = res.unwrap();
-                assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
+        let res = responder.process(&[]);
+        assert!(res.is_err());
+        let res = initiator.process(&decode(MSG_1_PAYLOAD).unwrap());
+        assert!(res.is_ok());
+        let msg1 = res.unwrap();
+        assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
 
-                let res = responder.process(&msg1);
-                assert!(res.is_ok());
-                let res = responder.process(&decode(MSG_2_PAYLOAD).unwrap());
-                assert!(res.is_ok());
-                let msg2 = res.unwrap();
-                assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
+        let res = responder.process(&msg1);
+        assert!(res.is_ok());
+        let res = responder.process(&decode(MSG_2_PAYLOAD).unwrap());
+        assert!(res.is_ok());
+        let msg2 = res.unwrap();
+        assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
 
-                let res = initiator.process(&msg2);
-                assert!(res.is_ok());
-                let res = initiator.process(&decode(MSG_3_PAYLOAD).unwrap());
-                assert!(res.is_ok());
-                let msg3 = res.unwrap();
-                assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
+        let res = initiator.process(&msg2);
+        assert!(res.is_ok());
+        let res = initiator.process(&decode(MSG_3_PAYLOAD).unwrap());
+        assert!(res.is_ok());
+        let msg3 = res.unwrap();
+        assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
 
-                let res = responder.process(&msg3);
-                assert!(res.is_ok());
+        let res = responder.process(&msg3);
+        assert!(res.is_ok());
 
-                let initiator = Box::new(initiator);
-                let res = initiator.finalize();
-                assert!(res.is_ok());
-                let alice = res.unwrap();
-                let responder = Box::new(responder);
-                let res = responder.finalize();
-                assert!(res.is_ok());
-                let bob = res.unwrap();
-                assert_eq!(alice.h(), bob.h());
-                let res = vault_init.aead_aes_gcm_encrypt(
-                    alice.encrypt_key(),
-                    b"hello bob",
-                    &[0u8; 12],
-                    alice.h(),
-                );
+        let initiator = Box::new(initiator);
+        let res = initiator.finalize();
+        assert!(res.is_ok());
+        let alice = res.unwrap();
+        let responder = Box::new(responder);
+        let res = responder.finalize();
+        assert!(res.is_ok());
+        let bob = res.unwrap();
+        assert_eq!(alice.h(), bob.h());
+        let res = vault_init.aead_aes_gcm_encrypt(
+            alice.encrypt_key(),
+            b"hello bob",
+            &[0u8; 12],
+            alice.h(),
+        );
 
-                assert!(res.is_ok());
-                let ciphertext = res.unwrap();
+        assert!(res.is_ok());
+        let ciphertext = res.unwrap();
 
-                let res = vault_resp.aead_aes_gcm_decrypt(
-                    bob.decrypt_key(),
-                    &ciphertext,
-                    &[0u8; 12],
-                    bob.h(),
-                );
-                assert!(res.is_ok());
-                let plaintext = res.unwrap();
-                assert_eq!(plaintext, b"hello bob");
+        let res =
+            vault_resp.aead_aes_gcm_decrypt(bob.decrypt_key(), &ciphertext, &[0u8; 12], bob.h());
+        assert!(res.is_ok());
+        let plaintext = res.unwrap();
+        assert_eq!(plaintext, b"hello bob");
 
-                let res = vault_resp.aead_aes_gcm_encrypt(
-                    bob.encrypt_key(),
-                    b"hello alice",
-                    &[1u8; 12],
-                    bob.h(),
-                );
-                assert!(res.is_ok());
-                let ciphertext = res.unwrap();
-                let res = vault_init.aead_aes_gcm_decrypt(
-                    alice.decrypt_key(),
-                    &ciphertext,
-                    &[1u8; 12],
-                    alice.h(),
-                );
-                assert!(res.is_ok());
-                let plaintext = res.unwrap();
-                assert_eq!(plaintext, b"hello alice");
-
-                ctx.stop().await.unwrap()
-            })
-            .unwrap();
+        let res =
+            vault_resp.aead_aes_gcm_encrypt(bob.encrypt_key(), b"hello alice", &[1u8; 12], bob.h());
+        assert!(res.is_ok());
+        let ciphertext = res.unwrap();
+        let res = vault_init.aead_aes_gcm_decrypt(
+            alice.decrypt_key(),
+            &ciphertext,
+            &[1u8; 12],
+            alice.h(),
+        );
+        assert!(res.is_ok());
+        let plaintext = res.unwrap();
+        assert_eq!(plaintext, b"hello alice");
     }
 
-    fn mock_prologue(vault: &mut Vault, static_private: &str, ephemeral_private: &str) -> State {
+    fn mock_prologue(
+        vault: &mut VaultSync,
+        static_private: &str,
+        ephemeral_private: &str,
+    ) -> State {
         let attributes = SecretAttributes::new(
             SecretType::Curve25519,
             SecretPersistence::Ephemeral,

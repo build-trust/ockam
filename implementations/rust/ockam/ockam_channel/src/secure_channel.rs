@@ -5,8 +5,8 @@ use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
 use ockam_vault::SoftwareVault;
-use ockam_vault_core::{ErrorVault, Secret, SymmetricVault};
-use ockam_vault_sync_core::Vault;
+use ockam_vault_core::{Secret, SymmetricVault};
+use ockam_vault_sync_core::VaultSync;
 use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -47,7 +47,7 @@ pub struct SecureChannel {
     address_local: Address,
     keys: Option<ChannelKeys>,
     key_exchange_completed_callback_route: Option<Route>,
-    vault: Vault,
+    vault: VaultSync,
     key_exchanger: Option<Box<dyn KeyExchanger + Send + 'static>>,
 }
 
@@ -59,7 +59,7 @@ impl SecureChannel {
         address_local: Address,
         key_exchange_completed_callback_route: Option<Route>,
         new_key_exchanger: &N,
-        vault: Vault,
+        vault: VaultSync,
     ) -> Result<Self> {
         let key_exchanger: Box<dyn KeyExchanger + Send + 'static> = if is_initiator {
             Box::new(new_key_exchanger.initiator()?)
@@ -105,10 +105,10 @@ impl SecureChannel {
             &address_local, &address_remote
         );
 
-        let vault = Vault::create(
+        let vault = VaultSync::create(
             ctx,
             vault_worker_address,
-            SoftwareVault::error_domain(), /* FIXME */
+            SoftwareVault::error_domain_static(), /* FIXME */
         )
         .await?;
 

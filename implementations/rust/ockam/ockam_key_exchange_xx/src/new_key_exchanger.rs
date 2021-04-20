@@ -2,16 +2,16 @@ use crate::state::State;
 use crate::{Initiator, Responder};
 use ockam_core::Result;
 use ockam_key_exchange_core::NewKeyExchanger;
-use ockam_vault_sync_core::Vault;
+use ockam_vault_sync_core::VaultSync;
 
 /// Represents an XX NewKeyExchanger
 pub struct XXNewKeyExchanger {
-    vault: Vault,
+    vault: VaultSync,
 }
 
 impl XXNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
-    pub fn new(vault: Vault) -> Self {
+    pub fn new(vault: VaultSync) -> Self {
         Self { vault }
     }
 }

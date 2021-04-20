@@ -37,47 +37,40 @@ mod tests {
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
     use ockam_vault::SoftwareVault;
     use ockam_vault_core::SecretVault;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault_sync_core::VaultSync;
 
     #[allow(non_snake_case)]
     #[test]
     fn full_flow__correct_credentials__keys_should_match() {
-        let (mut ctx, mut executor) = ockam_node::start_node();
-        executor
-            .execute(async move {
-                let mut vault = Vault::start(&ctx, SoftwareVault::default()).await.unwrap();
+        let mut vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-                let key_exchanger = XXNewKeyExchanger::new(vault.start_another().unwrap());
+        let key_exchanger = XXNewKeyExchanger::new(vault.start_another().unwrap());
 
-                let mut initiator = key_exchanger.initiator().unwrap();
-                let mut responder = key_exchanger.responder().unwrap();
+        let mut initiator = key_exchanger.initiator().unwrap();
+        let mut responder = key_exchanger.responder().unwrap();
 
-                let m1 = initiator.process(&[]).unwrap();
-                let _ = responder.process(&m1).unwrap();
-                let m2 = responder.process(&[]).unwrap();
-                let _ = initiator.process(&m2).unwrap();
-                let m3 = initiator.process(&[]).unwrap();
-                let _ = responder.process(&m3).unwrap();
+        let m1 = initiator.process(&[]).unwrap();
+        let _ = responder.process(&m1).unwrap();
+        let m2 = responder.process(&[]).unwrap();
+        let _ = initiator.process(&m2).unwrap();
+        let m3 = initiator.process(&[]).unwrap();
+        let _ = responder.process(&m3).unwrap();
 
-                let initiator = Box::new(initiator);
-                let initiator = initiator.finalize().unwrap();
-                let responder = Box::new(responder);
-                let responder = responder.finalize().unwrap();
+        let initiator = Box::new(initiator);
+        let initiator = initiator.finalize().unwrap();
+        let responder = Box::new(responder);
+        let responder = responder.finalize().unwrap();
 
-                assert_eq!(initiator.h(), responder.h());
+        assert_eq!(initiator.h(), responder.h());
 
-                let s1 = vault.secret_export(&initiator.encrypt_key()).unwrap();
-                let s2 = vault.secret_export(&responder.decrypt_key()).unwrap();
+        let s1 = vault.secret_export(&initiator.encrypt_key()).unwrap();
+        let s2 = vault.secret_export(&responder.decrypt_key()).unwrap();
 
-                assert_eq!(s1, s2);
+        assert_eq!(s1, s2);
 
-                let s1 = vault.secret_export(&initiator.decrypt_key()).unwrap();
-                let s2 = vault.secret_export(&responder.encrypt_key()).unwrap();
+        let s1 = vault.secret_export(&initiator.decrypt_key()).unwrap();
+        let s2 = vault.secret_export(&responder.encrypt_key()).unwrap();
 
-                assert_eq!(s1, s2);
-
-                ctx.stop().await.unwrap()
-            })
-            .unwrap();
+        assert_eq!(s1, s2);
     }
 }
