@@ -615,6 +615,7 @@ dependencies = [
  "ockam_node_attribute",
  "ockam_vault",
  "ockam_vault_core",
+ "ockam_vault_sync_core",
  "rand 0.8.3",
  "rand_xorshift",
  "serde",

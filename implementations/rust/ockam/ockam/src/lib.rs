@@ -42,5 +42,6 @@ pub use ockam_core::{
     Address, Any, Encoded, Error, Message, Result, Route, Routed, RouterMessage, TransportMessage,
     Worker,
 };
+pub use ockam_vault_sync_core::Vault;
 
 pub use ockam_channel::SecureChannel;
