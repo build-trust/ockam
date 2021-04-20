@@ -20,13 +20,17 @@ Add the following code to this file:
 use ockam::{Context, Result, SecureChannel};
 use ockam_get_started::Echoer;
 use ockam_transport_tcp::TcpTransport;
+use ockam_vault::SoftwareVault;
+use ockam_vault_sync_core::VaultWorker;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.listen("127.0.0.1:6000").await?;
 
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener").await?;
+    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+
+    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", vault_address).await?;
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
@@ -34,6 +38,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // This node never shuts down.
     Ok(())
 }
+
 ```
 
 ## Middle node
@@ -79,18 +84,21 @@ Add the following code to this file:
 
 use ockam::{Context, Result, Route, SecureChannel};
 use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam_vault::SoftwareVault;
+use ockam_vault_sync_core::VaultWorker;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.connect("127.0.0.1:4000").await?;
 
-    let route_to_listener =
-        Route::new()
-            .append_t(TCP, "127.0.0.1:4000") // middle node
-            .append_t(TCP, "127.0.0.1:6000") // responder node
-            .append("secure_channel_listener"); // secure_channel_listener on responder node
-    let channel = SecureChannel::create(&mut ctx, route_to_listener).await?;
+    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+
+    let route_to_listener = Route::new()
+        .append_t(TCP, "127.0.0.1:4000") // middle node
+        .append_t(TCP, "127.0.0.1:6000") // responder node
+        .append("secure_channel_listener"); // secure_channel_listener on responder node
+    let channel = SecureChannel::create(&mut ctx, route_to_listener, vault_address).await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(
@@ -105,6 +113,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.stop().await
 }
+
 ```
 
 ## Run
