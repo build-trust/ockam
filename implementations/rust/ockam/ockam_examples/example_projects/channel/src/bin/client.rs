@@ -1,12 +1,11 @@
 use channel_examples::client_worker::Client;
-use ockam::Result;
+use ockam::{Result, Vault};
 use ockam_transport_tcp::TcpTransport;
 use ockam_vault::SoftwareVault;
-use ockam_vault_sync_core::VaultWorker;
 
 #[ockam::node]
 async fn main(ctx: ockam::Context) -> Result<()> {
-    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+    let vault_address = Vault::create(&ctx, SoftwareVault::default()).await?;
 
     let hub_addr = "104.42.24.183:4000";
 

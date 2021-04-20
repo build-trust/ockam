@@ -1,16 +1,15 @@
 use channel_examples::server_worker::Server;
-use ockam::{RemoteForwarder, Result, SecureChannel};
+use ockam::{RemoteForwarder, Result, SecureChannel, Vault};
 use ockam_transport_tcp::TcpTransport;
 use ockam_vault::SoftwareVault;
-use ockam_vault_sync_core::VaultWorker;
 
 const SECURE_CHANNEL: &str = "xx_channel_listener";
 
 #[ockam::node]
 async fn main(mut ctx: ockam::Context) -> Result<()> {
-    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+    let vault_address = Vault::create(&ctx, SoftwareVault::default()).await?;
 
-    SecureChannel::create_listener(&mut ctx, SECURE_CHANNEL, vault_address).await?;
+    SecureChannel::create_listener(&mut ctx, SECURE_CHANNEL, &vault_address).await?;
 
     let hub_addr = "104.42.24.183:4000";
 

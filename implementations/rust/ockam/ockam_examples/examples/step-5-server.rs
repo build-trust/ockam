@@ -1,7 +1,8 @@
-use ockam::{async_worker, Context, RemoteForwarder, Result, Routed, SecureChannel, Worker};
+use ockam::{
+    async_worker, Context, RemoteForwarder, Result, Routed, SecureChannel, SoftwareVault, Vault,
+    Worker,
+};
 use ockam_transport_tcp::TcpTransport;
-use ockam_vault::SoftwareVault;
-use ockam_vault_sync_core::VaultWorker;
 
 struct EchoService;
 
@@ -24,9 +25,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     tcp.connect(hub).await?;
 
-    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+    let vault_address = Vault::create(&ctx, SoftwareVault::default()).await?;
 
-    SecureChannel::create_listener(&ctx, "secure_channel", vault_address).await?;
+    SecureChannel::create_listener(&ctx, "secure_channel", &vault_address).await?;
 
     ctx.start_worker("echo_service", EchoService).await?;
 

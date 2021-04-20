@@ -38,7 +38,7 @@ impl Worker for Client {
                 .append(format!("1#{}", self.hub_addr))
                 .append(format!("0#{}", self.hub_handle))
                 .append(XX_CHANNEL_LISTENER_ADDRESS.to_string()),
-            self.vault_worker_address.clone(),
+            &self.vault_worker_address,
         )
         .await?;
         info!("Key exchange completed");

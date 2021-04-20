@@ -722,8 +722,10 @@ dependencies = [
  "ockam_core",
  "ockam_node",
  "ockam_node_attribute",
+ "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_core",
+ "ockam_vault_sync_core",
  "rand 0.8.3",
  "serde",
  "serde-big-array",
@@ -744,7 +746,6 @@ dependencies = [
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_node",
- "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
  "rand 0.8.3",
@@ -807,9 +808,11 @@ dependencies = [
 name = "ockam_transport_tcp"
 version = "0.5.1"
 dependencies = [
+ "async-trait",
  "futures",
  "hashbrown 0.9.1",
- "ockam",
+ "ockam_core",
+ "ockam_node",
  "rand 0.7.3",
  "serde",
  "serde_bare 0.3.0",

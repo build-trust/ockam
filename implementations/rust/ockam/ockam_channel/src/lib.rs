@@ -38,13 +38,13 @@ mod tests {
                 SecureChannel::create_listener(
                     &ctx,
                     "secure_channel_listener".to_string(),
-                    vault_address.clone(),
+                    &vault_address,
                 )
                 .await?;
                 let initiator = SecureChannel::create(
                     &mut ctx,
                     Route::new().append("secure_channel_listener"),
-                    vault_address,
+                    &vault_address,
                 )
                 .await?;
 

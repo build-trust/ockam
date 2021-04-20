@@ -82,9 +82,9 @@ impl SecureChannel {
     pub async fn create_listener<A: Into<Address>>(
         ctx: &Context,
         address: A,
-        vault_worker_address: Address,
+        vault_worker_address: &Address,
     ) -> Result<()> {
-        let channel_listener = SecureChannelListener::new(vault_worker_address);
+        let channel_listener = SecureChannelListener::new((*vault_worker_address).clone());
         let address = address.into();
         info!("Starting SecureChannel listener at {}", &address);
         ctx.start_worker(address, channel_listener).await
@@ -94,7 +94,7 @@ impl SecureChannel {
     pub async fn create<A: Into<Route>>(
         ctx: &mut Context,
         route: A,
-        vault_worker_address: Address,
+        vault_worker_address: &Address,
     ) -> Result<SecureChannelInfo> {
         let address_remote: Address = random();
         let address_local: Address = random();
@@ -106,7 +106,7 @@ impl SecureChannel {
 
         let vault = VaultSync::create_with_worker(
             ctx,
-            vault_worker_address,
+            (*vault_worker_address).clone(),
             "VAULT_ERROR", /* FIXME */
         )
         .await?;

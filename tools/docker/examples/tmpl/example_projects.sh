@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
 
-pushd "$OCKAM_HOME/implementations/rust/ockam/ockam_examples/example_projects" >/dev/null || exit 1
+pushd "$OCKAM_HOME/implementations/rust/ockam/ockam_examples/" >/dev/null || exit 1
 
-projects=(node worker)
-for p in "${projects[@]}"
+for p in example_projects/*
 do
   pushd "$p" >/dev/null || exit 1
-  for e in examples/*
-  do
-    EXAMPLE=$(basename "$e" .rs)
-    cargo run --example "$EXAMPLE"
-  done
+  cargo build
   popd >/dev/null || exit 1
 done
 
-pushd tcp >/dev/null || exit 1
+# TODO run more examples here
+
+pushd example_projects/tcp >/dev/null || exit 1
 cargo run --example network_echo_server &
 SERVER=$!
 sleep 2
