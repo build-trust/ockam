@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
-use ockam_vault::SoftwareVault;
 use ockam_vault_sync_core::VaultSync;
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -58,7 +57,7 @@ impl Worker for SecureChannelListener {
                 let vault = VaultSync::create_with_worker(
                     ctx,
                     self.vault_worker_address.clone(),
-                    SoftwareVault::error_domain_static(), /* FIXME */
+                    "VAULT_ERROR", /* FIXME */
                 )
                 .await?;
 

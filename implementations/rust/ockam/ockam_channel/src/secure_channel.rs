@@ -4,7 +4,6 @@ use ockam_core::{Address, Any, Message, Result, Route, Routed, TransportMessage,
 use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
-use ockam_vault::SoftwareVault;
 use ockam_vault_core::{Secret, SymmetricVault};
 use ockam_vault_sync_core::VaultSync;
 use rand::random;
@@ -108,7 +107,7 @@ impl SecureChannel {
         let vault = VaultSync::create_with_worker(
             ctx,
             vault_worker_address,
-            SoftwareVault::error_domain_static(), /* FIXME */
+            "VAULT_ERROR", /* FIXME */
         )
         .await?;
 
