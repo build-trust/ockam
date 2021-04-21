@@ -1,0 +1,33 @@
+[package]
+name = "ockam_transport_websocket"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_websocket"
+readme = "README.md"
+keywords = ["ockam", "websocket", "ockam-transport"]
+categories = ["network-programming", "asynchronous"]
+description = """
+WebSocket Transport for the Ockam Routing Protocol.
+"""
+exclude = [
+    "DEVELOP.md",
+    "LICENSE"
+]
+
+[features]
+default = ["std"]
+std = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures-channel = "*"
+futures-util = { version = "*", default-features = false, features = ["tokio-io"] }
+ockam = {path = "../ockam", version = "0"}
+serde_bare = "0.3.0"
+tokio = {version = "1.4.0", features = ["rt-multi-thread","sync","net","macros","time"]}
+tokio-tungstenite = "0.14.0"
+tracing = "0.1"
