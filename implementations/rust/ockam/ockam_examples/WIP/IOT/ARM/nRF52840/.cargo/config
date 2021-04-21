@@ -10,3 +10,4 @@ rustflags = [
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
 #runner = "dk-run"
 runner = "probe-run --chip nRF52840_xxAA"
+
