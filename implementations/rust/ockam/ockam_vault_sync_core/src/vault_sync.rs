@@ -116,7 +116,7 @@ impl VaultSync {
     pub async fn create<T: VaultTrait>(ctx: &Context, vault: T) -> Result<Self> {
         let error_domain = vault.error_domain();
 
-        let vault_address = Vault::create_with_inner(ctx, vault).await?;
+        let vault_address = Vault::create(ctx, vault).await?;
 
         Self::create_with_worker(ctx, vault_address, error_domain).await
     }

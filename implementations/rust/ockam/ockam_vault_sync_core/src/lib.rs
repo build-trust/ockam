@@ -35,11 +35,3 @@ pub use symmetric_vault::*;
 pub use vault::*;
 pub use vault_sync::*;
 pub use verifier::*;
-
-#[cfg(feature = "software_vault")]
-impl Vault {
-    /// Start a Vault with SoftwareVault implementation.
-    pub async fn create(ctx: &Context) -> Result<Address> {
-        Self::create_with_inner(ctx, SoftwareVault::default()).await
-    }
-}
