@@ -1,0 +1,12 @@
+[build]
+target = "thumbv7em-none-eabi"
+
+[target.thumbv7em-none-eabi]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
+
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+#runner = "dk-run"
+runner = "probe-run --chip nRF52840_xxAA"
