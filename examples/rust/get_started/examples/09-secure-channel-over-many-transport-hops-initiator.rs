@@ -1,18 +1,17 @@
-use ockam::{Context, Result, Route, SecureChannel, SoftwareVault, Vault};
-use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam::{Context, Result, Route, SecureChannel, Vault, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.connect("127.0.0.1:4000").await?;
 
-    let vault_address = Vault::create(&ctx, SoftwareVault::default()).await?;
+    let vault = Vault::create(&ctx).await?;
 
     let route_to_listener = Route::new()
         .append_t(TCP, "127.0.0.1:4000") // middle node
         .append_t(TCP, "127.0.0.1:6000") // responder node
         .append("secure_channel_listener"); // secure_channel_listener on responder node
-    let channel = SecureChannel::create(&mut ctx, route_to_listener, &vault_address).await?;
+    let channel = SecureChannel::create(&mut ctx, route_to_listener, &vault).await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(

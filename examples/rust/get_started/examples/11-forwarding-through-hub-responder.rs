@@ -1,6 +1,5 @@
-use ockam::{Context, RemoteForwarder, Result};
+use ockam::{Context, RemoteForwarder, Result, TcpTransport};
 use ockam_get_started::Echoer;
-use ockam_transport_tcp::TcpTransport;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

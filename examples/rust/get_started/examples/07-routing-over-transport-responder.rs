@@ -1,6 +1,5 @@
-use ockam::{Context, Result};
+use ockam::{Context, Result, TcpTransport};
 use ockam_get_started::Echoer;
-use ockam_transport_tcp::TcpTransport;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
