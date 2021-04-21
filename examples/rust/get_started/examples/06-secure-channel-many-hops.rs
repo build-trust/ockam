@@ -1,6 +1,6 @@
 // This node creates a secure channel with a listener that is multiple hops away.
 
-use ockam::{Context, Result, Route, SecureChannel, SoftwareVault, Vault};
+use ockam::{Context, Result, Route, SecureChannel, Vault};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
@@ -13,7 +13,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("h2", Hop).await?;
     ctx.start_worker("h3", Hop).await?;
 
-    let vault = Vault::create(&ctx, SoftwareVault::default()).await?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;

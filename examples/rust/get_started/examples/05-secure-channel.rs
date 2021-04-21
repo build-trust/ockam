@@ -1,6 +1,6 @@
 // This node creates a secure channel and routes a message through it.
 
-use ockam::{Context, Result, Route, SecureChannel, SoftwareVault, Vault};
+use ockam::{Context, Result, Route, SecureChannel, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -8,7 +8,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    let vault = Vault::create(&ctx, SoftwareVault::default()).await?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create a secure channel listener.
     SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
