@@ -65,9 +65,9 @@ where
     pub async fn create_with_inner(ctx: &Context, inner: V) -> Result<Address> {
         let address: Address = random();
 
-        info!("Starting VaultWorker at {}", &address);
-
         ctx.start_worker(address.clone(), Self::new(inner)).await?;
+
+        info!("Started Vault at {}", &address);
 
         Ok(address)
     }

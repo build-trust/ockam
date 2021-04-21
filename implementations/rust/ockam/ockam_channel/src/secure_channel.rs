@@ -87,7 +87,9 @@ impl SecureChannel {
         let channel_listener = SecureChannelListener::new((*vault_worker_address).clone());
         let address = address.into();
         info!("Starting SecureChannel listener at {}", &address);
-        ctx.start_worker(address, channel_listener).await
+        ctx.start_worker(address.clone(), channel_listener).await?;
+
+        Ok(())
     }
 
     /// Create initiator channel with given route to a remote channel listener.
@@ -99,7 +101,7 @@ impl SecureChannel {
         let address_remote: Address = random();
         let address_local: Address = random();
 
-        info!(
+        debug!(
             "Starting SecureChannel initiator at local: {}, remote: {}",
             &address_local, &address_remote
         );
@@ -123,7 +125,7 @@ impl SecureChannel {
             vault,
         )?;
 
-        ctx.start_worker(vec![address_remote, address_local.clone()], channel)
+        ctx.start_worker(vec![address_remote.clone(), address_local.clone()], channel)
             .await?;
 
         let resp = ctx
@@ -312,13 +314,22 @@ impl Worker for SecureChannel {
                     }
                     let keys = key_exchanger.finalize_box()?;
 
-                    info!("Key exchange completed at {}", &self.address_local);
-
                     self.keys = Some(ChannelKeys {
                         encrypt_key: keys.encrypt_key().clone(),
                         decrypt_key: keys.decrypt_key().clone(),
                         nonce: 0,
                     });
+
+                    let role_str = if self.is_initiator {
+                        "initiator"
+                    } else {
+                        "responder"
+                    };
+
+                    info!(
+                        "Started SecureChannel {} at local: {}, remote: {}",
+                        role_str, &self.address_local, &self.address_remote
+                    );
 
                     // Notify interested worker about finished key exchange
                     if let Some(r) = self.key_exchange_completed_callback_route.take() {

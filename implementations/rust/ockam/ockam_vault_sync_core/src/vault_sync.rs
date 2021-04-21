@@ -3,7 +3,7 @@ use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use rand::random;
 use std::sync::{Arc, Mutex};
-use tracing::info;
+use tracing::debug;
 use zeroize::Zeroize;
 
 pub(crate) struct WorkerState {
@@ -82,7 +82,7 @@ impl Zeroize for VaultSync {
 impl VaultSync {
     /// Create and start a new Vault using Mutex.
     pub fn create_with_mutex<T: VaultTrait>(vault: T) -> Self {
-        info!("Starting Mutex Vault");
+        debug!("Starting Mutex VaultSync");
 
         Self(VaultSyncState::Mutex {
             mutex: Arc::new(Mutex::new(vault)),
@@ -97,7 +97,7 @@ impl VaultSync {
     ) -> Result<Self> {
         let address: Address = random();
 
-        info!("Starting Vault at {}", &address);
+        debug!("Starting Worker VaultSync at {}", &address);
 
         let ctx = ctx.new_context(address).await?;
 

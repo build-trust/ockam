@@ -3,7 +3,7 @@ use ockam_core::lib::net::SocketAddr;
 use ockam_core::{Address, Any, Result, Route, Routed, TransportMessage, Worker};
 use rand::random;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{debug, info};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct RemoteForwarderInfo {
@@ -56,7 +56,7 @@ impl RemoteForwarder {
             let forwarder = Self::new(hub_addr, destination.into(), ctx.address());
 
             let worker_address: Address = random();
-            info!("Starting RemoteForwarder at {}", &worker_address);
+            debug!("Starting RemoteForwarder at {}", &worker_address);
             ctx.start_worker(worker_address, forwarder).await?;
 
             let resp = ctx.receive::<RemoteForwarderInfo>().await?.take().body();
@@ -74,7 +74,7 @@ impl Worker for RemoteForwarder {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> crate::Result<()> {
-        info!("RemoteForwarder registering...");
+        debug!("RemoteForwarder registering...");
         ctx.send(self.route.clone(), "register".to_string()).await?;
         let resp = ctx.receive::<String>().await?.take();
         let route = resp.return_route();
@@ -83,7 +83,7 @@ impl Worker for RemoteForwarder {
             "register" => self.route = route.clone(),
             _ => return Err(OckamError::InvalidHubResponse.into()),
         }
-        info!("RemoteForwarder route: {}", route);
+        info!("RemoteForwarder registered with route: {}", route);
         let address;
         if let Some(a) = route.clone().recipient().to_string().strip_prefix("0#") {
             address = a.to_string();
@@ -111,7 +111,7 @@ impl Worker for RemoteForwarder {
     ) -> Result<()> {
         let return_route = msg.return_route();
         let payload = msg.into_transport_message().payload;
-        info!("RemoteForwarder received message");
+        debug!("RemoteForwarder received message");
 
         let msg = TransportMessage {
             version: 1,

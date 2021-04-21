@@ -6,7 +6,7 @@ use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
 use rand::random;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::debug;
 
 /// SecureChannelListener listens for messages from SecureChannel initiators
 /// and creates responder SecureChannels
@@ -49,7 +49,7 @@ impl Worker for SecureChannelListener {
                 let address_remote: Address = random();
                 let address_local: Address = random();
 
-                info!(
+                debug!(
                     "Starting SecureChannel responder at local: {}, remote: {}",
                     &address_local, &address_remote
                 );
