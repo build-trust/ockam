@@ -18,7 +18,7 @@ version = "0.8.0"
 
 [features]
 default = ["std", "ockam_transport_tcp", "software_vault"]
-software_vault = ["ockam_vault", "ockam_vault_sync_core/ockam_vault"]
+software_vault = ["ockam_vault", "ockam_vault_sync_core/software_vault"]
 std = ["ockam_node", "serde/std"]
 alloc = ["ockam_core/alloc", "serde/alloc"]
 no_std = ["ockam_core/no_std", "serde"]

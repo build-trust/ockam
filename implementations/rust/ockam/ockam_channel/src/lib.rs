@@ -34,7 +34,8 @@ mod tests {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let vault_address = Vault::create(&ctx, SoftwareVault::default()).await?;
+                let vault_address =
+                    Vault::create_with_inner(&ctx, SoftwareVault::default()).await?;
                 SecureChannel::create_listener(
                     &ctx,
                     "secure_channel_listener".to_string(),
