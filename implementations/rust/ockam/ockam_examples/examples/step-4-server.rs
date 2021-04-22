@@ -1,5 +1,4 @@
-use ockam::{async_worker, Context, RemoteForwarder, Result, Routed, Worker};
-use ockam_transport_tcp::TcpTransport;
+use ockam::{async_worker, Context, RemoteForwarder, Result, Routed, TcpTransport, Worker};
 
 struct EchoService;
 

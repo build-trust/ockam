@@ -1156,6 +1156,7 @@ dependencies = [
  "async-trait",
  "ockam_core",
  "ockam_node",
+ "ockam_vault",
  "ockam_vault_core",
  "rand 0.8.3",
  "serde",
@@ -1655,7 +1656,7 @@ checksum = "0f0242b8e50dd9accdd56170e94ca1ebd223b098eb9c83539a6e367d0f36ae68"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1692,8 +1693,9 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
+ "blake2",
  "bls12_381_plus",
  "digest",
  "ff",
