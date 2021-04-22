@@ -36,7 +36,7 @@ ockam_vault_sync_core = "0"
 ## App worker
 
 For demonstration, we'll create a secure channel within a single node. Like our
-previous example, [Workers](../02-worker), we'll create an `"echoer"` worker and 
+previous example, [Workers](../02-worker), we'll create an `"echoer"` worker and
 send it a message, but we'll route the message through a secure channel:
 
 Create a new file at:
