@@ -33,9 +33,13 @@ The `ockam` crate has a Cargo feature named `"std"` that is enabled by
 default. In order to use this crate in a `no_std` context this feature can
 disabled as follows
 
+Additional features of the `ockam` crate:
+- `ockam_transport_tcp` - Enable TCP transport dependency.
+- `ockam_vault` - Enable the default Software Vault implementation.
+
 ```
 [dependencies]
-ockam = { version = "0.7.0", default-features = false }
+ockam = { version = "0.8.0", default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
