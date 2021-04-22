@@ -5,7 +5,6 @@ use ockam_vault_core::{
     AsymmetricVault, ErrorVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
 use rand::random;
-use tracing::info;
 use zeroize::Zeroize;
 
 /// Super-trait of traits required for a Vault Worker.
@@ -66,8 +65,6 @@ where
         let address: Address = random();
 
         ctx.start_worker(address.clone(), Self::new(inner)).await?;
-
-        info!("Started Vault at {}", &address);
 
         Ok(address)
     }

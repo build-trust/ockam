@@ -2,6 +2,7 @@ use crate::VaultError;
 use ockam_vault_core::zdrop_impl;
 use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use std::collections::BTreeMap;
+use tracing::info;
 use zeroize::Zeroize;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
@@ -39,6 +40,7 @@ pub struct SoftwareVault {
 
 impl SoftwareVault {
     pub fn new() -> Self {
+        info!("Creating vault");
         Self {
             entries: Default::default(),
             next_id: 0,
