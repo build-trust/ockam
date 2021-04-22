@@ -1,8 +1,7 @@
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
-use ockam::{Context, Result, Route, SecureChannel, Vault};
-use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam::{Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -12,7 +11,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a TCP connection.
     tcp.connect("127.0.0.1:3000").await?;
 
-    let vault = Vault::create(&ctx, SoftwareVault::default()).await?;
+    let vault = Vault::create(&ctx).await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let channel = SecureChannel::create(
@@ -22,8 +21,9 @@ async fn main(mut ctx: Context) -> Result<()> {
             .append_t(TCP, "127.0.0.1:3000") // middle node
             .append_t(TCP, "127.0.0.1:4000") // responder node
             .append("secure_channel_listener"), // secure_channel_listener on responder node,
-        &vault
-    ).await?;
+        &vault,
+    )
+    .await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(

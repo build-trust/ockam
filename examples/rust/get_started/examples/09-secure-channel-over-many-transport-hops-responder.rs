@@ -1,9 +1,8 @@
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 
-use ockam::{Context, Result, SecureChannel, SoftwareVault, Vault};
+use ockam::{Context, Result, SecureChannel, TcpTransport, Vault};
 use ockam_get_started::Echoer;
-use ockam_transport_tcp::TcpTransport;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

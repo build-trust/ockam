@@ -59,13 +59,13 @@ kill $RESPONDER
 for h in examples/*.rs
 do
   EXAMPLE=$(basename "$h" .rs)
-  perl -pe 's/^(.*?")Paste.*Hub here./${1}$ENV{"OCKAM_HUB"}/' < "$h" > "examples/my-$EXAMPLE.rs"
+  perl -pe 's/^(.*?")Paste.*node here./${1}$ENV{"OCKAM_HUB"}/' < "$h" > "examples/my-$EXAMPLE.rs"
 done
 
-cargo run --example my-10-routing-to-hub
+cargo run --example my-10-routing-to-a-cloud-node
 
 # Step 11
-cargo run --example my-11-forwarding-through-hub-responder &>responder-11 &
+cargo run --example my-11-forwarding-via-a-cloud-node-responder &>responder-11 &
 RESPONDER=$!
 echo "Waiting 10 seconds for forwarding address.."
 sleep 10
@@ -81,20 +81,20 @@ do
   perl -pe 's/^(.*?")Paste.*?forward.*? here./${1}$ENV{"ADDRESS"}/' < "$h" > "examples/fwd-$EXAMPLE.rs"
 done
 
-cargo run --example fwd-my-11-forwarding-through-hub-initiator
+cargo run --example fwd-my-11-forwarding-via-a-cloud-node-initiator
 kill $RESPONDER
 
 # Step 12
-cargo run --example my-12-secure-channel-hub-forwarding-responder &>responder-12 &
+cargo run --example my-12-secure-channel-over-cloud-node-forwarding-responder &>responder-12 &
 RESPONDER=$!
 echo "Waiting 5 seconds for forwarding address.."
 sleep 5
 
 # Rewrite "Paste" information with the forwarding address of secure channel
 export ADDRESS=$(perl -ne 'm/^Forwarding.*?: (\S+)$/ and print "$1\n"' responder-12)
-perl -pe 's/^(.*?")Paste.*?forward.*? here./${1}$ENV{"ADDRESS"}/' < examples/my-12-secure-channel-hub-forwarding-initiator.rs > "examples/fwd-my-12-secure-channel-hub-forwarding-initiator.rs"
+perl -pe 's/^(.*?")Paste.*?forward.*? here./${1}$ENV{"ADDRESS"}/' < examples/my-12-secure-channel-over-cloud-node-forwarding-initiator.rs > "examples/fwd-my-12-secure-channel-over-cloud-node-forwarding-initiator.rs"
 
-cargo run --example fwd-my-12-secure-channel-hub-forwarding-initiator
+cargo run --example fwd-my-12-secure-channel-over-cloud-node-forwarding-initiator
 
 kill $RESPONDER
 

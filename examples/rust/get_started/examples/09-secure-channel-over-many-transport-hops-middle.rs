@@ -2,8 +2,7 @@
 // Starts a tcp listener at 127.0.0.1:3000
 // It then runs forever waiting to route messages.
 
-use ockam::{Context, Result};
-use ockam_transport_tcp::TcpTransport;
+use ockam::{Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

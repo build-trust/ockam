@@ -1,6 +1,5 @@
-use ockam::{Context, RemoteForwarder, Result};
+use ockam::{Context, RemoteForwarder, Result, TcpTransport};
 use ockam_get_started::Echoer;
-use ockam_transport_tcp::TcpTransport;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -17,7 +16,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("echoer", Echoer).await?;
 
     let forwarder = RemoteForwarder::create(&mut ctx, cloud_node_tcp_address, "echoer").await?;
-    println!("Forwarding address of echoer: {}", forwarder.remote_address());
+    println!(
+        "Forwarding address of echoer: {}",
+        forwarder.remote_address()
+    );
 
     Ok(())
 }

@@ -1,12 +1,11 @@
 // This node routes a message, to a worker on a cloud node, over the tcp transport.
 
-use ockam::{Context, Result, Route};
-use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam::{Context, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create a cloud node by going to https://hub.ockam.network
-    let cloud_node_tcp_address = "40.78.99.34:4000";
+    let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
