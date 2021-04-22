@@ -46,6 +46,7 @@ impl Executor {
         self.router.init(address.into(), mailbox);
     }
 
+    /// Execute a future
     pub fn execute<F>(&mut self, future: F) -> Result<()>
     where
         F: Future + Send + 'static,

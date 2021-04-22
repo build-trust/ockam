@@ -15,6 +15,7 @@ use crate::{
     Cancel, Mailbox, NodeMessage,
 };
 
+/// Context contains Node state and references to the runtime.
 pub struct Context {
     address: AddressSet,
     sender: Sender<NodeMessage>,

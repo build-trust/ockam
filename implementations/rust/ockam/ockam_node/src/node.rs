@@ -25,6 +25,7 @@ impl ockam_core::Worker for NullWorker {
     type Message = (); // This message type is never used
 }
 
+/// Start a node
 pub fn start_node() -> (Context, Executor) {
     setup_tracing();
 

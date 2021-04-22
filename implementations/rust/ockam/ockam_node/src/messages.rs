@@ -61,6 +61,7 @@ impl NodeMessage {
     }
 }
 
+/// The reply/result of a Node
 pub type NodeReplyResult = Result<NodeReply, NodeError>;
 
 /// Successful return values from a router command
@@ -85,36 +86,46 @@ pub enum NodeReply {
 /// Failure states from a router command
 #[derive(Debug)]
 pub enum NodeError {
+    /// No such worker
     NoSuchWorker(Address),
+    /// Worker already exists
     WorkerExists(Address),
+    /// Router already exists
     RouterExists,
 }
 
 impl NodeReply {
+    /// Return [NodeReply::Ok]
     pub fn ok() -> NodeReplyResult {
         Ok(NodeReply::Ok)
     }
 
+    /// Return [NodeReply::Ok]
     pub fn no_such_worker(a: Address) -> NodeReplyResult {
         Err(NodeError::NoSuchWorker(a))
     }
 
+    /// Return [NodeReply::WorkerExists] for the given address
     pub fn worker_exists(a: Address) -> NodeReplyResult {
         Err(NodeError::WorkerExists(a))
     }
 
+    /// Return [NodeReply::RouterExists]
     pub fn router_exists() -> NodeReplyResult {
         Err(NodeError::RouterExists)
     }
 
+    /// Return [NodeReply::Workers] for the given addresses
     pub fn workers(v: Vec<Address>) -> NodeReplyResult {
         Ok(Self::Workers(v))
     }
 
+    /// Return [NodeReply::Sender] for the given information
     pub fn sender(addr: Address, sender: Sender<RelayMessage>, wrap: bool) -> NodeReplyResult {
         Ok(NodeReply::Sender { addr, sender, wrap })
     }
 
+    /// Consume the wrapper and return [NodeReply::Sender]
     pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>, bool), Error> {
         match self {
             Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
@@ -122,6 +133,7 @@ impl NodeReply {
         }
     }
 
+    /// Consume the wrapper and return [NodeReply::Workers]
     pub fn take_workers(self) -> Result<Vec<Address>, Error> {
         match self {
             Self::Workers(w) => Ok(w),
@@ -129,6 +141,7 @@ impl NodeReply {
         }
     }
 
+    /// Returns Ok if self is [NodeReply::Ok]
     pub fn is_ok(self) -> Result<(), Error> {
         match self {
             Self::Ok => Ok(()),

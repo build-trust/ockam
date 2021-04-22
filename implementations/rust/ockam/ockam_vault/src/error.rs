@@ -4,19 +4,31 @@ use ockam_core::Error;
 /// an Ockam vault
 #[derive(Clone, Copy, Debug)]
 pub enum VaultError {
+    /// No error
     None,
+    /// Secret does not belong to this vault
     SecretFromAnotherVault,
+    /// Public key is invalid
     InvalidPublicKey,
-    Ecdh,
+    /// Unknown ECDH key type
     UnknownEcdhKeyType,
+    /// Invalid key type
     InvalidKeyType,
+    /// Entry not found
     EntryNotFound,
+    /// Invalid AES key length
     InvalidAesKeyLength,
+    /// Invalid HKDF outputtype
     InvalidHkdfOutputType,
+    /// Invalid private key length
     InvalidPrivateKeyLen,
+    /// AES encryption failed
     AeadAesGcmEncrypt,
+    /// AES decryption failed
     AeadAesGcmDecrypt,
+    /// HKDF key expansion failed
     HkdfExpandError,
+    /// Secret not found
     SecretNotFound,
 }
 

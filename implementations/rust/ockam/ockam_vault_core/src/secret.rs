@@ -11,12 +11,14 @@ pub struct Secret {
 }
 
 impl Secret {
+    /// Return the index of this secret.
     pub fn index(&self) -> usize {
         self.index
     }
 }
 
 impl Secret {
+    /// Create a new secret at the given index.
     pub fn new(index: usize) -> Self {
         Secret { index }
     }

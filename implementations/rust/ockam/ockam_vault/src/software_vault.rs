@@ -39,6 +39,7 @@ pub struct SoftwareVault {
 }
 
 impl SoftwareVault {
+    /// Create a new SoftwareVault
     pub fn new() -> Self {
         info!("Creating vault");
         Self {

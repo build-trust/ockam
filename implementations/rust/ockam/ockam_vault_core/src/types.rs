@@ -37,10 +37,11 @@ cfg_if! {
         pub type SecretKeyVec = Vec<u8>;
         /// Public Key Vector
         pub type PublicKeyVec = Vec<u8>;
-        /// Bufer for small vectors (e.g. array of attributes)
+        /// Buffer for small vectors (e.g. array of attributes)
         pub type SmallBuffer<T> = Vec<T>;
         /// Buffer for large binaries (e.g. encrypted data)
         pub type Buffer<T> = Vec<T>;
+        /// ID of a Key
         pub type KeyId = String;
     }
 }
@@ -50,6 +51,7 @@ cfg_if! {
 pub struct SecretKey(SecretKeyVec);
 
 impl SecretKey {
+    /// Create a new secret key
     pub fn new(data: SecretKeyVec) -> Self {
         Self(data)
     }
@@ -61,10 +63,12 @@ impl AsRef<[u8]> for SecretKey {
     }
 }
 
+/// A public key
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub struct PublicKey(PublicKeyVec);
 
 impl PublicKey {
+    /// Create a new public key
     pub fn new(data: PublicKeyVec) -> Self {
         Self(data)
     }
@@ -79,16 +83,22 @@ impl AsRef<[u8]> for PublicKey {
 /// All possible [`SecretType`]s
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub enum SecretType {
+    /// Secret buffer
     Buffer,
+    /// AES key
     Aes,
+    /// Curve 22519 key
     Curve25519,
+    /// P256 key
     P256,
 }
 
 /// Possible [`SecretKey`]'s persistence
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub enum SecretPersistence {
+    /// An ephemeral/temporary secret
     Ephemeral,
+    /// A persistent secret
     Persistent,
 }
 
@@ -101,18 +111,22 @@ pub struct SecretAttributes {
 }
 
 impl SecretAttributes {
+    /// Return the type of secret
     pub fn stype(&self) -> SecretType {
         self.stype
     }
+    /// Return the persistence of the secret
     pub fn persistence(&self) -> SecretPersistence {
         self.persistence
     }
+    /// Return the length of the secret
     pub fn length(&self) -> usize {
         self.length
     }
 }
 
 impl SecretAttributes {
+    /// Create a new secret attribute
     pub fn new(stype: SecretType, persistence: SecretPersistence, length: usize) -> Self {
         SecretAttributes {
             stype,

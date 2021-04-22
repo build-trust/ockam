@@ -15,10 +15,12 @@ pub struct Mailbox {
 }
 
 impl Mailbox {
+    /// Create a new mailbox
     pub fn new(rx: Receiver<RelayMessage>, tx: Sender<RelayMessage>) -> Self {
         Self { rx, tx }
     }
 
+    /// Return the sender of the mailbox.
     pub fn sender(&self) -> Sender<RelayMessage> {
         self.tx.clone()
     }

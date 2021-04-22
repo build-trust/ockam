@@ -7,6 +7,7 @@ use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 
+/// Transmit and receive peers of a TCP connection
 #[derive(Debug)]
 pub struct WorkerPair {
     pub(crate) peer: SocketAddr,
