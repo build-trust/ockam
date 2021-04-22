@@ -1,5 +1,4 @@
-use ockam::{Context, Result, Route, SecureChannel, SoftwareVault, Vault};
-use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam::{Context, Result, Route, SecureChannel, SoftwareVault, TcpTransport, Vault, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -11,7 +10,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     tcp.connect(remote_node).await?;
 
-    let vault_address = Vault::create(&ctx, SoftwareVault::default()).await?;
+    let vault_address = Vault::create(&ctx).await?;
 
     let channel_info = SecureChannel::create(
         &mut ctx,
