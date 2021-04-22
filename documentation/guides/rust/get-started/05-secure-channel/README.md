@@ -25,7 +25,8 @@ maintaining a secure channel behind two simple functions:
 The `SecureChannel` APIs requires a Vault to store and manage secrets. The Vault is started like any other worker, and
 we pass its address to the `SecureChannel` functions.
 
-Add the Vault worker dependencies to your project:
+Add the Vault worker dependencies to your project in the `[dependencies]` section
+at the bottom of the `Cargo.toml` file (see [Setup](../00-setup) for more details):
 
 ```
 ockam_vault = "0"
@@ -35,8 +36,8 @@ ockam_vault_sync_core = "0"
 ## App worker
 
 For demonstration, we'll create a secure channel within a single node. Like our
-previous examples, we'll create an `"echoer"` worker and send it a message, but we'll
-route the message through a secure channel:
+previous example, [Workers](../02-worker), we'll create an `"echoer"` worker and 
+send it a message, but we'll route the message through a secure channel:
 
 Create a new file at:
 

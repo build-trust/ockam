@@ -21,7 +21,7 @@ connections and can be stored in message queues, databases or caches for
 asynchronous, end-to-end protected communication between entities that may
 not be online at the same time.
 
-Let's [get started](./get-started/00-setup).
+Let's get started.
 
 <ul>
 <li><a href="./get-started/00-setup">00. Setup</a></li>
