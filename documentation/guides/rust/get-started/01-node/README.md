@@ -58,7 +58,7 @@ To run the node program:
 cargo run --example 01-node
 ```
 
-This will down various dependencies, compile and then run our code. When it
+This will download various dependencies, compile and then run our code. When it
 runs, you'll see log output that shows the node starting and then
 immediately shutting down.
 
