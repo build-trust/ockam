@@ -61,17 +61,16 @@ programs in the `examples` directory of our new project.
 
 ## Add Ockam
 
-Add the `ockam` and `ockam_transport_tcp` dependencies to the newly generated
-`Cargo.toml` file:
+Add the `ockam` dependency to the newly generated `Cargo.toml` file:
 
 ```
 [dependencies]
-ockam = "0"
-ockam_transport_tcp = "0"
+ockam = { version = "0", features = ["ockam_transport_tcp", "ockam_vault"] }
 ```
 
-`ockam` is the main Ockam crate, `ockam_transport_tcp` provides the optional
-TCP transport add-on for Ockam.
+`ockam` is the main Ockam crate. The `ockam_transport_tcp` feature provides the optional
+TCP transport add-on for Ockam. The `ockam_vault` feature provides a software vault implementation for storing
+secrets.
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../01-node">01. Create an Ockam node</a>

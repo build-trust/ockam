@@ -25,14 +25,6 @@ maintaining a secure channel behind two simple functions:
 The `SecureChannel` APIs requires a Vault to store and manage secrets. The Vault is started like any other worker, and
 we pass its address to the `SecureChannel` functions.
 
-Add the Vault worker dependencies to your project in the `[dependencies]` section
-at the bottom of the `Cargo.toml` file (see [Setup](../00-setup) for more details):
-
-```
-ockam_vault = "0"
-ockam_vault_sync_core = "0"
-```
-
 ## App worker
 
 For demonstration, we'll create a secure channel within a single node. Like our
@@ -49,35 +41,38 @@ Add the following code to this file:
 
 ```rust
 // examples/05-secure-channel.rs
+// This node creates a secure channel and routes a message through it.
 
-use ockam::{Context, Result, Route, SecureChannel};
+use ockam::{Context, Result, Route, SecureChannel, Vault};
 use ockam_get_started::Echoer;
-use ockam_vault::SoftwareVault;
-use ockam_vault_sync_core::VaultWorker;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start the echoer worker.
+    // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    let vault_address = VaultWorker::start(&ctx, SoftwareVault::default()).await?;
+    let vault = Vault::create(&ctx).await?;
 
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", vault_address.clone())
-        .await?;
+    // Create a secure channel listener.
+    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
 
-    let channel = SecureChannel::create(&mut ctx, "secure_channel_listener", vault_address).await?;
+    // Connect to a secure channel listener and perform a handshake.
+    let channel = SecureChannel::create(&mut ctx, "secure_channel_listener", &vault).await?;
 
-    // Send a message to the echoer worker via the channel.
+    // Send a message to the echoer worker, via the secure channel.
     ctx.send(
+        // route to the "echoer" worker via the secure channel.
         Route::new().append(channel.address()).append("echoer"),
+        // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )
-    .await?;
+        .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
+    // Stop all workers, stop the node, cleanup and return.
     ctx.stop().await
 }
 
