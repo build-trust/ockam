@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_vault_test_attribute = "0.1.0"
+ockam_vault_test_attribute = "0.2.0"
 ```
 
 Please note that Cargo features are unioned across the entire dependency
