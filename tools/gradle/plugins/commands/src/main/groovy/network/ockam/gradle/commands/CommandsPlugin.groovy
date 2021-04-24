@@ -33,7 +33,7 @@ class CommandsPlugin implements Plugin<Project> {
         def commandTaskDeps = []
 
         commands.directories.each {
-          def dirPathComponents = it.split('/')
+          def dirPathComponents = it.path.split('/')
           def dirPath = java.nio.file.Paths.get(*dirPathComponents)
           def dirName = dirPathComponents.join('_')
           def dirTaskName = [commandTaskName, dirName].join('_')

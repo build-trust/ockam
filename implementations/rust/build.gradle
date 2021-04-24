@@ -1,13 +1,28 @@
 
+import java.nio.file.Paths;
+
 plugins {
   id 'network.ockam.gradle.commands' version '1.0.0'
 }
+
+// collect list of all directories in ockam/
+def crates = []
+
+def ockamDir = Paths.get(projectDir.toPath().toString(), 'ockam').toFile()
+ockamDir.eachFile(groovy.io.FileType.DIRECTORIES) {
+  crates << projectDir.toPath().relativize(it.toPath()).toFile()
+}
+
+crates << new File('../../examples/rust/get_started')
 
 commands {
   group = 'ockam'
 
   list = [
-    build: 'cargo --locked build',
+    build: [
+      'cargo --locked build',
+      'cargo --locked build --examples'
+    ],
     test: 'cargo --locked test',
     clean: 'cargo clean',
     veryClean: 'cargo clean',
@@ -18,27 +33,5 @@ commands {
     ],
   ]
 
-  directories = [
-    'ockam/ockam',
-    'ockam/ockam_channel',
-    'ockam/ockam_core',
-    // 'ockam/ockam_examples',
-    'ockam/ockam_ffi',
-    'ockam/ockam_key_exchange_core',
-    'ockam/ockam_key_exchange_x3dh',
-    'ockam/ockam_key_exchange_xx',
-    'ockam/ockam_node',
-    'ockam/ockam_node_attribute',
-    'ockam/ockam_node_no_std',
-    'ockam/ockam_transport_tcp',
-    'ockam/ockam_vault',
-    'ockam/ockam_vault_core',
-    'ockam/ockam_vault_sync_core',
-    'ockam/ockam_vault_test_attribute',
-    'ockam/ockam_vault_test_suite',
-    'ockam/signature_core',
-    'ockam/signature_bls',
-    'ockam/signature_bbs_plus',
-
-  ]
+  directories = crates
 }
