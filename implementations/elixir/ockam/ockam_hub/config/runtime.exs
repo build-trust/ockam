@@ -20,6 +20,13 @@ config :telemetry_influxdb,
   org: System.get_env("INFLUXDB_ORG"),
   token: influx_token
 
+config :ockam_hub, :influxdb,
+  host: System.get_env("INFLUXDB_HOST"),
+  port: System.get_env("INFLUXDB_PORT"),
+  bucket: System.get_env("INFLUXDB_BUCKET"),
+  org: System.get_env("INFLUXDB_ORG"),
+  token: influx_token
+
 ui_auth_message =
   with true <- File.exists?("/mnt/secrets/auth/message"),
        {:ok, contents} <- File.read("/mnt/secrets/auth/message"),

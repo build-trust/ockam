@@ -51,6 +51,7 @@ defmodule Ockam.Hub.MixProject do
       {:httpoison, "~> 1.8"},
       {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ockam, path: "../ockam"},
+      {:poison, "~> 4.0.1"},
       {:ranch, "~> 2.0"},
       {:telemetry, "~> 0.4.2"},
       {:telemetry_poller, "~> 0.5.1"},
