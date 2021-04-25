@@ -8,14 +8,13 @@ defmodule Ockam.TokenLeaseManager do
   @default_storate_service :storage
 
   @impl true
-  # def setup(options, state) do
-  def init(options) do
+  def setup(options, state) do
     cloud_service_name =
       case get_from_options(:cloud_service, options) do
         {:ok, cloud_service_name} -> cloud_service_name
         _ -> @default_cloud_service
       end
-    state = %{} # remove
+
     storage_service_name =
       case get_from_options(:storage_service, options) do
         {:ok, storage_service_name} -> storage_service_name
