@@ -27,7 +27,7 @@ async fn main(mut ctx: Context) -> Result<()> {
             .append("h2")
             .append("h3")
             .append("secure_channel_listener"),
-        &vault
+        &vault,
     )
     .await?;
 
