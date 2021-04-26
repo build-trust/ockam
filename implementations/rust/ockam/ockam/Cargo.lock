@@ -790,7 +790,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "ockam_core",
  "tokio",
