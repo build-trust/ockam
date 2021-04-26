@@ -23,6 +23,17 @@ pub const SHA256_SIZE: usize = 32;
 /// The number of bytes in AES-GCM tag
 pub const AES_GCM_TAGSIZE: usize = 16;
 
+/// Vault with XX required functionality
+pub trait XXVault:
+    SecretVault + Hasher + AsymmetricVault + SymmetricVault + Clone + Send + 'static
+{
+}
+
+impl<D> XXVault for D where
+    D: SecretVault + Hasher + AsymmetricVault + SymmetricVault + Clone + Send + 'static
+{
+}
+
 mod initiator;
 mod state;
 pub use initiator::*;
@@ -30,6 +41,7 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
+use ockam_vault_core::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
 
 #[cfg(test)]
 mod tests {
@@ -37,14 +49,14 @@ mod tests {
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
     use ockam_vault::SoftwareVault;
     use ockam_vault_core::SecretVault;
-    use ockam_vault_sync_core::VaultSync;
+    use ockam_vault_sync_core::VaultMutex;
 
     #[allow(non_snake_case)]
     #[test]
     fn full_flow__correct_credentials__keys_should_match() {
-        let mut vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let mut vault = VaultMutex::create(SoftwareVault::default());
 
-        let key_exchanger = XXNewKeyExchanger::new(vault.start_another().unwrap());
+        let key_exchanger = XXNewKeyExchanger::new(vault.clone());
 
         let mut initiator = key_exchanger.initiator().unwrap();
         let mut responder = key_exchanger.responder().unwrap();

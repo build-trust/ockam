@@ -21,4 +21,5 @@ subtle = "2.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0" }
 ockam_vault = { path = "../ockam_vault", version = "0" }

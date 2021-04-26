@@ -92,12 +92,20 @@ const ENROLLMENT_MSG_SIZE: usize = 32 + 32 + 32 + 64 + 16;
 
 /// Vault with X3DH required functionality
 pub trait X3dhVault:
-    SecretVault + Signer + Verifier + AsymmetricVault + SymmetricVault + Hasher + Send
+    SecretVault + Signer + Verifier + AsymmetricVault + SymmetricVault + Hasher + Clone + Send + 'static
 {
 }
 
 impl<D> X3dhVault for D where
-    D: SecretVault + Signer + Verifier + AsymmetricVault + SymmetricVault + Hasher + Send
+    D: SecretVault
+        + Signer
+        + Verifier
+        + AsymmetricVault
+        + SymmetricVault
+        + Hasher
+        + Clone
+        + Send
+        + 'static
 {
 }
 
@@ -106,14 +114,13 @@ mod tests {
     use super::*;
     use ockam_key_exchange_core::KeyExchanger;
     use ockam_vault::SoftwareVault;
-    use std::sync::{Arc, Mutex};
+    use ockam_vault_sync_core::VaultMutex;
 
     #[test]
     fn handshake() {
-        let vault_i = Arc::new(Mutex::new(SoftwareVault::default()));
-        let vault_r = Arc::new(Mutex::new(SoftwareVault::default()));
-        let mut initiator = Initiator::new(vault_i.clone(), None);
-        let mut responder = Responder::new(vault_r.clone(), None);
+        let mut vault = VaultMutex::create(SoftwareVault::default());
+        let mut initiator = Initiator::new(vault.clone(), None);
+        let mut responder = Responder::new(vault.clone(), None);
 
         let res = initiator.process(&[]);
         assert!(res.is_ok());
@@ -135,12 +142,10 @@ mod tests {
         let init = initiator.finalize().unwrap();
         let resp = responder.finalize().unwrap();
 
-        let mut vault_ii = vault_i.lock().unwrap();
-        let ciphertext_and_tag = vault_ii
+        let ciphertext_and_tag = vault
             .aead_aes_gcm_encrypt(init.encrypt_key(), b"Hello Alice", &[1u8; 12], &[])
             .unwrap();
-        let mut vault_rr = vault_r.lock().unwrap();
-        let plaintext = vault_rr
+        let plaintext = vault
             .aead_aes_gcm_decrypt(
                 resp.decrypt_key(),
                 ciphertext_and_tag.as_slice(),

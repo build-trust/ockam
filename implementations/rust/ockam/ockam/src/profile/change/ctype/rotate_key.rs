@@ -1,12 +1,11 @@
 use crate::history::ProfileChangeHistory;
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, Signature,
-    SignatureType,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
+    ProfileHelper, ProfileVault, Signature, SignatureType,
 };
 use ockam_vault_core::{
-    Hasher, Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer,
-    CURVE25519_SECRET_LENGTH,
+    Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
 };
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
@@ -72,7 +71,7 @@ impl RotateKeyChange {
     }
 }
 
-impl Profile {
+impl<V: ProfileVault> Profile<V> {
     pub(crate) fn rotate_key_event(
         &mut self,
         key_attributes: KeyAttributes,
@@ -115,7 +114,7 @@ impl Profile {
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CURRENT_CHANGE_VERSION,
+            ProfileHelper::CURRENT_CHANGE_VERSION,
             attributes.clone(),
             ProfileChangeType::RotateKey(change),
         );

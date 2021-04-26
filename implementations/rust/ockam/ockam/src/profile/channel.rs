@@ -2,20 +2,21 @@ use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 
 mod listener;
-use crate::{OckamError, Profile};
+use crate::{OckamError, Profile, ProfileVault, XXNewKeyExchanger};
 pub use listener::*;
 use ockam_channel::SecureChannel;
 
-impl Profile {
+impl<V: ProfileVault> Profile<V> {
     /// Create mutually authenticated secure channel
     pub async fn create_secure_channel<A: Into<Route>>(
         &mut self,
         ctx: &mut Context,
         route: A,
     ) -> Result<Address> {
+        let new_key_exchanger = XXNewKeyExchanger::new(self.vault.clone());
         let route = route.into();
         let channel =
-            SecureChannel::create_with_vault_sync(ctx, route.clone(), self.vault.start_another()?)
+            SecureChannel::create(ctx, route.clone(), &new_key_exchanger, self.vault.clone())
                 .await?;
 
         let contact = self.to_contact();
@@ -66,7 +67,7 @@ impl Profile {
         address: A,
     ) -> Result<()> {
         let clone = self.clone();
-        let listener = ProfileChannelListener::new(clone, self.vault.start_another()?);
+        let listener = ProfileChannelListener::new(clone, self.vault.clone());
         ctx.start_worker(address.into(), listener).await
     }
 }
@@ -74,6 +75,7 @@ impl Profile {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ProfileBuilder;
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -83,8 +85,8 @@ mod test {
             .execute(async move {
                 let vault = Vault::create(&ctx).unwrap();
 
-                let mut alice = Profile::create(&ctx, &vault).unwrap();
-                let mut bob = Profile::create(&ctx, &vault).unwrap();
+                let mut alice = ProfileBuilder::create(&ctx, &vault).unwrap();
+                let mut bob = ProfileBuilder::create(&ctx, &vault).unwrap();
 
                 bob.create_secure_channel_listener(&mut ctx, "bob_listener")
                     .await

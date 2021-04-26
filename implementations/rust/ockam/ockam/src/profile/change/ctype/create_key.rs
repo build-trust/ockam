@@ -2,7 +2,7 @@ use crate::history::ProfileChangeHistory;
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
-    ProfileVault, Signature, SignatureType,
+    ProfileHelper, ProfileVault, Signature, SignatureType,
 };
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
@@ -61,13 +61,13 @@ impl CreateKeyChange {
     }
 }
 
-impl Profile {
+impl<V: ProfileVault> Profile<V> {
     pub(crate) fn create_key_event_static(
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
         root_key: Option<&Secret>,
-        vault: &mut dyn ProfileVault,
+        vault: &mut V,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         let attributes = attributes.unwrap_or_default();
 
@@ -88,7 +88,7 @@ impl Profile {
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CURRENT_CHANGE_VERSION,
+            ProfileHelper::CURRENT_CHANGE_VERSION,
             attributes,
             ProfileChangeType::CreateKey(change),
         );

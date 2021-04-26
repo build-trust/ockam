@@ -23,10 +23,11 @@ use serde::{Deserialize, Serialize};
 /// # use ockam::{Profile, KeyAttributes, Vault};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
+/// # use ockam::ProfileBuilder;
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
 /// # executor.execute(async move {
 /// let vault = Vault::create(&ctx)?;
-/// let mut alice = Profile::create(&ctx, &vault)?;
+/// let mut alice = ProfileBuilder::create(&ctx, &vault)?;
 ///
 /// let truck_key_attributes = KeyAttributes::new(
 ///     "Truck management".to_string(),
@@ -51,10 +52,11 @@ use serde::{Deserialize, Serialize};
 /// # use ockam::{Profile, KeyAttributes, Vault};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
+/// # use ockam::ProfileBuilder;
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
 /// # executor.execute(async move {
 /// # let vault = Vault::create(&ctx)?;
-/// # let mut alice = Profile::create(&ctx, &vault)?;
+/// # let mut alice = ProfileBuilder::create(&ctx, &vault)?;
 /// #
 /// # let truck_key_attributes = KeyAttributes::new(
 /// #     "Truck management".to_string(),
@@ -98,7 +100,7 @@ impl Contact {
 
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    pub fn verify(&self, vault: &mut dyn ProfileVault) -> ockam_core::Result<()> {
+    pub fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
         self.change_history.verify_all_existing_events(vault)?;
@@ -119,7 +121,7 @@ impl Contact {
     pub fn verify_and_update(
         &mut self,
         change_events: Vec<ProfileChangeEvent>,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(self.change_events(), &change_events)?;
 

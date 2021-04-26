@@ -1,5 +1,5 @@
 use crate::state::State;
-use crate::XXError;
+use crate::{XXError, XXVault};
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug)]
@@ -12,13 +12,13 @@ enum ResponderState {
 
 /// Represents an XX responder
 #[derive(Debug)]
-pub struct Responder {
+pub struct Responder<V: XXVault> {
     state: ResponderState,
-    state_data: State,
+    state_data: State<V>,
 }
 
-impl Responder {
-    pub(crate) fn new(state_data: State) -> Self {
+impl<V: XXVault> Responder<V> {
+    pub(crate) fn new(state_data: State<V>) -> Self {
         Responder {
             state: ResponderState::DecodeMessage1,
             state_data,
@@ -26,7 +26,7 @@ impl Responder {
     }
 }
 
-impl KeyExchanger for Responder {
+impl<V: XXVault> KeyExchanger for Responder<V> {
     fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
         match self.state {
             ResponderState::DecodeMessage1 => {
@@ -58,9 +58,5 @@ impl KeyExchanger for Responder {
             ResponderState::Done => self.state_data.finalize_responder(),
             _ => Err(XXError::InvalidState.into()),
         }
-    }
-
-    fn finalize_box(self: Box<Self>) -> ockam_core::Result<CompletedKeyExchange> {
-        self.finalize()
     }
 }

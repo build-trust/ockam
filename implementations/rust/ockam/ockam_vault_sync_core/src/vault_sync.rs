@@ -2,17 +2,33 @@ use crate::{ResultMessage, Vault, VaultRequestMessage, VaultResponseMessage, Vau
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use rand::random;
-use std::sync::{Arc, Mutex};
 use tracing::debug;
 use zeroize::Zeroize;
 
-pub(crate) struct WorkerState {
+mod asymmetric_vault;
+mod hasher;
+mod key_id_vault;
+mod secret_vault;
+mod signer;
+mod symmetric_vault;
+mod verifier;
+
+pub use asymmetric_vault::*;
+pub use hasher::*;
+pub use key_id_vault::*;
+pub use secret_vault::*;
+pub use signer::*;
+pub use symmetric_vault::*;
+pub use verifier::*;
+
+/// Vault sync wrapper
+pub struct VaultSync {
     ctx: Context,
     vault_worker_address: Address,
     error_domain: &'static str,
 }
 
-impl WorkerState {
+impl VaultSync {
     pub(crate) async fn send_message(&self, m: VaultRequestMessage) -> Result<()> {
         self.ctx
             .send(Route::new().append(self.vault_worker_address.clone()), m)
@@ -29,20 +45,6 @@ impl WorkerState {
     }
 }
 
-impl WorkerState {
-    pub(crate) fn ctx(&self) -> &Context {
-        &self.ctx
-    }
-}
-
-pub(crate) enum VaultSyncState {
-    Worker { state: WorkerState },
-    Mutex { mutex: Arc<Mutex<dyn VaultTrait>> },
-}
-
-/// Vault sync wrapper
-pub struct VaultSync(pub(crate) VaultSyncState);
-
 impl Clone for VaultSync {
     fn clone(&self) -> Self {
         self.start_another().unwrap()
@@ -52,22 +54,12 @@ impl Clone for VaultSync {
 impl VaultSync {
     /// Start another Vault at the same address.
     pub fn start_another(&self) -> Result<Self> {
-        match &self.0 {
-            VaultSyncState::Worker { state } => {
-                let vault_worker_address = state.vault_worker_address.clone();
+        let vault_worker_address = self.vault_worker_address.clone();
 
-                let clone = VaultSync::create_with_worker(
-                    &state.ctx,
-                    vault_worker_address,
-                    state.error_domain,
-                )?;
+        let clone =
+            VaultSync::create_with_worker(&self.ctx, &vault_worker_address, self.error_domain)?;
 
-                Ok(clone)
-            }
-            VaultSyncState::Mutex { mutex } => Ok(Self(VaultSyncState::Mutex {
-                mutex: mutex.clone(),
-            })),
-        }
+        Ok(clone)
     }
 }
 
@@ -76,39 +68,26 @@ impl Zeroize for VaultSync {
 }
 
 impl VaultSync {
-    /// Create and start a new Vault using Mutex.
-    pub fn create_with_mutex<T: VaultTrait>(vault: T) -> Self {
-        debug!("Starting Mutex VaultSync");
-
-        Self(VaultSyncState::Mutex {
-            mutex: Arc::new(Mutex::new(vault)),
-        })
-    }
-
     /// Create and start a new Vault using Worker.
     pub fn create_with_worker(
         ctx: &Context,
-        vault_worker_address: Address,
+        vault: &Address,
         error_domain: &'static str,
     ) -> Result<Self> {
         let address: Address = random();
 
-        debug!("Starting Worker VaultSync at {}", &address);
+        debug!("Starting VaultSync at {}", &address);
 
         let ctx = block_future(
             &ctx.runtime(),
             async move { ctx.new_context(address).await },
         )?;
 
-        let state = WorkerState {
+        Ok(Self {
             ctx,
-            vault_worker_address,
+            vault_worker_address: vault.clone(),
             error_domain,
-        };
-
-        let vault = VaultSyncState::Worker { state };
-
-        Ok(Self(vault))
+        })
     }
 
     /// Start a Vault.
@@ -117,6 +96,6 @@ impl VaultSync {
 
         let vault_address = Vault::create_with_inner(ctx, vault)?;
 
-        Self::create_with_worker(ctx, vault_address, error_domain)
+        Self::create_with_worker(ctx, &vault_address, error_domain)
     }
 }

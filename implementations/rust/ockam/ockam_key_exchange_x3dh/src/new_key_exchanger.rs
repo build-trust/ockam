@@ -1,44 +1,33 @@
 use crate::{Initiator, Responder, X3dhVault};
 use ockam_key_exchange_core::NewKeyExchanger;
-use std::sync::{Arc, Mutex};
 
 /// Represents an XX NewKeyExchanger
-pub struct X3dhNewKeyExchanger {
-    vault_initiator: Arc<Mutex<dyn X3dhVault>>,
-    vault_responder: Arc<Mutex<dyn X3dhVault>>,
+pub struct X3dhNewKeyExchanger<V: X3dhVault> {
+    vault: V,
 }
 
-impl std::fmt::Debug for X3dhNewKeyExchanger {
+impl<V: X3dhVault> std::fmt::Debug for X3dhNewKeyExchanger<V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "X3dhNewKeyExchanger {{ vault_initiator, vault_responder }}"
-        )
+        write!(f, "X3dhNewKeyExchanger {{ vault }}")
     }
 }
 
-impl X3dhNewKeyExchanger {
+impl<V: X3dhVault> X3dhNewKeyExchanger<V> {
     /// Create a new XXNewKeyExchanger
-    pub fn new(
-        vault_initiator: Arc<Mutex<dyn X3dhVault>>,
-        vault_responder: Arc<Mutex<dyn X3dhVault>>,
-    ) -> Self {
-        Self {
-            vault_initiator,
-            vault_responder,
-        }
+    pub fn new(vault: V) -> Self {
+        Self { vault }
     }
 }
 
-impl NewKeyExchanger for X3dhNewKeyExchanger {
-    type Initiator = Initiator;
-    type Responder = Responder;
+impl<V: X3dhVault> NewKeyExchanger for X3dhNewKeyExchanger<V> {
+    type Initiator = Initiator<V>;
+    type Responder = Responder<V>;
 
-    fn initiator(&self) -> ockam_core::Result<Initiator> {
-        Ok(Initiator::new(self.vault_initiator.clone(), None))
+    fn initiator(&self) -> ockam_core::Result<Initiator<V>> {
+        Ok(Initiator::new(self.vault.clone(), None))
     }
 
-    fn responder(&self) -> ockam_core::Result<Responder> {
-        Ok(Responder::new(self.vault_responder.clone(), None))
+    fn responder(&self) -> ockam_core::Result<Responder<V>> {
+        Ok(Responder::new(self.vault.clone(), None))
     }
 }

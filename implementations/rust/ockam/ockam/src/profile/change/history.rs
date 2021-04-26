@@ -1,7 +1,7 @@
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
-    EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange, ProfileChangeEvent,
-    ProfileChangeProof, ProfileChangeType, ProfileVault, SignatureType,
+    EventIdentifier, KeyAttributes, OckamError, ProfileChange, ProfileChangeEvent,
+    ProfileChangeProof, ProfileChangeType, ProfileHelper, ProfileVault, SignatureType,
 };
 use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -106,7 +106,7 @@ impl ProfileChangeHistory {
     pub(crate) fn get_current_profile_update_public_key(
         existing_events: &[ProfileChangeEvent],
     ) -> ockam_core::Result<PublicKey> {
-        let key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
+        let key_attributes = KeyAttributes::new(ProfileHelper::PROFILE_UPDATE.to_string());
         Self::find_last_key_event_public_key(existing_events, &key_attributes)
     }
 
@@ -150,7 +150,7 @@ impl ProfileChangeHistory {
 impl ProfileChangeHistory {
     pub(crate) fn verify_all_existing_events(
         &self,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<()> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
@@ -165,7 +165,7 @@ impl ProfileChangeHistory {
     pub(crate) fn verify_event(
         existing_events: &[ProfileChangeEvent],
         new_change_event: &ProfileChangeEvent,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<bool> {
         let changes = new_change_event.changes();
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;

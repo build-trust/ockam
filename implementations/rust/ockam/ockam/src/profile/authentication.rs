@@ -26,10 +26,10 @@ impl AuthenticationProof {
 pub(crate) struct Authentication {}
 
 impl Authentication {
-    pub(crate) fn generate_proof(
+    pub(crate) fn generate_proof<V: ProfileVault>(
         channel_state: &[u8],
         secret: &Secret,
-        vault: &mut dyn ProfileVault,
+        vault: &mut V,
     ) -> ockam_core::Result<Vec<u8>> {
         let signature = vault.sign(secret, channel_state)?;
 
@@ -38,11 +38,11 @@ impl Authentication {
         serde_bare::to_vec(&proof).map_err(|_| OckamError::BareError.into())
     }
 
-    pub(crate) fn verify_proof(
+    pub(crate) fn verify_proof<V: ProfileVault>(
         channel_state: &[u8],
         responder_public_key: &PublicKey,
         proof: &[u8],
-        vault: &mut dyn ProfileVault,
+        vault: &mut V,
     ) -> ockam_core::Result<bool> {
         let proof: AuthenticationProof =
             serde_bare::from_slice(proof).map_err(|_| OckamError::BareError)?;
@@ -53,17 +53,17 @@ impl Authentication {
 
 #[cfg(test)]
 mod test {
-    use crate::{KeyAttributes, Profile};
+    use crate::{KeyAttributes, Profile, ProfileHelper};
     use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultSync;
+    use ockam_vault_sync_core::VaultMutex;
     use rand::prelude::*;
 
     #[test]
     fn authentication() {
-        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
-        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut alice = Profile::create(None, vault.clone()).unwrap();
+        let mut bob = Profile::create(None, vault.clone()).unwrap();
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];
@@ -83,10 +83,10 @@ mod test {
             .unwrap();
 
         // Alice&Bob add each other to contact list
-        let contact_alice = Profile::deserialize_contact(contact_alice.as_slice()).unwrap();
+        let contact_alice = ProfileHelper::deserialize_contact(contact_alice.as_slice()).unwrap();
         let alice_id = contact_alice.identifier().clone();
         bob.verify_and_add_contact(contact_alice).unwrap();
-        let contact_bob = Profile::deserialize_contact(contact_bob.as_slice()).unwrap();
+        let contact_bob = ProfileHelper::deserialize_contact(contact_bob.as_slice()).unwrap();
         let bob_id = contact_bob.identifier().clone();
         alice.verify_and_add_contact(contact_bob).unwrap();
 
@@ -100,12 +100,12 @@ mod test {
 
     #[test]
     fn authentication_profile_update_key_rotated() {
-        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
-        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut alice = Profile::create(None, vault.clone()).unwrap();
+        let mut bob = Profile::create(None, vault.clone()).unwrap();
 
-        let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
+        let root_key_attributes = KeyAttributes::new(ProfileHelper::PROFILE_UPDATE.to_string());
 
         alice.rotate_key(root_key_attributes.clone(), None).unwrap();
         bob.rotate_key(root_key_attributes.clone(), None).unwrap();
@@ -128,10 +128,10 @@ mod test {
             .unwrap();
 
         // Alice&Bob add each other to contact list
-        let contact_alice = Profile::deserialize_contact(contact_alice.as_slice()).unwrap();
+        let contact_alice = ProfileHelper::deserialize_contact(contact_alice.as_slice()).unwrap();
         let alice_id = contact_alice.identifier().clone();
         bob.verify_and_add_contact(contact_alice).unwrap();
-        let contact_bob = Profile::deserialize_contact(contact_bob.as_slice()).unwrap();
+        let contact_bob = ProfileHelper::deserialize_contact(contact_bob.as_slice()).unwrap();
         let bob_id = contact_bob.identifier().clone();
         alice.verify_and_add_contact(contact_bob).unwrap();
 
@@ -145,12 +145,12 @@ mod test {
 
     #[test]
     fn authentication_profile_update_key_rotated_after_first_handshake() {
-        let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
-        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut alice = Profile::create(None, vault.clone()).unwrap();
+        let mut bob = Profile::create(None, vault.clone()).unwrap();
 
-        let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
+        let root_key_attributes = KeyAttributes::new(ProfileHelper::PROFILE_UPDATE.to_string());
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];
@@ -170,10 +170,10 @@ mod test {
             .unwrap();
 
         // Alice&Bob add each other to contact list
-        let contact_alice = Profile::deserialize_contact(contact_alice.as_slice()).unwrap();
+        let contact_alice = ProfileHelper::deserialize_contact(contact_alice.as_slice()).unwrap();
         let alice_id = contact_alice.identifier().clone();
         bob.verify_and_add_contact(contact_alice).unwrap();
-        let contact_bob = Profile::deserialize_contact(contact_bob.as_slice()).unwrap();
+        let contact_bob = ProfileHelper::deserialize_contact(contact_bob.as_slice()).unwrap();
         let bob_id = contact_bob.identifier().clone();
         alice.verify_and_add_contact(contact_bob).unwrap();
 
@@ -187,17 +187,18 @@ mod test {
         let alice_index = alice.change_events().len();
         alice.rotate_key(root_key_attributes.clone(), None).unwrap();
         let alice_changes = &alice.change_events()[alice_index..];
-        let alice_changes = Profile::serialize_change_events(&alice_changes).unwrap();
+        let alice_changes = ProfileHelper::serialize_change_events(&alice_changes).unwrap();
         let bob_index = bob.change_events().len();
         bob.rotate_key(root_key_attributes.clone(), None).unwrap();
         let bob_changes = &bob.change_events()[bob_index..];
-        let bob_changes = Profile::serialize_change_events(&bob_changes).unwrap();
+        let bob_changes = ProfileHelper::serialize_change_events(&bob_changes).unwrap();
 
-        let alice_changes = Profile::deserialize_change_events(alice_changes.as_slice()).unwrap();
+        let alice_changes =
+            ProfileHelper::deserialize_change_events(alice_changes.as_slice()).unwrap();
         bob.verify_and_update_contact(&alice_id, alice_changes)
             .unwrap();
 
-        let bob_changes = Profile::deserialize_change_events(bob_changes.as_slice()).unwrap();
+        let bob_changes = ProfileHelper::deserialize_change_events(bob_changes.as_slice()).unwrap();
         alice
             .verify_and_update_contact(&bob_id, bob_changes)
             .unwrap();

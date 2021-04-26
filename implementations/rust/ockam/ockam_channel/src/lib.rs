@@ -17,34 +17,43 @@
 mod error;
 mod secure_channel;
 mod secure_channel_listener;
+mod secure_channel_worker;
+mod traits;
 
 pub use error::*;
 pub use secure_channel::*;
 pub use secure_channel_listener::*;
+pub use secure_channel_worker::*;
+pub use traits::*;
 
 #[cfg(test)]
 mod tests {
     use crate::SecureChannel;
     use ockam_core::Route;
+    use ockam_key_exchange_xx::XXNewKeyExchanger;
     use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault_sync_core::{Vault, VaultSync};
 
     #[test]
     fn simplest_channel() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let vault_address = Vault::create_with_inner(&ctx, SoftwareVault::default())?;
+                let vault = Vault::create_with_inner(&ctx, SoftwareVault::default())?;
+                let vault_sync = VaultSync::create_with_worker(&ctx, &vault, "ERROR").unwrap();
+                let new_key_exchanger = XXNewKeyExchanger::new(vault_sync.clone());
                 SecureChannel::create_listener(
                     &ctx,
                     "secure_channel_listener".to_string(),
-                    &vault_address,
+                    new_key_exchanger.clone(),
+                    vault_sync.clone(),
                 )
                 .await?;
                 let initiator = SecureChannel::create(
                     &mut ctx,
                     Route::new().append("secure_channel_listener"),
-                    &vault_address,
+                    &new_key_exchanger,
+                    vault_sync,
                 )
                 .await?;
 

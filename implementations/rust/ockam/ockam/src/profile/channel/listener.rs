@@ -1,19 +1,18 @@
-use crate::{async_worker, Contact, OckamError, Profile};
+use crate::{async_worker, Contact, OckamError, Profile, ProfileVault, XXNewKeyExchanger};
 use ockam_channel::{CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel};
 use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
-use ockam_vault_sync_core::VaultSync;
 use rand::random;
 use serde::{Deserialize, Serialize};
 
-pub struct ProfileChannelListener {
-    profile: Profile, // TODO: Avoid copying profile
-    vault: VaultSync,
+pub struct ProfileChannelListener<V: ProfileVault> {
+    profile: Profile<V>, // TODO: Avoid copying profile
+    vault: V,
     listener_address: Option<Address>,
 }
 
-impl ProfileChannelListener {
-    pub fn new(profile: Profile, vault: VaultSync) -> Self {
+impl<V: ProfileVault> ProfileChannelListener<V> {
+    pub fn new(profile: Profile<V>, vault: V) -> Self {
         ProfileChannelListener {
             profile,
             vault,
@@ -23,18 +22,16 @@ impl ProfileChannelListener {
 }
 
 #[async_worker]
-impl Worker for ProfileChannelListener {
+impl<V: ProfileVault> Worker for ProfileChannelListener<V> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         let listener_address: Address = random();
-        SecureChannel::create_listener_with_vault_sync(
-            ctx,
-            listener_address.clone(),
-            self.vault.start_another()?,
-        )
-        .await?;
+        let new_key_exchanger = XXNewKeyExchanger::new(self.vault.clone());
+        let vault = self.vault.clone();
+        SecureChannel::create_listener(ctx, listener_address.clone(), new_key_exchanger, vault)
+            .await?;
 
         self.listener_address = Some(listener_address);
 
