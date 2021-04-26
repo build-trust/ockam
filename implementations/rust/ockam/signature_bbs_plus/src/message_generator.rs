@@ -1,7 +1,7 @@
-use signature_bls::{PublicKey, SecretKey};
 use bls12_381_plus::{ExpandMsgXmd, G1Projective};
 use core::convert::TryFrom;
 use group::Curve;
+use signature_bls::{PublicKey, SecretKey};
 use signature_core::lib::*;
 
 const DATA_SIZE: usize = 201;

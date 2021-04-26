@@ -1,9 +1,9 @@
 use crate::{MessageGenerators, PokSignatureProof};
 use blake2::VarBlake2b;
-use signature_bls::PublicKey;
 use bls12_381_plus::Scalar;
 use digest::{Update, VariableOutput};
 use rand_core::{CryptoRng, RngCore};
+use signature_bls::PublicKey;
 use signature_core::{constants::*, lib::*};
 
 /// This struct represents an Verifier of signatures.

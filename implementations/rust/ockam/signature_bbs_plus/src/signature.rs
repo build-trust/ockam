@@ -1,6 +1,5 @@
 use crate::MessageGenerators;
 use blake2::Blake2b;
-use signature_bls::{PublicKey, SecretKey};
 use bls12_381_plus::{
     multi_miller_loop, G1Affine, G1Projective, G2Affine, G2Prepared, G2Projective, Scalar,
 };
@@ -15,6 +14,7 @@ use serde::{
     ser::SerializeTuple,
     Deserialize, Deserializer, Serialize, Serializer,
 };
+use signature_bls::{PublicKey, SecretKey};
 use signature_core::{error::Error, lib::*};
 use subtle::{Choice, ConditionallySelectable, CtOption};
 use typenum::{U128, U64};

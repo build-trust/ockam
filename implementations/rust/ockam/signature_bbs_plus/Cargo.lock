@@ -407,7 +407,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "blake2",
  "bls12_381_plus",

@@ -1,6 +1,6 @@
 use crate::{BlindSignature, BlindSignatureContext, MessageGenerators, Signature};
-use signature_bls::{PublicKey, SecretKey};
 use rand_core::{CryptoRng, RngCore};
+use signature_bls::{PublicKey, SecretKey};
 use signature_core::error::Error;
 use signature_core::lib::*;
 
