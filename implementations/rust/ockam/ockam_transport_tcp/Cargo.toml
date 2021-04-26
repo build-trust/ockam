@@ -23,7 +23,7 @@ default = ["std"]
 std = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.11.0" }
+ockam_core = { path = "../ockam_core", version = "0.11.1" }
 ockam_node = { path = "../ockam_node", version = "0.9.0" }
 serde_bare = "0.3.0"
 serde = {version = "1.0.120", features = ["derive"]}
