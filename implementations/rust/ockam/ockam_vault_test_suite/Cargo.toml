@@ -15,4 +15,4 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "0.11.1"}
-ockam_vault_core = {path = "../ockam_vault_core", version = "0.5.0"}
+ockam_vault_core = {path = "../ockam_vault_core", version = "0.5.1"}
