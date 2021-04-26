@@ -24,8 +24,8 @@ alloc = ["ockam_core/alloc", "serde/alloc"]
 no_std = ["ockam_core/no_std", "serde"]
 
 [dependencies]
-bbs = { version = "0.3", path = "../signature_bbs_plus", package = "signature_bbs_plus" }
-bls = { version = "0.1", path = "../signature_bls", package = "signature_bls" }
+signature_bbs_plus = { version = "0.3", path = "../signature_bbs_plus", package = "signature_bbs_plus" }
+signature_bls = { version = "0.1", path = "../signature_bls", package = "signature_bls" }
 bls12_381_plus = "0.4"
 ockam_core = {path = "../ockam_core", version = "0.11.1"}
 ockam_node = {path = "../ockam_node", version = "0.9.1", optional = true}

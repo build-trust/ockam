@@ -1,5 +1,5 @@
 use super::CredentialAttribute;
-use bbs::BlindSignature;
+use signature_bbs_plus::BlindSignature;
 use serde::{Deserialize, Serialize};
 
 /// A partial credential that will be completed by the holder

@@ -4,7 +4,7 @@ use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use digest::{Update, VariableOutput};
 use group::Curve;
 use rand_core::{CryptoRng, RngCore};
-use short_group_signatures_core::{error::Error, lib::*};
+use signature_core::{error::Error, lib::*};
 
 /// A Prover is whomever receives signatures or uses them to generate proofs.
 /// Provided are methods for 2PC where some are only known to the prover and a blind signature

@@ -1,5 +1,5 @@
 use super::CredentialAttribute;
-use bbs::PokSignatureProof;
+use signature_bbs_plus::PokSignatureProof;
 use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 

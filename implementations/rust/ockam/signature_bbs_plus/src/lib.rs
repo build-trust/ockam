@@ -11,7 +11,7 @@
 )]
 
 #[macro_use]
-extern crate short_group_signatures_core;
+extern crate signature_core;
 
 /// The maximum number of messages that can be signed by this crate
 pub const MAX_MSGS: usize = 128;
@@ -30,13 +30,13 @@ mod verifier;
 
 pub use blind_signature::*;
 pub use blind_signature_context::*;
-pub use bls::{ProofOfPossession, PublicKey, SecretKey, Signature as BlsSignature};
 pub use issuer::*;
 pub use message_generator::*;
 pub use pok_signature::*;
 pub use pok_signature_proof::*;
 pub use prover::*;
 pub use signature::*;
+pub use signature_bls::{ProofOfPossession, PublicKey, SecretKey, Signature as BlsSignature};
 #[cfg(test)]
 pub use util::MockRng;
 pub use verifier::*;

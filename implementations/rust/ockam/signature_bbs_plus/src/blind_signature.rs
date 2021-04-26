@@ -1,6 +1,6 @@
 use crate::{MessageGenerators, Signature, MAX_MSGS};
 use blake2::Blake2b;
-use bls::SecretKey;
+use signature_bls::SecretKey;
 use bls12_381_plus::{G1Projective, Scalar};
 use core::convert::TryFrom;
 use digest::Digest;
@@ -8,7 +8,7 @@ use ff::Field;
 use group::Curve;
 use hmac_drbg::HmacDRBG;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use short_group_signatures_core::{error::Error, lib::*};
+use signature_core::{error::Error, lib::*};
 use subtle::CtOption;
 use typenum::U64;
 

@@ -30,8 +30,8 @@ pub use schema::*;
 use util::*;
 pub use verifier::*;
 
-use bbs::Signature;
 use serde::{Deserialize, Serialize};
+use signature_bbs_plus::Signature;
 
 /// A credential that can be presented
 #[derive(Debug, Clone, Serialize, Deserialize)]

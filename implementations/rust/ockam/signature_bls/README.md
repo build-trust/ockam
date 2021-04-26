@@ -18,7 +18,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-signature_bls = "0.1.0"
+signature_bls = "0.1.1"
 ```
 
 ## Crate Features
@@ -29,7 +29,7 @@ disabled as follows
 
 ```
 [dependencies]
-signature_bls = { version = "0.1.0", default-features = false }
+signature_bls = { version = "0.1.1", default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

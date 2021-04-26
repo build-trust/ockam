@@ -1,5 +1,5 @@
-use bbs::BlindSignatureContext;
 use serde::{Deserialize, Serialize};
+use signature_bbs_plus::BlindSignatureContext;
 
 /// A request for a credential generated from a credential offer
 #[derive(Debug, Deserialize, Serialize)]

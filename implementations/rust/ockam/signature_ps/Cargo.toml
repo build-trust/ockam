@@ -16,7 +16,7 @@ description = """The Ockam BBS+ signature impementation.
 
 [dependencies]
 blake2 = "0.9"
-bls = { version = "0.1", package = "signature_bls" }
+signature_bls = { version = "0.1", package = "signature_bls" }
 bls12_381_plus = "0.4"
 digest = { version = "0.9", default-features = false }
 ff = "0.9"

@@ -5,7 +5,7 @@ use digest::Update;
 use ff::Field;
 use group::Curve;
 use rand_core::{CryptoRng, RngCore};
-use short_group_signatures_core::{error::Error, lib::*};
+use signature_core::{error::Error, lib::*};
 
 /// Proof of Knowledge of a Signature that is used by the prover
 /// to construct `PoKOfSignatureProof`.

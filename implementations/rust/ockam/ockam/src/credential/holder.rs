@@ -1,5 +1,5 @@
 use super::*;
-use bbs::{MessageGenerators, Prover, PublicKey};
+use signature_bbs_plus::{MessageGenerators, Prover, PublicKey};
 use ockam_core::lib::{HashSet, Vec};
 use rand::{CryptoRng, RngCore};
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};

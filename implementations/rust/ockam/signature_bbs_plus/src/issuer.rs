@@ -1,8 +1,8 @@
 use crate::{BlindSignature, BlindSignatureContext, MessageGenerators, Signature};
-use bls::{PublicKey, SecretKey};
+use signature_bls::{PublicKey, SecretKey};
 use rand_core::{CryptoRng, RngCore};
-use short_group_signatures_core::error::Error;
-use short_group_signatures_core::lib::*;
+use signature_core::error::Error;
+use signature_core::lib::*;
 
 /// This struct represents an Issuer of signatures or Signer.
 /// Provided are methods for signing regularly where all messages are known
