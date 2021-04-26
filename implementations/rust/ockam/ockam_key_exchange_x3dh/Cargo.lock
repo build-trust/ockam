@@ -292,7 +292,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
