@@ -1,6 +1,6 @@
 use super::CredentialAttribute;
-use signature_bbs_plus::BlindSignature;
 use serde::{Deserialize, Serialize};
+use signature_bbs_plus::BlindSignature;
 
 /// A partial credential that will be completed by the holder
 #[derive(Debug, Clone, Serialize, Deserialize)]

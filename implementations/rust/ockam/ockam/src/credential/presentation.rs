@@ -1,8 +1,7 @@
 use super::CredentialAttribute;
-use signature_bbs_plus::PokSignatureProof;
 use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
-
+use signature_bbs_plus::PokSignatureProof;
 /// Indicates how to present a credential
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CredentialPresentation {

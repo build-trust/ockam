@@ -1,8 +1,8 @@
 use super::*;
-use signature_bbs_plus::{MessageGenerators, Prover, PublicKey};
 use ockam_core::lib::{HashSet, Vec};
 use rand::{CryptoRng, RngCore};
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
+use signature_bbs_plus::{MessageGenerators, Prover, PublicKey};
 use signature_core::lib::*;
 
 /// The label to indicate the secretid attribute in a schema/credential

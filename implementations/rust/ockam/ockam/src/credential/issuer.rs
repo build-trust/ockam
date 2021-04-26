@@ -1,9 +1,10 @@
 use super::*;
-use signature_bbs_plus::{Issuer as BbsIssuer, MessageGenerators, PublicKey, SecretKey};
-use signature_bls::ProofOfPossession;
+
 use core::convert::TryFrom;
 use ockam_core::lib::{HashMap, String, Vec};
 use rand::{CryptoRng, RngCore};
+use signature_bbs_plus::{Issuer as BbsIssuer, MessageGenerators, PublicKey, SecretKey};
+use signature_bls::ProofOfPossession;
 use signature_core::lib::*;
 
 /// Represents an issuer of a credential
