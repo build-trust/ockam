@@ -1,4 +1,4 @@
-# ockam_core
+# ockam_transport_tcp
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_tcp = "0.6.0"
+ockam_transport_tcp = "0.6.1"
 ```
 
 This crate requires the rust standard library `"std"`.
