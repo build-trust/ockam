@@ -1,9 +1,10 @@
+use colored::*;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use webbrowser;
 
-const GITHUB_CLIENT_ID: &'static str = "put_client_id_here";
+const GITHUB_CLIENT_ID: &'static str = "609323e5ba23958cb2f5";
 
 pub async fn post(
     client: &reqwest::Client,
@@ -60,16 +61,32 @@ pub async fn authenticate() -> Result<(), reqwest::Error> {
     )
     .await?;
 
-    println!(
-        "Put this code on the browser: {}",
-        login_response["user_code"]
-    );
-
-    println!(
-        "
+    match login_response.get("user_code") {
+        Some(user_code) => {
+            println!("Put this code on the browser: {}", user_code);
+            println!(
+                "{}",
+                "
+-----------------------------------------------
+    "
+                .truecolor(236, 67, 45)
+            );
+        }
+        None => {
+            println!("{}", "[ERROR]".red());
+            for key in login_response.keys() {
+                println!("Error occurs during device login: {}", key);
+            }
+            println!(
+                "{}",
+                "
 -----------------------------------------------
         "
-    );
+                .truecolor(236, 67, 45)
+            );
+            return Ok(());
+        }
+    }
 
     let duration = std::time::Duration::from_secs(2);
     std::thread::sleep(duration);
@@ -96,7 +113,7 @@ pub async fn authenticate() -> Result<(), reqwest::Error> {
     )
     .await?;
 
-    println!("github authentication!");
+    println!("Github authenticated!");
 
     Ok(())
 }
