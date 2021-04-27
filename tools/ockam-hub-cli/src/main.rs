@@ -14,10 +14,25 @@ enum Cli {
     },
 }
 
-fn auth_with(app: String) -> Result<(), process::ExitStatus> {
+async fn auth_with(app: String) -> Result<(), process::ExitStatus> {
     match &app[..] {
         "github" => {
-            github::authenticate();
+            println!(
+                "
+ .88888.           dP                           
+d8'   `8b          88                           
+88     88 .d8888b. 88  .dP  .d8888b. 88d8b.d8b. 
+88     88 88'  `\"\" 88888\"   88'  `88 88'`88'`88 
+Y8.   .8P 88.  ... 88  `8b. 88.  .88 88  88  88 
+ `8888P'  `88888P' dP   `YP `88888P8 dP  dP  dP 
+-----------------------------------------------
+"
+            );
+
+            if let Err(error) = github::authenticate().await {
+                println!("Error authenticating github {:?}", error);
+                process::exit(1)
+            };
             Ok(())
         }
         _ => {
@@ -27,8 +42,9 @@ fn auth_with(app: String) -> Result<(), process::ExitStatus> {
     }
 }
 
-fn main() -> Result<(), process::ExitStatus> {
+#[tokio::main]
+async fn main() -> Result<(), process::ExitStatus> {
     match Cli::from_args() {
-        Cli::Auth { app } => auth_with(app),
+        Cli::Auth { app } => auth_with(app).await,
     }
 }
