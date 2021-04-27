@@ -1,6 +1,7 @@
 mod auth;
 
 use auth::github;
+use colored::Colorize;
 use std::process;
 use structopt::StructOpt;
 
@@ -17,18 +18,6 @@ enum Cli {
 async fn auth_with(app: String) -> Result<(), process::ExitStatus> {
     match &app[..] {
         "github" => {
-            println!(
-                "
- .88888.           dP                           
-d8'   `8b          88                           
-88     88 .d8888b. 88  .dP  .d8888b. 88d8b.d8b. 
-88     88 88'  `\"\" 88888\"   88'  `88 88'`88'`88 
-Y8.   .8P 88.  ... 88  `8b. 88.  .88 88  88  88 
- `8888P'  `88888P' dP   `YP `88888P8 dP  dP  dP 
------------------------------------------------
-"
-            );
-
             if let Err(error) = github::authenticate().await {
                 println!("Error authenticating github {:?}", error);
                 process::exit(1)
@@ -45,6 +34,22 @@ Y8.   .8P 88.  ... 88  `8b. 88.  .88 88  88  88
 #[tokio::main]
 async fn main() -> Result<(), process::ExitStatus> {
     match Cli::from_args() {
-        Cli::Auth { app } => auth_with(app).await,
+        Cli::Auth { app } => {
+            println!(
+                "{}{}\n",
+                "
+ .88888.           dP                           
+d8'   `8b          88                           
+88     88 .d8888b. 88  .dP  .d8888b. 88d8b.d8b. 
+88     88 88'  `\"\" 88888\"   88'  `88 88'`88'`88 
+Y8.   .8P 88.  ... 88  `8b. 88.  .88 88  88  88 
+ `8888P'  `88888P' dP   `YP `88888P8 dP  dP  dP 
+"
+                .truecolor(82, 199, 234),
+                "-----------------------------------------------".truecolor(236, 67, 45)
+            );
+
+            auth_with(app).await
+        }
     }
 }
