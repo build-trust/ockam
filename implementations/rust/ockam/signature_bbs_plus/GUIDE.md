@@ -10,7 +10,7 @@ is trusted.
 
 The BBS+ signature scheme provides a higher level of privacy compared to traditional digital signature schemes that only sign one message.
 
-In the following example, how these 'blind signatures' can be constructed.
+In the following example, we show how these 'blind signatures' can be constructed.
 
 ### Generating Keys
 
