@@ -1,7 +1,16 @@
+# Creating privacy-preserving signatures in Rust with BBS+
 
-In order to support a variety of proving protocols, this crate implements the BBS+ signature scheme which can be used to generate zero-knowledge proofs about signed attributes and the signatures themselves.
+In a typical digital signature scheme, the signer signs a single message with his or her private key. In BBS+ the signer signs a set of messages, and the holder of these signatures can
+selectively reveal them to verifying parties.
 
-## API
+This feature of the BBS+ signature scheme can be used to generate zero-knowledge proofs about signed attributes and the signatures themselves.
+
+The verifying parties are unable to correlate the identity of the signature holder, based on the signature proof provided. At the same time, the parties can verify that the identity
+is trusted.
+
+The BBS+ signature scheme provides a higher level of privacy compared to traditional digital signature schemes that only sign one message.
+
+In the following example, how these 'blind signatures' can be constructed.
 
 ### Generating Keys
 
