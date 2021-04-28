@@ -1,25 +1,37 @@
 # Creating privacy-preserving signatures in Rust with BBS+
 
-In a typical digital signature scheme, the signer signs a single message with his or her private key. In BBS+ the signer signs a set of messages, and the holder of these signatures can
-selectively reveal them to verifying parties.
+BBS+ is a short-group digital-signature scheme that allows selective disclosure
+of signed messages.
 
-This feature of the BBS+ signature scheme can be used to generate zero-knowledge proofs about signed attributes and the signatures themselves.
+* A `signer` can sign a collection of messages __with a single signature__ to
+attest to the information contained in those messages.
 
-The verifying parties are unable to correlate the identity of the signature holder, based on the signature proof provided. At the same time, the parties can verify that the identity
-is trusted.
+* A `holder` collects this signature from the `signer` and then presents a fast
+and small zero-knowledge proof-of-knowledge of the signature to a `verifier`.
 
-The BBS+ signature scheme provides a higher level of privacy compared to traditional digital signature schemes that only sign one message.
+* A `verifier` knows the signer's public key and trusts information that is
+attested by the `signer`.
 
-In the following example, we show how these 'blind signatures' can be constructed.
+* With BBS+, the `holder` can then selectively reveal a subset of signature
+messages covered by one signature.
+
+* In typical digital signature schemes a `holder` has to reveal the entire signed
+data (all messages) to a `verifier` .. this typically includes one or more identifiers
+of the subject of an attestation and other information that a verifier doesn't need
+to know.
+
+* Since BBS+ allows for selective disclosure, it allows us to design anonymous,
+privacy preserving attestations and credentials.
+
+Let's step thorough how we can create such credentials with
+the `signature_bbs_plus` crate:
 
 ### Generating Keys
 
-The BBS+ scheme allows the Signer and Holder to be two separate parties. This is often the case, particularly in the
-case of [verifiable credentials](https://www.w3.org/TR/vc-data-model/).
-
-To generate a new key pair for signing, call the `Issuer::new_keys` API. A Short Group Signature allows a set of messages
-to be signed with a single key. BBS+ can sign any number of messages at the expense of a bigger public key. This implementation
-uses curve BLS12-381 and Blake2b-512 as a hash.
+To generate a new key pair for signing, call the `Issuer::new_keys` API. A
+Short Group Signature allows a set of messages to be signed with a single key.
+BBS+ can sign any number of messages at the expense of a bigger public key.
+This implementation uses curve BLS12-381 and Blake2b-512 as a hash.
 
 ```rust
 let (public_key, secret_key) = Issuer::new_keys(&mut rand::thread_rng())?;
@@ -27,8 +39,9 @@ let (public_key, secret_key) = Issuer::new_keys(&mut rand::thread_rng())?;
 
 ### Message Generators
 
-Message Generators are per-message cryptographic information input into the BBS+ algorithm. They are derived from the
-public key, and the number of messages the key will be used to sign.
+Message Generators are per-message cryptographic information input into the
+BBS+ algorithm. They are derived from the public key, and the number of
+messages the key will be used to sign.
 
 ### Signing
 
@@ -50,11 +63,14 @@ let signature = Issuer::sign(&secret_key, &generators, &messages)?;
 
 ### Blinding Signatures
 
-To create blind signatures, we first need to establish a blind signature context. This is done with the `Prover::new_blind_signature_context`
-API. This function takes an optional slice of pre-committed messages. In this example, an empty slice is used, indicating
-no pre-committed messages. The generators, a random nonce, and the RNG are also used.
+To create blind signatures, we first need to establish a blind signature context.
+This is done with the `Prover::new_blind_signature_context` API. This function
+takes an optional slice of pre-committed messages. In this example, an empty
+slice is used, indicating no pre-committed messages. The generators, a random
+nonce, and the RNG are also used.
 
-With the context and secret key, the blind signature is created by calling `Issuer::blind_sign`.
+With the context and secret key, the blind signature is created by
+calling `Issuer::blind_sign`.
 
 ```rust
 let nonce = Nonce::random(&mut rng);
@@ -74,8 +90,9 @@ let blind_signature =
 
 ### Unblinding Signatures
 
-Unblinding the signature uses the `blinding` information provided by the blinding signature context. The function `to_unblinded`
-takes the `blinding` and returns a `Signature`.
+Unblinding the signature uses the `blinding` information provided by the
+blinding signature context. The function `to_unblinded` takes the `blinding`
+and returns a `Signature`.
 
 ```rust
 let signature = blind_signature.to_unblinded(blinding);
@@ -83,8 +100,9 @@ let signature = blind_signature.to_unblinded(blinding);
 
 ### Verification
 
-Once the signature has been unblinded, it can be used to verify the messages, using the public key. This is done by calling
-the `Signature::verify` function. Calling `Choice::unwrap_u8` on the result of `verify` returns 1 when verification succeeds.
+Once the signature has been unblinded, it can be used to verify the messages,
+using the public key. This is done by calling the `Signature::verify` function.
+Calling `Choice::unwrap_u8` on the result of `verify` returns 1 when verification succeeds.
 
 ```rust
 let signature = blind_signature.to_unblinded(blinding);
