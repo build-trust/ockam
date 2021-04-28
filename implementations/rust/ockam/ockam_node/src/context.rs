@@ -36,7 +36,7 @@ impl Drop for Context {
         trace!("Running Context::drop()");
 
         if let Err(e) = block_future(self.rt.as_ref(), async { self.stop_worker(addr).await }) {
-            error!("Error occured during Context::drop(): {}", e);
+            trace!("Error occured during Context::drop(): {}", e);
         };
     }
 }
