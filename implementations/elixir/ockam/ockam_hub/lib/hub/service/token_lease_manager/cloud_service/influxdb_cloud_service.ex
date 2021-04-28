@@ -1,5 +1,5 @@
 defmodule Ockam.TokenLeaseManager.CloudServiceInfluxdb do
-  @behaviour Ockam.TokenLeaseManager.TokenCloudService
+  @behaviour Ockam.TokenLeaseManager.CloudService
 
   alias Ockam.TokenLeaseManager.Lease
 
