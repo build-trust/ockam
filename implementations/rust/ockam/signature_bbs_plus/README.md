@@ -164,7 +164,7 @@ fn main() -> Result<(), Error> {
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
-[main-ockam-crate-link]: https://crates.io/crates/ocka
+[main-ockam-crate-link]: https://crates.io/crates/ockam
 [crate-image]: https://img.shields.io/crates/v/signature_bbs_plus.svg
 [crate-link]: https://crates.io/crates/signature_bbs_plus
 
