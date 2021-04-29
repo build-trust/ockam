@@ -62,8 +62,8 @@ mod test {
     fn authentication() {
         let vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-        let mut alice = Profile::create(None, &vault).unwrap();
-        let mut bob = Profile::create(None, &vault).unwrap();
+        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];
@@ -102,8 +102,8 @@ mod test {
     fn authentication_profile_update_key_rotated() {
         let vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-        let mut alice = Profile::create(None, &vault).unwrap();
-        let mut bob = Profile::create(None, &vault).unwrap();
+        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
@@ -147,8 +147,8 @@ mod test {
     fn authentication_profile_update_key_rotated_after_first_handshake() {
         let vault = VaultSync::create_with_mutex(SoftwareVault::default());
 
-        let mut alice = Profile::create(None, &vault).unwrap();
-        let mut bob = Profile::create(None, &vault).unwrap();
+        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
+        let mut bob = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 

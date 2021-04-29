@@ -20,11 +20,13 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::{Profile, KeyAttributes};
-/// # use ockam_vault_sync_core::VaultSync;
+/// # use ockam::{Profile, KeyAttributes, Vault};
 /// #
-/// let vault = VaultSync::create_with_mutex(SoftwareVault::default());
-/// let mut alice = Profile::create(None, &vault)?;
+/// # fn main() -> ockam_core::Result<()> {
+/// # let (mut ctx, mut executor) = ockam_node::start_node();
+/// # executor.execute(async move {
+/// let vault = Vault::create(&ctx)?;
+/// let mut alice = Profile::create(&ctx, &vault)?;
 ///
 /// let truck_key_attributes = KeyAttributes::new(
 ///     "Truck management".to_string(),
@@ -35,18 +37,24 @@ use serde::{Deserialize, Serialize};
 /// let alice_contact = alice.to_contact();
 ///
 /// let public_key = alice.get_public_key(&truck_key_attributes)?;
+/// # ctx.stop().await.unwrap();
 /// # Ok::<(), ockam_core::Error>(())
+/// # }).unwrap();
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// Sending Contact over the network
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::{Profile, KeyAttributes};
-/// # use ockam_vault_sync_core::VaultSync;
+/// # use ockam::{Profile, KeyAttributes, Vault};
 /// #
-/// # let vault = VaultSync::create_with_mutex(SoftwareVault::default());
-/// # let mut alice = Profile::create(None, &vault)?;
+/// # fn main() -> ockam_core::Result<()> {
+/// # let (mut ctx, mut executor) = ockam_node::start_node();
+/// # executor.execute(async move {
+/// # let vault = Vault::create(&ctx)?;
+/// # let mut alice = Profile::create(&ctx, &vault)?;
 /// #
 /// # let truck_key_attributes = KeyAttributes::new(
 /// #     "Truck management".to_string(),
@@ -56,7 +64,11 @@ use serde::{Deserialize, Serialize};
 /// #
 /// // Send this over the network
 /// let alice_contact_binary = alice.serialize_to_contact()?;
+/// # ctx.stop().await.unwrap();
 /// # Ok::<(), ockam_core::Error>(())
+/// # }).unwrap();
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Contact {

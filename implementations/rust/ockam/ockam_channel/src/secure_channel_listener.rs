@@ -1,6 +1,6 @@
 use crate::SecureChannel;
 use async_trait::async_trait;
-use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
+use ockam_core::{Address, Message, Result, Route, Routed, TransportMessage, Worker};
 use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
@@ -11,31 +11,47 @@ use tracing::debug;
 /// SecureChannelListener listens for messages from SecureChannel initiators
 /// and creates responder SecureChannels
 pub struct SecureChannelListener {
-    vault_worker_address: Address,
+    vault: VaultSync,
 }
 
 impl SecureChannelListener {
     /// Create a new SecureChannelListener.
-    pub fn new(vault_worker_address: Address) -> Self {
-        Self {
-            vault_worker_address,
-        }
+    pub fn new(vault: VaultSync) -> Self {
+        Self { vault }
     }
 }
 
 /// SecureChannelListener message wrapper.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub enum SecureChannelListenerMessage {
-    /// Create a new responder channel.
-    CreateResponderChannel {
-        /// Channel information.
-        payload: Vec<u8>,
-    },
+pub struct CreateResponderChannelMessage {
+    payload: Vec<u8>,
+    callback_address: Option<Address>,
+}
+
+impl CreateResponderChannelMessage {
+    /// Channel information.
+    pub fn payload(&self) -> &Vec<u8> {
+        &self.payload
+    }
+    /// Callback Address
+    pub fn callback_address(&self) -> &Option<Address> {
+        &self.callback_address
+    }
+}
+
+impl CreateResponderChannelMessage {
+    /// Create message using payload and callback_address
+    pub fn new(payload: Vec<u8>, callback_address: Option<Address>) -> Self {
+        CreateResponderChannelMessage {
+            payload,
+            callback_address,
+        }
+    }
 }
 
 #[async_trait]
 impl Worker for SecureChannelListener {
-    type Message = SecureChannelListenerMessage;
+    type Message = CreateResponderChannelMessage;
     type Context = Context;
 
     async fn handle_message(
@@ -44,50 +60,43 @@ impl Worker for SecureChannelListener {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let reply = msg.return_route().clone();
-        match msg.body() {
-            SecureChannelListenerMessage::CreateResponderChannel { payload } => {
-                let address_remote: Address = random();
-                let address_local: Address = random();
+        let msg = msg.body();
 
-                debug!(
-                    "Starting SecureChannel responder at local: {}, remote: {}",
-                    &address_local, &address_remote
-                );
+        let address_remote: Address = random();
+        let address_local: Address = random();
 
-                let vault = VaultSync::create_with_worker(
-                    ctx,
-                    self.vault_worker_address.clone(),
-                    "VAULT_ERROR", /* FIXME */
-                )
-                .await?;
+        debug!(
+            "Starting SecureChannel responder at local: {}, remote: {}",
+            &address_local, &address_remote
+        );
 
-                let new_key_exchanger = XXNewKeyExchanger::new(vault.start_another()?);
+        let new_key_exchanger = XXNewKeyExchanger::new(self.vault.start_another()?);
 
-                let channel = SecureChannel::new(
-                    false,
-                    reply.clone(),
-                    address_remote.clone(),
-                    address_local.clone(),
-                    None,
-                    &new_key_exchanger,
-                    vault,
-                )?;
+        let channel = SecureChannel::new(
+            false,
+            reply.clone(),
+            address_remote.clone(),
+            address_local.clone(),
+            msg.callback_address()
+                .as_ref()
+                .map(|a| Route::new().append(a.clone()).into()),
+            &new_key_exchanger,
+            self.vault.start_another()?,
+        )?;
 
-                ctx.start_worker(vec![address_remote.clone(), address_local], channel)
-                    .await?;
+        ctx.start_worker(vec![address_remote.clone(), address_local], channel)
+            .await?;
 
-                // We want this message's return route lead to the remote channel worker, not listener
-                let msg = TransportMessage {
-                    version: 1,
-                    onward_route: address_remote.into(),
-                    return_route: reply,
-                    payload: payload.encode()?,
-                };
+        // We want this message's return route lead to the remote channel worker, not listener
+        let msg = TransportMessage {
+            version: 1,
+            onward_route: address_remote.into(),
+            return_route: reply,
+            payload: msg.payload().encode()?,
+        };
 
-                ctx.forward(msg).await?;
+        ctx.forward(msg).await?;
 
-                Ok(())
-            }
-        }
+        Ok(())
     }
 }

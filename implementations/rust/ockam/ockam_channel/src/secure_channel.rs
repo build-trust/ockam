@@ -1,4 +1,4 @@
-use crate::{SecureChannelError, SecureChannelListener, SecureChannelListenerMessage};
+use crate::{CreateResponderChannelMessage, SecureChannelError, SecureChannelListener};
 use async_trait::async_trait;
 use ockam_core::{Address, Any, Message, Result, Route, Routed, TransportMessage, Worker};
 use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
@@ -84,10 +84,24 @@ impl SecureChannel {
         address: A,
         vault_worker_address: &Address,
     ) -> Result<()> {
-        let channel_listener = SecureChannelListener::new((*vault_worker_address).clone());
-        let address = address.into();
+        let vault = VaultSync::create_with_worker(
+            ctx,
+            vault_worker_address.clone(),
+            "ERROR", /* FIXME */
+        )?;
+
+        Self::create_listener_with_vault_sync(ctx, address.into(), vault).await
+    }
+
+    /// Create and start channel listener with given address.
+    pub async fn create_listener_with_vault_sync(
+        ctx: &Context,
+        address: Address,
+        vault: VaultSync,
+    ) -> Result<()> {
+        let channel_listener = SecureChannelListener::new(vault);
         info!("Starting SecureChannel listener at {}", &address);
-        ctx.start_worker(address.clone(), channel_listener).await?;
+        ctx.start_worker(address, channel_listener).await?;
 
         Ok(())
     }
@@ -96,7 +110,19 @@ impl SecureChannel {
     pub async fn create<A: Into<Route>>(
         ctx: &mut Context,
         route: A,
-        vault_worker_address: &Address,
+        vault: &Address,
+    ) -> Result<SecureChannelInfo> {
+        let vault =
+            VaultSync::create_with_worker(ctx, vault.clone(), "VAULT_ERROR" /* FIXME */)?;
+
+        Self::create_with_vault_sync(ctx, route.into(), vault).await
+    }
+
+    /// Create initiator channel with given route to a remote channel listener.
+    pub async fn create_with_vault_sync(
+        ctx: &mut Context,
+        route: Route,
+        vault_sync: VaultSync,
     ) -> Result<SecureChannelInfo> {
         let address_remote: Address = random();
         let address_local: Address = random();
@@ -106,14 +132,7 @@ impl SecureChannel {
             &address_local, &address_remote
         );
 
-        let vault = VaultSync::create_with_worker(
-            ctx,
-            (*vault_worker_address).clone(),
-            "VAULT_ERROR", /* FIXME */
-        )
-        .await?;
-
-        let new_key_exchanger = XXNewKeyExchanger::new(vault.start_another()?);
+        let new_key_exchanger = XXNewKeyExchanger::new(vault_sync.start_another()?);
 
         let channel = SecureChannel::new(
             true,
@@ -122,7 +141,7 @@ impl SecureChannel {
             address_local.clone(),
             Some(Route::new().append(ctx.address()).into()),
             &new_key_exchanger,
-            vault,
+            vault_sync,
         )?;
 
         ctx.start_worker(vec![address_remote.clone(), address_local.clone()], channel)
@@ -180,7 +199,7 @@ impl SecureChannel {
             // First message from initiator goes to the channel listener
             ctx.send_from_address(
                 self.remote_route.clone(),
-                SecureChannelListenerMessage::CreateResponderChannel { payload },
+                CreateResponderChannelMessage::new(payload, None),
                 self.address_remote.clone(),
             )
             .await
@@ -196,10 +215,22 @@ impl SecureChannel {
     }
 }
 
+/// KeyExchangeCompleted message
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-struct KeyExchangeCompleted {
+pub struct KeyExchangeCompleted {
     address: Address,
     auth_hash: [u8; 32],
+}
+
+impl KeyExchangeCompleted {
+    /// Address of the channel
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+    /// Authentication hash
+    pub fn auth_hash(&self) -> [u8; 32] {
+        self.auth_hash
+    }
 }
 
 #[async_trait]

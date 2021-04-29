@@ -1,7 +1,12 @@
-use crate::OckamError;
+use crate::{Address, OckamError};
+use history::ProfileChangeHistory;
+use ockam_core::lib::HashMap;
+use ockam_node::Context;
 use ockam_vault_core::{Hasher, KeyIdVault, PublicKey, Secret, SecretVault, Signer, Verifier};
+use ockam_vault_sync_core::VaultSync;
 
 mod authentication;
+use authentication::Authentication;
 mod contact;
 pub use contact::*;
 mod identifiers;
@@ -9,11 +14,9 @@ pub use identifiers::*;
 mod key_attributes;
 pub use key_attributes::*;
 mod change;
-use authentication::Authentication;
 pub use change::*;
-use history::ProfileChangeHistory;
-use ockam_core::lib::HashMap;
-use ockam_vault_sync_core::VaultSync;
+mod channel;
+pub use channel::*;
 
 pub trait ProfileVault: SecretVault + KeyIdVault + Hasher + Signer + Verifier {}
 
@@ -36,10 +39,12 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::{Profile, KeyAttributes};
-/// # use ockam_vault_sync_core::VaultSync;
-/// let vault = VaultSync::create_with_mutex(SoftwareVault::default());
-/// let mut profile = Profile::create(None, &vault)?;
+/// # use ockam::{Profile, KeyAttributes, Vault};
+/// # fn main() -> ockam_core::Result<()> {
+/// # let (mut ctx, mut executor) = ockam_node::start_node();
+/// # executor.execute(async move {
+/// let vault = Vault::create(&ctx)?;
+/// let mut profile = Profile::create(&ctx, &vault)?;
 ///
 /// let root_key_attributes = KeyAttributes::new(
 ///     Profile::PROFILE_UPDATE.to_string(),
@@ -60,20 +65,25 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 /// let _alice_truck_secret = profile.get_secret_key(&truck_key_attributes)?;
 ///
 /// let verified = profile.verify()?;
+/// # ctx.stop().await.unwrap();
 /// # Ok::<(), ockam_core::Error>(())
+/// # }).unwrap();
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// Authentication using [`Profile`]. In following example Bob authenticates Alice.
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::Profile;
-/// # use ockam_vault_sync_core::VaultSync;
+/// # use ockam::{Profile, Vault};
 /// fn alice_main() -> ockam_core::Result<()> {
-///     let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+///     # let (mut ctx, mut executor) = ockam_node::start_node();
+///     # executor.execute(async move {
+///     let vault = Vault::create(&ctx)?;
 ///
 ///     // Alice generates profile
-///     let mut alice = Profile::create(None, &vault)?;
+///     let mut alice = Profile::create(&ctx, &vault)?;
 ///
 ///     // Key agreement happens here
 ///     let key_agreement_hash = [0u8; 32];
@@ -81,15 +91,19 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     // Send this over the network to Bob
 ///     let contact_alice = alice.serialize_to_contact()?;
 ///     let proof_alice = alice.generate_authentication_proof(&key_agreement_hash)?;
-///
+///     # ctx.stop().await.unwrap();
+///     # Ok::<(), ockam_core::Error>(())
+///     # }).unwrap();
 ///     Ok(())
 /// }
 ///
 /// fn bob_main() -> ockam_core::Result<()> {
-///     let vault = VaultSync::create_with_mutex(SoftwareVault::default());
+///     # let (mut ctx, mut executor) = ockam_node::start_node();
+///     # executor.execute(async move {
+///     let vault = Vault::create(&ctx)?;
 ///
 ///     // Bob generates profile
-///     let mut bob = Profile::create(None, &vault)?;
+///     let mut bob = Profile::create(&ctx, &vault)?;
 ///
 ///     // Key agreement happens here
 ///     let key_agreement_hash = [0u8; 32];
@@ -105,7 +119,9 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     # let proof_alice = [0u8; 32];
 ///     // Bob verifies Alice
 ///     let verified = bob.verify_authentication_proof(&key_agreement_hash, &alice_id, &proof_alice)?;
-///
+///     # ctx.stop().await.unwrap();
+///     # Ok::<(), ockam_core::Error>(())
+///     # }).unwrap();
 ///     Ok(())
 /// }
 /// ```
@@ -115,11 +131,12 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::Profile;
-/// # use ockam_vault_sync_core::VaultSync;
+/// # use ockam::{Profile, Vault};
 /// fn alice_main() -> ockam_core::Result<()> {
-///     # let vault = VaultSync::create_with_mutex(SoftwareVault::default());
-///     # let mut alice = Profile::create(None, &vault)?;
+///     # let (mut ctx, mut executor) = ockam_node::start_node();
+///     # executor.execute(async move {
+///     # let vault = Vault::create(&ctx)?;
+///     # let mut alice = Profile::create(&ctx, &vault)?;
 ///     # let key_agreement_hash = [0u8; 32];
 ///     # let contact_alice = alice.serialize_to_contact()?;
 ///     #
@@ -129,13 +146,17 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     // Send to Bob
 ///     let change_events = &alice.change_events()[index_a..];
 ///     let change_events = Profile::serialize_change_events(change_events)?;
-///
+///     # ctx.stop().await.unwrap();
+///     # Ok::<(), ockam_core::Error>(())
+///     # }).unwrap();
 ///     Ok(())
 /// }
 ///
 /// fn bob_main() -> ockam_core::Result<()> {
-///     # let vault = VaultSync::create_with_mutex(SoftwareVault::default());
-///     # let mut bob = Profile::create(None, &vault)?;
+///     # let (mut ctx, mut executor) = ockam_node::start_node();
+///     # executor.execute(async move {
+///     # let vault = Vault::create(&ctx)?;
+///     # let mut bob = Profile::create(&ctx, &vault)?;
 ///     # let key_agreement_hash = [0u8; 32];
 ///     # let contact_alice = [0u8; 32];
 ///     # let contact_alice = Profile::deserialize_contact(&contact_alice)?;
@@ -144,7 +165,11 @@ pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
 ///     // Receive from Alice
 ///     # let change_events = [0u8; 32];
 ///     let change_events = Profile::deserialize_change_events(&change_events)?;
-///     bob.verify_and_update_contact(&alice_id, change_events)
+///     bob.verify_and_update_contact(&alice_id, change_events)?;
+///     # ctx.stop().await.unwrap();
+///     # Ok::<(), ockam_core::Error>(())
+///     # }).unwrap();
+///     Ok(())
 /// }
 /// ```
 #[derive(Clone)]
@@ -200,12 +225,11 @@ impl Profile {
 }
 
 impl Profile {
-    /// Generate fresh [`Profile`] update key key and create new [`Profile`] using it
-    pub fn create(
+    /// Generate fresh [`Profile`] update key and create new [`Profile`] using it
+    fn create_internal(
         attributes: Option<ProfileEventAttributes>,
-        vault: &VaultSync,
+        mut vault: VaultSync,
     ) -> ockam_core::Result<Self> {
-        let mut vault = vault.start_another()?;
         let prev_id = vault.sha256(Profile::NO_EVENT)?;
         let prev_id = EventIdentifier::from_hash(prev_id);
 
@@ -228,6 +252,21 @@ impl Profile {
         let profile = Profile::new(public_kid, vec![change_event], Default::default(), vault);
 
         Ok(profile)
+    }
+    /// Generate fresh [`Profile`] update key and create new [`Profile`] using it
+    pub fn create_with_attributes(
+        attributes: Option<ProfileEventAttributes>,
+        ctx: &Context,
+        vault: &Address,
+    ) -> ockam_core::Result<Self> {
+        let vault = VaultSync::create_with_worker(ctx, vault.clone(), "" /* FIXME */)?;
+
+        Self::create_internal(attributes, vault)
+    }
+
+    /// Generate fresh [`Profile`] update key and create new [`Profile`] using it
+    pub fn create(ctx: &Context, vault: &Address) -> ockam_core::Result<Self> {
+        Self::create_with_attributes(None, ctx, vault)
     }
 
     /// Create new key. Key is uniquely identified by label in [`KeyAttributes`]
@@ -447,7 +486,7 @@ mod test {
     #[test]
     fn test_new() {
         let vault = VaultSync::create_with_mutex(SoftwareVault::default());
-        let mut profile = Profile::create(None, &vault).unwrap();
+        let mut profile = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
 
         profile.verify().unwrap();
 
@@ -489,9 +528,9 @@ mod test {
     #[test]
     fn test_update() {
         let vault = VaultSync::create_with_mutex(SoftwareVault::default());
-        let mut alice = Profile::create(None, &vault).unwrap();
+        let mut alice = Profile::create_internal(None, vault.start_another().unwrap()).unwrap();
 
-        let mut bob = Profile::create(None, &vault).unwrap();
+        let mut bob = Profile::create_internal(None, vault).unwrap();
 
         // Receive this from Alice over the network
         let contact_alice = alice.serialize_to_contact().unwrap();
