@@ -15,7 +15,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
 
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create(&ctx)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;

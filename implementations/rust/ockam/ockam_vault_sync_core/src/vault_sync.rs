@@ -55,16 +55,12 @@ impl VaultSync {
         match &self.0 {
             VaultSyncState::Worker { state } => {
                 let vault_worker_address = state.vault_worker_address.clone();
-                let runtime = state.ctx().runtime();
 
-                let clone = block_future(&runtime, async move {
-                    VaultSync::create_with_worker(
-                        &state.ctx,
-                        vault_worker_address,
-                        state.error_domain,
-                    )
-                    .await
-                })?;
+                let clone = VaultSync::create_with_worker(
+                    &state.ctx,
+                    vault_worker_address,
+                    state.error_domain,
+                )?;
 
                 Ok(clone)
             }
@@ -90,7 +86,7 @@ impl VaultSync {
     }
 
     /// Create and start a new Vault using Worker.
-    pub async fn create_with_worker(
+    pub fn create_with_worker(
         ctx: &Context,
         vault_worker_address: Address,
         error_domain: &'static str,
@@ -99,7 +95,10 @@ impl VaultSync {
 
         debug!("Starting Worker VaultSync at {}", &address);
 
-        let ctx = ctx.new_context(address).await?;
+        let ctx = block_future(
+            &ctx.runtime(),
+            async move { ctx.new_context(address).await },
+        )?;
 
         let state = WorkerState {
             ctx,
@@ -113,11 +112,11 @@ impl VaultSync {
     }
 
     /// Start a Vault.
-    pub async fn create<T: VaultTrait>(ctx: &Context, vault: T) -> Result<Self> {
+    pub fn create<T: VaultTrait>(ctx: &Context, vault: T) -> Result<Self> {
         let error_domain = vault.error_domain();
 
-        let vault_address = Vault::create_with_inner(ctx, vault).await?;
+        let vault_address = Vault::create_with_inner(ctx, vault)?;
 
-        Self::create_with_worker(ctx, vault_address, error_domain).await
+        Self::create_with_worker(ctx, vault_address, error_domain)
     }
 }

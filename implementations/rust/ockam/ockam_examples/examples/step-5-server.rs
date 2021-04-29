@@ -23,7 +23,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     tcp.connect(hub).await?;
 
-    let vault_address = Vault::create(&ctx).await?;
+    let vault_address = Vault::create(&ctx)?;
 
     SecureChannel::create_listener(&ctx, "secure_channel", &vault_address).await?;
 

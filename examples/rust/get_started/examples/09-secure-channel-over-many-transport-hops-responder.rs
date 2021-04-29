@@ -12,7 +12,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a TCP listener and wait for incoming connections.
     tcp.listen("127.0.0.1:4000").await?;
 
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create(&ctx)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;

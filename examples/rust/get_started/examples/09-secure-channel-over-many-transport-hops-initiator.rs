@@ -11,7 +11,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a TCP connection.
     tcp.connect("127.0.0.1:3000").await?;
 
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create(&ctx)?;
 
     // Connect to a secure channel listener and perform a handshake.
     let channel = SecureChannel::create(

@@ -10,7 +10,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     tcp.connect(remote_node).await?;
 
-    let vault_address = Vault::create(&ctx).await?;
+    let vault_address = Vault::create(&ctx)?;
 
     let channel_info = SecureChannel::create(
         &mut ctx,

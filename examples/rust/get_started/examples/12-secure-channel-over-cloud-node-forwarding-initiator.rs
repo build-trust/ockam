@@ -14,7 +14,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a TCP connection to your cloud node.
     tcp.connect(cloud_node_tcp_address).await?;
 
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create(&ctx)?;
 
     let channel = SecureChannel::create(
         &mut ctx,

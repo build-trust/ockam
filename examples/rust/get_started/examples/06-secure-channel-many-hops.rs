@@ -13,7 +13,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("h2", Hop).await?;
     ctx.start_worker("h3", Hop).await?;
 
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create(&ctx)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
