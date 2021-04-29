@@ -1,11 +1,11 @@
 [package]
 name = "signature_bbs_plus"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_signature_bbs"
+repository = "https://github.com/ockam-network/ockam/blob/develop/implementations/rust/ockam/signature_bbs_plus"
 readme = "README.md"
 categories = ["cryptography", "asynchronous", "authentication","no-std","algorithms"]
 keywords = ["ockam", "crypto", "signature", "signing", "bls"]

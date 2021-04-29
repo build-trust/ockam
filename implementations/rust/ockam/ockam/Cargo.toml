@@ -35,7 +35,7 @@ ockam_transport_tcp = {path = "../ockam_transport_tcp", version = "0.6.1", optio
 arrayref = "0.3"
 bls12_381_plus = "0.4"
 signature_core = { version = "0.3.0", path = "../signature_core" }
-signature_bbs_plus = { version = "0.3.1", path = "../signature_bbs_plus", package = "signature_bbs_plus" }
+signature_bbs_plus = { version = "0.3.2", path = "../signature_bbs_plus", package = "signature_bbs_plus" }
 signature_bls = { version = "0.1.1", path = "../signature_bls", package = "signature_bls" }
 serde_bare = "0.4"
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
