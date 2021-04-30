@@ -1,6 +1,6 @@
 use crate::{
     async_worker, ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, OckamError,
-    Profile, ProfileVault, Routed, TransportMessage,
+    ProfileImpl, ProfileVault, Routed, TransportMessage,
 };
 use ockam_channel::SecureChannel;
 use ockam_core::{Address, Any, Message, Result, Route, Worker};
@@ -21,7 +21,7 @@ impl Initiator {
     pub async fn create<R: Into<Route>, V: ProfileVault>(
         ctx: &Context,
         route: R,
-        profile: &mut Profile<V>,
+        profile: &mut ProfileImpl<V>,
     ) -> Result<Address> {
         let vault = profile.vault();
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());

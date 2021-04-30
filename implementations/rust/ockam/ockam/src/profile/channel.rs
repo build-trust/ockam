@@ -1,4 +1,4 @@
-use crate::{Profile, ProfileVault};
+use crate::{ProfileImpl, ProfileVault};
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 
@@ -11,7 +11,7 @@ pub(crate) use listener::*;
 mod messages;
 pub(crate) use messages::*;
 
-impl<V: ProfileVault> Profile<V> {
+impl<V: ProfileVault> ProfileImpl<V> {
     /// Create mutually authenticated secure channel
     pub async fn create_secure_channel<A: Into<Route>>(
         &mut self,
@@ -28,7 +28,7 @@ impl<V: ProfileVault> Profile<V> {
         address: A,
     ) -> Result<()> {
         let clone = self.clone();
-        let listener = ProfileChannelListener::new(clone, self.vault.clone());
+        let listener = ProfileChannelListener::new(clone, self.vault());
         ctx.start_worker(address.into(), listener).await
     }
 }
@@ -36,7 +36,7 @@ impl<V: ProfileVault> Profile<V> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ProfileBuilder;
+    use crate::Profile;
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -46,8 +46,8 @@ mod test {
             .execute(async move {
                 let vault = Vault::create(&ctx).unwrap();
 
-                let mut alice = ProfileBuilder::create(&ctx, &vault).unwrap();
-                let mut bob = ProfileBuilder::create(&ctx, &vault).unwrap();
+                let mut alice = Profile::create(&ctx, &vault).unwrap();
+                let mut bob = Profile::create(&ctx, &vault).unwrap();
 
                 bob.create_secure_channel_listener(&mut ctx, "bob_listener")
                     .await

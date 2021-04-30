@@ -1,6 +1,6 @@
 // This node creates a secure channel with a listener that is multiple hops away.
 
-use ockam::{Context, ProfileBuilder, Result, Route, Vault};
+use ockam::{Context, Profile, Result, Route, Vault};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
@@ -15,8 +15,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
-    let mut alice = ProfileBuilder::create(&ctx, &vault)?;
-    let mut bob = ProfileBuilder::create(&ctx, &vault)?;
+    let mut alice = Profile::create(&ctx, &vault)?;
+    let mut bob = Profile::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     bob.create_secure_channel_listener(&mut ctx, "secure_channel_listener")

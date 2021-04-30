@@ -1,6 +1,6 @@
 // This node creates a secure channel and routes a message through it.
 
-use ockam::{Context, ProfileBuilder, Result, Route, Vault};
+use ockam::{Context, Profile, Result, Route, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -10,8 +10,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
-    let mut alice = ProfileBuilder::create(&ctx, &vault)?;
-    let mut bob = ProfileBuilder::create(&ctx, &vault)?;
+    let mut alice = Profile::create(&ctx, &vault)?;
+    let mut bob = Profile::create(&ctx, &vault)?;
 
     // Create a secure channel listener.
     alice

@@ -23,11 +23,10 @@ use serde::{Deserialize, Serialize};
 /// # use ockam::{Profile, KeyAttributes, Vault};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
-/// # use ockam::ProfileBuilder;
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
 /// # executor.execute(async move {
 /// let vault = Vault::create(&ctx)?;
-/// let mut alice = ProfileBuilder::create(&ctx, &vault)?;
+/// let mut alice = Profile::create(&ctx, &vault)?;
 ///
 /// let truck_key_attributes = KeyAttributes::new(
 ///     "Truck management".to_string(),
@@ -52,11 +51,10 @@ use serde::{Deserialize, Serialize};
 /// # use ockam::{Profile, KeyAttributes, Vault};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
-/// # use ockam::ProfileBuilder;
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
 /// # executor.execute(async move {
 /// # let vault = Vault::create(&ctx)?;
-/// # let mut alice = ProfileBuilder::create(&ctx, &vault)?;
+/// # let mut alice = Profile::create(&ctx, &vault)?;
 /// #
 /// # let truck_key_attributes = KeyAttributes::new(
 /// #     "Truck management".to_string(),

@@ -1,7 +1,7 @@
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 
-use ockam::{Context, ProfileBuilder, Result, TcpTransport, Vault};
+use ockam::{Context, Profile, Result, TcpTransport, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -14,7 +14,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
-    let mut bob = ProfileBuilder::create(&ctx, &vault)?;
+    let mut bob = Profile::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     bob.create_secure_channel_listener(&mut ctx, "secure_channel_listener")

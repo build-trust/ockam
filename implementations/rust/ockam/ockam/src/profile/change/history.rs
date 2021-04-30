@@ -1,7 +1,7 @@
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
-    EventIdentifier, KeyAttributes, OckamError, ProfileChange, ProfileChangeEvent,
-    ProfileChangeProof, ProfileChangeType, ProfileHelper, ProfileVault, SignatureType,
+    EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange, ProfileChangeEvent,
+    ProfileChangeProof, ProfileChangeType, ProfileVault, SignatureType,
 };
 use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -106,7 +106,7 @@ impl ProfileChangeHistory {
     pub(crate) fn get_current_profile_update_public_key(
         existing_events: &[ProfileChangeEvent],
     ) -> ockam_core::Result<PublicKey> {
-        let key_attributes = KeyAttributes::new(ProfileHelper::PROFILE_UPDATE.to_string());
+        let key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
         Self::find_last_key_event_public_key(existing_events, &key_attributes)
     }
 

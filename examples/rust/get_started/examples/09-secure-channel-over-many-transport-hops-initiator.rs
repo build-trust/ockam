@@ -1,7 +1,7 @@
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
-use ockam::{Context, ProfileBuilder, Result, Route, TcpTransport, Vault, TCP};
+use ockam::{Context, Profile, Result, Route, TcpTransport, Vault, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -13,7 +13,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
-    let mut alice = ProfileBuilder::create(&ctx, &vault)?;
+    let mut alice = Profile::create(&ctx, &vault)?;
 
     // Connect to a secure channel listener and perform a handshake.
     let channel = alice

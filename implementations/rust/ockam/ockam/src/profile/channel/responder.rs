@@ -1,6 +1,6 @@
 use crate::{
-    async_worker, ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, OckamError, Profile,
-    ProfileVault, Routed,
+    async_worker, ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, OckamError,
+    ProfileImpl, ProfileVault, Routed,
 };
 use ockam_channel::{CreateResponderChannelMessage, KeyExchangeCompleted};
 use ockam_core::{Address, Any, Message, Result, Route, TransportMessage, Worker};
@@ -18,7 +18,7 @@ pub(crate) struct Responder {
 impl Responder {
     pub async fn create<V: ProfileVault>(
         ctx: &Context,
-        profile: &mut Profile<V>,
+        profile: &mut ProfileImpl<V>,
         listener_address: Address,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
