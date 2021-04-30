@@ -53,8 +53,9 @@ impl SecureChannel {
 
     /// Create initiator channel with given route to a remote channel listener.
     pub async fn create<R: Into<Route>, N: SecureChannelNewKeyExchanger, V: SecureChannelVault>(
-        ctx: &mut Context,
+        ctx: &Context,
         route: R,
+        first_responder_address: Option<Address>,
         new_key_exchanger: &N,
         vault: V,
     ) -> Result<SecureChannelInfo> {
@@ -66,12 +67,15 @@ impl SecureChannel {
             &address_local, &address_remote
         );
 
+        let address: Address = random();
+        let mut child_ctx = ctx.new_context(address).await?;
         let channel = SecureChannelWorker::new(
             true,
             route.into(),
             address_remote.clone(),
             address_local.clone(),
-            Some(Route::new().append(ctx.address()).into()),
+            Some(child_ctx.address()),
+            first_responder_address,
             new_key_exchanger.initiator()?,
             vault,
         )?;
@@ -79,7 +83,7 @@ impl SecureChannel {
         ctx.start_worker(vec![address_remote.clone(), address_local.clone()], channel)
             .await?;
 
-        let resp = ctx
+        let resp = child_ctx
             .receive_match(|m: &KeyExchangeCompleted| m.address() == &address_local)
             .await?
             .take()

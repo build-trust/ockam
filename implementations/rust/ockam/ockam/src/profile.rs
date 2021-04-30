@@ -16,7 +16,7 @@ pub use key_attributes::*;
 mod change;
 pub use change::*;
 mod channel;
-pub use channel::*;
+pub(crate) use channel::*;
 mod builder;
 pub use builder::*;
 
@@ -264,6 +264,10 @@ impl<V: ProfileVault> Profile<V> {
     /// Return all known to this profile [`Contact`]s
     pub fn contacts(&self) -> &ContactsDb {
         &self.contacts
+    }
+    /// Return clone of Vault
+    pub fn vault(&self) -> V {
+        self.vault.clone()
     }
 }
 
