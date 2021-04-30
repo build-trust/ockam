@@ -15,12 +15,12 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a secure channel listener.
     alice
-        .create_secure_channel_listener(&mut ctx, "secure_channel_listener")
+        .create_secure_channel_listener(&ctx, "secure_channel_listener")
         .await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let channel = bob
-        .create_secure_channel(&mut ctx, "secure_channel_listener")
+        .create_secure_channel(&ctx, "secure_channel_listener")
         .await?;
 
     // Send a message to the echoer worker, via the secure channel.

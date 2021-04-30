@@ -14,7 +14,7 @@ impl Worker for EchoService {
 }
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     let hub = "Paste the address of the node you created on Ockam Hub here.";
 
     let tcp = TcpTransport::create(&ctx).await?;
@@ -23,7 +23,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.start_worker("echo_service", EchoService).await?;
 
-    let mailbox = RemoteForwarder::create(&mut ctx, hub, "echo_service").await?;
+    let mailbox = RemoteForwarder::create(&ctx, hub, "echo_service").await?;
 
     println!(
         "echo_service forwarding address: {}",

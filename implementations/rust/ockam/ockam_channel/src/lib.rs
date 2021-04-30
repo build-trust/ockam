@@ -50,7 +50,7 @@ mod tests {
                 )
                 .await?;
                 let initiator = SecureChannel::create(
-                    &mut ctx,
+                    &ctx,
                     Route::new().append("secure_channel_listener"),
                     None,
                     &new_key_exchanger,

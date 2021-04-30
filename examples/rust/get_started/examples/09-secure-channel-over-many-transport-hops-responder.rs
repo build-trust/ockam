@@ -5,7 +5,7 @@ use ockam::{Context, Profile, Result, TcpTransport, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
@@ -17,7 +17,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let mut bob = Profile::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener(&mut ctx, "secure_channel_listener")
+    bob.create_secure_channel_listener(&ctx, "secure_channel_listener")
         .await?;
 
     // Create an echoer worker

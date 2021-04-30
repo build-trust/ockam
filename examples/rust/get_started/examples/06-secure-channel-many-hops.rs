@@ -19,13 +19,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     let mut bob = Profile::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener(&mut ctx, "secure_channel_listener")
+    bob.create_secure_channel_listener(&ctx, "secure_channel_listener")
         .await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let channel = alice
         .create_secure_channel(
-            &mut ctx,
+            &ctx,
             // route to the secure channel listener, via "h1", "h2" and "h3"
             Route::new()
                 .append("h1")
