@@ -1,4 +1,4 @@
-use ockam::{Context, RemoteForwarder, Result, SecureChannel, TcpTransport, Vault};
+use ockam::{Context, ProfileBuilder, RemoteForwarder, Result, TcpTransport, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -17,8 +17,11 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
+    let mut bob = ProfileBuilder::create(&ctx, &vault)?;
+
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    bob.create_secure_channel_listener(&mut ctx, "secure_channel_listener")
+        .await?;
 
     let forwarder =
         RemoteForwarder::create(&mut ctx, cloud_node_tcp_address, "secure_channel_listener")

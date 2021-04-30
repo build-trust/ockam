@@ -1,6 +1,6 @@
 // This node creates a secure channel with a listener that is multiple hops away.
 
-use ockam::{Context, Result, Route, SecureChannel, Vault};
+use ockam::{Context, ProfileBuilder, Result, Route, Vault};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
@@ -15,26 +15,30 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
+    let mut alice = ProfileBuilder::create(&ctx, &vault)?;
+    let mut bob = ProfileBuilder::create(&ctx, &vault)?;
+
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    bob.create_secure_channel_listener(&mut ctx, "secure_channel_listener")
+        .await?;
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = SecureChannel::create(
-        &mut ctx,
-        // route to the secure channel listener, via "h1", "h2" and "h3"
-        Route::new()
-            .append("h1")
-            .append("h2")
-            .append("h3")
-            .append("secure_channel_listener"),
-        &vault,
-    )
-    .await?;
+    let channel = alice
+        .create_secure_channel(
+            &mut ctx,
+            // route to the secure channel listener, via "h1", "h2" and "h3"
+            Route::new()
+                .append("h1")
+                .append("h2")
+                .append("h3")
+                .append("secure_channel_listener"),
+        )
+        .await?;
 
     // Send a message to the echoer worker, via the secure channel.
     ctx.send(
         // route to the "echoer" worker via the secure channel.
-        Route::new().append(channel.address()).append("echoer"),
+        Route::new().append(channel).append("echoer"),
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )

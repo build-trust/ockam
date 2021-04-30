@@ -1,4 +1,4 @@
-use ockam::{Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{Context, ProfileBuilder, Result, Route, TcpTransport, Vault, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -16,17 +16,19 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
 
-    let channel = SecureChannel::create(
-        &mut ctx,
-        Route::new()
-            .append_t(TCP, cloud_node_tcp_address)
-            .append(secure_channel_listener_forwarding_address),
-        &vault,
-    )
-    .await?;
+    let mut alice = ProfileBuilder::create(&ctx, &vault)?;
+
+    let channel = alice
+        .create_secure_channel(
+            &mut ctx,
+            Route::new()
+                .append_t(TCP, cloud_node_tcp_address)
+                .append(secure_channel_listener_forwarding_address),
+        )
+        .await?;
 
     ctx.send(
-        Route::new().append(channel.address()).append("echoer"),
+        Route::new().append(channel).append("echoer"),
         "Hello world!".to_string(),
     )
     .await?;
