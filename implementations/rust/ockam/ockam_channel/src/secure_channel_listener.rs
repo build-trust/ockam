@@ -1,6 +1,6 @@
 use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker};
 use async_trait::async_trait;
-use ockam_core::{Address, Message, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -79,9 +79,8 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             reply.clone(),
             address_remote.clone(),
             address_local.clone(),
-            msg.callback_address()
-                .as_ref()
-                .map(|a| Route::new().append(a.clone()).into()),
+            msg.callback_address().clone(),
+            None,
             self.new_key_exchanger.responder()?,
             self.vault.clone(),
         )?;

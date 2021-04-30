@@ -52,6 +52,7 @@ mod tests {
                 let initiator = SecureChannel::create(
                     &mut ctx,
                     Route::new().append("secure_channel_listener"),
+                    None,
                     &new_key_exchanger,
                     vault_sync,
                 )

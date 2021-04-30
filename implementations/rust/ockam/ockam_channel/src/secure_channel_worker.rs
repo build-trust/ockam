@@ -22,7 +22,10 @@ pub struct SecureChannelWorker<V: SecureChannelVault, K: KeyExchanger + Send + '
     address_remote: Address,
     address_local: Address,
     keys: Option<ChannelKeys>,
-    key_exchange_completed_callback_route: Option<Route>,
+    // Optional address to which message is sent after SecureChannel is created
+    key_exchange_completed_callback_route: Option<Address>,
+    // Optional address to which responder can talk to after SecureChannel is created
+    first_responder_address: Option<Address>,
     vault: V,
     key_exchanger: Option<K>,
 }
@@ -33,7 +36,8 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         remote_route: Route,
         address_remote: Address,
         address_local: Address,
-        key_exchange_completed_callback_route: Option<Route>,
+        key_exchange_completed_callback_route: Option<Address>,
+        first_responder_address: Option<Address>,
         key_exchanger: K,
         vault: V,
     ) -> Result<Self> {
@@ -44,6 +48,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
             address_local,
             keys: None,
             key_exchange_completed_callback_route,
+            first_responder_address,
             key_exchanger: Some(key_exchanger),
             vault,
         })
@@ -87,7 +92,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
             // First message from initiator goes to the channel listener
             ctx.send_from_address(
                 self.remote_route.clone(),
-                CreateResponderChannelMessage::new(payload, None),
+                CreateResponderChannelMessage::new(payload, self.first_responder_address.take()),
                 self.address_remote.clone(),
             )
             .await

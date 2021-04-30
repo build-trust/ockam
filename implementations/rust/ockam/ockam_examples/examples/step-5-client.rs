@@ -22,6 +22,7 @@ async fn main(mut ctx: Context) -> Result<()> {
             .append_t(TCP, remote_node)
             .append(secure_channel_forwarded_address)
             .append("echo_service"),
+        None,
         &xx_key_exchanger,
         vault_sync,
     )
