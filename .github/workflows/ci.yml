@@ -7,7 +7,7 @@ jobs:
     name: Lint Rust
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:25ccb6651fa168460ae50548794135ba2eb80ae4b253055a478c05ba1baa1687
+      image: ghcr.io/ockam-network/ockam/builder@sha256:d70b384ff4d40e403f9b5b171eada3ed6746117a9267e98ae530336747895fe2
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -19,7 +19,7 @@ jobs:
     name: Lint Elixir
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:25ccb6651fa168460ae50548794135ba2eb80ae4b253055a478c05ba1baa1687
+      image: ghcr.io/ockam-network/ockam/builder@sha256:d70b384ff4d40e403f9b5b171eada3ed6746117a9267e98ae530336747895fe2
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -31,7 +31,7 @@ jobs:
     name: Build Rust
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:25ccb6651fa168460ae50548794135ba2eb80ae4b253055a478c05ba1baa1687
+      image: ghcr.io/ockam-network/ockam/builder@sha256:d70b384ff4d40e403f9b5b171eada3ed6746117a9267e98ae530336747895fe2
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -43,7 +43,7 @@ jobs:
     name: Build Elixir
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:25ccb6651fa168460ae50548794135ba2eb80ae4b253055a478c05ba1baa1687
+      image: ghcr.io/ockam-network/ockam/builder@sha256:d70b384ff4d40e403f9b5b171eada3ed6746117a9267e98ae530336747895fe2
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -55,7 +55,7 @@ jobs:
     name: Test Rust
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:25ccb6651fa168460ae50548794135ba2eb80ae4b253055a478c05ba1baa1687
+      image: ghcr.io/ockam-network/ockam/builder@sha256:d70b384ff4d40e403f9b5b171eada3ed6746117a9267e98ae530336747895fe2
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -67,7 +67,7 @@ jobs:
     name: Test Elixir
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:25ccb6651fa168460ae50548794135ba2eb80ae4b253055a478c05ba1baa1687
+      image: ghcr.io/ockam-network/ockam/builder@sha256:d70b384ff4d40e403f9b5b171eada3ed6746117a9267e98ae530336747895fe2
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4

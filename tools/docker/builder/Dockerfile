@@ -40,10 +40,8 @@ RUN set -xe; \
     PATH="${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:$PATH"; \
     rustup component add rustfmt; \
     rustup component add clippy; \
-    rustup toolchain install nightly-x86_64-unknown-linux-gnu; \
-    rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu; \
-    rustup component add clippy --toolchain nightly-x86_64-unknown-linux-gnu; \
     cargo install cargo-audit; \
+    chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
