@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "ockam_core",
