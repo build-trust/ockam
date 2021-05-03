@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # v0.3.0 - 2021-04-16
 ### Added
 - Add common structures used in BBS+ and PS
-  
+ 
 ### Changed
 - Move and updated ProofCommittedBuilder to allow multiple generator types
 
