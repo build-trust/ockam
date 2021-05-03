@@ -19,7 +19,7 @@ std = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.11.2" }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.3.1" }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.3.2" }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.3.2" }
 ockam_node = { path = "../ockam_node", version = "0.9.1" }
 ockam_vault_core = { path = "../ockam_vault_core", version = "0.5.2" }
