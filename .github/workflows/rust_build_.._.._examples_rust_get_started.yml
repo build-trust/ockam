@@ -3,12 +3,12 @@ on:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - implementations/rust/ockam/ockam/**
-      - implementations/rust/build.gradle
-      - implementations/rust/build.gradle
-      - implementations/rust/settings.gradle
-      - implementations/rust/settings.gradle
-      - examples/rust/get_started/**
+      - 'implementations/rust/ockam/ockam/**'
+      - 'build.gradle'
+      - 'implementations/rust/build.gradle'
+      - 'settings.gradle'
+      - 'implementations/rust/settings.gradle'
+      - 'examples/rust/get_started/**'
 
 jobs:
   rust_build___examples_rust_get_started:

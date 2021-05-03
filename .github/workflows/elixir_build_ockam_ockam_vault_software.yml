@@ -3,11 +3,11 @@ on:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - implementations/elixir/build.gradle
-      - implementations/elixir/build.gradle
-      - implementations/elixir/settings.gradle
-      - implementations/elixir/settings.gradle
-      - implementations/elixir/ockam/ockam_vault_software/**
+      - 'build.gradle'
+      - 'implementations/elixir/build.gradle'
+      - 'settings.gradle'
+      - 'implementations/elixir/settings.gradle'
+      - 'implementations/elixir/ockam/ockam_vault_software/**'
 
 jobs:
   elixir_build_ockam_ockam_vault_software:

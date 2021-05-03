@@ -3,11 +3,11 @@ on:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - implementations/rust/build.gradle
-      - implementations/rust/build.gradle
-      - implementations/rust/settings.gradle
-      - implementations/rust/settings.gradle
-      - implementations/rust/ockam/ockam_core/**
+      - 'build.gradle'
+      - 'implementations/rust/build.gradle'
+      - 'settings.gradle'
+      - 'implementations/rust/settings.gradle'
+      - 'implementations/rust/ockam/ockam_core/**'
 
 jobs:
   rust_clean_ockam_ockam_core:

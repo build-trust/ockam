@@ -3,13 +3,13 @@ on:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - implementations/rust/ockam/ockam_core/**
-      - implementations/rust/ockam/ockam_vault_core/**
-      - implementations/rust/build.gradle
-      - implementations/rust/build.gradle
-      - implementations/rust/settings.gradle
-      - implementations/rust/settings.gradle
-      - implementations/rust/ockam/ockam_key_exchange_core/**
+      - 'implementations/rust/ockam/ockam_core/**'
+      - 'implementations/rust/ockam/ockam_vault_core/**'
+      - 'build.gradle'
+      - 'implementations/rust/build.gradle'
+      - 'settings.gradle'
+      - 'implementations/rust/settings.gradle'
+      - 'implementations/rust/ockam/ockam_key_exchange_core/**'
 
 jobs:
   rust_test_ockam_ockam_key_exchange_core:

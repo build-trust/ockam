@@ -3,13 +3,13 @@ on:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - implementations/rust/ockam/signature_core/**
-      - implementations/rust/ockam/signature_bls/**
-      - implementations/rust/build.gradle
-      - implementations/rust/build.gradle
-      - implementations/rust/settings.gradle
-      - implementations/rust/settings.gradle
-      - implementations/rust/ockam/signature_bbs_plus/**
+      - 'implementations/rust/ockam/signature_core/**'
+      - 'implementations/rust/ockam/signature_bls/**'
+      - 'build.gradle'
+      - 'implementations/rust/build.gradle'
+      - 'settings.gradle'
+      - 'implementations/rust/settings.gradle'
+      - 'implementations/rust/ockam/signature_bbs_plus/**'
 
 jobs:
   rust_lint_ockam_signature_bbs_plus:

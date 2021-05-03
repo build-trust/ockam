@@ -79,8 +79,7 @@ class CommandsPlugin implements Plugin<Project> {
           }
 
           ['build.gradle', 'settings.gradle'].each {
-            def b = Paths.get(Paths.get(it).toFile().getCanonicalPath())
-            paths << Paths.get(rootDirPath.relativize(b).toString())
+            paths << Paths.get(it)
             paths << Paths.get('implementations', project.name, it)
           }
 
