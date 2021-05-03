@@ -3,7 +3,7 @@ name = "ockam_vault_test_suite"
 categories = ["cryptography", "asynchronous", "authentication","network-programming", "embedded"]
 description = """Ockam Vault test suite.
 """
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
