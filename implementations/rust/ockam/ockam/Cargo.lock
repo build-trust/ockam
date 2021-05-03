@@ -900,7 +900,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "async-trait",
  "futures",
