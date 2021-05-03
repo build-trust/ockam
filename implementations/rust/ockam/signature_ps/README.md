@@ -10,8 +10,6 @@ and trustfully with cloud services and other devices.
 
 In order to support a variety of proving protocols, this crate implements the PS signature scheme which can be used to generate zero-knowledge proofs about signed attributes and the signatures themselves.
 
-The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.
-
 ## Usage
 
 Add this to your `Cargo.toml`:

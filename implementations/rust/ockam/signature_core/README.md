@@ -12,9 +12,6 @@ This crate contains the signature core types of the [Ockam][main-ockam-crate-lin
 library and is intended for use by crates that provide features and add-ons
 to the main [Ockam][main-ockam-crate-link] library.
 
-The main [Ockam][main-ockam-crate-link] crate re-exports types defined in
-this crate.
-
 ## Usage
 
 Add this to your `Cargo.toml`:
@@ -34,11 +31,11 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
 
-[crate-image]: https://img.shields.io/crates/v/ockam_signature_core.svg
-[crate-link]: https://crates.io/crates/ockam_signature_core
+[crate-image]: https://img.shields.io/crates/v/signature_core.svg
+[crate-link]: https://crates.io/crates/signature_core
 
-[docs-image]: https://docs.rs/ockam_signature_core/badge.svg
-[docs-link]: https://docs.rs/ockam_signature_core
+[docs-image]: https://docs.rs/signature_core/badge.svg
+[docs-link]: https://docs.rs/signature_core
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE

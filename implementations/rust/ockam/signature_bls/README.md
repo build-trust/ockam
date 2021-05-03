@@ -10,8 +10,6 @@ and trustfully with cloud services and other devices.
 
 In order to support a variety of proving protocols, this crate implements the BLS signatures scheme which can be used as a building block for other more elaborate zero-knowledge capable signatures like short group signatures.
 
-The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.
-
 ## Usage
 
 Add this to your `Cargo.toml`:
@@ -43,13 +41,13 @@ has `default-features = false`.
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-vault-crate-link]: https://crates.io/crates/ockam_signature_bls
+[ockam-vault-crate-link]: https://crates.io/crates/signature_bls
 
-[crate-image]: https://img.shields.io/crates/v/ockam_signature_bls.svg
-[crate-link]: https://crates.io/crates/ockam_signature_bls
+[crate-image]: https://img.shields.io/crates/v/signature_bls.svg
+[crate-link]: https://crates.io/crates/signature_bls
 
-[docs-image]: https://docs.rs/ockam_signature_bls/badge.svg
-[docs-link]: https://docs.rs/ockam_signature_bls
+[docs-image]: https://docs.rs/signature_bls/badge.svg
+[docs-link]: https://docs.rs/signature_bls
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE
