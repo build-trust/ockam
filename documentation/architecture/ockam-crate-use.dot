@@ -1,5 +1,5 @@
 digraph {
-ockam_core [color=red];    
+ockam_core [color=red];
 ockam_core -> ockam_ffi [color=red];
 ockam_core -> ockam_key_exchange_core [color=red];
 ockam_core -> ockam_key_exchange_x3dh [color=red];

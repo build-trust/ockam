@@ -9,7 +9,7 @@ name = "ockam_node"
 version = "0.9.1"
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.11.1" }
+ockam_core = { path = "../ockam_core", version = "0.11.2" }
 tokio = {version = "1.5.0", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"] }
