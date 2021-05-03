@@ -1,4 +1,4 @@
-# ockam_ffi
+# ockam-ffi
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_ffi = "0.1.6"
+ockam-ffi = "0.1.6"
 ```
 
 ## License
@@ -28,13 +28,13 @@ ockam_ffi = "0.1.6"
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-ffi-crate-link]: https://crates.io/crates/ockam_ffi
+[ockam-ffi-crate-link]: https://crates.io/crates/ockam-ffi
 
-[crate-image]: https://img.shields.io/crates/v/ockam_ffi.svg
-[crate-link]: https://crates.io/crates/ockam_ffi
+[crate-image]: https://img.shields.io/crates/v/ockam-ffi.svg
+[crate-link]: https://crates.io/crates/ockam-ffi
 
-[docs-image]: https://docs.rs/ockam_ffi/badge.svg
-[docs-link]: https://docs.rs/ockam_ffi
+[docs-image]: https://docs.rs/ockam-ffi/badge.svg
+[docs-link]: https://docs.rs/ockam-ffi
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE

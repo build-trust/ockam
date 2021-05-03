@@ -30,11 +30,11 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
 
-[crate-image]: https://img.shields.io/crates/v/ockam.svg
-[crate-link]: https://crates.io/crates/ockam
+[crate-image]: https://img.shields.io/crates/v/ockam_node.svg
+[crate-link]: https://crates.io/crates/ockam_node
 
-[docs-image]: https://docs.rs/ockam/badge.svg
-[docs-link]: https://docs.rs/ockam
+[docs-image]: https://docs.rs/ockam_node/badge.svg
+[docs-link]: https://docs.rs/ockam_node
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE

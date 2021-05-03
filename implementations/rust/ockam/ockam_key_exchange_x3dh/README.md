@@ -1,4 +1,4 @@
-# ockam_kex_exchange_x3dh
+# ockam_key_exchange_x3dh
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -28,13 +28,12 @@ ockam_kex_exchange_x3dh = "0.2.2"
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-vault-crate-link]: https://crates.io/crates/ockam_kex_exchange_x3dh
 
-[crate-image]: https://img.shields.io/crates/v/ockam_kex_exchange_x3dh.svg
-[crate-link]: https://crates.io/crates/ockam_kex_exchange_x3dh
+[crate-image]: https://img.shields.io/crates/v/ockam_key_exchange_x3dh.svg
+[crate-link]: https://crates.io/crates/ockam_key_exchange_x3dh
 
-[docs-image]: https://docs.rs/ockam_kex_exchange_x3dh/badge.svg
-[docs-link]: https://docs.rs/ockam_kex_exchange_x3dh
+[docs-image]: https://docs.rs/ockam_key_exchange_x3dh/badge.svg
+[docs-link]: https://docs.rs/ockam_key_exchange_x3dh
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE

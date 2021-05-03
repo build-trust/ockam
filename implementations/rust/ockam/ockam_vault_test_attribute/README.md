@@ -27,13 +27,12 @@ ockam_vault_test_attribute = "0.3.0"
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-vault-crate-link]: https://crates.io/crates/ockam_vault
 
-[crate-image]: https://img.shields.io/crates/v/ockam_vault.svg
-[crate-link]: https://crates.io/crates/ockam_vault
+[crate-image]: https://img.shields.io/crates/v/ockam_vault_test_attribute.svg
+[crate-link]: https://crates.io/crates/ockam_vault_test_attribute
 
-[docs-image]: https://docs.rs/ockam_vault/badge.svg
-[docs-link]: https://docs.rs/ockam_vault
+[docs-image]: https://docs.rs/ockam_vault_test_attribute/badge.svg
+[docs-link]: https://docs.rs/ockam_vault_test_attribute
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE
