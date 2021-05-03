@@ -1,58 +1,76 @@
 digraph {
-ockam_core -> ockam_ffi;
-ockam_core -> ockam_key_exchange_core;
-ockam_core -> ockam_key_exchange_x3dh;
-ockam_core -> ockam_key_exchange_xx;
-ockam_core -> ockam_channel;
-ockam_core -> ockam_node;
-ockam_core -> ockam_vault;
-ockam_core -> ockam_transport_tcp;
-ockam_core -> ockam_vault_core;
-ockam_core -> ockam_vault_sync_core;
-ockam_core -> ockam_vault_test_suite;
+ockam_core [color=red];    
+ockam_core -> ockam_ffi [color=red];
+ockam_core -> ockam_key_exchange_core [color=red];
+ockam_core -> ockam_key_exchange_x3dh [color=red];
+ockam_core -> ockam_key_exchange_xx [color=red];
+ockam_core -> ockam_channel [color=red];
+ockam_core -> ockam_node [color=red];
+ockam_core -> ockam_vault [color=red];
+ockam_core -> ockam_transport_tcp [color=red];
+ockam_core -> ockam_vault_core [color=red];
+ockam_core -> ockam_vault_sync_core [color=red];
+ockam_core -> ockam_vault_test_suite [color=red];
 
-ockam_key_exchange_core  -> ockam_key_exchange_xx;
-ockam_key_exchange_core  -> ockam_key_exchange_x3dh;
-ockam_key_exchange_core -> ockam_channel;
+ockam_key_exchange_core [color=orange];
+ockam_key_exchange_core  -> ockam_key_exchange_xx [color=orange];
+ockam_key_exchange_core  -> ockam_key_exchange_x3dh [color=orange];
+ockam_key_exchange_core -> ockam_channel [color=orange];
 
-ockam_key_exchange_xx -> ockam_channel;
+ockam_key_exchange_xx [color=yellow];
+ockam_key_exchange_xx -> ockam_channel [color=yellow];
 
-ockam_node -> ockam;
-ockam_node -> ockam_key_exchange_xx;
-ockam_node -> ockam_channel;
-ockam_node -> ockam_transport_tcp;
-ockam_node -> ockam_vault_sync_core;
+ockam_node [color=green];
+ockam_node -> ockam [color=green];
+ockam_node -> ockam_key_exchange_x [color=green];
+ockam_node -> ockam_channel [color=green];
+ockam_node -> ockam_transport_tcp [color=green];
+ockam_node -> ockam_vault_sync_core [color=green];
 
-ockam_node_attribute -> ockam;
+ockam_vault_core [color=blue];
+ockam_vault_core -> ockam [color=blue];
+ockam_vault_core -> ockam_ffi [color=blue];
+ockam_vault_core -> ockam_key_exchange_core [color=blue];
+ockam_vault_core  -> ockam_key_exchange_x3dh [color=blue];
+ockam_vault_core -> ockam_channel [color=blue];
+ockam_vault_core  -> ockam_key_exchange_xx [color=blue];
+ockam_vault_core -> ockam_vault [color=blue];
+ockam_vault_core -> ockam_vault_sync_core [color=blue];
+ockam_vault_core -> ockam_vault_test_suite [color=blue];
 
-ockam_vault_core -> ockam;
-ockam_vault_core -> ockam_ffi;
-ockam_vault_core -> ockam_key_exchange_core;
-ockam_vault_core  -> ockam_key_exchange_x3dh;
-ockam_vault_core -> ockam_channel;
-ockam_vault_core  -> ockam_key_exchange_xx;
-ockam_vault_core -> ockam_vault;
-ockam_vault_core -> ockam_vault_sync_core;
-ockam_vault_core -> ockam_vault_test_suite;
 
-ockam_vault_sync_core -> ockam;
-ockam_vault_sync_core -> ockam_key_exchange_xx;
-ockam_vault_sync_core -> ockam_channel;
+ockam_vault_sync_core [color=cadetblue];
+ockam_vault_sync_core -> ockam [color=cadetblue];
+ockam_vault_sync_core -> ockam_key_exchange_xx [color=cadetblue];
+ockam_vault_sync_core -> ockam_channel [color=cadetblue];
 
-ockam_vault -> ockam;
-ockam_vault -> ockam_ffi;
-ockam_vault -> ockam_key_exchange_x3dh;
-ockam_vault -> ockam_key_exchange_xx;
-ockam_vault -> ockam_channel;
-ockam_vault -> ockam_vault_sync_core;
+ockam_vault [color=purple];
+ockam_vault -> ockam [color=purple];
+ockam_vault -> ockam_ffi [color=purple];
+ockam_vault -> ockam_key_exchange_x3dh [color=purple];
+ockam_vault -> ockam_key_exchange_xx [color=purple];
+ockam_vault -> ockam_channel [color=purple];
+ockam_vault -> ockam_vault_sync_core [color=purple];
 
+signature_core [color=brown];
+signature_core -> ockam [color=brown];
+signature_core -> signature_bbs_plus [color=brown];
+signature_core -> signature_ps [color=brown];
+
+signature_bls [color=darkred];
+signature_bls -> signature_bbs_plus [color=darkred];
+signature_bls -> signature_ps [color=darkred];
+signature_bls -> ockam [color=darkred];
 
 ockam_vault_test_suite -> ockam_vault;
 ockam_vault_test_suite -> ockam_vault_sync_core;
 
-
 ockam_vault_test_attribute -> ockam_vault;
 ockam_vault_test_attribute -> ockam_vault_sync_core;
+
+
+
+ockam_node_attribute -> ockam;
 
 ockam_transport_tcp -> ockam;
 
@@ -60,11 +78,5 @@ ockam_channel -> ockam;
 
 signature_bbs_plus -> ockam;
 
-signature_core -> ockam;
-signature_core -> signature_bbs_plus;
-signature_core -> signature_ps;
 
-signature_bls -> signature_bbs_plus;
-signature_bls -> signature_ps;
-signature_bls -> ockam;
 }
