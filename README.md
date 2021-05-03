@@ -80,8 +80,8 @@ along the route of a message, may use a different transport protocol.
 
 It is possible to describe a route where the first hop is a TCP connection and
 the second hop is also a TCP connection. Or a different route where the first
-hop is bluetooth connection, the second hop is TCP connection, and the third
-hop is a UDP connection and so on.
+hop is a bluetooth connection, the second hop a TCP connection, and the third
+hop a UDP connection and so on.
 
 This enables end-to-end [Secure Channels](#secure-channels) over complex,
 multi-hop, multi-protocol routes. It also enables en-route encrypted messages

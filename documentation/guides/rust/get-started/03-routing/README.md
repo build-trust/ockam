@@ -12,7 +12,7 @@ application layer routing protocols allows us to send messages over multiple
 hops, within one node, or across many nodes.
 
 To achieve this, messages carry with them two meta fields: `onward_route`
-and `return_route`, where a route is list of addresses.
+and `return_route`, where a route is a list of addresses.
 
 To get a sense of how that works, let's route a message over two hops.
 
@@ -47,7 +47,7 @@ impl Worker for Hop {
     type Message = Any;
 
     /// This handle function takes any incoming message and forwards
-    /// it to the next hop in it's onward route
+    /// it to the next hop in its onward route
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         println!("Address: {}, Received: {}", ctx.address(), msg);
 
@@ -60,7 +60,7 @@ impl Worker for Hop {
 ```
 
 To make this `Hop` type accessible to our main program, export it
-from `src/lib.rs` file by adding the following to it:
+from `src/lib.rs` by adding the following to it:
 
 ```rust
 // src/lib.rs

@@ -27,7 +27,7 @@ This struct:
 * Must implement the `ockam::Worker` trait.
 * Must have the `#[ockam::async_worker]` attribute on the Worker trait implementation
 * Must define two associated types `Context` and `Message`
-  * The `Context` type is usually set to `ockam::Context` which is provide by the node implementation.
+  * The `Context` type is usually set to `ockam::Context` which is provided by the node implementation.
   * The `Message` type must be set to the type of message the worker wishes to handle.
 
 For a new `Echoer` worker, create a new file at `src/echoer.rs` in your
