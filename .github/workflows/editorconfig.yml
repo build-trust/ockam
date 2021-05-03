@@ -1,5 +1,5 @@
 name: Lint Editorconfig
-on: [push, pull_request]
+on: push
 
 jobs:
   editorconfig_lint:
