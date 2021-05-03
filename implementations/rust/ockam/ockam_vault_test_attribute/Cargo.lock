@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "quote",
  "syn",
