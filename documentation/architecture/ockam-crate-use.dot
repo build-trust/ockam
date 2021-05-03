@@ -1,0 +1,70 @@
+digraph {
+ockam_core -> ockam_ffi;
+ockam_core -> ockam_key_exchange_core;
+ockam_core -> ockam_key_exchange_x3dh;
+ockam_core -> ockam_key_exchange_xx;
+ockam_core -> ockam_channel;
+ockam_core -> ockam_node;
+ockam_core -> ockam_vault;
+ockam_core -> ockam_transport_tcp;
+ockam_core -> ockam_vault_core;
+ockam_core -> ockam_vault_sync_core;
+ockam_core -> ockam_vault_test_suite;
+
+ockam_key_exchange_core  -> ockam_key_exchange_xx;
+ockam_key_exchange_core  -> ockam_key_exchange_x3dh;
+ockam_key_exchange_core -> ockam_channel;
+
+ockam_key_exchange_xx -> ockam_channel;
+
+ockam_node -> ockam;
+ockam_node -> ockam_key_exchange_xx;
+ockam_node -> ockam_channel;
+ockam_node -> ockam_transport_tcp;
+ockam_node -> ockam_vault_sync_core;
+
+ockam_node_attribute -> ockam;
+
+ockam_vault_core -> ockam;
+ockam_vault_core -> ockam_ffi;
+ockam_vault_core -> ockam_key_exchange_core;
+ockam_vault_core  -> ockam_key_exchange_x3dh;
+ockam_vault_core -> ockam_channel;
+ockam_vault_core  -> ockam_key_exchange_xx;
+ockam_vault_core -> ockam_vault;
+ockam_vault_core -> ockam_vault_sync_core;
+ockam_vault_core -> ockam_vault_test_suite;
+
+ockam_vault_sync_core -> ockam;
+ockam_vault_sync_core -> ockam_key_exchange_xx;
+ockam_vault_sync_core -> ockam_channel;
+
+ockam_vault -> ockam;
+ockam_vault -> ockam_ffi;
+ockam_vault -> ockam_key_exchange_x3dh;
+ockam_vault -> ockam_key_exchange_xx;
+ockam_vault -> ockam_channel;
+ockam_vault -> ockam_vault_sync_core;
+
+
+ockam_vault_test_suite -> ockam_vault;
+ockam_vault_test_suite -> ockam_vault_sync_core;
+
+
+ockam_vault_test_attribute -> ockam_vault;
+ockam_vault_test_attribute -> ockam_vault_sync_core;
+
+ockam_transport_tcp -> ockam;
+
+ockam_channel -> ockam;
+
+signature_bbs_plus -> ockam;
+
+signature_core -> ockam;
+signature_core -> signature_bbs_plus;
+signature_core -> signature_ps;
+
+signature_bls -> signature_bbs_plus;
+signature_bls -> signature_ps;
+signature_bls -> ockam;
+}
