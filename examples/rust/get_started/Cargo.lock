@@ -781,7 +781,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -792,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.9.2"
+version = "0.9.3"
 dependencies = [
  "ockam_core",
  "tokio",
