@@ -18,7 +18,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-signature_core = "0.3.0"
+signature_core = "0.3.1"
 ```
 
 ## Crate Features
