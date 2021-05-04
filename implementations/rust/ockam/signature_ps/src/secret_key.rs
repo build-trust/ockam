@@ -5,7 +5,7 @@ use hkdf::HkdfExtract;
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
-use short_group_signatures_core::lib::*;
+use signature_core::lib::*;
 use zeroize::Zeroize;
 
 /// The secret key contains a field element for each

@@ -14,7 +14,7 @@
 )]
 
 #[macro_use]
-extern crate short_group_signatures_core;
+extern crate signature_core;
 
 mod blind_signature;
 mod blind_signature_context;

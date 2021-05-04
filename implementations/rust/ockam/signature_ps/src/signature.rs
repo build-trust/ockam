@@ -12,7 +12,7 @@ use serde::{
     ser::SerializeTuple,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use short_group_signatures_core::{constants::*, error::Error, lib::*, util::*};
+use signature_core::{constants::*, error::Error, lib::*, util::*};
 use subtle::{Choice, CtOption};
 
 /// A Pointcheval Saunders signature

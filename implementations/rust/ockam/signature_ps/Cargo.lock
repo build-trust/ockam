@@ -401,9 +401,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6cb74a34b6246aa157f1bdaff644eee31b676c76daab8318b53b5a359bfb6fd"
+version = "0.1.2"
 dependencies = [
  "bls12_381_plus",
  "ff",

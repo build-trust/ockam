@@ -5,7 +5,7 @@ use core::convert::TryFrom;
 use digest::{Update, VariableOutput};
 use group::{Curve, GroupEncoding};
 use serde::{Deserialize, Serialize};
-use short_group_signatures_core::{constants::*, error::Error, lib::*};
+use signature_core::{constants::*, error::Error, lib::*};
 use subtle::ConstantTimeEq;
 
 /// Contains the data used for computing a blind signature and verifying

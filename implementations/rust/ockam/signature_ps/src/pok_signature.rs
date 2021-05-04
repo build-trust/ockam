@@ -3,8 +3,8 @@ use bls12_381_plus::{G1Projective, G2Affine, G2Projective, Scalar};
 use digest::Update;
 use group::Curve;
 use rand_core::*;
-use short_group_signatures_core::constants::ALLOC_MSG;
-use short_group_signatures_core::{error::Error, lib::*};
+use signature_core::constants::ALLOC_MSG;
+use signature_core::{error::Error, lib::*};
 
 /// Proof of Knowledge of a Signature that is used by the prover
 /// to construct `PoKOfSignatureProof`.

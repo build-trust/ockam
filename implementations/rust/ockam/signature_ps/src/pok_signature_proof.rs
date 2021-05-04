@@ -7,7 +7,7 @@ use core::ops::BitOr;
 use digest::Update;
 use group::{Curve, Group, GroupEncoding};
 use serde::{Deserialize, Serialize};
-use short_group_signatures_core::{constants::*, lib::*};
+use signature_core::{constants::*, lib::*};
 
 /// The actual proof that is sent from prover to verifier.
 #[derive(Debug, Clone, Deserialize, Serialize)]

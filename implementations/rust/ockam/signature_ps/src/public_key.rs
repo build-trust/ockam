@@ -2,7 +2,7 @@ use crate::SecretKey;
 use bls12_381_plus::{G2Affine, G2Projective};
 use group::Curve;
 use serde::{Deserialize, Serialize};
-use short_group_signatures_core::lib::*;
+use signature_core::lib::*;
 use subtle::Choice;
 
 /// The public key contains a generator point for each

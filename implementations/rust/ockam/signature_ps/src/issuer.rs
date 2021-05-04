@@ -1,6 +1,6 @@
 use crate::*;
 use rand_core::{CryptoRng, RngCore};
-use short_group_signatures_core::{error::Error, lib::*};
+use signature_core::{error::Error, lib::*};
 
 /// This struct represents an Issuer of signatures or Signer.
 /// Provided are methods for signing regularly where all messages are known
