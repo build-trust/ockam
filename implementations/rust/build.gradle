@@ -31,6 +31,9 @@ commands {
       'cargo clippy --all --all-targets -- --cap-lints=warn',
       'cargo audit',
     ],
+    audit_fix: [
+      'cargo audit fix',
+    ],
   ]
 
   directories = crates
