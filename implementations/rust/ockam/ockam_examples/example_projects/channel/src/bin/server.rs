@@ -5,7 +5,7 @@ const SECURE_CHANNEL: &str = "xx_channel_listener";
 
 #[ockam::node]
 async fn main(mut ctx: ockam::Context) -> Result<()> {
-    let vault_address = Vault::create(&ctx).await?;
+    let vault_address = Vault::create(&ctx)?;
 
     SecureChannel::create_listener(&mut ctx, SECURE_CHANNEL, &vault_address).await?;
 

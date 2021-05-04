@@ -3,7 +3,7 @@ use ockam::{Result, TcpTransport, Vault};
 
 #[ockam::node]
 async fn main(ctx: ockam::Context) -> Result<()> {
-    let vault_address = Vault::create(&ctx).await?;
+    let vault_address = Vault::create(&ctx)?;
 
     let hub_addr = "40.78.99.34:4000";
 
