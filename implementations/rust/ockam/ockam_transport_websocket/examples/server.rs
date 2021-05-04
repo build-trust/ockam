@@ -6,11 +6,18 @@
 #[macro_use]
 extern crate tracing;
 
-use ockam::{async_worker, Context, Result, Routed, Worker};
+use ockam_core::{Result, Routed, Worker, async_trait};
+use ockam_node::{Context};
 use ockam_transport_websocket::WebSocketTransport;
 
-#[ockam::node]
-async fn main(ctx: Context) -> Result<()> {
+fn main() -> Result<()> {
+    let (ctx, mut executor) = ockam_node::start_node();
+    executor.execute(async move {
+        run_main(ctx).await.unwrap();
+    })
+}
+
+async fn run_main(ctx: Context) -> Result<()> {
     // Get either the default socket address, or a user-input
     let bind_addr = get_bind_addr();
     let ws = WebSocketTransport::create(&ctx).await?;
@@ -25,7 +32,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 struct Responder;
 
-#[async_worker]
+#[async_trait::async_trait]
 impl Worker for Responder {
     type Context = Context;
     type Message = String;

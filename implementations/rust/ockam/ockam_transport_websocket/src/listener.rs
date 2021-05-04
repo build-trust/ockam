@@ -3,7 +3,8 @@ use crate::init::WorkerPair;
 use crate::WebSocketError;
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::StreamExt;
-use ockam::{async_worker, Address, Context, Result, RouterMessage, Worker};
+use ockam_core::{Address, Result, RouterMessage, Worker, async_trait};
+use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 
@@ -76,12 +77,11 @@ impl WebSocketListenWorker {
     }
 }
 
-#[async_worker]
+#[async_trait::async_trait]
 impl Worker for WebSocketListenWorker {
-    type Context = Context;
-
     // Do not actually listen for messages
     type Message = ();
+    type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         trace!("Waiting for incoming TCP connection...");
