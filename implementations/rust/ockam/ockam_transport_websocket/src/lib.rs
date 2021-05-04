@@ -35,7 +35,8 @@ pub use receiver::WebSocketRecvWorker;
 pub use sender::WebSocketSendWorker;
 
 use crate::router::{WebSocketRouter, WebSocketRouterHandle};
-use ockam::{Address, Context, Result};
+use ockam_core::{Address, Result};
+use ockam_node::Context;
 use std::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -55,7 +56,8 @@ use std::str::FromStr;
 ///
 /// ```rust
 /// use ockam_transport_websocket::WebSocketTransport;
-/// # use ockam::{Context, Result};
+/// # use ockam_core::Result;
+/// # use ockam_node::Context;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let ws = WebSocketTransport::create(&ctx).await?;
 /// ws.listen("127.0.0.1:8000").await?; // Listen on port 8000
@@ -67,7 +69,8 @@ use std::str::FromStr;
 ///
 /// ```rust
 /// # use ockam_transport_websocket::WebSocketTransport;
-/// # use ockam::{Context, Result};
+/// # use ockam_core::{Address, Result};
+/// # use ockam_node::Context;
 /// # async fn test(ctx: Context) -> Result<()> {
 /// let ws = WebSocketTransport::create(&ctx).await?;
 /// ws.listen("127.0.0.1:8000").await?; // Listen on port 8000
@@ -139,7 +142,7 @@ impl Into<String> for &WebSocketAddr {
 }
 
 impl FromStr for WebSocketAddr {
-    type Err = ockam::Error;
+    type Err = ockam_core::Error;
 
     fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         let socket_addr = parse_socket_addr(s)?;

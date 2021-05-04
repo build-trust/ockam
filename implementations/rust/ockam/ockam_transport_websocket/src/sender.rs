@@ -1,7 +1,8 @@
 use crate::WebSocketError;
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
-use ockam::{async_worker, Context, Result, Routed, TransportMessage, Worker};
+use ockam_core::{Result, Routed, TransportMessage, Worker, async_trait};
+use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
@@ -20,13 +21,13 @@ where
     pub(crate) peer: SocketAddr,
 }
 
-#[async_worker]
+#[async_trait::async_trait]
 impl<AsyncStream> Worker for WebSocketSendWorker<AsyncStream>
 where
     AsyncStream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    type Context = Context;
     type Message = TransportMessage;
+    type Context = Context;
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend

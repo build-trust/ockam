@@ -1,7 +1,8 @@
 use crate::atomic::{self, ArcBool};
 use crate::init::WorkerPair;
 use crate::{listener::WebSocketListenWorker, WebSocketError};
-use ockam::{async_worker, Address, Context, Result, Routed, RouterMessage, Worker};
+use ockam_core::{Address, Result, Routed, RouterMessage, Worker, async_trait};
+use ockam_node::Context;
 use std::sync::Arc;
 use std::{collections::BTreeMap, net::SocketAddr};
 
@@ -54,14 +55,20 @@ impl<'c> WebSocketRouterHandle<'c> {
     }
 }
 
-#[async_worker]
+#[async_trait::async_trait]
 impl Worker for WebSocketRouter {
-    type Context = Context;
     type Message = RouterMessage;
+    type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         trace!("Registering WebSocket router for type = {}", crate::TCP);
         ctx.register(crate::TCP, ctx.address()).await?;
+        Ok(())
+    }
+
+    fn shutdown(&mut self, _: &mut Context) -> Result<()> {
+        // Shut down the ListeningWorker if it exists
+        atomic::stop(&self.run);
         Ok(())
     }
 
@@ -101,12 +108,6 @@ impl Worker for WebSocketRouter {
             }
         };
 
-        Ok(())
-    }
-
-    fn shutdown(&mut self, _: &mut Context) -> Result<()> {
-        // Shut down the ListeningWorker if it exists
-        atomic::stop(&self.run);
         Ok(())
     }
 }

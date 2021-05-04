@@ -1,5 +1,5 @@
 use crate::init::WorkerPair;
-use ockam::Error;
+use ockam_core::Error;
 
 /// A WebSocket connection worker specific error type
 #[derive(Clone, Copy, Debug)]

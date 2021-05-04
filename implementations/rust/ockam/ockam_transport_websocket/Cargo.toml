@@ -26,7 +26,8 @@ std = []
 [dependencies]
 futures-channel = "*"
 futures-util = { version = "*", default-features = false, features = ["tokio-io"] }
-ockam = {path = "../ockam", version = "0"}
+ockam_core = { path = "../ockam_core", version = "0.11" }
+ockam_node = { path = "../ockam_node", version = "0.9" }
 serde_bare = "0.3.0"
 tokio = {version = "1.4.0", features = ["rt-multi-thread","sync","net","macros","time"]}
 tokio-tungstenite = "0.14.0"
