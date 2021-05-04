@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-REV=$1
 if [ -z "$REV" ]
 then
   REV=develop

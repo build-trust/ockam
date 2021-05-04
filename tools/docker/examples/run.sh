@@ -6,5 +6,5 @@ then
   exit 0
 fi
 
-docker run -e OCKAM_HUB="$1" -it ockam-example-runner:latest
+docker run -e OCKAM_HUB="$1" -e REV="$2" -it ockam-example-runner:latest
 
