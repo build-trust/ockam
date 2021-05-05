@@ -1,3 +1,5 @@
+use crate::profile::ProfileAuth;
+use crate::profile::ProfileContacts;
 use crate::{Contact, OckamError, Profile};
 use ockam_channel::{CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel};
 use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};

@@ -2,6 +2,8 @@ use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 
 mod listener;
+use crate::profile::ProfileAuth;
+use crate::profile::ProfileContacts;
 use crate::{OckamError, Profile};
 pub use listener::*;
 use ockam_channel::SecureChannel;

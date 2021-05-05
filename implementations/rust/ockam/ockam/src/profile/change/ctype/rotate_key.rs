@@ -1,4 +1,5 @@
 use crate::history::ProfileChangeHistory;
+use crate::profile::ProfileChanges;
 use crate::{
     Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, Signature,

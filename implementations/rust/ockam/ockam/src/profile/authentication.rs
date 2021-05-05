@@ -53,6 +53,10 @@ impl Authentication {
 
 #[cfg(test)]
 mod test {
+    use crate::profile::ProfileAuth;
+    use crate::profile::ProfileChanges;
+    use crate::profile::ProfileContacts;
+    use crate::profile::ProfileSecrets;
     use crate::{KeyAttributes, Profile};
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultSync;

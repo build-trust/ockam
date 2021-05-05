@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::{Profile, KeyAttributes, Vault};
+/// # use ockam::{Profile, ProfileContacts, ProfileSecrets, KeyAttributes, Vault};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
@@ -48,7 +48,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::{Profile, KeyAttributes, Vault};
+/// # use ockam::{Profile, ProfileContacts, ProfileSecrets, KeyAttributes, Vault};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
