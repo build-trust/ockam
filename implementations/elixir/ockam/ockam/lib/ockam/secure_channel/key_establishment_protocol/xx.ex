@@ -4,12 +4,10 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX do
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder
-  alias Ockam.Serializable
 
   def setup(options, data) do
-    # TODO:
-    options =
-      Keyword.put(options, :message2_payload, Serializable.serialize(data.plaintext_address))
+    options = Keyword.put(options, :message2_payload, data.plaintext_address)
+    options = Keyword.put(options, :message3_payload, data.plaintext_address)
 
     with {:ok, data} <- Protocol.setup(options, data) do
       case Keyword.get(options, :role, :initiator) do

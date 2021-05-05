@@ -29,7 +29,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
     data = Map.put(data, :route_to_peer, message3_onward_route)
 
     with {:ok, payload, data} <- Protocol.decode(:message2, message2, data),
-         {:ok, data} <- set_peer_plaintext_address(payload, data),
+         {:ok, data} <- set_peer(payload, data),
          {:ok, encoded_message3, data} <- Protocol.encode(:message3, data),
          :ok <- send(encoded_message3, message3_onward_route, message3_return_route),
          {:ok, data} <- set_encrypted_transport_state(data) do
@@ -46,7 +46,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
     Router.route(envelope)
   end
 
-  def set_peer_plaintext_address(address, data) do
+  def set_peer(address, data) do
     peer =
       Map.get(data, :peer, %{})
       |> Map.put(:public_key, data.xx_key_establishment_state.rs)
