@@ -15,6 +15,7 @@ defmodule Ockam.Hub.TelemetryForwarder do
   def init() do
     settings = get_settings()
 
+    Logger.info("Create node #{inspect(settings)}")
     create_node(settings.host, settings.token, settings.public_ip)
     attach_send_to_ui(settings.host, settings.token, settings.public_ip)
   end

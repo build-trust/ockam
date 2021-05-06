@@ -9,8 +9,10 @@ defmodule Ockam.Hub do
 
   alias Ockam.Hub.Service.Alias, as: AliasService
   alias Ockam.Hub.Service.Echo, as: EchoService
-  alias Ockam.Hub.Service.Stream, as: StreamService
-  alias Ockam.Hub.Service.Stream.Index, as: StreamIndexService
+
+  alias Ockam.Stream.Client.BiDirectional.Subscribe, as: StreamSubscriptionService
+  alias Ockam.Stream.Index.Worker, as: StreamIndexService
+  alias Ockam.Stream.Workers.Service, as: StreamService
 
   alias Ockam.Hub.TelemetryForwarder
   alias Ockam.Transport
@@ -38,6 +40,15 @@ defmodule Ockam.Hub do
 
     StreamService.create(address: "stream_service")
     StreamIndexService.create(address: "stream_index_service")
+
+    StreamSubscriptionService.create(
+      address: "stream_subscribe",
+      stream_options: [
+        service_route: ["stream_service"],
+        index_route: ["stream_index_service"],
+        partitions: 1
+      ]
+    )
 
     # on app start, create the node if it does not exist
     # we probably don't care if this errors.

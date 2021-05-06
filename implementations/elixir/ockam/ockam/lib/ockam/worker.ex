@@ -61,7 +61,7 @@ defmodule Ockam.Worker do
         start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
 
         with {:ok, address} <- get_from_options(:address, options) do
-          return_value = setup(options, %{address: address})
+          return_value = setup(options, %{address: address, module: __MODULE__})
 
           metadata = Map.put(metadata, :return_value, return_value)
           Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
@@ -78,21 +78,20 @@ defmodule Ockam.Worker do
 
         return_value = handle_message(message, state)
 
-        new_state =
-          case return_value do
-            {:ok, returned_state} ->
-              returned_state
-
-            _anything_else ->
-              state
-          end
-
-        return_value = {:noreply, new_state}
-
         metadata = Map.put(metadata, :return_value, return_value)
         Telemetry.emit_stop_event([__MODULE__, :handle_message], start_time, metadata: metadata)
 
-        return_value
+        case return_value do
+          {:ok, returned_state} ->
+            {:noreply, returned_state}
+
+          {:stop, reason, returned_state} ->
+            {:stop, reason, returned_state}
+
+          other ->
+            ## TODO: log error
+            {:noreply, state}
+        end
       end
 
       @doc false

@@ -1,7 +1,7 @@
-defmodule Ockam.Examples.Stream.PublisherProxy do
+defmodule Ockam.Stream.Client.Publisher do
   @moduledoc false
   use Ockam.Worker
-  use Ockam.MessageProtocol
+  use Ockam.Protocol.Mapping
 
   alias Ockam.Message
   alias Ockam.Protocol.Stream, as: StreamProtocol
@@ -17,23 +17,26 @@ defmodule Ockam.Examples.Stream.PublisherProxy do
 
   @type state() :: %__MODULE__{}
 
+  @protocol_mapping Ockam.Protocol.Mapping.mapping([
+                      {:client, StreamProtocol.Create},
+                      {:client, StreamProtocol.Partitioned.Create},
+                      {:client, StreamProtocol.Push},
+                      {:client, Ockam.Protocol.Error},
+                      {:server, Ockam.Protocol.Binary}
+                    ])
+
   @impl true
   def protocol_mapping() do
-    ## TODO: this can be memoized in compile time with a macro
-    Ockam.Protocol.mapping([
-      {:client, StreamProtocol.Create},
-      {:client, StreamProtocol.Push},
-      {:client, Ockam.Protocol.Error},
-      {:server, Ockam.Protocol.Binary}
-    ])
+    @protocol_mapping
   end
 
   @impl true
   def setup(options, state) do
     service_route = Keyword.fetch!(options, :service_route)
     stream_name = Keyword.fetch!(options, :stream_name)
+    partitions = Keyword.fetch!(options, :partitions)
 
-    create_stream(service_route, stream_name, state)
+    create_stream(service_route, stream_name, partitions, state)
 
     {:ok, struct(__MODULE__, Map.put(state, :stream_name, stream_name))}
   end
@@ -43,7 +46,7 @@ defmodule Ockam.Examples.Stream.PublisherProxy do
     payload = Message.payload(message)
 
     case decode_payload(payload) do
-      {:ok, "stream_create", %{stream_name: stream_name}} ->
+      {:ok, StreamProtocol.Create, %{stream_name: stream_name}} ->
         state =
           state
           |> add_stream(stream_name, Message.return_route(message))
@@ -51,20 +54,29 @@ defmodule Ockam.Examples.Stream.PublisherProxy do
 
         {:ok, state}
 
-      {:ok, "stream_push", %{status: :ok, request_id: request_id, index: index}} ->
+      ## TODO: support multiple partitions
+      {:ok, StreamProtocol.Partitioned.Create, %{stream_name: stream_name, partition: 0}} ->
+        state =
+          state
+          |> add_stream(stream_name, Message.return_route(message))
+          |> send_unsent()
+
+        {:ok, state}
+
+      {:ok, StreamProtocol.Push, %{status: :ok, request_id: request_id, index: index}} ->
         state = message_confirmed(request_id, index, state)
         {:ok, state}
 
-      {:ok, "stream_push", %{status: :error, request_id: request_id}} ->
+      {:ok, StreamProtocol.Push, %{status: :error, request_id: request_id}} ->
         ## Resend doesn't change the state currently
         resend_message(request_id, state)
         {:ok, state}
 
-      {:ok, "error", %{reason: reason}} ->
+      {:ok, Ockam.Protocol.Error, %{reason: reason}} ->
         Logger.error("Stream error: #{inspect(reason)}")
         {:ok, state}
 
-      {:ok, "binary", data} ->
+      {:ok, Ockam.Protocol.Binary, data} ->
         state = send_message(data, state)
         {:ok, state}
 
@@ -143,12 +155,19 @@ defmodule Ockam.Examples.Stream.PublisherProxy do
   end
 
   def route_push(message, state) do
-    encoded = encode_payload("stream_push", message)
+    encoded = encode_payload(StreamProtocol.Push, message)
     route(encoded, Map.get(state, :stream_route), state)
   end
 
-  def create_stream(service_route, stream_name, state) do
-    encoded = encode_payload("stream_create", %{stream_name: stream_name})
+  def create_stream(service_route, stream_name, partitions, state) do
+    Logger.info("create stream #{inspect({service_route, stream_name})}")
+
+    encoded =
+      encode_payload(StreamProtocol.Partitioned.Create, %{
+        stream_name: stream_name,
+        partitions: partitions
+      })
+
     route(encoded, service_route, state)
   end
 
