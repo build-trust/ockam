@@ -1,8 +1,8 @@
-use ockam::{async_worker, Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, Worker};
 
 struct MultiAddressWorker;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for MultiAddressWorker {
     type Message = String;
     type Context = Context;

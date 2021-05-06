@@ -1,8 +1,8 @@
-use ockam::{async_worker, Any, Context, Result, Route, Routed, Worker};
+use ockam::{Any, Context, Result, Route, Routed, Worker};
 
 struct MyRouter;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for MyRouter {
     type Context = Context;
     type Message = Any;
@@ -20,7 +20,7 @@ impl Worker for MyRouter {
 
 struct Echo;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Echo {
     type Context = Context;
     type Message = String;

@@ -6,12 +6,12 @@
 #[macro_use]
 extern crate tracing;
 
-use ockam::{async_worker, Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, Worker};
 use ockam_transport_tcp::TcpTransport;
 
 struct Responder;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Responder {
     type Context = Context;
     type Message = String;

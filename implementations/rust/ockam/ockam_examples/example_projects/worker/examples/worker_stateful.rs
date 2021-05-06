@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct StatefulWorker {
@@ -8,7 +8,7 @@ struct StatefulWorker {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Message(usize);
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for StatefulWorker {
     type Context = Context;
     type Message = Message;

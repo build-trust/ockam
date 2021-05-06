@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
-use ockam::{async_worker, Context, Result, Route, Routed, Worker};
+use ockam::{Context, Result, Route, Routed, Worker};
 use ockam_transport_tcp::{TcpTransport, TCP};
 
 fn get_peer_addr() -> String {
@@ -20,7 +20,7 @@ struct ProxiedWorker {
     peer: String,
 }
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for ProxiedWorker {
     type Context = Context;
     type Message = String;

@@ -1,5 +1,5 @@
 use ockam::{
-    async_worker, Context, CredentialAttribute, CredentialIssuer, CredentialSchema, Result, Routed,
+    Context, CredentialAttribute, CredentialIssuer, CredentialSchema, Result, Routed,
     Worker,
 };
 use ockam_transport_tcp::TcpTransport;
@@ -13,7 +13,7 @@ pub struct Issuer {
     schema: CredentialSchema,
 }
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Issuer {
     type Message = CredentialMessage;
     type Context = Context;

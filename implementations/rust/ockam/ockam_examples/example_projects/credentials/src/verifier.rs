@@ -1,5 +1,5 @@
 use ockam::{
-    async_worker, Context, CredentialVerifier, OckamError, PresentationManifest, PublicKeyBytes,
+    Context, CredentialVerifier, OckamError, PresentationManifest, PublicKeyBytes,
     Result, Route, Routed, Worker,
 };
 
@@ -12,7 +12,7 @@ struct Verifier {
     issuer_pubkey: Option<PublicKeyBytes>,
 }
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Verifier {
     type Message = CredentialMessage;
     type Context = Context;

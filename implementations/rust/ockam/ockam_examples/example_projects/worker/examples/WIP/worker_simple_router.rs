@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
-use ockam::{async_worker, Address, Context, Result, Route, Routed, RouterMessage, Worker};
+use ockam::{Address, Context, Result, Route, Routed, RouterMessage, Worker};
 use std::collections::BTreeMap;
 
 /// A simple external router
@@ -10,7 +10,7 @@ struct Router {
     routes: BTreeMap<Address, Address>,
 }
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Router {
     // Routers must handle `RouterMessage` provided by ockam_core, to
     // create a consistent interface across all router implementations
@@ -69,7 +69,7 @@ impl Worker for Router {
 /// A connoisseur of strings
 struct Consumer;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Consumer {
     type Message = String;
     type Context = Context;

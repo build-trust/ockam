@@ -2,7 +2,7 @@ use ockam::{Context, Result, Routed, Worker};
 
 pub struct Echoer;
 
-#[ockam::async_worker]
+#[ockam::worker]
 impl Worker for Echoer {
     type Context = Context;
     type Message = String;
