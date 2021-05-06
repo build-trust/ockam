@@ -39,6 +39,16 @@ defmodule Ockam.Hub do
     StreamService.create(address: "stream_service")
     StreamIndexService.create(address: "stream_index_service")
 
+    {:ok, _} =
+      Ockam.Stream.Transport.start_link(
+        service_route: ["stream_service"],
+        index_route: ["stream_index_service"],
+        partitions: 1,
+        implicit_consumer: true
+      )
+
+    Ockam.Stream.Transport.Subscribe.create(address: "stream_transport_subscribe")
+
     # on app start, create the node if it does not exist
     # we probably don't care if this errors.
     TelemetryForwarder.init()
