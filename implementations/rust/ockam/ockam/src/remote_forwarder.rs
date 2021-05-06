@@ -1,4 +1,4 @@
-use crate::{async_worker, Context, OckamError};
+use crate::{Context, OckamError};
 use ockam_core::lib::net::SocketAddr;
 use ockam_core::{Address, Any, Result, Route, Routed, TransportMessage, Worker};
 use rand::random;
@@ -68,7 +68,7 @@ impl RemoteForwarder {
     }
 }
 
-#[async_worker]
+#[crate::worker]
 impl Worker for RemoteForwarder {
     type Context = Context;
     type Message = Any;

@@ -1,11 +1,8 @@
-use ockam::{
-    async_worker, Context, RemoteForwarder, Result, Routed, SecureChannel, TcpTransport, Vault,
-    Worker,
-};
+use ockam::{Context, RemoteForwarder, Result, Routed, SecureChannel, TcpTransport, Vault, Worker};
 
 struct EchoService;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for EchoService {
     type Message = String;
     type Context = Context;

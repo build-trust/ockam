@@ -34,6 +34,7 @@ pub extern crate hex;
 #[allow(unused_imports)]
 #[macro_use]
 pub extern crate async_trait;
+pub use async_trait::async_trait as worker;
 
 mod error;
 mod message;

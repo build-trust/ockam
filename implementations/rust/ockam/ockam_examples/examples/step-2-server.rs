@@ -1,8 +1,8 @@
-use ockam::{async_worker, Context, Result, Routed, TcpTransport, Worker};
+use ockam::{Context, Result, Routed, TcpTransport, Worker};
 
 struct EchoService;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for EchoService {
     type Message = String;
     type Context = Context;

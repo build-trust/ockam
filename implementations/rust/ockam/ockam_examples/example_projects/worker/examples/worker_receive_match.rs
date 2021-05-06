@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -7,7 +7,7 @@ struct Echo;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct Number(u8);
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Echo {
     type Context = Context;
     type Message = Number;

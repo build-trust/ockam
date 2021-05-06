@@ -1,5 +1,5 @@
 use ockam::{
-    async_worker, Context, Credential, CredentialFragment1, CredentialHolder, CredentialVerifier,
+    Context, Credential, CredentialFragment1, CredentialHolder, CredentialVerifier,
     OckamError, OfferIdBytes, PresentationManifest, PublicKeyBytes, Result, Route, Routed, Worker,
 };
 use ockam_transport_tcp::TcpTransport;
@@ -20,7 +20,7 @@ struct Holder {
     offer_id: Option<OfferIdBytes>,
 }
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Holder {
     type Message = CredentialMessage;
     type Context = Context;

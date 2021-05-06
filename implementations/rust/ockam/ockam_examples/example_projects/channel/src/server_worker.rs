@@ -1,9 +1,9 @@
-use ockam::{async_worker, Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, Worker};
 use tracing::info;
 
 pub struct Server;
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Server {
     type Context = Context;
     type Message = String;

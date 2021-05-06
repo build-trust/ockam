@@ -1,4 +1,4 @@
-use ockam::{async_worker, Address, Context, Result, Route, Routed, SecureChannel, Worker};
+use ockam::{Address, Context, Result, Route, Routed, SecureChannel, Worker};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use tokio::time::Duration;
@@ -24,7 +24,7 @@ impl Client {
     }
 }
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Client {
     type Context = Context;
     type Message = String;

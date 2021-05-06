@@ -1,6 +1,6 @@
 //! Spawn to workers that play some ping-pong
 
-use ockam::{async_worker, Address, Context, Result, Routed, Worker};
+use ockam::{Address, Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Player {
@@ -28,7 +28,7 @@ enum Action {
     Pong,
 }
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Player {
     type Message = Action;
     type Context = Context;

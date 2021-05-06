@@ -1,4 +1,4 @@
-use crate::{async_worker, Contact, OckamError, Profile};
+use crate::{Contact, OckamError, Profile};
 use ockam_channel::{CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel};
 use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
@@ -22,7 +22,7 @@ impl ProfileChannelListener {
     }
 }
 
-#[async_worker]
+#[crate::worker]
 impl Worker for ProfileChannelListener {
     type Message = CreateResponderChannelMessage;
     type Context = Context;

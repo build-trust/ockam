@@ -1,4 +1,4 @@
-use ockam::{async_worker, Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Square;
@@ -6,7 +6,7 @@ struct Square;
 #[derive(Serialize, Deserialize)]
 struct Num(usize);
 
-#[async_worker]
+#[ockam::worker]
 impl Worker for Square {
     type Message = Num;
     type Context = Context;
