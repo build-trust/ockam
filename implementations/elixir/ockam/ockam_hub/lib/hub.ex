@@ -9,8 +9,8 @@ defmodule Ockam.Hub do
 
   alias Ockam.Hub.Service.Alias, as: AliasService
   alias Ockam.Hub.Service.Echo, as: EchoService
-  alias Ockam.Hub.Service.Stream, as: StreamService
-  alias Ockam.Hub.Service.Stream.Index, as: StreamIndexService
+  alias Ockam.Stream.Index.Worker, as: StreamIndexService
+  alias Ockam.Stream.Service, as: StreamService
 
   alias Ockam.Hub.TelemetryForwarder
   alias Ockam.Transport
