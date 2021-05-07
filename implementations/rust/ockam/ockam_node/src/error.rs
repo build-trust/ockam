@@ -26,6 +26,8 @@ pub enum Error {
     InternalIOFailure,
     /// Worker tried to send message from foreign address
     SenderAddressDoesntExist,
+    /// Operation timed out
+    Timeout,
 }
 
 impl Error {
@@ -56,5 +58,11 @@ impl From<crate::NodeError> for ockam_core::Error {
 impl<T: Debug> From<SendError<T>> for Error {
     fn from(_: SendError<T>) -> Error {
         Error::InternalIOFailure
+    }
+}
+
+impl From<tokio::time::error::Elapsed> for Error {
+    fn from(_: tokio::time::error::Elapsed) -> Self {
+        Self::Timeout
     }
 }

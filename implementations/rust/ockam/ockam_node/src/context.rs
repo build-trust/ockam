@@ -1,9 +1,10 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker};
 use tokio::{
     runtime::Runtime,
     sync::mpsc::{channel, Sender},
+    time::timeout,
 };
 
 use crate::{
@@ -14,6 +15,9 @@ use crate::{
     relay::{self, RelayMessage},
     Cancel, Mailbox, NodeMessage,
 };
+
+/// A default timeout in seconds
+pub const DEFAULT_TIMEOUT: u64 = 5;
 
 /// Context contains Node state and references to the runtime.
 pub struct Context {
@@ -272,17 +276,36 @@ impl Context {
 
     /// Block the current worker to wait for a typed message
     ///
+    /// This function may return a `Err(FailedLoadData)` if the
+    /// underlying worker was shut down, or `Err(Timeout)` if the call
+    /// was waiting for longer than the `default timeout`.  Use
+    /// [`receive_timeout`](Context::receive_timeout) to adjust the
+    /// timeout period.
+    ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
     pub async fn receive<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
-        let (msg, data, addr) = self.next_from_mailbox().await?;
+        self.receive_timeout(DEFAULT_TIMEOUT).await
+    }
+
+    /// Block to wait for a typed message, with explicit timeout
+    pub async fn receive_timeout<'ctx, M: Message>(
+        &'ctx mut self,
+        timeout_secs: u64,
+    ) -> Result<Cancel<'ctx, M>> {
+        let (msg, data, addr) = timeout(Duration::from_secs(timeout_secs), async {
+            self.next_from_mailbox().await
+        })
+        .await
+        .map_err(|e| Error::from(e))??;
         Ok(Cancel::new(msg, data, addr, self))
     }
 
     /// Block the current worker to wait for a message satisfying a conditional
     ///
     /// Will return `Err` if the corresponding worker has been
-    /// stopped, or the underlying node has shut down.
+    /// stopped, or the underlying node has shut down.  This operation
+    /// has a [default timeout](DEFAULT_TIMEOUT).
     ///
     /// Internally this function calls `receive` and `.cancel()` in a
     /// loop until a matching message is found.
@@ -291,20 +314,24 @@ impl Context {
         M: Message,
         F: Fn(&M) -> bool,
     {
-        while let Ok((m, data, addr)) = self.next_from_mailbox().await {
-            if check(&m) {
-                // Return a Cancel if the check succeeded
-                return Ok(Cancel::new(m, data, addr, self));
-            } else {
-                // Requeue the message into the mailbox if it didn't
-                let onward = data.onward_route.clone();
-                self.mailbox
-                    .requeue(RelayMessage::direct(addr, data, onward))
-                    .await;
+        let (m, data, addr) = timeout(Duration::from_secs(DEFAULT_TIMEOUT), async {
+            loop {
+                match self.next_from_mailbox().await {
+                    Ok((m, data, addr)) if check(&m) => break Ok((m, data, addr)),
+                    Ok((_, data, addr)) => {
+                        let onward = data.onward_route.clone();
+                        self.mailbox
+                            .requeue(RelayMessage::direct(addr, data, onward))
+                            .await;
+                    }
+                    e => break e,
+                }
             }
-        }
+        })
+        .await
+        .map_err(|e| Error::from(e))??;
 
-        Err(Error::FailedLoadData.into())
+        Ok(Cancel::new(m, data, addr, self))
     }
 
     /// Return a list of all available worker addresses on a node
@@ -335,8 +362,8 @@ impl Context {
     /// A convenience function to get a data 3-tuple from the mailbox
     ///
     /// The reason this function doesn't construct a `Cancel<_, M>` is
-    /// to avoid the lifetime collision between the mutation on `self` and the ref to `Context`
-    /// passed to `Cancel::new(..)`
+    /// to avoid the lifetime collision between the mutation on `self`
+    /// and the ref to `Context` passed to `Cancel::new(..)`
     ///
     /// This function will block and re-queue messages into the
     /// mailbox until it can receive the correct message payload.
@@ -356,7 +383,7 @@ impl Context {
 
             // FIXME: make message parsing idempotent to avoid cloning
             match parser::message(&data.payload).ok() {
-                Some(msg) => return Ok((msg, data, addr)),
+                Some(msg) => break Ok((msg, data, addr)),
                 None => {
                     let onward = data.onward_route.clone();
                     self.mailbox
