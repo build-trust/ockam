@@ -41,7 +41,7 @@ use ockam::{Any, Context, Result, Routed, Worker};
 
 pub struct Hop;
 
-#[ockam::worker]
+#[ockam::async_worker]
 impl Worker for Hop {
     type Context = Context;
     type Message = Any;
