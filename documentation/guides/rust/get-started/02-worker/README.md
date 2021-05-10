@@ -25,7 +25,7 @@ defined as a field-less unit struct.
 
 This struct:
 * Must implement the `ockam::Worker` trait.
-* Must have the `#[ockam::async_worker]` attribute on the Worker trait implementation
+* Must have the `#[ockam::worker]` attribute on the Worker trait implementation
 * Must define two associated types `Context` and `Message`
   * The `Context` type is usually set to `ockam::Context` which is provided by the node implementation.
   * The `Message` type must be set to the type of message the worker wishes to handle.
@@ -48,7 +48,7 @@ use ockam::{Context, Result, Routed, Worker};
 
 pub struct Echoer;
 
-#[ockam::async_worker]
+#[ockam::worker]
 impl Worker for Echoer {
     type Context = Context;
     type Message = String;
