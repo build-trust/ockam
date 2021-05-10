@@ -10,25 +10,27 @@ change_dir "$OCKAM_RUST"
     read -ra arr <<< "$line"
     CRATE="${arr[0]}"
 
-    # Produce Logs and Diffs
-    echo "Gathering changes for $CRATE"
-    crate_changes "$CRATE"
-
     change_dir "$CRATE"
       echo "Bumping $CRATE by ${arr[1]}"
+      OLD_VERSION="$(crate_version "$CRATE")"
       cargo -q bump "${arr[1]}"
       VERSION="$(crate_version "$CRATE")"
+      crate_changes "$CRATE" "$OLD_VERSION" "$VERSION"
       echo "Updating $CRATE README.md to $VERSION"
       "$SCRIPT_DIR"/upgrade-crate.sh "$PWD/README.md" "$CRATE" "$VERSION"
     pop_dir
 
     echo "Updating dependants of $CRATE to $VERSION"
     find . -maxdepth 2 -name Cargo.toml -exec "$SCRIPT_DIR/upgrade-crate.sh" '{}' "$CRATE" "$VERSION" \;
-
-    echo "Generating lock files"
-    all_crates generate-lockfile
   done < "${1:-/dev/stdin}"
 
+  echo "Generating lock files for crates"
+  all_crates generate-lockfile
+
+  echo "Generate lock files for examples"
+  change_dir "$OCKAM_HOME/examples/rust/get_started"
+  cargo -q generate-lockfile
+  pop_dir
   echo "Checking all crates"
   all_crates check
 pop_dir
