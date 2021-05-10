@@ -11,9 +11,9 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99446914425f48a667458b33c7fb920e24cf9e7c149a072a9fc420731b353835"
+checksum = "32380222440685202b62f23002e668519a6bf2d8df5e7655ed96223b6482b4be"
 dependencies = [
  "cfg-if",
  "cipher",
@@ -131,9 +131,12 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cd5a7748210e7ec1a9696610b1015e6e31fbf58f77a160801f124bd1c36592a"
+checksum = "dec1028182c380cc45a2e2c5ec841134f2dfd0f8f5f0a5bcd68004f81b5efdf4"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "crypto-mac"
@@ -336,7 +339,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.11.2"
+version = "0.12.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -348,7 +351,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -368,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -380,7 +383,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "quote",
  "syn",
@@ -388,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -624,9 +627,9 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 
 [[package]]
 name = "syn"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad184cc9470f9117b2ac6817bfe297307418819ba40552f9b3846f05c33d5373"
+checksum = "a1e8cdbefb79a9a5a65e0db8b47b723ee907b7c7f8496c76a1770b5c310bab82"
 dependencies = [
  "proc-macro2",
  "quote",

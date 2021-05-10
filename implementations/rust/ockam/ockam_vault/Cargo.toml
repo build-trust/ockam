@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -21,8 +21,8 @@ std = ["ockam_core/std"]
 no_std = ["ockam_vault_core/heapless"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.11.2" }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.5.2" }
+ockam_core = { path = "../ockam_core", version = "0.12.0"  }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.6.0"  }
 arrayref = "0.3"
 aes-gcm = "0.9"
 curve25519-dalek = "3.1"
@@ -35,5 +35,5 @@ zeroize = { version = "1.1", features = ["zeroize_derive"] }
 tracing = "0.1.26"
 
 [dev-dependencies]
-ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0" }
-ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0" }
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.1.4"  }
+ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.3.2"  }

@@ -5,6 +5,14 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.11.0 - 2021-05-10
+### Added
+- Traits for `Profile`.
+### Changed
+- Updated dependencies.
+- Renamed `async_worker` to `worker`.
+- Documentation edits.
+
 ## v0.10.0 - 2021-05-03
 ### Changed
 - Vault creation is now sync.
