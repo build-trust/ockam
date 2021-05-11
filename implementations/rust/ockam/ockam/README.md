@@ -36,6 +36,8 @@ disabled as follows
 Additional features of the `ockam` crate:
 - `ockam_transport_tcp` - Enable TCP transport dependency.
 - `ockam_vault` - Enable the default Software Vault implementation.
+- `noise_xx` - Enable Noise Protocol XX key agreement dependency.
+- `software_vault` - Enable Software Vault dependency.
 
 ```
 [dependencies]

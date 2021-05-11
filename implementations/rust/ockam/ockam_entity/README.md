@@ -10,6 +10,12 @@ and trustfully with cloud services and other devices.
 
 INSERT DESCRIPTION HERE
 
+## Crate Features
+
+Features of the `ockam_entity` crate:
+- `noise_xx` - Enable Noise Protocol XX key agreement dependency.
+- `software_vault` - Enable Software Vault dependency.
+
 ## Usage
 
 Add this to your `Cargo.toml`:
