@@ -399,16 +399,18 @@ impl Context {
     }
 
     /// Return a list of all available worker addresses on a node
-    pub async fn list_workers(&self) -> Result<Vec<Address>> {
-        let (msg, mut reply_rx) = NodeMessage::list_workers();
+    pub fn list_workers(&self) -> Result<Vec<Address>> {
+        block_future(&self.rt, async {
+            let (msg, mut reply_rx) = NodeMessage::list_workers();
 
-        self.sender.send(msg).await.map_err(|e| Error::from(e))?;
+            self.sender.send(msg).await.map_err(|e| Error::from(e))?;
 
-        Ok(reply_rx
-            .recv()
-            .await
-            .ok_or(Error::InternalIOFailure)??
-            .take_workers()?)
+            Ok(reply_rx
+                .recv()
+                .await
+                .ok_or(Error::InternalIOFailure)??
+                .take_workers()?)
+        })
     }
 
     /// Register a router for a specific address type
