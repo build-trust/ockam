@@ -1,3 +1,4 @@
+//! Profile history
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
     EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange, ProfileChangeEvent,

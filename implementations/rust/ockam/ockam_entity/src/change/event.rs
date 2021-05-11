@@ -1,6 +1,7 @@
 use crate::{EventIdentifier, ProfileChange, ProfileChangeProof};
 use serde::{Deserialize, Serialize};
 
+/// Profile changes with a given event identifier
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Changes {
     prev_event_id: EventIdentifier,
@@ -19,6 +20,7 @@ impl Changes {
 }
 
 impl Changes {
+    /// Create new Changes
     pub fn new(prev_event_id: EventIdentifier, data: Vec<ProfileChange>) -> Self {
         Changes {
             prev_event_id,
@@ -54,6 +56,7 @@ impl ProfileChangeEvent {
 }
 
 impl ProfileChangeEvent {
+    /// Create a new profile change event
     pub fn new(identifier: EventIdentifier, changes: Changes, proof: ProfileChangeProof) -> Self {
         ProfileChangeEvent {
             identifier,

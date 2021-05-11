@@ -4,15 +4,18 @@ use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
 use ockam_node::Context;
 use rand::random;
 
+/// A Worker wrapper for a Profile
 pub struct ProfileWorker<P: ProfileTrait> {
     inner: P,
 }
 
 impl<P: ProfileTrait> ProfileWorker<P> {
+    /// Create a new ProfileWorker
     fn new(inner: P) -> Self {
         Self { inner }
     }
 
+    /// Create and start a ProfileWorker
     pub async fn create_with_inner(ctx: &Context, inner: P) -> Result<Address> {
         let address: Address = random();
 

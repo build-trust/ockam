@@ -12,6 +12,7 @@ use serde_big_array::big_array;
 
 big_array! { BigArray; }
 
+/// Key change data creation
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateKeyChangeData {
     key_attributes: KeyAttributes,
@@ -19,15 +20,18 @@ pub struct CreateKeyChangeData {
 }
 
 impl CreateKeyChangeData {
+    /// Return key attributes
     pub fn key_attributes(&self) -> &KeyAttributes {
         &self.key_attributes
     }
+    /// Return public key
     pub fn public_key(&self) -> &[u8] {
         &self.public_key
     }
 }
 
 impl CreateKeyChangeData {
+    /// Create new CreateKeyChangeData
     pub fn new(key_attributes: KeyAttributes, public_key: Vec<u8>) -> Self {
         CreateKeyChangeData {
             key_attributes,
@@ -36,6 +40,7 @@ impl CreateKeyChangeData {
     }
 }
 
+/// Key change creation
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateKeyChange {
     data: CreateKeyChangeData,
@@ -44,15 +49,18 @@ pub struct CreateKeyChange {
 }
 
 impl CreateKeyChange {
+    /// Return data
     pub fn data(&self) -> &CreateKeyChangeData {
         &self.data
     }
+    /// Return self signature
     pub fn self_signature(&self) -> &[u8; 64] {
         &self.self_signature
     }
 }
 
 impl CreateKeyChange {
+    /// Create new CreateKeyChange
     pub fn new(data: CreateKeyChangeData, self_signature: [u8; 64]) -> Self {
         CreateKeyChange {
             data,
@@ -62,6 +70,7 @@ impl CreateKeyChange {
 }
 
 impl<V: ProfileVault> ProfileImpl<V> {
+    /// Create a new key event
     pub(crate) fn create_key_event_static(
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
@@ -116,6 +125,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
         Ok(signed_change_event)
     }
 
+    /// Create a new key event
     pub(crate) fn create_key_event(
         &mut self,
         key_attributes: KeyAttributes,

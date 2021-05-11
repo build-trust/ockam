@@ -20,6 +20,7 @@ impl KeyAttributes {
 }
 
 impl KeyAttributes {
+    /// Create new key attributes
     pub fn new(label: String) -> Self {
         KeyAttributes { label }
     }

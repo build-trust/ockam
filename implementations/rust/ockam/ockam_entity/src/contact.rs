@@ -1,3 +1,4 @@
+//! Profile contacts
 use crate::history::ProfileChangeHistory;
 use crate::{
     EntityError, EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier,
@@ -91,6 +92,7 @@ impl Contact {
 }
 
 impl Contact {
+    /// Create a new Contact.
     pub fn new(identifier: ProfileIdentifier, change_events: Vec<ProfileChangeEvent>) -> Self {
         Contact {
             identifier,

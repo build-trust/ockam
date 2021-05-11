@@ -11,9 +11,9 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32380222440685202b62f23002e668519a6bf2d8df5e7655ed96223b6482b4be"
+checksum = "bbda1ffd586ec58bdbc3290f9243c1d05bec1abf49ec15e4bc3d60070b7d9d11"
 dependencies = [
  "cfg-if",
  "cipher",
@@ -869,6 +869,7 @@ name = "ockam_entity"
 version = "0.2.0-dev"
 dependencies = [
  "async-trait",
+ "cfg-if",
  "ockam_channel",
  "ockam_core",
  "ockam_key_exchange_xx",

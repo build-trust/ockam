@@ -1,6 +1,8 @@
-//! Documentation should be here
+//! Entity is an abstraction over Profiles and Vaults, easing the use of these primitives in
+//! authentication and authorization APIs.
 #![deny(
-    // missing_docs,
+  // prevented by big_array
+  //  missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,
@@ -32,11 +34,14 @@ mod change;
 pub use change::*;
 mod channel;
 pub(crate) use channel::*;
+mod entity;
+pub use entity::*;
 mod error;
 pub use error::*;
 mod worker;
 pub use worker::*;
 
+/// Traits required for a Vault implementation suitable for use in a Profile
 pub trait ProfileVault:
     SecretVault + SecureChannelVault + KeyIdVault + Hasher + Signer + Verifier + Clone + Send + 'static
 {
@@ -210,6 +215,7 @@ impl<D> ProfileVault for D where
 pub struct Profile;
 
 impl Profile {
+    /// Create a new Profile
     pub async fn create(ctx: &Context, vault: &Address) -> Result<ProfileSync> {
         let vault = VaultSync::create_with_worker(ctx, vault)?;
         let imp = ProfileImpl::<VaultSync>::create_internal(None, vault)?;
@@ -228,6 +234,7 @@ impl Profile {
     pub const CURRENT_CHANGE_VERSION: u8 = 1;
 }
 
+/// Profile event attributes
 pub type ProfileEventAttributes = HashMap<String, String>;
 /// Contacts Database
 pub type ContactsDb = HashMap<ProfileIdentifier, Contact>;
@@ -262,6 +269,7 @@ impl Profile {
 
 #[cfg(test)]
 mod test {
+
     use super::*;
     use ockam_vault_sync_core::Vault;
 

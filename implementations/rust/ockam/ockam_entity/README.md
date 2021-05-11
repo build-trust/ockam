@@ -8,7 +8,7 @@
 Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 
-INSERT DESCRIPTION HERE
+Entity is an abstraction over Profiles and Vaults, easing the use of these primitives in authentication and authorization APIs.
 
 ## Crate Features
 

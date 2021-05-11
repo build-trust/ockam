@@ -7,11 +7,13 @@ use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use ockam_vault_core::{PublicKey, Secret};
 
+/// Profile identity.
 pub trait ProfileIdentity {
     /// Return unique [`Profile`] identifier, which is equal to sha256 of the root public key
     fn identifier(&self) -> Result<ProfileIdentifier>;
 }
 
+/// Profile verified change history.
 pub trait ProfileChanges {
     /// Return change history chain
     fn change_events(&self) -> Result<Vec<ProfileChangeEvent>>;
@@ -21,6 +23,7 @@ pub trait ProfileChanges {
     fn verify(&mut self) -> Result<bool>;
 }
 
+/// Profile contact management.
 pub trait ProfileContacts {
     /// Return all known to this profile [`Contact`]s
     fn contacts(&self) -> Result<ContactsDb>;
@@ -42,8 +45,12 @@ pub trait ProfileContacts {
     ) -> Result<bool>;
 }
 
+/// Profile authentication support.
 pub trait ProfileAuth {
+    /// Generate an authentication proof based on the given channel_state
     fn generate_authentication_proof(&mut self, channel_state: &[u8]) -> Result<Vec<u8>>;
+
+    /// Verify an authentication proof based on the given channel state, proof and profile.
     fn verify_authentication_proof(
         &mut self,
         channel_state: &[u8],
@@ -52,6 +59,7 @@ pub trait ProfileAuth {
     ) -> Result<bool>;
 }
 
+/// Profile secret management.
 pub trait ProfileSecrets {
     /// Create new key. Key is uniquely identified by label in [`KeyAttributes`]
     fn create_key(
@@ -77,6 +85,7 @@ pub trait ProfileSecrets {
     fn get_root_secret(&mut self) -> Result<Secret>;
 }
 
+/// A trait that represents the two endpoints of a secure channel.
 #[async_trait]
 pub trait SecureChannelTrait {
     /// Create mutually authenticated secure channel

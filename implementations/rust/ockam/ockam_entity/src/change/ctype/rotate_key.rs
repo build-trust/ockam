@@ -12,6 +12,7 @@ use serde_big_array::big_array;
 
 big_array! { BigArray; }
 
+/// RotateKeyChangeData
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RotateKeyChangeData {
     key_attributes: KeyAttributes,
@@ -19,15 +20,18 @@ pub struct RotateKeyChangeData {
 }
 
 impl RotateKeyChangeData {
+    /// Return key attributes
     pub fn key_attributes(&self) -> &KeyAttributes {
         &self.key_attributes
     }
+    /// Return public key
     pub fn public_key(&self) -> &[u8] {
         self.public_key.as_slice()
     }
 }
 
 impl RotateKeyChangeData {
+    /// Create RotateKeyChangeData
     pub fn new(key_attributes: KeyAttributes, public_key: Vec<u8>) -> Self {
         RotateKeyChangeData {
             key_attributes,
@@ -36,6 +40,7 @@ impl RotateKeyChangeData {
     }
 }
 
+/// RotateKeyChange
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RotateKeyChange {
     data: RotateKeyChangeData,
@@ -46,18 +51,22 @@ pub struct RotateKeyChange {
 }
 
 impl RotateKeyChange {
+    /// Return the data
     pub fn data(&self) -> &RotateKeyChangeData {
         &self.data
     }
+    /// Return the self signature
     pub fn self_signature(&self) -> &[u8; 64] {
         &self.self_signature
     }
+    /// Return the previous signature
     pub fn prev_signature(&self) -> &[u8; 64] {
         &self.prev_signature
     }
 }
 
 impl RotateKeyChange {
+    /// Create a new RotateKeyChange
     pub fn new(
         data: RotateKeyChangeData,
         self_signature: [u8; 64],
@@ -72,6 +81,7 @@ impl RotateKeyChange {
 }
 
 impl<V: ProfileVault> ProfileImpl<V> {
+    /// Rotate key event
     pub(crate) fn rotate_key_event(
         &mut self,
         key_attributes: KeyAttributes,

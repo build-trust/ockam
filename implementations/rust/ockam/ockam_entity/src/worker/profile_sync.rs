@@ -9,6 +9,7 @@ use ockam_vault_core::{PublicKey, Secret};
 use rand::random;
 use tracing::debug;
 
+/// Synchronous worker wrapper around a Profile
 pub struct ProfileSync {
     ctx: Context,
     profile_worker_address: Address,
@@ -69,6 +70,7 @@ impl ProfileSync {
         })
     }
 
+    /// Create a new Profile
     pub async fn create<P: ProfileTrait>(ctx: &Context, profile: P) -> Result<Self> {
         let profile_address = ProfileWorker::create_with_inner(ctx, profile).await?;
 

@@ -27,6 +27,7 @@ ockam_vault = {path = "../ockam_vault", version = "0.7.0-dev" , optional = true}
 ockam_channel = {path = "../ockam_channel", version = "0.8.0-dev" }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.5.0-dev" , optional = true}
 async-trait = "0.1.42"
+cfg-if = "1.0.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"
 serde_bare = "0.4"

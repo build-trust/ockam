@@ -36,7 +36,6 @@ impl<V: ProfileVault> ProfileImpl<V> {
 }
 
 impl<V: ProfileVault> ProfileImpl<V> {
-    /// Return clone of Vault
     pub(crate) fn change_history(&self) -> &ProfileChangeHistory {
         &self.change_history
     }
