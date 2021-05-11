@@ -64,10 +64,10 @@ impl<V: ProfileVault> ProfileImpl<V> {
             .ok_or(EntityError::InvalidInternalState)?;
         let public_key = ProfileChangeHistory::get_change_public_key(&change)?;
 
-        let public_kid = vault.compute_key_id_for_public_key(&public_key)?;
-        let public_kid = ProfileIdentifier::from_key_id(public_kid);
+        let public_key_id = vault.compute_key_id_for_public_key(&public_key)?;
+        let public_key_id = ProfileIdentifier::from_key_id(public_key_id);
 
-        let profile = Self::new(public_kid, vec![change_event], Default::default(), vault);
+        let profile = Self::new(public_key_id, vec![change_event], Default::default(), vault);
 
         Ok(profile)
     }
@@ -89,9 +89,9 @@ impl<V: ProfileVault> ProfileImpl<V> {
     ) -> ockam_core::Result<Secret> {
         let public_key = ProfileChangeHistory::get_public_key_from_event(key_attributes, event)?;
 
-        let public_kid = vault.compute_key_id_for_public_key(&public_key)?;
+        let public_key_id = vault.compute_key_id_for_public_key(&public_key)?;
 
-        vault.get_secret_by_key_id(&public_kid)
+        vault.get_secret_by_key_id(&public_key_id)
     }
 }
 
