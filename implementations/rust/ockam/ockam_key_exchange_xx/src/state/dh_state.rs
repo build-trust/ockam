@@ -1,19 +1,17 @@
-use crate::{XXError, SHA256_SIZE};
+use crate::{XXError, XXVault, SHA256_SIZE};
 use ockam_core::Result;
 use ockam_vault_core::{
-    AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
-    SecretVault, AES256_SECRET_LENGTH,
+    PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
 };
-use ockam_vault_sync_core::VaultSync;
 
-pub(crate) struct DhState {
+pub(crate) struct DhState<V: XXVault> {
     pub(crate) key: Option<Secret>,
     pub(crate) ck: Option<Secret>,
-    pub(crate) vault: VaultSync,
+    pub(crate) vault: V,
 }
 
-impl DhState {
-    pub(crate) fn empty(vault: VaultSync) -> Self {
+impl<V: XXVault> DhState<V> {
+    pub(crate) fn empty(vault: V) -> Self {
         Self {
             key: None,
             ck: None,
@@ -21,7 +19,7 @@ impl DhState {
         }
     }
 
-    pub(crate) fn new(protocol_name: &[u8; 32], mut vault: VaultSync) -> Result<Self> {
+    pub(crate) fn new(protocol_name: &[u8; 32], mut vault: V) -> Result<Self> {
         let attributes = SecretAttributes::new(
             SecretType::Buffer,
             SecretPersistence::Ephemeral,
@@ -38,7 +36,7 @@ impl DhState {
     }
 }
 
-impl DhState {
+impl<V: XXVault> DhState<V> {
     pub(crate) fn key(&self) -> Option<&Secret> {
         self.key.as_ref()
     }
@@ -47,7 +45,7 @@ impl DhState {
     }
 }
 
-impl DhState {
+impl<V: XXVault> DhState<V> {
     pub(crate) fn get_symmetric_key_type_and_length(&self) -> (SecretType, usize) {
         (SecretType::Aes, AES256_SECRET_LENGTH)
     }

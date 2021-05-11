@@ -804,9 +804,13 @@ name = "ockam"
 version = "0.11.0"
 dependencies = [
  "arrayref",
+ "async-trait",
  "bls12_381_plus",
  "ockam_channel",
  "ockam_core",
+ "ockam_entity",
+ "ockam_key_exchange_core",
+ "ockam_key_exchange_xx",
  "ockam_node",
  "ockam_node_attribute",
  "ockam_transport_tcp",
@@ -836,6 +840,7 @@ dependencies = [
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_node",
+ "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
  "rand 0.8.3",
@@ -858,6 +863,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_entity"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ockam_channel",
+ "ockam_core",
+ "ockam_key_exchange_xx",
+ "ockam_node",
+ "ockam_vault",
+ "ockam_vault_core",
+ "ockam_vault_sync_core",
+ "rand 0.8.3",
+ "serde",
+ "serde-big-array",
+ "serde_bare 0.4.0",
+ "tracing",
+]
+
+[[package]]
 name = "ockam_key_exchange_core"
 version = "0.4.0"
 dependencies = [
@@ -873,7 +897,6 @@ dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_vault_core",
- "ockam_vault_sync_core",
  "zeroize",
 ]
 

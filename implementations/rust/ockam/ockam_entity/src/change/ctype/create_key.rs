@@ -1,8 +1,8 @@
 use crate::history::ProfileChangeHistory;
-use crate::profile::ProfileChanges;
+use crate::ProfileChanges;
 use crate::{
-    Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
+    Changes, EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileImpl,
     ProfileVault, Signature, SignatureType,
 };
 use ockam_vault_core::{
@@ -62,13 +62,13 @@ impl CreateKeyChange {
     }
 }
 
-impl Profile {
+impl<V: ProfileVault> ProfileImpl<V> {
     pub(crate) fn create_key_event_static(
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
         root_key: Option<&Secret>,
-        vault: &mut dyn ProfileVault,
+        vault: &mut V,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         let attributes = attributes.unwrap_or_default();
 
@@ -83,7 +83,7 @@ impl Profile {
         let public_key = vault.secret_public_key_get(&secret_key)?;
 
         let data = CreateKeyChangeData::new(key_attributes, public_key.as_ref().to_vec());
-        let data_binary = serde_bare::to_vec(&data).map_err(|_| OckamError::BareError)?;
+        let data_binary = serde_bare::to_vec(&data).map_err(|_| EntityError::BareError)?;
         let data_hash = vault.sha256(data_binary.as_slice())?;
         let self_signature = vault.sign(&secret_key, &data_hash)?;
         let change = CreateKeyChange::new(data, self_signature);
@@ -94,7 +94,7 @@ impl Profile {
             ProfileChangeType::CreateKey(change),
         );
         let changes = Changes::new(prev_id, vec![profile_change]);
-        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
+        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| EntityError::BareError)?;
 
         let event_id = vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);
@@ -126,7 +126,7 @@ impl Profile {
         // Creating key after it was revoked is forbidden
         if ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes).is_ok()
         {
-            return Err(OckamError::InvalidInternalState.into());
+            return Err(EntityError::InvalidInternalState.into());
         }
 
         let prev_id = self.change_history.get_last_event_id()?;

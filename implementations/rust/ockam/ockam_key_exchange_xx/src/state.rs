@@ -1,18 +1,17 @@
-use crate::{XXError, AES_GCM_TAGSIZE, SHA256_SIZE};
+use crate::{XXError, XXVault, AES_GCM_TAGSIZE, SHA256_SIZE};
 use ockam_core::Result;
 use ockam_key_exchange_core::CompletedKeyExchange;
 use ockam_vault_core::{
-    Hasher, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault,
-    SymmetricVault, AES256_SECRET_LENGTH, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
+    PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
+    CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use zeroize::Zeroize;
 
 mod dh_state;
 pub(crate) use dh_state::*;
-use ockam_vault_sync_core::VaultSync;
 
 /// Represents the XX Handshake
-pub(crate) struct State {
+pub(crate) struct State<V: XXVault> {
     run_prologue: bool,
     identity_key: Option<Secret>,
     identity_public_key: Option<PublicKey>,
@@ -20,20 +19,20 @@ pub(crate) struct State {
     ephemeral_public: Option<PublicKey>,
     remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
-    dh_state: DhState,
+    dh_state: DhState<V>,
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
-    vault: VaultSync,
+    vault: V,
 }
 
-impl Zeroize for State {
+impl<V: XXVault> Zeroize for State<V> {
     fn zeroize(&mut self) {
         self.nonce.zeroize();
         self.h.zeroize()
     }
 }
 
-impl std::fmt::Debug for State {
+impl<V: XXVault> std::fmt::Debug for State<V> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -46,8 +45,8 @@ impl std::fmt::Debug for State {
     }
 }
 
-impl State {
-    pub(crate) fn new(vault: &VaultSync) -> Result<Self> {
+impl<V: XXVault> State<V> {
+    pub(crate) fn new(vault: &V) -> Result<Self> {
         Ok(Self {
             run_prologue: true,
             identity_key: None,
@@ -56,15 +55,15 @@ impl State {
             ephemeral_public: None,
             remote_static_public_key: None,
             remote_ephemeral_public_key: None,
-            dh_state: DhState::empty(vault.start_another()?),
+            dh_state: DhState::empty(vault.clone()),
             nonce: 0,
             h: None,
-            vault: vault.start_another()?,
+            vault: vault.clone(),
         })
     }
 }
 
-impl State {
+impl<V: XXVault> State<V> {
     fn get_symmetric_key_type_and_length(&self) -> (SecretType, usize) {
         (SecretType::Aes, AES256_SECRET_LENGTH)
     }
@@ -105,7 +104,7 @@ impl State {
         // mix_hash(xx, NULL, 0);
         let mut h = [0u8; SHA256_SIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
-        self.dh_state = DhState::new(&h, self.vault.start_another()?)?;
+        self.dh_state = DhState::new(&h, self.vault.clone())?;
         self.h = Some(self.vault.sha256(&h)?);
 
         Ok(())
@@ -202,7 +201,7 @@ impl State {
     }
 }
 
-impl State {
+impl<V: XXVault> State<V> {
     pub(crate) fn run_prologue(&mut self) -> Result<()> {
         if self.run_prologue {
             self.prologue()
@@ -212,7 +211,7 @@ impl State {
     }
 }
 
-impl State {
+impl<V: XXVault> State<V> {
     /// Encode the first message to be sent
     pub(crate) fn encode_message_1<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>> {
         let ephemeral_public_key = self
@@ -298,7 +297,7 @@ impl State {
     }
 }
 
-impl State {
+impl<V: XXVault> State<V> {
     /// Decode the first message sent
     pub(crate) fn decode_message_1<B: AsRef<[u8]>>(&mut self, message_1: B) -> Result<Vec<u8>> {
         let public_key_size = CURVE25519_PUBLIC_LENGTH;
@@ -381,19 +380,19 @@ impl State {
 #[cfg(test)]
 mod tests {
     use crate::state::{DhState, State};
-    use crate::{Initiator, Responder};
+    use crate::{Initiator, Responder, XXVault};
     use ockam_core::hex::{decode, encode};
     use ockam_key_exchange_core::KeyExchanger;
     use ockam_vault::SoftwareVault;
     use ockam_vault_core::{
-        Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
+        SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
         CURVE25519_SECRET_LENGTH,
     };
-    use ockam_vault_sync_core::VaultSync;
+    use ockam_vault_sync_core::VaultMutex;
 
     #[test]
     fn prologue() {
-        let mut vault = VaultSync::create_with_mutex(SoftwareVault::default());
+        let mut vault = VaultMutex::create(SoftwareVault::default());
 
         let exp_h = [
             93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79, 126,
@@ -453,13 +452,10 @@ mod tests {
         msg_3_payload: &'static str,
         msg_3_ciphertext: &'static str,
     ) {
-        let mut vault_init = VaultSync::create_with_mutex(SoftwareVault::default());
-        let mut vault_resp = VaultSync::create_with_mutex(SoftwareVault::default());
+        let mut vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut initiator = mock_prologue(&mut vault_init, init_static, init_eph);
-        let mut responder = mock_prologue(&mut vault_resp, resp_static, resp_eph);
-        // let mut initiator = Initiator::new(ss_init);
-        // let mut responder = Responder::new(ss_resp);
+        let mut initiator = mock_prologue(&mut vault, init_static, init_eph);
+        let mut responder = mock_prologue(&mut vault, resp_static, resp_eph);
 
         let res = initiator.encode_message_1(decode(msg_1_payload).unwrap());
         assert!(res.is_ok());
@@ -536,11 +532,10 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let mut vault_init = VaultSync::create_with_mutex(SoftwareVault::default());
-        let mut vault_resp = VaultSync::create_with_mutex(SoftwareVault::default());
+        let mut vault = VaultMutex::create(SoftwareVault::default());
 
-        let initiator = mock_prologue(&mut vault_init, INIT_STATIC, INIT_EPH);
-        let responder = mock_prologue(&mut vault_resp, RESP_STATIC, RESP_EPH);
+        let initiator = mock_prologue(&mut vault, INIT_STATIC, INIT_EPH);
+        let responder = mock_prologue(&mut vault, RESP_STATIC, RESP_EPH);
 
         let mut initiator = Initiator::new(initiator);
         let mut responder = Responder::new(responder);
@@ -578,42 +573,33 @@ mod tests {
         assert!(res.is_ok());
         let bob = res.unwrap();
         assert_eq!(alice.h(), bob.h());
-        let res = vault_init.aead_aes_gcm_encrypt(
-            alice.encrypt_key(),
-            b"hello bob",
-            &[0u8; 12],
-            alice.h(),
-        );
+        let res =
+            vault.aead_aes_gcm_encrypt(alice.encrypt_key(), b"hello bob", &[0u8; 12], alice.h());
 
         assert!(res.is_ok());
         let ciphertext = res.unwrap();
 
-        let res =
-            vault_resp.aead_aes_gcm_decrypt(bob.decrypt_key(), &ciphertext, &[0u8; 12], bob.h());
+        let res = vault.aead_aes_gcm_decrypt(bob.decrypt_key(), &ciphertext, &[0u8; 12], bob.h());
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, b"hello bob");
 
         let res =
-            vault_resp.aead_aes_gcm_encrypt(bob.encrypt_key(), b"hello alice", &[1u8; 12], bob.h());
+            vault.aead_aes_gcm_encrypt(bob.encrypt_key(), b"hello alice", &[1u8; 12], bob.h());
         assert!(res.is_ok());
         let ciphertext = res.unwrap();
-        let res = vault_init.aead_aes_gcm_decrypt(
-            alice.decrypt_key(),
-            &ciphertext,
-            &[1u8; 12],
-            alice.h(),
-        );
+        let res =
+            vault.aead_aes_gcm_decrypt(alice.decrypt_key(), &ciphertext, &[1u8; 12], alice.h());
         assert!(res.is_ok());
         let plaintext = res.unwrap();
         assert_eq!(plaintext, b"hello alice");
     }
 
-    fn mock_prologue(
-        vault: &mut VaultSync,
+    fn mock_prologue<V: XXVault>(
+        vault: &mut V,
         static_private: &str,
         ephemeral_private: &str,
-    ) -> State {
+    ) -> State<V> {
         let attributes = SecretAttributes::new(
             SecretType::Curve25519,
             SecretPersistence::Ephemeral,
@@ -653,11 +639,11 @@ mod tests {
             dh_state: DhState {
                 key: None,
                 ck: Some(ck),
-                vault: vault.start_another().unwrap(),
+                vault: vault.clone(),
             },
             nonce: 0,
             h: Some(h),
-            vault: vault.start_another().unwrap(),
+            vault: vault.clone(),
         }
     }
 }

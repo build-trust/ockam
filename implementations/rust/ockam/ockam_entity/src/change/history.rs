@@ -1,7 +1,7 @@
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
-    EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange, ProfileChangeEvent,
-    ProfileChangeProof, ProfileChangeType, ProfileVault, SignatureType,
+    EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange, ProfileChangeEvent,
+    ProfileChangeProof, ProfileVault, SignatureType,
 };
 use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -37,7 +37,7 @@ impl ProfileChangeHistory {
         if let Some(e) = self.0.last() {
             Ok(e.identifier().clone())
         } else {
-            Err(OckamError::InvalidInternalState.into())
+            Err(EntityError::InvalidInternalState.into())
         }
     }
 
@@ -66,7 +66,7 @@ impl ProfileChangeHistory {
             .iter()
             .rev()
             .find(|e| Self::find_key_change_in_event(e, key_attributes).is_some())
-            .ok_or_else(|| OckamError::InvalidInternalState.into())
+            .ok_or_else(|| EntityError::InvalidInternalState.into())
     }
 
     pub(crate) fn find_last_key_event_public_key(
@@ -85,7 +85,7 @@ impl ProfileChangeHistory {
         };
 
         if data.is_empty() {
-            Err(OckamError::InvalidInternalState.into())
+            Err(EntityError::InvalidInternalState.into())
         } else {
             Ok(PublicKey::new(data.into()))
         }
@@ -96,7 +96,7 @@ impl ProfileChangeHistory {
         event: &ProfileChangeEvent,
     ) -> ockam_core::Result<PublicKey> {
         let change = Self::find_key_change_in_event(event, key_attributes)
-            .ok_or(OckamError::InvalidInternalState)?;
+            .ok_or(EntityError::InvalidInternalState)?;
 
         Self::get_change_public_key(change)
     }
@@ -116,21 +116,21 @@ impl ProfileChangeHistory {
         if let Some(re) = self.as_ref().first() {
             root_event = re;
         } else {
-            return Err(OckamError::InvalidInternalState.into());
+            return Err(EntityError::InvalidInternalState.into());
         }
 
         let root_change;
         if let Some(rc) = root_event.changes().data().first() {
             root_change = rc;
         } else {
-            return Err(OckamError::InvalidInternalState.into());
+            return Err(EntityError::InvalidInternalState.into());
         }
 
         let root_create_key_change;
-        if let ProfileChangeType::CreateKey(c) = root_change.change_type() {
+        if let CreateKey(c) = root_change.change_type() {
             root_create_key_change = c;
         } else {
-            return Err(OckamError::InvalidInternalState.into());
+            return Err(EntityError::InvalidInternalState.into());
         }
 
         Ok(PublicKey::new(
@@ -150,7 +150,7 @@ impl ProfileChangeHistory {
 impl ProfileChangeHistory {
     pub(crate) fn verify_all_existing_events(
         &self,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<()> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
@@ -165,16 +165,16 @@ impl ProfileChangeHistory {
     pub(crate) fn verify_event(
         existing_events: &[ProfileChangeEvent],
         new_change_event: &ProfileChangeEvent,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<bool> {
         let changes = new_change_event.changes();
-        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
+        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| EntityError::BareError)?;
 
         let event_id = vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);
 
         if &event_id != new_change_event.identifier() {
-            return Err(OckamError::EventIdDoesntMatch.into());
+            return Err(EntityError::EventIdDoesntMatch.into());
         }
 
         match new_change_event.proof() {
@@ -197,7 +197,7 @@ impl ProfileChangeHistory {
                 CreateKey(c) => {
                     // Should have 1 self signature
                     let data_binary =
-                        serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
+                        serde_bare::to_vec(c.data()).map_err(|_| EntityError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
                     vault.verify(
@@ -209,7 +209,7 @@ impl ProfileChangeHistory {
                 RotateKey(c) => {
                     // Should have 1 self signature and 1 prev signature
                     let data_binary =
-                        serde_bare::to_vec(c.data()).map_err(|_| OckamError::BareError)?;
+                        serde_bare::to_vec(c.data()).map_err(|_| EntityError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
                     if !vault.verify(
@@ -225,7 +225,7 @@ impl ProfileChangeHistory {
                             prev_key_event,
                             c.data().key_attributes(),
                         )
-                        .ok_or(OckamError::InvalidInternalState)?;
+                        .ok_or(EntityError::InvalidInternalState)?;
                         let public_key =
                             ProfileChangeHistory::get_change_public_key(prev_key_change)?;
 
@@ -233,7 +233,7 @@ impl ProfileChangeHistory {
                     }
                 }
             } {
-                return Err(OckamError::VerifyFailed.into());
+                return Err(EntityError::VerifyFailed.into());
             }
         }
 
@@ -257,7 +257,7 @@ impl ProfileChangeHistory {
             // Events should go in correct order as stated in previous_event_identifier field
             if let Some(prev) = prev_event {
                 if prev.identifier() != event.changes().previous_event_identifier() {
-                    return Err(OckamError::InvalidChainSequence.into());
+                    return Err(EntityError::InvalidChainSequence.into());
                 }
             }
 
@@ -265,7 +265,7 @@ impl ProfileChangeHistory {
 
             // For now only allow one change at a time
             if event.changes().data().len() != 1 {
-                return Err(OckamError::InvalidChainSequence.into());
+                return Err(EntityError::InvalidChainSequence.into());
             }
         }
 

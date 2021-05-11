@@ -1,6 +1,7 @@
-use crate::profile::history::ProfileChangeHistory;
+use crate::history::ProfileChangeHistory;
 use crate::{
-    EventIdentifier, KeyAttributes, OckamError, ProfileChangeEvent, ProfileIdentifier, ProfileVault,
+    EntityError, EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier,
+    ProfileVault,
 };
 use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -20,7 +21,8 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::{Profile, ProfileContacts, ProfileSecrets, KeyAttributes, Vault};
+/// # use ockam_vault_sync_core::Vault;
+/// # use ockam_entity::{Profile, KeyAttributes, ProfileSecrets, ProfileContacts};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
@@ -48,9 +50,10 @@ use serde::{Deserialize, Serialize};
 ///
 /// ```
 /// # use ockam_vault::SoftwareVault;
-/// # use ockam::{Profile, ProfileContacts, ProfileSecrets, KeyAttributes, Vault};
+/// # use ockam_entity::{Profile, KeyAttributes, ProfileSecrets, ProfileContacts};
 /// #
 /// # fn main() -> ockam_core::Result<()> {
+/// # use ockam_vault_sync_core::Vault;
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
 /// # executor.execute(async move {
 /// # let vault = Vault::create(&ctx)?;
@@ -98,7 +101,7 @@ impl Contact {
 
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    pub fn verify(&self, vault: &mut dyn ProfileVault) -> ockam_core::Result<()> {
+    pub fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(&[], self.change_events())?;
 
         self.change_history.verify_all_existing_events(vault)?;
@@ -109,7 +112,7 @@ impl Contact {
         let profile_id = ProfileIdentifier::from_key_id(root_key_id);
 
         if &profile_id != self.identifier() {
-            return Err(OckamError::ProfileIdDoesntMatch.into());
+            return Err(EntityError::ProfileIdDoesntMatch.into());
         }
 
         Ok(())
@@ -119,7 +122,7 @@ impl Contact {
     pub fn verify_and_update(
         &mut self,
         change_events: Vec<ProfileChangeEvent>,
-        vault: &mut dyn ProfileVault,
+        vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<()> {
         ProfileChangeHistory::check_consistency(self.change_events(), &change_events)?;
 

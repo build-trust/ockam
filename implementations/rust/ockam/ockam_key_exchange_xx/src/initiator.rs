@@ -1,5 +1,5 @@
 use crate::state::State;
-use crate::XXError;
+use crate::{XXError, XXVault};
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug)]
@@ -12,13 +12,13 @@ enum InitiatorState {
 
 /// Represents an XX initiator
 #[derive(Debug)]
-pub struct Initiator {
+pub struct Initiator<V: XXVault> {
     state: InitiatorState,
-    state_data: State,
+    state_data: State<V>,
 }
 
-impl Initiator {
-    pub(crate) fn new(state_data: State) -> Self {
+impl<V: XXVault> Initiator<V> {
+    pub(crate) fn new(state_data: State<V>) -> Self {
         Initiator {
             state: InitiatorState::EncodeMessage1,
             state_data,
@@ -26,7 +26,7 @@ impl Initiator {
     }
 }
 
-impl KeyExchanger for Initiator {
+impl<V: XXVault> KeyExchanger for Initiator<V> {
     fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
         match self.state {
             InitiatorState::EncodeMessage1 => {
@@ -58,9 +58,5 @@ impl KeyExchanger for Initiator {
             InitiatorState::Done => self.state_data.finalize_initiator(),
             _ => Err(XXError::InvalidState.into()),
         }
-    }
-
-    fn finalize_box(self: Box<Self>) -> ockam_core::Result<CompletedKeyExchange> {
-        self.finalize()
     }
 }

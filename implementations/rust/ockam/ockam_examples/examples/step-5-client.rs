@@ -1,4 +1,6 @@
-use ockam::{Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{
+    Context, Result, Route, SecureChannel, TcpTransport, Vault, VaultSync, XXNewKeyExchanger, TCP,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -12,13 +14,18 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault_address = Vault::create(&ctx)?;
 
-    let channel_info = SecureChannel::create(
+    let vault_sync = VaultSync::create_with_worker(&ctx, &vault_address, "FIXME").unwrap();
+    let xx_key_exchanger = XXNewKeyExchanger::new(vault_sync.clone());
+
+    let channel_info = SecureChannel::create_extended(
         &mut ctx,
         Route::new()
             .append_t(TCP, remote_node)
             .append(secure_channel_forwarded_address)
             .append("echo_service"),
-        &vault_address,
+        None,
+        &xx_key_exchanger,
+        vault_sync,
     )
     .await?;
 

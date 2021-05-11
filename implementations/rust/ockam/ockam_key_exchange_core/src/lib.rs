@@ -27,8 +27,6 @@ pub trait KeyExchanger {
     fn is_complete(&self) -> bool;
     /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.
     fn finalize(self) -> Result<CompletedKeyExchange>;
-    /// Should call finalize. Added to use KeyExchanger as trait object.
-    fn finalize_box(self: Box<Self>) -> Result<CompletedKeyExchange>;
 }
 
 /// A creator of both initiator and responder peers of a key exchange.

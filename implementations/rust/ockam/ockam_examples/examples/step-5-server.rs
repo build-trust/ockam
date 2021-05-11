@@ -1,4 +1,7 @@
-use ockam::{Context, RemoteForwarder, Result, Routed, SecureChannel, TcpTransport, Vault, Worker};
+use ockam::{
+    Context, RemoteForwarder, Result, Routed, SecureChannel, TcpTransport, Vault, VaultSync,
+    Worker, XXNewKeyExchanger,
+};
 
 struct EchoService;
 
@@ -22,7 +25,10 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault_address = Vault::create(&ctx)?;
 
-    SecureChannel::create_listener(&ctx, "secure_channel", &vault_address).await?;
+    let vault_sync = VaultSync::create_with_worker(&ctx, &vault_address, "FIXME").unwrap();
+    let xx_key_exchanger = XXNewKeyExchanger::new(vault_sync.clone());
+    SecureChannel::create_listener_extended(&ctx, "secure_channel", xx_key_exchanger, vault_sync)
+        .await?;
 
     ctx.start_worker("echo_service", EchoService).await?;
 

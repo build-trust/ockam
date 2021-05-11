@@ -48,18 +48,24 @@ impl RemoteForwarder {
     /// Create and start new RemoteForwarder with given Ockam Hub address
     /// and Address of destination Worker that should receive forwarded messages
     pub async fn create<A: Into<Address>, S: Into<String>>(
-        ctx: &mut Context,
+        ctx: &Context,
         hub_addr: S,
         destination: A,
     ) -> Result<RemoteForwarderInfo> {
         if let Ok(hub_addr) = hub_addr.into().parse::<SocketAddr>() {
-            let forwarder = Self::new(hub_addr, destination.into(), ctx.address());
+            let address: Address = random();
+            let mut child_ctx = ctx.new_context(address).await?;
+            let forwarder = Self::new(hub_addr, destination.into(), child_ctx.address());
 
             let worker_address: Address = random();
             debug!("Starting RemoteForwarder at {}", &worker_address);
             ctx.start_worker(worker_address, forwarder).await?;
 
-            let resp = ctx.receive::<RemoteForwarderInfo>().await?.take().body();
+            let resp = child_ctx
+                .receive::<RemoteForwarderInfo>()
+                .await?
+                .take()
+                .body();
 
             Ok(resp)
         } else {

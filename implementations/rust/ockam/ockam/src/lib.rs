@@ -24,8 +24,6 @@ pub use ockam_node_no_std::*;
 
 // ---
 
-mod profile;
-pub use profile::*;
 mod error;
 pub use error::*;
 mod credential;
@@ -43,12 +41,20 @@ pub use ockam_core::{
     Worker,
 };
 
-pub use ockam_vault_sync_core::Vault;
-
 pub use ockam_channel::SecureChannel;
+
+pub use ockam_key_exchange_core::NewKeyExchanger;
+
+#[cfg(feature = "noise_xx")]
+pub use ockam_key_exchange_xx::XXNewKeyExchanger;
+
+#[cfg(feature = "ockam_vault")]
+pub use ockam_vault_sync_core::{Vault, VaultSync};
 
 #[cfg(feature = "ockam_vault")]
 pub use ockam_vault::SoftwareVault;
 
 #[cfg(feature = "ockam_transport_tcp")]
 pub use ockam_transport_tcp::{TcpTransport, TCP};
+
+pub use ockam_entity::*;

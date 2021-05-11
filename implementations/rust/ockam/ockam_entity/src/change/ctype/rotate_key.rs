@@ -1,13 +1,12 @@
 use crate::history::ProfileChangeHistory;
-use crate::profile::ProfileChanges;
+use crate::ProfileChanges;
 use crate::{
-    Changes, EventIdentifier, KeyAttributes, OckamError, Profile, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, Signature,
-    SignatureType,
+    Changes, EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileImpl,
+    ProfileVault, Signature, SignatureType,
 };
 use ockam_vault_core::{
-    Hasher, Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer,
-    CURVE25519_SECRET_LENGTH,
+    Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
 };
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
@@ -73,7 +72,7 @@ impl RotateKeyChange {
     }
 }
 
-impl Profile {
+impl<V: ProfileVault> ProfileImpl<V> {
     pub(crate) fn rotate_key_event(
         &mut self,
         key_attributes: KeyAttributes,
@@ -109,7 +108,7 @@ impl Profile {
             .to_vec();
 
         let data = RotateKeyChangeData::new(key_attributes, public_key);
-        let data_binary = serde_bare::to_vec(&data).map_err(|_| OckamError::BareError)?;
+        let data_binary = serde_bare::to_vec(&data).map_err(|_| EntityError::BareError)?;
         let data_hash = self.vault.sha256(data_binary.as_slice())?;
         let self_signature = self.vault.sign(&secret_key, &data_hash)?;
         let prev_signature = self.vault.sign(&last_key_in_chain, &data_hash)?;
@@ -121,7 +120,7 @@ impl Profile {
             ProfileChangeType::RotateKey(change),
         );
         let changes = Changes::new(prev_event_id, vec![profile_change]);
-        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| OckamError::BareError)?;
+        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| EntityError::BareError)?;
 
         let event_id = self.vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);

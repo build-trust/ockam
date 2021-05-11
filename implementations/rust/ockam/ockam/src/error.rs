@@ -19,6 +19,7 @@ pub enum OckamError {
     InvalidHubResponse,
     InvalidParameter,
     SecureChannelVerificationFailed,
+    SecureChannelCannotBeAuthenticated,
 }
 
 impl OckamError {
