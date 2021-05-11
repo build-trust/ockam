@@ -3,7 +3,9 @@ use rand::RngCore;
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
 use signature_bbs_plus::{MessageGenerators, PublicKey};
 use signature_bls::ProofOfPossession;
-use signature_core::lib::*;
+use signature_core::lib::{*, Message};
+
+use ockam_core::lib::Result;
 
 /// Methods for verifying presentations
 #[derive(Debug)]
@@ -34,7 +36,7 @@ impl CredentialVerifier {
         presentations: &[CredentialPresentation],
         presentation_manifests: &[PresentationManifest],
         proof_request_id: [u8; 32],
-    ) -> ockam_core::lib::Result<(), CredentialError> {
+    ) -> Result<(), CredentialError> {
         if presentations.len() != presentation_manifests.len() || presentations.len() == 0 {
             return Err(CredentialError::MismatchedPresentationAndManifests);
         }
@@ -65,7 +67,7 @@ impl CredentialVerifier {
                 .iter()
                 .zip(prez.revealed_attributes.iter())
                 .map(|(i, r)| (*i, r.to_signature_message()))
-                .collect::<Vec<(usize, signature_core::lib::Message), U64>>();
+                .collect::<Vec<(usize, Message), U64>>();
 
             let mut hasher = sha2::Sha256::new();
             hasher.update(&bytes);

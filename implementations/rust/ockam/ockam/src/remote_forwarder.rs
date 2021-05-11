@@ -79,7 +79,7 @@ impl Worker for RemoteForwarder {
     type Context = Context;
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> crate::Result<()> {
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         debug!("RemoteForwarder registering...");
         ctx.send(self.route.clone(), "register".to_string()).await?;
         let resp = ctx.receive::<String>().await?.take();

@@ -139,7 +139,7 @@ impl CredentialIssuer {
             atts.insert(name, att);
         }
 
-        let mut messages = Vec::<(usize, signature_core::lib::Message)>::new();
+        let mut messages = Vec::<(usize, Message)>::new();
         let mut remaining_atts = Vec::<(usize, CredentialAttribute)>::new();
 
         // Check if any blinded messages are allowed to be unknown
