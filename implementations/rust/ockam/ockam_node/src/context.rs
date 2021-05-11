@@ -414,15 +414,17 @@ impl Context {
     }
 
     /// Register a router for a specific address type
-    pub async fn register<A: Into<Address>>(&self, type_: u8, addr: A) -> Result<()> {
+    pub fn register<A: Into<Address>>(&self, type_: u8, addr: A) -> Result<()> {
         let addr = addr.into();
-        let (tx, mut rx) = channel(1);
-        self.sender
-            .send(NodeMessage::Router(type_, addr, tx))
-            .await
-            .map_err(|_| Error::InternalIOFailure)?;
+        block_future(&self.rt, async {
+            let (tx, mut rx) = channel(1);
+            self.sender
+                .send(NodeMessage::Router(type_, addr, tx))
+                .await
+                .map_err(|_| Error::InternalIOFailure)?;
 
-        Ok(rx.recv().await.ok_or(Error::InternalIOFailure)??.is_ok()?)
+            Ok(rx.recv().await.ok_or(Error::InternalIOFailure)??.is_ok()?)
+        })
     }
 
     /// A convenience function to get a data 3-tuple from the mailbox
