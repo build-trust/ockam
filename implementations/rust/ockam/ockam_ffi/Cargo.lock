@@ -258,7 +258,7 @@ checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
 
 [[package]]
 name = "ockam-ffi"
-version = "0.2.0"
+version = "0.3.0-dev"
 dependencies = [
  "lazy_static",
  "ockam_core",
@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.12.0"
+version = "0.13.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.6.0"
+version = "0.7.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -298,7 +298,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.6.0"
+version = "0.7.0-dev"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -482,9 +482,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8f6b75b17576b792bef0db1bcc4b8b8bcdf9506744cf34b974195487af6cff2"
+checksum = "b362ae5752fd2137731f9fa25fd4d9058af34666ca1966fb969119cc35719f12"
 dependencies = [
  "block-buffer",
  "cfg-if",

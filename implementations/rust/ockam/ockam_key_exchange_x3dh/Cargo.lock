@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.12.0"
+version = "0.13.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -426,7 +426,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.4.0"
+version = "0.5.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -449,7 +449,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.10.0"
+version = "0.11.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -459,7 +459,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.6.0"
+version = "0.7.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -477,7 +477,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.6.0"
+version = "0.7.0-dev"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -488,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -758,9 +758,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8f6b75b17576b792bef0db1bcc4b8b8bcdf9506744cf34b974195487af6cff2"
+checksum = "b362ae5752fd2137731f9fa25fd4d9058af34666ca1966fb969119cc35719f12"
 dependencies = [
  "block-buffer",
  "cfg-if",

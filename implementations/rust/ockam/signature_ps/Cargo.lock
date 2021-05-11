@@ -391,9 +391,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8f6b75b17576b792bef0db1bcc4b8b8bcdf9506744cf34b974195487af6cff2"
+checksum = "b362ae5752fd2137731f9fa25fd4d9058af34666ca1966fb969119cc35719f12"
 dependencies = [
  "block-buffer",
  "cfg-if",
@@ -404,7 +404,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.2.0"
+version = "0.3.0-dev"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -420,7 +420,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.4.0"
+version = "0.5.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -437,7 +437,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.2.0"
+version = "0.3.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
