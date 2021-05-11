@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 use crate::{Context, OckamError};
 use ockam_core::lib::net::SocketAddr;
 use ockam_core::{Address, Any, Result, Route, Routed, TransportMessage, Worker};
@@ -5,6 +7,7 @@ use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
+/// Information about a remotely forwarded worker.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct RemoteForwarderInfo {
     forwarding_route: Route,
@@ -13,12 +16,15 @@ pub struct RemoteForwarderInfo {
 }
 
 impl RemoteForwarderInfo {
+    /// Returns the forwarding route.
     pub fn forwarding_route(&self) -> &Route {
         &self.forwarding_route
     }
+    /// Returns the remote address.
     pub fn remote_address(&self) -> &str {
         &self.remote_address
     }
+    /// Returns the worker address.
     pub fn worker_address(&self) -> &Address {
         &self.worker_address
     }

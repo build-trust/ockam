@@ -3,7 +3,7 @@ use rand::RngCore;
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
 use signature_bbs_plus::{MessageGenerators, PublicKey};
 use signature_bls::ProofOfPossession;
-use signature_core::lib::{*, Message};
+use signature_core::lib::{Message, *};
 
 use ockam_core::lib::Result;
 

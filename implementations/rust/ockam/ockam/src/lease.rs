@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 use ockam_core::lib::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 

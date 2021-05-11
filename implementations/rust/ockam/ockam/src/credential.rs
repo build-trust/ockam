@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 mod attribute;
 mod attribute_schema;
 mod attribute_type;
