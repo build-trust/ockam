@@ -41,7 +41,7 @@ function all_crates {
     for CRATE in *
     do
       change_dir "$CRATE"
-      cargo -q "$1" 1>/dev/null || exit 1
+      cargo -q $* 1>/dev/null || exit 1
       pop_dir
     done
     pop_dir
