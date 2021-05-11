@@ -1,6 +1,7 @@
 //! Error and Result types
 
 use crate::lib::{fmt::Formatter, Display, String};
+use serde::{Deserialize, Serialize};
 
 /// The type of errors returned by Ockam functions.
 ///
@@ -20,7 +21,7 @@ use crate::lib::{fmt::Formatter, Display, String};
 ///
 /// 1. __Error Code__: A `u32` representing the the presise error.
 ///
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Error {
     code: u32,
 

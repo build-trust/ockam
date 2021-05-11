@@ -165,3 +165,6 @@ impl Message for Any {
         Ok(Self)
     }
 }
+
+mod result_message;
+pub use result_message::*;
