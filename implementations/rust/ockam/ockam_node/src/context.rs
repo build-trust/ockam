@@ -247,7 +247,22 @@ impl Context {
     ///
     /// [`Context::send`]: crate::Context::send
     /// [`TransportMessage`]: ockam_core::TransportMessage
+    #[cfg(feature = "sync-api")]
     pub async fn forward(&self, data: TransportMessage) -> Result<()> {
+        block_future(&self.rt, self.forward_impl(data))
+    }
+
+    /// Forward a transport message to its next routing destination
+    ///
+    /// See [forward](Self::forward) for more documentation.
+    #[cfg(feature = "async-api")]
+    pub async fn forward_async(&self, data: TransportMessage) -> Result<()> {
+        self.forward_impl(data).await
+    }
+
+    #[inline]
+    #[allow(unused)]
+    async fn forward_impl(&self, data: TransportMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route
         let (reply_tx, mut reply_rx) = channel(1);
         let next = data.onward_route.next().unwrap(); // TODO: communicate bad routes
