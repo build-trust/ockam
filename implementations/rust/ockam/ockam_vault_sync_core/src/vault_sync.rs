@@ -1,5 +1,5 @@
-use crate::{ResultMessage, Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
-use ockam_core::{Address, Result, Route};
+use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
+use ockam_core::{Address, Result, ResultMessage, Route};
 use ockam_node::{block_future, Context};
 use rand::random;
 use tracing::debug;
@@ -25,7 +25,6 @@ pub use verifier::*;
 pub struct VaultSync {
     ctx: Context,
     vault_worker_address: Address,
-    error_domain: &'static str,
 }
 
 impl VaultSync {
@@ -41,7 +40,7 @@ impl VaultSync {
             .await?
             .take()
             .body()
-            .inner(self.error_domain)
+            .into()
     }
 }
 
@@ -56,8 +55,7 @@ impl VaultSync {
     pub fn start_another(&self) -> Result<Self> {
         let vault_worker_address = self.vault_worker_address.clone();
 
-        let clone =
-            VaultSync::create_with_worker(&self.ctx, &vault_worker_address, self.error_domain)?;
+        let clone = VaultSync::create_with_worker(&self.ctx, &vault_worker_address)?;
 
         Ok(clone)
     }
@@ -69,11 +67,7 @@ impl Zeroize for VaultSync {
 
 impl VaultSync {
     /// Create and start a new Vault using Worker.
-    pub fn create_with_worker(
-        ctx: &Context,
-        vault: &Address,
-        error_domain: &'static str,
-    ) -> Result<Self> {
+    pub fn create_with_worker(ctx: &Context, vault: &Address) -> Result<Self> {
         let address: Address = random();
 
         debug!("Starting VaultSync at {}", &address);
@@ -86,16 +80,13 @@ impl VaultSync {
         Ok(Self {
             ctx,
             vault_worker_address: vault.clone(),
-            error_domain,
         })
     }
 
     /// Start a Vault.
     pub fn create<T: VaultTrait>(ctx: &Context, vault: T) -> Result<Self> {
-        let error_domain = vault.error_domain();
-
         let vault_address = Vault::create_with_inner(ctx, vault)?;
 
-        Self::create_with_worker(ctx, &vault_address, error_domain)
+        Self::create_with_worker(ctx, &vault_address)
     }
 }

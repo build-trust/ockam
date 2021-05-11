@@ -1,8 +1,8 @@
 use async_trait::async_trait;
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
 use ockam_node::Context;
 use ockam_vault_core::{
-    AsymmetricVault, ErrorVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
+    AsymmetricVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
 use rand::random;
 use zeroize::Zeroize;
@@ -16,7 +16,6 @@ pub trait VaultTrait:
     + Signer
     + SymmetricVault
     + Verifier
-    + ErrorVault
     + Send
     + 'static
 {
@@ -30,7 +29,6 @@ impl<V> VaultTrait for V where
         + Signer
         + SymmetricVault
         + Verifier
-        + ErrorVault
         + Send
         + 'static
 {

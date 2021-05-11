@@ -17,7 +17,6 @@ pub extern crate ockam_vault_core;
 
 mod asymmetric_impl;
 mod error;
-mod error_impl;
 mod hasher_impl;
 mod key_id_impl;
 mod secret_impl;
@@ -29,7 +28,6 @@ mod xeddsa;
 
 pub use asymmetric_impl::*;
 pub use error::*;
-pub use error_impl::*;
 pub use hasher_impl::*;
 pub use key_id_impl::*;
 pub use secret_impl::*;

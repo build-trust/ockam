@@ -217,7 +217,7 @@ pub struct Profile;
 
 impl Profile {
     pub fn create(ctx: &Context, vault: &Address) -> ockam_core::Result<ProfileImpl<VaultSync>> {
-        let vault = VaultSync::create_with_worker(ctx, vault, "FIXME")?;
+        let vault = VaultSync::create_with_worker(ctx, vault)?;
         ProfileImpl::<VaultSync>::create_internal(None, vault)
     }
 

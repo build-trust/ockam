@@ -14,7 +14,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault_address = Vault::create(&ctx)?;
 
-    let vault_sync = VaultSync::create_with_worker(&ctx, &vault_address, "FIXME").unwrap();
+    let vault_sync = VaultSync::create_with_worker(&ctx, &vault_address).unwrap();
     let xx_key_exchanger = XXNewKeyExchanger::new(vault_sync.clone());
 
     let channel_info = SecureChannel::create_extended(
