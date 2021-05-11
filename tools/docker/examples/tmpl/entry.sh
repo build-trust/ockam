@@ -6,6 +6,5 @@ export OCKAM_HOME=/ockam
 
 /setup.sh
 /get_started.sh
-/website_guide.sh
 /example_projects.sh
 
