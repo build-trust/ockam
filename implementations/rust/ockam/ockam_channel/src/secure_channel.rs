@@ -41,7 +41,7 @@ impl SecureChannel {
     ) -> Result<()> {
         use ockam_key_exchange_xx::XXNewKeyExchanger;
         use ockam_vault_sync_core::VaultSync;
-        let vault = VaultSync::create_with_worker(ctx, vault, "FIXME")?;
+        let vault = VaultSync::create_with_worker(ctx, vault)?;
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
         Self::create_listener_extended(ctx, address, new_key_exchanger, vault).await
     }
@@ -74,7 +74,7 @@ impl SecureChannel {
     ) -> Result<SecureChannelInfo> {
         use ockam_key_exchange_xx::XXNewKeyExchanger;
         use ockam_vault_sync_core::VaultSync;
-        let vault = VaultSync::create_with_worker(ctx, vault, "FIXME")?;
+        let vault = VaultSync::create_with_worker(ctx, vault)?;
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
         Self::create_extended(ctx, route, None, &new_key_exchanger, vault).await
     }

@@ -40,7 +40,7 @@ mod tests {
         executor
             .execute(async move {
                 let vault = Vault::create_with_inner(&ctx, SoftwareVault::default())?;
-                let vault_sync = VaultSync::create_with_worker(&ctx, &vault, "ERROR").unwrap();
+                let vault_sync = VaultSync::create_with_worker(&ctx, &vault).unwrap();
                 let new_key_exchanger = XXNewKeyExchanger::new(vault_sync.clone());
                 SecureChannel::create_listener_extended(
                     &ctx,
