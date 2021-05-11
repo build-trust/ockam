@@ -16,11 +16,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let channel = SecureChannel::create(
-        &mut ctx,
+        &ctx,
         // route to the secure channel listener, via "h1", "h2" and "h3"
         Route::new()
             .append("h1")

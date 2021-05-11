@@ -15,7 +15,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Connect to a secure channel listener and perform a handshake.
     let channel = SecureChannel::create(
-        &mut ctx,
+        &ctx,
         // route to the secure channel listener
         Route::new()
             .append_t(TCP, "127.0.0.1:3000") // middle node

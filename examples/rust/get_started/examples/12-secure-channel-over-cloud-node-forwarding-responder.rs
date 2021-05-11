@@ -18,11 +18,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
 
     let forwarder =
-        RemoteForwarder::create(&mut ctx, cloud_node_tcp_address, "secure_channel_listener")
-            .await?;
+        RemoteForwarder::create(&ctx, cloud_node_tcp_address, "secure_channel_listener").await?;
     println!("Forwarding address: {}", forwarder.remote_address());
 
     Ok(())

@@ -11,10 +11,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx)?;
 
     // Create a secure channel listener.
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = SecureChannel::create(&mut ctx, "secure_channel_listener", &vault).await?;
+    let channel = SecureChannel::create(&ctx, "secure_channel_listener", &vault).await?;
 
     // Send a message to the echoer worker, via the secure channel.
     ctx.send(

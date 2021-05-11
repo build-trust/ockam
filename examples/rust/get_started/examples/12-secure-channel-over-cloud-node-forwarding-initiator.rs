@@ -17,7 +17,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx)?;
 
     let channel = SecureChannel::create(
-        &mut ctx,
+        &ctx,
         Route::new()
             .append_t(TCP, cloud_node_tcp_address)
             .append(secure_channel_listener_forwarding_address),
