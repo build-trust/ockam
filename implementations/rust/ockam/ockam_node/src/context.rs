@@ -284,12 +284,48 @@ impl Context {
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
-    pub async fn receive<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
-        self.receive_timeout(DEFAULT_TIMEOUT).await
+    #[cfg(feature = "sync-api")]
+    pub fn receive<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
+        let rt = Arc::clone(&self.rt);
+        block_future(&rt, self.receive_async_impl())
+    }
+
+    /// Block the current worker to wait for a typed message
+    ///
+    /// See [receive](Self::receive) for more documentation.
+    #[cfg(feature = "async-api")]
+    pub async fn receive_async<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
+        self.receive_async_impl().await
+    }
+
+    #[inline]
+    #[allow(unused)]
+    async fn receive_async_impl<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
+        self.receive_timeout_impl(DEFAULT_TIMEOUT).await
     }
 
     /// Block to wait for a typed message, with explicit timeout
-    pub async fn receive_timeout<'ctx, M: Message>(
+    #[cfg(feature = "sync-api")]
+    pub fn receive_timeout<'ctx, M: Message>(
+        &'ctx mut self,
+        timeout_secs: u64,
+    ) -> Result<Cancel<'ctx, M>> {
+        let rt = Arc::clone(&self.rt);
+        block_future(&rt, self.receive_timeout_impl(timeout_secs))
+    }
+
+    /// Block to wait for a typed message, with explicit timeout
+    #[cfg(feature = "async-api")]
+    pub async fn receive_timeout_async<'ctx, M: Message>(
+        &'ctx mut self,
+        timeout_secs: u64,
+    ) -> Result<Cancel<'ctx, M>> {
+        self.receive_timeout_impl(timeout_secs).await
+    }
+
+    #[inline]
+    #[allow(unused)]
+    async fn receive_timeout_impl<'ctx, M: Message>(
         &'ctx mut self,
         timeout_secs: u64,
     ) -> Result<Cancel<'ctx, M>> {
@@ -301,7 +337,7 @@ impl Context {
         Ok(Cancel::new(msg, data, addr, self))
     }
 
-    /// Block the current worker to wait for a message satisfying a conditional
+    /// Block to wait for a message satisfying a conditional
     ///
     /// Will return `Err` if the corresponding worker has been
     /// stopped, or the underlying node has shut down.  This operation
@@ -309,7 +345,35 @@ impl Context {
     ///
     /// Internally this function calls `receive` and `.cancel()` in a
     /// loop until a matching message is found.
-    pub async fn receive_match<'ctx, M, F>(&'ctx mut self, check: F) -> Result<Cancel<'ctx, M>>
+    #[cfg(feature = "sync-api")]
+    pub fn receive_match<'ctx, M, F>(&'ctx mut self, check: F) -> Result<Cancel<'ctx, M>>
+    where
+        M: Message,
+        F: Fn(&M) -> bool + Send + Sync + 'static,
+    {
+        let rt = Arc::clone(&self.rt);
+        block_future(&rt, self.receive_match_impl(check))
+    }
+
+    /// Block to wait for a message satisfying a conditional
+    ///
+    /// See [receive_match](Self::receive_match) for more
+    /// documentation.
+    #[cfg(feature = "async-api")]
+    pub async fn receive_match_async<'ctx, M, F>(
+        &'ctx mut self,
+        check: F,
+    ) -> Result<Cancel<'ctx, M>>
+    where
+        M: Message,
+        F: Fn(&M) -> bool + Send + 'static,
+    {
+        self.receive_match_impl(check).await
+    }
+
+    #[inline]
+    #[allow(unused)]
+    async fn receive_match_impl<'ctx, M, F>(&'ctx mut self, check: F) -> Result<Cancel<'ctx, M>>
     where
         M: Message,
         F: Fn(&M) -> bool,
