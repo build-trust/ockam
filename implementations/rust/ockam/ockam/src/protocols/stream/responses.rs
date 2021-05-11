@@ -1,7 +1,7 @@
 //! Stream protocol response payloads and parser
 
 use crate::{
-    protocols::{ParserFragment, ProtocolPayload, UserParser},
+    protocols::{ParserFragment, ProtocolPayload},
     Message, ProtocolId, Result, Worker,
 };
 use serde::{Deserialize, Serialize};
@@ -115,26 +115,39 @@ pub enum Response {
 }
 
 /// A stream protocol parser with user-provided receive hook
-pub struct ResponseParser<W: Worker> {
-    f: UserParser<W, Response>,
+pub struct ResponseParser<W, F>
+where
+    W: Worker,
+    F: Fn(&mut W, Response),
+{
+    f: F,
+    _w: std::marker::PhantomData<W>,
 }
 
-impl<W: Worker> ResponseParser<W> {
+impl<W, F> ResponseParser<W, F>
+where
+    W: Worker,
+    F: Fn(&mut W, Response),
+{
     /// Create a new stream protocol parser with a response closure
     ///
     /// The provided function will be called for every incoming
     /// response to the stream protocol.  You can use it, and the
     /// mutable access to your worker state to map response messages
     /// to the worker state.
-    pub fn new<F>(f: F) -> Self
-    where
-        F: Fn(&mut W, Response) + Send + Sync + 'static,
-    {
-        Self { f: Box::new(f) }
+    pub fn new(f: F) -> Self {
+        Self {
+            f,
+            _w: std::marker::PhantomData,
+        }
     }
 }
 
-impl<W: Worker> ParserFragment<W> for ResponseParser<W> {
+impl<W, F> ParserFragment<W> for ResponseParser<W, F>
+where
+    W: Worker,
+    F: Fn(&mut W, Response),
+{
     fn ids(&self) -> Vec<ProtocolId> {
         vec![
             "stream_create",
@@ -162,7 +175,7 @@ impl<W: Worker> ParserFragment<W> for ResponseParser<W> {
         };
 
         // Call the user code
-        (*self.f)(state, resp);
+        (&self.f)(state, resp);
 
         Ok(())
     }

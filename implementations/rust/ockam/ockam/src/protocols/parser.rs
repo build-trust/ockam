@@ -25,9 +25,6 @@ where
     }
 }
 
-/// A user-closure to map protocol return values to worker state
-pub type UserParser<W, T> = Box<dyn Fn(&mut W, T) + Send + Sync + 'static>;
-
 /// An extensible protocol parser abstraction
 ///
 /// ## The problem
