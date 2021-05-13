@@ -1,5 +1,4 @@
 use crate::history::ProfileChangeHistory;
-use crate::ProfileChanges;
 use crate::{
     Changes, EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileImpl,
@@ -81,11 +80,13 @@ impl<V: ProfileVault> ProfileImpl<V> {
     ) -> ockam_core::Result<ProfileChangeEvent> {
         let attributes = attributes.unwrap_or_default();
 
-        let prev_event_id = self.change_history.get_last_event_id()?;
+        let prev_event_id = self.change_history().get_last_event_id()?;
 
-        let last_event_in_chain =
-            ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes)?
-                .clone();
+        let last_event_in_chain = ProfileChangeHistory::find_last_key_event(
+            self.change_history().as_ref(),
+            &key_attributes,
+        )?
+        .clone();
 
         let last_key_in_chain = Self::get_secret_key_from_event(
             &key_attributes,

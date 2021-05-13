@@ -20,6 +20,7 @@ pub enum EntityError {
     InvalidParameter,
     SecureChannelVerificationFailed,
     SecureChannelCannotBeAuthenticated,
+    ProfileInvalidResponseType,
 }
 
 impl EntityError {

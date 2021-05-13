@@ -1,5 +1,4 @@
 use crate::history::ProfileChangeHistory;
-use crate::ProfileChanges;
 use crate::{
     Changes, EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileImpl,
@@ -124,12 +123,16 @@ impl<V: ProfileVault> ProfileImpl<V> {
         root_key: Option<&Secret>,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // Creating key after it was revoked is forbidden
-        if ProfileChangeHistory::find_last_key_event(self.change_events(), &key_attributes).is_ok()
+        if ProfileChangeHistory::find_last_key_event(
+            self.change_history().as_ref(),
+            &key_attributes,
+        )
+        .is_ok()
         {
             return Err(EntityError::InvalidInternalState.into());
         }
 
-        let prev_id = self.change_history.get_last_event_id()?;
+        let prev_id = self.change_history().get_last_event_id()?;
 
         Self::create_key_event_static(
             prev_id,
