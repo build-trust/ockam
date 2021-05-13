@@ -37,6 +37,8 @@ touch src/hop.rs
 Add the following code to this file:
 
 ```rust
+// src/hop.rs
+
 use ockam::{Any, Context, Result, Routed, Worker};
 
 pub struct Hop;
