@@ -103,7 +103,7 @@ impl Worker for TcpRouter {
         Ok(())
     }
 
-    fn shutdown(&mut self, _: &mut Context) -> Result<()> {
+    async fn shutdown(&mut self, _: &mut Context) -> Result<()> {
         // Shut down the ListeningWorker if it exists
         atomic::stop(&self.run);
         Ok(())
