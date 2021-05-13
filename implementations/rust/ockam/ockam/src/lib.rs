@@ -16,6 +16,9 @@
 #[macro_use]
 extern crate serde_big_array;
 
+#[macro_use]
+extern crate tracing;
+
 big_array! { BigArray; 96 }
 
 // ---
@@ -46,9 +49,11 @@ mod remote_forwarder;
 pub use remote_forwarder::*;
 
 pub use ockam_core::worker;
+pub mod protocols;
+
 pub use ockam_core::{
-    Address, Any, Encoded, Error, Message, Result, Route, Routed, RouterMessage, TransportMessage,
-    Worker,
+    Address, Any, Encoded, Error, Message, ProtocolId, Result, Route, Routed, RouterMessage,
+    TransportMessage, Worker,
 };
 
 pub use ockam_channel::SecureChannel;

@@ -22,6 +22,7 @@ pub enum OckamError {
     InvalidParameter,
     SecureChannelVerificationFailed,
     SecureChannelCannotBeAuthenticated,
+    NoSuchParser,
 }
 
 impl OckamError {

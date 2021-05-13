@@ -1,14 +1,51 @@
 use crate::{
     lib::{
         fmt::{self, Debug, Display, Formatter},
-        Deref, DerefMut, Vec,
+        Deref, DerefMut, String, ToString, Vec,
     },
     Address, Result, Route, TransportMessage,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Alias of the type used for encoded data.
 pub type Encoded = Vec<u8>;
+
+/// A user-defined protocol identifier
+///
+/// When creating workers that should asynchronously speak different
+/// protocols, this identifier can be used to switch message parsing
+/// between delegated workers, each responsible for only one protocol.
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
+pub struct ProtocolId(String);
+
+impl ProtocolId {
+    /// Create a None protocol Id (with left pad)
+    pub fn none() -> Self {
+        Self(String::new())
+    }
+
+    /// Use the first 8 bytes of a string as the protocol ID
+    pub fn from_str(s: &str) -> Self {
+        Self(s.to_string())
+    }
+
+    /// Get the protocol as a &str
+    pub fn as_str<'s>(&'s self) -> &'s str {
+        self.0.as_str()
+    }
+}
+
+impl From<&'static str> for ProtocolId {
+    fn from(s: &'static str) -> Self {
+        Self::from_str(s)
+    }
+}
+
+impl Display for ProtocolId {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// A user defined message that can be serialised and deserialised
 pub trait Message: Sized + Send + 'static {
@@ -30,7 +67,7 @@ where
     }
 
     fn decode(e: &Encoded) -> Result<Self> {
-        Ok(serde_bare::from_slice(e.as_slice())?)
+        Ok(serde_bare::from_slice(e.as_slice()).unwrap())
     }
 }
 
