@@ -30,7 +30,7 @@ ockam_vault = {path = "../ockam_vault", version = "0.7.0-dev" , optional = true}
 serde_bare = "0.3.0"
 rand = "0.8"
 async-trait = "0.1.42"
-serde = {version = "1.0.120", features = ["derive"]}
+serde = {version = "1.0", features = ["derive"]}
 tracing = "0.1"
 
 [dev-dependencies]
