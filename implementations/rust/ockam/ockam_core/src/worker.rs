@@ -16,7 +16,7 @@ pub trait Worker: Send + 'static {
     }
 
     /// Override shutdown behaviour
-    fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
         Ok(())
     }
 

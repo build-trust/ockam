@@ -173,7 +173,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             }
         }
 
-        self.worker.shutdown(&mut self.ctx).unwrap();
+        self.worker.shutdown(&mut self.ctx).await.unwrap();
     }
 
     /// Run the inner worker and restart it if errors occurs
