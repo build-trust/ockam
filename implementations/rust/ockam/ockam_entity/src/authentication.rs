@@ -54,7 +54,6 @@ impl Authentication {
 #[cfg(test)]
 mod test {
     use crate::ProfileAuth;
-    use crate::ProfileChanges;
     use crate::ProfileContacts;
     use crate::ProfileSecrets;
     use crate::{KeyAttributes, Profile};
@@ -188,13 +187,13 @@ mod test {
         bob.verify_authentication_proof(&key_agreement_hash, &alice_id, proof_alice.as_slice())
             .unwrap();
 
-        let alice_index = alice.change_events().len();
+        let alice_index = alice.change_history().as_ref().len();
         alice.rotate_key(root_key_attributes.clone(), None).unwrap();
-        let alice_changes = &alice.change_events()[alice_index..];
+        let alice_changes = &alice.change_history().as_ref()[alice_index..];
         let alice_changes = Profile::serialize_change_events(&alice_changes).unwrap();
-        let bob_index = bob.change_events().len();
+        let bob_index = bob.change_history().as_ref().len();
         bob.rotate_key(root_key_attributes.clone(), None).unwrap();
-        let bob_changes = &bob.change_events()[bob_index..];
+        let bob_changes = &bob.change_history().as_ref()[bob_index..];
         let bob_changes = Profile::serialize_change_events(&bob_changes).unwrap();
 
         let alice_changes = Profile::deserialize_change_events(alice_changes.as_slice()).unwrap();

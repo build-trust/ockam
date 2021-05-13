@@ -48,7 +48,7 @@ impl Initiator {
         let msg = msg.body();
 
         let contact = msg.contact();
-        if profile.contacts().contains_key(contact.identifier()) {
+        if profile.contacts()?.contains_key(contact.identifier()) {
             // TODO: Update profile if needed
         } else {
             profile.verify_and_add_contact(contact.clone())?;
@@ -68,7 +68,7 @@ impl Initiator {
             contact.identifier().to_string_representation()
         );
 
-        let contact = profile.to_contact();
+        let contact = profile.to_contact()?;
         let proof = profile.generate_authentication_proof(&channel.auth_hash())?;
 
         let channel_local_address: Address = random();

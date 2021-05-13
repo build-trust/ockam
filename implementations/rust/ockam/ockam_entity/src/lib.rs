@@ -35,6 +35,8 @@ mod channel;
 pub(crate) use channel::*;
 mod error;
 pub use error::*;
+mod worker;
+pub use worker::*;
 
 pub trait ProfileVault:
     XXVault
@@ -181,11 +183,11 @@ impl<D> ProfileVault for D where
 ///     # let key_agreement_hash = [0u8; 32];
 ///     # let contact_alice = alice.serialize_to_contact()?;
 ///     #
-///     let index_a = alice.change_events().len();
+///     let index_a = alice.change_events()?.len();
 ///     alice.rotate_key(Profile::PROFILE_UPDATE.into(), None)?;
 ///
 ///     // Send to Bob
-///     let change_events = &alice.change_events()[index_a..];
+///     let change_events = &alice.change_events()?[index_a..];
 ///     let change_events = Profile::serialize_change_events(change_events)?;
 ///     # ctx.stop().await.unwrap();
 ///     # Ok::<(), ockam_core::Error>(())
@@ -339,8 +341,8 @@ mod test {
             .rotate_key(Profile::PROFILE_UPDATE.into(), None)
             .unwrap();
 
-        let index_a = alice.change_events().len();
-        let change_events = &alice.change_events()[index_a..];
+        let index_a = alice.change_history().as_ref().len();
+        let change_events = &alice.change_history().as_ref()[index_a..];
         let change_events = Profile::serialize_change_events(change_events).unwrap();
 
         // Receive from Alice
