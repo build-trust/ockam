@@ -44,8 +44,7 @@ impl<V: ProfileVault> Worker for ProfileChannelListener<V> {
     }
 
     async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
-        Ok(())
-        // TODO: ctx.stop_worker(self.listener_address.take().unwrap()).await
+        ctx.stop_worker(self.listener_address.take().unwrap()).await
     }
 
     async fn handle_message(
