@@ -22,6 +22,7 @@ touch examples/06-secure-channel-many-hops.rs
 Add the following code to this file:
 
 ```rust
+// examples/06-secure-channel-many-hops.rs
 // This node creates a secure channel with a listener that is multiple hops away.
 
 use ockam::{Context, Result, Route, SecureChannel, Vault};
