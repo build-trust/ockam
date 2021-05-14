@@ -42,7 +42,7 @@ impl<P: ProfileTrait + Clone> SecureChannelTrait for P {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Profile, ProfileSync};
+    use crate::Profile;
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -52,10 +52,8 @@ mod test {
             .execute(async move {
                 let vault = Vault::create(&ctx).unwrap();
 
-                let alice = Profile::create(&ctx, &vault).unwrap();
-                let mut alice = ProfileSync::create(&ctx, alice).await.unwrap();
-                let bob = Profile::create(&ctx, &vault).unwrap();
-                let mut bob = ProfileSync::create(&ctx, bob).await.unwrap();
+                let mut alice = Profile::create(&ctx, &vault).await.unwrap();
+                let mut bob = Profile::create(&ctx, &vault).await.unwrap();
 
                 bob.create_secure_channel_listener(&mut ctx, "bob_listener".into(), &vault)
                     .await

@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
 /// # executor.execute(async move {
 /// let vault = Vault::create(&ctx)?;
-/// let mut alice = Profile::create(&ctx, &vault)?;
+/// let mut alice = Profile::create(&ctx, &vault).await?;
 ///
 /// let truck_key_attributes = KeyAttributes::new(
 ///     "Truck management".to_string(),
@@ -57,7 +57,7 @@ use serde::{Deserialize, Serialize};
 /// # let (mut ctx, mut executor) = ockam_node::start_node();
 /// # executor.execute(async move {
 /// # let vault = Vault::create(&ctx)?;
-/// # let mut alice = Profile::create(&ctx, &vault)?;
+/// # let mut alice = Profile::create(&ctx, &vault).await?;
 /// #
 /// # let truck_key_attributes = KeyAttributes::new(
 /// #     "Truck management".to_string(),
