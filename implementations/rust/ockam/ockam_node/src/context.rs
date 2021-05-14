@@ -77,6 +77,12 @@ impl Context {
             .into()
     }
 
+    /// Utility function to sleep tasks from other crates
+    #[doc(hidden)]
+    pub async fn sleep(&self, dur: Duration) {
+        tokio::time::sleep(dur).await;
+    }
+
     /// Create a new context without spawning a full worker
     pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
         let addr = addr.into();

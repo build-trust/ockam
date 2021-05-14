@@ -52,3 +52,12 @@ where
         local.block_on(rt, f)
     })
 }
+
+#[doc(hidden)]
+pub fn spawn<F: 'static>(f: F)
+where
+    F: Future + Send,
+    F::Output: Send,
+{
+    task::spawn(f);
+}
