@@ -53,10 +53,10 @@ impl Authentication {
 
 #[cfg(test)]
 mod test {
-    use crate::ProfileAuth;
     use crate::ProfileContacts;
     use crate::ProfileSecrets;
     use crate::{KeyAttributes, Profile};
+    use crate::{ProfileAuth, ProfileImpl};
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultMutex;
     use rand::prelude::*;
@@ -65,8 +65,8 @@ mod test {
     fn authentication() {
         let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_with_vault(vault.clone()).unwrap();
-        let mut bob = Profile::create_with_vault(vault.clone()).unwrap();
+        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+        let mut bob = ProfileImpl::create_internal(None, vault.clone()).unwrap();
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];
@@ -105,8 +105,8 @@ mod test {
     fn authentication_profile_update_key_rotated() {
         let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_with_vault(vault.clone()).unwrap();
-        let mut bob = Profile::create_with_vault(vault.clone()).unwrap();
+        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+        let mut bob = ProfileImpl::create_internal(None, vault.clone()).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
@@ -150,8 +150,8 @@ mod test {
     fn authentication_profile_update_key_rotated_after_first_handshake() {
         let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = Profile::create_with_vault(vault.clone()).unwrap();
-        let mut bob = Profile::create_with_vault(vault.clone()).unwrap();
+        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+        let mut bob = ProfileImpl::create_internal(None, vault.clone()).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
