@@ -309,6 +309,7 @@ mod test {
         executor
             .execute(async move {
                 let vault = Vault::create(&ctx).unwrap();
+                let profile = Profile::create(&ctx, &vault).await.unwrap();
                 let mut profile = ProfileSync::create(&ctx, profile).await.unwrap();
                 fn_test_new(&mut profile);
 
