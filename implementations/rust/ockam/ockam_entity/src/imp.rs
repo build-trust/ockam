@@ -9,7 +9,6 @@ use ockam_core::Result;
 use ockam_vault_core::{PublicKey, Secret};
 
 /// Profile implementation
-#[derive(Clone)]
 pub struct ProfileImpl<V: ProfileVault> {
     identifier: ProfileIdentifier,
     change_history: ProfileChangeHistory,

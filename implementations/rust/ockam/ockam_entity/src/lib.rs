@@ -13,7 +13,6 @@ use crate::EntityError;
 use ockam_channel::SecureChannelVault;
 use ockam_core::lib::HashMap;
 use ockam_core::Address;
-use ockam_key_exchange_xx::XXVault;
 use ockam_node::Context;
 use ockam_vault_core::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
 use ockam_vault_sync_core::VaultSync;
@@ -39,22 +38,12 @@ mod worker;
 pub use worker::*;
 
 pub trait ProfileVault:
-    XXVault
-    + SecretVault
-    + SecureChannelVault
-    + KeyIdVault
-    + Hasher
-    + Signer
-    + Verifier
-    + Clone
-    + Send
-    + 'static
+    SecretVault + SecureChannelVault + KeyIdVault + Hasher + Signer + Verifier + Clone + Send + 'static
 {
 }
 
 impl<D> ProfileVault for D where
-    D: XXVault
-        + SecretVault
+    D: SecretVault
         + SecureChannelVault
         + KeyIdVault
         + Hasher
