@@ -1,13 +1,13 @@
 defmodule Ockam.Router.MessageHandler do
   @moduledoc false
 
-  alias Ockam.Message
+  alias Ockam.Routable
 
   @typedoc """
   A function that accepts an address and a message as arguments.
   It returns `:ok` or `{:error, reason}`, where `reason` can be any term.
   """
-  @type t :: (Message.t() -> :ok | {:error, reason :: any()})
+  @type t :: (Routable.t() -> :ok | {:error, reason :: any()})
 
   @doc """
   Returns `true` if `term` is a valid `t:Ockam.Router.MessageHandler.t/0`;

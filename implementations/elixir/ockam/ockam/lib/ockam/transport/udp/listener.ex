@@ -3,7 +3,7 @@ defmodule Ockam.Transport.UDP.Listener do
 
   use Ockam.Worker
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Telemetry
   alias Ockam.Transport.UDPAddress
   alias Ockam.Wire
@@ -86,16 +86,16 @@ defmodule Ockam.Transport.UDP.Listener do
 
   defp create_outgoing_message(message) do
     %{
-      onward_route: Message.onward_route(message),
-      return_route: Message.return_route(message),
-      payload: Message.payload(message)
+      onward_route: Routable.onward_route(message),
+      return_route: Routable.return_route(message),
+      payload: Routable.payload(message)
     }
   end
 
   defp pick_destination_and_set_onward_route(message, address) do
     destination_and_onward_route =
       message
-      |> Message.onward_route()
+      |> Routable.onward_route()
       |> Enum.drop_while(fn a -> a === address end)
       |> List.pop_at(0)
 

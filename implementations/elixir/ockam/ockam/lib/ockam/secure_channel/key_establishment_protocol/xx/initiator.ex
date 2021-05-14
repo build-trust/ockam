@@ -1,7 +1,7 @@
 defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
   @moduledoc false
 
-  alias Ockam.Message
+  alias Ockam.Routable
   alias Ockam.Router
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol
 
@@ -22,8 +22,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
   end
 
   def handle_message(message, {:key_establishment, @role, :awaiting_message2}, data) do
-    message2 = Message.payload(message)
-    message3_onward_route = Message.return_route(message)
+    message2 = Routable.payload(message)
+    message3_onward_route = Routable.return_route(message)
     message3_return_route = [data.ciphertext_address]
 
     data = Map.put(data, :route_to_peer, message3_onward_route)
