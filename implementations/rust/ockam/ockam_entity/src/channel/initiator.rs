@@ -1,11 +1,10 @@
 use crate::{
-    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError, ProfileAuth,
-    ProfileContacts, ProfileImpl, ProfileVault,
+    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError, ProfileTrait,
 };
 use async_trait::async_trait;
 use ockam_channel::SecureChannel;
 use ockam_core::{Address, Any, Message, Result, Route, Routed, TransportMessage, Worker};
-use ockam_key_exchange_xx::XXNewKeyExchanger;
+use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
 use rand::random;
 use tracing::{debug, info};
@@ -19,14 +18,13 @@ pub(crate) struct Initiator {
 }
 
 impl Initiator {
-    pub async fn create<R: Into<Route>, V: ProfileVault>(
+    pub async fn create<P: ProfileTrait, V: XXVault>(
         ctx: &Context,
-        route: R,
-        profile: &mut ProfileImpl<V>,
+        route: Route,
+        profile: &mut P,
+        vault: V,
     ) -> Result<Address> {
-        let vault = profile.vault();
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
-        let route = route.into();
 
         let child_address: Address = random();
         let mut child_ctx = ctx.new_context(child_address).await?;

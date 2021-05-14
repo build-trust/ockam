@@ -1,6 +1,5 @@
 use crate::{
-    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, EntityError, ProfileAuth,
-    ProfileContacts, ProfileImpl, ProfileVault,
+    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, EntityError, ProfileTrait,
 };
 use async_trait::async_trait;
 use ockam_channel::{CreateResponderChannelMessage, KeyExchangeCompleted};
@@ -17,9 +16,9 @@ pub(crate) struct Responder {
 }
 
 impl Responder {
-    pub async fn create<V: ProfileVault>(
+    pub async fn create<P: ProfileTrait>(
         ctx: &Context,
-        profile: &mut ProfileImpl<V>,
+        profile: &mut P,
         listener_address: Address,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {

@@ -2,7 +2,9 @@ use crate::{
     Contact, ContactsDb, KeyAttributes, ProfileChangeEvent, ProfileEventAttributes,
     ProfileIdentifier,
 };
-use ockam_core::Result;
+use async_trait::async_trait;
+use ockam_core::{Address, Result, Route};
+use ockam_node::Context;
 use ockam_vault_core::{PublicKey, Secret};
 
 pub trait ProfileIdentity {
@@ -73,6 +75,25 @@ pub trait ProfileSecrets {
 
     /// Get the root [`Secret`]
     fn get_root_secret(&mut self) -> Result<Secret>;
+}
+
+#[async_trait]
+pub trait SecureChannelTrait {
+    /// Create mutually authenticated secure channel
+    async fn create_secure_channel(
+        &mut self,
+        ctx: &Context,
+        route: Route,
+        vault: &Address,
+    ) -> Result<Address>;
+
+    /// Create mutually authenticated secure channel listener
+    async fn create_secure_channel_listener(
+        &mut self,
+        ctx: &Context,
+        address: Address,
+        vault: &Address,
+    ) -> Result<()>;
 }
 
 /// Supertrait of a Profile
