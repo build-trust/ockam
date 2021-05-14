@@ -5,7 +5,8 @@ use crate::{
         stream::{requests::*, responses::*},
         ProtocolParser,
     },
-    Address, Any, Context, DelayedEvent, Message, Result, Route, Routed, TransportMessage, Worker,
+    Address, Any, Context, DelayedEvent, Error, Message, Result, Route, Routed, TransportMessage,
+    Worker,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,10 +42,23 @@ impl Worker for StreamPublisher {
         Ok(())
     }
 
-    async fn handle_message(&mut self, _: &mut Context, msg: Routed<Any>) -> Result<()> {
-        // Take a user message and send a PUSH to the stream_service on HUB
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        let msg = msg.into_transport_message();
 
-        Ok(())
+        match stream_worker_cmd(&msg) {
+            Some(StreamWorkerCmd::Ensure) => {
+                ctx.send(
+                    msg.return_route.clone(),
+                    StreamWorkerCmd::Addr(ctx.address()),
+                )
+                .await
+            }
+            // Proxy all other messages through the stream!
+            _ => {
+                ctx.send(self.peer.clone(), PushRequest::new(0, msg.encode()?))
+                    .await
+            }
+        }
     }
 }
 
