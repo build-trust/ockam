@@ -80,3 +80,14 @@ pub trait ProfileTrait:
     ProfileIdentity + ProfileChanges + ProfileSecrets + ProfileContacts + ProfileAuth + Send + 'static
 {
 }
+
+impl<P> ProfileTrait for P where
+    P: ProfileIdentity
+        + ProfileChanges
+        + ProfileSecrets
+        + ProfileContacts
+        + ProfileAuth
+        + Send
+        + 'static
+{
+}
