@@ -281,11 +281,7 @@ mod test {
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultMutex;
 
-    #[test]
-    fn test_new() {
-        let vault = VaultMutex::create(SoftwareVault::default());
-        let mut profile = Profile::create_with_vault(vault.clone()).unwrap();
-
+    fn fn_test_new<P: ProfileTrait>(profile: &mut P) {
         profile.verify().unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
@@ -324,12 +320,21 @@ mod test {
     }
 
     #[test]
-    fn test_update() {
-        let vault = VaultMutex::create(SoftwareVault::default());
-        let mut alice = Profile::create_with_vault(vault.clone()).unwrap();
+    fn test_new() {
+        let (mut ctx, mut executor) = ockam_node::start_node();
+        executor
+            .execute(async move {
+                let vault = VaultMutex::create(SoftwareVault::default());
+                let profile = Profile::create_with_vault(vault.clone()).unwrap();
+                let mut profile = ProfileSync::create(&ctx, profile).await.unwrap();
+                fn_test_new(&mut profile);
 
-        let mut bob = Profile::create_with_vault(vault).unwrap();
+                ctx.stop().await.unwrap();
+            })
+            .unwrap();
+    }
 
+    fn fn_test_update<P: ProfileTrait>(alice: &mut P, bob: &mut P) {
         // Receive this from Alice over the network
         let contact_alice = alice.serialize_to_contact().unwrap();
         let contact_alice = Profile::deserialize_contact(&contact_alice).unwrap();
@@ -341,13 +346,31 @@ mod test {
             .rotate_key(Profile::PROFILE_UPDATE.into(), None)
             .unwrap();
 
-        let index_a = alice.change_history().as_ref().len();
-        let change_events = &alice.change_history().as_ref()[index_a..];
+        let index_a = alice.change_events().unwrap().len();
+        let change_events = &alice.change_events().unwrap()[index_a..];
         let change_events = Profile::serialize_change_events(change_events).unwrap();
 
         // Receive from Alice
         let change_events = Profile::deserialize_change_events(&change_events).unwrap();
-        bob.verify_and_update_contact(&alice_id, change_events)
+        assert!(bob
+            .verify_and_update_contact(&alice_id, change_events)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_update() {
+        let (mut ctx, mut executor) = ockam_node::start_node();
+        executor
+            .execute(async move {
+                let vault = VaultMutex::create(SoftwareVault::default());
+                let alice = Profile::create_with_vault(vault.clone()).unwrap();
+                let mut alice = ProfileSync::create(&ctx, alice).await.unwrap();
+                let bob = Profile::create_with_vault(vault).unwrap();
+                let mut bob = ProfileSync::create(&ctx, bob).await.unwrap();
+                fn_test_update(&mut alice, &mut bob);
+
+                ctx.stop().await.unwrap();
+            })
             .unwrap();
     }
 }
