@@ -20,7 +20,7 @@ where
     fn ids(&self) -> Vec<ProtocolId>;
 
     /// Parse an incoming message for a particular worker
-    fn parse(&self, _state: &mut W, _msg: ProtocolPayload) -> Result<()> {
+    fn parse(&self, _state: &mut W, _routed: &Routed<Any>, _msg: ProtocolPayload) -> Result<()> {
         Ok(())
     }
 }
@@ -103,11 +103,9 @@ impl<W: Worker> ProtocolParserImpl<W> {
     ///
     /// You may want to call [`prepare()`](Self::prepare) before
     /// calling this function.
-    pub fn parse(self: Arc<Self>, w: &mut W, msg: Routed<Any>) -> Result<()> {
-        let msg = msg.into_transport_message();
-
+    pub fn parse(self: Arc<Self>, w: &mut W, msg: &Routed<Any>) -> Result<()> {
         // Parse message as a ProtocolPayload to grab the ProtocolId
-        let proto_msg = ProtocolPayload::decode(&msg.payload).unwrap();
+        let proto_msg = ProtocolPayload::decode(msg.payload())?;
         let proto = ProtocolId::from_str(proto_msg.protocol.as_str());
 
         trace!("Parsing message for '{:?}' protocol", proto.as_str());
@@ -117,6 +115,6 @@ impl<W: Worker> ProtocolParserImpl<W> {
         let parser = map.get(&proto).ok_or(OckamError::NoSuchParser)?;
 
         // Finally call the parser
-        parser.parse(w, proto_msg)
+        parser.parse(w, msg, proto_msg)
     }
 }

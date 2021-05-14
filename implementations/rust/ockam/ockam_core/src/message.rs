@@ -107,6 +107,11 @@ impl<M: Message> Routed<M> {
         }
     }
 
+    #[doc(hidden)]
+    pub fn dissolve(&self) -> (Address, TransportMessage) {
+        (self.msg_addr.clone(), self.transport.clone())
+    }
+
     /// Return a copy of the message address
     #[inline]
     pub fn msg_addr(&self) -> Address {
