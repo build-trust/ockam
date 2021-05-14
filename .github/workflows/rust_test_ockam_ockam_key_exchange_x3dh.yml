@@ -6,6 +6,7 @@ on:
       - 'implementations/rust/ockam/ockam_core/**'
       - 'implementations/rust/ockam/ockam_vault_core/**'
       - 'implementations/rust/ockam/ockam_key_exchange_core/**'
+      - 'implementations/rust/ockam/ockam_vault_sync_core/**'
       - 'implementations/rust/ockam/ockam_vault/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
