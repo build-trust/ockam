@@ -3,7 +3,7 @@ use crate::init::WorkerPair;
 use crate::WebSocketError;
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::StreamExt;
-use ockam_core::{Address, Result, RouterMessage, Worker, async_trait};
+use ockam_core::{async_trait, Address, Result, RouterMessage, Worker};
 use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;

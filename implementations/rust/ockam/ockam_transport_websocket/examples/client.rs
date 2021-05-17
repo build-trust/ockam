@@ -27,7 +27,7 @@ async fn run_main(mut ctx: Context) -> Result<()> {
                 .append("echo_service"),
             data,
         )
-            .await?;
+        .await?;
 
         let msg = ctx.receive::<String>().await?;
         println!("Received echo: '{}'", msg);

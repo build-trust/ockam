@@ -2,7 +2,7 @@ use crate::atomic::{self, ArcBool};
 use crate::WebSocketError;
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use ockam_core::{Address, Result, Worker, TransportMessage, async_trait};
+use ockam_core::{async_trait, Address, Result, TransportMessage, Worker};
 use ockam_node::Context;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;

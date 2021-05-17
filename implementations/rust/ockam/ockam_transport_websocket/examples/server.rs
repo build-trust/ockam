@@ -6,8 +6,8 @@
 #[macro_use]
 extern crate tracing;
 
-use ockam_core::{Result, Routed, Worker, async_trait};
-use ockam_node::{Context};
+use ockam_core::{async_trait, Result, Routed, Worker};
+use ockam_node::Context;
 use ockam_transport_websocket::WebSocketTransport;
 
 fn main() -> Result<()> {

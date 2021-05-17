@@ -1,7 +1,7 @@
 use crate::WebSocketError;
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
-use ockam_core::{Result, Routed, TransportMessage, Worker, async_trait};
+use ockam_core::{async_trait, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::io::{AsyncRead, AsyncWrite};
