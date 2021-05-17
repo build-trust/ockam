@@ -1,6 +1,8 @@
 defmodule Ockam.Vault do
   @moduledoc false
 
+  @default_secret_attributes [type: :curve25519, persistence: :ephemeral, length: 32]
+
   @doc """
     Computes a SHA-256 hash based on input data.
   """
@@ -21,16 +23,18 @@ defmodule Ockam.Vault do
     Generates an ockam secret. Attributes struct must specify the
     configuration for the type of secret to generate.
   """
-  @spec secret_generate(Ockam.Vault, tuple()) :: {:ok, reference()} | :error
-  def secret_generate(%vault_module{id: vault_id}, attributes) do
+  @spec secret_generate(Ockam.Vault, keyword()) :: {:ok, reference()} | :error
+  def secret_generate(%vault_module{id: vault_id}, attributes) when is_list(attributes) do
+    attributes = @default_secret_attributes |> Keyword.merge(attributes) |> Map.new()
     vault_module.secret_generate(vault_id, attributes)
   end
 
   @doc """
     Imports the specified data into the supplied ockam vault secret.
   """
-  @spec secret_import(Ockam.Vault, tuple(), binary) :: {:ok, reference()} | :error
-  def secret_import(%vault_module{id: vault_id}, attributes, input) do
+  @spec secret_import(Ockam.Vault, keyword(), binary) :: {:ok, reference()} | :error
+  def secret_import(%vault_module{id: vault_id}, attributes, input) when is_list(attributes) do
+    attributes = @default_secret_attributes |> Keyword.merge(attributes) |> Map.new()
     vault_module.secret_import(vault_id, attributes, input)
   end
 
@@ -53,9 +57,10 @@ defmodule Ockam.Vault do
   @doc """
     Retrieves the attributes for a specified secret
   """
-  @spec secret_attributes_get(Ockam.Vault, reference()) :: {:ok, tuple()} | :error
+  @spec secret_attributes_get(Ockam.Vault, reference()) :: {:ok, keyword()} | :error
   def secret_attributes_get(%vault_module{id: vault_id}, secret_handle) do
-    vault_module.secret_attributes_get(vault_id, secret_handle)
+    attributes = vault_module.secret_attributes_get(vault_id, secret_handle)
+    Map.to_list(attributes)
   end
 
   @doc """

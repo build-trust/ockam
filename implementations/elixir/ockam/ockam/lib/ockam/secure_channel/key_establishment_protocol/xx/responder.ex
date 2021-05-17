@@ -31,7 +31,9 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
 
   def handle_message(message, {:key_establishment, @role, :awaiting_message3}, data) do
     message3 = Message.payload(message)
-    data = Map.put(data, :route_to_peer, Message.return_route(message))
+
+    peer = data.peer
+    data = Map.put(data, :peer, %{peer | route: Message.return_route(message)})
 
     with {:ok, payload, data} <- Protocol.decode(:message3, message3, data),
          {:ok, data} <- set_peer(payload, data),

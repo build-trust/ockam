@@ -89,9 +89,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp generate_e(%{vault: vault} = state) do
-    secret_attributes = %{type: :curve25519, persistence: :ephemeral, length: 32}
-
-    with {:ok, private_key} <- Vault.secret_generate(vault, secret_attributes),
+    with {:ok, private_key} <- Vault.secret_generate(vault, type: :curve25519),
          {:ok, public_key} <- Vault.secret_publickey_get(vault, private_key) do
       e = %{private: private_key, public: public_key}
       {:ok, %{state | e: e}}
@@ -106,9 +104,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   defp setup_ck(%{vault: vault} = state) do
-    ck_attributes = %{type: :buffer, persistence: :ephemeral, length: 32}
-
-    case Vault.secret_import(vault, ck_attributes, zero_padded_protocol_name()) do
+    case Vault.secret_import(vault, [type: :buffer], zero_padded_protocol_name()) do
       {:ok, ck} -> {:ok, %{state | ck: ck}}
       {:error, reason} -> {:error, {:could_not_setup_ck, reason}}
     end
@@ -256,10 +252,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def encrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, plaintext) do
-    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
-
     with {:ok, k} <- Vault.secret_export(vault, k),
-         {:ok, k} <- Vault.secret_import(vault, k_attributes, k),
+         {:ok, k} <- Vault.secret_import(vault, [type: :aes], k),
          {:ok, ciphertext_and_tag} <- Vault.aead_aes_gcm_encrypt(vault, k, n, h, plaintext),
          :ok <- Vault.secret_destroy(vault, k),
          {:ok, state} <- mix_hash(state, ciphertext_and_tag) do
@@ -268,10 +262,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
   end
 
   def decrypt_and_hash(%{vault: vault, k: k, n: n, h: h} = state, ciphertext_and_tag) do
-    k_attributes = %{type: :aes, length: 32, persistence: :ephemeral}
-
     with {:ok, k} <- Vault.secret_export(vault, k),
-         {:ok, k} <- Vault.secret_import(vault, k_attributes, k),
+         {:ok, k} <- Vault.secret_import(vault, [type: :aes], k),
          {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, h, ciphertext_and_tag),
          :ok <- Vault.secret_destroy(vault, k),
          {:ok, state} <- mix_hash(state, ciphertext_and_tag) do

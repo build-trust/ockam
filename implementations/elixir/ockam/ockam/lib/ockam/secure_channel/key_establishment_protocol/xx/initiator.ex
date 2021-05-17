@@ -12,7 +12,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
   end
 
   def handle_message(:enter, {:key_establishment, @role, :ready}, data) do
-    message1_onward_route = data.route_to_peer
+    message1_onward_route = data.peer.route
     message1_return_route = [data.ciphertext_address]
 
     with {:ok, encoded_message1, data} <- Protocol.encode(:message1, data),
@@ -26,7 +26,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
     message3_onward_route = Message.return_route(message)
     message3_return_route = [data.ciphertext_address]
 
-    data = Map.put(data, :route_to_peer, message3_onward_route)
+    peer = data.peer
+    data = Map.put(data, :peer, %{peer | route: message3_onward_route})
 
     with {:ok, payload, data} <- Protocol.decode(:message2, message2, data),
          {:ok, data} <- set_peer(payload, data),

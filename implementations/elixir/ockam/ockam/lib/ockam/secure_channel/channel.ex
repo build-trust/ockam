@@ -4,6 +4,7 @@ defmodule Ockam.SecureChannel.Channel do
   use GenStateMachine
 
   alias Ockam.Node
+  alias Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm, as: EncryptedTransport
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX, as: XXKeyEstablishmentProtocol
   alias Ockam.Telemetry
 
@@ -12,6 +13,10 @@ defmodule Ockam.SecureChannel.Channel do
 
   @doc false
   def peer(_channel), do: :ok
+
+  def established?(channel) do
+    channel |> Node.whereis() |> GenStateMachine.call(:established?)
+  end
 
   @doc false
   def create(options) when is_list(options) do
@@ -44,10 +49,12 @@ defmodule Ockam.SecureChannel.Channel do
 
     with {:ok, data} <- setup_plaintext_address(options, %{}),
          {:ok, data} <- setup_ciphertext_address(options, data),
-         {:ok, data} <- setup_route_to_peer(options, data),
+         {:ok, data} <- setup_vault(options, data),
+         {:ok, data} <- setup_peer(options, data),
          {:ok, data} <- setup_initiating_message(options, data),
-         {:ok, initial_state, data} <- setup_key_establishment_protocol(options, data) do
-      return_value = {:ok, initial_state, data}
+         {:ok, initial, data} <- setup_key_establishment_protocol(options, data),
+         {:ok, initial, data} <- setup_encrypted_transport_protocol(options, initial, data) do
+      return_value = {:ok, initial, data}
 
       metadata = Map.put(metadata, :return_value, return_value)
       Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
@@ -70,13 +77,19 @@ defmodule Ockam.SecureChannel.Channel do
     return_value
   end
 
+  defp handle_message({:call, from}, :established?, state, data) do
+    established = {:encrypted_transport, :ready} === state
+    {:next_state, state, data, [{:reply, from, established}]}
+  end
+
   defp handle_message(:info, event, {:key_establishment, _role, _role_state} = state, data) do
     key_establishment_protocol = Map.get(data, :key_establishment_protocol)
     key_establishment_protocol.handle_message(event, state, data)
   end
 
-  # TODO: should we catah all?
-  # defp handle_message(_event_type, _event, _state, _data)
+  defp handle_message(:info, event, {:encrypted_transport, :ready} = state, data) do
+    EncryptedTransport.handle_message(event, state, data)
+  end
 
   # application facing address is plaintext address
   defp setup_plaintext_address(options, data) do
@@ -95,12 +108,17 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  # sets route to peer based on - route option
-  def setup_route_to_peer(options, data) do
-    case Keyword.get(options, :route) do
-      nil -> {:ok, data}
-      route -> {:ok, Map.put(data, :route_to_peer, route)}
+  # sets vault based on - vault option
+  defp setup_vault(options, data) do
+    with {:ok, vault} <- get_from_options(:vault, options) do
+      {:ok, Map.put(data, :vault, vault)}
     end
+  end
+
+  # sets peer based on - route option
+  def setup_peer(options, data) do
+    route = Keyword.get(options, :route, [])
+    {:ok, Map.put(data, :peer, %{route: route})}
   end
 
   # sets initiating_message
@@ -121,6 +139,11 @@ defmodule Ockam.SecureChannel.Channel do
       unexpected_protocol ->
         {:error, {:unexpected_key_establishment_protocol, unexpected_protocol}}
     end
+  end
+
+  # sets a encrypted transport protocol and calls its setup
+  defp setup_encrypted_transport_protocol(options, initial_state, data) do
+    EncryptedTransport.setup(options, initial_state, data)
   end
 
   @doc false

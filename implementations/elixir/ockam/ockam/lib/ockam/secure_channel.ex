@@ -28,4 +28,9 @@ defmodule Ockam.SecureChannel do
   channel.
   """
   defdelegate peer(channel), to: Channel
+
+  @doc """
+  Returns true if the channel is established.
+  """
+  defdelegate established?(channel), to: Channel
 end

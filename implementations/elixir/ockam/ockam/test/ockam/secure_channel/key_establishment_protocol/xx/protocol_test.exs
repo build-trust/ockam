@@ -54,14 +54,8 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol.Tests do
 
     test_case =
       Enum.reduce(keypairs, test_case, fn k, test_case ->
-        secret_attributes = %{
-          type: :curve25519,
-          persistence: :ephemeral,
-          length: 32
-        }
-
         private_key = Map.get(test_case, k)
-        {:ok, private} = Vault.secret_import(vault, secret_attributes, private_key)
+        {:ok, private} = Vault.secret_import(vault, [type: :curve25519], private_key)
         {:ok, public} = Vault.secret_publickey_get(vault, private)
         %{test_case | k => %{private: private, public: public}}
       end)
