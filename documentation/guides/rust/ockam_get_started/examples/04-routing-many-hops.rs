@@ -1,28 +1,3 @@
-```
-title: Routing over many hops
-```
-
-# Routing over many hops
-
-Routing is not limited to [one](../02-worker) or [two hops](../03-routing),
-we can easily create routes with many hops. Let's try that in a quick example:
-
-## App worker
-
-This time we'll create multiple hop workers between the `"app"` and
-the `"echoer"` and route our message through them.
-
-Create a new file at:
-
-```
-touch examples/04-routing-many-hops.rs
-```
-
-Add the following code to this file:
-
-```rust
-// examples/04-routing-many-hops.rs
-
 use ockam::{Context, Result, Route};
 use ockam_get_started::{Echoer, Hop};
 
@@ -53,20 +28,3 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.stop().await
 }
-```
-
-To run this new node program:
-
-```
-cargo run --example 04-routing-many-hops
-```
-
-Note the message flow.
-
-## Message Flow
-
-<img src="./sequence.png" width="100%">
-
-<div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../05-secure-channel">05. Secure Channel</a>
-</div>

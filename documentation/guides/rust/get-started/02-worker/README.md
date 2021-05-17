@@ -50,8 +50,8 @@ pub struct Echoer;
 
 #[ockam::worker]
 impl Worker for Echoer {
-    type Context = Context;
     type Message = String;
+    type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         println!("Address: {}, Received: {}", ctx.address(), msg);

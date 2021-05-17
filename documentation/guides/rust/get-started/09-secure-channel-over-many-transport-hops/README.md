@@ -81,7 +81,6 @@ async fn main(ctx: Context) -> Result<()> {
 
 ## Initiator node
 
-
 Create a new file at:
 
 ```
@@ -117,14 +116,14 @@ async fn main(mut ctx: Context) -> Result<()> {
             .append("secure_channel_listener"), // secure_channel_listener on responder node,
         &vault,
     )
-        .await?;
+    .await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(
         Route::new().append(channel.address()).append("echoer"),
         "Hello Ockam!".to_string(),
     )
-        .await?;
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

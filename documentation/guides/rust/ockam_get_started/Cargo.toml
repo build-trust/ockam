@@ -1,0 +1,12 @@
+[package]
+name = "ockam_get_started"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/documentation/guides/rust"
+readme = "README.md"
+
+[dependencies]
+ockam = { version = "0", features = ["ockam_transport_tcp", "ockam_vault"] }

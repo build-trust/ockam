@@ -66,7 +66,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )
-        .await?;
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

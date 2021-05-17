@@ -52,9 +52,9 @@ async fn main(mut ctx: Context) -> Result<()> {
             .append("h2")
             .append("h3")
             .append("secure_channel_listener"),
-        &vault
+        &vault,
     )
-        .await?;
+    .await?;
 
     // Send a message to the echoer worker, via the secure channel.
     ctx.send(
@@ -63,7 +63,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )
-        .await?;
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

@@ -106,7 +106,7 @@ async fn main(mut ctx: Context) -> Result<()> {
             .append("echoer"), // echoer worker on responder node
         "Hello Ockam!".to_string(),
     )
-        .await?;
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
