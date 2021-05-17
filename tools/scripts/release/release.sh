@@ -11,12 +11,12 @@ change_dir "$OCKAM_RUST"
     CRATE="${arr[0]}"
 
     change_dir "$CRATE"
-      echo "Bumping $CRATE by ${arr[1]}"
-      OLD_VERSION="$(crate_version "$CRATE")"
-      cargo -q bump "${arr[1]}"
-      VERSION="$(crate_version "$CRATE")"
-      crate_changes "$CRATE" "$OLD_VERSION" "$VERSION"
+      echo "Versioning $CRATE"
+      DEV_VERSION="$(crate_version "$CRATE")"
+      VERSION=$(perl -e '$ENV{DEV_VERSION} =~ m/^(.*?)-dev/ and print "$1\n"')
       echo "Updating $CRATE README.md to $VERSION"
+      echo "Updating $CRATE Cargo.toml to $VERSION"
+      "$SCRIPT_DIR"/upgrade-version.sh "$PWD/Cargo.toml" "$VERSION"
       "$SCRIPT_DIR"/upgrade-crate.sh "$PWD/README.md" "$CRATE" "$VERSION"
     pop_dir
 
