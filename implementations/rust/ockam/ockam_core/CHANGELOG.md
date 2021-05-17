@@ -5,6 +5,14 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.13.0 - 2021-05-17
+### Added
+- Modular and configurable protocol parser.
+- result_message type.
+### Changed
+- Updated dependencies.
+- Worker shutdown is now async.
+
 ## v0.12.0 - 2021-05-10
 ### Added
 ### Changed

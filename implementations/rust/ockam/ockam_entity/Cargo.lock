@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.8.0-dev"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -429,7 +429,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.13.0-dev"
+version = "0.13.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -461,7 +461,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.5.0-dev"
+version = "0.5.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -470,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.5.0-dev"
+version = "0.5.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -480,7 +480,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -490,7 +490,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -508,7 +508,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.4.0-dev"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "ockam_core",

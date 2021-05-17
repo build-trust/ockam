@@ -9,7 +9,8 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 readme = "README.md"
 categories = ["cryptography", "authentication"]
 keywords = ["ockam", "crypto", "encryption", "authentication"]
-description = """
+description = """Ockam is a library for building devices that communicate securely, privately
+and trustfully with cloud services and other devices.
 """
 
 [features]
@@ -19,13 +20,13 @@ software_vault = ["ockam_vault", "ockam_vault_sync_core", "ockam_vault_sync_core
 std = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.13.0-dev"  }
-ockam_node = {path = "../ockam_node", version = "0.11.0-dev" }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.7.0-dev"  }
-ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "0.4.0-dev" , optional = true}
-ockam_vault = {path = "../ockam_vault", version = "0.7.0-dev" , optional = true}
-ockam_channel = {path = "../ockam_channel", version = "0.8.0-dev" }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.5.0-dev" , optional = true}
+ockam_core = { path = "../ockam_core", version = "0.13.0"   }
+ockam_node = {path = "../ockam_node", version = "0.11.0"  }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.7.0"   }
+ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "0.4.0"  , optional = true}
+ockam_vault = {path = "../ockam_vault", version = "0.7.0"  , optional = true}
+ockam_channel = {path = "../ockam_channel", version = "0.8.0"  }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.5.0"  , optional = true}
 async-trait = "0.1.42"
 cfg-if = "1.0.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
@@ -35,5 +36,5 @@ rand = "0.8"
 tracing = "0.1"
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "0.7.0-dev"  }
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.4.0-dev"  }
+ockam_vault = { path = "../ockam_vault", version = "0.7.0"   }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.4.0"   }

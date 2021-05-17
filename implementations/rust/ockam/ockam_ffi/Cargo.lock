@@ -258,7 +258,7 @@ checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
 
 [[package]]
 name = "ockam-ffi"
-version = "0.3.0-dev"
+version = "0.3.0"
 dependencies = [
  "lazy_static",
  "ockam_core",
@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.13.0-dev"
+version = "0.13.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -298,7 +298,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "cfg-if",
  "ockam_core",

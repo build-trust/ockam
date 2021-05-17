@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_x3dh"
-version = "0.4.0-dev"
+version = "0.4.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -13,13 +13,13 @@ description = """The Ockam X3DH impementation.
 """
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.13.0-dev"   }
-ockam_vault_core = { path = "../ockam_vault_core" , version = "0.7.0-dev"   }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core" , version = "0.5.0-dev"   }
+ockam_core = { path = "../ockam_core", version = "0.13.0"    }
+ockam_vault_core = { path = "../ockam_vault_core" , version = "0.7.0"    }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core" , version = "0.5.0"    }
 arrayref = "0.3"
 subtle = "2.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.4.0-dev"  }
-ockam_vault = { path = "../ockam_vault", version = "0.7.0-dev"  }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.4.0"   }
+ockam_vault = { path = "../ockam_vault", version = "0.7.0"   }

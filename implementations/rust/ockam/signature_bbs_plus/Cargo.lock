@@ -410,7 +410,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.5.0-dev"
+version = "0.5.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -433,7 +433,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.3.0-dev"
+version = "0.3.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -449,7 +449,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.5.0-dev"
+version = "0.5.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
