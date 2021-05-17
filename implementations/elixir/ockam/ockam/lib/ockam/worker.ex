@@ -37,8 +37,12 @@ defmodule Ockam.Worker do
         options = Keyword.put_new_lazy(options, :address, &Node.get_random_unregistered_address/0)
 
         case Node.start_supervised(__MODULE__, options) do
-          {:ok, _pid, worker} -> {:ok, worker}
-          error -> error
+          {:ok, pid, worker} ->
+            :sys.get_state(pid)
+            {:ok, worker}
+
+          error ->
+            error
         end
       end
 
@@ -57,17 +61,7 @@ defmodule Ockam.Worker do
       @doc false
       @impl true
       def init(options) do
-        metadata = %{options: options}
-        start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
-
-        with {:ok, address} <- get_from_options(:address, options) do
-          return_value = setup(options, %{address: address, module: __MODULE__})
-
-          metadata = Map.put(metadata, :return_value, return_value)
-          Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
-
-          return_value
-        end
+        {:ok, options, {:continue, :post_init}}
       end
 
       @doc false
@@ -91,6 +85,22 @@ defmodule Ockam.Worker do
           other ->
             ## TODO: log error
             {:noreply, state}
+        end
+      end
+
+      @doc false
+      @impl true
+      def handle_continue(:post_init, options) do
+        metadata = %{options: options}
+        start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
+
+        with {:ok, address} <- get_from_options(:address, options) do
+          return_value = setup(options, %{address: address, module: __MODULE__})
+
+          metadata = Map.put(metadata, :return_value, return_value)
+          Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
+          {:ok, state} = return_value
+          {:noreply, state}
         end
       end
 

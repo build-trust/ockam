@@ -31,10 +31,10 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
 
   def config() do
     %{
-      hub_ip: "13.64.73.230",
+      hub_ip: "127.0.0.1",
       hub_port: 4000,
-      service_address: "stream_fedotov_danil_gmail_com_service",
-      index_address: "stream_fedotov_danil_gmail_com_index"
+      service_address: "stream_service",
+      index_address: "stream_index_service"
     }
   end
 
