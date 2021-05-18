@@ -41,21 +41,19 @@ impl<P: ProfileTrait> ProfileContacts for Entity<P> {
     }
 
     fn verify_contact(&mut self, contact: &Contact) -> Result<bool> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.verify_contact(contact);
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.verify_contact(contact)
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 
     fn verify_and_add_contact(&mut self, contact: Contact) -> Result<bool> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.verify_and_add_contact(contact);
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.verify_and_add_contact(contact)
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 
     fn verify_and_update_contact(
@@ -63,11 +61,10 @@ impl<P: ProfileTrait> ProfileContacts for Entity<P> {
         profile_id: &ProfileIdentifier,
         change_events: Vec<ProfileChangeEvent>,
     ) -> Result<bool> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.verify_and_update_contact(profile_id, change_events);
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.verify_and_update_contact(profile_id, change_events)
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 }

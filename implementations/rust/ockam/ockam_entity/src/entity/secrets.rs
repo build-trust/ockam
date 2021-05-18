@@ -11,12 +11,11 @@ impl<P: ProfileTrait> ProfileSecrets for Entity<P> {
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
     ) -> Result<()> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.create_key(key_attributes, attributes);
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.create_key(key_attributes, attributes)
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 
     fn rotate_key(
@@ -24,21 +23,19 @@ impl<P: ProfileTrait> ProfileSecrets for Entity<P> {
         key_attributes: KeyAttributes,
         attributes: Option<ProfileEventAttributes>,
     ) -> Result<()> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.rotate_key(key_attributes, attributes);
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.rotate_key(key_attributes, attributes)
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 
     fn get_secret_key(&mut self, key_attributes: &KeyAttributes) -> Result<Secret> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.get_secret_key(key_attributes);
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.get_secret_key(key_attributes)
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 
     fn get_public_key(&self, key_attributes: &KeyAttributes) -> Result<PublicKey> {
@@ -50,11 +47,10 @@ impl<P: ProfileTrait> ProfileSecrets for Entity<P> {
     }
 
     fn get_root_secret(&mut self) -> Result<Secret> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.get_root_secret();
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.get_root_secret()
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 }

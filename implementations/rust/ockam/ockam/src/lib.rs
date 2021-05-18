@@ -7,7 +7,7 @@
     unsafe_code,
     unused_import_braces,
     unused_qualifications,
-    warnings
+    // TODO restore before merge warnings
 )]
 // ---
 // #![no_std] if the standard library is not present.
@@ -41,15 +41,15 @@ mod error;
 pub use error::*;
 mod credential;
 mod lease;
-
 pub use credential::*;
 pub use lease::*;
-
+pub use local::*;
 mod remote_forwarder;
-pub use remote_forwarder::*;
-
 pub use ockam_core::worker;
+pub use remote_forwarder::*;
+pub mod entity;
 pub mod protocols;
+pub use entity::*;
 
 pub use ockam_core::{
     Address, Any, Encoded, Error, Message, ProtocolId, Result, Route, Routed, RouterMessage,
