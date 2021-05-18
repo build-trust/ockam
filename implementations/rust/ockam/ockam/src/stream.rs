@@ -67,6 +67,7 @@ impl Worker for StreamPublisher {
 pub struct StreamConsumer {
     peer: Route,
     prod: Address,
+    stream: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -105,8 +106,7 @@ impl Worker for StreamConsumer {
             .await?;
 
         // Create a delayed trigger for this worker
-        DelayedEvent::new(&ctx, ctx.address().into(), StreamWorkerCmd::Fetch)
-            .await?
+        DelayedEvent::new(&ctx, ctx.address().into(), StreamWorkerCmd::Fetch)?
             .millis(500)
             .spawn();
 
@@ -128,8 +128,7 @@ impl Worker for StreamConsumer {
                     .await?;
 
                 // Then re-schedule a delayed trigger
-                DelayedEvent::new(&ctx, ctx.address().into(), StreamWorkerCmd::Fetch)
-                    .await?
+                DelayedEvent::new(&ctx, ctx.address().into(), StreamWorkerCmd::Fetch)?
                     .millis(500)
                     .spawn();
             }
@@ -146,7 +145,42 @@ impl Worker for StreamConsumer {
     }
 }
 
-/// Start a new pair of workers to manage a bi-directional stream
-pub async fn connect<R: Into<Route>>(_: &Context, _: R) -> Result<(Address, Address)> {
-    todo!()
+/// Ockam stream protocol controller
+///
+/// Each stream has a sending and consuming worker (publisher and
+/// consumer) that are created and managed on the fly by this
+/// abstraction.
+///
+///
+pub struct Stream {
+    ctx: Context,
+}
+
+impl Stream {
+    /// Create a new Ockam stream controller
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        ctx.new_context(Address::random(16))
+            .await
+            .map(|ctx| Self { ctx })
+    }
+
+    /// Start a new pair of workers to manage a bi-directional stream
+    pub async fn connect<R, S>(&self, _: R, name: S) -> Result<(Address, Address)>
+    where
+        R: Into<Route>,
+        S: Into<String>,
+    {
+        // Create consumer with a name
+        // Create producer
+
+        todo!()
+    }
+
+    pub async fn create<R, S>(&self, _: R, _: S) -> Result<(Address, Address)>
+    where
+        R: Into<Route>,
+        S: Into<Option<String>>,
+    {
+        todo!()
+    }
 }
