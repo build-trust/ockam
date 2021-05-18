@@ -363,7 +363,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.13.0"
+version = "0.14.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.11.0"
+version = "0.12.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -385,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.7.0"
+version = "0.8.0-dev"
 dependencies = [
  "async-trait",
  "futures",
