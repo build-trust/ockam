@@ -5,6 +5,7 @@ use crate::{
     Any, Message, ProtocolId, Result, Routed, Worker,
 };
 use serde::{Deserialize, Serialize};
+use serde_bare::Uint;
 
 /// Response to a `CreateStreamRequest`
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -28,20 +29,20 @@ impl Init {
 /// Confirm push operation on the mailbox
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PushConfirm {
-    pub request_id: usize,
+    pub request_id: Uint,
     pub status: Status,
-    pub index: usize, // uint
+    pub index: Uint,
 }
 
 impl PushConfirm {
     //noinspection RsExternalLinter
     #[allow(dead_code, clippy::new_ret_no_self)]
-    pub fn new<S: Into<Status>>(request_id: usize, status: S, index: usize) -> ProtocolPayload {
+    pub fn new<S: Into<Status>>(request_id: u64, status: S, index: u64) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_push",
             Self {
-                request_id,
-                index,
+                request_id: Uint(request_id),
+                index: Uint(index),
                 status: status.into(),
             },
         )
@@ -74,18 +75,18 @@ impl From<Option<()>> for Status {
 /// Response to a `PullRequest`
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PullResponse {
-    pub request_id: usize,
+    pub request_id: Uint,
     pub messages: Vec<StreamMessage>,
 }
 
 impl PullResponse {
     //noinspection RsExternalLinter
     #[allow(dead_code, clippy::new_ret_no_self)]
-    pub fn new<T: Into<Vec<StreamMessage>>>(request_id: usize, messages: T) -> ProtocolPayload {
+    pub fn new<T: Into<Vec<StreamMessage>>>(request_id: u64, messages: T) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_pull",
             Self {
-                request_id,
+                request_id: Uint(request_id),
                 messages: messages.into(),
             },
         )
@@ -96,7 +97,7 @@ impl PullResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct StreamMessage {
     /// Index of the message in the stream
-    pub index: usize,
+    pub index: Uint,
     /// Encoded data of the message
     pub data: Vec<u8>,
 }
@@ -106,7 +107,7 @@ pub struct StreamMessage {
 pub struct Index {
     pub stream_name: String,
     pub client_id: String,
-    pub index: usize,
+    pub index: Uint,
 }
 
 /// A convenience enum to wrap all possible response types
