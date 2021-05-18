@@ -68,12 +68,7 @@ where
     }
 
     fn decode(e: &Encoded) -> Result<Self> {
-        Ok(match serde_bare::from_slice(e.as_slice()) {
-            Ok(x) => x,
-            Err(e) => {
-                panic!("Failed to decode message: {}", e)
-            }
-        })
+        Ok(serde_bare::from_slice(e.as_slice()).expect(&format!("Failed to decode: {:?}", e)))
     }
 }
 

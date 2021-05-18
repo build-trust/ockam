@@ -2,7 +2,7 @@
 
 use crate::{
     protocols::{ParserFragment, ProtocolPayload},
-    Any, Message, ProtocolId, Result, Routed, Worker,
+    Any, Context, Message, ProtocolId, Result, Routed, Worker,
 };
 use serde::{Deserialize, Serialize};
 use serde_bare::Uint;
@@ -126,7 +126,7 @@ pub enum Response {
 pub struct ResponseParser<W, F>
 where
     W: Worker,
-    F: Fn(&mut W, Routed<Response>),
+    F: Fn(&mut W, &mut Context, Routed<Response>),
 {
     f: F,
     _w: std::marker::PhantomData<W>,
@@ -135,7 +135,7 @@ where
 impl<W, F> ResponseParser<W, F>
 where
     W: Worker,
-    F: Fn(&mut W, Routed<Response>),
+    F: Fn(&mut W, &mut Context, Routed<Response>),
 {
     //noinspection RsExternalLinter
     /// Create a new stream protocol parser with a response closure
@@ -156,7 +156,7 @@ where
 impl<W, F> ParserFragment<W> for ResponseParser<W, F>
 where
     W: Worker,
-    F: Fn(&mut W, Routed<Response>),
+    F: Fn(&mut W, &mut Context, Routed<Response>),
 {
     fn ids(&self) -> Vec<ProtocolId> {
         vec![
@@ -173,6 +173,7 @@ where
     fn parse(
         &self,
         state: &mut W,
+        ctx: &mut Context,
         routed: &Routed<Any>,
         ProtocolPayload { protocol, data }: ProtocolPayload,
     ) -> Result<()> {
@@ -188,7 +189,7 @@ where
         let (addr, trans) = routed.dissolve();
 
         // Call the user code
-        (&self.f)(state, Routed::v1(resp, addr, trans));
+        (&self.f)(state, ctx, Routed::v1(resp, addr, trans));
 
         Ok(())
     }

@@ -19,7 +19,7 @@ pub struct StreamPublisher {
     peer: Route,
 }
 
-fn handle_stream(w: &mut StreamPublisher, r: Routed<Response>) {
+fn handle_stream(w: &mut StreamPublisher, _: &mut Context, r: Routed<Response>) {
     match &*r {
         // When we receive an Init we set the stream name and `peer`,
         // which is the return address to the stream

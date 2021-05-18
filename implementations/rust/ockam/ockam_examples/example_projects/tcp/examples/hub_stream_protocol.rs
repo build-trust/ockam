@@ -1,4 +1,5 @@
 use ockam::{
+    block_future,
     protocols::{
         stream::{requests::*, responses::*},
         ProtocolParser,
@@ -24,11 +25,19 @@ impl MyWorker {
 }
 
 /// Util function that maps stream-protocol responses to worker state
-fn handle_stream(w: &mut MyWorker, r: Routed<Response>) {
+fn handle_stream(w: &mut MyWorker, ctx: &mut Context, r: Routed<Response>) {
     match &*r {
         Response::Init(Init { stream_name }) => {
             w.stream = Some(stream_name.clone());
             w.peer = r.return_route();
+
+            println!("Init Ok! Sending a PushRequest for vec![1, 3, 5, 7]");
+
+            block_future(
+                &ctx.runtime(),
+                ctx.send(w.peer.clone(), PushRequest::new(5, vec![1, 3, 5, 7])),
+            )
+            .unwrap();
         }
         Response::PushConfirm(PushConfirm {
             request_id,
@@ -36,16 +45,22 @@ fn handle_stream(w: &mut MyWorker, r: Routed<Response>) {
             index,
         }) => {
             println!(
-                "req_id: {}, status: {:?}, index: {}",
+                "PushConfirm req_id: {:?}, status: {:?}, index: {:?}",
                 request_id, status, index
             );
+
+            block_future(
+                &ctx.runtime(),
+                ctx.send(w.peer.clone(), PullRequest::new(0, 0, 8)),
+            )
+            .unwrap();
         }
         Response::PullResponse(PullResponse {
             request_id,
             messages,
         }) => {
             println!(
-                "Requestid: {}, num messages: {}",
+                "PullResponse req_id: {:?}, num messages: {}",
                 request_id,
                 messages.len()
             );
@@ -70,19 +85,7 @@ impl Worker for MyWorker {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        self.parser.prepare().parse(self, &msg)?;
-
-        println!("Stream return route is now: `{:?}`", self.peer);
-        ctx.send(self.peer.clone(), PushRequest::new(5, vec![1, 3, 5, 7]))
-            .await?;
-
-        // Start a delayed event to pull messages too!
-        DelayedEvent::new(&ctx, self.peer.clone(), PullRequest::new(5, 0, 2))
-            .await?
-            .seconds(2)
-            .spawn();
-
-        Ok(())
+        self.parser.prepare().parse(self, ctx, &msg)
     }
 }
 

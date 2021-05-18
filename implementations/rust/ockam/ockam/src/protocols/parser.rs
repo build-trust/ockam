@@ -1,5 +1,6 @@
 use crate::{
-    error::OckamError, protocols::ProtocolPayload, Any, Message, ProtocolId, Result, Routed, Worker,
+    error::OckamError, protocols::ProtocolPayload, Any, Context, Message, ProtocolId, Result,
+    Routed, Worker,
 };
 use std::{collections::BTreeMap, marker::PhantomData, ops::Deref, sync::Arc, sync::RwLock};
 
@@ -20,7 +21,13 @@ where
     fn ids(&self) -> Vec<ProtocolId>;
 
     /// Parse an incoming message for a particular worker
-    fn parse(&self, _state: &mut W, _routed: &Routed<Any>, _msg: ProtocolPayload) -> Result<()> {
+    fn parse(
+        &self,
+        _state: &mut W,
+        _ctx: &mut Context,
+        _routed: &Routed<Any>,
+        _msg: ProtocolPayload,
+    ) -> Result<()> {
         Ok(())
     }
 }
@@ -103,7 +110,7 @@ impl<W: Worker> ProtocolParserImpl<W> {
     ///
     /// You may want to call [`prepare()`](Self::prepare) before
     /// calling this function.
-    pub fn parse(self: Arc<Self>, w: &mut W, msg: &Routed<Any>) -> Result<()> {
+    pub fn parse(self: Arc<Self>, w: &mut W, ctx: &mut Context, msg: &Routed<Any>) -> Result<()> {
         // Parse message as a ProtocolPayload to grab the ProtocolId
         let proto_msg = ProtocolPayload::decode(msg.payload())?;
         let proto = ProtocolId::from_str(proto_msg.protocol.as_str());
@@ -115,6 +122,6 @@ impl<W: Worker> ProtocolParserImpl<W> {
         let parser = map.get(&proto).ok_or(OckamError::NoSuchParser)?;
 
         // Finally call the parser
-        parser.parse(w, msg, proto_msg)
+        parser.parse(w, ctx, msg, proto_msg)
     }
 }
