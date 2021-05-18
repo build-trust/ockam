@@ -1,5 +1,5 @@
-ARG BUILDER_IMAGE=ockam/builder:latest
-ARG BASE_IMAGE=ockam/base:latest
+ARG BUILDER_IMAGE=ghcr.io/ockam-network/ockam/builder:latest
+ARG BASE_IMAGE=ghcr.io/ockam-network/ockam/base:latest
 
 # Stage 1
 FROM ${BUILDER_IMAGE}
