@@ -13,12 +13,13 @@ defmodule Ockam.Stream.Client.Consumer do
             stream_route: nil,
             index_route: nil,
             index: 0,
-            message_handler: nil
+            message_handler: nil,
+            ready: false
 
   @type state() :: %__MODULE__{}
 
   @consume_limit 10
-  @idle_timeout 5000
+  @idle_timeout 20
 
   def start(service_route, index_route, stream_name, message_handler) do
     __MODULE__.create(
@@ -27,6 +28,10 @@ defmodule Ockam.Stream.Client.Consumer do
       stream_name: stream_name,
       message_handler: message_handler
     )
+  end
+
+  def ready?(address) when is_binary(address) do
+    GenServer.call(Ockam.Node.whereis(address), :check_ready)
   end
 
   @protocol_mapping Ockam.Protocol.Mapping.mapping([
@@ -50,6 +55,8 @@ defmodule Ockam.Stream.Client.Consumer do
     stream_name = Keyword.fetch!(options, :stream_name)
     partitions = Keyword.fetch!(options, :partitions)
 
+    client_id = Keyword.get(options, :client_id, Map.get(state, :address))
+
     message_handler = Keyword.fetch!(options, :message_handler)
 
     create_stream(service_route, stream_name, partitions, state)
@@ -59,6 +66,7 @@ defmodule Ockam.Stream.Client.Consumer do
       |> Map.put(:stream_name, stream_name)
       |> Map.put(:index_route, index_route)
       |> Map.put(:message_handler, message_handler)
+      |> Map.put(:client_id, client_id)
 
     {:ok, state}
   end
@@ -85,6 +93,10 @@ defmodule Ockam.Stream.Client.Consumer do
       {:ok, StreamProtocol.Index, %{client_id: client_id, stream_name: stream_name, index: index}} ->
         validate_index(client_id, stream_name, state)
 
+        ## Update index route to use tcp session
+        new_index_route = Message.return_route(message)
+        state = %{state | index_route: new_index_route}
+
         start_with =
           case index do
             :undefined -> 0
@@ -93,7 +105,7 @@ defmodule Ockam.Stream.Client.Consumer do
 
         Logger.info("Initial index #{index}: start with :#{inspect(start_with)}")
         state = consume(start_with, state)
-        {:ok, state}
+        {:ok, Map.put(state, :ready, true)}
 
       {:ok, Ockam.Protocol.Error, %{reason: reason}} ->
         Logger.error("Stream error: #{inspect(reason)}")
@@ -111,6 +123,11 @@ defmodule Ockam.Stream.Client.Consumer do
     {:ok, state}
   end
 
+  @impl true
+  def handle_call(:check_ready, _from, state) do
+    {:reply, Map.get(state, :ready, false), state}
+  end
+
   def request_index(state) do
     index_id = index_id(state)
     index_request = encode_payload(StreamProtocol.Index, :get, index_id)
@@ -120,7 +137,7 @@ defmodule Ockam.Stream.Client.Consumer do
 
   def index_id(state) do
     %{
-      client_id: Map.get(state, :address),
+      client_id: Map.get(state, :client_id),
       stream_name: Map.get(state, :stream_name)
     }
   end
@@ -177,10 +194,8 @@ defmodule Ockam.Stream.Client.Consumer do
         consume_after(@idle_timeout, state)
 
       _msgs ->
-        Logger.info("Messages: #{inspect(messages)}")
         max_index = messages |> Enum.max_by(fn %{index: index} -> index end) |> Map.get(:index)
         commit_index = max_index + 1
-        Logger.info("max index is #{max_index}: save #{commit_index}")
         save_index(commit_index, state)
         process_messages(messages, state)
         consume(commit_index, state)

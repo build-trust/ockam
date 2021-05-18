@@ -69,6 +69,7 @@ defmodule Ockam.Stream.Client.Publisher do
 
       {:ok, StreamProtocol.Push, %{status: :error, request_id: request_id}} ->
         ## Resend doesn't change the state currently
+        Logger.error("Resend message #{inspect(request_id)}")
         resend_message(request_id, state)
         {:ok, state}
 
@@ -113,7 +114,7 @@ defmodule Ockam.Stream.Client.Publisher do
   end
 
   def send_unsent(state) do
-    unsent = Map.get(state, :unsent, [])
+    unsent = Enum.reverse(Map.get(state, :unsent, []))
     without_unsent = Map.put(state, :unsent, [])
 
     Enum.reduce(unsent, without_unsent, fn data, send_state ->

@@ -8,6 +8,8 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
   alias Ockam.Message
   alias Ockam.Stream.Client.Publisher
 
+  require Logger
+
   @impl true
   def setup(options, state) do
     consumer_stream = Keyword.fetch!(options, :consumer_stream)
@@ -36,6 +38,8 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
 
     [^self_address | onward_route] = Message.onward_route(message)
     forwarded_message = %{message | onward_route: onward_route}
+
+    Logger.info("Forward message #{inspect(forwarded_message)}")
 
     encoded_message =
       Ockam.Stream.Client.BiDirectional.encode_message(%{

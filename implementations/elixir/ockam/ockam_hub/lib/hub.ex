@@ -10,7 +10,6 @@ defmodule Ockam.Hub do
   alias Ockam.Hub.Service.Alias, as: AliasService
   alias Ockam.Hub.Service.Echo, as: EchoService
 
-  alias Ockam.Stream.Client.BiDirectional.Subscribe, as: StreamSubscriptionService
   alias Ockam.Stream.Index.Worker, as: StreamIndexService
   alias Ockam.Stream.Workers.Service, as: StreamService
 
@@ -28,9 +27,10 @@ defmodule Ockam.Hub do
   def start(_type, _args) do
     Logger.info("Starting Ockam Hub.")
 
+    tcp_transport_port = Application.get_env(:ockam_hub, :tcp_transport_port)
+
     # Add a TCP listener on port 4000
-    # TODO: add to supervision tree.
-    Transport.TCP.create_listener(port: 4000)
+    Transport.TCP.create_listener(port: tcp_transport_port)
 
     # Create an echo_service worker.
     # TODO: add to supervision tree.
@@ -41,19 +41,28 @@ defmodule Ockam.Hub do
     StreamService.create(address: "stream_service")
     StreamIndexService.create(address: "stream_index_service")
 
-    StreamSubscriptionService.create(
-      address: "stream_subscribe",
-      stream_options: [
-        service_route: ["stream_service"],
-        index_route: ["stream_index_service"],
-        partitions: 1
-      ]
-    )
+    # kafka_storage_options = Application.get_env(:ockam_kafka, :storage_options, [])
+    # kafka_storage_options = Keyword.put(kafka_storage_options, :topic_prefix, "prefix_")
+
+    # StreamService.create(
+    #   address: "stream_kafka_service",
+    #   stream_options: [
+    #     storage_mod: Ockam.Stream.Storage.Kafka,
+    #     storage_options: kafka_storage_options
+    #   ]
+    # )
+
+    # StreamIndexService.create(
+    #   address: "stream_kafka_index",
+    #   storage_mod: Ockam.Stream.Index.KafkaOffset,
+    #   storage_options: kafka_storage_options
+    # )
 
     # on app start, create the node if it does not exist
     # we probably don't care if this errors.
     TelemetryForwarder.init()
 
+    web_port = Application.get_env(:ockam_hub, :web_port)
     # Specifications of child processes that will be started and supervised.
     #
     # See the "Child specification" section in the `Supervisor` module for more
@@ -64,7 +73,8 @@ defmodule Ockam.Hub do
         [
           period: :timer.seconds(5)
         ]
-      }
+      },
+      {Ockam.Hub.Web.Router, [port: Application.get_env(:ockam_hub, :web_port, web_port)]}
     ]
 
     children =

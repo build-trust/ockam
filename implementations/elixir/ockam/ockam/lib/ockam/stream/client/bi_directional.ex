@@ -10,6 +10,8 @@ defmodule Ockam.Stream.Client.BiDirectional do
   alias Ockam.Stream.Client.BiDirectional.PublisherRegistry
   alias Ockam.Stream.Client.Consumer
 
+  require Logger
+
   @transport_message_encoder Ockam.Wire.Binary.V2
 
   @doc """
@@ -55,6 +57,8 @@ defmodule Ockam.Stream.Client.BiDirectional do
       message
       | return_route: [publisher_address | Message.return_route(message)]
     }
+
+    Logger.debug("Consumer forward #{inspect(forwarded_message)}")
 
     Ockam.Router.route(forwarded_message)
   end

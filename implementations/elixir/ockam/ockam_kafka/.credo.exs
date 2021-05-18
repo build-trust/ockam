@@ -79,7 +79,7 @@
         {Credo.Check.Refactor.MatchInCondition, []},
         {Credo.Check.Refactor.NegatedConditionsInUnless, []},
         {Credo.Check.Refactor.NegatedConditionsWithElse, []},
-        {Credo.Check.Refactor.Nesting, []},
+        {Credo.Check.Refactor.Nesting, [max_nesting: 3]},
         {Credo.Check.Refactor.UnlessWithElse, []},
         {Credo.Check.Refactor.WithClauses, []},
 
@@ -120,13 +120,13 @@
         {Credo.Check.Refactor.ABCSize, false},
         {Credo.Check.Refactor.AppendSingleItem, []},
         {Credo.Check.Refactor.DoubleBooleanNegation, []},
-        {Credo.Check.Refactor.ModuleDependencies, [max_deps: 15]},
+        {Credo.Check.Refactor.ModuleDependencies, [max_deps: 20]},
         {Credo.Check.Refactor.NegatedIsNil, []},
         {Credo.Check.Refactor.PipeChainStart, false},
         {Credo.Check.Refactor.VariableRebinding, false},
         {Credo.Check.Warning.LeakyEnvironment, false},
         {Credo.Check.Warning.MapGetUnsafePass, []},
-        {Credo.Check.Warning.UnsafeToAtom, []}
+        {Credo.Check.Warning.UnsafeToAtom, false}
 
         #
         # Custom checks can be created using `mix credo.gen.check`.

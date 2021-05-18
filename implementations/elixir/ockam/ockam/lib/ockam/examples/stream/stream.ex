@@ -17,10 +17,13 @@ defmodule Ockam.Examples.Stream do
   end
 
   def run_kafka(name_prefix \\ "") do
+    stream_service = "stream_kafka_service"
+    index_service = "stream_kafka_index"
+
     workers =
       create_workers(
-        [@tcp, "kafka_stream_service"],
-        [@tcp, "kafka_stream_index_service"],
+        [@tcp, stream_service],
+        [@tcp, index_service],
         name_prefix
       )
 
@@ -81,9 +84,12 @@ defmodule Ockam.Examples.Stream do
   end
 
   def create_kafka_consumer(name_prefix \\ "") do
+    stream_service = "stream_kafka_service"
+    index_service = "stream_kafka_index"
+
     create_consumer(
-      [@tcp, "kafka_stream_service"],
-      [@tcp, "kafka_stream_index_service"],
+      [@tcp, stream_service],
+      [@tcp, index_service],
       name_prefix
     )
   end

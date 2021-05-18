@@ -14,12 +14,11 @@ defmodule Ockam.Transport.TCP.Client do
   def setup(options, state) do
     %{ip: ip, port: port} = Keyword.fetch!(options, :destination)
     # TODO: connect/3 and controlling_process/2 should be in a callback.
-    {:ok, socket} = :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 2])
-    :gen_tcp.controlling_process(socket, self())
-    address = Ockam.Node.get_random_unregistered_address()
-    Ockam.Node.Registry.register_name(address, self())
+    {:ok, socket} =
+      :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 2, nodelay: true])
 
-    {:ok, Map.merge(state, %{socket: socket, address: address, ip: ip, port: port})}
+    :gen_tcp.controlling_process(socket, self())
+    {:ok, Map.merge(state, %{socket: socket, ip: ip, port: port})}
   end
 
   @impl true

@@ -13,7 +13,7 @@ defmodule Ockam.Stream.Index.Storage do
               partition :: integer(),
               state()
             ) ::
-              {{:ok, integer()} | {:error, any()}, state()}
+              {{:ok, non_neg_integer() | :undefnined} | {:error, any()}, state()}
   @callback save_index(
               client_id :: binary(),
               stream_name :: binary(),

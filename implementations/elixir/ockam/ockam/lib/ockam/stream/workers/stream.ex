@@ -102,9 +102,18 @@ defmodule Ockam.Stream.Workers.Stream do
   end
 
   def handle_data(StreamProtocol.Push, push_request, return_route, state) do
-    # Logger.info("Push message #{inspect(push_request)}")
+    Logger.debug("Push message #{inspect(push_request)}")
     %{request_id: id, data: data} = push_request
     {result, state} = save_message(data, state)
+
+    case result do
+      {:error, err} ->
+        Logger.error("Error pushing message: #{inspect(err)}")
+
+      _other ->
+        :ok
+    end
+
     reply_push_confirm(result, id, return_route, state)
     {:ok, state}
   end
@@ -185,6 +194,7 @@ defmodule Ockam.Stream.Workers.Stream do
 
   def reply_push_confirm(result, id, return_route, state) do
     push_confirm = encode_push_confirm(result, id)
+    Logger.debug("Reply confirm #{inspect(result)}")
     send_reply(push_confirm, return_route, state)
   end
 

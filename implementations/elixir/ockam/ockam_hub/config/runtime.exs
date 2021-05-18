@@ -47,15 +47,15 @@ ui_auth_host =
     client_secret
   else
     false ->
-      System.get_env("AUTH_HOST") || "http://localhost:4001"
+      System.get_env("AUTH_HOST") || "http://localhost:4002"
 
     {:error, :enoent} ->
-      System.get_env("AUTH_HOST") || "http://localhost:4001"
+      System.get_env("AUTH_HOST") || "http://localhost:4002"
   end
 
 node_fqdn =
   case System.get_env("NODE_FQDN") do
-    fqdn when is_binary(fqdn) and length(fqdn) > 0 ->
+    fqdn when is_binary(fqdn) and fqdn != "" ->
       fqdn
 
     _ ->
@@ -69,8 +69,7 @@ node_fqdn =
 node_ip =
   case config_env() do
     :prod ->
-      {:ok, {:hostent, _, [_ | _], :inet, 4, [node_ip]}} =
-        :inet.gethostbyname(to_charlist(node_fqdn))
+      {:ok, {:hostent, _, _, :inet, 4, [node_ip]}} = :inet.gethostbyname(to_charlist(node_fqdn))
 
       node_ip
 
@@ -85,4 +84,74 @@ config :ockam_hub,
   auth_message: ui_auth_message,
   auth_host: ui_auth_host,
   node_ip: node_ip,
-  node_fqdn: node_fqdn
+  node_fqdn: node_fqdn,
+  tcp_transport_port: 4000,
+  web_port: 4001
+
+## Kafka config:
+
+kafka_enabled = System.get_env("ENABLE_KAFKA", "false") == "true"
+
+kafka_host = System.get_env("KAFKA_HOST", "localhost")
+kafka_port = String.to_integer(System.get_env("KAFKA_PORT", "9092"))
+
+kafka_sasl =
+  case System.get_env("KAFKA_SASL") do
+    nil -> nil
+    string -> String.to_atom(string)
+  end
+
+kafka_user = System.get_env("KAFKA_USER")
+kafka_password = System.get_env("KAFKA_PASSWORD")
+
+kafka_user =
+  case kafka_user do
+    empty when empty == nil or empty == "" ->
+      with true <- File.exists?("/mnt/secrets/kafka/user"),
+           {:ok, contents} <- File.read("/mnt/secrets/kafka/user"),
+           data <- String.trim(contents) do
+        data
+      else
+        _ ->
+          IO.puts(:stderr, "Kafka user is not configured")
+          ""
+      end
+
+    not_empty ->
+      not_empty
+  end
+
+kafka_password =
+  case kafka_password do
+    empty when empty == nil or empty == "" ->
+      with true <- File.exists?("/mnt/secrets/kafka/password"),
+           {:ok, contents} <- File.read("/mnt/secrets/kafka/password"),
+           data <- String.trim(contents) do
+        data
+      else
+        _ ->
+          IO.puts(:stderr, "Kafka password is not configured")
+          ""
+      end
+
+    not_empty ->
+      not_empty
+  end
+
+kafka_ssl = System.get_env("KAFKA_SSL") == "true"
+
+kafka_client_config =
+  case kafka_sasl do
+    nil -> [ssl: kafka_ssl]
+    sasl -> [sasl: {sasl, kafka_user, kafka_password}, ssl: kafka_ssl]
+  end
+
+kafka_replication_factor = String.to_integer(System.get_env("KAFKA_REPLICATION_FACTOR", "1"))
+
+config :ockam_kafka,
+  enabled: kafka_enabled,
+  endpoints: [{kafka_host, kafka_port}],
+  storage_options: [
+    client_config: kafka_client_config,
+    replication_factor: kafka_replication_factor
+  ]

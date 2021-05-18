@@ -15,6 +15,17 @@
     },
     "authHost": {
       "type": "string"
+    },
+    "kafkaHost": {
+      "type": "string"
+    }
+    ,
+    "kafkaUser": {
+      "type": "string"
+    }
+    ,
+    "kafkaPassword": {
+      "type": "string"
     }
   },
   "variables": {},
@@ -39,6 +50,9 @@
               "ports": [
                 {
                   "port": 4000
+                },
+                {
+                  "port": 4001
                 }
               ],
               "environmentVariables": [
@@ -62,6 +76,31 @@
                   "name": "NODE_FQDN",
                   "value": "1.node.ockam.network"
                 }
+                ,
+                {
+                  "name": "ENABLE_KAFKA",
+                  "value": "true"
+                }
+                ,
+                {
+                  "name": "KAFKA_HOST",
+                  "value": "[parameters('kafkaHost')]"
+                }
+                ,
+                {
+                  "name": "KAFKA_REPLICATION_FACTOR",
+                  "value": "3"
+                }
+                ,
+                {
+                  "name": "KAFKA_SASL",
+                  "value": "plain"
+                }
+                ,
+                {
+                  "name": "KAFKA_SSL",
+                  "value": "true"
+                }
               ],
               "volumeMounts": [
                 {
@@ -75,6 +114,10 @@
                 {
                   "name": "secrets-volume-auth",
                   "mountPath": "/mnt/secrets/auth"
+                },
+                {
+                  "name": "secrets-volume-kafka",
+                  "mountPath": "/mnt/secrets/kafka"
                 }
               ],
               "livenessProbe": {
@@ -95,6 +138,10 @@
             {
               "protocol": "tcp",
               "port": "4000"
+            },
+            {
+              "protocol": "tcp",
+              "port": "4001"
             }
           ],
           "dnsNameLabel": "ockam-hub"
@@ -117,6 +164,13 @@
             "secret": {
               "message": "[parameters('authMessage')]",
               "host": "[parameters('authHost')]"
+            }
+          },
+          {
+            "name": "secrets-volume-kafka",
+            "secret": {
+              "user": "[parameters('kafkaUser')]",
+              "password": "[parameters('kafkaPassword')]"
             }
           }
         ]

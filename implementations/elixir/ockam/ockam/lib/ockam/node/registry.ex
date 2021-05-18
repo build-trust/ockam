@@ -50,4 +50,9 @@ defmodule Ockam.Node.Registry do
   # See the "Name registration" section of the `GenServer` module.
   @doc false
   def send(address, message), do: Registry.send({__MODULE__, address}, message)
+
+  @doc """
+  List all registered worker names
+  """
+  def list_names(), do: Registry.select(__MODULE__, [{{:"$1", :_, :_}, [], [:"$1"]}])
 end

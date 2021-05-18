@@ -1,0 +1,18 @@
+%{
+  "bare": {:hex, :bare, "0.1.1", "d9dc757cdf6a4f236055d7d098b523fcc70ff7e805a981e3e82786c7a99725b9", [:rebar3], [], "hexpm", "07797a39167e37108c0827fe1a686e69d5f27d7b658fb64f14496a6db72a2415"},
+  "brod": {:git, "https://github.com/hairyhum/brod.git", "fb928ed58a27bc02383fa1e8bc44c7f1b58618ef", [branch: "kpro-connection-timeout"]},
+  "bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [:mix], [], "hexpm", "7af5c7e09fe1d40f76c8e4f9dd2be7cebd83909f31fee7cd0e9eadc567da8353"},
+  "connection": {:hex, :connection, "1.0.4", "a1cae72211f0eef17705aaededacac3eb30e6625b04a6117c1b2db6ace7d5976", [:mix], [], "hexpm", "4a0850c9be22a43af9920a71ab17c051f5f7d45c209e40269a1938832510e4d9"},
+  "crc32cer": {:git, "https://github.com/zmstone/crc32cer", "da457f8003f8f2176458d73aced2600e53b583a2", [tag: "0.1.4"]},
+  "credo": {:hex, :credo, "1.5.5", "e8f422026f553bc3bebb81c8e8bf1932f498ca03339856c7fec63d3faac8424b", [:mix], [{:bunt, "~> 0.2.0", [hex: :bunt, repo: "hexpm", optional: false]}, {:file_system, "~> 0.2.8", [hex: :file_system, repo: "hexpm", optional: false]}, {:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: false]}], "hexpm", "dd8623ab7091956a855dc9f3062486add9c52d310dfd62748779c4315d8247de"},
+  "file_system": {:hex, :file_system, "0.2.10", "fb082005a9cd1711c05b5248710f8826b02d7d1784e7c3451f9c1231d4fc162d", [:mix], [], "hexpm", "41195edbfb562a593726eda3b3e8b103a309b733ad25f3d642ba49696bf715dc"},
+  "gen_state_machine": {:hex, :gen_state_machine, "3.0.0", "1e57f86a494e5c6b14137ebef26a7eb342b3b0070c7135f2d6768ed3f6b6cdff", [:mix], [], "hexpm", "0a59652574bebceb7309f6b749d2a41b45fdeda8dbb4da0791e355dd19f0ed15"},
+  "hex2bin": {:hex, :hex2bin, "1.0.0", "aac26eab998ae80eacee1c7607c629ab503ebf77a62b9242bae2b94d47dcb71e", [:rebar3], [], "hexpm", "e7012d1d9aadd26e680f0983d26fb8923707f05fac9688f19f530fa3795e716f"},
+  "jason": {:hex, :jason, "1.2.2", "ba43e3f2709fd1aa1dce90aaabfd039d000469c05c56f0b8e31978e03fa39052", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "18a228f5f0058ee183f29f9eae0805c6e59d61c3b006760668d8d18ff0d12179"},
+  "kafka_ex": {:hex, :kafka_ex, "0.12.1", "83f93a0b04d392b7e0c35234f4c444990f03b616ce4e7121119b89772d28facc", [:mix], [{:kayrock, "~> 0.1.12", [hex: :kayrock, repo: "hexpm", optional: false]}], "hexpm", "a395791c0528a248b0dac5d40d1eef8dd0706530a83cfa6ad7007eab9576fee8"},
+  "kafka_protocol": {:git, "https://github.com/kafka4beam/kafka_protocol.git", "fd7c4a1bc059ac0c437653135e301201570ac3f2", [tag: "2.3.6"]},
+  "kayrock": {:hex, :kayrock, "0.1.12", "6c7d840808bf771cd2cd5b650e583aaa7c13309a79008295da0f98a2de7d2fb3", [:mix], [{:connection, "~>1.0.4", [hex: :connection, repo: "hexpm", optional: false]}, {:crc32cer, "~>0.1.3", [hex: :crc32cer, repo: "hexpm", optional: false]}, {:varint, "~>1.2.0", [hex: :varint, repo: "hexpm", optional: false]}], "hexpm", "5693d225deeea6448d0e84dcf4b1ecd99bad8426e88144c649be6bf8cc0c830a"},
+  "snappyer": {:git, "https://github.com/zmstone/snappyer", "1e5f0a9a520ed18486d4fd52efed29e26cbf09b0", [tag: "1.2.5"]},
+  "supervisor3": {:git, "https://github.com/kafka4beam/supervisor3.git", "c11256561ad70052b25cedd6307261e5643f0550", [tag: "1.1.11"]},
+  "varint": {:hex, :varint, "1.2.0", "61bffd9dcc2d5242d59f75694506b4d4013bb103f6a23e34b94f89cebb0c1ab3", [:mix], [], "hexpm", "d94941ed8b9d1a5fdede9103a5e52035bd0aaf35081d44e67713a36799927e47"},
+}

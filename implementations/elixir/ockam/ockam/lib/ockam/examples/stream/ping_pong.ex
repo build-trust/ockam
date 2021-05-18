@@ -8,7 +8,7 @@ defmodule Ockam.Example.Stream.Ping do
 
   @impl true
   def handle_message(message, state) do
-    Logger.info("\nReceived message: #{inspect(message)}")
+    # Logger.info("\nReceived message: #{inspect(message)}")
 
     {previous, ""} = Integer.parse(Message.payload(message))
 
@@ -16,7 +16,7 @@ defmodule Ockam.Example.Stream.Ping do
 
     next = previous + 1
 
-    :timer.sleep(2000)
+    :timer.sleep(20)
 
     reply = %{
       onward_route: Message.return_route(message),

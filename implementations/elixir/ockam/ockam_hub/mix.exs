@@ -52,10 +52,13 @@ defmodule Ockam.Hub.MixProject do
       {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ockam, path: "../ockam"},
       {:poison, "~> 4.0.1"},
-      {:ranch, "~> 2.0"},
+      {:ockam_kafka, path: "../ockam_kafka"},
+      {:ranch, "~> 1.8"},
       {:telemetry, "~> 0.4.2"},
       {:telemetry_poller, "~> 0.5.1"},
-      {:telemetry_influxdb, "~> 0.2.0"}
+      {:telemetry_influxdb, "~> 0.2.0"},
+      {:jason, "~> 1.2"},
+      {:plug_cowboy, "~> 2.5"}
     ]
   end
 

@@ -27,7 +27,7 @@ if Code.ensure_loaded?(:ranch) do
       transport = :ranch_tcp
       transport_options = [port: port]
       protocol = __MODULE__.Handler
-      protocol_options = [packet: 2]
+      protocol_options = [packet: 2, nodelay: true]
 
       with {:ok, _apps} <- Application.ensure_all_started(:ranch),
            :ok <- start_listener(ref, transport, transport_options, protocol, protocol_options),
@@ -137,6 +137,10 @@ if Code.ensure_loaded?(:ranch) do
 
     @wire_encoder_decoder Ockam.Wire.Binary.V2
 
+    def start_link(ref, _socket, transport, opts) do
+      start_link(ref, transport, opts)
+    end
+
     def start_link(ref, transport, opts) do
       pid = :proc_lib.spawn_link(__MODULE__, :init, [[ref, transport, opts]])
       {:ok, pid}
@@ -145,7 +149,7 @@ if Code.ensure_loaded?(:ranch) do
     @impl true
     def init([ref, transport, opts]) do
       {:ok, socket} = :ranch.handshake(ref, opts)
-      :ok = :inet.setopts(socket, [{:active, true}, {:packet, 2}])
+      :ok = :inet.setopts(socket, [{:active, true}, {:packet, 2}, {:nodelay, true}])
 
       address = Ockam.Node.get_random_unregistered_address()
 

@@ -23,14 +23,33 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
 
   Ping and pong nodes create local consumers and publishers to exchange messages
   """
-
   alias Ockam.Example.Stream.Ping
   alias Ockam.Example.Stream.Pong
 
   alias Ockam.Stream.Client.BiDirectional
   alias Ockam.Stream.Client.BiDirectional.PublisherRegistry
 
-  @hub_tcp %Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+  def config() do
+    %{
+      hub_ip: "13.64.73.230",
+      hub_port: 4000,
+      service_address: "stream_fedotov_danil_gmail_com_service",
+      index_address: "stream_fedotov_danil_gmail_com_index"
+    }
+  end
+
+  def stream_options() do
+    config = config()
+
+    {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
+    tcp_address = %Ockam.Transport.TCPAddress{ip: hub_ip_n, port: config.hub_port}
+
+    [
+      service_route: [tcp_address, config.service_address],
+      index_route: [tcp_address, config.index_address],
+      partitions: 1
+    ]
+  end
 
   ## This should be run on the PONG node
   def init_pong() do
@@ -39,7 +58,7 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
     {:ok, "pong"} = Pong.create(address: "pong")
 
     ## Create a local subscription to forward pong_topic messages to local node
-    subscribe("pong_topic")
+    subscribe("pong_topic", "pong")
   end
 
   def run() do
@@ -49,7 +68,7 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
     Ping.create(address: "ping")
 
     ## Subscribe to response topic
-    subscribe("ping_topic")
+    subscribe("ping_topic", "ping")
 
     ## Create local publisher worker to forward to pong_topic and add metadata to
     ## messages to send responses to ping_topic
@@ -81,19 +100,11 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
     Ockam.Transport.TCP.create_listener(port: port, route_outgoing: true)
   end
 
-  def stream_options() do
-    [
-      service_route: [@hub_tcp, "stream_service"],
-      index_route: [@hub_tcp, "stream_index_service"],
-      partitions: 1
-    ]
-  end
-
-  def subscribe(stream) do
+  def subscribe(stream, subscription_id) do
     ## Local subscribe
     ## Create bidirectional subscription on local node
     ## using stream service configuration from stream_options
-    BiDirectional.subscribe(stream, stream_options())
+    BiDirectional.subscribe(stream, subscription_id, stream_options())
 
     ## This is necessary to make sure we don't spawn publisher for each message
     PublisherRegistry.start_link([])
