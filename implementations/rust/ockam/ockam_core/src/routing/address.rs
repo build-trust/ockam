@@ -164,6 +164,15 @@ impl From<(u8, Vec<u8>)> for Address {
     }
 }
 
+impl<'a> From<(u8, &'a str)> for Address {
+    fn from((tt, inner): (u8, &'a str)) -> Self {
+        Self {
+            tt,
+            inner: inner.as_bytes().to_vec(),
+        }
+    }
+}
+
 impl<'a> From<&'a [u8]> for Address {
     fn from(inner: &'a [u8]) -> Self {
         Self {

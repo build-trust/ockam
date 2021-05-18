@@ -14,20 +14,18 @@ impl<P: ProfileTrait> ProfileChanges for Entity<P> {
     }
 
     fn update_no_verification(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.update_no_verification(change_event);
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.update_no_verification(change_event)
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 
     fn verify(&mut self) -> Result<bool> {
-        for profile in &mut self.profiles {
-            if self.default_profile_identifier == profile.identifier()? {
-                return profile.verify();
-            }
+        if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
+            profile.verify()
+        } else {
+            Err(ProfileNotFound.into())
         }
-        Err(ProfileNotFound.into())
     }
 }

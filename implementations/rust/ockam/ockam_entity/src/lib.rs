@@ -8,7 +8,7 @@
     unsafe_code,
     unused_import_braces,
     unused_qualifications,
-    warnings
+    // TODO re-enable warnings
 )]
 
 use crate::EntityError;

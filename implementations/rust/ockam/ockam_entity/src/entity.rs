@@ -11,11 +11,13 @@ pub use identifiers::*;
 pub mod secrets;
 pub use secrets::*;
 
+use ockam_core::hashbrown::hash_map::HashMap;
+
 /// An Entity represents an identity in various authentication contexts.
 #[derive(Clone)]
 pub struct Entity<P: ProfileTrait> {
     default_profile_identifier: ProfileIdentifier,
-    profiles: Vec<P>,
+    profiles: HashMap<ProfileIdentifier, P>,
 }
 
 impl<P: ProfileTrait> Entity<P> {
@@ -23,21 +25,22 @@ impl<P: ProfileTrait> Entity<P> {
     pub fn new(default_profile: P) -> Self {
         let idref = default_profile.identifier().unwrap();
         let default_profile_identifier = ProfileIdentifier::from_key_id(idref.key_id().clone());
-        let profiles = vec![default_profile];
+
+        let mut profiles = HashMap::new();
+        profiles.insert(default_profile_identifier.clone(), default_profile);
+
         Entity {
             default_profile_identifier,
             profiles,
         }
     }
 
-    fn default_profile(&self) -> Option<&P> {
-        self.profiles
-            .iter()
-            .find(|profile| self.default_profile_identifier == profile.identifier().unwrap())
+    fn profile(&self, profile_identifier: &ProfileIdentifier) -> Option<&P> {
+        self.profiles.get(profile_identifier)
     }
 
-    fn _add_profile(&mut self, profile: P) {
-        self.profiles.push(profile);
+    fn default_profile(&self) -> Option<&P> {
+        self.profile(&self.default_profile_identifier)
     }
 }
 
