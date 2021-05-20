@@ -125,7 +125,16 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
     }
 
     async fn run(mut self) {
-        self.worker.initialize(&mut self.ctx).await.unwrap();
+        match self.worker.initialize(&mut self.ctx).await {
+            Ok(()) => {}
+            Err(e) => {
+                error!(
+                    "Failure during '{}' worker initialisation: {}",
+                    self.ctx.address(),
+                    e
+                );
+            }
+        }
 
         while let Some(RelayMessage { addr, data, .. }) = self.ctx.mailbox.next().await {
             // Extract the message type based on the relay message
@@ -164,13 +173,22 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             match self.worker.handle_message(&mut self.ctx, routed).await {
                 Ok(()) => {}
                 Err(e) => {
-                    error!("Worker {} error while handling message: {}", addr, e);
+                    error!("Failure during {} worker message handling: {}", addr, e);
                     continue;
                 }
             }
         }
 
-        self.worker.shutdown(&mut self.ctx).await.unwrap();
+        match self.worker.shutdown(&mut self.ctx).await {
+            Ok(()) => {}
+            Err(e) => {
+                error!(
+                    "Failure during '{}' worker shutdown: {}",
+                    self.ctx.address(),
+                    e
+                );
+            }
+        }
     }
 
     /// Run the inner worker and restart it if errors occurs
