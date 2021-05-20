@@ -223,10 +223,10 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         } else {
             return Err(SecureChannelError::InvalidInternalState.into());
         }
-        let _ = key_exchanger.process(payload.as_slice())?;
+        let _ = key_exchanger.handle_response(payload.as_slice())?;
 
         if !key_exchanger.is_complete() {
-            let payload = key_exchanger.process(&[])?;
+            let payload = key_exchanger.generate_request(&[])?;
             self.send_key_exchange_payload(ctx, payload, false).await?;
         }
 
@@ -306,7 +306,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> Worker for SecureC
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if self.is_initiator {
             if let Some(initiator) = self.key_exchanger.as_mut() {
-                let payload = initiator.process(&[])?;
+                let payload = initiator.generate_request(&[])?;
 
                 self.send_key_exchange_payload(ctx, payload, true).await?;
             } else {

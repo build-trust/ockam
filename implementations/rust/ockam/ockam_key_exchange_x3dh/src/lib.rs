@@ -87,8 +87,6 @@ impl TryFrom<&[u8]> for PreKeyBundle {
 }
 
 const CSUITE: &[u8] = b"X3DH_25519_AESGCM_SHA256\0\0\0\0\0\0\0\0";
-/// EK, Hash(EIK), IK, EdDSA, AES_GCM_TAG
-const ENROLLMENT_MSG_SIZE: usize = 32 + 32 + 32 + 64 + 16;
 
 /// Vault with X3DH required functionality
 pub trait X3dhVault:
@@ -112,47 +110,49 @@ impl<D> X3dhVault for D where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_key_exchange_core::KeyExchanger;
+    use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultMutex;
 
+    #[allow(non_snake_case)]
     #[test]
-    fn handshake() {
+    fn full_flow__correct_credentials__keys_should_match() {
         let mut vault = VaultMutex::create(SoftwareVault::default());
-        let mut initiator = Initiator::new(vault.clone(), None);
-        let mut responder = Responder::new(vault.clone(), None);
 
-        let res = initiator.process(&[]);
-        assert!(res.is_ok());
-        let eik_bytes = res.unwrap();
-        assert_eq!(eik_bytes.len(), 32);
-        let res = responder.process(&[]);
-        assert!(res.is_ok());
-        let prekey_bundle_bytes = res.unwrap();
+        let key_exchanger = X3dhNewKeyExchanger::new(vault.clone());
 
-        let res = initiator.process(prekey_bundle_bytes.as_slice());
-        assert!(res.is_ok(), "{:?}", res);
-        let final_message = res.unwrap();
+        let mut initiator = key_exchanger.initiator().unwrap();
+        let mut responder = key_exchanger.responder().unwrap();
 
-        let res = responder.process(eik_bytes.as_slice());
-        assert!(res.is_ok(), "{:?}", res);
-        let res = responder.process(final_message.as_slice());
-        assert!(res.is_ok(), "{:?}", res);
+        loop {
+            if !initiator.is_complete() {
+                let m = initiator.generate_request(&[]).unwrap();
+                let _ = responder.handle_response(&m).unwrap();
+            }
 
-        let init = initiator.finalize().unwrap();
-        let resp = responder.finalize().unwrap();
+            if !responder.is_complete() {
+                let m = responder.generate_request(&[]).unwrap();
+                let _ = initiator.handle_response(&m).unwrap();
+            }
 
-        let ciphertext_and_tag = vault
-            .aead_aes_gcm_encrypt(init.encrypt_key(), b"Hello Alice", &[1u8; 12], &[])
-            .unwrap();
-        let plaintext = vault
-            .aead_aes_gcm_decrypt(
-                resp.decrypt_key(),
-                ciphertext_and_tag.as_slice(),
-                &[1u8; 12],
-                &[],
-            )
-            .unwrap();
-        assert_eq!(plaintext, b"Hello Alice");
+            if initiator.is_complete() && responder.is_complete() {
+                break;
+            }
+        }
+
+        let initiator = initiator.finalize().unwrap();
+        let responder = responder.finalize().unwrap();
+
+        assert_eq!(initiator.h(), responder.h());
+
+        let s1 = vault.secret_export(&initiator.encrypt_key()).unwrap();
+        let s2 = vault.secret_export(&responder.decrypt_key()).unwrap();
+
+        assert_eq!(s1, s2);
+
+        let s1 = vault.secret_export(&initiator.decrypt_key()).unwrap();
+        let s2 = vault.secret_export(&responder.encrypt_key()).unwrap();
+
+        assert_eq!(s1, s2);
     }
 }

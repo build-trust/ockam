@@ -2,6 +2,7 @@ use crate::{Initiator, Responder, X3dhVault};
 use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
+#[derive(Clone)]
 pub struct X3dhNewKeyExchanger<V: X3dhVault> {
     vault: V,
 }

@@ -1,5 +1,6 @@
 use crate::state::State;
 use crate::{XXError, XXVault};
+use ockam_core::Result;
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug)]
@@ -27,25 +28,35 @@ impl<V: XXVault> Initiator<V> {
 }
 
 impl<V: XXVault> KeyExchanger for Initiator<V> {
-    fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
+    fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             InitiatorState::EncodeMessage1 => {
                 self.state_data.run_prologue()?;
-                let msg = self.state_data.encode_message_1(data)?;
+                let msg = self.state_data.encode_message_1(payload)?;
                 self.state = InitiatorState::DecodeMessage2;
                 Ok(msg)
             }
-            InitiatorState::DecodeMessage2 => {
-                let msg = self.state_data.decode_message_2(data)?;
-                self.state = InitiatorState::EncodeMessage3;
-                Ok(msg)
-            }
             InitiatorState::EncodeMessage3 => {
-                let msg = self.state_data.encode_message_3(data)?;
+                let msg = self.state_data.encode_message_3(payload)?;
                 self.state = InitiatorState::Done;
                 Ok(msg)
             }
-            InitiatorState::Done => Err(XXError::InvalidState.into()),
+            InitiatorState::DecodeMessage2 | InitiatorState::Done => {
+                Err(XXError::InvalidState.into())
+            }
+        }
+    }
+
+    fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
+        match self.state {
+            InitiatorState::DecodeMessage2 => {
+                let msg = self.state_data.decode_message_2(response)?;
+                self.state = InitiatorState::EncodeMessage3;
+                Ok(msg)
+            }
+            InitiatorState::EncodeMessage1
+            | InitiatorState::EncodeMessage3
+            | InitiatorState::Done => Err(XXError::InvalidState.into()),
         }
     }
 
@@ -53,7 +64,7 @@ impl<V: XXVault> KeyExchanger for Initiator<V> {
         matches!(self.state, InitiatorState::Done)
     }
 
-    fn finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
+    fn finalize(self) -> Result<CompletedKeyExchange> {
         match self.state {
             InitiatorState::Done => self.state_data.finalize_initiator(),
             _ => Err(XXError::InvalidState.into()),
