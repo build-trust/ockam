@@ -12,5 +12,8 @@ pub use route::*;
 mod message;
 pub use message::*;
 
+mod services;
+pub use services::*;
+
 mod macros;
 pub use macros::*;

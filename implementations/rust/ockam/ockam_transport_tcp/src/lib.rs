@@ -36,7 +36,7 @@ pub use receiver::TcpRecvWorker;
 pub use router::{TcpRouter, TcpRouterHandle};
 pub use sender::TcpSendWorker;
 
-use ockam_core::{Address, Result};
+use ockam_core::{Address, Result, ServiceBuilder};
 use ockam_node::Context;
 use std::net::SocketAddr;
 
@@ -107,10 +107,12 @@ impl TcpTransport {
     }
 
     /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect<S: Into<String>>(&self, peer: S) -> Result<()> {
-        let peer = parse_socket_addr(peer)?;
+    pub async fn connect<S: Into<String>>(&self, peer: S) -> Result<ServiceBuilder> {
+        let peer_addr: String = peer.into();
+        let serv_builder = ServiceBuilder::new(TCP, peer_addr.clone());
+        let peer = parse_socket_addr(peer_addr)?;
         init::start_connection(&self.ctx, &self.router, peer).await?;
-        Ok(())
+        Ok(serv_builder)
     }
 
     /// Start listening to incoming connections on an existing transport

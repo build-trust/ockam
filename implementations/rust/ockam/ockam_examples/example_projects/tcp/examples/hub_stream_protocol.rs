@@ -6,16 +6,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     let hub_addr = "127.0.0.1:4000";
 
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.connect(hub_addr).await?;
+    let serv = tcp.connect(hub_addr).await?.service("stream_service");
 
     // Create 2 new stream workers
     let (tx, rx) = Stream::new(&ctx)?
-        .connect(
-            Route::new()
-                .append_t(TCP, hub_addr)
-                .append("stream_service"),
-            "test-stream".to_string(),
-        )
+        .connect(serv, "test-stream".to_string())
         .await?;
 
     // Send a message to the stream producer
