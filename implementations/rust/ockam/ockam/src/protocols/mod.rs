@@ -9,7 +9,7 @@ pub use parser::*;
 pub mod stream;
 
 /// A protocol payload wrapper for pre-parsing
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ProtocolPayload {
     pub protocol: ProtocolId,
     pub data: Vec<u8>,

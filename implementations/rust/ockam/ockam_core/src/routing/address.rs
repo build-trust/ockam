@@ -81,6 +81,14 @@ pub struct Address {
 }
 
 impl Address {
+    /// Create a new address from separate type and data parts
+    pub fn new<S: Into<String>>(tt: u8, inner: S) -> Self {
+        Self {
+            tt,
+            inner: inner.into().as_bytes().to_vec(),
+        }
+    }
+
     /// Parse an address from a string
     ///
     /// See type documentation for more detail

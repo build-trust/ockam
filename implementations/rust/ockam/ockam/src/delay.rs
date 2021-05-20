@@ -1,5 +1,4 @@
 use crate::{block_future, spawn, Address, Context, Message, Result, Route};
-use rand::random;
 use std::time::Duration;
 
 /// Send a delayed event to a worker
@@ -14,8 +13,10 @@ impl<M: Message> DelayedEvent<M> {
     /// Create a new 100ms delayed message event
     pub fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
         let ctx = block_future(&ctx.runtime(), async {
-            ctx.new_context(random::<Address>()).await
+            ctx.new_context(Address::random(0)).await
         })?;
+
+        debug!("Creating a delayed event with address '{}'", ctx.address());
 
         Ok(Self {
             route,
@@ -23,6 +24,11 @@ impl<M: Message> DelayedEvent<M> {
             d: Duration::from_millis(100),
             msg,
         })
+    }
+
+    /// Adjust the delay time with a [`Duration`](std::time::Duration)
+    pub fn duration(self, d: Duration) -> Self {
+        Self { d, ..self }
     }
 
     /// Adjust the delay time in milliseconds
