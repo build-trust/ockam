@@ -29,11 +29,14 @@ pub use ockam_node::*;
 pub use ockam_node_no_std::*;
 // ---
 
+mod delay;
 mod error;
 mod lease;
+mod monotonic;
 mod protocols;
 mod remote_forwarder;
 
+pub use delay::*;
 pub use error::*;
 pub use lease::*;
 pub use ockam_core::worker;
