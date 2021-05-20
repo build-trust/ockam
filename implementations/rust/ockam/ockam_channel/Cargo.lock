@@ -431,6 +431,7 @@ dependencies = [
  "async-trait",
  "ockam_core",
  "ockam_key_exchange_core",
+ "ockam_key_exchange_x3dh",
  "ockam_key_exchange_xx",
  "ockam_node",
  "ockam_vault",
@@ -460,6 +461,17 @@ name = "ockam_key_exchange_core"
 version = "0.6.0-dev"
 dependencies = [
  "ockam_core",
+ "ockam_vault_core",
+ "zeroize",
+]
+
+[[package]]
+name = "ockam_key_exchange_x3dh"
+version = "0.5.0-dev"
+dependencies = [
+ "arrayref",
+ "ockam_core",
+ "ockam_key_exchange_core",
  "ockam_vault_core",
  "zeroize",
 ]

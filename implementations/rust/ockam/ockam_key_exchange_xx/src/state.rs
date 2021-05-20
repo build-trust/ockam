@@ -186,18 +186,7 @@ impl<V: XXVault> State<V> {
     fn finalize(self, encrypt_key: Secret, decrypt_key: Secret) -> Result<CompletedKeyExchange> {
         let h = self.h.ok_or(XXError::InvalidState)?;
 
-        let local_static_secret = self.identity_key.ok_or(XXError::InvalidState)?;
-
-        let remote_static_public_key =
-            self.remote_static_public_key.ok_or(XXError::InvalidState)?;
-
-        Ok(CompletedKeyExchange::new(
-            h,
-            encrypt_key,
-            decrypt_key,
-            local_static_secret,
-            remote_static_public_key,
-        ))
+        Ok(CompletedKeyExchange::new(h, encrypt_key, decrypt_key))
     }
 }
 
@@ -540,35 +529,31 @@ mod tests {
         let mut initiator = Initiator::new(initiator);
         let mut responder = Responder::new(responder);
 
-        let res = responder.process(&[]);
-        assert!(res.is_err());
-        let res = initiator.process(&decode(MSG_1_PAYLOAD).unwrap());
+        let res = initiator.generate_request(&decode(MSG_1_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg1 = res.unwrap();
         assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
 
-        let res = responder.process(&msg1);
+        let res = responder.handle_response(&msg1);
         assert!(res.is_ok());
-        let res = responder.process(&decode(MSG_2_PAYLOAD).unwrap());
+        let res = responder.generate_request(&decode(MSG_2_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg2 = res.unwrap();
         assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
 
-        let res = initiator.process(&msg2);
+        let res = initiator.handle_response(&msg2);
         assert!(res.is_ok());
-        let res = initiator.process(&decode(MSG_3_PAYLOAD).unwrap());
+        let res = initiator.generate_request(&decode(MSG_3_PAYLOAD).unwrap());
         assert!(res.is_ok());
         let msg3 = res.unwrap();
         assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
 
-        let res = responder.process(&msg3);
+        let res = responder.handle_response(&msg3);
         assert!(res.is_ok());
 
-        let initiator = Box::new(initiator);
         let res = initiator.finalize();
         assert!(res.is_ok());
         let alice = res.unwrap();
-        let responder = Box::new(responder);
         let res = responder.finalize();
         assert!(res.is_ok());
         let bob = res.unwrap();

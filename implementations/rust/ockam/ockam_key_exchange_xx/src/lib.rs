@@ -61,16 +61,23 @@ mod tests {
         let mut initiator = key_exchanger.initiator().unwrap();
         let mut responder = key_exchanger.responder().unwrap();
 
-        let m1 = initiator.process(&[]).unwrap();
-        let _ = responder.process(&m1).unwrap();
-        let m2 = responder.process(&[]).unwrap();
-        let _ = initiator.process(&m2).unwrap();
-        let m3 = initiator.process(&[]).unwrap();
-        let _ = responder.process(&m3).unwrap();
+        loop {
+            if !initiator.is_complete() {
+                let m = initiator.generate_request(&[]).unwrap();
+                let _ = responder.handle_response(&m).unwrap();
+            }
 
-        let initiator = Box::new(initiator);
+            if !responder.is_complete() {
+                let m = responder.generate_request(&[]).unwrap();
+                let _ = initiator.handle_response(&m).unwrap();
+            }
+
+            if initiator.is_complete() && responder.is_complete() {
+                break;
+            }
+        }
+
         let initiator = initiator.finalize().unwrap();
-        let responder = Box::new(responder);
         let responder = responder.finalize().unwrap();
 
         assert_eq!(initiator.h(), responder.h());

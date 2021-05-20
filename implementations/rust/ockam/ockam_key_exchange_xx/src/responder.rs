@@ -1,5 +1,6 @@
 use crate::state::State;
 use crate::{XXError, XXVault};
+use ockam_core::Result;
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug)]
@@ -27,25 +28,35 @@ impl<V: XXVault> Responder<V> {
 }
 
 impl<V: XXVault> KeyExchanger for Responder<V> {
-    fn process(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
+    fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
-            ResponderState::DecodeMessage1 => {
-                self.state_data.run_prologue()?;
-                let msg = self.state_data.decode_message_1(data)?;
-                self.state = ResponderState::EncodeMessage2;
-                Ok(msg)
-            }
             ResponderState::EncodeMessage2 => {
-                let msg = self.state_data.encode_message_2(data)?;
+                let msg = self.state_data.encode_message_2(payload)?;
                 self.state = ResponderState::DecodeMessage3;
                 Ok(msg)
             }
+            ResponderState::DecodeMessage1
+            | ResponderState::DecodeMessage3
+            | ResponderState::Done => Err(XXError::InvalidState.into()),
+        }
+    }
+
+    fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
+        match self.state {
+            ResponderState::DecodeMessage1 => {
+                self.state_data.run_prologue()?;
+                let msg = self.state_data.decode_message_1(response)?;
+                self.state = ResponderState::EncodeMessage2;
+                Ok(msg)
+            }
             ResponderState::DecodeMessage3 => {
-                let msg = self.state_data.decode_message_3(data)?;
+                let msg = self.state_data.decode_message_3(response)?;
                 self.state = ResponderState::Done;
                 Ok(msg)
             }
-            ResponderState::Done => Err(XXError::InvalidState.into()),
+            ResponderState::EncodeMessage2 | ResponderState::Done => {
+                Err(XXError::InvalidState.into())
+            }
         }
     }
 
@@ -53,7 +64,7 @@ impl<V: XXVault> KeyExchanger for Responder<V> {
         matches!(self.state, ResponderState::Done)
     }
 
-    fn finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
+    fn finalize(self) -> Result<CompletedKeyExchange> {
         match self.state {
             ResponderState::Done => self.state_data.finalize_responder(),
             _ => Err(XXError::InvalidState.into()),

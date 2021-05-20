@@ -17,7 +17,6 @@ ockam_core = { path = "../ockam_core", version = "0.14.0-dev"     }
 ockam_vault_core = { path = "../ockam_vault_core" , version = "0.8.0-dev"     }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core" , version = "0.6.0-dev"     }
 arrayref = "0.3"
-subtle = "2.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
