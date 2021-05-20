@@ -27,8 +27,8 @@ where
         _ctx: &mut Context,
         _routed: &Routed<Any>,
         _msg: ProtocolPayload,
-    ) -> Result<()> {
-        Ok(())
+    ) -> Result<bool> {
+        Ok(false)
     }
 }
 
@@ -110,12 +110,12 @@ impl<W: Worker> ProtocolParserImpl<W> {
     ///
     /// You may want to call [`prepare()`](Self::prepare) before
     /// calling this function.
-    pub fn parse(self: Arc<Self>, w: &mut W, ctx: &mut Context, msg: &Routed<Any>) -> Result<()> {
+    pub fn parse(self: Arc<Self>, w: &mut W, ctx: &mut Context, msg: &Routed<Any>) -> Result<bool> {
         // Parse message as a ProtocolPayload to grab the ProtocolId
         let proto_msg = ProtocolPayload::decode(msg.payload())?;
         let proto = ProtocolId::from_str(proto_msg.protocol.as_str());
 
-        trace!("Parsing message for '{:?}' protocol", proto.as_str());
+        trace!("Parsing message for '{}' protocol", proto.as_str());
 
         // Get the protocol specific parser
         let map = self.map.read().unwrap();

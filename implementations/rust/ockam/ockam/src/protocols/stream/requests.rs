@@ -13,11 +13,11 @@ pub struct CreateStreamRequest {
 impl CreateStreamRequest {
     //noinspection ALL
     #[allow(dead_code, clippy::new_ret_no_self)]
-    pub fn new<'s, S: Into<Option<&'s str>>>(s: S) -> ProtocolPayload {
+    pub fn new<S: Into<Option<String>>>(s: S) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_create",
             Self {
-                stream_name: s.into().map(|s| s.to_string()),
+                stream_name: s.into(),
             },
         )
     }

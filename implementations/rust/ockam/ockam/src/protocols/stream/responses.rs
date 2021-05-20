@@ -126,7 +126,7 @@ pub enum Response {
 pub struct ResponseParser<W, F>
 where
     W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<Response>),
+    F: Fn(&mut W, &mut Context, Routed<Response>) -> bool,
 {
     f: F,
     _w: std::marker::PhantomData<W>,
@@ -135,7 +135,7 @@ where
 impl<W, F> ResponseParser<W, F>
 where
     W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<Response>),
+    F: Fn(&mut W, &mut Context, Routed<Response>) -> bool,
 {
     //noinspection RsExternalLinter
     /// Create a new stream protocol parser with a response closure
@@ -156,7 +156,7 @@ where
 impl<W, F> ParserFragment<W> for ResponseParser<W, F>
 where
     W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<Response>),
+    F: Fn(&mut W, &mut Context, Routed<Response>) -> bool,
 {
     fn ids(&self) -> Vec<ProtocolId> {
         vec![
@@ -176,7 +176,7 @@ where
         ctx: &mut Context,
         routed: &Routed<Any>,
         ProtocolPayload { protocol, data }: ProtocolPayload,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         // Parse payload into a response
         let resp = match protocol.as_str() {
             "stream_create" => Response::Init(Init::decode(&data)?),
@@ -189,8 +189,7 @@ where
         let (addr, trans) = routed.dissolve();
 
         // Call the user code
-        (&self.f)(state, ctx, Routed::v1(resp, addr, trans));
-
-        Ok(())
+        let handled = (&self.f)(state, ctx, Routed::v1(resp, addr, trans));
+        Ok(handled)
     }
 }
