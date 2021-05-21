@@ -9,7 +9,7 @@ use std::{collections::BTreeMap, net::SocketAddr};
 /// A WebSocket address router and connection listener
 ///
 /// In order to create new WebSocket connection workers you need a router to
-/// map remote addresses of `type = 1` to worker addresses.  This type
+/// map remote addresses of `type = 2` to worker addresses.  This type
 /// facilitates this.
 ///
 /// Optionally you can also start listening for incoming connections
@@ -31,7 +31,7 @@ pub struct WebSocketRouterHandle<'c> {
 impl<'c> WebSocketRouterHandle<'c> {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let accepts = format!("1#{}", pair.peer.clone()).into();
+        let accepts = format!("{}#{}", crate::WS, pair.peer.clone()).into();
         let self_addr = pair.tx_addr.clone();
 
         self.ctx
@@ -61,8 +61,8 @@ impl Worker for WebSocketRouter {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        trace!("Registering WebSocket router for type = {}", crate::TCP);
-        ctx.register(crate::TCP, ctx.address()).await?;
+        trace!("Registering WebSocket router for type = {}", crate::WS);
+        ctx.register(crate::WS, ctx.address()).await?;
         Ok(())
     }
 

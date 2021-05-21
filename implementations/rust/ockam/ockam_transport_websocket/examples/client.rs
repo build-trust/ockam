@@ -1,7 +1,7 @@
 use futures_util::StreamExt;
 use ockam_core::{Result, Route};
 use ockam_node::Context;
-use ockam_transport_websocket::{WebSocketTransport, TCP};
+use ockam_transport_websocket::{WebSocketTransport, WS};
 use tokio::io::AsyncReadExt;
 
 fn main() -> Result<()> {
@@ -22,9 +22,7 @@ async fn run_main(mut ctx: Context) -> Result<()> {
 
     while let Some(data) = stdin_rx.next().await {
         ctx.send(
-            Route::new()
-                .append_t(TCP, &peer_addr)
-                .append("echo_service"),
+            Route::new().append_t(WS, &peer_addr).append("echo_service"),
             data,
         )
         .await?;
