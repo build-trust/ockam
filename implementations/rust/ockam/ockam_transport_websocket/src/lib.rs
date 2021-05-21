@@ -82,8 +82,8 @@ pub struct WebSocketTransport<'ctx> {
     router: WebSocketRouterHandle<'ctx>,
 }
 
-/// TCP address type constant
-pub const TCP: u8 = 1;
+/// WebSocket address type constant
+pub const WS: u8 = 2;
 
 fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
     Ok(s.into()
