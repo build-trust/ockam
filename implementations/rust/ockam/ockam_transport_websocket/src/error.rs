@@ -4,6 +4,8 @@ use ockam_core::Error;
 /// A WebSocket connection worker specific error type
 #[derive(Clone, Copy, Debug)]
 pub enum WebSocketError {
+    /// None
+    None,
     /// Malformed message
     BadMessage,
     /// Failed to send a malformed message
@@ -32,7 +34,7 @@ pub enum WebSocketError {
 
 impl WebSocketError {
     /// Integer code associated with the error domain.
-    pub const DOMAIN_CODE: u32 = 15_000; //TODO: what code should we use?
+    pub const DOMAIN_CODE: u32 = 21_000;
     /// Error domain
     pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_WEBSOCKET";
 }
