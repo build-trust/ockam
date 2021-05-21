@@ -1,5 +1,6 @@
-use ockam::{stream::Stream, Context, Result, Route};
-use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam::{stream::Stream, Context, Result};
+use ockam_transport_tcp::TcpTransport;
+use std::time::Duration;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -9,17 +10,16 @@ async fn main(mut ctx: Context) -> Result<()> {
     let serv = tcp.connect(hub_addr).await?.service("stream_service");
 
     // Create 2 new stream workers
-    let (tx, rx) = Stream::new(&ctx)?
+    let (tx, mut rx) = Stream::new(&ctx)?
+        .with_interval(Duration::from_millis(500))
         .connect(serv, "test-stream".to_string())
         .await?;
 
     // Send a message to the stream producer
-    // ctx.send(tx, "Hello world!".to_string()).await?;
+    ctx.send(tx, "Hello world!".to_string()).await.unwrap();
 
     // Get the next message from the stream consumer
-    // let msg: String = rx.next().await;
-    // println!("Forwarded: `{}`", msg);
-    //ctx.stop().await
-
-    Ok(())
+    let msg = rx.next::<String>().await.unwrap();
+    println!("Forwarded: `{}`", msg);
+    ctx.stop().await
 }

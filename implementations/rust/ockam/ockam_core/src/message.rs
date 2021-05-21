@@ -68,7 +68,7 @@ where
     }
 
     fn decode(e: &Encoded) -> Result<Self> {
-        Ok(serde_bare::from_slice(e.as_slice()).expect(&format!("Failed to decode: {:?}", e)))
+        Ok(serde_bare::from_slice(e.as_slice())?)
     }
 }
 

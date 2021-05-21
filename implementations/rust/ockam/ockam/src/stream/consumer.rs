@@ -6,7 +6,7 @@ use crate::{
         ProtocolParser,
     },
     stream::{StreamCmdParser, StreamWorkerCmd},
-    DelayedEvent,
+    DelayedEvent, TransportMessage,
 };
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
 use std::time::Duration;
@@ -25,6 +25,8 @@ pub struct StreamConsumer {
     interval: Duration,
     /// Forwarding address
     fwd: Option<Address>,
+    /// ReceiverAddress address
+    rx_rx: Address,
 }
 
 fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Response>) -> bool {
@@ -37,9 +39,18 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 stream_name, return_route
             );
             w.stream = Some(stream_name);
-            w.peer = return_route;
+            w.peer = return_route.clone();
 
+            // Queue fetch events
             fetch_interval(ctx, w.interval.clone()).expect("Failed to start fetch event loop!");
+
+            // Initialise the producer!
+            block_future(&ctx.runtime(), async {
+                ctx.send(w.prod.clone(), StreamWorkerCmd::init(return_route))
+                    .await
+            })
+            .expect("Failed to initialise stream producer!");
+
             true
         }
         Response::PullResponse(PullResponse {
@@ -47,6 +58,21 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             messages,
         }) => {
             trace!("PullResponse, {} message(s) available", messages.len());
+
+            match w.fwd {
+                Some(_) => {
+                    // TODO: forward to a worker
+                }
+                None => {
+                    // Send to the rx_rx address
+                    for m in messages {
+                        trace!("Forwarding message {:?} to rx.next()", m);
+                        block_future(&ctx.runtime(), async { ctx.send(w.rx_rx.clone(), m).await })
+                            .expect("Failed to forward received message!");
+                    }
+                }
+            }
+
             true
         }
         _ => false,
@@ -107,7 +133,7 @@ impl Worker for StreamConsumer {
         self.parser.attach(StreamCmdParser::new(parse_cmd));
 
         // Send a create stream request with the reigestered name
-        ctx.send(self.peer.clone(), dbg!(CreateStreamRequest::new(None)))
+        ctx.send(self.peer.clone(), (CreateStreamRequest::new(None)))
             .await?;
 
         Ok(())
@@ -135,6 +161,7 @@ impl StreamConsumer {
         stream: Option<String>,
         interval: Duration,
         fwd: Option<Address>,
+        rx_rx: Address,
     ) -> Self {
         Self {
             parser: ProtocolParser::new(),
@@ -144,6 +171,7 @@ impl StreamConsumer {
             stream,
             interval,
             fwd,
+            rx_rx,
         }
     }
 }

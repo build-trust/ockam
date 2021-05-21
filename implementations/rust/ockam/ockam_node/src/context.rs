@@ -283,6 +283,12 @@ impl Context {
         Ok(())
     }
 
+    /// Receive a message without a timeout
+    pub async fn receive_block<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
+        let (msg, data, addr) = self.next_from_mailbox().await?;
+        Ok(Cancel::new(msg, data, addr, self))
+    }
+
     /// Block the current worker to wait for a typed message
     ///
     /// This function may return a `Err(FailedLoadData)` if the

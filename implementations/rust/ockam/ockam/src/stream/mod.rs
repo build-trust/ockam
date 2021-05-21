@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use crate::protocols::stream::responses::StreamMessage;
+
 mod cmd;
 pub use cmd::{StreamCmdParser, StreamWorkerCmd};
 
@@ -62,8 +64,34 @@ pub struct ReceiverAddress {
 
 impl ReceiverAddress {
     /// Wait for the next message received by the stream consumer
-    pub async fn next<T: Message>(&self) -> T {
-        todo!()
+    pub async fn next<T: Message>(&mut self) -> Result<T> {
+        let stream_msg = self
+            .ctx
+            .receive_block::<StreamMessage>()
+            .await
+            .unwrap()
+            .take()
+            .body();
+
+        let transport = TransportMessage::decode(&stream_msg.data).unwrap();
+        T::decode(&transport.payload)
+
+        // self.ctx
+        //     // We receive a StreamMessage from the stream
+        //     .receive_block::<StreamMessage>()
+        //     .await
+        //     .map(|c| c.take())
+        //     .and_then(|proto| {
+        //         let payload = proto.payload();
+        //         let (addr, trans) = proto.dissolve();
+
+        //         // Which we first map into the underlying `TransportMessage`
+        //         TransportMessage::decode(payload)
+        //             // and then into the actual type
+        //             .and_then(|trans| T::decode(&trans.payload))
+        //             // Which we also wrap in a `Routed`
+        //             .map(|t| Routed::v1(t, addr, trans))
+        //     })
     }
 }
 
@@ -82,7 +110,7 @@ impl Stream {
     }
 
     /// Customize the polling interval for the stream consumer
-    pub fn interval<D: Into<Duration>>(self, duration: D) -> Self {
+    pub fn with_interval<D: Into<Duration>>(self, duration: D) -> Self {
         Self {
             interval: duration.into(),
             ..self
@@ -94,7 +122,7 @@ impl Stream {
     /// When setting up a stream without calling this function
     /// messages will be buffered by the StreamConsumer and must be
     /// polled via the [`StreamWorkerCmd`]().
-    pub fn recipient<A: Into<Address>>(self, addr: A) -> Self {
+    pub fn with_recipient<A: Into<Address>>(self, addr: A) -> Self {
         Self {
             recipient: Some(addr.into()),
             ..self
@@ -117,6 +145,8 @@ impl Stream {
         let rx = Address::random(0);
         let tx = Address::random(0);
 
+        let rx_rx = Address::random(0);
+
         // Create and start a new stream consumer
         self.ctx
             .start_worker(
@@ -127,18 +157,22 @@ impl Stream {
                     name.clone(),
                     self.interval.clone(),
                     self.recipient.clone(),
+                    rx_rx.clone(),
                 ),
             )
             .await?;
 
         // Create and start a new stream producer
+        self.ctx
+            .start_worker(tx.clone(), StreamProducer::new())
+            .await?;
 
         // Return a sender and receiver address
         Ok((
             SenderAddress { inner: tx },
             ReceiverAddress {
                 inner: rx,
-                ctx: self.ctx.new_context(Address::random(16)).await?,
+                ctx: self.ctx.new_context(rx_rx).await?,
             },
         ))
     }

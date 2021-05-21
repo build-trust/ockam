@@ -1,6 +1,6 @@
 use crate::{
     protocols::{ParserFragment, ProtocolPayload},
-    Address, Any, Context, Message, ProtocolId, Result, Routed, TransportMessage, Worker,
+    Address, Any, Context, Message, ProtocolId, Result, Route, Routed, TransportMessage, Worker,
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,10 +12,8 @@ pub enum StreamWorkerCmd {
     /// These events are fired from worker to _itself_ to create a
     /// delayed reactive response
     Fetch,
-    /// Ensure the producer exists
-    Ensure,
-    /// The producers address response
-    Addr(Address),
+    /// Initialise the peer route for the producer
+    Init { peer: Route },
     /// Pull messages from the consumer's buffer
     Pull { num: usize },
     /// A forwarded message envelope
@@ -25,6 +23,13 @@ pub enum StreamWorkerCmd {
 impl StreamWorkerCmd {
     pub fn fetch() -> ProtocolPayload {
         ProtocolPayload::new(ProtocolId::from("internal.stream.fetch"), Self::Fetch)
+    }
+
+    pub fn init(peer: Route) -> ProtocolPayload {
+        ProtocolPayload::new(
+            ProtocolId::from("internal.stream.init"),
+            Self::Init { peer },
+        )
     }
 
     /// Pull messages from the consumer's buffer
@@ -75,6 +80,7 @@ where
     fn ids(&self) -> Vec<ProtocolId> {
         vec![
             "internal.stream.fetch",
+            "internal.stream.init",
             "internal.stream.pull",
             "internal.stream.fwd",
         ]

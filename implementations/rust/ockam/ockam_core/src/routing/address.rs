@@ -4,9 +4,7 @@ use crate::lib::{
     String, ToString, Vec,
 };
 use core::ops::Deref;
-use rand::distributions::Standard;
-use rand::prelude::Distribution;
-use rand::Rng;
+use rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use serde::{Deserialize, Serialize};
 
 /// A collection of Addresses
@@ -121,10 +119,7 @@ impl Address {
 
     /// Generate a random address with a specific type
     pub fn random(tt: u8) -> Self {
-        let mut rng = rand::thread_rng();
-        let address: [u8; 16] = rng.gen();
-        let inner = hex::encode(address).as_bytes().into();
-        Self { tt, inner }
+        Self { tt, ..random() }
     }
 }
 
