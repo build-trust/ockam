@@ -33,7 +33,7 @@ pub struct TcpRouterHandle<'c> {
 impl<'c> TcpRouterHandle<'c> {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let accepts = format!("1#{}", pair.peer.clone()).into();
+        let accepts = format!("{}#{}", crate::TCP, pair.peer.clone()).into();
         let self_addr = pair.tx_addr.clone();
 
         self.ctx

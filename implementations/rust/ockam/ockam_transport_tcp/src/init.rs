@@ -59,7 +59,7 @@ impl WorkerPair {
         let receiver = TcpRecvWorker {
             rx,
             run: run.clone(),
-            peer_addr: format!("1#{}", peer).into(),
+            peer_addr: format!("{}#{}", crate::TCP, peer).into(),
         };
 
         // Derive local worker addresses, and start them
