@@ -60,7 +60,7 @@ impl Worker for TcpListenWorker {
             ctx.send(
                 self.router_addr.clone(),
                 RouterMessage::Register {
-                    accepts: format!("1#{}", peer).into(),
+                    accepts: format!("{}#{}", crate::TCP, peer).into(),
                     self_addr: pair.tx_addr.clone(),
                 },
             )
