@@ -27,12 +27,12 @@ impl<M: Message> DelayedEvent<M> {
     }
 
     /// Adjust the delay time with a [`Duration`](std::time::Duration)
-    pub fn duration(self, d: Duration) -> Self {
+    pub fn with_duration(self, d: Duration) -> Self {
         Self { d, ..self }
     }
 
     /// Adjust the delay time in milliseconds
-    pub fn millis(self, millis: u64) -> Self {
+    pub fn with_millis(self, millis: u64) -> Self {
         Self {
             d: Duration::from_millis(millis),
             ..self
@@ -40,7 +40,7 @@ impl<M: Message> DelayedEvent<M> {
     }
 
     /// Adjust the delay time in seconds
-    pub fn seconds(self, secs: u64) -> Self {
+    pub fn with_seconds(self, secs: u64) -> Self {
         Self {
             d: Duration::from_secs(secs),
             ..self
@@ -48,7 +48,7 @@ impl<M: Message> DelayedEvent<M> {
     }
 
     /// Adjust the delay time in minutes
-    pub fn minutes(self, mins: u64) -> Self {
+    pub fn with_minutes(self, mins: u64) -> Self {
         Self {
             d: Duration::from_secs(mins * 60),
             ..self

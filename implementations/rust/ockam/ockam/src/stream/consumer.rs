@@ -112,7 +112,7 @@ fn parse_cmd(
 /// in the `parse_cmd` function.
 fn fetch_interval(ctx: &Context, interval: Duration) -> Result<()> {
     DelayedEvent::new(ctx, ctx.address().into(), StreamWorkerCmd::fetch())?
-        .duration(interval)
+        .with_duration(interval)
         .spawn();
     Ok(())
 }
