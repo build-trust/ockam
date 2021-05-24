@@ -27,6 +27,8 @@ pub struct StreamConsumer {
     fwd: Option<Address>,
     /// ReceiverAddress address
     rx_rx: Address,
+    /// Last known index position
+    idx: u64,
 }
 
 fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Response>) -> bool {
@@ -58,6 +60,13 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             messages,
         }) => {
             trace!("PullResponse, {} message(s) available", messages.len());
+
+            // Update the index if we received messages
+            if let Some(ref msg) = messages.last() {
+                w.idx = msg.index.0 + 1;
+            }
+
+            // TODO: check next hop in route
 
             match w.fwd {
                 Some(_) => {
@@ -92,8 +101,12 @@ fn parse_cmd(
             block_future(&ctx.runtime(), async {
                 let request_id = w.ids.next() as u64;
                 trace!("Sending PullRequest to stream {:?}...", w.stream);
-                ctx.send(w.peer.clone(), PullRequest::new(request_id, 0, 8))
-                    .await
+                ctx.send(
+                    w.peer.clone(),
+                    // TOOD: make fetch amount configurable/ dynamic?
+                    PullRequest::new(request_id, w.idx, 8),
+                )
+                .await
             })?;
 
             // Queue a new fetch event and mark this event as handled
@@ -133,8 +146,11 @@ impl Worker for StreamConsumer {
         self.parser.attach(StreamCmdParser::new(parse_cmd));
 
         // Send a create stream request with the reigestered name
-        ctx.send(self.peer.clone(), (CreateStreamRequest::new(None)))
-            .await?;
+        ctx.send(
+            self.peer.clone(),
+            (CreateStreamRequest::new(self.stream.clone())),
+        )
+        .await?;
 
         Ok(())
     }
@@ -172,6 +188,7 @@ impl StreamConsumer {
             interval,
             fwd,
             rx_rx,
+            idx: 0,
         }
     }
 }

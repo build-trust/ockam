@@ -48,6 +48,7 @@ serde-big-array = "0.3"
 sha2 = "0.9"
 tracing = "0.1"
 rand = "0.8"
+hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "0.10.0-dev"             }
