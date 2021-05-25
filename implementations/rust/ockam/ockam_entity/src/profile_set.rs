@@ -1,4 +1,4 @@
-use crate::{ProfileIdentifier, ProfileTrait};
+use crate::{ProfileIdentifier, ProfileTrait, Result};
 
 pub mod authentication;
 pub use authentication::*;
@@ -11,6 +11,7 @@ pub use identifiers::*;
 pub mod secrets;
 pub use secrets::*;
 
+use crate::EntityError::{InvalidInternalState, InvalidParameter};
 use ockam_core::hashbrown::hash_map::HashMap;
 
 /// An Entity represents an identity in various authentication contexts.
@@ -18,6 +19,32 @@ use ockam_core::hashbrown::hash_map::HashMap;
 pub struct ProfileSet<P: ProfileTrait> {
     default_profile_identifier: ProfileIdentifier,
     profiles: HashMap<ProfileIdentifier, P>,
+}
+
+pub trait ProfileRetrieve<P: ProfileTrait> {
+    fn profile(&self, profile_identifier: &ProfileIdentifier) -> Option<&P>;
+}
+
+pub trait ProfileAdd<P: ProfileTrait> {
+    fn add_profile(&mut self, profile: P) -> Result<()>;
+}
+
+pub trait ProfileUpdate<P: ProfileTrait> {
+    fn update_profile(&mut self, old_profile_id: &ProfileIdentifier, profile: P) -> Result<()>;
+}
+
+pub trait ProfileRemove {
+    fn remove_profile(&mut self, profile_id: &ProfileIdentifier) -> Result<()>;
+}
+
+pub trait ProfileManagement<P: ProfileTrait>:
+    ProfileRetrieve<P> + ProfileAdd<P> + ProfileUpdate<P> + ProfileRemove
+{
+}
+
+impl<P: ProfileTrait, U> ProfileManagement<P> for U where
+    U: ProfileRetrieve<P> + ProfileAdd<P> + ProfileUpdate<P> + ProfileRemove
+{
 }
 
 impl<P: ProfileTrait> ProfileSet<P> {
@@ -35,12 +62,45 @@ impl<P: ProfileTrait> ProfileSet<P> {
         }
     }
 
+    fn default_profile(&self) -> Option<&P> {
+        self.profile(&self.default_profile_identifier)
+    }
+}
+
+impl<P: ProfileTrait> ProfileAdd<P> for ProfileSet<P> {
+    fn add_profile(&mut self, profile: P) -> Result<()> {
+        if let Ok(id) = profile.identifier() {
+            if let Some(_) = self.profiles.insert(id, profile) {
+                return Ok(());
+            }
+        }
+        Err(InvalidInternalState.into())
+    }
+}
+
+impl<P: ProfileTrait> ProfileRetrieve<P> for ProfileSet<P> {
     fn profile(&self, profile_identifier: &ProfileIdentifier) -> Option<&P> {
         self.profiles.get(profile_identifier)
     }
+}
 
-    fn default_profile(&self) -> Option<&P> {
-        self.profile(&self.default_profile_identifier)
+impl<P: ProfileTrait> ProfileRemove for ProfileSet<P> {
+    fn remove_profile(&mut self, profile_id: &ProfileIdentifier) -> Result<()> {
+        if &self.default_profile_identifier == profile_id {
+            return Err(InvalidParameter.into());
+        }
+        if let Some(_) = self.profiles.remove(&profile_id) {
+            Ok(())
+        } else {
+            Err(InvalidInternalState.into())
+        }
+    }
+}
+
+impl<P: ProfileTrait> ProfileUpdate<P> for ProfileSet<P> {
+    fn update_profile(&mut self, old_profile_id: &ProfileIdentifier, profile: P) -> Result<()> {
+        self.remove_profile(&old_profile_id)?;
+        self.add_profile(profile)
     }
 }
 
@@ -91,7 +151,6 @@ mod test {
 
         let proof = proof.unwrap();
 
-        // TODO WIP: Need Contacts for this test to be successful. This tests the delegation but not correct operation currently.
         let default_id = e.default_profile_identifier.clone();
         let valid = e.verify_authentication_proof(channel_state, &default_id, proof.as_slice());
         // assert!(valid.is_ok());
@@ -99,7 +158,6 @@ mod test {
     }
 
     fn ps_change_tests<P: ProfileTrait>(e: ProfileSet<P>) -> ockam_core::Result<()> {
-        // TODO WIP: Need key ops and other event generating APIs to easily test this
         // change_events update_no_verification verify
         Ok(())
     }
@@ -108,8 +166,6 @@ mod test {
         ctx: &Context,
         mut e: ProfileSet<P>,
     ) -> ockam_core::Result<()> {
-        //    verify_and_update_contact
-
         let alice = new_ps(&ctx).await.unwrap();
         let alice_id = alice.identifier()?.clone();
 
@@ -131,7 +187,6 @@ mod test {
         let get_alice_contact = get_alice_contact.unwrap();
         assert_eq!(&alice_id, get_alice_contact.identifier());
 
-        // TODO WIP: after change event emitting APIs are done, make this a non-trivial test
         let change_events = vec![];
         e.verify_and_update_contact(&alice_id, change_events)?;
         Ok(())
