@@ -10,6 +10,7 @@ pub struct CreateStreamRequest {
 }
 
 impl CreateStreamRequest {
+    #[allow(dead_code)]
     pub fn new<'s, S: Into<Option<&'s str>>>(s: S) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_create",
@@ -28,6 +29,7 @@ pub struct PushRequest {
 }
 
 impl PushRequest {
+    #[allow(dead_code)]
     pub fn new<T: Into<Vec<u8>>>(request_id: usize, data: T) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_push",
@@ -48,6 +50,7 @@ pub struct PullRequest {
 }
 
 impl PullRequest {
+    #[allow(dead_code)]
     pub fn new(request_id: usize, index: usize, limit: usize) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_pull",
@@ -75,6 +78,7 @@ pub enum Index {
 }
 
 impl Index {
+    #[allow(dead_code)]
     pub fn get<S: Into<String>>(stream_name: S, client_id: S) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_index",
@@ -85,6 +89,7 @@ impl Index {
         )
     }
 
+    #[allow(dead_code)]
     pub fn save<S: Into<String>>(stream_name: S, client_id: S, index: usize) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_index",

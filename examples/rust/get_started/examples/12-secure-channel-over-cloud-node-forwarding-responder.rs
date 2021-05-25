@@ -1,10 +1,10 @@
-use ockam::{Context, LocalEntity, NoOpTrustPolicy, RemoteForwarder, Result, TcpTransport};
+use ockam::{Context, Entity, NoOpTrustPolicy, RemoteForwarder, Result, TcpTransport};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Create a cloud node by going to https://hub.ockam.network
-    let cloud_node_tcp_address = "40.78.99.34:4000"; //"Paste the tcp address of your cloud node here.";
+    let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
@@ -13,15 +13,17 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.connect(cloud_node_tcp_address).await?;
 
     // Create an echoer worker
-    let mut local = LocalEntity::create_with_worker(&ctx, "echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer).await?;
+    let mut bob = Entity::create(&ctx).await?;
 
-    // Create a secure channel listener at address "secure_channel_listener"
-    local
-        .create_secure_channel_listener("secure_channel_listener", NoOpTrustPolicy)
+    // Create a secure channel listener at address "bob_secure_channel_listener"
+    bob.create_secure_channel_listener("bob_secure_channel_listener", NoOpTrustPolicy)
         .await?;
 
     let forwarder =
-        RemoteForwarder::create(&ctx, cloud_node_tcp_address, "secure_channel_listener").await?;
+        RemoteForwarder::create(&ctx, cloud_node_tcp_address, "bob_secure_channel_listener")
+            .await?;
+
     println!("Forwarding address: {}", forwarder.remote_address());
 
     Ok(())

@@ -1,11 +1,11 @@
 //! Entity secrets
 
 use crate::EntityError::ProfileNotFound;
-use crate::{Entity, KeyAttributes, ProfileEventAttributes, ProfileSecrets, ProfileTrait};
+use crate::{KeyAttributes, ProfileEventAttributes, ProfileSecrets, ProfileSet, ProfileTrait};
 use ockam_core::Result;
 use ockam_vault_core::{PublicKey, Secret};
 
-impl<P: ProfileTrait> ProfileSecrets for Entity<P> {
+impl<P: ProfileTrait> ProfileSecrets for ProfileSet<P> {
     fn create_key(
         &mut self,
         key_attributes: KeyAttributes,

@@ -15,12 +15,12 @@ use ockam_core::hashbrown::hash_map::HashMap;
 
 /// An Entity represents an identity in various authentication contexts.
 #[derive(Clone)]
-pub struct Entity<P: ProfileTrait> {
+pub struct ProfileSet<P: ProfileTrait> {
     default_profile_identifier: ProfileIdentifier,
     profiles: HashMap<ProfileIdentifier, P>,
 }
 
-impl<P: ProfileTrait> Entity<P> {
+impl<P: ProfileTrait> ProfileSet<P> {
     /// Create a new Entity with the given default profile.
     pub fn new(default_profile: P) -> Self {
         let idref = default_profile.identifier().unwrap();
@@ -29,7 +29,7 @@ impl<P: ProfileTrait> Entity<P> {
         let mut profiles = HashMap::new();
         profiles.insert(default_profile_identifier.clone(), default_profile);
 
-        Entity {
+        ProfileSet {
             default_profile_identifier,
             profiles,
         }
@@ -48,28 +48,28 @@ impl<P: ProfileTrait> Entity<P> {
 #[allow(unreachable_code, unused_variables)]
 mod test {
     use crate::{
-        Entity, KeyAttributes, Profile, ProfileAuth, ProfileContacts, ProfileIdentity,
-        ProfileSecrets, ProfileSync, ProfileTrait,
+        KeyAttributes, Profile, ProfileAuth, ProfileContacts, ProfileIdentity, ProfileSecrets,
+        ProfileSet, ProfileSync, ProfileTrait,
     };
     use ockam_node::Context;
     use ockam_vault_sync_core::Vault;
 
-    async fn new_entity(ctx: &Context) -> ockam_core::Result<Entity<ProfileSync>> {
+    async fn new_ps(ctx: &Context) -> ockam_core::Result<ProfileSet<ProfileSync>> {
         let vault = Vault::create(ctx)?;
 
         let profile = Profile::create(&ctx, &vault).await;
         assert!(profile.is_ok());
 
         let profile = profile.unwrap();
-        Ok(Entity::new(profile))
+        Ok(ProfileSet::new(profile))
     }
 
     #[test]
-    fn test_new_entity() {
+    fn test_new_ps() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let e = new_entity(&ctx).await.unwrap();
+                let e = new_ps(&ctx).await.unwrap();
                 assert!(!e
                     .default_profile_identifier
                     .to_string_representation()
@@ -84,7 +84,7 @@ mod test {
             .unwrap();
     }
 
-    fn entity_auth_tests<P: ProfileTrait>(mut e: Entity<P>) -> ockam_core::Result<()> {
+    fn ps_auth_tests<P: ProfileTrait>(mut e: ProfileSet<P>) -> ockam_core::Result<()> {
         let channel_state = "test".as_bytes();
         let proof = e.generate_authentication_proof(channel_state);
         assert!(proof.is_ok());
@@ -98,19 +98,19 @@ mod test {
         Ok(())
     }
 
-    fn entity_change_tests<P: ProfileTrait>(e: Entity<P>) -> ockam_core::Result<()> {
+    fn ps_change_tests<P: ProfileTrait>(e: ProfileSet<P>) -> ockam_core::Result<()> {
         // TODO WIP: Need key ops and other event generating APIs to easily test this
         // change_events update_no_verification verify
         Ok(())
     }
 
-    async fn entity_contacts_tests<P: ProfileTrait>(
+    async fn ps_contacts_tests<P: ProfileTrait>(
         ctx: &Context,
-        mut e: Entity<P>,
+        mut e: ProfileSet<P>,
     ) -> ockam_core::Result<()> {
         //    verify_and_update_contact
 
-        let alice = new_entity(&ctx).await.unwrap();
+        let alice = new_ps(&ctx).await.unwrap();
         let alice_id = alice.identifier()?.clone();
 
         let alice_contact = alice.serialize_to_contact()?;
@@ -137,7 +137,7 @@ mod test {
         Ok(())
     }
 
-    fn entity_secrets_test<P: ProfileTrait>(mut e: Entity<P>) -> ockam_core::Result<()> {
+    fn ps_secrets_tests<P: ProfileTrait>(mut e: ProfileSet<P>) -> ockam_core::Result<()> {
         //   get_secret_key  get_root_secret rotate_key
 
         let key_attributes = KeyAttributes::new("label".to_string());
@@ -162,9 +162,9 @@ mod test {
         Ok(())
     }
 
-    async fn entity_profile_mgmt_test<P: ProfileTrait>(
+    async fn ps_profile_mgmt_test<P: ProfileTrait>(
         ctx: &Context,
-        e: Entity<P>,
+        e: ProfileSet<P>,
     ) -> ockam_core::Result<()> {
         let vault = Vault::create(ctx)?;
         let bank_profile = Profile::create(ctx, &vault).await?;
@@ -173,21 +173,21 @@ mod test {
         Ok(())
     }
 
-    async fn entity_all_tests(mut ctx: Context) -> ockam_core::Result<()> {
-        let e = new_entity(&ctx).await?;
-        entity_contacts_tests(&ctx, e.clone()).await?;
-        entity_auth_tests(e.clone())?;
-        entity_change_tests(e.clone())?;
-        entity_secrets_test(e.clone())?;
-        entity_profile_mgmt_test(&ctx, e).await?;
+    async fn ps_all_tests(mut ctx: Context) -> ockam_core::Result<()> {
+        let e = new_ps(&ctx).await?;
+        ps_contacts_tests(&ctx, e.clone()).await?;
+        ps_auth_tests(e.clone())?;
+        ps_change_tests(e.clone())?;
+        ps_secrets_tests(e.clone())?;
+        ps_profile_mgmt_test(&ctx, e).await?;
         ctx.stop().await
     }
 
     #[test]
-    fn test_entity_default_profile_delegation() {
+    fn test_ps_default_profile_delegation() {
         let (ctx, mut executor) = ockam_node::start_node();
         executor
-            .execute(async move { entity_all_tests(ctx).await })
+            .execute(async move { ps_all_tests(ctx).await })
             .unwrap();
     }
 }

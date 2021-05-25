@@ -13,6 +13,7 @@ pub struct Init {
 }
 
 impl Init {
+    #[allow(dead_code)]
     pub fn new<S: Into<String>>(s: S) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_create",
@@ -32,6 +33,7 @@ pub struct PushConfirm {
 }
 
 impl PushConfirm {
+    #[allow(dead_code)]
     pub fn new<S: Into<Status>>(request_id: usize, status: S, index: usize) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_push",
@@ -75,6 +77,7 @@ pub struct PullResponse {
 }
 
 impl PullResponse {
+    #[allow(dead_code)]
     pub fn new<T: Into<Vec<StreamMessage>>>(request_id: usize, messages: T) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_pull",
@@ -135,6 +138,7 @@ where
     /// response to the stream protocol.  You can use it, and the
     /// mutable access to your worker state to map response messages
     /// to the worker state.
+    #[allow(dead_code)]
     pub fn new(f: F) -> Self {
         Self {
             f,
