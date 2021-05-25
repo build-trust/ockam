@@ -2,12 +2,12 @@
 //!
 use crate::EntityError::ProfileNotFound;
 use crate::{
-    Contact, ContactsDb, Entity, ProfileChangeEvent, ProfileContacts, ProfileIdentifier,
+    Contact, ContactsDb, ProfileChangeEvent, ProfileContacts, ProfileIdentifier, ProfileSet,
     ProfileTrait,
 };
 use ockam_core::Result;
 
-impl<P: ProfileTrait> ProfileContacts for Entity<P> {
+impl<P: ProfileTrait> ProfileContacts for ProfileSet<P> {
     fn contacts(&self) -> Result<ContactsDb> {
         if let Some(profile) = self.default_profile() {
             profile.contacts()

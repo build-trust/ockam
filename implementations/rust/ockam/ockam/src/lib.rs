@@ -23,33 +23,32 @@ big_array! { BigArray; 96 }
 
 // ---
 // Export the #[node] attribute macro.
-
 pub use ockam_node_attribute::*;
-
 // ---
-// Export node implementation
 
+// Export node implementation
 #[cfg(all(feature = "std", feature = "ockam_node"))]
 pub use ockam_node::*;
 
 #[cfg(all(not(feature = "std"), feature = "ockam_node_no_std"))]
 pub use ockam_node_no_std::*;
-
 // ---
 
-mod error;
-pub use error::*;
 mod credential;
+mod entity;
+mod error;
 mod lease;
-pub use credential::*;
-pub use lease::*;
-pub use local::*;
+mod protocols;
 mod remote_forwarder;
-pub use ockam_core::worker;
-pub use remote_forwarder::*;
-pub mod entity;
-pub mod protocols;
+
+pub use credential::*;
 pub use entity::*;
+pub use entity::*;
+pub use error::*;
+pub use lease::*;
+pub use ockam_core::worker;
+pub use ockam_entity::*;
+pub use remote_forwarder::*;
 
 pub use ockam_core::{
     Address, Any, Encoded, Error, Message, ProtocolId, Result, Route, Routed, RouterMessage,
@@ -71,5 +70,3 @@ pub use ockam_vault::SoftwareVault;
 
 #[cfg(feature = "ockam_transport_tcp")]
 pub use ockam_transport_tcp::{TcpTransport, TCP};
-
-pub use ockam_entity::*;

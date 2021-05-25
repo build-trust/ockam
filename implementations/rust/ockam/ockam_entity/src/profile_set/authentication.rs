@@ -1,10 +1,10 @@
 //! Entity auth
 
 use crate::EntityError::ProfileNotFound;
-use crate::{Entity, ProfileAuth, ProfileIdentifier, ProfileTrait};
+use crate::{ProfileAuth, ProfileIdentifier, ProfileSet, ProfileTrait};
 use ockam_core::Result;
 
-impl<P: ProfileTrait> ProfileAuth for Entity<P> {
+impl<P: ProfileTrait> ProfileAuth for ProfileSet<P> {
     fn generate_authentication_proof(&mut self, channel_state: &[u8]) -> Result<Vec<u8>> {
         if let Some(profile) = self.profiles.get_mut(&self.default_profile_identifier) {
             profile.generate_authentication_proof(channel_state)

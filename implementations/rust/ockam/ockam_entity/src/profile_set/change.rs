@@ -1,10 +1,10 @@
 //! Entity changes
 
 use crate::EntityError::ProfileNotFound;
-use crate::{Entity, ProfileChangeEvent, ProfileChanges, ProfileTrait};
+use crate::{ProfileChangeEvent, ProfileChanges, ProfileSet, ProfileTrait};
 use ockam_core::Result;
 
-impl<P: ProfileTrait> ProfileChanges for Entity<P> {
+impl<P: ProfileTrait> ProfileChanges for ProfileSet<P> {
     fn change_events(&self) -> Result<Vec<ProfileChangeEvent>> {
         if let Some(profile) = self.default_profile() {
             profile.change_events()

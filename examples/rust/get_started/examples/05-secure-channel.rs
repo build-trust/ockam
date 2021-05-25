@@ -1,34 +1,34 @@
 // This node creates a secure channel and routes a message through it.
 
-use ockam::{Address, Context, IdentifierTrustPolicy, LocalEntity, ProfileIdentity, Result, Route};
+use ockam::{Address, Context, Entity, IdentifierTrustPolicy, ProfileIdentity, Result, Route};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Start an Echoer worker at address "echoer"
-    let mut local = LocalEntity::create_with_worker(&ctx, "echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer).await?;
+
+    let mut bob = Entity::create(&ctx).await?;
 
     // Connect to a secure channel listener and perform a handshake.
-    let mut initiator = LocalEntity::create(&ctx, "initiator").await?;
+    let mut alice = Entity::create(&ctx).await?;
+
+    // Bob defines a trust policy that only trusts Alice
+    let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier()?);
+
+    // Alice defines a trust policy that only trusts Bob
+    let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier()?);
 
     // Create a secure channel listener.
-    local
-        .create_secure_channel_listener(
-            "secure_channel_listener",
-            IdentifierTrustPolicy::new(initiator.identifier()?),
-        )
+    bob.create_secure_channel_listener("bob_secure_channel_listener", bob_trust_policy)
         .await?;
 
-    let channel = initiator
-        .create_secure_channel(
-            "secure_channel_listener",
-            IdentifierTrustPolicy::new(local.identifier()?),
-        )
+    let channel_to_bob = alice
+        .create_secure_channel("bob_secure_channel_listener", alice_trust_policy)
         .await?;
 
     let echoer: Address = "echoer".into();
-
-    let route: Route = vec![channel, echoer].into();
+    let route: Route = vec![channel_to_bob, echoer].into();
 
     // Send a message to the echoer worker, via the secure channel.
     ctx.send(route, "Hello Ockam!".to_string()).await?;
