@@ -1,6 +1,6 @@
 use crate::{
     Contact, ContactsDb, KeyAttributes, ProfileChangeEvent, ProfileEventAttributes,
-    ProfileIdentifier,
+    ProfileIdentifier, TrustPolicy,
 };
 use async_trait::async_trait;
 use ockam_core::{Address, Result, Route};
@@ -93,6 +93,7 @@ pub trait SecureChannelTrait {
         &mut self,
         ctx: &Context,
         route: Route,
+        trust_policy: impl TrustPolicy,
         vault: &Address,
     ) -> Result<Address>;
 
@@ -101,6 +102,7 @@ pub trait SecureChannelTrait {
         &mut self,
         ctx: &Context,
         address: Address,
+        trust_policy: impl TrustPolicy,
         vault: &Address,
     ) -> Result<()>;
 }

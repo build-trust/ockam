@@ -33,7 +33,7 @@ pub use key_attributes::*;
 mod change;
 pub use change::*;
 mod channel;
-pub(crate) use channel::*;
+pub use channel::*;
 mod entity;
 pub use entity::*;
 mod error;

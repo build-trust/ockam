@@ -1,4 +1,4 @@
-use ockam::{Address, Context, LocalEntity, Result, Route, TcpTransport, TCP};
+use ockam::{Address, Context, LocalEntity, NoOpTrustPolicy, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -22,7 +22,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     ]
     .into();
 
-    let channel = initiator.create_secure_channel(cloude_node_route).await?;
+    let channel = initiator
+        .create_secure_channel(cloude_node_route, NoOpTrustPolicy)
+        .await?;
 
     let echoer_route: Route = vec![channel, "echoer".into()].into();
 

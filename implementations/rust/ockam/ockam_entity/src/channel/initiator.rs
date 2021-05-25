@@ -1,5 +1,6 @@
 use crate::{
-    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError, ProfileTrait,
+    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError,
+    ProfileTrait, SecureChannelTrustInfo, TrustPolicy,
 };
 use async_trait::async_trait;
 use ockam_channel::SecureChannel;
@@ -18,10 +19,11 @@ pub(crate) struct Initiator {
 }
 
 impl Initiator {
-    pub async fn create<P: ProfileTrait, V: XXVault>(
+    pub async fn create<T: TrustPolicy, P: ProfileTrait, V: XXVault>(
         ctx: &Context,
         route: Route,
         profile: &mut P,
+        trust_policy: T,
         vault: V,
     ) -> Result<Address> {
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
@@ -38,7 +40,6 @@ impl Initiator {
         )
         .await?;
 
-        // TODO: Add timeout
         let msg = child_ctx.receive::<ChannelAuthRequest>().await?.take();
         debug!("Received Authentication request");
 
@@ -47,7 +48,7 @@ impl Initiator {
 
         let contact = msg.contact();
         if profile.contacts()?.contains_key(contact.identifier()) {
-            // TODO: Update profile if needed
+            return Err(EntityError::NotImplemented.into());
         } else {
             profile.verify_and_add_contact(contact.clone())?;
         }
@@ -63,6 +64,16 @@ impl Initiator {
         }
         info!(
             "Verified SecureChannel from: {}",
+            contact.identifier().to_string_representation()
+        );
+
+        let trust_info = SecureChannelTrustInfo::new(contact.identifier().clone());
+        let trusted = trust_policy.check(&trust_info)?;
+        if !trusted {
+            return Err(EntityError::SecureChannelTrustCheckFailed.into());
+        }
+        info!(
+            "Checked trust policy for SecureChannel from: {}",
             contact.identifier().to_string_representation()
         );
 

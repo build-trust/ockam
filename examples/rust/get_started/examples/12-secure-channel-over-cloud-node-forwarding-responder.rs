@@ -1,4 +1,4 @@
-use ockam::{Context, LocalEntity, RemoteForwarder, Result, TcpTransport};
+use ockam::{Context, LocalEntity, NoOpTrustPolicy, RemoteForwarder, Result, TcpTransport};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -17,7 +17,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener at address "secure_channel_listener"
     local
-        .create_secure_channel_listener("secure_channel_listener")
+        .create_secure_channel_listener("secure_channel_listener", NoOpTrustPolicy)
         .await?;
 
     let forwarder =

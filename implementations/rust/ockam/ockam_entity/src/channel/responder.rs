@@ -1,5 +1,6 @@
 use crate::{
     ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, EntityError, ProfileTrait,
+    SecureChannelTrustInfo, TrustPolicy,
 };
 use async_trait::async_trait;
 use ockam_channel::{CreateResponderChannelMessage, KeyExchangeCompleted};
@@ -16,9 +17,10 @@ pub(crate) struct Responder {
 }
 
 impl Responder {
-    pub async fn create<P: ProfileTrait>(
+    pub async fn create<T: TrustPolicy, P: ProfileTrait>(
         ctx: &Context,
         profile: &mut P,
+        trust_policy: T,
         listener_address: Address,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
@@ -72,7 +74,7 @@ impl Responder {
 
         let contact = auth_msg.contact();
         if profile.contacts()?.contains_key(contact.identifier()) {
-            // TODO: Update profile if needed
+            return Err(EntityError::NotImplemented.into());
         } else {
             profile.verify_and_add_contact(contact.clone())?;
         }
@@ -87,6 +89,16 @@ impl Responder {
         }
         info!(
             "Verified SecureChannel from: {}",
+            contact.identifier().to_string_representation()
+        );
+
+        let trust_info = SecureChannelTrustInfo::new(contact.identifier().clone());
+        let trusted = trust_policy.check(&trust_info)?;
+        if !trusted {
+            return Err(EntityError::SecureChannelTrustCheckFailed.into());
+        }
+        info!(
+            "Checked trust policy for SecureChannel from: {}",
             contact.identifier().to_string_representation()
         );
 
@@ -141,15 +153,13 @@ impl Worker for Responder {
 
         if msg_addr == self.self_local_address {
             debug!("ProfileSecureChannel Initiator received Encrypt");
-            let remote_profile_secure_channel_address =
-                self.remote_profile_secure_channel_address.clone(); // FIXME
 
             // Send to the other party
             let _ = onward_route.step()?;
             let onward_route = onward_route
                 .modify()
                 .prepend(self.local_secure_channel_address.clone())
-                .prepend(remote_profile_secure_channel_address)
+                .prepend(self.remote_profile_secure_channel_address.clone())
                 .into();
 
             let return_route = return_route
@@ -184,6 +194,7 @@ impl Worker for Responder {
 
             ctx.forward(transport_msg).await?;
         } else {
+            // FIXME
             unimplemented!()
         }
 

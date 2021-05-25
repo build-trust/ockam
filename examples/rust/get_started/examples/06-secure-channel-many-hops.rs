@@ -1,6 +1,6 @@
 // This node creates a secure channel with a listener that is multiple hops away.
 
-use ockam::{Context, LocalEntity, Result, Route};
+use ockam::{Context, LocalEntity, NoOpTrustPolicy, Result, Route};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
@@ -15,7 +15,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a secure channel listener at address "secure_channel_listener"
     local
-        .create_secure_channel_listener("secure_channel_listener")
+        .create_secure_channel_listener("secure_channel_listener", NoOpTrustPolicy)
         .await?;
 
     // Route to the secure channel listener, via "h1", "h2" and "h3"
@@ -24,7 +24,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Connect to the secure channel listener and perform a handshake.
     let mut initiator = LocalEntity::create(&ctx, "initiator").await?;
 
-    let channel = initiator.create_secure_channel(route).await?;
+    let channel = initiator
+        .create_secure_channel(route, NoOpTrustPolicy)
+        .await?;
 
     // Route to the "echoer" worker via the secure channel.
     let echoer_route: Route = vec![channel, "echoer".into()].into();

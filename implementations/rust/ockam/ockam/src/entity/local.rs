@@ -2,7 +2,7 @@ use crate::{
     Contact, ContactsDb, Entity, KeyAttributes, Profile, ProfileAuth, ProfileChangeEvent,
     ProfileChanges, ProfileContacts, ProfileEventAttributes, ProfileIdentifier, ProfileIdentity,
     ProfileSecrets, ProfileSync, RemoteEntity, RemoteForwarder, RemoteForwarderInfo, Route,
-    SecureChannelTrait,
+    SecureChannelTrait, TrustPolicy,
 };
 use ockam_core::{Address, AddressSet, Message, Result, Worker};
 use ockam_node::{Cancel, Context};
@@ -53,12 +53,13 @@ impl LocalEntity {
         Ok(local)
     }
 
-    pub async fn secure_channel_listen_on_address<A: Into<Address>>(
+    pub async fn secure_channel_listen_on_address<A: Into<Address>, T: TrustPolicy>(
         &mut self,
         address: A,
+        trust_policy: T,
     ) -> Result<()> {
         self.entity
-            .create_secure_channel_listener(&self.ctx, address.into(), &self.vault)
+            .create_secure_channel_listener(&self.ctx, address.into(), trust_policy, &self.vault)
             .await
     }
 
@@ -66,19 +67,24 @@ impl LocalEntity {
         "secure_channel_listener".to_string()
     }
 
-    pub async fn create_secure_channel_listener(
+    pub async fn create_secure_channel_listener<T: TrustPolicy>(
         &mut self,
         secure_channel_address: &str,
+        trust_policy: T,
     ) -> Result<()> {
-        self.secure_channel_listen_on_address(secure_channel_address)
+        self.secure_channel_listen_on_address(secure_channel_address, trust_policy)
             .await
     }
 
-    pub async fn create_secure_channel<R: Into<Route>>(&mut self, route: R) -> Result<Address> {
+    pub async fn create_secure_channel<R: Into<Route>, T: TrustPolicy>(
+        &mut self,
+        route: R,
+        trust_policy: T,
+    ) -> Result<Address> {
         let route = route.into();
         let channel = self
             .entity
-            .create_secure_channel(&self.ctx, route.clone(), &self.vault)
+            .create_secure_channel(&self.ctx, route.clone(), trust_policy, &self.vault)
             .await?;
 
         self.secure_channels.insert(channel.clone(), route);
