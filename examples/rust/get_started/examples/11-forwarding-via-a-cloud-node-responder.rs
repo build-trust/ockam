@@ -2,7 +2,7 @@ use ockam::{Context, RemoteForwarder, Result, TcpTransport};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Create a cloud node by going to https://hub.ockam.network
     let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 

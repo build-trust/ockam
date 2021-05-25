@@ -1,7 +1,7 @@
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
-use ockam::{Address, Context, LocalEntity, Result, Route, TcpTransport, TCP};
+use ockam::{Address, Context, LocalEntity, NoOpTrustPolicy, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -17,7 +17,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     let route: Route = vec![middle, responder, "secure_channel_listener".into()].into();
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = initiator.create_secure_channel(route).await?;
+    let channel = initiator
+        .create_secure_channel(route, NoOpTrustPolicy)
+        .await?;
 
     // Send a message to the echoer worker via the channel.
     let echoer_route: Route = vec![channel, "echoer".into()].into();

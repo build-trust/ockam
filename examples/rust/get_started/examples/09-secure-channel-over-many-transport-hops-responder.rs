@@ -1,7 +1,7 @@
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 
-use ockam::{Context, LocalEntity, Result, TcpTransport};
+use ockam::{Context, LocalEntity, NoOpTrustPolicy, Result, TcpTransport};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -16,7 +16,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener at address "secure_channel_listener"
     local
-        .create_secure_channel_listener("secure_channel_listener")
+        .create_secure_channel_listener("secure_channel_listener", NoOpTrustPolicy)
         .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
