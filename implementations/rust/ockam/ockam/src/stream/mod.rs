@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use crate::protocols::stream::responses::StreamMessage;
+use rand::{distributions::Standard, prelude::Distribution, Rng};
 
 mod cmd;
 pub use cmd::{StreamCmdParser, StreamWorkerCmd};
@@ -64,34 +65,13 @@ pub struct ReceiverAddress {
 
 impl ReceiverAddress {
     /// Wait for the next message received by the stream consumer
-    pub async fn next<T: Message>(&mut self) -> Result<T> {
-        let stream_msg = self
-            .ctx
-            .receive_block::<StreamMessage>()
-            .await
-            .unwrap()
-            .take()
-            .body();
+    pub async fn next<T: Message>(&mut self) -> Result<Routed<T>> {
+        let routed = self.ctx.receive_block::<StreamMessage>().await?.take();
+        let stream_msg = routed.as_body();
+        let (addr, trans) = routed.dissolve();
 
         let transport = TransportMessage::decode(&stream_msg.data).unwrap();
-        T::decode(&transport.payload)
-
-        // self.ctx
-        //     // We receive a StreamMessage from the stream
-        //     .receive_block::<StreamMessage>()
-        //     .await
-        //     .map(|c| c.take())
-        //     .and_then(|proto| {
-        //         let payload = proto.payload();
-        //         let (addr, trans) = proto.dissolve();
-
-        //         // Which we first map into the underlying `TransportMessage`
-        //         TransportMessage::decode(payload)
-        //             // and then into the actual type
-        //             .and_then(|trans| T::decode(&trans.payload))
-        //             // Which we also wrap in a `Routed`
-        //             .map(|t| Routed::v1(t, addr, trans))
-        //     })
+        T::decode(&transport.payload).map(|t| Routed::v1(t, addr, trans))
     }
 }
 
@@ -147,11 +127,26 @@ impl Stream {
 
         let rx_rx = Address::random(0);
 
+        // Generate a random client_id
+        // TODO: there should be an API endpoint where users get to choose the client_id
+        let client_id = {
+            let random: [u8; 16] = rand::thread_rng().gen();
+            format!(
+                "{}{}",
+                hex::encode(random),
+                match name {
+                    Some(ref name) => name.clone(),
+                    None => "unknown".into(),
+                }
+            )
+        };
+
         // Create and start a new stream consumer
         self.ctx
             .start_worker(
                 rx.clone(),
                 StreamConsumer::new(
+                    client_id,
                     peer.clone(),
                     tx.clone(),
                     name.clone(),

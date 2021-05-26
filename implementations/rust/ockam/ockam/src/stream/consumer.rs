@@ -2,7 +2,10 @@ use crate::{
     block_future,
     monotonic::Monotonic,
     protocols::{
-        stream::{requests::*, responses::*},
+        stream::{
+            requests::{Index as IndexReq, *},
+            responses::{Index as IndexResp, *},
+        },
         ProtocolParser,
     },
     stream::{StreamCmdParser, StreamWorkerCmd},
@@ -15,8 +18,12 @@ use std::time::Duration;
 pub struct StreamConsumer {
     parser: ProtocolParser<Self>,
     ids: Monotonic,
-    /// Stream remote
-    peer: Route,
+    /// Stream service remote
+    stream_peer: Route,
+    /// Index service remote
+    index_peer: Route,
+    /// This client ID
+    client_id: String,
     /// Producer address
     prod: Address,
     /// Stream name
@@ -40,18 +47,47 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 "Initialised consumer for stream '{}' and route: {}",
                 stream_name, return_route
             );
-            w.stream = Some(stream_name);
-            w.peer = return_route.clone();
+
+            w.stream = Some(stream_name.clone());
+            w.stream_peer = return_route.clone();
 
             // Queue fetch events
             fetch_interval(ctx, w.interval.clone()).expect("Failed to start fetch event loop!");
 
-            // Initialise the producer!
+            // Then initialise the producer!
             block_future(&ctx.runtime(), async {
                 ctx.send(w.prod.clone(), StreamWorkerCmd::init(return_route))
                     .await
             })
             .expect("Failed to initialise stream producer!");
+
+            // // Next up we get the current index
+            // block_future(&ctx.runtime(), async move {
+            //     ctx.send(
+            //         w.index_peer.clone(),
+            //         IndexReq::get(stream_name, w.client_id.clone()),
+            //     )
+            //     .await
+            // });
+
+            true
+        }
+        Response::Index(IndexResp {
+            stream_name, index, ..
+        }) => {
+            info!("Updating index '{}' to: {}", stream_name, index.0);
+            w.index_peer = return_route.clone();
+            w.idx = index.0;
+
+            // // Queue fetch events
+            // fetch_interval(ctx, w.interval.clone()).expect("Failed to start fetch event loop!");
+
+            // // Then initialise the producer!
+            // block_future(&ctx.runtime(), async {
+            //     ctx.send(w.prod.clone(), StreamWorkerCmd::init(return_route))
+            //         .await
+            // })
+            // .expect("Failed to initialise stream producer!");
 
             true
         }
@@ -82,6 +118,8 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 }
             }
 
+            // After handling the messages we update the index
+
             true
         }
         _ => false,
@@ -102,7 +140,7 @@ fn parse_cmd(
                 let request_id = w.ids.next() as u64;
                 trace!("Sending PullRequest to stream {:?}...", w.stream);
                 ctx.send(
-                    w.peer.clone(),
+                    w.stream_peer.clone(),
                     // TOOD: make fetch amount configurable/ dynamic?
                     PullRequest::new(request_id, w.idx, 8),
                 )
@@ -147,7 +185,7 @@ impl Worker for StreamConsumer {
 
         // Send a create stream request with the reigestered name
         ctx.send(
-            self.peer.clone(),
+            self.stream_peer.clone(),
             (CreateStreamRequest::new(self.stream.clone())),
         )
         .await?;
@@ -172,7 +210,8 @@ impl Worker for StreamConsumer {
 
 impl StreamConsumer {
     pub(crate) fn new(
-        peer: Route,
+        client_id: String,
+        remote: Route,
         prod: Address,
         stream: Option<String>,
         interval: Duration,
@@ -182,7 +221,13 @@ impl StreamConsumer {
         Self {
             parser: ProtocolParser::new(),
             ids: Monotonic::new(),
-            peer,
+            client_id,
+            stream_peer: remote.clone().modify().append("stream_service").into(),
+            index_peer: remote
+                .clone()
+                .modify()
+                .append("stream_index_service")
+                .into(),
             prod,
             stream,
             interval,
