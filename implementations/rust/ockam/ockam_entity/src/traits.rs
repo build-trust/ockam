@@ -1,6 +1,6 @@
 use crate::{
     Contact, ContactsDb, KeyAttributes, ProfileChangeEvent, ProfileEventAttributes,
-    ProfileIdentifier, TrustPolicy,
+    ProfileIdentifier, ProfileSync, TrustPolicy,
 };
 use async_trait::async_trait;
 use ockam_core::{Address, Result, Route};
@@ -123,3 +123,18 @@ impl<P> ProfileTrait for P where
         + 'static
 {
 }
+
+pub trait ProfileRetrieve {
+    fn profile(&self, profile_identifier: &ProfileIdentifier) -> Option<&ProfileSync>;
+    fn profile_mut(&mut self, profile_identifier: &ProfileIdentifier) -> Option<&mut ProfileSync>;
+}
+
+pub trait ProfileAdd {
+    fn add_profile(&mut self, profile: ProfileSync) -> Result<()>;
+}
+
+pub trait ProfileRemove {
+    fn remove_profile(&mut self, profile_id: &ProfileIdentifier) -> Result<()>;
+}
+
+pub trait ProfileManagement: ProfileAdd + ProfileRemove {}
