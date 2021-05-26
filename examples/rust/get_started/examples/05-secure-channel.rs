@@ -1,6 +1,6 @@
 // This node creates a secure channel and routes a message through it.
 
-use ockam::{Address, Context, Entity, IdentifierTrustPolicy, ProfileIdentity, Result, Route};
+use ockam::{Context, Entity, IdentifierTrustPolicy, ProfileIdentity, Result};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -27,11 +27,9 @@ async fn main(mut ctx: Context) -> Result<()> {
         .create_secure_channel("bob_secure_channel_listener", alice_trust_policy)
         .await?;
 
-    let echoer: Address = "echoer".into();
-    let route: Route = vec![channel_to_bob, echoer].into();
-
     // Send a message to the echoer worker, via the secure channel.
-    ctx.send(route, "Hello Ockam!".to_string()).await?;
+    ctx.send((channel_to_bob, "echoer"), "Hello Ockam!".to_string())
+        .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

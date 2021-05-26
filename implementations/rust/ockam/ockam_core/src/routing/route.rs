@@ -13,6 +13,49 @@ pub struct Route {
     inner: VecDeque<Address>,
 }
 
+impl<A: Into<Address>, B: Into<Address>> From<(A, B)> for Route {
+    fn from(f: (A, B)) -> Self {
+        Route::new().append(f.0.into()).append(f.1.into()).into()
+    }
+}
+
+impl<A: Into<Address>, B: Into<Address>, C: Into<Address>> From<(A, B, C)> for Route {
+    fn from(f: (A, B, C)) -> Self {
+        Route::new()
+            .append(f.0.into())
+            .append(f.1.into())
+            .append(f.2.into())
+            .into()
+    }
+}
+
+impl<A: Into<Address>, B: Into<Address>, C: Into<Address>, D: Into<Address>> From<(A, B, C, D)>
+    for Route
+{
+    fn from(f: (A, B, C, D)) -> Self {
+        Route::new()
+            .append(f.0.into())
+            .append(f.1.into())
+            .append(f.2.into())
+            .append(f.3.into())
+            .into()
+    }
+}
+
+impl<A: Into<Address>, B: Into<Address>, C: Into<Address>, D: Into<Address>, E: Into<Address>>
+    From<(A, B, C, D, E)> for Route
+{
+    fn from(f: (A, B, C, D, E)) -> Self {
+        Route::new()
+            .append(f.0.into())
+            .append(f.1.into())
+            .append(f.2.into())
+            .append(f.3.into())
+            .append(f.4.into())
+            .into()
+    }
+}
+
 impl Route {
     /// Create an empty RouteBuilder
     pub fn new() -> RouteBuilder<'static> {
