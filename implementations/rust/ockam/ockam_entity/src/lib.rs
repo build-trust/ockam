@@ -19,28 +19,28 @@ use ockam_node::Context;
 use ockam_vault_core::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
 use ockam_vault_sync_core::VaultSync;
 
-mod imp;
-pub use imp::*;
-mod traits;
-pub use traits::*;
 mod authentication;
-mod contact;
-pub use contact::*;
-mod identifiers;
-pub use identifiers::*;
-mod key_attributes;
-pub use key_attributes::*;
 mod change;
-pub use change::*;
 mod channel;
-pub use channel::*;
-mod profile_set;
-pub use profile_set::*;
+mod contact;
+mod entity;
 mod error;
-pub use error::*;
+mod identifiers;
+mod imp;
+mod key_attributes;
+mod traits;
 mod worker;
-pub use worker::*;
 
+pub use change::*;
+pub use channel::*;
+pub use contact::*;
+pub use entity::*;
+pub use error::*;
+pub use identifiers::*;
+pub use imp::*;
+pub use key_attributes::*;
+pub use traits::*;
+pub use worker::*;
 /// Traits required for a Vault implementation suitable for use in a Profile
 pub trait ProfileVault:
     SecretVault + SecureChannelVault + KeyIdVault + Hasher + Signer + Verifier + Clone + Send + 'static

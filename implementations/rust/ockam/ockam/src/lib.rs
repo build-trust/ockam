@@ -35,15 +35,12 @@ pub use ockam_node_no_std::*;
 // ---
 
 mod credential;
-mod entity;
 mod error;
 mod lease;
 mod protocols;
 mod remote_forwarder;
 
 pub use credential::*;
-pub use entity::*;
-pub use entity::*;
 pub use error::*;
 pub use lease::*;
 pub use ockam_core::worker;
