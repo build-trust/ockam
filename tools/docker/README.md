@@ -36,7 +36,7 @@ docker build \
 Run the builder:
 
 ```
-docker run --rm -it -e LOCAL_USER_ID=$(id -u) --volume $(pwd):/work ockam/builder:latest bash
+docker run --rm -it -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ockam/builder:latest bash
 ```
 
 ## Hub
