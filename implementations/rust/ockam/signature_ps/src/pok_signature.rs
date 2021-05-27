@@ -9,8 +9,8 @@ use signature_core::{error::Error, lib::*};
 /// Proof of Knowledge of a Signature that is used by the prover
 /// to construct `PoKOfSignatureProof`.
 pub struct PokSignature {
-    secrets: Vec<Scalar, U130>,
-    proof: ProofCommittedBuilder<G2Projective, G2Affine, U130, U130>,
+    secrets: Vec<Scalar, 130>,
+    proof: ProofCommittedBuilder<G2Projective, G2Affine, 130, 130>,
     commitment: G2Projective,
     sigma_1: G1Projective,
     sigma_2: G1Projective,
@@ -37,8 +37,8 @@ impl PokSignature {
 
         // Prove knowledge of m_tick, m_1, m_2, ... for all hidden m_i and t in J = Y_tilde_1^m_1 * Y_tilde_2^m_2 * ..... * g_tilde^t
         let mut proof = ProofCommittedBuilder::new(G2Projective::sum_of_products_in_place);
-        let mut points = Vec::<G2Projective, U130>::new();
-        let mut secrets = Vec::<Scalar, U130>::new();
+        let mut points = Vec::<G2Projective, 130>::new();
+        let mut secrets = Vec::<Scalar, 130>::new();
 
         proof.commit_random(G2Projective::generator(), &mut rng);
         points.push(G2Projective::generator()).expect(ALLOC_MSG);

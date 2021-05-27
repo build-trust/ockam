@@ -12,6 +12,7 @@ use serde::{
 };
 use signature_core::{constants::*, error::Error, lib::*, util::*};
 use subtle::{Choice, CtOption};
+use typenum::U64;
 
 /// A PS blind signature
 /// structurally identical to `Signature` but is used to

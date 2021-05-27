@@ -16,7 +16,7 @@ use subtle::Choice;
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct MessageGenerators {
     #[serde(with = "VecSerializer")]
-    pub(crate) y: Vec<G1Projective, U128>,
+    pub(crate) y: Vec<G1Projective, 128>,
 }
 
 impl Default for MessageGenerators {
