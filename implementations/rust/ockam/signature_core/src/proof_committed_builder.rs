@@ -7,26 +7,21 @@ use ff::Field;
 use group::{Curve, GroupEncoding};
 use rand_core::RngCore;
 use subtle::ConstantTimeEq;
-use typenum::NonZero;
 
-struct ProofCommittedBuilderCache<B, C, P, S>
+struct ProofCommittedBuilderCache<B, C, const P: usize, const S: usize>
 where
     B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
     C: GroupEncoding + Debug,
-    P: ArrayLength<B> + NonZero + Clone,
-    S: ArrayLength<Scalar> + NonZero + Clone,
 {
     commitment: B,
     points: Vec<B, P>,
     scalars: Vec<Scalar, S>,
 }
 
-impl<B, C, P, S> Default for ProofCommittedBuilderCache<B, C, P, S>
+impl<B, C, const P: usize, const S: usize> Default for ProofCommittedBuilderCache<B, C, P, S>
 where
     B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
     C: GroupEncoding + Debug,
-    P: ArrayLength<B> + NonZero + Clone,
-    S: ArrayLength<Scalar> + NonZero + Clone,
 {
     fn default() -> Self {
         Self {
@@ -37,13 +32,11 @@ where
     }
 }
 
-impl<B, C, P, S> PartialEq<ProofCommittedBuilder<B, C, P, S>>
+impl<B, C, const P: usize, const S: usize> PartialEq<ProofCommittedBuilder<B, C, P, S>>
     for ProofCommittedBuilderCache<B, C, P, S>
 where
     B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
     C: GroupEncoding + Debug,
-    P: ArrayLength<B> + NonZero + Clone,
-    S: ArrayLength<Scalar> + NonZero + Clone,
 {
     fn eq(&self, other: &ProofCommittedBuilder<B, C, P, S>) -> bool {
         if self.points.len() != other.points.len() {
@@ -64,12 +57,10 @@ where
 /// A builder struct for creating a proof of knowledge
 /// of messages in a vector commitment
 /// each message has a blinding factor
-pub struct ProofCommittedBuilder<B, C, P, S>
+pub struct ProofCommittedBuilder<B, C, const P: usize, const S: usize>
 where
     B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
     C: GroupEncoding + Debug,
-    P: ArrayLength<B> + NonZero,
-    S: ArrayLength<Scalar> + NonZero,
 {
     cache: ProofCommittedBuilderCache<B, C, P, S>,
     points: Vec<B, P>,
@@ -77,24 +68,20 @@ where
     sum_of_products: fn(&[B], &mut [Scalar]) -> B,
 }
 
-impl<B, C, P, S> Default for ProofCommittedBuilder<B, C, P, S>
+impl<B, C, const P: usize, const S: usize> Default for ProofCommittedBuilder<B, C, P, S>
 where
     B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
     C: GroupEncoding + Debug,
-    P: ArrayLength<B> + NonZero,
-    S: ArrayLength<Scalar> + NonZero,
 {
     fn default() -> Self {
         Self::new(|_, _| B::default())
     }
 }
 
-impl<B, C, P, S> ProofCommittedBuilder<B, C, P, S>
+impl<B, C, const P: usize, const S: usize> ProofCommittedBuilder<B, C, P, S>
 where
     B: Clone + Copy + Debug + Default + ConstantTimeEq + PartialEq + Eq + Curve<AffineRepr = C>,
     C: GroupEncoding + Debug,
-    P: ArrayLength<B> + NonZero,
-    S: ArrayLength<Scalar> + NonZero,
 {
     /// Create a new builder
     pub fn new(sum_of_products: fn(&[B], &mut [Scalar]) -> B) -> Self {

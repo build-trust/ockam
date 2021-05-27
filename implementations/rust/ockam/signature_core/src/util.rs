@@ -2,7 +2,6 @@ use crate::lib::*;
 use blake2::VarBlake2b;
 use bls12_381_plus::{G1Projective, Scalar};
 use digest::{Update, VariableOutput};
-use heapless::ArrayLength;
 use serde::{
     de::{Error as DError, SeqAccess, Visitor},
     ser::SerializeSeq,
@@ -30,10 +29,9 @@ pub trait VecSerializer<'de>: Sized {
         D: Deserializer<'de>;
 }
 
-impl<'de, T, N> VecSerializer<'de> for Vec<T, N>
+impl<'de, T, const N:usize> VecSerializer<'de> for Vec<T, N>
 where
     T: Default + Copy + Serialize + Deserialize<'de>,
-    N: ArrayLength<T>,
 {
     fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
     where
@@ -55,15 +53,13 @@ where
     where
         D: Deserializer<'de>,
     {
-        struct TVisitor<T, N> {
-            element: PhantomData<T>,
-            size: PhantomData<N>,
+        struct TVisitor<T, const N: usize> {
+            element: PhantomData<T>
         }
 
-        impl<'de, T, N> Visitor<'de> for TVisitor<T, N>
+        impl<'de, T, const N: usize> Visitor<'de> for TVisitor<T, N>
         where
             T: Default + Copy + Deserialize<'de>,
-            N: ArrayLength<T>,
         {
             type Value = Vec<T, N>;
 
@@ -76,7 +72,7 @@ where
                 A: SeqAccess<'de>,
             {
                 let mut buf = Vec::new();
-                for i in 0..N::to_usize() {
+                for i in 0..N {
                     buf.push(
                         arr.next_element()?
                             .ok_or_else(|| DError::invalid_length(i, &self))?,
@@ -89,7 +85,6 @@ where
 
         let visitor = TVisitor {
             element: PhantomData,
-            size: PhantomData,
         };
         des.deserialize_seq(visitor)
     }
