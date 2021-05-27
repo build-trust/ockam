@@ -5,7 +5,7 @@ ARG CMAKE_VERSION=3.19.2
 ARG CMAKE_SHA256=4d8a6d852c530f263b22479aad196416bb4406447e918bd9759c6593b7f5f3f9
 ARG RUSTUP_INIT_VERSION=1.23.1
 ARG RUSTUP_INIT_SHA256=ed7773edaf1d289656bdec2aacad12413b38ad0193fff54b2231f5140a4b07c5
-ARG RUST_VERSION=1.49.0
+ARG RUST_VERSION=1.51.0
 ARG ERLANG_VERSION=23.2.1-1~debian~buster
 ARG ERLANG_SHA256=b6fba5aa2f9c3c51d3f0373713663d7cbd1df5109e4d0d69e96c99abc536e637
 ARG ELIXIR_VERSION=1.11.2-1~debian~buster
@@ -29,6 +29,8 @@ RUN set -xe; \
     mv "/opt/cmake-${CMAKE_VERSION}-Linux-x86_64" "${CMAKE_HOME}"; \
     rm -rf "${CMAKE_PACKAGE}"; \
 # Setup rust
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends gcc gcc-multilib libssl-dev pkg-config procps; \
     curl -sSOL \
       "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/x86_64-unknown-linux-gnu/rustup-init"; \
     echo "${RUSTUP_INIT_SHA256}  rustup-init" | sha256sum -c -; \
