@@ -9,7 +9,7 @@ use crate::{
         ProtocolParser,
     },
     stream::{StreamCmdParser, StreamWorkerCmd},
-    DelayedEvent, TransportMessage,
+    DelayedEvent, Message, TransportMessage,
 };
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
 use std::time::Duration;
@@ -85,13 +85,34 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 w.idx = msg.index.0 + 1;
             }
 
-            // TODO: check next hop in route
+            for msg in messages {
+                let mut trans = match TransportMessage::decode(&msg.data) {
+                    Ok(t) => t,
+                    _ => {
+                        error!("Failed to decode TransportMessage from StreamMessage payload; skipping!");
+                        continue;
+                    }
+                };
 
-            // Send to the rx_rx address
-            for m in messages {
-                trace!("Forwarding message {:?} to rx.next()", m);
-                block_future(&ctx.runtime(), async { ctx.send(w.rx_rx.clone(), m).await })
-                    .expect("Failed to forward received message!");
+                let res = match trans.onward_route.next() {
+                    Ok(addr) => {
+                        info!("Forwarding {} message to addr: {}", w.stream, addr);
+                        block_future(&ctx.runtime(), async { ctx.forward(trans).await })
+                    }
+                    Err(_) => {
+                        info!("Forwarding {} message to rx.next()", w.stream);
+                        block_future(&ctx.runtime(), async {
+                            ctx.send(w.rx_rx.clone(), msg).await
+                        })
+                    }
+                };
+
+                match res {
+                    Ok(()) => {}
+                    Err(e) => {
+                        error!("Failed forwarding stream message: {}", e);
+                    }
+                }
             }
 
             // TODO: After handling the messages we update the index

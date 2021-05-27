@@ -19,7 +19,8 @@ async fn main(mut ctx: Context) -> Result<()> {
         )
         .await?;
 
-    ctx.send(tx, "Hello World!".to_string()).await?;
+    ctx.send(tx.to_route().append("printer"), "Hello World!".to_string())
+        .await?;
 
     ctx.receive_block::<String>().await?;
 

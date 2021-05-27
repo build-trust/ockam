@@ -63,13 +63,10 @@ where
     F: Fn(&mut W, &mut Context, Routed<StreamWorkerCmd>) -> Result<bool>,
 {
     fn ids(&self) -> Vec<ProtocolId> {
-        vec![
-            "internal.stream.fetch",
-            "internal.stream.pull",
-        ]
-        .into_iter()
-        .map(Into::into)
-        .collect()
+        vec!["internal.stream.fetch", "internal.stream.pull"]
+            .into_iter()
+            .map(Into::into)
+            .collect()
     }
 
     fn parse(

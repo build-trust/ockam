@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use crate::protocols::stream::responses::StreamMessage;
+use ockam_core::RouteBuilder;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 
 mod cmd;
@@ -43,6 +44,13 @@ pub struct Stream {
 /// the name of the stream it is associated with.
 pub struct SenderAddress {
     inner: Address,
+}
+
+impl SenderAddress {
+    /// Create a new route from this sender address
+    pub fn to_route(&self) -> RouteBuilder {
+        Route::new().append(self.inner.clone())
+    }
 }
 
 impl Deref for SenderAddress {

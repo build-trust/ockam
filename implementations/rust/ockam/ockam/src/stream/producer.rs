@@ -87,7 +87,9 @@ impl Worker for StreamProducer {
             return Ok(());
         }
 
-        let trans = msg.into_transport_message();
+        let mut trans = msg.into_transport_message();
+        trans.onward_route.step()?; // Consume THIS address
+
         let proto_msg = PushRequest::new(self.ids.next() as u64, trans.encode()?);
 
         if self.init {
