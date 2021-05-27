@@ -19,7 +19,7 @@ pub struct PokSignatureProof {
     pub(crate) d: G1Projective,
     pub(crate) proofs1: [Challenge; 2],
     #[serde(with = "VecSerializer")]
-    pub(crate) proofs2: Vec<Challenge, U130>,
+    pub(crate) proofs2: Vec<Challenge, 130>,
 }
 
 impl PokSignatureProof {
@@ -97,7 +97,7 @@ impl PokSignatureProof {
             return None;
         }
 
-        let mut proofs2 = Vec::<Challenge, U130>::new();
+        let mut proofs2 = Vec::<Challenge, 130>::new();
         for _ in 0..(hid_msg_cnt + 2) {
             let c = Challenge::from_bytes(slicer!(buffer, offset, end, FIELD_BYTES));
             offset = end;
@@ -135,8 +135,8 @@ impl PokSignatureProof {
             G1Projective::sum_of_products_in_place(&proof1_points, &mut proof1_scalars);
         hasher.update(commitment_proofs1.to_affine().to_bytes());
 
-        let mut r_points = Vec::<G1Projective, U130>::new();
-        let mut r_scalars = Vec::<Scalar, U130>::new();
+        let mut r_points = Vec::<G1Projective, 130>::new();
+        let mut r_scalars = Vec::<Scalar, 130>::new();
 
         r_points.push(G1Projective::generator()).expect(ALLOC_MSG);
         r_scalars.push(Scalar::one()).expect(ALLOC_MSG);
@@ -150,8 +150,8 @@ impl PokSignatureProof {
 
         let r = G1Projective::sum_of_products_in_place(r_points.as_ref(), r_scalars.as_mut());
 
-        let mut proof2_points = Vec::<G1Projective, U130>::new();
-        let mut proof2_scalars = Vec::<Scalar, U130>::new();
+        let mut proof2_points = Vec::<G1Projective, 130>::new();
+        let mut proof2_scalars = Vec::<Scalar, 130>::new();
 
         // r^c
         proof2_points.push(r).expect(ALLOC_MSG);

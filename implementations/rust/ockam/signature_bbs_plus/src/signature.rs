@@ -17,7 +17,7 @@ use serde::{
 use signature_bls::{PublicKey, SecretKey};
 use signature_core::{error::Error, lib::*};
 use subtle::{Choice, ConditionallySelectable, CtOption};
-use typenum::{U128, U64};
+use typenum::U64;
 
 /// A BBS+ signature
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -208,12 +208,12 @@ impl Signature {
             .iter()
             .map(|g| *g)
             .chain(generators.iter().map(|g| g))
-            .collect::<Vec<G1Projective, U128>>();
+            .collect::<Vec<G1Projective, 128>>();
         let mut scalars = [Scalar::one(), s]
             .iter()
             .map(|c| *c)
             .chain(msgs.iter().map(|c| c.0))
-            .collect::<Vec<Scalar, U128>>();
+            .collect::<Vec<Scalar, 128>>();
 
         G1Projective::sum_of_products_in_place(&points[..], &mut scalars[..])
     }
