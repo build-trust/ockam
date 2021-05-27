@@ -10,6 +10,7 @@ on:
       - 'implementations/rust/ockam/ockam_vault_core/**'
       - 'implementations/rust/ockam/ockam_vault_sync_core/**'
       - 'implementations/rust/ockam/ockam_vault/**'
+      - 'implementations/rust/ockam/ockam_key_exchange_x3dh/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
       - 'settings.gradle'
