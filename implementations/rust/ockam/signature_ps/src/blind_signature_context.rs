@@ -18,7 +18,7 @@ pub struct BlindSignatureContext {
     pub challenge: Challenge,
     #[serde(with = "VecSerializer")]
     /// The proofs for the hidden messages
-    pub proofs: Vec<Challenge, U16>,
+    pub proofs: Vec<Challenge, 16>,
 }
 
 impl BlindSignatureContext {
@@ -72,7 +72,7 @@ impl BlindSignatureContext {
         offset = end;
         end += FIELD_BYTES;
 
-        let mut proofs = Vec::<Challenge, U16>::new();
+        let mut proofs = Vec::<Challenge, 16>::new();
         for _ in 0..times {
             let p = Challenge::from_bytes(slicer!(buffer, offset, end, FIELD_BYTES));
             if p.is_none().unwrap_u8() == 1 {
@@ -99,7 +99,7 @@ impl BlindSignatureContext {
         nonce: Nonce,
     ) -> Result<bool, Error> {
         let mut known = HashSet::new();
-        let mut points = Vec::<G1Projective, U32>::new();
+        let mut points = Vec::<G1Projective, 32>::new();
         for idx in known_messages {
             if *idx >= sk.y.len() {
                 return Err(Error::new(1, "index out of bounds"));
@@ -124,7 +124,7 @@ impl BlindSignatureContext {
             .proofs
             .iter()
             .map(|p| p.0)
-            .collect::<Vec<Scalar, U32>>();
+            .collect::<Vec<Scalar, 32>>();
         scalars
             .push(self.challenge.0.neg())
             .map_err(|_| Error::new(sk.y.len() as u32, ALLOC_MSG))?;

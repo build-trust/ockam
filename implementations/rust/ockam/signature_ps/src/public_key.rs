@@ -18,7 +18,7 @@ pub struct PublicKey {
     pub(crate) w: G2Projective,
     pub(crate) x: G2Projective,
     #[serde(with = "VecSerializer")]
-    pub(crate) y: Vec<G2Projective, U128>,
+    pub(crate) y: Vec<G2Projective, 128>,
 }
 
 impl Default for PublicKey {
