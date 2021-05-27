@@ -759,6 +759,7 @@ dependencies = [
  "arrayref",
  "async-trait",
  "bls12_381_plus",
+ "hex",
  "ockam_channel",
  "ockam_core",
  "ockam_entity",

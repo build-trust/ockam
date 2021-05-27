@@ -25,13 +25,11 @@ pub struct StreamConsumer {
     /// This client ID
     client_id: String,
     /// Producer address
-    prod: Address,
-    /// Stream name
-    stream: Option<String>,
+    prod: Option<Address>,
+    /// Receiving stream name
+    stream: String,
     /// Fetch interval
     interval: Duration,
-    /// Forwarding address
-    fwd: Option<Address>,
     /// ReceiverAddress address
     rx_rx: Address,
     /// Last known index position
@@ -48,27 +46,17 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 stream_name, return_route
             );
 
-            w.stream = Some(stream_name.clone());
+            assert_eq!(w.stream, stream_name);
             w.stream_peer = return_route.clone();
 
-            // Queue fetch events
-            fetch_interval(ctx, w.interval.clone()).expect("Failed to start fetch event loop!");
-
-            // Then initialise the producer!
-            block_future(&ctx.runtime(), async {
-                ctx.send(w.prod.clone(), StreamWorkerCmd::init(return_route))
-                    .await
-            })
-            .expect("Failed to initialise stream producer!");
-
-            // // Next up we get the current index
-            // block_future(&ctx.runtime(), async move {
-            //     ctx.send(
-            //         w.index_peer.clone(),
-            //         IndexReq::get(stream_name, w.client_id.clone()),
-            //     )
-            //     .await
-            // });
+            // Next up we get the current index
+            block_future(&ctx.runtime(), async move {
+                ctx.send(
+                    w.index_peer.clone(),
+                    IndexReq::get(stream_name, w.client_id.clone()),
+                )
+                .await
+            });
 
             true
         }
@@ -79,15 +67,10 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             w.index_peer = return_route.clone();
             w.idx = index.0;
 
-            // // Queue fetch events
-            // fetch_interval(ctx, w.interval.clone()).expect("Failed to start fetch event loop!");
-
-            // // Then initialise the producer!
-            // block_future(&ctx.runtime(), async {
-            //     ctx.send(w.prod.clone(), StreamWorkerCmd::init(return_route))
-            //         .await
-            // })
-            // .expect("Failed to initialise stream producer!");
+            // Queue a near-immediate fetch event -- however future
+            // events will be using the specified user interval
+            fetch_interval(ctx, Duration::from_millis(10))
+                .expect("Failed to start fetch event loop!");
 
             true
         }
@@ -104,21 +87,14 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
 
             // TODO: check next hop in route
 
-            match w.fwd {
-                Some(_) => {
-                    // TODO: forward to a worker
-                }
-                None => {
-                    // Send to the rx_rx address
-                    for m in messages {
-                        trace!("Forwarding message {:?} to rx.next()", m);
-                        block_future(&ctx.runtime(), async { ctx.send(w.rx_rx.clone(), m).await })
-                            .expect("Failed to forward received message!");
-                    }
-                }
+            // Send to the rx_rx address
+            for m in messages {
+                trace!("Forwarding message {:?} to rx.next()", m);
+                block_future(&ctx.runtime(), async { ctx.send(w.rx_rx.clone(), m).await })
+                    .expect("Failed to forward received message!");
             }
 
-            // After handling the messages we update the index
+            // TODO: After handling the messages we update the index
 
             true
         }
@@ -212,8 +188,8 @@ impl StreamConsumer {
     pub(crate) fn new(
         client_id: String,
         remote: Route,
-        prod: Address,
-        stream: Option<String>,
+        prod: Option<Address>,
+        stream: String,
         interval: Duration,
         fwd: Option<Address>,
         rx_rx: Address,
@@ -231,7 +207,6 @@ impl StreamConsumer {
             prod,
             stream,
             interval,
-            fwd,
             rx_rx,
             idx: 0,
         }

@@ -12,24 +12,13 @@ pub enum StreamWorkerCmd {
     /// These events are fired from worker to _itself_ to create a
     /// delayed reactive response
     Fetch,
-    /// Initialise the peer route for the producer
-    Init { peer: Route },
     /// Pull messages from the consumer's buffer
     Pull { num: usize },
-    /// A forwarded message envelope
-    Forward(TransportMessage),
 }
 
 impl StreamWorkerCmd {
     pub fn fetch() -> ProtocolPayload {
         ProtocolPayload::new(ProtocolId::from("internal.stream.fetch"), Self::Fetch)
-    }
-
-    pub fn init(peer: Route) -> ProtocolPayload {
-        ProtocolPayload::new(
-            ProtocolId::from("internal.stream.init"),
-            Self::Init { peer },
-        )
     }
 
     /// Pull messages from the consumer's buffer
@@ -39,10 +28,6 @@ impl StreamWorkerCmd {
     /// into ["forwarding mode"](crate::stream::Stream::recipient).
     pub fn pull(num: usize) -> ProtocolPayload {
         ProtocolPayload::new(ProtocolId::from("internal.stream.pull"), Self::Pull { num })
-    }
-
-    pub fn fwd(msg: TransportMessage) -> ProtocolPayload {
-        ProtocolPayload::new(ProtocolId::from("internal.stream.fwd"), Self::Forward(msg))
     }
 }
 
@@ -80,9 +65,7 @@ where
     fn ids(&self) -> Vec<ProtocolId> {
         vec![
             "internal.stream.fetch",
-            "internal.stream.init",
             "internal.stream.pull",
-            "internal.stream.fwd",
         ]
         .into_iter()
         .map(Into::into)

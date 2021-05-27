@@ -109,17 +109,32 @@ impl Stream {
         }
     }
 
-    /// Connect to a stream by name and remote route
+    /// Connect to a bi-directional stream by remote and stream pair
     ///
-    /// If the stream does not already exist, or no name was provided,
-    /// a new stream will be generated.
-    pub async fn connect<R, S>(&self, peer: R, name: S) -> Result<(SenderAddress, ReceiverAddress)>
+    /// When using the stream protocol for bi-directional
+    /// communication a sending and receiving stream name is required.
+    /// These two identifiers MUST be known between nodes that wish to
+    /// exchange messages.
+    ///
+    /// The `peer` parameter is the route to a remote which hosts a
+    /// `stream_service` and `stream_index_service`, such as
+    /// hub.ockam.io.
+    ///
+    /// Streams that do not already exists will be created, and
+    /// existing stream identifiers will automatically be re-used.
+    pub async fn connect<R, S>(
+        &self,
+        peer: R,
+        tx_name: S,
+        rx_name: S,
+    ) -> Result<(SenderAddress, ReceiverAddress)>
     where
         R: Into<Route>,
-        S: Into<Option<String>>,
+        S: Into<String>,
     {
         let peer = peer.into();
-        let name = name.into();
+        let tx_name = tx_name.into();
+        let rx_name = rx_name.into();
 
         // Generate two new random addresses
         let rx = Address::random(0);
@@ -131,14 +146,7 @@ impl Stream {
         // TODO: there should be an API endpoint where users get to choose the client_id
         let client_id = {
             let random: [u8; 16] = rand::thread_rng().gen();
-            format!(
-                "{}{}",
-                hex::encode(random),
-                match name {
-                    Some(ref name) => name.clone(),
-                    None => "unknown".into(),
-                }
-            )
+            hex::encode(random)
         };
 
         // Create and start a new stream consumer
@@ -148,8 +156,8 @@ impl Stream {
                 StreamConsumer::new(
                     client_id,
                     peer.clone(),
-                    tx.clone(),
-                    name.clone(),
+                    Some(tx.clone()),
+                    rx_name.clone(),
                     self.interval.clone(),
                     self.recipient.clone(),
                     rx_rx.clone(),
@@ -159,7 +167,7 @@ impl Stream {
 
         // Create and start a new stream producer
         self.ctx
-            .start_worker(tx.clone(), StreamProducer::new())
+            .start_worker(tx.clone(), StreamProducer::new(tx_name.clone(), peer))
             .await?;
 
         // Return a sender and receiver address

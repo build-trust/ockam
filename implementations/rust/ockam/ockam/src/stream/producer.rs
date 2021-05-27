@@ -14,25 +14,30 @@ use super::StreamCmdParser;
 
 pub struct StreamProducer {
     parser: ProtocolParser<Self>,
-    peer: Option<Route>,
     outbox: VecDeque<ProtocolPayload>,
     ids: Monotonic,
+    tx_name: String,
+    peer: Route,
+    /// Keep track of whether this producer has been initialised
+    ///
+    /// The reason for this is that `peer` first is the Route to the
+    /// `stream_service`, and later to the exact stream worker for
+    /// this stream
+    init: bool,
 }
 
-fn parse_cmd(
-    w: &mut StreamProducer,
-    ctx: &mut Context,
-    cmd: Routed<StreamWorkerCmd>,
-) -> Result<bool> {
-    match cmd.body() {
-        StreamWorkerCmd::Init { peer } => {
-            info!("Initialising stream producer with route {}", peer);
-            w.peer = Some(peer);
+fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Response>) -> bool {
+    let return_route = resp.return_route();
+
+    match resp.body() {
+        Response::Init(Init { stream_name }) => {
+            w.peer = return_route;
+            w.init = true;
 
             // Send queued messages
             let mut outbox = std::mem::replace(&mut w.outbox, VecDeque::new());
             outbox.into_iter().for_each(|trans| {
-                let peer = w.peer.clone().unwrap();
+                let peer = w.peer.clone();
                 debug!("Sending queued message to {}", peer);
                 if let Err(e) = block_future(&ctx.runtime(), async { ctx.send(peer, trans).await })
                 {
@@ -40,14 +45,9 @@ fn parse_cmd(
                 }
             });
 
-            Ok(true)
+            true
         }
-        _ => Ok(false),
-    }
-}
 
-fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Response>) -> bool {
-    match resp.body() {
         Response::PushConfirm(PushConfirm {
             request_id,
             status,
@@ -69,11 +69,17 @@ impl Worker for StreamProducer {
     type Context = Context;
     type Message = Any;
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.parser.attach(ResponseParser::new(parse_response));
-        self.parser.attach(StreamCmdParser::new(parse_cmd));
 
-        Ok(())
+        debug!("Create producer stream: {}", self.tx_name);
+
+        // Create a stream for this sender
+        ctx.send(
+            self.peer.clone().modify().append("stream_service"),
+            CreateStreamRequest::new(Some(self.tx_name.clone())),
+        )
+        .await
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
@@ -83,15 +89,16 @@ impl Worker for StreamProducer {
 
         let trans = msg.into_transport_message();
         let proto_msg = PushRequest::new(self.ids.next() as u64, trans.encode()?);
-        match self.peer {
-            Some(ref route) => {
-                debug!("Sending PushRequest for incoming message to {}", route);
-                ctx.send(route.clone(), proto_msg).await?;
-            }
-            None => {
-                debug!("Stream producer not ready yet, queueing message...");
-                self.outbox.push_back(proto_msg);
-            }
+
+        if self.init {
+            debug!(
+                "Sending PushRequest for incoming message to stream {}",
+                self.tx_name
+            );
+            ctx.send(self.peer.clone(), proto_msg).await?;
+        } else {
+            debug!("Stream producer not ready yet, queueing message...");
+            self.outbox.push_back(proto_msg);
         }
 
         Ok(())
@@ -102,12 +109,14 @@ impl StreamProducer {
     /// When creating a StreamProducer we don't initialise the route
     /// because this will be filled in by the stream consumer which
     /// registers the stream
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(tx_name: String, peer: Route) -> Self {
         Self {
             parser: ProtocolParser::new(),
-            peer: None,
-            outbox: VecDeque::new(),
             ids: Monotonic::new(),
+            outbox: VecDeque::new(),
+            tx_name,
+            peer,
+            init: false,
         }
     }
 }
