@@ -67,7 +67,7 @@ impl CredentialVerifier {
                 .iter()
                 .zip(prez.revealed_attributes.iter())
                 .map(|(i, r)| (*i, r.to_signature_message()))
-                .collect::<Vec<(usize, Message), U64>>();
+                .collect::<Vec<(usize, Message), 64>>();
 
             let mut hasher = sha2::Sha256::new();
             hasher.update(&bytes);
