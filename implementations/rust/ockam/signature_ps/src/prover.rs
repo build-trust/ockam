@@ -24,9 +24,9 @@ impl Prover {
         const BYTES: usize = 48;
 
         // Very uncommon to blind more than 1 or 2, so 16 should be plenty
-        let mut points = Vec::<G1Projective, U16>::new();
-        let mut secrets = Vec::<Scalar, U16>::new();
-        let mut committing = ProofCommittedBuilder::<G1Projective, G1Affine, U16, U16>::new(
+        let mut points = Vec::<G1Projective, 16>::new();
+        let mut secrets = Vec::<Scalar, 16>::new();
+        let mut committing = ProofCommittedBuilder::<G1Projective, G1Affine, 16, 16>::new(
             G1Projective::sum_of_products_in_place,
         );
 
@@ -75,7 +75,7 @@ impl Prover {
             res.copy_from_slice(out);
         });
         let challenge = Scalar::from_okm(&res);
-        let proofs: Vec<Challenge, U16> = committing
+        let proofs: Vec<Challenge, 16> = committing
             .generate_proof(challenge, secrets.as_ref())?
             .iter()
             .map(|s| Challenge(*s))

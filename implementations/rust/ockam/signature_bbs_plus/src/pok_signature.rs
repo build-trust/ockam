@@ -17,14 +17,14 @@ pub struct PokSignature {
     /// d in section 4.5
     d: G1Projective,
     /// For proving relation a_bar / d == a_prime^{-e} * h_0^r2
-    proof1: ProofCommittedBuilder<G1Projective, G1Affine, U2, U2>,
+    proof1: ProofCommittedBuilder<G1Projective, G1Affine, 2, 2>,
     /// The messages
     secrets1: [Scalar; 2],
     /// For proving relation g1 * h1^m1 * h2^m2.... for all disclosed messages m_i == d^r3 * h_0^{-s_prime} * h1^-m1 * h2^-m2.... for all undisclosed messages m_i
     /// 130 because 128 messages + 2 extra for blinding
-    proof2: ProofCommittedBuilder<G1Projective, G1Affine, U130, U130>,
+    proof2: ProofCommittedBuilder<G1Projective, G1Affine, 130, 130>,
     /// The blinding factors
-    secrets2: Vec<Scalar, U130>,
+    secrets2: Vec<Scalar, 130>,
 }
 
 impl PokSignature {
@@ -46,7 +46,7 @@ impl PokSignature {
         let m = messages
             .iter()
             .map(|m| m.get_message())
-            .collect::<Vec<Message, U128>>();
+            .collect::<Vec<Message, 128>>();
 
         let b = Signature::compute_b(signature.s, m.as_ref(), generators);
 
@@ -60,7 +60,7 @@ impl PokSignature {
         let s_prime = signature.s + r2 * r3;
 
         // For proving relation a_bar / d == a_prime^{-e} * h_0^r2
-        let mut proof1 = ProofCommittedBuilder::<G1Projective, G1Affine, U2, U2>::new(
+        let mut proof1 = ProofCommittedBuilder::<G1Projective, G1Affine, 2, 2>::new(
             G1Projective::sum_of_products_in_place,
         );
         // For a_prime * -e
@@ -69,7 +69,7 @@ impl PokSignature {
         proof1.commit_random(generators.h0, &mut rng);
         let secrets1 = [signature.e, r2];
 
-        let mut proof2 = ProofCommittedBuilder::<G1Projective, G1Affine, U130, U130>::new(
+        let mut proof2 = ProofCommittedBuilder::<G1Projective, G1Affine, 130, 130>::new(
             G1Projective::sum_of_products_in_place,
         );
         let mut secrets2 = Vec::new();
@@ -120,7 +120,7 @@ impl PokSignature {
             .proof1
             .generate_proof(challenge.0, self.secrets1.as_ref())?;
         let proofs1 = [Challenge(proof1[0]), Challenge(proof1[1])];
-        let proofs2: Vec<Challenge, U130> = self
+        let proofs2: Vec<Challenge, 130> = self
             .proof2
             .generate_proof(challenge.0, self.secrets2.as_ref())?
             .iter()

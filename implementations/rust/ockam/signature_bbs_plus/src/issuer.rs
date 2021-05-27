@@ -45,7 +45,7 @@ impl Issuer {
         nonce: Nonce,
     ) -> Result<BlindSignature, Error> {
         // Known messages are less than total, max at 128
-        let tv1 = msgs.iter().map(|(i, _)| *i).collect::<Vec<usize, U128>>();
+        let tv1 = msgs.iter().map(|(i, _)| *i).collect::<Vec<usize, 128>>();
         if ctx.verify(tv1.as_ref(), generators, nonce)? {
             BlindSignature::new(ctx.commitment, sk, generators, msgs)
         } else {

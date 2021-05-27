@@ -141,8 +141,8 @@ impl Signature {
             return Choice::from(0);
         }
 
-        let mut points = Vec::<G2Projective, U130>::new();
-        let mut scalars = Vec::<Scalar, U130>::new();
+        let mut points = Vec::<G2Projective, 130>::new();
+        let mut scalars = Vec::<Scalar, 130>::new();
         points.push(pk.x).expect(ALLOC_MSG);
         scalars.push(Scalar::one()).expect(ALLOC_MSG);
 

@@ -21,7 +21,7 @@ pub struct SecretKey {
     pub(crate) w: Scalar,
     pub(crate) x: Scalar,
     #[serde(with = "VecSerializer")]
-    pub(crate) y: Vec<Scalar, U128>,
+    pub(crate) y: Vec<Scalar, 128>,
 }
 
 impl Zeroize for SecretKey {

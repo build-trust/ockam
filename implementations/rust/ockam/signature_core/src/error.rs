@@ -4,7 +4,7 @@ use crate::lib::*;
 #[derive(Debug)]
 pub struct Error {
     code: u32,
-    message: String<U64>,
+    message: String<64>,
 }
 
 impl Error {
