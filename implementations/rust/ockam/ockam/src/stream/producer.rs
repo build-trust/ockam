@@ -18,6 +18,7 @@ pub struct StreamProducer {
     ids: Monotonic,
     tx_name: String,
     peer: Route,
+    stream_service: String,
     /// Keep track of whether this producer has been initialised
     ///
     /// The reason for this is that `peer` first is the Route to the
@@ -81,7 +82,10 @@ impl Worker for StreamProducer {
 
         // Create a stream for this sender
         ctx.send(
-            self.peer.clone().modify().append("stream_service"),
+            self.peer
+                .clone()
+                .modify()
+                .append(self.stream_service.clone()),
             CreateStreamRequest::new(Some(self.tx_name.clone())),
         )
         .await
@@ -116,7 +120,7 @@ impl StreamProducer {
     /// When creating a StreamProducer we don't initialise the route
     /// because this will be filled in by the stream consumer which
     /// registers the stream
-    pub(crate) fn new(tx_name: String, peer: Route) -> Self {
+    pub(crate) fn new(tx_name: String, peer: Route, stream_service: String) -> Self {
         Self {
             parser: ProtocolParser::new(),
             ids: Monotonic::new(),
@@ -124,6 +128,7 @@ impl StreamProducer {
             tx_name,
             peer,
             init: false,
+            stream_service,
         }
     }
 }

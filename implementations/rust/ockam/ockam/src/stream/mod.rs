@@ -36,6 +36,8 @@ pub struct Stream {
     ctx: Context,
     interval: Duration,
     recipient: Option<Address>,
+    stream_service: String,
+    index_service: String,
 }
 
 /// A simple address wrapper for stream workers
@@ -93,6 +95,8 @@ impl Stream {
                 ctx,
                 interval: Duration::from_secs(10),
                 recipient: None,
+                stream_service: "stream_service".into(),
+                index_service: "stream_index_service".into(),
             })
         })
     }
@@ -101,6 +105,22 @@ impl Stream {
     pub fn with_interval<D: Into<Duration>>(self, duration: D) -> Self {
         Self {
             interval: duration.into(),
+            ..self
+        }
+    }
+
+    /// Specify the stream service running on the remote
+    pub fn stream_service<S: Into<String>>(self, serv: S) -> Self {
+        Self {
+            stream_service: serv.into(),
+            ..self
+        }
+    }
+
+    /// Specify the stream service running on the remote
+    pub fn index_service<S: Into<String>>(self, serv: S) -> Self {
+        Self {
+            index_service: serv.into(),
             ..self
         }
     }
@@ -169,13 +189,18 @@ impl Stream {
                     self.interval.clone(),
                     self.recipient.clone(),
                     rx_rx.clone(),
+                    self.stream_service.clone(),
+                    self.index_service.clone(),
                 ),
             )
             .await?;
 
         // Create and start a new stream producer
         self.ctx
-            .start_worker(tx.clone(), StreamProducer::new(tx_name.clone(), peer))
+            .start_worker(
+                tx.clone(),
+                StreamProducer::new(tx_name.clone(), peer, self.stream_service.clone()),
+            )
             .await?;
 
         // Return a sender and receiver address

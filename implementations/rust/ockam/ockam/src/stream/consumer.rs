@@ -231,17 +231,15 @@ impl StreamConsumer {
         interval: Duration,
         fwd: Option<Address>,
         rx_rx: Address,
+        stream_service: String,
+        index_service: String,
     ) -> Self {
         Self {
             parser: ProtocolParser::new(),
             ids: Monotonic::new(),
             client_id,
-            stream_peer: remote.clone().modify().append("stream_service").into(),
-            index_peer: remote
-                .clone()
-                .modify()
-                .append("stream_index_service")
-                .into(),
+            stream_peer: remote.clone().modify().append(stream_service).into(),
+            index_peer: remote.clone().modify().append(index_service).into(),
             prod,
             stream,
             interval,
