@@ -102,12 +102,6 @@ impl Entity {
     }
 }
 
-impl Drop for Entity {
-    fn drop(&mut self) {
-        self.ctx.runtime().block_on(self.ctx.stop()).unwrap();
-    }
-}
-
 impl ProfileAdd for Entity {
     fn add_profile(&mut self, profile: ProfileSync) -> Result<()> {
         if let Ok(id) = profile.identifier() {
