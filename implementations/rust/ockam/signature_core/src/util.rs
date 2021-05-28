@@ -29,7 +29,7 @@ pub trait VecSerializer<'de>: Sized {
         D: Deserializer<'de>;
 }
 
-impl<'de, T, const N:usize> VecSerializer<'de> for Vec<T, N>
+impl<'de, T, const N: usize> VecSerializer<'de> for Vec<T, N>
 where
     T: Default + Copy + Serialize + Deserialize<'de>,
 {
@@ -54,7 +54,7 @@ where
         D: Deserializer<'de>,
     {
         struct TVisitor<T, const N: usize> {
-            element: PhantomData<T>
+            element: PhantomData<T>,
         }
 
         impl<'de, T, const N: usize> Visitor<'de> for TVisitor<T, N>

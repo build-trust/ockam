@@ -120,11 +120,7 @@ impl BlindSignatureContext {
             .push(self.commitment.0)
             .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
 
-        let mut scalars = self
-            .proofs
-            .iter()
-            .map(|p| p.0)
-            .collect::<Vec<Scalar, 32>>();
+        let mut scalars = self.proofs.iter().map(|p| p.0).collect::<Vec<Scalar, 32>>();
         scalars
             .push(self.challenge.0.neg())
             .map_err(|_| Error::new(generators.len() as u32, "allocate more space"))?;
