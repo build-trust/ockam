@@ -80,6 +80,8 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
         }) => {
             trace!("PullResponse, {} message(s) available", messages.len());
 
+            let last_idx = w.idx;
+
             // Update the index if we received messages
             if let Some(ref msg) = messages.last() {
                 w.idx = msg.index.0 + 1;
@@ -121,7 +123,16 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 }
             }
 
-            // TODO: After handling the messages we update the index
+            // If the index was updated, save it
+            if last_idx != w.idx {
+                block_future(&ctx.runtime(), async {
+                    ctx.send(
+                        w.index_peer.clone(),
+                        IndexReq::save(w.stream.clone(), w.client_id.clone(), w.idx),
+                    )
+                    .await
+                });
+            }
 
             true
         }
