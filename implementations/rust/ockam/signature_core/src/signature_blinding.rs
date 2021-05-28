@@ -30,6 +30,6 @@ impl SignatureBlinding {
 
     /// Convert a big-endian representation of the signature blinding
     pub fn from_bytes(bytes: &[u8; Self::BYTES]) -> CtOption<Self> {
-        scalar_from_bytes(bytes).map(|s| Self(s))
+        scalar_from_bytes(bytes).map(Self)
     }
 }

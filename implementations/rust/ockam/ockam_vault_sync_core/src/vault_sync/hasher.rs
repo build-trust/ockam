@@ -30,7 +30,7 @@ impl Hasher for VaultSync {
             self.send_message(VaultRequestMessage::HkdfSha256 {
                 salt: salt.clone(),
                 info: info.into(),
-                ikm: ikm.map(|v| v.clone()),
+                ikm: ikm.cloned(),
                 output_attributes,
             })
             .await?;

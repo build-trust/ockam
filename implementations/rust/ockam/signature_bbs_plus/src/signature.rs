@@ -60,6 +60,8 @@ impl<'de> Deserialize<'de> for Signature {
                 A: SeqAccess<'de>,
             {
                 let mut arr = [0u8; Signature::BYTES];
+
+                #[allow(clippy::needless_range_loop)]
                 for i in 0..arr.len() {
                     arr[i] = seq
                         .next_element()?
@@ -183,7 +185,7 @@ impl Signature {
     /// Convert a byte sequence into a signature
     pub fn from_bytes(data: &[u8; Self::BYTES]) -> CtOption<Self> {
         let aa = G1Affine::from_compressed(&<[u8; 48]>::try_from(&data[0..48]).unwrap())
-            .map(|p| G1Projective::from(p));
+            .map(G1Projective::from);
         let mut e_bytes = <[u8; 32]>::try_from(&data[48..80]).unwrap();
         e_bytes.reverse();
         let ee = Scalar::from_bytes(&e_bytes);
@@ -206,12 +208,12 @@ impl Signature {
         // Can't go more than 128, but that's quite a bit
         let points = [G1Projective::generator(), generators.h0]
             .iter()
-            .map(|g| *g)
-            .chain(generators.iter().map(|g| g))
+            .copied()
+            .chain(generators.iter())
             .collect::<Vec<G1Projective, 128>>();
         let mut scalars = [Scalar::one(), s]
             .iter()
-            .map(|c| *c)
+            .copied()
             .chain(msgs.iter().map(|c| c.0))
             .collect::<Vec<Scalar, 128>>();
 

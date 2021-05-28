@@ -21,6 +21,7 @@ impl<M: Message> From<Result<M>> for ResultMessage<M> {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<M: Message> Into<Result<M>> for ResultMessage<M> {
     fn into(self) -> Result<M> {
         self.0

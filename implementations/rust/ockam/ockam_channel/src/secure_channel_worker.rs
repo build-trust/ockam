@@ -31,6 +31,7 @@ pub struct SecureChannelWorker<V: SecureChannelVault, K: KeyExchanger + Send + '
 }
 
 impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorker<V, K> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         is_initiator: bool,
         remote_route: Route,
@@ -78,7 +79,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         if let Some(k) = keys.as_mut() {
             Ok(k)
         } else {
-            return Err(SecureChannelError::KeyExchangeNotComplete.into());
+            Err(SecureChannelError::KeyExchangeNotComplete.into())
         }
     }
 
@@ -114,7 +115,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
     ) -> Result<()> {
         debug!("SecureChannel received Encrypt");
 
-        let reply = msg.return_route().clone();
+        let reply = msg.return_route();
         let mut onward_route = msg.onward_route();
         let transport_message = msg.into_transport_message();
         let payload = transport_message.payload;
@@ -184,11 +185,8 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
 
             let nonce = Self::convert_nonce_small(&payload.as_slice()[..2])?;
 
-            let plain_text =
-                self.vault
-                    .aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[2..], &nonce, &[])?;
-
-            plain_text
+            self.vault
+                .aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[2..], &nonce, &[])?
         };
 
         let mut transport_message = TransportMessage::decode(&payload)?;
@@ -209,7 +207,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         // Received key exchange message from remote channel, need to forward it to local key exchange
         debug!("SecureChannel received KeyExchangeRemote");
 
-        let reply = msg.return_route().clone();
+        let reply = msg.return_route();
         let transport_message = msg.into_transport_message();
         let payload = transport_message.payload;
         let payload = <Vec<u8> as Message>::decode(&payload)?;
@@ -268,7 +266,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
                     r,
                     KeyExchangeCompleted {
                         address: self.address_local.clone(),
-                        auth_hash: keys.h().clone(),
+                        auth_hash: *keys.h(),
                     },
                     self.address_local.clone(),
                 )

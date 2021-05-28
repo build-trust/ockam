@@ -111,7 +111,7 @@ impl PublicKey {
 
             let t = <[u8; PublicKey::POINT_SIZE]>::try_from(d).expect("invalid length");
             G2Affine::from_compressed(&t)
-                .map(|p| G2Projective::from(p))
+                .map(G2Projective::from)
                 .unwrap()
         }
 
@@ -129,7 +129,7 @@ impl PublicKey {
         let mut y = Vec::new();
 
         for _ in 0..y_cnt {
-            if let Err(_) = y.push(from_be_bytes(&buffer[offset..end])) {
+            if y.push(from_be_bytes(&buffer[offset..end])).is_err() {
                 return None;
             }
             offset = end;

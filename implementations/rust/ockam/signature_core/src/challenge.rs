@@ -30,7 +30,7 @@ impl Challenge {
 
     /// Convert a big-endian representation of the challenge
     pub fn from_bytes(bytes: &[u8; Self::BYTES]) -> CtOption<Self> {
-        scalar_from_bytes(bytes).map(|s| Self(s))
+        scalar_from_bytes(bytes).map(Self)
     }
 
     /// Convert a 48 byte digest into a challenge

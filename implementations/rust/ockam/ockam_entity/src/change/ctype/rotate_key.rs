@@ -127,7 +127,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
 
         let profile_change = ProfileChange::new(
             Profile::CURRENT_CHANGE_VERSION,
-            attributes.clone(),
+            attributes,
             ProfileChangeType::RotateKey(change),
         );
         let changes = Changes::new(prev_event_id, vec![profile_change]);

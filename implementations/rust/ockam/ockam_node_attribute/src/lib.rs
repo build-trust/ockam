@@ -102,7 +102,7 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         let mut ctx_used = false;
         for st in &input_function.block.stmts {
             let stmt_str = quote! {#st}.to_string().replace(' ', "");
-            if stmt_str.find(&ctx_ident.to_string()).is_some() {
+            if stmt_str.contains(&ctx_ident.to_string()) {
                 ctx_used = true;
             }
         }

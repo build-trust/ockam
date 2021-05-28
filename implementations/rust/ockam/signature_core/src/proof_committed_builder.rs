@@ -46,11 +46,7 @@ where
         for i in 0..self.points.len() {
             res &= self.points[i].ct_eq(&other.points[i]).unwrap_u8();
         }
-        if res == 1 {
-            true
-        } else {
-            false
-        }
+        res == 1
     }
 }
 
@@ -141,6 +137,8 @@ where
         if secrets.len() != self.cache.points.len() {
             return Err(Error::new(1, "secrets is not equal to blinding factors"));
         }
+
+        #[allow(clippy::needless_range_loop)]
         for i in 0..self.cache.scalars.len() {
             self.cache.scalars[i] += secrets[i] * challenge;
         }

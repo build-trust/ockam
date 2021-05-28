@@ -15,6 +15,7 @@ pub struct Route {
 
 impl Route {
     /// Create an empty RouteBuilder
+    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> RouteBuilder<'static> {
         RouteBuilder::new()
     }
@@ -22,14 +23,14 @@ impl Route {
     /// Parse a route from a string
     pub fn parse<S: Into<String>>(s: S) -> Option<Route> {
         let s = s.into();
-        if s == "" {
+        if s.is_empty() {
             return None;
         }
 
         let addrs = s.split("=>").collect::<Vec<_>>();
 
         // Invalid route
-        if addrs.len() == 0 {
+        if addrs.is_empty() {
             return None;
         }
 

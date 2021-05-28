@@ -12,7 +12,7 @@ impl Verifier for VaultSync {
     ) -> Result<bool> {
         block_future(&self.ctx.runtime(), async move {
             self.send_message(VaultRequestMessage::Verify {
-                signature: signature.clone(),
+                signature: *signature,
                 public_key: public_key.clone(),
                 data: data.into(),
             })

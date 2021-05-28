@@ -6,4 +6,4 @@ pub const COMMITMENT_BYTES: usize = 48;
 pub const FIELD_BYTES: usize = 32;
 
 /// Allocate message
-pub const ALLOC_MSG: &'static str = "allocate more space";
+pub const ALLOC_MSG: &str = "allocate more space";

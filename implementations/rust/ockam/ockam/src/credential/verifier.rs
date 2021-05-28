@@ -37,7 +37,7 @@ impl CredentialVerifier {
         presentation_manifests: &[PresentationManifest],
         proof_request_id: [u8; 32],
     ) -> Result<(), CredentialError> {
-        if presentations.len() != presentation_manifests.len() || presentations.len() == 0 {
+        if presentations.len() != presentation_manifests.len() || presentations.is_empty() {
             return Err(CredentialError::MismatchedPresentationAndManifests);
         }
 

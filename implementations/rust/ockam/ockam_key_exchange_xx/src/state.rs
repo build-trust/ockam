@@ -17,7 +17,7 @@ pub(crate) struct State<V: XXVault> {
     identity_public_key: Option<PublicKey>,
     ephemeral_secret: Option<Secret>,
     ephemeral_public: Option<PublicKey>,
-    remote_static_public_key: Option<PublicKey>,
+    _remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
     dh_state: DhState<V>,
     nonce: u16,
@@ -53,7 +53,7 @@ impl<V: XXVault> State<V> {
             identity_public_key: None,
             ephemeral_secret: None,
             ephemeral_public: None,
-            remote_static_public_key: None,
+            _remote_static_public_key: None,
             remote_ephemeral_public_key: None,
             dh_state: DhState::empty(vault.clone()),
             nonce: 0,
@@ -244,7 +244,7 @@ impl<V: XXVault> State<V> {
         self.h = Some(h);
         let rs = PublicKey::new(rs);
         self.dh_state.dh(&ephemeral_secret_handle, &rs)?;
-        self.remote_static_public_key = Some(rs);
+        self._remote_static_public_key = Some(rs);
         self.nonce = 0;
 
         let (payload, h) = self.decrypt_and_mix_hash(encrypted_payload_and_tag)?;
@@ -355,7 +355,7 @@ impl<V: XXVault> State<V> {
             self.decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])?;
         self.h = Some(h);
         self.nonce += 1;
-        self.remote_static_public_key = Some(rs);
+        self._remote_static_public_key = Some(rs);
         Ok(payload)
     }
 
@@ -619,7 +619,7 @@ mod tests {
             identity_public_key: Some(static_public_key),
             ephemeral_secret: Some(ephemeral_secret_handle),
             ephemeral_public: Some(ephemeral_public_key),
-            remote_static_public_key: None,
+            _remote_static_public_key: None,
             remote_ephemeral_public_key: None,
             dh_state: DhState {
                 key: None,

@@ -20,6 +20,7 @@ impl AddressSet {
     }
 
     /// Turn this set into an iterator
+    #[allow(clippy::should_implement_trait)]
     pub fn into_iter(self) -> impl Iterator<Item = Address> {
         self.0.into_iter()
     }
@@ -85,7 +86,7 @@ impl Address {
     /// See type documentation for more detail
     pub fn from_string<S: Into<String>>(s: S) -> Self {
         let buf: String = s.into();
-        let mut vec: Vec<_> = buf.split("#").collect();
+        let mut vec: Vec<_> = buf.split('#').collect();
 
         // If after the split we only have one element, there was no
         // `#` separator, so the type needs to be implicitly `= 0`

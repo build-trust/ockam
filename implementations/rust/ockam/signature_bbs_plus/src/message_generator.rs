@@ -5,7 +5,7 @@ use signature_bls::{PublicKey, SecretKey};
 use signature_core::lib::*;
 
 const DATA_SIZE: usize = 201;
-const DST: &'static [u8] = b"BLS12381G1_XMD:BLAKE2B_SSWU_RO_BBS+_SIGNATURES:1_0_0";
+const DST: &[u8] = b"BLS12381G1_XMD:BLAKE2B_SSWU_RO_BBS+_SIGNATURES:1_0_0";
 
 /// The generators that are used to sign a vector of commitments for a BBS+ bls
 /// These must be the same generators used by sign, verify, prove, and open
@@ -62,6 +62,10 @@ impl MessageGenerators {
         self.length
     }
 
+    /// Returns true when empty. Should not be possible. For completeness with `len` via clippy.
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
     /// Get the generator at `index`
     pub fn get(&self, index: usize) -> G1Projective {
         let mut state = self.state;

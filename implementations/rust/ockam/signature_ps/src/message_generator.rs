@@ -92,7 +92,7 @@ impl MessageGenerators {
 
             let t = <[u8; MessageGenerators::POINT_SIZE]>::try_from(d).expect("invalid length");
             G1Affine::from_compressed(&t)
-                .map(|p| G1Projective::from(p))
+                .map(G1Projective::from)
                 .unwrap()
         }
 
@@ -102,7 +102,7 @@ impl MessageGenerators {
         let mut y = Vec::new();
 
         for _ in 0..y_cnt {
-            if let Err(_) = y.push(from_be_bytes(&buffer[offset..end])) {
+            if y.push(from_be_bytes(&buffer[offset..end])).is_err() {
                 return None;
             }
             offset = end;

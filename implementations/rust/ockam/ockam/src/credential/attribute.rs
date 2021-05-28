@@ -22,10 +22,10 @@ pub enum CredentialAttribute {
 impl CredentialAttribute {
     /// Is `self` NotSpecified or Empty
     pub fn can_be_empty(&self) -> bool {
-        match *self {
-            CredentialAttribute::NotSpecified | CredentialAttribute::Empty => true,
-            _ => false,
-        }
+        matches!(
+            *self,
+            CredentialAttribute::NotSpecified | CredentialAttribute::Empty
+        )
     }
 
     /// convert the attribute data to a cryptographic value that can be signed

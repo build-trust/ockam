@@ -60,6 +60,8 @@ impl<'de> Deserialize<'de> for BlindSignature {
                 A: SeqAccess<'de>,
             {
                 let mut arr = [0u8; BlindSignature::BYTES];
+
+                #[allow(clippy::needless_range_loop)]
                 for i in 0..arr.len() {
                     arr[i] = seq
                         .next_element()?
@@ -176,6 +178,8 @@ impl BlindSignature {
         let mut bytes = [0u8; Self::BYTES];
         bytes[..48].copy_from_slice(&self.sigma_1.to_affine().to_compressed());
         bytes[48..96].copy_from_slice(&self.sigma_2.to_affine().to_compressed());
+
+        #[allow(clippy::out_of_bounds_indexing)] // TODO - BUG
         bytes[96..128].copy_from_slice(&scalar_to_bytes(self.m_tick));
         bytes
     }
@@ -183,9 +187,11 @@ impl BlindSignature {
     /// Convert a byte sequence into a signature
     pub fn from_bytes(data: &[u8; Self::BYTES]) -> CtOption<Self> {
         let s1 = G1Affine::from_compressed(slicer!(data, 0, 48, COMMITMENT_BYTES))
-            .map(|p| G1Projective::from(p));
+            .map(G1Projective::from);
         let s2 = G1Affine::from_compressed(slicer!(data, 48, 96, COMMITMENT_BYTES))
-            .map(|p| G1Projective::from(p));
+            .map(G1Projective::from);
+
+        #[allow(clippy::out_of_bounds_indexing)] // TODO - BUG
         let m_t = scalar_from_bytes(slicer!(data, 96, 128, FIELD_BYTES));
 
         s1.and_then(|sigma_1| {

@@ -23,6 +23,7 @@ impl SecureChannelError {
     pub const DOMAIN_NAME: &'static str = "OCKAM_SECURE_CHANNEL";
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<Error> for SecureChannelError {
     fn into(self) -> Error {
         Error::new(Self::DOMAIN_CODE + (self as u32), Self::DOMAIN_NAME)

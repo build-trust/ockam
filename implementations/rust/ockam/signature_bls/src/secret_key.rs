@@ -78,12 +78,12 @@ impl SecretKey {
         let mut t = [0u8; Self::BYTES];
         t.copy_from_slice(bytes);
         t.reverse();
-        Scalar::from_bytes(&t).map(|s| SecretKey(s))
+        Scalar::from_bytes(&t).map(SecretKey)
     }
 }
 
 fn generate_secret_key(ikm: &[u8]) -> Option<SecretKey> {
-    const SALT: &'static [u8] = b"BLS-SIG-KEYGEN-SALT-";
+    const SALT: &[u8] = b"BLS-SIG-KEYGEN-SALT-";
     const INFO: [u8; 2] = [0u8, 48u8];
 
     let mut extracter = HkdfExtract::<sha2::Sha256>::new(Some(SALT));
@@ -92,7 +92,7 @@ fn generate_secret_key(ikm: &[u8]) -> Option<SecretKey> {
     let (_, h) = extracter.finalize();
 
     let mut output = [0u8; 48];
-    if let Err(_) = h.expand(&INFO, &mut output) {
+    if h.expand(&INFO, &mut output).is_err() {
         None
     } else {
         Some(SecretKey(Scalar::from_okm(&output)))

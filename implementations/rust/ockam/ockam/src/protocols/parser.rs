@@ -79,6 +79,7 @@ impl<W: Worker> Deref for ProtocolParser<W> {
 
 #[derive(Default)]
 pub struct ProtocolParserImpl<W: Worker> {
+    #[allow(clippy::type_complexity)]
     map: RwLock<BTreeMap<ProtocolId, Arc<Box<dyn ParserFragment<W> + Send + Sync>>>>,
     _w: PhantomData<W>,
 }

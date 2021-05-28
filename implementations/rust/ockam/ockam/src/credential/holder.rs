@@ -6,7 +6,7 @@ use signature_bbs_plus::{MessageGenerators, Prover, PublicKey};
 use signature_core::lib::*;
 
 /// The label to indicate the secretid attribute in a schema/credential
-pub const SECRET_ID: &'static str = "secret_id";
+pub const SECRET_ID: &str = "secret_id";
 
 /// Represents a holder of a credential
 #[derive(Debug)]
@@ -120,7 +120,8 @@ impl CredentialHolder {
             let generators = MessageGenerators::from_public_key(verkey, cred.attributes.len());
             // let pr = bbs::prelude::Verifier::new_proof_request(pm.revealed.as_slice(), &verkey)
             //     .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
-            let revealed_indices = pm.revealed.iter().map(|i| *i).collect::<HashSet<usize>>();
+
+            let revealed_indices = pm.revealed.iter().copied().collect::<HashSet<usize>>();
             for i in 0..cred.attributes.len() {
                 if pm.credential_schema.attributes[i].label == SECRET_ID {
                     if revealed_indices.contains(&i) {

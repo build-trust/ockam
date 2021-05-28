@@ -48,6 +48,7 @@ impl PokSignature {
         points.push(public_key.w).expect(ALLOC_MSG);
         secrets.push(signature.m_tick).expect(ALLOC_MSG);
 
+        #[allow(clippy::needless_range_loop)]
         for i in 0..messages.len() {
             match messages[i] {
                 ProofMessage::Hidden(HiddenMessage::ProofSpecificBlinding(m)) => {
@@ -66,8 +67,8 @@ impl PokSignature {
         let commitment = G2Projective::sum_of_products_in_place(points.as_ref(), secrets.as_mut());
         Ok(Self {
             secrets,
-            commitment,
             proof,
+            commitment,
             sigma_1,
             sigma_2,
         })

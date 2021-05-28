@@ -56,6 +56,7 @@ impl<'de> Deserialize<'de> for Signature {
                 A: SeqAccess<'de>,
             {
                 let mut arr = [0u8; Signature::BYTES];
+                #[allow(clippy::needless_range_loop)]
                 for i in 0..arr.len() {
                     arr[i] = seq
                         .next_element()?
@@ -117,6 +118,8 @@ impl Signature {
         let sigma_1 =
             G1Projective::hash::<ExpandMsgXmd<Blake2b>>(&m_tick.to_bytes()[..], Self::DST);
         let mut exp = sk.x + sk.w * m_tick;
+
+        #[allow(clippy::needless_range_loop)]
         for i in 0..msgs.len() {
             exp += sk.y[i] * msgs[i].0;
         }
@@ -149,6 +152,7 @@ impl Signature {
         points.push(pk.w).expect(ALLOC_MSG);
         scalars.push(self.m_tick).expect(ALLOC_MSG);
 
+        #[allow(clippy::needless_range_loop)]
         for i in 0..msgs.len() {
             points.push(pk.y[i]).expect(ALLOC_MSG);
             scalars.push(msgs[i].0).expect(ALLOC_MSG);
@@ -185,9 +189,9 @@ impl Signature {
     /// Convert a byte sequence into a signature
     pub fn from_bytes(data: &[u8; Self::BYTES]) -> CtOption<Self> {
         let s1 = G1Affine::from_compressed(slicer!(data, 0, 48, COMMITMENT_BYTES))
-            .map(|p| G1Projective::from(p));
+            .map(G1Projective::from);
         let s2 = G1Affine::from_compressed(slicer!(data, 48, 96, COMMITMENT_BYTES))
-            .map(|p| G1Projective::from(p));
+            .map(G1Projective::from);
         let m_t = scalar_from_bytes(slicer!(data, 96, 128, FIELD_BYTES));
 
         s1.and_then(|sigma_1| {

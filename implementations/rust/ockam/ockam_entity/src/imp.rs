@@ -24,14 +24,12 @@ impl<V: ProfileVault> ProfileImpl<V> {
         contacts: ContactsDb,
         vault: V,
     ) -> Self {
-        let profile = Self {
+        Self {
             identifier,
             change_history: ProfileChangeHistory::new(change_events),
             contacts,
             vault,
-        };
-
-        profile
+        }
     }
 }
 

@@ -25,12 +25,13 @@ impl ProtocolId {
     }
 
     /// Use the first 8 bytes of a string as the protocol ID
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         Self(s.to_string())
     }
 
     /// Get the protocol as a &str
-    pub fn as_str<'s>(&'s self) -> &'s str {
+    pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }

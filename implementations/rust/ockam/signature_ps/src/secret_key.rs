@@ -55,7 +55,7 @@ impl SecretKey {
 
     /// Compute a secret key from a hash
     pub fn hash<B: AsRef<[u8]>>(count: usize, data: B) -> Option<Self> {
-        const SALT: &'static [u8] = b"PS-SIG-KEYGEN-SALT-";
+        const SALT: &[u8] = b"PS-SIG-KEYGEN-SALT-";
         let info = (count as u32).to_be_bytes();
         let mut extractor = HkdfExtract::<Blake2b>::new(Some(SALT));
         extractor.input_ikm(data.as_ref());
@@ -140,7 +140,7 @@ impl SecretKey {
         let mut y = Vec::new();
 
         for _ in 0..y_cnt {
-            if let Err(_) = y.push(from_be_bytes(&buffer[offset..end])) {
+            if y.push(from_be_bytes(&buffer[offset..end])).is_err() {
                 return None;
             }
         }
@@ -176,7 +176,7 @@ fn generate_secret_key(count: usize, mut rng: impl RngCore + CryptoRng) -> Optio
     let x = Scalar::random(&mut rng);
     let mut y = Vec::new();
     for _ in 0..count {
-        if let Err(_) = y.push(Scalar::random(&mut rng)) {
+        if y.push(Scalar::random(&mut rng)).is_err() {
             return None;
         }
     }

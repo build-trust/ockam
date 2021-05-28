@@ -13,6 +13,7 @@ pub struct Init {
 }
 
 impl Init {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new<S: Into<String>>(s: S) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_create",
@@ -32,6 +33,7 @@ pub struct PushConfirm {
 }
 
 impl PushConfirm {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new<S: Into<Status>>(request_id: usize, status: S, index: usize) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_push",
@@ -75,6 +77,7 @@ pub struct PullResponse {
 }
 
 impl PullResponse {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new<T: Into<Vec<StreamMessage>>>(request_id: usize, messages: T) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_pull",

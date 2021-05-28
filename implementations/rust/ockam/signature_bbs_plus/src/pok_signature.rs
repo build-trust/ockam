@@ -80,6 +80,7 @@ impl PokSignature {
         proof2.commit_random(generators.h0, &mut rng);
         secrets2.push(s_prime).expect("allocate more space");
 
+        #[allow(clippy::needless_range_loop)]
         for i in 0..generators.len() {
             match messages[i] {
                 ProofMessage::Hidden(HiddenMessage::ProofSpecificBlinding(m)) => {

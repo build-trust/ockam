@@ -13,10 +13,10 @@ pub enum ProofMessage {
 impl ProofMessage {
     /// Extract the internal message
     pub fn get_message(&self) -> Message {
-        match self {
-            &ProofMessage::Revealed(r) => r,
-            &ProofMessage::Hidden(HiddenMessage::ProofSpecificBlinding(p)) => p,
-            &ProofMessage::Hidden(HiddenMessage::ExternalBlinding(p, _)) => p,
+        match *self {
+            ProofMessage::Revealed(r) => r,
+            ProofMessage::Hidden(HiddenMessage::ProofSpecificBlinding(p)) => p,
+            ProofMessage::Hidden(HiddenMessage::ExternalBlinding(p, _)) => p,
         }
     }
 }
