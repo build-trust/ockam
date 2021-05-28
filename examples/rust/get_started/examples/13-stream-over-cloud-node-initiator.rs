@@ -19,10 +19,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         )
         .await?;
 
-    ctx.send(tx.to_route().append("printer"), "Hello World!".to_string())
+    ctx.send(tx.to_route().append("echoer"), "Hello World!".to_string())
         .await?;
 
-    ctx.receive_block::<String>().await?;
+    let reply = ctx.receive_block::<String>().await?;
+    println!("Reply via stream: {}", reply);
 
-    Ok(())
+    ctx.stop().await
 }

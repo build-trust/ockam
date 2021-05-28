@@ -34,6 +34,11 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
             w.peer = return_route;
             w.init = true;
 
+            info!(
+                "Initialised consumer for stream '{}' and route: {}",
+                stream_name, w.peer
+            );
+
             // Send queued messages
             let mut outbox = std::mem::replace(&mut w.outbox, VecDeque::new());
             outbox.into_iter().for_each(|trans| {

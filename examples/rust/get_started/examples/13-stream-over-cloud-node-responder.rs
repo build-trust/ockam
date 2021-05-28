@@ -1,18 +1,6 @@
-use ockam::{stream::Stream, Context, Result, Route, Routed, TcpTransport, Worker, TCP};
+use ockam::{stream::Stream, Context, Result, Route, TcpTransport, TCP};
+use ockam_get_started::Echoer;
 use std::time::Duration;
-
-struct Printer;
-
-#[ockam::worker]
-impl Worker for Printer {
-    type Context = Context;
-    type Message = String;
-
-    async fn handle_message(&mut self, _: &mut Context, msg: Routed<String>) -> Result<()> {
-        println!("Message received: {}", msg);
-        Ok(())
-    }
-}
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -20,7 +8,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.connect("127.0.0.1:4000").await?;
 
     // Start a printer
-    ctx.start_worker("printer", Printer).await?;
+    ctx.start_worker("echoer", Echoer).await?;
 
     // Create the stream
     Stream::new(&ctx)?

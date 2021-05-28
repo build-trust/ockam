@@ -94,6 +94,12 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                     }
                 };
 
+                // If a producer existst, insert its address into the return_route
+                if let Some(ref addr) = w.prod {
+                    trans.return_route.modify().prepend(addr.clone());
+                }
+
+                // Either forward to the next hop, or to the consumer address
                 let res = match trans.onward_route.next() {
                     Ok(addr) => {
                         info!("Forwarding {} message to addr: {}", w.stream, addr);
