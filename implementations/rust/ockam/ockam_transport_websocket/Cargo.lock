@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.14.0-dev"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -413,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.12.0-dev"
+version = "0.12.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -423,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.2.0-dev"
+version = "0.2.0"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -769,9 +769,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.6.0"
+version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd3076b5c8cc18138b8f8814895c11eb4de37114a5d127bafdc5e55798ceef37"
+checksum = "0a38d31d7831c6ed7aad00aa4c12d9375fd225a6dd77da1d25b707346319a975"
 dependencies = [
  "autocfg",
  "bytes 1.0.1",
@@ -934,9 +934,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07fbfce1c8a97d547e8b5334978438d9d6ec8c20e38f56d4a4374d181493eaef"
+checksum = "33717dca7ac877f497014e10d73f3acf948c342bee31b5ca7892faf94ccc6b49"
 dependencies = [
  "tinyvec",
 ]
