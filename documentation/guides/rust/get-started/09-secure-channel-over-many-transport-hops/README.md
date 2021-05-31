@@ -149,3 +149,7 @@ cargo run --example 09-secure-channel-over-many-transport-hops-middle
 ```
 cargo run --example 09-secure-channel-over-many-transport-hops-initiator
 ```
+
+<div style="display: none; visibility: hidden;">
+<hr><b>Next:</b> <a href="../10-secure-channel-with-entity">10. Secure Channel with Entity</a>
+</div>
