@@ -339,7 +339,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.14.0"
+version = "0.15.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -351,7 +351,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -383,7 +383,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.5.0"
+version = "0.6.0-dev"
 dependencies = [
  "quote",
  "syn",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
