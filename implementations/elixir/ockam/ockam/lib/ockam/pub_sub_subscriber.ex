@@ -60,8 +60,9 @@ defmodule Ockam.PubSubSubscriber do
     {:ok, state}
   end
 
-  def handle_message(:refresh, state) do
-    {:ok, refresh_subscription(state)}
+  @impl true
+  def handle_info(:refresh, state) do
+    {:noreply, refresh_subscription(state)}
   end
 
   def refresh_subscription(state) do

@@ -50,7 +50,7 @@ defmodule Ockam.Transport.TCP.Client do
   end
 
   @impl true
-  def handle_message({:tcp, socket, data}, %{socket: socket} = state) do
+  def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
     with {:ok, message} <- Wire.decode(@wire_encoder_decoder, data),
          {:ok, message} <- update_return_route(message, state) do
       Ockam.Router.route(message)
@@ -59,18 +59,19 @@ defmodule Ockam.Transport.TCP.Client do
       e -> raise e
     end
 
-    {:ok, state}
+    {:noreply, state}
   end
 
-  def handle_message({:tcp_closed, _}, state) do
+  def handle_info({:tcp_closed, _}, state) do
     {:stop, :normal, state}
   end
 
-  def handle_message({:tcp_error, _}, state) do
+  def handle_info({:tcp_error, _}, state) do
     {:stop, :normal, state}
   end
 
   ## TODO: implement Worker API
+  @impl true
   def handle_message(%{payload: _payload} = message, state) do
     encode_and_send_over_tcp(message, state)
     {:ok, state}

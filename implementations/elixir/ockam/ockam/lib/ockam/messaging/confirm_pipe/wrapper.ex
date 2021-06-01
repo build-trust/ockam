@@ -9,7 +9,7 @@ defmodule Ockam.Messaging.ConfirmPipe.Wrapper do
   ## and combined with the ref using the following BARE schema
   @bare_schema {:struct, [ref: :uint, data: :data]}
 
-  def wrap_message(message, ref) do
+  def wrap_message(%Ockam.Message{} = message, ref) do
     case Ockam.Wire.encode(message) do
       {:ok, encoded_message} ->
         {:ok, :bare.encode(%{ref: ref, data: encoded_message}, @bare_schema)}

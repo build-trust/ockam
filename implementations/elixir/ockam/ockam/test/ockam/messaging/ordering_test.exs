@@ -31,9 +31,12 @@ defmodule Ockam.Messaging.Ordering.Tests do
 
       ## receive 100 messages
       ordered =
-        Enum.map(1..100, fn _n ->
+        Enum.map(1..100, fn n ->
           receive do
             %{payload: pl} -> String.to_integer(pl)
+          after
+            1000 ->
+              raise "message #{n} not received"
           end
         end)
 

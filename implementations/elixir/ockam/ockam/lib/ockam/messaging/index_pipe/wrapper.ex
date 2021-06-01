@@ -11,7 +11,7 @@ defmodule Ockam.Messaging.IndexPipe.Wrapper do
   Encodes message and index into a binary
   """
   @spec wrap_message(integer(), Ockam.Message.t()) :: binary()
-  def wrap_message(index, message) do
+  def wrap_message(index, %Ockam.Message{} = message) do
     {:ok, encoded} = Ockam.Wire.encode(message)
     :bare.encode(%{index: index, message: encoded}, @schema)
   end

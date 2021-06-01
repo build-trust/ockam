@@ -58,12 +58,13 @@ defmodule Ockam.TokenLeaseManager do
 
   ### for self use ##
 
-  def handle_message({:set_ttl, token_id, ttl}, state) do
+  @impl true
+  def handle_info({:set_ttl, token_id, ttl}, state) do
     set_ttl(self(), token_id, ttl)
-    {:ok, state}
+    {:noreply, state}
   end
 
-  def handle_message(:set_all_ttl, %{storage_service: storage_service} = state) do
+  def handle_info(:set_all_ttl, %{storage_service: storage_service} = state) do
     Logger.info("setting all ttls")
     lease_manager_pid = self()
 
@@ -76,13 +77,13 @@ defmodule Ockam.TokenLeaseManager do
       end)
     end)
 
-    {:ok, state}
+    {:noreply, state}
   end
 
-  def handle_message({:auto_revoke, token_id}, state) do
+  def handle_info({:auto_revoke, token_id}, state) do
     Logger.info("revoking #{token_id} token")
     Task.start(fn -> handle_revoke(state[:cloud_service], state[:storage_service], token_id) end)
-    {:ok, state}
+    {:noreply, state}
   end
 
   defp process_request(received_payload, state) do

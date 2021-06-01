@@ -10,6 +10,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     {:ok, initial_state, data}
   end
 
+  ## TODO: batter name to not collide with Ockam.Worker.handle_message
   def handle_message(message, {:encrypted_transport, :ready} = state, data) do
     first_address = message |> Message.onward_route() |> List.first()
 
@@ -26,10 +27,10 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   end
 
   defp encrypt_and_send_to_peer(message, state, data) do
+    ## TODO: use message forwarding fun
     message = %{
-      payload: Message.payload(message),
-      onward_route: Message.onward_route(message) |> List.pop_at(0) |> elem(1),
-      return_route: Message.return_route(message)
+      message
+      | onward_route: Message.onward_route(message) |> List.pop_at(0) |> elem(1)
     }
 
     with {:ok, encoded} <- Wire.encode(message),
@@ -61,11 +62,10 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
 
     with {:ok, decrypted, data} <- decrypt(payload, data),
          {:ok, decoded} <- Wire.decode(decrypted) do
+      ## TODO: use message forwarding fun
       message = %{
-        payload: Message.payload(decoded),
-        onward_route: Message.onward_route(decoded),
-        return_route:
-          decoded |> Message.return_route() |> List.insert_at(0, data.plaintext_address)
+        decoded
+        | return_route: [data.plaintext_address | Message.return_route(decoded)]
       }
 
       Router.route(message)

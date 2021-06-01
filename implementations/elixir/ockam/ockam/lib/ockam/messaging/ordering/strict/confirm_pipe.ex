@@ -98,7 +98,7 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
 
   def send_message(message, state) do
     receiver_route = Map.get(state, :receiver_route)
-
+    ## TODO: use Ockam.Message forward function
     forwarded_message = make_forwarded_message(message)
 
     {ref, state} = bump_send_ref(state)
@@ -121,7 +121,7 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
   def make_forwarded_message(message) do
     [_me | onward_route] = Message.onward_route(message)
 
-    %{
+    %Message{
       onward_route: onward_route,
       return_route: Message.return_route(message),
       payload: Message.payload(message)

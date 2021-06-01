@@ -107,7 +107,8 @@ defmodule Ockam.Stream.Client.Publisher do
     end
   end
 
-  def handle_message(:request_timeout, state) do
+  @impl true
+  def handle_info(:request_timeout, state) do
     state = clear_request_timeout(state)
 
     unconfirmed_messages =
@@ -128,7 +129,7 @@ defmodule Ockam.Stream.Client.Publisher do
 
     state = create_stream(state)
 
-    {:ok, state}
+    {:noreply, state}
   end
 
   @spec send_message(binary(), state()) :: state()

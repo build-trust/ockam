@@ -17,6 +17,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
     {:ok, {:key_establishment, @role, :awaiting_message1}, data, actions}
   end
 
+  ## TODO: batter name to not collide with Ockam.Worker.handle_message
   def handle_message(message, {:key_establishment, @role, :awaiting_message1}, data) do
     message1 = Message.payload(message)
     message2_onward_route = Message.return_route(message)
@@ -48,6 +49,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
 
   def send(message, onward_route, return_route) do
     envelope = %{onward_route: onward_route, return_route: return_route, payload: message}
+
     Router.route(envelope)
   end
 

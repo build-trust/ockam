@@ -75,7 +75,7 @@ defmodule Ockam.Stream.Client.Consumer do
   end
 
   @impl true
-  def handle_message(%{payload: payload} = message, state) do
+  def handle_message(%Ockam.Message{payload: payload} = message, state) do
     case decode_payload(payload) do
       {:ok, StreamProtocol.Create, %{stream_name: stream_name}} ->
         Logger.debug("Received create")
@@ -139,13 +139,14 @@ defmodule Ockam.Stream.Client.Consumer do
     end
   end
 
+  @impl true
   ## TODO: rework the worker to do handle_info
-  def handle_message(:consume, state) do
+  def handle_info(:consume, state) do
     state = request_messages(state)
-    {:ok, state}
+    {:noreply, state}
   end
 
-  def handle_message(:request_timeout, state) do
+  def handle_info(:request_timeout, state) do
     {:stop, :request_timeout, state}
   end
 

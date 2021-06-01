@@ -32,12 +32,6 @@ defmodule Ockam.AsymmetricWorker do
               | {:error, reason :: any()}
               | {:stop, reason :: any(), state :: map()}
 
-  ## TODO: remove that after refactoring Ockam.Worker to not call handle_message for non-messages
-  @callback handle_non_message(message :: any(), state :: map()) ::
-              {:ok, state :: map()}
-              | {:error, reason :: any()}
-              | {:stop, reason :: any(), state :: map()}
-
   ## TODO: maybe think of better API than :sys.get_state
   def get_inner_address(worker) do
     case Ockam.Node.whereis(worker) do
@@ -77,9 +71,6 @@ defmodule Ockam.AsymmetricWorker do
 
           :other ->
             handle_other_message(message, state)
-
-          :non_message ->
-            handle_non_message(message, state)
         end
       end
 
@@ -103,7 +94,7 @@ defmodule Ockam.AsymmetricWorker do
       end
 
       @doc false
-      def message_type(%{onward_route: _} = message, state) do
+      def message_type(%Ockam.Message{} = message, state) do
         ## TODO: use Address.value
         [me | _] = Message.onward_route(message)
         outer_address = state.address
@@ -121,10 +112,6 @@ defmodule Ockam.AsymmetricWorker do
         end
       end
 
-      def message_type(_message, _state) do
-        :non_message
-      end
-
       def inner_setup(options, state), do: {:ok, state}
 
       def handle_inner_message(_message, _state) do
@@ -139,16 +126,11 @@ defmodule Ockam.AsymmetricWorker do
         {:error, {:unknown_self_address, message, state}}
       end
 
-      def handle_non_message(non_message, state) do
-        {:error, {:not_ockam_message, non_message, state}}
-      end
-
       defoverridable handle_message: 2,
                      inner_setup: 2,
                      handle_inner_message: 2,
                      handle_outer_message: 2,
-                     handle_other_message: 2,
-                     handle_non_message: 2
+                     handle_other_message: 2
     end
   end
 end

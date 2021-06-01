@@ -44,7 +44,12 @@ defmodule Ockam.SecureChannel.Listener do
     payload = Message.payload(message)
 
     {_address, onward_route} = List.pop_at(onward_route, length(onward_route) - 1)
-    message = %{onward_route: onward_route, return_route: return_route, payload: payload}
+
+    message = %Ockam.Message{
+      onward_route: onward_route,
+      return_route: return_route,
+      payload: payload
+    }
 
     channel_options = Keyword.put(channel_options, :initiating_message, message)
     {:ok, channel_options}

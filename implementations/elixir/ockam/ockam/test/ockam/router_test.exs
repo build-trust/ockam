@@ -142,6 +142,7 @@ defmodule Ockam.Router.Tests do
           UDPAddress.new({127, 0, 0, 1}, 4000),
           "printer"
         ],
+        return_route: [],
         payload: "hello"
       }
 
@@ -155,14 +156,15 @@ defmodule Ockam.Router.Tests do
 
       assert_receive({:trace, ^printer, :receive, result}, 1_000)
 
-      assert result == %{
-               version: 1,
+      udp_address = UDPAddress.new({127, 0, 0, 1}, 3000)
+
+      assert %{
                onward_route: ["printer"],
                payload: "hello",
                return_route: [
-                 UDPAddress.new({127, 0, 0, 1}, 3000)
+                 ^udp_address
                ]
-             }
+             } = result
     end
 
     test "Simple TCP Test", %{printer_pid: printer} do
@@ -210,7 +212,6 @@ defmodule Ockam.Router.Tests do
       assert_receive({:trace, ^printer, :receive, result}, 1_000)
 
       assert %{
-               version: 1,
                onward_route: ["printer"],
                payload: "hello",
                return_route: [_address]

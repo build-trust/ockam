@@ -17,12 +17,16 @@ defmodule Ockam.Router do
 
   alias Ockam.Telemetry
 
+  @type message() ::
+          Message.t()
+          | %{payload: binary(), onward_route: [Address.t()], return_route: [Address.t()]}
+
   @doc """
   Routes the given message.
   """
-  @spec route(Message.t()) :: :ok | {:error, reason :: any()}
+  @spec route(message()) :: :ok | {:error, reason :: any()}
 
-  def route(message) do
+  def route(%Ockam.Message{} = message) do
     metadata = %{message: message}
     start_time = Telemetry.emit_start_event([__MODULE__, :route], metadata: metadata)
 
@@ -32,6 +36,16 @@ defmodule Ockam.Router do
     Telemetry.emit_stop_event([__MODULE__, :route], start_time, metadata: metadata)
 
     return_value
+  end
+
+  ## TODO: optional return route?
+  def route(%{payload: _, onward_route: o_r, return_route: r_r} = message)
+      when is_list(o_r) and is_list(r_r) do
+    route(struct(Ockam.Message, message))
+  end
+
+  def route(message) do
+    raise "Mesage needs to be Ockam.Message to be routed: #{inspect(message)}"
   end
 
   defp pick_and_invoke_handler(message) do

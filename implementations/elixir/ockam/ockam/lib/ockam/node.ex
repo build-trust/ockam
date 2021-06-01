@@ -55,7 +55,7 @@ defmodule Ockam.Node do
   @doc """
   Send a message to the process registered with an address.
   """
-  def send(address, message) do
+  def send(address, %Ockam.Message{} = message) do
     case Registry.whereis_name(address) do
       # dead letters
       :undefined -> :ok
@@ -146,7 +146,7 @@ defmodule Ockam.Node do
     end
   end
 
-  def handle_local_message(message) do
+  def handle_local_message(%Ockam.Message{} = message) do
     metadata = %{message: message}
 
     start_time =

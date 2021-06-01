@@ -69,7 +69,7 @@ defmodule Ockam.Stream.Workers.Service do
   def return_error(error, message, state) do
     Logger.error("Error creating stream: #{inspect(error)}")
 
-    Ockam.Router.route(%{
+    Ockam.Router.route(%Ockam.Message{
       onward_route: Message.return_route(message),
       return_route: [state.address],
       payload: encode_payload(Ockam.Protocol.Error, %{reason: "Invalid request"})

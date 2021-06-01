@@ -74,8 +74,10 @@ defmodule Ockam.Messaging.Delivery.ResendPipe.Sender do
   end
 
   @impl true
-  def handle_non_message(:confirm_timeout, state) do
-    resend_unconfirmed(state)
+  def handle_info(:confirm_timeout, state) do
+    with {:ok, state} <- resend_unconfirmed(state) do
+      {:noreply, state}
+    end
   end
 
   def resend_unconfirmed(state) do
@@ -91,6 +93,7 @@ defmodule Ockam.Messaging.Delivery.ResendPipe.Sender do
   end
 
   def forward_to_receiver(message, state) do
+    ## TODO: use Ockam.Message forward function
     forwarded_message = make_forwarded_message(message)
 
     {ref, state} = bump_send_ref(state)
@@ -115,7 +118,7 @@ defmodule Ockam.Messaging.Delivery.ResendPipe.Sender do
   def make_forwarded_message(message) do
     [_me | onward_route] = Message.onward_route(message)
 
-    %{
+    %Message{
       onward_route: onward_route,
       return_route: Message.return_route(message),
       payload: Message.payload(message)

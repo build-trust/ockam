@@ -5,7 +5,7 @@ defmodule Ockam.Session.Handshake do
   Used in `Ockam.Session.Pluggable` and `Ockam.Session.Separate` modules
 
   """
-  @type message() :: Ockam.Message.t()
+  @type message() :: Ockam.Router.message()
 
   @typedoc """
   State passed to the callbacks, can be modified, but following fields are required:

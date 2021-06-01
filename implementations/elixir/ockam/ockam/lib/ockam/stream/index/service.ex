@@ -31,7 +31,7 @@ defmodule Ockam.Stream.Index.Service do
   end
 
   @impl true
-  def handle_message(%{payload: payload} = message, state) do
+  def handle_message(%Ockam.Message{payload: payload} = message, state) do
     case decode_payload(payload) do
       {:ok, protocol, {:save, data}}
       when protocol == @protocol or protocol == @partitioned_protocol ->

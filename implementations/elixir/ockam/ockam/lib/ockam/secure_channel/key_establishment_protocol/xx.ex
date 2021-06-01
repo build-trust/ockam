@@ -18,6 +18,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX do
     end
   end
 
+  ## TODO: batter name to not collide with Ockam.Worker.handle_message
   def handle_message(message, {:key_establishment, role, _role_state} = state, data)
       when role in [:initiator, :responder] do
     case role do

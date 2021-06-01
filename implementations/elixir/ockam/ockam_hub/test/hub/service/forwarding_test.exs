@@ -46,7 +46,8 @@ defmodule Test.Hub.Service.ForwardingTestWorker do
   defp registration(message, state) do
     msg = %{
       onward_route: [@forwarding_address],
-      return_route: [state.address]
+      return_route: [state.address],
+      payload: ""
     }
 
     Router.route(msg)

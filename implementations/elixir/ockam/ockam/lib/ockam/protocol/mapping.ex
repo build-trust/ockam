@@ -15,7 +15,7 @@ defmodule Ockam.Protocol.Mapping do
     ])
   end
 
-  def handle_message(%{payload: payload}, state) do
+  def handle_message(%Ockam.Message{payload: payload}, state) do
     case decode_payload(payload) do
       {:ok, Protocol1, message} ->
         #response from Protocol1

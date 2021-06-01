@@ -57,8 +57,8 @@ defmodule Ockam.Transport.TCP do
     case get_destination_and_onward_route(message) do
       {:ok, destination, onward_route} ->
         ## Remove tcp address from onward route
-        message_to_forward =
-          Map.put(create_outgoing_message(message), :onward_route, onward_route)
+        ## TODO: use forwarding function
+        message_to_forward = Map.put(message, :onward_route, onward_route)
 
         ## TODO: reuse clients when using tcp address
         with {:ok, client_address} <-
@@ -89,13 +89,5 @@ defmodule Ockam.Transport.TCP do
       {:error, error} ->
         {:error, error}
     end
-  end
-
-  defp create_outgoing_message(message) do
-    %{
-      onward_route: Message.onward_route(message),
-      payload: Message.payload(message),
-      return_route: Message.return_route(message)
-    }
   end
 end

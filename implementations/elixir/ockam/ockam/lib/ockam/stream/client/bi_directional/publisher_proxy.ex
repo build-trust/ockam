@@ -21,13 +21,14 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
     publisher_stream = Keyword.fetch!(options, :publisher_stream)
     stream_options = Keyword.fetch!(options, :stream_options)
 
+    ## TODO: setup is in :continue now, so :init is not needed anymore
     send(self(), {:init, publisher_stream, stream_options})
 
     {:ok, Map.merge(state, %{consumer_stream: consumer_stream})}
   end
 
   @impl true
-  def handle_message({:init, publisher_stream, stream_options}, state) do
+  def handle_info({:init, publisher_stream, stream_options}, state) do
     {:ok, publisher_address} =
       Publisher.create(
         Keyword.merge(stream_options,
@@ -36,9 +37,10 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
         )
       )
 
-    {:ok, Map.put(state, :publisher_address, publisher_address)}
+    {:noreply, Map.put(state, :publisher_address, publisher_address)}
   end
 
+  @impl true
   def handle_message(%{payload: _} = message, %{publisher_address: _} = state) do
     %{
       consumer_stream: consumer_stream,
@@ -67,7 +69,7 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
     {:ok, state}
   end
 
-  def handle_message(%{payload: _} = message, state) do
+  def handle_message(%Ockam.Message{payload: _} = message, state) do
     ## Delay message processing
     send(self(), message)
     {:ok, state}

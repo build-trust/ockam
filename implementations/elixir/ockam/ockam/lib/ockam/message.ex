@@ -1,44 +1,28 @@
-defprotocol Ockam.Message do
+defmodule Ockam.Message do
   @moduledoc """
-  Defines an elixir protocol for a message.
+  Message data structure for routing
   """
+  defstruct [:payload, onward_route: [], return_route: [], version: 1]
 
-  alias Ockam.Address
+  @type t() :: %__MODULE__{}
 
-  @fallback_to_any true
+  def reply(message, my_address, payload) do
+    %Ockam.Message{
+      onward_route: return_route(message),
+      return_route: [my_address],
+      payload: payload
+    }
+  end
 
-  @doc "Returns the onward_route of a message."
-  @spec onward_route(t()) :: [Address.t()]
-  def onward_route(message)
+  def forward(message, forward_route) do
+    %{message | onward_route: forward_route}
+  end
 
-  @doc "Returns the return_route of a message."
-  @spec return_route(t()) :: [Address.t()]
-  def return_route(message)
+  def forward(message, my_address, forward_route) do
+    %{message | onward_route: forward_route, return_route: [my_address | return_route(message)]}
+  end
 
-  @doc "Returns the payload of a message."
-  @spec payload(t()) :: binary()
-  def payload(message)
-end
-
-# implement Ockam.Message for any message that does not already have an implementation
-defimpl Ockam.Message, for: Any do
-  @moduledoc false
-
-  # if the message is a map that has an onward_route field with a list value, use it.
-  def onward_route(%{onward_route: onward_route}) when is_list(onward_route), do: onward_route
-
-  # for any other message, that does not implement Ockam.Message, assume onward_route is empty.
-  def onward_route(_message), do: []
-
-  # if the message is a map that has an return_route field with a list value, use it.
-  def return_route(%{return_route: return_route}) when is_list(return_route), do: return_route
-
-  # for any other message, that does not implement Ockam.Message, assume return_route is empty.
-  def return_route(_message), do: []
-
-  # if the message is a map that has an payload field, use it.
-  def payload(%{payload: payload}), do: payload
-
-  # for any other message, that does not implement Ockam.Message, assume the message is the payload.
-  def payload(message), do: message
+  def onward_route(%Ockam.Message{onward_route: onward_route}), do: onward_route
+  def return_route(%Ockam.Message{return_route: return_route}), do: return_route
+  def payload(%Ockam.Message{payload: payload}), do: payload
 end

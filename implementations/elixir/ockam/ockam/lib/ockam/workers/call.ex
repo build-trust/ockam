@@ -6,8 +6,6 @@ defmodule Ockam.Workers.Call do
 
   use Ockam.Worker
 
-  alias Ockam.Message
-
   require Logger
 
   def call(call, options \\ [], timeout \\ 20_000) do
@@ -34,8 +32,8 @@ defmodule Ockam.Workers.Call do
 
   def send_call(call, state) do
     Ockam.Router.route(%{
-      payload: Message.payload(call),
-      onward_route: Message.onward_route(call),
+      payload: Map.get(call, :payload),
+      onward_route: Map.get(call, :onward_route),
       return_route: [state.address]
     })
   end

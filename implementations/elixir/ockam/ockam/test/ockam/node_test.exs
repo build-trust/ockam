@@ -6,8 +6,8 @@ defmodule Ockam.Node.Tests do
   describe "#{Node}.register/2" do
     test "can register, send, unregister" do
       Node.register_address("A", self())
-      Node.send("A", {:via_node, "hello"})
-      assert_receive {:via_node, "hello"}
+      Node.send("A", %Ockam.Message{payload: "hello"})
+      assert_receive %Ockam.Message{payload: "hello"}
       Node.unregister_address("A")
     end
   end

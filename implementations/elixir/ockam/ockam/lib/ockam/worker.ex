@@ -4,7 +4,7 @@ defmodule Ockam.Worker do
   @callback setup(options :: Keyword.t(), initial_state :: map()) ::
               {:ok, state :: map()} | {:error, reason :: any()}
 
-  @callback handle_message(message :: any(), state :: map()) ::
+  @callback handle_message(message :: Ockam.Message.t(), state :: map()) ::
               {:ok, state :: map()}
               | {:error, reason :: any()}
               | {:stop, reason :: any(), state :: map()}
@@ -96,10 +96,11 @@ defmodule Ockam.Worker do
 
       @doc false
       @impl true
-      def handle_info(message, state) do
+      def handle_info(%Ockam.Message{} = message, state) do
         metadata = %{message: message}
         start_time = Telemetry.emit_start_event([__MODULE__, :handle_message], metadata: metadata)
 
+        ## TODO: error handling
         return_value = handle_message(message, state)
 
         metadata = Map.put(metadata, :return_value, return_value)

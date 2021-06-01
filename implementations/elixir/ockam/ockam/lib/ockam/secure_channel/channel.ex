@@ -8,6 +8,7 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX, as: XXKeyEstablishmentProtocol
   alias Ockam.Telemetry
 
+  ## TODO: do we need this API???
   @doc false
   def send(channel, message), do: Node.send(channel, message)
 
@@ -83,6 +84,7 @@ defmodule Ockam.SecureChannel.Channel do
     return_value
   end
 
+  ## TODO: better name to not collide with Ockam.Worker.handle_message
   defp handle_message({:call, from}, :established?, state, data) do
     established = {:encrypted_transport, :ready} === state
     {:next_state, state, data, [{:reply, from, established}]}

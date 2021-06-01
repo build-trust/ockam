@@ -46,11 +46,20 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, listener} = create_secure_channel_listener()
     {:ok, channel} = create_secure_channel([listener])
 
-    message = %{payload: "hello", onward_route: [channel, echoer], return_route: ["test"]}
-    reply = %{payload: "hello", onward_route: ["test"], return_route: [channel, echoer]}
+    message = %{
+      payload: "hello",
+      onward_route: [channel, echoer],
+      return_route: ["test"]
+    }
 
     Router.route(message)
-    assert_receive ^reply, 1000
+
+    assert_receive %{
+                     payload: "hello",
+                     onward_route: ["test"],
+                     return_route: [^channel, ^echoer]
+                   },
+                   1000
   end
 
   test "tunneled secure channel works" do
@@ -63,10 +72,9 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, c2} = create_secure_channel([c1, l2])
 
     message = %{payload: "hello", onward_route: [c2, echoer], return_route: ["test"]}
-    reply = %{payload: "hello", onward_route: ["test"], return_route: [c2, echoer]}
 
     Router.route(message)
-    assert_receive ^reply, 1000
+    assert_receive %{payload: "hello", onward_route: ["test"], return_route: [^c2, ^echoer]}, 1000
   end
 
   test "double-tunneled secure channel works" do
@@ -82,10 +90,11 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, c3} = create_secure_channel([c2, l3])
 
     message = %{payload: "hello", onward_route: [c3, echoer], return_route: ["test"]}
-    reply = %{payload: "hello", onward_route: ["test"], return_route: [c3, echoer]}
 
     Router.route(message)
-    assert_receive ^reply, 10_000
+
+    assert_receive %{payload: "hello", onward_route: ["test"], return_route: [^c3, ^echoer]},
+                   10_000
   end
 
   test "many times tunneled secure channel works" do
@@ -103,11 +112,20 @@ defmodule Ockam.SecureChannel.Tests do
         {_i, listener}, {:ok, previous} -> create_secure_channel([previous, listener])
       end)
 
-    message = %{payload: "hello", onward_route: [tunneled, echoer], return_route: ["test"]}
-    reply = %{payload: "hello", onward_route: ["test"], return_route: [tunneled, echoer]}
+    message = %{
+      payload: "hello",
+      onward_route: [tunneled, echoer],
+      return_route: ["test"]
+    }
 
     Router.route(message)
-    assert_receive ^reply, 10_000
+
+    assert_receive %{
+                     payload: "hello",
+                     onward_route: ["test"],
+                     return_route: [^tunneled, ^echoer]
+                   },
+                   10_000
   end
 
   defp create_secure_channel_listener() do

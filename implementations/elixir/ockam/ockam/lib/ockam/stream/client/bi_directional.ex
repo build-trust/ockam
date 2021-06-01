@@ -16,7 +16,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
 
   @doc """
   Create bidirectional consumer.
-  Consumer will handle messages with handle_message/4
+  Consumer will handle messages with handle_message/5
 
   Returns consumer worker address
   """
@@ -54,6 +54,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
           stream_options
         )
 
+      ## TODO: message forward function
       forwarded_message = %{
         message
         | return_route: [publisher_address | Message.return_route(message)]

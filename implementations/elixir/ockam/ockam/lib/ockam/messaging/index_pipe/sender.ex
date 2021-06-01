@@ -30,8 +30,8 @@ defmodule Ockam.Messaging.IndexPipe.Sender do
   defp make_indexed_message(message, state) do
     {next_index, state} = next_index(state)
     [_ | onward_route] = Message.onward_route(message)
-
-    forwarded_message = %{
+    ## TODO: use Ockam.Message forward function
+    forwarded_message = %Message{
       onward_route: onward_route,
       return_route: Message.return_route(message),
       payload: Message.payload(message)
@@ -39,7 +39,7 @@ defmodule Ockam.Messaging.IndexPipe.Sender do
 
     indexed_message = %{
       onward_route: receiver_route(state),
-      return_route: local_address(state),
+      return_route: [local_address(state)],
       payload: Wrapper.wrap_message(next_index, forwarded_message)
     }
 
