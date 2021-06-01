@@ -1,4 +1,4 @@
-defmodule Ockam.Hub.Service.Alias do
+defmodule Ockam.Hub.Service.Forwarding do
   @moduledoc """
   Alias service to register remote workers under local names.
 
@@ -32,7 +32,7 @@ defmodule Ockam.Hub.Service.Alias do
   end
 end
 
-defmodule Ockam.Hub.Service.Alias.Forwarder do
+defmodule Ockam.Hub.Service.Forwarding.Forwarder do
   @moduledoc """
   Forwarder worker.
 

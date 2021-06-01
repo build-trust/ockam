@@ -1,16 +1,19 @@
-defmodule Test.Hub.Service.AliasTest do
+defmodule Test.Hub.Service.ForwardingTest do
   use ExUnit.Case
 
-  alias Ockam.Hub.Service.Alias, as: AliasService
   alias Ockam.Hub.Service.Echo, as: EchoService
+  alias Ockam.Hub.Service.Forwarding, as: ForwardingService
+
   alias Ockam.Router
   alias Test.Utils
 
-  test "alias test" do
+  test "forwarding test" do
     {:ok, _worker, worker_address} =
-      Test.Hub.Service.AliasTestWorker.start_link(address: "alias_test_address")
+      Test.Hub.Service.ForwardingTestWorker.start_link(address: "forwarding_test_address")
 
-    {:ok, _alias, _alias_address} = AliasService.start_link(address: "alias_address")
+    {:ok, _forwarding, _forwarding_address} =
+      ForwardingService.start_link(address: "forwarding_address")
+
     {:ok, _echo, _echo_address} = EchoService.start_link(address: "echo_address")
 
     msg = %{onward_route: [worker_address], return_route: [], payload: Utils.pid_to_string()}
@@ -20,7 +23,7 @@ defmodule Test.Hub.Service.AliasTest do
   end
 end
 
-defmodule Test.Hub.Service.AliasTestWorker do
+defmodule Test.Hub.Service.ForwardingTestWorker do
   @moduledoc false
 
   use Ockam.Worker
@@ -29,7 +32,7 @@ defmodule Test.Hub.Service.AliasTestWorker do
   alias Ockam.Router
   alias Test.Utils
 
-  @alias_address "alias_address"
+  @forwarding_address "forwarding_address"
 
   @impl true
   def handle_message(message, state) do
@@ -41,7 +44,7 @@ defmodule Test.Hub.Service.AliasTestWorker do
 
   defp registration(message, state) do
     msg = %{
-      onward_route: [@alias_address],
+      onward_route: [@forwarding_address],
       return_route: [state.address]
     }
 
