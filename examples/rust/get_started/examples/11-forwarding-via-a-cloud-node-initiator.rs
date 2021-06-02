@@ -1,6 +1,6 @@
 // This node routes a message, to a different node, using a forwarding address on the cloud node.
 
-use ockam::{Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, Context, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -20,9 +20,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Send a message to the echoer worker, on a different node,
     // using a forwarding address on your cloud node
     ctx.send(
-        Route::new()
-            .append_t(TCP, cloud_node_tcp_address)
-            .append(echoer_forwarding_address),
+        route![(TCP, cloud_node_tcp_address), echoer_forwarding_address],
         "Hello Ockam!".to_string(),
     )
     .await?;

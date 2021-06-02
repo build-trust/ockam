@@ -56,6 +56,8 @@ pub use ockam_channel::SecureChannel;
 
 pub use ockam_key_exchange_core::NewKeyExchanger;
 
+pub use ockam_core::route;
+
 #[cfg(feature = "noise_xx")]
 pub use ockam_key_exchange_xx::XXNewKeyExchanger;
 

@@ -1,6 +1,6 @@
 // This node routes a message, to a worker on a different node, over two tcp transport hops.
 
-use ockam::{Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, Context, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -12,10 +12,11 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Send a message to the "echoer" worker, on a different node, over two tcp hops.
     ctx.send(
-        Route::new()
-            .append_t(TCP, "127.0.0.1:3000") // middle node
-            .append_t(TCP, "127.0.0.1:4000") // responder node
-            .append("echoer"), // echoer worker on responder node
+        route![
+            (TCP, "127.0.0.1:3000"), // middle node
+            (TCP, "127.0.0.1:4000"), // responder node
+            "echoer"
+        ], // echoer worker on responder node
         "Hello Ockam!".to_string(),
     )
     .await?;

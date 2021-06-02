@@ -1,4 +1,4 @@
-use ockam::{Address, Context, Entity, NoOpTrustPolicy, Result, Route, TcpTransport, TCP};
+use ockam::{route, Address, Context, Entity, NoOpTrustPolicy, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -16,17 +16,16 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let mut alice = Entity::create(&ctx).await?;
     let cloud_node_address: Address = (TCP, cloud_node_tcp_address).into();
-    let cloude_node_route: Route = vec![
+    let cloude_node_route = route![
         cloud_node_address,
-        secure_channel_listener_forwarding_address.into(),
-    ]
-    .into();
+        secure_channel_listener_forwarding_address
+    ];
 
     let channel = alice
         .create_secure_channel(cloude_node_route, NoOpTrustPolicy)
         .await?;
 
-    let echoer_route: Route = vec![channel, "echoer".into()].into();
+    let echoer_route = route![channel, "echoer"];
 
     ctx.send(echoer_route, "Hello world!".to_string()).await?;
 

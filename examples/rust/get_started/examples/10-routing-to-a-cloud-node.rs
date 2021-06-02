@@ -1,6 +1,6 @@
 // This node routes a message, to a worker on a cloud node, over the tcp transport.
 
-use ockam::{Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, Context, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -16,9 +16,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Send a message to the `echo_service` worker on your cloud node.
     ctx.send(
         // route to the echo_service worker on your cloud node
-        Route::new()
-            .append_t(TCP, cloud_node_tcp_address)
-            .append("echo_service"),
+        route![(TCP, cloud_node_tcp_address), "echo_service"],
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )
