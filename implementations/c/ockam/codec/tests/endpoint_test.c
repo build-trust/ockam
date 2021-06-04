@@ -8,14 +8,14 @@
 #include "ockam/codec.h"
 #include "ockam/log.h"
 
-uint8_t* encoded_buffer;
+uint8_t* address_buffer;
 
 int _test_endpoints_setup(void** state)
 {
   int error = 0;
 
-  encoded_buffer = malloc(0xffff);
-  if (0 == encoded_buffer) {
+  address_buffer = malloc(0xffff);
+  if (0 == address_buffer) {
     error = -1;
     goto exit_block;
   }
@@ -32,12 +32,12 @@ void _test_endpoints(void** state)
 
   CodecEndpointType type;
 
-  uint8_t* encoded = encoded_buffer;
+  uint8_t* encoded = address_buffer;
 
   // IPV4
   encoded = encode_endpoint(encoded, kTcpIpv4, (uint8_t*) &ep_ipv4_in);
   assert_ptr_not_equal(0, encoded);
-  encoded = encoded_buffer;
+  encoded = address_buffer;
   encoded = decode_endpoint(encoded, &type, (uint8_t*) &ep_ipv4_out);
   assert_ptr_not_equal(0, encoded);
   assert_int_equal(type, kTcpIpv4);
@@ -48,6 +48,6 @@ int _test_endpoints_teardown(void** state)
 {
   int error = 0;
 
-  if (0 != encoded_buffer) free(encoded_buffer);
+  if (0 != address_buffer) free(address_buffer);
   return 0;
 }
