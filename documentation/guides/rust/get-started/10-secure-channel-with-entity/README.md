@@ -5,7 +5,7 @@ title: Secure Channel
 # Secure Channel
 
 Now that we understand the basics of [Nodes](../01-node),
-[Workers](../02-worker), and [Routing](../03-routing) ... let's
+[Workers](../02-worker), and [Routing](../03-routing). Let's
 create our first encrypted secure channel.
 
 Establishing a secure channel requires establishing a shared secret key between
@@ -38,7 +38,7 @@ send it a message, but we'll route the message through a secure channel:
 Create a new file at:
 
 ```
-touch examples/05a-secure-channel-with-entity.rs
+touch examples/10-secure-channel-with-entity.rs
 ```
 
 Add the following code to this file:
@@ -105,5 +105,4 @@ when it exits.
 <img src="./sequence.png" width="100%">
 
 <div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../06-secure-channel-many-hops">06. Secure Channel over many hops</a>
 </div>
