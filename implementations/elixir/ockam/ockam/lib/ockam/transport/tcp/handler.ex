@@ -10,6 +10,8 @@ defmodule Ockam.Transport.TCP.Handler do
 
   @wire_encoder_decoder Ockam.Wire.Binary.V2
 
+  @address_prefix "TCP_H_"
+
   def start_link(ref, _socket, transport, opts) do
     start_link(ref, transport, opts)
   end
@@ -24,7 +26,7 @@ defmodule Ockam.Transport.TCP.Handler do
     {:ok, socket} = :ranch.handshake(ref, opts)
     :ok = :inet.setopts(socket, [{:active, true}, {:packet, 2}, {:nodelay, true}])
 
-    address = Ockam.Node.get_random_unregistered_address()
+    address = Ockam.Node.get_random_unregistered_address(@address_prefix)
 
     Ockam.Node.Registry.register_name(address, self())
 

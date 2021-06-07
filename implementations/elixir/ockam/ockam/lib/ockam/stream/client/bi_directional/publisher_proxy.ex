@@ -10,6 +10,11 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
 
   require Logger
 
+  @publisher_prefix "STB_P_"
+
+  @impl true
+  def address_prefix(_options), do: "STB_PP_"
+
   @impl true
   def setup(options, state) do
     consumer_stream = Keyword.fetch!(options, :consumer_stream)
@@ -24,7 +29,12 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
   @impl true
   def handle_message({:init, publisher_stream, stream_options}, state) do
     {:ok, publisher_address} =
-      Publisher.create(Keyword.merge(stream_options, stream_name: publisher_stream))
+      Publisher.create(
+        Keyword.merge(stream_options,
+          stream_name: publisher_stream,
+          address_prefix: @publisher_prefix
+        )
+      )
 
     {:ok, Map.put(state, :publisher_address, publisher_address)}
   end

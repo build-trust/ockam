@@ -46,6 +46,9 @@ defmodule Ockam.Stream.Workers.Stream do
   end
 
   @impl true
+  def address_prefix(_options), do: "ST_S_"
+
+  @impl true
   def setup(options, state) do
     reply_route = Keyword.fetch!(options, :reply_route)
     stream_name = Keyword.fetch!(options, :stream_name)

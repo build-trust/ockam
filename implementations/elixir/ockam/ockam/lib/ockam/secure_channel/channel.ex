@@ -20,7 +20,13 @@ defmodule Ockam.SecureChannel.Channel do
 
   @doc false
   def create(options) when is_list(options) do
-    options = Keyword.put_new_lazy(options, :address, &Node.get_random_unregistered_address/0)
+    ## TODO: why secure channel is not a worker?
+    address_prefix = Keyword.get(options, :address_prefix, "")
+
+    options =
+      Keyword.put_new_lazy(options, :address, fn ->
+        Node.get_random_unregistered_address(address_prefix)
+      end)
 
     case Node.start_supervised(__MODULE__, options) do
       {:ok, _pid, address} -> {:ok, address}
@@ -100,8 +106,10 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   # network facing address is ciphertext address
-  defp setup_ciphertext_address(_options, data) do
-    ciphertext_address = Node.get_random_unregistered_address()
+  defp setup_ciphertext_address(options, data) do
+    ## TODO: use a different prefix?
+    address_prefix = Keyword.get(options, :address_prefix, "")
+    ciphertext_address = Node.get_random_unregistered_address(address_prefix)
 
     with :yes <- Node.register_address(ciphertext_address, self()) do
       {:ok, Map.put(data, :ciphertext_address, ciphertext_address)}

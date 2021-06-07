@@ -61,7 +61,8 @@ defmodule Ockam.Transport.TCP do
           Map.put(create_outgoing_message(message), :onward_route, onward_route)
 
         ## TODO: reuse clients when using tcp address
-        with {:ok, client_address} <- Client.create(destination: destination) do
+        with {:ok, client_address} <-
+               Client.create(destination: destination) do
           Ockam.Node.send(client_address, message_to_forward)
         end
 

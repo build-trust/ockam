@@ -14,6 +14,8 @@ defmodule Ockam.Stream.Client.BiDirectional do
 
   @transport_message_encoder Ockam.Wire.Binary.V2
 
+  @consumer_address_prefix "STB_C_"
+
   @doc """
   Create bidirectional consumer.
   Consumer will handle messages with handle_message/4
@@ -30,7 +32,8 @@ defmodule Ockam.Stream.Client.BiDirectional do
         stream_options,
         stream_name: stream_name,
         client_id: subscription_id,
-        message_handler: message_handler
+        message_handler: message_handler,
+        address_prefix: @consumer_address_prefix
       )
 
     {:ok, _consumer_address} = Consumer.create(consumer_options)

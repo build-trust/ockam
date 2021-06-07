@@ -11,6 +11,9 @@ defmodule Ockam.Transport.TCP.Client do
   @wire_encoder_decoder Wire.Binary.V2
 
   @impl true
+  def address_prefix(_options), do: "TCP_C_"
+
+  @impl true
   def setup(options, state) do
     {host, port} = Keyword.fetch!(options, :destination)
 

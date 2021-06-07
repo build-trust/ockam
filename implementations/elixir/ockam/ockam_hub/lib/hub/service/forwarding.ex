@@ -54,6 +54,9 @@ defmodule Ockam.Hub.Service.Forwarding.Forwarder do
   require Logger
 
   @impl true
+  def address_prefix(_options), do: "FWD_"
+
+  @impl true
   def setup(options, state) do
     Logger.info("Created new alias for #{inspect(options)}")
     forward_route = Keyword.fetch!(options, :forward_route)

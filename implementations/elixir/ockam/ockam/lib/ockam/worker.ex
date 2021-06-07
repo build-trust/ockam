@@ -9,6 +9,8 @@ defmodule Ockam.Worker do
               | {:error, reason :: any()}
               | {:stop, reason :: any(), state :: map()}
 
+  @callback address_prefix(options :: Keyword.t()) :: String.t()
+
   defmacro __using__(_options) do
     quote do
       # use GenServer, makes this module a GenServer.
@@ -39,7 +41,12 @@ defmodule Ockam.Worker do
       alias Ockam.Telemetry
 
       def create(options) when is_list(options) do
-        options = Keyword.put_new_lazy(options, :address, &Node.get_random_unregistered_address/0)
+        address_prefix = Keyword.get(options, :address_prefix, address_prefix(options))
+
+        options =
+          Keyword.put_new_lazy(options, :address, fn ->
+            Node.get_random_unregistered_address(address_prefix)
+          end)
 
         case Node.start_supervised(__MODULE__, options) do
           {:ok, pid, worker} ->
@@ -134,7 +141,10 @@ defmodule Ockam.Worker do
       @doc false
       def setup(_options, state), do: {:ok, state}
 
-      defoverridable setup: 2
+      @doc false
+      def address_prefix(_options), do: ""
+
+      defoverridable setup: 2, address_prefix: 1
     end
   end
 end

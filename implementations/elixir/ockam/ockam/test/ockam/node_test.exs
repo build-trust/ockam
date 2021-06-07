@@ -12,14 +12,18 @@ defmodule Ockam.Node.Tests do
     end
   end
 
-  describe "#{Node}.get_random_unregistered_address/{0,1}" do
+  describe "#{Node}.get_random_unregistered_address/{0,1,2}" do
     test "keeps trying" do
       Enum.each(0..254, fn x ->
         x = Base.encode16(<<x>>, case: :lower)
         Node.register_address(x, self())
       end)
 
-      assert "ff" === Node.get_random_unregistered_address(1)
+      assert "ff" === Node.get_random_unregistered_address("", 1)
+    end
+
+    test "uses prefix" do
+      assert "prefix" <> _ = Node.get_random_unregistered_address("prefix_")
     end
   end
 end

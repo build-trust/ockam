@@ -54,6 +54,11 @@ defmodule Ockam.Node do
   defdelegate unregister_address(address), to: Registry, as: :unregister_name
 
   @doc """
+  Lists all registered addresses
+  """
+  defdelegate list_addresses(), to: Registry, as: :list_names
+
+  @doc """
   Send a message to the process registered with an address.
   """
   def send(address, message) do
@@ -64,26 +69,30 @@ defmodule Ockam.Node do
     end
   end
 
-  def register_random_address(length_in_bytes \\ @default_address_length_in_bytes) do
-    address = get_random_unregistered_address(length_in_bytes)
+  def register_random_address(prefix \\ "", length_in_bytes \\ @default_address_length_in_bytes) do
+    address = get_random_unregistered_address(prefix, length_in_bytes)
 
     case register_address(address) do
       :yes -> {:ok, address}
       ## TODO: recursion limit
-      :no -> register_random_address(length_in_bytes)
+      :no -> register_random_address(prefix, length_in_bytes)
     end
   end
 
   @doc """
   Returns a random address that is currently not registed on the node.
   """
-  def get_random_unregistered_address(length_in_bytes \\ @default_address_length_in_bytes) do
-    candidate = length_in_bytes |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
+  def get_random_unregistered_address(
+        prefix \\ "",
+        length_in_bytes \\ @default_address_length_in_bytes
+      ) do
+    random = length_in_bytes |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
+    candidate = prefix <> random
 
     case whereis(candidate) do
       nil -> candidate
       ## TODO: recursion limit
-      _pid -> get_random_unregistered_address(length_in_bytes)
+      _pid -> get_random_unregistered_address(prefix, length_in_bytes)
     end
   end
 

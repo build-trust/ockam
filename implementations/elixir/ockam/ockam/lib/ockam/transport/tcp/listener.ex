@@ -21,6 +21,7 @@ if Code.ensure_loaded?(:ranch) do
       GenServer.start_link(__MODULE__, options)
     end
 
+    @doc false
     @impl true
     def init(options) do
       ip = Keyword.get_lazy(options, :ip, &default_ip/0)

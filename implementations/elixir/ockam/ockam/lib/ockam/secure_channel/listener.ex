@@ -6,6 +6,9 @@ defmodule Ockam.SecureChannel.Listener do
   alias Ockam.Message
   alias Ockam.SecureChannel.Channel
 
+  @impl true
+  def address_prefix(_options), do: "SC_"
+
   @doc false
   @impl true
   def setup(options, state) do
