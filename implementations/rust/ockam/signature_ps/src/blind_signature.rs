@@ -95,7 +95,7 @@ impl Default for BlindSignature {
 
 impl BlindSignature {
     /// The number of bytes in a signature
-    pub const BYTES: usize = 96;
+    pub const BYTES: usize = 128;
 
     /// Generate a new signature where all messages are known to the signer
     pub fn new(

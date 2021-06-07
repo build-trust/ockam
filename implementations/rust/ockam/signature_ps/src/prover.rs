@@ -115,10 +115,10 @@ fn blind_signature_context_test() {
     let nonce = Nonce::random(&mut rng);
 
     // try with zero, just means a blinded signature but issuer knows all messages
-    let mut blind_messages = [];
+    let blind_messages = [];
 
     let res =
-        Prover::new_blind_signature_context(&mut blind_messages[..], &generators, nonce, &mut rng);
+        Prover::new_blind_signature_context(&blind_messages[..], &generators, nonce, &mut rng);
     assert!(res.is_ok());
 
     let (ctx, blinding) = res.unwrap();
