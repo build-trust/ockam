@@ -6,10 +6,14 @@ defmodule Ockam.Hub.KafkaStreamHandler do
   def create(conn) do
     case stream_prefix(conn) do
       {:ok, stream_prefix} ->
-        service_addresses = Ockam.Hub.StreamSpawner.create_kafka_service(stream_prefix)
+        case Ockam.Hub.StreamSpawner.create_kafka_service(stream_prefix) do
+          {:ok, service_addresses} ->
+            response_body = Jason.encode!(service_addresses)
+            Plug.Conn.send_resp(conn, 201, response_body)
 
-        response_body = Jason.encode!(service_addresses)
-        Plug.Conn.send_resp(conn, 200, response_body)
+          {:error, :disabled} ->
+            Plug.Conn.send_resp(conn, 403, "Kafka integration disabled")
+        end
 
       :error ->
         Plug.Conn.send_resp(conn, 400, "Stream prefix required")

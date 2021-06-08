@@ -14,13 +14,14 @@ defmodule Ockam.Hub.StreamSpawner do
       {:ok, stream_service} = create_stream_service(prefix, service_name, :kafka)
       {:ok, index_service} = create_stream_index_service(prefix, index_name, :kafka)
 
-      %{
-        stream_service: stream_service,
-        index_service: index_service
-      }
+      {:ok,
+       %{
+         stream_service: stream_service,
+         index_service: index_service
+       }}
     else
       Logger.warn("Cannot create stream services: kafka disabled")
-      %{}
+      {:error, :disabled}
     end
   end
 
