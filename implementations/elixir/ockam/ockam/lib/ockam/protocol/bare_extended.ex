@@ -40,8 +40,11 @@ defmodule Ockam.Bare.Extended do
       {:ok, decoded, ""} ->
         match_extended_schema(decoded, extended_schema)
 
-      other ->
-        other
+      {:ok, wrong_data, rest} ->
+        {:error, {:unmatched_data, wrong_data, rest}}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

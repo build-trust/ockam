@@ -34,7 +34,7 @@ defmodule Ockam.Wire.Binary.V2.Route do
     end
   end
 
-  @spec decode(maybe_improper_list) :: {:error, list} | {:ok, list}
+  @spec decode(maybe_improper_list) :: {:error, DecodeError.t()} | {:ok, list}
   @doc """
   Decodes a route from a binary.
 

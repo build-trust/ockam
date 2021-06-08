@@ -169,7 +169,8 @@ if Code.ensure_loaded?(:telemetry) do
             event_name :: event_name(),
             start_time :: integer(),
             exception ::
-              {kind :: Exception.kind(), reason :: any(), stacktrace :: Exception.stacktrace()},
+              {kind :: Exception.kind(), reason :: any(), stacktrace :: Exception.stacktrace()}
+              | map(),
             options :: options()
           ) :: :ok
 
@@ -178,6 +179,11 @@ if Code.ensure_loaded?(:telemetry) do
     def emit_exception_event(event_name, start_time, exception, options)
         when is_atom(event_name) and is_integer(start_time),
         do: emit_exception_event([event_name], start_time, exception, options)
+
+    def emit_exception_event(event_name, start_time, %{reason: reason} = exception, options) do
+      stacktrace = exception |> Map.get(:metadata, %{}) |> Map.get(:stacktrace, [])
+      emit_exception_event(event_name, start_time, {:error, reason, stacktrace}, options)
+    end
 
     def emit_exception_event(
           [first | _rest] = event_name,

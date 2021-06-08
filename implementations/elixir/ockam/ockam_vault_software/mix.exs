@@ -19,7 +19,7 @@ defmodule Ockam.Vault.Software.MixProject do
       aliases: aliases(),
 
       # lint
-      dialyzer: [flags: ["-Wunmatched_returns", :error_handling, :underspecs]],
+      dialyzer: [flags: ["-Wunmatched_returns", :underspecs]],
 
       # test
       test_coverage: [output: "_build/cover"],

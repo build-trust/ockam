@@ -19,7 +19,10 @@ defmodule Ockam.MixProject do
       aliases: aliases(),
 
       # lint
-      dialyzer: [flags: ["-Wunmatched_returns", :error_handling, :underspecs]],
+      dialyzer: [
+        flags: [:error_handling],
+        plt_add_apps: [:ranch, :telemetry, :ockam_vault_software]
+      ],
 
       # test
       test_coverage: [output: "_build/cover"],

@@ -1,19 +1,17 @@
-name: elixir_test_ockam_ockam_hub
+name: elixir_test_ockam_ockam_kafka
 on:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - 'implementations/elixir/ockam/ockam_vault_software/**'
       - 'implementations/elixir/ockam/ockam/**'
-      - 'implementations/elixir/ockam/ockam_kafka/**'
       - 'build.gradle'
       - 'implementations/elixir/build.gradle'
       - 'settings.gradle'
       - 'implementations/elixir/settings.gradle'
-      - 'implementations/elixir/ockam/ockam_hub/**'
+      - 'implementations/elixir/ockam/ockam_kafka/**'
 
 jobs:
-  elixir_test_ockam_ockam_hub:
+  elixir_test_ockam_ockam_kafka:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:cbda96698696625b29da843da8c7d1b37b775d5767d14bbf0f8233174735dca8
@@ -21,6 +19,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
 
-      - id: elixir_test_ockam_ockam_hub
+      - id: elixir_test_ockam_ockam_kafka
         working-directory: implementations/elixir
-        run: ../../gradlew test_ockam_ockam_hub
+        run: ../../gradlew test_ockam_ockam_kafka

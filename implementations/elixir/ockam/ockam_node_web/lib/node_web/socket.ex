@@ -22,7 +22,7 @@ defmodule Ockam.Node.Web.Socket do
   end
 
   def websocket_info(_info, state) do
-    {:reply, state}
+    {:ok, state}
   end
 
   def terminate(_reason, _req, _state) do

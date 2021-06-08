@@ -1,6 +1,10 @@
 defmodule Ockam.Vault do
   @moduledoc false
 
+  ## NIF functions always infer as any()
+  ## The types are useful for readability
+  @dialyzer [:no_contracts]
+
   @default_secret_attributes [type: :curve25519, persistence: :ephemeral, length: 32]
 
   @doc """

@@ -110,7 +110,7 @@ defmodule Ockam.TokenLeaseManager do
       {:ok, lease} ->
         save_lease(%Lease{lease | ttl: expiration})
         set_expiration(self(), lease.id, expiration)
-        :ok
+        {:ok, lease}
 
       {:error, reason} ->
         {:error, reason}

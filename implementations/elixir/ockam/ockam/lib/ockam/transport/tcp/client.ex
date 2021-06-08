@@ -27,7 +27,7 @@ defmodule Ockam.Transport.TCP.Client do
     :inet.setopts(socket, [{:active, true}, {:packet, 2}])
     :gen_tcp.controlling_process(socket, self())
 
-    {:noreply, Map.put(state, :socket, socket)}
+    {:ok, Map.put(state, :socket, socket)}
   end
 
   def handle_message({:tcp, socket, data}, %{socket: socket} = state) do
@@ -39,7 +39,7 @@ defmodule Ockam.Transport.TCP.Client do
       e -> raise e
     end
 
-    {:noreply, state}
+    {:ok, state}
   end
 
   def handle_message({:tcp_closed, _}, state), do: {:stop, :normal, state}
@@ -48,7 +48,7 @@ defmodule Ockam.Transport.TCP.Client do
   ## TODO: implement Worker API
   def handle_message(%{payload: _payload} = message, state) do
     encode_and_send_over_tcp(message, state)
-    {:noreply, state}
+    {:ok, state}
   end
 
   defp encode_and_send_over_tcp(message, state) do

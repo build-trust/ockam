@@ -6,4 +6,6 @@ defmodule Ockam.TokenLeaseManager.Lease do
             tags: [],
             ttl: 0,
             value: ""
+
+  @type t() :: %__MODULE__{}
 end

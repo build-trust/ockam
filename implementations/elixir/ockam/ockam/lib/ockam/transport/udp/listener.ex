@@ -58,19 +58,20 @@ defmodule Ockam.Transport.UDP.Listener do
     encode_and_send_over_udp(message, state)
   end
 
-  defp decode_and_send_to_router(udp_message, _state) do
+  defp decode_and_send_to_router(udp_message, state) do
     {function_name, _} = __ENV__.function
     {:udp, _socket, _from_ip, _from_port, packet} = udp_message
 
     with {:ok, decoded} <- Wire.decode(@wire_encoder_decoder, packet),
          :ok <- Router.route(decoded) do
       Telemetry.emit_event(function_name, metadata: %{name: "successfully_decoded"})
+      {:ok, state}
     else
       {:error, reason} -> {:error, Telemetry.emit_event(function_name, metadata: %{name: reason})}
     end
   end
 
-  defp encode_and_send_over_udp(message, %{socket: socket, udp_address: address}) do
+  defp encode_and_send_over_udp(message, %{socket: socket, udp_address: address} = state) do
     message = create_outgoing_message(message)
     {function_name, _} = __ENV__.function
 
@@ -79,6 +80,7 @@ defmodule Ockam.Transport.UDP.Listener do
          {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, message),
          :ok <- :gen_udp.send(socket, destination.ip, destination.port, encoded_message) do
       Telemetry.emit_event(function_name, metadata: %{name: "successfully_encoded_and_sent"})
+      {:ok, state}
     else
       {:error, reason} -> {:error, Telemetry.emit_event(function_name, metadata: %{name: reason})}
     end

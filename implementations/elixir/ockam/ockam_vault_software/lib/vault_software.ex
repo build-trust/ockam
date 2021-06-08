@@ -7,6 +7,8 @@ defmodule Ockam.Vault.Software do
 
   defstruct [:id]
 
+  @dialyzer :no_return
+
   @on_load {:load_natively_implemented_functions, 0}
 
   app = Mix.Project.config()[:app]

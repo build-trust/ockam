@@ -9,6 +9,10 @@ defmodule Ockam.Node do
   alias Ockam.Router
   alias Ockam.Telemetry
 
+  ## route_message matches the error case which dialyzer does not expect.
+  ## keep it in case the Ockam.Message API changes
+  @dialyzer {:no_match, route_message: 1}
+
   # `get_random_unused_address/1` uses this as the length of the new address
   # that will be generated.
   @default_address_length_in_bytes 8
@@ -72,7 +76,7 @@ defmodule Ockam.Node do
   def start_supervised(module, options) do
     DynamicSupervisor.start_child(
       @processes_supervisor,
-      Supervisor.child_spec({module, options}, %{restart: :transient})
+      Supervisor.child_spec({module, options}, restart: :transient)
     )
   end
 

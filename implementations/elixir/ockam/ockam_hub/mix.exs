@@ -19,7 +19,7 @@ defmodule Ockam.Hub.MixProject do
       aliases: aliases(),
 
       # lint
-      dialyzer: [flags: ["-Wunmatched_returns", :error_handling, :underspecs]],
+      dialyzer: [flags: [:error_handling]],
 
       # test
       test_coverage: [output: "_build/cover"],

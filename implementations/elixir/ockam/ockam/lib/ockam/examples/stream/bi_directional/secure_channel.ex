@@ -35,6 +35,9 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
 
   require Logger
 
+  ## Ignore no local return for secure channel
+  @dialyzer :no_return
+
   def config(n) do
     %{
       hub_ip: "13.64.73.230",

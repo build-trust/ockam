@@ -1,11 +1,13 @@
 defmodule Ockam.Worker do
   @moduledoc false
 
-  @callback setup(options :: Keyword.t(), initial_state :: %{}) ::
-              {:ok, state :: %{}} | {:error, reason :: any()}
+  @callback setup(options :: Keyword.t(), initial_state :: map()) ::
+              {:ok, state :: map()} | {:error, reason :: any()}
 
-  @callback handle_message(message :: any(), state :: %{}) ::
-              {:ok, state :: %{}} | {:error, reason :: any()}
+  @callback handle_message(message :: any(), state :: map()) ::
+              {:ok, state :: map()}
+              | {:error, reason :: any()}
+              | {:stop, reason :: any(), state :: map()}
 
   defmacro __using__(_options) do
     quote do
@@ -27,6 +29,10 @@ defmodule Ockam.Worker do
       use GenServer
 
       @behaviour Ockam.Worker
+
+      ## Ignore match errors in handle_info when checking a result of handle_message
+      ## handle_message definition may not return {:error, ...} and it shouldn't fail because of that
+      @dialyzer {:no_match, handle_info: 2}
 
       alias Ockam.Node
       alias Ockam.Router
@@ -82,7 +88,7 @@ defmodule Ockam.Worker do
           {:stop, reason, returned_state} ->
             {:stop, reason, returned_state}
 
-          other ->
+          {:error, _reason} ->
             ## TODO: log error
             {:noreply, state}
         end
@@ -115,10 +121,7 @@ defmodule Ockam.Worker do
       @doc false
       def setup(_options, state), do: {:ok, state}
 
-      @doc false
-      def handle_message(message, state), do: {:ok, state}
-
-      defoverridable setup: 2, handle_message: 2
+      defoverridable setup: 2
     end
   end
 end

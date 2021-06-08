@@ -4,14 +4,14 @@ defmodule Ockam.Stream.Storage.Internal do
 
   @type message() :: Ockam.Stream.Storage.message()
 
-  @type storage() :: map()
+  @type storage() :: map() | nil
 
-  @spec init_stream(String.t(), integer(), list()) :: {:ok, storage()} | {:error, any()}
+  @spec init_stream(String.t(), integer(), list()) :: {:ok, storage()}
   def init_stream(_stream_name, _partitions, _options) do
     {:ok, nil}
   end
 
-  @spec init_partition(String.t(), integer(), any(), list()) :: {:ok, storage()} | {:error, any()}
+  @spec init_partition(String.t(), integer(), any(), list()) :: {:ok, storage()}
   def init_partition(_stream_name, _partition, _stream_state, _options) do
     {:ok, %{latest: 0, earliest: 0}}
   end

@@ -3,6 +3,7 @@ defprotocol Ockam.Message do
   Defines an elixir protocol for a message.
   """
 
+  alias Ockam.Address
   alias Ockam.Serializable
 
   @fallback_to_any true

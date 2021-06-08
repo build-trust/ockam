@@ -16,7 +16,7 @@ defmodule Ockam.Workers.Call do
   end
 
   @impl true
-  def setup(options, state) do
+  def setup(options, %{} = state) do
     call = Keyword.fetch!(options, :call)
     send_call(call, state)
     {:ok, state}

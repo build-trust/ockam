@@ -59,7 +59,8 @@ defmodule Ockam.Protocol do
     BareExtended.encode(data, schema)
   end
 
-  @spec decode(protocol_mod :: module(), direction(), data :: binary()) :: any()
+  @spec decode(protocol_mod :: module(), direction(), data :: binary()) ::
+          {:ok, any()} | {:error, any()}
   def decode(protocol_mod, direction, data) do
     protocol = protocol_mod.protocol()
     schema = Map.get(protocol, direction)
@@ -67,7 +68,8 @@ defmodule Ockam.Protocol do
     BareExtended.decode(data, schema)
   end
 
-  @spec decode_payload(protocol_mod :: module(), direction(), data :: binary()) :: any()
+  @spec decode_payload(protocol_mod :: module(), direction(), data :: binary()) ::
+          {:ok, any()} | {:error, any()}
   def decode_payload(protocol_mod, direction, data) do
     case base_decode(data) do
       {:ok, %{protocol: _name, data: protocol_data}} ->
