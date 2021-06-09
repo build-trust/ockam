@@ -33,3 +33,21 @@ impl SignatureBlinding {
         scalar_from_bytes(bytes).map(Self)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::lib::SignatureBlinding;
+    use rand::thread_rng;
+
+    #[test]
+    fn test_message() {
+        let h = [0_u8; 32];
+        let s = SignatureBlinding::hash(h);
+        let sr = SignatureBlinding::random(thread_rng());
+        assert_ne!(s, sr);
+
+        let sb = s.to_bytes();
+        let s2 = SignatureBlinding::from_bytes(&sb).unwrap();
+        assert_eq!(s, s2);
+    }
+}

@@ -145,3 +145,28 @@ where
         Ok(self.cache.scalars)
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use crate::lib::ProofCommittedBuilder;
+    use blake2::{Blake2b, Digest};
+    use bls12_381_plus::{G1Affine, G1Projective, Scalar};
+
+    #[test]
+    fn test_proof_committed_builder() {
+        let mut pb = ProofCommittedBuilder::<G1Projective, G1Affine, 2, 2>::new(
+            G1Projective::sum_of_products_in_place,
+        );
+
+        let challenge = Scalar::from(3);
+
+        let mut hasher = Blake2b::new();
+
+        pb.commit(G1Projective::identity(), Scalar::from(2));
+
+        pb.add_challenge_contribution(&mut hasher);
+        let proof = pb.generate_proof(challenge, &[Scalar::from(1337)]).unwrap();
+        assert!(!proof.is_empty());
+    }
+}

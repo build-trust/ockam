@@ -123,3 +123,73 @@ pub fn scalar_from_bytes(bytes: &[u8; 32]) -> CtOption<Scalar> {
 pub fn sum_of_products(points: &[G1Projective], scalars: &mut [Scalar]) -> G1Projective {
     G1Projective::sum_of_products_in_place(points, scalars)
 }
+
+#[cfg(test)]
+mod test {
+    use crate::lib::Vec;
+    use crate::lib::*;
+    use crate::util::{hash_to_scalar, scalar_from_bytes, scalar_to_bytes};
+    use bls12_381_plus::{G1Projective, Scalar};
+    use core::ops::AddAssign;
+    use ff::Field;
+    use serde::*;
+
+    #[derive(Serialize, Deserialize)]
+    pub struct TestEntry {
+        #[serde(with = "VecSerializer")]
+        elements: Vec<usize, 16>,
+    }
+    #[test]
+    fn test_vecserializer() {
+        let mut elements: Vec<usize, 16> = Vec::new();
+        for i in 0..16 {
+            elements.push(i).unwrap();
+        }
+        let entry = TestEntry { elements };
+        let json = serde_json::to_string(&entry).unwrap();
+        assert_eq!(
+            "{\"elements\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]}",
+            json
+        );
+
+        let entry: serde_json::Result<TestEntry> = serde_json::from_str(json.as_str());
+        assert!(entry.is_ok());
+        let entry = entry.unwrap();
+        assert_eq!(16, entry.elements.len())
+    }
+
+    #[test]
+    fn test_hash_to_scalar() {
+        let h = [0_u8; 32];
+        let s = hash_to_scalar(h);
+        let json = serde_json::to_string(&s).unwrap();
+
+        assert_eq!("[160,84,69,101,172,192,124,136,195,15,143,221,52,248,200,68,20,107,31,204,72,82,210,99,179,124,0,98,226,99,1,55]", json.as_str())
+    }
+
+    #[test]
+    fn test_scalar_to_from_bytes() {
+        let b = [0_u8; 32];
+        let mut s = scalar_from_bytes(&b).unwrap();
+        assert!(s.is_zero());
+
+        s.add_assign(&Scalar::from(0xbadc0de));
+        let s = s.pow(&[0xff, 0xff, 0xff, 0xff]);
+
+        let bytes = scalar_to_bytes(s);
+        assert_eq!(32, bytes.len());
+
+        let json = serde_json::to_string(&bytes).unwrap();
+
+        assert_eq!("[34,107,81,83,198,125,77,125,20,112,145,59,217,231,104,101,219,242,132,240,51,121,145,216,0,107,61,185,157,33,201,37]", json.as_str())
+    }
+
+    #[test]
+    fn test_sum_of_products() {
+        let point = G1Projective::generator();
+        let scalar = Scalar::from(0xc0dec0de);
+        let sum = sum_of_products(&[point], &mut [scalar]);
+        assert_ne!(point, sum);
+        assert_ne!(G1Projective::identity(), sum);
+    }
+}

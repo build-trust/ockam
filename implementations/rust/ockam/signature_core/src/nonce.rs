@@ -33,3 +33,21 @@ impl Nonce {
         scalar_from_bytes(bytes).map(Self)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::lib::Nonce;
+    use rand::thread_rng;
+
+    #[test]
+    fn test_nonce() {
+        let h = [0_u8; 32];
+        let n = Nonce::hash(h);
+        let nr = Nonce::random(thread_rng());
+        assert_ne!(n, nr);
+
+        let nb = n.to_bytes();
+        let n2 = Nonce::from_bytes(&nb).unwrap();
+        assert_eq!(n, n2);
+    }
+}

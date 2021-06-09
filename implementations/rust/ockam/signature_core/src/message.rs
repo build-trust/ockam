@@ -33,3 +33,21 @@ impl Message {
         scalar_from_bytes(bytes).map(Self)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::lib::Message;
+    use rand::thread_rng;
+
+    #[test]
+    fn test_message() {
+        let h = [0_u8; 32];
+        let m = Message::hash(h);
+        let mr = Message::random(thread_rng());
+        assert_ne!(m, mr);
+
+        let mb = m.to_bytes();
+        let m2 = Message::from_bytes(&mb).unwrap();
+        assert_eq!(m, m2);
+    }
+}

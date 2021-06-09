@@ -38,3 +38,24 @@ impl Challenge {
         Self(Scalar::from_okm(bytes))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::constants::COMMITMENT_BYTES;
+    use crate::lib::Challenge;
+
+    #[test]
+    fn challenge_test() {
+        let h = [0_u8; 32];
+        let c = Challenge::hash(h);
+        let b = c.to_bytes();
+        let cb = Challenge::from_bytes(&b).unwrap();
+        assert_eq!(c, cb);
+
+        let okm = [0_u8; COMMITMENT_BYTES];
+        let co = Challenge::from_okm(&okm);
+        let b = co.to_bytes();
+        let cb = Challenge::from_bytes(&b).unwrap();
+        assert_eq!(co, cb);
+    }
+}

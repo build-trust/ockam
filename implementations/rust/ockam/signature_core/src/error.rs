@@ -39,3 +39,15 @@ impl Display for Error {
         )
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::error::Error;
+
+    #[test]
+    fn test_error() {
+        let e = Error::new(1, "hi");
+        assert_eq!(1, e.code);
+        assert_eq!("hi", e.message.as_str());
+    }
+}
