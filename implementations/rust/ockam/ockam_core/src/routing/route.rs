@@ -189,12 +189,61 @@ impl Drop for RouteBuilder<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Address, Route};
+    use crate::{Address, Error, Route, RouteError};
+
+    fn validate_error(err: Error) {
+        assert_eq!(err.domain(), RouteError::DOMAIN_NAME);
+        assert_eq!(err.code(), RouteError::DOMAIN_CODE);
+    }
 
     #[test]
-    fn test_route_fom_vec() {
+    fn test_route_from_vec() {
         let address = Address::from_string("a");
-        let route: Route = vec![address, "b".into()].into();
-        println!("{:#?}", route)
+        let mut route: Route = vec![address, "b".into()].into();
+        assert_eq!(route.next().unwrap(), &Address::from_string("0#a"));
+        assert_eq!(route.next().unwrap(), &Address::from_string("0#a"));
+        assert_eq!(route.recipient(), Address::from_string("0#b"));
+        assert_eq!(route.step().unwrap(), Address::from_string("0#a"));
+        assert_eq!(route.step().unwrap(), Address::from_string("0#b"));
+    }
+
+    #[test]
+    fn test_route_create() {
+        let addresses = vec!["node-1", "node-2"];
+        let route: Route = Route::create(addresses);
+        assert_eq!(route.recipient(), Address::from_string("0#node-2"));
+    }
+
+    #[test]
+    fn test_route_parse_empty_string() {
+        assert_eq!(Route::parse(""), None);
+    }
+
+    #[test]
+    fn test_route_parse_valid_input() {
+        let s = " node-1 =>node-2=> node-3 ";
+        let mut route = Route::parse(s).unwrap();
+        assert_eq!(route.next().unwrap(), &Address::from_string("0#node-1"));
+        assert_eq!(route.recipient(), Address::from_string("0#node-3"));
+        let _ = route.step();
+        assert_eq!(route.next().unwrap(), &Address::from_string("0#node-2"));
+    }
+
+    #[test]
+    fn test_route_accessors_error_condition() {
+        let s = "node-1";
+        let mut route = Route::parse(s).unwrap();
+        let _ = route.step();
+        validate_error(route.step().err().unwrap());
+        validate_error(route.next().err().unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "Route::recipient failed on invalid Route!")]
+    fn test_route_no_recipient() {
+        let mut route = Route::parse("node-1=>node-2").unwrap();
+        let _ = route.step();
+        let _ = route.step();
+        route.recipient();
     }
 }

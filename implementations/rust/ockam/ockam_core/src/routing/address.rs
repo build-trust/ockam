@@ -230,7 +230,13 @@ fn parse_addr_with_type() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Failed to parse address type:")]
 fn parse_addr_invalid() {
+    Address::from_string("#,my_friend");
+}
+
+#[test]
+#[should_panic(expected = "Invalid address string:")]
+fn parse_addr_invalid_multiple_separators() {
     let _ = Address::from_string("1#invalid#");
 }
