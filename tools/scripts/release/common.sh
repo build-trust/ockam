@@ -42,7 +42,7 @@ function all_crates {
     do
       change_dir "$CRATE"
       echo "all_crates: $CRATE $*"
-      cargo -q $* 1>/dev/null || exit 1
+      cargo -q $* 1>/dev/null
       pop_dir
     done
     pop_dir

@@ -14,12 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
-extern crate serde_big_array;
-
-#[macro_use]
 extern crate tracing;
-
-big_array! { BigArray; 96 }
 
 // ---
 // Export the #[node] attribute macro.
@@ -34,13 +29,11 @@ pub use ockam_node::*;
 pub use ockam_node_no_std::*;
 // ---
 
-mod credential;
 mod error;
 mod lease;
 mod protocols;
 mod remote_forwarder;
 
-pub use credential::*;
 pub use error::*;
 pub use lease::*;
 pub use ockam_core::worker;

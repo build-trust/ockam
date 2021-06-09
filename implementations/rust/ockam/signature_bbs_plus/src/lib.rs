@@ -1,7 +1,7 @@
 //!
 #![no_std]
 #![deny(
-    missing_docs,
+    // TODO restore missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,

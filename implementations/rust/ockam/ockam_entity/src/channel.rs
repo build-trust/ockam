@@ -64,7 +64,7 @@ mod test {
                 let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());
 
                 bob.create_secure_channel_listener(
-                    &mut ctx,
+                    &ctx,
                     "bob_listener".into(),
                     bob_trust_policy,
                     &vault,
@@ -73,12 +73,7 @@ mod test {
                 .unwrap();
 
                 let alice_channel = alice
-                    .create_secure_channel(
-                        &mut ctx,
-                        route!["bob_listener"],
-                        alice_trust_policy,
-                        &vault,
-                    )
+                    .create_secure_channel(&ctx, route!["bob_listener"], alice_trust_policy, &vault)
                     .await
                     .unwrap();
 

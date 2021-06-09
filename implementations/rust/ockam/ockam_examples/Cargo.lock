@@ -795,7 +795,6 @@ version = "0.15.0-dev"
 dependencies = [
  "arrayref",
  "async-trait",
- "bls12_381_plus",
  "ockam_channel",
  "ockam_core",
  "ockam_entity",
@@ -809,12 +808,7 @@ dependencies = [
  "ockam_vault_sync_core",
  "rand 0.8.4",
  "serde",
- "serde-big-array",
  "serde_bare 0.4.0",
- "sha2",
- "signature_bbs_plus",
- "signature_bls",
- "signature_core",
  "tracing",
 ]
 
@@ -853,7 +847,10 @@ name = "ockam_entity"
 version = "0.5.0-dev"
 dependencies = [
  "async-trait",
+ "bls12_381_plus",
  "cfg-if",
+ "group",
+ "heapless 0.7.1",
  "ockam_channel",
  "ockam_core",
  "ockam_key_exchange_xx",
@@ -865,6 +862,10 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_bare 0.4.0",
+ "sha2",
+ "signature_bbs_plus",
+ "signature_bls",
+ "signature_core",
  "tracing",
 ]
 
@@ -1383,6 +1384,7 @@ dependencies = [
  "heapless 0.7.1",
  "rand_core 0.6.3",
  "serde",
+ "serde-big-array",
  "subtle",
  "typenum",
 ]

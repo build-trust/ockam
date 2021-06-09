@@ -1,7 +1,12 @@
+use crate::credential::CredentialVerifier;
 use crate::{
-    Contact, ContactsDb, KeyAttributes, Profile, ProfileAdd, ProfileAuth, ProfileChangeEvent,
-    ProfileChanges, ProfileContacts, ProfileEventAttributes, ProfileIdentifier, ProfileIdentity,
-    ProfileRemove, ProfileRetrieve, ProfileSecrets, ProfileSync, SecureChannelTrait, TrustPolicy,
+    Contact, ContactsDb, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    CredentialHolder, CredentialIssuer, CredentialOffer, CredentialPresentation, CredentialRequest,
+    CredentialSchema, KeyAttributes, OfferIdBytes, PresentationManifest, Profile, ProfileAdd,
+    ProfileAuth, ProfileChangeEvent, ProfileChanges, ProfileContacts, ProfileEventAttributes,
+    ProfileIdentifier, ProfileIdentity, ProfileRemove, ProfileRetrieve, ProfileSecrets,
+    ProfileSync, ProofBytes, ProofRequestId, PublicKeyBytes, SecureChannelTrait, SigningKeyBytes,
+    TrustPolicy,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
@@ -10,6 +15,7 @@ use ockam_vault_sync_core::Vault;
 
 use crate::EntityError::{InvalidInternalState, InvalidParameter, ProfileNotFound};
 use ockam_core::hashbrown::HashMap;
+use rand::{CryptoRng, RngCore};
 
 pub struct Entity {
     ctx: Context,
@@ -105,7 +111,7 @@ impl Entity {
 impl ProfileAdd for Entity {
     fn add_profile(&mut self, profile: ProfileSync) -> Result<()> {
         if let Ok(id) = profile.identifier() {
-            if let Some(_) = self.profiles.insert(id, profile) {
+            if self.profiles.insert(id, profile).is_some() {
                 return Ok(());
             }
         }
@@ -128,7 +134,7 @@ impl ProfileRemove for Entity {
         if &self.default_profile_identifier == profile_id {
             return Err(InvalidParameter.into());
         }
-        if let Some(_) = self.profiles.remove(&profile_id) {
+        if self.profiles.remove(&profile_id).is_some() {
             Ok(())
         } else {
             Err(InvalidInternalState.into())
@@ -301,6 +307,162 @@ impl ProfileAuth for Entity {
     ) -> Result<bool> {
         if let Some(profile) = self.default_profile_mut() {
             profile.verify_authentication_proof(channel_state, responder_contact_id, proof)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+}
+
+impl CredentialIssuer for Entity {
+    fn get_signing_key(&mut self) -> Result<SigningKeyBytes> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.get_signing_key()
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn get_issuer_public_key(&mut self) -> Result<PublicKeyBytes> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.get_issuer_public_key()
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn create_offer(
+        &mut self,
+        schema: &CredentialSchema,
+        rng: impl RngCore + CryptoRng,
+    ) -> Result<CredentialOffer> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.create_offer(schema, rng)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn create_proof_of_possession(&mut self) -> Result<ProofBytes> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.create_proof_of_possession()
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn sign_credential(
+        &mut self,
+        schema: &CredentialSchema,
+        attributes: &[CredentialAttribute],
+    ) -> Result<Credential> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.sign_credential(schema, attributes)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn sign_credential_request(
+        &mut self,
+        request: &CredentialRequest,
+        schema: &CredentialSchema,
+        attributes: &[(String, CredentialAttribute)],
+        offer_id: OfferIdBytes,
+    ) -> Result<CredentialFragment2> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.sign_credential_request(request, schema, attributes, offer_id)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+}
+
+impl CredentialHolder for Entity {
+    fn accept_credential_offer(
+        &mut self,
+        offer: &CredentialOffer,
+        public_key: PublicKeyBytes,
+        rng: impl RngCore + CryptoRng,
+    ) -> Result<(CredentialRequest, CredentialFragment1)> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.accept_credential_offer(offer, public_key, rng)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn combine_credential_fragments(
+        &mut self,
+        credential_fragment1: CredentialFragment1,
+        credential_fragment2: CredentialFragment2,
+    ) -> Result<Credential> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.combine_credential_fragments(credential_fragment1, credential_fragment2)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn is_valid_credential(
+        &mut self,
+        credential: &Credential,
+        verifier_key: PublicKeyBytes,
+    ) -> Result<bool> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.is_valid_credential(credential, verifier_key)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn present_credentials(
+        &mut self,
+        credential: &[Credential],
+        presentation_manifests: &[PresentationManifest],
+        proof_request_id: ProofRequestId,
+        rng: impl RngCore + CryptoRng,
+    ) -> Result<Vec<CredentialPresentation>> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.present_credentials(credential, presentation_manifests, proof_request_id, rng)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+}
+
+impl CredentialVerifier for Entity {
+    fn create_proof_request_id(&mut self, rng: impl RngCore) -> Result<ProofRequestId> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.create_proof_request_id(rng)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn verify_proof_of_possession(
+        &mut self,
+        public_key: PublicKeyBytes,
+        proof: ProofBytes,
+    ) -> Result<bool> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.verify_proof_of_possession(public_key, proof)
+        } else {
+            Err(ProfileNotFound.into())
+        }
+    }
+
+    fn verify_credential_presentations(
+        &mut self,
+        presentations: &[CredentialPresentation],
+        presentation_manifests: &[PresentationManifest],
+        proof_request_id: ProofRequestId,
+    ) -> Result<bool> {
+        if let Some(profile) = self.default_profile_mut() {
+            profile.verify_credential_presentations(
+                presentations,
+                presentation_manifests,
+                proof_request_id,
+            )
         } else {
             Err(ProfileNotFound.into())
         }

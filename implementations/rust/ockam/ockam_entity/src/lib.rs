@@ -23,24 +23,31 @@ mod authentication;
 mod change;
 mod channel;
 mod contact;
+mod credential;
 mod entity;
 mod error;
 mod identifiers;
-mod imp;
 mod key_attributes;
+mod profile;
 mod traits;
 mod worker;
 
 pub use change::*;
 pub use channel::*;
 pub use contact::*;
+pub use credential::*;
 pub use entity::*;
 pub use error::*;
 pub use identifiers::*;
-pub use imp::*;
 pub use key_attributes::*;
+pub use profile::*;
+use rand::thread_rng;
+use signature_bls::SecretKey;
 pub use traits::*;
 pub use worker::*;
+
+pub const SECRET_ID: &str = "secret_id";
+
 /// Traits required for a Vault implementation suitable for use in a Profile
 pub trait ProfileVault:
     SecretVault + SecureChannelVault + KeyIdVault + Hasher + Signer + Verifier + Clone + Send + 'static
@@ -218,7 +225,10 @@ impl Profile {
     /// Create a new Profile
     pub async fn create(ctx: &Context, vault: &Address) -> Result<ProfileSync> {
         let vault = VaultSync::create_with_worker(ctx, vault)?;
-        let imp = ProfileImpl::<VaultSync>::create_internal(None, vault)?;
+
+        // TODO store a credential key persistently in Vault
+        let credential_issuing_key = SecretKey::random(thread_rng()).unwrap();
+        let imp = ProfileImpl::<VaultSync>::create_internal(None, credential_issuing_key, vault)?;
         ProfileSync::create(ctx, imp).await
     }
 }

@@ -807,7 +807,6 @@ version = "0.15.0-dev"
 dependencies = [
  "arrayref",
  "async-trait",
- "bls12_381_plus",
  "ockam_channel",
  "ockam_core",
  "ockam_entity",
@@ -820,15 +819,9 @@ dependencies = [
  "ockam_vault_core",
  "ockam_vault_sync_core",
  "rand 0.8.4",
- "rand_xorshift",
  "serde",
- "serde-big-array",
  "serde_bare 0.4.0",
  "serde_json",
- "sha2",
- "signature_bbs_plus",
- "signature_bls",
- "signature_core",
  "tracing",
  "trybuild",
 ]
@@ -869,7 +862,10 @@ name = "ockam_entity"
 version = "0.5.0-dev"
 dependencies = [
  "async-trait",
+ "bls12_381_plus",
  "cfg-if",
+ "group",
+ "heapless 0.7.1",
  "ockam_channel",
  "ockam_core",
  "ockam_key_exchange_xx",
@@ -881,6 +877,10 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_bare 0.4.0",
+ "sha2",
+ "signature_bbs_plus",
+ "signature_bls",
+ "signature_core",
  "tracing",
 ]
 
@@ -1177,15 +1177,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rand_xorshift"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
-dependencies = [
- "rand_core 0.6.3",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1400,6 +1391,7 @@ dependencies = [
  "heapless 0.7.1",
  "rand_core 0.6.3",
  "serde",
+ "serde-big-array",
  "subtle",
  "typenum",
 ]

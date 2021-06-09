@@ -1,5 +1,8 @@
 use crate::{
-    Contact, KeyAttributes, ProfileChangeEvent, ProfileEventAttributes, ProfileIdentifier,
+    Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    CredentialOffer, CredentialPresentation, CredentialPublicKey, CredentialRequest,
+    CredentialSchema, KeyAttributes, OfferIdBytes, PresentationManifest, ProfileChangeEvent,
+    ProfileEventAttributes, ProfileIdentifier, Proof, ProofRequestId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -50,4 +53,50 @@ pub enum ProfileRequestMessage {
         key_attributes: KeyAttributes,
     },
     GetRootSecret,
+    // Issuer Traits
+    GetSigningKey,
+    GetIssuerPublicKey,
+    CreateOffer {
+        schema: CredentialSchema,
+    },
+    CreateProofOfPossession,
+    SignCredential {
+        schema: CredentialSchema,
+        attributes: Vec<CredentialAttribute>,
+    },
+    SignCredentialRequest {
+        request: CredentialRequest,
+        schema: CredentialSchema,
+        attributes: Vec<(String, CredentialAttribute)>,
+        offer_id: OfferIdBytes,
+    },
+    // Holder Traits
+    AcceptCredentialOffer {
+        offer: CredentialOffer,
+        public_key: CredentialPublicKey,
+    },
+    CombineCredentialFragments {
+        frag1: CredentialFragment1,
+        frag2: CredentialFragment2,
+    },
+    IsValidCredential {
+        credential: Credential,
+        public_key: CredentialPublicKey,
+    },
+    PresentCredentials {
+        credentials: Vec<Credential>,
+        manifests: Vec<PresentationManifest>,
+        proof_request_id: ProofRequestId,
+    },
+    // Verifier Traits
+    CreateProofRequestId,
+    VerifyProofOfPossession {
+        public_key: CredentialPublicKey,
+        proof: Proof,
+    },
+    VerifyCredentialPresentation {
+        presentations: Vec<CredentialPresentation>,
+        manifests: Vec<PresentationManifest>,
+        proof_request_id: ProofRequestId,
+    },
 }

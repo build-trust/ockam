@@ -38,14 +38,8 @@ ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.8.0-de
 ockam_entity = { path = "../ockam_entity", version = "0.5.0-dev"      }
 arrayref = "0.3"
 async-trait = "0.1.42"
-bls12_381_plus = "0.4"
-signature_core = { version = "0.8.0-dev"        , path = "../signature_core" }
-signature_bbs_plus = { version = "0.8.0-dev"        , path = "../signature_bbs_plus", package = "signature_bbs_plus" }
-signature_bls = { version = "0.6.0-dev"        , path = "../signature_bls", package = "signature_bls" }
-serde_bare = "0.4"
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
-serde-big-array = "0.3"
-sha2 = "0.9"
+serde_bare = "0.4.0"
 tracing = "0.1"
 rand = "0.8"
 
@@ -53,5 +47,4 @@ rand = "0.8"
 ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "0.7.0-dev"       }
 ockam_key_exchange_xx = {path = "../ockam_key_exchange_xx", version = "0.8.0-dev"       }
 trybuild = {version = "1.0.42", features = ["diff"]}
-serde_json = "1.0"
-rand_xorshift = "0.3"
+serde_json = "1.0.64"

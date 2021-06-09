@@ -1,3 +1,4 @@
+use crate::credential::{CredentialHolder, CredentialIssuer, CredentialVerifier};
 use crate::{
     Contact, ContactsDb, KeyAttributes, ProfileChangeEvent, ProfileEventAttributes,
     ProfileIdentifier, ProfileSync, TrustPolicy,
@@ -109,7 +110,16 @@ pub trait SecureChannelTrait {
 
 /// Supertrait of a Profile
 pub trait ProfileTrait:
-    ProfileIdentity + ProfileChanges + ProfileSecrets + ProfileContacts + ProfileAuth + Send + 'static
+    ProfileIdentity
+    + ProfileChanges
+    + ProfileSecrets
+    + ProfileContacts
+    + ProfileAuth
+    + CredentialIssuer
+    + CredentialHolder
+    + CredentialVerifier
+    + Send
+    + 'static
 {
 }
 
@@ -119,6 +129,9 @@ impl<P> ProfileTrait for P where
         + ProfileSecrets
         + ProfileContacts
         + ProfileAuth
+        + CredentialIssuer
+        + CredentialHolder
+        + CredentialVerifier
         + Send
         + 'static
 {

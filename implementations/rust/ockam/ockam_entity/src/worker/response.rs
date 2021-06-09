@@ -1,4 +1,8 @@
-use crate::{Contact, ContactsDb, ProfileChangeEvent, ProfileIdentifier};
+use crate::{
+    Contact, ContactsDb, Credential, CredentialFragment1, CredentialFragment2, CredentialOffer,
+    CredentialPresentation, CredentialPublicKey, CredentialRequest, ProfileChangeEvent,
+    ProfileIdentifier, Proof, ProofRequestId, SigningKeyBytes,
+};
 use ockam_vault_core::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
 
@@ -22,4 +26,20 @@ pub enum ProfileResponseMessage {
     GetSecretKey(Secret),
     GetPublicKey(PublicKey),
     GetRootSecret(Secret),
+    // Issuer traits
+    GetSigningKey(SigningKeyBytes),
+    GetIssuerPublicKey(CredentialPublicKey),
+    CreateOffer(CredentialOffer),
+    CreateProofOfPossession(Proof),
+    SignCredential(Credential),
+    SignCredentialRequest(CredentialFragment2),
+    // Holder traits
+    AcceptCredentialOffer((CredentialRequest, CredentialFragment1)),
+    CombineCredentialFragments(Credential),
+    IsValidCredential(bool),
+    PresentCredentials(Vec<CredentialPresentation>),
+    // Verifier traits
+    CreateProofRequestId(ProofRequestId),
+    VerifyProofOfPossession(bool),
+    VerifyCredentialPresentation(bool),
 }

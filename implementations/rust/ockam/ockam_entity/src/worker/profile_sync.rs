@@ -33,6 +33,10 @@ impl ProfileSync {
             .body()
             .into()
     }
+
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
 }
 
 impl Clone for ProfileSync {

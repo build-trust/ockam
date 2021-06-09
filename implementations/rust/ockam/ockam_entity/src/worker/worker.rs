@@ -1,8 +1,10 @@
-use crate::{ProfileRequestMessage, ProfileResponseMessage, ProfileTrait};
+use crate::{
+    CredentialPublicKey, ProfileRequestMessage, ProfileResponseMessage, ProfileTrait, Proof,
+};
 use async_trait::async_trait;
 use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
 use ockam_node::Context;
-use rand::random;
+use rand::{random, thread_rng};
 
 /// A Worker wrapper for a Profile
 pub struct ProfileWorker<P: ProfileTrait> {
@@ -116,6 +118,95 @@ impl<P: ProfileTrait> ProfileWorker<P> {
             ProfileRequestMessage::GetRootSecret => {
                 let res = self.inner.get_root_secret()?;
                 ProfileResponseMessage::GetRootSecret(res)
+            }
+            // Issuer
+            ProfileRequestMessage::GetSigningKey => {
+                let res = self.inner.get_signing_key().unwrap();
+                ProfileResponseMessage::GetSigningKey(res)
+            }
+            ProfileRequestMessage::GetIssuerPublicKey => {
+                let res = self.inner.get_issuer_public_key().unwrap();
+                ProfileResponseMessage::GetIssuerPublicKey(CredentialPublicKey(res))
+            }
+            ProfileRequestMessage::CreateOffer { schema } => {
+                let res = self.inner.create_offer(&schema, thread_rng())?;
+                ProfileResponseMessage::CreateOffer(res)
+            }
+            ProfileRequestMessage::CreateProofOfPossession => {
+                let res = self.inner.create_proof_of_possession().unwrap();
+                ProfileResponseMessage::CreateProofOfPossession(Proof(res))
+            }
+            ProfileRequestMessage::SignCredential { schema, attributes } => {
+                let res = self.inner.sign_credential(&schema, &attributes)?;
+                ProfileResponseMessage::SignCredential(res)
+            }
+            ProfileRequestMessage::SignCredentialRequest {
+                request,
+                schema,
+                attributes,
+                offer_id,
+            } => {
+                let res =
+                    self.inner
+                        .sign_credential_request(&request, &schema, &attributes, offer_id)?;
+                ProfileResponseMessage::SignCredentialRequest(res)
+            }
+            // Holder
+            ProfileRequestMessage::AcceptCredentialOffer { offer, public_key } => {
+                let res = self
+                    .inner
+                    .accept_credential_offer(&offer, public_key.0, thread_rng())?;
+
+                ProfileResponseMessage::AcceptCredentialOffer(res)
+            }
+            ProfileRequestMessage::CombineCredentialFragments { frag1, frag2 } => {
+                let res = self.inner.combine_credential_fragments(frag1, frag2)?;
+                ProfileResponseMessage::CombineCredentialFragments(res)
+            }
+            ProfileRequestMessage::IsValidCredential {
+                credential,
+                public_key,
+            } => {
+                let res = self
+                    .inner
+                    .is_valid_credential(&credential, public_key.0)
+                    .unwrap();
+                ProfileResponseMessage::IsValidCredential(res)
+            }
+            ProfileRequestMessage::PresentCredentials {
+                credentials,
+                manifests,
+                proof_request_id,
+            } => {
+                let res = self.inner.present_credentials(
+                    &*credentials,
+                    &*manifests,
+                    proof_request_id,
+                    thread_rng(),
+                )?;
+                ProfileResponseMessage::PresentCredentials(res)
+            }
+            ProfileRequestMessage::CreateProofRequestId => {
+                let res = self.inner.create_proof_request_id(thread_rng())?;
+                ProfileResponseMessage::CreateProofRequestId(res)
+            }
+            ProfileRequestMessage::VerifyProofOfPossession { public_key, proof } => {
+                let res = self
+                    .inner
+                    .verify_proof_of_possession(public_key.0, proof.0)?;
+                ProfileResponseMessage::VerifyProofOfPossession(res)
+            }
+            ProfileRequestMessage::VerifyCredentialPresentation {
+                presentations,
+                manifests,
+                proof_request_id,
+            } => {
+                let res = self.inner.verify_credential_presentations(
+                    &presentations,
+                    &manifests,
+                    proof_request_id,
+                )?;
+                ProfileResponseMessage::VerifyCredentialPresentation(res)
             }
         })
     }
