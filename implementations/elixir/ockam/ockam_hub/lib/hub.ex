@@ -7,12 +7,6 @@ defmodule Ockam.Hub do
 
   use Application
 
-  alias Ockam.Hub.Service.Alias, as: AliasService
-  alias Ockam.Hub.Service.Echo, as: EchoService
-
-  alias Ockam.Stream.Index.Worker, as: StreamIndexService
-  alias Ockam.Stream.Workers.Service, as: StreamService
-
   alias Ockam.Hub.TelemetryForwarder
   alias Ockam.Transport
 
@@ -32,31 +26,8 @@ defmodule Ockam.Hub do
     # Add a TCP listener on port 4000
     Transport.TCP.create_listener(port: tcp_transport_port)
 
-    # Create an echo_service worker.
-    # TODO: add to supervision tree.
-    EchoService.create(address: "echo_service")
-
-    AliasService.create(address: "forwarding_service")
-
-    StreamService.create(address: "stream_service")
-    StreamIndexService.create(address: "stream_index_service")
-
-    # kafka_storage_options = Application.get_env(:ockam_kafka, :storage_options, [])
-    # kafka_storage_options = Keyword.put(kafka_storage_options, :topic_prefix, "prefix_")
-
-    # StreamService.create(
-    #   address: "stream_kafka_service",
-    #   stream_options: [
-    #     storage_mod: Ockam.Stream.Storage.Kafka,
-    #     storage_options: kafka_storage_options
-    #   ]
-    # )
-
-    # StreamIndexService.create(
-    #   address: "stream_kafka_index",
-    #   storage_mod: Ockam.Stream.Index.KafkaOffset,
-    #   storage_options: kafka_storage_options
-    # )
+    ## Start all configured services
+    Ockam.Hub.Service.Provider.start_configured_services()
 
     # on app start, create the node if it does not exist
     # we probably don't care if this errors.

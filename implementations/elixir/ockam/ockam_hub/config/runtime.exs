@@ -88,17 +88,17 @@ config :ockam_hub,
   tcp_transport_port: 4000,
   web_port: 4001
 
-## Kafka config:
+## Kafka default config
 
-kafka_enabled = System.get_env("ENABLE_KAFKA", "false") == "true"
-
-kafka_host = System.get_env("KAFKA_HOST", "localhost")
-kafka_port = String.to_integer(System.get_env("KAFKA_PORT", "9092"))
+kafka_endpoints = System.get_env("KAFKA_ENDPOINTS", "localhost:9092")
 
 kafka_sasl =
   case System.get_env("KAFKA_SASL") do
-    nil -> nil
-    string -> String.to_atom(string)
+    empty when empty == nil or empty == "" ->
+      "plain"
+
+    not_empty ->
+      not_empty
   end
 
 kafka_user = System.get_env("KAFKA_USER")
@@ -114,7 +114,7 @@ kafka_user =
       else
         _ ->
           IO.puts(:stderr, "Kafka user is not configured")
-          ""
+          nil
       end
 
     not_empty ->
@@ -131,7 +131,7 @@ kafka_password =
       else
         _ ->
           IO.puts(:stderr, "Kafka password is not configured")
-          ""
+          nil
       end
 
     not_empty ->
@@ -140,18 +140,45 @@ kafka_password =
 
 kafka_ssl = System.get_env("KAFKA_SSL") == "true"
 
-kafka_client_config =
-  case kafka_sasl do
-    nil -> [ssl: kafka_ssl]
-    sasl -> [sasl: {sasl, kafka_user, kafka_password}, ssl: kafka_ssl]
-  end
-
 kafka_replication_factor = String.to_integer(System.get_env("KAFKA_REPLICATION_FACTOR", "1"))
 
+kafka_stream_prefix = System.get_env("KAFKA_STREAM_PREFIX") || ""
+
 config :ockam_kafka,
-  enabled: kafka_enabled,
-  endpoints: [{kafka_host, kafka_port}],
-  storage_options: [
-    client_config: kafka_client_config,
-    replication_factor: kafka_replication_factor
+  endpoints: kafka_endpoints,
+  replication_factor: kafka_replication_factor,
+  ssl: kafka_ssl,
+  sasl: kafka_sasl,
+  user: kafka_user,
+  password: kafka_password,
+  stream_prefix: kafka_stream_prefix
+
+## Services config
+
+services_json = System.get_env("SERVICES_JSON")
+
+services_list = System.get_env("SERVICES_LIST")
+
+services_file = System.get_env("SERVICES_FILE")
+
+services_config_source = System.get_env("SERVICES_CONFIG_SOURCE")
+
+config :ockam_hub,
+  service_providers: [
+    # default services
+    Ockam.Hub.Service.Provider.Routing,
+    # stream services
+    Ockam.Hub.Service.Provider.Stream,
+    # kafka services
+    Ockam.Kafka.Hub.Service.Provider
+  ],
+  services_config_source: services_config_source,
+  # JSON version of the services definition
+  services_json: services_json,
+  services_file: services_file,
+  services_list: services_list,
+  ## Start echo and forwarding services by default
+  services: [
+    :echo,
+    :forwarding
   ]
