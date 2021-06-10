@@ -1,5 +1,16 @@
+/// Creates a [`Route`] containing the arguments.
+///
+/// `route!` allows `Route`s to be defined with the same syntax as array expressions.
+///
+/// ```
+/// # use ockam_core::{Route, route, Address};
+/// # use rand::random;
+/// let address4: Address = random();
+/// let route = route!["address1", "address2", "address3".to_string(), address4];
+/// ```
+///
+/// [`Route`]: crate::Route
 #[macro_export]
-/// Create a route
 macro_rules! route {
     ($($x:expr),* $(,)?) => ({
         #[allow(unused_mut)]
