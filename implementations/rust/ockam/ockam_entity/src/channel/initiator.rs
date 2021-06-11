@@ -138,20 +138,13 @@ impl Worker for Initiator {
             let onward_route = onward_route
                 .modify()
                 .prepend(remote_profile_secure_channel_address)
-                .prepend(self.local_secure_channel_address.clone())
-                .into();
+                .prepend(self.local_secure_channel_address.clone());
 
             let return_route = return_route
                 .modify()
-                .append(self.self_remote_address.clone())
-                .into();
+                .append(self.self_remote_address.clone());
 
-            let transport_msg = TransportMessage {
-                version: 1,
-                onward_route,
-                return_route,
-                payload,
-            };
+            let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
             ctx.forward(transport_msg).await?;
         } else if msg_addr == self.self_remote_address {
@@ -172,15 +165,9 @@ impl Worker for Initiator {
 
                 let return_route = return_route
                     .modify()
-                    .append(self.self_local_address.clone())
-                    .into();
+                    .append(self.self_local_address.clone());
 
-                let transport_msg = TransportMessage {
-                    version: 1,
-                    onward_route,
-                    return_route,
-                    payload,
-                };
+                let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
                 ctx.forward(transport_msg).await?;
             }

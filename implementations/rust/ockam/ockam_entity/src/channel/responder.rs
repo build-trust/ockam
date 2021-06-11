@@ -40,12 +40,7 @@ impl Responder {
         let body =
             CreateResponderChannelMessage::new(body.payload().clone(), Some(child_ctx.address()));
 
-        let msg = TransportMessage {
-            version: 1,
-            onward_route,
-            return_route,
-            payload: body.encode()?,
-        };
+        let msg = TransportMessage::v1(onward_route, return_route, body.encode()?);
 
         ctx.forward(msg).await?;
 
@@ -159,20 +154,13 @@ impl Worker for Responder {
             let onward_route = onward_route
                 .modify()
                 .prepend(self.local_secure_channel_address.clone())
-                .prepend(self.remote_profile_secure_channel_address.clone())
-                .into();
+                .prepend(self.remote_profile_secure_channel_address.clone());
 
             let return_route = return_route
                 .modify()
-                .append(self.self_remote_address.clone())
-                .into();
+                .append(self.self_remote_address.clone());
 
-            let transport_msg = TransportMessage {
-                version: 1,
-                onward_route,
-                return_route,
-                payload: msg.payload,
-            };
+            let transport_msg = TransportMessage::v1(onward_route, return_route, msg.payload);
 
             ctx.forward(transport_msg).await?;
         } else if msg_addr == self.self_remote_address {
@@ -182,15 +170,9 @@ impl Worker for Responder {
 
             let return_route = return_route
                 .modify()
-                .append(self.self_local_address.clone())
-                .into();
+                .append(self.self_local_address.clone());
 
-            let transport_msg = TransportMessage {
-                version: 1,
-                onward_route,
-                return_route,
-                payload: msg.payload,
-            };
+            let transport_msg = TransportMessage::v1(onward_route, return_route, msg.payload);
 
             ctx.forward(transport_msg).await?;
         } else {

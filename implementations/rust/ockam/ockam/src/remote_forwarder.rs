@@ -125,12 +125,7 @@ impl Worker for RemoteForwarder {
         let payload = msg.into_transport_message().payload;
         debug!("RemoteForwarder received message");
 
-        let msg = TransportMessage {
-            version: 1,
-            onward_route: self.destination.clone(),
-            return_route,
-            payload,
-        };
+        let msg = TransportMessage::v1(self.destination.clone(), return_route, payload);
 
         ctx.forward(msg).await?;
 

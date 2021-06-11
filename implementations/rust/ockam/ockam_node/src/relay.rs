@@ -143,12 +143,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
                                 (
                                     m,
                                     route.clone(),
-                                    TransportMessage {
-                                        version: 0,
-                                        return_route: Route::new().into(),
-                                        onward_route: route,
-                                        payload: enc_msg,
-                                    },
+                                    TransportMessage::v1(Route::new(), route, enc_msg),
                                 )
                             })?
                         }
