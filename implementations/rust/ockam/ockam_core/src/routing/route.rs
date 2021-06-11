@@ -175,6 +175,18 @@ impl RouteBuilder<'_> {
         self.inner.push_front(addr.into());
         self
     }
+
+    /// Pop front
+    pub fn pop_front(mut self) -> Self {
+        self.inner.pop_front();
+        self
+    }
+
+    /// Pop back
+    pub fn pop_back(mut self) -> Self {
+        self.inner.pop_back();
+        self
+    }
 }
 
 impl Drop for RouteBuilder<'_> {

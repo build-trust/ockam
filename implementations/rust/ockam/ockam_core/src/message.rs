@@ -3,7 +3,7 @@ use crate::{
         fmt::{self, Debug, Display, Formatter},
         Deref, DerefMut, String, ToString, Vec,
     },
-    Address, Result, Route, TransportMessage,
+    Address, LocalMessage, Result, Route, TransportMessage,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -89,16 +89,16 @@ impl From<serde_bare::Error> for crate::Error {
 pub struct Routed<M: Message> {
     inner: M,
     msg_addr: Address,
-    transport: TransportMessage,
+    local_msg: LocalMessage,
 }
 
 impl<M: Message> Routed<M> {
     /// Create a new Routed message wrapper
-    pub fn v1(inner: M, msg_addr: Address, transport: TransportMessage) -> Self {
+    pub fn new(inner: M, msg_addr: Address, local_msg: LocalMessage) -> Self {
         Self {
             inner,
             msg_addr,
-            transport,
+            local_msg,
         }
     }
 
@@ -111,18 +111,18 @@ impl<M: Message> Routed<M> {
     /// Return a copy of the onward route for this message
     #[inline]
     pub fn onward_route(&self) -> Route {
-        self.transport.onward_route.clone()
+        self.local_msg.transport().onward_route.clone()
     }
 
     /// Return a copy of the full return route of the wrapped message
     #[inline]
     pub fn return_route(&self) -> Route {
-        self.transport.return_route.clone()
+        self.local_msg.transport().return_route.clone()
     }
     /// Get a copy of the message sender address
     #[inline]
     pub fn sender(&self) -> Address {
-        self.transport.return_route.recipient()
+        self.local_msg.transport().return_route.recipient()
     }
 
     /// Consume the message wrapper
@@ -131,16 +131,28 @@ impl<M: Message> Routed<M> {
         self.inner
     }
 
-    /// Consume the message wrapper to the underlying transport
+    /// Consume the message wrapper to the underlying local message
+    #[inline]
+    pub fn into_local_message(self) -> LocalMessage {
+        self.local_msg
+    }
+
+    /// Consume the message wrapper to the underlying transport message
     #[inline]
     pub fn into_transport_message(self) -> TransportMessage {
-        self.transport
+        self.into_local_message().into_transport_message()
+    }
+
+    /// Consume the message wrapper to the underlying local message
+    #[inline]
+    pub fn local_message(&self) -> &LocalMessage {
+        &self.local_msg
     }
 
     /// Get a reference to the underlying binary message payload
     #[inline]
     pub fn payload(&self) -> &Vec<u8> {
-        &self.transport.payload
+        &self.local_msg.transport().payload
     }
 }
 

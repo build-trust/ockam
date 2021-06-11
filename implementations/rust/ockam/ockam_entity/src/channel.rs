@@ -4,16 +4,16 @@ use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
 
-mod responder;
-pub(crate) use responder::*;
-mod initiator;
-pub(crate) use initiator::*;
+mod secure_channel_worker;
+pub(crate) use secure_channel_worker::*;
 mod listener;
 pub(crate) use listener::*;
 mod messages;
 pub(crate) use messages::*;
 mod trust_policy;
 pub use trust_policy::*;
+mod local_info;
+pub use local_info::*;
 
 #[async_trait]
 impl<P: ProfileTrait + Clone> SecureChannelTrait for P {
@@ -26,7 +26,7 @@ impl<P: ProfileTrait + Clone> SecureChannelTrait for P {
         vault: &Address,
     ) -> Result<Address> {
         let vault = VaultSync::create_with_worker(ctx, vault)?;
-        Initiator::create(ctx, route, self, trust_policy, vault).await
+        SecureChannelWorker::create_initiator(ctx, route, self, trust_policy, vault).await
     }
 
     /// Create mutually authenticated secure channel listener
@@ -47,6 +47,7 @@ impl<P: ProfileTrait + Clone> SecureChannelTrait for P {
 mod test {
     use super::*;
     use crate::{Profile, ProfileIdentity};
+    use ockam_core::{route, Message};
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -74,7 +75,7 @@ mod test {
                 let alice_channel = alice
                     .create_secure_channel(
                         &mut ctx,
-                        Route::new().append("bob_listener").into(),
+                        route!["bob_listener"],
                         alice_trust_policy,
                         &vault,
                     )
@@ -82,22 +83,31 @@ mod test {
                     .unwrap();
 
                 ctx.send(
-                    Route::new().append(alice_channel).append(ctx.address()),
+                    route![alice_channel, ctx.address()],
                     "Hello, Bob!".to_string(),
                 )
                 .await
                 .unwrap();
                 let msg = ctx.receive::<String>().await.unwrap().take();
+
+                let local_info = LocalInfo::decode(msg.local_message().local_info()).unwrap();
+                assert_eq!(local_info.their_profile_id(), &alice.identifier().unwrap());
+
                 let return_route = msg.return_route();
                 assert_eq!("Hello, Bob!", msg.body());
 
                 ctx.send(return_route, "Hello, Alice!".to_string())
                     .await
                     .unwrap();
-                assert_eq!(
-                    "Hello, Alice!",
-                    ctx.receive::<String>().await.unwrap().take().body()
-                );
+
+                let msg = ctx.receive::<String>().await.unwrap().take();
+
+                let local_info = msg.local_message().local_info();
+
+                let local_info = LocalInfo::decode(local_info).unwrap();
+                assert_eq!(local_info.their_profile_id(), &bob.identifier().unwrap());
+
+                assert_eq!("Hello, Alice!", msg.body());
 
                 ctx.stop().await.unwrap();
             })

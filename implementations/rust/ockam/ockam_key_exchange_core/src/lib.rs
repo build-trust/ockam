@@ -21,6 +21,8 @@ use zeroize::Zeroize;
 
 /// A trait implemented by both Initiator and Responder peers.
 pub trait KeyExchanger {
+    /// Return key exchange unique name.
+    fn name(&self) -> String;
     /// Generate request that should be sent to the other party.
     fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
     /// Handle response from other party and return payload.

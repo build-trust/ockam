@@ -15,12 +15,14 @@
     warnings
 )]
 mod error;
+mod local_info;
 mod secure_channel;
 mod secure_channel_listener;
 mod secure_channel_worker;
 mod traits;
 
 pub use error::*;
+pub use local_info::*;
 pub use secure_channel::*;
 pub use secure_channel_listener::*;
 pub use secure_channel_worker::*;

@@ -66,6 +66,10 @@ impl<V: X3dhVault> std::fmt::Debug for Initiator<V> {
 }
 
 impl<V: X3dhVault> KeyExchanger for Initiator<V> {
+    fn name(&self) -> String {
+        "X3DH".to_string()
+    }
+
     fn generate_request(&mut self, _payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             InitiatorState::GenerateEphemeralIdentityKey => {

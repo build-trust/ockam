@@ -81,10 +81,13 @@ impl Worker for WebSocketRouter {
         use RouterMessage::*;
         match msg {
             Route(mut msg) => {
-                trace!("WebSocket route request: {:?}", msg.onward_route.next());
+                trace!(
+                    "WebSocket route request: {:?}",
+                    msg.transport().onward_route.next()
+                );
 
                 // Get the next hop
-                let onward = msg.onward_route.step()?;
+                let onward = msg.transport_mut().onward_route.step()?;
 
                 // Look up the connection worker responsible
                 let next = self
@@ -93,7 +96,10 @@ impl Worker for WebSocketRouter {
                     .ok_or_else(|| WebSocketError::UnknownRoute)?;
 
                 // Modify the transport message route
-                msg.onward_route.modify().prepend(next.clone());
+                msg.transport_mut()
+                    .onward_route
+                    .modify()
+                    .prepend(next.clone());
 
                 // Send the transport message to the connection worker
                 ctx.send(next.clone(), msg).await?;
