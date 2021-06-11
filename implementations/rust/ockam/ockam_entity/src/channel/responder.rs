@@ -176,8 +176,7 @@ impl Worker for Responder {
 
             ctx.forward(transport_msg).await?;
         } else {
-            // FIXME
-            unimplemented!()
+            return Err(EntityError::UnknownChannelMsgOrigin.into());
         }
 
         Ok(())
