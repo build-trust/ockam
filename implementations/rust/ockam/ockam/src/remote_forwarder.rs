@@ -2,7 +2,7 @@
 
 use crate::{Context, OckamError};
 use ockam_core::lib::net::SocketAddr;
-use ockam_core::{Address, Any, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
 use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -127,7 +127,7 @@ impl Worker for RemoteForwarder {
 
         let msg = TransportMessage::v1(self.destination.clone(), return_route, payload);
 
-        ctx.forward(msg).await?;
+        ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
 
         Ok(())
     }

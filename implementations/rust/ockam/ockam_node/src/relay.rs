@@ -17,7 +17,7 @@
 
 use crate::{parser, Context, Mailbox};
 use ockam_core::{
-    Address, Message, Result, Route, Routed, RouterMessage, TransportMessage, Worker,
+    Address, LocalMessage, Message, Result, Route, Routed, RouterMessage, TransportMessage, Worker,
 };
 use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
@@ -33,19 +33,19 @@ pub struct RelayMessage {
 
 impl RelayMessage {
     /// Construct a message addressed to a user worker
-    pub fn direct(addr: Address, data: TransportMessage, onward: Route) -> Self {
+    pub fn direct(addr: Address, local_msg: LocalMessage, onward: Route) -> Self {
         Self {
             addr,
-            data: RelayPayload::Direct(data),
+            data: RelayPayload::Direct(local_msg),
             onward,
         }
     }
 
     /// Construct a message addressed to an middleware router
     #[inline]
-    pub fn pre_router(addr: Address, data: TransportMessage, onward: Route) -> Self {
-        let route = data.return_route.clone();
-        let r_msg = RouterMessage::Route(data);
+    pub fn pre_router(addr: Address, local_msg: LocalMessage, onward: Route) -> Self {
+        let route = local_msg.transport().return_route.clone();
+        let r_msg = RouterMessage::Route(local_msg);
         Self {
             addr,
             data: RelayPayload::PreRouter(r_msg.encode().unwrap(), route),
@@ -55,7 +55,7 @@ impl RelayMessage {
 
     /// Consume this message into its base components
     #[inline]
-    pub fn transport(self) -> (Address, TransportMessage) {
+    pub fn local_msg(self) -> (Address, LocalMessage) {
         (
             self.addr,
             match self.data {
@@ -68,7 +68,7 @@ impl RelayMessage {
 
 #[derive(Clone, Debug)]
 pub enum RelayPayload {
-    Direct(TransportMessage),
+    Direct(LocalMessage),
     PreRouter(Vec<u8>, Route),
 }
 
@@ -97,12 +97,12 @@ where
 
     /// Convenience function to handle an incoming direct message
     #[inline]
-    fn handle_direct(&mut self, msg: &TransportMessage, msg_addr: Address) -> Result<(M, Route)> {
+    fn handle_direct(&mut self, msg: &LocalMessage, msg_addr: Address) -> Result<(M, Route)> {
         let TransportMessage {
             ref payload,
             ref return_route,
             ..
-        } = msg;
+        } = msg.transport();
 
         parser::message::<M>(payload)
             .map_err(|e| {
@@ -132,31 +132,33 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             // wrap state.  Messages addressed to a router will be of
             // type `RouterMessage`, while generic userspace workers
             // can provide any type they want.
-            let (msg, _, transport_message) =
-                match (|data| -> Result<(M, Route, TransportMessage)> {
-                    Ok(match data {
-                        RelayPayload::Direct(trans_msg) => self
-                            .handle_direct(&trans_msg, addr.clone())
-                            .map(|(msg, r)| (msg, r, trans_msg))?,
-                        RelayPayload::PreRouter(enc_msg, route) => {
-                            self.handle_pre_router(&enc_msg, addr.clone()).map(|m| {
-                                (
-                                    m,
-                                    route.clone(),
+            let (msg, _, local_msg) = match (|data| -> Result<(M, Route, LocalMessage)> {
+                Ok(match data {
+                    RelayPayload::Direct(local_msg) => self
+                        .handle_direct(&local_msg, addr.clone())
+                        .map(|(msg, r)| (msg, r, local_msg))?,
+                    RelayPayload::PreRouter(enc_msg, route) => {
+                        self.handle_pre_router(&enc_msg, addr.clone()).map(|m| {
+                            (
+                                m,
+                                route.clone(),
+                                LocalMessage::new(
                                     TransportMessage::v1(Route::new(), route, enc_msg),
-                                )
-                            })?
-                        }
-                    })
-                })(data)
-                {
-                    Ok((msg, route, transport)) => (msg, route, transport),
-                    Err(_) => continue, // Handler functions must log
-                };
+                                    Vec::new(),
+                                ),
+                            )
+                        })?
+                    }
+                })
+            })(data)
+            {
+                Ok((msg, route, transport)) => (msg, route, transport),
+                Err(_) => continue, // Handler functions must log
+            };
 
             // Wrap the user message in a `Routed` to provide return
             // route information via a composition side-channel
-            let routed = Routed::v1(msg, addr.clone(), transport_message);
+            let routed = Routed::new(msg, addr.clone(), local_msg);
 
             // Call the worker handle function
             match self.worker.handle_message(&mut self.ctx, routed).await {

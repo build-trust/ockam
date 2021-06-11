@@ -2,7 +2,7 @@ use crate::atomic::{self, ArcBool};
 use crate::WebSocketError;
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use ockam_core::{async_trait, Address, Result, TransportMessage, Worker};
+use ockam_core::{async_trait, Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
@@ -69,7 +69,7 @@ where
             // Forward the message to the final destination worker,
             // which consumes the TransportMessage and yields the
             // final message type
-            ctx.forward(msg).await?;
+            ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
         }
 
         // Stop the worker to not fall into the next read loop

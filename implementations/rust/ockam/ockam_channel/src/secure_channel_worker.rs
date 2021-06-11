@@ -1,6 +1,8 @@
-use crate::{CreateResponderChannelMessage, SecureChannelError, SecureChannelVault};
+use crate::{CreateResponderChannelMessage, LocalInfo, SecureChannelError, SecureChannelVault};
 use async_trait::async_trait;
-use ockam_core::{Address, Any, Message, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{
+    Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
+};
 use ockam_key_exchange_core::KeyExchanger;
 use ockam_node::Context;
 use ockam_vault_core::Secret;
@@ -28,6 +30,7 @@ pub struct SecureChannelWorker<V: SecureChannelVault, K: KeyExchanger + Send + '
     first_responder_address: Option<Address>,
     vault: V,
     key_exchanger: Option<K>,
+    key_exchange_name: String,
 }
 
 impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorker<V, K> {
@@ -42,6 +45,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         key_exchanger: K,
         vault: V,
     ) -> Result<Self> {
+        let key_exchange_name = key_exchanger.name();
         Ok(SecureChannelWorker {
             is_initiator,
             remote_route,
@@ -52,6 +56,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
             first_responder_address,
             key_exchanger: Some(key_exchanger),
             vault,
+            key_exchange_name,
         })
     }
 
@@ -191,7 +196,11 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
             .modify()
             .prepend(self.address_local.clone());
 
-        ctx.forward(transport_message).await
+        let local_info = LocalInfo::new(self.key_exchange_name.clone());
+
+        let local_msg = LocalMessage::new(transport_message, local_info.encode()?);
+
+        ctx.forward(local_msg).await
     }
 
     async fn handle_key_exchange(

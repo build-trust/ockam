@@ -3,7 +3,7 @@ use crate::{
     TcpError,
 };
 use async_trait::async_trait;
-use ockam_core::{Address, Result, TransportMessage, Worker};
+use ockam_core::{Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 
@@ -81,7 +81,7 @@ impl Worker for TcpRecvWorker {
             trace!("Message return route: {}", msg.return_route);
 
             // Forward the message to the next hop in the route
-            ctx.forward(msg).await?;
+            ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
         }
 
         // Stop the worker to not fall into the next read loop

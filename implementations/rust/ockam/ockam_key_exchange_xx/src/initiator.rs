@@ -28,6 +28,10 @@ impl<V: XXVault> Initiator<V> {
 }
 
 impl<V: XXVault> KeyExchanger for Initiator<V> {
+    fn name(&self) -> String {
+        "NOISE_XX".to_string()
+    }
+
     fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             InitiatorState::EncodeMessage1 => {

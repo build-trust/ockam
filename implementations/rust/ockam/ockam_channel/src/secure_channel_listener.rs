@@ -1,6 +1,6 @@
 use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker};
 use async_trait::async_trait;
-use ockam_core::{Address, Message, Result, Routed, TransportMessage, Worker};
+use ockam_core::{Address, LocalMessage, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -91,7 +91,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
         // We want this message's return route lead to the remote channel worker, not listener
         let msg = TransportMessage::v1(address_remote, reply, msg.payload().encode()?);
 
-        ctx.forward(msg).await?;
+        ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
 
         Ok(())
     }

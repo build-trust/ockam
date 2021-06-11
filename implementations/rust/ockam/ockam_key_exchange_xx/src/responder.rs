@@ -28,6 +28,10 @@ impl<V: XXVault> Responder<V> {
 }
 
 impl<V: XXVault> KeyExchanger for Responder<V> {
+    fn name(&self) -> String {
+        "NOISE_XX".to_string()
+    }
+
     fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             ResponderState::EncodeMessage2 => {

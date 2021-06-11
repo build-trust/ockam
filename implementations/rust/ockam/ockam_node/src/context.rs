@@ -1,6 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
-use ockam_core::{Address, AddressSet, Message, Result, Route, TransportMessage, Worker};
+use ockam_core::{
+    Address, AddressSet, LocalMessage, Message, Result, Route, TransportMessage, Worker,
+};
 use tokio::{
     runtime::Runtime,
     sync::mpsc::{channel, Sender},
@@ -219,14 +221,15 @@ impl Context {
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
-        let mut data = TransportMessage::v1(route.clone(), Route::new(), payload);
-        data.return_route.modify().append(sending_address);
+        let mut transport_msg = TransportMessage::v1(route.clone(), Route::new(), payload);
+        transport_msg.return_route.modify().append(sending_address);
+        let local_msg = LocalMessage::new(transport_msg, Vec::new());
 
         // Pack transport message into relay message wrapper
         let msg = if needs_wrapping {
-            RelayMessage::pre_router(addr, data, route)
+            RelayMessage::pre_router(addr, local_msg, route)
         } else {
-            RelayMessage::direct(addr, data, route)
+            RelayMessage::direct(addr, local_msg, route)
         };
 
         // Send the packed user message with associated route
@@ -247,10 +250,10 @@ impl Context {
     ///
     /// [`Context::send`]: crate::Context::send
     /// [`TransportMessage`]: ockam_core::TransportMessage
-    pub async fn forward(&self, data: TransportMessage) -> Result<()> {
+    pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route
         let (reply_tx, mut reply_rx) = channel(1);
-        let next = data.onward_route.next().unwrap(); // TODO: communicate bad routes
+        let next = local_msg.transport().onward_route.next().unwrap(); // TODO: communicate bad routes
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
@@ -262,12 +265,12 @@ impl Context {
             .take_sender()?;
 
         // Pack the transport message into a relay message
-        let onward = data.onward_route.clone();
+        let onward = local_msg.transport().onward_route.clone();
         // let msg = RelayMessage::direct(addr, data, onward);
         let msg = if needs_wrapping {
-            RelayMessage::pre_router(addr, data, onward)
+            RelayMessage::pre_router(addr, local_msg, onward)
         } else {
-            RelayMessage::direct(addr, data, onward)
+            RelayMessage::direct(addr, local_msg, onward)
         };
         sender.send(msg).await.map_err(|e| Error::from(e))?;
 
@@ -319,7 +322,7 @@ impl Context {
                 match self.next_from_mailbox().await {
                     Ok((m, data, addr)) if check(&m) => break Ok((m, data, addr)),
                     Ok((_, data, addr)) => {
-                        let onward = data.onward_route.clone();
+                        let onward = data.transport().onward_route.clone();
                         self.mailbox
                             .requeue(RelayMessage::direct(addr, data, onward))
                             .await;
@@ -372,20 +375,20 @@ impl Context {
     /// mechanism should be replaced with a waker system that lets the
     /// mailbox work not yield another message until the relay worker
     /// has woken it.
-    async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, TransportMessage, Address)> {
+    async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, LocalMessage, Address)> {
         loop {
             let msg = self
                 .mailbox
                 .next()
                 .await
                 .ok_or_else(|| Error::FailedLoadData)?;
-            let (addr, data) = msg.transport();
+            let (addr, data) = msg.local_msg();
 
             // FIXME: make message parsing idempotent to avoid cloning
-            match parser::message(&data.payload).ok() {
+            match parser::message(&data.transport().payload).ok() {
                 Some(msg) => break Ok((msg, data, addr)),
                 None => {
-                    let onward = data.onward_route.clone();
+                    let onward = data.transport().onward_route.clone();
                     self.mailbox
                         .requeue(RelayMessage::direct(addr, data, onward))
                         .await;

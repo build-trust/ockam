@@ -1,5 +1,5 @@
 use crate::{relay::RelayMessage, Context};
-use ockam_core::{Address, Message, Routed, TransportMessage};
+use ockam_core::{Address, LocalMessage, Message, Routed};
 use std::fmt::{self, Debug, Display, Formatter};
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -43,7 +43,7 @@ impl Mailbox {
 /// re-queues it into the mailbox.
 pub struct Cancel<'ctx, M: Message> {
     inner: M,
-    trans: TransportMessage,
+    local_msg: LocalMessage,
     addr: Address,
     ctx: &'ctx Context,
 }
@@ -51,13 +51,13 @@ pub struct Cancel<'ctx, M: Message> {
 impl<'ctx, M: Message> Cancel<'ctx, M> {
     pub(crate) fn new(
         inner: M,
-        trans: TransportMessage,
+        local_msg: LocalMessage,
         addr: Address,
         ctx: &'ctx Context,
     ) -> Self {
         Self {
             inner,
-            trans,
+            local_msg,
             addr,
             ctx,
         }
@@ -66,9 +66,9 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     /// Cancel this message
     pub async fn cancel(self) {
         let ctx = self.ctx;
-        let onward = self.trans.onward_route.clone();
+        let onward = self.local_msg.transport().onward_route.clone();
         ctx.mailbox
-            .requeue(RelayMessage::direct(self.addr, self.trans, onward))
+            .requeue(RelayMessage::direct(self.addr, self.local_msg, onward))
             .await;
     }
 
@@ -77,7 +77,7 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     /// After calling this function it is no longer possible to
     /// re-queue the message into the worker mailbox.
     pub fn take(self) -> Routed<M> {
-        Routed::v1(self.inner, self.addr, self.trans)
+        Routed::new(self.inner, self.addr, self.local_msg)
     }
 }
 

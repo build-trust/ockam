@@ -14,6 +14,8 @@ pub enum SecureChannelError {
     KeyExchangeNotComplete,
     /// Invalid response received from the Hub.
     InvalidHubResponse,
+    /// Invalid LocalInfo type
+    InvalidLocalInfoType,
 }
 
 impl SecureChannelError {

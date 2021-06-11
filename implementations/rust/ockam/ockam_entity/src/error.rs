@@ -24,7 +24,10 @@ pub enum EntityError {
     ProfileInvalidResponseType,
     ProfileNotFound,
     NotImplemented,
+    UnknownChannelMsgDestination,
     UnknownChannelMsgOrigin,
+    InvalidLocalInfoType,
+    InvalidSecureChannelInternalState,
 }
 
 impl EntityError {

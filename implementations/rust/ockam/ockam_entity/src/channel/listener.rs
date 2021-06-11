@@ -1,4 +1,4 @@
-use crate::{ProfileTrait, Responder, TrustPolicy};
+use crate::{ProfileTrait, SecureChannelWorker, TrustPolicy};
 use ockam_channel::{CreateResponderChannelMessage, SecureChannel};
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
@@ -53,7 +53,7 @@ impl<T: TrustPolicy, P: ProfileTrait, V: XXVault> Worker for ProfileChannelListe
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let trust_policy = self.trust_policy.clone();
-        Responder::create(
+        SecureChannelWorker::create_responder(
             ctx,
             &mut self.profile,
             trust_policy,
