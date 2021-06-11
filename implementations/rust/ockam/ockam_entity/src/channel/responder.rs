@@ -30,13 +30,16 @@ impl Responder {
 
         let return_route = msg.return_route();
         let body = msg.body();
+        // This is the address of Worker on the other end, that Initiator gave us to perform further negotiations.
         let first_responder_address = body
             .completed_callback_address()
             .clone()
             .ok_or(EntityError::SecureChannelCannotBeAuthenticated)?;
 
+        // Address used for ProfileAuth requests/responses
         let child_address: Address = random();
         let mut child_ctx = ctx.new_context(child_address).await?;
+        // Change completed callback address and forward message for regular key exchange to happen
         let body =
             CreateResponderChannelMessage::new(body.payload().clone(), Some(child_ctx.address()));
 
@@ -44,6 +47,7 @@ impl Responder {
 
         ctx.forward(msg).await?;
 
+        // Wait for KeyExchange to happen
         let kex_msg = child_ctx
             .receive::<KeyExchangeCompleted>()
             .await?
@@ -51,6 +55,7 @@ impl Responder {
             .body();
         let auth_hash = kex_msg.auth_hash();
 
+        // Prove we posses Profile key
         let proof = profile.generate_authentication_proof(&auth_hash)?;
         let msg = ChannelAuthRequest::new(profile.to_contact()?, proof);
         child_ctx
@@ -69,10 +74,13 @@ impl Responder {
 
         let contact = auth_msg.contact();
         if profile.contacts()?.contains_key(contact.identifier()) {
+            // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
             return Err(EntityError::NotImplemented.into());
         } else {
             profile.verify_and_add_contact(contact.clone())?;
         }
+
+        // Verify initiator posses their Profile key
         let verified = profile.verify_authentication_proof(
             &kex_msg.auth_hash(),
             contact.identifier(),
@@ -87,6 +95,7 @@ impl Responder {
             contact.identifier().to_string_representation()
         );
 
+        // Check our TrustPolicy
         let trust_info = SecureChannelTrustInfo::new(contact.identifier().clone());
         let trusted = trust_policy.check(&trust_info)?;
         if !trusted {
@@ -147,9 +156,9 @@ impl Worker for Responder {
         let mut return_route = msg.return_route;
 
         if msg_addr == self.self_local_address {
-            debug!("ProfileSecureChannel Initiator received Encrypt");
+            debug!("ProfileSecureChannel Responder received Encrypt");
 
-            // Send to the other party
+            // Send to the other party using local regular SecureChannel
             let _ = onward_route.step()?;
             let onward_route = onward_route
                 .modify()
@@ -164,7 +173,8 @@ impl Worker for Responder {
 
             ctx.forward(transport_msg).await?;
         } else if msg_addr == self.self_remote_address {
-            debug!("ProfileSecureChannel Initiator received Decrypt");
+            debug!("ProfileSecureChannel Responder received Decrypt");
+            // TODO: Check message route (is it from local SecureChannel?)
             // Forward to local workers
             let _ = onward_route.step()?;
 

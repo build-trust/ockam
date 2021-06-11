@@ -1,6 +1,6 @@
 use crate::{
-    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, Confirm, EntityError,
-    ProfileTrait, SecureChannelTrustInfo, TrustPolicy,
+    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, EntityError, ProfileTrait,
+    SecureChannelTrustInfo, TrustPolicy,
 };
 use async_trait::async_trait;
 use ockam_channel::SecureChannel;
@@ -8,7 +8,11 @@ use ockam_core::{Address, Any, Message, Result, Route, Routed, TransportMessage,
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
 use rand::random;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
+
+#[derive(Serialize, Deserialize)]
+struct Confirm;
 
 pub(crate) struct Initiator {
     local_secure_channel_address: Address,
@@ -28,6 +32,7 @@ impl Initiator {
     ) -> Result<Address> {
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
 
+        // Address used for ProfileAuth requests/responses
         let child_address: Address = random();
         let mut child_ctx = ctx.new_context(child_address).await?;
 
@@ -40,6 +45,8 @@ impl Initiator {
         )
         .await?;
 
+        // Wait for responder to send us his Profile and Profile Proof.
+        // In case of using Noise XX this is m4 message.
         let msg = child_ctx.receive::<ChannelAuthRequest>().await?.take();
         debug!("Received Authentication request");
 
@@ -48,11 +55,13 @@ impl Initiator {
 
         let contact = msg.contact();
         if profile.contacts()?.contains_key(contact.identifier()) {
+            // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
             return Err(EntityError::NotImplemented.into());
         } else {
             profile.verify_and_add_contact(contact.clone())?;
         }
 
+        // Verify responder posses their Profile key
         let verified = profile.verify_authentication_proof(
             &channel.auth_hash(),
             msg.contact().identifier(),
@@ -67,6 +76,7 @@ impl Initiator {
             contact.identifier().to_string_representation()
         );
 
+        // Check our TrustPolicy
         let trust_info = SecureChannelTrustInfo::new(contact.identifier().clone());
         let trusted = trust_policy.check(&trust_info)?;
         if !trusted {
@@ -77,9 +87,13 @@ impl Initiator {
             contact.identifier().to_string_representation()
         );
 
+        // Prove we posses our Profile key
         let contact = profile.to_contact()?;
         let proof = profile.generate_authentication_proof(&channel.auth_hash())?;
 
+        // Generate 2 random fresh address for newly created SecureChannel.
+        // One for local workers to encrypt their messages
+        // Second for remote workers to decrypt their messages
         let channel_local_address: Address = random();
         let channel_remote_address: Address = random();
         let initiator = Self {
@@ -133,7 +147,7 @@ impl Worker for Initiator {
             let remote_profile_secure_channel_address =
                 self.remote_profile_secure_channel_address.clone().unwrap(); // FIXME
 
-            // Send to the other party
+            // Send to the other party using local regular SecureChannel
             let _ = onward_route.step()?;
             let onward_route = onward_route
                 .modify()
@@ -159,6 +173,7 @@ impl Worker for Initiator {
                 )
                 .await?;
             } else {
+                // TODO: Check message route (is it from local SecureChannel?)
                 debug!("ProfileSecureChannel Initiator received Decrypt");
                 // Forward to local workers
                 let _ = onward_route.step()?;
