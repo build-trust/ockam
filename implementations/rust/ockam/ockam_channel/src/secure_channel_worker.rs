@@ -122,12 +122,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
 
         let _ = onward_route.step();
 
-        let msg = TransportMessage {
-            version: 1,
-            onward_route,
-            return_route: reply,
-            payload,
-        };
+        let msg = TransportMessage::v1(onward_route, reply, payload);
         let payload = msg.encode()?;
 
         let payload = {

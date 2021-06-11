@@ -89,12 +89,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             .await?;
 
         // We want this message's return route lead to the remote channel worker, not listener
-        let msg = TransportMessage {
-            version: 1,
-            onward_route: address_remote.into(),
-            return_route: reply,
-            payload: msg.payload().encode()?,
-        };
+        let msg = TransportMessage::v1(address_remote, reply, msg.payload().encode()?);
 
         ctx.forward(msg).await?;
 

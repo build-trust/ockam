@@ -30,11 +30,15 @@ pub struct TransportMessage {
 
 impl TransportMessage {
     /// Create a new v1 transport message with empty return route
-    pub fn v1(onward_route: Route, payload: Vec<u8>) -> Self {
+    pub fn v1(
+        onward_route: impl Into<Route>,
+        return_route: impl Into<Route>,
+        payload: Vec<u8>,
+    ) -> Self {
         Self {
             version: 1,
-            onward_route,
-            return_route: Route::new().into(),
+            onward_route: onward_route.into(),
+            return_route: return_route.into(),
             payload,
         }
     }

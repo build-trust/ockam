@@ -219,7 +219,7 @@ impl Context {
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
-        let mut data = TransportMessage::v1(route.clone(), payload);
+        let mut data = TransportMessage::v1(route.clone(), Route::new(), payload);
         data.return_route.modify().append(sending_address);
 
         // Pack transport message into relay message wrapper
