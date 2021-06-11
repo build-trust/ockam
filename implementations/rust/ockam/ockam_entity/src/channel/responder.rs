@@ -31,7 +31,7 @@ impl Responder {
         let return_route = msg.return_route();
         let body = msg.body();
         let first_responder_address = body
-            .callback_address()
+            .completed_callback_address()
             .clone()
             .ok_or(EntityError::SecureChannelCannotBeAuthenticated)?;
 

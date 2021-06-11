@@ -27,7 +27,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> SecureChannelListen
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct CreateResponderChannelMessage {
     payload: Vec<u8>,
-    callback_address: Option<Address>,
+    completed_callback_address: Option<Address>,
 }
 
 impl CreateResponderChannelMessage {
@@ -36,17 +36,17 @@ impl CreateResponderChannelMessage {
         &self.payload
     }
     /// Callback Address
-    pub fn callback_address(&self) -> &Option<Address> {
-        &self.callback_address
+    pub fn completed_callback_address(&self) -> &Option<Address> {
+        &self.completed_callback_address
     }
 }
 
 impl CreateResponderChannelMessage {
     /// Create message using payload and callback_address
-    pub fn new(payload: Vec<u8>, callback_address: Option<Address>) -> Self {
+    pub fn new(payload: Vec<u8>, completed_callback_address: Option<Address>) -> Self {
         CreateResponderChannelMessage {
             payload,
-            callback_address,
+            completed_callback_address,
         }
     }
 }
@@ -79,7 +79,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             reply.clone(),
             address_remote.clone(),
             address_local.clone(),
-            msg.callback_address().clone(),
+            msg.completed_callback_address().clone(),
             None,
             self.new_key_exchanger.responder()?,
             self.vault.clone(),
