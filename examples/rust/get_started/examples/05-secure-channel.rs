@@ -1,6 +1,6 @@
 // This node creates a secure channel and routes a message through it.
 
-use ockam::{route, Context, Result, Route, SecureChannel, Vault};
+use ockam::{route, Context, Result, SecureChannel, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
