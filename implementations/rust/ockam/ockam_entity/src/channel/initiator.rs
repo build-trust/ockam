@@ -172,7 +172,7 @@ impl Worker for Initiator {
                 ctx.forward(transport_msg).await?;
             }
         } else {
-            unimplemented!()
+            return Err(EntityError::UnknownChannelMsgOrigin.into());
         }
 
         Ok(())
