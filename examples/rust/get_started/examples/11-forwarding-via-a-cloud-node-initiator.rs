@@ -1,6 +1,6 @@
 // This node routes a message, to a different node, using a forwarding address on the cloud node.
 
-use ockam::{route, Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
