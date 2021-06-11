@@ -3,9 +3,6 @@ use ockam_core::Address;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct Confirm;
-
-#[derive(Serialize, Deserialize)]
 pub(crate) struct ChannelAuthRequest {
     contact: Contact,
     proof: Vec<u8>,
