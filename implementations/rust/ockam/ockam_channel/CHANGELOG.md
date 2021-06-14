@@ -16,24 +16,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Entity abstraction.
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Use result_message in Vault Worker.
 
 ## v0.7.0 - 2021-05-10
 ### Added
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Documentation edits.
 ### Deleted
 
 ## v0.6.0 - 2021-05-03
 ### Changed
 - Secure Channels are now created using Profiles.
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.5.1 - 2021-04-26
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.5.0 - 2021-04-22
 ### Changed
@@ -41,16 +41,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.4.0 - 2021-04-19
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.3.1 - 2021-04-14
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.3.0 - 2021-04-13
 ### Changed
 - Renamed Context address functions.
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.2.0 - 2021-04-12
 ### Added

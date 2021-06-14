@@ -5,29 +5,33 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.0 - 2021-06-14
+### Changed
+- Dependencies updated.
+
 ## v0.3.0 - 2021-05-30
 ### Added
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Fixed clippy issues.
 
 ## v0.1.8 - 2021-05-10
 ### Added
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 ### Deleted
 
 ## v0.1.7 - 2021-05-03
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.1.6 - 2021-04-26
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.1.5 - 2021-04-12
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.1.4 - 2021-02-03
 ### Changed

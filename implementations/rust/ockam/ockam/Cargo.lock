@@ -683,9 +683,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.95"
+version = "0.2.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "789da6d93f1b866ffe175afc5322a4d76c038605a1c3319bb57b06967ca98a36"
+checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
 
 [[package]]
 name = "lock_api"
@@ -728,9 +728,9 @@ checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
 name = "mio"
-version = "0.7.11"
+version = "0.7.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf80d3e903b34e0bd7282b218398aec54e082c840d9baf8339e0080a0c542956"
+checksum = "8c2bdb6314ec10835cd3293dd268473a835c02b7b352e788be788b3c6ca6bb16"
 dependencies = [
  "libc",
  "log",
@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.14.0-dev"
+version = "0.14.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -835,7 +835,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.10.0-dev"
+version = "0.10.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.15.0-dev"
+version = "0.15.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -866,7 +866,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.4.0-dev"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -886,7 +886,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -895,7 +895,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.13.0-dev"
+version = "0.13.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -915,7 +915,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.4.0-dev"
+version = "0.4.0"
 dependencies = [
  "quote",
  "syn",
@@ -923,7 +923,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.9.0-dev"
+version = "0.9.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -939,7 +939,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.9.0-dev"
+version = "0.9.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -957,7 +957,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.9.0-dev"
+version = "0.9.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -968,7 +968,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.6.0-dev"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -984,9 +984,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.7.2"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af8b08b04175473088b46763e51ee54da5f9a164bc162f615b91bc179dbf15a3"
+checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "opaque-debug"
@@ -1115,7 +1115,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ef9e7e66b4468674bfcb0c81af8b7fa0bb154fa9f28eb840da5c447baeb8d7e"
 dependencies = [
  "libc",
- "rand_chacha 0.3.0",
+ "rand_chacha 0.3.1",
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
 ]
@@ -1132,9 +1132,9 @@ dependencies = [
 
 [[package]]
 name = "rand_chacha"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e12735cf05c9e10bf21534da50a147b924d555dc7a547c42e6bb2d5b6017ae0d"
+checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
 dependencies = [
  "ppv-lite86",
  "rand_core 0.6.2",
@@ -1352,7 +1352,7 @@ checksum = "0f0242b8e50dd9accdd56170e94ca1ebd223b098eb9c83539a6e367d0f36ae68"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1373,7 +1373,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.5.0-dev"
+version = "0.5.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1389,7 +1389,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1430,9 +1430,9 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 
 [[package]]
 name = "syn"
-version = "1.0.72"
+version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1e8cdbefb79a9a5a65e0db8b47b723ee907b7c7f8496c76a1770b5c310bab82"
+checksum = "f71489ff30030d2ae598524f61326b902466f72a0fb1a8564c001cc63425bcc7"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.6.0-dev"
+version = "0.6.0"
 dependencies = [
  "quote",
  "syn",
@@ -28,9 +28,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.72"
+version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1e8cdbefb79a9a5a65e0db8b47b723ee907b7c7f8496c76a1770b5c310bab82"
+checksum = "f71489ff30030d2ae598524f61326b902466f72a0fb1a8564c001cc63425bcc7"
 dependencies = [
  "proc-macro2",
  "quote",

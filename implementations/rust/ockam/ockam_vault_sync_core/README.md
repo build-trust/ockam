@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_vault_sync_core = "0.5.0"
+ockam_vault_sync_core = "0.6.0"
 ```
 
 ## License

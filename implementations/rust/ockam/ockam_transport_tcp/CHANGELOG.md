@@ -5,16 +5,20 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.9.0 - 2021-06-14
+### Changed
+- Dependencies updated.
+
 ## v0.8.0 - 2021-05-30
 ### Added
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Replace TCP Transport type with const.
 
 ## v0.7.0 - 2021-05-17
 ### Added
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.6.3 - 2021-05-10
 ### Added
@@ -24,11 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.6.2 - 2021-05-03
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.6.1 - 2021-04-26
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.6.0 - 2021-04-22
 ### Changed
@@ -36,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.5.1 - 2021-04-19
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.5.0 - 2021-04-15
 ### Changed
@@ -50,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Improved TCP transport initialisation.
 - Improved the flow of the TCP Transport API.
-- Updated dependencies.
+- Dependencies updated.
 - Build system and test fixes.
 
 
@@ -61,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved printability of messages and payloads.
 - Improved logging for dropped TCP connections.
 - `msg_addr` moved from `Context` to `Routed`.
-- Updated dependencies.
+- Dependencies updated.
 - Renamed Context address functions.
 - Refactored Node Context API.
 - Renamed `Routed` message wrapper function API.

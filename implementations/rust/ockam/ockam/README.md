@@ -12,7 +12,7 @@ Get started with our step-by-step [hands-on guide][guide].
 ## Features
 
 * End-to-end encrypted secure channels.
-* Muti-hop, multi-transport, application layer routing.
+* Multi-hop, multi-transport, application layer routing.
 * Node - an asynchronous worker runtime.
 * Workers - actors that can handle routed messages.
 * Entities and Profiles.
@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam = "0.13.0"
+ockam = "0.14.0"
 ```
 
 ## Crate Features
@@ -41,7 +41,7 @@ Additional features of the `ockam` crate:
 
 ```
 [dependencies]
-ockam = { version = "0.13.0"   , default-features = false }
+ockam = { version = "0.14.0"    , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

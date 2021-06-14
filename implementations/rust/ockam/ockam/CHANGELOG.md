@@ -5,6 +5,16 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.10.0 - 2021-06-14
+### Changed
+- Dependencies updated.
+
+## v0.14.0 - 2021-06-14
+### Added
+- `route!` macro to simplify construction of message routes.
+### Changed
+- Dependencies updated.
+
 ## v0.13.0 - 2021-05-30
 ### Added
 - Entity abstraction.
@@ -19,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Entity abstraction.
 - Modular and configurable protocol parser.
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Remove dynamic dispatch in UserParser.
 - Updated documentation.
 
@@ -28,18 +38,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Traits for `Profile`.
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Renamed `async_worker` to `worker`.
 - Documentation edits.
 
 ## v0.10.0 - 2021-05-03
 ### Changed
 - Vault creation is now sync.
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.9.1 - 2021-04-26
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.9.0 - 2021-04-22
 ### Changed
@@ -49,17 +59,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.8.0 - 2021-04-14
 ### Changed
 - Build system and test fixes.
-- Updated dependencies.
+- Dependencies updated.
 - Replaced RemoteMailbox with RemoteForwarder.
 
 ## v0.7.0 - 2021-04-14
 ### Changed
 - Build system and test fixes.
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.6.0 - 2021-04-13
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Renamed Context address functions.
 
 ## v0.5.0 - 2021-04-12
@@ -116,7 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile Changes API.
 
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Improved error handling.
 
 ## v0.1.0 - 2021-02-04

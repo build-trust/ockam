@@ -5,6 +5,10 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.15.0 - 2021-06-14
+### Added
+- `route!` macro to simplify construction of message routes.
+
 ## v0.14.0 - 2021-05-30
 ### Added
 ### Changed
@@ -16,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modular and configurable protocol parser.
 - result_message type.
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Worker shutdown is now async.
 
 ## v0.12.0 - 2021-05-10
@@ -27,15 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.11.2 - 2021-05-03
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.11.1 - 2021-04-26
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.11.0 - 2021-04-19
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Updated a routing error internal domain code.
 
 ## v0.10.0 - 2021-04-14
@@ -46,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.9.0 - 2021-04-13
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - Renamed Context address functions.
 - Improved printability of messages and payloads.
 
@@ -54,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `Any` message type added to ockam_core crate.
 ### Changed
-- Updated dependencies.
+- Dependencies updated.
 - `Routed` message wrapper function APIs renamed.
 - `Passthrough` type renamed to `Any`.
 - `msg_addr` moved from `Context` to `Routed`.
@@ -70,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Switch payload encoding from bincode to bare.
 - Split forwarding examples into two binaries.
-- Updated dependencies.
+- Dependencies updated.
 - Rename route fields in transport message.
 
 ### Removed
@@ -86,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated dependencies.
+- Dependencies updated.
 - Core dependencies, such as hashbrown and hex have been re-exported from this crate.
 
 ## v0.5.0 - 2021-03-04
@@ -102,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The `Worker` trait and its methods are now async.
-- Updated dependencies.
+- Dependencies updated.
 
 ## v0.3.0 - 2021-02-16
 ### Added
@@ -114,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated dependencies.
+- Dependencies updated.
 - Improved documentation.
 
 

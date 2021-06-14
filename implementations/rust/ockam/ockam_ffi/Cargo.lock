@@ -11,9 +11,9 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2333ac5777aaa1beb8589f5374976ae7dc8aa4f09fd21ae3d8662ca97f5247d"
+checksum = "495ee669413bfbe9e8cace80f4d3d78e6d8c8d99579f97fb93bde351b185f2d4"
 dependencies = [
  "cfg-if",
  "cipher",
@@ -23,9 +23,9 @@ dependencies = [
 
 [[package]]
 name = "aes-gcm"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ee2263805ba4537ccbb19db28525a7b1ebc7284c228eb5634c3124ca63eb03f"
+checksum = "bc3be92e19a7ef47457b8e6f90707e12b6ac5d20c6f3866584fa3be0787d839f"
 dependencies = [
  "aead",
  "aes",
@@ -200,9 +200,9 @@ dependencies = [
 
 [[package]]
 name = "ghash"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f6fb2a26dd2ebd268a68bc8e9acc9e67e487952f33384055a1cbe697514c64e"
+checksum = "7bbd60caa311237d508927dbba7594b483db3ef05faa55172fcf89b1bcda7853"
 dependencies = [
  "opaque-debug",
  "polyval",
@@ -252,13 +252,13 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.95"
+version = "0.2.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "789da6d93f1b866ffe175afc5322a4d76c038605a1c3319bb57b06967ca98a36"
+checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
 
 [[package]]
 name = "ockam-ffi"
-version = "0.5.0-dev"
+version = "0.5.0"
 dependencies = [
  "lazy_static",
  "ockam_core",
@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.15.0-dev"
+version = "0.15.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.9.0-dev"
+version = "0.9.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -298,7 +298,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.9.0-dev"
+version = "0.9.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -309,9 +309,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.7.2"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af8b08b04175473088b46763e51ee54da5f9a164bc162f615b91bc179dbf15a3"
+checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "opaque-debug"
@@ -327,10 +327,11 @@ checksum = "dc0e1f259c92177c30a4c9d177246edd0a3568b25756a977d0632cf8fa37e905"
 
 [[package]]
 name = "polyval"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "864231b0b86ce05168a8e6da0fea2e67275dacf25f75b00a62cfd341aab904a9"
+checksum = "e597450cbf209787f0e6de80bf3795c6b2356a380ee87837b545aded8dbc1823"
 dependencies = [
+ "cfg-if",
  "cpufeatures",
  "opaque-debug",
  "universal-hash",
@@ -380,7 +381,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ef9e7e66b4468674bfcb0c81af8b7fa0bb154fa9f28eb840da5c447baeb8d7e"
 dependencies = [
  "libc",
- "rand_chacha 0.3.0",
+ "rand_chacha 0.3.1",
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
 ]
@@ -397,9 +398,9 @@ dependencies = [
 
 [[package]]
 name = "rand_chacha"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e12735cf05c9e10bf21534da50a147b924d555dc7a547c42e6bb2d5b6017ae0d"
+checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
 dependencies = [
  "ppv-lite86",
  "rand_core 0.6.2",
@@ -507,9 +508,9 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 
 [[package]]
 name = "syn"
-version = "1.0.72"
+version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1e8cdbefb79a9a5a65e0db8b47b723ee907b7c7f8496c76a1770b5c310bab82"
+checksum = "f71489ff30030d2ae598524f61326b902466f72a0fb1a8564c001cc63425bcc7"
 dependencies = [
  "proc-macro2",
  "quote",
