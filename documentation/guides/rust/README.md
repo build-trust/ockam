@@ -36,4 +36,7 @@ Let's get started.
 <li>
 <a href="./get-started/09-secure-channel-over-many-transport-hops">09. Secure Channel over many transport hops</a>
 </li>
+<li>
+<a href="./get-started/10-secure-channel-with-entity">10. Secure Channel with Entity</a>
+</li>
 </ul>
