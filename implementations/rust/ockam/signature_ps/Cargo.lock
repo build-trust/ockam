@@ -403,9 +403,9 @@ checksum = "643f8f41a8ebc4c5dc4515c82bb8abd397b527fc20fd681b7c011c2aee5d44fb"
 
 [[package]]
 name = "rand"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ef9e7e66b4468674bfcb0c81af8b7fa0bb154fa9f28eb840da5c447baeb8d7e"
+checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
 dependencies = [
  "libc",
  "rand_chacha",
@@ -425,18 +425,18 @@ dependencies = [
 
 [[package]]
 name = "rand_core"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34cf66eb183df1c5876e2dcf6b13d57340741e8dc255b48e40a26de954d06ae7"
+checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
  "getrandom",
 ]
 
 [[package]]
 name = "rand_hc"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3190ef7066a446f2e7f42e239d161e905420ccab01eb967c9eb27d21b2322a73"
+checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
 dependencies = [
  "rand_core",
 ]
@@ -509,7 +509,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.5.0"
+version = "0.6.0-dev"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -525,7 +525,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.7.0"
+version = "0.8.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -542,7 +542,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.5.0"
+version = "0.6.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
