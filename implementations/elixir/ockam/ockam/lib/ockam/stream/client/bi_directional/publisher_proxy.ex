@@ -39,12 +39,15 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
     [^self_address | onward_route] = Message.onward_route(message)
     forwarded_message = %{message | onward_route: onward_route}
 
-    Logger.info("Forward message #{inspect(forwarded_message)}")
+    {message_id, state} = next_message_id(state)
+
+    Logger.debug("Forward message #{inspect(forwarded_message)} with id #{inspect(message_id)}")
 
     encoded_message =
       Ockam.Stream.Client.BiDirectional.encode_message(%{
         message: forwarded_message,
-        return_stream: consumer_stream
+        return_stream: consumer_stream,
+        message_id: message_id
       })
 
     binary_message =
@@ -63,5 +66,11 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
     ## Delay message processing
     send(self(), message)
     {:ok, state}
+  end
+
+  def next_message_id(state) do
+    current = Map.get(state, :message_id, 0)
+    next = current + 1
+    {next, Map.put(state, :message_id, next)}
   end
 end

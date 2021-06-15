@@ -52,12 +52,14 @@ defmodule Ockam.Examples.Stream do
         service_route: service_route,
         index_route: index_route,
         stream_name: stream_name,
-        message_handler: fn data ->
+        message_handler: fn data, _state ->
           Ockam.Router.route(%{
             onward_route: [receiver_address],
             return_route: [],
             payload: Ockam.Protocol.encode_payload(Ockam.Protocol.Binary, :request, data)
           })
+
+          :ok
         end,
         partitions: 2
       )

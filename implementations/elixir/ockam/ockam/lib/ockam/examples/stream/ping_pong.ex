@@ -14,18 +14,27 @@ defmodule Ockam.Example.Stream.Ping do
 
     Logger.info("\nReceived pong fo #{inspect(previous)}")
 
-    next = previous + 1
+    state =
+      case Map.get(state, :last, 0) do
+        high when high > previous ->
+          Logger.info("Duplicate pong for: #{inspect(previous)}, current: #{inspect(high)}")
+          state
 
-    :timer.sleep(20)
+        _low ->
+          next = previous + 1
 
-    reply = %{
-      onward_route: Message.return_route(message),
-      return_route: [state.address],
-      payload: "#{next}"
-    }
+          :timer.sleep(50)
 
-    Logger.info("\nSend ping #{inspect(next)}")
-    Router.route(reply)
+          reply = %{
+            onward_route: Message.return_route(message),
+            return_route: [state.address],
+            payload: "#{next}"
+          }
+
+          Logger.info("\nSend ping #{inspect(next)}")
+          Router.route(reply)
+          Map.put(state, :last, next)
+      end
 
     {:ok, state}
   end

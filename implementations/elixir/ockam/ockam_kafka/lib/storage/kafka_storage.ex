@@ -46,7 +46,7 @@ defmodule Ockam.Stream.Storage.Kafka do
           {{:ok, integer()} | {:error, any()}, state()}
   def save(stream_name, partition, message, state) do
     %__MODULE__{options: options, client: client} = state
-    Logger.info("Save #{inspect(stream_name)} #{partition}")
+    Logger.debug("Save #{inspect(stream_name)} #{partition}")
     topic = Kafka.topic(stream_name, options)
     partition = Kafka.partition(stream_name, partition, options)
 
@@ -67,7 +67,7 @@ defmodule Ockam.Stream.Storage.Kafka do
           {{:ok, [message()]} | {:error, any()}, state()}
   def fetch(stream_name, partition, index, limit, state) do
     options = state.options
-    Logger.info("Fetch #{stream_name} #{partition}, #{index}")
+    Logger.debug("Fetch #{stream_name} #{partition}, #{index}")
     topic = Kafka.topic(stream_name, options)
     partition = Kafka.partition(stream_name, partition, options)
 

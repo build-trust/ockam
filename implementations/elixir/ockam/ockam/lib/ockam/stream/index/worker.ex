@@ -51,7 +51,7 @@ defmodule Ockam.Stream.Index.Worker do
   def handle_save(_protocol, data, state) do
     %{client_id: client_id, stream_name: stream_name, index: index} = data
     partition = Map.get(data, :partition, 0)
-    Logger.info("Save index #{inspect({client_id, stream_name, partition, index})}")
+    Logger.debug("Save index #{inspect({client_id, stream_name, partition, index})}")
 
     case save_index(client_id, stream_name, partition, index, state) do
       {:ok, state} ->

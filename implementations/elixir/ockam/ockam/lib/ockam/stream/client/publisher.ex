@@ -13,8 +13,15 @@ defmodule Ockam.Stream.Client.Publisher do
             stream_route: nil,
             last_message: 0,
             unconfirmed: %{},
-            unsent: []
+            unsent: [],
+            request_timeout: nil,
+            service_route: nil,
+            partitions: nil
 
+  @request_timeout 10_000
+
+  @type message() :: %{request_id: integer(), data: binary()}
+  @type request_id() :: integer()
   @type state() :: %__MODULE__{}
 
   @protocol_mapping Ockam.Protocol.Mapping.mapping([
@@ -36,19 +43,27 @@ defmodule Ockam.Stream.Client.Publisher do
     stream_name = Keyword.fetch!(options, :stream_name)
     partitions = Keyword.fetch!(options, :partitions)
 
-    create_stream(service_route, stream_name, partitions, state)
+    state =
+      Map.merge(state, %{
+        stream_name: stream_name,
+        service_route: service_route,
+        partitions: partitions
+      })
 
-    {:ok, struct(__MODULE__, Map.put(state, :stream_name, stream_name))}
+    state = create_stream(state)
+
+    {:ok, struct(__MODULE__, state)}
   end
 
   @impl true
-  def handle_message(message, state) do
+  def handle_message(%{payload: _} = message, state) do
     payload = Message.payload(message)
 
     case decode_payload(payload) do
       {:ok, StreamProtocol.Create, %{stream_name: stream_name}} ->
         state =
           state
+          |> clear_request_timeout()
           |> add_stream(stream_name, Message.return_route(message))
           |> send_unsent()
 
@@ -58,19 +73,23 @@ defmodule Ockam.Stream.Client.Publisher do
       {:ok, StreamProtocol.Partitioned.Create, %{stream_name: stream_name, partition: 0}} ->
         state =
           state
+          |> clear_request_timeout()
           |> add_stream(stream_name, Message.return_route(message))
           |> send_unsent()
 
         {:ok, state}
 
       {:ok, StreamProtocol.Push, %{status: :ok, request_id: request_id, index: index}} ->
+        Logger.debug("Push response")
+        state = clear_request_timeout(state)
         state = message_confirmed(request_id, index, state)
         {:ok, state}
 
       {:ok, StreamProtocol.Push, %{status: :error, request_id: request_id}} ->
         ## Resend doesn't change the state currently
         Logger.error("Resend message #{inspect(request_id)}")
-        resend_message(request_id, state)
+        state = clear_request_timeout(state)
+        state = resend_message(request_id, state)
         {:ok, state}
 
       {:ok, Ockam.Protocol.Error, %{reason: reason}} ->
@@ -79,6 +98,7 @@ defmodule Ockam.Stream.Client.Publisher do
 
       {:ok, Ockam.Protocol.Binary, data} ->
         state = send_message(data, state)
+
         {:ok, state}
 
       other ->
@@ -87,14 +107,38 @@ defmodule Ockam.Stream.Client.Publisher do
     end
   end
 
+  def handle_message(:request_timeout, state) do
+    state = clear_request_timeout(state)
+
+    unconfirmed_messages =
+      Map.get(state, :unconfirmed, %{})
+      |> Enum.sort_by(fn {id, _msg} -> id end)
+      |> Enum.map(fn {_id, %{data: msg}} -> msg end)
+
+    Logger.info("Messages to re-send: #{inspect(unconfirmed_messages)}")
+
+    new_unsent = Map.get(state, :unsent, []) ++ unconfirmed_messages
+
+    state =
+      Map.merge(state, %{
+        stream_route: nil,
+        unconfirmed: %{},
+        unsent: new_unsent
+      })
+
+    state = create_stream(state)
+
+    {:ok, state}
+  end
+
   @spec send_message(binary(), state()) :: state()
   def send_message(data, state) do
     case initialized?(state) do
       true ->
         next = state.last_message + 1
         message = %{request_id: next, data: data}
-        route_push(message, state)
-
+        Logger.debug("Send push")
+        state = route_push(message, state)
         add_unconfirmed(next, message, state)
 
       false ->
@@ -140,27 +184,31 @@ defmodule Ockam.Stream.Client.Publisher do
     state |> Map.get(:unconfirmed, %{}) |> Map.fetch(request_id)
   end
 
+  @spec resend_message(request_id(), state()) :: state()
   def resend_message(request_id, state) do
     case get_unconfirmed(request_id, state) do
       {:ok, message} ->
         route_push(message, state)
 
       :error ->
-        :ok
+        state
     end
   end
 
   def message_confirmed(request_id, index, state) do
-    Logger.info("Message confirmed with index #{inspect(index)}")
+    Logger.debug("Message confirmed with index #{inspect(index)}")
     remove_unconfirmed(request_id, state)
   end
 
+  @spec route_push(message(), state()) :: state()
   def route_push(message, state) do
     encoded = encode_payload(StreamProtocol.Push, message)
     route(encoded, Map.get(state, :stream_route), state)
   end
 
-  def create_stream(service_route, stream_name, partitions, state) do
+  @spec create_stream(state()) :: state()
+  def create_stream(state) do
+    %{service_route: service_route, stream_name: stream_name, partitions: partitions} = state
     Logger.info("create stream #{inspect({service_route, stream_name})}")
 
     encoded =
@@ -172,11 +220,38 @@ defmodule Ockam.Stream.Client.Publisher do
     route(encoded, service_route, state)
   end
 
+  @spec route(binary(), [Ockam.Address.t()], state()) :: state()
   def route(payload, route, state) do
     Ockam.Router.route(%{
       onward_route: route,
       return_route: [Map.get(state, :address)],
       payload: payload
     })
+
+    set_request_timeout(state)
+  end
+
+  def set_request_timeout(state) do
+    state = clear_request_timeout(state)
+    mon_ref = Process.send_after(self(), :request_timeout, @request_timeout)
+    Map.put(state, :request_timeout, mon_ref)
+  end
+
+  def clear_request_timeout(state) do
+    case Map.get(state, :request_timeout) do
+      nil ->
+        state
+
+      ref ->
+        Process.cancel_timer(ref)
+        ## Flush the timeout message if it's already received
+        receive do
+          :request_timeout -> :ok
+        after
+          0 -> :ok
+        end
+
+        Map.put(state, :request_timeout, nil)
+    end
   end
 end

@@ -111,7 +111,8 @@ defmodule Ockam.Node do
       # detailed information.
       children = [
         Registry,
-        {DynamicSupervisor, strategy: :one_for_one, name: @processes_supervisor}
+        {DynamicSupervisor,
+         strategy: :one_for_one, name: @processes_supervisor, max_restarts: 100}
       ]
 
       # Start a supervisor with the given children. The supervisor will inturn

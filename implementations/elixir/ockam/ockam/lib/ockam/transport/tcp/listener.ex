@@ -70,8 +70,10 @@ if Code.ensure_loaded?(:ranch) do
             Map.put(create_outgoing_message(message), :onward_route, onward_route)
 
           ## TODO: do we want to pass a configured address?
-          {:ok, client_address} = Client.create(destination: destination)
-          Ockam.Node.send(client_address, message_to_forward)
+          ## TODO: what to do with failures?
+          with {:ok, client_address} <- Client.create(destination: destination) do
+            Ockam.Node.send(client_address, message_to_forward)
+          end
 
         e ->
           Logger.error(

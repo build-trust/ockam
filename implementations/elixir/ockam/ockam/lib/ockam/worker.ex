@@ -32,7 +32,7 @@ defmodule Ockam.Worker do
 
       ## Ignore match errors in handle_info when checking a result of handle_message
       ## handle_message definition may not return {:error, ...} and it shouldn't fail because of that
-      @dialyzer {:no_match, handle_info: 2}
+      @dialyzer {:no_match, handle_info: 2, handle_continue: 2}
 
       alias Ockam.Node
       alias Ockam.Router
@@ -44,8 +44,14 @@ defmodule Ockam.Worker do
 
         case Node.start_supervised(__MODULE__, options) do
           {:ok, pid, worker} ->
-            :sys.get_state(pid)
-            {:ok, worker}
+            ## TODO: a better way to handle failing start
+            try do
+              :sys.get_state(pid)
+              {:ok, worker}
+            catch
+              _type, err ->
+                {:error, err}
+            end
 
           error ->
             error
@@ -101,12 +107,19 @@ defmodule Ockam.Worker do
         start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
 
         with {:ok, address} <- get_from_options(:address, options) do
-          return_value = setup(options, %{address: address, module: __MODULE__})
+          base_state = %{address: address, module: __MODULE__}
+          return_value = setup(options, base_state)
 
           metadata = Map.put(metadata, :return_value, return_value)
           Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
-          {:ok, state} = return_value
-          {:noreply, state}
+
+          case return_value do
+            {:ok, state} ->
+              {:noreply, state}
+
+            {:error, reason} ->
+              {:stop, reason, base_state}
+          end
         end
       end
 

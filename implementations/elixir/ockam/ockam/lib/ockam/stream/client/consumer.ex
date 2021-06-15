@@ -14,12 +14,15 @@ defmodule Ockam.Stream.Client.Consumer do
             index_route: nil,
             index: 0,
             message_handler: nil,
-            ready: false
+            ready: false,
+            request_timeout: nil
 
   @type state() :: %__MODULE__{}
 
   @consume_limit 10
-  @idle_timeout 20
+  @idle_timeout 2_000
+
+  @request_timeout 10_000
 
   def start(service_route, index_route, stream_name, message_handler) do
     __MODULE__.create(
@@ -59,7 +62,7 @@ defmodule Ockam.Stream.Client.Consumer do
 
     message_handler = Keyword.fetch!(options, :message_handler)
 
-    create_stream(service_route, stream_name, partitions, state)
+    state = create_stream(service_route, stream_name, partitions, state)
 
     state =
       struct(__MODULE__, state)
@@ -75,27 +78,46 @@ defmodule Ockam.Stream.Client.Consumer do
   def handle_message(%{payload: payload} = message, state) do
     case decode_payload(payload) do
       {:ok, StreamProtocol.Create, %{stream_name: stream_name}} ->
-        state = add_stream(state, stream_name, Message.return_route(message))
+        Logger.debug("Received create")
 
-        request_index(state)
+        state =
+          state
+          |> clear_request_timeout()
+          |> add_stream(stream_name, Message.return_route(message))
+
+        state = request_index(state)
+
         {:ok, state}
 
       {:ok, StreamProtocol.Partitioned.Create, %{stream_name: stream_name, partition: 0}} ->
-        state = add_stream(state, stream_name, Message.return_route(message))
+        Logger.debug("Received create")
 
-        request_index(state)
+        state =
+          state
+          |> clear_request_timeout()
+          |> add_stream(stream_name, Message.return_route(message))
+
+        state = request_index(state)
+
         {:ok, state}
 
       {:ok, StreamProtocol.Pull, %{request_id: request_id, messages: messages}} ->
+        Logger.debug("Pull response")
+        state = clear_request_timeout(state)
         state = messages_received(request_id, messages, state)
         {:ok, state}
 
       {:ok, StreamProtocol.Index, %{client_id: client_id, stream_name: stream_name, index: index}} ->
+        Logger.debug("Received index")
         validate_index(client_id, stream_name, state)
 
         ## Update index route to use tcp session
         new_index_route = Message.return_route(message)
-        state = %{state | index_route: new_index_route}
+
+        state =
+          state
+          |> clear_request_timeout()
+          |> Map.put(:index_route, new_index_route)
 
         start_with =
           case index do
@@ -119,8 +141,12 @@ defmodule Ockam.Stream.Client.Consumer do
 
   ## TODO: rework the worker to do handle_info
   def handle_message(:consume, state) do
-    request_messages(state)
+    state = request_messages(state)
     {:ok, state}
+  end
+
+  def handle_message(:request_timeout, state) do
+    {:stop, :request_timeout, state}
   end
 
   @impl true
@@ -158,13 +184,12 @@ defmodule Ockam.Stream.Client.Consumer do
     index_id = index_id(state)
     index_request = encode_payload(StreamProtocol.Index, :save, Map.put(index_id, :index, index))
     index_route = Map.get(state, :index_route)
-    route(index_request, index_route, state)
+    route(index_request, index_route, state, :infinity)
   end
 
   def consume(index, state) do
     state = Map.put(state, :index, index)
     request_messages(state)
-    state
   end
 
   def request_messages(state) do
@@ -180,6 +205,7 @@ defmodule Ockam.Stream.Client.Consumer do
       encode_payload(StreamProtocol.Pull, %{index: index, limit: limit, request_id: request_id})
 
     stream_route = Map.get(state, :stream_route)
+    Logger.debug("Send pull")
     route(encoded, stream_route, state)
   end
 
@@ -196,8 +222,10 @@ defmodule Ockam.Stream.Client.Consumer do
       _msgs ->
         max_index = messages |> Enum.max_by(fn %{index: index} -> index end) |> Map.get(:index)
         commit_index = max_index + 1
+
+        state = process_messages(messages, state)
+
         save_index(commit_index, state)
-        process_messages(messages, state)
         consume(commit_index, state)
     end
   end
@@ -208,7 +236,7 @@ defmodule Ockam.Stream.Client.Consumer do
   end
 
   def process_messages(messages, state) do
-    Enum.each(messages, fn %{data: data} ->
+    Enum.reduce(messages, state, fn %{data: data}, state ->
       process_message(data, state)
     end)
   end
@@ -217,10 +245,21 @@ defmodule Ockam.Stream.Client.Consumer do
     message_handler = Map.get(state, :message_handler)
 
     try do
-      message_handler.(data)
+      case message_handler.(data, state) do
+        {:ok, new_state} ->
+          new_state
+
+        :ok ->
+          state
+
+        {:error, error} ->
+          ## TODO: this is a place to dead-letter?
+          Logger.error("Message handling error: #{inspect(error)}")
+      end
     catch
       type, reason ->
-        Logger.error("Message handling error: #{inspect({type, reason})}")
+        ## TODO: this is a place to dead-letter?
+        Logger.error("Message handling exception: #{inspect({type, reason})}")
     end
   end
 
@@ -238,11 +277,41 @@ defmodule Ockam.Stream.Client.Consumer do
     route(encoded, service_route, state)
   end
 
-  def route(payload, route, state) do
+  def route(payload, route, state, timeout \\ @request_timeout) do
     Ockam.Router.route(%{
       onward_route: route,
       return_route: [Map.get(state, :address)],
       payload: payload
     })
+
+    set_request_timeout(state, timeout)
+  end
+
+  def set_request_timeout(state, :infinity) do
+    state
+  end
+
+  def set_request_timeout(state, timeout) do
+    state = clear_request_timeout(state)
+    mon_ref = Process.send_after(self(), :request_timeout, timeout)
+    Map.put(state, :request_timeout, mon_ref)
+  end
+
+  def clear_request_timeout(state) do
+    case Map.get(state, :request_timeout) do
+      nil ->
+        state
+
+      ref ->
+        Process.cancel_timer(ref)
+        ## Flush the timeout message if it's already received
+        receive do
+          :request_timeout -> :ok
+        after
+          0 -> :ok
+        end
+
+        Map.put(state, :request_timeout, nil)
+    end
   end
 end

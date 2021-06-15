@@ -14,11 +14,17 @@ defmodule Ockam.Transport.TCP.Client do
   def setup(options, state) do
     %{ip: ip, port: port} = Keyword.fetch!(options, :destination)
     # TODO: connect/3 and controlling_process/2 should be in a callback.
-    {:ok, socket} =
-      :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 2, nodelay: true])
+    case :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 2, nodelay: true]) do
+      {:ok, socket} ->
+        :gen_tcp.controlling_process(socket, self())
+        {:ok, Map.merge(state, %{socket: socket, ip: ip, port: port})}
 
-    :gen_tcp.controlling_process(socket, self())
-    {:ok, Map.merge(state, %{socket: socket, ip: ip, port: port})}
+      {:error, reason} ->
+        Logger.error("Error starting TCP client: #{inspect(reason)}")
+        ## Return `normal` so the supervisor will not restart it
+        ## TODO: solve this with supervision trees instead
+        {:error, :normal}
+    end
   end
 
   @impl true
@@ -42,8 +48,13 @@ defmodule Ockam.Transport.TCP.Client do
     {:ok, state}
   end
 
-  def handle_message({:tcp_closed, _}, state), do: {:stop, :normal, state}
-  def handle_message({:tcp_error, _}, state), do: {:stop, :normal, state}
+  def handle_message({:tcp_closed, _}, state) do
+    {:stop, :normal, state}
+  end
+
+  def handle_message({:tcp_error, _}, state) do
+    {:stop, :normal, state}
+  end
 
   ## TODO: implement Worker API
   def handle_message(%{payload: _payload} = message, state) do
