@@ -13,8 +13,15 @@ defmodule Ockam.Transport.TCP.Client do
   @impl true
   def setup(options, state) do
     %{ip: ip, port: port} = Keyword.fetch!(options, :destination)
+
+    address = case ip do
+      string when is_binary(string) ->
+        String.to_charlist(string)
+      tuple when is_tuple(tuple) ->
+        tuple
+    end
     # TODO: connect/3 and controlling_process/2 should be in a callback.
-    case :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 2, nodelay: true]) do
+    case :gen_tcp.connect(address, port, [:binary, :inet, active: true, packet: 2, nodelay: true]) do
       {:ok, socket} ->
         :gen_tcp.controlling_process(socket, self())
         {:ok, Map.merge(state, %{socket: socket, ip: ip, port: port})}
