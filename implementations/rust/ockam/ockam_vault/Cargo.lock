@@ -362,7 +362,7 @@ dependencies = [
  "ockam_vault_core",
  "ockam_vault_test_attribute",
  "ockam_vault_test_suite",
- "rand 0.7.3",
+ "rand 0.8.4",
  "sha2",
  "tracing",
  "x25519-dalek",
