@@ -1,12 +1,14 @@
-use crate::history::ProfileChangeHistory;
+use crate::change_history::ProfileChangeHistory;
+use crate::profile::Profile;
+use crate::EntityError::InvalidInternalState;
 use crate::{
-    Changes, EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileImpl,
-    ProfileVault, Signature, SignatureType,
+    ChangeSet, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
+    ProfileState, Signature, SignatureType,
 };
-use ockam_vault_core::{
-    Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
-};
+use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
+use ockam_vault_core::Secret;
+use ockam_vault_sync_core::VaultSync;
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
 
@@ -69,23 +71,19 @@ impl CreateKeyChange {
     }
 }
 
-impl<V: ProfileVault> ProfileImpl<V> {
-    /// Create a new key event
-    pub(crate) fn create_key_event_static(
+impl ProfileState {
+    /// Create a new key
+    pub fn create_key_static(
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
-        attributes: Option<ProfileEventAttributes>,
+        attributes: ProfileEventAttributes,
         root_key: Option<&Secret>,
-        vault: &mut V,
+        vault: &mut VaultSync,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        let attributes = attributes.unwrap_or_default();
-
-        // TODO: Should be customisable
-        let secret_attributes = SecretAttributes::new(
-            SecretType::Curve25519,
-            SecretPersistence::Persistent,
-            CURVE25519_SECRET_LENGTH,
-        );
+        let secret_attributes = match key_attributes.meta() {
+            MetaKeyAttributes::SecretAttributes(secret_attributes) => *secret_attributes,
+            _ => panic!("missing secret key attributes"),
+        };
 
         let secret_key = vault.secret_generate(secret_attributes)?;
         let public_key = vault.secret_public_key_get(&secret_key)?;
@@ -101,7 +99,8 @@ impl<V: ProfileVault> ProfileImpl<V> {
             attributes,
             ProfileChangeType::CreateKey(change),
         );
-        let changes = Changes::new(prev_id, vec![profile_change]);
+
+        let changes = ChangeSet::new(prev_id, vec![profile_change]);
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| EntityError::BareError)?;
 
         let event_id = vault.sha256(&changes_binary)?;
@@ -125,12 +124,11 @@ impl<V: ProfileVault> ProfileImpl<V> {
         Ok(signed_change_event)
     }
 
-    /// Create a new key event
-    pub(crate) fn create_key_event(
+    /// Create a new key
+    pub(crate) fn create_key(
         &mut self,
         key_attributes: KeyAttributes,
-        attributes: Option<ProfileEventAttributes>,
-        root_key: Option<&Secret>,
+        attributes: ProfileEventAttributes,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // Creating key after it was revoked is forbidden
         if ProfileChangeHistory::find_last_key_event(
@@ -139,17 +137,23 @@ impl<V: ProfileVault> ProfileImpl<V> {
         )
         .is_ok()
         {
-            return Err(EntityError::InvalidInternalState.into());
+            return Err(InvalidInternalState.into());
         }
 
-        let prev_id = self.change_history().get_last_event_id()?;
+        let prev_id = match self.change_history().get_last_event_id() {
+            Ok(prev_id) => prev_id,
+            Err(_) => EventIdentifier::initial(self.vault()),
+        };
 
-        Self::create_key_event_static(
+        let root_secret = self.get_root_secret().expect("can't get root secret");
+        let root_key = Some(&root_secret);
+
+        Self::create_key_static(
             prev_id,
             key_attributes,
             attributes,
             root_key,
-            &mut self.vault,
+            &mut self.vault(),
         )
     }
 }

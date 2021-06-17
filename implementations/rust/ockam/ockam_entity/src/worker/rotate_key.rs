@@ -1,12 +1,11 @@
-use crate::history::ProfileChangeHistory;
+use crate::change_history::ProfileChangeHistory;
+use crate::profile::Profile;
 use crate::{
-    Changes, EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileImpl,
-    ProfileVault, Signature, SignatureType,
+    ChangeSet, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
+    ProfileState, Signature, SignatureType,
 };
-use ockam_vault_core::{
-    Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
-};
+use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
 
@@ -80,16 +79,13 @@ impl RotateKeyChange {
     }
 }
 
-impl<V: ProfileVault> ProfileImpl<V> {
+impl ProfileState {
     /// Rotate key event
-    pub(crate) fn rotate_key_event(
+    pub(crate) fn rotate_key(
         &mut self,
         key_attributes: KeyAttributes,
-        attributes: Option<ProfileEventAttributes>,
-        root_key: &Secret,
+        attributes: ProfileEventAttributes,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        let attributes = attributes.unwrap_or_default();
-
         let prev_event_id = self.change_history().get_last_event_id()?;
 
         let last_event_in_chain = ProfileChangeHistory::find_last_key_event(
@@ -98,31 +94,24 @@ impl<V: ProfileVault> ProfileImpl<V> {
         )?
         .clone();
 
-        let last_key_in_chain = Self::get_secret_key_from_event(
-            &key_attributes,
-            &last_event_in_chain,
-            &mut self.vault,
-        )?;
+        let mut vault = self.vault();
 
-        // TODO: Should be customisable
-        let secret_attributes = SecretAttributes::new(
-            SecretType::Curve25519,
-            SecretPersistence::Persistent,
-            CURVE25519_SECRET_LENGTH,
-        );
+        let last_key_in_chain =
+            Self::get_secret_key_from_event(&key_attributes, &last_event_in_chain, &mut vault)?;
 
-        let secret_key = self.vault.secret_generate(secret_attributes)?;
-        let public_key = self
-            .vault
-            .secret_public_key_get(&secret_key)?
-            .as_ref()
-            .to_vec();
+        let secret_attributes = match key_attributes.meta() {
+            MetaKeyAttributes::SecretAttributes(secret_attributes) => *secret_attributes,
+            _ => panic!("missing secret attributes"),
+        };
+
+        let secret_key = vault.secret_generate(secret_attributes)?;
+        let public_key = vault.secret_public_key_get(&secret_key)?.as_ref().to_vec();
 
         let data = RotateKeyChangeData::new(key_attributes, public_key);
         let data_binary = serde_bare::to_vec(&data).map_err(|_| EntityError::BareError)?;
-        let data_hash = self.vault.sha256(data_binary.as_slice())?;
-        let self_signature = self.vault.sign(&secret_key, &data_hash)?;
-        let prev_signature = self.vault.sign(&last_key_in_chain, &data_hash)?;
+        let data_hash = vault.sha256(data_binary.as_slice())?;
+        let self_signature = vault.sign(&secret_key, &data_hash)?;
+        let prev_signature = vault.sign(&last_key_in_chain, &data_hash)?;
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
@@ -130,13 +119,15 @@ impl<V: ProfileVault> ProfileImpl<V> {
             attributes,
             ProfileChangeType::RotateKey(change),
         );
-        let changes = Changes::new(prev_event_id, vec![profile_change]);
+        let changes = ChangeSet::new(prev_event_id, vec![profile_change]);
         let changes_binary = serde_bare::to_vec(&changes).map_err(|_| EntityError::BareError)?;
 
-        let event_id = self.vault.sha256(&changes_binary)?;
+        let event_id = vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);
 
-        let signature = self.vault.sign(root_key, event_id.as_ref())?;
+        let root_key = self.get_root_secret()?;
+
+        let signature = vault.sign(&root_key, event_id.as_ref())?;
 
         let proof =
             ProfileChangeProof::Signature(Signature::new(SignatureType::RootSign, signature));

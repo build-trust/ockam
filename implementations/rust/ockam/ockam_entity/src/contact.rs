@@ -1,11 +1,11 @@
-//! Profile contacts
-use crate::history::ProfileChangeHistory;
-use crate::{
-    EntityError, EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier,
-    ProfileVault,
-};
-use ockam_vault_core::PublicKey;
+/// Contact is an abstraction responsible for storing user's public data (mainly - public keys).
 use serde::{Deserialize, Serialize};
+
+use ockam_vault::PublicKey;
+
+use crate::change_history::ProfileChangeHistory;
+use crate::{EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
+use ockam_core::{allow, deny};
 
 /// Contact is an abstraction responsible for storing user's public data (mainly - public keys).
 /// It is designed to share users' public keys in cryptographically verifiable way.
@@ -20,59 +20,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Creating [`Contact`] from [`crate::Profile`]
 ///
-/// ```
-/// # use ockam_vault::SoftwareVault;
-/// # use ockam_vault_sync_core::Vault;
-/// # use ockam_entity::{Profile, KeyAttributes, ProfileSecrets, ProfileContacts};
-/// #
-/// # fn main() -> ockam_core::Result<()> {
-/// # let (mut ctx, mut executor) = ockam_node::start_node();
-/// # executor.execute(async move {
-/// let vault = Vault::create(&ctx)?;
-/// let mut alice = Profile::create(&ctx, &vault).await?;
-///
-/// let truck_key_attributes = KeyAttributes::new(
-///     "Truck management".to_string(),
-/// );
-///
-/// alice.create_key(truck_key_attributes.clone(), None)?;
-///
-/// let alice_contact = alice.to_contact();
-///
-/// let public_key = alice.get_public_key(&truck_key_attributes)?;
-/// # ctx.stop().await.unwrap();
-/// # Ok::<(), ockam_core::Error>(())
-/// # }).unwrap();
-/// # Ok(())
-/// # }
-/// ```
-///
-/// Sending Contact over the network
-///
-/// ```
-/// # use ockam_vault::SoftwareVault;
-/// # use ockam_entity::{Profile, KeyAttributes, ProfileSecrets, ProfileContacts};
-/// #
-/// # fn main() -> ockam_core::Result<()> {
-/// # use ockam_vault_sync_core::Vault;
-/// # let (mut ctx, mut executor) = ockam_node::start_node();
-/// # executor.execute(async move {
-/// # let vault = Vault::create(&ctx)?;
-/// # let mut alice = Profile::create(&ctx, &vault).await?;
-/// #
-/// # let truck_key_attributes = KeyAttributes::new(
-/// #     "Truck management".to_string(),
-/// # );
-/// #
-/// # alice.create_key(truck_key_attributes.clone(), None)?;
-/// #
-/// // Send this over the network
-/// let alice_contact_binary = alice.serialize_to_contact()?;
-/// # ctx.stop().await.unwrap();
-/// # Ok::<(), ockam_core::Error>(())
-/// # }).unwrap();
-/// # Ok(())
-/// # }
+/// TODO
 /// ```
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Contact {
@@ -103,10 +51,14 @@ impl Contact {
 
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    pub fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<()> {
-        ProfileChangeHistory::check_consistency(&[], self.change_events())?;
+    pub fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<bool> {
+        if !ProfileChangeHistory::check_consistency(&[], self.change_events()) {
+            return deny();
+        }
 
-        self.change_history.verify_all_existing_events(vault)?;
+        if !self.change_history.verify_all_existing_events(vault)? {
+            return deny();
+        }
 
         let root_public_key = self.change_history.get_first_root_public_key()?;
 
@@ -114,26 +66,30 @@ impl Contact {
         let profile_id = ProfileIdentifier::from_key_id(root_key_id);
 
         if &profile_id != self.identifier() {
-            return Err(EntityError::ProfileIdDoesntMatch.into());
+            return deny(); // ProfileIdDoesntMatch Err(EntityError::.into());
         }
 
-        Ok(())
+        allow()
     }
 
     /// Update [`Contact`] by using new change events
-    pub fn verify_and_update(
+    pub fn verify_and_update<C: AsRef<[ProfileChangeEvent]>>(
         &mut self,
-        change_events: Vec<ProfileChangeEvent>,
+        change_events: C,
         vault: &mut impl ProfileVault,
-    ) -> ockam_core::Result<()> {
-        ProfileChangeHistory::check_consistency(self.change_events(), &change_events)?;
+    ) -> ockam_core::Result<bool> {
+        if !ProfileChangeHistory::check_consistency(self.change_events(), change_events.as_ref()) {
+            return deny();
+        }
 
-        for event in change_events.iter() {
-            ProfileChangeHistory::verify_event(self.change_events(), event, vault)?;
+        for event in change_events.as_ref().iter() {
+            if !ProfileChangeHistory::verify_event(self.change_events(), event, vault)? {
+                return deny();
+            }
             self.change_history.push_event(event.clone());
         }
 
-        Ok(())
+        allow()
     }
 }
 

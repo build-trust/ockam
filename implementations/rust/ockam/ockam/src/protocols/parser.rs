@@ -53,7 +53,6 @@ pub struct ProtocolParser<W: Worker>(Arc<ProtocolParserImpl<W>>);
 
 impl<W: Worker> ProtocolParser<W> {
     /// Create a new `ProtocolParser`
-    #[allow(dead_code)]
     pub fn new() -> Self {
         Self(Arc::new(ProtocolParserImpl {
             map: Default::default(),
@@ -88,7 +87,6 @@ pub struct ProtocolParserImpl<W: Worker> {
 
 impl<W: Worker> ProtocolParserImpl<W> {
     /// Attach a new parser tree to this protocol parser
-    #[allow(dead_code)]
     pub fn attach<P>(self: &Arc<Self>, parser: P)
     where
         P: ParserFragment<W> + Send + Sync + 'static,
@@ -105,7 +103,6 @@ impl<W: Worker> ProtocolParserImpl<W> {
     ///
     /// You may want to call [`prepare()`](Self::prepare) before
     /// calling this function.
-    #[allow(dead_code)]
     pub fn parse(self: Arc<Self>, w: &mut W, msg: Routed<Any>) -> Result<()> {
         let msg = msg.into_transport_message();
 

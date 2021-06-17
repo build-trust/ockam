@@ -1,0 +1,188 @@
+use crate::{
+    EntityError::IdentityApiFailed, Identity, IdentityRequest, IdentityRequest::*,
+    IdentityResponse as Res, MaybeContact, NoOpTrustPolicy, ProfileIdentifier, ProfileState,
+    SecureChannelTrait,
+};
+
+use async_trait::async_trait;
+use ockam_core::{
+    lib::{result::Result::Ok, HashMap},
+    Result, Routed, Worker,
+};
+use ockam_node::Context;
+use ockam_vault_sync_core::{Vault, VaultSync};
+
+#[derive(Default)]
+pub struct EntityWorker {
+    profiles: HashMap<ProfileIdentifier, ProfileState>,
+}
+
+impl EntityWorker {
+    fn profile(&mut self, profile_id: &ProfileIdentifier) -> &mut ProfileState {
+        self.profiles
+            .get_mut(profile_id)
+            .expect("default profile invalid")
+    }
+}
+
+fn err<T>() -> Result<T> {
+    Err(IdentityApiFailed.into())
+}
+
+#[async_trait]
+impl Worker for EntityWorker {
+    type Message = IdentityRequest;
+    type Context = Context;
+
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Self::Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let reply = msg.return_route();
+        let req = msg.body();
+        match req {
+            CreateProfile => {
+                let vault = Vault::create(ctx).expect("failed to create EntityWorker vault");
+                let vault_sync = VaultSync::create_with_worker(ctx, &vault)
+                    .expect("couldn't create profile vault");
+
+                let profile_state =
+                    ProfileState::create(vault_sync).expect("failed to create ProfileState");
+
+                let id = profile_state
+                    .identifier()
+                    .expect("failed to get profile id");
+
+                self.add_profile_state(profile_state)
+                    .expect("failed to add profile state");
+
+                ctx.send(reply, Res::CreateProfile(id)).await
+            }
+            RemoveProfile(profile_id) => self.remove_profile(profile_id),
+            CreateKey(profile_id, label) => {
+                let profile = self.profile(&profile_id);
+
+                Identity::create_key(profile, label)
+            }
+            RotateKey(profile_id) => {
+                let profile = self.profile(&profile_id);
+
+                Identity::rotate_key(profile)
+            }
+            GetPublicKey(profile_id) => {
+                if let Ok(public_key) = self.profile(&profile_id).get_public_key() {
+                    ctx.send(reply, Res::GetPublicKey(public_key)).await
+                } else {
+                    err()
+                }
+            }
+            GetSecretKey(profile_id) => {
+                if let Ok(secret) = self.profile(&profile_id).get_secret_key() {
+                    ctx.send(reply, Res::GetSecretKey(secret)).await
+                } else {
+                    err()
+                }
+            }
+            CreateAuthenticationProof(profile_id, state) => {
+                if let Ok(proof) = self.profile(&profile_id).create_proof(state.as_slice()) {
+                    ctx.send(reply, Res::CreateAuthenticationProof(proof)).await
+                } else {
+                    err()
+                }
+            }
+            VerifyAuthenticationProof(profile_id, state, peer_id, proof) => {
+                if let Ok(verified) = self.profile(&profile_id).verify_proof(
+                    state.as_slice(),
+                    &peer_id,
+                    proof.as_slice(),
+                ) {
+                    ctx.send(reply, Res::VerifyAuthenticationProof(verified))
+                        .await
+                } else {
+                    err()
+                }
+            }
+            AddChange(profile_id, change) => self.profile(&profile_id).add_change(change),
+            GetChanges(profile_id) => {
+                let changes = self
+                    .profile(&profile_id)
+                    .get_changes()
+                    .expect("get_changes failed");
+                ctx.send(reply, Res::GetChanges(changes)).await
+            }
+            VerifyChanges(profile_id) => {
+                let verified = self.profile(&profile_id).verify_changes()?;
+                ctx.send(reply, Res::VerifyChanges(verified)).await
+            }
+
+            VerifyAndAddContact(profile_id, contact_id) => {
+                let verified_and_added = self
+                    .profile(&profile_id)
+                    .verify_and_add_contact(contact_id)?;
+                ctx.send(reply, Res::VerifyAndAddContact(verified_and_added))
+                    .await
+            }
+            GetContacts(profile_id) => {
+                let contacts = self.profile(&profile_id).get_contacts()?;
+                ctx.send(reply, Res::Contacts(contacts)).await
+            }
+            VerifyContact(profile_id, contact) => {
+                let verified = self.profile(&profile_id).verify_contact(contact)?;
+                ctx.send(reply, Res::VerifyContact(verified)).await
+            }
+            VerifyAndUpdateContact(profile_id, contact_id, changes) => {
+                let verified = self
+                    .profile(&profile_id)
+                    .verify_and_update_contact(&contact_id, changes)?;
+                ctx.send(reply, Res::VerifyAndUpdateContact(verified)).await
+            }
+            GetContact(profile_id, contact_id) => {
+                let contact = self.profile(&profile_id).get_contact(&contact_id)?;
+                let message = match contact {
+                    None => MaybeContact::None,
+                    Some(contact) => MaybeContact::Contact(contact),
+                };
+                ctx.send(reply, message).await
+            }
+            CreateSecureChannelListener(profile_id, address) => {
+                let profile = self.profile(&profile_id);
+                SecureChannelTrait::create_secure_channel_listener_async(
+                    profile,
+                    &ctx,
+                    address,
+                    NoOpTrustPolicy, // TODO wire up some serializable policy descriptor
+                    &profile.vault().address(),
+                )
+                .await
+            }
+            CreateSecureChannel(profile_id, route) => {
+                let profile = self.profile(&profile_id);
+                let address = SecureChannelTrait::create_secure_channel_async(
+                    profile,
+                    &ctx,
+                    route,
+                    NoOpTrustPolicy, // TODO policy
+                    &profile.vault().address(),
+                )
+                .await?;
+                ctx.send(reply, Res::CreateSecureChannel(address)).await
+            }
+        }
+    }
+}
+
+impl EntityWorker {
+    fn add_profile_state(&mut self, profile_state: ProfileState) -> Result<()> {
+        let id = profile_state.identifier().unwrap();
+        self.profiles.insert(id.clone(), profile_state);
+        Ok(())
+    }
+
+    fn remove_profile<I: Into<ProfileIdentifier>>(&mut self, profile_id: I) -> Result<()> {
+        self.profiles
+            .remove(&profile_id.into())
+            .expect("remove_profile failed");
+        Ok(())
+    }
+}

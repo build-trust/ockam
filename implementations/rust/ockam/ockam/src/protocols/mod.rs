@@ -23,7 +23,6 @@ impl ProtocolPayload {
     /// In order to easily decode incoming `ProtocolPayload`s, it is
     /// recommended to use the `ProtocolParser` abstraction, which handles
     /// matching between different decoders based on the protocol ID.
-    #[allow(dead_code)]
     pub fn new<P: Into<ProtocolId>, S: Message>(p: P, d: S) -> Self {
         Self {
             protocol: p.into(),

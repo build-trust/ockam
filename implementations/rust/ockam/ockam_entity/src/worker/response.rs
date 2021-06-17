@@ -1,25 +1,27 @@
-use crate::{Contact, ContactsDb, ProfileChangeEvent, ProfileIdentifier};
-use ockam_vault_core::{PublicKey, Secret};
+use crate::{Changes, Contact, ProfileIdentifier, Proof};
+use ockam_core::Address;
+use ockam_vault::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum ProfileResponseMessage {
-    Identifier(ProfileIdentifier),
-    ChangeEvents(Vec<ProfileChangeEvent>),
-    UpdateNoVerification,
-    Verify(bool),
-    Contacts(ContactsDb),
-    ToContact(Contact),
-    SerializeToContact(Vec<u8>),
-    GetContact(Option<Contact>),
-    VerifyContact(bool),
-    VerifyAndAddContact(bool),
-    VerifyAndUpdateContact(bool),
-    GenerateAuthenticationProof(Vec<u8>),
-    VerifyAuthenticationProof(bool),
-    CreateKey,
-    RotateKey,
-    GetSecretKey(Secret),
+#[derive(Serialize, Deserialize)]
+pub enum MaybeContact {
+    None,
+    Contact(Contact),
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum IdentityResponse {
+    CreateProfile(ProfileIdentifier),
+    CreateAuthenticationProof(Proof),
     GetPublicKey(PublicKey),
-    GetRootSecret(Secret),
+    GetSecretKey(Secret),
+    GetChanges(Changes),
+    Contacts(Vec<Contact>),
+    GetContact(MaybeContact),
+    VerifyAuthenticationProof(bool),
+    VerifyContact(bool),
+    VerifyAndUpdateContact(bool),
+    VerifyChanges(bool),
+    VerifyAndAddContact(bool),
+    CreateSecureChannel(Address),
 }

@@ -1,9 +1,10 @@
+use crate::profile::Profile;
 use ockam_core::hex::encode;
-use ockam_vault_core::KeyId;
+use ockam_vault_core::{Hasher, KeyId};
 use serde::{Deserialize, Serialize};
 
 /// An identifier of a Profile.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
 pub struct ProfileIdentifier(KeyId);
 
 /// Unique [`crate::Profile`] identifier, computed as SHA256 of root public key
@@ -13,13 +14,19 @@ impl ProfileIdentifier {
         Self { 0: key_id }
     }
     /// Human-readable form of the id
-    pub fn to_string_representation(&self) -> String {
+    pub fn to_external(&self) -> String {
         format!("P_ID.{}", &self.0)
     }
 
     /// Return the wrapped KeyId
     pub fn key_id(&self) -> &KeyId {
         &self.0
+    }
+}
+
+impl From<&str> for ProfileIdentifier {
+    fn from(s: &str) -> Self {
+        ProfileIdentifier::from_key_id(s.into())
     }
 }
 
@@ -34,6 +41,13 @@ impl AsRef<[u8]> for EventIdentifier {
 }
 
 impl EventIdentifier {
+    pub fn initial<H: Hasher>(mut hasher: H) -> Self {
+        let h = match hasher.sha256(Profile::NO_EVENT) {
+            Ok(hash) => hash,
+            Err(_) => panic!("failed to hash initial event"),
+        };
+        EventIdentifier::from_hash(h)
+    }
     /// Create identifier from public key hash
     pub fn from_hash(hash: [u8; 32]) -> Self {
         Self { 0: hash }

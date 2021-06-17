@@ -13,7 +13,8 @@ pub struct Init {
 }
 
 impl Init {
-    #[allow(clippy::new_ret_no_self)]
+    //noinspection RsExternalLinter
+    #[allow(dead_code, clippy::new_ret_no_self)]
     pub fn new<S: Into<String>>(s: S) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_create",
@@ -33,7 +34,8 @@ pub struct PushConfirm {
 }
 
 impl PushConfirm {
-    #[allow(clippy::new_ret_no_self)]
+    //noinspection RsExternalLinter
+    #[allow(dead_code, clippy::new_ret_no_self)]
     pub fn new<S: Into<Status>>(request_id: usize, status: S, index: usize) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_push",

@@ -89,4 +89,9 @@ impl VaultSync {
 
         Self::create_with_worker(ctx, &vault_address)
     }
+
+    /// Return the Vault worker address
+    pub fn address(&self) -> Address {
+        self.vault_worker_address.clone()
+    }
 }

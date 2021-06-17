@@ -1,4 +1,4 @@
-use ockam::{route, Address, Context, Entity, NoOpTrustPolicy, Result, TcpTransport, TCP};
+use ockam::{route, Address, Context, Entity, Identity, Result, SecureChannels, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -14,16 +14,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a TCP connection to your cloud node.
     tcp.connect(cloud_node_tcp_address).await?;
 
-    let mut alice = Entity::create(&ctx).await?;
+    let mut alice = Entity::create(&ctx)?;
     let cloud_node_address: Address = (TCP, cloud_node_tcp_address).into();
-    let cloude_node_route = route![
+    let cloud_node_route = route![
         cloud_node_address,
         secure_channel_listener_forwarding_address
     ];
 
-    let channel = alice
-        .create_secure_channel(cloude_node_route, NoOpTrustPolicy)
-        .await?;
+    let channel = alice.create_secure_channel(cloud_node_route)?;
 
     let echoer_route = route![channel, "echoer"];
 

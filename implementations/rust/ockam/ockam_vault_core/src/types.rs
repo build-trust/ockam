@@ -28,6 +28,12 @@ cfg_if! {
         /// Buffer for large binaries (e.g. encrypted data). Max size - 512
         pub type Buffer<T> = heapless::Vec<T, U512>;
         pub type KeyId = heapless::String<U64>;
+
+        impl From<&str> for KeyId {
+            fn from(s: &str) -> Self {
+                heapless::String::from(s)
+            }
+        }
     }
     else {
         extern crate alloc;

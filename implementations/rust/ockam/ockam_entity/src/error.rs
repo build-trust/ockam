@@ -28,6 +28,8 @@ pub enum EntityError {
     UnknownChannelMsgOrigin,
     InvalidLocalInfoType,
     InvalidSecureChannelInternalState,
+    IdentityApiFailed,
+    ContactVerificationFailed,
 }
 
 impl EntityError {

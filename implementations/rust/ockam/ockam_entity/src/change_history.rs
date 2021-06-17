@@ -1,10 +1,13 @@
 //! Profile history
+use crate::profile::Profile;
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
-    EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChange, ProfileChangeEvent,
-    ProfileChangeProof, ProfileVault, SignatureType,
+    EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
+    ProfileChangeEvent, ProfileChangeProof, ProfileVault, SignatureType,
 };
-use ockam_vault_core::PublicKey;
+use ockam_core::{allow, deny};
+use ockam_vault::{PublicKey, SecretAttributes};
+use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
 use serde::{Deserialize, Serialize};
 
 /// Full history of [`Profile`] changes. History and corresponding secret keys are enough to recreate [`Profile`]
@@ -107,7 +110,14 @@ impl ProfileChangeHistory {
     pub(crate) fn get_current_profile_update_public_key(
         existing_events: &[ProfileChangeEvent],
     ) -> ockam_core::Result<PublicKey> {
-        let key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
+        let key_attributes = KeyAttributes::with_attributes(
+            Profile::PROFILE_UPDATE.to_string(),
+            MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
+                SecretType::Curve25519,
+                SecretPersistence::Persistent,
+                CURVE25519_SECRET_LENGTH,
+            )),
+        );
         Self::find_last_key_event_public_key(existing_events, &key_attributes)
     }
 
@@ -152,14 +162,15 @@ impl ProfileChangeHistory {
     pub(crate) fn verify_all_existing_events(
         &self,
         vault: &mut impl ProfileVault,
-    ) -> ockam_core::Result<()> {
+    ) -> ockam_core::Result<bool> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
             let new_event = &self.as_ref()[i];
-            Self::verify_event(existing_events, new_event, vault)?;
+            if !Self::verify_event(existing_events, new_event, vault)? {
+                return deny();
+            }
         }
-
-        Ok(())
+        allow()
     }
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
@@ -175,7 +186,7 @@ impl ProfileChangeHistory {
         let event_id = EventIdentifier::from_hash(event_id);
 
         if &event_id != new_change_event.identifier() {
-            return Err(EntityError::EventIdDoesntMatch.into());
+            return deny(); // EventIdDoesntMatch
         }
 
         match new_change_event.proof() {
@@ -188,7 +199,9 @@ impl ProfileChangeHistory {
                     };
                     let root_public_key =
                         Self::get_current_profile_update_public_key(events_to_look)?;
-                    vault.verify(s.data(), &root_public_key, event_id.as_ref())?;
+                    if !vault.verify(s.data(), &root_public_key, event_id.as_ref())? {
+                        return deny();
+                    }
                 }
             },
         }
@@ -201,6 +214,7 @@ impl ProfileChangeHistory {
                         serde_bare::to_vec(c.data()).map_err(|_| EntityError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
+                    // if verification failed, there is no channel back. Return bool msg?
                     vault.verify(
                         c.self_signature(),
                         &PublicKey::new(c.data().public_key().into()),
@@ -238,14 +252,14 @@ impl ProfileChangeHistory {
             }
         }
 
-        Ok(true)
+        allow()
     }
 
     /// Check consistency of events that are been added
     pub(crate) fn check_consistency(
         existing_events: &[ProfileChangeEvent],
         new_events: &[ProfileChangeEvent],
-    ) -> ockam_core::Result<()> {
+    ) -> bool {
         // TODO: add more checks: e.g. you cannot rotate the same key twice during one event
         let mut prev_event;
         if let Some(e) = existing_events.last() {
@@ -258,7 +272,7 @@ impl ProfileChangeHistory {
             // Events should go in correct order as stated in previous_event_identifier field
             if let Some(prev) = prev_event {
                 if prev.identifier() != event.changes().previous_event_identifier() {
-                    return Err(EntityError::InvalidChainSequence.into());
+                    return false; // InvalidChainSequence
                 }
             }
 
@@ -266,10 +280,9 @@ impl ProfileChangeHistory {
 
             // For now only allow one change at a time
             if event.changes().data().len() != 1 {
-                return Err(EntityError::InvalidChainSequence.into());
+                return false; // InvalidChainSequence
             }
         }
-
-        Ok(())
+        true
     }
 }

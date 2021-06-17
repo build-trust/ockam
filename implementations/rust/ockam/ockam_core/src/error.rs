@@ -32,6 +32,16 @@ pub struct Error {
 /// The type returned by Ockam functions.
 pub type Result<T> = crate::lib::Result<T, Error>;
 
+/// Produces Ok(false), which reads confusingly in auth code.
+pub fn deny() -> Result<bool> {
+    Ok(false)
+}
+
+/// Produces Ok(true), which reads confusingly in auth code.
+pub fn allow() -> Result<bool> {
+    Ok(true)
+}
+
 impl Error {
     /// Creates a new [`Error`].
     #[cfg(not(feature = "std"))]

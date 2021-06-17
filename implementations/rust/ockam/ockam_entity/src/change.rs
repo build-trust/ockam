@@ -1,14 +1,7 @@
-use crate::ProfileEventAttributes;
 use serde::{Deserialize, Serialize};
 
-mod proof;
-pub use proof::*;
-mod event;
-pub use event::*;
-mod ctype;
-pub use ctype::*;
-
-pub mod history;
+pub use crate::proof::*;
+use crate::{CreateKeyChange, EventIdentifier, ProfileEventAttributes, RotateKeyChange};
 
 /// Pre-defined keys in [`ProfileEventAttributes`] map
 #[non_exhaustive]
@@ -55,6 +48,82 @@ impl ProfileChange {
             version,
             attributes,
             change_type,
+        }
+    }
+}
+
+/// Possible types of [`crate::Profile`] changes
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ProfileChangeType {
+    /// Create key
+    CreateKey(CreateKeyChange),
+    /// Rotate key
+    RotateKey(RotateKeyChange),
+}
+
+/// Profile changes with a given event identifier
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangeSet {
+    prev_event_id: EventIdentifier,
+    data: Vec<ProfileChange>,
+}
+
+impl ChangeSet {
+    /// [`EventIdentifier`] of previous event
+    pub fn previous_event_identifier(&self) -> &EventIdentifier {
+        &self.prev_event_id
+    }
+    /// Set of changes been applied
+    pub fn data(&self) -> &[ProfileChange] {
+        &self.data
+    }
+}
+
+impl ChangeSet {
+    /// Create new Changes
+    pub fn new(prev_event_id: EventIdentifier, data: Vec<ProfileChange>) -> Self {
+        ChangeSet {
+            prev_event_id,
+            data,
+        }
+    }
+}
+
+/// [`crate::Profile`]s are modified using change events mechanism. One event may have 1 or more [`ProfileChange`]s
+/// Proof is used to check whether this event comes from a party authorized to perform such updated
+/// Individual changes may include additional proofs, if needed
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProfileChangeEvent {
+    identifier: EventIdentifier,
+    changes: ChangeSet,
+    proof: ProfileChangeProof,
+}
+
+pub type Changes = Vec<ProfileChangeEvent>;
+
+impl ProfileChangeEvent {
+    /// Unique [`EventIdentifier`]
+    pub fn identifier(&self) -> &EventIdentifier {
+        &self.identifier
+    }
+    /// Set of changes been applied
+    pub fn changes(&self) -> &ChangeSet {
+        &self.changes
+    }
+    /// Proof is used to check whether this event comes from a party authorized to perform such updated
+    /// Individual changes may include additional proofs, if needed
+    pub fn proof(&self) -> &ProfileChangeProof {
+        &self.proof
+    }
+}
+
+impl ProfileChangeEvent {
+    /// Create a new profile change event
+    pub fn new(identifier: EventIdentifier, changes: ChangeSet, proof: ProfileChangeProof) -> Self {
+        ProfileChangeEvent {
+            identifier,
+            changes,
+            proof,
         }
     }
 }

@@ -1,6 +1,6 @@
 // This node creates a secure channel with a listener that is multiple hops away.
 
-use ockam::{route, Context, Entity, NoOpTrustPolicy, Result, Route};
+use ockam::{route, Context, Entity, Result, Route, SecureChannels};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
@@ -8,7 +8,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    let mut bob = Entity::create(&ctx).await?;
+    let mut bob = Entity::create(&ctx)?;
 
     // Start 3 hop workers at addresses "h1", "h2" and "h3".
     ctx.start_worker("h1", Hop).await?;
@@ -16,16 +16,15 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("h3", Hop).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener("secure_channel_listener", NoOpTrustPolicy)
-        .await?;
+    bob.create_secure_channel_listener("secure_channel_listener")?;
 
     // Route to the secure channel listener, via "h1", "h2" and "h3"
     let route = route!["h1", "h2", "h3", "secure_channel_listener"];
 
     // Connect to the secure channel listener and perform a handshake.
-    let mut alice = Entity::create(&ctx).await?;
+    let mut alice = Entity::create(&ctx)?;
 
-    let channel_to_bob = alice.create_secure_channel(route, NoOpTrustPolicy).await?;
+    let channel_to_bob = alice.create_secure_channel(route)?;
 
     // Route to the "echoer" worker via the secure channel.
     let echoer_route: Route = vec![channel_to_bob, "echoer".into()].into();

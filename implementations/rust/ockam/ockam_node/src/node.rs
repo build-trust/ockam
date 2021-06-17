@@ -10,7 +10,7 @@ pub struct NullWorker;
 
 impl NullWorker {
     /// Create and register a new NullWorker context
-    pub(crate) fn new(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
+    pub fn new(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
         // Create a new Mailbox and Context
         let (mb_tx, mb_rx) = channel(32);
         let mb = Mailbox::new(mb_rx, mb_tx);

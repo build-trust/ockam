@@ -27,7 +27,7 @@ pub use executor::*;
 pub use mailbox::*;
 pub use messages::*;
 
-pub use node::start_node;
+pub use node::{start_node, NullWorker};
 
 use std::future::Future;
 use tokio::{runtime::Runtime, task};

@@ -7,7 +7,7 @@
     unsafe_code,
     unused_import_braces,
     unused_qualifications,
-    // TODO restore before merge warnings
+    warnings
 )]
 // ---
 // #![no_std] if the standard library is not present.
@@ -45,6 +45,7 @@ pub use error::*;
 pub use lease::*;
 pub use ockam_core::worker;
 pub use ockam_entity::*;
+pub use protocols::*;
 pub use remote_forwarder::*;
 
 pub use ockam_core::{

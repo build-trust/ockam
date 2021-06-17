@@ -1,6 +1,6 @@
 use crate::{
-    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, EntityError, LocalInfo,
-    ProfileIdentifier, ProfileTrait, SecureChannelTrustInfo, TrustPolicy,
+    ChannelAuthConfirm, ChannelAuthRequest, ChannelAuthResponse, EntityError, Identity, LocalInfo,
+    ProfileIdentifier, SecureChannelTrustInfo, TrustPolicy,
 };
 use async_trait::async_trait;
 use ockam_channel::{CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel};
@@ -27,7 +27,7 @@ pub(crate) struct SecureChannelWorker {
 }
 
 impl SecureChannelWorker {
-    pub async fn create_initiator<T: TrustPolicy, P: ProfileTrait, V: XXVault>(
+    pub async fn create_initiator<T: TrustPolicy, P: Identity, V: XXVault>(
         ctx: &Context,
         route: Route,
         profile: &mut P,
@@ -58,27 +58,27 @@ impl SecureChannelWorker {
         let msg = msg.body();
 
         let their_contact = msg.contact();
-        let their_profile_id = their_contact.identifier();
-        if profile.contacts()?.contains_key(their_profile_id) {
-            // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
+        let their_profile_id = their_contact.identifier().clone();
+
+        let contact_result = profile.get_contact(&their_profile_id);
+
+        if let Some(_) = contact_result? {
             return Err(EntityError::NotImplemented.into());
         } else {
-            profile.verify_and_add_contact(their_contact.clone())?;
+            // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
+            profile.verify_and_add_contact((*their_contact).clone())?;
         }
 
         // Verify responder posses their Profile key
-        let verified = profile.verify_authentication_proof(
-            &channel.auth_hash(),
-            their_profile_id,
-            msg.proof(),
-        )?;
+        let verified =
+            profile.verify_proof(&channel.auth_hash(), &their_profile_id, msg.proof())?;
 
         if !verified {
             return Err(EntityError::SecureChannelVerificationFailed.into());
         }
         info!(
             "Verified SecureChannel from: {}",
-            their_profile_id.to_string_representation()
+            their_profile_id.to_external()
         );
 
         // Check our TrustPolicy
@@ -89,12 +89,12 @@ impl SecureChannelWorker {
         }
         info!(
             "Checked trust policy for SecureChannel from: {}",
-            their_profile_id.to_string_representation()
+            their_profile_id.to_external()
         );
 
         // Prove we posses our Profile key
-        let contact = profile.to_contact()?;
-        let proof = profile.generate_authentication_proof(&channel.auth_hash())?;
+        let contact = profile.as_contact()?;
+        let proof = profile.create_proof(&channel.auth_hash())?;
 
         // Generate 2 random fresh address for newly created SecureChannel.
         // One for local workers to encrypt their messages
@@ -132,7 +132,7 @@ impl SecureChannelWorker {
         Ok(channel_local_address)
     }
 
-    pub async fn create_responder<T: TrustPolicy, P: ProfileTrait>(
+    pub async fn create_responder<T: TrustPolicy, P: Identity>(
         ctx: &Context,
         profile: &mut P,
         trust_policy: T,
@@ -171,8 +171,8 @@ impl SecureChannelWorker {
         let auth_hash = kex_msg.auth_hash();
 
         // Prove we posses Profile key
-        let proof = profile.generate_authentication_proof(&auth_hash)?;
-        let msg = ChannelAuthRequest::new(profile.to_contact()?, proof);
+        let proof = profile.create_proof(&auth_hash)?;
+        let msg = ChannelAuthRequest::new(profile.as_contact()?, proof);
         child_ctx
             .send(
                 route![kex_msg.address().clone(), first_responder_address],
@@ -186,8 +186,11 @@ impl SecureChannelWorker {
         debug!("Received Authentication response");
 
         let their_contact = auth_msg.contact();
-        let their_profile_id = their_contact.identifier();
-        if profile.contacts()?.contains_key(their_profile_id) {
+        let their_profile_id = their_contact.identifier().clone();
+
+        let contact_result = profile.get_contact(&their_profile_id);
+
+        if let Some(_) = contact_result? {
             // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
             return Err(EntityError::NotImplemented.into());
         } else {
@@ -195,18 +198,15 @@ impl SecureChannelWorker {
         }
 
         // Verify initiator posses their Profile key
-        let verified = profile.verify_authentication_proof(
-            &kex_msg.auth_hash(),
-            their_profile_id,
-            auth_msg.proof(),
-        )?;
+        let verified =
+            profile.verify_proof(&kex_msg.auth_hash(), &their_profile_id, auth_msg.proof())?;
 
         if !verified {
             return Err(EntityError::SecureChannelVerificationFailed.into());
         }
         info!(
             "Verified SecureChannel from: {}",
-            their_profile_id.to_string_representation()
+            their_profile_id.to_external()
         );
 
         // Check our TrustPolicy
@@ -217,7 +217,7 @@ impl SecureChannelWorker {
         }
         info!(
             "Checked trust policy for SecureChannel from: {}",
-            their_profile_id.to_string_representation()
+            their_profile_id.to_external()
         );
 
         let channel_local_address: Address = random();

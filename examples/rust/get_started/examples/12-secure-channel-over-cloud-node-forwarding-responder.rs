@@ -1,4 +1,4 @@
-use ockam::{Context, Entity, NoOpTrustPolicy, RemoteForwarder, Result, TcpTransport};
+use ockam::{Context, Entity, Identity, RemoteForwarder, Result, SecureChannels, TcpTransport};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -14,11 +14,10 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
-    let mut bob = Entity::create(&ctx).await?;
+    let mut bob = Entity::create(&ctx)?;
 
     // Create a secure channel listener at address "bob_secure_channel_listener"
-    bob.create_secure_channel_listener("bob_secure_channel_listener", NoOpTrustPolicy)
-        .await?;
+    bob.create_secure_channel_listener("bob_secure_channel_listener")?;
 
     let forwarder =
         RemoteForwarder::create(&ctx, cloud_node_tcp_address, "bob_secure_channel_listener")

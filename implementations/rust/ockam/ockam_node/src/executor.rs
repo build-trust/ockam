@@ -28,11 +28,13 @@ impl Executor {
         Executor::default()
     }
 
-    pub(crate) fn sender(&self) -> Sender<NodeMessage> {
+    /// Sender
+    pub fn sender(&self) -> Sender<NodeMessage> {
         self.router.sender()
     }
 
-    pub(crate) fn runtime(&self) -> Arc<Runtime> {
+    /// Runtime
+    pub fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
     }
 

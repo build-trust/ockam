@@ -1,308 +1,242 @@
 use crate::{
-    Contact, ContactsDb, KeyAttributes, Profile, ProfileAdd, ProfileAuth, ProfileChangeEvent,
-    ProfileChanges, ProfileContacts, ProfileEventAttributes, ProfileIdentifier, ProfileIdentity,
-    ProfileRemove, ProfileRetrieve, ProfileSecrets, ProfileSync, SecureChannelTrait, TrustPolicy,
+    profile::Profile, worker::EntityWorker, Changes, Contact, EntityError::IdentityApiFailed,
+    Handle, Identity, IdentityRequest, IdentityResponse, MaybeContact, ProfileChangeEvent,
+    ProfileIdentifier, Proof, SecureChannels,
 };
 use ockam_core::{Address, Result, Route};
-use ockam_node::Context;
-use ockam_vault_core::{PublicKey, Secret};
-use ockam_vault_sync_core::Vault;
-
-use crate::EntityError::{InvalidInternalState, InvalidParameter, ProfileNotFound};
-use ockam_core::hashbrown::HashMap;
+use ockam_node::{block_future, Context};
+use ockam_vault::ockam_vault_core::{PublicKey, Secret};
+use IdentityRequest::*;
+use IdentityResponse as Res;
 
 pub struct Entity {
-    ctx: Context,
-    vault: Address,
-    default_profile_identifier: ProfileIdentifier,
-    profiles: HashMap<ProfileIdentifier, ProfileSync>,
-    secure_channels: HashMap<Address, Route>,
+    handle: Handle,
+    current_profile_id: Option<ProfileIdentifier>,
 }
 
 impl Entity {
-    pub async fn create(node_ctx: &Context) -> Result<Entity> {
-        let ctx = node_ctx.new_context(Address::random(0)).await?;
-        let vault = Vault::create(&ctx)?;
-        let default_profile = Profile::create(&ctx, &vault).await?;
-        let default_profile_identifier = default_profile.identifier()?;
+    pub fn new(handle: Handle, profile_id: ProfileIdentifier) -> Self {
+        Entity {
+            handle,
+            current_profile_id: Some(profile_id),
+        }
+    }
 
-        let mut profiles = HashMap::new();
-        profiles.insert(default_profile_identifier.clone(), default_profile);
+    pub fn handle(&self) -> Handle {
+        self.handle.clone()
+    }
 
-        Ok(Entity {
-            ctx,
-            vault,
-            default_profile_identifier,
-            profiles,
-            secure_channels: Default::default(),
+    pub fn create(node_ctx: &Context) -> Result<Entity> {
+        block_future(&node_ctx.runtime(), async move {
+            let ctx = node_ctx.new_context(Address::random(0)).await?;
+            let address = Address::random(0);
+            ctx.start_worker(&address, EntityWorker::default()).await?;
+
+            let mut entity = Entity {
+                handle: Handle::new(ctx, address),
+                current_profile_id: None,
+            };
+
+            let default_profile = entity.create_profile()?;
+            entity.current_profile_id = Some(default_profile.identifier()?);
+            Ok(entity)
         })
     }
 
-    fn default_profile(&self) -> Option<&ProfileSync> {
-        self.profile(&self.default_profile_identifier)
+    pub fn call(&self, req: IdentityRequest) -> Result<IdentityResponse> {
+        self.handle.call(req)
     }
 
-    fn default_profile_mut(&mut self) -> Option<&mut ProfileSync> {
-        let id = self.default_profile_identifier.clone();
-        self.profile_mut(&id)
+    pub fn cast(&self, req: IdentityRequest) -> Result<()> {
+        self.handle.cast(req)
     }
+}
 
-    pub async fn secure_channel_listen_on_address<A: Into<Address>, T: TrustPolicy>(
-        &mut self,
-        address: A,
-        trust_policy: T,
-    ) -> Result<()> {
-        let profile = self.profiles.get_mut(&self.default_profile_identifier);
-        if profile.is_some() {
-            let profile = profile.unwrap();
-            profile
-                .create_secure_channel_listener(
-                    &self.ctx,
-                    address.into(),
-                    trust_policy,
-                    &self.vault,
-                )
-                .await
+impl Entity {
+    pub fn id(&self) -> ProfileIdentifier {
+        self.current_profile_id.as_ref().unwrap().clone()
+    }
+}
+
+fn err<T>() -> Result<T> {
+    Err(IdentityApiFailed.into())
+}
+
+impl Entity {
+    pub fn create_profile(&mut self) -> Result<Profile> {
+        if let Res::CreateProfile(id) = self.call(CreateProfile)? {
+            Ok(Profile::new(id, self.handle.clone()))
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    pub async fn create_secure_channel_listener<T: TrustPolicy>(
-        &mut self,
-        secure_channel_address: &str,
-        trust_policy: T,
-    ) -> Result<()> {
-        self.secure_channel_listen_on_address(secure_channel_address, trust_policy)
-            .await
+    pub fn remove_profile<I: Into<ProfileIdentifier>>(&mut self, profile_id: I) -> Result<()> {
+        self.cast(RemoveProfile(profile_id.into()))
     }
 
-    pub async fn create_secure_channel<R: Into<Route>, T: TrustPolicy>(
-        &mut self,
-        route: R,
-        trust_policy: T,
-    ) -> Result<Address> {
-        let route = route.into();
-
-        let profile = self.profiles.get_mut(&self.default_profile_identifier);
-        if profile.is_some() {
-            let profile = profile.unwrap();
-            let channel = profile
-                .create_secure_channel(&self.ctx, route.clone(), trust_policy, &self.vault)
-                .await?;
-            self.secure_channels.insert(channel.clone(), route);
-            Ok(channel)
-        } else {
-            Err(InvalidInternalState.into())
-        }
-    }
-
-    pub fn list_secure_channels(&self) -> Result<Vec<(&Address, &Route)>> {
-        Ok(self.secure_channels.iter().collect())
-    }
-}
-
-impl ProfileAdd for Entity {
-    fn add_profile(&mut self, profile: ProfileSync) -> Result<()> {
-        if let Ok(id) = profile.identifier() {
-            if self.profiles.insert(id, profile).is_some() {
-                return Ok(());
-            }
-        }
-        Err(InvalidInternalState.into())
-    }
-}
-
-impl ProfileRetrieve for Entity {
-    fn profile(&self, profile_identifier: &ProfileIdentifier) -> Option<&ProfileSync> {
-        self.profiles.get(profile_identifier)
-    }
-
-    fn profile_mut(&mut self, profile_identifier: &ProfileIdentifier) -> Option<&mut ProfileSync> {
-        self.profiles.get_mut(profile_identifier)
-    }
-}
-
-impl ProfileRemove for Entity {
-    fn remove_profile(&mut self, profile_id: &ProfileIdentifier) -> Result<()> {
-        if &self.default_profile_identifier == profile_id {
-            return Err(InvalidParameter.into());
-        }
-        if self.profiles.remove(profile_id).is_some() {
-            Ok(())
-        } else {
-            Err(InvalidInternalState.into())
+    pub fn current_profile(&mut self) -> Option<Profile> {
+        match &self.current_profile_id {
+            None => None,
+            Some(id) => Some(Profile::new(id.clone(), self.handle.clone())),
         }
     }
 }
 
-impl ProfileIdentity for Entity {
+impl Identity for Entity {
     fn identifier(&self) -> Result<ProfileIdentifier> {
-        if let Some(profile) = self.default_profile() {
-            Ok(profile.identifier()?)
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-}
-
-impl ProfileChanges for Entity {
-    fn change_events(&self) -> Result<Vec<ProfileChangeEvent>> {
-        if let Some(profile) = self.default_profile() {
-            profile.change_events()
-        } else {
-            Err(ProfileNotFound.into())
-        }
+        Ok(self.current_profile_id.as_ref().unwrap().clone())
     }
 
-    fn update_no_verification(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.update_no_verification(change_event)
+    fn create_key<S: Into<String>>(&mut self, label: S) -> Result<()> {
+        self.cast(CreateKey(self.id(), label.into()))
+    }
+
+    fn rotate_key(&mut self) -> Result<()> {
+        self.cast(RotateKey(self.id()))
+    }
+
+    fn get_secret_key(&self) -> Result<Secret> {
+        if let Res::GetSecretKey(secret) = self.call(GetSecretKey(self.id()))? {
+            Ok(secret)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn verify(&mut self) -> Result<bool> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.verify()
+    fn get_public_key(&self) -> Result<PublicKey> {
+        if let Res::GetPublicKey(public_key) = self.call(GetPublicKey(self.id()))? {
+            Ok(public_key)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
-}
 
-impl ProfileSecrets for Entity {
-    fn create_key(
+    fn create_proof<S: AsRef<[u8]>>(&mut self, state_slice: S) -> Result<Proof> {
+        if let Res::CreateAuthenticationProof(proof) = self.call(CreateAuthenticationProof(
+            self.id(),
+            state_slice.as_ref().to_vec(),
+        ))? {
+            Ok(proof)
+        } else {
+            err()
+        }
+    }
+
+    fn verify_proof<S: AsRef<[u8]>, P: AsRef<[u8]>>(
         &mut self,
-        key_attributes: KeyAttributes,
-        attributes: Option<ProfileEventAttributes>,
-    ) -> Result<()> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.create_key(key_attributes, attributes)
+        state_slice: S,
+        peer_id: &ProfileIdentifier,
+        proof_slice: P,
+    ) -> Result<bool> {
+        if let Res::VerifyAuthenticationProof(verified) = self.call(VerifyAuthenticationProof(
+            self.id(),
+            state_slice.as_ref().to_vec(),
+            peer_id.clone(),
+            proof_slice.as_ref().to_vec(),
+        ))? {
+            Ok(verified)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn rotate_key(
-        &mut self,
-        key_attributes: KeyAttributes,
-        attributes: Option<ProfileEventAttributes>,
-    ) -> Result<()> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.rotate_key(key_attributes, attributes)
+    fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
+        self.cast(AddChange(self.id(), change_event))
+    }
+
+    fn get_changes(&self) -> Result<Changes> {
+        if let Res::GetChanges(changes) = self.call(GetChanges(self.id()))? {
+            Ok(changes)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn get_secret_key(&mut self, key_attributes: &KeyAttributes) -> Result<Secret> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.get_secret_key(key_attributes)
+    fn verify_changes(&mut self) -> Result<bool> {
+        if let Res::VerifyChanges(verified) = self.call(VerifyChanges(self.id()))? {
+            Ok(verified)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn get_public_key(&self, key_attributes: &KeyAttributes) -> Result<PublicKey> {
-        if let Some(profile) = self.default_profile() {
-            profile.get_public_key(key_attributes)
+    fn get_contacts(&self) -> Result<Vec<Contact>> {
+        if let Res::Contacts(contact) = self.call(GetContacts(self.id()))? {
+            Ok(contact)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn get_root_secret(&mut self) -> Result<Secret> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.get_root_secret()
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-}
-
-impl ProfileContacts for Entity {
-    fn contacts(&self) -> Result<ContactsDb> {
-        if let Some(profile) = self.default_profile() {
-            profile.contacts()
-        } else {
-            Err(ProfileNotFound.into())
-        }
+    fn as_contact(&mut self) -> Result<Contact> {
+        let mut profile = self.current_profile().expect("no current profile");
+        let contact = profile.as_contact()?;
+        Ok(contact)
     }
 
-    fn to_contact(&self) -> Result<Contact> {
-        if let Some(profile) = self.default_profile() {
-            profile.to_contact()
+    fn get_contact(&mut self, contact_id: &ProfileIdentifier) -> Result<Option<Contact>> {
+        if let Res::GetContact(contact) = self.call(GetContact(self.id(), contact_id.clone()))? {
+            match contact {
+                MaybeContact::None => Ok(None),
+                MaybeContact::Contact(contact) => Ok(Some(contact)),
+            }
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn serialize_to_contact(&self) -> Result<Vec<u8>> {
-        if let Some(profile) = self.default_profile() {
-            profile.serialize_to_contact()
+    fn verify_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool> {
+        if let Res::VerifyContact(contact) = self.call(VerifyContact(self.id(), contact.into()))? {
+            Ok(contact)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn get_contact(&self, id: &ProfileIdentifier) -> Result<Option<Contact>> {
-        if let Some(profile) = self.default_profile() {
-            profile.get_contact(id)
+    fn verify_and_add_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool> {
+        if let Res::VerifyAndAddContact(verified_and_added) =
+            self.call(VerifyAndAddContact(self.id(), contact.into()))?
+        {
+            Ok(verified_and_added)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 
-    fn verify_contact(&mut self, contact: &Contact) -> Result<bool> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.verify_contact(contact)
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-
-    fn verify_and_add_contact(&mut self, contact: Contact) -> Result<bool> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.verify_and_add_contact(contact)
-        } else {
-            Err(ProfileNotFound.into())
-        }
-    }
-
-    fn verify_and_update_contact(
+    fn verify_and_update_contact<C: AsRef<[ProfileChangeEvent]>>(
         &mut self,
         profile_id: &ProfileIdentifier,
-        change_events: Vec<ProfileChangeEvent>,
+        changes: C,
     ) -> Result<bool> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.verify_and_update_contact(profile_id, change_events)
+        if let Res::VerifyAndUpdateContact(verified_and_updated) = self.call(
+            VerifyAndUpdateContact(self.id(), profile_id.clone(), changes.as_ref().to_vec()),
+        )? {
+            Ok(verified_and_updated)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 }
 
-impl ProfileAuth for Entity {
-    fn generate_authentication_proof(&mut self, channel_state: &[u8]) -> Result<Vec<u8>> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.generate_authentication_proof(channel_state)
-        } else {
-            Err(ProfileNotFound.into())
-        }
+impl SecureChannels for Entity {
+    fn create_secure_channel_listener<A: Into<Address>>(&mut self, address: A) -> Result<()> {
+        let profile = self.current_profile().expect("no current profile");
+        self.cast(CreateSecureChannelListener(
+            profile.identifier().expect("couldn't get profile id"),
+            address.into(),
+        ))
     }
 
-    fn verify_authentication_proof(
-        &mut self,
-        channel_state: &[u8],
-        responder_contact_id: &ProfileIdentifier,
-        proof: &[u8],
-    ) -> Result<bool> {
-        if let Some(profile) = self.default_profile_mut() {
-            profile.verify_authentication_proof(channel_state, responder_contact_id, proof)
+    fn create_secure_channel<R: Into<Route> + Send>(&mut self, route: R) -> Result<Address> {
+        let profile = self.current_profile().expect("no current profile");
+        if let Res::CreateSecureChannel(address) = self.call(CreateSecureChannel(
+            profile.identifier().expect("couldn't get profile id"),
+            route.into(),
+        ))? {
+            Ok(address)
         } else {
-            Err(ProfileNotFound.into())
+            err()
         }
     }
 }

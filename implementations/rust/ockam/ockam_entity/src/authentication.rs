@@ -1,5 +1,5 @@
 use crate::{EntityError, ProfileVault};
-use ockam_vault_core::{PublicKey, Secret};
+use ockam_vault::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
 
@@ -53,170 +53,180 @@ impl Authentication {
 
 #[cfg(test)]
 mod test {
-    use crate::ProfileContacts;
-    use crate::ProfileSecrets;
-    use crate::{KeyAttributes, Profile};
-    use crate::{ProfileAuth, ProfileImpl};
-    use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultMutex;
-    use rand::prelude::*;
 
-    #[test]
-    fn authentication() {
-        let vault = VaultMutex::create(SoftwareVault::default());
+    use crate::{Entity, Identity};
+    use ockam_core::Error;
+    use ockam_node::Context;
+    use rand::{thread_rng, RngCore};
 
-        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
-        let mut bob = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+    fn test_error<S: Into<String>>(error: S) -> ockam_core::Result<()> {
+        Err(Error::new(0, error))
+    }
 
-        // Secure channel is created here
-        let mut key_agreement_hash = [0u8; 32];
+    async fn test_auth_use_case(ctx: &Context) -> ockam_core::Result<()> {
+        // Alice and Bob are distinct Entities.
+        let mut alice = Entity::create(&ctx)?;
+        let mut bob = Entity::create(&ctx)?;
+
+        // Alice and Bob create unique profiles for a Chat app.
+        let mut alice_chat = alice.create_profile()?;
+        let mut bob_chat = bob.create_profile()?;
+
+        // Alice and Bob create Contacts
+        let alice_contact = alice_chat.as_contact()?;
+        let bob_contact = bob_chat.as_contact()?;
+
+        // Alice and Bob exchange Contacts
+        if !alice_chat.verify_and_add_contact(bob_contact.clone())? {
+            return test_error("alice failed to add bob");
+        }
+
+        if !bob_chat.verify_and_add_contact(alice_contact.clone())? {
+            return test_error("bob failed to add alice");
+        }
+
+        // Some state known to both parties. In Noise this would be a computed hash, for example.
+        let mut state = [0u8; 32];
         let mut rng = thread_rng();
-        rng.fill_bytes(&mut key_agreement_hash);
+        rng.fill_bytes(&mut state);
 
-        // Network transfer: contact_alice, proof_alice -> B
-        let contact_alice = alice.serialize_to_contact().unwrap();
-        let proof_alice = alice
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
+        let alice_proof = alice_chat.create_proof(state)?;
+        let bob_proof = bob_chat.create_proof(state)?;
 
-        // Network transfer: contact_bob, proof_bob -> A
-        let contact_bob = bob.serialize_to_contact().unwrap();
-        let proof_bob = bob
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
+        if !alice_chat.verify_proof(state, bob_contact.identifier(), bob_proof)? {
+            return test_error("bob's proof was invalid");
+        }
 
-        // Alice&Bob add each other to contact list
-        let contact_alice = Profile::deserialize_contact(contact_alice.as_slice()).unwrap();
-        let alice_id = contact_alice.identifier().clone();
-        bob.verify_and_add_contact(contact_alice).unwrap();
-        let contact_bob = Profile::deserialize_contact(contact_bob.as_slice()).unwrap();
-        let bob_id = contact_bob.identifier().clone();
-        alice.verify_and_add_contact(contact_bob).unwrap();
+        if !bob_chat.verify_proof(state, alice_contact.identifier(), alice_proof)? {
+            return test_error("alice's proof was invalid");
+        }
+        Ok(())
+    }
 
-        // If those calls succeed - we're good
-        alice
-            .verify_authentication_proof(&key_agreement_hash, &bob_id, proof_bob.as_slice())
-            .unwrap();
-        bob.verify_authentication_proof(&key_agreement_hash, &alice_id, proof_alice.as_slice())
-            .unwrap();
+    async fn test_key_rotation(ctx: &Context) -> ockam_core::Result<()> {
+        // Alice and Bob are distinct Entities.
+        let mut alice = Entity::create(&ctx)?;
+        let mut bob = Entity::create(&ctx)?;
+
+        // Alice and Bob create unique profiles for a Chat app.
+        let mut alice_chat = alice.create_profile()?;
+        let mut bob_chat = bob.create_profile()?;
+
+        // Both profiles rotate keys.
+        alice_chat.rotate_key()?;
+        bob_chat.rotate_key()?;
+
+        // Alice and Bob create Contacts
+        let alice_contact = alice_chat.as_contact()?;
+        let bob_contact = bob_chat.as_contact()?;
+
+        // Alice and Bob exchange Contacts. Verification still works with a rotation.
+        if !alice_chat.verify_and_add_contact(bob_contact.clone())? {
+            return test_error("alice failed to add bob");
+        }
+
+        if !bob_chat.verify_and_add_contact(alice_contact.clone())? {
+            return test_error("bob failed to add alice");
+        }
+
+        Ok(())
+    }
+
+    async fn test_update_contact_and_reprove(ctx: &Context) -> ockam_core::Result<()> {
+        let mut alice = Entity::create(&ctx)?;
+        let mut bob = Entity::create(&ctx)?;
+
+        // Alice and Bob create unique profiles for a Chat app.
+        let mut alice_chat = alice.create_profile()?;
+        let mut bob_chat = bob.create_profile()?;
+
+        // Alice and Bob create Contacts
+        let alice_contact = alice_chat.as_contact()?;
+        let bob_contact = bob_chat.as_contact()?;
+
+        // Alice and Bob exchange Contacts
+        if !alice_chat.verify_and_add_contact(bob_contact.clone())? {
+            return test_error("alice failed to add bob");
+        }
+
+        if !bob_chat.verify_and_add_contact(alice_contact.clone())? {
+            return test_error("bob failed to add alice");
+        }
+
+        // Some state known to both parties. In Noise this would be a computed hash, for example.
+        let mut state = [0u8; 32];
+        let mut rng = thread_rng();
+        rng.fill_bytes(&mut state);
+
+        let alice_proof = alice_chat.create_proof(state)?;
+        let bob_proof = bob_chat.create_proof(state)?;
+
+        if !alice_chat.verify_proof(state, bob_contact.identifier(), bob_proof)? {
+            return test_error("bob's proof was invalid");
+        }
+
+        if !bob_chat.verify_proof(state, alice_contact.identifier(), alice_proof)? {
+            return test_error("alice's proof was invalid");
+        }
+
+        alice_chat.rotate_key()?;
+        bob_chat.rotate_key()?;
+
+        let alice_contact = alice_chat.as_contact()?;
+        let bob_contact = bob_chat.as_contact()?;
+
+        // Copy Bob's last event (the rotation) and update Alice's view of Bob's Contact.
+        let bob_last_event = bob_contact.change_events().last().unwrap().clone();
+        if !alice_chat.verify_and_update_contact(bob_contact.identifier(), &[bob_last_event])? {
+            return test_error("alice failed to add bob");
+        }
+
+        // Copy Bob's last event (the rotation) and update Bob's view of Alice's Contact.
+        let alice_last_event = alice_contact.change_events().last().unwrap().clone();
+        if !bob_chat.verify_and_update_contact(alice_contact.identifier(), &[alice_last_event])? {
+            return test_error("bob failed to add alice");
+        }
+
+        // Re-Prove
+        let mut state = [0u8; 32];
+        let mut rng = thread_rng();
+        rng.fill_bytes(&mut state);
+
+        let alice_proof = alice_chat.create_proof(state)?;
+        let bob_proof = bob_chat.create_proof(state)?;
+
+        if !alice_chat.verify_proof(state, bob_contact.identifier(), bob_proof)? {
+            return test_error("bob's proof was invalid");
+        }
+
+        if !bob_chat.verify_proof(state, alice_contact.identifier(), alice_proof)? {
+            return test_error("alice's proof was invalid");
+        }
+
+        Ok(())
     }
 
     #[test]
-    fn authentication_profile_update_key_rotated() {
-        let vault = VaultMutex::create(SoftwareVault::default());
+    fn authentication_tests() {
+        let (mut ctx, mut exe) = ockam_node::start_node();
+        exe.execute(async move {
+            let mut results = Vec::new();
 
-        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
-        let mut bob = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+            // Individual Tests
+            results.push(test_auth_use_case(&ctx).await);
+            results.push(test_key_rotation(&ctx).await);
+            results.push(test_update_contact_and_reprove(&ctx).await);
 
-        let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
+            // Stop before any assertions, or the panics are lost
+            ctx.stop().await.unwrap();
 
-        alice.rotate_key(root_key_attributes.clone(), None).unwrap();
-        bob.rotate_key(root_key_attributes.clone(), None).unwrap();
-
-        // Secure channel is created here
-        let mut key_agreement_hash = [0u8; 32];
-        let mut rng = thread_rng();
-        rng.fill_bytes(&mut key_agreement_hash);
-
-        // Network transfer: contact_alice, proof_alice -> B
-        let contact_alice = alice.serialize_to_contact().unwrap();
-        let proof_alice = alice
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
-
-        // Network transfer: contact_bob, proof_bob -> A
-        let contact_bob = bob.serialize_to_contact().unwrap();
-        let proof_bob = bob
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
-
-        // Alice&Bob add each other to contact list
-        let contact_alice = Profile::deserialize_contact(contact_alice.as_slice()).unwrap();
-        let alice_id = contact_alice.identifier().clone();
-        bob.verify_and_add_contact(contact_alice).unwrap();
-        let contact_bob = Profile::deserialize_contact(contact_bob.as_slice()).unwrap();
-        let bob_id = contact_bob.identifier().clone();
-        alice.verify_and_add_contact(contact_bob).unwrap();
-
-        // If those calls succeed - we're good
-        alice
-            .verify_authentication_proof(&key_agreement_hash, &bob_id, proof_bob.as_slice())
-            .unwrap();
-        bob.verify_authentication_proof(&key_agreement_hash, &alice_id, proof_alice.as_slice())
-            .unwrap();
-    }
-
-    #[test]
-    fn authentication_profile_update_key_rotated_after_first_handshake() {
-        let vault = VaultMutex::create(SoftwareVault::default());
-
-        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
-        let mut bob = ProfileImpl::create_internal(None, vault.clone()).unwrap();
-
-        let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
-
-        // Secure channel is created here
-        let mut key_agreement_hash = [0u8; 32];
-        let mut rng = thread_rng();
-        rng.fill_bytes(&mut key_agreement_hash);
-
-        // Network transfer: contact_alice, proof_alice -> B
-        let contact_alice = alice.serialize_to_contact().unwrap();
-        let proof_alice = alice
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
-
-        // Network transfer: contact_bob, proof_bob -> A
-        let contact_bob = bob.serialize_to_contact().unwrap();
-        let proof_bob = bob
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
-
-        // Alice&Bob add each other to contact list
-        let contact_alice = Profile::deserialize_contact(contact_alice.as_slice()).unwrap();
-        let alice_id = contact_alice.identifier().clone();
-        bob.verify_and_add_contact(contact_alice).unwrap();
-        let contact_bob = Profile::deserialize_contact(contact_bob.as_slice()).unwrap();
-        let bob_id = contact_bob.identifier().clone();
-        alice.verify_and_add_contact(contact_bob).unwrap();
-
-        // If those calls succeed - we're good
-        alice
-            .verify_authentication_proof(&key_agreement_hash, &bob_id, proof_bob.as_slice())
-            .unwrap();
-        bob.verify_authentication_proof(&key_agreement_hash, &alice_id, proof_alice.as_slice())
-            .unwrap();
-
-        let alice_index = alice.change_history().as_ref().len();
-        alice.rotate_key(root_key_attributes.clone(), None).unwrap();
-        let alice_changes = &alice.change_history().as_ref()[alice_index..];
-        let alice_changes = Profile::serialize_change_events(&alice_changes).unwrap();
-        let bob_index = bob.change_history().as_ref().len();
-        bob.rotate_key(root_key_attributes.clone(), None).unwrap();
-        let bob_changes = &bob.change_history().as_ref()[bob_index..];
-        let bob_changes = Profile::serialize_change_events(&bob_changes).unwrap();
-
-        let alice_changes = Profile::deserialize_change_events(alice_changes.as_slice()).unwrap();
-        bob.verify_and_update_contact(&alice_id, alice_changes)
-            .unwrap();
-
-        let bob_changes = Profile::deserialize_change_events(bob_changes.as_slice()).unwrap();
-        alice
-            .verify_and_update_contact(&bob_id, bob_changes)
-            .unwrap();
-
-        let proof_alice = alice
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
-
-        let proof_bob = bob
-            .generate_authentication_proof(&key_agreement_hash)
-            .unwrap();
-
-        alice
-            .verify_authentication_proof(&key_agreement_hash, &bob_id, proof_bob.as_slice())
-            .unwrap();
-        bob.verify_authentication_proof(&key_agreement_hash, &alice_id, proof_alice.as_slice())
-            .unwrap();
+            for r in results {
+                match r {
+                    Err(e) => panic!("test failure: {}", e),
+                    _ => (),
+                }
+            }
+        })
+        .unwrap();
     }
 }
