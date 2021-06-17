@@ -14,6 +14,7 @@
 pub use change::*;
 pub use channel::*;
 pub use contact::*;
+pub use credential::*;
 pub use entity::*;
 pub use error::*;
 pub use identifiers::*;
@@ -94,6 +95,7 @@ mod change;
 pub mod change_history;
 mod channel;
 mod contact;
+mod credential;
 mod entity;
 mod error;
 mod identifiers;

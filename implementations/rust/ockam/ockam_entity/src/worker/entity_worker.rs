@@ -1,7 +1,8 @@
 use crate::{
-    EntityError::IdentityApiFailed, Identity, IdentityRequest, IdentityRequest::*,
-    IdentityResponse as Res, MaybeContact, NoOpTrustPolicy, ProfileIdentifier, ProfileState,
-    SecureChannelTrait,
+    CredentialHolder, CredentialIssuer, CredentialProof, CredentialPublicKey,
+    CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed, Identity,
+    IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact, NoOpTrustPolicy,
+    ProfileIdentifier, ProfileState, SecureChannelTrait,
 };
 
 use async_trait::async_trait;
@@ -85,14 +86,17 @@ impl Worker for EntityWorker {
                 }
             }
             CreateAuthenticationProof(profile_id, state) => {
-                if let Ok(proof) = self.profile(&profile_id).create_proof(state.as_slice()) {
+                if let Ok(proof) = self
+                    .profile(&profile_id)
+                    .create_auth_proof(state.as_slice())
+                {
                     ctx.send(reply, Res::CreateAuthenticationProof(proof)).await
                 } else {
                     err()
                 }
             }
             VerifyAuthenticationProof(profile_id, state, peer_id, proof) => {
-                if let Ok(verified) = self.profile(&profile_id).verify_proof(
+                if let Ok(verified) = self.profile(&profile_id).verify_auth_proof(
                     state.as_slice(),
                     &peer_id,
                     proof.as_slice(),
@@ -115,7 +119,6 @@ impl Worker for EntityWorker {
                 let verified = self.profile(&profile_id).verify_changes()?;
                 ctx.send(reply, Res::VerifyChanges(verified)).await
             }
-
             VerifyAndAddContact(profile_id, contact_id) => {
                 let verified_and_added = self
                     .profile(&profile_id)
@@ -167,6 +170,144 @@ impl Worker for EntityWorker {
                 )
                 .await?;
                 ctx.send(reply, Res::CreateSecureChannel(address)).await
+            }
+            GetSigningKey(profile_id) => {
+                if let Ok(signing_key) = self.profile(&profile_id).get_signing_key() {
+                    ctx.send(reply, Res::GetSigningKey(signing_key)).await
+                } else {
+                    err()
+                }
+            }
+            GetIssuerPublicKey(profile_id) => {
+                if let Ok(public_key) = self.profile(&profile_id).get_issuer_public_key() {
+                    ctx.send(
+                        reply,
+                        Res::GetIssuerPublicKey(CredentialPublicKey(public_key)),
+                    )
+                    .await
+                } else {
+                    err()
+                }
+            }
+            CreateOffer(profile_id, schema) => {
+                if let Ok(offer) = self.profile(&profile_id).create_offer(&schema) {
+                    ctx.send(reply, Res::CreateOffer(offer)).await
+                } else {
+                    err()
+                }
+            }
+            CreateProofOfPossession(profile_id) => {
+                if let Ok(pop) = self.profile(&profile_id).create_proof_of_possession() {
+                    ctx.send(reply, Res::CreateProofOfPossession(CredentialProof(pop)))
+                        .await
+                } else {
+                    err()
+                }
+            }
+            SignCredential(profile_id, schema, attributes) => {
+                if let Ok(credential) = self
+                    .profile(&profile_id)
+                    .sign_credential(&schema, attributes.as_slice())
+                {
+                    ctx.send(reply, Res::SignCredential(credential)).await
+                } else {
+                    err()
+                }
+            }
+            SignCredentialRequest(profile_id, request, schema, attributes, offer_id) => {
+                if let Ok(frag) = self.profile(&profile_id).sign_credential_request(
+                    &request,
+                    &schema,
+                    attributes.as_slice(),
+                    offer_id,
+                ) {
+                    ctx.send(reply, Res::SignCredentialRequest(frag)).await
+                } else {
+                    err()
+                }
+            }
+            AcceptCredentialOffer(profile_id, offer, signing_public_key) => {
+                if let Ok(cred_and_fragment) = self
+                    .profile(&profile_id)
+                    .accept_credential_offer(&offer, signing_public_key.0)
+                {
+                    ctx.send(
+                        reply,
+                        Res::AcceptCredentialOffer(CredentialRequestFragment(
+                            cred_and_fragment.0,
+                            cred_and_fragment.1,
+                        )),
+                    )
+                    .await
+                } else {
+                    err()
+                }
+            }
+            CombineCredentialFragments(profile_id, frag1, frag2) => {
+                if let Ok(credential) = self
+                    .profile(&profile_id)
+                    .combine_credential_fragments(frag1, frag2)
+                {
+                    ctx.send(reply, Res::CombineCredentialFragments(credential))
+                        .await
+                } else {
+                    err()
+                }
+            }
+            IsValidCredential(profile_id, credential, issuer_public_key) => {
+                if let Ok(valid) = self
+                    .profile(&profile_id)
+                    .is_valid_credential(&credential, issuer_public_key.0)
+                {
+                    ctx.send(reply, Res::IsValidCredential(valid)).await
+                } else {
+                    err()
+                }
+            }
+            PresentCredential(profile_id, credential, manifest, request_id) => {
+                if let Ok(presentations) = self.profile(&profile_id).present_credentials(
+                    &[credential],
+                    &[manifest],
+                    request_id,
+                ) {
+                    let presentation = presentations
+                        .first()
+                        .expect("expected at least one presentation");
+
+                    ctx.send(reply, Res::PresentCredential(presentation.clone()))
+                        .await
+                } else {
+                    err()
+                }
+            }
+            CreateProofRequestId(profile_id) => {
+                if let Ok(request_id) = self.profile(&profile_id).create_proof_request_id() {
+                    ctx.send(reply, Res::CreateProofRequestId(request_id)).await
+                } else {
+                    err()
+                }
+            }
+            VerifyProofOfPossession(profile_id, signing_public_key, proof_of_possession) => {
+                if let Ok(valid) = self
+                    .profile(&profile_id)
+                    .verify_proof_of_possession(signing_public_key.0, proof_of_possession.0)
+                {
+                    ctx.send(reply, Res::VerifyProofOfPossession(valid)).await
+                } else {
+                    err()
+                }
+            }
+            VerifyCredentialPresentation(profile_id, presentation, manifest, request_id) => {
+                if let Ok(valid) = self.profile(&profile_id).verify_credential_presentations(
+                    &[presentation],
+                    &[manifest],
+                    request_id,
+                ) {
+                    ctx.send(reply, Res::VerifyCredentialPresentation(valid))
+                        .await
+                } else {
+                    err()
+                }
             }
         }
     }

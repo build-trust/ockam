@@ -17,11 +17,11 @@ default = ["alloc"]
 alloc = ["bls12_381_plus/alloc"]
 
 [dependencies]
-bls12_381_plus = "0.4"
-ff = "0.9"
-group = "0.9"
+bls12_381_plus = "0.5"
+ff = "0.10"
+group = "0.10"
 hkdf = "0.10"
-pairing = "0.19"
+pairing = "0.20"
 rand_core = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = { version = "0.9", default-features = false }

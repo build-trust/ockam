@@ -1,7 +1,11 @@
 use crate::{
-    profile::Profile, worker::EntityWorker, Changes, Contact, EntityError::IdentityApiFailed,
-    Handle, Identity, IdentityRequest, IdentityResponse, MaybeContact, ProfileChangeEvent,
-    ProfileIdentifier, Proof, SecureChannels,
+    profile::Profile, traits::Verifier, worker::EntityWorker, AuthenticationProof, Changes,
+    Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
+    CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityError::IdentityApiFailed,
+    Handle, Holder, Identity, IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId,
+    PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels,
+    SigningKey, SigningPublicKey,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
@@ -9,6 +13,7 @@ use ockam_vault::ockam_vault_core::{PublicKey, Secret};
 use IdentityRequest::*;
 use IdentityResponse as Res;
 
+#[derive(Clone)]
 pub struct Entity {
     handle: Handle,
     current_profile_id: Option<ProfileIdentifier>,
@@ -112,7 +117,7 @@ impl Identity for Entity {
         }
     }
 
-    fn create_proof<S: AsRef<[u8]>>(&mut self, state_slice: S) -> Result<Proof> {
+    fn create_auth_proof<S: AsRef<[u8]>>(&mut self, state_slice: S) -> Result<AuthenticationProof> {
         if let Res::CreateAuthenticationProof(proof) = self.call(CreateAuthenticationProof(
             self.id(),
             state_slice.as_ref().to_vec(),
@@ -123,7 +128,7 @@ impl Identity for Entity {
         }
     }
 
-    fn verify_proof<S: AsRef<[u8]>, P: AsRef<[u8]>>(
+    fn verify_auth_proof<S: AsRef<[u8]>, P: AsRef<[u8]>>(
         &mut self,
         state_slice: S,
         peer_id: &ProfileIdentifier,
@@ -235,6 +240,219 @@ impl SecureChannels for Entity {
             route.into(),
         ))? {
             Ok(address)
+        } else {
+            err()
+        }
+    }
+}
+
+impl Issuer for Entity {
+    fn get_signing_key(&self) -> Result<SigningKey> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::GetSigningKey(signing_key) = profile.call(GetSigningKey(
+            profile.identifier().expect("couldn't get profile id"),
+        ))? {
+            Ok(signing_key)
+        } else {
+            err()
+        }
+    }
+
+    fn get_issuer_public_key(&self) -> Result<SigningPublicKey> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::GetIssuerPublicKey(issuer_public_key) = profile.call(GetIssuerPublicKey(
+            profile.identifier().expect("couldn't get profile id"),
+        ))? {
+            Ok(issuer_public_key.0)
+        } else {
+            err()
+        }
+    }
+
+    fn create_offer(&self, schema: &CredentialSchema) -> Result<CredentialOffer> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::CreateOffer(offer) = profile.call(CreateOffer(
+            profile.identifier().expect("couldn't get profile id"),
+            schema.clone(),
+        ))? {
+            Ok(offer)
+        } else {
+            err()
+        }
+    }
+
+    fn create_proof_of_possession(&self) -> Result<CredentialProof> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::CreateProofOfPossession(proof) = profile.call(CreateProofOfPossession(
+            profile.identifier().expect("couldn't get profile id"),
+        ))? {
+            Ok(proof)
+        } else {
+            err()
+        }
+    }
+
+    fn sign_credential<A: AsRef<[CredentialAttribute]>>(
+        &self,
+        schema: &CredentialSchema,
+        attributes: A,
+    ) -> Result<Credential> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::SignCredential(credential) = profile.call(SignCredential(
+            profile.identifier().expect("couldn't get profile id"),
+            schema.clone(),
+            attributes.as_ref().to_vec(),
+        ))? {
+            Ok(credential)
+        } else {
+            err()
+        }
+    }
+
+    fn sign_credential_request<A: AsRef<[(String, CredentialAttribute)]>>(
+        &self,
+        request: &CredentialRequest,
+        schema: &CredentialSchema,
+        attributes: A,
+        offer_id: OfferId,
+    ) -> Result<CredentialFragment2> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::SignCredentialRequest(frag) = profile.call(SignCredentialRequest(
+            profile.identifier().expect("couldn't get profile id"),
+            request.clone(),
+            schema.clone(),
+            attributes.as_ref().to_vec(),
+            offer_id,
+        ))? {
+            Ok(frag)
+        } else {
+            err()
+        }
+    }
+}
+
+impl Holder for Entity {
+    fn accept_credential_offer(
+        &self,
+        offer: &CredentialOffer,
+        issuer_public_key: SigningPublicKey,
+    ) -> Result<CredentialRequestFragment> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::AcceptCredentialOffer(request_fragment) =
+            profile.call(AcceptCredentialOffer(
+                profile.identifier().expect("couldn't get profile id"),
+                offer.clone(),
+                CredentialPublicKey(issuer_public_key),
+            ))?
+        {
+            Ok(request_fragment)
+        } else {
+            err()
+        }
+    }
+
+    fn combine_credential_fragments(
+        &self,
+        credential_fragment1: CredentialFragment1,
+        credential_fragment2: CredentialFragment2,
+    ) -> Result<Credential> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::CombineCredentialFragments(credential) =
+            profile.call(CombineCredentialFragments(
+                profile.identifier().expect("couldn't get profile id"),
+                credential_fragment1,
+                credential_fragment2,
+            ))?
+        {
+            Ok(credential)
+        } else {
+            err()
+        }
+    }
+
+    fn is_valid_credential(
+        &self,
+        credential: &Credential,
+        verifier_key: SigningPublicKey,
+    ) -> Result<bool> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::IsValidCredential(valid) = profile.call(IsValidCredential(
+            profile.identifier().expect("couldn't get profile id"),
+            credential.clone(),
+            CredentialPublicKey(verifier_key),
+        ))? {
+            Ok(valid)
+        } else {
+            err()
+        }
+    }
+
+    fn present_credential(
+        &self,
+        credential: &Credential,
+        presentation_manifests: &PresentationManifest,
+        proof_request_id: ProofRequestId,
+    ) -> Result<CredentialPresentation> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::PresentCredential(presentation) = profile.call(PresentCredential(
+            profile.identifier().expect("couldn't get profile id"),
+            credential.clone(),
+            presentation_manifests.clone(),
+            proof_request_id,
+        ))? {
+            Ok(presentation)
+        } else {
+            err()
+        }
+    }
+}
+
+impl Verifier for Entity {
+    fn create_proof_request_id(&self) -> Result<ProofRequestId> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::CreateProofRequestId(request_id) = profile.call(CreateProofRequestId(
+            profile.identifier().expect("couldn't get profile id"),
+        ))? {
+            Ok(request_id)
+        } else {
+            err()
+        }
+    }
+
+    fn verify_proof_of_possession(
+        &self,
+        signing_public_key: CredentialPublicKey,
+        proof: CredentialProof,
+    ) -> Result<bool> {
+        let profile = self.clone().current_profile().expect("no current profile");
+
+        if let Res::VerifyProofOfPossession(verified) = profile.call(VerifyProofOfPossession(
+            profile.identifier().expect("couldn't get profile id"),
+            signing_public_key,
+            proof,
+        ))? {
+            Ok(verified)
+        } else {
+            err()
+        }
+    }
+
+    fn verify_credential_presentation(
+        &self,
+        presentation: &CredentialPresentation,
+        presentation_manifest: &PresentationManifest,
+        proof_request_id: ProofRequestId,
+    ) -> Result<bool> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::VerifyCredentialPresentation(verified) =
+            profile.call(VerifyCredentialPresentation(
+                profile.identifier().expect("couldn't get profile id"),
+                presentation.clone(),
+                presentation_manifest.clone(),
+                proof_request_id,
+            ))?
+        {
+            Ok(verified)
         } else {
             err()
         }

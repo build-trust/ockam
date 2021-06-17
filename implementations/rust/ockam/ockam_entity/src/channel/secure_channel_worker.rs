@@ -71,7 +71,7 @@ impl SecureChannelWorker {
 
         // Verify responder posses their Profile key
         let verified =
-            profile.verify_proof(&channel.auth_hash(), &their_profile_id, msg.proof())?;
+            profile.verify_auth_proof(&channel.auth_hash(), &their_profile_id, msg.proof())?;
 
         if !verified {
             return Err(EntityError::SecureChannelVerificationFailed.into());
@@ -94,7 +94,7 @@ impl SecureChannelWorker {
 
         // Prove we posses our Profile key
         let contact = profile.as_contact()?;
-        let proof = profile.create_proof(&channel.auth_hash())?;
+        let proof = profile.create_auth_proof(&channel.auth_hash())?;
 
         // Generate 2 random fresh address for newly created SecureChannel.
         // One for local workers to encrypt their messages
@@ -171,7 +171,7 @@ impl SecureChannelWorker {
         let auth_hash = kex_msg.auth_hash();
 
         // Prove we posses Profile key
-        let proof = profile.create_proof(&auth_hash)?;
+        let proof = profile.create_auth_proof(&auth_hash)?;
         let msg = ChannelAuthRequest::new(profile.as_contact()?, proof);
         child_ctx
             .send(
@@ -199,7 +199,7 @@ impl SecureChannelWorker {
 
         // Verify initiator posses their Profile key
         let verified =
-            profile.verify_proof(&kex_msg.auth_hash(), &their_profile_id, auth_msg.proof())?;
+            profile.verify_auth_proof(&kex_msg.auth_hash(), &their_profile_id, auth_msg.proof())?;
 
         if !verified {
             return Err(EntityError::SecureChannelVerificationFailed.into());

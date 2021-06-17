@@ -17,13 +17,13 @@ description = """The Ockam PS signature impementation.
 [dependencies]
 blake2 = "0.9"
 signature_bls = { version = "0.8.0-dev"            , path = "../signature_bls" }
-bls12_381_plus = "0.4"
+bls12_381_plus = "0.5"
 digest = { version = "0.9", default-features = false }
-ff = "0.9"
-group = "0.9"
+ff = "0.10"
+group = "0.10"
 hmac-drbg = "0.3"
 hkdf = "0.10"
-pairing = "0.19"
+pairing = "0.20"
 rand_core = "0.6"
 rand_chacha = { version = "0.3", default-features = false }
 serde = { version = "1.0", features = ["derive"] }

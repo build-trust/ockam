@@ -14,12 +14,13 @@ use subtle::{Choice, CtOption};
 /// Contains the proof of 2 discrete log relations.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PokSignatureProof {
-    pub(crate) a_prime: G1Projective,
-    pub(crate) a_bar: G1Projective,
-    pub(crate) d: G1Projective,
-    pub(crate) proofs1: [Challenge; 2],
+    // TODO lower viz again after serde hacking
+    pub a_prime: G1Projective,
+    pub a_bar: G1Projective,
+    pub d: G1Projective,
+    pub proofs1: [Challenge; 2],
     #[serde(with = "VecSerializer")]
-    pub(crate) proofs2: Vec<Challenge, 130>,
+    pub proofs2: Vec<Challenge, 130>,
 }
 
 impl PokSignatureProof {

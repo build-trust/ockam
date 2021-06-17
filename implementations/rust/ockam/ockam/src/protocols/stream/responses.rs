@@ -79,7 +79,8 @@ pub struct PullResponse {
 }
 
 impl PullResponse {
-    #[allow(clippy::new_ret_no_self)]
+    //noinspection RsExternalLinter
+    #[allow(dead_code, clippy::new_ret_no_self)]
     pub fn new<T: Into<Vec<StreamMessage>>>(request_id: usize, messages: T) -> ProtocolPayload {
         ProtocolPayload::new(
             "stream_pull",
@@ -134,12 +135,14 @@ where
     W: Worker,
     F: Fn(&mut W, Response),
 {
+    //noinspection RsExternalLinter
     /// Create a new stream protocol parser with a response closure
     ///
     /// The provided function will be called for every incoming
     /// response to the stream protocol.  You can use it, and the
     /// mutable access to your worker state to map response messages
     /// to the worker state.
+    #[allow(dead_code)]
     pub fn new(f: F) -> Self {
         Self {
             f,

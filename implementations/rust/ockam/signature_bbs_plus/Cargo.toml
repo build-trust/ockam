@@ -15,14 +15,14 @@ description = """The Ockam BBS+ signature impementation.
 [features]
 
 [dependencies]
-bls12_381_plus = "0.4"
+bls12_381_plus = "0.5"
 blake2 = { version = "0.9", default-features = false }
 digest = { version = "0.9", default-features = false }
-ff = "0.9"
-group = "0.9"
+ff = "0.10"
+group = "0.10"
 hmac-drbg = "0.3"
 managed = { version = "0.8", features = ["map"] }
-pairing = "0.19"
+pairing = "0.20"
 rand_core = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 signature_core = { version = "0.10.0-dev"            , path = "../signature_core" }

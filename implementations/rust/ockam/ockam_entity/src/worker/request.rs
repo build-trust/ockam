@@ -1,4 +1,9 @@
-use crate::{Changes, Contact, ProfileChangeEvent, ProfileIdentifier, Proof};
+use crate::{
+    AuthenticationProof, Changes, Contact, Credential, CredentialAttribute, CredentialFragment1,
+    CredentialFragment2, CredentialOffer, CredentialPresentation, CredentialProof,
+    CredentialPublicKey, CredentialRequest, CredentialSchema, OfferId, PresentationManifest,
+    ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
+};
 use ockam_core::{Address, Route};
 use serde::{Deserialize, Serialize};
 
@@ -12,17 +17,14 @@ pub enum IdentityRequest {
     CreateProfile,
     CreateAuthenticationProof(Id, ByteVec),
     CreateKey(Id, String),
-
     GetPublicKey(Id),
     GetSecretKey(Id),
     GetChanges(Id),
     GetContacts(Id),
     GetContact(Id, Id),
-
     RotateKey(Id),
     AddChange(Id, ProfileChangeEvent),
-
-    VerifyAuthenticationProof(Id, ByteVec, Id, Proof),
+    VerifyAuthenticationProof(Id, ByteVec, Id, AuthenticationProof),
     VerifyChanges(Id),
     VerifyAndAddContact(Id, Contact),
     VerifyContact(Id, Contact),
@@ -30,4 +32,28 @@ pub enum IdentityRequest {
     RemoveProfile(Id),
     CreateSecureChannelListener(Id, Address),
     CreateSecureChannel(Id, Route),
+    GetSigningKey(Id),
+    GetIssuerPublicKey(Id),
+    CreateOffer(Id, CredentialSchema),
+    CreateProofOfPossession(Id),
+    SignCredential(Id, CredentialSchema, Vec<CredentialAttribute>),
+    SignCredentialRequest(
+        Id,
+        CredentialRequest,
+        CredentialSchema,
+        Vec<(String, CredentialAttribute)>,
+        OfferId,
+    ),
+    AcceptCredentialOffer(Id, CredentialOffer, CredentialPublicKey),
+    CombineCredentialFragments(Id, CredentialFragment1, CredentialFragment2),
+    IsValidCredential(Id, Credential, CredentialPublicKey),
+    PresentCredential(Id, Credential, PresentationManifest, ProofRequestId),
+    CreateProofRequestId(Id),
+    VerifyProofOfPossession(Id, CredentialPublicKey, CredentialProof),
+    VerifyCredentialPresentation(
+        Id,
+        CredentialPresentation,
+        PresentationManifest,
+        ProofRequestId,
+    ),
 }

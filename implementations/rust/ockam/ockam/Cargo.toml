@@ -38,7 +38,7 @@ ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.10.0-d
 ockam_entity = { path = "../ockam_entity", version = "0.7.0-dev"          }
 arrayref = "0.3"
 async-trait = "0.1.42"
-bls12_381_plus = "0.4"
+bls12_381_plus = "0.5"
 signature_core = { version = "0.10.0-dev"            , path = "../signature_core" }
 signature_bbs_plus = { version = "0.10.0-dev"            , path = "../signature_bbs_plus", package = "signature_bbs_plus" }
 signature_bls = { version = "0.8.0-dev"            , path = "../signature_bls", package = "signature_bls" }

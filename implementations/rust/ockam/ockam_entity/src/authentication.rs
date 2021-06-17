@@ -90,14 +90,14 @@ mod test {
         let mut rng = thread_rng();
         rng.fill_bytes(&mut state);
 
-        let alice_proof = alice_chat.create_proof(state)?;
-        let bob_proof = bob_chat.create_proof(state)?;
+        let alice_proof = alice_chat.create_auth_proof(state)?;
+        let bob_proof = bob_chat.create_auth_proof(state)?;
 
-        if !alice_chat.verify_proof(state, bob_contact.identifier(), bob_proof)? {
+        if !alice_chat.verify_auth_proof(state, bob_contact.identifier(), bob_proof)? {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat.verify_proof(state, alice_contact.identifier(), alice_proof)? {
+        if !bob_chat.verify_auth_proof(state, alice_contact.identifier(), alice_proof)? {
             return test_error("alice's proof was invalid");
         }
         Ok(())
@@ -158,14 +158,14 @@ mod test {
         let mut rng = thread_rng();
         rng.fill_bytes(&mut state);
 
-        let alice_proof = alice_chat.create_proof(state)?;
-        let bob_proof = bob_chat.create_proof(state)?;
+        let alice_proof = alice_chat.create_auth_proof(state)?;
+        let bob_proof = bob_chat.create_auth_proof(state)?;
 
-        if !alice_chat.verify_proof(state, bob_contact.identifier(), bob_proof)? {
+        if !alice_chat.verify_auth_proof(state, bob_contact.identifier(), bob_proof)? {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat.verify_proof(state, alice_contact.identifier(), alice_proof)? {
+        if !bob_chat.verify_auth_proof(state, alice_contact.identifier(), alice_proof)? {
             return test_error("alice's proof was invalid");
         }
 
@@ -192,14 +192,14 @@ mod test {
         let mut rng = thread_rng();
         rng.fill_bytes(&mut state);
 
-        let alice_proof = alice_chat.create_proof(state)?;
-        let bob_proof = bob_chat.create_proof(state)?;
+        let alice_proof = alice_chat.create_auth_proof(state)?;
+        let bob_proof = bob_chat.create_auth_proof(state)?;
 
-        if !alice_chat.verify_proof(state, bob_contact.identifier(), bob_proof)? {
+        if !alice_chat.verify_auth_proof(state, bob_contact.identifier(), bob_proof)? {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat.verify_proof(state, alice_contact.identifier(), alice_proof)? {
+        if !bob_chat.verify_auth_proof(state, alice_contact.identifier(), alice_proof)? {
             return test_error("alice's proof was invalid");
         }
 
