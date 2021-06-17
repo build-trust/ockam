@@ -1,0 +1,76 @@
+@startuml ockam
+scale 2.0
+class Contact
+class Contacts {
+  contact: Vec<Contact>
+}
+Contact --> Contacts : stores
+
+interface Identity {
+  identifier(): ProfileIdentifier
+  generate_authentication_proof(data): data
+  verify_authentication_proof(ProfileIdentifier): bool
+  change_events(): Vec<ProfileChangeEvent>
+  update_no_verification(ProfileChangeEvent)
+  verify(): bool
+  contacts(): Contacts
+  to_contact(): Contact
+  serialize_to_contact(): data
+  get_contact(ProfileIdentifier): Contact
+  verify_contact(Contact): bool
+  verify_and_add_contact(Contact): bool
+  verify_and_update_contact(ProfileIdentifier, Vec<ProfileChangeEvent>)
+  create_key(KeyAttributes, ProfileEventAttributes)
+  rotate_key(KeyAttributes, ProfileEventAttributes)
+  get_secret_key(KeyAttributes): Secret
+  get_public_key(KeyAttributes): PublicKey
+  get_root_secret(): Secret
+}
+
+Identity --> ProfileIdentifier : gets
+Identity --> ProfileChangeEvent : gets
+Identity --> Contacts : gets
+Identity --> Secret : gets
+Identity --> PublicKey : gets
+Identity::create_key --> ProfileEventAttributes : needs
+Identity::verify_and_update_contact --> ProfileChangeEvent : needs
+Identity::verify_contact --> Contact : needs
+
+class Profile
+class ProfileIdentifier
+
+class EntityWorker {
+  -default_profile_identifier: ProfileIdentifier
+  -profiles: Map<ProfileIdentifier, Profile>
+}
+EntityWorker --> Profile : creates
+EntityWorker --> Profile : delegates
+
+class Entity {
+  -ctx: Context
+  -vault: Address
+}
+Entity --> EntityWorker : delegates
+Entity --> Identity : implements
+Profile --> Identity : implements
+
+class Change {
+  -attributes: ProfileEventAttributes
+  -change_type: ChangeType
+}
+
+class ProfileChangeEvent {
+  -identifier: EventIdentifier
+  -prev_event_id: EventIdentifier
+  -changes: Vec<Change>
+  -proof_signature: ChangeProofSignature
+}
+ProfileChangeEvent --> Change : stores
+
+class ChangeHistory {
+  change_events: Vec<ProfileChangeEvent>
+}
+
+ChangeHistory --> ProfileChangeEvent : stores
+Identity --> ChangeHistory : verifies
+@enduml
