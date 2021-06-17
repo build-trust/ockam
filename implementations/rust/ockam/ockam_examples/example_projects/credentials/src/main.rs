@@ -14,16 +14,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     let mut bob = Entity::create(&ctx).await?;
 
     // A schema that represents the office doors.
-    let doors = door_schema();
+    let door_schema = door_schema();
 
     // The Issuer (Office) creates an Credential Request Offer (ability to open the door)
-    let door_offer = office.create_offer(&doors, thread_rng())?;
+    let door_offer = office.create_offer(&door_schema, thread_rng())?;
 
     // Public key identifying the Issuer (Office)
     let office_pubkey = office.get_issuer_public_key()?;
-
-    // Bob ensures the public key is from the Office using a proof of possession.
-    assert!(bob.verify_proof_of_possession(office_pubkey, office.create_proof_of_possession()?)?);
 
     // Bob accepts the credential request offer, and creates a credential request, along with the first fragment.
     let (door_request, frag1) =
@@ -41,41 +38,28 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Office signs the credentials.
     let frag2 = office.sign_credential_request(
         &door_request,
-        &doors,
-        &signing_attributes,
+        &door_schema,
+        &(signing_attributes.clone()),
         door_offer.id,
     )?;
 
     // Bob can now combine both fragments to form a Credential.
-    let bob_door_key = bob.combine_credential_fragments(frag1, frag2)?;
-
-    // Bob thinks the door key is valid.
-    assert!(bob
-        .is_valid_credential(&bob_door_key, office_pubkey)
-        .unwrap());
-
-    // The Office thinks the door key is valid.
-    assert!(office
-        .is_valid_credential(&bob_door_key, office_pubkey)
-        .unwrap());
+    let bob_credential = bob.combine_credential_fragments(frag1, frag2)?;
 
     // Create a Door (Verifier) that trusts the Office, and will checks Bob's (Holder) credentials.
     let mut door = Entity::create(&ctx).await?;
     let unique_opening_instance = door.create_proof_request_id(thread_rng())?;
 
-    // The door verifies the Office pubkey.
-    assert!(door.verify_proof_of_possession(office_pubkey, office.create_proof_of_possession()?)?);
-
     // Bob (Holder) attempts to open the Door (Verifier). He creates a Presentation Manifest.
     let manifest = PresentationManifest {
-        credential_schema: doors.clone(),
+        credential_schema: door_schema.clone(),
         public_key: office_pubkey,
         revealed: vec![1], // can_open_door
     };
 
     // Bob creates a Presentation from the manifest, his credentials, and this unique challenge instance.
     let bob_door_swipe = bob.present_credentials(
-        &[bob_door_key],
+        &[bob_credential],
         &[manifest.clone()],
         unique_opening_instance,
         thread_rng(),
@@ -89,9 +73,18 @@ async fn main(mut ctx: Context) -> Result<()> {
         unique_opening_instance,
     )?;
 
-    // The door opens!
+    // The door credential is valid.
     assert!(credential_is_valid);
 
+    // Now the actual underlying control attribute can be checked.
+    let control = signing_attributes[1].clone();
+    let open_door = match control.1 {
+        CredentialAttribute::Numeric(i) => i > 0,
+        _ => false,
+    };
+
+    // The door opens!
+    assert!(open_door);
     ctx.stop().await
 }
 
