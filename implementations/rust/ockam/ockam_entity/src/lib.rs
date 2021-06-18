@@ -41,8 +41,6 @@ pub use error::*;
 pub use identifiers::*;
 pub use key_attributes::*;
 pub use profile::*;
-use rand::thread_rng;
-use signature_bls::SecretKey;
 pub use traits::*;
 pub use worker::*;
 
@@ -227,8 +225,8 @@ impl Profile {
         let vault = VaultSync::create_with_worker(ctx, vault)?;
 
         // TODO store a credential key persistently in Vault
-        let credential_issuing_key = SecretKey::random(thread_rng()).unwrap();
-        let imp = ProfileImpl::<VaultSync>::create_internal(None, credential_issuing_key, vault)?;
+        // let credential_issuing_key = SecretKey::random(thread_rng()).unwrap();
+        let imp = ProfileImpl::<VaultSync>::create_internal(None, vault)?;
         ProfileSync::create(ctx, imp).await
     }
 }
@@ -238,6 +236,8 @@ impl Profile {
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
     /// Label for [`Profile`] update key
     pub const PROFILE_UPDATE: &'static str = "OCKAM_PUK";
+    /// Label for [`Profile`] update key
+    pub const SIGNING: &'static str = "OCKAM_SIK";
     /// Label for key used to issue credentials
     pub const CREDENTIALS_ISSUE: &'static str = "OCKAM_CIK";
     /// Current version of change structure

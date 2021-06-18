@@ -1,7 +1,7 @@
 //! Profile contacts
 use crate::history::ProfileChangeHistory;
 use crate::{
-    EntityError, EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier,
+    EntityError, EventIdentifier, KeyAttributes, Profile, ProfileChangeEvent, ProfileIdentifier,
     ProfileVault,
 };
 use ockam_vault_core::PublicKey;
@@ -149,5 +149,9 @@ impl Contact {
     /// Get [`EventIdentifier`] of the last known event
     pub fn get_last_event_id(&self) -> ockam_core::Result<EventIdentifier> {
         self.change_history.get_last_event_id()
+    }
+
+    pub fn get_signing_public_key(&self) -> ockam_core::Result<PublicKey> {
+        self.get_public_key(&KeyAttributes::new(Profile::SIGNING.to_string()))
     }
 }

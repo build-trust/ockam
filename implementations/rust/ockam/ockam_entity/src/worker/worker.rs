@@ -125,7 +125,7 @@ impl<P: ProfileTrait> ProfileWorker<P> {
                 ProfileResponseMessage::GetSigningKey(res)
             }
             ProfileRequestMessage::GetIssuerPublicKey => {
-                let res = self.inner.get_issuer_public_key().unwrap();
+                let res = self.inner.get_signing_public_key().unwrap();
                 ProfileResponseMessage::GetIssuerPublicKey(CredentialPublicKey(res))
             }
             ProfileRequestMessage::CreateOffer { schema } => {

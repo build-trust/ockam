@@ -80,12 +80,18 @@ impl<V: ProfileVault> ProfileImpl<V> {
     ) -> ockam_core::Result<ProfileChangeEvent> {
         let attributes = attributes.unwrap_or_default();
 
-        // TODO: Should be customisable
-        let secret_attributes = SecretAttributes::new(
-            SecretType::Curve25519,
-            SecretPersistence::Persistent,
-            CURVE25519_SECRET_LENGTH,
-        );
+        // FIXME
+        let is_bls = key_attributes.label() == Profile::SIGNING;
+
+        let secret_attributes = if is_bls {
+            SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
+        } else {
+            SecretAttributes::new(
+                SecretType::Curve25519,
+                SecretPersistence::Persistent,
+                CURVE25519_SECRET_LENGTH,
+            )
+        };
 
         let secret_key = vault.secret_generate(secret_attributes)?;
         let public_key = vault.secret_public_key_get(&secret_key)?;
@@ -93,7 +99,11 @@ impl<V: ProfileVault> ProfileImpl<V> {
         let data = CreateKeyChangeData::new(key_attributes, public_key.as_ref().to_vec());
         let data_binary = serde_bare::to_vec(&data).map_err(|_| EntityError::BareError)?;
         let data_hash = vault.sha256(data_binary.as_slice())?;
-        let self_signature = vault.sign(&secret_key, &data_hash)?;
+        let self_signature = if is_bls {
+            [0u8; 64]
+        } else {
+            vault.sign(&secret_key, &data_hash)?
+        };
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(

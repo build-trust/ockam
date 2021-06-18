@@ -110,7 +110,7 @@ impl SecureChannelWorker {
             their_profile_id: their_profile_id.clone(),
             callback_address: Some(child_ctx.address()),
         };
-        debug!(
+        info!(
             "Starting ProfileSecureChannel Initiator at local: {}, remote: {}",
             &channel_local_address, &channel_remote_address
         );
@@ -231,7 +231,7 @@ impl SecureChannelWorker {
             their_profile_id: their_profile_id.clone(),
             callback_address: None,
         };
-        debug!(
+        info!(
             "Starting ProfileSecureChannel Responder at local: {}, remote: {}",
             &channel_local_address, &channel_remote_address
         );

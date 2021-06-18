@@ -7,10 +7,10 @@ use crate::{
     CredentialPresentation, CredentialRequest, CredentialSchema, EntityError, EventIdentifier,
     KeyAttributes, OfferIdBytes, PresentationManifest, Profile, ProfileAuth, ProfileChangeEvent,
     ProfileChanges, ProfileContacts, ProfileEventAttributes, ProfileIdentifier, ProfileIdentity,
-    ProfileSecrets, ProfileVault, ProofBytes, ProofRequestId, PublicKeyBytes, SigningKeyBytes,
-    SECRET_ID,
+    ProfileSecrets, ProfileVault, ProofBytes, ProofRequestId, PublicKeyBytes, SECRET_ID,
 };
 
+use ockam_core::lib::convert::TryInto;
 use ockam_core::Result;
 use ockam_vault_core::{PublicKey, Secret};
 use rand::{thread_rng, CryptoRng, RngCore};
@@ -35,7 +35,7 @@ pub struct ProfileImpl<V: ProfileVault> {
     identifier: ProfileIdentifier,
     change_history: ProfileChangeHistory,
     contacts: ContactsDb,
-    signing_key: SecretKey,
+    // FIXME
     signing_id_message: Message,
     pub(crate) vault: V,
 }
@@ -46,14 +46,12 @@ impl<V: ProfileVault> ProfileImpl<V> {
         identifier: ProfileIdentifier,
         change_events: Vec<ProfileChangeEvent>,
         contacts: ContactsDb,
-        credential_issuing_key: SecretKey,
         vault: V,
     ) -> Self {
         Self {
             identifier,
             change_history: ProfileChangeHistory::new(change_events),
             contacts,
-            signing_key: credential_issuing_key,
             signing_id_message: Message::random(thread_rng()),
             vault,
         }
@@ -74,7 +72,6 @@ impl<V: ProfileVault> ProfileImpl<V> {
     /// Generate fresh [`Profile`] update key and create new [`Profile`] using it
     pub(crate) fn create_internal(
         attributes: Option<ProfileEventAttributes>,
-        credential_issuing_key: SecretKey,
         mut vault: V,
     ) -> Result<Self> {
         let prev_id = vault.sha256(Profile::NO_EVENT)?;
@@ -96,13 +93,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
         let public_key_id = vault.compute_key_id_for_public_key(&public_key)?;
         let public_key_id = ProfileIdentifier::from_key_id(public_key_id);
 
-        let profile = Self::new(
-            public_key_id,
-            vec![change_event],
-            Default::default(),
-            credential_issuing_key,
-            vault,
-        );
+        let profile = Self::new(public_key_id, vec![change_event], Default::default(), vault);
 
         Ok(profile)
     }
@@ -300,13 +291,18 @@ impl<V: ProfileVault> ProfileAuth for ProfileImpl<V> {
 
 impl<V: ProfileVault> CredentialIssuer for ProfileImpl<V> {
     /// Return the signing key associated with this CredentialIssuer
-    fn get_signing_key(&mut self) -> Result<SigningKeyBytes> {
-        Ok(self.signing_key.to_bytes())
+    fn get_signing_key(&mut self) -> Result<SecretKey> {
+        let secret = self.get_secret_key(&KeyAttributes::new(Profile::SIGNING.to_string()))?;
+        let secret = self.vault.secret_export(&secret)?;
+        let secret = SecretKey::from_bytes(&secret.as_ref().try_into().unwrap()).unwrap();
+
+        Ok(secret)
     }
 
     /// Return the public key
-    fn get_issuer_public_key(&mut self) -> Result<PublicKeyBytes> {
-        let pk = BbsPublicKey::from(&self.signing_key);
+    fn get_signing_public_key(&mut self) -> Result<PublicKeyBytes> {
+        // FIXME
+        let pk = BbsPublicKey::from(&self.get_signing_key()?);
         Ok(pk.to_bytes())
     }
 
@@ -325,7 +321,7 @@ impl<V: ProfileVault> CredentialIssuer for ProfileImpl<V> {
 
     /// Create a proof of possession for this issuers signing key
     fn create_proof_of_possession(&mut self) -> Result<ProofBytes> {
-        Ok(ProofOfPossession::new(&self.signing_key)
+        Ok(ProofOfPossession::new(&self.get_signing_key()?)
             .expect("bad signing key")
             .to_bytes())
     }
@@ -358,9 +354,9 @@ impl<V: ProfileVault> CredentialIssuer for ProfileImpl<V> {
         }
 
         let generators =
-            MessageGenerators::from_secret_key(&self.signing_key, schema.attributes.len());
+            MessageGenerators::from_secret_key(&self.get_signing_key()?, schema.attributes.len());
 
-        let signature = BbsIssuer::sign(&self.signing_key, &generators, &messages)
+        let signature = BbsIssuer::sign(&self.get_signing_key()?, &generators, &messages)
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
         Ok(Credential {
             attributes: attributes.to_vec(),
@@ -413,12 +409,12 @@ impl<V: ProfileVault> CredentialIssuer for ProfileImpl<V> {
         }
 
         let generators =
-            MessageGenerators::from_secret_key(&self.signing_key, schema.attributes.len());
+            MessageGenerators::from_secret_key(&self.get_signing_key()?, schema.attributes.len());
 
         let ctx: BlindSignatureContext = request.context.clone().into();
         let signature = BbsIssuer::blind_sign(
             &ctx,
-            &self.signing_key,
+            &self.get_signing_key()?,
             &generators,
             &messages,
             Nonce::from_bytes(&offer_id).unwrap(),

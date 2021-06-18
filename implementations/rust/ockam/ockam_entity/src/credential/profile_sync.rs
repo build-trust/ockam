@@ -3,14 +3,15 @@ use crate::{
     Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialPublicKey, CredentialRequest, CredentialSchema, EntityError,
     OfferIdBytes, PresentationManifest, ProfileRequestMessage, ProfileResponseMessage, ProfileSync,
-    Proof, ProofBytes, ProofRequestId, PublicKeyBytes, SigningKeyBytes,
+    Proof, ProofBytes, ProofRequestId, PublicKeyBytes,
 };
 use ockam_core::Result;
 use ockam_node::block_future;
 use rand::{CryptoRng, RngCore};
+use signature_bls::SecretKey;
 
 impl CredentialIssuer for ProfileSync {
-    fn get_signing_key(&mut self) -> Result<SigningKeyBytes> {
+    fn get_signing_key(&mut self) -> Result<SecretKey> {
         block_future(&self.ctx().runtime(), async move {
             let mut ctx = self
                 .send_message(ProfileRequestMessage::GetSigningKey)
@@ -26,7 +27,7 @@ impl CredentialIssuer for ProfileSync {
         })
     }
 
-    fn get_issuer_public_key(&mut self) -> Result<PublicKeyBytes> {
+    fn get_signing_public_key(&mut self) -> Result<PublicKeyBytes> {
         block_future(&self.ctx().runtime(), async move {
             let mut ctx = self
                 .send_message(ProfileRequestMessage::GetIssuerPublicKey)

@@ -1,21 +1,27 @@
 use crate::credential::CredentialVerifier;
+use crate::protocol::messages::{
+    IssueOffer, IssueOfferRequest, IssueRequest, IssueResponse, PresentationOffer,
+    PresentationRequest, PresentationResponse,
+};
+use crate::EntityError::{InvalidInternalState, InvalidParameter, ProfileNotFound};
 use crate::{
-    Contact, ContactsDb, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
-    CredentialHolder, CredentialIssuer, CredentialOffer, CredentialPresentation, CredentialRequest,
-    CredentialSchema, KeyAttributes, OfferIdBytes, PresentationManifest, Profile, ProfileAdd,
+    check_message_origin, Contact, ContactsDb, Credential, CredentialAttribute,
+    CredentialFragment1, CredentialFragment2, CredentialHolder, CredentialIssuer, CredentialOffer,
+    CredentialPresentation, CredentialProtocol, CredentialRequest, CredentialSchema,
+    EntityCredential, KeyAttributes, OfferIdBytes, PresentationManifest, Profile, ProfileAdd,
     ProfileAuth, ProfileChangeEvent, ProfileChanges, ProfileContacts, ProfileEventAttributes,
     ProfileIdentifier, ProfileIdentity, ProfileRemove, ProfileRetrieve, ProfileSecrets,
-    ProfileSync, ProofBytes, ProofRequestId, PublicKeyBytes, SecureChannelTrait, SigningKeyBytes,
-    TrustPolicy,
+    ProfileSync, ProofBytes, ProofRequestId, PublicKeyBytes, SecureChannelTrait, TrustPolicy,
 };
+use async_trait::async_trait;
+use ockam_core::hashbrown::HashMap;
+use ockam_core::lib::convert::TryInto;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use ockam_vault_core::{PublicKey, Secret};
 use ockam_vault_sync_core::Vault;
-
-use crate::EntityError::{InvalidInternalState, InvalidParameter, ProfileNotFound};
-use ockam_core::hashbrown::HashMap;
-use rand::{CryptoRng, RngCore};
+use rand::{thread_rng, CryptoRng, RngCore};
+use signature_bls::SecretKey;
 
 pub struct Entity {
     ctx: Context,
@@ -314,7 +320,7 @@ impl ProfileAuth for Entity {
 }
 
 impl CredentialIssuer for Entity {
-    fn get_signing_key(&mut self) -> Result<SigningKeyBytes> {
+    fn get_signing_key(&mut self) -> Result<SecretKey> {
         if let Some(profile) = self.default_profile_mut() {
             profile.get_signing_key()
         } else {
@@ -322,9 +328,9 @@ impl CredentialIssuer for Entity {
         }
     }
 
-    fn get_issuer_public_key(&mut self) -> Result<PublicKeyBytes> {
+    fn get_signing_public_key(&mut self) -> Result<PublicKeyBytes> {
         if let Some(profile) = self.default_profile_mut() {
-            profile.get_issuer_public_key()
+            profile.get_signing_public_key()
         } else {
             Err(ProfileNotFound.into())
         }
@@ -466,5 +472,130 @@ impl CredentialVerifier for Entity {
         } else {
             Err(ProfileNotFound.into())
         }
+    }
+}
+
+#[async_trait]
+impl CredentialProtocol for Entity {
+    async fn acquire_credential(
+        &mut self,
+        issuer_route: Route,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<EntityCredential> {
+        self.ctx.send(issuer_route, IssueOfferRequest {}).await?;
+
+        let issuer_contact = self.contacts()?.get(&issuer_id).unwrap().clone();
+        let issuer_pubkey = issuer_contact.get_signing_public_key()?;
+        let issuer_pubkey = issuer_pubkey.as_ref().try_into().unwrap();
+
+        let offer = self.ctx.receive::<IssueOffer>().await?.take();
+        check_message_origin(&offer, &issuer_id)?;
+        let route = offer.return_route();
+        // Bob accepts the credential request offer, and creates a credential request, along with the first fragment.
+        let (request, frag1) =
+            self.accept_credential_offer(&offer.0, issuer_pubkey, thread_rng())?;
+
+        self.ctx.send(route, IssueRequest(request)).await?;
+
+        let response = self.ctx.receive::<IssueResponse>().await?.take();
+        check_message_origin(&response, &issuer_id)?;
+
+        // Bob can now combine both fragments to form a Credential.
+        let credential = self.combine_credential_fragments(frag1, response.body().0)?;
+
+        // TODO: Save credential
+
+        let credential = EntityCredential {
+            credential,
+            issuer_pubkey,
+            schema,
+        };
+
+        Ok(credential)
+    }
+
+    async fn issue_credential(
+        &mut self,
+        holder_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<()> {
+        let request_offer = self
+            .ctx
+            .receive_timeout::<IssueOfferRequest>(120)
+            .await?
+            .take();
+        check_message_origin(&request_offer, &holder_id)?;
+        let route = request_offer.return_route();
+
+        // The Issuer (Office) creates an Credential Request Offer (ability to open the door)
+        let offer = self.create_offer(&schema, thread_rng())?;
+        let offer_id = offer.id.clone();
+        self.ctx.send(route, IssueOffer(offer)).await?;
+
+        let request = self.ctx.receive_timeout::<IssueRequest>(120).await?.take();
+        check_message_origin(&request_offer, &holder_id)?;
+        let route = request.return_route();
+
+        // Ask the Issuer to sign the Credential Request. A successful request results in a second fragment.
+        // FIXME
+        let signing_attributes = [
+            (
+                // TODO: ProfileIdentifier
+                "door_id".into(),
+                // TODO: Replace with Verifier ProfileIdentifier?
+                CredentialAttribute::String("f4a8-90ff-742d-11ae".into()),
+            ),
+            ("can_open_door".into(), CredentialAttribute::Numeric(1)),
+        ];
+
+        // Office signs the credentials.
+        let frag2 = self.sign_credential_request(
+            &request.0,
+            &schema,
+            &(signing_attributes.clone()),
+            offer_id,
+        )?;
+
+        self.ctx.send(route, IssueResponse(frag2)).await?;
+
+        Ok(())
+    }
+
+    async fn prove_credential(
+        &mut self,
+        worker_route: Route,
+        verifier_id: &ProfileIdentifier,
+        credential: EntityCredential,
+    ) -> Result<()> {
+        self.ctx.send(worker_route, PresentationOffer {}).await?;
+
+        let request_id = self
+            .ctx
+            .receive_timeout::<PresentationRequest>(120)
+            .await?
+            .take();
+        check_message_origin(&request_id, &verifier_id)?;
+        let route = request_id.return_route();
+
+        let manifest = PresentationManifest {
+            credential_schema: credential.schema,
+            public_key: credential.issuer_pubkey,
+            revealed: vec![1], // can_open_door
+        };
+
+        // Bob creates a Presentation from the manifest, his credentials, and this unique challenge instance.
+        let presentation = self.present_credentials(
+            &[credential.credential],
+            &[manifest],
+            request_id.0,
+            thread_rng(),
+        )?;
+
+        self.ctx
+            .send(route, PresentationResponse(presentation))
+            .await?;
+
+        Ok(())
     }
 }

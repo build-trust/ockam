@@ -1,10 +1,11 @@
 use crate::{
     Contact, ContactsDb, Credential, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialPublicKey, CredentialRequest, ProfileChangeEvent,
-    ProfileIdentifier, Proof, ProofRequestId, SigningKeyBytes,
+    ProfileIdentifier, Proof, ProofRequestId,
 };
 use ockam_vault_core::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
+use signature_bls::SecretKey;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ProfileResponseMessage {
@@ -27,7 +28,7 @@ pub enum ProfileResponseMessage {
     GetPublicKey(PublicKey),
     GetRootSecret(Secret),
     // Issuer traits
-    GetSigningKey(SigningKeyBytes),
+    GetSigningKey(SecretKey),
     GetIssuerPublicKey(CredentialPublicKey),
     CreateOffer(CredentialOffer),
     CreateProofOfPossession(Proof),

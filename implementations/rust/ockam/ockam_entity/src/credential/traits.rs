@@ -1,18 +1,20 @@
 use crate::{
     Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialRequest, CredentialSchema, OfferIdBytes,
-    PresentationManifest, ProofBytes, ProofRequestId, PublicKeyBytes, SigningKeyBytes,
+    PresentationManifest, ProfileIdentifier, ProofBytes, ProofRequestId, PublicKeyBytes,
 };
-use ockam_core::Result;
+use async_trait::async_trait;
+use ockam_core::{Result, Route};
 use rand::{CryptoRng, RngCore};
+use signature_bls::SecretKey;
 
 /// Credential Issuer
 pub trait CredentialIssuer {
     /// Return the signing key associated with this CredentialIssuer
-    fn get_signing_key(&mut self) -> Result<SigningKeyBytes>;
+    fn get_signing_key(&mut self) -> Result<SecretKey>;
 
     /// Return the public key
-    fn get_issuer_public_key(&mut self) -> Result<PublicKeyBytes>;
+    fn get_signing_public_key(&mut self) -> Result<PublicKeyBytes>;
 
     /// Create a credential offer
     fn create_offer(
@@ -60,6 +62,7 @@ pub trait CredentialHolder {
 
     /// Check a credential to make sure its valid
     fn is_valid_credential(
+        // FIXME: Should not be mut
         &mut self,
         credential: &Credential,
         verifier_key: PublicKeyBytes,
@@ -95,4 +98,33 @@ pub trait CredentialVerifier {
         presentation_manifests: &[PresentationManifest],
         proof_request_id: ProofRequestId,
     ) -> Result<bool>;
+}
+
+pub struct EntityCredential {
+    pub credential: Credential,
+    pub issuer_pubkey: [u8; 96],
+    pub schema: CredentialSchema,
+}
+
+#[async_trait]
+pub trait CredentialProtocol {
+    async fn acquire_credential(
+        &mut self,
+        issuer_route: Route,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<EntityCredential>;
+
+    async fn issue_credential(
+        &mut self,
+        holder_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<()>;
+
+    async fn prove_credential(
+        &mut self,
+        worker_route: Route,
+        verifier_id: &ProfileIdentifier,
+        credential: EntityCredential,
+    ) -> Result<()>;
 }

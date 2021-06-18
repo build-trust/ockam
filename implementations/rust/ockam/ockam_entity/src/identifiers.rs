@@ -16,6 +16,11 @@ impl ProfileIdentifier {
     pub fn to_string_representation(&self) -> String {
         format!("P_ID.{}", &self.0)
     }
+    pub fn from_string_representation(str: String) -> Self {
+        // FIXME
+        let str = str[5..].to_string();
+        Self(str)
+    }
 
     /// Return the wrapped KeyId
     pub fn key_id(&self) -> &KeyId {

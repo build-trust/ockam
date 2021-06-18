@@ -60,18 +60,13 @@ mod test {
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultMutex;
     use rand::prelude::*;
-    use signature_bls::SecretKey;
-
-    fn rand_key() -> SecretKey {
-        SecretKey::random(thread_rng()).unwrap()
-    }
 
     #[test]
     fn authentication() {
         let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = ProfileImpl::create_internal(None, rand_key(), vault.clone()).unwrap();
-        let mut bob = ProfileImpl::create_internal(None, rand_key(), vault).unwrap();
+        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+        let mut bob = ProfileImpl::create_internal(None, vault).unwrap();
 
         // Secure channel is created here
         let mut key_agreement_hash = [0u8; 32];
@@ -110,8 +105,8 @@ mod test {
     fn authentication_profile_update_key_rotated() {
         let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = ProfileImpl::create_internal(None, rand_key(), vault.clone()).unwrap();
-        let mut bob = ProfileImpl::create_internal(None, rand_key(), vault).unwrap();
+        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+        let mut bob = ProfileImpl::create_internal(None, vault).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 
@@ -155,8 +150,8 @@ mod test {
     fn authentication_profile_update_key_rotated_after_first_handshake() {
         let vault = VaultMutex::create(SoftwareVault::default());
 
-        let mut alice = ProfileImpl::create_internal(None, rand_key(), vault.clone()).unwrap();
-        let mut bob = ProfileImpl::create_internal(None, rand_key(), vault).unwrap();
+        let mut alice = ProfileImpl::create_internal(None, vault.clone()).unwrap();
+        let mut bob = ProfileImpl::create_internal(None, vault).unwrap();
 
         let root_key_attributes = KeyAttributes::new(Profile::PROFILE_UPDATE.to_string());
 

@@ -10,6 +10,7 @@ pub type SigningKeyBytes = [u8; 32];
 /// Alias for an array of 32 bytes.
 pub type PresentationIdBytes = [u8; 32];
 
+// TODO: Replace with PublicKey
 /// Alias for an array of 96 bytes.
 pub type PublicKeyBytes = [u8; 96];
 /// Serializable wrapper around a credential public key.
@@ -40,6 +41,7 @@ mod offer;
 mod presentation;
 mod presentation_manifest;
 mod profile_sync;
+pub(crate) mod protocol;
 mod request;
 mod schema;
 mod traits;
