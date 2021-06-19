@@ -30,8 +30,6 @@ commands {
       'mix test'
     ],
     clean: [
-      'mix local.hex --force',
-      'mix local.rebar --force',
       'mix clean'
     ],
     lint: [
@@ -45,6 +43,9 @@ commands {
       'mix local.rebar --force',
       'mix deps.get',
       'mix dialyzer'
+    ],
+    veryClean: [
+      'rm -rf _build deps'
     ]
   ]
 
@@ -52,6 +53,9 @@ commands {
 }
 
 tasks.whenTaskAdded { task ->
-  task.dependsOn(gradle.includedBuild('rust').task(':build_ockam_ockam_ffi'))
-  task.dependsOn(gradle.includedBuild('rust').task(':build_ockam_ockam_vault'))
+  def isCleanTask = task.name.contains('clean') || task.name.contains('veryClean')
+  if(!isCleanTask) {
+    task.dependsOn(gradle.includedBuild('rust').task(':build_ockam_ockam_ffi'))
+    task.dependsOn(gradle.includedBuild('rust').task(':build_ockam_ockam_vault'))
+  }
 }
