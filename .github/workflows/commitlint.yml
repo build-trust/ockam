@@ -1,5 +1,5 @@
 name: Lint Commit Messages
-on: push
+on: [push, workflow_dispatch]
 
 jobs:
   commitlint:
@@ -12,4 +12,4 @@ jobs:
           fetch-depth: 0
 
       - name: Commitlint
-        uses: wagoid/commitlint-github-action@1788ebdc06fd21e83bfd5e93c8e486a837cf401d # v2.1.6
+        uses: wagoid/commitlint-github-action@baffd3c16c570c0a26bf89be729b81bb796e9bd5 # v3.1.4
