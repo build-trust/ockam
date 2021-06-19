@@ -18,28 +18,30 @@ commands {
 
   list = [
     build: [
-      'mix local.hex --force',
+      'mix local.hex --force --if-missing',
       'mix local.rebar --force',
       'mix deps.get',
       'mix compile'
     ],
     test: [
-      'mix local.hex --force',
+      'mix local.hex --force --if-missing',
       'mix local.rebar --force',
       'mix deps.get',
       'mix test'
     ],
     clean: [
+      'mix local.hex --force --if-missing',
+      'mix local.rebar --force',
       'mix clean'
     ],
     lint: [
-      'mix local.hex --force',
+      'mix local.hex --force --if-missing',
       'mix local.rebar --force',
       'mix deps.get',
       'mix lint'
     ],
     dialyze: [
-      'mix local.hex --force',
+      'mix local.hex --force --if-missing',
       'mix local.rebar --force',
       'mix deps.get',
       'mix dialyzer'
