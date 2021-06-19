@@ -21,7 +21,7 @@ setup the `stable` and `nightly` rust toolchains:
 
 ```
 rustup toolchain install stable
-rustup toolchain install stable
+rustup toolchain install nightly
 ```
 
 Refer Rust [documentation][rustup-manage-versions] on managing and
@@ -29,7 +29,8 @@ updating rust versions.
 
 ## Test
 
-Once you make some changes and write some tests, you can run the test:
+Once you make some changes in a crate and write some tests, you can run them
+with:
 
 ```
 cargo test
