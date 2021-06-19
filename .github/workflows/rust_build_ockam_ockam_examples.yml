@@ -1,5 +1,6 @@
 name: rust_build_ockam_ockam_examples
 on:
+  workflow_dispatch:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:

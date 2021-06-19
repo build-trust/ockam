@@ -1,5 +1,6 @@
 name: rust_lint_ockam_ockam_channel
 on:
+  workflow_dispatch:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
