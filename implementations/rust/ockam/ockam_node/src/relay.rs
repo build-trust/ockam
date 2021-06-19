@@ -107,20 +107,20 @@ where
         parser::message::<M>(payload)
             .map_err(|e| {
                 error!("Failed to decode message payload for worker {}", msg_addr);
-                e.into()
+                e
             })
             .map(|m| (m, return_route.clone()))
     }
 
     #[inline]
     fn handle_pre_router(&mut self, msg: &Vec<u8>, msg_addr: Address) -> Result<M> {
-        M::decode(&msg).map_err(|e| {
+        M::decode(msg).map_err(|e| {
             error!(
                 "Failed to decode wrapped router message for worker {}.  \
 Is your router accepting the correct message type? (ockam_core::RouterMessage)",
                 msg_addr
             );
-            e.into()
+            e
         })
     }
 

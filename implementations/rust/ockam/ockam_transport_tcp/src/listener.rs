@@ -24,9 +24,7 @@ impl TcpListenWorker {
         let waddr = Address::random(0);
 
         debug!("Binding TcpListener to {}", addr);
-        let inner = TcpListener::bind(addr)
-            .await
-            .map_err(|e| TcpError::from(e))?;
+        let inner = TcpListener::bind(addr).await.map_err(TcpError::from)?;
         let worker = Self {
             inner,
             run,
@@ -51,7 +49,7 @@ impl Worker for TcpListenWorker {
             trace!("Waiting for incoming TCP connection...");
 
             // Wait for an incoming connection
-            let (stream, peer) = self.inner.accept().await.map_err(|e| TcpError::from(e))?;
+            let (stream, peer) = self.inner.accept().await.map_err(TcpError::from)?;
 
             // And spawn a connection worker for it
             let pair = WorkerPair::with_stream(ctx, stream, peer).await?;

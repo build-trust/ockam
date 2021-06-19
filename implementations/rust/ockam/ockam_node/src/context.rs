@@ -64,7 +64,7 @@ impl Context {
 
     /// Return the primary worker address
     pub fn address(&self) -> Address {
-        self.address.first().clone()
+        self.address.first()
     }
 
     /// Return all addresses of this worker
@@ -156,7 +156,7 @@ impl Context {
 
         // Send the stop request
         let (req, mut rx) = NodeMessage::stop_worker(addr);
-        self.sender.send(req).await.map_err(|e| Error::from(e))?;
+        self.sender.send(req).await.map_err(Error::from)?;
 
         // Then check that the worker was properly shut down
         Ok(rx
@@ -212,7 +212,7 @@ impl Context {
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
-        self.sender.send(req).await.map_err(|e| Error::from(e))?;
+        self.sender.send(req).await.map_err(Error::from)?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
@@ -233,7 +233,7 @@ impl Context {
         };
 
         // Send the packed user message with associated route
-        sender.send(msg).await.map_err(|e| Error::from(e))?;
+        sender.send(msg).await.map_err(Error::from)?;
 
         Ok(())
     }
@@ -257,7 +257,7 @@ impl Context {
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
-        self.sender.send(req).await.map_err(|e| Error::from(e))?;
+        self.sender.send(req).await.map_err(Error::from)?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
@@ -272,7 +272,7 @@ impl Context {
         } else {
             RelayMessage::direct(addr, local_msg, onward)
         };
-        sender.send(msg).await.map_err(|e| Error::from(e))?;
+        sender.send(msg).await.map_err(Error::from)?;
 
         Ok(())
     }
@@ -300,7 +300,7 @@ impl Context {
             self.next_from_mailbox().await
         })
         .await
-        .map_err(|e| Error::from(e))??;
+        .map_err(Error::from)??;
         Ok(Cancel::new(msg, data, addr, self))
     }
 
@@ -332,7 +332,7 @@ impl Context {
             }
         })
         .await
-        .map_err(|e| Error::from(e))??;
+        .map_err(Error::from)??;
 
         Ok(Cancel::new(m, data, addr, self))
     }
@@ -341,7 +341,7 @@ impl Context {
     pub async fn list_workers(&self) -> Result<Vec<Address>> {
         let (msg, mut reply_rx) = NodeMessage::list_workers();
 
-        self.sender.send(msg).await.map_err(|e| Error::from(e))?;
+        self.sender.send(msg).await.map_err(Error::from)?;
 
         Ok(reply_rx
             .recv()
@@ -377,11 +377,7 @@ impl Context {
     /// has woken it.
     async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, LocalMessage, Address)> {
         loop {
-            let msg = self
-                .mailbox
-                .next()
-                .await
-                .ok_or_else(|| Error::FailedLoadData)?;
+            let msg = self.mailbox.next().await.ok_or(Error::FailedLoadData)?;
             let (addr, data) = msg.local_msg();
 
             // FIXME: make message parsing idempotent to avoid cloning

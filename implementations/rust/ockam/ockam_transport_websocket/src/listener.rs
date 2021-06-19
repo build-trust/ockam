@@ -24,7 +24,7 @@ impl WebSocketListenWorker {
         debug!("Binding WebSocketListener to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
-            .map_err(|e| WebSocketError::from(e))?;
+            .map_err(WebSocketError::from)?;
         let worker = Self {
             inner,
             run,

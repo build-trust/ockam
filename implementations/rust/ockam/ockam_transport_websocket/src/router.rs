@@ -90,10 +90,7 @@ impl Worker for WebSocketRouter {
                 let onward = msg.transport_mut().onward_route.step()?;
 
                 // Look up the connection worker responsible
-                let next = self
-                    .map
-                    .get(&onward)
-                    .ok_or_else(|| WebSocketError::UnknownRoute)?;
+                let next = self.map.get(&onward).ok_or(WebSocketError::UnknownRoute)?;
 
                 // Modify the transport message route
                 msg.transport_mut()

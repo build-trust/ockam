@@ -19,7 +19,7 @@ impl Verifier for SoftwareVault {
                 0,
                 CURVE25519_PUBLIC_LENGTH
             ))
-            .verify(data.as_ref(), &signature))
+            .verify(data.as_ref(), signature))
         } else {
             Err(VaultError::InvalidPublicKey.into())
         }

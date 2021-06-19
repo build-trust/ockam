@@ -13,10 +13,9 @@ impl NullWorker {
     pub(crate) fn new(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
         // Create a new Mailbox and Context
         let (mb_tx, mb_rx) = channel(32);
-        let mb = Mailbox::new(mb_rx, mb_tx.clone());
-        let ctx = Context::new(rt, tx, addr.into(), mb);
+        let mb = Mailbox::new(mb_rx, mb_tx);
 
-        ctx
+        Context::new(rt, tx, addr.into(), mb)
     }
 }
 
@@ -49,14 +48,13 @@ pub fn start_node() -> (Context, Executor) {
 
 /// Utility to setup tracing-subscriber from the environment
 fn setup_tracing() {
-    if let Err(_) = fmt()
-        .with_env_filter(EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
-            EnvFilter::default()
-                .add_directive(LevelFilter::INFO.into())
-                .add_directive("ockam_node=info".parse().unwrap())
-        }))
-        .try_init()
-    {
+    let filter = EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
+        EnvFilter::default()
+            .add_directive(LevelFilter::INFO.into())
+            .add_directive("ockam_node=info".parse().unwrap())
+    });
+
+    if fmt().with_env_filter(filter).try_init().is_err() {
         debug!("Failed to initialise tracing_subscriber.  Is an instance already running?");
     }
 }

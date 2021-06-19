@@ -76,7 +76,7 @@ impl ProfileChangeHistory {
     ) -> ockam_core::Result<PublicKey> {
         let last_key_event = Self::find_last_key_event(existing_events, key_attributes)?;
 
-        Self::get_public_key_from_event(&key_attributes, &last_key_event)
+        Self::get_public_key_from_event(key_attributes, last_key_event)
     }
 
     pub(crate) fn get_change_public_key(change: &ProfileChange) -> ockam_core::Result<PublicKey> {

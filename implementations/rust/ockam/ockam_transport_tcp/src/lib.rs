@@ -99,7 +99,7 @@ impl<'ctx> TcpTransport<'ctx> {
     /// Establish an outgoing TCP connection on an existing transport
     pub async fn connect<S: Into<String>>(&self, peer: S) -> Result<()> {
         let peer = parse_socket_addr(peer)?;
-        init::start_connection(&self.ctx, &self.router, peer).await?;
+        init::start_connection(self.ctx, &self.router, peer).await?;
         Ok(())
     }
 

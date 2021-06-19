@@ -110,7 +110,7 @@ impl From<RouteBuilder<'_>> for Route {
 // A single address is a valid route. TODO Using Into<Address> here is incompatible with the From<Vec<T>> below. Why?
 impl From<Address> for Route {
     fn from(address: Address) -> Self {
-        let addr: Address = address.into();
+        let addr: Address = address;
         Route::new().append(addr).into()
     }
 }

@@ -79,7 +79,7 @@ impl SignatureVt {
 
     /// Convert a big-endian representation of the SignatureVt
     pub fn from_bytes(bytes: &[u8; Self::BYTES]) -> CtOption<Self> {
-        G2Affine::from_compressed(&bytes).map(|p| Self(G2Projective::from(&p)))
+        G2Affine::from_compressed(bytes).map(|p| Self(G2Projective::from(&p)))
     }
 }
 

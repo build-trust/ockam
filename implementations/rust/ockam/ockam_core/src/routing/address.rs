@@ -122,14 +122,14 @@ impl Address {
 
 impl Display for Address {
     fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
-        let inner: &'a str = from_utf8(&self.inner.as_slice()).unwrap_or("Invalid UTF-8");
+        let inner: &'a str = from_utf8(self.inner.as_slice()).unwrap_or("Invalid UTF-8");
         write!(f, "{}#{}", self.tt, inner)
     }
 }
 
 impl Debug for Address {
     fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
-        let inner: &'a str = from_utf8(&self.inner.as_slice()).unwrap_or("Invalid UTF-8");
+        let inner: &'a str = from_utf8(self.inner.as_slice()).unwrap_or("Invalid UTF-8");
         write!(f, "{}#{}", self.tt, inner)
     }
 }
