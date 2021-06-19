@@ -105,7 +105,7 @@ impl Entity {
 impl ProfileAdd for Entity {
     fn add_profile(&mut self, profile: ProfileSync) -> Result<()> {
         if let Ok(id) = profile.identifier() {
-            if let Some(_) = self.profiles.insert(id, profile) {
+            if self.profiles.insert(id, profile).is_some() {
                 return Ok(());
             }
         }
@@ -128,7 +128,7 @@ impl ProfileRemove for Entity {
         if &self.default_profile_identifier == profile_id {
             return Err(InvalidParameter.into());
         }
-        if let Some(_) = self.profiles.remove(&profile_id) {
+        if self.profiles.remove(profile_id).is_some() {
             Ok(())
         } else {
             Err(InvalidInternalState.into())

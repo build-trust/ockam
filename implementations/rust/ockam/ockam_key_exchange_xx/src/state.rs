@@ -81,7 +81,7 @@ impl<V: XXVault> State<V> {
         );
         // 1. Generate a static key pair for this handshake and set it to `s`
         if let Some(ik) = &self.identity_key {
-            self.identity_public_key = Some(self.vault.secret_public_key_get(&ik)?);
+            self.identity_public_key = Some(self.vault.secret_public_key_get(ik)?);
         } else {
             let static_secret_handle = self.vault.secret_generate(attributes)?;
             self.identity_public_key =

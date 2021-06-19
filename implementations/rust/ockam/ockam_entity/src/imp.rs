@@ -63,7 +63,7 @@ impl<V: ProfileVault> ProfileImpl<V> {
 
         let change = ProfileChangeHistory::find_key_change_in_event(&change_event, &key_attributes)
             .ok_or(EntityError::InvalidInternalState)?;
-        let public_key = ProfileChangeHistory::get_change_public_key(&change)?;
+        let public_key = ProfileChangeHistory::get_change_public_key(change)?;
 
         let public_key_id = vault.compute_key_id_for_public_key(&public_key)?;
         let public_key_id = ProfileIdentifier::from_key_id(public_key_id);
@@ -109,7 +109,7 @@ impl<V: ProfileVault> ProfileChanges for ProfileImpl<V> {
     }
     fn update_no_verification(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
         let slice = std::slice::from_ref(&change_event);
-        ProfileChangeHistory::check_consistency(self.change_history.as_ref(), &slice)?;
+        ProfileChangeHistory::check_consistency(self.change_history.as_ref(), slice)?;
         self.change_history.push_event(change_event);
 
         Ok(())

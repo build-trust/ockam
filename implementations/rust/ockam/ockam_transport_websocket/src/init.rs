@@ -53,10 +53,7 @@ impl WorkerPair {
             tx_addr,
             run,
         } = WorkerPair::from_peer(peer);
-        let sender = WebSocketSendWorker {
-            ws_sink,
-            peer: peer.clone(),
-        };
+        let sender = WebSocketSendWorker { ws_sink, peer };
         let receiver = WebSocketRecvWorker {
             ws_stream,
             run: run.clone(),

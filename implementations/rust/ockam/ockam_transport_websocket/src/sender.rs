@@ -44,7 +44,12 @@ where
 
         // Create a message buffer with pre-pended length
         let msg = serde_bare::to_vec(&msg.body()).map_err(|_| WebSocketError::SendBadMessage)?;
-        if let Err(_) = self.ws_sink.send(WebSocketMessage::from(msg)).await {
+        if self
+            .ws_sink
+            .send(WebSocketMessage::from(msg))
+            .await
+            .is_err()
+        {
             warn!("Failed to send message to peer {}", self.peer);
             ctx.stop_worker(ctx.address()).await?;
         }

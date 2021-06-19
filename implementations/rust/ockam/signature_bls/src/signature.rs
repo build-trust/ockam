@@ -89,7 +89,7 @@ impl Signature {
 
     /// Convert a big-endian representation of the signature
     pub fn from_bytes(bytes: &[u8; Self::BYTES]) -> CtOption<Self> {
-        G1Affine::from_compressed(&bytes).map(|p| Self(G1Projective::from(&p)))
+        G1Affine::from_compressed(bytes).map(|p| Self(G1Projective::from(&p)))
     }
 }
 

@@ -26,14 +26,14 @@ impl Verifier {
     ) -> bool {
         let mut res = [0u8; COMMITMENT_BYTES];
         let mut hasher = VarBlake2b::new(COMMITMENT_BYTES).unwrap();
-        proof.add_challenge_contribution(&public_key, revealed_msgs, challenge, &mut hasher);
+        proof.add_challenge_contribution(public_key, revealed_msgs, challenge, &mut hasher);
         hasher.update(&nonce.to_bytes()[..]);
         hasher.finalize_variable(|out| {
             res.copy_from_slice(out);
         });
         let v_challenge = Scalar::from_okm(&res);
 
-        proof.verify(revealed_msgs, &public_key) && challenge.0 == v_challenge
+        proof.verify(revealed_msgs, public_key) && challenge.0 == v_challenge
     }
 }
 

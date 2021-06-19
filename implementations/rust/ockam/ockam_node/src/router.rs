@@ -204,7 +204,7 @@ impl Router {
         self.external
             .get(&tt)
             .cloned()
-            .ok_or(Error::InternalIOFailure.into())
+            .ok_or_else(|| Error::InternalIOFailure.into())
     }
 
     /// Check if an address is already in-use by another worker
@@ -214,7 +214,7 @@ impl Router {
         reply: &Sender<NodeReplyResult>,
     ) -> Result<()> {
         if let Some(addr) = addrs.iter().fold(None, |acc, addr| {
-            match (acc, self.internal.contains_key(&addr)) {
+            match (acc, self.internal.contains_key(addr)) {
                 (None, true) => Some(addr.clone()),
                 (None, false) => None,
                 // If a collision was already found, ignore further collisions

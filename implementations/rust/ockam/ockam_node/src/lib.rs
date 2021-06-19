@@ -49,6 +49,6 @@ where
 {
     task::block_in_place(move || {
         let local = task::LocalSet::new();
-        local.block_on(&rt, f)
+        local.block_on(rt, f)
     })
 }

@@ -52,10 +52,7 @@ impl WorkerPair {
 
         // Create two workers based on the split TCP I/O streams
         let (rx, tx) = stream.into_split();
-        let sender = TcpSendWorker {
-            tx,
-            peer: peer.clone(),
-        };
+        let sender = TcpSendWorker { tx, peer };
         let receiver = TcpRecvWorker {
             rx,
             run: run.clone(),
@@ -79,9 +76,7 @@ impl WorkerPair {
         debug!("Starting worker connection to remote {}", peer);
 
         // TODO: make i/o errors into ockam_error
-        let stream = TcpStream::connect(peer.clone())
-            .await
-            .map_err(|e| TcpError::from(e))?;
+        let stream = TcpStream::connect(peer).await.map_err(TcpError::from)?;
         Self::with_stream(ctx, stream, peer).await
     }
 }

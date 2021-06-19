@@ -129,7 +129,7 @@ impl NodeReply {
     pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>, bool), Error> {
         match self {
             Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
-            _ => Err(Error::InternalIOFailure.into()),
+            _ => Err(Error::InternalIOFailure),
         }
     }
 
@@ -137,7 +137,7 @@ impl NodeReply {
     pub fn take_workers(self) -> Result<Vec<Address>, Error> {
         match self {
             Self::Workers(w) => Ok(w),
-            _ => Err(Error::InternalIOFailure.into()),
+            _ => Err(Error::InternalIOFailure),
         }
     }
 
@@ -145,7 +145,7 @@ impl NodeReply {
     pub fn is_ok(self) -> Result<(), Error> {
         match self {
             Self::Ok => Ok(()),
-            _ => Err(Error::InternalIOFailure.into()),
+            _ => Err(Error::InternalIOFailure),
         }
     }
 }

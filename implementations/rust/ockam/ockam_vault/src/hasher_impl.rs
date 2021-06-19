@@ -68,7 +68,7 @@ impl Hasher for SoftwareVault {
                 return Err(VaultError::InvalidHkdfOutputType.into());
             }
             let secret = &okm[index..index + length];
-            let secret = self.secret_import(&secret, attributes)?;
+            let secret = self.secret_import(secret, attributes)?;
 
             secrets.push(secret);
             index += 32;

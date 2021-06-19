@@ -47,7 +47,7 @@ impl Authentication {
         let proof: AuthenticationProof =
             serde_bare::from_slice(proof).map_err(|_| EntityError::BareError)?;
 
-        vault.verify(&proof.signature(), &responder_public_key, channel_state)
+        vault.verify(proof.signature(), responder_public_key, channel_state)
     }
 }
 
