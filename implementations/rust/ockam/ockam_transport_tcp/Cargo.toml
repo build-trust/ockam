@@ -27,7 +27,7 @@ ockam_core = { path = "../ockam_core", version = "0.16.0-dev"         }
 ockam_node = { path = "../ockam_node", version = "0.14.0-dev"         }
 serde_bare = "0.3.0"
 serde = {version = "1.0", features = ["derive"]}
-tokio = {version = "1.4.0", features = ["rt-multi-thread","sync","net","macros","time"]}
+tokio = {version = "1.7", features = ["rt-multi-thread","sync","net","macros","time"]}
 futures = " 0.3.10"
 async-trait = "0.1.42"
 rand = "0.7"
