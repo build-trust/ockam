@@ -1337,7 +1337,7 @@ checksum = "0f0242b8e50dd9accdd56170e94ca1ebd223b098eb9c83539a6e367d0f36ae68"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.8.0-dev"
+version = "0.8.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1358,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.6.0-dev"
+version = "0.6.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1374,7 +1374,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.8.0-dev"
+version = "0.8.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",

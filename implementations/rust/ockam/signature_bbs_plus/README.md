@@ -18,14 +18,14 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-signature_bbs_plus = "0.7.0"
+signature_bbs_plus = "0.8.0"
 ```
 
 ## Crate Features
 
 ```
 [dependencies]
-signature_bbs_plus = { version = "0.7.0"    , default-features = false }
+signature_bbs_plus = { version = "0.8.0"     , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

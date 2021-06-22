@@ -16,14 +16,14 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-signature_ps = "0.5.0"
+signature_ps = "0.6.0"
 ```
 
 ## Crate Features
 
 ```
 [dependencies]
-signature_ps = { version = "0.5.0"    , default-features = false }
+signature_ps = { version = "0.6.0"     , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
