@@ -36,4 +36,4 @@ tracing = "0.1.26"
 
 [dev-dependencies]
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.5.0"          }
-ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.7.0-dev"         }
+ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.7.0"         }
