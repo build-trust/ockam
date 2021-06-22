@@ -136,9 +136,9 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed00c67cb5d0a7d64a44f6ad2668db7e7530311dd53ea79bcd4fb022c64911c8"
+checksum = "66c99696f6c9dd7f35d486b9d04d7e6e202aa3e8c40d553f2fdf5e7e0c6a71ef"
 dependencies = [
  "libc",
 ]
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.14.0"
+version = "0.15.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -438,7 +438,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.10.0"
+version = "0.11.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -456,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.10.0"
+version = "0.11.0-dev"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -467,7 +467,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.7.0"
+version = "0.8.0-dev"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -485,7 +485,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.7.0"
+version = "0.8.0-dev"
 dependencies = [
  "quote",
  "syn",
@@ -493,7 +493,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.5.0"
+version = "0.6.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
