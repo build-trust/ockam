@@ -5,6 +5,18 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.11.0 - 2021-06-21
+### Added
+- Added LocalMessage for locally routed messages.
+### Changed
+- Renamed SecureChannelListener callback to `completed_callback_address`
+- TransportMessage constructor has been extended to use recent routing changes.
+- Dependencies updated.
+
+## v0.10.0 - 2021-06-14
+### Changed
+- Dependencies updated.
+
 ## v0.9.0 - 2021-05-30
 ### Added
 - Populate key exchange changes.
