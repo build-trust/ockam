@@ -23,16 +23,17 @@ tampering, and forgery.
 
 Ockam is a suite of programming libraries and infrastructure that make it
 simple for applications to dynamically create end-to-end encrypted, mutually
-authenticated, mutually authorized, lightweight secure channels that protect
+authenticated, granularly authorized, lightweight secure channels that protect
 messages, end-to-end — from their source to their destination.
 
 ## Features
 
 * End-to-end encrypted, mutually authenticated secure channels.
-* Key Lifecycle and Credential Exchange protocols.
-* Attribute-based Access Control with Credentials that support Selective Disclosure.
-* Add-Ons for a variety of transport protocols, hardware cryptography, and
-  enterprise integrations.
+* Identity profiles isolated by privacy contexts.
+* Key establishment, rotation, and revocation - for fleets, at scale.
+* Attribute-based Access Control - credentials with selective disclosure.
+* Add-Ons for a variety of operating environments, transport protocols,
+  hardware cryptography, and enterprise integrations.
 * Libraries for multiple languages - Rust, Elixir (more on the roadmap)
 
 <hr>
