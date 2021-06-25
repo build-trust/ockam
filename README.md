@@ -32,9 +32,8 @@ messages, end-to-end — from their source to their destination.
 * Identity profiles isolated by privacy contexts.
 * Key establishment, rotation, and revocation - for fleets, at scale.
 * Attribute-based Access Control - credentials with selective disclosure.
-* Add-Ons for a variety of operating environments, transport protocols,
-  hardware cryptography, and enterprise integrations.
-* Libraries for multiple languages - Rust, Elixir (more on the roadmap)
+* Add-Ons for a variety of operating environments, transport protocols, and cryptographic hardware.
+* Libraries for multiple languages - Rust, Elixir (more on the roadmap).
 
 <hr>
 
