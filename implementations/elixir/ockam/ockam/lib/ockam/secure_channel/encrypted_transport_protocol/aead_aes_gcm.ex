@@ -49,9 +49,10 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   defp encrypt(plaintext, %{encrypted_transport: state, vault: vault} = data) do
     %{h: h, decrypt: decrypt, encrypt: {k, n}} = state
 
-    with {:ok, ciphertext} <- Vault.aead_aes_gcm_encrypt(vault, k, n, h, plaintext) do
-      data = Map.put(data, :encrypted_transport, %{h: h, decrypt: decrypt, encrypt: {k, n + 1}})
-      {:ok, ciphertext, data}
+    with {:ok, ciphertext} <- Vault.aead_aes_gcm_encrypt(vault, k, n, h, plaintext),
+         {:ok, next_n} <- increment_nonce(n) do
+      data = Map.put(data, :encrypted_transport, %{h: h, decrypt: decrypt, encrypt: {k, next_n}})
+      {:ok, <<n::unsigned-big-integer-size(16)>> <> ciphertext, data}
     end
   end
 
@@ -73,12 +74,24 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     end
   end
 
-  defp decrypt(ciphertext, %{encrypted_transport: state, vault: vault} = data) do
-    %{h: h, decrypt: {k, n}, encrypt: encrypt} = state
+  defp decrypt(<<n::unsigned-big-integer-size(16), ciphertext::binary>>, data) do
+    %{encrypted_transport: state, vault: vault} = data
+    %{h: h, decrypt: {k, _expected_n}, encrypt: encrypt} = state
 
-    with {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, h, ciphertext) do
-      data = Map.put(data, :encrypted_transport, %{h: h, decrypt: {k, n + 1}, encrypt: encrypt})
+    with {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, h, ciphertext),
+         {:ok, next_expected_n} <- increment_nonce(n) do
+      data =
+        Map.put(data, :encrypted_transport, %{
+          h: h,
+          decrypt: {k, next_expected_n},
+          encrypt: encrypt
+        })
+
       {:ok, plaintext, data}
     end
   end
+
+  # TODO: we can reuse a nonse, we must rotate keys
+  defp increment_nonce(65_535), do: {:error, nil}
+  defp increment_nonce(n), do: {:ok, n + 1}
 end
