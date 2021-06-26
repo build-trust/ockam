@@ -85,7 +85,7 @@ defmodule Ockam.SecureChannel.Tests do
     reply = %{payload: "hello", onward_route: ["test"], return_route: [c3, echoer]}
 
     Router.route(message)
-    assert_receive ^reply, 1000
+    assert_receive ^reply, 10_000
   end
 
   test "many times tunneled secure channel works" do
