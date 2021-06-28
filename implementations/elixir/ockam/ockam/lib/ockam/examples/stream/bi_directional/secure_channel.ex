@@ -43,8 +43,8 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
       # hub_ip: "13.64.73.230",
       hub_ip: "127.0.0.1",
       hub_port: 4000,
-      service_address: "stream_service",
-      index_address: "stream_index_service"
+      service_address: "stream",
+      index_address: "stream_index"
     }
   end
 
