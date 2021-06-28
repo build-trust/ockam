@@ -19,7 +19,7 @@ defmodule Ockam.Stream.Storage.Kafka do
   @spec init_stream(String.t(), integer(), options()) :: {:ok, state()} | {:error, any()}
   ## TODO: call this from stream service
   def init_stream(stream_name, partitions, options) do
-    Logger.info("Init stream #{inspect(stream_name)} #{partitions}")
+    Logger.debug("Init stream #{inspect(stream_name)} #{partitions}")
 
     topic = Kafka.topic(stream_name, options)
 

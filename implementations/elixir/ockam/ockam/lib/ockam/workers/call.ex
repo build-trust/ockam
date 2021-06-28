@@ -10,7 +10,7 @@ defmodule Ockam.Workers.Call do
 
   require Logger
 
-  def call(call, options \\ [], timeout \\ 10_000) do
+  def call(call, options \\ [], timeout \\ 20_000) do
     {:ok, address} = __MODULE__.create(Keyword.put(options, :call, call))
     GenServer.call(Ockam.Node.whereis(address), :fetch, timeout)
   end

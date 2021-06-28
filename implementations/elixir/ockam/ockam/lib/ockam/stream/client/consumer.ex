@@ -223,10 +223,18 @@ defmodule Ockam.Stream.Client.Consumer do
         max_index = messages |> Enum.max_by(fn %{index: index} -> index end) |> Map.get(:index)
         commit_index = max_index + 1
 
+        current_index = Map.get(state, :index)
+
         state = process_messages(messages, state)
 
-        save_index(commit_index, state)
-        consume(commit_index, state)
+        case commit_index > current_index do
+          true ->
+            save_index(commit_index, state)
+            consume(commit_index, state)
+
+          false ->
+            consume_after(@idle_timeout, state)
+        end
     end
   end
 

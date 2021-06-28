@@ -75,7 +75,7 @@ defmodule Ockam.Kafka do
     request_configs = request_configs(options)
     client_config = client_config(options)
 
-    Logger.info(
+    Logger.debug(
       "Create topics: #{inspect([endpoints, topic_configs, request_configs, client_config])}"
     )
 

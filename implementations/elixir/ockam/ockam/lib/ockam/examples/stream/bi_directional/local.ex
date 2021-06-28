@@ -33,8 +33,8 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
     %{
       hub_ip: "127.0.0.1",
       hub_port: 4000,
-      service_address: "stream_service",
-      index_address: "stream_index_service"
+      service_address: "stream",
+      index_address: "stream_index"
     }
   end
 
@@ -72,16 +72,17 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
 
     ## Create local publisher worker to forward to pong_topic and add metadata to
     ## messages to send responses to ping_topic
-    {:ok, address} = init_publisher("pong_topic", "ping_topic")
+    {:ok, address} = init_publisher("pong_topic", "ping_topic", "ping")
 
     ## Send a message THROUGH the local publisher to the remote worker
     send_message([address, "pong"])
   end
 
-  def init_publisher(publisher_stream, consumer_stream) do
+  def init_publisher(publisher_stream, consumer_stream, subscription_id) do
     BiDirectional.ensure_publisher(
       consumer_stream,
       publisher_stream,
+      subscription_id,
       stream_options()
     )
   end

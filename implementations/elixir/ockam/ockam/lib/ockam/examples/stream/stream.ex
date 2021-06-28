@@ -6,49 +6,57 @@ defmodule Ockam.Examples.Stream do
 
   require Logger
 
-  @tcp %Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+  def outline() do
+    Ockam.Examples.Stream.run()
 
-  def run_internal(name_prefix \\ "") do
-    workers =
-      create_workers([@tcp, "stream_service"], [@tcp, "stream_index_service"], name_prefix)
+    Ockam.Examples.Stream.route_message("I am another message")
 
-    route_message("HI!", name_prefix)
-    workers
+    Ockam.Examples.Stream.route_multiple_messages("messageNo", 100, 10)
   end
 
-  def run_kafka(name_prefix \\ "") do
-    stream_service = "stream_kafka_service"
-    index_service = "stream_kafka_index"
+  def run() do
+    init_res = init()
 
-    workers =
-      create_workers(
-        [@tcp, stream_service],
-        [@tcp, index_service],
-        name_prefix
-      )
+    route_message("Im a message")
 
-    route_message("HI!", name_prefix)
-    workers
+    init_res
   end
 
-  def create_workers(service_route, index_route, name_prefix \\ "") do
+  def stream_options() do
+    config = %{
+      hub_ip: "127.0.0.1",
+      hub_port: 4000,
+      service_address: "stream_kafka",
+      index_address: "stream_kafka_index",
+      stream_name: "my_client_stream"
+    }
+
+    {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
+    tcp_address = %Ockam.Transport.TCPAddress{ip: hub_ip_n, port: config.hub_port}
+
+    %{
+      service_route: [tcp_address, config.service_address],
+      index_route: [tcp_address, config.index_address],
+      stream_name: config.stream_name
+    }
+  end
+
+  def init() do
+    options = stream_options()
     ensure_tcp()
 
     Map.merge(
-      create_publisher(service_route, name_prefix),
-      create_consumer(service_route, index_route, name_prefix)
+      create_publisher(options.stream_name, options.service_route),
+      create_consumer(options.stream_name, options.service_route, options.index_route)
     )
   end
 
-  def create_consumer(service_route, index_route, name_prefix \\ "") do
-    {:ok, receiver_address} =
-      Ockam.Examples.Stream.Receiver.create(address: name_prefix <> "receiver")
-
-    stream_name = name_prefix <> "example_stream"
+  def create_consumer(stream_name, service_route, index_route) do
+    {:ok, receiver_address} = Ockam.Examples.Stream.Receiver.create(address: "receiver")
 
     {:ok, consumer_address} =
       Consumer.create(
-        address: name_prefix <> "consumer",
+        address: "consumer",
         service_route: service_route,
         index_route: index_route,
         stream_name: stream_name,
@@ -61,66 +69,40 @@ defmodule Ockam.Examples.Stream do
 
           :ok
         end,
-        partitions: 2
+        partitions: 1
       )
 
     %{receiver: receiver_address, consumer: consumer_address}
   end
 
-  def create_publisher(service_route, name_prefix \\ "") do
-    stream_name = name_prefix <> "example_stream"
-
+  def create_publisher(stream_name, service_route) do
     {:ok, publisher_address} =
       Publisher.create(
-        address: name_prefix <> "publisher",
+        address: "publisher",
         stream_name: stream_name,
         service_route: service_route,
-        partitions: 2
+        partitions: 1
       )
 
     %{publisher: publisher_address}
   end
 
-  def create_kafka_publisher(name_prefix \\ "") do
-    create_publisher([@tcp, "kafka_stream_service"], name_prefix)
-  end
-
-  def create_kafka_consumer(name_prefix \\ "") do
-    stream_service = "stream_kafka_service"
-    index_service = "stream_kafka_index"
-
-    create_consumer(
-      [@tcp, stream_service],
-      [@tcp, index_service],
-      name_prefix
-    )
-  end
-
-  ## Ockam.Examples.Stream.create_kafka_consumer("consumer_only_")
-  ## Ockam.Examples.Stream.create_kafka_publisher("publisher_only_")
-
-  ## Ockam.Examples.Stream.route_message("Im a message")
-
-  ## Ockam.Examples.Stream.route_multiple_messages("messageNo", 1000, 700, "publisher_only")
-
-  ## Ockam.Examples.Stream.route_multiple_messages("messageNo", 1000, 700)
-
-  def route_message(message, name_prefix \\ "") do
+  def route_message(message) do
     payload = Ockam.Protocol.encode_payload(Ockam.Protocol.Binary, :request, message)
 
     Ockam.Router.route(%{
-      onward_route: [name_prefix <> "publisher"],
+      onward_route: ["publisher"],
       return_route: [],
       payload: payload
     })
   end
 
-  def route_multiple_messages(prefix, num, delay \\ 0, name_prefix \\ "") do
+  def route_multiple_messages(prefix, num, delay \\ 0) do
     Enum.each(
       :lists.seq(1, num),
       fn n ->
         :timer.sleep(delay)
-        route_message("#{prefix}_#{n}", name_prefix)
+        route_message("#{prefix}_#{n}")
       end
     )
   end

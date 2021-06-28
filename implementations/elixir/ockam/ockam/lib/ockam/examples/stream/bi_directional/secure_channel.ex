@@ -38,56 +38,82 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
   ## Ignore no local return for secure channel
   @dialyzer :no_return
 
-  def config(_n) do
+  def outline() do
+    ## On one node:
+    Ockam.Example.Stream.BiDirectional.SecureChannel.init_pong()
+
+    ## On another node:
+    Ockam.Example.Stream.BiDirectional.SecureChannel.run()
+  end
+
+  def config() do
     %{
-      # hub_ip: "13.64.73.230",
       hub_ip: "127.0.0.1",
       hub_port: 4000,
-      service_address: "stream",
-      index_address: "stream_index"
+      service_address: "stream_kafka",
+      index_address: "stream_kafka_index",
+      ping_stream: "ping_stream",
+      pong_stream: "pong_stream"
     }
   end
 
-  def main(args) do
-    n = String.to_integer(Enum.at(args, 0))
-    secure_channel_listener(n)
+  def init_pong() do
+    ensure_tcp(5000)
 
-    secure_channel(n)
-
-    receive do
-      :stop -> :ok
-    end
-  end
-
-  def secure_channel_listener(n \\ 0) do
-    ensure_tcp(5000 + n)
     ## PONG worker
     {:ok, "pong"} = Pong.create(address: "pong")
 
     create_secure_channel_listener()
 
+    config = config()
     ## Create a local subscription to forward pong_topic messages to local node
-    subscribe("sc_listener_topic_k_i#{n}", "pong#{n}", n)
+    subscribe(config.pong_stream, "pong")
   end
 
-  def secure_channel(n \\ 0) do
-    ensure_tcp(3000 + n)
+  def run() do
+    ensure_tcp(3000)
 
     ## PING worker
     Ping.create(address: "ping")
 
+    config = config()
     ## Subscribe to response topic
-    subscribe("sc_initiator_topic_k_i#{n}", "ping#{n}", n)
+    subscribe(config.ping_stream, "ping")
 
     ## Create local publisher worker to forward to pong_topic and add metadata to
     ## messages to send responses to ping_topic
-    {:ok, publisher} =
-      init_publisher("sc_listener_topic_k_i#{n}", "sc_initiator_topic_k_i#{n}", n)
+    {:ok, publisher} = init_publisher(config.pong_stream, config.ping_stream, "ping")
 
     {:ok, channel} = create_secure_channel([publisher, "SC_listener"])
 
     ## Send a message THROUGH the local publisher to the remote worker
     send_message([channel, "pong"], ["ping"], "0")
+  end
+
+  def init_publisher(publisher_stream, consumer_stream, subscription_id) do
+    BiDirectional.ensure_publisher(
+      consumer_stream,
+      publisher_stream,
+      subscription_id,
+      stream_options()
+    )
+  end
+
+  def subscribe(stream, subscription_id) do
+    ## Local subscribe
+    ## Create bidirectional subscription on local node
+    ## using stream service configuration from stream_options
+    {:ok, consumer} = BiDirectional.subscribe(stream, subscription_id, stream_options())
+
+    wait(fn ->
+      # Logger.info("Consumer: #{consumer} ready?")
+      ready = Ockam.Stream.Client.Consumer.ready?(consumer)
+      # Logger.info("#{ready}")
+      ready
+    end)
+
+    ## This is necessary to make sure we don't spawn publisher for each message
+    PublisherRegistry.start_link([])
   end
 
   defp create_secure_channel_listener() do
@@ -123,14 +149,6 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
     end
   end
 
-  def init_publisher(publisher_stream, consumer_stream, n) do
-    BiDirectional.ensure_publisher(
-      consumer_stream,
-      publisher_stream,
-      stream_options(n)
-    )
-  end
-
   def send_message(onward_route, return_route, payload) do
     msg = %{
       onward_route: onward_route,
@@ -145,25 +163,8 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
     Ockam.Transport.TCP.create_listener(port: port, route_outgoing: true)
   end
 
-  def subscribe(stream, subscription_id, n) do
-    ## Local subscribe
-    ## Create bidirectional subscription on local node
-    ## using stream service configuration from stream_options
-    {:ok, consumer} = BiDirectional.subscribe(stream, subscription_id, stream_options(n))
-
-    wait(fn ->
-      # Logger.info("Consumer: #{consumer} ready?")
-      ready = Ockam.Stream.Client.Consumer.ready?(consumer)
-      # Logger.info("#{ready}")
-      ready
-    end)
-
-    ## This is necessary to make sure we don't spawn publisher for each message
-    PublisherRegistry.start_link([])
-  end
-
-  def stream_options(n) do
-    config = config(n)
+  def stream_options() do
+    config = config()
 
     {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
     tcp_address = %Ockam.Transport.TCPAddress{ip: hub_ip_n, port: config.hub_port}

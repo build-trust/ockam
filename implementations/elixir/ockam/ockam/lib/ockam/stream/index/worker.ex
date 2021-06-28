@@ -27,6 +27,7 @@ defmodule Ockam.Stream.Index.Worker do
         {:ok, Map.put(state, :storage, {storage_mod, storage_state})}
 
       {:error, err} ->
+        Logger.error("Stream index setup error: #{inspect(err)}")
         {:error, err}
     end
   end
@@ -66,7 +67,7 @@ defmodule Ockam.Stream.Index.Worker do
   def handle_get(protocol, data, return_route, state) do
     %{client_id: client_id, stream_name: stream_name} = data
     partition = Map.get(data, :partition, 0)
-    Logger.info("get index #{inspect({client_id, stream_name})}")
+    Logger.debug("get index #{inspect({client_id, stream_name})}")
 
     case get_index(client_id, stream_name, partition, state) do
       {{:ok, index}, state} ->

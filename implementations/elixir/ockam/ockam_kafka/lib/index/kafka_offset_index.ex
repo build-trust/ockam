@@ -116,6 +116,7 @@ defmodule Ockam.Stream.Index.KafkaOffset do
     {:ok, coordinator} =
       case get_coordinator(consumer_id, state) do
         {:ok, coordinator} ->
+          ## TODO: only refresh coordinator on errors
           refresh_coordinator(coordinator, consumer_id, state)
 
         :error ->
@@ -135,18 +136,45 @@ defmodule Ockam.Stream.Index.KafkaOffset do
     client_config = Kafka.client_config(options)
     timeout = Keyword.get(client_config, :connect_timeout, 20_000)
 
-    {:ok, ep} = :kpro_connection.get_endpoint(coordinator)
+    case Process.alive?(coordinator) do
+      true ->
+        {:ok, {host, port}} = :kpro_connection.get_endpoint(coordinator)
 
-    case :kpro_brokers.discover_coordinator(coordinator, :group, consumer_id, timeout) do
-      {:ok, ^ep} ->
-        {:ok, coordinator}
+        str_host = to_string(host)
 
-      {:ok, _other} ->
+        case :kpro_brokers.discover_coordinator(coordinator, :group, consumer_id, timeout) do
+          {:ok, {^str_host, ^port}} ->
+            {:ok, coordinator}
+
+          {:ok, {discovered_host, ^port}} ->
+            str_discovered_host = to_string(discovered_host)
+
+            case str_host == str_discovered_host do
+              true ->
+                {:ok, coordinator}
+
+              false ->
+                cleanup_coordinator(coordinator)
+                connect_coordinator(consumer_id, state)
+            end
+
+          {:ok, _other} ->
+            cleanup_coordinator(coordinator)
+            connect_coordinator(consumer_id, state)
+
+          other ->
+            other
+        end
+
+      false ->
         connect_coordinator(consumer_id, state)
-
-      other ->
-        other
     end
+  end
+
+  def cleanup_coordinator(coordinator) do
+    res = :kpro.close_connection(coordinator)
+    Logger.debug("Cleanup coordinator #{inspect(res)}")
+    :ok
   end
 
   def connect_coordinator(consumer_id, state) do
@@ -156,7 +184,7 @@ defmodule Ockam.Stream.Index.KafkaOffset do
     timeout = Keyword.get(client_config, :connect_timeout, 20_000)
 
     args = %{type: :group, id: consumer_id, timeout: Keyword.get(options, :timeout, timeout)}
-    :kpro.connect_coordinator(endpoints, client_config, args)
+    :kpro.connect_coordinator(endpoints, [{:nolink, true} | client_config], args)
   end
 
   def update_coordinator(coordinator, consumer_id, state) do
