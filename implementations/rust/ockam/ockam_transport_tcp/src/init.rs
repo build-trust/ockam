@@ -93,7 +93,7 @@ impl WorkerPair {
 /// the peer the worker is meant to be connected to.
 pub async fn start_connection<P>(
     ctx: &Context,
-    router: &TcpRouterHandle<'_>,
+    router: &TcpRouterHandle,
     peer: P,
 ) -> Result<WorkerPair>
 where

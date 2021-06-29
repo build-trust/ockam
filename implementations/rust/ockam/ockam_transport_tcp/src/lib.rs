@@ -76,9 +76,9 @@ use std::net::SocketAddr;
 /// tcp.listen("127.0.0.1:9000").await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
-pub struct TcpTransport<'ctx> {
-    ctx: &'ctx Context,
-    router: TcpRouterHandle<'ctx>,
+pub struct TcpTransport {
+    ctx: Context,
+    router: TcpRouterHandle,
 }
 
 /// TCP address type constant
@@ -88,12 +88,22 @@ fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
     Ok(s.into().parse().map_err(|_| TcpError::InvalidAddress)?)
 }
 
-impl<'ctx> TcpTransport<'ctx> {
+impl TcpTransport {
     /// Create a new TCP transport and router for the current node
-    pub async fn create(ctx: &'ctx Context) -> Result<TcpTransport<'ctx>> {
-        let addr = Address::random(0);
-        let router = TcpRouter::register(ctx, addr.clone()).await?;
-        Ok(Self { ctx, router })
+    pub async fn create(ctx: &Context) -> Result<TcpTransport> {
+        let self_ctx_addr = Address::random(0);
+        let self_ctx = ctx.new_context(self_ctx_addr).await?;
+
+        let router_ctx_addr = Address::random(0);
+        let router_ctx = ctx.new_context(router_ctx_addr).await?;
+
+        let router_addr = Address::random(0);
+        let router = TcpRouter::register(router_ctx, router_addr.clone()).await?;
+
+        Ok(Self {
+            ctx: self_ctx,
+            router,
+        })
     }
 
     /// Establish an outgoing TCP connection on an existing transport
