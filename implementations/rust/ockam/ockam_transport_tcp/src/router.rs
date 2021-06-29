@@ -24,13 +24,13 @@ pub struct TcpRouter {
 /// A handle to connect to a TcpRouter
 ///
 /// Dropping this handle is harmless.
-pub struct TcpRouterHandle<'c> {
-    ctx: &'c Context,
+pub struct TcpRouterHandle {
+    ctx: Context,
     addr: Address,
     run: ArcBool,
 }
 
-impl<'c> TcpRouterHandle<'c> {
+impl TcpRouterHandle {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
         let accepts = format!("{}#{}", crate::TCP, pair.peer.clone()).into();
@@ -48,7 +48,7 @@ impl<'c> TcpRouterHandle<'c> {
     pub async fn bind<S: Into<SocketAddr>>(&self, addr: S) -> Result<()> {
         let socket_addr = addr.into();
         TcpListenWorker::start(
-            self.ctx,
+            &self.ctx,
             self.addr.clone(),
             socket_addr,
             Arc::clone(&self.run),
@@ -129,30 +129,9 @@ impl TcpRouter {
     ///
     /// To also handle incoming connections, use
     /// [`TcpRouter::bind`](TcpRouter::bind)
-    pub async fn register<'c>(ctx: &'c Context, addr: Address) -> Result<TcpRouterHandle<'c>> {
+    pub async fn register(ctx: Context, addr: Address) -> Result<TcpRouterHandle> {
         let run = atomic::new(true);
-        Self::start(ctx, &addr, Arc::clone(&run)).await?;
-        Ok(TcpRouterHandle { ctx, addr, run })
-    }
-
-    /// Register a new TCP router and bind a connection listener
-    ///
-    ///  Use this function when your node is the server part of your
-    /// connection architecture.  For clients that shouldn't listen
-    /// for connections themselves, use
-    /// [`TcpRouter::register`](TcpRouter::register).
-    #[deprecated(since = "0.4.0", note = "Use TcpRouterHandle.bind instead")]
-    pub async fn bind<'c, S: Into<SocketAddr>>(
-        ctx: &'c Context,
-        addr: Address,
-        socket_addr: S,
-    ) -> Result<TcpRouterHandle<'c>> {
-        let run = atomic::new(true);
-
-        // Bind and start the connection listen worker
-        TcpListenWorker::start(ctx, addr.clone(), socket_addr.into(), run.clone()).await?;
-
-        Self::start(ctx, &addr, Arc::clone(&run)).await?;
+        Self::start(&ctx, &addr, Arc::clone(&run)).await?;
         Ok(TcpRouterHandle { ctx, addr, run })
     }
 }
