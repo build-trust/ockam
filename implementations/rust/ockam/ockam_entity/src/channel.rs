@@ -1,6 +1,6 @@
-use crate::Identity;
+use crate::{Identity, ProfileIdentifier};
 use async_trait::async_trait;
-use ockam_core::{Address, Result, Route};
+use ockam_core::{Address, Message, Result, Route, Routed};
 use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
 
@@ -60,6 +60,19 @@ impl<P: Identity + Clone> SecureChannelTrait for P {
         let listener = ProfileChannelListener::new(trust_policy, self.clone(), vault);
         ctx.start_worker(address, listener).await
     }
+}
+
+// TODO: rename
+pub fn check_message_origin<T: Message>(
+    msg: &Routed<T>,
+    their_profile_id: &ProfileIdentifier,
+) -> Result<bool> {
+    let local_msg = msg.local_message();
+    let local_info = LocalInfo::decode(local_msg.local_info())?;
+
+    let res = local_info.their_profile_id() == their_profile_id;
+
+    Ok(res)
 }
 
 #[cfg(test)]
