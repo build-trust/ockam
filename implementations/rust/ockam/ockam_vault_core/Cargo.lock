@@ -114,9 +114,9 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7ee8a997d259962217f40279f34201fdf06e669bafa69d7c1f4c7ff1893b5f6"
+checksum = "e44a9fba8877c568fc30457f5639d0aa7f57e494e4cdbc464150740a66c6613a"
 dependencies = [
  "atomic-polyfill",
  "hash32",
@@ -152,7 +152,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.17.0-dev"
+version = "0.17.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "cfg-if",
  "heapless",

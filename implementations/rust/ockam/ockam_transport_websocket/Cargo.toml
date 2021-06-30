@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_websocket"
-version = "0.5.0-dev"
+version = "0.5.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -26,8 +26,8 @@ std = []
 [dependencies]
 futures-channel = "0.3.15"
 futures-util = { version = "0.3.15", default-features = false, features = ["tokio-io"] }
-ockam_core = { path = "../ockam_core", version = "0.17.0-dev"         }
-ockam_node = { path = "../ockam_node", version = "0.15.0-dev"         }
+ockam_core = { path = "../ockam_core", version = "0.17.0"          }
+ockam_node = { path = "../ockam_node", version = "0.15.0"          }
 serde_bare = "0.3.0"
 tokio = {version = "1.7", features = ["rt-multi-thread","sync","net","macros","time"]}
 tokio-tungstenite = "0.14.0"

@@ -277,9 +277,9 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7ee8a997d259962217f40279f34201fdf06e669bafa69d7c1f4c7ff1893b5f6"
+checksum = "e44a9fba8877c568fc30457f5639d0aa7f57e494e4cdbc464150740a66c6613a"
 dependencies = [
  "atomic-polyfill",
  "hash32",
@@ -341,7 +341,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.17.0-dev"
+version = "0.17.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -353,7 +353,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -385,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.8.0-dev"
+version = "0.8.0"
 dependencies = [
  "quote",
  "syn",
@@ -393,7 +393,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.6.0-dev"
+version = "0.6.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -413,9 +413,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "pin-project-lite"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc0e1f259c92177c30a4c9d177246edd0a3568b25756a977d0632cf8fa37e905"
+checksum = "8d31d11c69a6b52a174b42bdc0c30e5e11670f90788b2c471c31c1d17d449443"
 
 [[package]]
 name = "polyval"
@@ -612,9 +612,9 @@ dependencies = [
 
 [[package]]
 name = "signature"
-version = "1.3.0"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f0242b8e50dd9accdd56170e94ca1ebd223b098eb9c83539a6e367d0f36ae68"
+checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "stable_deref_trait"
