@@ -72,6 +72,7 @@ impl From<SecretAttributes> for FfiSecretAttributes {
             SecretType::Aes => 1,
             SecretType::Curve25519 => 2,
             SecretType::P256 => 3,
+            SecretType::Bls => 4,
         };
 
         let persistence = match attrs.persistence() {
@@ -92,6 +93,7 @@ impl TryFrom<FfiSecretAttributes> for SecretAttributes {
             1 => Ok(SecretType::Aes),
             2 => Ok(SecretType::Curve25519),
             3 => Ok(SecretType::P256),
+            4 => Ok(SecretType::Bls),
             _ => Err(FfiError::InvalidParam),
         }?;
 

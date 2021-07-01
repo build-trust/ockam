@@ -91,6 +91,8 @@ pub enum SecretType {
     Curve25519,
     /// P256 key
     P256,
+    /// BLS key
+    Bls,
 }
 
 /// Possible [`SecretKey`]'s persistence

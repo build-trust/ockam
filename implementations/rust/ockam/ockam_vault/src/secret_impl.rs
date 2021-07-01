@@ -1,21 +1,26 @@
 use crate::software_vault::{SoftwareVault, VaultEntry};
 use crate::VaultError;
 use arrayref::array_ref;
+use ockam_core::lib::convert::TryInto;
 use ockam_vault_core::{
     KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
     SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use rand::rngs::OsRng;
-use rand::RngCore;
+use rand::{thread_rng, RngCore};
+use signature_bls::PublicKey as BlsPublicKey;
+use signature_bls::SecretKey as BlsSecretKey;
 use zeroize::Zeroize;
 
 impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
     fn secret_generate(&mut self, attributes: SecretAttributes) -> ockam_core::Result<Secret> {
-        let mut rng = OsRng {};
+        let mut rng = thread_rng(); // FIXME
         let (key, key_id) = match attributes.stype() {
             SecretType::Curve25519 => {
-                let sk = x25519_dalek::StaticSecret::new(&mut rng);
+                // FIXME
+                let mut bytes = [0u8; 32];
+                rng.fill_bytes(&mut bytes);
+                let sk = x25519_dalek::StaticSecret::from(bytes);
                 let public = x25519_dalek::PublicKey::from(&sk);
                 let private = SecretKey::new(sk.to_bytes().to_vec());
                 let key_id = self
@@ -46,6 +51,15 @@ impl SecretVault for SoftwareVault {
             }
             SecretType::P256 => {
                 return Err(VaultError::InvalidKeyType.into());
+            }
+            SecretType::Bls => {
+                let bls_secret_key = BlsSecretKey::random(&mut rng).unwrap();
+                let public_key =
+                    PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
+                let key_id = self.compute_key_id_for_public_key(&public_key)?;
+                let private = SecretKey::new(bls_secret_key.to_bytes().to_vec());
+
+                (private, Some(key_id))
             }
         };
         self.next_id += 1;
@@ -99,7 +113,16 @@ impl SecretVault for SoftwareVault {
                 let pk = x25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec()))
             }
-            _ => Err(VaultError::InvalidKeyType.into()),
+            SecretType::Bls => {
+                let bls_secret_key =
+                    BlsSecretKey::from_bytes(&entry.key().as_ref().try_into().unwrap()).unwrap();
+                Ok(PublicKey::new(
+                    BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
+                ))
+            }
+            SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
+                Err(VaultError::InvalidKeyType.into())
+            }
         }
     }
 

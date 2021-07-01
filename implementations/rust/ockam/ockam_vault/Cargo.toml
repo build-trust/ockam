@@ -28,11 +28,12 @@ aes-gcm = "0.9"
 curve25519-dalek = "3.1"
 ed25519-dalek = "1.0"
 hkdf = "0.11"
-rand = "0.7"
+rand = "0.8"
 sha2 = "0.9"
-x25519-dalek = "1.0"
+x25519-dalek = "1.1"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 tracing = "0.1.26"
+signature_bls = {path = "../signature_bls", version = "0.6.0-dev"}
 
 [dev-dependencies]
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.5.0-dev"         }
