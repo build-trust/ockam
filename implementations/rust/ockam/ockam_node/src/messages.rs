@@ -1,6 +1,7 @@
+use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{error::Error, relay::RelayMessage};
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, AddressSet};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]

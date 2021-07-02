@@ -1,9 +1,10 @@
 use crate::relay::RelayMessage;
+use crate::tokio::runtime::Runtime;
+use crate::tokio::sync::mpsc::{channel, Sender};
 use crate::{relay, Context, Executor, Mailbox, NodeMessage};
+use ockam_core::compat::sync::Arc;
 use ockam_core::Address;
-use std::sync::Arc;
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{channel, Sender};
+#[cfg(feature = "std")]
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 /// A minimal worker implementation that does nothing
@@ -31,6 +32,7 @@ impl ockam_core::Worker for NullWorker {
 
 /// Start a node
 pub fn start_node() -> (Context, Executor) {
+    #[cfg(feature = "std")]
     setup_tracing();
 
     info!("Initializing ockam node");
@@ -52,6 +54,7 @@ pub fn start_node() -> (Context, Executor) {
 }
 
 /// Utility to setup tracing-subscriber from the environment
+#[cfg(feature = "std")]
 fn setup_tracing() {
     let filter = EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
         EnvFilter::default()

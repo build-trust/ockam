@@ -1,19 +1,41 @@
+#[cfg(feature = "no_std")]
+use ockam_node::interrupt::Mutex;
+#[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
+
 use tracing::debug;
 use zeroize::Zeroize;
 
 /// Vault inside Arc Mutex
+#[cfg(feature = "std")]
 pub struct VaultMutex<V>(Arc<Mutex<V>>);
+
+/// Vault inside Mutex RefCell Option (no_std)
+#[cfg(feature = "no_std")]
+pub struct VaultMutex<V>(Mutex<RefCell<Option<V>>>);
+#[cfg(feature = "no_std")]
+use core::cell::RefCell;
 
 impl<V> Clone for VaultMutex<V> {
     fn clone(&self) -> Self {
-        Self(self.0.clone())
+        #[cfg(feature = "std")]
+        return Self(self.0.clone());
+        #[cfg(feature = "no_std")]
+        return ockam_node::interrupt::free(|cs| {
+            let clone = self.0.borrow(cs).borrow_mut().clone();
+            Self(Mutex::new(RefCell::new(clone)))
+        });
     }
 }
 
 impl<V: Zeroize> Zeroize for VaultMutex<V> {
     fn zeroize(&mut self) {
-        self.0.lock().unwrap().zeroize()
+        #[cfg(feature = "std")]
+        return self.0.lock().unwrap().zeroize();
+        #[cfg(feature = "no_std")]
+        return ockam_node::interrupt::free(|cs| {
+            self.0.borrow(cs).borrow_mut().as_mut().unwrap().zeroize()
+        });
     }
 }
 
@@ -22,7 +44,10 @@ impl<V> VaultMutex<V> {
     pub fn create(vault: V) -> Self {
         debug!("Starting VaultMutex");
 
-        Self(Arc::new(Mutex::new(vault)))
+        #[cfg(feature = "std")]
+        return Self(Arc::new(Mutex::new(vault)));
+        #[cfg(feature = "no_std")]
+        return Self(Mutex::new(RefCell::new(Some(vault))));
     }
 }
 

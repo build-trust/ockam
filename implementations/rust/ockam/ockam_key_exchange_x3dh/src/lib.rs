@@ -1,9 +1,26 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use arrayref::array_ref;
-use ockam_core::hex::encode;
-use ockam_core::lib::convert::TryFrom;
+use core::convert::TryFrom;
+use ockam_core::{compat::vec::Vec, hex::encode};
 use ockam_vault_core::{
     AsymmetricVault, Hasher, PublicKey, SecretVault, Signer, SymmetricVault, Verifier,
 };
+
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate std;
+
+#[cfg(feature = "no_std")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate alloc;
 
 mod error;
 pub use error::*;
@@ -38,8 +55,8 @@ impl From<&[u8; 64]> for Signature {
     }
 }
 
-impl std::fmt::Debug for Signature {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Debug for Signature {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "Signature {{ {} }}", encode(self.0.as_ref()))
     }
 }

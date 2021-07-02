@@ -1,5 +1,5 @@
 use super::CredentialAttributeSchema;
-use ockam_core::lib::*;
+use core::fmt;
 
 use serde::{
     de::{Error as DError, SeqAccess, Visitor},

@@ -1,5 +1,5 @@
 //!
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     // TODO restore missing_docs,
     trivial_casts,

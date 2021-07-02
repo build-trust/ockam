@@ -4,7 +4,17 @@ use ockam_vault_core::{Hasher, Secret, SecretAttributes, SmallBuffer};
 
 impl<V: Hasher> Hasher for VaultMutex<V> {
     fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
-        self.0.lock().unwrap().sha256(data)
+        #[cfg(feature = "std")]
+        return self.0.lock().unwrap().sha256(data);
+        #[cfg(feature = "no_std")]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .sha256(data)
+        });
     }
 
     fn hkdf_sha256(
@@ -14,10 +24,21 @@ impl<V: Hasher> Hasher for VaultMutex<V> {
         ikm: Option<&Secret>,
         output_attributes: SmallBuffer<SecretAttributes>,
     ) -> Result<SmallBuffer<Secret>> {
-        self.0
+        #[cfg(feature = "std")]
+        return self
+            .0
             .lock()
             .unwrap()
-            .hkdf_sha256(salt, info, ikm, output_attributes)
+            .hkdf_sha256(salt, info, ikm, output_attributes);
+        #[cfg(feature = "no_std")]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .hkdf_sha256(salt, info, ikm, output_attributes)
+        });
     }
 }
 

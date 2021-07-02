@@ -17,5 +17,36 @@ exclude = [
     "LICENSE"
 ]
 
+[lib]
+# TODO not setting arm target breaks build, setting arm target breaks tests
+test = false
+
+[features]
+default = ["no_std", "alloc"]
+cortexm = ["cortex-m"]
+riscv = []
+notests = []
+
+# Option (enabled by default): "std" enables functionality expected to
+# be available on a standard platform.
+std = ["tokio"]
+
+# Option: "no_std" enables functionality required for platforms without the
+# standard library.
+no_std = ["cortexm", "async-embedded", "panic-udf"]
+
+# Option: "alloc" enables support for heap allocation on "no_std" platforms,
+# requires nightly.
+alloc = ["ockam_core/alloc"]
+
 [dependencies]
-executor = "0.7.0"
+async-embedded = { git = "https://github.com/antoinevg/async-on-embedded.git", branch = "antoinevg/alloc", optional = true }
+cortex-m = { version = "0.7.2", optional = true }
+futures = { version = "0.3.15", default-features = false, features = [ "alloc", "async-await" ] }
+heapless = { version = "0.7", features = [ "mpmc_large", "cas" ] }
+ockam_core = { path = "../ockam_core", default-features = false, features = ["no_std"] }
+panic-udf      = { git = "https://github.com/antoinevg/async-on-embedded.git", branch = "antoinevg/alloc", optional = true }
+pin-project-lite = "0.2.6"
+
+# only used for running tests on std
+tokio = { version = "1.6.0", features = ["full", "test-util"], optional = true }

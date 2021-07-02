@@ -8,10 +8,21 @@ impl<V: AsymmetricVault> AsymmetricVault for VaultMutex<V> {
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        self.0
+        #[cfg(feature = "std")]
+        return self
+            .0
             .lock()
             .unwrap()
-            .ec_diffie_hellman(context, peer_public_key)
+            .ec_diffie_hellman(context, peer_public_key);
+        #[cfg(feature = "no_std")]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .ec_diffie_hellman(context, peer_public_key)
+        });
     }
 }
 

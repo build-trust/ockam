@@ -2,7 +2,7 @@
 //! as described in <https://eprint.iacr.org/2015/525.pdf>
 //! and <https://eprint.iacr.org/2017/1197.pdf>
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     missing_docs,
     trivial_casts,

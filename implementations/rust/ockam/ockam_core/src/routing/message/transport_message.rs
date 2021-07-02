@@ -1,10 +1,5 @@
-use crate::{
-    lib::{
-        fmt::{self, Display, Formatter},
-        Vec,
-    },
-    Route,
-};
+use crate::{compat::vec::Vec, Route};
+use core::fmt::{self, Display, Formatter};
 use serde::{Deserialize, Serialize};
 
 /// A generic transport message

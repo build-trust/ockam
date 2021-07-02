@@ -3,6 +3,7 @@
 //! This crate contains one of the possible implementation of the vault traits
 //! which you can use with Ockam library.
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     missing_docs,
     trivial_casts,
@@ -12,6 +13,19 @@
     unused_qualifications,
     warnings
 )]
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
+#[cfg(feature = "no_std")]
+#[macro_use]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate alloc;
 
 pub extern crate ockam_vault_core;
 

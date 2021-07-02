@@ -1,10 +1,21 @@
 use crate::VaultMutex;
 use ockam_core::Result;
+//use ockam_vault::VaultError;
 use ockam_vault_core::{Secret, Signer};
 
 impl<V: Signer> Signer for VaultMutex<V> {
     fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<[u8; 64]> {
-        self.0.lock().unwrap().sign(secret_key, data)
+        #[cfg(feature = "std")]
+        return self.0.lock().unwrap().sign(secret_key, data);
+        #[cfg(feature = "no_std")]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .sign(secret_key, data)
+        });
     }
 }
 

@@ -1,5 +1,9 @@
 use crate::state::State;
 use crate::{XXError, XXVault};
+use ockam_core::compat::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::Result;
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 

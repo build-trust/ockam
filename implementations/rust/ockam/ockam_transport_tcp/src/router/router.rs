@@ -4,7 +4,7 @@ use crate::{
     TcpError, TCP,
 };
 use async_trait::async_trait;
-use ockam_core::lib::Deref;
+use core::ops::Deref;
 use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
 use std::{collections::BTreeMap, sync::Arc};

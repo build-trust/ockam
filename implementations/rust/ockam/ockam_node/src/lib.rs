@@ -1,4 +1,6 @@
 //! ockam_node - Ockam Node API
+
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     missing_docs,
     dead_code,
@@ -9,8 +11,70 @@
     unused_qualifications
 )]
 
+#[cfg(all(feature = "std", feature = "alloc"))]
+compile_error!(r#"Cannot compile both features "std" and "alloc""#);
+
+#[cfg(all(feature = "no_std", not(feature = "alloc")))]
+compile_error!(r#"The "no_std" feature currently requires the "alloc" feature"#);
+
+#[cfg(feature = "no_std")]
+#[macro_use]
+extern crate core;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
+#[cfg(feature = "alloc")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
 #[macro_use]
 extern crate tracing;
+
+#[cfg(feature = "no_std")]
+pub use ockam_node_no_std::tokio;
+#[cfg(feature = "std")]
+pub use tokio;
+
+#[cfg(feature = "no_std")]
+pub use ockam_node_no_std::interrupt; // TODO replace with ockam_core::compat::sync::*
+
+#[cfg(feature = "no_std")]
+/// TODO replace with defmt
+#[macro_use]
+mod logging_no_std {
+    /// info!
+    #[macro_export]
+    macro_rules! info {
+        ($($arg:tt)*) => (
+            ockam_core::println!($($arg)*);
+        )
+    }
+    /// trace!
+    #[macro_export]
+    macro_rules! trace {
+        ($($arg:tt)*) => (
+            ockam_core::println!($($arg)*);
+        )
+    }
+    /// error!
+    #[macro_export]
+    macro_rules! error {
+        ($($arg:tt)*) => (
+            ockam_core::println!($($arg)*);
+        )
+    }
+    /// debug!
+    #[macro_export]
+    macro_rules! debug {
+        ($($arg:tt)*) => (
+            ockam_core::println!($($arg)*);
+        )
+    }
+}
 
 mod address_record;
 mod context;
@@ -32,8 +96,10 @@ pub use messages::*;
 
 pub use node::{start_node, NullWorker};
 
-use std::future::Future;
-use tokio::{runtime::Runtime, task};
+#[cfg(feature = "std")]
+use crate::tokio::{runtime::Runtime, task};
+#[cfg(feature = "std")]
+use core::future::Future;
 
 /// Execute a future without blocking the executor
 ///
@@ -45,6 +111,7 @@ use tokio::{runtime::Runtime, task};
 /// as an implementation utility for other ockam utilities that use
 /// tokio.
 #[doc(hidden)]
+#[cfg(feature = "std")]
 pub fn block_future<'r, F>(rt: &'r Runtime, f: F) -> <F as Future>::Output
 where
     F: Future + Send,
@@ -64,3 +131,6 @@ where
 {
     task::spawn(f);
 }
+
+#[cfg(feature = "no_std")]
+pub use crate::tokio::{block_future, execute};

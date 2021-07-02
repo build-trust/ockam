@@ -143,6 +143,7 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    #[cfg(feature = "std")]
     let output_function = quote! {
         #[inline(always)]
         #input_function
@@ -154,6 +155,21 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
             })
         }
     };
+
+    #[cfg(not(feature = "std"))]
+    let output_function = quote! {
+        #[inline(always)]
+        #input_function
+
+        fn main() -> ockam_core::Result<()> {
+            let (#ctx_ident, mut executor) = ockam_node::start_node();
+            executor.execute(async move {
+                #input_function_call
+            })
+        }
+        main().unwrap();
+    };
+
     // Create a token stream of the transformed output_function and return it.
     TokenStream::from(output_function)
 }

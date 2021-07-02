@@ -1,7 +1,7 @@
+use crate::tokio::sync::mpsc::Receiver;
 use crate::{relay::RelayMessage, Context};
+use core::fmt::{self, Debug, Display, Formatter};
 use ockam_core::{Address, LocalMessage, Message, Routed};
-use std::fmt::{self, Debug, Display, Formatter};
-use tokio::sync::mpsc::Receiver;
 
 /// A mailbox for encoded messages
 ///
@@ -68,7 +68,7 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     }
 }
 
-impl<'ctx, M: Message> std::ops::Deref for Cancel<'ctx, M> {
+impl<'ctx, M: Message> core::ops::Deref for Cancel<'ctx, M> {
     type Target = M;
 
     fn deref(&self) -> &Self::Target {

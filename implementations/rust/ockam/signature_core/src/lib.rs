@@ -1,6 +1,6 @@
 //! A crate for common methods used by short group signatures
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     trivial_casts,
     trivial_numeric_casts,

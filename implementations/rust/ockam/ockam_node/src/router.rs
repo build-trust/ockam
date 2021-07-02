@@ -1,9 +1,9 @@
+use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
     error::Error, relay::RelayMessage, AddressRecord, NodeMessage, NodeReply, NodeReplyResult,
 };
+use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, AddressSet, Result};
-use std::collections::BTreeMap;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// A combined address type and local worker router
 ///
@@ -130,6 +130,13 @@ impl Router {
         let address_record = AddressRecord::new(addrs.clone(), sender);
 
         self.internal.insert(primary_addr.clone(), address_record);
+
+        /* TODO #[cfg(feature = "std")]
+        if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
+            trace!("{:#?}", self.internal);
+        }
+        #[cfg(feature = "dump_internals")]
+        trace!("{:#?}", self.internal);*/
 
         addrs.iter().for_each(|addr| {
             self.addr_map.insert(addr.clone(), primary_addr.clone());

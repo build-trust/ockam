@@ -33,7 +33,7 @@ mod transport;
 pub use error::*;
 pub use transport::*;
 
-use ockam_core::lib::net::SocketAddr;
+use ockam_core::compat::net::SocketAddr;
 use ockam_core::Result;
 
 /// TCP address type constant

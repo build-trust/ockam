@@ -1,4 +1,4 @@
-use crate::lib::Vec;
+use crate::compat::vec::Vec;
 use crate::{Address, LocalMessage};
 use serde::{Deserialize, Serialize};
 

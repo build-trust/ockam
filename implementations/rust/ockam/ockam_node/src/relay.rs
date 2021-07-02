@@ -15,13 +15,14 @@
 //! The `Relay` is then responsible for turning the message back into
 //! a type and notifying the companion actor.
 
+use crate::tokio::runtime::Runtime;
+use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{parser, Context};
+use core::marker::PhantomData;
+use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     Address, LocalMessage, Message, Result, Route, Routed, RouterMessage, TransportMessage, Worker,
 };
-use std::{marker::PhantomData, sync::Arc};
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// A message addressed to a relay
 #[derive(Clone, Debug)]

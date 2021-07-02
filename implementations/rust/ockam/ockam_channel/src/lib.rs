@@ -5,6 +5,7 @@
 //! Ockam library.
 //!
 //! The main Ockam crate re-exports types defined in this crate.
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(
     missing_docs,
     trivial_casts,
@@ -14,6 +15,22 @@
     unused_qualifications,
     warnings
 )]
+
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate std;
+
+#[cfg(feature = "no_std")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate alloc;
+
 mod error;
 mod local_info;
 mod secure_channel;
@@ -31,6 +48,7 @@ pub use traits::*;
 #[cfg(test)]
 mod tests {
     use crate::SecureChannel;
+    use ockam_core::compat::string::{String, ToString};
     use ockam_core::Route;
     use ockam_key_exchange_core::NewKeyExchanger;
     use ockam_key_exchange_xx::XXNewKeyExchanger;

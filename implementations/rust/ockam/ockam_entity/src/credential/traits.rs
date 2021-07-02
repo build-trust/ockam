@@ -4,9 +4,8 @@ use crate::{
     EntityIdentifier, OfferId, PresentationManifest, ProfileIdentifier, ProofBytes, ProofRequestId,
     SigningPublicKey, TrustPolicy,
 };
-use ockam_core::lib::convert::TryFrom;
-use ockam_core::lib::fmt::Formatter;
-use ockam_core::lib::Display;
+use core::convert::TryFrom;
+use core::fmt::{Display, Formatter};
 use ockam_core::{hex, Address, Error, Result, Route};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;

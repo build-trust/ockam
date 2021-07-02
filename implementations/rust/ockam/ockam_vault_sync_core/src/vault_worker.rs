@@ -1,10 +1,10 @@
 use async_trait::async_trait;
+use ockam_core::compat::{boxed::Box, rand::random};
 use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
 use ockam_node::Context;
 use ockam_vault_core::{
     AsymmetricVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
-use rand::random;
 use zeroize::Zeroize;
 
 /// Super-trait of traits required for a Vault Worker.

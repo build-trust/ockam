@@ -9,6 +9,16 @@ impl<V: Verifier> Verifier for VaultMutex<V> {
         public_key: &PublicKey,
         data: &[u8],
     ) -> Result<bool> {
-        self.0.lock().unwrap().verify(signature, public_key, data)
+        #[cfg(feature = "std")]
+        return self.0.lock().unwrap().verify(signature, public_key, data);
+        #[cfg(feature = "no_std")]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .verify(signature, public_key, data)
+        });
     }
 }
