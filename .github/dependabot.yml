@@ -18,13 +18,20 @@ updates:
     schedule:
       interval: "daily"
 
-  # Maintain dependencies for elixir ockam_node_web application
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_node_web"
+    directory: "/implementations/elixir/ockam/ockam_kafka"
     commit-message:
       prefix: "build:"
     schedule:
       interval: "daily"
+
+  # Maintain dependencies for elixir ockam_node_web application
+  # - package-ecosystem: "mix"
+  #   directory: "/implementations/elixir/ockam/ockam_node_web"
+  #   commit-message:
+  #     prefix: "build:"
+  #   schedule:
+  #     interval: "daily"
 
   # Maintain dependencies for elixir ockam_vault_software application
   - package-ecosystem: "mix"
