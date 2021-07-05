@@ -26,6 +26,10 @@ defmodule Ockam.Hub do
     # Add a TCP listener on port 4000
     Transport.TCP.create_listener(port: tcp_transport_port)
 
+    udp_transport_port = Application.get_env(:ockam_hub, :udp_transport_port)
+
+    Transport.UDP.create_listener(port: udp_transport_port, route_outgoing: true)
+
     ## Start all configured services
     Ockam.Hub.Service.Provider.start_configured_services()
 

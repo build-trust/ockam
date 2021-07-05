@@ -86,6 +86,7 @@ config :ockam_hub,
   node_ip: node_ip,
   node_fqdn: node_fqdn,
   tcp_transport_port: 4000,
+  udp_transport_port: 7000,
   web_port: 4001
 
 ## Kafka default config

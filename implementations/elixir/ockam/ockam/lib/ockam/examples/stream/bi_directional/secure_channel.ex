@@ -38,6 +38,12 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
   ## Ignore no local return for secure channel
   @dialyzer :no_return
 
+  def simple_ping_pong() do
+    {:ok, "pong"} = Pong.create(address: "pong")
+    {:ok, "ping"} = Ping.create(address: "ping")
+    send_message(["pong"], ["ping"], "0")
+  end
+
   def outline() do
     ## On one node:
     Ockam.Example.Stream.BiDirectional.SecureChannel.init_pong()
@@ -50,6 +56,7 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
     %{
       hub_ip: "127.0.0.1",
       hub_port: 4000,
+      hub_port_udp: 7000,
       service_address: "stream_kafka",
       index_address: "stream_kafka_index",
       ping_stream: "ping_stream",
@@ -67,22 +74,22 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
 
     config = config()
     ## Create a local subscription to forward pong_topic messages to local node
-    subscribe(config.pong_stream, "pong")
+    subscribe(config.pong_stream, "pong", :tcp)
   end
 
   def run() do
     ensure_tcp(3000)
 
     ## PING worker
-    Ping.create(address: "ping")
+    {:ok, "ping"} = Ping.create(address: "ping")
 
     config = config()
     ## Subscribe to response topic
-    subscribe(config.ping_stream, "ping")
+    subscribe(config.ping_stream, "ping", :tcp)
 
     ## Create local publisher worker to forward to pong_topic and add metadata to
     ## messages to send responses to ping_topic
-    {:ok, publisher} = init_publisher(config.pong_stream, config.ping_stream, "ping")
+    {:ok, publisher} = init_publisher(config.pong_stream, config.ping_stream, "ping", :tcp)
 
     {:ok, channel} = create_secure_channel([publisher, "SC_listener"])
 
@@ -90,20 +97,20 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
     send_message([channel, "pong"], ["ping"], "0")
   end
 
-  def init_publisher(publisher_stream, consumer_stream, subscription_id) do
+  def init_publisher(publisher_stream, consumer_stream, subscription_id, protocol \\ :tcp) do
     BiDirectional.ensure_publisher(
       consumer_stream,
       publisher_stream,
       subscription_id,
-      stream_options()
+      stream_options(protocol)
     )
   end
 
-  def subscribe(stream, subscription_id) do
+  def subscribe(stream, subscription_id, protocol \\ :tcp) do
     ## Local subscribe
     ## Create bidirectional subscription on local node
     ## using stream service configuration from stream_options
-    {:ok, consumer} = BiDirectional.subscribe(stream, subscription_id, stream_options())
+    {:ok, consumer} = BiDirectional.subscribe(stream, subscription_id, stream_options(protocol))
 
     wait(fn ->
       # Logger.info("Consumer: #{consumer} ready?")
@@ -163,19 +170,27 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
     Ockam.Transport.TCP.create_listener(port: port, route_outgoing: true)
   end
 
-  def stream_options() do
+  def ensure_udp(port) do
+    Ockam.Transport.UDP.create_listener(port: port, route_outgoing: true)
+  end
+
+  def stream_options(protocol) do
     config = config()
 
     {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
     tcp_address = %Ockam.Transport.TCPAddress{ip: hub_ip_n, port: config.hub_port}
 
-    # {:ok, tcp_client} = Ockam.Transport.TCP.Client.create(destination: tcp_address)
+    udp_address = %Ockam.Transport.UDPAddress{ip: hub_ip_n, port: config.hub_port_udp}
 
-    # Logger.info("TCP client: #{inspect(tcp_client)}")
+    hub_address =
+      case protocol do
+        :tcp -> tcp_address
+        :udp -> udp_address
+      end
 
     [
-      service_route: [tcp_address, config.service_address],
-      index_route: [tcp_address, config.index_address],
+      service_route: [hub_address, config.service_address],
+      index_route: [hub_address, config.index_address],
       partitions: 1
     ]
   end
