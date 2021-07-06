@@ -62,9 +62,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cortex-m"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "643a210c1bdc23d0db511e2a576082f4ff4dcae9d0c37f50b431b8f8439d6d6b"
+checksum = "2ac919ef424449ec8c08d515590ce15d9262c0ca5f0da5b0c901e971a3b783b3"
 dependencies = [
  "bare-metal",
  "bitfield",
@@ -152,7 +152,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.18.0-dev"
+version = "0.18.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.12.0-dev"
+version = "0.12.0"
 dependencies = [
  "cfg-if",
  "heapless",

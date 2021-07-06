@@ -100,9 +100,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cortex-m"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "643a210c1bdc23d0db511e2a576082f4ff4dcae9d0c37f50b431b8f8439d6d6b"
+checksum = "2ac919ef424449ec8c08d515590ce15d9262c0ca5f0da5b0c901e971a3b783b3"
 dependencies = [
  "bare-metal",
  "bitfield",
@@ -475,7 +475,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.10.0-dev"
+version = "0.10.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -498,7 +498,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.8.0-dev"
+version = "0.8.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -514,7 +514,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.10.0-dev"
+version = "0.10.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
