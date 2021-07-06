@@ -29,6 +29,6 @@ futures-util = { version = "0.3.15", default-features = false, features = ["toki
 ockam_core = { path = "../ockam_core", version = "0.18.0-dev"           }
 ockam_node = { path = "../ockam_node", version = "0.16.0-dev"           }
 serde_bare = "0.3.0"
-tokio = {version = "1.7", features = ["rt-multi-thread","sync","net","macros","time"]}
+tokio = {version = "1.8", features = ["rt-multi-thread","sync","net","macros","time"]}
 tokio-tungstenite = "0.14.0"
 tracing = "0.1"
