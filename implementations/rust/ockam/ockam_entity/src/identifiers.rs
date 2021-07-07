@@ -1,5 +1,6 @@
 use crate::profile::Profile;
 use ockam_core::hex::encode;
+use ockam_core::Result;
 use ockam_vault_core::{Hasher, KeyId};
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +17,10 @@ impl ProfileIdentifier {
     /// Human-readable form of the id
     pub fn to_external(&self) -> String {
         format!("P_ID.{}", &self.0)
+    }
+    pub fn from_external(str: &str) -> Result<Self> {
+        let str = str.strip_prefix("P_ID.").unwrap(); // FIXME
+        Ok(Self::from(str))
     }
 
     /// Return the wrapped KeyId
