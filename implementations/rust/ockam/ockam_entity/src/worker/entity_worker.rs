@@ -1,14 +1,14 @@
 use crate::{
     CredentialHolder, CredentialIssuer, CredentialProof, CredentialPublicKey,
-    CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed, Identity,
-    IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact, NoOpTrustPolicy,
-    ProfileIdentifier, ProfileState, SecureChannelTrait,
+    CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed, Handle,
+    Identity, IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact,
+    NoOpTrustPolicy, Profile, ProfileIdentifier, ProfileState, SecureChannelTrait,
 };
 
 use async_trait::async_trait;
 use ockam_core::{
     lib::{result::Result::Ok, HashMap},
-    Result, Routed, Worker,
+    Address, Result, Routed, Worker,
 };
 use ockam_node::Context;
 use ockam_vault_sync_core::{Vault, VaultSync};
@@ -69,17 +69,31 @@ impl Worker for EntityWorker {
             RotateKey(profile_id) => {
                 let profile = self.profile(&profile_id);
 
-                Identity::rotate_key(profile)
+                Identity::rotate_profile_key(profile)
             }
-            GetPublicKey(profile_id) => {
-                if let Ok(public_key) = self.profile(&profile_id).get_public_key() {
+            GetProfilePublicKey(profile_id) => {
+                if let Ok(public_key) = self.profile(&profile_id).get_profile_public_key() {
+                    ctx.send(reply, Res::GetProfilePublicKey(public_key)).await
+                } else {
+                    err()
+                }
+            }
+            GetProfileSecretKey(profile_id) => {
+                if let Ok(secret) = self.profile(&profile_id).get_profile_secret_key() {
+                    ctx.send(reply, Res::GetProfileSecretKey(secret)).await
+                } else {
+                    err()
+                }
+            }
+            GetPublicKey(profile_id, label) => {
+                if let Ok(public_key) = self.profile(&profile_id).get_public_key(label) {
                     ctx.send(reply, Res::GetPublicKey(public_key)).await
                 } else {
                     err()
                 }
             }
-            GetSecretKey(profile_id) => {
-                if let Ok(secret) = self.profile(&profile_id).get_secret_key() {
+            GetSecretKey(profile_id, label) => {
+                if let Ok(secret) = self.profile(&profile_id).get_secret_key(label) {
                     ctx.send(reply, Res::GetSecretKey(secret)).await
                 } else {
                     err()
@@ -193,7 +207,7 @@ impl Worker for EntityWorker {
                 }
             }
             GetIssuerPublicKey(profile_id) => {
-                if let Ok(public_key) = self.profile(&profile_id).get_issuer_public_key() {
+                if let Ok(public_key) = self.profile(&profile_id).get_signing_public_key() {
                     ctx.send(
                         reply,
                         Res::GetIssuerPublicKey(CredentialPublicKey(public_key)),

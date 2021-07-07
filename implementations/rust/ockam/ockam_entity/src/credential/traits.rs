@@ -8,7 +8,6 @@ use ockam_core::Result;
 /// Credential Issuer
 pub trait CredentialIssuer {
     /// Return the signing key associated with this CredentialIssuer
-    fn get_signing_key(&mut self) -> Result<SigningKey>;
 
     /// Return the public key
     fn get_issuer_public_key(&mut self) -> Result<SigningPublicKey>;

@@ -6,34 +6,31 @@ use crate::change_history::ProfileChangeHistory;
 use crate::{
     authentication::Authentication,
     profile::Profile,
-    AuthenticationProof, Changes, Contact, Contacts, Credential, CredentialAttribute,
-    CredentialAttributeType, CredentialError, CredentialFragment1, CredentialFragment2,
-    CredentialHolder, CredentialIssuer, CredentialOffer, CredentialPresentation, CredentialRequest,
-    CredentialSchema, CredentialVerifier, EntityError,
+    AuthenticationProof, BlsPublicKey, BlsSecretKey, Changes, Contact, Contacts, Credential,
+    CredentialAttribute, CredentialAttributeType, CredentialError, CredentialFragment1,
+    CredentialFragment2, CredentialHolder, CredentialIssuer, CredentialOffer,
+    CredentialPresentation, CredentialRequest, CredentialSchema, CredentialVerifier, EntityError,
     EntityError::{ContactVerificationFailed, InvalidInternalState},
     EventIdentifier, ExtPokSignatureProof, Identity, KeyAttributes, MetaKeyAttributes, OfferId,
     PresentationManifest, ProfileChangeEvent, ProfileEventAttributes, ProfileIdentifier,
-    ProfileVault, ProofBytes, ProofRequestId, SigningKey, SigningPublicKey,
+    ProfileVault, ProofBytes, ProofRequestId, SigningPublicKey,
 };
+use ockam_core::lib::convert::TryInto;
 use ockam_core::lib::{HashMap, HashSet};
-use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
+use ockam_vault_core::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
 use rand::{thread_rng, CryptoRng, RngCore};
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
 use signature_bbs_plus::{Issuer as BbsIssuer, PokSignatureProof, Prover};
-use signature_bbs_plus::{MessageGenerators, ProofOfPossession, SecretKey as BbsSecretKey};
-use signature_bls::PublicKey as BlsPublicKey;
+use signature_bbs_plus::{MessageGenerators, ProofOfPossession};
 use signature_core::challenge::Challenge;
 use signature_core::lib::{HiddenMessage, Message, Nonce, ProofMessage};
 
 /// Profile implementation
-#[derive(Clone)]
 pub struct ProfileState {
     id: ProfileIdentifier,
     change_history: ProfileChangeHistory,
     contacts: Contacts,
     vault: VaultSync,
-    key_attribs: KeyAttributes,
-    signing_key: BbsSecretKey,
     rand_msg: Message,
 }
 
@@ -44,7 +41,6 @@ impl ProfileState {
         change_events: Changes,
         contacts: Contacts,
         vault: VaultSync,
-        key_attribs: KeyAttributes,
         rng: impl RngCore + CryptoRng + Clone,
     ) -> Self {
         Self {
@@ -52,8 +48,6 @@ impl ProfileState {
             change_history: ProfileChangeHistory::new(change_events),
             contacts,
             vault,
-            key_attribs,
-            signing_key: BbsSecretKey::random(rng.clone()).expect("bad random number generator"),
             rand_msg: Message::random(rng),
         }
     }
@@ -100,7 +94,6 @@ impl ProfileState {
             vec![create_key_event],
             Default::default(),
             vault,
-            key_attribs,
             thread_rng(),
         );
 
@@ -135,30 +128,44 @@ impl Identity for ProfileState {
     }
 
     fn create_key<S: Into<String>>(&mut self, label: S) -> Result<()> {
-        self.key_attribs =
-            KeyAttributes::with_attributes(label.into(), self.key_attribs.meta().clone());
+        let key_attribs = KeyAttributes::new(label.into());
 
-        let event = { self.create_key(self.key_attribs.clone(), ProfileEventAttributes::new())? };
+        let event = { self.create_key(key_attribs, ProfileEventAttributes::new())? };
         self.add_change(event)
     }
 
-    fn rotate_key(&mut self) -> Result<()> {
-        let event = { self.rotate_key(self.key_attribs.clone(), ProfileEventAttributes::new())? };
+    fn rotate_profile_key(&mut self) -> Result<()> {
+        let event = {
+            self.rotate_key(
+                KeyAttributes::new(Profile::PROFILE_UPDATE.to_string()),
+                ProfileEventAttributes::new(),
+            )?
+        };
         self.add_change(event)
     }
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
-    fn get_secret_key(&self) -> Result<Secret> {
-        let event = ProfileChangeHistory::find_last_key_event(
-            self.change_history().as_ref(),
-            &self.key_attribs,
-        )?
-        .clone();
-        Self::get_secret_key_from_event(&self.key_attribs, &event, &mut self.vault.clone())
+    fn get_profile_secret_key(&self) -> Result<Secret> {
+        self.get_secret_key(Profile::PROFILE_UPDATE)
     }
 
-    fn get_public_key(&self) -> Result<PublicKey> {
-        self.change_history.get_public_key(&self.key_attribs)
+    fn get_secret_key<S: Into<String>>(&self, label: S) -> Result<Secret> {
+        let key_attributes = KeyAttributes::new(label.into());
+        let event = ProfileChangeHistory::find_last_key_event(
+            self.change_history().as_ref(),
+            &key_attributes,
+        )?
+        .clone();
+        Self::get_secret_key_from_event(&key_attributes, &event, &mut self.vault.clone())
+    }
+
+    fn get_profile_public_key(&self) -> Result<PublicKey> {
+        self.get_public_key(Profile::PROFILE_UPDATE)
+    }
+
+    fn get_public_key<S: Into<String>>(&self, label: S) -> Result<PublicKey> {
+        self.change_history
+            .get_public_key(&KeyAttributes::new(label.into()))
     }
 
     /// Generate Proof of possession of [`Profile`].
@@ -277,12 +284,17 @@ impl Identity for ProfileState {
 }
 
 impl CredentialIssuer for ProfileState {
-    fn get_signing_key(&mut self) -> Result<SigningKey> {
-        Ok(self.signing_key.to_bytes())
+    fn get_signing_key(&mut self) -> Result<BlsSecretKey> {
+        let secret = self.get_secret_key(Profile::CREDENTIALS_ISSUE)?;
+        let secret = self.vault.secret_export(&secret)?;
+        let secret = BlsSecretKey::from_bytes(&secret.as_ref().try_into().unwrap()).unwrap();
+
+        Ok(secret)
     }
 
-    fn get_issuer_public_key(&mut self) -> Result<SigningPublicKey> {
-        let pk = BlsPublicKey::from(&self.signing_key);
+    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
+        // FIXME
+        let pk = BlsPublicKey::from(&self.get_signing_key()?);
         Ok(pk.to_bytes())
     }
 
@@ -294,7 +306,7 @@ impl CredentialIssuer for ProfileState {
     }
 
     fn create_proof_of_possession(&mut self) -> Result<ProofBytes> {
-        Ok(ProofOfPossession::new(&self.signing_key)
+        Ok(ProofOfPossession::new(&self.get_signing_key()?)
             .expect("bad signing key")
             .to_bytes())
     }
@@ -326,9 +338,9 @@ impl CredentialIssuer for ProfileState {
         }
 
         let generators =
-            MessageGenerators::from_secret_key(&self.signing_key, schema.attributes.len());
+            MessageGenerators::from_secret_key(&self.get_signing_key()?, schema.attributes.len());
 
-        let signature = BbsIssuer::sign(&self.signing_key, &generators, &messages)
+        let signature = BbsIssuer::sign(&self.get_signing_key()?, &generators, &messages)
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
         Ok(Credential {
             attributes: attributes.to_vec(),
@@ -380,11 +392,11 @@ impl CredentialIssuer for ProfileState {
         }
 
         let generators =
-            MessageGenerators::from_secret_key(&self.signing_key, schema.attributes.len());
+            MessageGenerators::from_secret_key(&self.get_signing_key()?, schema.attributes.len());
 
         let signature = BbsIssuer::blind_sign(
             &request.context.clone().into(),
-            &self.signing_key,
+            &self.get_signing_key()?,
             &generators,
             &messages,
             Nonce::from_bytes(&offer_id).unwrap(),
