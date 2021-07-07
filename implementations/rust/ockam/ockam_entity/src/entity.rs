@@ -1,15 +1,16 @@
+use crate::EntityError::IdentityApiFailed;
 use crate::{
     profile::Profile, traits::Verifier, worker::EntityWorker, AuthenticationProof, Changes,
     Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
-    CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityError::IdentityApiFailed,
-    Handle, Holder, Identity, IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId,
-    PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels,
-    SigningKey, SigningPublicKey,
+    CredentialRequest, CredentialRequestFragment, CredentialSchema, Handle, Holder, Identity,
+    IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId, PresentationManifest,
+    ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};
+use signature_bls::SecretKey;
 use IdentityRequest::*;
 use IdentityResponse as Res;
 
@@ -97,20 +98,36 @@ impl Identity for Entity {
         self.cast(CreateKey(self.id(), label.into()))
     }
 
-    fn rotate_key(&mut self) -> Result<()> {
+    fn rotate_profile_key(&mut self) -> Result<()> {
         self.cast(RotateKey(self.id()))
     }
 
-    fn get_secret_key(&self) -> Result<Secret> {
-        if let Res::GetSecretKey(secret) = self.call(GetSecretKey(self.id()))? {
+    fn get_profile_secret_key(&self) -> Result<Secret> {
+        if let Res::GetProfileSecretKey(secret) = self.call(GetProfileSecretKey(self.id()))? {
             Ok(secret)
         } else {
             err()
         }
     }
 
-    fn get_public_key(&self) -> Result<PublicKey> {
-        if let Res::GetPublicKey(public_key) = self.call(GetPublicKey(self.id()))? {
+    fn get_secret_key<S: Into<String>>(&self, label: S) -> Result<Secret> {
+        if let Res::GetSecretKey(secret) = self.call(GetSecretKey(self.id(), label.into()))? {
+            Ok(secret)
+        } else {
+            err()
+        }
+    }
+
+    fn get_profile_public_key(&self) -> Result<PublicKey> {
+        if let Res::GetProfilePublicKey(public_key) = self.call(GetProfilePublicKey(self.id()))? {
+            Ok(public_key)
+        } else {
+            err()
+        }
+    }
+
+    fn get_public_key<S: Into<String>>(&self, label: S) -> Result<PublicKey> {
+        if let Res::GetPublicKey(public_key) = self.call(GetPublicKey(self.id(), label.into()))? {
             Ok(public_key)
         } else {
             err()
@@ -247,7 +264,7 @@ impl SecureChannels for Entity {
 }
 
 impl Issuer for Entity {
-    fn get_signing_key(&self) -> Result<SigningKey> {
+    fn get_signing_key(&mut self) -> Result<SecretKey> {
         let profile = self.clone().current_profile().expect("no current profile");
         if let Res::GetSigningKey(signing_key) = profile.call(GetSigningKey(
             profile.identifier().expect("couldn't get profile id"),
@@ -258,7 +275,8 @@ impl Issuer for Entity {
         }
     }
 
-    fn get_issuer_public_key(&self) -> Result<SigningPublicKey> {
+    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
+        // FIXME: Why clone?
         let profile = self.clone().current_profile().expect("no current profile");
         if let Res::GetIssuerPublicKey(issuer_public_key) = profile.call(GetIssuerPublicKey(
             profile.identifier().expect("couldn't get profile id"),

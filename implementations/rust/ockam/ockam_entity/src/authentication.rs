@@ -113,8 +113,8 @@ mod test {
         let mut bob_chat = bob.create_profile()?;
 
         // Both profiles rotate keys.
-        alice_chat.rotate_key()?;
-        bob_chat.rotate_key()?;
+        alice_chat.rotate_profile_key()?;
+        bob_chat.rotate_profile_key()?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice_chat.as_contact()?;
@@ -169,8 +169,8 @@ mod test {
             return test_error("alice's proof was invalid");
         }
 
-        alice_chat.rotate_key()?;
-        bob_chat.rotate_key()?;
+        alice_chat.rotate_profile_key()?;
+        bob_chat.rotate_profile_key()?;
 
         let alice_contact = alice_chat.as_contact()?;
         let bob_contact = bob_chat.as_contact()?;

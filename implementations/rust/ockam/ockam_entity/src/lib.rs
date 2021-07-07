@@ -23,6 +23,7 @@ use ockam_channel::SecureChannelVault;
 use ockam_core::{lib::HashMap, Address, Message, Result};
 use ockam_node::{block_future, Context};
 use ockam_vault::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
+pub use profile::*;
 pub use profile_state::*;
 pub use traits::*;
 pub use worker::*;
@@ -130,6 +131,9 @@ pub type ProfileEventAttributes = HashMap<String, String>;
 /// Contacts Database
 pub type Contacts = HashMap<ProfileIdentifier, Contact>;
 
+pub use signature_bbs_plus::{PublicKey as BbsPublicKey, SecretKey as BbsSecretKey};
+pub use signature_bls::{PublicKey as BlsPublicKey, SecretKey as BlsSecretKey};
+
 pub struct ProfileSerializationUtil;
 
 impl ProfileSerializationUtil {
@@ -174,8 +178,8 @@ mod test {
             return test_error("verify_changes failed");
         }
 
-        let secret1 = profile.get_secret_key()?;
-        let public1 = profile.get_public_key()?;
+        let secret1 = profile.get_profile_secret_key()?;
+        let public1 = profile.get_profile_public_key()?;
 
         profile.create_key("Truck management")?;
 
@@ -183,8 +187,8 @@ mod test {
             return test_error("verify_changes failed");
         }
 
-        let secret2 = profile.get_secret_key()?;
-        let public2 = profile.get_public_key()?;
+        let secret2 = profile.get_secret_key("Truck management")?;
+        let public2 = profile.get_public_key("Truck management")?;
 
         if secret1 == secret2 {
             return test_error("secret did not change after create_key");
@@ -194,26 +198,26 @@ mod test {
             return test_error("public did not change after create_key");
         }
 
-        profile.rotate_key()?;
+        profile.rotate_profile_key()?;
 
         if !profile.verify_changes()? {
             return test_error("verify_changes failed");
         }
 
-        let secret3 = profile.get_secret_key()?;
-        let public3 = profile.get_public_key()?;
+        let secret3 = profile.get_profile_secret_key()?;
+        let public3 = profile.get_profile_public_key()?;
 
-        profile.rotate_key()?;
+        profile.rotate_profile_key()?;
 
         if !profile.verify_changes()? {
             return test_error("verify_changes failed");
         }
 
-        if secret2 == secret3 {
+        if secret1 == secret3 {
             return test_error("secret did not change after rotate_key");
         }
 
-        if public2 == public3 {
+        if public1 == public3 {
             return test_error("public did not change after rotate_key");
         }
 
@@ -227,7 +231,7 @@ mod test {
             return test_error("bob failed to add alice");
         }
 
-        alice.rotate_key()?;
+        alice.rotate_profile_key()?;
         let alice_changes = alice.get_changes()?;
         let last_change = alice_changes.last().unwrap().clone();
 
