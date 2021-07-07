@@ -481,3 +481,96 @@ impl Verifier for Entity {
         }
     }
 }
+
+impl CredentialProtocol for Entity {
+    fn start_credential_issuer_worker<A: Into<Address> + Send>(
+        &mut self,
+        address: A,
+        holder_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<()> {
+        block_future(&self.handle.ctx.runtime(), async move {
+            let address = address.into();
+            let worker = IssuerWorker::new(self.clone(), holder_id.clone(), schema);
+            self.handle.ctx.start_worker(address, worker).await?;
+
+            Ok(())
+        })
+    }
+
+    fn acquire_credential(
+        &mut self,
+        issuer_route: Route,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<EntityCredential> {
+        block_future(&self.handle.ctx.runtime(), async move {
+            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+
+            let worker = HolderWorker::new(
+                self.clone(),
+                issuer_id.clone(),
+                issuer_route,
+                schema,
+                ctx.address(),
+            );
+            ctx.start_worker(Address::random(0), worker).await?;
+
+            let credential = ctx
+                .receive_timeout::<EntityCredential>(120 /* FIXME */)
+                .await?
+                .take()
+                .body();
+
+            Ok(credential)
+        })
+    }
+
+    fn prove_credential(
+        &mut self,
+        worker_route: Route,
+        verifier_id: &ProfileIdentifier,
+        credential: EntityCredential,
+    ) -> Result<()> {
+        block_future(&self.handle.ctx.runtime(), async move {
+            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+            ctx.send(
+                worker_route,
+                CredentialProtocolMessage::PresentationOffer {},
+            )
+            .await?;
+
+            let request_id_msg = ctx
+                .receive_timeout::<CredentialProtocolMessage>(120)
+                .await?
+                .take();
+            check_message_origin(&request_id_msg, &verifier_id)?;
+            let route = request_id_msg.return_route();
+
+            let request_id;
+            if let CredentialProtocolMessage::PresentationRequest(r) = request_id_msg.body() {
+                request_id = r;
+            } else {
+                unimplemented!()
+            }
+
+            let manifest = PresentationManifest {
+                credential_schema: credential.schema,
+                public_key: credential.issuer_pubkey,
+                revealed: vec![1], // can_open_door
+            };
+
+            // Bob creates a Presentation from the manifest, his credentials, and this unique challenge instance.
+            let presentation =
+                self.present_credential(&credential.credential, &manifest, request_id)?;
+
+            ctx.send(
+                route,
+                CredentialProtocolMessage::PresentationResponse(presentation),
+            )
+            .await?;
+
+            Ok(())
+        })
+    }
+}

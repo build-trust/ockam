@@ -1,16 +1,21 @@
 use crate::{
-    Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
-    CredentialPresentation, CredentialRequest, CredentialSchema, OfferId, PresentationManifest,
-    ProofBytes, ProofRequestId, SigningKey, SigningPublicKey,
+    BlsSecretKey, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, OfferId,
+    PresentationManifest, ProfileIdentifier, ProofBytes, ProofRequestId, SigningPublicKey,
 };
-use ockam_core::Result;
+use ockam_core::{Address, Result, Route};
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
+
+big_array! { BigArray; }
 
 /// Credential Issuer
 pub trait CredentialIssuer {
     /// Return the signing key associated with this CredentialIssuer
+    fn get_signing_key(&mut self) -> Result<BlsSecretKey>;
 
     /// Return the public key
-    fn get_issuer_public_key(&mut self) -> Result<SigningPublicKey>;
+    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey>;
 
     /// Create a credential offer
     fn create_offer(&mut self, schema: &CredentialSchema) -> Result<CredentialOffer>;
@@ -87,4 +92,35 @@ pub trait CredentialVerifier {
         presentation_manifests: &[PresentationManifest],
         proof_request_id: ProofRequestId,
     ) -> Result<bool>;
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EntityCredential {
+    pub credential: Credential,
+    #[serde(with = "BigArray")]
+    pub issuer_pubkey: [u8; 96],
+    pub schema: CredentialSchema,
+}
+
+pub trait CredentialProtocol {
+    fn start_credential_issuer_worker<A: Into<Address> + Send>(
+        &mut self,
+        address: A,
+        holder_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<()>;
+
+    fn acquire_credential(
+        &mut self,
+        issuer_route: Route,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+    ) -> Result<EntityCredential>;
+
+    fn prove_credential(
+        &mut self,
+        worker_route: Route,
+        verifier_id: &ProfileIdentifier,
+        credential: EntityCredential,
+    ) -> Result<()>;
 }
