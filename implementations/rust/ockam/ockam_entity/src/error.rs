@@ -30,6 +30,7 @@ pub enum EntityError {
     InvalidSecureChannelInternalState,
     IdentityApiFailed,
     ContactVerificationFailed,
+    InvalidProfileId,
 }
 
 impl EntityError {
