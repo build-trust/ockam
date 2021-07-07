@@ -1,7 +1,7 @@
 use crate::{
-    AuthenticationProof, Changes, Contact, Credential, CredentialFragment2, CredentialOffer,
-    CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequestFragment,
-    ProfileIdentifier, ProofRequestId, SigningKey,
+    AuthenticationProof, BlsSecretKey, Changes, Contact, Credential, CredentialFragment2,
+    CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
+    CredentialRequestFragment, ProfileIdentifier, ProofRequestId,
 };
 use ockam_core::Address;
 use ockam_vault::{PublicKey, Secret};
@@ -18,6 +18,8 @@ pub enum IdentityResponse {
     CreateProfile(ProfileIdentifier),
     CreateAuthenticationProof(AuthenticationProof),
     GetPublicKey(PublicKey),
+    GetProfilePublicKey(PublicKey),
+    GetProfileSecretKey(Secret),
     GetSecretKey(Secret),
     GetChanges(Changes),
     Contacts(Vec<Contact>),
@@ -28,7 +30,7 @@ pub enum IdentityResponse {
     VerifyChanges(bool),
     VerifyAndAddContact(bool),
     CreateSecureChannel(Address),
-    GetSigningKey(SigningKey),
+    GetSigningKey(BlsSecretKey),
     GetIssuerPublicKey(CredentialPublicKey),
     CreateOffer(CredentialOffer),
     CreateProofOfPossession(CredentialProof),

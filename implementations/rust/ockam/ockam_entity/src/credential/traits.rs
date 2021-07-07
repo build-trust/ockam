@@ -1,17 +1,17 @@
 use crate::{
-    Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
-    CredentialPresentation, CredentialRequest, CredentialSchema, OfferId, PresentationManifest,
-    ProofBytes, ProofRequestId, SigningKey, SigningPublicKey,
+    BlsSecretKey, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, OfferId,
+    PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
 };
 use ockam_core::Result;
 
 /// Credential Issuer
 pub trait CredentialIssuer {
     /// Return the signing key associated with this CredentialIssuer
-    fn get_signing_key(&mut self) -> Result<SigningKey>;
+    fn get_signing_key(&mut self) -> Result<BlsSecretKey>;
 
     /// Return the public key
-    fn get_issuer_public_key(&mut self) -> Result<SigningPublicKey>;
+    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey>;
 
     /// Create a credential offer
     fn create_offer(&mut self, schema: &CredentialSchema) -> Result<CredentialOffer>;

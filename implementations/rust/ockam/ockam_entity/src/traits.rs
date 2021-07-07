@@ -3,10 +3,11 @@ use crate::{
     Changes, Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequestFragment,
     CredentialSchema, OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier,
-    ProofRequestId, SigningKey,
+    ProofRequestId,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_vault_core::{PublicKey, Secret};
+use signature_bls::SecretKey;
 
 pub type AuthenticationProof = Vec<u8>;
 
@@ -19,13 +20,19 @@ pub trait Identity: Send + 'static {
     fn create_key<S: Into<String>>(&mut self, label: S) -> Result<()>;
 
     /// Rotate existing key.
-    fn rotate_key(&mut self) -> Result<()>;
+    fn rotate_profile_key(&mut self) -> Result<()>;
 
     /// Get [`Secret`] key.
-    fn get_secret_key(&self) -> Result<Secret>;
+    fn get_profile_secret_key(&self) -> Result<Secret>;
+
+    /// Get [`Secret`] key.
+    fn get_secret_key<S: Into<String>>(&self, label: S) -> Result<Secret>;
 
     /// Get [`PublicKey`].
-    fn get_public_key(&self) -> Result<PublicKey>;
+    fn get_profile_public_key(&self) -> Result<PublicKey>;
+
+    /// Get [`PublicKey`].
+    fn get_public_key<S: Into<String>>(&self, label: S) -> Result<PublicKey>;
 
     /// Create an authentication proof based on the given state
     fn create_auth_proof<S: AsRef<[u8]>>(&mut self, state_slice: S) -> Result<AuthenticationProof>;
@@ -80,10 +87,10 @@ pub trait SecureChannels {
 /// Issuer API
 pub trait Issuer {
     /// Return the signing key associated with this CredentialIssuer
-    fn get_signing_key(&self) -> Result<SigningKey>;
+    fn get_signing_key(&mut self) -> Result<SecretKey>;
 
     /// Return the public key
-    fn get_issuer_public_key(&self) -> Result<SigningPublicKey>;
+    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey>;
 
     /// Create a credential offer
     fn create_offer(&self, schema: &CredentialSchema) -> Result<CredentialOffer>;
