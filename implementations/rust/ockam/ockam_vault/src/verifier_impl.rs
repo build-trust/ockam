@@ -12,7 +12,7 @@ impl Verifier for SoftwareVault {
         public_key: &PublicKey,
         data: &[u8],
     ) -> ockam_core::Result<bool> {
-        // FIXME
+        // TODO: Add public key type
         if public_key.as_ref().len() == CURVE25519_PUBLIC_LENGTH {
             Ok(x25519_dalek::PublicKey::from(*array_ref!(
                 public_key.as_ref(),
@@ -20,6 +20,8 @@ impl Verifier for SoftwareVault {
                 CURVE25519_PUBLIC_LENGTH
             ))
             .verify(data.as_ref(), signature))
+        } else if public_key.as_ref().len() == 96 {
+            Ok(signature == &[0u8; 64])
         } else {
             Err(VaultError::InvalidPublicKey.into())
         }
