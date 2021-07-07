@@ -1,4 +1,8 @@
-use crate::{Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, OfferId, PresentationManifest, ProofBytes, ProofRequestId, SigningKey, SigningPublicKey, BlsSecretKey};
+use crate::{
+    BlsSecretKey, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, OfferId,
+    PresentationManifest, ProofBytes, ProofRequestId, SigningKey, SigningPublicKey,
+};
 use ockam_core::Result;
 
 /// Credential Issuer

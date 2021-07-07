@@ -1,3 +1,4 @@
+use crate::EntityError::IdentityApiFailed;
 use crate::{
     check_message_origin, profile::Profile, traits::Verifier, worker::EntityWorker,
     AuthenticationProof, Changes, Contact, Credential, CredentialAttribute, CredentialFragment1,
@@ -13,7 +14,6 @@ use ockam_vault::ockam_vault_core::{PublicKey, Secret};
 use signature_bls::SecretKey;
 use IdentityRequest::*;
 use IdentityResponse as Res;
-use crate::EntityError::IdentityApiFailed;
 
 #[derive(Clone)]
 pub struct Entity {
@@ -245,10 +245,14 @@ impl Identity for Entity {
 impl SecureChannels for Entity {
     fn create_secure_channel_listener<A: Into<Address>>(&mut self, address: A) -> Result<()> {
         let profile = self.current_profile().expect("no current profile");
-        self.cast(CreateSecureChannelListener(
+        if let Res::CreateSecureChannelListener = self.call(CreateSecureChannelListener(
             profile.identifier().expect("couldn't get profile id"),
             address.into(),
-        ))
+        ))? {
+            Ok(())
+        } else {
+            err()
+        }
     }
 
     fn create_secure_channel<R: Into<Route> + Send>(&mut self, route: R) -> Result<Address> {
