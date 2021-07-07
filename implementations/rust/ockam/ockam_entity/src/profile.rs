@@ -23,10 +23,11 @@ use crate::{
     CredentialProof, CredentialPublicKey, CredentialRequest, CredentialRequestFragment,
     CredentialSchema, Entity, Handle, Holder, Identity, IdentityRequest, IdentityResponse, Issuer,
     OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
-    SecureChannels, SigningKey, SigningPublicKey,
+    SecureChannels, SigningPublicKey,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_vault::{PublicKey, Secret};
+use signature_bls::SecretKey;
 
 #[derive(Clone)]
 pub struct Profile {
@@ -79,16 +80,24 @@ impl Identity for Profile {
         self.entity().create_key(label)
     }
 
-    fn rotate_key(&mut self) -> Result<()> {
-        self.entity().rotate_key()
+    fn rotate_profile_key(&mut self) -> Result<()> {
+        self.entity().rotate_profile_key()
     }
 
-    fn get_secret_key(&self) -> Result<Secret> {
-        self.entity().get_secret_key()
+    fn get_profile_secret_key(&self) -> Result<Secret> {
+        self.entity().get_profile_secret_key()
     }
 
-    fn get_public_key(&self) -> Result<PublicKey> {
-        self.entity().get_public_key()
+    fn get_secret_key<S: Into<String>>(&self, label: S) -> Result<Secret> {
+        self.entity().get_secret_key(label)
+    }
+
+    fn get_profile_public_key(&self) -> Result<PublicKey> {
+        self.entity().get_profile_public_key()
+    }
+
+    fn get_public_key<S: Into<String>>(&self, label: S) -> Result<PublicKey> {
+        self.entity().get_public_key(label)
     }
 
     fn create_auth_proof<S: AsRef<[u8]>>(&mut self, state_slice: S) -> Result<AuthenticationProof> {
@@ -162,12 +171,12 @@ impl SecureChannels for Profile {
 }
 
 impl Issuer for Profile {
-    fn get_signing_key(&self) -> Result<SigningKey> {
+    fn get_signing_key(&mut self) -> Result<SecretKey> {
         self.entity().get_signing_key()
     }
 
-    fn get_issuer_public_key(&self) -> Result<SigningPublicKey> {
-        self.entity().get_issuer_public_key()
+    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
+        self.entity().get_signing_public_key()
     }
 
     fn create_offer(&self, schema: &CredentialSchema) -> Result<CredentialOffer> {

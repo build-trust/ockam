@@ -2,12 +2,14 @@ use crate::change_history::ProfileChangeHistory;
 use crate::profile::Profile;
 use crate::EntityError::InvalidInternalState;
 use crate::{
-    ChangeSet, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
-    ProfileState, Signature, SignatureType,
+    ChangeSet, EntityError, EventIdentifier, KeyAttributes, ProfileChange, ProfileChangeEvent,
+    ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileState, Signature,
+    SignatureType,
 };
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
-use ockam_vault_core::Secret;
+use ockam_vault_core::{
+    Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
+};
 use ockam_vault_sync_core::VaultSync;
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
@@ -80,9 +82,17 @@ impl ProfileState {
         root_key: Option<&Secret>,
         vault: &mut VaultSync,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        let secret_attributes = match key_attributes.meta() {
-            MetaKeyAttributes::SecretAttributes(secret_attributes) => *secret_attributes,
-            _ => panic!("missing secret key attributes"),
+        // FIXME
+        let is_bls = key_attributes.label() == Profile::CREDENTIALS_ISSUE;
+
+        let secret_attributes = if is_bls {
+            SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
+        } else {
+            SecretAttributes::new(
+                SecretType::Curve25519,
+                SecretPersistence::Persistent,
+                CURVE25519_SECRET_LENGTH,
+            )
         };
 
         let secret_key = vault.secret_generate(secret_attributes)?;
