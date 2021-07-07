@@ -149,27 +149,41 @@ impl Worker for EntityWorker {
                 ctx.send(reply, Res::GetContact(message)).await
             }
             CreateSecureChannelListener(profile_id, address) => {
-                let profile = self.profile(&profile_id);
+                let vault_address = self.profile(&profile_id).vault().address();
+                let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
+                let profile = Profile::new(profile_id, handle);
                 SecureChannelTrait::create_secure_channel_listener_async(
                     profile,
                     &ctx,
                     address,
                     NoOpTrustPolicy, // TODO wire up some serializable policy descriptor
-                    &profile.vault().address(),
-                )
-                .await
-            }
-            CreateSecureChannel(profile_id, route) => {
-                let profile = self.profile(&profile_id);
-                let address = SecureChannelTrait::create_secure_channel_async(
-                    profile,
-                    &ctx,
-                    route,
-                    NoOpTrustPolicy, // TODO policy
-                    &profile.vault().address(),
+                    &vault_address,
                 )
                 .await?;
-                ctx.send(reply, Res::CreateSecureChannel(address)).await
+                ctx.send(reply, Res::CreateSecureChannelListener).await
+            }
+            CreateSecureChannel(profile_id, route) => {
+                let vault_address = self.profile(&profile_id).vault().address();
+                let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
+                let profile = Profile::new(profile_id.clone(), handle);
+
+                let child_ctx = ctx.new_context(Address::random(0)).await?;
+                let rt = ctx.runtime();
+                rt.spawn(async move {
+                    let address = SecureChannelTrait::create_secure_channel_async(
+                        profile,
+                        &child_ctx,
+                        route,
+                        NoOpTrustPolicy, // TODO policy
+                        &vault_address,
+                    )
+                    .await?;
+                    child_ctx
+                        .send(reply, Res::CreateSecureChannel(address))
+                        .await
+                });
+
+                Ok(())
             }
             GetSigningKey(profile_id) => {
                 if let Ok(signing_key) = self.profile(&profile_id).get_signing_key() {

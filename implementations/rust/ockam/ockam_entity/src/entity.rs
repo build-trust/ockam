@@ -227,10 +227,14 @@ impl Identity for Entity {
 impl SecureChannels for Entity {
     fn create_secure_channel_listener<A: Into<Address>>(&mut self, address: A) -> Result<()> {
         let profile = self.current_profile().expect("no current profile");
-        self.cast(CreateSecureChannelListener(
+        if let Res::CreateSecureChannelListener = self.call(CreateSecureChannelListener(
             profile.identifier().expect("couldn't get profile id"),
             address.into(),
-        ))
+        ))? {
+            Ok(())
+        } else {
+            err()
+        }
     }
 
     fn create_secure_channel<R: Into<Route> + Send>(&mut self, route: R) -> Result<Address> {

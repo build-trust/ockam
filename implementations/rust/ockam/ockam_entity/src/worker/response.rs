@@ -27,6 +27,7 @@ pub enum IdentityResponse {
     VerifyAndUpdateContact(bool),
     VerifyChanges(bool),
     VerifyAndAddContact(bool),
+    CreateSecureChannelListener,
     CreateSecureChannel(Address),
     GetSigningKey(SigningKey),
     GetIssuerPublicKey(CredentialPublicKey),

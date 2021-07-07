@@ -30,7 +30,7 @@ impl SecureChannelWorker {
     pub async fn create_initiator<T: TrustPolicy, P: Identity, V: XXVault>(
         ctx: &Context,
         route: Route,
-        profile: &mut P,
+        mut profile: P,
         trust_policy: T,
         vault: V,
     ) -> Result<Address> {
@@ -51,7 +51,10 @@ impl SecureChannelWorker {
 
         // Wait for responder to send us his Profile and Profile Proof.
         // In case of using Noise XX this is m4 message.
-        let msg = child_ctx.receive::<ChannelAuthRequest>().await?.take();
+        let msg = child_ctx
+            .receive_timeout::<ChannelAuthRequest>(120)
+            .await?
+            .take();
         debug!("Received Authentication request");
 
         let return_route = msg.return_route();
@@ -110,7 +113,7 @@ impl SecureChannelWorker {
             their_profile_id: their_profile_id.clone(),
             callback_address: Some(child_ctx.address()),
         };
-        debug!(
+        info!(
             "Starting ProfileSecureChannel Initiator at local: {}, remote: {}",
             &channel_local_address, &channel_remote_address
         );
@@ -127,7 +130,9 @@ impl SecureChannelWorker {
         child_ctx.send(return_route, auth_msg).await?;
         debug!("Sent Authentication response");
 
-        let _ = child_ctx.receive::<AuthenticationConfirmation>().await?;
+        let _ = child_ctx
+            .receive_timeout::<AuthenticationConfirmation>(120)
+            .await?;
 
         Ok(channel_local_address)
     }
@@ -164,7 +169,7 @@ impl SecureChannelWorker {
 
         // Wait for KeyExchange to happen
         let kex_msg = child_ctx
-            .receive::<KeyExchangeCompleted>()
+            .receive_timeout::<KeyExchangeCompleted>(120)
             .await?
             .take()
             .body();
@@ -181,7 +186,11 @@ impl SecureChannelWorker {
             .await?;
         debug!("Sent Authentication request");
 
-        let auth_msg = child_ctx.receive::<ChannelAuthResponse>().await?.take();
+        // FIXME: Switch to worker & state
+        let auth_msg = child_ctx
+            .receive_timeout::<ChannelAuthResponse>(120)
+            .await?
+            .take();
         let auth_msg = auth_msg.body();
         debug!("Received Authentication response");
 
@@ -231,7 +240,7 @@ impl SecureChannelWorker {
             their_profile_id: their_profile_id.clone(),
             callback_address: None,
         };
-        debug!(
+        info!(
             "Starting ProfileSecureChannel Responder at local: {}, remote: {}",
             &channel_local_address, &channel_remote_address
         );
