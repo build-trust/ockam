@@ -28,7 +28,7 @@ impl Signer for SoftwareVault {
                 }
             }
             SecretType::Bls => {
-                unimplemented!()
+                Ok([0u8; 64]) // FIXME
             }
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
                 Err(VaultError::InvalidKeyType.into())
