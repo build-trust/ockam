@@ -146,7 +146,7 @@ impl Worker for EntityWorker {
                     None => MaybeContact::None,
                     Some(contact) => MaybeContact::Contact(contact),
                 };
-                ctx.send(reply, message).await
+                ctx.send(reply, Res::GetContact(message)).await
             }
             CreateSecureChannelListener(profile_id, address) => {
                 let profile = self.profile(&profile_id);
