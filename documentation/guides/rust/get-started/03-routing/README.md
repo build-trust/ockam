@@ -53,10 +53,11 @@ impl Worker for Hop {
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         println!("Address: {}, Received: {}", ctx.address(), msg);
 
-        let mut msg = msg.into_transport_message();
+        let mut local_msg = msg.into_local_message();
+        let msg = local_msg.transport_mut();
         msg.onward_route.step()?;
         msg.return_route.modify().prepend(ctx.address());
-        ctx.forward(msg).await
+        ctx.forward(local_msg).await
     }
 }
 ```
