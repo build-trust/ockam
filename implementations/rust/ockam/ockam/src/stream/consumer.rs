@@ -63,6 +63,7 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
         Response::Index(IndexResp {
             stream_name, index, ..
         }) => {
+            let index = index.unwrap_or(serde_bare::Uint(0));
             info!("Updating index '{}' to: {}", stream_name, index.0);
             w.index_peer = return_route.clone();
             w.idx = index.0;

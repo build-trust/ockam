@@ -71,12 +71,12 @@ impl PullRequest {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Index {
     Get {
-        stream_name: String,
         client_id: String,
+        stream_name: String,
     },
     Save {
-        stream_name: String,
         client_id: String,
+        stream_name: String,
         index: Uint,
     },
 }
@@ -88,8 +88,8 @@ impl Index {
         ProtocolPayload::new(
             "stream_index",
             Self::Get {
-                stream_name: stream_name.into(),
                 client_id: client_id.into(),
+                stream_name: stream_name.into(),
             },
         )
     }
@@ -100,8 +100,8 @@ impl Index {
         ProtocolPayload::new(
             "stream_index",
             Self::Save {
-                stream_name: stream_name.into(),
                 client_id: client_id.into(),
+                stream_name: stream_name.into(),
                 index: Uint(index),
             },
         )

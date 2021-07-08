@@ -95,8 +95,8 @@ impl Stream {
                 ctx,
                 interval: Duration::from_secs(10),
                 recipient: None,
-                stream_service: "stream_service".into(),
-                index_service: "stream_index_service".into(),
+                stream_service: "stream".into(),
+                index_service: "stream_index".into(),
             })
         })
     }

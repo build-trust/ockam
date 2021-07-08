@@ -105,9 +105,9 @@ pub struct StreamMessage {
 /// The index return payload
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Index {
-    pub stream_name: String,
     pub client_id: String,
-    pub index: Uint,
+    pub stream_name: String,
+    pub index: Option<Uint>,
 }
 
 /// A convenience enum to wrap all possible response types
