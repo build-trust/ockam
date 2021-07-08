@@ -178,7 +178,7 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
     config = config()
 
     {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
-    tcp_address = %Ockam.Transport.TCPAddress{ip: hub_ip_n, port: config.hub_port}
+    tcp_address = %Ockam.Transport.TCPAddress{host: hub_ip_n, port: config.hub_port}
 
     udp_address = %Ockam.Transport.UDPAddress{ip: hub_ip_n, port: config.hub_port_udp}
 

@@ -11,11 +11,11 @@ defmodule Ockam.Wire.Binary.V2.Tests do
 
       message = %{
         onward_route: [
-          %TCPAddress{ip: {a, b, c, d}, port: 4000},
+          %TCPAddress{host: {a, b, c, d}, port: 4000},
           "printer"
         ],
         return_route: [
-          %TCPAddress{ip: {a, b, c, d}, port: 3000}
+          %TCPAddress{host: {a, b, c, d}, port: 3000}
         ],
         payload: "hello"
       }
@@ -57,7 +57,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
 
       message = %{
         onward_route: [
-          %TCPAddress{ip: {a, b, c, d}, port: 4000}
+          %TCPAddress{host: {a, b, c, d}, port: 4000}
         ],
         return_route: [],
         payload: ""
@@ -117,7 +117,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
                 payload: payload
               }} = V2.decode(encoded)
 
-      assert [%Ockam.Transport.TCPAddress{ip: {^a, ^b, ^c, ^d}, port: 4000}] = onward_route
+      assert [%Ockam.Transport.TCPAddress{host: {^a, ^b, ^c, ^d}, port: 4000}] = onward_route
       assert [] = return_route
       assert "" = payload
     end

@@ -9,7 +9,7 @@ defmodule Ockam.Examples.Stream.IndexApi do
   @dialyzer :no_return
 
   def service_route() do
-    tcp_address = %Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+    tcp_address = %Ockam.Transport.TCPAddress{host: {127, 0, 0, 1}, port: 4000}
     [tcp_address, "stream_kafka_index"]
   end
 

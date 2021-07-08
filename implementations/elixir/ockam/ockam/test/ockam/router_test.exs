@@ -168,7 +168,7 @@ defmodule Ockam.Router.Tests do
     test "Simple TCP Test", %{printer_pid: printer} do
       message = %{
         onward_route: [
-          %TCPAddress{ip: {127, 0, 0, 1}, port: 4000},
+          %TCPAddress{host: {127, 0, 0, 1}, port: 4000},
           "printer"
         ],
         return_route: [],
@@ -208,7 +208,7 @@ defmodule Ockam.Router.Tests do
       request = %{
         onward_route: [
           "client_forwarder",
-          %TCPAddress{ip: {127, 0, 0, 1}, port: 5000},
+          %TCPAddress{host: {127, 0, 0, 1}, port: 5000},
           "echo"
         ],
         return_route: [],
@@ -232,7 +232,7 @@ defmodule Ockam.Router.Tests do
           %{
             onward_route: [
               "client_forwarder",
-              %TCPAddress{ip: {127, 0, 0, 1}, port: 5000},
+              %TCPAddress{host: {127, 0, 0, 1}, port: 5000},
               "echo"
             ],
             return_route: []
@@ -305,7 +305,7 @@ defmodule Ockam.Router.Tests do
       ## Initial request
       request = %{
         onward_route: [
-          %TCPAddress{ip: {127, 0, 0, 1}, port: 5001},
+          %TCPAddress{host: {127, 0, 0, 1}, port: 5001},
           "ping_pong_server"
         ],
         return_route: [

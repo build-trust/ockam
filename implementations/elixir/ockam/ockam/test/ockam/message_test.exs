@@ -38,12 +38,12 @@ defmodule Ockam.Message.Tests do
     test "onward_route/1 does what I expect for TCP" do
       message = %{
         onward_route: [
-          %Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}
+          %Ockam.Transport.TCPAddress{host: {127, 0, 0, 1}, port: 3000}
         ],
         payload: "hello"
       }
 
-      assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] ==
+      assert [%Ockam.Transport.TCPAddress{host: {127, 0, 0, 1}, port: 3000}] ==
                Message.onward_route(message)
     end
 
@@ -62,12 +62,12 @@ defmodule Ockam.Message.Tests do
     test "return_route/1 does what I expect for TCP" do
       message = %{
         return_route: [
-          %Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}
+          %Ockam.Transport.TCPAddress{host: {127, 0, 0, 1}, port: 3000}
         ],
         payload: "hello"
       }
 
-      assert [%Ockam.Transport.TCPAddress{ip: {127, 0, 0, 1}, port: 3000}] =
+      assert [%Ockam.Transport.TCPAddress{host: {127, 0, 0, 1}, port: 3000}] =
                Message.return_route(message)
     end
   end

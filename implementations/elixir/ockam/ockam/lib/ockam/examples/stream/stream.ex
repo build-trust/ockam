@@ -32,7 +32,7 @@ defmodule Ockam.Examples.Stream do
     }
 
     {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
-    tcp_address = %Ockam.Transport.TCPAddress{ip: hub_ip_n, port: config.hub_port}
+    tcp_address = %Ockam.Transport.TCPAddress{host: hub_ip_n, port: config.hub_port}
 
     %{
       service_route: [tcp_address, config.service_address],

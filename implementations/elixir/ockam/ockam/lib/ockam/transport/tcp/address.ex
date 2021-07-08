@@ -3,51 +3,68 @@ defmodule Ockam.Transport.TCPAddress do
 
   alias __MODULE__
 
-  defstruct [:ip, :address, :port]
+  alias Ockam.Bare.Extended, as: BareExtended
+
+  defstruct [:host, :port]
 
   @ipv4_type {:data, 4}
   @ipv6_type {:data, 16}
   @host_type :string
   ## type TCPAddress {
-  ##   address: ({:data, 4} | {:data, 16} | string) // host, ipv4 or ipv6
+  ##   host: ({:data, 4} | {:data, 16} | string) // host, ipv4 or ipv6
   ##   port: u16
   ## }
   def bare_schema() do
-    {:struct, [ip: {:union, [@ipv4_type, @ipv6_type, @host_type]}, port: :u16]}
+    {:struct, [host: {:union, [@ipv4_type, @ipv6_type, @host_type]}, port: :u16]}
   end
 
   def decode(value) when is_binary(value) do
-    case Ockam.Bare.Extended.decode(value, bare_schema()) do
-      {:ok, %{port: port, ip: decoded_address}} ->
-        address = parse_address(decoded_address)
+    case BareExtended.decode(value, bare_schema()) do
+      {:ok, %{port: port, host: decoded_host}} ->
+        host = parse_host(decoded_host)
 
-        %TCPAddress{ip: address, port: port}
+        %TCPAddress{host: host, port: port}
+
       {:error, reason} ->
         {:error, {:not_a_valid_serialized_tcp_address, reason}}
     end
   end
 
-  def encode(%TCPAddress{ip: address, port: port}) do
-    Ockam.Bare.Extended.encode(%{port: port, ip: format_address(address)}, bare_schema())
+  def encode(%TCPAddress{host: host, port: port}) do
+    BareExtended.encode(%{port: port, host: format_host(host)}, bare_schema())
   end
 
-  def format_address({a, b, c, d}) do
+  def format_host({a, b, c, d}) do
     {@ipv4_type, <<a::8, b::8, c::8, d::8>>}
   end
-  def format_address({a, b, c, d, e, f, g, h}) do
-    {@ipv6_type, <<a::unsigned-little-integer-16, b::unsigned-little-integer-16, c::unsigned-little-integer-16, d::unsigned-little-integer-16, e::unsigned-little-integer-16, f::unsigned-little-integer-16, g::unsigned-little-integer-16, h::unsigned-little-integer-16>>}
+
+  def format_host({a, b, c, d, e, f, g, h}) do
+    {@ipv6_type,
+     <<a::unsigned-little-integer-16, b::unsigned-little-integer-16,
+       c::unsigned-little-integer-16, d::unsigned-little-integer-16,
+       e::unsigned-little-integer-16, f::unsigned-little-integer-16,
+       g::unsigned-little-integer-16, h::unsigned-little-integer-16>>}
   end
-  def format_address(string) when is_binary(string) do
+
+  def format_host(string) when is_binary(string) do
     {@host_type, string}
   end
 
-  def parse_address({@host_type, host}) do
+  def parse_host({@host_type, host}) do
     host
   end
-  def parse_address({@ipv4_type, <<a::8, b::8, c::8, d::8>>}) do
+
+  def parse_host({@ipv4_type, <<a::8, b::8, c::8, d::8>>}) do
     {a, b, c, d}
   end
-  def parse_address({@ipv6_type, <<a::unsigned-little-integer-16, b::unsigned-little-integer-16, c::unsigned-little-integer-16, d::unsigned-little-integer-16, e::unsigned-little-integer-16, f::unsigned-little-integer-16, g::unsigned-little-integer-16, h::unsigned-little-integer-16>>}) do
+
+  def parse_host(
+        {@ipv6_type,
+         <<a::unsigned-little-integer-16, b::unsigned-little-integer-16,
+           c::unsigned-little-integer-16, d::unsigned-little-integer-16,
+           e::unsigned-little-integer-16, f::unsigned-little-integer-16,
+           g::unsigned-little-integer-16, h::unsigned-little-integer-16>>}
+      ) do
     {a, b, c, d, e, f, g, h}
   end
 
@@ -57,7 +74,7 @@ defmodule Ockam.Transport.TCPAddress do
   @spec deserialize(any) ::
           {:error, {:not_a_valid_serialized_tcp_address, any}}
           | %Ockam.Transport.TCPAddress{
-              ip: {byte, byte, byte, byte} | {byte, byte, byte, byte, byte, byte, byte, byte},
+              host: {byte, byte, byte, byte} | {byte, byte, byte, byte, byte, byte, byte, byte},
               port: char
             }
 

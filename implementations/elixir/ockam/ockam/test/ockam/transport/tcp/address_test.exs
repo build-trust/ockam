@@ -11,12 +11,12 @@ defmodule Ockam.Transport.TCPAddress.Tests do
 
   describe "Ockam.Transport.TCPAddress" do
     test "1 is the TCP address type" do
-      address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+      address = %TCPAddress{host: {127, 0, 0, 1}, port: 4000}
       assert 1 == Address.type(address)
     end
 
     test "can be serialized and then deserialized back to the original address" do
-      address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+      address = %TCPAddress{host: {127, 0, 0, 1}, port: 4000}
 
       serialized = Ockam.Serializable.serialize(address)
       deserialized = TCPAddress.deserialize(serialized)
@@ -25,7 +25,7 @@ defmodule Ockam.Transport.TCPAddress.Tests do
     end
 
     test "Serializing an address produces expected binary" do
-      address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+      address = %TCPAddress{host: {127, 0, 0, 1}, port: 4000}
 
       assert %{type: @tcp, value: <<0, 127, 0, 0, 1, 160, 15>>} ==
                Ockam.Serializable.serialize(address)
@@ -33,11 +33,11 @@ defmodule Ockam.Transport.TCPAddress.Tests do
 
     test "Deserializing an address produces expected struct" do
       serialized = [@localhost_binary, @four_thousand_encoded]
-      assert %TCPAddress{ip: {127, 0, 0, 1}, port: 4000} == TCPAddress.deserialize(serialized)
+      assert %TCPAddress{host: {127, 0, 0, 1}, port: 4000} == TCPAddress.deserialize(serialized)
     end
 
     test "Can serialize and deserialize string hostnames" do
-      address = %TCPAddress{ip: "hostname", port: 4000}
+      address = %TCPAddress{host: "hostname", port: 4000}
       serialized = Ockam.Serializable.serialize(address)
 
       assert %{type: @tcp, value: @hostname_binary} == serialized
