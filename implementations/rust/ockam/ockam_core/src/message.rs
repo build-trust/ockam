@@ -67,8 +67,8 @@ where
         Ok(serde_bare::to_vec(self)?)
     }
 
-    fn decode(e: &Encoded) -> Result<Self> {
-        Ok(serde_bare::from_slice(e.as_slice())?)
+    fn decode(encoded: &Encoded) -> Result<Self> {
+        Ok(serde_bare::from_slice(encoded.as_slice())?)
     }
 }
 
