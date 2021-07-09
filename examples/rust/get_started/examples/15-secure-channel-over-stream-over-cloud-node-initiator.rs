@@ -15,8 +15,6 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a bi-directional stream
     let (tx, _) = Stream::new(&ctx)?
-        .stream_service("stream")
-        .index_service("stream_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
         .with_interval(Duration::from_millis(100))
         .connect(
