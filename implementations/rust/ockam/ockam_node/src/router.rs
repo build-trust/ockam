@@ -184,7 +184,7 @@ impl Router {
         reply: &Sender<NodeReplyResult>,
         wrap: bool,
     ) -> Result<()> {
-        trace!("Resolvivg worker address '{}'", addr);
+        trace!("Resolving worker address '{}'", addr);
 
         match self.internal.get(addr) {
             Some(sender) => reply.send(NodeReply::sender(
