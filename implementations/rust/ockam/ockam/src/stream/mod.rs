@@ -38,6 +38,7 @@ pub struct Stream {
     recipient: Option<Address>,
     stream_service: String,
     index_service: String,
+    client_id: Option<String>,
 }
 
 /// A simple address wrapper for stream workers
@@ -95,8 +96,9 @@ impl Stream {
                 ctx,
                 interval: Duration::from_secs(10),
                 recipient: None,
-                stream_service: "stream".into(),
-                index_service: "stream_index".into(),
+                stream_service: "stream_service".into(),
+                index_service: "stream_index_service".into(),
+                client_id: None,
             })
         })
     }
@@ -117,10 +119,21 @@ impl Stream {
         }
     }
 
-    /// Specify the stream service running on the remote
+    /// Specify the index service running on the remote
     pub fn index_service<S: Into<String>>(self, serv: S) -> Self {
         Self {
             index_service: serv.into(),
+            ..self
+        }
+    }
+
+    /// Specify the client_id for the stream consumer
+    ///
+    /// When setting up a stream without calling this function
+    /// a random client id will be assigned.
+    pub fn client_id<S: Into<String>>(self, client_id: S) -> Self {
+        Self {
+            client_id: Some(client_id.into()),
             ..self
         }
     }
@@ -170,11 +183,13 @@ impl Stream {
 
         let rx_rx = Address::random(0);
 
-        // Generate a random client_id
-        // TODO: there should be an API endpoint where users get to choose the client_id
-        let client_id = {
-            let random: [u8; 16] = rand::thread_rng().gen();
-            hex::encode(random)
+        // Generate a random client_id if one has not been provided
+        let client_id = match self.client_id.clone() {
+            Some(client_id) => client_id,
+            None => {
+                let random: [u8; 16] = rand::thread_rng().gen();
+                hex::encode(random)
+            }
         };
 
         // Create and start a new stream consumer
