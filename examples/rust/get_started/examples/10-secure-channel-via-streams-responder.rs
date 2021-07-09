@@ -1,5 +1,7 @@
-use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
 use hello_ockam::Echoer;
+use ockam::{
+    route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
+};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -10,9 +12,10 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
+    let mut bob = Entity::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
+    bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 
     // Create a stream client
     Stream::new(&ctx)?
