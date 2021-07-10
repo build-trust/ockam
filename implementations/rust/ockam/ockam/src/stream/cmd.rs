@@ -77,7 +77,7 @@ where
         msg: ProtocolPayload,
     ) -> Result<bool> {
         let cmd = StreamWorkerCmd::decode(&msg.data)?;
-        let (addr, trans) = routed.dissolve();
-        (&self.f)(state, ctx, Routed::v1(cmd, addr, trans))
+        let (addr, local_msg) = routed.dissolve();
+        (&self.f)(state, ctx, Routed::new(cmd, addr, local_msg))
     }
 }

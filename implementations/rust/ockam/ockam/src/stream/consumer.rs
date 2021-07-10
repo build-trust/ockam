@@ -12,6 +12,7 @@ use crate::{
     DelayedEvent, Message, TransportMessage,
 };
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
+use ockam_core::LocalMessage;
 use std::time::Duration;
 
 /// A stream worker
@@ -106,7 +107,8 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 let res = match trans.onward_route.next() {
                     Ok(addr) => {
                         info!("Forwarding {} message to addr: {}", w.stream, addr);
-                        block_future(&ctx.runtime(), async { ctx.forward(trans).await })
+                        let local_msg = LocalMessage::new(trans, Vec::new());
+                        block_future(&ctx.runtime(), async { ctx.forward(local_msg).await })
                     }
                     Err(_) => {
                         info!("Forwarding {} message to rx.next()", w.stream);

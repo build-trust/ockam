@@ -186,10 +186,10 @@ where
             _ => unreachable!(),
         };
 
-        let (addr, trans) = routed.dissolve();
+        let (addr, local_msg) = routed.dissolve();
 
         // Call the user code
-        let handled = (&self.f)(state, ctx, Routed::v1(resp, addr, trans));
+        let handled = (&self.f)(state, ctx, Routed::new(resp, addr, local_msg));
         Ok(handled)
     }
 }
