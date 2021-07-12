@@ -65,7 +65,7 @@ checksum = "320cfe77175da3a483efed4bc0adc1968ca050b098ce4f2f1c13a56626128790"
 
 [[package]]
 name = "ockam_core"
-version = "0.19.0-dev"
+version = "0.19.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -77,7 +77,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.13.0-dev"
+version = "0.13.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -217,9 +217,9 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.12.4"
+version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
+checksum = "474aaa926faa1603c40b7885a9eaea29b444d1cb2850cb7c0e37bb1a4182f4fa"
 dependencies = [
  "proc-macro2",
  "quote",

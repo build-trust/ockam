@@ -1,4 +1,4 @@
-use ockam::{route, Address, Context, Entity, Identity, Result, SecureChannels, TcpTransport, TCP};
+use ockam::{route, Address, Context, Entity, Result, SecureChannels, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

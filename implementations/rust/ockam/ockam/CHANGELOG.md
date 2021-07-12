@@ -5,6 +5,39 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.18.0 - 2021-07-12
+### Added
+- Utility for sending asynchronous delayed messages.
+- Stream protocol initial API and implementation.
+- Stream Worker implementation.
+- BLS signature stub.
+- New `from_external` function to `ProfileIdentifier`, for creating identifiers from serialized forms.
+- Service builder for Ockam Transport implementations.
+- Stream API example.
+- New Builder function to `Stream` that configures the client_id for the Stream consumer.
+- Monotonic id generator for ockam crate internals.
+- Expose blocking and non-blocking delay functions.
+- Basic publishing Worker.
+
+### Changed
+- Dependencies updated.
+- Return an error instead of panicking when a protocol parser fails.
+- Improve logging in Worker relay.
+- Move signing key to change events
+- Incoming messages now have access to stream routing information.
+- Secure channel creation no longer panics when used with an entity.
+- get_contact Entity Eorker response type changed to correct type.
+- Bring `stream_service` and `index_service` names in line with Hub defaults.
+- Bring stream protocol definitions in line with the latest definition.
+- Make stream and index service addresses configurable.
+- Save updated index after successful message pull.
+- Support Message `return_route` via bi-directional Streams.
+- Update index as messages are retrieved from Stream.
+- Isolate and expose bi-directional stream names.
+- Improve delayed event API.
+- Allow protocol parser fragment to communicate success
+
+
 ## v0.17.0 - 2021-07-06
 ### Added
 - Type for `BLS` secrets.

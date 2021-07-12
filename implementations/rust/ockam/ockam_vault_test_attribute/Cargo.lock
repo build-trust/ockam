@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.10.0-dev"
+version = "0.10.0"
 dependencies = [
  "quote",
  "syn",

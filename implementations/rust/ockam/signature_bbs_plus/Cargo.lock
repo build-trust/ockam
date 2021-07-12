@@ -475,7 +475,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -498,7 +498,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.9.0-dev"
+version = "0.9.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -514,7 +514,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -555,9 +555,9 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.12.4"
+version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
+checksum = "474aaa926faa1603c40b7885a9eaea29b444d1cb2850cb7c0e37bb1a4182f4fa"
 dependencies = [
  "proc-macro2",
  "quote",
