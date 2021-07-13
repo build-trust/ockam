@@ -24,3 +24,24 @@ macro_rules! credential_type {
         }
     });
 }
+
+/// Creates a [`CredentialAttribute`] vector containing the arguments.
+///
+/// ```
+/// # use ockam_entity::credential_attribute_values;;
+/// let values = credential_attribute_values!["ABCD-EFGH", 1];
+/// ```
+///
+/// [`CredentialAttribute`]: crate::CredentialAttribute
+#[macro_export]
+macro_rules! credential_attribute_values {
+    ($($x:expr),* $(,)?) => ({
+        use $crate::CredentialAttribute;
+
+        #[allow(unused_mut)]
+        let mut attribute_values: Vec<CredentialAttribute> = vec![];
+        $(attribute_values.push($x.into());)*
+
+        attribute_values
+    });
+}

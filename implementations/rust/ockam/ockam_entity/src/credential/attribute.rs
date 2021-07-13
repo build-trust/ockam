@@ -19,6 +19,30 @@ pub enum CredentialAttribute {
     Blob([u8; 32]),
 }
 
+impl From<i64> for CredentialAttribute {
+    fn from(v: i64) -> Self {
+        Self::Numeric(v)
+    }
+}
+
+impl From<&str> for CredentialAttribute {
+    fn from(str: &str) -> Self {
+        Self::from(str.to_string())
+    }
+}
+
+impl From<String> for CredentialAttribute {
+    fn from(str: String) -> Self {
+        Self::String(str)
+    }
+}
+
+impl From<[u8; 32]> for CredentialAttribute {
+    fn from(blob: [u8; 32]) -> Self {
+        Self::Blob(blob)
+    }
+}
+
 impl CredentialAttribute {
     /// Is `self` NotSpecified or Empty
     pub fn can_be_empty(&self) -> bool {
