@@ -23,7 +23,7 @@ use crate::{
     CredentialProof, CredentialPublicKey, CredentialRequest, CredentialRequestFragment,
     CredentialSchema, Entity, Handle, Holder, Identity, IdentityRequest, IdentityResponse, Issuer,
     OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
-    SecureChannels, SigningPublicKey,
+    SecureChannels, SigningPublicKey, TrustPolicy,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_vault::{PublicKey, Secret};
@@ -158,15 +158,21 @@ impl Identity for Profile {
 }
 
 impl SecureChannels for Profile {
-    fn create_secure_channel_listener<A: Into<Address> + Send>(
+    fn create_secure_channel_listener(
         &mut self,
-        address: A,
+        address: impl Into<Address> + Send,
+        trust_policy: impl TrustPolicy,
     ) -> Result<()> {
-        self.entity().create_secure_channel_listener(address)
+        self.entity()
+            .create_secure_channel_listener(address, trust_policy)
     }
 
-    fn create_secure_channel<R: Into<Route> + Send>(&mut self, route: R) -> Result<Address> {
-        self.entity().create_secure_channel(route)
+    fn create_secure_channel(
+        &mut self,
+        route: impl Into<Route> + Send,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<Address> {
+        self.entity().create_secure_channel(route, trust_policy)
     }
 }
 

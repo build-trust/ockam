@@ -3,7 +3,7 @@ use crate::{
     Changes, Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequestFragment,
     CredentialSchema, OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier,
-    ProofRequestId,
+    ProofRequestId, TrustPolicy,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_vault_core::{PublicKey, Secret};
@@ -78,10 +78,17 @@ pub trait Identity: Send + 'static {
 }
 
 pub trait SecureChannels {
-    fn create_secure_channel_listener<A: Into<Address> + Send>(&mut self, address: A)
-        -> Result<()>;
+    fn create_secure_channel_listener(
+        &mut self,
+        address: impl Into<Address> + Send,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<()>;
 
-    fn create_secure_channel<R: Into<Route> + Send>(&mut self, route: R) -> Result<Address>;
+    fn create_secure_channel(
+        &mut self,
+        route: impl Into<Route> + Send,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<Address>;
 }
 
 /// Issuer API

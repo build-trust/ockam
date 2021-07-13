@@ -1,8 +1,8 @@
 use crate::{
     CredentialHolder, CredentialIssuer, CredentialProof, CredentialPublicKey,
     CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed, Handle,
-    Identity, IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact,
-    NoOpTrustPolicy, Profile, ProfileIdentifier, ProfileState, SecureChannelTrait,
+    Identity, IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact, Profile,
+    ProfileIdentifier, ProfileState, SecureChannelTrait, TrustPolicyImpl,
 };
 use async_trait::async_trait;
 use ockam_core::{
@@ -161,7 +161,11 @@ impl Worker for EntityWorker {
                 };
                 ctx.send(reply, Res::GetContact(message)).await
             }
-            CreateSecureChannelListener(profile_id, address) => {
+            CreateSecureChannelListener(profile_id, address, trust_policy_address) => {
+                let trust_policy = TrustPolicyImpl::new(Handle::new(
+                    ctx.new_context(Address::random(0)).await?,
+                    trust_policy_address,
+                ));
                 let vault_address = self.profile(&profile_id).vault().address();
                 let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
                 let profile = Profile::new(profile_id, handle);
@@ -169,13 +173,17 @@ impl Worker for EntityWorker {
                     profile,
                     &ctx,
                     address,
-                    NoOpTrustPolicy, // TODO wire up some serializable policy descriptor
+                    trust_policy,
                     &vault_address,
                 )
                 .await?;
                 ctx.send(reply, Res::CreateSecureChannelListener).await
             }
-            CreateSecureChannel(profile_id, route) => {
+            CreateSecureChannel(profile_id, route, trust_policy_address) => {
+                let trust_policy = TrustPolicyImpl::new(Handle::new(
+                    ctx.new_context(Address::random(0)).await?,
+                    trust_policy_address,
+                ));
                 let vault_address = self.profile(&profile_id).vault().address();
                 let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
                 let profile = Profile::new(profile_id.clone(), handle);
@@ -187,7 +195,7 @@ impl Worker for EntityWorker {
                         profile,
                         &child_ctx,
                         route,
-                        NoOpTrustPolicy, // TODO policy
+                        trust_policy,
                         &vault_address,
                     )
                     .await?;

@@ -1,5 +1,6 @@
 use crate::ProfileIdentifier;
 use ockam_core::Result;
+use serde::{Deserialize, Serialize};
 
 mod identifier_trust_policy;
 pub use identifier_trust_policy::*;
@@ -10,6 +11,7 @@ pub use any_trust_policy::*;
 mod no_op_trust_policy;
 pub use no_op_trust_policy::*;
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SecureChannelTrustInfo {
     their_profile_id: ProfileIdentifier,
     // TODO: credentials:

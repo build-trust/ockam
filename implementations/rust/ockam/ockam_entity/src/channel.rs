@@ -89,20 +89,14 @@ mod test {
                 let mut alice = Entity::create(&ctx).unwrap();
                 let mut bob = Entity::create(&ctx).unwrap();
 
-                let _alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier().unwrap());
-                let _bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());
+                let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier().unwrap());
+                let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());
 
-                bob.create_secure_channel_listener(
-                    "bob_listener",
-                    // FIXME: bob_trust_policy,
-                )
-                .unwrap();
+                bob.create_secure_channel_listener("bob_listener", bob_trust_policy)
+                    .unwrap();
 
                 let alice_channel = alice
-                    .create_secure_channel(
-                        route!["bob_listener"],
-                        // FIXME: alice_trust_policy,
-                    )
+                    .create_secure_channel(route!["bob_listener"], alice_trust_policy)
                     .unwrap();
 
                 ctx.send(

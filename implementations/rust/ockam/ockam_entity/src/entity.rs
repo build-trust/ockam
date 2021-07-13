@@ -6,6 +6,7 @@ use crate::{
     CredentialRequest, CredentialRequestFragment, CredentialSchema, Handle, Holder, Identity,
     IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId, PresentationManifest,
     ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
+    TrustPolicy, TrustPolicyImpl,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
@@ -242,11 +243,20 @@ impl Identity for Entity {
 }
 
 impl SecureChannels for Entity {
-    fn create_secure_channel_listener<A: Into<Address>>(&mut self, address: A) -> Result<()> {
+    fn create_secure_channel_listener(
+        &mut self,
+        address: impl Into<Address> + Send,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<()> {
         let profile = self.current_profile().expect("no current profile");
+        let ctx = &self.handle().ctx;
+        let trust_policy_address = block_future(&self.handle.ctx.runtime(), async move {
+            TrustPolicyImpl::create(ctx, trust_policy).await
+        })?;
         if let Res::CreateSecureChannelListener = self.call(CreateSecureChannelListener(
             profile.identifier().expect("couldn't get profile id"),
             address.into(),
+            trust_policy_address,
         ))? {
             Ok(())
         } else {
@@ -254,11 +264,20 @@ impl SecureChannels for Entity {
         }
     }
 
-    fn create_secure_channel<R: Into<Route> + Send>(&mut self, route: R) -> Result<Address> {
+    fn create_secure_channel(
+        &mut self,
+        route: impl Into<Route> + Send,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<Address> {
         let profile = self.current_profile().expect("no current profile");
+        let ctx = &self.handle().ctx;
+        let trust_policy_address = block_future(&self.handle.ctx.runtime(), async move {
+            TrustPolicyImpl::create(ctx, trust_policy).await
+        })?;
         if let Res::CreateSecureChannel(address) = self.call(CreateSecureChannel(
             profile.identifier().expect("couldn't get profile id"),
             route.into(),
+            trust_policy_address,
         ))? {
             Ok(address)
         } else {
