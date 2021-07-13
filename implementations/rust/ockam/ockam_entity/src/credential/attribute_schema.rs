@@ -26,3 +26,32 @@ pub struct CredentialAttributeSchema {
     /// If the attribute is allowed to be unknown when signed to the issuer
     pub unknown: bool,
 }
+
+impl From<(CredentialAttributeType, &str)> for CredentialAttributeSchema {
+    fn from(v: (CredentialAttributeType, &str)) -> Self {
+        Self::from((v.0, v.1.to_string()))
+    }
+}
+
+impl From<(CredentialAttributeType, String)> for CredentialAttributeSchema {
+    fn from(v: (CredentialAttributeType, String)) -> Self {
+        Self {
+            label: v.1,
+            description: "".to_string(),
+            attribute_type: v.0,
+            unknown: false,
+        }
+    }
+}
+
+impl From<&str> for CredentialAttributeSchema {
+    fn from(str: &str) -> Self {
+        Self::from(str.to_string())
+    }
+}
+
+impl From<String> for CredentialAttributeSchema {
+    fn from(str: String) -> Self {
+        Self::from((CredentialAttributeType::Utf8String, str))
+    }
+}
