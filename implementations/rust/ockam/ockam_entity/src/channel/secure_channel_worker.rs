@@ -79,10 +79,7 @@ impl SecureChannelWorker {
         if !verified {
             return Err(EntityError::SecureChannelVerificationFailed.into());
         }
-        info!(
-            "Verified SecureChannel from: {}",
-            their_profile_id.to_external()
-        );
+        info!("Verified SecureChannel from: {}", their_profile_id);
 
         // Check our TrustPolicy
         let trust_info = SecureChannelTrustInfo::new(their_profile_id.clone());
@@ -92,7 +89,7 @@ impl SecureChannelWorker {
         }
         info!(
             "Checked trust policy for SecureChannel from: {}",
-            their_profile_id.to_external()
+            &their_profile_id
         );
 
         // Prove we posses our Profile key
@@ -213,10 +210,7 @@ impl SecureChannelWorker {
         if !verified {
             return Err(EntityError::SecureChannelVerificationFailed.into());
         }
-        info!(
-            "Verified SecureChannel from: {}",
-            their_profile_id.to_external()
-        );
+        info!("Verified SecureChannel from: {}", &their_profile_id);
 
         // Check our TrustPolicy
         let trust_info = SecureChannelTrustInfo::new(their_profile_id.clone());
@@ -226,7 +220,7 @@ impl SecureChannelWorker {
         }
         info!(
             "Checked trust policy for SecureChannel from: {}",
-            their_profile_id.to_external()
+            &their_profile_id
         );
 
         let channel_local_address: Address = random();
