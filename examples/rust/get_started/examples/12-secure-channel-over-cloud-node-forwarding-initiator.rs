@@ -1,4 +1,6 @@
-use ockam::{route, Address, Context, Entity, Result, SecureChannels, TcpTransport, TCP};
+use ockam::{
+    route, Address, Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, TCP,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -21,7 +23,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         secure_channel_listener_forwarding_address
     ];
 
-    let channel = alice.create_secure_channel(cloud_node_route)?;
+    let channel = alice.create_secure_channel(cloud_node_route, NoOpTrustPolicy)?;
 
     let echoer_route = route![channel, "echoer"];
 

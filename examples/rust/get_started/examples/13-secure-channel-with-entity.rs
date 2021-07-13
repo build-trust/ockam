@@ -1,6 +1,8 @@
 // This node creates a secure channel and routes a message through it.
 
-use ockam::{route, Address, Context, Entity, Result, SecureChannels};
+use ockam::{
+    route, Address, Context, Entity, IdentifierTrustPolicy, Identity, Result, SecureChannels,
+};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -22,9 +24,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier()?);
      */
     // Create a secure channel listener.
-    bob.create_secure_channel_listener("bob_secure_channel_listener")?; // TODO bob_trust_policy
+    let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier()?);
+    bob.create_secure_channel_listener("bob_secure_channel_listener", bob_trust_policy)?;
 
-    let channel_to_bob = alice.create_secure_channel("bob_secure_channel_listener")?; // TODO alice_trust_policy
+    let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier()?);
+    let channel_to_bob =
+        alice.create_secure_channel("bob_secure_channel_listener", alice_trust_policy)?;
 
     let echoer: Address = "echoer".into();
     let route = route![channel_to_bob, echoer];
