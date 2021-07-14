@@ -1,0 +1,50 @@
+sequenceDiagram
+    participant Responder
+    participant SecureChannelListener
+    participant SecureChannelResponder
+    participant TcpTransport_R
+
+    participant ForwardingService
+    participant ForwardingAlias
+
+    participant TcpTransport_I
+    participant SecureChannelInitiator
+    participant Initiator
+
+    rect rgba(0, 250, 0, 0.1)
+        Note right of Responder: Register SecureChannelListener
+
+        Responder-->>TcpTransport_R: register [SecureChannelListener]
+        TcpTransport_R-->>ForwardingService: register [SecureChannelListener]
+        ForwardingService-->>ForwardingAlias: create [TcpTransport_R, SecureChannelListener]
+        Note right of ForwardingAlias: forward_to: [TcpTransport_R, SecureChannelListener]
+        ForwardingAlias-->>TcpTransport_R: ok [alias address]
+        TcpTransport_R-->>Responder: ok [alias address]
+    end
+
+    Responder--)Initiator: share alias address
+
+    rect rgba(0, 0, 250, 0.1)
+        Note left of SecureChannelInitiator: Set up secure channel
+        SecureChannelInitiator-->>TcpTransport_I: create_channel [to: ForwardingAlias]
+        TcpTransport_I-->>ForwardingAlias: create_channel [from: TcpTransport_I, SecureChannelInitiator]
+        ForwardingAlias-->>TcpTransport_R: create_channel [to: SecureChannelListener, from: TcpTransport_I, SecureChannelInitiator]
+        TcpTransport_R-->>SecureChannelListener: message [from: TcpTransport_R, TcpTransport_I, SecureChannelInitiator]
+        SecureChannelListener-->>SecureChannelResponder: create
+
+        SecureChannelResponder-->>TcpTransport_R: create_ok [to: TcpTransport_I, SecureChannelInitiator]
+        TcpTransport_R-->>TcpTransport_I: create_ok
+        TcpTransport_I-->>SecureChannelInitiator: response
+    end
+
+    Initiator->>SecureChannelInitiator: message
+    SecureChannelInitiator->>TcpTransport_I: message
+    TcpTransport_I->>TcpTransport_R: message
+    TcpTransport_R->>SecureChannelResponder: message
+    SecureChannelResponder->>Responder: message
+
+    Responder->>SecureChannelResponder: reply
+    SecureChannelResponder->>TcpTransport_R: reply
+    TcpTransport_R->>TcpTransport_I: reply
+    TcpTransport_I->>SecureChannelInitiator: reply
+    SecureChannelInitiator->>Initiator: reply
