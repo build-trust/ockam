@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant Responder
+    participant TcpTransport_R
+    participant ForwardingService
+    participant ForwardingAlias
+
+    participant TcpTransport_I
+    participant Initiator
+
+    Responder->>TcpTransport_R: register
+    TcpTransport_R->>ForwardingService: register
+    ForwardingService->>ForwardingAlias: create [TcpTransport_R, Responder]
+    Note right of ForwardingAlias: forward_to: [TcpTransport_R, Responder]
+    ForwardingAlias->>TcpTransport_R: ok [alias address]
+    TcpTransport_R->>Responder: ok [alias address]
+
+    Responder--)Initiator: share alias address
+
+    Initiator->>TcpTransport_I: message [to: ForwardingAlias]
+    TcpTransport_I->>ForwardingAlias: message [from: TcpTransport_I, Initiator]
+    ForwardingAlias->>TcpTransport_R: message [to: Responder, from: TcpTransport_I, Initiator]
+    TcpTransport_R->>Responder: message [from: TcpTransport_R, TcpTransport_I, Initiator]
+
+    Responder->>TcpTransport_R: response [to: TcpTransport_I, Initiator]
+    TcpTransport_R->>TcpTransport_I: response
+    TcpTransport_I->>Initiator: response
