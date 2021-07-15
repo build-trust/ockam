@@ -1,7 +1,7 @@
 use crate::EntityError::IdentityApiFailed;
 use crate::{
-    profile::Profile, traits::Verifier, worker::EntityWorker, AuthenticationProof, Changes,
-    Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    profile::Profile, traits::Verifier, worker::EntityWorker, AuthenticationProof, BbsCredential,
+    Changes, Contact, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
     CredentialRequest, CredentialRequestFragment, CredentialSchema, Handle, Holder, Identity,
     IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId, PresentationManifest,
@@ -337,7 +337,7 @@ impl Issuer for Entity {
         &self,
         schema: &CredentialSchema,
         attributes: A,
-    ) -> Result<Credential> {
+    ) -> Result<BbsCredential> {
         let profile = self.clone().current_profile().expect("no current profile");
         if let Res::SignCredential(credential) = profile.call(SignCredential(
             profile.identifier().expect("couldn't get profile id"),
@@ -396,7 +396,7 @@ impl Holder for Entity {
         &self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
-    ) -> Result<Credential> {
+    ) -> Result<BbsCredential> {
         let profile = self.clone().current_profile().expect("no current profile");
         if let Res::CombineCredentialFragments(credential) =
             profile.call(CombineCredentialFragments(
@@ -413,7 +413,7 @@ impl Holder for Entity {
 
     fn is_valid_credential(
         &self,
-        credential: &Credential,
+        credential: &BbsCredential,
         verifier_key: SigningPublicKey,
     ) -> Result<bool> {
         let profile = self.clone().current_profile().expect("no current profile");
@@ -428,9 +428,9 @@ impl Holder for Entity {
         }
     }
 
-    fn present_credential(
+    fn create_credential_presentation(
         &self,
-        credential: &Credential,
+        credential: &BbsCredential,
         presentation_manifests: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<CredentialPresentation> {

@@ -1,5 +1,5 @@
 use crate::{
-    AuthenticationProof, BlsSecretKey, Changes, Contact, Credential, CredentialFragment2,
+    AuthenticationProof, BbsCredential, BlsSecretKey, Changes, Contact, CredentialFragment2,
     CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
     CredentialRequestFragment, ProfileIdentifier, ProofRequestId,
 };
@@ -35,10 +35,10 @@ pub enum IdentityResponse {
     GetIssuerPublicKey(CredentialPublicKey),
     CreateOffer(CredentialOffer),
     CreateProofOfPossession(CredentialProof),
-    SignCredential(Credential),
+    SignCredential(BbsCredential),
     SignCredentialRequest(CredentialFragment2),
     AcceptCredentialOffer(CredentialRequestFragment),
-    CombineCredentialFragments(Credential),
+    CombineCredentialFragments(BbsCredential),
     IsValidCredential(bool),
     PresentCredential(CredentialPresentation),
     CreateProofRequestId(ProofRequestId),
