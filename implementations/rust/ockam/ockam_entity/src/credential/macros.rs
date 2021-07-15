@@ -42,10 +42,25 @@ macro_rules! credential_attribute_values {
     ($($x:expr),* $(,)?) => ({
         use $crate::CredentialAttribute;
 
-        #[allow(unused_mut)]
         let mut attribute_values: Vec<CredentialAttribute> = vec![];
         $(attribute_values.push($x.into());)*
 
         attribute_values
+    });
+}
+
+/// Creates a list of revealed attributes containing the arguments.
+///
+/// ```
+/// # use ockam_entity::reveal_attributes;;
+/// let reveal_attributes = reveal_attributes!["ABCD-EFGH", "BDC".to_string()];
+/// ```
+#[macro_export]
+macro_rules! reveal_attributes {
+    ($($x:expr),* $(,)?) => ({
+        let mut reveal_attributes: Vec<String> = vec![];
+        $(reveal_attributes.push($x.into());)*
+
+        reveal_attributes
     });
 }
