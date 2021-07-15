@@ -1,0 +1,9 @@
+sequenceDiagram
+  app->>+hop1: Hello Ockam!
+  hop1->>+hop2: Hello Ockam!
+  hop2->>+hop3: Hello Ockam!
+  hop3->>+echoer: Hello Ockam!
+  echoer->>-hop3: Hello Ockam!
+  hop3->>-hop2: Hello Ockam!
+  hop2->>-hop1: Hello Ockam!
+  hop1->>-app: Hello Ockam!
