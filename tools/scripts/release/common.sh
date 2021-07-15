@@ -51,3 +51,14 @@ function all_crates {
     pop_dir
 }
 
+function all_crates_nightly {
+    change_dir "$OCKAM_RUST"
+    for CRATE in *
+    do
+      change_dir "$CRATE"
+      echo "all_crates: $CRATE $*"
+      cargo +nightly -q $* 1>/dev/null
+      pop_dir
+    done
+    pop_dir
+}
