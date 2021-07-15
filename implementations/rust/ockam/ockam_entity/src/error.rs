@@ -33,6 +33,14 @@ pub enum EntityError {
     InvalidProfileId,
     DuplicateCredential,
     CredentialNotFound,
+    InvalidIssueState,
+    CredentialTrustCheckFailed,
+    SchemaIdDoesntMatch,
+    IssuerListenerInvalidMessage,
+    HolderInvalidMessage,
+    IssuerInvalidMessage,
+    PresenterInvalidMessage,
+    VerifierInvalidMessage,
 }
 
 impl EntityError {

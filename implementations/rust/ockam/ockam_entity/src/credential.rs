@@ -38,6 +38,7 @@ mod ext;
 mod fragment1;
 mod fragment2;
 mod macros;
+mod messages;
 mod offer;
 mod presentation;
 mod presentation_manifest;
@@ -45,6 +46,7 @@ mod request;
 mod schema;
 mod traits;
 mod util;
+mod workers;
 
 pub use attribute::*;
 pub use attribute_schema::*;
@@ -54,6 +56,7 @@ pub use ext::*;
 pub use fragment1::*;
 pub use fragment2::*;
 pub use macros::*;
+pub(crate) use messages::*;
 pub use offer::*;
 pub use presentation::*;
 pub use presentation_manifest::*;
@@ -64,6 +67,7 @@ use signature_bbs_plus::Signature;
 use signature_core::nonce::Nonce;
 pub use traits::*;
 use util::*;
+pub(crate) use workers::*;
 
 /// A credential that can be presented
 #[derive(Debug, Clone, Serialize, Deserialize)]
