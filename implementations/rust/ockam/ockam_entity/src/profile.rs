@@ -18,12 +18,13 @@
 /// TODO
 ///
 use crate::{
-    traits::Verifier, AuthenticationProof, BbsCredential, Changes, Contact, CredentialAttribute,
-    CredentialFragment1, CredentialFragment2, CredentialOffer, CredentialPresentation,
-    CredentialProof, CredentialPublicKey, CredentialRequest, CredentialRequestFragment,
-    CredentialSchema, Entity, Handle, Holder, Identity, IdentityRequest, IdentityResponse, Issuer,
-    OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
-    SecureChannels, SigningPublicKey, TrustPolicy,
+    traits::Verifier, AuthenticationProof, BbsCredential, Changes, Contact, Credential,
+    CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
+    CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequest,
+    CredentialRequestFragment, CredentialSchema, Entity, EntityCredential, Handle, Holder,
+    Identity, IdentityRequest, IdentityResponse, Issuer, OfferId, PresentationManifest,
+    ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
+    TrustPolicy,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_vault::{PublicKey, Secret};
@@ -251,6 +252,14 @@ impl Holder for Profile {
             presentation_manifests,
             proof_request_id,
         )
+    }
+
+    fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
+        self.entity().add_credential(credential)
+    }
+
+    fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential> {
+        self.entity().get_credential(credential)
     }
 }
 

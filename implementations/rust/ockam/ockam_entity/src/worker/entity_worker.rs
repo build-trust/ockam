@@ -343,6 +343,20 @@ impl Worker for EntityWorker {
                     err()
                 }
             }
+            AddCredential(profile_id, credential) => {
+                if let Ok(()) = self.profile(&profile_id).add_credential(credential) {
+                    ctx.send(reply, Res::AddCredential).await
+                } else {
+                    err()
+                }
+            }
+            GetCredential(profile_id, credential) => {
+                if let Ok(c) = self.profile(&profile_id).get_credential(&credential) {
+                    ctx.send(reply, Res::GetCredential(c)).await
+                } else {
+                    err()
+                }
+            }
         }
     }
 }

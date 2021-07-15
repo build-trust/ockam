@@ -1,12 +1,12 @@
 use crate::EntityError::IdentityApiFailed;
 use crate::{
     profile::Profile, traits::Verifier, worker::EntityWorker, AuthenticationProof, BbsCredential,
-    Changes, Contact, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    Changes, Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
-    CredentialRequest, CredentialRequestFragment, CredentialSchema, Handle, Holder, Identity,
-    IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId, PresentationManifest,
-    ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
-    TrustPolicy, TrustPolicyImpl,
+    CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityCredential, Handle,
+    Holder, Identity, IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId,
+    PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels,
+    SigningPublicKey, TrustPolicy, TrustPolicyImpl,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
@@ -439,6 +439,30 @@ impl Holder for Entity {
             proof_request_id,
         ))? {
             Ok(presentation)
+        } else {
+            err()
+        }
+    }
+
+    fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::AddCredential = profile.call(AddCredential(
+            profile.identifier().expect("couldn't get profile id"),
+            credential,
+        ))? {
+            Ok(())
+        } else {
+            err()
+        }
+    }
+
+    fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        if let Res::GetCredential(c) = profile.call(GetCredential(
+            profile.identifier().expect("couldn't get profile id"),
+            credential.clone(),
+        ))? {
+            Ok(c)
         } else {
             err()
         }

@@ -1,8 +1,8 @@
 use crate::{
-    AuthenticationProof, BbsCredential, Changes, Contact, CredentialAttribute, CredentialFragment1,
-    CredentialFragment2, CredentialOffer, CredentialPresentation, CredentialProof,
-    CredentialPublicKey, CredentialRequest, CredentialSchema, OfferId, PresentationManifest,
-    ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
+    AuthenticationProof, BbsCredential, Changes, Contact, Credential, CredentialAttribute,
+    CredentialFragment1, CredentialFragment2, CredentialOffer, CredentialPresentation,
+    CredentialProof, CredentialPublicKey, CredentialRequest, CredentialSchema, EntityCredential,
+    OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
 };
 use ockam_core::{Address, Route};
 use serde::{Deserialize, Serialize};
@@ -58,4 +58,6 @@ pub enum IdentityRequest {
         PresentationManifest,
         ProofRequestId,
     ),
+    AddCredential(Id, EntityCredential),
+    GetCredential(Id, Credential),
 }

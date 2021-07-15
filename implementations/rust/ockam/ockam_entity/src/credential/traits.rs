@@ -1,9 +1,19 @@
 use crate::{
     BbsCredential, BlsSecretKey, CredentialAttribute, CredentialFragment1, CredentialFragment2,
-    CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, OfferId,
-    PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
+    CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, EntityError,
+    EntityIdentifier, OfferId, PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
 };
-use ockam_core::Result;
+use ockam_core::lib::convert::TryFrom;
+use ockam_core::lib::fmt::Formatter;
+use ockam_core::lib::Display;
+use ockam_core::{hex, Error, Result};
+use rand::distributions::Standard;
+use rand::prelude::Distribution;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
+
+big_array! { BigArray; }
 
 /// Credential Issuer
 pub trait CredentialIssuer {
@@ -88,4 +98,120 @@ pub trait CredentialVerifier {
         presentation_manifests: &[PresentationManifest],
         proof_request_id: ProofRequestId,
     ) -> Result<bool>;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
+pub struct CredentialIdentifier(String);
+
+impl Distribution<CredentialIdentifier> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> CredentialIdentifier {
+        let id: [u8; 16] = rng.gen();
+        CredentialIdentifier(hex::encode(id))
+    }
+}
+
+impl CredentialIdentifier {
+    pub const PREFIX: &'static str = "C";
+}
+
+impl Display for CredentialIdentifier {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: String = self.clone().into();
+        write!(f, "{}", &str)
+    }
+}
+
+impl Into<String> for CredentialIdentifier {
+    fn into(self) -> String {
+        format!("{}{}", Self::PREFIX, &self.0)
+    }
+}
+
+impl TryFrom<&str> for CredentialIdentifier {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self> {
+        if let Some(str) = value.strip_prefix(Self::PREFIX) {
+            Ok(Self(str.into()))
+        } else {
+            Err(EntityError::InvalidProfileId.into())
+        }
+    }
+}
+
+impl TryFrom<String> for CredentialIdentifier {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        Self::try_from(value.as_str())
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Credential {
+    id: CredentialIdentifier,
+    issuer_id: EntityIdentifier,
+    type_id: String,
+}
+
+impl Credential {
+    pub fn new(id: CredentialIdentifier, issuer_id: EntityIdentifier, type_id: String) -> Self {
+        Credential {
+            id,
+            issuer_id,
+            type_id,
+        }
+    }
+}
+
+impl Credential {
+    pub fn id(&self) -> &CredentialIdentifier {
+        &self.id
+    }
+    pub fn issuer_id(&self) -> &EntityIdentifier {
+        &self.issuer_id
+    }
+    pub fn type_id(&self) -> &str {
+        &self.type_id
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EntityCredential {
+    credential: Credential,
+    bbs_credential: BbsCredential,
+    #[serde(with = "BigArray")]
+    issuer_pubkey: [u8; 96],
+    schema: CredentialSchema,
+}
+
+impl EntityCredential {
+    pub fn credential(&self) -> &Credential {
+        &self.credential
+    }
+    pub fn bbs_credential(&self) -> &BbsCredential {
+        &self.bbs_credential
+    }
+    pub fn issuer_pubkey(&self) -> [u8; 96] {
+        self.issuer_pubkey
+    }
+    pub fn schema(&self) -> &CredentialSchema {
+        &self.schema
+    }
+}
+
+impl EntityCredential {
+    pub fn new(
+        credential: Credential,
+        bbs_credential: BbsCredential,
+        issuer_pubkey: [u8; 96],
+        schema: CredentialSchema,
+    ) -> Self {
+        EntityCredential {
+            credential,
+            bbs_credential,
+            issuer_pubkey,
+            schema,
+        }
+    }
 }
