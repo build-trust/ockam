@@ -12,8 +12,12 @@ macro_rules! credential_type {
         use $crate::CredentialAttributeSchema;
         use $crate::CredentialAttributeType::{Number, Utf8String, Blob};
 
-        #[allow(unused_mut)]
-        let mut attributes = vec![];
+        let mut attributes = vec![CredentialAttributeSchema {
+            label: $crate::SECRET_ID.into(),
+            description: "".to_string(),
+            attribute_type: Blob,
+            unknown: true,
+        }]; // FIXME
         $(attributes.push($x.into());)*
 
         $crate::CredentialSchema {
