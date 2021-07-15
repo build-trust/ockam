@@ -16,6 +16,7 @@ pub type ProfileIdentifier = EntityIdentifier;
 
 /// Unique [`crate::Profile`] identifier, computed as SHA256 of root public key
 impl EntityIdentifier {
+    pub const PREFIX: &'static str = "P";
     /// Create a EntityIdentifier from a KeyId
     pub fn from_key_id(key_id: KeyId) -> Self {
         Self { 0: key_id }
@@ -35,7 +36,7 @@ impl Display for EntityIdentifier {
 
 impl Into<String> for EntityIdentifier {
     fn into(self) -> String {
-        format!("P{}", &self.0)
+        format!("{}{}", Self::PREFIX, &self.0)
     }
 }
 
@@ -43,7 +44,7 @@ impl TryFrom<&str> for EntityIdentifier {
     type Error = Error;
 
     fn try_from(value: &str) -> Result<Self> {
-        if let Some(str) = value.strip_prefix("P") {
+        if let Some(str) = value.strip_prefix(Self::PREFIX) {
             Ok(Self::from_key_id(str.into()))
         } else {
             Err(EntityError::InvalidProfileId.into())
