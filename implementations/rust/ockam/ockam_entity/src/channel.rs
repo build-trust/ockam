@@ -75,6 +75,16 @@ pub fn check_message_origin<T: Message>(
     Ok(res)
 }
 
+// TODO: rename
+pub fn get_secure_channel_participant_id<T: Message>(msg: &Routed<T>) -> Result<ProfileIdentifier> {
+    let local_msg = msg.local_message();
+    let local_info = LocalInfo::decode(local_msg.local_info())?;
+
+    let res = local_info.their_profile_id().clone();
+
+    Ok(res)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
