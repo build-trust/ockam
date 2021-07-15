@@ -22,10 +22,10 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn new(handle: Handle, profile_id: ProfileIdentifier) -> Self {
+    pub fn new(handle: Handle, profile_id: Option<ProfileIdentifier>) -> Self {
         Entity {
             handle,
-            current_profile_id: Some(profile_id),
+            current_profile_id: profile_id,
         }
     }
 
@@ -39,10 +39,7 @@ impl Entity {
             let address = Address::random(0);
             ctx.start_worker(&address, EntityWorker::default()).await?;
 
-            let mut entity = Entity {
-                handle: Handle::new(ctx, address),
-                current_profile_id: None,
-            };
+            let mut entity = Entity::new(Handle::new(ctx, address), None);
 
             let default_profile = entity.create_profile(vault_address)?;
             entity.current_profile_id = Some(default_profile.identifier()?);
