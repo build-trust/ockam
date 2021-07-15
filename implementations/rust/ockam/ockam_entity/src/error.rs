@@ -31,6 +31,8 @@ pub enum EntityError {
     IdentityApiFailed,
     ContactVerificationFailed,
     InvalidProfileId,
+    DuplicateCredential,
+    CredentialNotFound,
 }
 
 impl EntityError {

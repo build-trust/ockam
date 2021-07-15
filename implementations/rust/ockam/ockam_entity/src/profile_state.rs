@@ -7,9 +7,10 @@ use crate::{
     authentication::Authentication,
     profile::Profile,
     AuthenticationProof, BbsCredential, BlsPublicKey, BlsSecretKey, Changes, Contact, Contacts,
-    CredentialAttribute, CredentialAttributeType, CredentialError, CredentialFragment1,
+    Credential, CredentialAttribute, CredentialAttributeType, CredentialError, CredentialFragment1,
     CredentialFragment2, CredentialHolder, CredentialIssuer, CredentialOffer,
-    CredentialPresentation, CredentialRequest, CredentialSchema, CredentialVerifier, EntityError,
+    CredentialPresentation, CredentialRequest, CredentialSchema, CredentialVerifier,
+    EntityCredential, EntityError,
     EntityError::{ContactVerificationFailed, InvalidInternalState},
     EventIdentifier, ExtPokSignatureProof, Identity, KeyAttributes, MetaKeyAttributes, OfferId,
     PresentationManifest, ProfileChangeEvent, ProfileEventAttributes, ProfileIdentifier,
@@ -33,6 +34,7 @@ pub struct ProfileState {
     contacts: Contacts,
     vault: VaultSync,
     rand_msg: Message,
+    credentials: Vec<EntityCredential>,
 }
 
 impl ProfileState {
@@ -50,6 +52,7 @@ impl ProfileState {
             contacts,
             vault,
             rand_msg: Message::random(rng),
+            credentials: vec![],
         }
     }
 
@@ -120,6 +123,31 @@ impl ProfileState {
 
         let key_id = self.vault.compute_key_id_for_public_key(&public_key)?;
         self.vault.get_secret_by_key_id(&key_id)
+    }
+
+    pub fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
+        if let Some(_) = self
+            .credentials
+            .iter()
+            .find(|x| x.credential() == credential.credential())
+        {
+            return Err(EntityError::DuplicateCredential.into());
+        }
+        self.credentials.push(credential);
+
+        Ok(())
+    }
+
+    pub fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential> {
+        if let Some(c) = self
+            .credentials
+            .iter()
+            .find(|x| x.credential() == credential)
+        {
+            return Ok(c.clone());
+        }
+
+        Err(EntityError::CredentialNotFound.into())
     }
 }
 

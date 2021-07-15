@@ -1,9 +1,9 @@
 use crate::credential::{CredentialOffer, CredentialRequest, SigningPublicKey};
 use crate::{
-    BbsCredential, Changes, Contact, CredentialAttribute, CredentialFragment1, CredentialFragment2,
-    CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequestFragment,
-    CredentialSchema, OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier,
-    ProofRequestId, TrustPolicy,
+    BbsCredential, Changes, Contact, Credential, CredentialAttribute, CredentialFragment1,
+    CredentialFragment2, CredentialPresentation, CredentialProof, CredentialPublicKey,
+    CredentialRequestFragment, CredentialSchema, EntityCredential, OfferId, PresentationManifest,
+    ProfileChangeEvent, ProfileIdentifier, ProofRequestId, TrustPolicy,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_vault_core::{PublicKey, Secret};
@@ -152,6 +152,10 @@ pub trait Holder {
         presentation_manifests: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<CredentialPresentation>;
+
+    fn add_credential(&mut self, credential: EntityCredential) -> Result<()>;
+
+    fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential>;
 }
 
 /// Verifier API
