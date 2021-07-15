@@ -1,5 +1,5 @@
 use crate::{
-    BlsSecretKey, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    BbsCredential, BlsSecretKey, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, OfferId,
     PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
 };
@@ -24,7 +24,7 @@ pub trait CredentialIssuer {
         &mut self,
         schema: &CredentialSchema,
         attributes: &[CredentialAttribute],
-    ) -> Result<Credential>;
+    ) -> Result<BbsCredential>;
 
     /// Sign a credential request where certain claims have already been committed and signs the remaining claims
     fn sign_credential_request(
@@ -50,12 +50,12 @@ pub trait CredentialHolder {
         &mut self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
-    ) -> Result<Credential>;
+    ) -> Result<BbsCredential>;
 
     /// Check a credential to make sure its valid
     fn is_valid_credential(
         &mut self,
-        credential: &Credential,
+        credential: &BbsCredential,
         verifier_key: SigningPublicKey,
     ) -> Result<bool>;
 
@@ -63,7 +63,7 @@ pub trait CredentialHolder {
     /// generates a zero-knowledge presentation. Each credential maps to a presentation manifest
     fn present_credentials(
         &mut self,
-        credential: &[Credential],
+        credential: &[BbsCredential],
         presentation_manifests: &[PresentationManifest],
         proof_request_id: ProofRequestId,
     ) -> Result<Vec<CredentialPresentation>>;

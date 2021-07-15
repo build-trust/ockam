@@ -18,7 +18,7 @@
 /// TODO
 ///
 use crate::{
-    traits::Verifier, AuthenticationProof, Changes, Contact, Credential, CredentialAttribute,
+    traits::Verifier, AuthenticationProof, BbsCredential, Changes, Contact, CredentialAttribute,
     CredentialFragment1, CredentialFragment2, CredentialOffer, CredentialPresentation,
     CredentialProof, CredentialPublicKey, CredentialRequest, CredentialRequestFragment,
     CredentialSchema, Entity, Handle, Holder, Identity, IdentityRequest, IdentityResponse, Issuer,
@@ -197,7 +197,7 @@ impl Issuer for Profile {
         &self,
         schema: &CredentialSchema,
         attributes: A,
-    ) -> Result<Credential> {
+    ) -> Result<BbsCredential> {
         self.entity().sign_credential(schema, attributes)
     }
 
@@ -227,27 +227,30 @@ impl Holder for Profile {
         &self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
-    ) -> Result<Credential> {
+    ) -> Result<BbsCredential> {
         self.entity()
             .combine_credential_fragments(credential_fragment1, credential_fragment2)
     }
 
     fn is_valid_credential(
         &self,
-        credential: &Credential,
+        credential: &BbsCredential,
         verifier_key: SigningPublicKey,
     ) -> Result<bool> {
         self.entity().is_valid_credential(credential, verifier_key)
     }
 
-    fn present_credential(
+    fn create_credential_presentation(
         &self,
-        credential: &Credential,
+        credential: &BbsCredential,
         presentation_manifests: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<CredentialPresentation> {
-        self.entity()
-            .present_credential(credential, presentation_manifests, proof_request_id)
+        self.entity().create_credential_presentation(
+            credential,
+            presentation_manifests,
+            proof_request_id,
+        )
     }
 }
 

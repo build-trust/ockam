@@ -1,5 +1,5 @@
 use crate::{
-    AuthenticationProof, Changes, Contact, Credential, CredentialAttribute, CredentialFragment1,
+    AuthenticationProof, BbsCredential, Changes, Contact, CredentialAttribute, CredentialFragment1,
     CredentialFragment2, CredentialOffer, CredentialPresentation, CredentialProof,
     CredentialPublicKey, CredentialRequest, CredentialSchema, OfferId, PresentationManifest,
     ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
@@ -48,8 +48,8 @@ pub enum IdentityRequest {
     ),
     AcceptCredentialOffer(Id, CredentialOffer, CredentialPublicKey),
     CombineCredentialFragments(Id, CredentialFragment1, CredentialFragment2),
-    IsValidCredential(Id, Credential, CredentialPublicKey),
-    PresentCredential(Id, Credential, PresentationManifest, ProofRequestId),
+    IsValidCredential(Id, BbsCredential, CredentialPublicKey),
+    PresentCredential(Id, BbsCredential, PresentationManifest, ProofRequestId),
     CreateProofRequestId(Id),
     VerifyProofOfPossession(Id, CredentialPublicKey, CredentialProof),
     VerifyCredentialPresentation(

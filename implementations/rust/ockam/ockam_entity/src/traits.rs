@@ -1,6 +1,6 @@
 use crate::credential::{CredentialOffer, CredentialRequest, SigningPublicKey};
 use crate::{
-    Changes, Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+    BbsCredential, Changes, Contact, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequestFragment,
     CredentialSchema, OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier,
     ProofRequestId, TrustPolicy,
@@ -110,7 +110,7 @@ pub trait Issuer {
         &self,
         schema: &CredentialSchema,
         attributes: A,
-    ) -> Result<Credential>;
+    ) -> Result<BbsCredential>;
 
     /// Sign a credential request where certain claims have already been committed and signs the remaining claims
     fn sign_credential_request<A: AsRef<[(String, CredentialAttribute)]>>(
@@ -135,20 +135,20 @@ pub trait Holder {
         &self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
-    ) -> Result<Credential>;
+    ) -> Result<BbsCredential>;
 
     /// Check a credential to make sure its valid
     fn is_valid_credential(
         &self,
-        credential: &Credential,
+        credential: &BbsCredential,
         verifier_key: SigningPublicKey,
     ) -> Result<bool>;
 
     /// Given a list of credentials, and a list of manifests
     /// generates a zero-knowledge presentation. Each credential maps to a presentation manifest
-    fn present_credential(
+    fn create_credential_presentation(
         &self,
-        credential: &Credential,
+        credential: &BbsCredential,
         presentation_manifests: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<CredentialPresentation>;

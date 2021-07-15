@@ -67,7 +67,7 @@ use util::*;
 
 /// A credential that can be presented
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Credential {
+pub struct BbsCredential {
     /// The signed attributes in the credential
     pub attributes: Vec<CredentialAttribute>,
     /// The cryptographic signature

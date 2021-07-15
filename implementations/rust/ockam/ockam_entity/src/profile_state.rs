@@ -6,7 +6,7 @@ use crate::change_history::ProfileChangeHistory;
 use crate::{
     authentication::Authentication,
     profile::Profile,
-    AuthenticationProof, BlsPublicKey, BlsSecretKey, Changes, Contact, Contacts, Credential,
+    AuthenticationProof, BbsCredential, BlsPublicKey, BlsSecretKey, Changes, Contact, Contacts,
     CredentialAttribute, CredentialAttributeType, CredentialError, CredentialFragment1,
     CredentialFragment2, CredentialHolder, CredentialIssuer, CredentialOffer,
     CredentialPresentation, CredentialRequest, CredentialSchema, CredentialVerifier, EntityError,
@@ -316,7 +316,7 @@ impl CredentialIssuer for ProfileState {
         &mut self,
         schema: &CredentialSchema,
         attributes: &[CredentialAttribute],
-    ) -> Result<Credential> {
+    ) -> Result<BbsCredential> {
         if schema.attributes.len() != attributes.len() {
             return Err(CredentialError::MismatchedAttributesAndClaims.into());
         }
@@ -343,7 +343,7 @@ impl CredentialIssuer for ProfileState {
 
         let signature = BbsIssuer::sign(&self.get_signing_key()?, &generators, &messages)
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
-        Ok(Credential {
+        Ok(BbsCredential {
             attributes: attributes.to_vec(),
             signature,
         })
@@ -458,7 +458,7 @@ impl CredentialHolder for ProfileState {
         &mut self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
-    ) -> Result<Credential> {
+    ) -> Result<BbsCredential> {
         let mut attributes = credential_fragment2.attributes;
         for i in 0..credential_fragment1.schema.attributes.len() {
             if credential_fragment1.schema.attributes[i].label == SECRET_ID {
@@ -466,7 +466,7 @@ impl CredentialHolder for ProfileState {
                 break;
             }
         }
-        Ok(Credential {
+        Ok(BbsCredential {
             attributes,
             signature: credential_fragment2
                 .signature
@@ -476,7 +476,7 @@ impl CredentialHolder for ProfileState {
 
     fn is_valid_credential(
         &mut self,
-        credential: &Credential,
+        credential: &BbsCredential,
         verifier_key: SigningPublicKey,
     ) -> Result<bool> {
         // credential cannot have zero attributes so unwrap is okay
@@ -493,7 +493,7 @@ impl CredentialHolder for ProfileState {
 
     fn present_credentials(
         &mut self,
-        credential: &[Credential],
+        credential: &[BbsCredential],
         presentation_manifests: &[PresentationManifest],
         proof_request_id: ProofRequestId,
     ) -> Result<Vec<CredentialPresentation>> {
