@@ -251,7 +251,7 @@ impl SecureChannels for Entity {
         let profile = self.current_profile().expect("no current profile");
         let ctx = &self.handle().ctx;
         let trust_policy_address = block_future(&self.handle.ctx.runtime(), async move {
-            TrustPolicyImpl::create(ctx, trust_policy).await
+            TrustPolicyImpl::create_worker(ctx, trust_policy).await
         })?;
         if let Res::CreateSecureChannelListener = self.call(CreateSecureChannelListener(
             profile.identifier().expect("couldn't get profile id"),
@@ -272,7 +272,7 @@ impl SecureChannels for Entity {
         let profile = self.current_profile().expect("no current profile");
         let ctx = &self.handle().ctx;
         let trust_policy_address = block_future(&self.handle.ctx.runtime(), async move {
-            TrustPolicyImpl::create(ctx, trust_policy).await
+            TrustPolicyImpl::create_worker(ctx, trust_policy).await
         })?;
         if let Res::CreateSecureChannel(address) = self.call(CreateSecureChannel(
             profile.identifier().expect("couldn't get profile id"),
