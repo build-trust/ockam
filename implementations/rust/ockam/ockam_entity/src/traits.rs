@@ -153,8 +153,10 @@ pub trait Holder {
         proof_request_id: ProofRequestId,
     ) -> Result<CredentialPresentation>;
 
+    /// Add credential that this entity possess
     fn add_credential(&mut self, credential: EntityCredential) -> Result<()>;
 
+    /// Get credential that this entity possess
     fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential>;
 }
 

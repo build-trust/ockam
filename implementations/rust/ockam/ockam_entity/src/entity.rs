@@ -2,12 +2,14 @@ use crate::EntityError::IdentityApiFailed;
 use crate::{
     profile::Profile, traits::Verifier, worker::EntityWorker, AuthenticationProof, BbsCredential,
     Changes, Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
-    CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
-    CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityCredential, Handle,
-    Holder, Identity, IdentityRequest, IdentityResponse, Issuer, MaybeContact, OfferId,
-    PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels,
-    SigningPublicKey, TrustPolicy, TrustPolicyImpl,
+    CredentialOffer, CredentialPresentation, CredentialProof, CredentialProtocol,
+    CredentialPublicKey, CredentialRequest, CredentialRequestFragment, CredentialSchema,
+    EntityCredential, Handle, Holder, HolderWorker, Identity, IdentityRequest, IdentityResponse,
+    Issuer, ListenerWorker, MaybeContact, OfferId, PresentationFinishedMessage,
+    PresentationManifest, PresenterWorker, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
+    SecureChannels, SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker,
 };
+use ockam_core::lib::convert::TryInto;
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};
@@ -518,5 +520,120 @@ impl Verifier for Entity {
         } else {
             err()
         }
+    }
+}
+
+impl CredentialProtocol for Entity {
+    fn create_credential_issuance_listener(
+        &mut self,
+        address: impl Into<Address> + Send,
+        schema: CredentialSchema,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<()> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        block_future(&self.handle.ctx.runtime(), async move {
+            let trust_policy =
+                TrustPolicyImpl::create_using_impl(&self.handle.ctx, trust_policy).await?;
+
+            let address = address.into();
+            let worker = ListenerWorker::new(profile, schema, trust_policy);
+            self.handle.ctx.start_worker(address, worker).await?;
+
+            Ok(())
+        })
+    }
+
+    fn acquire_credential(
+        &mut self,
+        issuer_route: Route,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+        values: Vec<CredentialAttribute>,
+    ) -> Result<Credential> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        block_future(&self.handle.ctx.runtime(), async move {
+            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+
+            let worker = HolderWorker::new(
+                profile.clone(),
+                issuer_id.clone(),
+                issuer_route,
+                schema,
+                values,
+                ctx.address(),
+            );
+            ctx.start_worker(Address::random(0), worker).await?;
+
+            let credential = ctx
+                .receive_timeout::<Credential>(120 /* FIXME */)
+                .await?
+                .take()
+                .body();
+
+            Ok(credential)
+        })
+    }
+
+    fn present_credential(
+        &mut self,
+        verifier_route: Route,
+        credential: Credential,
+        reveal_attributes: Vec<String>,
+    ) -> Result<()> {
+        let profile = self.clone().current_profile().expect("no current profile");
+        block_future(&self.handle.ctx.runtime(), async move {
+            let credential = self.get_credential(&credential)?;
+
+            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+            let worker = PresenterWorker::new(
+                profile.clone(),
+                verifier_route,
+                credential,
+                reveal_attributes,
+                ctx.address(),
+            );
+            ctx.start_worker(Address::random(0), worker).await?;
+
+            let _ = ctx
+                .receive_timeout::<PresentationFinishedMessage>(120 /* FIXME */)
+                .await?
+                .take()
+                .body();
+
+            Ok(())
+        })
+    }
+
+    fn verify_credential(
+        &mut self,
+        address: impl Into<Address> + Send,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+        attributes_values: Vec<CredentialAttribute>,
+    ) -> Result<bool> {
+        let mut profile = self.clone().current_profile().expect("no current profile");
+        block_future(&self.handle.ctx.runtime(), async move {
+            let issuer = profile.get_contact(issuer_id)?.unwrap();
+            let pubkey = issuer.get_signing_public_key()?;
+
+            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+            let worker = VerifierWorker::new(
+                profile.clone(),
+                pubkey.as_ref().try_into().unwrap(), // FIXME
+                schema,
+                attributes_values,
+                ctx.address(),
+            );
+
+            ctx.start_worker(address.into(), worker).await?;
+
+            let res = ctx
+                .receive_timeout::<bool>(120 /* FIXME */)
+                .await?
+                .take()
+                .body();
+
+            Ok(res)
+        })
     }
 }

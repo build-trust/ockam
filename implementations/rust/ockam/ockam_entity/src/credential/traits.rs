@@ -1,12 +1,13 @@
 use crate::{
     BbsCredential, BlsSecretKey, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, EntityError,
-    EntityIdentifier, OfferId, PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
+    EntityIdentifier, OfferId, PresentationManifest, ProfileIdentifier, ProofBytes, ProofRequestId,
+    SigningPublicKey, TrustPolicy,
 };
 use ockam_core::lib::convert::TryFrom;
 use ockam_core::lib::fmt::Formatter;
 use ockam_core::lib::Display;
-use ockam_core::{hex, Error, Result};
+use ockam_core::{hex, Address, Error, Result, Route};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
 use rand::Rng;
@@ -181,7 +182,7 @@ pub struct EntityCredential {
     credential: Credential,
     bbs_credential: BbsCredential,
     #[serde(with = "BigArray")]
-    issuer_pubkey: [u8; 96],
+    issuer_pubkey: SigningPublicKey,
     schema: CredentialSchema,
 }
 
@@ -192,7 +193,7 @@ impl EntityCredential {
     pub fn bbs_credential(&self) -> &BbsCredential {
         &self.bbs_credential
     }
-    pub fn issuer_pubkey(&self) -> [u8; 96] {
+    pub fn issuer_pubkey(&self) -> SigningPublicKey {
         self.issuer_pubkey
     }
     pub fn schema(&self) -> &CredentialSchema {
@@ -204,7 +205,7 @@ impl EntityCredential {
     pub fn new(
         credential: Credential,
         bbs_credential: BbsCredential,
-        issuer_pubkey: [u8; 96],
+        issuer_pubkey: SigningPublicKey,
         schema: CredentialSchema,
     ) -> Self {
         EntityCredential {
@@ -214,4 +215,36 @@ impl EntityCredential {
             schema,
         }
     }
+}
+
+pub trait CredentialProtocol {
+    fn create_credential_issuance_listener(
+        &mut self,
+        address: impl Into<Address> + Send,
+        schema: CredentialSchema,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<()>;
+
+    fn acquire_credential(
+        &mut self,
+        issuer_route: Route,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+        values: Vec<CredentialAttribute>,
+    ) -> Result<Credential>;
+
+    fn present_credential(
+        &mut self,
+        worker_route: Route,
+        credential: Credential,
+        reveal_attributes: Vec<String>,
+    ) -> Result<()>;
+
+    fn verify_credential(
+        &mut self,
+        address: impl Into<Address> + Send,
+        issuer_id: &ProfileIdentifier,
+        schema: CredentialSchema,
+        attributes_values: Vec<CredentialAttribute>,
+    ) -> Result<bool>;
 }

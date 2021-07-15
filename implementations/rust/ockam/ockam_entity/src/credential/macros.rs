@@ -17,7 +17,7 @@ macro_rules! credential_type {
             description: "".to_string(),
             attribute_type: Blob,
             unknown: true,
-        }]; // FIXME
+        }]; // FIXME: Should we include SECRET_ID in this macro?
         $(attributes.push($x.into());)*
 
         $crate::CredentialSchema {
