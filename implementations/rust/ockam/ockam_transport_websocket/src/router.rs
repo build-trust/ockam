@@ -22,13 +22,13 @@ pub struct WebSocketRouter {
 /// A handle to connect to a WebSocketRouter
 ///
 /// Dropping this handle is harmless.
-pub struct WebSocketRouterHandle<'c> {
-    ctx: &'c Context,
+pub struct WebSocketRouterHandle {
+    ctx: Context,
     addr: Address,
     run: ArcBool,
 }
 
-impl<'c> WebSocketRouterHandle<'c> {
+impl WebSocketRouterHandle {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
         let accepts = format!("{}#{}", crate::WS, pair.peer.clone()).into();
@@ -46,7 +46,7 @@ impl<'c> WebSocketRouterHandle<'c> {
     pub async fn bind<S: Into<SocketAddr>>(&self, addr: S) -> Result<()> {
         let socket_addr = addr.into();
         WebSocketListenWorker::start(
-            self.ctx,
+            &self.ctx,
             self.addr.clone(),
             socket_addr,
             Arc::clone(&self.run),
@@ -131,12 +131,9 @@ impl WebSocketRouter {
     ///
     /// To also handle incoming connections, use
     /// [`WebSocketRouter::bind`](WebSocketRouter::bind)
-    pub async fn register<'c>(
-        ctx: &'c Context,
-        addr: Address,
-    ) -> Result<WebSocketRouterHandle<'c>> {
+    pub async fn register(ctx: Context, addr: Address) -> Result<WebSocketRouterHandle> {
         let run = atomic::new(true);
-        Self::start(ctx, &addr, Arc::clone(&run)).await?;
+        Self::start(&ctx, &addr, Arc::clone(&run)).await?;
         Ok(WebSocketRouterHandle { ctx, addr, run })
     }
 }
