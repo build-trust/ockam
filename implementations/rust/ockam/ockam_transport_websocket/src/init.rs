@@ -67,8 +67,8 @@ impl WorkerPair {
         // Return a handle to the worker pair
         Ok(WorkerPair {
             peer,
-            rx_addr,
             tx_addr,
+            rx_addr,
             run,
         })
     }
