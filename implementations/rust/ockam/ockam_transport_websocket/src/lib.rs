@@ -77,9 +77,9 @@ use std::str::FromStr;
 /// ws.listen("127.0.0.1:9000").await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
-pub struct WebSocketTransport<'ctx> {
-    ctx: &'ctx Context,
-    router: WebSocketRouterHandle<'ctx>,
+pub struct WebSocketTransport {
+    ctx: Context,
+    router: WebSocketRouterHandle,
 }
 
 /// WebSocket address type constant
@@ -91,18 +91,27 @@ fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
         .map_err(|_| WebSocketError::InvalidAddress)?)
 }
 
-impl<'ctx> WebSocketTransport<'ctx> {
+impl WebSocketTransport {
     /// Create a new WebSocket transport and router for the current node
-    pub async fn create(ctx: &'ctx Context) -> Result<WebSocketTransport<'ctx>> {
+    pub async fn create(ctx: &Context) -> Result<WebSocketTransport> {
         let addr = Address::random(0);
-        let router = WebSocketRouter::register(ctx, addr.clone()).await?;
+        let ctx = ctx.new_context(addr).await?;
+
+        let router = {
+            let ctx_addr = Address::random(0);
+            let ctx = ctx.new_context(ctx_addr).await?;
+
+            let addr = Address::random(0);
+            WebSocketRouter::register(ctx, addr).await?
+        };
+
         Ok(Self { ctx, router })
     }
 
     /// Establish an outgoing WebSocket connection on an existing transport
     pub async fn connect<S: Into<String>>(&self, peer: S) -> Result<()> {
         let peer = WebSocketAddr::from_str(&peer.into())?;
-        init::start_connection(self.ctx, &self.router, peer).await?;
+        init::start_connection(&self.ctx, &self.router, peer).await?;
         Ok(())
     }
 
@@ -129,15 +138,15 @@ impl From<SocketAddr> for WebSocketAddr {
     }
 }
 
-impl Into<SocketAddr> for WebSocketAddr {
-    fn into(self) -> SocketAddr {
-        self.socket_addr
+impl From<WebSocketAddr> for SocketAddr {
+    fn from(other: WebSocketAddr) -> Self {
+        other.socket_addr
     }
 }
 
-impl Into<String> for &WebSocketAddr {
-    fn into(self) -> String {
-        self.to_string()
+impl From<&WebSocketAddr> for String {
+    fn from(other: &WebSocketAddr) -> Self {
+        other.to_string()
     }
 }
 

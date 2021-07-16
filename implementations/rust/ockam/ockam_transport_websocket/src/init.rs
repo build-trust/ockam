@@ -89,7 +89,7 @@ impl WorkerPair {
 /// the peer the worker is meant to be connected to.
 pub async fn start_connection(
     ctx: &Context,
-    router: &WebSocketRouterHandle<'_>,
+    router: &WebSocketRouterHandle,
     peer: WebSocketAddr,
 ) -> Result<()> {
     let pair = WorkerPair::start(ctx, peer).await?;

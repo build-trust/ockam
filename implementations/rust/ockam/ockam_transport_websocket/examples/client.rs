@@ -39,7 +39,7 @@ fn get_peer_addr() -> String {
         .skip(1)
         .take(1)
         .next()
-        .unwrap_or(format!("127.0.0.1:10222"))
+        .unwrap_or_else(|| "127.0.0.1:10222".to_string())
 }
 
 async fn read_stdin(tx: futures_channel::mpsc::UnboundedSender<Vec<u8>>) {

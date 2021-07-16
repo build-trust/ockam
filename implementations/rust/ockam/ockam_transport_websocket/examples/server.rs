@@ -50,5 +50,5 @@ fn get_bind_addr() -> String {
         .skip(1)
         .take(1)
         .next()
-        .unwrap_or(format!("127.0.0.1:10222"))
+        .unwrap_or_else(|| "127.0.0.1:10222".to_string())
 }
