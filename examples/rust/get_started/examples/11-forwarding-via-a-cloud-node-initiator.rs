@@ -9,7 +9,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Run 11-forwarding-via-a-cloud-node-responder,
     // it will print the forwarding address of echoer on your cloud node
-    let echoer_forwarding_address = "forward_here";
+    let echoer_forwarding_address = "ALIAS_forward_here";
 
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;

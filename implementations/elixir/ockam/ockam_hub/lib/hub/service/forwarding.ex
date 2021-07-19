@@ -6,8 +6,8 @@ defmodule Ockam.Hub.Service.Alias do
   and may return errors
 
   Payload encoding:
-  request: :string
-  response: :string ("OK" or "ERROR")
+  request: :string ("REG:<name>" or "DEL:<name>")
+  response: :string ("OK", "ALREADY_STARTED" or "ERROR")
   """
 
   use Ockam.Worker
@@ -26,14 +26,21 @@ defmodule Ockam.Hub.Service.Alias do
     payload = Message.payload(message)
 
     case BareExtended.decode(payload, :string) do
-      {:ok, address} ->
+      {:ok, "REG:" <> name} ->
         case Ockam.Hub.Service.Forwarding.Forwarder.create(
                forward_route: forward_route,
                reply: "OK",
-               address: address
+               address: make_address(name)
              ) do
           {:ok, _address} ->
             :ok
+
+          {:error, {:already_started, _}} ->
+            Router.route(%{
+              onward_route: forward_route,
+              return_route: [state[:address]],
+              payload: "ALREADY_STARTED"
+            })
 
           {:error, reason} ->
             Logger.error("Unable to create an alias: #{inspect(reason)}")
@@ -45,8 +52,16 @@ defmodule Ockam.Hub.Service.Alias do
             })
         end
 
+      {:ok, "DEL:" <> name} ->
+        Ockam.Node.stop(make_address(name))
+        Router.route(%{
+          onward_route: forward_route,
+          return_route: [state[:address]],
+          payload: "OK"
+        })
+
       {:error, error} ->
-        Logger.error("Unable to parse registration response: #{inspect(error)}")
+        Logger.error("Unable to parse registration request: #{inspect(error)}")
 
         Router.route(%{
           onward_route: forward_route,
@@ -56,6 +71,10 @@ defmodule Ockam.Hub.Service.Alias do
     end
 
     {:ok, state}
+  end
+
+  def make_address(name) do
+    "ALIAS_" <> name
   end
 end
 

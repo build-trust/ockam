@@ -41,10 +41,7 @@ pub struct RemoteForwarder {
 
 impl RemoteForwarder {
     fn new(hub_addr: SocketAddr, destination: Address, callback_address: Address, service_address: String, name: Option<String>) -> Self {
-        let route = Route::new()
-            .append(format!("1#{}", hub_addr))
-            .append(service_address)
-            .into();
+        let route = Self::service_route(hub_addr, service_address);
         let destination = Route::new().append(destination).into();
         Self {
             route,
@@ -52,6 +49,13 @@ impl RemoteForwarder {
             callback_address,
             name
         }
+    }
+
+    fn service_route(hub_addr: SocketAddr, service_address: String) -> Route {
+        Route::new()
+            .append(format!("1#{}", hub_addr))
+            .append(service_address)
+            .into()
     }
 
     /// Create and start new RemoteForwarder with named alias
@@ -78,6 +82,30 @@ impl RemoteForwarder {
                 .body();
 
             Ok(resp)
+        } else {
+            Err(OckamError::InvalidParameter.into())
+        }
+    }
+
+    /// Delete an alias registered with create_named
+    pub async fn delete_named<S: Into<String>>(
+        ctx: &Context,
+        hub_addr: S,
+        name: S,
+    ) -> Result<()> {
+        if let Ok(hub_addr) = hub_addr.into().parse::<SocketAddr>() {
+            let address: Address = random();
+            let mut child_ctx = ctx.new_context(address).await?;
+
+            let payload = ["DEL:".to_string(), name.into()].concat();
+            child_ctx.send(Self::service_route(hub_addr, "alias_service".into()), payload).await?;
+            let resp = child_ctx.receive::<String>().await?.take();
+
+            let resp = resp.body();
+            match resp.as_str() {
+                "OK" => Ok(()),
+                _ => Err(OckamError::InvalidHubResponse.into()),
+            }
         } else {
             Err(OckamError::InvalidParameter.into())
         }
@@ -119,8 +147,9 @@ impl Worker for RemoteForwarder {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         debug!("RemoteForwarder registering...");
+        // Implied that if we don't have a name we're using the old forwarding_service
         let register_payload = match self.name.clone() {
-            Some(name) => name,
+            Some(name) => ["REG:".to_string(), name.into()].concat(),
             None => "OK".to_string()
         };
         ctx.send(self.route.clone(), register_payload).await?;

@@ -15,7 +15,10 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
 
-    let forwarder = RemoteForwarder::create_named(&ctx, cloud_node_tcp_address, "echoer", "forward_here").await?;
+    let alias = "forward_here";
+
+    RemoteForwarder::delete_named(&ctx, cloud_node_tcp_address, alias).await?;
+    let forwarder = RemoteForwarder::create_named(&ctx, cloud_node_tcp_address, "echoer", alias).await?;
     println!(
         "Forwarding address of echoer: {}",
         forwarder.remote_address()
