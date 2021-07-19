@@ -394,7 +394,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.20.0"
+version = "0.21.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -406,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -752,9 +752,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.8.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98c8b05dc14c75ea83d63dd391100353789f5f24b8b3866542a5e85c8be8e985"
+checksum = "c2602b8af3767c285202012822834005f596c811042315fa7e9f5b12b2a43207"
 dependencies = [
  "autocfg",
  "bytes 1.0.1",

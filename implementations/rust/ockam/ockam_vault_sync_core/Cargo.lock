@@ -633,7 +633,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.20.0"
+version = "0.21.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -645,7 +645,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -655,7 +655,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.14.0"
+version = "0.15.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -674,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.14.0"
+version = "0.15.0-dev"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -685,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.11.0"
+version = "0.12.0-dev"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -703,7 +703,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.11.0"
+version = "0.12.0-dev"
 dependencies = [
  "quote",
  "syn",
@@ -711,7 +711,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.9.0"
+version = "0.10.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -1050,7 +1050,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.12.0"
+version = "0.13.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1071,7 +1071,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.10.0"
+version = "0.11.0-dev"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1087,7 +1087,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.12.0"
+version = "0.13.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1161,9 +1161,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.8.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98c8b05dc14c75ea83d63dd391100353789f5f24b8b3866542a5e85c8be8e985"
+checksum = "c2602b8af3767c285202012822834005f596c811042315fa7e9f5b12b2a43207"
 dependencies = [
  "autocfg",
  "bytes",
