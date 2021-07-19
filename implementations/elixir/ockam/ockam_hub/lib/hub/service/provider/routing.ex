@@ -8,6 +8,7 @@ defmodule Ockam.Hub.Service.Provider.Routing do
 
   alias Ockam.Hub.Service.Echo, as: EchoService
   alias Ockam.Hub.Service.Forwarding, as: ForwardingService
+  alias Ockam.Hub.Service.Alias, as: AliasService
 
   @services [:echo, :forwarding]
 
@@ -23,6 +24,14 @@ defmodule Ockam.Hub.Service.Provider.Routing do
   end
 
   def start_service(:forwarding, args) do
-    ForwardingService.create(Keyword.merge([address: "forwarding_service"], args))
+    alias_result = AliasService.create(Keyword.merge([address: "alias_service"], args))
+    forwarding_result = ForwardingService.create(Keyword.merge([address: "forwarding_service"], args))
+
+    case {forwarding_result, alias_result} do
+      {{:ok, fr}, {:ok, ar}} ->
+        {:ok, {fr, ar}}
+      {fr, ar} ->
+        {:error, [forwarding: fr, alias: ar]}
+    end
   end
 end

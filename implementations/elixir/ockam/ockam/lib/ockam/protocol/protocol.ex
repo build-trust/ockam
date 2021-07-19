@@ -76,7 +76,7 @@ defmodule Ockam.Protocol do
         decode(protocol_mod, direction, protocol_data)
 
       other ->
-        raise("Decode error: #{other}")
+        {:error, {:base_decode_failed, other}}
     end
   end
 end

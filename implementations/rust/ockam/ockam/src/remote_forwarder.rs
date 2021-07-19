@@ -7,6 +7,7 @@ use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
+
 /// Information about a remotely forwarded worker.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct RemoteForwarderInfo {
@@ -35,19 +36,50 @@ pub struct RemoteForwarder {
     route: Route,
     destination: Route,
     callback_address: Address,
+    name: Option<String>
 }
 
 impl RemoteForwarder {
-    fn new(hub_addr: SocketAddr, destination: Address, callback_address: Address) -> Self {
+    fn new(hub_addr: SocketAddr, destination: Address, callback_address: Address, service_address: String, name: Option<String>) -> Self {
         let route = Route::new()
             .append(format!("1#{}", hub_addr))
-            .append("forwarding_service")
+            .append(service_address)
             .into();
         let destination = Route::new().append(destination).into();
         Self {
             route,
             destination,
             callback_address,
+            name
+        }
+    }
+
+    /// Create and start new RemoteForwarder with named alias
+    /// Similar to 'create', but using alias_service instead
+    pub async fn create_named<A: Into<Address>, S: Into<String>>(
+        ctx: &Context,
+        hub_addr: S,
+        destination: A,
+        name: S,
+    ) -> Result<RemoteForwarderInfo> {
+        if let Ok(hub_addr) = hub_addr.into().parse::<SocketAddr>() {
+            let address: Address = random();
+            let mut child_ctx = ctx.new_context(address).await?;
+            let forwarder = Self::new(hub_addr, destination.into(), child_ctx.address(), "alias_service".into(), Some(name.into()));
+
+            let worker_address: Address = random();
+            debug!("Starting RemoteForwarder at {}", &worker_address);
+            ctx.start_worker(worker_address, forwarder).await?;
+
+            let resp = child_ctx
+                .receive::<RemoteForwarderInfo>()
+                .await?
+                .take()
+                .body();
+
+            Ok(resp)
+        } else {
+            Err(OckamError::InvalidParameter.into())
         }
     }
 
@@ -61,7 +93,7 @@ impl RemoteForwarder {
         if let Ok(hub_addr) = hub_addr.into().parse::<SocketAddr>() {
             let address: Address = random();
             let mut child_ctx = ctx.new_context(address).await?;
-            let forwarder = Self::new(hub_addr, destination.into(), child_ctx.address());
+            let forwarder = Self::new(hub_addr, destination.into(), child_ctx.address(), "forwarding_service".into(), None);
 
             let worker_address: Address = random();
             debug!("Starting RemoteForwarder at {}", &worker_address);
@@ -87,12 +119,16 @@ impl Worker for RemoteForwarder {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         debug!("RemoteForwarder registering...");
-        ctx.send(self.route.clone(), "register".to_string()).await?;
+        let register_payload = match self.name.clone() {
+            Some(name) => name,
+            None => "OK".to_string()
+        };
+        ctx.send(self.route.clone(), register_payload).await?;
         let resp = ctx.receive::<String>().await?.take();
         let route = resp.return_route();
         let resp = resp.body();
         match resp.as_str() {
-            "register" => self.route = route.clone(),
+            "OK" => self.route = route.clone(),
             _ => return Err(OckamError::InvalidHubResponse.into()),
         }
         info!("RemoteForwarder registered with route: {}", route);
@@ -132,3 +168,5 @@ impl Worker for RemoteForwarder {
         Ok(())
     }
 }
+
+

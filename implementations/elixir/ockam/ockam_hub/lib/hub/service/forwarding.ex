@@ -1,9 +1,70 @@
+defmodule Ockam.Hub.Service.Alias do
+  @moduledoc """
+  Alias service to register remote workers under user-provided local names.
+
+  Same as Ockam.Hub.Service.Forwarding but accepts the address to register as
+  and may return errors
+
+  Payload encoding:
+  request: :string
+  response: :string ("OK" or "ERROR")
+  """
+
+  use Ockam.Worker
+
+  alias Ockam.Bare.Extended, as: BareExtended
+
+  alias Ockam.Message
+  alias Ockam.Router
+
+  require Logger
+
+  @impl true
+  def handle_message(message, state) do
+    Logger.info("ALIAS service\nMESSAGE: #{inspect(message)}")
+    forward_route = Message.return_route(message)
+    payload = Message.payload(message)
+
+    case BareExtended.decode(payload, :string) do
+      {:ok, address} ->
+        case Ockam.Hub.Service.Forwarding.Forwarder.create(
+               forward_route: forward_route,
+               reply: "OK",
+               address: address
+             ) do
+          {:ok, _address} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.error("Unable to create an alias: #{inspect(reason)}")
+
+            Router.route(%{
+              onward_route: forward_route,
+              return_route: [state[:address]],
+              payload: "ERROR"
+            })
+        end
+
+      {:error, error} ->
+        Logger.error("Unable to parse registration response: #{inspect(error)}")
+
+        Router.route(%{
+          onward_route: forward_route,
+          return_route: [state[:address]],
+          payload: "ERROR"
+        })
+    end
+
+    {:ok, state}
+  end
+end
+
 defmodule Ockam.Hub.Service.Forwarding do
   @moduledoc """
-  Alias service to register remote workers under local names.
+  Forwarding service to register remote workers under local names.
 
   On message:
-  creates new Ockam.Hub.Service.Alias.Forwarder workers under a random address
+  creates new Ockam.Hub.Service.Forwarding.Forwarder workers under a random address
   passing return route of the message.
 
   The Forwarder worker will forward messages to the recorded route
@@ -18,15 +79,11 @@ defmodule Ockam.Hub.Service.Forwarding do
 
   @impl true
   def handle_message(message, state) do
-    Logger.info("ALIAS service\nMESSAGE: #{inspect(message)}")
+    Logger.info("FORWARDING service\nMESSAGE: #{inspect(message)}")
     forward_route = Message.return_route(message)
     payload = Message.payload(message)
 
-    {:ok, _alias_address} =
-      __MODULE__.Forwarder.create(
-        forward_route: forward_route,
-        registration_payload: payload
-      )
+    {:ok, _address} = __MODULE__.Forwarder.create(forward_route: forward_route, reply: payload)
 
     {:ok, state}
   end
@@ -57,9 +114,9 @@ defmodule Ockam.Hub.Service.Forwarding.Forwarder do
   def setup(options, state) do
     Logger.info("Created new alias for #{inspect(options)}")
     forward_route = Keyword.fetch!(options, :forward_route)
-    registration_payload = Keyword.fetch!(options, :registration_payload)
+    reply = Keyword.fetch!(options, :reply)
 
-    :ok = send_registration_ok(forward_route, registration_payload, state)
+    :ok = send_registration_ok(forward_route, reply, state)
 
     {:ok, Map.put(state, :forward_route, Keyword.fetch!(options, :forward_route))}
   end
@@ -81,11 +138,11 @@ defmodule Ockam.Hub.Service.Forwarding.Forwarder do
     })
   end
 
-  def send_registration_ok(forward_route, registration_payload, state) do
+  def send_registration_ok(forward_route, reply, state) do
     reply = %{
       onward_route: forward_route,
       return_route: [state.address],
-      payload: registration_payload
+      payload: reply
     }
 
     Logger.info("REGISTER OK: #{inspect(reply)}")
