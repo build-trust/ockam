@@ -3,6 +3,7 @@
 #ifndef RUST_VAULT_H
 #define RUST_VAULT_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
