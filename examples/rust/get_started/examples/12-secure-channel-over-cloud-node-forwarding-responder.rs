@@ -1,5 +1,5 @@
 use ockam::{
-    Context, Entity, NoOpTrustPolicy, RemoteForwarder, Result, SecureChannels, TcpTransport,
+    Context, Entity, NoOpTrustPolicy, RemoteForwarder, Result, SecureChannels, TcpTransport, Vault,
 };
 use ockam_get_started::Echoer;
 
@@ -16,7 +16,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
-    let mut bob = Entity::create(&ctx)?;
+    let vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut bob = Entity::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "bob_secure_channel_listener"
     bob.create_secure_channel_listener("bob_secure_channel_listener", NoOpTrustPolicy)?;

@@ -57,6 +57,7 @@ mod test {
     use crate::{Entity, Identity};
     use ockam_core::Error;
     use ockam_node::Context;
+    use ockam_vault_sync_core::Vault;
     use rand::{thread_rng, RngCore};
 
     fn test_error<S: Into<String>>(error: S) -> ockam_core::Result<()> {
@@ -64,13 +65,16 @@ mod test {
     }
 
     async fn test_auth_use_case(ctx: &Context) -> ockam_core::Result<()> {
+        let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+        let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(&ctx)?;
-        let mut bob = Entity::create(&ctx)?;
+        let mut alice = Entity::create(&ctx, &alice_vault)?;
+        let mut bob = Entity::create(&ctx, &bob_vault)?;
 
         // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile()?;
-        let mut bob_chat = bob.create_profile()?;
+        let mut alice_chat = alice.create_profile(&alice_vault)?;
+        let mut bob_chat = bob.create_profile(&bob_vault)?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice_chat.as_contact()?;
@@ -104,13 +108,16 @@ mod test {
     }
 
     async fn test_key_rotation(ctx: &Context) -> ockam_core::Result<()> {
+        let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+        let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(&ctx)?;
-        let mut bob = Entity::create(&ctx)?;
+        let mut alice = Entity::create(&ctx, &alice_vault)?;
+        let mut bob = Entity::create(&ctx, &bob_vault)?;
 
         // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile()?;
-        let mut bob_chat = bob.create_profile()?;
+        let mut alice_chat = alice.create_profile(&alice_vault)?;
+        let mut bob_chat = bob.create_profile(&bob_vault)?;
 
         // Both profiles rotate keys.
         alice_chat.rotate_profile_key()?;
@@ -133,12 +140,15 @@ mod test {
     }
 
     async fn test_update_contact_and_reprove(ctx: &Context) -> ockam_core::Result<()> {
-        let mut alice = Entity::create(&ctx)?;
-        let mut bob = Entity::create(&ctx)?;
+        let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+        let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+
+        let mut alice = Entity::create(&ctx, &alice_vault)?;
+        let mut bob = Entity::create(&ctx, &bob_vault)?;
 
         // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile()?;
-        let mut bob_chat = bob.create_profile()?;
+        let mut alice_chat = alice.create_profile(&alice_vault)?;
+        let mut bob_chat = bob.create_profile(&bob_vault)?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice_chat.as_contact()?;

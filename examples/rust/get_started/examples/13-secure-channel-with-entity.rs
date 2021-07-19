@@ -1,7 +1,7 @@
 // This node creates a secure channel and routes a message through it.
 
 use ockam::{
-    route, Address, Context, Entity, IdentifierTrustPolicy, Identity, Result, SecureChannels,
+    route, Address, Context, Entity, IdentifierTrustPolicy, Identity, Result, SecureChannels, Vault,
 };
 use ockam_get_started::Echoer;
 
@@ -10,10 +10,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Start an Echoer worker at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    let mut bob = Entity::create(&ctx)?;
+    let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut bob = Entity::create(&ctx, &bob_vault)?;
 
     // Connect to a secure channel listener and perform a handshake.
-    let mut alice = Entity::create(&ctx)?;
+    let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut alice = Entity::create(&ctx, &alice_vault)?;
 
     // WIP
 

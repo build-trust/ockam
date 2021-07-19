@@ -2,7 +2,8 @@
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
 use ockam::{
-    route, Address, Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, TCP,
+    route, Address, Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, Vault,
+    TCP,
 };
 
 #[ockam::node]
@@ -13,7 +14,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a TCP connection.
     tcp.connect("127.0.0.1:3000").await?;
 
-    let mut alice = Entity::create(&ctx)?;
+    let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut alice = Entity::create(&ctx, &alice_vault)?;
     let middle: Address = (TCP, "127.0.0.1:3000").into();
     let responder: Address = (TCP, "127.0.0.1:4000").into();
     let route = route![middle, responder, "bob_secure_channel_listener"];

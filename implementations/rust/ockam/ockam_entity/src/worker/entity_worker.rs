@@ -10,7 +10,7 @@ use ockam_core::{
     Address, Result, Routed, Worker,
 };
 use ockam_node::Context;
-use ockam_vault_sync_core::{Vault, VaultSync};
+use ockam_vault_sync_core::VaultSync;
 
 #[derive(Default)]
 pub struct EntityWorker {
@@ -42,9 +42,8 @@ impl Worker for EntityWorker {
         let reply = msg.return_route();
         let req = msg.body();
         match req {
-            CreateProfile => {
-                let vault = Vault::create(ctx).expect("failed to create EntityWorker vault");
-                let vault_sync = VaultSync::create_with_worker(ctx, &vault)
+            CreateProfile(vault_address) => {
+                let vault_sync = VaultSync::create_with_worker(ctx, &vault_address)
                     .expect("couldn't create profile vault");
 
                 let profile_state =

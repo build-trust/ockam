@@ -168,6 +168,7 @@ impl ProfileSerializationUtil {
 mod test {
     use super::*;
     use ockam_core::Error;
+    use ockam_vault_sync_core::Vault;
 
     fn test_error<S: Into<String>>(msg: S) -> Result<()> {
         Err(Error::new(0, msg.into()))
@@ -246,8 +247,11 @@ mod test {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let mut entity_alice = Entity::create(&ctx).unwrap();
-                let mut entity_bob = Entity::create(&ctx).unwrap();
+                let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+                let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+
+                let mut entity_alice = Entity::create(&ctx, &alice_vault).unwrap();
+                let mut entity_bob = Entity::create(&ctx, &bob_vault).unwrap();
 
                 let mut alice = entity_alice.current_profile().unwrap();
                 let mut bob = entity_bob.current_profile().unwrap();

@@ -33,9 +33,9 @@ impl Entity {
         self.handle.clone()
     }
 
-    pub fn create(node_ctx: &Context) -> Result<Entity> {
-        block_future(&node_ctx.runtime(), async move {
-            let ctx = node_ctx.new_context(Address::random(0)).await?;
+    pub fn create(ctx: &Context, vault_address: &Address) -> Result<Entity> {
+        block_future(&ctx.runtime(), async move {
+            let ctx = ctx.new_context(Address::random(0)).await?;
             let address = Address::random(0);
             ctx.start_worker(&address, EntityWorker::default()).await?;
 
@@ -44,7 +44,7 @@ impl Entity {
                 current_profile_id: None,
             };
 
-            let default_profile = entity.create_profile()?;
+            let default_profile = entity.create_profile(vault_address)?;
             entity.current_profile_id = Some(default_profile.identifier()?);
             Ok(entity)
         })
@@ -70,8 +70,8 @@ fn err<T>() -> Result<T> {
 }
 
 impl Entity {
-    pub fn create_profile(&mut self) -> Result<Profile> {
-        if let Res::CreateProfile(id) = self.call(CreateProfile)? {
+    pub fn create_profile(&mut self, vault_address: &Address) -> Result<Profile> {
+        if let Res::CreateProfile(id) = self.call(CreateProfile(vault_address.clone()))? {
             Ok(Profile::new(id, self.handle.clone()))
         } else {
             err()

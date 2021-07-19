@@ -80,14 +80,18 @@ mod test {
     use super::*;
     use crate::{Entity, SecureChannels};
     use ockam_core::{route, Message};
+    use ockam_vault_sync_core::Vault;
 
     #[test]
     fn disable_test_channel() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let mut alice = Entity::create(&ctx).unwrap();
-                let mut bob = Entity::create(&ctx).unwrap();
+                let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+                let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+
+                let mut alice = Entity::create(&ctx, &alice_vault).unwrap();
+                let mut bob = Entity::create(&ctx, &bob_vault).unwrap();
 
                 let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier().unwrap());
                 let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());

@@ -14,7 +14,7 @@ pub type Id = ProfileIdentifier;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum IdentityRequest {
-    CreateProfile,
+    CreateProfile(Address),
     CreateAuthenticationProof(Id, ByteVec),
     CreateKey(Id, String),
     GetProfilePublicKey(Id),
