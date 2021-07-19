@@ -8,5 +8,5 @@ edition = "2018"
 ockam = {path = "../../../implementations/rust/ockam/ockam", features = ["ockam_transport_tcp", "ockam_vault"]}
 
 [dev-dependencies]
-rand = { version = "*", features = ["std_rng"] }
+rand = { version = "0.8.4", features = ["std_rng"] }
 
