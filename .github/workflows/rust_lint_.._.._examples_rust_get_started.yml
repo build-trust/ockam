@@ -10,6 +10,7 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'examples/rust/get_started/**'
+      - 'implementations/rust/deny.toml'
 
 jobs:
   rust_lint___examples_rust_get_started:

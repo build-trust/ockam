@@ -15,6 +15,7 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_key_exchange_xx/**'
+      - 'implementations/rust/deny.toml'
 
 jobs:
   rust_lint_ockam_ockam_key_exchange_xx:

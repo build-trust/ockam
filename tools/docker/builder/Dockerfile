@@ -43,6 +43,7 @@ RUN set -xe; \
     rustup component add rustfmt; \
     rustup component add clippy; \
     cargo install cargo-audit; \
+    cargo install --locked cargo-deny; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     apt-get update; \

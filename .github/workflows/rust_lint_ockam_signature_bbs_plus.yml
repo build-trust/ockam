@@ -11,6 +11,7 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/signature_bbs_plus/**'
+      - 'implementations/rust/deny.toml'
 
 jobs:
   rust_lint_ockam_signature_bbs_plus:
