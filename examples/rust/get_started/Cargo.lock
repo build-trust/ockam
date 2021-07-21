@@ -832,6 +832,7 @@ name = "ockam_get_started"
 version = "0.1.0"
 dependencies = [
  "ockam",
+ "ockam_vault",
  "rand 0.8.4",
 ]
 
