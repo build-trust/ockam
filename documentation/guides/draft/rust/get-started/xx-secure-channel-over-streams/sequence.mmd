@@ -20,7 +20,7 @@ sequenceDiagram
         StreamClient_I-->>Initiator: ok
     end
 
-    loop 
+    loop
         Stream_R_I--)StreamClient_I: pull_response[]
         StreamClient_I--)Stream_R_I: pull
     end
