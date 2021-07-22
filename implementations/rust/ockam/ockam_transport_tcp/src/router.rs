@@ -33,7 +33,13 @@ pub struct TcpRouterHandle {
 impl TcpRouterHandle {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let accepts = format!("{}#{}", crate::TCP, pair.peer.clone()).into();
+        let tcp_address: Address = format!("{}#{}", crate::TCP, pair.peer.clone()).into();
+        let mut accepts = vec![tcp_address];
+        accepts.extend(
+            pair.hostnames
+                .iter()
+                .map(|x| Address::from_string(format!("{}#{}", crate::TCP, x))),
+        );
         let self_addr = pair.tx_addr.clone();
 
         self.ctx
@@ -98,8 +104,21 @@ impl Worker for TcpRouter {
                 ctx.send(next.clone(), msg).await?;
             }
             Register { accepts, self_addr } => {
-                trace!("TCP registration request: {} => {}", accepts, self_addr);
-                self.map.insert(accepts, self_addr);
+                if let Some(f) = accepts.first().cloned() {
+                    trace!("TCP registration request: {} => {}", f, self_addr);
+                } else {
+                    // Should not happen
+                    return Err(TcpError::InvalidAddress.into());
+                }
+
+                for accept in &accepts {
+                    if self.map.contains_key(accept) {
+                        return Err(TcpError::AlreadyConnected.into());
+                    }
+                }
+                for accept in accepts {
+                    self.map.insert(accept, self_addr.clone());
+                }
             }
         };
 

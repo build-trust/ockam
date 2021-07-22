@@ -10,6 +10,7 @@ use tokio::net::TcpStream;
 /// Transmit and receive peers of a TCP connection
 #[derive(Debug)]
 pub struct WorkerPair {
+    pub(crate) hostnames: Vec<String>,
     pub(crate) peer: SocketAddr,
     pub(crate) tx_addr: Address,
     pub(crate) rx_addr: Address,
@@ -25,8 +26,9 @@ impl WorkerPair {
         Ok(())
     }
 
-    fn from_peer(peer: SocketAddr) -> Self {
+    fn from_peer(peer: SocketAddr, hostnames: Vec<String>) -> Self {
         Self {
+            hostnames,
             peer,
             tx_addr: Address::random(0),
             rx_addr: Address::random(0),
@@ -40,13 +42,15 @@ impl WorkerPair {
         ctx: &Context,
         stream: TcpStream,
         peer: SocketAddr,
+        hostnames: Vec<String>,
     ) -> Result<Self> {
         let WorkerPair {
+            hostnames,
             peer,
             rx_addr,
             tx_addr,
             run,
-        } = WorkerPair::from_peer(peer);
+        } = WorkerPair::from_peer(peer, hostnames);
 
         trace!("Creating new worker pair from stream");
 
@@ -65,6 +69,7 @@ impl WorkerPair {
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
+            hostnames,
             peer,
             rx_addr,
             tx_addr,
@@ -72,12 +77,12 @@ impl WorkerPair {
         })
     }
 
-    async fn start(ctx: &Context, peer: SocketAddr) -> Result<Self> {
+    async fn start(ctx: &Context, peer: SocketAddr, hostnames: Vec<String>) -> Result<Self> {
         debug!("Starting worker connection to remote {}", peer);
 
         // TODO: make i/o errors into ockam_error
         let stream = TcpStream::connect(peer).await.map_err(TcpError::from)?;
-        Self::with_stream(ctx, stream, peer).await
+        Self::with_stream(ctx, stream, peer, hostnames).await
     }
 }
 
@@ -90,12 +95,13 @@ pub async fn start_connection<P>(
     ctx: &Context,
     router: &TcpRouterHandle,
     peer: P,
+    hostnames: Vec<String>,
 ) -> Result<WorkerPair>
 where
     P: Into<SocketAddr>,
 {
     let peer = peer.into();
-    let pair = WorkerPair::start(ctx, peer).await?;
+    let pair = WorkerPair::start(ctx, peer, hostnames).await?;
     router.register(&pair).await?;
     Ok(pair)
 }
