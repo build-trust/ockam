@@ -2,7 +2,9 @@
 /// clients.  A stream is a buffered message sending channel, which
 /// means that you can run `initiator` and `responder` in any order
 /// you like.
-use ockam::{stream::Stream, Context, Result, Route, route, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{
+    route, stream::Stream, Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP,
+};
 use std::time::Duration;
 
 #[ockam::node]
