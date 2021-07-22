@@ -31,7 +31,7 @@ pub struct WebSocketRouterHandle {
 impl WebSocketRouterHandle {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let accepts = format!("{}#{}", crate::WS, pair.peer.clone()).into();
+        let accepts = vec![format!("{}#{}", crate::WS, pair.peer.clone()).into()];
         let self_addr = pair.tx_addr.clone();
 
         self.ctx
@@ -102,12 +102,21 @@ impl Worker for WebSocketRouter {
                 ctx.send(next.clone(), msg).await?;
             }
             Register { accepts, self_addr } => {
-                trace!(
-                    "WebSocket registration request: {} => {}",
-                    accepts,
-                    self_addr
-                );
-                self.map.insert(accepts, self_addr);
+                if let Some(f) = accepts.first().cloned() {
+                    trace!("TCP registration request: {} => {}", f, self_addr);
+                } else {
+                    // Should not happen
+                    return Err(WebSocketError::InvalidAddress.into());
+                }
+
+                for accept in &accepts {
+                    if self.map.contains_key(accept) {
+                        return Err(WebSocketError::AlreadyConnected.into());
+                    }
+                }
+                for accept in accepts {
+                    self.map.insert(accept, self_addr.clone());
+                }
             }
         };
 

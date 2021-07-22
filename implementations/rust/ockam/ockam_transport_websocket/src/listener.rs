@@ -67,7 +67,7 @@ impl WebSocketListenWorker {
             ctx.send(
                 self.router_addr.clone(),
                 RouterMessage::Register {
-                    accepts: format!("{}#{}", crate::WS, pair.peer).into(),
+                    accepts: vec![format!("{}#{}", crate::WS, pair.peer).into()],
                     self_addr: pair.tx_addr.clone(),
                 },
             )
