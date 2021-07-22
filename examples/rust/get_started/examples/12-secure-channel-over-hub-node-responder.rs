@@ -23,7 +23,7 @@ async fn main(ctx: Context) -> Result<()> {
     bob.create_secure_channel_listener("bob_secure_channel_listener", NoOpTrustPolicy)?;
 
     let forwarder =
-        RemoteForwarder::create(&ctx, cloud_node_tcp_address, "bob_secure_channel_listener")
+        RemoteForwarder::create(&ctx, route![(TCP, cloud_node_tcp_address)], "bob_secure_channel_listener")
             .await?;
 
     println!("Forwarding address: {}", forwarder.remote_address());
