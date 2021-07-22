@@ -6,30 +6,38 @@ title: Secure channel over Streams
 
 ## Introduction
 
-In the previous examples we demonstrated how to establish secure channels and streams,
-and how to send messages through them.
+In previous examples we demonstrated sending messages through secure channels as well as sending messages via streams.
 
-In this guide, we're going to combine that and send messages over streams using secure channels.
-This way we'll achieve both end-to-end encryption and reliable message delivery.
+Let's now combine these two examples and send messages via streams using secure channels.
+
+This gives us both end-to-end encryption and reliable message delivery with only minimal changes to our code.
 
 
 ## App worker
 
-We're going to run two nodes communicating via Ockam Hub. One of them will run the secure channel listener and the echoer worker, another will run the secure channel initiator and send the message to echoer.
+For this example we'll create two nodes that communicate with each other via the Ockam Hub stream service.
+
+The first node, which we will refer to as the "responder", will be responsible for running the echoer worker and the secure channel listener.
+
+The other node, called the "initiator", will initiate the secure channel protocol and send a message to the echoer worker.
+
+Connecting these two nodes will be the bi-directional stream managed by Ockam Hub.
+
+Encryption is managed by the nodes and ensures that Ockam Hub is unable to inspect the content of any messages.
 
 
-### Listener node
+### Responder node
 
 Create a new file at:
 
 ```
-touch examples/14-secure-channel-over-stream-over-cloud-node-responder.rs
+touch examples/15-secure-channel-over-stream-over-cloud-node-responder.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-use ockam::{stream::Stream, Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
 use ockam_get_started::Echoer;
 use std::time::Duration;
 
@@ -53,13 +61,13 @@ async fn main(ctx: Context) -> Result<()> {
         .connect(
             route![(TCP, "127.0.0.1:4000")],
             // Stream name from THIS node to the OTHER node
-            "sc-test-b-a",
-            // Stream name from OTHER to THIS
-            "sc-test-a-b",
+            "secure-channel-test-b-a",
+            // Stream name from the OTHER node to THIS node
+            "secure-channel-test-a-b",
         )
         .await?;
 
-    // Create an echoer worker
+    // Start an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
@@ -72,13 +80,15 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/14-secure-channel-over-stream-over-cloud-node-initiator.rs
+touch examples/15-secure-channel-over-stream-over-cloud-node-initiator.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-use ockam::{stream::Stream, Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{
+    route, stream::Stream, Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP,
+};
 use std::time::Duration;
 
 #[ockam::node]
@@ -90,7 +100,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx)?;
 
     // Create a bi-directional stream
-    let (tx, _) = Stream::new(&ctx)?
+    let (tx, _rx) = Stream::new(&ctx)?
         .stream_service("stream")
         .index_service("stream_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
@@ -98,9 +108,9 @@ async fn main(mut ctx: Context) -> Result<()> {
         .connect(
             route![(TCP, "127.0.0.1:4000")],
             // Stream name from THIS node to the OTHER node
-            "sc-test-a-b",
-            // Stream name from OTHER to THIS
-            "sc-test-b-a",
+            "secure-channel-test-a-b",
+            // Stream name from the OTHER node to THIS node
+            "secure-channel-test-b-a",
         )
         .await?;
 
@@ -116,7 +126,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     )
     .await?;
 
-    // Send a message via the channel to the "printer"
+    // Send a message through the channel to the "echoer"
     ctx.send(
         Route::new().append(channel.address()).append("echoer"),
         "Hello World!".to_string(),
@@ -125,30 +135,32 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Wait for the reply
     let reply = ctx.receive_block::<String>().await?;
-    println!("Reply via secure channel via stream: {}", reply);
+    println!("Reply through secure channel via stream: {}", reply);
 
     ctx.stop().await
 }
-
 ```
 
-This code starts a stream client and initializes a secure channel using the stream address, setting up the secure channel 
-communication to use th stream forwarding.
+This code starts a stream client, creates a bi-directional stream and then establishes a secure channel between the client and the stream address.
 
-Then it sends the message through the secure channel normally.
+Messages can now be sent normally via the stream through the secure channel.
 
 
 ### Run
 
-```
-cargo run --example 14-secure-channel-over-stream-over-cloud-node-responder
-```
+To start the first node run:
 
 ```
-cargo run --example 14-secure-channel-over-stream-over-cloud-node-initiator
+cargo run --example 15-secure-channel-over-stream-over-cloud-node-responder
 ```
 
-You now should see the log message from the initiaror: `Reply via secure channel via stream: ...`
+To start the second node run:
+
+```
+cargo run --example 15-secure-channel-over-stream-over-cloud-node-initiator
+```
+
+You now should see the log message from the initiator: `Reply through secure channel via stream: ...`
 
 ## Message flow
 
