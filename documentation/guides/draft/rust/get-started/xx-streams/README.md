@@ -6,55 +6,100 @@ title: Reliable message delivery with Streams
 
 ## Introduction
 
-In the previous guides we were sending messages to remote workers without much delivery guarantees.
-The workers were sending messages hoping that receiving end would receive them. This messaging mode is
-sometimes called "at most once delivery".
+In the previous guides we were sending messages to remote workers without any delivery guarantees.
 
-In real life distributed systems are constantly experiencing network interruptions while workers and devices
-themselves may crash and restart.
+The workers were sending messages hoping that receiving end would receive them. This messaging mode is usually referred to as: *"at most once delivery"*
 
-To address that message brokers introduce message buffers or logs, which store messages and can re-deliver them after failures. Ockam Hub integrates with message brokers using Ockam Streams. To communicate with Ockam Streams on the Hub, the application can use the Ockam Streams Protocol.
+In real life, distributed systems are constantly experiencing network interruptions, while workers and devices themselves may crash and restart.
 
-More about the stream protocol can be found here: https://github.com/ockam-network/proposals/tree/main/design/0009-stream-protocol
+Message brokers solve this problem by introducing message buffers or logs. By maintaining a record of messages sent, the broker can retry delivery in the event of failures.
 
-## Stream client
+Ockam Hub integrates with message brokers through the use of Ockam Streams and applications use the Ockam Streams Protocol to communicate.
 
-To hide complexity of stream protocol interaction, Ockam provides a Stream Client API:
+Further information can be found in the Ockam Stream service protocol definition: https://github.com/ockam-network/proposals/tree/main/design/0009-stream-protocol
 
 
-**TODO: check this API**
+### The Stream client API
 
+The Stream Client API is used to configure and initiate a connection to a Stream service and implement Ockam Streams support for your application.
+
+#### Client Configuration
+
+Stream client configuration is facilitated by a [builder pattern](https://doc.rust-lang.org/1.0.0/style/ownership/builders.html) that exposes configuration methods for the stream.
+
+For example:
+
+```rust
+let stream = Stream::new(&ctx)?
+    .stream_service("stream")
+    .index_service("stream_index")
+    .client_id("stream-over-cloud-node-responder")
+    .with_interval(Duration::from_millis(100));
 ```
-Stream::connect(route, outgoing_stream, incoming_stream)
+
+Here the `stream_service()` and `index_service()` methods configure the client to use the basic stream service exposed by Ockam Hub.
+
+The `client_id()` method configures a name for our node that the Stream Service or any other clients can use to uniquely identify this node.
+
+Finally, the `with_interval()` method configures the rate at which nodes poll the stream service for new messages.
+
+#### Client Connection
+
+Once configured, a connection can be made to the stream service with the `connect()` method.
+
+For example:
+
+```rust
+let (tx, rx) = stream.connect(
+    route![(TCP, "127.0.0.1:4000")], // route
+    "stream-a-to-b",                 // outgoing stream
+    "stream-b-to-a",                 // incoming stream
+).await?;
 ```
 
-Which allows to send messages over one stream and receive over another.
+The route parameter describes an Ockam Route to the stream service.
 
-When two stream clients run on different nodes with symmetrical stream names configured,
-the nodes can exchange messages the same way as they would using transports or secure channels.
+The outgoing and incoming stream parameters refer to the names of the streams we are sending and receiving messages on.
+
+Finally, the `connect()` method returns two routes: `tx` and `rx` that can be used to send and receive messages in the same way as any other transport.
+
+
+#### Stream Communication
+
+When we have two stream clients running on different nodes with symmetrical stream names configured, the nodes will be able to exchange messages the same way as they would using transports or secure channels.
+
+For example:
+
+```rust
+ctx.send(
+    tx.to_route().append("echoer"), // route via stream's 'tx' route
+    "Hello World!".to_string()      // message
+).await?;
+```
+
+Here the route parameter describes the `tx` route from stream with the `echoer` worker on the destination node appended to it.
+
 
 ## App worker
 
-For demonstration, we'll set up a stream communication between two nodes.
+In this example we'll set up a bi-directional stream and use it for communication between two nodes.
 
-Like in the previous examples, we will create a responder node and initiator node.
-Responder node will have an `"echoer"` worker and initiator will send it a message through
-the stream
+As in the previous examples, we will create a responder node and initiator node.
+
+The responder node will have an `"echoer"` worker and the initiator node will send it a message through Ockam Hub's stream service.
 
 ### Responder node
 
 Create a new file at:
 
-**TODO: do we want to call it over-local-node?**
-
 ```
-touch examples/13-stream-over-cloud-node-responder.rs
+touch examples/14-stream-over-cloud-node-responder.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-use ockam::{stream::Stream, Context, Result, route, TcpTransport, TCP};
+use ockam::{route, stream::Stream, Context, Result, route, TcpTransport, TCP};
 use ockam_get_started::Echoer;
 use std::time::Duration;
 
@@ -90,16 +135,14 @@ This code creates a stream client on the Hub node at `127.0.0.1:4000` and starts
 
 Create a new file at:
 
-**TODO: do we want to call it over-local-node?**
-
 ```
-touch examples/13-stream-over-cloud-node-initiator.rs
+touch examples/14-stream-over-cloud-node-initiator.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-use ockam::{stream::Stream, Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, stream::Stream, Context, Result, Route, TcpTransport, TCP};
 use std::time::Duration;
 
 #[ockam::node]
@@ -136,16 +179,18 @@ This code creates a stream client, sends a message to the echoer through this cl
 
 ### Run
 
-You can run initiator and responder in any order, because they use stream storage to deliver messages.
+You can run initiator and responder in any order because they use stream storage to deliver messages.
 
-To demonstrate that let's run the initiator first:
-
-```
-cargo run --example 13-stream-over-cloud-node-initiator
-```
+To demonstrate this, let's run the initiator first this time:
 
 ```
-cargo run --example 13-stream-over-cloud-node-responder
+cargo run --example 14-stream-over-cloud-node-initiator
+```
+
+Only then do we start the responder:
+
+```
+cargo run --example 14-stream-over-cloud-node-responder
 ```
 
 On the initiator side you should now see the `Reply via stream: ...` message.
