@@ -16,6 +16,10 @@
 #[macro_use]
 extern crate tracing;
 
+#[allow(unused_imports)]
+#[macro_use]
+pub extern crate hex;
+
 // ---
 // Export the #[node] attribute macro.
 pub use ockam_node_attribute::*;
