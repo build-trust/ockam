@@ -20,7 +20,7 @@ async fn main(mut ctx: ockam::Context) -> Result<()> {
     // Create the responder worker
     ctx.start_worker("echo_server", server).await?;
 
-    let remote_forwarder = RemoteForwarder::create(&mut ctx, hub_addr, SECURE_CHANNEL).await?;
+    let remote_forwarder = RemoteForwarder::create(&mut ctx, route![(TCP, hub_addr)], SECURE_CHANNEL).await?;
     println!(
         "PROXY REMOTE_FORWARDER: {}",
         remote_forwarder.remote_address()
