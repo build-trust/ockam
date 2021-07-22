@@ -1,3 +1,4 @@
+use crate::lib::Vec;
 use crate::{Address, LocalMessage};
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +13,7 @@ pub enum RouterMessage {
     /// Register a new client to this routing scope
     Register {
         /// Specify an accept scope for this client
-        accepts: Address,
+        accepts: Vec<Address>,
         /// The clients own worker bus address
         self_addr: Address,
     },
