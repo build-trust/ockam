@@ -88,11 +88,9 @@ let vault = Vault::create(&ctx)?;
 
 Vault workers are used by all other workers in a node to access secrets and perform cyptographic operations.
 
-The primary worker which uses the vault worker on behalf of a user is called an Entity worker.
-
 ## Entities
 
-Entities offer small, simplified interface to the more complex security protocols. They provide the features of the underlying protocols, while handling implementation details.  The interaction between multiple parties establishing trust is modeled using Entities.
+The primary worker which uses the vault worker on behalf of a user is called an Entity worker. Entities offer a small, simplified interface to more complex security protocols. They provide the features of the underlying protocols, while handling implementation details.  The interaction between multiple parties establishing trust is modeled using Entities.
 
 Entities provide:
 
@@ -106,26 +104,29 @@ Entities provide:
 
 Like most things in Ockam, an Entity is a worker. 
 
-An Entity is created by calling the `Entity::create` function.
+An Entity is created by calling the `Entity::create` function, with the address of a vault.
 
 ```rust
 use ockam::Entity;
 ...
-let alice = Entity::create(&ctx)?;
+let vault = Vault::create(&ctx)?;
+let alice = Entity::create(&ctx, &vault)?;
 ```
 
 
-Entities contain their own state and secrets.  The identity that an Entity represents is based on its cryptographic key pair stored in a vault.
+Entities contain their own state and secrets.  The identity that an Entity represents is based on its cryptographic key pair stored in the vault.
 
-This identifier is called the Profile Identifier. A Profile is a specific identifier backed by a keypair. An Entity can have multiple Profiles, by having multiple keypairs in the Vault.
+This identifier is called the Profile Identifier. 
+
+## Profiles
+
+A Profile is a specific identifier backed by a keypair. An Entity can have multiple Profiles, by having multiple keypairs in the Vault.
 
 The ability for an Entity to have multiple Profiles enhances the privacy of an Entity. Two Profiles belonging to an Entity cannot be associated with one another, or back to the Entity. This allows a single real user to use multiple Profiles, each for a different identity scenario.
 
 For example, a user may have a Manufacturer Identity for technical support, and an Advertiser Identity for third party integrations.
 
 Entities and Profiles implement the same APIs. In many Ockam APIs, Entities and Profiles can be used interchangeably. 
-
-## Profiles
 
 An Entity has a default Profile which is created automatically. This Profile can be accessed by calling the `Entity::current_profile` function. A new Profile can be created by calling `Entity::create_profile`, and removed with `Entity::remove_profile`.
 
@@ -142,3 +143,5 @@ let alice_manufacturer = alice.create_profile()?;
 // Delete a profile
 alice.remove_profile(alice_manufacturer.identifier()?)?;
 ```
+
+Entities and their profiles exchange messages between one another to establish trust, verify identity, and communicate securely. 
