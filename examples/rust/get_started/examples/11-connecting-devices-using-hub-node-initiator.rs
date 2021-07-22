@@ -7,7 +7,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a cloud node by going to https://hub.ockam.network
     let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
-    // Run 11-forwarding-via-a-cloud-node-responder,
+    // Run 11-connecting-devices-using-hub-node-responder,
     // it will print the forwarding address of echoer on your cloud node
     let echoer_forwarding_address = "Paste the forwarding address of the echoer here.";
 
