@@ -8,10 +8,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a TCP connection to your cloud node.
-    tcp.connect(cloud_node_tcp_address).await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the `echo_service` worker on your cloud node.
     ctx.send(

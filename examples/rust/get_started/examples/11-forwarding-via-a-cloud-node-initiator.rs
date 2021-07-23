@@ -12,10 +12,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let echoer_forwarding_address = "Paste the forwarding address of the echoer here.";
 
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a TCP connection to your cloud node.
-    tcp.connect(cloud_node_tcp_address).await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the echoer worker, on a different node,
     // using a forwarding address on your cloud node

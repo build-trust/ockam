@@ -12,10 +12,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         "Paste the forwarding address of the secure channel here.";
 
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a TCP connection to your cloud node.
-    tcp.connect(cloud_node_tcp_address).await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create(&ctx).expect("failed to create vault");
     let mut alice = Entity::create(&ctx, &vault)?;
