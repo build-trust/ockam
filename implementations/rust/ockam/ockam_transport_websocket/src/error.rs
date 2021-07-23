@@ -1,4 +1,5 @@
-use crate::init::WorkerPair;
+use std::fmt::{Display, Formatter};
+
 use ockam_core::Error;
 
 /// A WebSocket connection worker specific error type
@@ -39,6 +40,13 @@ impl WebSocketError {
     pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_WEBSOCKET";
 }
 
+impl Display for WebSocketError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let err: Error = (*self).into();
+        err.fmt(f)
+    }
+}
+
 impl From<WebSocketError> for Error {
     fn from(e: WebSocketError) -> Error {
         Error::new(
@@ -76,8 +84,8 @@ impl From<tokio_tungstenite::tungstenite::Error> for WebSocketError {
     }
 }
 
-impl From<futures_channel::mpsc::TrySendError<WorkerPair>> for WebSocketError {
-    fn from(_e: futures_channel::mpsc::TrySendError<WorkerPair>) -> Self {
+impl<T> From<futures_channel::mpsc::TrySendError<T>> for WebSocketError {
+    fn from(_e: futures_channel::mpsc::TrySendError<T>) -> Self {
         Self::GenericIo
     }
 }
