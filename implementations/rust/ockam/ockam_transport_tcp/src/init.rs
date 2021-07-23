@@ -91,17 +91,13 @@ impl WorkerPair {
 /// One worker handles outgoing messages, while another handles
 /// incoming messages.  The local worker address is chosen based on
 /// the peer the worker is meant to be connected to.
-pub async fn start_connection<P>(
-    ctx: &Context,
+pub async fn start_connection(
     router: &TcpRouterHandle,
-    peer: P,
+    peer: impl Into<SocketAddr>,
     hostnames: Vec<String>,
-) -> Result<WorkerPair>
-where
-    P: Into<SocketAddr>,
-{
+) -> Result<WorkerPair> {
     let peer = peer.into();
-    let pair = WorkerPair::start(ctx, peer, hostnames).await?;
+    let pair = WorkerPair::start(router.ctx(), peer, hostnames).await?;
     router.register(&pair).await?;
     Ok(pair)
 }
