@@ -1,16 +1,27 @@
-use crate::{PublicKeyVt, SecretKey};
+use crate::partial_signature_vt::PARTIAL_SIGNATURE_VT_BYTES;
+use crate::{PartialSignatureVt, PublicKeyVt, SecretKey};
 use bls12_381_plus::{
-    multi_miller_loop, ExpandMsgXmd, G1Affine, G2Affine, G2Prepared, G2Projective,
+    multi_miller_loop, ExpandMsgXmd, G1Affine, G2Affine, G2Prepared, G2Projective, Scalar,
 };
-use core::ops::Neg;
+use core::{
+    fmt::{self, Display},
+    ops::Neg,
+};
 use ff::Field;
 use group::{Curve, Group};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use subtle::{Choice, CtOption};
+use vsss_rs::{Error, Shamir, Share};
 
 /// Represents a BLS SignatureVt in G1 using the proof of possession scheme
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SignatureVt(pub(crate) G2Projective);
+
+impl Display for SignatureVt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl Default for SignatureVt {
     fn default() -> Self {
@@ -73,13 +84,32 @@ impl SignatureVt {
     }
 
     /// Get the byte sequence that represents this SignatureVt
-    pub fn to_bytes(&self) -> [u8; Self::BYTES] {
+    pub fn to_bytes(self) -> [u8; Self::BYTES] {
         self.0.to_affine().to_compressed()
     }
 
     /// Convert a big-endian representation of the SignatureVt
     pub fn from_bytes(bytes: &[u8; Self::BYTES]) -> CtOption<Self> {
         G2Affine::from_compressed(bytes).map(|p| Self(G2Projective::from(&p)))
+    }
+
+    /// Combine partial signatures into a completed signature
+    pub fn from_partials<const T: usize, const N: usize>(
+        partials: &[PartialSignatureVt],
+    ) -> Result<Self, Error> {
+        if T > partials.len() {
+            return Err(Error::SharingLimitLessThanThreshold);
+        }
+        let mut pp = [Share::<PARTIAL_SIGNATURE_VT_BYTES>::default(); T];
+        for i in 0..T {
+            pp[i] = partials[i].0;
+        }
+        let point = Shamir::<T, N>::combine_shares_group::<
+            Scalar,
+            G2Projective,
+            PARTIAL_SIGNATURE_VT_BYTES,
+        >(&pp)?;
+        Ok(Self(point))
     }
 }
 
@@ -96,4 +126,41 @@ fn signature_vt_works() {
     let sig = SignatureVt::new(&sk, msg).unwrap();
     let pk = PublicKeyVt::from(&sk);
     assert_eq!(sig.verify(pk, msg).unwrap_u8(), 1);
+}
+
+#[test]
+fn threshold_works() {
+    use crate::MockRng;
+    use rand_core::{RngCore, SeedableRng};
+
+    let seed = [3u8; 16];
+    let mut rng = MockRng::from_seed(seed);
+    let sk = SecretKey::random(&mut rng).unwrap();
+    let pk = PublicKeyVt::from(&sk);
+
+    let res_shares = sk.split::<MockRng, 2, 3>(&mut rng);
+    assert!(res_shares.is_ok());
+    let shares = res_shares.unwrap();
+    let mut msg = [0u8; 12];
+    rng.fill_bytes(&mut msg);
+
+    let mut sigs = [PartialSignatureVt::default(); 3];
+    for (i, share) in shares.iter().enumerate() {
+        let opt = PartialSignatureVt::new(share, &msg);
+        assert!(opt.is_some());
+        sigs[i] = opt.unwrap();
+    }
+
+    // Try all combinations to make sure they verify
+    for i in 0..3 {
+        for j in 0..3 {
+            if i == j {
+                continue;
+            }
+            let res = SignatureVt::from_partials::<2, 3>(&[sigs[i], sigs[j]]);
+            assert!(res.is_ok());
+            let sig = res.unwrap();
+            assert_eq!(sig.verify(pk, msg).unwrap_u8(), 1);
+        }
+    }
 }

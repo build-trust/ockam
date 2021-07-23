@@ -1,6 +1,9 @@
 use crate::{PublicKey, Signature};
 use bls12_381_plus::{G1Affine, G1Projective, G2Affine};
-use core::ops::{BitOr, Neg, Not};
+use core::{
+    fmt::{self, Display},
+    ops::{BitOr, Neg, Not},
+};
 use group::{Curve, Group};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use subtle::{Choice, CtOption};
@@ -8,6 +11,12 @@ use subtle::{Choice, CtOption};
 /// Represents a BLS signature in G1 for multiple signatures that signed the different messages
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AggregateSignature(pub(crate) G1Projective);
+
+impl Display for AggregateSignature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl Default for AggregateSignature {
     fn default() -> Self {
@@ -121,7 +130,7 @@ impl AggregateSignature {
     }
 
     /// Get the byte sequence that represents this aggregated signature
-    pub fn to_bytes(&self) -> [u8; Self::BYTES] {
+    pub fn to_bytes(self) -> [u8; Self::BYTES] {
         self.0.to_affine().to_compressed()
     }
 

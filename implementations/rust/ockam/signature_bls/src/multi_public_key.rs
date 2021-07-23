@@ -1,6 +1,9 @@
 use crate::PublicKey;
 use bls12_381_plus::{G2Affine, G2Projective};
-use core::ops::{BitOr, Not};
+use core::{
+    fmt::{self, Display},
+    ops::{BitOr, Not},
+};
 use group::Curve;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use subtle::{Choice, CtOption};
@@ -16,6 +19,12 @@ impl From<&[PublicKey]> for MultiPublicKey {
             g += k.0;
         }
         Self(g)
+    }
+}
+
+impl Display for MultiPublicKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -59,7 +68,7 @@ impl MultiPublicKey {
     }
 
     /// Get the byte representation of this key
-    pub fn to_bytes(&self) -> [u8; Self::BYTES] {
+    pub fn to_bytes(self) -> [u8; Self::BYTES] {
         self.0.to_affine().to_compressed()
     }
 

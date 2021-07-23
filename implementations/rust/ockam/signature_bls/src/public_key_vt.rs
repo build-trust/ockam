@@ -1,6 +1,9 @@
 use super::SecretKey;
 use bls12_381_plus::{G1Affine, G1Projective};
-use core::ops::{BitOr, Not};
+use core::{
+    fmt::{self, Display},
+    ops::{BitOr, Not},
+};
 use group::Curve;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use subtle::{Choice, CtOption};
@@ -12,6 +15,12 @@ pub struct PublicKeyVt(pub G1Projective);
 impl Default for PublicKeyVt {
     fn default() -> Self {
         Self(G1Projective::identity())
+    }
+}
+
+impl Display for PublicKeyVt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -67,7 +76,7 @@ impl PublicKeyVt {
     }
 
     /// Get the byte representation of this key
-    pub fn to_bytes(&self) -> [u8; Self::BYTES] {
+    pub fn to_bytes(self) -> [u8; Self::BYTES] {
         self.0.to_affine().to_compressed()
     }
 
