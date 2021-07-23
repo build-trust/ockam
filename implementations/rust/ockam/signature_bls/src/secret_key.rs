@@ -1,8 +1,11 @@
+use crate::{secret_key_share::SECRET_KEY_SHARE_BYTES, SecretKeyShare};
 use bls12_381_plus::Scalar;
+use core::mem::MaybeUninit;
 use hkdf::HkdfExtract;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use subtle::CtOption;
+use vsss_rs::{Error, Shamir, Share};
 use zeroize::Zeroize;
 
 /// The secret key is field element 0 < `x` < `r`
@@ -79,6 +82,37 @@ impl SecretKey {
         t.copy_from_slice(bytes);
         t.reverse();
         Scalar::from_bytes(&t).map(SecretKey)
+    }
+
+    /// Secret share this key by creating `N` shares where `T` are required
+    /// to combine back into this secret
+    pub fn split<R: RngCore + CryptoRng, const T: usize, const N: usize>(
+        &self,
+        rng: &mut R,
+    ) -> Result<[SecretKeyShare; N], Error> {
+        let shares =
+            Shamir::<T, N>::split_secret::<Scalar, R, SECRET_KEY_SHARE_BYTES>(self.0, rng)?;
+        let mut secrets: MaybeUninit<[SecretKeyShare; N]> = MaybeUninit::uninit();
+        for (i, s) in shares.iter().enumerate() {
+            let p = (secrets.as_mut_ptr() as *mut SecretKeyShare).wrapping_add(i);
+            unsafe { core::ptr::write(p, SecretKeyShare(*s)) };
+        }
+        Ok(unsafe { secrets.assume_init() })
+    }
+
+    /// Reconstruct a secret from shares created from `split`
+    pub fn combine<const T: usize, const N: usize>(
+        shares: &[SecretKeyShare],
+    ) -> Result<SecretKey, Error> {
+        if T > shares.len() {
+            return Err(Error::SharingLimitLessThanThreshold);
+        }
+        let mut ss = [Share::<SECRET_KEY_SHARE_BYTES>::default(); T];
+        for i in 0..T {
+            ss[i] = shares[i].0;
+        }
+        let scalar = Shamir::<T, N>::combine_shares::<Scalar, SECRET_KEY_SHARE_BYTES>(&ss)?;
+        Ok(SecretKey(scalar))
     }
 }
 

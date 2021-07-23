@@ -2,7 +2,10 @@ use crate::{PublicKeyVt, SecretKey};
 use bls12_381_plus::{
     multi_miller_loop, ExpandMsgXmd, G1Affine, G2Affine, G2Prepared, G2Projective,
 };
-use core::ops::Neg;
+use core::{
+    fmt::{self, Display},
+    ops::Neg,
+};
 use ff::Field;
 use group::{Curve, Group};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -15,6 +18,12 @@ pub struct ProofOfPossessionVt(pub(crate) G2Projective);
 impl Default for ProofOfPossessionVt {
     fn default() -> Self {
         Self(G2Projective::identity())
+    }
+}
+
+impl Display for ProofOfPossessionVt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -70,7 +79,7 @@ impl ProofOfPossessionVt {
     }
 
     /// Get the byte sequence that represents this proof
-    pub fn to_bytes(&self) -> [u8; Self::BYTES] {
+    pub fn to_bytes(self) -> [u8; Self::BYTES] {
         self.0.to_affine().to_compressed()
     }
 
