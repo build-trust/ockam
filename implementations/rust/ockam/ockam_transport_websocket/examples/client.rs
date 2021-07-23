@@ -1,17 +1,11 @@
 use futures_util::StreamExt;
-use ockam_core::{Result, Route};
-use ockam_node::Context;
-use ockam_transport_websocket::{WebSocketTransport, WS};
+use ockam::{Context, Result, Route};
 use tokio::io::AsyncReadExt;
 
-fn main() -> Result<()> {
-    let (ctx, mut executor) = ockam_node::start_node();
-    executor.execute(async move {
-        run_main(ctx).await.unwrap();
-    })
-}
+use ockam_transport_websocket::{WebSocketTransport, WS};
 
-async fn run_main(mut ctx: Context) -> Result<()> {
+#[ockam::node]
+async fn main(mut ctx: Context) -> Result<()> {
     let peer_addr = get_peer_addr();
 
     let ws = WebSocketTransport::create(&ctx).await?;

@@ -5,7 +5,7 @@ authors = ["Ockam Developers"]
 edition = "2018"
 
 [dependencies]
-ockam = {path = "../../../implementations/rust/ockam/ockam", features = ["ockam_transport_tcp", "ockam_vault"]}
+ockam = {path = "../../../implementations/rust/ockam/ockam", features = ["ockam_transport_tcp", "ockam_transport_websocket", "ockam_vault"]}
 
 [dev-dependencies]
 rand = { version = "0.8.4", features = ["std_rng"] }

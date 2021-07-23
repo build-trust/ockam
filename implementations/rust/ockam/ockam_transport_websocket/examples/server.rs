@@ -1,23 +1,15 @@
-//! This example is part of `network_echo`
-//!
 //! You need to start this binary first, before letting the
-//! `network_echo_client` connect to it.
+//! `client` connect to it.
 
 #[macro_use]
 extern crate tracing;
 
-use ockam_core::{async_trait, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam::{worker, Context, Result, Routed, Worker};
+
 use ockam_transport_websocket::WebSocketTransport;
 
-fn main() -> Result<()> {
-    let (ctx, mut executor) = ockam_node::start_node();
-    executor.execute(async move {
-        run_main(ctx).await.unwrap();
-    })
-}
-
-async fn run_main(ctx: Context) -> Result<()> {
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
     // Get either the default socket address, or a user-input
     let bind_addr = get_bind_addr();
     let ws = WebSocketTransport::create(&ctx).await?;
@@ -32,7 +24,7 @@ async fn run_main(ctx: Context) -> Result<()> {
 
 struct Responder;
 
-#[async_trait::async_trait]
+#[worker]
 impl Worker for Responder {
     type Context = Context;
     type Message = String;

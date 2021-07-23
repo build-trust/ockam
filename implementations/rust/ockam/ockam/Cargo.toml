@@ -1,6 +1,6 @@
 [package]
 authors = ["Ockam Developers"]
-categories = ["cryptography", "asynchronous", "authentication","network-programming", "embedded"]
+categories = ["cryptography", "asynchronous", "authentication", "network-programming", "embedded"]
 description = """Ockam is a library for building devices that communicate securely, privately
 and trustfully with cloud services and other devices.
 """
@@ -23,25 +23,27 @@ noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
 std = ["ockam_node", "serde/std"]
 alloc = ["ockam_core/alloc", "serde/alloc"]
 no_std = ["ockam_core/no_std", "serde"]
+websocket = ["ockam_transport_websocket"]
 
 [dependencies]
-ockam_core = {path = "../ockam_core", version = "0.21.0-dev"                  }
-ockam_node = {path = "../ockam_node", version = "0.19.0-dev"                  , optional = true}
-ockam_node_attribute = {path = "../ockam_node_attribute", version = "0.10.0-dev"                  }
-ockam_vault_core = {path = "../ockam_vault_core", version = "0.15.0-dev"                  }
-ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "0.12.0-dev"                 , optional = true }
-ockam_vault = {path = "../ockam_vault", version = "0.15.0-dev"                  , optional = true}
-ockam_channel = {path = "../ockam_channel", version = "0.16.0-dev"                  }
-ockam_transport_tcp = {path = "../ockam_transport_tcp", version = "0.15.0-dev"                  , optional = true}
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.13.0-dev"                  }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.13.0-dev"                 , optional = true}
-ockam_entity = { path = "../ockam_entity", version = "0.10.0-dev"                }
+ockam_core = { path = "../ockam_core", version = "0.21.0-dev" }
+ockam_node = { path = "../ockam_node", version = "0.19.0-dev", optional = true }
+ockam_node_attribute = { path = "../ockam_node_attribute", version = "0.10.0-dev" }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.15.0-dev" }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.12.0-dev", optional = true }
+ockam_vault = { path = "../ockam_vault", version = "0.15.0-dev", optional = true }
+ockam_channel = { path = "../ockam_channel", version = "0.16.0-dev" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "0.15.0-dev", optional = true }
+ockam_transport_websocket = { path = "../ockam_transport_websocket", version = "0.9.0-dev", optional = true }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.13.0-dev" }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.13.0-dev", optional = true }
+ockam_entity = { path = "../ockam_entity", version = "0.10.0-dev" }
 arrayref = "0.3"
 async-trait = "0.1.42"
 bls12_381_plus = "0.5"
-signature_core = { version = "0.13.0-dev"                  , path = "../signature_core" }
-signature_bbs_plus = { version = "0.13.0-dev"                  , path = "../signature_bbs_plus", package = "signature_bbs_plus" }
-signature_bls = { version = "0.11.0-dev"                  , path = "../signature_bls", package = "signature_bls" }
+signature_core = { version = "0.13.0-dev", path = "../signature_core" }
+signature_bbs_plus = { version = "0.13.0-dev", path = "../signature_bbs_plus", package = "signature_bbs_plus" }
+signature_bls = { version = "0.11.0-dev", path = "../signature_bls", package = "signature_bls" }
 serde_bare = "0.4"
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 serde-big-array = "0.3"
@@ -51,8 +53,8 @@ rand = "0.8"
 hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
-ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "0.12.0-dev"                 }
-ockam_key_exchange_xx = {path = "../ockam_key_exchange_xx", version = "0.13.0-dev"                 }
-trybuild = {version = "1.0.42", features = ["diff"]}
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.12.0-dev" }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.13.0-dev" }
+trybuild = { version = "1.0.42", features = ["diff"] }
 serde_json = "1.0"
 rand_xorshift = "0.3"
