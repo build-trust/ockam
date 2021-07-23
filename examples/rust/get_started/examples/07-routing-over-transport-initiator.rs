@@ -5,15 +5,12 @@ use ockam::{route, Context, Result, TcpTransport, TCP};
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a TCP connection.
-    tcp.connect("127.0.0.1:4000").await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
     ctx.send(
         // route to the "echoer" worker, via a tcp connection.
-        route![(TCP, "127.0.0.1:4000"), "echoer"],
+        route![(TCP, "localhost:4000"), "echoer"],
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )

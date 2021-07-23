@@ -2,13 +2,12 @@
 /// clients.  A stream is a buffered message sending channel, which
 /// means that you can run `initiator` and `responder` in any order
 /// you like.
-use ockam::{stream::Stream, Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
 use std::time::Duration;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
-    tcp.connect("127.0.0.1:4000").await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
@@ -18,7 +17,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
         .with_interval(Duration::from_millis(100))
         .connect(
-            Route::new().append_t(TCP, "127.0.0.1:4000"),
+            route![(TCP, "localhost:4000")],
             // Stream name from THIS node to the OTHER node
             "test-a-b",
             // Stream name from OTHER to THIS
@@ -29,18 +28,19 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a secure channel via the stream
     let channel = SecureChannel::create(
         &ctx,
-        Route::new()
+        route![
             // Send via the stream
-            .append(tx.clone())
+            tx.clone(),
             // And then to the secure_channel_listener
-            .append("secure_channel_listener"),
+            "secure_channel_listener"
+        ],
         &vault,
     )
     .await?;
 
     // Send a message via the channel to the "printer"
     ctx.send(
-        Route::new().append(channel.address()).append("echoer"),
+        route![channel.address(), "echoer"],
         "Hello World!".to_string(),
     )
     .await?;
