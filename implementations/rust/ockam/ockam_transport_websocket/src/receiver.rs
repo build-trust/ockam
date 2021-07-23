@@ -1,11 +1,12 @@
-use crate::atomic::{self, ArcBool};
-use crate::WebSocketError;
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
 use ockam_core::{async_trait, Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
+
+use crate::atomic::{self, ArcBool};
+use crate::WebSocketError;
 
 pub struct WebSocketRecvWorker<AsyncStream>
 where
@@ -42,13 +43,25 @@ where
             let ws_msg = match self.ws_stream.next().await {
                 Some(res) => match res {
                     Ok(ws_msg) => ws_msg,
-                    Err(_) => break,
+                    Err(_e) => {
+                        info!(
+                            "Connection to peer '{}' was closed; dropping stream",
+                            self.peer_addr
+                        );
+                        break;
+                    }
                 },
-                None => break,
+                None => {
+                    info!(
+                        "Stream connected to peer '{}' is exhausted; dropping it",
+                        self.peer_addr
+                    );
+                    break;
+                }
             };
 
-            info!("Message received");
             let data = ws_msg.into_data();
+            trace!("Received message header for {} bytes", data.len());
 
             // Deserialize the message now
             let mut msg: TransportMessage = serde_bare::from_slice(data.as_slice())
