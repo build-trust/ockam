@@ -329,9 +329,9 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
+checksum = "5c7ed8b8c7b886ea3ed7dde405212185f423ab44682667c8c6dd14aa1d9f6612"
 dependencies = [
  "unicode-xid",
 ]
@@ -480,6 +480,7 @@ dependencies = [
  "serde",
  "sha2",
  "subtle",
+ "vsss-rs",
  "zeroize",
 ]
 
@@ -603,6 +604,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d67cb4616d99b940db1d6bd28844ff97108b498a6ca850e5b6191a532063286"
 dependencies = [
  "vcell",
+]
+
+[[package]]
+name = "vsss-rs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b809fb740b3dbd450f411269eec820bbd29dee9268ea1b7c48a0f7e8f283bbb0"
+dependencies = [
+ "ff",
+ "group",
+ "rand_chacha",
+ "rand_core",
+ "serde",
+ "zeroize",
 ]
 
 [[package]]

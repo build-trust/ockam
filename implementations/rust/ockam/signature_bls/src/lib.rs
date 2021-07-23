@@ -18,7 +18,6 @@
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
     unused_qualifications,
     warnings
@@ -33,11 +32,14 @@ mod multi_public_key;
 mod multi_public_key_vt;
 mod multi_signature;
 mod multi_signature_vt;
+mod partial_signature;
+mod partial_signature_vt;
 mod proof_of_possession;
 mod proof_of_possession_vt;
 mod public_key;
 mod public_key_vt;
 mod secret_key;
+mod secret_key_share;
 mod signature;
 mod signature_vt;
 
@@ -47,13 +49,17 @@ pub use multi_public_key::*;
 pub use multi_public_key_vt::*;
 pub use multi_signature::*;
 pub use multi_signature_vt::*;
+pub use partial_signature::*;
+pub use partial_signature_vt::*;
 pub use proof_of_possession::*;
 pub use proof_of_possession_vt::*;
 pub use public_key::*;
 pub use public_key_vt::*;
 pub use secret_key::*;
+pub use secret_key_share::*;
 pub use signature::*;
 pub use signature_vt::*;
+pub use vsss_rs::Error;
 
 #[cfg(test)]
 pub struct MockRng(rand_xorshift::XorShiftRng);
