@@ -10,17 +10,31 @@
 //! to worry about the transport specifics.
 //!
 #![deny(
-    // missing_docs,
-    dead_code,
-    trivial_casts,
-    trivial_numeric_casts,
-    unsafe_code,
-    unused_import_braces,
-    unused_qualifications
+// missing_docs,
+dead_code,
+trivial_casts,
+trivial_numeric_casts,
+unsafe_code,
+unused_import_braces,
+unused_qualifications
 )]
 
 #[macro_use]
 extern crate tracing;
+
+use std::fmt;
+use std::net::SocketAddr;
+use std::str::FromStr;
+
+use ockam_core::{Address, Result};
+use ockam_node::Context;
+
+pub use error::WebSocketError;
+pub use init::WorkerPair;
+pub use receiver::WebSocketRecvWorker;
+pub use sender::WebSocketSendWorker;
+
+use crate::router::{WebSocketRouter, WebSocketRouterHandle};
 
 mod atomic;
 mod error;
@@ -29,18 +43,6 @@ mod listener;
 mod receiver;
 mod router;
 mod sender;
-
-pub use error::WebSocketError;
-pub use init::WorkerPair;
-pub use receiver::WebSocketRecvWorker;
-pub use sender::WebSocketSendWorker;
-
-use crate::router::{WebSocketRouter, WebSocketRouterHandle};
-use ockam_core::{Address, Result};
-use ockam_node::Context;
-use std::fmt;
-use std::net::SocketAddr;
-use std::str::FromStr;
 
 /// High level management interface for WebSocket transports
 ///

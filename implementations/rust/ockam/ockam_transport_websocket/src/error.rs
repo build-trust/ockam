@@ -1,5 +1,6 @@
-use ockam_core::Error;
 use std::fmt::{Display, Formatter};
+
+use ockam_core::Error;
 
 /// A WebSocket connection worker specific error type
 #[derive(Clone, Copy, Debug)]

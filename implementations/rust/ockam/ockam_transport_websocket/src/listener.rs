@@ -1,12 +1,14 @@
-use crate::atomic::{self, ArcBool};
-use crate::init::WorkerPair;
-use crate::WebSocketError;
+use std::net::SocketAddr;
+
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::StreamExt;
 use ockam_core::{async_trait, Address, Result, RouterMessage, Worker};
 use ockam_node::Context;
-use std::net::SocketAddr;
 use tokio::net::TcpListener;
+
+use crate::atomic::{self, ArcBool};
+use crate::init::WorkerPair;
+use crate::WebSocketError;
 
 pub struct WebSocketListenWorker {
     inner: TcpListener,

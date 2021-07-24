@@ -1,10 +1,12 @@
+use std::sync::Arc;
+use std::{collections::BTreeMap, net::SocketAddr};
+
+use ockam_core::{async_trait, Address, Result, Routed, RouterMessage, Worker};
+use ockam_node::Context;
+
 use crate::atomic::{self, ArcBool};
 use crate::init::WorkerPair;
 use crate::{listener::WebSocketListenWorker, WebSocketError};
-use ockam_core::{async_trait, Address, Result, Routed, RouterMessage, Worker};
-use ockam_node::Context;
-use std::sync::Arc;
-use std::{collections::BTreeMap, net::SocketAddr};
 
 /// A WebSocket address router and connection listener
 ///

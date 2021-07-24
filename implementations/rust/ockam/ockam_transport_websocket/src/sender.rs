@@ -1,12 +1,14 @@
-use crate::WebSocketError;
+use std::net::SocketAddr;
+
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
 use ockam_core::{async_trait, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
-use std::net::SocketAddr;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
 use tokio_tungstenite::WebSocketStream;
+
+use crate::WebSocketError;
 
 /// A WebSocket sending message worker
 ///

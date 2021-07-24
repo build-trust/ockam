@@ -1,11 +1,12 @@
-use crate::atomic::{self, ArcBool};
-use crate::WebSocketError;
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
 use ockam_core::{async_trait, Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
+
+use crate::atomic::{self, ArcBool};
+use crate::WebSocketError;
 
 pub struct WebSocketRecvWorker<AsyncStream>
 where
