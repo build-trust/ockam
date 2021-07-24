@@ -914,8 +914,12 @@ dependencies = [
 name = "ockam_get_started"
 version = "0.1.0"
 dependencies = [
+ "futures-channel",
+ "futures-util",
  "ockam",
  "rand 0.8.4",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

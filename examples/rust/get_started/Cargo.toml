@@ -8,5 +8,9 @@ edition = "2018"
 ockam = {path = "../../../implementations/rust/ockam/ockam", features = ["ockam_transport_tcp", "ockam_transport_websocket", "ockam_vault"]}
 
 [dev-dependencies]
+futures-channel = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["tokio-io"] }
 rand = { version = "0.8.4", features = ["std_rng"] }
+tokio = { version = "1", features = ["default"] }
+tracing = "0.1"
 

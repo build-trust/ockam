@@ -74,4 +74,4 @@ pub use ockam_vault::SoftwareVault;
 pub use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[cfg(feature = "ockam_transport_websocket")]
-pub use ockam_transport_websocket::{WebSocketTransport, WS};
+pub use ockam_transport_websocket::{WebSocketError, WebSocketTransport, WS};
