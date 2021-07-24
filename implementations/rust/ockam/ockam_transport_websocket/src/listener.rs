@@ -41,18 +41,30 @@ impl WebSocketListenWorker {
         tx: UnboundedSender<WorkerPair>,
     ) -> Result<()> {
         while let Ok((tcp_stream, peer)) = self.inner.accept().await {
+            if !atomic::check(&self.run) {
+                debug!("WebSocketListenWorker stopped");
+                tx.close_channel();
+                break;
+            }
+            if tx.is_closed() {
+                debug!("WorkerPair tx closed");
+                break;
+            }
+
             debug!("TcpStream accepted");
             let stream = tokio_tungstenite::accept_async(tcp_stream)
                 .await
                 .map_err(WebSocketError::from)?;
             let pair = WorkerPair::with_stream(ctx, stream, peer).await?;
-            tx.unbounded_send(pair).map_err(WebSocketError::from)?;
-
-            if !atomic::check(&self.run) {
-                tx.close_channel();
-                break;
+            let try_send_pair = tx.unbounded_send(pair).map_err(WebSocketError::from);
+            if let Err(err) = try_send_pair {
+                warn!(
+                    "Failed to send WorkerPair through channel. {}",
+                    err.to_string()
+                );
             }
         }
+        trace!("Exiting accept_tcp_streams");
         Ok(())
     }
 
@@ -73,6 +85,7 @@ impl WebSocketListenWorker {
             )
             .await?;
         }
+        trace!("Exiting on_tcp_stream_accepted");
         Ok(())
     }
 }

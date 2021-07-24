@@ -31,6 +31,7 @@ mod router;
 mod sender;
 
 pub use error::WebSocketError;
+pub use init::WorkerPair;
 pub use receiver::WebSocketRecvWorker;
 pub use sender::WebSocketSendWorker;
 
@@ -44,7 +45,7 @@ use std::str::FromStr;
 /// High level management interface for WebSocket transports
 ///
 /// Be aware that only one `WebSocketTransport` can exist per node, as it
-/// registers itself as a router for the `TCP` address type. Multiple
+/// registers itself as a router for the `WS` address type. Multiple
 /// calls to [`WebSocketTransport::create`](crate::WebSocketTransport::create)
 /// will fail.
 ///

@@ -29,8 +29,8 @@ where
     type Message = TransportMessage;
     type Context = Context;
 
-    // TcpSendWorker will receive messages from the TcpRouter to send
-    // across the TcpStream to our friend
+    // WebSocketSendWorker will receive messages from the WebSocketRouter to send
+    // across the TcpStream to the next remote peer.
     async fn handle_message(
         &mut self,
         ctx: &mut Context,

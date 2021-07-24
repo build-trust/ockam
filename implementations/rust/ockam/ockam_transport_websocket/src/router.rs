@@ -118,7 +118,6 @@ impl Worker for WebSocketRouter {
 impl WebSocketRouter {
     async fn start(ctx: &Context, waddr: &Address, run: ArcBool) -> Result<()> {
         debug!("Initialising new WebSocketRouter with address {}", waddr);
-
         let router = Self {
             map: BTreeMap::new(),
             run,

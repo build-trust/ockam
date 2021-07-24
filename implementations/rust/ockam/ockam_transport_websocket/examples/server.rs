@@ -30,7 +30,7 @@ impl Worker for Responder {
     type Message = String;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        info!("Responder: {}", msg);
+        info!("Message: {}", msg);
         debug!("Replying back to {}", &msg.return_route());
         ctx.send(msg.return_route(), msg.body()).await?;
         Ok(())
