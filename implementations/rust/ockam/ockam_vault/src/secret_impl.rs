@@ -3,13 +3,45 @@ use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::lib::convert::TryInto;
 use ockam_vault_core::{
-    KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
-    SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
+    KeyId, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
+    SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use rand::{thread_rng, RngCore};
 use signature_bbs_plus::PublicKey as BlsPublicKey;
 use signature_bbs_plus::SecretKey as BlsSecretKey;
 use zeroize::Zeroize;
+
+impl SoftwareVault {
+    /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported
+    fn compute_key_id(
+        &mut self,
+        secret: &[u8],
+        attributes: &SecretAttributes,
+    ) -> ockam_core::Result<Option<KeyId>> {
+        Ok(match attributes.stype() {
+            SecretType::Curve25519 => {
+                let sk = x25519_dalek::StaticSecret::from(*array_ref![
+                    secret,
+                    0,
+                    CURVE25519_SECRET_LENGTH
+                ]);
+                let public = x25519_dalek::PublicKey::from(&sk);
+                Some(
+                    self.compute_key_id_for_public_key(&PublicKey::new(
+                        public.as_bytes().to_vec(),
+                    ))?,
+                )
+            }
+            SecretType::Bls => {
+                let bls_secret_key = BlsSecretKey::from_bytes(secret.try_into().unwrap()).unwrap();
+                let public_key =
+                    PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
+                Some(self.compute_key_id_for_public_key(&public_key)?)
+            }
+            _ => None,
+        })
+    }
+}
 
 impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
@@ -75,14 +107,11 @@ impl SecretVault for SoftwareVault {
         attributes: SecretAttributes,
     ) -> ockam_core::Result<Secret> {
         // FIXME: Should we check secrets here?
+        let key_id_opt = self.compute_key_id(secret, &attributes)?;
         self.next_id += 1;
         self.entries.insert(
             self.next_id,
-            VaultEntry::new(
-                /* FIXME */ None,
-                attributes,
-                SecretKey::new(secret.to_vec()),
-            ),
+            VaultEntry::new(key_id_opt, attributes, SecretKey::new(secret.to_vec())),
         );
         Ok(Secret::new(self.next_id))
     }
