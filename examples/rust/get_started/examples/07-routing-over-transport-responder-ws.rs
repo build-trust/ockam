@@ -1,7 +1,9 @@
 // This node starts a ws listener and an echoer worker.
 // It then runs forever waiting for messages.
 
-use ockam::{Context, Result, WebSocketTransport};
+use ockam::{Context, Result};
+use ockam_transport_websocket::WebSocketTransport;
+
 use ockam_get_started::Echoer;
 
 #[ockam::node]

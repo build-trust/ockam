@@ -23,7 +23,6 @@ noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
 std = ["ockam_node", "serde/std"]
 alloc = ["ockam_core/alloc", "serde/alloc"]
 no_std = ["ockam_core/no_std", "serde"]
-websocket = ["ockam_transport_websocket"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.21.0-dev" }
@@ -34,7 +33,6 @@ ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.12.0-d
 ockam_vault = { path = "../ockam_vault", version = "0.15.0-dev", optional = true }
 ockam_channel = { path = "../ockam_channel", version = "0.16.0-dev" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "0.15.0-dev", optional = true }
-ockam_transport_websocket = { path = "../ockam_transport_websocket", version = "0.9.0-dev", optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.13.0-dev" }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.13.0-dev", optional = true }
 ockam_entity = { path = "../ockam_entity", version = "0.10.0-dev" }

@@ -2,7 +2,8 @@
 // Starts a ws listener at 127.0.0.1:3000
 // It then runs forever waiting to route messages.
 
-use ockam::{Context, Result, TcpTransport, WebSocketTransport};
+use ockam::{Context, Result, TcpTransport};
+use ockam_transport_websocket::WebSocketTransport;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

@@ -1,6 +1,7 @@
 // This node routes a message, to a worker on a different node, over a ws and a tcp transport hops.
 
-use ockam::{route, Context, Result, WebSocketTransport, TCP, WS};
+use ockam::{route, Context, Result, TCP};
+use ockam_transport_websocket::{WebSocketTransport, WS};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
