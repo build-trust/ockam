@@ -5,6 +5,18 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.10.0 - 2021-07-26
+### Added
+- Add credential protocol and implementation.
+- Add add_credential and get_credential to Holder trait.
+- Add reveal_attributes and credential_type macros.
+- Add get_secure_channel_participant_id function.
+- Add convenient creation functions to trust_policy_worker.
+### Changed
+- Entity create function now takes an optional id.
+- Rename Credential to BbsCredential to avoid naming collision.
+- Dependencies updated.
+
 ## v0.9.0 - 2021-07-19
 ### Added
 - `credential_attribute_values` macro
