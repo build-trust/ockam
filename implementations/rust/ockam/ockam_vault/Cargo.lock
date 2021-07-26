@@ -372,6 +372,7 @@ checksum = "34e26526e7168021f34243a3c8faac4dc4f938cde75a0f9b8e373cca5eb4e7ce"
 dependencies = [
  "atomic-polyfill",
  "hash32",
+ "serde",
  "stable_deref_trait",
 ]
 
@@ -477,7 +478,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.21.0-dev"
+version = "0.21.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -489,7 +490,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.15.0-dev"
+version = "0.15.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -510,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.15.0-dev"
+version = "0.15.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -522,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.12.0-dev"
+version = "0.12.0"
 dependencies = [
  "quote",
  "syn",
@@ -530,7 +531,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.10.0-dev"
+version = "0.10.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -583,9 +584,9 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
+checksum = "5c7ed8b8c7b886ea3ed7dde405212185f423ab44682667c8c6dd14aa1d9f6612"
 dependencies = [
  "unicode-xid",
 ]
@@ -770,7 +771,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.13.0-dev"
+version = "0.13.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -791,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.11.0-dev"
+version = "0.11.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -802,12 +803,13 @@ dependencies = [
  "serde",
  "sha2",
  "subtle",
+ "vsss-rs",
  "zeroize",
 ]
 
 [[package]]
 name = "signature_core"
-version = "0.13.0-dev"
+version = "0.13.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -943,6 +945,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d67cb4616d99b940db1d6bd28844ff97108b498a6ca850e5b6191a532063286"
 dependencies = [
  "vcell",
+]
+
+[[package]]
+name = "vsss-rs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b809fb740b3dbd450f411269eec820bbd29dee9268ea1b7c48a0f7e8f283bbb0"
+dependencies = [
+ "ff",
+ "group",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "serde",
+ "zeroize",
 ]
 
 [[package]]

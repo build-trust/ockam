@@ -1,16 +1,20 @@
-// This node routes a message, to a worker on a different node, over the tcp transport.
+// This node routes a message, to a worker on a different node, over the websocket transport.
 
-use ockam::{route, Context, Result, TcpTransport, TCP};
+use ockam::{route, Context, Result};
+use ockam_transport_websocket::{WebSocketTransport, WS};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
-    let _tcp = TcpTransport::create(&ctx).await?;
+    // Initialize the WS Transport.
+    let ws = WebSocketTransport::create(&ctx).await?;
 
-    // Send a message to the "echoer" worker, on a different node, over a tcp transport.
+    // Create a WS connection.
+    ws.connect("127.0.0.1:4000").await?;
+
+    // Send a message to the "echoer" worker, on a different node, over a ws transport.
     ctx.send(
         // route to the "echoer" worker, via a tcp connection.
-        route![(TCP, "localhost:4000"), "echoer"],
+        route![(WS, "127.0.0.1:4000"), "echoer"],
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )

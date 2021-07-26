@@ -120,6 +120,7 @@ checksum = "34e26526e7168021f34243a3c8faac4dc4f938cde75a0f9b8e373cca5eb4e7ce"
 dependencies = [
  "atomic-polyfill",
  "hash32",
+ "serde",
  "stable_deref_trait",
 ]
 
@@ -152,7 +153,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.21.0-dev"
+version = "0.21.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -164,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.15.0-dev"
+version = "0.15.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -188,9 +189,9 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
+checksum = "5c7ed8b8c7b886ea3ed7dde405212185f423ab44682667c8c6dd14aa1d9f6612"
 dependencies = [
  "unicode-xid",
 ]

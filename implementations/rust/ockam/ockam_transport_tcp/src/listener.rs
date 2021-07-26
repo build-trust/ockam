@@ -52,13 +52,13 @@ impl Worker for TcpListenWorker {
             let (stream, peer) = self.inner.accept().await.map_err(TcpError::from)?;
 
             // And spawn a connection worker for it
-            let pair = WorkerPair::with_stream(ctx, stream, peer).await?;
+            let pair = WorkerPair::with_stream(ctx, stream, peer, vec![]).await?;
 
             // Register the connection with the local TcpRouter
             ctx.send(
                 self.router_addr.clone(),
                 RouterMessage::Register {
-                    accepts: format!("{}#{}", crate::TCP, peer).into(),
+                    accepts: vec![format!("{}#{}", crate::TCP, peer).into()],
                     self_addr: pair.tx_addr.clone(),
                 },
             )

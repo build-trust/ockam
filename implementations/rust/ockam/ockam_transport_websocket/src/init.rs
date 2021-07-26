@@ -1,12 +1,14 @@
-use crate::atomic::{self, ArcBool};
-use crate::receiver::WebSocketRecvWorker;
-use crate::{WebSocketAddr, WebSocketError, WebSocketRouterHandle, WebSocketSendWorker};
+use std::net::SocketAddr;
+
 use futures_util::StreamExt;
 use ockam_core::{Address, Result};
 use ockam_node::Context;
-use std::net::SocketAddr;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
+
+use crate::atomic::{self, ArcBool};
+use crate::receiver::WebSocketRecvWorker;
+use crate::{WebSocketAddr, WebSocketError, WebSocketRouterHandle, WebSocketSendWorker};
 
 /// Transmit and receive peers of a WebSocket connection
 #[derive(Debug)]

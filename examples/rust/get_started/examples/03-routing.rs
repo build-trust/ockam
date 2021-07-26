@@ -1,6 +1,6 @@
 // This node routes a message.
 
-use ockam::{Context, Result, Route};
+use ockam::{route, Context, Result};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
@@ -15,7 +15,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // via the worker at address "h1"
     ctx.send(
         // route to the "echoer" worker via "h1"
-        Route::new().append("h1").append("echoer"),
+        route!["h1", "echoer"],
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )

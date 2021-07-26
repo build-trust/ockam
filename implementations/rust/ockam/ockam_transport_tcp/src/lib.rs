@@ -36,9 +36,9 @@ pub use receiver::TcpRecvWorker;
 pub use router::{TcpRouter, TcpRouterHandle};
 pub use sender::TcpSendWorker;
 
-use ockam_core::{Address, Result, ServiceBuilder};
+use ockam_core::lib::net::SocketAddr;
+use ockam_core::{Result, ServiceBuilder};
 use ockam_node::Context;
-use std::net::SocketAddr;
 
 /// High level management interface for TCP transports
 ///
@@ -77,46 +77,31 @@ use std::net::SocketAddr;
 /// # Ok(()) }
 /// ```
 pub struct TcpTransport {
-    ctx: Context,
     router: TcpRouterHandle,
 }
 
 /// TCP address type constant
 pub const TCP: u8 = 1;
 
-fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
+fn parse_socket_addr(s: impl Into<String>) -> Result<SocketAddr> {
     Ok(s.into().parse().map_err(|_| TcpError::InvalidAddress)?)
 }
 
 impl TcpTransport {
     /// Create a new TCP transport and router for the current node
     pub async fn create(ctx: &Context) -> Result<TcpTransport> {
-        let self_ctx_addr = Address::random(0);
-        let self_ctx = ctx.new_context(self_ctx_addr).await?;
+        let router = TcpRouter::register(ctx).await?;
 
-        let router_ctx_addr = Address::random(0);
-        let router_ctx = ctx.new_context(router_ctx_addr).await?;
-
-        let router_addr = Address::random(0);
-        let router = TcpRouter::register(router_ctx, router_addr.clone()).await?;
-
-        Ok(Self {
-            ctx: self_ctx,
-            router,
-        })
+        Ok(Self { router })
     }
 
     /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect<S: Into<String>>(&self, peer: S) -> Result<ServiceBuilder> {
-        let peer_addr: String = peer.into();
-        let serv_builder = ServiceBuilder::new(TCP, peer_addr.clone());
-        let peer = parse_socket_addr(peer_addr)?;
-        init::start_connection(&self.ctx, &self.router, peer).await?;
-        Ok(serv_builder)
+    pub async fn connect(&self, peer: impl Into<String>) -> Result<ServiceBuilder> {
+        self.router.connect(peer).await
     }
 
     /// Start listening to incoming connections on an existing transport
-    pub async fn listen<S: Into<String>>(&self, bind_addr: S) -> Result<()> {
+    pub async fn listen(&self, bind_addr: impl Into<String>) -> Result<()> {
         let bind_addr = parse_socket_addr(bind_addr)?;
         self.router.bind(bind_addr).await?;
         Ok(())
