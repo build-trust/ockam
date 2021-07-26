@@ -1,7 +1,6 @@
 #![deny(missing_docs)]
 
-use crate::{Context, OckamError};
-use ockam_core::lib::net::SocketAddr;
+use crate::{route, Context, OckamError};
 use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -38,45 +37,40 @@ pub struct RemoteForwarder {
 }
 
 impl RemoteForwarder {
-    fn new(hub_addr: SocketAddr, destination: Address, callback_address: Address) -> Self {
-        let route = Route::new()
-            .append(format!("1#{}", hub_addr))
-            .append("forwarding_service")
-            .into();
-        let destination = Route::new().append(destination).into();
+    fn new(
+        hub_addr: impl Into<Address>,
+        destination: impl Into<Address>,
+        callback_address: Address,
+    ) -> Self {
         Self {
-            route,
-            destination,
+            route: route![hub_addr, "forwarding_service"],
+            destination: route![destination],
             callback_address,
         }
     }
 
     /// Create and start new RemoteForwarder with given Ockam Hub address
     /// and Address of destination Worker that should receive forwarded messages
-    pub async fn create<A: Into<Address>, S: Into<String>>(
+    pub async fn create(
         ctx: &Context,
-        hub_addr: S,
-        destination: A,
+        hub_addr: impl Into<Address>,
+        destination: impl Into<Address>,
     ) -> Result<RemoteForwarderInfo> {
-        if let Ok(hub_addr) = hub_addr.into().parse::<SocketAddr>() {
-            let address: Address = random();
-            let mut child_ctx = ctx.new_context(address).await?;
-            let forwarder = Self::new(hub_addr, destination.into(), child_ctx.address());
+        let address: Address = random();
+        let mut child_ctx = ctx.new_context(address).await?;
+        let forwarder = Self::new(hub_addr, destination, child_ctx.address());
 
-            let worker_address: Address = random();
-            debug!("Starting RemoteForwarder at {}", &worker_address);
-            ctx.start_worker(worker_address, forwarder).await?;
+        let worker_address: Address = random();
+        debug!("Starting RemoteForwarder at {}", &worker_address);
+        ctx.start_worker(worker_address, forwarder).await?;
 
-            let resp = child_ctx
-                .receive::<RemoteForwarderInfo>()
-                .await?
-                .take()
-                .body();
+        let resp = child_ctx
+            .receive::<RemoteForwarderInfo>()
+            .await?
+            .take()
+            .body();
 
-            Ok(resp)
-        } else {
-            Err(OckamError::InvalidParameter.into())
-        }
+        Ok(resp)
     }
 }
 
