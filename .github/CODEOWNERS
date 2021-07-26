@@ -4,11 +4,11 @@
 # Request reviews from Jared and Mrinal when code in the rust implementation changes.
 implementations/rust/* @jared-s @mrinalwadhwa
 
-# Request reviews from Robin, Mike, Jared, Sanjo and Mrinal when code in the rust implementation changes.
-implementations/rs/* @robinbudd @mikelodder7 @jared-s @sanjodeundiak @mrinalwadhwa
+# Request reviews from Daniil and Mrinal when code in the Elixir implementation changes.
+implementations/elixir/* @hairyhum @mrinalwadhwa
 
-# Request reviews from Sanjo, Robin and Mrinal when code in the C implementation changes.
-implementations/c/* @robinbudd @sanjodeundiak @mrinalwadhwa
+# Request reviews from Sanjo and Mrinal when code in the C implementation changes.
+implementations/c/* @sanjodeundiak @mrinalwadhwa
 
 # References on updating this file:
 # https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
