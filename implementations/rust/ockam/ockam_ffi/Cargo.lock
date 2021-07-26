@@ -793,6 +793,7 @@ dependencies = [
  "serde",
  "sha2",
  "subtle",
+ "vsss-rs",
  "zeroize",
 ]
 
@@ -934,6 +935,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d67cb4616d99b940db1d6bd28844ff97108b498a6ca850e5b6191a532063286"
 dependencies = [
  "vcell",
+]
+
+[[package]]
+name = "vsss-rs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b809fb740b3dbd450f411269eec820bbd29dee9268ea1b7c48a0f7e8f283bbb0"
+dependencies = [
+ "ff",
+ "group",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "serde",
+ "zeroize",
 ]
 
 [[package]]
