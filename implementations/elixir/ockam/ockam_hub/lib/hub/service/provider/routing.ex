@@ -8,8 +8,9 @@ defmodule Ockam.Hub.Service.Provider.Routing do
 
   alias Ockam.Hub.Service.Echo, as: EchoService
   alias Ockam.Hub.Service.Forwarding, as: ForwardingService
+  alias Ockam.Hub.Service.Tracing, as: TracingService
 
-  @services [:echo, :forwarding]
+  @services [:echo, :forwarding, :tracing]
 
   @impl true
   def services() do
@@ -24,5 +25,9 @@ defmodule Ockam.Hub.Service.Provider.Routing do
 
   def start_service(:forwarding, args) do
     ForwardingService.create(Keyword.merge([address: "forwarding_service"], args))
+  end
+
+  def start_service(:tracing, args) do
+    TracingService.create(Keyword.merge([address: "tracing_service"], args))
   end
 end
