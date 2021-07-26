@@ -85,5 +85,8 @@ module.exports = {
     // footer is optional, must be max 100 chars wide, must have a blank line before it
     'footer-leading-blank': [2, 'always'],
     'footer-max-line-length': [2, 'always', 100],
-  }
+  },
+  "ignores": [
+    (commit) => commit === '664b8f72b90c4686c513042bcd72666418953f09',
+  ],
 };
