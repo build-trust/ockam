@@ -38,7 +38,9 @@ impl SoftwareVault {
                     PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
                 Some(self.compute_key_id_for_public_key(&public_key)?)
             }
-            _ => None,
+            SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
+                None
+            }
         })
     }
 }
@@ -166,7 +168,11 @@ impl SecretVault for SoftwareVault {
 
 #[cfg(test)]
 mod tests {
-    use crate::SoftwareVault;
+    use crate::{
+        ockam_vault_core::{SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH},
+        KeyIdVault, Secret, SecretAttributes, SecretVault, SoftwareVault,
+    };
+    use signature_bbs_plus::SecretKey as BlsSecretKey;
     use ockam_vault_test_attribute::*;
 
     fn new_vault() -> SoftwareVault {
@@ -184,4 +190,56 @@ mod tests {
 
     #[vault_test]
     fn secret_attributes_get() {}
+
+    fn public_key_algo_attributes_list() -> impl Iterator<Item = SecretAttributes> {
+        vec![
+            SecretAttributes::new(
+                SecretType::Curve25519,
+                SecretPersistence::Ephemeral,
+                CURVE25519_SECRET_LENGTH,
+            ),
+            SecretAttributes::new(
+                SecretType::Bls,
+                SecretPersistence::Ephemeral,
+                BlsSecretKey::BYTES,
+            )
+        ].into_iter()
+    }
+
+    fn check_key_id_computation(mut vault: SoftwareVault, sec_idx: Secret) {
+        let public_key = vault.secret_public_key_get(&sec_idx).unwrap();
+        let key_id = vault.compute_key_id_for_public_key(&public_key).unwrap();
+        let sec_idx_2 = vault.get_secret_by_key_id(&key_id).unwrap();
+        assert_eq!(sec_idx, sec_idx_2)
+    }
+
+    #[test]
+    fn secret_generate_compute_key_id() {
+        for attrs in public_key_algo_attributes_list() {
+            let mut vault = new_vault();
+            let sec_idx = vault
+                .secret_generate(attrs)
+                .unwrap();
+            check_key_id_computation(vault, sec_idx);
+        }
+    }
+
+    #[test]
+    fn secret_import_compute_key_id() {
+        for attrs in public_key_algo_attributes_list() {
+            let mut vault = new_vault();
+            let sec_idx = vault
+                .secret_generate(attrs.clone())
+                .unwrap();
+            let secret = vault.secret_export(&sec_idx).unwrap();
+            drop(vault);
+
+            let mut vault = new_vault();
+            let sec_idx = vault
+                .secret_import(secret.as_ref(), attrs)
+                .unwrap();
+
+            check_key_id_computation(vault, sec_idx);
+        }
+    }
 }
