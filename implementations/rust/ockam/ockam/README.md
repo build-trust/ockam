@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam = "0.19.0"
+ockam = "0.20.0"
 ```
 
 ## Crate Features
@@ -41,7 +41,7 @@ Additional features of the `ockam` crate:
 
 ```
 [dependencies]
-ockam = { version = "0.19.0"         , default-features = false }
+ockam = { version = "0.20.0"          , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency
