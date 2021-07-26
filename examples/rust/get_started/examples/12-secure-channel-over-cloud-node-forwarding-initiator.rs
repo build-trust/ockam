@@ -1,6 +1,5 @@
 use ockam::{
-    route, Address, Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, Vault,
-    TCP,
+    route, Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, Vault, TCP,
 };
 
 #[ockam::node]
@@ -16,9 +15,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx).expect("failed to create vault");
     let mut alice = Entity::create(&ctx, &vault)?;
-    let cloud_node_address: Address = (TCP, cloud_node_tcp_address).into();
     let cloud_node_route = route![
-        cloud_node_address,
+        (TCP, cloud_node_tcp_address),
         secure_channel_listener_forwarding_address
     ];
 
