@@ -120,6 +120,7 @@ checksum = "34e26526e7168021f34243a3c8faac4dc4f938cde75a0f9b8e373cca5eb4e7ce"
 dependencies = [
  "atomic-polyfill",
  "hash32",
+ "serde",
  "stable_deref_trait",
 ]
 
