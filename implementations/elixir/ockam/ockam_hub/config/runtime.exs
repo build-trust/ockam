@@ -192,7 +192,8 @@ config :ockam_hub,
     :pub_sub,
     :stream,
     :stream_index,
-    :secure_channel
+    :secure_channel,
+    :tracing
   ]
 
 cleanup_crontab = System.get_env("CLEANUP_CRONTAB")

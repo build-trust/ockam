@@ -9,8 +9,9 @@ defmodule Ockam.Hub.Service.Provider.Routing do
   alias Ockam.Hub.Service.Echo, as: EchoService
   alias Ockam.Hub.Service.Forwarding, as: ForwardingService
   alias Ockam.Hub.Service.PubSub, as: PubSubService
+  alias Ockam.Hub.Service.Tracing, as: TracingService
 
-  @services [:echo, :forwarding, :pub_sub]
+  @services [:echo, :forwarding, :pub_sub, :tracing]
 
   @impl true
   def services() do
@@ -31,6 +32,10 @@ defmodule Ockam.Hub.Service.Provider.Routing do
     PubSubService.create(Keyword.merge([address: "pub_sub_service", prefix: "pub_sub_t"], args))
   end
 
+  def start_service(:tracing, args) do
+    TracingService.create(Keyword.merge([address: "tracing_service"], args))
+  end
+
   @impl true
   def child_spec(:echo, args) do
     {EchoService, Keyword.merge([address: "echo_service"], args)}
@@ -42,5 +47,9 @@ defmodule Ockam.Hub.Service.Provider.Routing do
 
   def child_spec(:pub_sub, args) do
     {PubSubService, Keyword.merge([address: "pub_sub_service", prefix: "pub_sub_t"], args)}
+  end
+
+  def child_spec(:tracing, args) do
+    {TracingService, Keyword.merge([address: "tracing_service"], args)}
   end
 end
