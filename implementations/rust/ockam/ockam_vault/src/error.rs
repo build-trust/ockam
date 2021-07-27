@@ -36,6 +36,8 @@ pub enum VaultError {
     InvalidCurve25519Secret,
     /// Invalid BLS secret length
     InvalidBlsSecretLength,
+    /// Invalid BLS secret
+    InvalidBlsSecret,
 }
 
 impl VaultError {

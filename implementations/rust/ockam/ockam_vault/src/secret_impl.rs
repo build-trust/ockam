@@ -63,6 +63,9 @@ impl SoftwareVault {
                 if secret.len() != BlsSecretKey::BYTES {
                     return Err(VaultError::InvalidBlsSecretLength.into());
                 }
+                if BlsSecretKey::from_bytes(secret.try_into().unwrap()).is_none() {
+                    return Err(VaultError::InvalidBlsSecret.into());
+                }
             }
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => {}
         }
