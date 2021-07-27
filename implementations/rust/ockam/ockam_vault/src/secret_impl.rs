@@ -41,6 +41,33 @@ impl SoftwareVault {
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => None,
         })
     }
+
+    /// Validate secret key.
+    pub fn check_secret(
+        &mut self,
+        secret: &[u8],
+        attributes: &SecretAttributes,
+    ) -> ockam_core::Result<()> {
+        match attributes.stype() {
+            SecretType::Curve25519 => {
+                if secret.len() != CURVE25519_SECRET_LENGTH {
+                    return Err(VaultError::InvalidCurve25519SecretLength.into());
+                }
+                let is_clamped =
+                    secret[0] & !248 == 0 && secret[31] & !127 == 0 && secret[31] & 64 == 64;
+                if !is_clamped {
+                    return Err(VaultError::InvalidCurve25519Secret.into());
+                }
+            }
+            SecretType::Bls => {
+                if secret.len() != BlsSecretKey::BYTES {
+                    return Err(VaultError::InvalidBlsSecretLength.into());
+                }
+            }
+            SecretType::Buffer | SecretType::Aes | SecretType::P256 => {}
+        }
+        Ok(())
+    }
 }
 
 impl SecretVault for SoftwareVault {
@@ -99,7 +126,7 @@ impl SecretVault for SoftwareVault {
         secret: &[u8],
         attributes: SecretAttributes,
     ) -> ockam_core::Result<Secret> {
-        // FIXME: Should we check secrets here?
+        self.check_secret(secret, &attributes)?;
         let key_id_opt = self.compute_key_id(secret, &attributes)?;
         self.next_id += 1;
         self.entries.insert(

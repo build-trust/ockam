@@ -30,6 +30,12 @@ pub enum VaultError {
     HkdfExpandError,
     /// Secret not found
     SecretNotFound,
+    /// Invalid Curve25519 secret length
+    InvalidCurve25519SecretLength,
+    /// Invalid Curve25519 secret (scalar not clamped)
+    InvalidCurve25519Secret,
+    /// Invalid BLS secret length
+    InvalidBlsSecretLength,
 }
 
 impl VaultError {
