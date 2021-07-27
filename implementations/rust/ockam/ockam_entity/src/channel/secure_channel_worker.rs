@@ -66,9 +66,8 @@ impl SecureChannelWorker {
         let contact_result = profile.get_contact(&their_profile_id);
 
         if let Some(_) = contact_result? {
-            return Err(EntityError::NotImplemented.into());
-        } else {
             // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
+        } else {
             profile.verify_and_add_contact((*their_contact).clone())?;
         }
 
@@ -198,7 +197,6 @@ impl SecureChannelWorker {
 
         if let Some(_) = contact_result? {
             // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
-            return Err(EntityError::NotImplemented.into());
         } else {
             profile.verify_and_add_contact(their_contact.clone())?;
         }
