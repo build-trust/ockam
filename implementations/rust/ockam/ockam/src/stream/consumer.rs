@@ -17,24 +17,24 @@ use std::time::Duration;
 
 /// A stream worker
 pub struct StreamConsumer {
-    parser: ProtocolParser<Self>,
-    ids: Monotonic,
-    /// Stream service remote
-    stream_peer: Route,
-    /// Index service remote
-    index_peer: Route,
     /// This client ID
     client_id: String,
-    /// Producer address
-    prod: Option<Address>,
+    /// Stream service remote
+    service_route: Route,
+    /// Index service remote
+    index_route: Route,
+    /// Sender address
+    sender_address: Option<Address>,
     /// Receiving stream name
-    stream: String,
+    receiver_name: String,
     /// Fetch interval
     interval: Duration,
     /// ReceiverAddress address
-    rx_rx: Address,
+    receiver_rx: Address,
     /// Last known index position
     idx: u64,
+    parser: ProtocolParser<Self>,
+    ids: Monotonic,
 }
 
 fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Response>) -> bool {
@@ -47,13 +47,13 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 stream_name, return_route
             );
 
-            assert_eq!(w.stream, stream_name);
-            w.stream_peer = return_route.clone();
+            assert_eq!(w.receiver_name, stream_name);
+            w.service_route = return_route.clone();
 
             // Next up we get the current index
             block_future(&ctx.runtime(), async move {
                 ctx.send(
-                    w.index_peer.clone(),
+                    w.index_route.clone(),
                     IndexReq::get(stream_name, w.client_id.clone()),
                 )
                 .await
@@ -66,7 +66,7 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
         }) => {
             let index = index.unwrap_or(serde_bare::Uint(0));
             info!("Updating index '{}' to: {}", stream_name, index.0);
-            w.index_peer = return_route.clone();
+            w.index_route = return_route.clone();
             w.idx = index.0;
 
             // Queue a near-immediate fetch event -- however future
@@ -98,22 +98,22 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                     }
                 };
 
-                // If a producer existst, insert its address into the return_route
-                if let Some(ref addr) = w.prod {
+                // If a producer exists, insert its address into the return_route
+                if let Some(ref addr) = w.sender_address {
                     trans.return_route.modify().prepend(addr.clone());
                 }
 
                 // Either forward to the next hop, or to the consumer address
                 let res = match trans.onward_route.next() {
                     Ok(addr) => {
-                        info!("Forwarding {} message to addr: {}", w.stream, addr);
+                        info!("Forwarding {} message to addr: {}", w.receiver_name, addr);
                         let local_msg = LocalMessage::new(trans, Vec::new());
                         block_future(&ctx.runtime(), async { ctx.forward(local_msg).await })
                     }
                     Err(_) => {
-                        info!("Forwarding {} message to rx.next()", w.stream);
+                        info!("Forwarding {} message to receiver.next()", w.receiver_name);
                         block_future(&ctx.runtime(), async {
-                            ctx.send(w.rx_rx.clone(), msg).await
+                            ctx.send(w.receiver_rx.clone(), msg).await
                         })
                     }
                 };
@@ -130,8 +130,8 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             if last_idx != w.idx {
                 block_future(&ctx.runtime(), async {
                     ctx.send(
-                        w.index_peer.clone(),
-                        IndexReq::save(w.stream.clone(), w.client_id.clone(), w.idx),
+                        w.index_route.clone(),
+                        IndexReq::save(w.receiver_name.clone(), w.client_id.clone(), w.idx),
                     )
                     .await
                 });
@@ -155,9 +155,9 @@ fn parse_cmd(
             // Generate a new request_id and send a PullRequest
             block_future(&ctx.runtime(), async {
                 let request_id = w.ids.next() as u64;
-                trace!("Sending PullRequest to stream {:?}...", w.stream);
+                trace!("Sending PullRequest to stream {:?}...", w.receiver_name);
                 ctx.send(
-                    w.stream_peer.clone(),
+                    w.service_route.clone(),
                     // TOOD: make fetch amount configurable/ dynamic?
                     PullRequest::new(request_id, w.idx, 8),
                 )
@@ -200,10 +200,10 @@ impl Worker for StreamConsumer {
         self.parser.attach(ResponseParser::new(parse_response));
         self.parser.attach(StreamCmdParser::new(parse_cmd));
 
-        // Send a create stream request with the reigestered name
+        // Send a create stream request with the registered name
         ctx.send(
-            self.stream_peer.clone(),
-            (CreateStreamRequest::new(self.stream.clone())),
+            self.service_route.clone(),
+            (CreateStreamRequest::new(self.receiver_name.clone())),
         )
         .await?;
 
@@ -228,26 +228,26 @@ impl Worker for StreamConsumer {
 impl StreamConsumer {
     pub(crate) fn new(
         client_id: String,
-        remote: Route,
-        prod: Option<Address>,
-        stream: String,
+        route: Route,
+        sender_address: Option<Address>,
+        receiver_name: String,
         interval: Duration,
-        fwd: Option<Address>,
-        rx_rx: Address,
+        _forwarding_address: Option<Address>, // TODO implement forwarding
+        receiver_rx: Address,
         stream_service: String,
         index_service: String,
     ) -> Self {
         Self {
+            client_id,
+            service_route: route.clone().modify().append(stream_service).into(),
+            index_route: route.clone().modify().append(index_service).into(),
+            sender_address,
+            receiver_name,
+            interval,
+            receiver_rx,
+            idx: 0,
             parser: ProtocolParser::new(),
             ids: Monotonic::new(),
-            client_id,
-            stream_peer: remote.clone().modify().append(stream_service).into(),
-            index_peer: remote.clone().modify().append(index_service).into(),
-            prod,
-            stream,
-            interval,
-            rx_rx,
-            idx: 0,
         }
     }
 }
