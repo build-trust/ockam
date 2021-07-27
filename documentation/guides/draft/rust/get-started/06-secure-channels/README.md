@@ -1,4 +1,4 @@
-# Step 6 - Secure Channels
+# Secure Channels
 
 Secure channels are encrypted bi-directional message routes between two
 entities. One entity acts as a listener in the secure channel protocol, and the
@@ -74,32 +74,42 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
+### Example: Middle Node
+```rust
+use ockam::{Context, Result, TcpTransport};
+
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    // Initialize the TCP Transport.
+    let tcp = TcpTransport::create(&ctx).await?;
+
+    // Create a TCP listener and wait for incoming connections.
+    tcp.listen("127.0.0.1:3000").await?;
+
+    // Don't call ctx.stop() here so this node runs forever.
+    Ok(())
+}
+```
+
 ### Example: Alice (Initiator)
 
 ```rust
-use ockam::{  
-    route, Context, Entity, NoOpTrustPolicy, Result, Route, SecureChannels, TcpTransport, Vault,  
+use ockam::{ Context, Entity, TrustEveryonePolicy, Result, route, SecureChannels, TcpTransport, Vault,
  TCP,  
 };  
   
 #[ockam::node]  
 async fn main(mut ctx: Context) -> Result<()> {  
-    // Initialize the TCP Transport.  
+ // Initialize the TCP Transport.
  let tcp = TcpTransport::create(&ctx).await?;  
-  
- // Create a TCP connection.  
- tcp.connect("127.0.0.1:4000").await?;  
-  
+
  let vault = Vault::create(&ctx)?;  
  let mut alice = Entity::create(&ctx, &vault)?;  
   
  // Connect to a secure channel listener and perform a handshake.  
- let channel = alice.create_secure_channel(  
-        // route to the secure channel listener  
- Route::new()  
-            .append_t(TCP, "127.0.0.1:4000") // responder node  
- .append("secure_channel_listener"), // secure_channel_listener on responder node,  
- NoOpTrustPolicy,  
+ let channel = alice.create_secure_channel(
+ route![(TCP, "127.0.0.1:3000"),(TCP, "127.0.0.1:4000"),"secure_channel_listener"],
+ TrustEveryonePolicy,
  )?;  
   
  // Send a message to the echoer worker via the channel.  
