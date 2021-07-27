@@ -47,18 +47,14 @@ impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
     fn secret_generate(&mut self, attributes: SecretAttributes) -> ockam_core::Result<Secret> {
         let mut rng = thread_rng(); // FIXME
-        let (key, key_id) = match attributes.stype() {
+        let key = match attributes.stype() {
             SecretType::Curve25519 => {
                 // FIXME
                 let mut bytes = [0u8; 32];
                 rng.fill_bytes(&mut bytes);
                 let sk = x25519_dalek::StaticSecret::from(bytes);
-                let public = x25519_dalek::PublicKey::from(&sk);
-                let private = SecretKey::new(sk.to_bytes().to_vec());
-                let key_id = self
-                    .compute_key_id_for_public_key(&PublicKey::new(public.as_bytes().to_vec()))?;
 
-                (private, Some(key_id))
+                SecretKey::new(sk.to_bytes().to_vec())
             }
             SecretType::Buffer => {
                 if attributes.persistence() != SecretPersistence::Ephemeral {
@@ -66,7 +62,7 @@ impl SecretVault for SoftwareVault {
                 };
                 let mut key = vec![0u8; attributes.length()];
                 rng.fill_bytes(key.as_mut_slice());
-                (SecretKey::new(key), None)
+                SecretKey::new(key)
             }
             SecretType::Aes => {
                 if attributes.length() != AES256_SECRET_LENGTH
@@ -79,21 +75,18 @@ impl SecretVault for SoftwareVault {
                 };
                 let mut key = vec![0u8; attributes.length()];
                 rng.fill_bytes(&mut key);
-                (SecretKey::new(key), None)
+                SecretKey::new(key)
             }
             SecretType::P256 => {
                 return Err(VaultError::InvalidKeyType.into());
             }
             SecretType::Bls => {
                 let bls_secret_key = BlsSecretKey::random(&mut rng).unwrap();
-                let public_key =
-                    PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
-                let key_id = self.compute_key_id_for_public_key(&public_key)?;
-                let private = SecretKey::new(bls_secret_key.to_bytes().to_vec());
 
-                (private, Some(key_id))
+                SecretKey::new(bls_secret_key.to_bytes().to_vec())
             }
         };
+        let key_id = self.compute_key_id(key.as_ref(), &attributes)?;
         self.next_id += 1;
         self.entries
             .insert(self.next_id, VaultEntry::new(key_id, attributes, key));
@@ -244,24 +237,29 @@ mod tests {
 
     #[test]
     fn secret_import_compute_key_id_predefined() {
-        let tmp = "∇∙E=0,∇∙B=0,∇⨯E=-∂B/∂t,∇⨯B=(1/c²) ∂E/∂t".as_bytes();
-        // This works for BLS only by chance ! Use `signature_bbs_plus::SecretKey::hash` to
-        // generate a secret key for an arbitrary string.
-        let (bytes_c25519, bytes_bls): (&[u8], &[u8]) = (&tmp[0..32], &tmp[32..]);
-
+        let bytes_c25519 = &[
+            0x48, 0x95, 0x73, 0xcf, 0x4a, 0xe9, 0x16, 0x68, 0x86, 0x49, 0x8d, 0x3d, 0xd0, 0xde,
+            0x00, 0x61, 0xb4, 0x01, 0xc1, 0xbf, 0x39, 0xd0, 0x8b, 0x7e, 0x4b, 0xf0, 0xa4, 0x90,
+            0xbb, 0x1c, 0x91, 0x67,
+        ];
         let attrs = new_curve255519_attrs();
         let mut vault = new_vault();
         let key_id = import_key(&mut vault, bytes_c25519, attrs);
         assert_eq!(
-            "a0e67ae7dc61a4fd4f3c9f4593d89124058cdc20869334e5a39866c23518fcf4",
+            "f0e6821043434a9353e6c213a098f6d75ac916b23b3632c7c4c9c6d2e1fa1cf8",
             &key_id
         );
 
+        let bytes_bls = &[
+            0x3b, 0xcd, 0x36, 0xf3, 0xe2, 0x18, 0xf1, 0x8a, 0x37, 0xd6, 0x4d, 0x62, 0xe4, 0xb7,
+            0x27, 0xc9, 0xc7, 0xf8, 0xcc, 0x32, 0x6c, 0xf6, 0x66, 0x94, 0x7c, 0x62, 0xfd, 0xff,
+            0x18, 0xc0, 0x0e, 0x08,
+        ];
         let attrs = new_bls_attrs();
         let mut vault = new_vault();
         let key_id = import_key(&mut vault, bytes_bls, attrs);
         assert_eq!(
-            "1649053c489bf94b6a14087a34b3fa9750dd2d6469b52c9b771ddf1ff13f7849",
+            "604b7cf225a832c8fa822792dc7c484f5c49fb7a70ce87f1636b294ba7dbdc7b",
             &key_id
         );
     }
