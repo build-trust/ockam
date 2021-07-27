@@ -3,7 +3,6 @@
 /// means that you can run `initiator` and `responder` in any order
 /// you like.
 use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
-use std::time::Duration;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -13,9 +12,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx)?;
 
     // Create a bi-directional stream
-    let (tx, _) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx)?
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
-        .with_interval(Duration::from_millis(100))
         .connect(
             route![(TCP, "localhost:4000")],
             // Stream name from THIS node to the OTHER node
@@ -30,7 +28,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         &ctx,
         route![
             // Send via the stream
-            tx.clone(),
+            sender.clone(),
             // And then to the secure_channel_listener
             "secure_channel_listener"
         ],
@@ -38,7 +36,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     )
     .await?;
 
-    // Send a message via the channel to the "printer"
+    // Send a message via the channel to the echoer worker
     ctx.send(
         route![channel.address(), "echoer"],
         "Hello World!".to_string(),

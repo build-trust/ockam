@@ -1,6 +1,5 @@
 use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
 use ockam_get_started::Echoer;
-use std::time::Duration;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -15,7 +14,6 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a bi-directional stream
     Stream::new(&ctx)?
         .client_id("secure-channel-over-stream-over-cloud-node-responder")
-        .with_interval(Duration::from_millis(100))
         .connect(
             route![(TCP, "localhost:4000")],
             // Stream name from THIS node to the OTHER node

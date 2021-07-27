@@ -35,7 +35,7 @@ use std::{ops::Deref, time::Duration};
 pub struct Stream {
     ctx: Context,
     interval: Duration,
-    recipient: Option<Address>,
+    forwarding_address: Option<Address>,
     stream_service: String,
     index_service: String,
     client_id: Option<String>,
@@ -89,13 +89,14 @@ impl ReceiverAddress {
 impl Stream {
     /// Create a new Ockam stream controller
     ///
-    /// The created stream will poll for new messages every second
+    /// By default, the created stream will poll for new messages
+    /// every 250 milliseconds.
     pub fn new(ctx: &Context) -> Result<Self> {
         block_future(&ctx.runtime(), async {
             ctx.new_context(Address::random(16)).await.map(|ctx| Self {
                 ctx,
-                interval: Duration::from_secs(10),
-                recipient: None,
+                interval: Duration::from_millis(250),
+                forwarding_address: None,
                 stream_service: "stream".into(),
                 index_service: "stream_index".into(),
                 client_id: None,
@@ -145,7 +146,7 @@ impl Stream {
     /// polled via the [`StreamWorkerCmd`]().
     pub fn with_recipient<A: Into<Address>>(self, addr: A) -> Self {
         Self {
-            recipient: Some(addr.into()),
+            forwarding_address: Some(addr.into()),
             ..self
         }
     }
@@ -157,7 +158,7 @@ impl Stream {
     /// These two identifiers MUST be known between nodes that wish to
     /// exchange messages.
     ///
-    /// The `peer` parameter is the route to a remote which hosts a
+    /// The `route` parameter is the route to a remote which hosts a
     /// `stream_service` and `stream_index_service`, such as
     /// hub.ockam.io.
     ///
@@ -165,23 +166,23 @@ impl Stream {
     /// existing stream identifiers will automatically be re-used.
     pub async fn connect<R, S>(
         &self,
-        peer: R,
-        tx_name: S,
-        rx_name: S,
+        route: R,
+        sender_name: S,
+        receiver_name: S,
     ) -> Result<(SenderAddress, ReceiverAddress)>
     where
         R: Into<Route>,
         S: Into<String>,
     {
-        let peer = peer.into();
-        let tx_name = tx_name.into();
-        let rx_name = rx_name.into();
+        let route = route.into();
+        let sender_name = sender_name.into();
+        let receiver_name = receiver_name.into();
 
         // Generate two new random addresses
-        let rx = Address::random(0);
-        let tx = Address::random(0);
+        let receiver_address = Address::random(0);
+        let sender_address = Address::random(0);
 
-        let rx_rx = Address::random(0);
+        let receiver_rx = Address::random(0);
 
         // Generate a random client_id if one has not been provided
         let client_id = match self.client_id.clone() {
@@ -195,15 +196,15 @@ impl Stream {
         // Create and start a new stream consumer
         self.ctx
             .start_worker(
-                rx.clone(),
+                receiver_address.clone(),
                 StreamConsumer::new(
                     client_id,
-                    peer.clone(),
-                    Some(tx.clone()),
-                    rx_name.clone(),
+                    route.clone(),
+                    Some(sender_address.clone()),
+                    receiver_name.clone(),
                     self.interval.clone(),
-                    self.recipient.clone(),
-                    rx_rx.clone(),
+                    self.forwarding_address.clone(),
+                    receiver_rx.clone(),
                     self.stream_service.clone(),
                     self.index_service.clone(),
                 ),
@@ -213,17 +214,19 @@ impl Stream {
         // Create and start a new stream producer
         self.ctx
             .start_worker(
-                tx.clone(),
-                StreamProducer::new(tx_name.clone(), peer, self.stream_service.clone()),
+                sender_address.clone(),
+                StreamProducer::new(sender_name.clone(), route, self.stream_service.clone()),
             )
             .await?;
 
         // Return a sender and receiver address
         Ok((
-            SenderAddress { inner: tx },
+            SenderAddress {
+                inner: sender_address,
+            },
             ReceiverAddress {
-                inner: rx,
-                ctx: self.ctx.new_context(rx_rx).await?,
+                inner: receiver_address,
+                ctx: self.ctx.new_context(receiver_rx).await?,
             },
         ))
     }

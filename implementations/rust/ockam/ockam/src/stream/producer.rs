@@ -13,15 +13,15 @@ use std::collections::VecDeque;
 use super::StreamCmdParser;
 
 pub struct StreamProducer {
+    sender_name: String,
+    route: Route,
+    stream_service: String,
     parser: ProtocolParser<Self>,
     outbox: VecDeque<ProtocolPayload>,
     ids: Monotonic,
-    tx_name: String,
-    peer: Route,
-    stream_service: String,
     /// Keep track of whether this producer has been initialised
     ///
-    /// The reason for this is that `peer` first is the Route to the
+    /// The reason for this is that `route` first is the Route to the
     /// `stream_service`, and later to the exact stream worker for
     /// this stream
     init: bool,
@@ -32,20 +32,20 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
 
     match resp.body() {
         Response::Init(Init { stream_name }) => {
-            w.peer = return_route;
+            w.route = return_route;
             w.init = true;
 
             info!(
                 "Initialised consumer for stream '{}' and route: {}",
-                stream_name, w.peer
+                stream_name, w.route
             );
 
             // Send queued messages
             let mut outbox = std::mem::replace(&mut w.outbox, VecDeque::new());
             outbox.into_iter().for_each(|trans| {
-                let peer = w.peer.clone();
-                debug!("Sending queued message to {}", peer);
-                if let Err(e) = block_future(&ctx.runtime(), async { ctx.send(peer, trans).await })
+                let route = w.route.clone();
+                debug!("Sending queued message to {}", route);
+                if let Err(e) = block_future(&ctx.runtime(), async { ctx.send(route, trans).await })
                 {
                     error!("Failed to send queued message: {}", e);
                 }
@@ -78,15 +78,15 @@ impl Worker for StreamProducer {
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.parser.attach(ResponseParser::new(parse_response));
 
-        debug!("Create producer stream: {}", self.tx_name);
+        debug!("Create producer stream: {}", self.sender_name);
 
         // Create a stream for this sender
         ctx.send(
-            self.peer
+            self.route
                 .clone()
                 .modify()
                 .append(self.stream_service.clone()),
-            CreateStreamRequest::new(Some(self.tx_name.clone())),
+            CreateStreamRequest::new(Some(self.sender_name.clone())),
         )
         .await
     }
@@ -104,9 +104,9 @@ impl Worker for StreamProducer {
         if self.init {
             debug!(
                 "Sending PushRequest for incoming message to stream {}",
-                self.tx_name
+                self.sender_name
             );
-            ctx.send(self.peer.clone(), proto_msg).await?;
+            ctx.send(self.route.clone(), proto_msg).await?;
         } else {
             debug!("Stream producer not ready yet, queueing message...");
             self.outbox.push_back(proto_msg);
@@ -120,15 +120,15 @@ impl StreamProducer {
     /// When creating a StreamProducer we don't initialise the route
     /// because this will be filled in by the stream consumer which
     /// registers the stream
-    pub(crate) fn new(tx_name: String, peer: Route, stream_service: String) -> Self {
+    pub(crate) fn new(sender_name: String, route: Route, stream_service: String) -> Self {
         Self {
-            parser: ProtocolParser::new(),
-            ids: Monotonic::new(),
-            outbox: VecDeque::new(),
-            tx_name,
-            peer,
-            init: false,
+            sender_name,
+            route,
             stream_service,
+            parser: ProtocolParser::new(),
+            outbox: VecDeque::new(),
+            ids: Monotonic::new(),
+            init: false,
         }
     }
 }
