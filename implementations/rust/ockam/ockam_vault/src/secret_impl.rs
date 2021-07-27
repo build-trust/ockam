@@ -38,9 +38,7 @@ impl SoftwareVault {
                     PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
                 Some(self.compute_key_id_for_public_key(&public_key)?)
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
-                None
-            }
+            SecretType::Buffer | SecretType::Aes | SecretType::P256 => None,
         })
     }
 }
@@ -169,11 +167,11 @@ impl SecretVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ockam_vault_core::{SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH},
+        ockam_vault_core::{KeyId, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH},
         KeyIdVault, Secret, SecretAttributes, SecretVault, SoftwareVault,
     };
-    use signature_bbs_plus::SecretKey as BlsSecretKey;
     use ockam_vault_test_attribute::*;
+    use signature_bbs_plus::SecretKey as BlsSecretKey;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
@@ -191,19 +189,20 @@ mod tests {
     #[vault_test]
     fn secret_attributes_get() {}
 
-    fn public_key_algo_attributes_list() -> impl Iterator<Item = SecretAttributes> {
-        vec![
-            SecretAttributes::new(
-                SecretType::Curve25519,
-                SecretPersistence::Ephemeral,
-                CURVE25519_SECRET_LENGTH,
-            ),
-            SecretAttributes::new(
-                SecretType::Bls,
-                SecretPersistence::Ephemeral,
-                BlsSecretKey::BYTES,
-            )
-        ].into_iter()
+    fn new_curve255519_attrs() -> SecretAttributes {
+        SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        )
+    }
+
+    fn new_bls_attrs() -> SecretAttributes {
+        SecretAttributes::new(
+            SecretType::Bls,
+            SecretPersistence::Ephemeral,
+            BlsSecretKey::BYTES,
+        )
     }
 
     fn check_key_id_computation(mut vault: SoftwareVault, sec_idx: Secret) {
@@ -215,31 +214,55 @@ mod tests {
 
     #[test]
     fn secret_generate_compute_key_id() {
-        for attrs in public_key_algo_attributes_list() {
+        for attrs in [new_curve255519_attrs(), new_bls_attrs()] {
             let mut vault = new_vault();
-            let sec_idx = vault
-                .secret_generate(attrs)
-                .unwrap();
+            let sec_idx = vault.secret_generate(attrs).unwrap();
             check_key_id_computation(vault, sec_idx);
         }
     }
 
     #[test]
     fn secret_import_compute_key_id() {
-        for attrs in public_key_algo_attributes_list() {
+        for attrs in [new_curve255519_attrs(), new_bls_attrs()] {
             let mut vault = new_vault();
-            let sec_idx = vault
-                .secret_generate(attrs.clone())
-                .unwrap();
+            let sec_idx = vault.secret_generate(attrs.clone()).unwrap();
             let secret = vault.secret_export(&sec_idx).unwrap();
-            drop(vault);
+            drop(vault); // The first vault was only used to generate random keys
 
             let mut vault = new_vault();
-            let sec_idx = vault
-                .secret_import(secret.as_ref(), attrs)
-                .unwrap();
+            let sec_idx = vault.secret_import(secret.as_ref(), attrs).unwrap();
 
             check_key_id_computation(vault, sec_idx);
         }
+    }
+
+    fn import_key(vault: &mut SoftwareVault, bytes: &[u8], attrs: SecretAttributes) -> KeyId {
+        let sec_idx = vault.secret_import(bytes, attrs).unwrap();
+        let public_key = vault.secret_public_key_get(&sec_idx).unwrap();
+        vault.compute_key_id_for_public_key(&public_key).unwrap()
+    }
+
+    #[test]
+    fn secret_import_compute_key_id_predefined() {
+        let tmp = "∇∙E=0,∇∙B=0,∇⨯E=-∂B/∂t,∇⨯B=(1/c²) ∂E/∂t".as_bytes();
+        // This works for BLS only by chance ! Use `signature_bbs_plus::SecretKey::hash` to
+        // generate a secret key for an arbitrary string.
+        let (bytes_c25519, bytes_bls): (&[u8], &[u8]) = (&tmp[0..32], &tmp[32..]);
+
+        let attrs = new_curve255519_attrs();
+        let mut vault = new_vault();
+        let key_id = import_key(&mut vault, bytes_c25519, attrs);
+        assert_eq!(
+            "a0e67ae7dc61a4fd4f3c9f4593d89124058cdc20869334e5a39866c23518fcf4",
+            &key_id
+        );
+
+        let attrs = new_bls_attrs();
+        let mut vault = new_vault();
+        let key_id = import_key(&mut vault, bytes_bls, attrs);
+        assert_eq!(
+            "1649053c489bf94b6a14087a34b3fa9750dd2d6469b52c9b771ddf1ff13f7849",
+            &key_id
+        );
     }
 }
