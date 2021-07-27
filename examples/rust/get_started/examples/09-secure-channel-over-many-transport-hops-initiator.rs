@@ -2,7 +2,7 @@
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
 use ockam::{
-    route, Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, Vault, TCP,
+    route, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 
 #[ockam::node]
@@ -19,7 +19,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ];
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = alice.create_secure_channel(route, NoOpTrustPolicy)?;
+    let channel = alice.create_secure_channel(route, TrustEveryonePolicy)?;
 
     // Send a message to the echoer worker via the channel.
     let echoer_route = route![channel, "echoer"];

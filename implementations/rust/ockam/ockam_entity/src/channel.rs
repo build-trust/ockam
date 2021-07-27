@@ -105,8 +105,8 @@ mod test {
                 let mut alice = Entity::create(&ctx, &alice_vault).unwrap();
                 let mut bob = Entity::create(&ctx, &bob_vault).unwrap();
 
-                let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier().unwrap());
-                let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());
+                let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().unwrap());
+                let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().unwrap());
 
                 bob.create_secure_channel_listener("bob_listener", bob_trust_policy)
                     .unwrap();
@@ -158,8 +158,8 @@ mod test {
                 let mut alice = Entity::create(&ctx, &vault).unwrap();
                 let mut bob = Entity::create(&ctx, &vault).unwrap();
 
-                let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier().unwrap());
-                let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());
+                let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().unwrap());
+                let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().unwrap());
 
                 bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone())
                     .unwrap();
@@ -212,8 +212,8 @@ mod test {
                 let mut alice = Entity::create(&ctx, &vault).unwrap();
                 let mut bob = Entity::create(&ctx, &vault).unwrap();
 
-                let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier().unwrap());
-                let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());
+                let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().unwrap());
+                let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().unwrap());
 
                 bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone())
                     .unwrap();
@@ -279,8 +279,8 @@ mod test {
                 let mut alice = Entity::create(&ctx, &vault).unwrap();
                 let mut bob = Entity::create(&ctx, &vault).unwrap();
 
-                let alice_trust_policy = IdentifierTrustPolicy::new(bob.identifier().unwrap());
-                let bob_trust_policy = IdentifierTrustPolicy::new(alice.identifier().unwrap());
+                let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().unwrap());
+                let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().unwrap());
 
                 let n = rand::random::<u8>() % 5 + 4;
                 let mut channels = vec![];
