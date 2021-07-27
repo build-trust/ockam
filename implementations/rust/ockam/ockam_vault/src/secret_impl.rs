@@ -41,6 +41,26 @@ impl SoftwareVault {
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => None,
         })
     }
+
+    /// Validate secret key.
+    pub fn check_secret(
+        &mut self,
+        secret: &[u8],
+        attributes: &SecretAttributes,
+    ) -> ockam_core::Result<()> {
+        match attributes.stype() {
+            SecretType::Bls => {
+                let bytes = TryInto::<[u8; BlsSecretKey::BYTES]>::try_into(secret)
+                    .map_err(|_| VaultError::InvalidBlsSecretLength)?;
+                if BlsSecretKey::from_bytes(&bytes).is_none().into() {
+                    return Err(VaultError::InvalidBlsSecret.into());
+                }
+            }
+            SecretType::Buffer | SecretType::Aes | SecretType::Curve25519 => {}
+            SecretType::P256 => { /* FIXME */ }
+        }
+        Ok(())
+    }
 }
 
 impl SecretVault for SoftwareVault {
@@ -97,7 +117,7 @@ impl SecretVault for SoftwareVault {
         secret: &[u8],
         attributes: SecretAttributes,
     ) -> ockam_core::Result<Secret> {
-        // FIXME: Should we check secrets here?
+        self.check_secret(secret, &attributes)?;
         let key_id_opt = self.compute_key_id(secret, &attributes)?;
         self.next_id += 1;
         self.entries.insert(
@@ -207,7 +227,7 @@ mod tests {
     fn secret_generate_compute_key_id() {
         for attrs in &[new_curve255519_attrs(), new_bls_attrs()] {
             let mut vault = new_vault();
-            let sec_idx = vault.secret_generate(attrs.clone()).unwrap();
+            let sec_idx = vault.secret_generate(*attrs).unwrap();
             check_key_id_computation(vault, sec_idx);
         }
     }
@@ -216,12 +236,12 @@ mod tests {
     fn secret_import_compute_key_id() {
         for attrs in &[new_curve255519_attrs(), new_bls_attrs()] {
             let mut vault = new_vault();
-            let sec_idx = vault.secret_generate(attrs.clone()).unwrap();
+            let sec_idx = vault.secret_generate(*attrs).unwrap();
             let secret = vault.secret_export(&sec_idx).unwrap();
             drop(vault); // The first vault was only used to generate random keys
 
             let mut vault = new_vault();
-            let sec_idx = vault.secret_import(secret.as_ref(), attrs.clone()).unwrap();
+            let sec_idx = vault.secret_import(secret.as_ref(), *attrs).unwrap();
 
             check_key_id_computation(vault, sec_idx);
         }
