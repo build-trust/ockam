@@ -47,11 +47,9 @@ touch examples/10-routing-to-a-hub-node.rs
 Add the following code to this file:
 
 ```rust
-// This node routes a message, to a worker on a hub node, over the tcp transport.
+// This program sends a message to the echo_service worker running on your node in Ockam Hub.
 
 use ockam::{route, Context, Result, TcpTransport, TCP};
-
-use std::net::{SocketAddr, ToSocketAddrs};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -60,10 +58,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a TCP connection to your hub node.
-    tcp.connect(hub_node_tcp_address).await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the `echo_service` worker on your hub node.
     ctx.send(
@@ -75,13 +70,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     .await?;
 
     // Wait to receive the echo and print it.
-    let msg = ctx.receive::<String>().await?;
-    println!("App Received: '{}'", msg); // should print "Hello Ockam!"
+    let reply = ctx.receive::<String>().await?;
+    println!("App Received: '{}'", reply); // should print "Hello Ockam!"
 
     // Stop the node.
     ctx.stop().await
 }
-
 ```
 
 ### Run

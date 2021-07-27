@@ -4,23 +4,20 @@ use ockam::{
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Create a cloud node by going to https://hub.ockam.network
-    let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
+    // Create a hub node by going to https://hub.ockam.network
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
-    let secure_channel_listener_forwarding_address =
-        "Paste the forwarding address of the secure channel here.";
+    let forwarding_address = "<Address copied from responder output>";
 
     // Initialize the TCP Transport.
     let _tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create(&ctx).expect("failed to create vault");
     let mut alice = Entity::create(&ctx, &vault)?;
-    let cloud_node_route = route![
-        (TCP, cloud_node_tcp_address),
-        secure_channel_listener_forwarding_address
-    ];
 
-    let channel = alice.create_secure_channel(cloud_node_route, TrustEveryonePolicy)?;
+    let hub_node_route = route![(TCP, hub_node_tcp_address), forwarding_address];
+
+    let channel = alice.create_secure_channel(hub_node_route, TrustEveryonePolicy)?;
 
     let echoer_route = route![channel, "echoer"];
 

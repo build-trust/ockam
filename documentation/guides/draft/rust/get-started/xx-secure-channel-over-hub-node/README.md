@@ -1,4 +1,4 @@
-# Secure channel over Hub Node
+# Secure Channel via a Node in Ockam Hub
 
 ## Introduction
 
@@ -30,7 +30,8 @@ Add the following code to this file:
 
 ```rust
 use ockam::{
-    Context, Entity, NoOpTrustPolicy, RemoteForwarder, Result, SecureChannels, TcpTransport,
+    route, Context, Entity, RemoteForwarder, Result, SecureChannels, TcpTransport,
+    TrustEveryonePolicy, Vault, TCP,
 };
 use ockam_get_started::Echoer;
 
@@ -40,21 +41,23 @@ async fn main(ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a TCP connection to your hub node.
-    tcp.connect(hub_node_tcp_address).await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
-    let mut bob = Entity::create(&ctx)?;
+
+    let vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut bob = Entity::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "bob_secure_channel_listener"
-    bob.create_secure_channel_listener("bob_secure_channel_listener", NoOpTrustPolicy)?;
+    bob.create_secure_channel_listener("bob_secure_channel_listener", TrustEveryonePolicy)?;
 
-    let forwarder =
-        RemoteForwarder::create(&ctx, route![(TCP, cloud_node_tcp_address)], "bob_secure_channel_listener")
-            .await?;
+    let forwarder = RemoteForwarder::create(
+        &ctx,
+        route![(TCP, hub_node_tcp_address)],
+        "bob_secure_channel_listener",
+    )
+    .await?;
 
     println!("Forwarding address: {}", forwarder.remote_address());
 
@@ -85,7 +88,7 @@ Add the following code to this file (replace fields in `<>` with values you copi
 
 ```rust
 use ockam::{
-    route, Address, Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, TCP,
+    route, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 
 #[ockam::node]
@@ -93,23 +96,17 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a hub node by going to https://hub.ockam.network
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
-    let secure_channel_listener_forwarding_address =
-        "<Address copied from responder output>";
+    let forwarding_address = "<Address copied from responder output>";
 
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a TCP connection to your hub node.
-    tcp.connect(hub_node_tcp_address).await?;
+    let vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut alice = Entity::create(&ctx, &vault)?;
 
-    let mut alice = Entity::create(&ctx)?;
-    let hub_node_address: Address = (TCP, hub_node_tcp_address).into();
-    let hub_node_route = route![
-        hub_node_address,
-        secure_channel_listener_forwarding_address
-    ];
+    let hub_node_route = route![(TCP, hub_node_tcp_address), forwarding_address];
 
-    let channel = alice.create_secure_channel(hub_node_route, NoOpTrustPolicy)?;
+    let channel = alice.create_secure_channel(hub_node_route, TrustEveryonePolicy)?;
 
     let echoer_route = route![channel, "echoer"];
 
