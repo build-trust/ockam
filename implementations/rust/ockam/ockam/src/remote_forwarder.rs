@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-use crate::{route, Context, OckamError};
+use crate::{Context, OckamError};
 use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -37,28 +37,26 @@ pub struct RemoteForwarder {
 }
 
 impl RemoteForwarder {
-    fn new(
-        hub_addr: impl Into<Address>,
-        destination: impl Into<Address>,
-        callback_address: Address,
-    ) -> Self {
+    fn new(mut hub_route: Route, destination: Address, callback_address: Address) -> Self {
+        let route: Route = hub_route.modify().append("forwarding_service").into();
+        let destination: Route = destination.into();
         Self {
-            route: route![hub_addr, "forwarding_service"],
-            destination: route![destination],
+            route,
+            destination,
             callback_address,
         }
     }
 
     /// Create and start new RemoteForwarder with given Ockam Hub address
     /// and Address of destination Worker that should receive forwarded messages
-    pub async fn create(
+    pub async fn create<A: Into<Address>, R: Into<Route>>(
         ctx: &Context,
-        hub_addr: impl Into<Address>,
-        destination: impl Into<Address>,
+        hub_route: R,
+        destination: A,
     ) -> Result<RemoteForwarderInfo> {
         let address: Address = random();
         let mut child_ctx = ctx.new_context(address).await?;
-        let forwarder = Self::new(hub_addr, destination, child_ctx.address());
+        let forwarder = Self::new(hub_route.into(), destination.into(), child_ctx.address());
 
         let worker_address: Address = random();
         debug!("Starting RemoteForwarder at {}", &worker_address);
@@ -105,7 +103,7 @@ impl Worker for RemoteForwarder {
                 worker_address: ctx.address(),
             },
         )
-        .await?;
+            .await?;
 
         Ok(())
     }
