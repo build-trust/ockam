@@ -50,28 +50,24 @@ impl SoftwareVault {
     ) -> ockam_core::Result<()> {
         match attributes.stype() {
             SecretType::Curve25519 => {
-                if secret.len() != CURVE25519_SECRET_LENGTH {
-                    return Err(VaultError::InvalidCurve25519SecretLength.into());
-                }
-                let clamped = x25519_dalek::StaticSecret::from(
-                    TryInto::<[u8; CURVE25519_SECRET_LENGTH]>::try_into(secret).unwrap(),
-                )
-                .to_bytes();
-                if secret != &clamped[..] {
-                    return Err(VaultError::InvalidCurve25519Secret.into());
-                }
-            }
-            SecretType::Bls => {
-                if secret.len() != BlsSecretKey::BYTES {
-                    return Err(VaultError::InvalidBlsSecretLength.into());
-                }
-                if BlsSecretKey::from_bytes(secret.try_into().unwrap())
-                    .is_none()
-                    .into()
-                {
-                    return Err(VaultError::InvalidBlsSecret.into());
+                match TryInto::<[u8; CURVE25519_SECRET_LENGTH]>::try_into(secret) {
+                    Err(_) => return Err(VaultError::InvalidCurve25519SecretLength.into()),
+                    Ok(bytes) => {
+                        let clamped = x25519_dalek::StaticSecret::from(bytes).to_bytes();
+                        if secret != &clamped[..] {
+                            return Err(VaultError::InvalidCurve25519Secret.into());
+                        }
+                    }
                 }
             }
+            SecretType::Bls => match TryInto::<[u8; BlsSecretKey::BYTES]>::try_into(secret) {
+                Err(_) => return Err(VaultError::InvalidBlsSecretLength.into()),
+                Ok(bytes) => {
+                    if BlsSecretKey::from_bytes(&bytes).is_none().into() {
+                        return Err(VaultError::InvalidBlsSecret.into());
+                    }
+                }
+            },
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => {}
         }
         Ok(())
