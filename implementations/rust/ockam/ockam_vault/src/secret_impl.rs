@@ -53,9 +53,11 @@ impl SoftwareVault {
                 if secret.len() != CURVE25519_SECRET_LENGTH {
                     return Err(VaultError::InvalidCurve25519SecretLength.into());
                 }
-                let is_clamped =
-                    secret[0] & !248 == 0 && secret[31] & !127 == 0 && secret[31] & 64 == 64;
-                if !is_clamped {
+                let clamped = x25519_dalek::StaticSecret::from(
+                    TryInto::<[u8; CURVE25519_SECRET_LENGTH]>::try_into(secret.clone()).unwrap(),
+                )
+                .to_bytes();
+                if secret != &clamped[..] {
                     return Err(VaultError::InvalidCurve25519Secret.into());
                 }
             }
