@@ -41,7 +41,7 @@ In this example we're going to use the `echo_service` on the Hub Node we created
 Create a new file at:
 
 ```
-touch examples/10-routing-to-a-hub-node.rs
+touch examples/07-hub.rs
 ```
 
 Add the following code to this file:
@@ -81,10 +81,10 @@ async fn main(mut ctx: Context) -> Result<()> {
 ### Run
 
 ```
-cargo run --example 10-routing-to-a-hub-node
+cargo run --example 07-hub
 ```
 
 <div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../xx-discovery-using-hub-node">XX. Discovery using hub node</a>
+<hr><b>Next:</b> <a href="../08-forwarding">08. Forwarding using Hub Nodes</a>
 </div>
 

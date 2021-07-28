@@ -1,8 +1,8 @@
-# Connecting devices using Hub Node
+# Forwarding using Hub Nodes
 
 ## Introduction
 
-In the previous guide we learned how to [create a Hub Node](../xx-hub-node) and use services there using the TCP transport.
+In the previous guide we learned how to [create a Hub Node](../07-hub) and use services there using the TCP transport.
 
 Hub Nodes can be used as proxies to connect devices not exposed by public hostnames or IPs. These nodes can forward the traffic from one device to another using the Ockam Transport connections established by device nodes.
 
@@ -43,7 +43,7 @@ Another node we call "initiator", it will use the Forwarding Address generated b
 First create a responder at:
 
 ```
-touch examples/xx-connecting-devices-using-hub-node-responder.rs
+touch examples/08-forwarding-responder.rs
 ```
 
 Add the following code to this file:
@@ -84,7 +84,7 @@ You need to get the Forwarding Address from the Hub Node first in order to confi
 To do that run:
 
 ```
-cargo run --example xx-connecting-devices-using-hub-node-responder
+cargo run --example 08-forwarding-responder
 ```
 
 You will see the log message `Forwarding Address: ...` - copy the address from here
@@ -92,7 +92,7 @@ You will see the log message `Forwarding Address: ...` - copy the address from h
 ### Initiator
 
 ```
-touch examples/xx-connecting-devices-using-hub-node-initiator.rs
+touch examples/08-forwarding-initiator.rs
 ```
 
 Add the following code to this file (replace fields in `<>` with values you copied):
@@ -106,7 +106,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a hub node by going to https://hub.ockam.network
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
-    // Run xx-connecting-devices-using-hub-node-responder,
+    // Run 08-forwarding-responder,
     // it will print the forwarding address of echoer on your hub node
     let echoer_forwarding_address = "<Address copied from responder output>";
 
@@ -133,7 +133,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 ### Run initiator
 
 ```
-cargo run --example xx-connecting-devices-using-hub-node-initiator
+cargo run --example 08-forwarding-initiator
 ```
 
 You should expect a log message `App Received: Hello Ockam!`
@@ -146,6 +146,6 @@ You should expect a log message `App Received: Hello Ockam!`
 
 
 <div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../xx-secude-channel-over-hub-node">XX. Secure channel via a node in Ockam Hub</a>
+<hr><b>Next:</b> <a href="../09-secure-channel-via-hub">09. Secure channel via Ockam Hub</a>
 </div>
 

@@ -1,8 +1,8 @@
-# Secure Channel via a Node in Ockam Hub
+# Secure Channel via Ockam Hub
 
 ## Introduction
 
-In the previous guides we learned how to create [secure channels](../05-secure-channel) and connect nodes using [Hub Node forwarding](../xx-connecting-devices-using-hub-node).
+In the previous guides we learned how to create [secure channels](../05-secure-channel) and connect nodes using [Hub Node forwarding](../08-forwarding).
 
 Now we can conbine these and set up a Secure Channel over a Hub Nodes.
 
@@ -16,14 +16,14 @@ One we call "responder", it will start an "echoer" worker, secure channel listen
 
 Another node we call "initiator", it will use the Forwarding Address to establish a Secure Channel to the responder and send a message to "echoer" using this secure channel.
 
-You will need a Hub Node for this example. To create a new one, please follow the [Creating Hub Nodes](../xx-hub-node) guide.
+You will need a Hub Node for this example. To create a new one, please follow the [Creating Hub Nodes](../07-hub) guide.
 
 ### Responder
 
 First create a responder at:
 
 ```
-touch examples/xx-secure-channel-over-hub-node-responder.rs
+touch examples/09-secure-channel-via-hub-responder.rs
 ```
 
 Add the following code to this file:
@@ -72,7 +72,7 @@ You need to get the Forwarding Address from the Hub Node in order to configure t
 To do that run:
 
 ```
-cargo run --example xx-xx-secure-channel-over-hub-node-responder
+cargo run --example 09-secure-channel-via-hub-responder
 ```
 
 You will see the log message `Forwarding address: ...` - copy the address from here
@@ -81,7 +81,7 @@ You will see the log message `Forwarding address: ...` - copy the address from h
 ### Initiator
 
 ```
-touch examples/xx-secure-channel-over-hub-node-initiator.rs
+touch examples/09-secure-channel-via-hub-initiator.rs
 ```
 
 Add the following code to this file (replace fields in `<>` with values you copied):
@@ -124,7 +124,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 ### Run initiator
 
 ```
-cargo run --example xx-xx-secure-channel-over-hub-node-initiator
+cargo run --example 09-secure-channel-via-hub-initiator
 ```
 
 You should expect a log message `App Received: Hello Ockam!`
