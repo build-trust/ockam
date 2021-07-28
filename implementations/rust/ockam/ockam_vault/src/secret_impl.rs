@@ -63,7 +63,10 @@ impl SoftwareVault {
                 if secret.len() != BlsSecretKey::BYTES {
                     return Err(VaultError::InvalidBlsSecretLength.into());
                 }
-                if BlsSecretKey::from_bytes(secret.try_into().unwrap()).is_none().into() {
+                if BlsSecretKey::from_bytes(secret.try_into().unwrap())
+                    .is_none()
+                    .into()
+                {
                     return Err(VaultError::InvalidBlsSecret.into());
                 }
             }
