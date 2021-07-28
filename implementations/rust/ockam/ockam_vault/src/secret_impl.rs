@@ -50,24 +50,20 @@ impl SoftwareVault {
     ) -> ockam_core::Result<()> {
         match attributes.stype() {
             SecretType::Curve25519 => {
-                match TryInto::<[u8; CURVE25519_SECRET_LENGTH]>::try_into(secret) {
-                    Err(_) => return Err(VaultError::InvalidCurve25519SecretLength.into()),
-                    Ok(bytes) => {
-                        let clamped = x25519_dalek::StaticSecret::from(bytes).to_bytes();
-                        if secret != &clamped[..] {
-                            return Err(VaultError::InvalidCurve25519Secret.into());
-                        }
-                    }
+                let bytes = TryInto::<[u8; CURVE25519_SECRET_LENGTH]>::try_into(secret)
+                    .map_err(|_| VaultError::InvalidCurve25519SecretLength)?;
+                let clamped = x25519_dalek::StaticSecret::from(bytes).to_bytes();
+                if secret != &clamped[..] {
+                    return Err(VaultError::InvalidCurve25519Secret.into());
                 }
             }
-            SecretType::Bls => match TryInto::<[u8; BlsSecretKey::BYTES]>::try_into(secret) {
-                Err(_) => return Err(VaultError::InvalidBlsSecretLength.into()),
-                Ok(bytes) => {
-                    if BlsSecretKey::from_bytes(&bytes).is_none().into() {
-                        return Err(VaultError::InvalidBlsSecret.into());
-                    }
+            SecretType::Bls => {
+                let bytes = TryInto::<[u8; BlsSecretKey::BYTES]>::try_into(secret)
+                    .map_err(|_| VaultError::InvalidBlsSecretLength)?;
+                if BlsSecretKey::from_bytes(&bytes).is_none().into() {
+                    return Err(VaultError::InvalidBlsSecret.into());
                 }
-            },
+            }
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => {}
         }
         Ok(())
