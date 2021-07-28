@@ -1,15 +1,14 @@
+use crate::router::TcpRouterHandle;
 use crate::{
     atomic::{self, ArcBool},
-    init,
-    listener::TcpListenWorker,
-    parse_socket_addr, TcpError, WorkerPair, TCP,
+    TcpError, TCP,
 };
 use async_trait::async_trait;
-use ockam_core::lib::net::ToSocketAddrs;
 use ockam_core::lib::Deref;
-use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, ServiceBuilder, Worker};
+use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
-use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
+use tracing::{debug, trace};
 
 /// A TCP address router and connection listener
 ///
@@ -19,7 +18,7 @@ use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
 ///
 /// Optionally you can also start listening for incoming connections
 /// if the local node is part of a server architecture.
-pub struct TcpRouter {
+pub(crate) struct TcpRouter {
     addr: Address,
     map: BTreeMap<Address, Address>,
     allow_auto_connection: bool,
@@ -27,94 +26,11 @@ pub struct TcpRouter {
     run: ArcBool,
 }
 
-/// A handle to connect to a TcpRouter
-///
-/// Dropping this handle is harmless.
-pub struct TcpRouterHandle {
-    ctx: Context,
-    addr: Address,
-    run: ArcBool,
-}
-
-impl TcpRouterHandle {
-    /// Return Context
-    pub fn ctx(&self) -> &Context {
-        &self.ctx
-    }
-}
-
-impl TcpRouterHandle {
-    /// Register a new connection worker with this router
-    pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let tcp_address: Address = format!("{}#{}", TCP, pair.peer.clone()).into();
-        let mut accepts = vec![tcp_address];
-        accepts.extend(
-            pair.hostnames
-                .iter()
-                .map(|x| Address::from_string(format!("{}#{}", TCP, x))),
-        );
-        let self_addr = pair.tx_addr.clone();
-
-        self.ctx
-            .send(
-                self.addr.clone(),
-                RouterMessage::Register { accepts, self_addr },
-            )
-            .await
-    }
-
-    /// Bind an incoming connection listener for this router
-    pub async fn bind<S: Into<SocketAddr>>(&self, addr: S) -> Result<()> {
-        let socket_addr = addr.into();
-        TcpListenWorker::start(
-            &self.ctx,
-            self.addr.clone(),
-            socket_addr,
-            Arc::clone(&self.run),
-        )
-        .await
-    }
-
-    /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect(&self, peer: impl Into<String>) -> Result<ServiceBuilder> {
-        let peer_str = peer.into();
-        let peer_addr;
-        let hostnames;
-
-        // Try to parse as SocketAddr
-        if let Ok(p) = parse_socket_addr(peer_str.clone()) {
-            peer_addr = p;
-            hostnames = vec![];
-        }
-        // Try to resolve hostname
-        else if let Ok(iter) = peer_str.to_socket_addrs() {
-            // FIXME: We only take ipv4 for now
-            if let Some(p) = iter.filter(|x| x.is_ipv4()).next() {
-                peer_addr = p;
-            } else {
-                return Err(TcpError::InvalidAddress.into());
-            }
-
-            hostnames = vec![peer_str];
-        } else {
-            return Err(TcpError::InvalidAddress.into());
-        }
-
-        let serv_builder = ServiceBuilder::new(TCP, peer_addr.to_string());
-        init::start_connection(self, peer_addr, hostnames).await?;
-        Ok(serv_builder)
-    }
-}
-
 impl TcpRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<TcpRouterHandle> {
         let handle_ctx = ctx.new_context(Address::random(0)).await?;
 
-        let handle = TcpRouterHandle {
-            ctx: handle_ctx,
-            addr: self.addr.clone(),
-            run: Arc::clone(&self.run),
-        };
+        let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone(), Arc::clone(&self.run));
 
         Ok(handle)
     }
