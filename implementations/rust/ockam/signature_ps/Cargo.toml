@@ -22,7 +22,7 @@ digest = { version = "0.9", default-features = false }
 ff = "0.10"
 group = "0.10"
 hmac-drbg = "0.3"
-hkdf = "0.10"
+hkdf = "0.11"
 pairing = "0.20"
 rand_core = "0.6"
 rand_chacha = { version = "0.3", default-features = false }
