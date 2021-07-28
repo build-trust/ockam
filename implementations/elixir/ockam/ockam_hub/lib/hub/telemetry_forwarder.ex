@@ -15,24 +15,20 @@ defmodule Ockam.Hub.TelemetryForwarder do
   def init() do
     settings = get_settings()
 
-    create_node(settings.host, settings.token, settings.public_ip, settings.node_fqdn)
+    create_node(settings.host, settings.token, settings.node_fqdn)
 
-    attach_send_to_ui(settings.host, settings.token, settings.public_ip)
+    attach_send_to_ui(settings.host, settings.token, settings.node_fqdn)
   end
 
   def get_settings() do
     token = Application.get_env(:ockam_hub, :auth_message)
     host = Application.get_env(:ockam_hub, :auth_host)
 
-    public_ip = Application.get_env(:ockam_hub, :node_ip)
-    public_ip = :inet.ntoa(public_ip)
-
     node_fqdn = Application.get_env(:ockam_hub, :node_fqdn)
 
     %{
       host: host,
       token: token,
-      public_ip: public_ip,
       node_fqdn: node_fqdn
     }
   end
@@ -40,11 +36,11 @@ defmodule Ockam.Hub.TelemetryForwarder do
   def attach_send_to_ui() do
     settings = get_settings()
 
-    attach_send_to_ui(settings.host, settings.token, settings.public_ip)
+    attach_send_to_ui(settings.host, settings.token, settings.node_fqdn)
   end
 
   @spec attach_send_to_ui(any, any, any) :: :ok | {:error, :already_exists}
-  def attach_send_to_ui(host, token, public_ip) do
+  def attach_send_to_ui(host, token, _node_fqdn) do
     event_name = [:ockam, Ockam.Node, :handle_routed_message, :start]
 
     handler = fn _event, _message, metadata, _options ->
@@ -66,7 +62,7 @@ defmodule Ockam.Hub.TelemetryForwarder do
       json_payload = Jason.encode!(metadata)
       token = URI.encode_www_form(token)
 
-      HTTPoison.post("#{host}/messages?token=#{token}&public_ip=#{public_ip}", json_payload, [
+      HTTPoison.post("#{host}/messages?token=#{token}", json_payload, [
         {"Content-Type", "application/json"}
       ])
     end
@@ -78,15 +74,14 @@ defmodule Ockam.Hub.TelemetryForwarder do
   def create_node() do
     settings = get_settings()
 
-    create_node(settings.host, settings.token, settings.public_ip, settings.node_fqdn)
+    create_node(settings.host, settings.token, settings.node_fqdn)
   end
 
-  @spec create_node(any, any, any, any) :: :ok
-  def create_node(host, token, public_ip, node_fqdn) do
+  @spec create_node(any, any, any) :: :ok
+  def create_node(host, token, node_fqdn) do
     payload =
       Jason.encode!(%{
         node: %{
-          ip: "#{public_ip}",
           hostname: node_fqdn,
           port: 4000
         }
@@ -94,7 +89,7 @@ defmodule Ockam.Hub.TelemetryForwarder do
 
     token = URI.encode_www_form(token)
 
-    case HTTPoison.post("#{host}/nodes?token=#{token}&public_ip=#{public_ip}", payload, [
+    case HTTPoison.post("#{host}/nodes?token=#{token}", payload, [
            {"Content-Type", "application/json"}
          ]) do
       {:ok, %{status_code: 204}} ->

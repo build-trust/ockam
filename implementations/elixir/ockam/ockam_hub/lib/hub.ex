@@ -7,7 +7,6 @@ defmodule Ockam.Hub do
 
   use Application
 
-  alias Ockam.Hub.TelemetryForwarder
   alias Ockam.Transport
 
   require Logger
@@ -32,10 +31,6 @@ defmodule Ockam.Hub do
 
     ## Start all configured services
     Ockam.Hub.Service.Provider.start_configured_services()
-
-    # on app start, create the node if it does not exist
-    # we probably don't care if this errors.
-    TelemetryForwarder.init()
 
     web_port = Application.get_env(:ockam_hub, :web_port)
     # Specifications of child processes that will be started and supervised.
