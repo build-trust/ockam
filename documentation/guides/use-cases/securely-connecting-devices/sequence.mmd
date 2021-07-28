@@ -1,0 +1,47 @@
+sequenceDiagram
+    participant Bob
+    participant SecureChannelListener
+    participant SecureChannelBob
+    participant TcpTransport_B
+
+    participant ForwardingService
+    participant ForwardingAlias
+
+    participant TcpTransport_A
+    participant SecureChannelAlice
+    participant Alice
+
+    rect rgba(0, 250, 0, 0.1)
+        Note right of Bob: Register SecureChannelListener
+
+        Bob-->>TcpTransport_B: register [SecureChannelListener]
+        TcpTransport_B-->>ForwardingService: register [SecureChannelListener]
+        ForwardingService-->>ForwardingAlias: create [TcpTransport_B, SecureChannelListener]
+        Note right of ForwardingAlias: forward_to: [TcpTransport_B, SecureChannelListener]
+        ForwardingAlias-->>TcpTransport_B: ok [alias address]
+        TcpTransport_B-->>Bob: ok [alias address]
+    end
+
+    Bob--)Alice: share alias address
+
+    rect rgba(0, 0, 250, 0.1)
+        Note left of SecureChannelAlice: Set up secure channel
+        SecureChannelAlice-->>TcpTransport_A: create_channel [to: ForwardingAlias]
+        TcpTransport_A-->>ForwardingAlias: create_channel [from: TcpTransport_A, SecureChannelAlice]
+        ForwardingAlias-->>TcpTransport_B: create_channel [to: SecureChannelListener, from: TcpTransport_A, SecureChannelAlice]
+        TcpTransport_B-->>SecureChannelListener: create_channel [from: TcpTransport_B, TcpTransport_A, SecureChannelAlice]
+        SecureChannelListener-->>SecureChannelBob: create
+
+        SecureChannelBob-->>TcpTransport_B: create_ok [to: TcpTransport_A, SecureChannelAlice]
+        TcpTransport_B-->>TcpTransport_A: create_ok
+        TcpTransport_A-->>SecureChannelAlice: create_ok
+    end
+
+    Alice->>SecureChannelAlice: message
+    rect rgba(240, 0, 0, 0.1)
+        Note left of SecureChannelAlice: Message is encrypted
+        SecureChannelAlice->>TcpTransport_A: message
+        TcpTransport_A->>TcpTransport_B: message
+        TcpTransport_B->>SecureChannelBob: message
+    end
+    SecureChannelBob->>Bob: message
