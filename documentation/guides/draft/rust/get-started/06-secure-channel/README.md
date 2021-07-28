@@ -75,6 +75,12 @@ async fn main(mut ctx: Context) -> Result<()> {
 ```
 
 ### Example: Middle Node
+
+In this example, we will create one node in between Alice and Bob. Using the
+routing protocol, any number of nodes may be in between Alice and Bob. Since
+the routing meta-information is separated from the payload, the sent message
+can be routed by any network topology securely.
+
 ```rust
 use ockam::{Context, Result, TcpTransport};
 
