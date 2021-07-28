@@ -10,8 +10,19 @@ communication between distributed applications.
 
 <div style="display: none; visibility: hidden;"><hr></div>
 
+## Setup
+
+1. Install Rust
+
+`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+
+2. Setup a hello_ockam Cargo Project to get started with Ockam
+
+`cargo new --lib hello_ockam && cd hello_ockam && mkdir examples && echo 'ockam = "*"' >> Cargo.toml && cargo build`
+
+For more details on the setup process, see the [Setup Step](./00-setup).
+
 <ul>
-<li><a href="./00-setup">00. Setup</a></li>
 <li><a href="./01-node">01. Node</a></li>
 <li><a href="./02-worker">02. Worker</a>
 <li><a href="./03-routing">03. Routing</a></li>
