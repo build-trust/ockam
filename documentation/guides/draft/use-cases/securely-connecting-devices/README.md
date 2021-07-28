@@ -54,6 +54,8 @@ touch examples/bob.rs
 
 
 ```rust
+// examples/bob.rs
+
 use ockam::{
     route, Context, Entity, RemoteForwarder, Result, SecureChannels, TcpTransport,
     TrustEveryonePolicy, Vault, TCP,
@@ -105,6 +107,8 @@ touch examples/alice.rs
 ```
 
 ```rust
+// examples/alice.rs
+
 use ockam::{
     route, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
@@ -141,4 +145,25 @@ cargo run --example alice
 
 You should see the log message: `App Received: Hello world`
 
-**TODO: send more messages**
+## What is happening?
+
+The example program is using Ockam framework to establish connection to a server in Ockam Hub.
+
+Then using this connection, the two programs establish an [Ockam Secure Channel](../../rust/06-secure-channels)
+
+Secure channel encrypts the messages with a key only available to devices and the server cannot decrypt them.
+
+So we have the cloud service facilitating connection between devices, while not being able to decrypt the messages.
+
+### Message flow
+
+<img src="./Sequence.png" width="100%">
+
+
+## What's next?
+
+- More about the [Ockam framework](../../rust/)
+- More about [Secure Channels](../../rust/06-secure-channels)
+- More about [Ockam Hub](../../rust/07-hub)
+
+
