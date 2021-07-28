@@ -54,7 +54,7 @@ impl SoftwareVault {
                     return Err(VaultError::InvalidCurve25519SecretLength.into());
                 }
                 let clamped = x25519_dalek::StaticSecret::from(
-                    TryInto::<[u8; CURVE25519_SECRET_LENGTH]>::try_into(secret.clone()).unwrap(),
+                    TryInto::<[u8; CURVE25519_SECRET_LENGTH]>::try_into(secret).unwrap(),
                 )
                 .to_bytes();
                 if secret != &clamped[..] {
@@ -244,7 +244,7 @@ mod tests {
     fn secret_generate_compute_key_id() {
         for attrs in &[new_curve255519_attrs(), new_bls_attrs()] {
             let mut vault = new_vault();
-            let sec_idx = vault.secret_generate(attrs.clone()).unwrap();
+            let sec_idx = vault.secret_generate(*attrs).unwrap();
             check_key_id_computation(vault, sec_idx);
         }
     }
@@ -253,12 +253,12 @@ mod tests {
     fn secret_import_compute_key_id() {
         for attrs in &[new_curve255519_attrs(), new_bls_attrs()] {
             let mut vault = new_vault();
-            let sec_idx = vault.secret_generate(attrs.clone()).unwrap();
+            let sec_idx = vault.secret_generate(*attrs).unwrap();
             let secret = vault.secret_export(&sec_idx).unwrap();
             drop(vault); // The first vault was only used to generate random keys
 
             let mut vault = new_vault();
-            let sec_idx = vault.secret_import(secret.as_ref(), attrs.clone()).unwrap();
+            let sec_idx = vault.secret_import(secret.as_ref(), *attrs).unwrap();
 
             check_key_id_computation(vault, sec_idx);
         }
