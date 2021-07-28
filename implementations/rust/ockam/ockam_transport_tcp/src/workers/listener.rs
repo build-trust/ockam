@@ -1,23 +1,24 @@
 use crate::{
     atomic::{self, ArcBool},
-    TcpError, WorkerPair,
+    TcpError, TcpRouterHandle, WorkerPair,
 };
 use async_trait::async_trait;
-use ockam_core::{Address, Result, RouterMessage, Worker};
+use ockam_core::{Address, Result, Worker};
 use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
+use tracing::{debug, trace};
 
-pub struct TcpListenWorker {
+pub(crate) struct TcpListenWorker {
     inner: TcpListener,
     run: ArcBool,
-    router_addr: Address,
+    router_handle: TcpRouterHandle,
 }
 
 impl TcpListenWorker {
     pub(crate) async fn start(
         ctx: &Context,
-        router_addr: Address,
+        router_handle: TcpRouterHandle,
         addr: SocketAddr,
         run: ArcBool,
     ) -> Result<()> {
@@ -28,7 +29,7 @@ impl TcpListenWorker {
         let worker = Self {
             inner,
             run,
-            router_addr,
+            router_handle,
         };
 
         ctx.start_worker(waddr, worker).await?;
@@ -52,17 +53,10 @@ impl Worker for TcpListenWorker {
             let (stream, peer) = self.inner.accept().await.map_err(TcpError::from)?;
 
             // And spawn a connection worker for it
-            let pair = WorkerPair::with_stream(ctx, stream, peer, vec![]).await?;
+            let pair = WorkerPair::new_with_stream(ctx, stream, peer, vec![]).await?;
 
             // Register the connection with the local TcpRouter
-            ctx.send(
-                self.router_addr.clone(),
-                RouterMessage::Register {
-                    accepts: vec![format!("{}#{}", crate::TCP, peer).into()],
-                    self_addr: pair.tx_addr.clone(),
-                },
-            )
-            .await?;
+            self.router_handle.register(&pair).await?;
         }
 
         ctx.stop_worker(ctx.address()).await
