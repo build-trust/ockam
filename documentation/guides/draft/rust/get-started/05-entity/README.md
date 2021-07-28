@@ -40,7 +40,7 @@ address of a vault.
 use ockam::Entity;
 ...
 let vault = Vault::create(&ctx)?;
-let light_switch = Entity::create(&ctx, &vault)?;
+let alice = Entity::create(&ctx, &vault)?;
 ```
 
 ## Profiles
@@ -70,9 +70,9 @@ let mut alice = Entity::create(&ctx)?;
 // Get the default profile
 let alice_default_profile = alice.current_profile().unwrap();
 
-// Create a new profile
-let alice_manufacturer = alice.create_profile()?;
+// Create a new profile for chatting with Bob
+let alice_chat = alice.create_profile()?;
 
 // Delete a profile
-alice.remove_profile(alice_manufacturer.identifier()?)?;
+alice.remove_profile(alice_chat.identifier()?)?;
 ```
