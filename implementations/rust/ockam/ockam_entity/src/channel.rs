@@ -91,10 +91,8 @@ mod test {
     use crate::{Entity, SecureChannels};
     use ockam_core::{route, Message};
     use ockam_vault_sync_core::Vault;
-    use serial_test::serial;
 
     #[test]
-    #[serial]
     fn test_channel() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
@@ -148,7 +146,6 @@ mod test {
     }
 
     #[test]
-    #[serial]
     fn test_tunneled_secure_channel_works() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
@@ -202,7 +199,6 @@ mod test {
     }
 
     #[test]
-    #[serial]
     fn test_double_tunneled_secure_channel_works() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
@@ -269,7 +265,6 @@ mod test {
     }
 
     #[test]
-    #[serial]
     fn test_many_times_tunneled_secure_channel_works() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
