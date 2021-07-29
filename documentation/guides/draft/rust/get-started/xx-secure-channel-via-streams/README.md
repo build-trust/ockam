@@ -1,8 +1,8 @@
 ```
-title: Secure channel over Streams
+title: Secure channel via Streams
 ```
 
-# Secure channel over Streams
+# Secure channel via Streams
 
 ## Introduction
 
@@ -11,6 +11,9 @@ In previous examples we demonstrated sending messages through secure channels as
 Let's now combine these two examples and send messages via streams using secure channels.
 
 This gives us both end-to-end encryption and reliable message delivery with only minimal changes to our code.
+
+## Service set-up
+
 
 
 ## App worker
@@ -25,13 +28,14 @@ Connecting these two nodes will be the bi-directional stream managed by Ockam Hu
 
 Encryption is managed by the nodes and ensures that Ockam Hub is unable to inspect the content of any messages.
 
+**NOTE:** You will need a Hub Node with Kafka integration for this example. To create a new one, please follow the [Creating Hub Nodes](../07-hub) guide.
 
 ### Responder node
 
 Create a new file at:
 
 ```
-touch examples/15-secure-channel-over-stream-over-cloud-node-responder.rs
+touch examples/15-secure-channel-via-streams-responder.rs
 ```
 
 Add the following code to this file:
@@ -39,12 +43,12 @@ Add the following code to this file:
 ```rust
 use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
 use ockam_get_started::Echoer;
-use std::time::Duration;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
-    tcp.connect("127.0.0.1:4000").await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
+
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
@@ -59,11 +63,9 @@ async fn main(ctx: Context) -> Result<()> {
         .client_id("secure-channel-over-stream-over-cloud-node-responder")
         .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, "127.0.0.1:4000")],
-            // Stream name from THIS node to the OTHER node
-            "secure-channel-test-b-a",
-            // Stream name from the OTHER node to THIS node
-            "secure-channel-test-a-b",
+            route![(TCP, hub_node_tcp_address)],
+            "sc-responder-to-initiator",
+            "sc-initiator-to-responder",
         )
         .await?;
 
@@ -80,55 +82,54 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/15-secure-channel-over-stream-over-cloud-node-initiator.rs
+touch examples/15-secure-channel-via-streams-initiator.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-use ockam::{
-    route, stream::Stream, Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP,
-};
+use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
 use std::time::Duration;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
-    tcp.connect("127.0.0.1:4000").await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
+
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
 
     // Create a bi-directional stream
-    let (tx, _rx) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx)?
         .stream_service("stream")
         .index_service("stream_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
-        .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, "127.0.0.1:4000")],
+            route![(TCP, hub_node_tcp_address)],
             // Stream name from THIS node to the OTHER node
-            "secure-channel-test-a-b",
+            "sc-initiator-to-responder",
             // Stream name from the OTHER node to THIS node
-            "secure-channel-test-b-a",
+            "sc-responder-to-initiator",
         )
         .await?;
 
     // Create a secure channel via the stream
     let channel = SecureChannel::create(
         &ctx,
-        Route::new()
+        route![
             // Send via the stream
-            .append(tx.clone())
+            sender.clone(),
             // And then to the secure_channel_listener
-            .append("secure_channel_listener"),
+            "secure_channel_listener"
+        ],
         &vault,
     )
     .await?;
 
-    // Send a message through the channel to the "echoer"
+    // Send a message via the channel to the echoer worker
     ctx.send(
-        Route::new().append(channel.address()).append("echoer"),
+        route![channel.address(), "echoer"],
         "Hello World!".to_string(),
     )
     .await?;
@@ -151,13 +152,13 @@ Messages can now be sent normally via the stream through the secure channel.
 To start the first node run:
 
 ```
-cargo run --example 15-secure-channel-over-stream-over-cloud-node-responder
+cargo run --example 15-secure-channel-via-streams-responder
 ```
 
 To start the second node run:
 
 ```
-cargo run --example 15-secure-channel-over-stream-over-cloud-node-initiator
+cargo run --example 15-secure-channel-via-streams-initiator
 ```
 
 You now should see the log message from the initiator: `Reply through secure channel via stream: ...`

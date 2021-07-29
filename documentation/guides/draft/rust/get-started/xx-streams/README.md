@@ -16,7 +16,9 @@ Message brokers solve this problem by introducing message buffers or logs. By ma
 
 Ockam Hub integrates with message brokers through the use of Ockam Streams and applications use the Ockam Streams Protocol to communicate.
 
-Further information can be found in the Ockam Stream service protocol definition: https://github.com/ockam-network/proposals/tree/main/design/0009-stream-protocol
+Ockam Streams is a minumal API to access the basic stream functions like publishing messages and pulling them from the stream log.
+
+Further information can be found in the [Ockam Stream service protocol definition](https://github.com/ockam-network/proposals/tree/main/design/0009-stream-protocol)
 
 
 ### The Stream client API
@@ -33,11 +35,14 @@ For example:
 let stream = Stream::new(&ctx)?
     .stream_service("stream")
     .index_service("stream_index")
-    .client_id("stream-over-cloud-node-responder")
+    .client_id("streams-responder")
     .with_interval(Duration::from_millis(100));
 ```
 
 Here the `stream_service()` and `index_service()` methods configure the client to use the basic stream service exposed by Ockam Hub.
+
+To use different message broker integrations, the client should use different service names.
+E.g. for Apache Kafka integration the `stream_service` would be `"stream_kafka"` and the index service using Kafka Offset Management would be `"stream_kafka_index"`.
 
 The `client_id()` method configures a name for our node that the Stream Service or any other clients can use to uniquely identify this node.
 
@@ -88,43 +93,46 @@ As in the previous examples, we will create a responder node and initiator node.
 
 The responder node will have an `"echoer"` worker and the initiator node will send it a message through Ockam Hub's stream service.
 
+Since both nodes know the stream names in advance, we don't need any additional discovery or forwarding to establish communication.
+
+**NOTE:** You will need a Hub Node with Kafka integration for this example. To create a new one, please follow the [Creating Hub Nodes](../07-hub) guide.
+
 ### Responder node
 
 Create a new file at:
 
 ```
-touch examples/14-stream-over-cloud-node-responder.rs
+touch examples/14-streams-responder.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-use ockam::{route, stream::Stream, Context, Result, route, TcpTransport, TCP};
+use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
 use ockam_get_started::Echoer;
-use std::time::Duration;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
-    tcp.connect("127.0.0.1:4000").await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
-    // Start a printer
-    ctx.start_worker("echoer", Echoer).await?;
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
 
-    // Create the stream
+    // Create the stream client
     Stream::new(&ctx)?
         .stream_service("stream")
         .index_service("stream_index")
         .client_id("stream-over-cloud-node-initiator")
         .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, "127.0.0.1:4000")],
-            // Stream name from THIS to OTHER
-            "test-b-a",
-            // Stream name from OTHER to THIS
-            "test-a-b",
+            route![(TCP, hub_node_tcp_address)],
+            "responder-to-initiator",
+            "initiator-to-responder",
         )
         .await?;
+
+    // Start an echoer worker
+    ctx.start_worker("echoer", Echoer).await?;
+
     Ok(())
 }
 ```
@@ -136,35 +144,35 @@ This code creates a stream client on the Hub node at `127.0.0.1:4000` and starts
 Create a new file at:
 
 ```
-touch examples/14-stream-over-cloud-node-initiator.rs
+touch examples/14-streams-initiator.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-use ockam::{route, stream::Stream, Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
 use std::time::Duration;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let tcp = TcpTransport::create(&ctx).await?;
-    tcp.connect("127.0.0.1:4000").await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
-    let (tx, _rx) = Stream::new(&ctx)?
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+
+    // Create the stream client
+    let (sender, _receiver) = Stream::new(&ctx)?
         .stream_service("stream")
         .index_service("stream_index")
         .client_id("stream-over-cloud-node-initiator")
         .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, "127.0.0.1:4000")],
-            // Stream name from THIS node to the OTHER node
-            "test-a-b",
-            // Stream name from OTHER to THIS
-            "test-b-a",
+            route![(TCP, hub_node_tcp_address)],
+            "initiator-to-responder",
+            "responder-to-initiator",
         )
         .await?;
 
-    ctx.send(tx.to_route().append("echoer"), "Hello World!".to_string())
+    ctx.send(sender.to_route().append("echoer"), "Hello World!".to_string())
         .await?;
 
     let reply = ctx.receive_block::<String>().await?;
@@ -184,16 +192,17 @@ You can run initiator and responder in any order because they use stream storage
 To demonstrate this, let's run the initiator first this time:
 
 ```
-cargo run --example 14-stream-over-cloud-node-initiator
+cargo run --example 14-streams-initiator
 ```
 
 Only then do we start the responder:
 
 ```
-cargo run --example 14-stream-over-cloud-node-responder
+cargo run --example 14-streams-responder
 ```
 
 On the initiator side you should now see the `Reply via stream: ...` message.
+
 
 ## Message flow
 

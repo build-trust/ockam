@@ -9,22 +9,22 @@ use std::time::Duration;
 async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+
     // Create the stream client
-    let (tx, _rx) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx)?
         .stream_service("stream")
         .index_service("stream_index")
         .client_id("stream-over-cloud-node-initiator")
         .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, "127.0.0.1:4000")],
-            // Stream name from THIS node to the OTHER node
-            "test-a-b",
-            // Stream name from the OTHER node to THIS node
-            "test-b-a",
+            route![(TCP, hub_node_tcp_address)],
+            "initiator-to-responder",
+            "responder-to-initiator",
         )
         .await?;
 
-    ctx.send(tx.to_route().append("echoer"), "Hello World!".to_string())
+    ctx.send(sender.to_route().append("echoer"), "Hello World!".to_string())
         .await?;
 
     let reply = ctx.receive_block::<String>().await?;

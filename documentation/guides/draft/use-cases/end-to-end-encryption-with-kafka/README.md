@@ -117,12 +117,19 @@ Every message you type is encrypted by Secure Channel, sent to the Hub Node and 
 
 Then it's fetched by the other program and decrypted by Secure Channel.
 
+<img src="./kafka-end-to-end.png" width="100%">
+
+
 The messages printed as `Push to the stream` and `Pull from the stream` are the messages sent to Kafka topics.
 
-Messages in those logs are the only information about the messages that a network ever sees and cannot be decrypted by anyone other then the programs.
+Messages in those logs are what the network or Kafka broker will see. As you can see the messages are encrypted and not exposed to the broker.
 
 **NOTE** encryption key is transient and generated on secure channel establishment. After you exit the example programs the messages stored in Kafka will be lost as they can no longer be decrypted.
 
+
+### Message flow
+
+<img src="./sequence.png" width="100%">
 
 ## What's next?
 
@@ -130,6 +137,7 @@ Messages in those logs are the only information about the messages that a networ
 - More about [Secure Channels](../../rust/06-secure-channel)
 - More about [Ockam Hub](../../rust/07-hub)
 - More about [Ockam Streams and Kafka integration](../../rust/xx-streams)
+
 
 
 Running the example:
