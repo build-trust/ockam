@@ -148,4 +148,3 @@ You should expect a log message `App Received: Hello Ockam!`
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../09-secure-channel-via-hub">09. Secure channel via Ockam Hub</a>
 </div>
-
