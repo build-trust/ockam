@@ -40,6 +40,9 @@ function all_crates {
     change_dir "$OCKAM_RUST"
     for CRATE in *
     do
+      if [[ ! -d $CRATE ]]; then
+          continue;
+      fi
       change_dir "$CRATE"
       echo "all_crates: $CRATE $*"
       cargo -q $* 1>/dev/null
