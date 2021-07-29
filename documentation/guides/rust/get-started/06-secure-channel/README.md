@@ -60,7 +60,7 @@ Add the following code to this file:
 // examples/06-secure-channel-listener.rs
 use hello_ockam::Echoer;
 use ockam::{
-    Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, Vault,
+    Context, Entity, TrustEveryonePolicy, Result, SecureChannels, TcpTransport, Vault,
 };
 
 #[ockam::node]
@@ -71,7 +71,7 @@ async fn main(ctx: Context) -> Result<()> {
   let vault = Vault::create(&ctx)?;
   let mut bob = Entity::create(&ctx, &vault)?;
 
-  bob.create_secure_channel_listener("secure_channel_listener", NoOpTrustPolicy)?;
+  bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 
   // Initialize the TCP Transport.
   let tcp = TcpTransport::create(&ctx).await?;
@@ -129,7 +129,7 @@ Add the following code to this file:
 
 ```rust
 // examples/06-secure-channel-initiator.rs
-use ockam::{ Context, Entity, NoOpTrustPolicy, Result, route, SecureChannels, TcpTransport, Vault, TCP };
+use ockam::{ Context, Entity, TrustEveryonePolicy, Result, route, SecureChannels, TcpTransport, Vault, TCP };
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -142,7 +142,7 @@ async fn main(mut ctx: Context) -> Result<()> {
   // Connect to a secure channel listener and perform a handshake.
   let channel = alice.create_secure_channel(
     route![(TCP, "127.0.0.1:3000"),(TCP, "127.0.0.1:4000"),"secure_channel_listener"],
-    NoOpTrustPolicy,
+    TrustEveryonePolicy,
   )?;
 
   // Send a message to the echoer worker via the channel.
