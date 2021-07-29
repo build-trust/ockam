@@ -1,42 +1,35 @@
 ```yaml
-title: Rust Guide
+title: Get Started
 ```
 
-# Build End-to-End Encrypted Secure Channels with Ockam
+## Get started
 
 In this step-by-step guide we’ll show code examples that exchange end-to-end
-encrypted messages.
+encrypted messages. We'll introduce various Ockam features that enable secure
+communication between distributed applications.
 
-To protect en-route messages against eavesdropping, tampering, and forgery we
-must exchange them over mutually authenticated, end-to-end encrypted secure
-channels.
+<div style="display: none; visibility: hidden;"><hr></div>
 
-Ockam enables your applications to create Secure Channels over complex,
-multi-hop, multi-protocol routes.
+## Setup
 
-This allows end-to-end secure communication between application layer entities
-that are not directly connected by simple point-to-point transport connections.
-En-route encrypted messages can travel over multiple transport layer
-connections and can be stored in message queues, databases or caches for
-asynchronous, end-to-end protected communication between entities that may
-not be online at the same time.
+1. Install Rust
 
-Let's get started.
+`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+
+2. Setup a hello_ockam Cargo Project to get started with Ockam
+
+`cargo new --lib hello_ockam && cd hello_ockam && mkdir examples && echo 'ockam = "*"' >> Cargo.toml && cargo build`
+
+For more details on the setup process, see the [Setup Step](./00-setup).
 
 <ul>
-<li><a href="./get-started/00-setup">00. Setup</a></li>
-<li><a href="./get-started/01-node">01. Node</a></li>
-<li><a href="./get-started/02-worker">02. Worker</a>
-<li><a href="./get-started/03-routing">03. Routing</a></li>
-<li><a href="./get-started/04-routing-many-hops">04. Routing over many hops</a></li>
-<li><a href="./get-started/05-secure-channel">05. Secure Channel</a></li>
-<li><a href="./get-started/06-secure-channel-many-hops">06. Secure Channel over many hops</a></li>
-<li><a href="./get-started/07-routing-over-transport">07. Routing over a transport</a></li>
-<li><a href="./get-started/08-routing-over-many-transport-hops">08. Routing over many transport hops</a></li>
-<li>
-<a href="./get-started/09-secure-channel-over-many-transport-hops">09. Secure Channel over many transport hops</a>
-</li>
-<li>
-<a href="./get-started/10-secure-channel-with-entity">10. Secure Channel with Entity</a>
-</li>
+<li><a href="./01-node">01. Node</a></li>
+<li><a href="./02-worker">02. Worker</a>
+<li><a href="./03-routing">03. Routing</a></li>
+<li><a href="./04-transports">04. Transports</a></li>
+<li><a href="./05-entities">05. Entities</a></li>
+<li><a href="./06-secure-channels">06. Secure Channels</a></li>
+<li><a href="./xx-hub-node">XX. Hub Nodes</a></li>
+<li><a href="./xx-connecting-devices-using-hub-node">XX. Connecting devices using Hub Nodes</a></li>
+<li><a href="./xx-secure-channel-over-hub-node">XX. Secure Channel over Hub Nodes</a></li>
 </ul>

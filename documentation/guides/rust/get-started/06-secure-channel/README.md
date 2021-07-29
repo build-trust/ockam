@@ -44,34 +44,44 @@ policy will allow everyone to connect.
 In this example, Alice creates a secure channel with Bob, through a middle hop.
 Alice and Bob use the TCP transport to route messages through the middle hop.
 
+
 ### Example: Bob (Listener)
 
-```rust
-use fresh::Echoer;  
-use ockam::{  
-    Context, Entity, TrustEveryonePolicy, Result, SecureChannel, SecureChannels, TcpTransport, Vault,
-};  
-  
-#[ockam::node]  
-async fn main(mut ctx: Context) -> Result<()> {  
-    // Create an echoer worker  
- ctx.start_worker("echoer", Echoer).await?;  
-  
- let vault = Vault::create(&ctx)?;  
- let mut bob = Entity::create(&ctx, &vault)?;  
-  
- bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
-  
- // Initialize the TCP Transport.  
- let tcp = TcpTransport::create(&ctx).await?;  
-  
- // Create a TCP listener and wait for incoming connections.  
- tcp.listen("127.0.0.1:4000").await?;  
-  
- // Don't call ctx.stop() here so this node runs forever.  
- Ok(())  
-}
+Create a new file at:
 
+```
+touch examples/06-secure-channel-listener.rs
+```
+
+Add the following code to this file:
+
+
+```rust
+// examples/06-secure-channel-listener.rs
+use hello_ockam::Echoer;
+use ockam::{  
+    Context, Entity, NoOpTrustPolicy, Result, SecureChannels, TcpTransport, Vault,
+};
+
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    // Create an echoer worker
+ ctx.start_worker("echoer", Echoer).await?;
+
+ let vault = Vault::create(&ctx)?;
+ let mut bob = Entity::create(&ctx, &vault)?;
+
+ bob.create_secure_channel_listener("secure_channel_listener", NoOpTrustPolicy)?;
+
+ // Initialize the TCP Transport.
+ let tcp = TcpTransport::create(&ctx).await?;
+
+ // Create a TCP listener and wait for incoming connections.
+ tcp.listen("127.0.0.1:4000").await?;
+
+ // Don't call ctx.stop() here so this node runs forever.
+ Ok(())
+}
 ```
 
 ### Example: Middle Node
@@ -81,9 +91,19 @@ routing protocol, any number of nodes may be in between Alice and Bob. Since
 the routing meta-information is separated from the payload, the sent message
 can be routed by any network topology securely.
 
-```rust
-use ockam::{Context, Result, TcpTransport};
+Create a new file at:
 
+```
+touch examples/06-secure-channel-middle.rs
+```
+
+Add the following code to this file:
+
+
+```rust
+// examples/06-secure-channel-middle.rs
+
+use ockam::{Context, Result, TcpTransport};
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
@@ -99,23 +119,32 @@ async fn main(ctx: Context) -> Result<()> {
 
 ### Example: Alice (Initiator)
 
+Create a new file at:
+
+```
+touch examples/06-secure-channel-initiator.rs
+```
+
+Add the following code to this file:
+
 ```rust
-use ockam::{ Context, Entity, TrustEveryonePolicy, Result, route, SecureChannels, TcpTransport, Vault,
+// examples/06-secure-channel-initiator.rs
+use ockam::{ Context, Entity, NoOpTrustPolicy, Result, route, SecureChannels, TcpTransport, Vault,
  TCP,  
 };  
   
 #[ockam::node]  
 async fn main(mut ctx: Context) -> Result<()> {  
  // Initialize the TCP Transport.
- let tcp = TcpTransport::create(&ctx).await?;  
+ TcpTransport::create(&ctx).await?;
 
  let vault = Vault::create(&ctx)?;  
  let mut alice = Entity::create(&ctx, &vault)?;  
   
  // Connect to a secure channel listener and perform a handshake.  
  let channel = alice.create_secure_channel(
- route![(TCP, "127.0.0.1:3000"),(TCP, "127.0.0.1:4000"),"secure_channel_listener"],
- TrustEveryonePolicy,
+    route![(TCP, "127.0.0.1:3000"),(TCP, "127.0.0.1:4000"),"secure_channel_listener"],
+    NoOpTrustPolicy,
  )?;  
   
  // Send a message to the echoer worker via the channel.  
@@ -126,6 +155,11 @@ async fn main(mut ctx: Context) -> Result<()> {
  let reply = ctx.receive::<String>().await?;  
  println!("App Received: {}", reply); // should print "Hello Ockam!"  
   
- // Stop all workers, stop the node, cleanup and return. ctx.stop().await  
+ // Stop all workers, stop the node, cleanup and return.
+ ctx.stop().await
 }
 ```
+
+## Message Flow
+
+<img src="./sequence.png" width="100%">

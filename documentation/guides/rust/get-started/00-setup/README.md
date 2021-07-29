@@ -41,10 +41,10 @@ With rust installed, let's use the rust package manager `cargo` to create a new
 library package for the code we're about to write:
 
 ```
-cargo new --lib ockam_get_started
+cargo new --lib hello_ockam
 ```
 
-This will generate a new library package in the `ockam_get_started` directory
+This will generate a new library package in the `hello_ockam` directory
 that has the following generated files:
 
 ```
@@ -65,8 +65,9 @@ Add the `ockam` dependency to the newly generated `Cargo.toml` file:
 
 ```
 [dependencies]
-ockam = { version = "0" }
+ockam = "0"
 ```
+`ockam` is the main Ockam crate.
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../01-node">01. Create an Ockam node</a>
