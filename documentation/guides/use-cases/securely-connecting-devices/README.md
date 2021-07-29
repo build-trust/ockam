@@ -28,7 +28,7 @@ A Hub Nodes are provided by the Ockam Hub cloud service.
 
 You can either use the shared server at TCP address: `54.151.52.111:4000`
 
-Or you can create your personal node by going to: https://hub.ockam.network  
+Or you can create your personal node by going to: https://hub.ockam.network
 
 
 ## Rust client application

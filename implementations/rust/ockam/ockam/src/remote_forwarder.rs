@@ -103,7 +103,7 @@ impl Worker for RemoteForwarder {
                 worker_address: ctx.address(),
             },
         )
-            .await?;
+        .await?;
 
         Ok(())
     }

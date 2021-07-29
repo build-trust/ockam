@@ -1,6 +1,6 @@
 use ockam::{
-    Context, Entity, RemoteForwarder, Result, SecureChannels, TcpTransport, TrustEveryonePolicy,
-    Vault, TCP,
+    route, Context, Entity, RemoteForwarder, Result, SecureChannels, TcpTransport,
+    TrustEveryonePolicy, Vault, TCP,
 };
 use ockam_get_started::Echoer;
 
@@ -22,7 +22,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let forwarder = RemoteForwarder::create(
         &ctx,
-        (TCP, cloud_node_tcp_address),
+        route![(TCP, cloud_node_tcp_address)],
         "bob_secure_channel_listener",
     )
     .await?;

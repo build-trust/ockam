@@ -87,4 +87,3 @@ cargo run --example 07-hub
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../08-forwarding">08. Forwarding using Hub Nodes</a>
 </div>
-
