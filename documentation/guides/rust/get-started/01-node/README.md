@@ -2,7 +2,7 @@
 title: Node
 ```
 
-# Node
+# Nodes
 
 An Ockam Node is an asynchronous execution environment that can run very
 lightweight, concurrent, stateful actors called Ockam Workers. A node can
@@ -23,7 +23,7 @@ sets up routing and initializes the node context.
 ## Create a node
 
 For your new node, create a new file at `examples/01-node.rs` in your
-[ockam_get_started](../00-setup) project:
+`hello_ockam` project:
 
 ```
 mkdir -p examples

@@ -1,5 +1,0 @@
-sequenceDiagram
-  app->>+hop1: {payload: "Hello Ockam!", onward_route: ["hop1", "echoer"], return_route: ["app"]}
-  hop1->>+echoer: {payload: "Hello Ockam!", onward_route: ["echoer"], return_route: ["hop1", "app"]}
-  echoer->>-hop1: {payload: "Hello Ockam!", onward_route: ["hop1", "app"], return_route: ["echoer"]}
-  hop1->>-app: {payload: "Hello Ockam!", onward_route: ["app"], return_route: ["hop1", "echoer"]}

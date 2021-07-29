@@ -79,7 +79,7 @@ Add the following code to this file:
 // It then runs forever waiting for messages.
 
 use ockam::{Context, Result, TcpTransport};
-use ockam_get_started::Echoer;
+use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -116,7 +116,7 @@ use ockam::{Context, Result, route, TcpTransport, TCP};
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    TcpTransport::create(&ctx).await?;
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
     ctx.send(route![(TCP, "127.0.0.1:4000"), "echoer"], "Hello Ockam!".to_string()).await?;

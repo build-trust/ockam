@@ -1,7 +1,0 @@
-sequenceDiagram
-  app->>+tcp_client_connection: Hello Ockam!
-  tcp_client_connection->>+tcp_server_connection: Hello Ockam!
-  tcp_server_connection->>+echoer: Hello Ockam!
-  echoer->>-tcp_server_connection: Hello Ockam!
-  tcp_server_connection->>-tcp_client_connection: Hello Ockam!
-  tcp_client_connection->>-app: Hello Ockam!

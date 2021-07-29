@@ -1,7 +1,6 @@
 ```yaml
 title: Worker
 ```
-
 # Worker
 
 Ockam Workers are lightweight, concurrent, stateful actors.
@@ -31,7 +30,7 @@ This struct:
   * The `Message` type must be set to the type of message the worker wishes to handle.
 
 For a new `Echoer` worker, create a new file at `src/echoer.rs` in your
-[ockam_get_started](../00-setup) project. We're creating this inside the `src`
+[hello_ockam](../00-setup) project. We're creating this inside the `src`
 directory so we can easily reuse the `Echoer` in other examples that we'll
 write later in this guide:
 
@@ -103,7 +102,7 @@ Add the following code to this file:
 // examples/02-worker.rs
 
 use ockam::{Context, Result};
-use ockam_get_started::Echoer;
+use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
