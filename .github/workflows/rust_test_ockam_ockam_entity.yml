@@ -11,6 +11,10 @@ on:
       - 'implementations/rust/ockam/ockam_vault/**'
       - 'implementations/rust/ockam/ockam_channel/**'
       - 'implementations/rust/ockam/ockam_key_exchange_xx/**'
+      - 'implementations/rust/ockam/signature_core/**'
+      - 'implementations/rust/ockam/signature_bls/**'
+      - 'implementations/rust/ockam/signature_bbs_plus/**'
+      - 'implementations/rust/ockam/ockam_transport_tcp/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
       - 'settings.gradle'
@@ -21,7 +25,7 @@ jobs:
   rust_test_ockam_ockam_entity:
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:cbda96698696625b29da843da8c7d1b37b775d5767d14bbf0f8233174735dca8
+      image: ghcr.io/ockam-network/ockam/builder@sha256:3d41b8e711888f2525b786f7751016eca0770f65c3f925909e2c1db45c8c0714
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
