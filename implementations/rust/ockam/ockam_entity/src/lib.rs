@@ -242,8 +242,7 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn async_tests() {
+    fn disabled_async_tests() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
