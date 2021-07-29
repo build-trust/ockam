@@ -4,6 +4,7 @@ use ockam_core::{Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
+use tracing::warn;
 
 /// A TCP sending message worker
 ///
@@ -13,9 +14,15 @@ use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
-pub struct TcpSendWorker {
-    pub(crate) tx: OwnedWriteHalf,
-    pub(crate) peer: SocketAddr,
+pub(crate) struct TcpSendWorker {
+    tx: OwnedWriteHalf,
+    peer: SocketAddr,
+}
+
+impl TcpSendWorker {
+    pub fn new(tx: OwnedWriteHalf, peer: SocketAddr) -> Self {
+        Self { tx, peer }
+    }
 }
 
 fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {

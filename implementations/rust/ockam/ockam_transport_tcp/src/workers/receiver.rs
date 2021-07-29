@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use ockam_core::{Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
+use tracing::{error, info, trace};
 
 /// A TCP receiving message worker
 ///
@@ -15,10 +16,16 @@ use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for incoming TCP packets, to relay into
 /// the node message system.
-pub struct TcpRecvWorker {
-    pub(crate) rx: OwnedReadHalf,
-    pub(crate) run: ArcBool,
-    pub(crate) peer_addr: Address,
+pub(crate) struct TcpRecvWorker {
+    rx: OwnedReadHalf,
+    run: ArcBool,
+    peer_addr: Address,
+}
+
+impl TcpRecvWorker {
+    pub fn new(rx: OwnedReadHalf, run: ArcBool, peer_addr: Address) -> Self {
+        Self { rx, run, peer_addr }
+    }
 }
 
 #[async_trait]

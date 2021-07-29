@@ -15,9 +15,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.50"
+version = "0.1.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b98e84bbb4cbcdd97da190ba0c58a1bb0de2c1fdf67d159e192ed766aeca722"
+checksum = "44318e776df68115a881de9a8fd1b9e53368d7a4a5ce4cc48517da3393233a5e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -153,7 +153,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "cfg-if",
  "heapless",
