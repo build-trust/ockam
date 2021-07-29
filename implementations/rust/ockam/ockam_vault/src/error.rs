@@ -30,6 +30,18 @@ pub enum VaultError {
     HkdfExpandError,
     /// Secret not found
     SecretNotFound,
+    /// SplitSecret fail
+    SplitSecretError,
+    /// CombineShares fail
+    CombineSharesError,
+    /// PartialSign fail
+    PartialSignError,
+    /// VerifySignatures fail
+    VerifySignaturesError,
+    /// CombineSignatures fail
+    CombineSignaturesError,
+
+
 }
 
 impl VaultError {

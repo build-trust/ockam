@@ -900,6 +900,7 @@ dependencies = [
  "ockam_core",
  "ockam_vault_core",
  "rand 0.8.4",
+ "rand_core 0.6.3",
  "sha2",
  "signature_bbs_plus",
  "tracing",
@@ -913,8 +914,10 @@ version = "0.15.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
+ "rand_core 0.6.3",
  "serde",
  "serde-big-array",
+ "signature_bls",
  "zeroize",
 ]
 

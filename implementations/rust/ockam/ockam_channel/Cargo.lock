@@ -58,6 +58,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array-macro"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a08c8f180019011a1d94e5eebcbfaa548736815f636fadc10955f1b622b4c71"
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -720,16 +726,22 @@ name = "ockam_vault"
 version = "0.15.0"
 dependencies = [
  "aes-gcm",
+ "array-macro",
  "arrayref",
+ "bls12_381_plus",
  "curve25519-dalek",
  "ed25519-dalek",
+ "group",
  "hkdf 0.11.0",
  "ockam_core",
  "ockam_vault_core",
  "rand 0.8.4",
+ "rand_core 0.6.3",
  "sha2",
  "signature_bbs_plus",
+ "signature_bls",
  "tracing",
+ "vsss-rs",
  "x25519-dalek",
  "zeroize",
 ]
@@ -740,8 +752,11 @@ version = "0.15.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
+ "rand_core 0.6.3",
  "serde",
  "serde-big-array",
+ "signature_bls",
+ "vsss-rs",
  "zeroize",
 ]
 

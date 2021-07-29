@@ -93,6 +93,8 @@ pub enum SecretType {
     P256,
     /// BLS key
     Bls,
+    ///Secret Share Key
+    BlsShare
 }
 
 /// Possible [`SecretKey`]'s persistence

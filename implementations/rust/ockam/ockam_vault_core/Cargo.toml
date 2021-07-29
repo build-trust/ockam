@@ -24,3 +24,4 @@ serde = {version = "1.0", features = ["derive"]}
 serde-big-array = "0.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 cfg-if = "1.0"
+rand_core = "0.6"

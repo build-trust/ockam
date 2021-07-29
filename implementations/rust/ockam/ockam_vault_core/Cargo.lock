@@ -170,6 +170,7 @@ dependencies = [
  "cfg-if",
  "heapless",
  "ockam_core",
+ "rand_core",
  "serde",
  "serde-big-array",
  "zeroize",

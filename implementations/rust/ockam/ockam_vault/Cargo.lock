@@ -49,6 +49,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array-macro"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a08c8f180019011a1d94e5eebcbfaa548736815f636fadc10955f1b622b4c71"
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -493,18 +499,25 @@ name = "ockam_vault"
 version = "0.15.0"
 dependencies = [
  "aes-gcm",
+ "array-macro",
  "arrayref",
+ "bls12_381_plus",
  "curve25519-dalek",
  "ed25519-dalek",
+ "group",
  "hkdf 0.11.0",
  "ockam_core",
  "ockam_vault_core",
  "ockam_vault_test_attribute",
  "ockam_vault_test_suite",
  "rand 0.8.4",
+ "rand_core 0.6.3",
+ "rand_xorshift",
  "sha2",
  "signature_bbs_plus",
+ "signature_bls",
  "tracing",
+ "vsss-rs",
  "x25519-dalek",
  "zeroize",
 ]
@@ -516,6 +529,7 @@ dependencies = [
  "cfg-if",
  "heapless",
  "ockam_core",
+ "rand_core 0.6.3",
  "serde",
  "serde-big-array",
  "zeroize",
@@ -683,6 +697,15 @@ name = "rand_hc"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
+dependencies = [
+ "rand_core 0.6.3",
+]
+
+[[package]]
+name = "rand_xorshift"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
  "rand_core 0.6.3",
 ]

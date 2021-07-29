@@ -85,6 +85,7 @@ impl SecretVault for SoftwareVault {
 
                 SecretKey::new(bls_secret_key.to_bytes().to_vec())
             }
+            SecretType::BlsShare =>  return Err(VaultError::InvalidKeyType.into())
         };
         let key_id = self.compute_key_id(key.as_ref(), &attributes)?;
         self.next_id += 1;
@@ -142,7 +143,7 @@ impl SecretVault for SoftwareVault {
                     BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
                 ))
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
+            SecretType::Buffer | SecretType::Aes | SecretType::P256 | SecretType::BlsShare => {
                 Err(VaultError::InvalidKeyType.into())
             }
         }

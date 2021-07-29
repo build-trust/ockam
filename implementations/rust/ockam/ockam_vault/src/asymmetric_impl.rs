@@ -33,7 +33,7 @@ impl SoftwareVault {
                 let secret = sk.diffie_hellman(&pk_t);
                 Ok(secret.as_bytes().to_vec())
             }
-            SecretType::P256 | SecretType::Buffer | SecretType::Aes | SecretType::Bls => {
+            SecretType::P256 | SecretType::Buffer | SecretType::Aes | SecretType::Bls | SecretType::BlsShare => {
                 Err(VaultError::UnknownEcdhKeyType.into())
             }
         }
