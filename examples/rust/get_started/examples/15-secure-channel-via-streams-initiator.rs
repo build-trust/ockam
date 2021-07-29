@@ -9,6 +9,8 @@ use std::time::Duration;
 async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+
     // Create a vault
     let vault = Vault::create(&ctx)?;
 
@@ -18,11 +20,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         .index_service("stream_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
         .connect(
-            route![(TCP, "127.0.0.1:4000")],
+            route![(TCP, hub_node_tcp_address)],
             // Stream name from THIS node to the OTHER node
-            "secure-channel-test-a-b",
+            "sc-initiator-to-responder",
             // Stream name from the OTHER node to THIS node
-            "secure-channel-test-b-a",
+            "sc-responder-to-initiator",
         )
         .await?;
 
