@@ -1,9 +1,9 @@
 use crate::EntityError::IdentityApiFailed;
 use crate::{
-    profile::Profile, traits::Verifier, worker::EntityWorker, AuthenticationProof, BbsCredential,
-    Changes, Contact, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
-    CredentialOffer, CredentialPresentation, CredentialProof, CredentialProtocol,
-    CredentialPublicKey, CredentialRequest, CredentialRequestFragment, CredentialSchema,
+    profile::Profile, traits::Verifier, AuthenticationProof, BbsCredential, Changes, Contact,
+    Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
+    CredentialPresentation, CredentialProof, CredentialProtocol, CredentialPublicKey,
+    CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityBuilder,
     EntityCredential, Handle, Holder, HolderWorker, Identity, IdentityRequest, IdentityResponse,
     Issuer, ListenerWorker, MaybeContact, OfferId, PresentationFinishedMessage,
     PresentationManifest, PresenterWorker, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
@@ -24,7 +24,7 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn new(handle: Handle, profile_id: Option<ProfileIdentifier>) -> Self {
+    pub(crate) fn new(handle: Handle, profile_id: Option<ProfileIdentifier>) -> Self {
         Entity {
             handle,
             current_profile_id: profile_id,
@@ -36,17 +36,7 @@ impl Entity {
     }
 
     pub fn create(ctx: &Context, vault_address: &Address) -> Result<Entity> {
-        block_future(&ctx.runtime(), async move {
-            let ctx = ctx.new_context(Address::random(0)).await?;
-            let address = Address::random(0);
-            ctx.start_worker(&address, EntityWorker::default()).await?;
-
-            let mut entity = Entity::new(Handle::new(ctx, address), None);
-
-            let default_profile = entity.create_profile(vault_address)?;
-            entity.current_profile_id = Some(default_profile.identifier()?);
-            Ok(entity)
-        })
+        EntityBuilder::new(ctx, vault_address)?.build()
     }
 
     pub fn call(&self, req: IdentityRequest) -> Result<IdentityResponse> {
@@ -71,6 +61,10 @@ fn err<T>() -> Result<T> {
 impl Entity {
     pub fn create_profile(&mut self, vault_address: &Address) -> Result<Profile> {
         if let Res::CreateProfile(id) = self.call(CreateProfile(vault_address.clone()))? {
+            // Set current_profile_id, if it's first profile
+            if self.current_profile_id.is_none() {
+                self.current_profile_id = Some(id.clone());
+            }
             Ok(Profile::new(id, self.handle.clone()))
         } else {
             err()
