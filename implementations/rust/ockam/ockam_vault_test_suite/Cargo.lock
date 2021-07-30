@@ -81,6 +81,7 @@ version = "0.17.0-dev"
 dependencies = [
  "cfg-if",
  "ockam_core",
+ "rand_core",
  "serde",
  "serde-big-array",
  "zeroize",

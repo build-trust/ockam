@@ -34,7 +34,7 @@ x25519-dalek = "1.1"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 tracing = "0.1.26"
 signature_bbs_plus = {path = "../signature_bbs_plus", version = "0.15.0-dev"          }
-signature_bls = { path = "../signature_bls", version = "0.11.0-dev"  }
+signature_bls = { path = "../signature_bls", version = "0.13.0-dev"  }
 rand_core = "0.6"
 vsss-rs = { version = "1.0.0", default-features = false }
 bls12_381_plus = "0.5"
