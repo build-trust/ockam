@@ -1,7 +1,8 @@
 <div align="center">
 <em>
-<a href="documentation/guides/rust/README.md#rust-guide">Build your first Ockam
-application, in 10 mins, with our step-by-step hands-on guide.</a>
+<a href="documentation/guides/rust#readme">
+Build end-to-end encrypted, mutually-authenticated communication in Rust - a step-by-step guide.
+</a>
 </em>
 </div>
 
@@ -14,23 +15,31 @@ application, in 10 mins, with our step-by-step hands-on guide.</a>
 </p>
 
 Rust and Elixir libraries for end-to-end encrypted, mutually authenticated
-communication between edge devices and cloud services.
+communication within distributed applications.
 
-Machines, within the Internet of Things, operate by exchanging messages, with
-cloud services and other connected machines. Secure, private, and trustworthy
-connected applications must protect these messages from eavesdropping,
-tampering, and forgery.
+Data, within modern distributed applications, are rarely exchanged over a single
+point-to-point transport connection. Application messages routinely flow over complex,
+multi-hop, multi-protocol routes — _across data centers, through queues and caches,
+via gateways and brokers_ — before reaching their end destination.
 
-Ockam is a suite of programming libraries and infrastructure that make it
-simple for applications to dynamically create end-to-end encrypted, mutually
-authenticated, granularly authorized, lightweight secure channels that protect
-messages, end-to-end — from their source to their destination.
+Transport layer security protocols are unable to protect application messages
+because their protection is limited by the length and duration of the underlying
+transport connection.
+
+Ockam is a suite of programming libraries and infrastructure that makes it simple
+for your applications to guarantee end-to-end integrity, authenticity, and
+confidentiality of data.
+
+You no longer have to implicitly depend on the security of every other machine or
+application within the same network boundary. Instead, your application can have
+a strikingly smaller vulnerability surface and easily make granular authorization
+decisions about all incoming information and commands.
 
 ## Features
 
 * End-to-end encrypted, mutually authenticated secure channels.
-* Identity profiles isolated by privacy contexts.
 * Key establishment, rotation, and revocation - for fleets, at scale.
+* Identity profiles isolated by privacy contexts.
 * Attribute-based Access Control - credentials with selective disclosure.
 * Add-Ons for a variety of operating environments, transport protocols, and cryptographic hardware.
 * Libraries for multiple languages - Rust, Elixir (more on the roadmap).
