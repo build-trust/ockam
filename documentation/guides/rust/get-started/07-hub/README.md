@@ -22,13 +22,13 @@ This guide shows how to start a new Hub Node, connect an application and use ser
 
     <img src="./Github-log-in.png" width="100%">
 
-1. After that you can create a routing node:
+1. After that you can create a node:
 
     <img src="./Create-node.png" width="100%">
 
-1. When the node status changes to `Running` and IP Address gets resolved, the node is ready to use.
+1. When the node status changes to `Running / Ready`, the node is ready to use.
 
-1. From there you can copy the IP Address of the node to use in the examples.
+1. From there you can copy the Hostname of the node to use in the examples.
 
     <img src="./Node-address.png" width="100%">
 

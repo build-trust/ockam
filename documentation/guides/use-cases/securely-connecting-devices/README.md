@@ -26,7 +26,7 @@ Our goal is to make sure that Hub Node can facilitate communication, but cannot 
 
 A Hub Nodes are provided by the Ockam Hub cloud service.
 
-You can either use the shared server at TCP address: `54.151.52.111:4000`
+You can either use the shared server at TCP address: `1.node.ockam.network:4000`
 
 Or you can create your personal node by going to: https://hub.ockam.network
 
@@ -65,7 +65,7 @@ use ockam::{
 async fn main(mut ctx: Context) -> Result<()> {
     // Using a shared Hub Node.
     // You can create a personal node by going to https://hub.ockam.network
-    let hub_node_tcp_address = "54.151.52.111:4000";
+    let hub_node_tcp_address = "1.node.ockam.network:4000";
 
     // Initialize the TCP Transport.
     let _tcp = TcpTransport::create(&ctx).await?;
@@ -117,7 +117,7 @@ use ockam::{
 async fn main(ctx: Context) -> Result<()> {
     // Using a shared Hub Node.
     // You can create a personal node by going to https://hub.ockam.network
-    let hub_node_tcp_address = "54.151.52.111:4000";
+    let hub_node_tcp_address = "1.node.ockam.network:4000";
 
     let forwarding_address = "<Paste the forwarding address of Bob here>";
 

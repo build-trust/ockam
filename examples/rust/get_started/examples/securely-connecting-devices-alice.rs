@@ -6,7 +6,7 @@ use ockam::{
 async fn main(ctx: Context) -> Result<()> {
     // Using a shared Hub Node.
     // You can create a personal node by going to https://hub.ockam.network
-    let hub_node_tcp_address = "54.151.52.111:4000";
+    let hub_node_tcp_address = "1.node.ockam.network:4000";
 
     let forwarding_address = "<Paste the forwarding address of Bob here>";
 
