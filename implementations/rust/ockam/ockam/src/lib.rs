@@ -39,6 +39,7 @@ mod lease;
 mod monotonic;
 mod protocols;
 mod remote_forwarder;
+mod unique;
 
 pub use delay::*;
 pub use error::*;
@@ -47,6 +48,7 @@ pub use ockam_core::worker;
 pub use ockam_entity::*;
 pub use protocols::*;
 pub use remote_forwarder::*;
+pub use unique::*;
 
 pub mod stream;
 
