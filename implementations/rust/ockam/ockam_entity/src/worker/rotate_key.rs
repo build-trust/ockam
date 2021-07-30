@@ -5,11 +5,9 @@ use crate::{
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
     ProfileState, Signature, SignatureType,
 };
+use ockam_vault::ockam_vault_core::Signature as OckamVaultSignature;
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
 use serde::{Deserialize, Serialize};
-use serde_big_array::big_array;
-
-big_array! { BigArray; }
 
 /// RotateKeyChangeData
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -43,10 +41,8 @@ impl RotateKeyChangeData {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RotateKeyChange {
     data: RotateKeyChangeData,
-    #[serde(with = "BigArray")]
-    self_signature: [u8; 64],
-    #[serde(with = "BigArray")]
-    prev_signature: [u8; 64],
+    self_signature: OckamVaultSignature,
+    prev_signature: OckamVaultSignature,
 }
 
 impl RotateKeyChange {
@@ -55,11 +51,11 @@ impl RotateKeyChange {
         &self.data
     }
     /// Return the self signature
-    pub fn self_signature(&self) -> &[u8; 64] {
+    pub fn self_signature(&self) -> &OckamVaultSignature {
         &self.self_signature
     }
     /// Return the previous signature
-    pub fn prev_signature(&self) -> &[u8; 64] {
+    pub fn prev_signature(&self) -> &OckamVaultSignature {
         &self.prev_signature
     }
 }
@@ -68,8 +64,8 @@ impl RotateKeyChange {
     /// Create a new RotateKeyChange
     pub fn new(
         data: RotateKeyChangeData,
-        self_signature: [u8; 64],
-        prev_signature: [u8; 64],
+        self_signature: OckamVaultSignature,
+        prev_signature: OckamVaultSignature,
     ) -> Self {
         RotateKeyChange {
             data,

@@ -1,7 +1,5 @@
+use ockam_vault::ockam_vault_core::Signature as OckamVaultSignature;
 use serde::{Deserialize, Serialize};
-use serde_big_array::big_array;
-
-big_array! { BigArray; }
 
 /// Types of proof signatures.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
@@ -21,8 +19,7 @@ pub enum ProfileChangeProof {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Signature {
     stype: SignatureType,
-    #[serde(with = "BigArray")]
-    data: [u8; 64],
+    data: OckamVaultSignature,
 }
 
 impl Signature {
@@ -31,14 +28,14 @@ impl Signature {
         &self.stype
     }
     /// Return signature data
-    pub fn data(&self) -> &[u8; 64] {
+    pub fn data(&self) -> &OckamVaultSignature {
         &self.data
     }
 }
 
 impl Signature {
     /// Create a new signature
-    pub fn new(stype: SignatureType, data: [u8; 64]) -> Self {
+    pub fn new(stype: SignatureType, data: OckamVaultSignature) -> Self {
         Signature { stype, data }
     }
 }

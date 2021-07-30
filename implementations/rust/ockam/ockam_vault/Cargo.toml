@@ -33,7 +33,10 @@ sha2 = "0.9"
 x25519-dalek = "1.1"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 tracing = "0.1.26"
+signature_core = { version = "0.13.0"                   , path = "../signature_core" }
 signature_bbs_plus = {path = "../signature_bbs_plus", version = "0.13.0"       }
+signature_bls = { version = "0.11.0"                   , path = "../signature_bls" }
+signature_ps = { version = "0.11.0"          , default-features = false }
 
 [dev-dependencies]
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.10.0"                    }

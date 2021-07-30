@@ -28,6 +28,8 @@ cfg_if! {
         pub type Buffer<T> = heapless::Vec<T, 512>;
         /// ID of a Key
         pub type KeyId = heapless::String<64>;
+        /// Signature Vector. Max size - 112
+        pub type SignatureVec = heapless::Vec<u8, 112>;
     }
     else {
         extern crate alloc;
@@ -43,6 +45,8 @@ cfg_if! {
         pub type Buffer<T> = Vec<T>;
         /// ID of a Key
         pub type KeyId = String;
+        ///Signature Vector
+        pub type SignatureVec = Vec<u8>;
     }
 }
 
@@ -75,6 +79,23 @@ impl PublicKey {
 }
 
 impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+///Binary representation of Signature
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+pub struct Signature(SignatureVec);
+
+impl Signature {
+    /// Create a new signature
+    pub fn new(data: SignatureVec) -> Self {
+        Self(data)
+    }
+}
+
+impl AsRef<[u8]> for Signature {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }

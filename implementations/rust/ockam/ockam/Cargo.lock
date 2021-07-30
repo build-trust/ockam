@@ -779,8 +779,8 @@ dependencies = [
  "serde_json",
  "sha2",
  "signature_bbs_plus",
- "signature_bls",
- "signature_core",
+ "signature_bls 0.11.0",
+ "signature_core 0.13.0",
  "tracing",
  "trybuild",
 ]
@@ -838,8 +838,8 @@ dependencies = [
  "serde_bare 0.4.0",
  "sha2",
  "signature_bbs_plus",
- "signature_bls",
- "signature_core",
+ "signature_bls 0.11.0",
+ "signature_core 0.13.0",
  "tracing",
 ]
 
@@ -910,6 +910,9 @@ dependencies = [
  "rand 0.8.4",
  "sha2",
  "signature_bbs_plus",
+ "signature_bls 0.11.0",
+ "signature_core 0.13.0",
+ "signature_ps",
  "tracing",
  "x25519-dalek",
  "zeroize",
@@ -1323,8 +1326,8 @@ dependencies = [
  "pairing",
  "rand_core 0.6.3",
  "serde",
- "signature_bls",
- "signature_core",
+ "signature_bls 0.11.0",
+ "signature_core 0.13.0",
  "subtle",
  "typenum",
  "zeroize",
@@ -1333,6 +1336,25 @@ dependencies = [
 [[package]]
 name = "signature_bls"
 version = "0.11.0"
+dependencies = [
+ "bls12_381_plus",
+ "ff",
+ "group",
+ "hkdf 0.10.0",
+ "pairing",
+ "rand_core 0.6.3",
+ "serde",
+ "sha2",
+ "subtle",
+ "vsss-rs",
+ "zeroize",
+]
+
+[[package]]
+name = "signature_bls"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03f459a0531d13df8f2fa71a7d9e80d337ca7c018cdd2af7d00b19bf87396d81"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1363,6 +1385,50 @@ dependencies = [
  "serde-big-array",
  "subtle",
  "typenum",
+]
+
+[[package]]
+name = "signature_core"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1018cfa5225e8677ccb3451a79dc874f8ba4c1f7518c72db190c4991e90afb75"
+dependencies = [
+ "blake2",
+ "bls12_381_plus",
+ "digest",
+ "ff",
+ "group",
+ "hashbrown 0.11.2",
+ "heapless",
+ "rand_core 0.6.3",
+ "serde",
+ "serde-big-array",
+ "subtle",
+ "typenum",
+]
+
+[[package]]
+name = "signature_ps"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cca6b5d12f612dc2ebc6bfe97ddc2f5df9ec32cbaad313edc6bfdf759c64248"
+dependencies = [
+ "blake2",
+ "bls12_381_plus",
+ "digest",
+ "ff",
+ "group",
+ "hkdf 0.10.0",
+ "hmac-drbg",
+ "pairing",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "serde",
+ "signature_bls 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "signature_core 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "subtle",
+ "typenum",
+ "zeroize",
 ]
 
 [[package]]

@@ -2,12 +2,15 @@ use crate::software_vault::SoftwareVault;
 use crate::xeddsa::XEddsaSigner;
 use crate::VaultError;
 use arrayref::array_ref;
-use ockam_vault_core::{Secret, SecretType, Signer, CURVE25519_SECRET_LENGTH};
+use ockam_vault_core::{Secret, SecretType, Signature, Signer, CURVE25519_SECRET_LENGTH};
 use rand::{thread_rng, RngCore};
+use signature_bbs_plus::{Issuer, MessageGenerators};
+use signature_bls::SecretKey;
+use signature_core::lib::Message;
 
 impl Signer for SoftwareVault {
     /// Sign data with xeddsa algorithm. Only curve25519 is supported.
-    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> ockam_core::Result<[u8; 64]> {
+    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> ockam_core::Result<Signature> {
         let entry = self.get_entry(secret_key)?;
         let key = entry.key().as_ref();
         match entry.key_attributes().stype() {
@@ -22,13 +25,21 @@ impl Signer for SoftwareVault {
                         CURVE25519_SECRET_LENGTH
                     ))
                     .sign(data.as_ref(), &nonce);
-                    Ok(sig)
+                    Ok(Signature::new(sig.to_vec()))
                 } else {
                     Err(VaultError::InvalidKeyType.into())
                 }
             }
             SecretType::Bls => {
-                Ok([0u8; 64]) // FIXME
+                if key.len() == 32 {
+                    let bls_secret_key = SecretKey::from_bytes(array_ref!(key, 0, 32)).unwrap();
+                    let generators = MessageGenerators::from_secret_key(&bls_secret_key, 1);
+                    let messages = [Message::hash(data)];
+                    let sig = Issuer::sign(&bls_secret_key, &generators, &messages).unwrap();
+                    Ok(Signature::new(sig.to_bytes().to_vec()))
+                } else {
+                    Err(VaultError::InvalidKeyType.into())
+                }
             }
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
                 Err(VaultError::InvalidKeyType.into())
