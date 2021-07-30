@@ -11,13 +11,17 @@ defmodule Ockam.Hub.Service.Provider do
 
   require Logger
 
+  @type child_spec :: Supervisor.child_spec() | {module(), term()} | module()
+
   ## TODO: maybe we need more than just a name here?
   @callback services() :: [atom()]
 
   @callback start_service(name :: atom(), args :: Keyword.t()) :: {:ok, address :: String.t()}
+  @callback child_spec(name :: atom(), args :: Keyword.t()) :: child_spec()
 
+  @spec start_configured_services() :: :ok | {:error, any()}
   def start_configured_services() do
-    services = get_services()
+    services = get_configured_services()
 
     ## TODO: validate config to fail with nice error
     start_result = start_services(services)
@@ -42,6 +46,72 @@ defmodule Ockam.Hub.Service.Provider do
     end
   end
 
+  @spec configured_child_specs() :: {:ok, [child_spec()]} | {:error, any()}
+  def configured_child_specs() do
+    services = get_configured_services()
+    spec_results = get_services_child_specs(services)
+
+    {ok_results, errors} =
+      Enum.split_with(spec_results, fn
+        {:ok, _} -> true
+        {:error, _} -> false
+      end)
+
+    case errors do
+      [] ->
+        {:ok, Enum.map(ok_results, fn {:ok, spec} -> spec end)}
+
+      errors ->
+        {:error, errors}
+    end
+  end
+
+  @spec get_services_child_specs(Enum.t(), nil | map()) :: [
+          {:ok, child_spec()} | {:error, any()}
+        ]
+  def get_services_child_specs(services_config, providers \\ nil) do
+    service_providers_map = get_service_providers_map(providers)
+
+    Enum.map(services_config, fn service_config ->
+      do_get_service_child_spec(service_config, service_providers_map)
+    end)
+  end
+
+  @spec get_service_child_spec(atom() | {atom(), list()}, nil | map()) ::
+          {:ok, child_spec()} | {:error, any()}
+  def get_service_child_spec(service_config, providers \\ nil)
+
+  def get_service_child_spec(service_name, providers) when is_atom(service_name) do
+    get_service_child_spec({service_name, []}, providers)
+  end
+
+  def get_service_child_spec({_, _} = service_config, providers) do
+    service_providers_map = get_service_providers_map(providers)
+    do_get_service_child_spec(service_config, service_providers_map)
+  end
+
+  @spec do_get_service_child_spec({atom(), list()}, map()) ::
+          {:ok, child_spec()} | {:error, any()}
+  def do_get_service_child_spec({service_name, service_args}, service_providers_map) do
+    case Map.get(service_providers_map, service_name) do
+      nil ->
+        {:error, :unknown_service}
+
+      provider_mod ->
+        child_spec = provider_mod.child_spec(service_name, service_args)
+
+        {:ok, Supervisor.child_spec(child_spec, id: service_name)}
+    end
+  end
+
+  def start_services(services_config, providers \\ nil) do
+    service_providers_map = get_service_providers_map(providers)
+
+    Enum.map(services_config, fn service_config ->
+      {service_config, do_start_service(service_config, service_providers_map)}
+    end)
+  end
+
   def start_service(service_name, providers \\ nil)
 
   def start_service(service_name, providers) when is_atom(service_name) do
@@ -54,16 +124,8 @@ defmodule Ockam.Hub.Service.Provider do
     do_start_service(service_config, service_providers_map)
   end
 
-  def start_services(services_config, providers \\ nil) do
-    service_providers_map = get_service_providers_map(providers)
-
-    Enum.map(services_config, fn service_config ->
-      {service_config, do_start_service(service_config, service_providers_map)}
-    end)
-  end
-
   def start_configured_service(service_name, extra_args \\ []) do
-    services = get_services()
+    services = get_configured_services()
 
     case Keyword.get(services, service_name) do
       nil ->
@@ -97,7 +159,7 @@ defmodule Ockam.Hub.Service.Provider do
   def get_providers(nil), do: Application.get_env(:ockam_hub, :service_providers)
   def get_providers(providers), do: providers
 
-  def get_services() do
+  def get_configured_services() do
     case Application.get_env(:ockam_hub, :services_config_source) do
       "json" ->
         parse_services_json(Application.get_env(:ockam_hub, :services_json))

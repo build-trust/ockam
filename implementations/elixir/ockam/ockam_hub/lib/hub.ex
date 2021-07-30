@@ -7,8 +7,6 @@ defmodule Ockam.Hub do
 
   use Application
 
-  alias Ockam.Transport
-
   require Logger
 
   # Called when the Ockam application is started.
@@ -21,31 +19,33 @@ defmodule Ockam.Hub do
     Logger.info("Starting Ockam Hub.")
 
     tcp_transport_port = Application.get_env(:ockam_hub, :tcp_transport_port)
-
-    # Add a TCP listener on port 4000
-    Transport.TCP.create_listener(port: tcp_transport_port)
-
     udp_transport_port = Application.get_env(:ockam_hub, :udp_transport_port)
 
-    Transport.UDP.create_listener(port: udp_transport_port, route_outgoing: true)
-
-    ## Start all configured services
-    Ockam.Hub.Service.Provider.start_configured_services()
+    ## Get configured services child specs
+    {:ok, services_specs} = Ockam.Hub.Service.Provider.configured_child_specs()
 
     web_port = Application.get_env(:ockam_hub, :web_port)
     # Specifications of child processes that will be started and supervised.
     #
     # See the "Child specification" section in the `Supervisor` module for more
     # detailed information.
-    children = [
-      {
-        :telemetry_poller,
-        [
-          period: :timer.seconds(5)
-        ]
-      },
-      {Ockam.Hub.Web.Router, [port: Application.get_env(:ockam_hub, :web_port, web_port)]}
-    ]
+    children =
+      [
+        {
+          :telemetry_poller,
+          [
+            period: :timer.seconds(5)
+          ]
+        },
+        # Add a TCP listener
+        {Ockam.Transport.TCP.Listener,
+         [port: tcp_transport_port, address: "TCP_LISTENER_#{tcp_transport_port}"]},
+        # Add a UDP listener
+        {Ockam.Transport.UDP.Listener,
+         [port: udp_transport_port, address: "UDP_LISTENER_#{udp_transport_port}"]},
+        {Ockam.Hub.Web.Router, [port: Application.get_env(:ockam_hub, :web_port, web_port)]}
+      ] ++
+        services_specs
 
     children =
       if Application.get_env(:telemetry_influxdb, :host, nil) do

@@ -38,7 +38,6 @@ defmodule Ockam.Worker do
       alias Ockam.Router
       alias Ockam.Telemetry
 
-      @doc false
       def create(options) when is_list(options) do
         options = Keyword.put_new_lazy(options, :address, &Node.get_random_unregistered_address/0)
 
@@ -58,15 +57,14 @@ defmodule Ockam.Worker do
         end
       end
 
-      @doc false
       def start_link(options) when is_list(options) do
         with {:ok, address} <- get_from_options(:address, options),
-             {:ok, pid} <- start(address, options) do
+             {:ok, pid} <- start_link(address, options) do
           {:ok, pid, address}
         end
       end
 
-      defp start(address, options) do
+      def start_link(address, options) do
         GenServer.start_link(__MODULE__, options, name: {:via, Node.process_registry(), address})
       end
 
@@ -103,7 +101,7 @@ defmodule Ockam.Worker do
       @doc false
       @impl true
       def handle_continue(:post_init, options) do
-        metadata = %{options: options}
+        metadata = %{address: Keyword.get(options, :address)}
         start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
 
         with {:ok, address} <- get_from_options(:address, options) do

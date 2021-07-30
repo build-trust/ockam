@@ -38,29 +38,52 @@ defmodule Ockam.Kafka.Hub.Service.Provider do
   end
 
   @impl true
-  def start_service(:stream_kafka, args) do
-    address_prefix = Keyword.get(args, :address_prefix, "")
-    base_address = Keyword.get(args, :address, "stream_kafka")
-    prefix_address = prefix_address(base_address, address_prefix)
+  def start_service(service_name, args) do
+    options = service_options(service_name, args)
+    mod = service_mod(service_name)
+    mod.create(options)
+  end
+
+  @impl true
+  def child_spec(service_name, args) do
+    options = service_options(service_name, args)
+    mod = service_mod(service_name)
+    {mod, options}
+  end
+
+  def service_mod(:stream_kafka) do
+    StreamService
+  end
+
+  def service_mod(:stream_kafka_index) do
+    StreamIndexService
+  end
+
+  def service_options(:stream_kafka, args) do
+    address = make_address(args, "stream_kafka")
 
     stream_options = [
       storage_mod: Ockam.Stream.Storage.Kafka,
       storage_options: storage_options(args)
     ]
 
-    StreamService.create(address: prefix_address, stream_options: stream_options)
+    [address: address, stream_options: stream_options]
   end
 
-  def start_service(:stream_kafka_index, args) do
-    address_prefix = Keyword.get(args, :address_prefix, "")
-    base_address = Keyword.get(args, :address, "stream_kafka_index")
-    prefix_address = prefix_address(base_address, address_prefix)
+  def service_options(:stream_kafka_index, args) do
+    address = make_address(args, "stream_kafka_index")
 
-    StreamIndexService.create(
-      address: prefix_address,
+    [
+      address: address,
       storage_mod: Ockam.Stream.Index.KafkaOffset,
       storage_options: storage_options(args)
-    )
+    ]
+  end
+
+  def make_address(args, default_address) do
+    address_prefix = Keyword.get(args, :address_prefix, "")
+    base_address = Keyword.get(args, :address, default_address)
+    prefix_address(base_address, address_prefix)
   end
 
   def prefix_address(base_address, "") do

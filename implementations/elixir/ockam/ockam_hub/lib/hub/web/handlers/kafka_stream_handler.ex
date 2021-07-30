@@ -55,7 +55,7 @@ defmodule Ockam.Hub.KafkaStreamHandler do
   end
 
   def services_enabled() do
-    services = ServiceProvider.get_services()
+    services = ServiceProvider.get_configured_services()
     Keyword.has_key?(services, :stream_kafka) and Keyword.has_key?(services, :stream_kafka_index)
   end
 

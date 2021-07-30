@@ -24,4 +24,13 @@ defmodule Ockam.Hub.Service.Provider.Stream do
   def start_service(:stream_index, args) do
     StreamIndexService.create(Keyword.merge([address: "stream_index"], args))
   end
+
+  @impl true
+  def child_spec(:stream, args) do
+    {StreamService, Keyword.merge([address: "stream"], args)}
+  end
+
+  def child_spec(:stream_index, args) do
+    {StreamIndexService, Keyword.merge([address: "stream_index"], args)}
+  end
 end

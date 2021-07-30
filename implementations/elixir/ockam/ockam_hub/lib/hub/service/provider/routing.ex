@@ -25,4 +25,13 @@ defmodule Ockam.Hub.Service.Provider.Routing do
   def start_service(:forwarding, args) do
     ForwardingService.create(Keyword.merge([address: "forwarding_service"], args))
   end
+
+  @impl true
+  def child_spec(:echo, args) do
+    {EchoService, Keyword.merge([address: "echo_service"], args)}
+  end
+
+  def child_spec(:forwarding, args) do
+    {ForwardingService, Keyword.merge([address: "forwarding_service"], args)}
+  end
 end
