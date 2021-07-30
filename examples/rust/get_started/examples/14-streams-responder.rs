@@ -5,23 +5,24 @@ use ockam_get_started::Echoer;
 async fn main(ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+    // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
-    // Create the stream client
+    // Create a stream client
     Stream::new(&ctx)?
-        .stream_service("stream")
-        .index_service("stream_index")
+        .stream_service("stream_kafka")
+        .index_service("stream_kafka_index")
         .client_id("stream-over-cloud-node-initiator")
-        .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, hub_node_tcp_address)],
-            "responder-to-initiator",
-            "initiator-to-responder",
+            route![(TCP, hub_node_tcp_address)], // route to hub
+            "responder-to-initiator",            // outgoing stream
+            "initiator-to-responder",            // incoming stream
         )
         .await?;
 
     // Start an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
 
+    // Don't call ctx.stop() here so this node runs forever.
     Ok(())
 }

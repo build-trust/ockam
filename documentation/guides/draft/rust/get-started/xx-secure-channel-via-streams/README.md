@@ -48,7 +48,8 @@ use ockam_get_started::Echoer;
 async fn main(ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+    // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
@@ -56,16 +57,15 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a secure channel listener at address "secure_channel_listener"
     SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
 
-    // Create a bi-directional stream
+    // Create a stream client
     Stream::new(&ctx)?
-        .stream_service("stream")
-        .index_service("stream_index")
+        .stream_service("stream_kafka")
+        .index_service("stream_kafka_index")
         .client_id("secure-channel-over-stream-over-cloud-node-responder")
-        .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, hub_node_tcp_address)],
-            "sc-responder-to-initiator",
-            "sc-initiator-to-responder",
+            route![(TCP, hub_node_tcp_address)], // route to hub
+            "sc-responder-to-initiator",         // outgoing stream
+            "sc-initiator-to-responder",         // incoming stream
         )
         .await?;
 
@@ -89,52 +89,51 @@ Add the following code to this file:
 
 ```rust
 use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
-use std::time::Duration;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+    // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
 
-    // Create a bi-directional stream
+    // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)?
-        .stream_service("stream")
-        .index_service("stream_index")
+        .stream_service("stream_kafka")
+        .index_service("stream_kafka_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
         .connect(
-            route![(TCP, hub_node_tcp_address)],
-            // Stream name from THIS node to the OTHER node
-            "sc-initiator-to-responder",
-            // Stream name from the OTHER node to THIS node
-            "sc-responder-to-initiator",
+            route![(TCP, hub_node_tcp_address)], // route to hub
+            "sc-initiator-to-responder",         // outgoing stream
+            "sc-responder-to-initiator",         // incoming stream
         )
         .await?;
 
-    // Create a secure channel via the stream
-    let channel = SecureChannel::create(
+    // Create a secure channel
+    let secure_channel = SecureChannel::create(
         &ctx,
         route![
-            // Send via the stream
-            sender.clone(),
-            // And then to the secure_channel_listener
-            "secure_channel_listener"
+            sender.clone(),           // via the "sc-initiator-to-responder" stream
+            "secure_channel_listener" // to the "secure_channel_listener" listener
         ],
         &vault,
     )
     .await?;
 
-    // Send a message via the channel to the echoer worker
+    // Send a message
     ctx.send(
-        route![channel.address(), "echoer"],
+        route![
+            secure_channel.address(), // via the secure channel
+            "echoer"                  // to the "echoer" worker
+        ],
         "Hello World!".to_string(),
     )
     .await?;
 
-    // Wait for the reply
+    // Receive a message from the "sc-responder-to-initiator" stream
     let reply = ctx.receive_block::<String>().await?;
     println!("Reply through secure channel via stream: {}", reply);
 
