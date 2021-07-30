@@ -8,7 +8,7 @@ Many fields, such as finance and personal information handling, have statutory r
 
 Modern networks and data pipelines transfer data through multiple endpoints, often controlled by multiple vendors. It is therefore not sufficient for encryption to only cover the transit between arbitrary pairs of endpoints or once data comes to rest in storage.
 
-This leads to emerging of End-to-End encryption as a preferred model for messaging.
+This has led to the emergence of End-to-End encryption as the preferred model for messaging.
 
 There were several attempts to define and implement end-to-end encryption for messaging system like Kafka, for example [KIP-317](https://cwiki.apache.org/confluence/display/KAFKA/KIP-317%3A+Add+end-to-end+data+encryption+functionality+to+Apache+Kafka)
 
@@ -38,7 +38,7 @@ Our goals are to make the message exchange:
 
 ### Git clone
 
-Ro demonstrate the example we're going to use a simple Rust program.
+We will use a simple Rust program to demonstrate the example.
 
 To run it you will need a Rust compiler installed: [get it here](https://www.rust-lang.org/tools/install)
 
@@ -54,15 +54,16 @@ And run the example:
 cargo run --example kafka
 ```
 
-Follow instuctions from the program output to start another program to establish messaging between them.
+Follow the instructions from the output to start another program and establish messaging between them.
 
 
 ### Rust project
 
-Ro demonstrate the example we're going to use a simple Rust program.
+We will use a simple Rust program to demonstrate the example.
 
 To run it you will need a Rust compiler installed: [get it here](https://www.rust-lang.org/tools/install)
-And set up a project:
+
+Set up a project:
 
 ```
 cargo new --lib ockam_get_started
@@ -86,17 +87,17 @@ And put the following code there:
 ...
 ```
 
-Then you can run the example:
+Now you can run the example:
 
 ```bash
 cargo run --example kafka
 ```
 
-Follow instuctions from the program output to start another program to establish messaging between them.
+Follow the instructions from the output to start another program and establish messaging between them.
 
 ### Docker image
 
-Ro demonstrate the example we're going to use a simple Rust program.
+We will use a simple Rust program to demonstrate the example.
 
 We have it packaged as a docker image you can run as:
 
@@ -104,18 +105,18 @@ We have it packaged as a docker image you can run as:
 docker run ockam-network/kafka-example
 ```
 
-Follow instuctions from the program output to start another program to establish messaging between them.
+Follow the instructions from the output to start another program and establish messaging between them.
 
 
 ## What just happened?
 
-The example program is using Ockam framework to establish connection to a cloud node Ockam Hub (../../rust/07-hub) and using an [Ockam Stream API](../../rust/xx-streams) creates topics in Confluent Cloud Kafka cluster.
+The example program is using Ockam framework to establish connection to a cloud node managed by Ockam Hub (../../rust/07-hub) and using the [Ockam Stream API](../../rust/xx-streams) to create topics in Confluent Cloud Kafka cluster.
 
-Then using these topics, the two programs establish an [Ockam Secure Channel](../../rust/06-secure-channel) to exchange messages.
+Using these topics, the two programs then establish an [Ockam Secure Channel](../../rust/06-secure-channel) to exchange messages.
 
 Every message you type is encrypted by Secure Channel, sent to the Hub Node and put in the Kafka topic by the Hub Node.
 
-Then it's fetched by the other program and decrypted by Secure Channel.
+Finally it's fetched by the other program and decrypted by Secure Channel.
 
 <img src="./kafka-end-to-end.png" width="100%">
 
@@ -124,7 +125,7 @@ The messages printed as `Push to the stream` and `Pull from the stream` are the 
 
 Messages in those logs are what the network or Kafka broker will see. As you can see the messages are encrypted and not exposed to the broker.
 
-**NOTE** encryption key is transient and generated on secure channel establishment. After you exit the example programs the messages stored in Kafka will be lost as they can no longer be decrypted.
+**NOTE** The encryption key is transient and generated on secure channel establishment. After you exit the example programs all the messages stored in Kafka will be lost as they can no longer be decrypted.
 
 
 ### Message flow

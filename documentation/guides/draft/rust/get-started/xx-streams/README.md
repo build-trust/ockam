@@ -16,7 +16,7 @@ Message brokers solve this problem by introducing message buffers or logs. By ma
 
 Ockam Hub integrates with message brokers through the use of Ockam Streams and applications use the Ockam Streams Protocol to communicate.
 
-Ockam Streams is a minumal API to access the basic stream functions like publishing messages and pulling them from the stream log.
+Ockam Streams is a minimal API to access the basic stream functions like publishing messages and pulling them from the stream log.
 
 Further information can be found in the [Ockam Stream service protocol definition](https://github.com/ockam-network/proposals/tree/main/design/0009-stream-protocol)
 
@@ -32,21 +32,18 @@ Stream client configuration is facilitated by a [builder pattern](https://doc.ru
 For example:
 
 ```rust
+// Create a stream client
 let stream = Stream::new(&ctx)?
     .stream_service("stream")
     .index_service("stream_index")
-    .client_id("streams-responder")
-    .with_interval(Duration::from_millis(100));
+    .client_id("streams-responder");
 ```
 
-Here the `stream_service()` and `index_service()` methods configure the client to use the basic stream service exposed by Ockam Hub.
+Here the `stream_service()` and `index_service()` methods configure the client to use the basic stream service exposed by Ockam Hub. By using different service names the client is able to use different message broker integrations.
 
-To use different message broker integrations, the client should use different service names.
-E.g. for Apache Kafka integration the `stream_service` would be `"stream_kafka"` and the index service using Kafka Offset Management would be `"stream_kafka_index"`.
+For example, by using `"stream_kafka"` and `"stream_kafka_index"` the node will instead send messages using the Apache Kafka and  Kafka Offset Management integrations.
 
 The `client_id()` method configures a name for our node that the Stream Service or any other clients can use to uniquely identify this node.
-
-Finally, the `with_interval()` method configures the rate at which nodes poll the stream service for new messages.
 
 #### Client Connection
 
@@ -55,10 +52,11 @@ Once configured, a connection can be made to the stream service with the `connec
 For example:
 
 ```rust
-let (tx, rx) = stream.connect(
-    route![(TCP, "127.0.0.1:4000")], // route
-    "stream-a-to-b",                 // outgoing stream
-    "stream-b-to-a",                 // incoming stream
+// Connect to a stream service
+let (sender, receiver) = stream.connect(
+    route![(TCP, "192.0.2.1:4000")], // route to hub
+    "initiator-to-responder",        // outgoing stream
+    "responder-to-initiator",        // incoming stream
 ).await?;
 ```
 
@@ -66,7 +64,7 @@ The route parameter describes an Ockam Route to the stream service.
 
 The outgoing and incoming stream parameters refer to the names of the streams we are sending and receiving messages on.
 
-Finally, the `connect()` method returns two routes: `tx` and `rx` that can be used to send and receive messages in the same way as any other transport.
+Finally, the `connect()` method returns two routes, `sender` and `receiver`, that can be used to send and receive messages in the same way as any other transport.
 
 
 #### Stream Communication
@@ -76,13 +74,25 @@ When we have two stream clients running on different nodes with symmetrical stre
 For example:
 
 ```rust
+// Send a message
 ctx.send(
-    tx.to_route().append("echoer"), // route via stream's 'tx' route
-    "Hello World!".to_string()      // message
-).await?;
+    route![
+        sender.clone(), // via the "initiator-to-responder" stream
+        "echoer"        // to the "echoer" worker
+    ],
+    "Hello World!".to_string()
+)
+.await?;
 ```
 
-Here the route parameter describes the `tx` route from stream with the `echoer` worker on the destination node appended to it.
+Here the route parameter describes the `sender` route from stream with the `echoer` worker on the destination node appended to it.
+
+Incoming stream messages are routed to the client by default so you can receive messages using:
+
+```rust
+// Wait for a message from the "responder-to-initiator" stream
+let reply = ctx.receive_block::<String>().await?;
+```
 
 
 ## App worker
@@ -115,24 +125,25 @@ use ockam_get_started::Echoer;
 async fn main(ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+    // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
-    // Create the stream client
+    // Create a stream client
     Stream::new(&ctx)?
-        .stream_service("stream")
-        .index_service("stream_index")
+        .stream_service("stream_kafka")
+        .index_service("stream_kafka_index")
         .client_id("stream-over-cloud-node-initiator")
-        .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, hub_node_tcp_address)],
-            "responder-to-initiator",
-            "initiator-to-responder",
+            route![(TCP, hub_node_tcp_address)], // route to hub
+            "responder-to-initiator",            // outgoing stream
+            "initiator-to-responder",            // incoming stream
         )
         .await?;
 
     // Start an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
 
+    // Don't call ctx.stop() here so this node runs forever.
     Ok(())
 }
 ```
@@ -151,30 +162,37 @@ Add the following code to this file:
 
 ```rust
 use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
-use std::time::Duration;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>"; // e.g. "127.0.0.1:4000"
+    // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
+    let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
-    // Create the stream client
+    // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)?
-        .stream_service("stream")
-        .index_service("stream_index")
+        .stream_service("stream_kafka")
+        .index_service("stream_kafka_index")
         .client_id("stream-over-cloud-node-initiator")
-        .with_interval(Duration::from_millis(100))
         .connect(
-            route![(TCP, hub_node_tcp_address)],
-            "initiator-to-responder",
-            "responder-to-initiator",
+            route![(TCP, hub_node_tcp_address)],  // route to hub
+            "initiator-to-responder",             // outgoing stream
+            "responder-to-initiator",             // incoming stream
         )
         .await?;
 
-    ctx.send(sender.to_route().append("echoer"), "Hello World!".to_string())
-        .await?;
+    // Send a message
+    ctx.send(
+        route![
+            sender.clone(), // via the "initiator-to-responder" stream
+            "echoer"        // to the "echoer" worker
+        ],
+        "Hello World!".to_string()
+    )
+    .await?;
 
+    // Receive a message from the "responder-to-initiator" stream
     let reply = ctx.receive_block::<String>().await?;
     println!("Reply via stream: {}", reply);
 
