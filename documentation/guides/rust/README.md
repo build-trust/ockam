@@ -1,27 +1,27 @@
-```yaml
-title: Rust Guide
-```
+# Build End-to-End Encrypted, Mutually Authenticated, Secure Channels with Ockam
 
-# Build End-to-End Encrypted Secure Channels with Ockam
+In this step-by-step guide we’ll learn how to build secure messaging channels that
+protect en-route messages against eavesdropping, tampering, and forgery.
 
-In this step-by-step guide we’ll show code examples that exchange end-to-end
-encrypted messages.
+Data, within modern distributed applications, are rarely exchanged over a single
+point-to-point transport connection. Application messages routinely flow over complex,
+multi-hop, multi-protocol routes — _across data centers, through queues and caches,
+via gateways and brokers_ — before reaching their end destination.
 
-To protect en-route messages against eavesdropping, tampering, and forgery we
-must exchange them over mutually authenticated, end-to-end encrypted secure
-channels.
+Transport layer security protocols are unable to protect application messages
+because their protection is limited by the length and duration of the underlying
+transport connection.
 
-Ockam enables your applications to create Secure Channels over complex,
-multi-hop, multi-protocol routes.
+Ockam makes it simple for your applications to guarantee end-to-end integrity,
+authenticity, and confidentiality of data.
 
-This allows end-to-end secure communication between application layer entities
-that are not directly connected by simple point-to-point transport connections.
-En-route encrypted messages can travel over multiple transport layer
-connections and can be stored in message queues, databases or caches for
-asynchronous, end-to-end protected communication between entities that may
-not be online at the same time.
+You no longer have to implicitly depend on the security of every other machine or
+application within the same network boundary. Instead, your application can have
+a strikingly smaller vulnerability surface and easily make granular authorization
+decisions about all incoming information and commands.
 
-Let's get started.
+Let's build mutually-authenticated, end-to-end protected communication between
+distributed applications:
 
 <ul>
 <li><a href="./get-started/00-setup">00. Setup</a></li>
