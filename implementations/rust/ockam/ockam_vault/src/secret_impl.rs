@@ -38,7 +38,7 @@ impl SoftwareVault {
                     PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
                 Some(self.compute_key_id_for_public_key(&public_key)?)
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::P256 => None,
+            SecretType::Buffer | SecretType::Aes | SecretType::P256 | SecretType::BlsShare => None ,
         })
     }
 }

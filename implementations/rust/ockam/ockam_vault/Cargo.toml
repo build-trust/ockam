@@ -33,7 +33,7 @@ sha2 = "0.9"
 x25519-dalek = "1.1"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 tracing = "0.1.26"
-signature_bbs_plus = {path = "../signature_bbs_plus", version = "0.15.0-dev"       }
+signature_bbs_plus = {path = "../signature_bbs_plus", version = "0.15.0-dev"          }
 signature_bls = { path = "../signature_bls", version = "0.13.0-dev"  }
 rand_core = "0.6"
 vsss-rs = { version = "1.0.0", default-features = false }
@@ -42,7 +42,7 @@ array-macro = "2.1.0"
 group = "0.10"
 
 [dev-dependencies]
-ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.11.0"                      }
-ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.13.0"                     }
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.12.0-dev"                      }
+ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.14.0-dev"                     }
 rand_xorshift = "0.3.0"
 
