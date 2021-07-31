@@ -17,6 +17,13 @@ if [ -z $(which example_blocks) ]; then
 fi
 
 
+ERR=0
+
 for page in $(find $GUIDES_DIR -name README.md); do
-    $TOOLS_DIR/verify_md.sh $page || exit 1
+  if [[ ! -z $($TOOLS_DIR/verify_md.sh $page) ]]; then
+    echo "$page has outdated examples"
+    ERR=1
+  fi
 done
+
+exit $ERR
