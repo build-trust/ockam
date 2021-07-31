@@ -36,6 +36,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
 }
+
 ```
 
 ## Initiator node
@@ -52,26 +53,21 @@ Add the following code to this file:
 // examples/07-routing-over-transport-initiator.rs
 // This node routes a message, to a worker on a different node, over the tcp transport.
 
-use ockam::{Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a TCP connection.
-    tcp.connect("127.0.0.1:4000").await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
     ctx.send(
         // route to the "echoer" worker, via a tcp connection.
-        Route::new()
-            .append_t(TCP, "127.0.0.1:4000")
-            .append("echoer"),
+        route![(TCP, "localhost:4000"), "echoer"],
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )
-        .await?;
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

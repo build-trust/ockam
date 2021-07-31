@@ -98,30 +98,37 @@ Add the following code to this file:
 
 ```rust
 // examples/03-routing.rs
+// This node routes a message.
 
-use ockam::{Context, Result, Route};
+use ockam::{route, Context, Result};
 use ockam_get_started::{Echoer, Hop};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start an Echoer worker at address "echoer"
+    // Start a worker, of type Echoer, at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    // Start a Hop worker at address "hop1"
-    ctx.start_worker("hop1", Hop).await?;
+    // Start a worker, of type Hop, at address "h1"
+    ctx.start_worker("h1", Hop).await?;
 
-    // Send a message to the echoer worker via the hop1 worker
+    // Send a message to the worker at address "echoer",
+    // via the worker at address "h1"
     ctx.send(
-        Route::new().append("hop1").append("echoer"),
-        "Hello Ockam!".to_string()
-    ).await?;
+        // route to the "echoer" worker via "h1"
+        route!["h1", "echoer"],
+        // the message you want echo-ed back
+        "Hello Ockam!".to_string(),
+    )
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
+    // Stop all workers, stop the node, cleanup and return.
     ctx.stop().await
 }
+
 ```
 
 To run this new node program:

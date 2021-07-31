@@ -34,6 +34,7 @@ Add the following code to this file:
 
 ```rust
 // examples/01-node.rs
+// This program creates and then immediately stops a node.
 
 use ockam::{Context, Result};
 
@@ -42,6 +43,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Stop the node as soon as it starts.
     ctx.stop().await
 }
+
 ```
 
 Here we add the `#[ockam::node]` attribute to an `async` main function that

@@ -43,7 +43,7 @@ Add the following code to this file:
 // examples/05-secure-channel.rs
 // This node creates a secure channel and routes a message through it.
 
-use ockam::{Context, Result, Route, SecureChannel, Vault};
+use ockam::{route, Context, Result, SecureChannel, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
@@ -54,19 +54,19 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx)?;
 
     // Create a secure channel listener.
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = SecureChannel::create(&mut ctx, "secure_channel_listener", &vault).await?;
+    let channel = SecureChannel::create(&ctx, "secure_channel_listener", &vault).await?;
 
     // Send a message to the echoer worker, via the secure channel.
     ctx.send(
         // route to the "echoer" worker via the secure channel.
-        Route::new().append(channel.address()).append("echoer"),
+        route![channel.address(), "echoer"],
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )
-        .await?;
+    .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

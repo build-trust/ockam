@@ -19,24 +19,24 @@ Add the following code to this file:
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 
-use ockam::{Context, Result, SecureChannel, TcpTransport, Vault};
+use ockam::{Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault};
 use ockam_get_started::Echoer;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
+    ctx.start_worker("echoer", Echoer).await?;
+
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
     tcp.listen("127.0.0.1:4000").await?;
 
-    let vault = Vault::create(&ctx)?;
+    let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut bob = Entity::create(&ctx, &bob_vault)?;
 
-    // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
-
-    // Create an echoer worker
-    ctx.start_worker("echoer", Echoer).await?;
+    // Create a secure channel listener at address "bob_secure_channel_listener"
+    bob.create_secure_channel_listener("bob_secure_channel_listener", TrustEveryonePolicy)?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
@@ -67,9 +67,6 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a TCP connection
-    tcp.connect("127.0.0.1:4000").await?;
-
     // Create a TCP listener and wait for incoming connections.
     tcp.listen("127.0.0.1:3000").await?;
 
@@ -95,42 +92,34 @@ Add the following code to this file:
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
-use ockam::{Context, Result, Route, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{
+    route, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let _tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a TCP connection.
-    tcp.connect("127.0.0.1:3000").await?;
-
-    let vault = Vault::create(&ctx)?;
+    let alice_vault = Vault::create(&ctx).expect("failed to create vault");
+    let mut alice = Entity::create(&ctx, &alice_vault)?;
+    let route = route![
+        (TCP, "localhost:3000"),
+        (TCP, "localhost:4000"),
+        "bob_secure_channel_listener"
+    ];
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = SecureChannel::create(
-        &mut ctx,
-        // route to the secure channel listener
-        Route::new()
-            .append_t(TCP, "127.0.0.1:3000") // middle node
-            .append_t(TCP, "127.0.0.1:4000") // responder node
-            .append("secure_channel_listener"), // secure_channel_listener on responder node,
-        &vault,
-    )
-        .await?;
+    let channel = alice.create_secure_channel(route, TrustEveryonePolicy)?;
 
     // Send a message to the echoer worker via the channel.
-    ctx.send(
-        Route::new().append(channel.address()).append("echoer"),
-        "Hello Ockam!".to_string(),
-    )
-        .await?;
+    let echoer_route = route![channel, "echoer"];
+
+    ctx.send(echoer_route, "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
-
-    // Stop all workers, stop the node, cleanup and return.
     ctx.stop().await
 }
 
