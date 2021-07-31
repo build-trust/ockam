@@ -102,6 +102,7 @@ Add the following code to this file:
 
 ```rust
 // examples/02-worker.rs
+// This node creates a worker, sends it a message, and receives a reply.
 
 // This node creates a worker, sends it a message, and receives a reply.
 

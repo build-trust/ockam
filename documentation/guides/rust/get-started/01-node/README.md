@@ -33,6 +33,7 @@ Add the following code to this file:
 
 ```rust
 // examples/01-node.rs
+// This program creates and then immediately stops a node.
 
 // This program creates and then immediately stops a node.
 
