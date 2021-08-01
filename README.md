@@ -77,7 +77,7 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 3. Create a file at `examples/hello.rs` and copy the below code snippet to it.
 
     ```rust
-    // examples/alice.rs
+    // examples/hello.rs
 
     use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 
@@ -163,3 +163,13 @@ The code in this repository is licensed under the terms of the [Apache License 2
 <img alt="Contributor Covenant"
   src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg">
 </a>
+
+<hr>
+
+<div align="center">
+:sparkles:
+<a href="./documentation/guides/rust#readme">
+Step-by-Step: Build end-to-end encrypted, mutually-authenticated, secure communication in Rust
+</a>
+:sparkles:
+</div>
