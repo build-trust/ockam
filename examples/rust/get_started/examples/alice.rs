@@ -17,7 +17,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.
     //
     // From standard input, read this forwarding address for Bob's secure channel listener.
-    println!("\nEnter the forwarding address of Bob's secure channel listener: ");
+    println!("\nEnter the forwarding address for Bob: ");
     let mut address = String::new();
     io::stdin().read_line(&mut address).expect("Error reading from stdin.");
     let forwarding_address = address.trim();
@@ -39,9 +39,10 @@ async fn main(mut ctx: Context) -> Result<()> {
         io::stdin().read_line(&mut message).expect("Error reading from stdin.");
         let message = message.trim();
 
+        // Send the provided message, through the channel, to Bob's echoer.
         ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
 
-        // Wait to receive a reply and print it.
+        // Wait to receive an echo and print it.
         let reply = ctx.receive::<String>().await?;
         println!("Alice received an echo: {}\n", reply); // should print "Hello Ockam!"
     }

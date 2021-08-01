@@ -3,6 +3,8 @@ use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 
 struct Echoer;
 
+// Define an Echoer worker that prints any message it receives and
+// echoes it back on its return route.
 #[ockam::worker]
 impl Worker for Echoer {
     type Context = Context;
@@ -38,12 +40,12 @@ async fn main(ctx: Context) -> Result<()> {
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
     // service on that node to create a forwarder for us.
     //
-    // All messages that arrive at that forwarding address will be send to this program
+    // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "listener").await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
-    println!("Forwarding address of Bob's secure channel listener is:");
+    println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type Echoer, at address "echoer".

@@ -1,14 +1,24 @@
 # End-to-End Encryption with Rust
 
 In this hands-on guide, we'll create two small Rust programs called Alice and Bob. Alice and Bob
-will send each other messages, over the network, via a cloud service.
+will send each other messages, over the network, via a cloud service. In our [code example](#rust-example),
+Alice and Bob will mutually authenticate each other and will have a cryptographic guaranteed that the
+_integrity, authenticity, and confidentiality_ of their messages is protected _end-to-end_.
 
-In our [code example](#rust-example), Alice and Bob will mutually authenticate each other and will be
-guaranteed that the _integrity, authenticity, and confidentiality_ of their messages is _protected end-to-end_.
 The intermediary cloud service and attackers on the network will not be able to see or change the contents
 of en-route messages. In later examples we'll also see how we can have this end-to-end protection even
 when the communication path between Alice and Bob is more complex - with multiple transport connections,
 a variety of transport protocols and many intermediaries.
+
+<p>
+<a href="#rust-example">
+<img
+  alt="End-to-end protected communication between Alice and Bob, through a cloud service"
+  src="./end-to-end-protected-secure-channel.svg" width="100%">
+</a>
+</p>
+
+[Show me the code](#rust-example)
 
 ### Remove implicit trust in porous network boundaries
 
@@ -19,7 +29,7 @@ Application architects have learnt that they must lower the amount of trust they
 and infrastructure.
 
 The vulnerability surface of our application cannot include _all code_ that may be running within the same
-porous network boundary. That surface is too big, to dynamic and usually outside the control of an application
+porous network boundary. That surface is too big, too dynamic and usually outside the control of an application
 developer. Applications must instead take control of the security and reliability of their own data. To
 do this, all messages that are received over the network must prove who sent them and show that they weren't
 tampered or forged.
@@ -51,41 +61,53 @@ intermediaries. Our application’s vulnerability surface quickly grows and beco
 
 ### Mutually Authenticated, End-to-End Encrypted Secure Channels with Ockam
 
-Ockam is a suite of programming libraries that make it simple, for applications, to easily create any
-number of lightweight, mutually-authenticated, end-to-end encrypted secure channels. These channels use
-cryptography to guarantee end-to-end integrity, authenticity, and confidentiality of messages.
+[Ockam](https://github.com/ockam-network/ockam) is a suite of programming libraries that make it simple,
+for applications, to create any number of lightweight, mutually-authenticated, end-to-end encrypted
+secure channels. These channels use cryptography to guarantee end-to-end integrity, authenticity, and
+confidentiality of messages.
 
-An application can use Ockam Secure Channels to enforce _least-privileged access_ to commands, data,
-configuration, and software updates that are flowing, as messages, between its distributed parts. All code
-running within the same network boundary and intermediary services no longer have implicit `CRUD` permissions
-on our application's messages. Any tampering or forgery of messages is immediately detected.
+An application can use Ockam Secure Channels to enforce __least-privileged access__ to commands, data,
+configuration, machine-learning models, and software updates that are flowing, as messages, between its
+distributed parts. Intermediary services and compromised software (that may be running within the same
+network boundary) no longer has implicit CRUD permissions on our application's messages. Instead, we have
+granular control over access permissions – tampering or forgery of _data-in-motion_ is immediately detected.
 
-_The vulnerability surface, of our application, becomes strikingly small._
+With end-to-end secure channels, we can make the vulnerability surface of our application strikingly small.
 
-### Rust Example
+## Rust Example
 
-Let's build end-to-end protected communication between Alice and Bob, through a cloud service:
+Let's build end-to-end protected communication between Alice and Bob, through a cloud service.
 
-## Setup
+We'll create two small Rust programs called Alice and Bob. We want Bob to create a secure channel listener
+and ask Alice to initiate a secure handshake (authenticated key exchange) with this listener. We'll imagine
+that Bob and Alice are running on two separate computers and this handshake must happen over the Internet.
 
-* Install Rust
+We'll also imagine that Bob is running within a private network and cannot open a public port exposed to
+the Internet. Instead, Bob registers a forwarding address on an Ockam Node running as a cloud service in Ockam Hub.
 
-    ```
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    ```
+This node is at TCP address `1.node.ockam.network:4000` and offers two general purpose Ockam services:
+_routing and forwarding._
 
-* Setup a new cargo project to get started.
+### Setup
 
-    ```
-    cargo new --lib hello_ockam && cd hello_ockam && mkdir examples \
-      && echo 'ockam = "*"' >> Cargo.toml && cargo build
-    ```
+If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust.
 
-    If the above instructions don't work on your machine, please
-    [post a question](https://github.com/ockam-network/ockam/discussions/1642),
-    we would love to help.
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 
-## Bob
+Next, create a new cargo project to get started:
+
+```
+cargo new --lib hello_ockam && cd hello_ockam && mkdir examples \
+  && echo 'ockam = "*"' >> Cargo.toml && cargo build
+```
+
+If the above instructions don't work on your machine, please
+[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+we would love to help.
+
+### Bob
 
 Create a file at `examples/bob.rs` and copy the below code snippet to it.
 
@@ -97,6 +119,8 @@ use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 
 struct Echoer;
 
+// Define an Echoer worker that prints any message it receives and
+// echoes it back on its return route.
 #[ockam::worker]
 impl Worker for Echoer {
     type Context = Context;
@@ -132,12 +156,12 @@ async fn main(ctx: Context) -> Result<()> {
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
     // service on that node to create a forwarder for us.
     //
-    // All messages that arrive at that forwarding address will be send to this program
+    // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "listener").await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
-    println!("Forwarding address of Bob's secure channel listener is:");
+    println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type Echoer, at address "echoer".
@@ -150,22 +174,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Run Bob’s program:
-
-```
-cargo run --example bob
-```
-
-This program:
-
-1. Initializes an Ockam Node and a TCP transport.
-2. Creates an Entity to represent Bob.
-3. As Bob, starts a Secure Channel Listener to accept request to begin an Authenticated Key Exchange.
-4. Creates a Remote Forwarder, for Bob's Secure Channel Listener, on the cloud node at `1.node.ockam.network`.
-5. Prints the Secure Channel Listener's forwarding address.
-6. Starts and Echoer worker that prints any message it receives and echoes it back on its return route.
-
-## Alice
+### Alice
 
 Create a file at `examples/alice.rs` and copy the below code snippet to it.
 
@@ -191,7 +200,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.
     //
     // From standard input, read this forwarding address for Bob's secure channel listener.
-    println!("\nEnter the forwarding address of Bob's secure channel listener: ");
+    println!("\nEnter the forwarding address for Bob: ");
     let mut address = String::new();
     io::stdin().read_line(&mut address).expect("Error reading from stdin.");
     let forwarding_address = address.trim();
@@ -213,9 +222,10 @@ async fn main(mut ctx: Context) -> Result<()> {
         io::stdin().read_line(&mut message).expect("Error reading from stdin.");
         let message = message.trim();
 
+        // Send the provided message, through the channel, to Bob's echoer.
         ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
 
-        // Wait to receive a reply and print it.
+        // Wait to receive an echo and print it.
         let reply = ctx.receive::<String>().await?;
         println!("Alice received an echo: {}\n", reply); // should print "Hello Ockam!"
     }
@@ -225,18 +235,64 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
-Run Alice's program:
+### Run the example
 
-```
-cargo run --example alice
-```
+1. Run Bob’s program:
 
-This program:
+    ```
+    cargo run --example bob
+    ```
 
-1. Initializes an Ockam Node and a TCP transport.
-2. Creates an Entity to represent Alice.
-3. Waits to accept as input forwarding address of Bob's Secure Channel Listener.
-4. Initiates an end-to-end secure channel with Bob via his forwarding address on a cloud node.
+    The Bob program creates a Secure Channel Listener to accept requests to begin an Authenticated
+    Key Exchange. It also connects, over TCP, to the cloud node at `1.node.ockam.network:4000` and creates
+    a Forwarder on that cloud node. All messages that arrive at that forwarding address will be forwarded to
+    Bob using the TCP connection that Bob created as a client.
+
+    Bob also starts an Echoer worker that prints any message it receives and echoes it back on its return route.
+
+2. The Bob program will print a hex value which is the forwarding address for Bob on the cloud node, copy it.
+
+3. In a separate terminal window, in the same directory path, run the Alice program:
+
+    ```
+    cargo run --example alice
+    ```
+
+4. It will stop to ask for Bob's forwarding address that was printed in step 2, give it the address.
+
+    This will tell Alice that the route to reach Bob is `[(TCP, "1.node.ockam.network:4000"), forwarding_address]`.
+
+    When Alice sends a message along this route, the Ockam routing layer will look at the first address
+    in the route and hand the message to the TCP transport. The TCP transport will connect with the cloud
+    node over TCP and hand the message to it.
+
+    The routing layer on the cloud node will then take the message to the forwarding address for Bob. The
+    forwarder at that address will send the message to Bob over the TCP connection Bob had earlier
+    created with the cloud node.
+
+    Replies, from Bob, take the same path back and the entire secure channel handshake is completed is this way.
+
+5. End-to-end Secure Channel is established. Send messages to Bob and get their echoes back.
+
+    Once the secure channel is established, the Alice program will stop and ask you to enter a message for
+    Bob. Any message that you enter, is delivered to Bob using the secure channel, via the cloud node. The echoer
+    on Bob will echo the messages back on the same path and Alice will print it.
+
+### Conclusion
+
+We [discussed](#remove-implicit-trust-in-porous-network-boundaries) that, in order have a small and manageable
+vulnerability surface, distributed applications must use mutually authenticated, end-to-end encrypted channels.
+Implementing an end-to-end secure channel protocol, from scratch, is complex, error prone,
+and will take more time than application teams can typically dedicate to this problem.
+
+In the above example, we created a mutually authenticated, end-to-end encrypted channel in __51 lines of code__
+(excluding comments).
+
+Ockam combines proven cryptographic building blocks into a set of reusable protocols for distributed
+applications to communicate security and privately. The above example only scratched the surface of what
+is possible with the tools that our included in the `ockam` Rust crate.
+
+To learn more, please see our [step-by-step guide](../../guides/rust#readme).
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../../guides/rust#readme">A step-by-step introduction</a>
