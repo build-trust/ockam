@@ -1,36 +1,68 @@
 # End-to-End Encryption with Rust
 
 In this hands-on guide, we'll create two small Rust programs called Alice and Bob. Alice and Bob
-will send each other messages via a cloud service but this cloud service will not be able see or change
-the contents of those messages.
+will send each other messages, over the network, via a cloud service.
 
-In most typical applications, when information or commands are exchanged through an intermediary service,
-that service is able to `READ` the messages that are being exchanged, `UPDATE` en-route messages, `CREATE`
-messages that were never sent, and `DELETE` (never deliver) messages that were actually sent. The sender
-and receiver of application messages are entirely dependent on the security of such intermediaries. If the
-defences of an intermediary are compromised, your application is also compromised.
+In our [code example](#rust-example), Alice and Bob will mutually authenticate each other and will be
+guaranteed that the _integrity, authenticity, and confidentiality_ of their messages is _protected end-to-end_.
+The intermediary cloud service and attackers on the network will not be able to see or change the contents
+of en-route messages. In later examples we'll also see how we can have this end-to-end protection even
+when the communication path between Alice and Bob is more complex - with multiple transport connections,
+a variety of transport protocols and many intermediaries.
+
+### Remove implicit trust in porous network boundaries
+
+Modern distributed applications operate in highly dynamic environments. Infrastructure automation,
+microservices in multiple clouds or data centers, a mobile workforce, the Internet of Things, and Edge
+computing mean that machines and applications are continuously leaving and entering network boundaries.
+Application architects have learnt that they must lower the amount of trust they place in network boundaries
+and infrastructure.
+
+The vulnerability surface of our application cannot include _all code_ that may be running within the same
+porous network boundary. That surface is too big, to dynamic and usually outside the control of an application
+developer. Applications must instead take control of the security and reliability of their own data. To
+do this, all messages that are received over the network must prove who sent them and show that they weren't
+tampered or forged.
+
+### Lower trust in intermediaries
+
+Another aspect of modern applications that can take away Alice's and Bob's ability to rely on the integrity
+and authenticity of incoming messages is intermediary services (like the cloud service in our example below).
+
+Data, within distributed applications, are rarely exchanged over a single point-to-point transport connection.
+Application messages routinely flow over complex, multi-hop, multi-protocol routes
+— _across data centers, through queues and caches, via gateways and brokers_ —
+before reaching their end destination.
+
+Typically, when information or commands are exchanged through an intermediary service, the intermediary
+is able to `READ` the messages that are being exchanged, `UPDATE` en-route messages,
+`CREATE` messages that were never sent, and `DELETE` (never deliver) messages that were actually sent.
+Alice and Bob are entirely dependent on the security of such intermediaries. If the defenses of an intermediary
+are compromised, our application is also compromised.
 
 Transport layer security protocols are unable to protect application messages because their protection
 is limited by the length and duration of the underlying transport connection. If there is an intermediary
 between Alice and Bob, the transport connection between Alice and the intermediary is completely different
-from the transport connection between Bob and the intermediary. This is why the intermediary service has
-full `CRUD` permissions.
+from the transport connection between Bob and the intermediary. This is why the intermediary has full `CRUD`
+permissions on the messages in motion.
 
-In most dynamic environments —
-_like Microservices, Multi-Cloud, Internet-of-Things and Edge Computing etc_
-– there are usually many such intermediaries.
-Your application’s vulnerability surface quickly grows and becomes unmanageable.
+In environments like _Microservices, Internet-of-Things, and Edge Computing_ there are usually many such
+intermediaries. Our application’s vulnerability surface quickly grows and becomes unmanageable.
+
+### Mutually Authenticated, End-to-End Encrypted Secure Channels with Ockam
 
 Ockam is a suite of programming libraries that make it simple, for applications, to easily create any
 number of lightweight, mutually-authenticated, end-to-end encrypted secure channels. These channels use
 cryptography to guarantee end-to-end integrity, authenticity, and confidentiality of messages.
 
-An application can use Ockam Secure Channels to enforce _least-privileged access_ to data, commands,
-configuration, and software updates that are flowing, as messages, between its distributed parts. Intermediaries
-no longer have implicit `CRUD` permissions and any tampering or forgery of messages is immediately detected
-by the receiver.
+An application can use Ockam Secure Channels to enforce _least-privileged access_ to commands, data,
+configuration, and software updates that are flowing, as messages, between its distributed parts. All code
+running within the same network boundary and intermediary services no longer have implicit `CRUD` permissions
+on our application's messages. Any tampering or forgery of messages is immediately detected.
 
-_The vulnerability surface, of your application, becomes strikingly small._
+_The vulnerability surface, of our application, becomes strikingly small._
+
+### Rust Example
 
 Let's build end-to-end protected communication between Alice and Bob, through a cloud service:
 
