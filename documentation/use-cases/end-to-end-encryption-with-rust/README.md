@@ -1,5 +1,62 @@
 # End-to-End Encryption with Rust
 
+In this hands-on guide, we'll create two small Rust programs called Alice and Bob. Alice and Bob
+will send each other messages via a cloud service but this cloud service will not be able see or change
+the contents of those messages.
+
+In most typical applications, when information or commands are exchanged through an intermediary service,
+that service is able to `READ` the messages that are being exchanged, `UPDATE` en-route messages, `CREATE`
+messages that were never sent, `DELETE` or never deliver messages that were actually sent.
+
+The sender and receiver of application messages are entirely dependent on the security of such intermediaries.
+If the defences of an intermediary are compromised, your application is also compromised.
+
+Transport layer security protocols are unable to protect application messages because their protection
+is limited by the length and duration of the underlying transport connection. If there is an intermediary
+between Alice and Bob, the transport connection between Alice and the intermediary is completely different
+from the transport connection between Bob and the intermediary. This is why the intermediary service has
+full `CRUD` permissions.
+
+In most dynamic distributed environments —
+_like Microservices, Multi-Cloud, Internet-of-Things and Edge Computing etc_
+– there are usually many such intermediaries.
+Your application’s vulnerability surface quickly grows and becomes unmanageable.
+
+Ockam is a suite of programming libraries that make it simple, for applications, to easily create any
+number of lightweight, mutually-authenticated, end-to-end encrypted secure channels. These channels use
+cryptography to guarantee end-to-end integrity, authenticity, and confidentiality of messages.
+
+This way an application can enforce least-privileged access to data, commands, configuration,
+and software updates that are flowing, as messages, between its distributed parts. Intermediaries no
+longer have implicit `CRUD` permissions and any tampering or forgery of messages is immediately
+detected by the receiver.
+
+The vulnerability surface of your application strikingly small.
+
+Let's build an end-to-end encrypted, mutually-authenticated, secure channel, between Alice and Bob,
+through an Ockam Node in the cloud.
+
+## Setup
+
+* Install Rust
+
+    ```
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    ```
+
+* Setup a new cargo project to get started.
+
+    ```
+    cargo new --lib hello_ockam && cd hello_ockam && mkdir examples \
+      && echo 'ockam = "*"' >> Cargo.toml && cargo build
+    ```
+
+If the above instructions don't work on your machine, please
+[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+we would love to help.
+
+## Bob
+
 ```rust
 // examples/bob.rs
 
@@ -60,6 +117,12 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
+```
+cargo run --example bob
+```
+
+## Alice
+
 ```rust
 // examples/alice.rs
 
@@ -115,3 +178,12 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 
 ```
+
+```
+cargo run --example alice
+```
+
+<div style="display: none; visibility: hidden;">
+<hr><b>Next:</b> <a href="">A step-by-step introduction</a>
+</div>
+
