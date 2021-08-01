@@ -77,6 +77,8 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 3. Create a file at `examples/hello.rs` and copy the below code snippet to it.
 
     ```rust
+    // examples/alice.rs
+
     use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 
     #[ockam::node]
@@ -138,13 +140,12 @@ at our [step-by-step guide](./documentation/guides/rust#readme) where we introdu
 Here's a high-level view of the core ideas in Ockam.
 
 <p>
-<a href="./documentation/concepts#readme">
+<a href="./documentation/guides/rust#readme">
 <img alt="Ockam" src="./documentation/concepts/assets/ockam-features.png" width="900">
 </a>
 </p>
 
-To learn more please see the [concepts](./documentation/concepts#readme) page and our
-[step-by-step guide](./documentation/guides/rust#readme).
+To learn more please see our [step-by-step guide](./documentation/guides/rust#readme).
 
 ## License
 
