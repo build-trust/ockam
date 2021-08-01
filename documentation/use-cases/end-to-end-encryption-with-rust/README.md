@@ -55,6 +55,8 @@ Let's build end-to-end protected communication between Alice and Bob, through a 
 
 ## Bob
 
+Create a file at `examples/bob.rs` and copy the below code snippet to it.
+
 ```rust
 // examples/bob.rs
 
@@ -82,12 +84,13 @@ async fn main(ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create(&ctx).expect("failed to create vault");
+    let vault = Vault::create(&ctx)?;
 
     // Create an Entity to represent Bob.
     let mut bob = Entity::create(&ctx, &vault)?;
 
-    // Create a secure channel listener at address "listener"
+    // Create a secure channel listener for Bob that will wait for requests to
+    // initiate an Authenticated Key Exchange.
     bob.create_secure_channel_listener("listener", TrustEveryonePolicy)?;
 
     // The computer that is running this program is likely within a private network and
@@ -115,11 +118,24 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
+Run Bob’s program:
+
 ```
 cargo run --example bob
 ```
 
+This program:
+
+1. Initializes an Ockam Node and a TCP transport.
+2. Creates an Entity to represent Bob.
+3. As Bob, starts a Secure Channel Listener to accept request to begin an Authenticated Key Exchange.
+4. Creates a Remote Forwarder, for Bob's Secure Channel Listener, on the cloud node at `1.node.ockam.network`.
+5. Prints the Secure Channel Listener's forwarding address.
+6. Starts and Echoer worker that prints any message it receives and echoes it back on its return route.
+
 ## Alice
+
+Create a file at `examples/alice.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/alice.rs
@@ -134,7 +150,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Alice.
-    let vault = Vault::create(&ctx).expect("failed to create vault");
+    let vault = Vault::create(&ctx)?;
 
     // Create an Entity to represent Alice.
     let mut alice = Entity::create(&ctx, &vault)?;
@@ -177,11 +193,19 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
+Run Alice's program:
+
 ```
 cargo run --example alice
 ```
 
-<div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="">A step-by-step introduction</a>
-</div>
+This program:
 
+1. Initializes an Ockam Node and a TCP transport.
+2. Creates an Entity to represent Alice.
+3. Waits to accept as input forwarding address of Bob's Secure Channel Listener.
+4. Initiates an end-to-end secure channel with Bob via his forwarding address on a cloud node.
+
+<div style="display: none; visibility: hidden;">
+<hr><b>Next:</b> <a href="../../guides/rust#readme">A step-by-step introduction</a>
+</div>

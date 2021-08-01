@@ -22,12 +22,13 @@ async fn main(ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create(&ctx).expect("failed to create vault");
+    let vault = Vault::create(&ctx)?;
 
     // Create an Entity to represent Bob.
     let mut bob = Entity::create(&ctx, &vault)?;
 
-    // Create a secure channel listener at address "listener"
+    // Create a secure channel listener for Bob that will wait for requests to
+    // initiate an Authenticated Key Exchange.
     bob.create_secure_channel_listener("listener", TrustEveryonePolicy)?;
 
     // The computer that is running this program is likely within a private network and
