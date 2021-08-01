@@ -14,14 +14,14 @@ their end destination.
 
 Transport layer security protocols are unable to protect application messages because their protection
 is limited by the length and duration of the underlying transport connection. Ockam is a collection of
-programming libraries (in Rust and Elixir) that make it simple for your applications to guarantee end-to-end
+programming libraries (in Rust and Elixir) that make it simple for our applications to guarantee end-to-end
 integrity, authenticity, and confidentiality of data.
 
-You no longer have to implicitly depend on the defences of every machine or application within the same,
-usually porous, network boundary. Your application's messages don't have to be vulnerable at every point,
+We no longer have to implicitly depend on the defenses of every machine or application within the same,
+usually porous, network boundary. Our application's messages don't have to be vulnerable at every point,
 along their journey, where a transport connection terminates.
 
-Instead, your application can have a strikingly smaller vulnerability surface and easily make
+Instead, our application can have a strikingly smaller vulnerability surface and easily make
 _granular authorization decisions about all incoming information and commands._
 
 Let's build mutually-authenticated, end-to-end protected communication between distributed applications:
