@@ -3,6 +3,7 @@ use crate::{
     SecureChannelWorker,
 };
 use ockam_core::{Address, Result, Route};
+use ockam_key_exchange_core::KeyExchanger;
 use ockam_node::Context;
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -67,29 +68,26 @@ impl SecureChannel {
 
     /// Create initiator channel with given route to a remote channel listener using noise xx and software vault.
     #[cfg(all(feature = "software_vault", feature = "noise_xx"))]
-    pub async fn create<R: Into<Route>>(
+    pub async fn create(
         ctx: &Context,
-        route: R,
+        route: impl Into<Route>,
         vault: &Address,
     ) -> Result<SecureChannelInfo> {
+        use ockam_key_exchange_core::NewKeyExchanger;
         use ockam_key_exchange_xx::XXNewKeyExchanger;
         use ockam_vault_sync_core::VaultSync;
         let vault = VaultSync::create_with_worker(ctx, vault)?;
         let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
-        Self::create_extended(ctx, route, None, &new_key_exchanger, vault).await
+        Self::create_extended(ctx, route, None, new_key_exchanger.initiator()?, vault).await
     }
 
     /// Create initiator channel with given route to a remote channel listener.
-    pub async fn create_extended<
-        R: Into<Route>,
-        N: SecureChannelNewKeyExchanger,
-        V: SecureChannelVault,
-    >(
+    pub async fn create_extended(
         ctx: &Context,
-        route: R,
+        route: impl Into<Route>,
         first_responder_address: Option<Address>,
-        new_key_exchanger: &N,
-        vault: V,
+        key_exchanger: impl KeyExchanger + Send + 'static,
+        vault: impl SecureChannelVault + Send + 'static,
     ) -> Result<SecureChannelInfo> {
         let address_remote: Address = random();
         let address_local: Address = random();
@@ -99,16 +97,18 @@ impl SecureChannel {
             &address_local, &address_remote
         );
 
+        let route = route.into();
+
         let address: Address = random();
         let mut child_ctx = ctx.new_context(address).await?;
         let channel = SecureChannelWorker::new(
             true,
-            route.into(),
+            route,
             address_remote.clone(),
             address_local.clone(),
             Some(child_ctx.address()),
             first_responder_address,
-            new_key_exchanger.initiator()?,
+            key_exchanger,
             vault,
         )?;
 
