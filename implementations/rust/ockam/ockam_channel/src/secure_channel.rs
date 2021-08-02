@@ -116,7 +116,7 @@ impl SecureChannel {
             .await?;
 
         let resp = child_ctx
-            .receive_match(|m: &KeyExchangeCompleted| m.address() == &address_local)
+            .receive_timeout::<KeyExchangeCompleted>(120)
             .await?
             .take()
             .body();
