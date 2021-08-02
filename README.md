@@ -22,7 +22,7 @@ routes — _across data centers, through queues and caches, via gateways and bro
 their end destination.
 
 Transport layer security protocols are unable to protect application messages because their protection
-is limited by the length and duration of the underlying transport connection.
+is constrained by the length and duration of the underlying transport connection.
 
 Ockam is a suite of programming libraries and infrastructure that makes it simple for our applications
 to guarantee end-to-end integrity, authenticity, and confidentiality of data.
@@ -126,11 +126,11 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 Congratulations on running your first Ockam program 🥳.
 
 A lot happened when you ran this small example. It created a secure vault, spawned workers to represent
-entities, established a mutually authenticated channel and then routed a message through the channel.
+entities, established a mutually authenticated channel and then routed a message through that channel.
 This involved running cryptographic protocols for generating keys, authenticating as an entity, performing
-an authenticated key exchange, exchanging messages with authenticated encryption etc.
+an authenticated key exchange and exchanging messages with authenticated encryption.
 
-To learn more, about how we make these powerful cryptographic protocols simple to use, please have a look
+To learn more about how we make these powerful cryptographic protocols simple to use, please have a look
 at our [step-by-step guide](./documentation/guides/rust#readme) where we introduce the building blocks in Ockam.
 
 <hr>

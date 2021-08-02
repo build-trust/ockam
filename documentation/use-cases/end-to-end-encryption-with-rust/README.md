@@ -2,7 +2,7 @@
 
 In this hands-on guide, we'll create two small Rust programs called Alice and Bob. Alice and Bob
 will send each other messages, over the network, via a cloud service. In our [code example](#rust-example),
-Alice and Bob will mutually authenticate each other and will have a cryptographic guaranteed that the
+Alice and Bob will mutually authenticate each other and will have a cryptographic guarantee that the
 _integrity, authenticity, and confidentiality_ of their messages is protected _end-to-end_.
 
 The intermediary cloud service and attackers on the network will not be able to see or change the contents
@@ -32,12 +32,12 @@ The vulnerability surface of our application cannot include _all code_ that may 
 porous network boundary. That surface is too big, too dynamic and usually outside the control of an application
 developer. Applications must instead take control of the security and reliability of their own data. To
 do this, all messages that are received over the network must prove who sent them and show that they weren't
-tampered or forged.
+tampered with or forged.
 
 ### Lower trust in intermediaries
 
 Another aspect of modern applications that can take away Alice's and Bob's ability to rely on the integrity
-and authenticity of incoming messages is intermediary services (like the cloud service in our example below).
+and authenticity of incoming messages are intermediary services, such as the cloud service in our example below.
 
 Data, within distributed applications, are rarely exchanged over a single point-to-point transport connection.
 Application messages routinely flow over complex, multi-hop, multi-protocol routes
@@ -51,25 +51,26 @@ Alice and Bob are entirely dependent on the security of such intermediaries. If 
 are compromised, our application is also compromised.
 
 Transport layer security protocols are unable to protect application messages because their protection
-is limited by the length and duration of the underlying transport connection. If there is an intermediary
+is constrained by the length and duration of the underlying transport connection. If there is an intermediary
 between Alice and Bob, the transport connection between Alice and the intermediary is completely different
-from the transport connection between Bob and the intermediary. This is why the intermediary has full `CRUD`
-permissions on the messages in motion.
+from the transport connection between Bob and the intermediary.
+
+This is why the intermediary has full `CRUD` permissions on the messages in motion.
 
 In environments like _Microservices, Internet-of-Things, and Edge Computing_ there are usually many such
 intermediaries. Our application’s vulnerability surface quickly grows and becomes unmanageable.
 
 ### Mutually Authenticated, End-to-End Encrypted Secure Channels with Ockam
 
-[Ockam](https://github.com/ockam-network/ockam) is a suite of programming libraries that make it simple,
-for applications, to create any number of lightweight, mutually-authenticated, end-to-end encrypted
+[Ockam](https://github.com/ockam-network/ockam) is a suite of programming libraries that make it simple
+for applications to create any number of lightweight, mutually-authenticated, end-to-end encrypted
 secure channels. These channels use cryptography to guarantee end-to-end integrity, authenticity, and
 confidentiality of messages.
 
 An application can use Ockam Secure Channels to enforce __least-privileged access__ to commands, data,
 configuration, machine-learning models, and software updates that are flowing, as messages, between its
 distributed parts. Intermediary services and compromised software (that may be running within the same
-network boundary) no longer has implicit CRUD permissions on our application's messages. Instead, we have
+network boundary) no longer have implicit CRUD permissions on our application's messages. Instead, we have
 granular control over access permissions – tampering or forgery of _data-in-motion_ is immediately detected.
 
 With end-to-end secure channels, we can make the vulnerability surface of our application strikingly small.
@@ -83,7 +84,7 @@ and ask Alice to initiate a secure handshake (authenticated key exchange) with t
 that Bob and Alice are running on two separate computers and this handshake must happen over the Internet.
 
 We'll also imagine that Bob is running within a private network and cannot open a public port exposed to
-the Internet. Instead, Bob registers a forwarding address on an Ockam Node running as a cloud service in Ockam Hub.
+the Internet. Instead, Bob registers a forwarding address on an Ockam Node, running as a cloud service in Ockam Hub.
 
 This node is at TCP address `1.node.ockam.network:4000` and offers two general purpose Ockam services:
 _routing and forwarding._
@@ -103,7 +104,7 @@ cargo new --lib hello_ockam && cd hello_ockam && mkdir examples \
   && echo 'ockam = "*"' >> Cargo.toml && cargo build
 ```
 
-If the above instructions don't work on your machine, please
+If the above instructions don't work on your machine please
 [post a question](https://github.com/ockam-network/ockam/discussions/1642),
 we would love to help.
 
@@ -149,14 +150,14 @@ async fn main(ctx: Context) -> Result<()> {
     // initiate an Authenticated Key Exchange.
     bob.create_secure_channel_listener("listener", TrustEveryonePolicy)?;
 
-    // The computer that is running this program is likely within a private network and
-    // not accessible over the internet.
+    // The computer running this program is likely within a private network and not
+    // accessible over the internet.
     //
     // To allow Alice and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
     // service on that node to create a forwarder for us.
     //
-    // All messages that arrive at that forwarding address will be sent to this program
+    // All messages arriving at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "listener").await?;
@@ -258,7 +259,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     cargo run --example alice
     ```
 
-4. It will stop to ask for Bob's forwarding address that was printed in step 2, give it the address.
+4. It will stop to ask for Bob's forwarding address that was printed in step 2. Give it that address.
 
     This will tell Alice that the route to reach Bob is `[(TCP, "1.node.ockam.network:4000"), forwarding_address]`.
 
@@ -278,9 +279,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     Bob. Any message that you enter, is delivered to Bob using the secure channel, via the cloud node. The echoer
     on Bob will echo the messages back on the same path and Alice will print it.
 
-### Conclusion
+## Conclusion
 
-We [discussed](#remove-implicit-trust-in-porous-network-boundaries) that, in order have a small and manageable
+Congratulations on creating your first end-to-end encrypted application 🥳.
+
+We [discussed](#remove-implicit-trust-in-porous-network-boundaries) that, in order to have a small and manageable
 vulnerability surface, distributed applications must use mutually authenticated, end-to-end encrypted channels.
 Implementing an end-to-end secure channel protocol, from scratch, is complex, error prone,
 and will take more time than application teams can typically dedicate to this problem.
@@ -292,8 +295,8 @@ Ockam combines proven cryptographic building blocks into a set of reusable proto
 applications to communicate security and privately. The above example only scratched the surface of what
 is possible with the tools that our included in the `ockam` Rust crate.
 
-To learn more, please see our [step-by-step guide](../../guides/rust#readme).
+To learn more, please see our [step-by-step guide](../../guides/rust#step-by-step).
 
 <div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../../guides/rust#readme">A step-by-step introduction</a>
+<hr><b>Next:</b> <a href="../../guides/rust#step-by-step">A step-by-step introduction</a>
 </div>

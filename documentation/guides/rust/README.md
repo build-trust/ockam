@@ -9,7 +9,7 @@ routes — _across data centers, through queues and caches, via gateways and bro
 their end destination.
 
 Transport layer security protocols are unable to protect application messages because their protection
-is limited by the length and duration of the underlying transport connection. Ockam is a collection of
+is constrained by the length and duration of the underlying transport connection. Ockam is a collection of
 programming libraries (in Rust and Elixir) that make it simple for our applications to guarantee end-to-end
 integrity, authenticity, and confidentiality of data.
 
