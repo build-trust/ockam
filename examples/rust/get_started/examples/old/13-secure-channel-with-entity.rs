@@ -3,7 +3,7 @@
 use ockam::{
     route, Address, Context, Entity, Identity, Result, SecureChannels, TrustIdentifierPolicy, Vault,
 };
-use ockam_get_started::Echoer;
+use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

@@ -2,7 +2,7 @@ use ockam::{
     Context, Entity, RemoteForwarder, Result, SecureChannels, TcpTransport, TrustEveryonePolicy,
     Vault, TCP,
 };
-use ockam_get_started::Echoer;
+use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

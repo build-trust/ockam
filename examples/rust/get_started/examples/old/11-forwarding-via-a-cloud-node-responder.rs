@@ -1,5 +1,5 @@
 use ockam::{Context, RemoteForwarder, Result, TcpTransport, TCP};
-use ockam_get_started::Echoer;
+use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

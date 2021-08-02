@@ -1,8 +1,8 @@
 // This node starts a tcp listener and an echoer worker.
 // It then runs forever waiting for messages.
 
+use hello_ockam::Echoer;
 use ockam::{Context, Result, TcpTransport};
-use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

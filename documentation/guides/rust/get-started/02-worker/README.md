@@ -14,8 +14,8 @@ Workers:
 * Can handle messages from other workers running on the same or a different node.
 * Can send messages to other workers running on the same or a different node.
 
-Now that we've [created our first node](../01-node), let's create a new worker,
-send it a message, and receive a reply.
+Now that we've [created our first node](../01-node#readme), let's create a new
+worker, send it a message, and receive a reply.
 
 ## Echoer worker
 
@@ -31,7 +31,7 @@ This struct:
   * The `Message` type must be set to the type of message the worker wishes to handle.
 
 For a new `Echoer` worker, create a new file at `src/echoer.rs` in your
-[ockam_get_started](../00-setup) project. We're creating this inside the `src`
+[hello_ockam](../../#setup) project. We're creating this inside the `src`
 directory so we can easily reuse the `Echoer` in other examples that we'll
 write later in this guide:
 
@@ -60,6 +60,7 @@ impl Worker for Echoer {
         ctx.send(msg.return_route(), msg.body()).await
     }
 }
+
 ```
 
 Note that we define the `Message` associated type of the worker as `String`,
@@ -102,23 +103,27 @@ Add the following code to this file:
 ```rust
 // examples/02-worker.rs
 
+// This node creates a worker, sends it a message, and receives a reply.
+
+use hello_ockam::Echoer;
 use ockam::{Context, Result};
-use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start an Echoer worker at address "echoer"
+    // Start a worker, of type Echoer, at address "echoer"
     ctx.start_worker("echoer", Echoer).await?;
 
-    // Send a message to the "echoer" worker.
+    // Send a message to the worker at address "echoer".
     ctx.send("echoer", "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
+    // Stop all workers, stop the node, cleanup and return.
     ctx.stop().await
 }
+
 ```
 
 To run this new node program:
@@ -135,5 +140,5 @@ You'll see console output that shows `"Hello Ockam!"` received by the
 <img src="./sequence.png" width="100%">
 
 <div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../03-routing">03. Routing</a>
+<hr><b>Next:</b> <a href="../03-routing#readme">03. Routing</a>
 </div>

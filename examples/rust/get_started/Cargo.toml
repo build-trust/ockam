@@ -1,11 +1,11 @@
 [package]
-name = "ockam_get_started"
+name = "hello_ockam"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 
 [dependencies]
-ockam = { path = "../../../implementations/rust/ockam/ockam", features = ["ockam_transport_tcp", "ockam_vault"] }
+ockam = { path = "../../../implementations/rust/ockam/ockam" }
 ockam_transport_websocket = { path = "../../../implementations/rust/ockam/ockam_transport_websocket" }
 
 [dev-dependencies]

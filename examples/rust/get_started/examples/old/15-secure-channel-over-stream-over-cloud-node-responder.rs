@@ -1,5 +1,5 @@
 use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
-use ockam_get_started::Echoer;
+use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

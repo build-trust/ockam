@@ -1,7 +1,7 @@
 // This node creates a secure channel with a listener that is multiple hops away.
 
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
-use ockam_get_started::{Echoer, Hop};
+use hello_ockam::{Echoer, Hop};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

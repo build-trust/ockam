@@ -4,7 +4,7 @@
 use ockam::{Context, Result};
 use ockam_transport_websocket::WebSocketTransport;
 
-use ockam_get_started::Echoer;
+use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

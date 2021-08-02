@@ -8,13 +8,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
-    ctx.send(
-        // route to the "echoer" worker, via a tcp connection.
-        route![(TCP, "localhost:4000"), "echoer"],
-        // the message you want echo-ed back
-        "Hello Ockam!".to_string(),
-    )
-    .await?;
+    let r = route![(TCP, "localhost:4000"), "echoer"];
+    ctx.send(r, "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;

@@ -1,7 +1,7 @@
 // This node creates a worker, sends it a message, and receives a reply.
 
+use hello_ockam::Echoer;
 use ockam::{Context, Result};
-use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

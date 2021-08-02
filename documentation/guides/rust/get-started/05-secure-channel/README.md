@@ -4,8 +4,8 @@ title: Secure Channel
 
 # Secure Channel
 
-Now that we understand the basics of [Nodes](../01-node),
-[Workers](../02-worker), and [Routing](../03-routing) ... let's
+Now that we understand the basics of [Nodes](../01-node#readme),
+[Workers](../02-worker#readme), and [Routing](../03-routing#readme) ... let's
 create our first encrypted secure channel.
 
 Establishing a secure channel requires establishing a shared secret key between
@@ -19,54 +19,124 @@ Running such protocols requires a stateful exchange of multiple messages and hav
 a worker and routing system allows Ockam to hide the complexity of creating and
 maintaining a secure channel behind two simple functions:
 
-* `SecureChannel::create_listener(...)` which waits for requests to create a secure channel.
-* `SecureChannel::create(...)` which initiates the protocol to create a secure channel with a listener.
+* `create_secure_channel_listener(...)` which waits for requests to create a secure channel.
+* `create_secure_channel(...)` which initiates the protocol to create a secure channel with a listener.
 
-The `SecureChannel` APIs requires a Vault to store and manage secrets. The Vault is started like any other worker, and
-we pass its address to the `SecureChannel` functions.
-
-## App worker
-
-For demonstration, we'll create a secure channel within a single node. Like our
-previous example, [Workers](../02-worker), we'll create an `"echoer"` worker and
-send it a message, but we'll route the message through a secure channel:
+## Responder node
 
 Create a new file at:
 
 ```
-touch examples/05-secure-channel.rs
+touch examples/05-secure-channel-over-two-transport-hops-responder.rs
 ```
 
 Add the following code to this file:
 
 ```rust
-// examples/05-secure-channel.rs
-// This node creates a secure channel and routes a message through it.
+// examples/05-secure-channel-over-two-transport-hops-responder.rs
 
-use ockam::{Context, Result, Route, SecureChannel, Vault};
-use ockam_get_started::Echoer;
+// This node starts a tcp listener, a secure channel listener, and an echoer worker.
+// It then runs forever waiting for messages.
+
+use hello_ockam::Echoer;
+use ockam::{Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault};
+
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    ctx.start_worker("echoer", Echoer).await?;
+
+    // Initialize the TCP Transport.
+    let tcp = TcpTransport::create(&ctx).await?;
+
+    // Create a TCP listener and wait for incoming connections.
+    tcp.listen("127.0.0.1:4000").await?;
+
+    // Create a Vault to safely store secret keys for Bob.
+    let vault = Vault::create(&ctx)?;
+
+    // Create an Entity to represent Bob.
+    let mut bob = Entity::create(&ctx, &vault)?;
+
+    // Create a secure channel listener for Bob that will wait for requests to
+    // initiate an Authenticated Key Exchange.
+    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)?;
+
+    // Don't call ctx.stop() here so this node runs forever.
+    Ok(())
+}
+
+```
+
+## Middle node
+
+Create a new file at:
+
+```
+touch examples/05-secure-channel-over-two-transport-hops-middle.rs
+```
+
+Add the following code to this file:
+
+```rust
+// examples/05-secure-channel-over-two-transport-hops-middle.rs
+
+// This node creates a tcp connection to a node at 127.0.0.1:4000
+// Starts a tcp listener at 127.0.0.1:3000
+// It then runs forever waiting to route messages.
+
+use ockam::{Context, Result, TcpTransport};
+
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    // Initialize the TCP Transport.
+    let tcp = TcpTransport::create(&ctx).await?;
+
+    // Create a TCP listener and wait for incoming connections.
+    tcp.listen("127.0.0.1:3000").await?;
+
+    // Don't call ctx.stop() here so this node runs forever.
+    Ok(())
+}
+
+```
+
+## Initiator node
+
+
+Create a new file at:
+
+```
+touch examples/05-secure-channel-over-two-transport-hops-initiator.rs
+```
+
+Add the following code to this file:
+
+```rust
+// examples/05-secure-channel-over-two-transport-hops-initiator.rs
+
+// This node creates an end-to-end encrypted secure channel over two tcp transport hops.
+// It then routes a message, to a worker on a different node, through this encrypted channel.
+
+use ockam::{route, Context, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{Entity, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    // Start an Echoer worker at address "echoer"
-    ctx.start_worker("echoer", Echoer).await?;
+    // Initialize the TCP Transport.
+    TcpTransport::create(&ctx).await?;
 
+    // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create(&ctx)?;
 
-    // Create a secure channel listener.
-    SecureChannel::create_listener(&mut ctx, "secure_channel_listener", &vault).await?;
+    // Create an Entity to represent Alice.
+    let mut alice = Entity::create(&ctx, &vault)?;
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = SecureChannel::create(&mut ctx, "secure_channel_listener", &vault).await?;
+    let r = route![(TCP, "localhost:3000"), (TCP, "localhost:4000"), "bob_listener"];
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy)?;
 
-    // Send a message to the echoer worker, via the secure channel.
-    ctx.send(
-        // route to the "echoer" worker via the secure channel.
-        Route::new().append(channel.address()).append("echoer"),
-        // the message you want echo-ed back
-        "Hello Ockam!".to_string(),
-    )
-        .await?;
+    // Send a message to the echoer worker via the channel.
+    ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
@@ -78,21 +148,26 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 ```
 
-To run this new node program:
+## Run
+
+Run the responder:
 
 ```
-cargo run --example 05-secure-channel
+cargo run --example 05-secure-channel-over-two-transport-hops-responder
 ```
 
-Note how we send the messages on this route
-`Route::new().append(channel.address()).append("echoer")`.
-This encrypts the message when it enters the channel and decrypts it
-when it exits.
+Run middle:
 
-## Message Flow
+```
+cargo run --example 05-secure-channel-over-two-transport-hops-middle
+```
+
+Run the initiator:
+
+```
+cargo run --example 05-secure-channel-over-two-transport-hops-initiator
+```
+
+Note the message flow.
 
 <img src="./sequence.png" width="100%">
-
-<div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../06-secure-channel-many-hops">06. Secure Channel over many hops</a>
-</div>

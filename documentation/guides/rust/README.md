@@ -22,22 +22,35 @@ _granular authorization decisions about all incoming information and commands._
 
 Let's build mutually-authenticated, end-to-end protected communication between distributed applications:
 
-## Step-by-step
+### Setup
+
+If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust.
+
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Next, create a new cargo project to get started:
+
+```
+cargo new --lib hello_ockam && cd hello_ockam && mkdir examples \
+  && echo 'ockam = "*"' >> Cargo.toml && cargo build
+```
+
+If the above instructions don't work on your machine, please
+[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+we would love to help.
+
+### Step-by-step
 
 <ul>
-<li><a href="./get-started/00-setup">00. Setup</a></li>
-<li><a href="./get-started/01-node">01. Node</a></li>
-<li><a href="./get-started/02-worker">02. Worker</a>
-<li><a href="./get-started/03-routing">03. Routing</a></li>
-<li><a href="./get-started/04-routing-many-hops">04. Routing over many hops</a></li>
-<li><a href="./get-started/05-secure-channel">05. Secure Channel</a></li>
-<li><a href="./get-started/06-secure-channel-many-hops">06. Secure Channel over many hops</a></li>
-<li><a href="./get-started/07-routing-over-transport">07. Routing over a transport</a></li>
-<li><a href="./get-started/08-routing-over-many-transport-hops">08. Routing over many transport hops</a></li>
-<li>
-<a href="./get-started/09-secure-channel-over-many-transport-hops">09. Secure Channel over many transport hops</a>
-</li>
-<li>
-<a href="./get-started/10-secure-channel-with-entity">10. Secure Channel with Entity</a>
-</li>
+<li><a href="./get-started/01-node#readme">01. Node</a></li>
+<li><a href="./get-started/02-worker#readme">02. Worker</a>
+<li><a href="./get-started/03-routing#readme">03. Routing</a></li>
+<li><a href="./get-started/04-transport#readme">04. Transport</a></li>
+<li><a href="./get-started/05-secure-channel#readme">05. Secure Channel</a></li>
 </ul>
+
+<div style="display: none; visibility: hidden;">
+<hr><b>Next:</b> <a href="./get-started/01-node#readme">01. Node</a>
+</div>

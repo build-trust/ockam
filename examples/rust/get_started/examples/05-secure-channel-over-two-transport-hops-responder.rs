@@ -1,8 +1,8 @@
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 
+use hello_ockam::Echoer;
 use ockam::{Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault};
-use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -14,11 +14,15 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a TCP listener and wait for incoming connections.
     tcp.listen("127.0.0.1:4000").await?;
 
-    let bob_vault = Vault::create(&ctx).expect("failed to create vault");
-    let mut bob = Entity::create(&ctx, &bob_vault)?;
+    // Create a Vault to safely store secret keys for Bob.
+    let vault = Vault::create(&ctx)?;
 
-    // Create a secure channel listener at address "bob_secure_channel_listener"
-    bob.create_secure_channel_listener("bob_secure_channel_listener", TrustEveryonePolicy)?;
+    // Create an Entity to represent Bob.
+    let mut bob = Entity::create(&ctx, &vault)?;
+
+    // Create a secure channel listener for Bob that will wait for requests to
+    // initiate an Authenticated Key Exchange.
+    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
