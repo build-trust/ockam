@@ -25,12 +25,11 @@ Add the following code to this file:
 
 ```rust
 // examples/04-routing-over-transport-responder.rs
-
 // This node starts a tcp listener and an echoer worker.
 // It then runs forever waiting for messages.
 
-use ockam::{Context, Result, TcpTransport};
 use hello_ockam::Echoer;
+use ockam::{Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -61,7 +60,6 @@ Add the following code to this file:
 
 ```rust
 // examples/04-routing-over-transport-initiator.rs
-
 // This node routes a message, to a worker on a different node, over the tcp transport.
 
 use ockam::{route, Context, Result, TcpTransport, TCP};
@@ -118,7 +116,6 @@ Add the following code to this file:
 
 ```rust
 // examples/04-routing-over-transport-two-hops-responder.rs
-
 // This node starts a tcp listener and an echoer worker.
 // It then runs forever waiting for messages.
 
@@ -154,7 +151,6 @@ Add the following code to this file:
 
 ```rust
 // examples/04-routing-over-transport-two-hops-middle.rs
-
 // This node creates a tcp connection to a node at 127.0.0.1:4000
 // Starts a tcp listener at 127.0.0.1:3000
 // It then runs forever waiting to route messages.
@@ -187,7 +183,6 @@ Add the following code to this file:
 
 ```rust
 // examples/04-routing-over-transport-two-hops-initiator.rs
-
 // This node routes a message, to a worker on a different node, over two tcp transport hops.
 
 use ockam::{route, Context, Result, TcpTransport, TCP};

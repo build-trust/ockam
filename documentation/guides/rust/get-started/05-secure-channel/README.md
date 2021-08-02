@@ -34,7 +34,6 @@ Add the following code to this file:
 
 ```rust
 // examples/05-secure-channel-over-two-transport-hops-responder.rs
-
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 
@@ -79,7 +78,6 @@ Add the following code to this file:
 
 ```rust
 // examples/05-secure-channel-over-two-transport-hops-middle.rs
-
 // This node creates a tcp connection to a node at 127.0.0.1:4000
 // Starts a tcp listener at 127.0.0.1:3000
 // It then runs forever waiting to route messages.
@@ -113,7 +111,6 @@ Add the following code to this file:
 
 ```rust
 // examples/05-secure-channel-over-two-transport-hops-initiator.rs
-
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 

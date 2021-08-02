@@ -102,7 +102,6 @@ Add the following code to this file:
 
 ```rust
 // examples/03-routing.rs
-
 // This node routes a message.
 
 use hello_ockam::{Echoer, Hop};
@@ -159,7 +158,6 @@ Add the following code to this file:
 
 ```rust
 // examples/03-routing-many-hops.rs
-
 // This node routes a message through many hops.
 
 use hello_ockam::{Echoer, Hop};
