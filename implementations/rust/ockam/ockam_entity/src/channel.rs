@@ -35,7 +35,7 @@ pub trait SecureChannelTrait {
 }
 
 #[async_trait]
-impl<P: Identity + Send> SecureChannelTrait for P {
+impl<P: Identity + Send + Clone> SecureChannelTrait for P {
     /// Create mutually authenticated secure channel
     async fn create_secure_channel_async(
         self,

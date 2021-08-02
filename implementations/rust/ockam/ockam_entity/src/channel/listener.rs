@@ -5,14 +5,14 @@ use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
 use rand::random;
 
-pub(crate) struct ProfileChannelListener<T: TrustPolicy, P: Identity, V: XXVault> {
+pub(crate) struct ProfileChannelListener<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> {
     trust_policy: T,
     profile: P,
     vault: V,
     listener_address: Address,
 }
 
-impl<T: TrustPolicy, P: Identity, V: XXVault> ProfileChannelListener<T, P, V> {
+impl<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> ProfileChannelListener<T, P, V> {
     pub fn new(trust_policy: T, profile: P, vault: V) -> Self {
         let listener_address: Address = random();
         ProfileChannelListener {
@@ -25,7 +25,9 @@ impl<T: TrustPolicy, P: Identity, V: XXVault> ProfileChannelListener<T, P, V> {
 }
 
 #[ockam_core::worker]
-impl<T: TrustPolicy, P: Identity, V: XXVault> Worker for ProfileChannelListener<T, P, V> {
+impl<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> Worker
+    for ProfileChannelListener<T, P, V>
+{
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
@@ -53,9 +55,10 @@ impl<T: TrustPolicy, P: Identity, V: XXVault> Worker for ProfileChannelListener<
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let trust_policy = self.trust_policy.clone();
+        let profile = self.profile.clone();
         SecureChannelWorker::create_responder(
             ctx,
-            &mut self.profile,
+            profile,
             trust_policy,
             self.listener_address.clone(),
             msg,

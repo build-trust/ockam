@@ -32,6 +32,7 @@ pub use traits::*;
 mod tests {
     use crate::SecureChannel;
     use ockam_core::Route;
+    use ockam_key_exchange_core::NewKeyExchanger;
     use ockam_key_exchange_xx::XXNewKeyExchanger;
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::{Vault, VaultSync};
@@ -55,7 +56,7 @@ mod tests {
                     &ctx,
                     Route::new().append("secure_channel_listener"),
                     None,
-                    &new_key_exchanger,
+                    new_key_exchanger.initiator()?,
                     vault_sync,
                 )
                 .await?;
