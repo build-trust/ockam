@@ -66,8 +66,8 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 2. Setup a new cargo project to get started.
 
     ```
-    cargo new --lib hello_ockam && cd hello_ockam && mkdir examples \
-      && echo 'ockam = "*"' >> Cargo.toml && cargo build
+    cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
+      echo 'ockam = "*"' >> Cargo.toml && cargo build
     ```
 
     If the above instructions don't work on your machine, please
