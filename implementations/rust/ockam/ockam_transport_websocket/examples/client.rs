@@ -8,14 +8,16 @@ use ockam::{route, Context, Result};
 use tokio::io::AsyncReadExt;
 use tokio::time::{sleep, timeout, Duration};
 
-use ockam_transport_websocket::{WebSocketError, WebSocketTransport, WS};
+use ockam_transport_websocket::common::TransportError;
+use ockam_transport_websocket::{common::Transport, TransportWebSocket};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let peer_addr = get_peer_addr();
 
+    info!("Try connect");
     let _try_connect = {
-        let ws = WebSocketTransport::create(&ctx).await?;
+        let ws = TransportWebSocket::new(&ctx).await?;
         let connect_fut = async {
             loop {
                 if ws.connect(&peer_addr).await.is_ok() {
@@ -30,10 +32,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         }
     };
 
+    info!("Connected");
     let (stdin_tx, mut stdin_rx) = futures_channel::mpsc::unbounded();
     tokio::spawn(read_stdin(stdin_tx));
 
-    let route = route![(WS, peer_addr.as_str()), "echoer"];
+    let route = route![(2, peer_addr.as_str()), "echoer"];
     while let Some(data) = stdin_rx.next().await {
         if ctx.send(route.clone(), data).await.is_err() {
             error!("Failed to send data");
@@ -74,7 +77,7 @@ async fn read_stdin(tx: futures_channel::mpsc::UnboundedSender<Vec<u8>>) -> Resu
         buf.truncate(n);
         let buf = String::from_utf8(buf).unwrap();
         let msg = Vec::from(buf.trim());
-        tx.unbounded_send(msg).map_err(WebSocketError::from)?;
+        tx.unbounded_send(msg).map_err(TransportError::from)?;
     }
     Ok(())
 }
