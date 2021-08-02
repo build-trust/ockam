@@ -20,6 +20,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
 
+      - name: Generate random key
+        run: echo RANDOM=$(date +%s) >> $GITHUB_ENV
+
+      - name: Cache Gradle
+        uses: actions/cache@v2
+        with:
+          path: |
+            /root/.gradle/caches
+            /root/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-cache-${{ env.RANDOM }}
+          restore-keys: ${{ runner.os }}-gradle-cache-
+
       - id: elixir_test_ockam_ockam_kafka
         working-directory: implementations/elixir
         run: ../../gradlew test_ockam_ockam_kafka
