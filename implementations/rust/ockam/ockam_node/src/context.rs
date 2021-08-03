@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// A default timeout in seconds
-pub const DEFAULT_TIMEOUT: u64 = 5;
+pub const DEFAULT_TIMEOUT: u64 = 30;
 
 /// Context contains Node state and references to the runtime.
 pub struct Context {
