@@ -137,6 +137,9 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                 });
             }
 
+            // Queue a new fetch event and mark this event as handled
+            fetch_interval(ctx, w.interval.clone()).unwrap();
+
             true
         }
         _ => false,
@@ -164,8 +167,7 @@ fn parse_cmd(
                 .await
             })?;
 
-            // Queue a new fetch event and mark this event as handled
-            fetch_interval(ctx, w.interval.clone()).map(|_| true)
+            Ok(true)
         }
         f => {
             warn!("Unhandled message type {:?}", f);
