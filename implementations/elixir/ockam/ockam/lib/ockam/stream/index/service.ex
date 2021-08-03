@@ -1,4 +1,4 @@
-defmodule Ockam.Stream.Index.Worker do
+defmodule Ockam.Stream.Index.Service do
   @moduledoc false
 
   use Ockam.Protocol.Mapping
@@ -22,14 +22,7 @@ defmodule Ockam.Stream.Index.Worker do
     storage_mod = Keyword.get(options, :storage_mod, @default_mod)
     storage_options = Keyword.get(options, :storage_options, [])
 
-    case storage_mod.init(storage_options) do
-      {:ok, storage_state} ->
-        {:ok, Map.put(state, :storage, {storage_mod, storage_state})}
-
-      {:error, err} ->
-        Logger.error("Stream index setup error: #{inspect(err)}")
-        {:error, err}
-    end
+    {:ok, Map.merge(state, %{storage: {storage_mod, storage_options}, shards: %{}})}
   end
 
   @impl true
@@ -54,14 +47,11 @@ defmodule Ockam.Stream.Index.Worker do
     partition = Map.get(data, :partition, 0)
     Logger.debug("Save index #{inspect({client_id, stream_name, partition, index})}")
 
-    case save_index(client_id, stream_name, partition, index, state) do
-      {:ok, state} ->
-        {:ok, state}
+    shard_id = {client_id, stream_name}
+    {shard, state} = ensure_shard(shard_id, state)
 
-      {{:error, error}, _state} ->
-        Logger.error("Unable to save index: #{inspect(data)}. Reason: #{inspect(error)}")
-        {:error, error}
-    end
+    GenServer.cast(shard, {:save_index, partition, index})
+    {:ok, state}
   end
 
   def handle_get(protocol, data, return_route, state) do
@@ -69,33 +59,40 @@ defmodule Ockam.Stream.Index.Worker do
     partition = Map.get(data, :partition, 0)
     Logger.debug("get index #{inspect({client_id, stream_name})}")
 
-    case get_index(client_id, stream_name, partition, state) do
-      {{:ok, index}, state} ->
+    shard_id = {client_id, stream_name}
+    {shard, state} = ensure_shard(shard_id, state)
+
+    case GenServer.call(shard, {:get_index, partition}) do
+      {:ok, index} ->
         reply_index(protocol, client_id, stream_name, partition, index, return_route, state)
         {:ok, state}
 
-      {{:error, error}, _state} ->
+      {:error, error} ->
         Logger.error("Unable to get index for: #{inspect(data)}. Reason: #{inspect(error)}")
         {:error, error}
     end
   end
 
-  def save_index(client_id, stream_name, partition, index, state) do
-    with_storage(state, fn storage_mod, storage_state ->
-      storage_mod.save_index(client_id, stream_name, partition, index, storage_state)
-    end)
+  def ensure_shard(shard_id, state) do
+    case Map.get(Map.get(state, :shards, %{}), shard_id) do
+      nil ->
+        create_shard(shard_id, state)
+
+      shard when is_pid(shard) ->
+        case Process.alive?(shard) do
+          true -> {shard, state}
+          false -> create_shard(shard_id, state)
+        end
+    end
   end
 
-  def get_index(client_id, stream_name, partition, state) do
-    with_storage(state, fn storage_mod, storage_state ->
-      storage_mod.get_index(client_id, stream_name, partition, storage_state)
-    end)
-  end
+  def create_shard(shard_id, state) do
+    storage = Map.get(state, :storage)
 
-  def with_storage(state, fun) do
-    {storage_mod, storage_state} = Map.get(state, :storage)
-    {result, new_storage_state} = fun.(storage_mod, storage_state)
-    {result, Map.put(state, :storage, {storage_mod, new_storage_state})}
+    {:ok, shard} = Ockam.Stream.Index.Shard.start_link(shard_id, storage)
+
+    shards = Map.get(state, :shards, %{})
+    {shard, Map.put(state, :shards, Map.put(shards, shard_id, shard))}
   end
 
   def reply_index(protocol, client_id, stream_name, partition, index, return_route, state) do

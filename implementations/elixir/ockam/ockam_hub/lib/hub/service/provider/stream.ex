@@ -6,7 +6,7 @@ defmodule Ockam.Hub.Service.Provider.Stream do
 
   @behaviour Ockam.Hub.Service.Provider
 
-  alias Ockam.Stream.Index.Worker, as: StreamIndexService
+  alias Ockam.Stream.Index.Service, as: StreamIndexService
   alias Ockam.Stream.Workers.Service, as: StreamService
 
   @services [:stream, :stream_index]

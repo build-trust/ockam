@@ -166,5 +166,7 @@ config :ockam_hub,
   ## Start echo and forwarding services by default
   services: [
     :echo,
-    :forwarding
+    :forwarding,
+    :stream,
+    :stream_index
   ]
