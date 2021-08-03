@@ -1,0 +1,36 @@
+name: docker_builder
+on:
+  workflow_dispatch:
+  push:
+    # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
+    paths:
+      - 'tools/docker/builder'
+    branches:
+      - develop
+
+jobs:
+  docker_builder_builder:
+    runs-on: debian:10.7-slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/ockam-network/ockam/builder
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v2
+        with:
+          context: tools/docker/builder
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
