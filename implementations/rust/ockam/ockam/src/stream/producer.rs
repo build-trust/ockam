@@ -36,7 +36,7 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
             w.init = true;
 
             info!(
-                "Initialised consumer for stream '{}' and route: {}",
+                "Initialised producer for stream '{}' and route: {}",
                 stream_name, w.route
             );
 
