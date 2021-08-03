@@ -81,6 +81,7 @@ defmodule Ockam.Hub do
             bucket: Application.get_env(:telemetry_influxdb, :bucket) || "ockam_hub",
             org: Application.get_env(:telemetry_influxdb, :org) || "ockam",
             token: Application.get_env(:telemetry_influxdb, :token) || "TOKEN NOT CONFIGURED",
+            tags: %{hostname: System.get_env("HOSTNAME", "none")},
             events: [
               %{
                 name: [:vm, :memory],
