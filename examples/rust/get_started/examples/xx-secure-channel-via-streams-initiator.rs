@@ -7,7 +7,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
-    let hub_node_tcp_address = "54.193.49.246:4000";
+    let hub_node_tcp_address = "1.node.ockam.network:4000";
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
