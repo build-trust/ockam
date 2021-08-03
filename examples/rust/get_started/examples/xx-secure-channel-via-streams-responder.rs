@@ -1,7 +1,6 @@
 use hello_ockam::Echoer;
 use ockam::{
-    route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport,
-    TrustEveryonePolicy, Vault, TCP,
+    route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 
 #[ockam::node]
