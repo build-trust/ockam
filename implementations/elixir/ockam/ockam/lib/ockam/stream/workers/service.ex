@@ -39,13 +39,9 @@ defmodule Ockam.Stream.Workers.Service do
     state =
       case decode_payload(payload) do
         {:ok, StreamProtocol.Create, %{stream_name: name}} ->
-          name = ensure_stream_name(name, state)
-
           ensure_streams(name, 1, message, state, protocol: StreamProtocol.Create)
 
         {:ok, StreamProtocol.Partitioned.Create, %{stream_name: name, partitions: n_partitions}} ->
-          name = ensure_stream_name(name, state)
-
           ensure_streams(name, n_partitions, message, state,
             protocol: StreamProtocol.Partitioned.Create
           )
@@ -60,10 +56,13 @@ defmodule Ockam.Stream.Workers.Service do
   def ensure_stream_name(name, state) do
     case name do
       :undefined ->
-        create_stream_name(state)
+        {:ok, create_stream_name(state)}
+
+      "" ->
+        {:error, "Empty stream name"}
 
       name ->
-        name
+        {:ok, name}
     end
   end
 
@@ -75,19 +74,28 @@ defmodule Ockam.Stream.Workers.Service do
       return_route: [state.address],
       payload: encode_payload(Ockam.Protocol.Error, %{reason: "Invalid request"})
     })
+
+    state
   end
 
-  @spec ensure_streams(String.t(), integer(), map(), state(), Keyword.t()) :: state()
+  @spec ensure_streams(String.t() | :undefnined, integer(), map(), state(), Keyword.t()) ::
+          state()
   def ensure_streams(name, n_partitions, message, state, options) do
-    partitions = Enum.map(:lists.seq(0, n_partitions - 1), fn n -> {name, n} end)
+    case ensure_stream_name(name, state) do
+      {:ok, name} ->
+        partitions = Enum.map(:lists.seq(0, n_partitions - 1), fn n -> {name, n} end)
 
-    {:ok, stream_storage_state} = init_stream(name, n_partitions, state)
+        {:ok, stream_storage_state} = init_stream(name, n_partitions, state)
 
-    options = Keyword.put(options, :stream_storage_state, stream_storage_state)
+        options = Keyword.put(options, :stream_storage_state, stream_storage_state)
 
-    Enum.reduce(partitions, state, fn id, state ->
-      ensure_stream(id, message, state, options)
-    end)
+        Enum.reduce(partitions, state, fn id, state ->
+          ensure_stream(id, message, state, options)
+        end)
+
+      {:error, reason} ->
+        return_error(reason, message, state)
+    end
   end
 
   @spec ensure_stream(stream_id(), map(), state(), Keyword.t()) :: state()
