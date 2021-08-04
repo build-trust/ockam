@@ -21,6 +21,7 @@ mod node;
 mod parser;
 mod relay;
 mod router;
+mod tests;
 
 pub use context::*;
 pub use executor::*;
