@@ -13,6 +13,7 @@ RUN set -xe; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends ca-certificates curl locales; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*; \
+    echo "hello"; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
