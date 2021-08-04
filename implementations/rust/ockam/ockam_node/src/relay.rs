@@ -136,7 +136,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             }
         }
 
-        while let Some(RelayMessage { addr, data, .. }) = self.ctx.mailbox.next().await {
+        while let Some(RelayMessage { addr, data, .. }) = self.ctx.mailbox_mut().next().await {
             // Extract the message type based on the relay message
             // wrap state.  Messages addressed to a router will be of
             // type `RouterMessage`, while generic userspace workers
@@ -210,7 +210,7 @@ where
     M: Message + Send + 'static,
 {
     let (tx, rx) = channel(32);
-    let mb_tx = ctx.mailbox.sender();
+    let mb_tx = ctx.mailbox().sender();
     let relay = Relay::<W, M>::new(worker, ctx);
 
     rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));

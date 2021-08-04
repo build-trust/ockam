@@ -38,7 +38,7 @@ pub fn start_node() -> (Context, Executor) {
     let ctx = NullWorker::new(exe.runtime(), &addr, exe.sender());
 
     // Build a mailbox worker to buffer messages
-    let sender = relay::build_root::<NullWorker, _>(exe.runtime(), &ctx.mailbox);
+    let sender = relay::build_root::<NullWorker, _>(exe.runtime(), &ctx.mailbox());
 
     // Register this mailbox handle with the executor
     exe.initialize_system("app", sender);

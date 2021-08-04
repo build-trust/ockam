@@ -25,13 +25,19 @@ pub struct Context {
     address: AddressSet,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
-    pub(crate) mailbox: Mailbox,
+    mailbox: Mailbox,
 }
 
 impl Context {
     /// Return runtime clone
     pub fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
+    }
+    pub(crate) fn mailbox(&self) -> &Mailbox {
+        &self.mailbox
+    }
+    pub(crate) fn mailbox_mut(&mut self) -> &mut Mailbox {
+        &mut self.mailbox
     }
 }
 
