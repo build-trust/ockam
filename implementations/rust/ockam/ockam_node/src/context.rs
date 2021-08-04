@@ -107,6 +107,9 @@ impl Context {
         let address = address.into();
 
         // Check if the address set is available
+        // TODO: There is not much sense of checking for address collisions here, since in
+        // async environment there may be new Workers started between the check and actual adding
+        // of this Worker to the Router map, so check only should happen during Router::start_worker
         let (check_addrs, mut check_rx) = NodeMessage::check_address(address.clone());
         self.sender
             .send(check_addrs)
