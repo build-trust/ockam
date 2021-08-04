@@ -1,4 +1,4 @@
-# End-to-End Secure Communication for Distributed Applications
+# Build End-to-End Encrypted, Secure Channels
 
 In this step-by-step guide we’ll learn how to build mutually-authenticated, end-to-end encrypted,
 secure messaging channels that protect en-route messages against eavesdropping, tampering, and forgery.
