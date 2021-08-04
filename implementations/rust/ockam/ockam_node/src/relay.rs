@@ -195,9 +195,9 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
     async fn run_mailbox(mut rx: Receiver<RelayMessage>, mb_tx: Sender<RelayMessage>) {
         // Relay messages into the worker mailbox
         while let Some(enc) = rx.recv().await {
-            match mb_tx.send(enc.clone()).await {
-                Ok(x) => x,
-                Err(_) => panic!("Failed to route message to address '{}'", enc.addr),
+            let addr = enc.addr.clone();
+            if mb_tx.send(enc).await.is_err() {
+                panic!("Failed to route message to address '{}'", &addr);
             };
         }
     }
