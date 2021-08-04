@@ -114,7 +114,6 @@ Create a file at `examples/bob.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/bob.rs
-
 use ockam::{Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 
@@ -150,14 +149,14 @@ async fn main(ctx: Context) -> Result<()> {
     // initiate an Authenticated Key Exchange.
     bob.create_secure_channel_listener("listener", TrustEveryonePolicy)?;
 
-    // The computer running this program is likely within a private network and not
-    // accessible over the internet.
+    // The computer that is running this program is likely within a private network and
+    // not accessible over the internet.
     //
     // To allow Alice and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
     // service on that node to create a forwarder for us.
     //
-    // All messages arriving at that forwarding address will be sent to this program
+    // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "listener").await?;
@@ -181,7 +180,6 @@ Create a file at `examples/alice.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/alice.rs
-
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{TcpTransport, TCP};
 use std::io;

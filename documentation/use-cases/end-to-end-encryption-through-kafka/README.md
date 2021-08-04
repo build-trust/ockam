@@ -167,7 +167,6 @@ Create a file at `examples/bob.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/bob.rs
-
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
 
@@ -243,7 +242,6 @@ Create a file at `examples/alice.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/alice.rs
-
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, TcpTransport, Unique, TCP};
 use std::io;
