@@ -1,7 +1,5 @@
-// examples/bob.rs
-
-use ockam::{route, stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
-use ockam::{Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
 
 struct Echoer;
 
@@ -39,24 +37,22 @@ async fn main(ctx: Context) -> Result<()> {
     // accessible over the internet.
     //
     // To allow Alice and others to initiate an end-to-end secure channel with this program
-    // we connect to 1.node.ockam.network:4000 as a TCP client and ask the Kafka streaming
-    // service on that node to create a bi-directional stream for us.
+    // we connect to 1.node.ockam.network:4000 as a TCP client and ask the Kafka Add-on
+    // on that node to create a bi-directional stream for us.
     //
     // All messages sent to and arriving at the stream will be relayed
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
     let sender_name = Unique::with_prefix("bob-to-alice");
     let receiver_name = Unique::with_prefix("alice-to-bob");
+
     Stream::new(&ctx)?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("bob"))
-        .connect(
-            route![node_in_hub],   // route to hub
-            sender_name.clone(),   // outgoing stream
-            receiver_name.clone(), // incoming stream
-        )
+        .connect(route![node_in_hub], sender_name.clone(), receiver_name.clone())
         .await?;
+
     println!("\n[✓] Stream client was created on the node at: 1.node.ockam.network:4000");
     println!("\nStream sender name is: {}", sender_name);
     println!("Stream receiver name is: {}\n", receiver_name);

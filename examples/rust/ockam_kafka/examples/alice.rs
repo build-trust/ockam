@@ -1,5 +1,3 @@
-// examples/alice.rs
-
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, TcpTransport, Unique, TCP};
 use std::io;
@@ -23,27 +21,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Bob's secure channel listener.
     println!("\nEnter the stream sender name for Bob: ");
     let mut sender_name = String::new();
-    io::stdin()
-        .read_line(&mut sender_name)
-        .expect("Error reading from stdin.");
+    io::stdin().read_line(&mut sender_name).expect("Error reading stdin.");
     let sender_name = sender_name.trim();
-
-    if sender_name.is_empty() {
-        println!("Sender name cannot be empty");
-        std::process::exit(1);
-    }
 
     println!("\nEnter the stream receiver name for Bob: ");
     let mut receiver_name = String::new();
-    io::stdin()
-        .read_line(&mut receiver_name)
-        .expect("Error reading from stdin.");
+    io::stdin().read_line(&mut receiver_name).expect("Error reading stdin.");
     let receiver_name = receiver_name.trim();
-
-    if receiver_name.is_empty() {
-        println!("Receiver name cannot be empty");
-        std::process::exit(1);
-    }
 
     // Use the tcp address of the node to get a route to Bob's secure
     // channel listener via the Kafka stream client.
@@ -52,23 +36,14 @@ async fn main(mut ctx: Context) -> Result<()> {
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("alice"))
-        .connect(
-            route_to_bob_listener, // route to hub
-            receiver_name.clone(), // outgoing stream
-            sender_name.clone(),   // incoming stream
-        )
+        .connect(route_to_bob_listener, receiver_name, sender_name)
         .await?;
 
     // As Alice, connect to Bob's secure channel listener, and perform
     // an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
-    let channel = alice.create_secure_channel(
-        route![
-            sender.clone(), // via the "alice-to-bob" stream
-            "listener"      // to the secure channel "listener"
-        ],
-        TrustEveryonePolicy,
-    )?;
+    let r = route![sender.clone(), "listener"];
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy)?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 
@@ -76,20 +51,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         // Read a message from standard input.
         println!("Type a message for Bob's echoer:");
         let mut message = String::new();
-        io::stdin()
-            .read_line(&mut message)
-            .expect("Error reading from stdin.");
+        io::stdin().read_line(&mut message).expect("Error reading from stdin.");
         let message = message.trim();
 
         // Send the provided message, through the channel, to Bob's echoer.
-        ctx.send(
-            route![
-                channel.clone(), // via the secure channel
-                "echoer",
-            ],
-            message.to_string(),
-        )
-        .await?;
+        ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
 
         // Wait to receive an echo and print it.
         let reply = ctx.receive::<String>().await?;
