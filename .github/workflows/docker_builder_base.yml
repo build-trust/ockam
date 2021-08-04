@@ -16,21 +16,4 @@ jobs:
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ghcr.io/ockam-network/ockam/builder_base
-
-      - name: Build and push Docker images
-        uses: docker/build-push-action@v2
-        with:
-          context: tools/docker/base
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+        run: echo "1234"
