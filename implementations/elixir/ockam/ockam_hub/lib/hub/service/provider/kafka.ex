@@ -27,7 +27,7 @@ defmodule Ockam.Kafka.Hub.Service.Provider do
 
   @behaviour Ockam.Hub.Service.Provider
 
-  alias Ockam.Stream.Index.Worker, as: StreamIndexService
+  alias Ockam.Stream.Index.Service, as: StreamIndexService
   alias Ockam.Stream.Workers.Service, as: StreamService
 
   @services [:stream_kafka, :stream_kafka_index]
