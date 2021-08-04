@@ -8,8 +8,6 @@ on:
     branches:
       - develop
 
-# ToDo: We need to also call builder workflow so as to use
-# updated/cached docker version.
 jobs:
   docker_builder:
     runs-on: gcc:9.3.0
