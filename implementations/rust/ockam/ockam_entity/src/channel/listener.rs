@@ -46,7 +46,10 @@ impl<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> Worker
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.stop_worker(self.listener_address.clone()).await
+        // Ignore the error in case node is shutting down and this listener was stopped already
+        let _ = ctx.stop_worker(self.listener_address.clone()).await;
+
+        Ok(())
     }
 
     async fn handle_message(
