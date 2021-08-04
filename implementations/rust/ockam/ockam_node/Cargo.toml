@@ -15,3 +15,6 @@ ockam_core = { path = "../ockam_core", version = "0.24.0-dev"                   
 tokio = {version = "1.8", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"] }
+
+[dev-dependencies]
+async-trait =  { version = "0.1" }
