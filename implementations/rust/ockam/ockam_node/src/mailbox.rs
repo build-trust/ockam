@@ -1,7 +1,7 @@
 use crate::{relay::RelayMessage, Context};
 use ockam_core::{Address, LocalMessage, Message, Routed};
 use std::fmt::{self, Debug, Display, Formatter};
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::Receiver;
 
 /// A mailbox for encoded messages
 ///
@@ -11,28 +11,17 @@ use tokio::sync::mpsc::{Receiver, Sender};
 #[derive(Debug)]
 pub struct Mailbox {
     rx: Receiver<RelayMessage>,
-    tx: Sender<RelayMessage>,
 }
 
 impl Mailbox {
     /// Create a new mailbox
-    pub fn new(rx: Receiver<RelayMessage>, tx: Sender<RelayMessage>) -> Self {
-        Self { rx, tx }
-    }
-
-    /// Return the sender of the mailbox.
-    pub fn sender(&self) -> Sender<RelayMessage> {
-        self.tx.clone()
+    pub fn new(rx: Receiver<RelayMessage>) -> Self {
+        Self { rx }
     }
 
     /// Get the next message from the mailbox
     pub async fn next(&mut self) -> Option<RelayMessage> {
         self.rx.recv().await
-    }
-
-    /// If a message wasn't expected, requeue it
-    pub async fn requeue(&self, msg: RelayMessage) {
-        self.tx.send(msg).await.unwrap();
     }
 }
 
@@ -64,12 +53,10 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     }
 
     /// Cancel this message
-    pub async fn cancel(self) {
-        let ctx = self.ctx;
-        let onward = self.local_msg.transport().onward_route.clone();
-        ctx.mailbox()
-            .requeue(RelayMessage::direct(self.addr, self.local_msg, onward))
-            .await;
+    pub async fn cancel(self) -> ockam_core::Result<()> {
+        self.ctx.forward(self.local_msg).await?;
+
+        Ok(())
     }
 
     /// Consume the Cancel wrapper to take the underlying message
