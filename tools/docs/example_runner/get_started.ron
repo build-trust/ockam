@@ -1,0 +1,12 @@
+(
+    title: "Getting Started Guide",
+    stages: [
+        ["01-node"],
+        ["02-worker"],
+        ["03-routing"],
+        ["03-routing-many-hops"],
+        ["04-routing-over-transport-responder", "04-routing-over-transport-initiator"],
+        ["04-routing-over-transport-two-hops-responder","04-routing-over-transport-two-hops-middle","04-routing-over-transport-two-hops-initiator"],
+        ["05-secure-channel-over-two-transport-hops-responder", "05-secure-channel-over-two-transport-hops-middle","05-secure-channel-over-two-transport-hops-initiator"]
+    ]
+)
