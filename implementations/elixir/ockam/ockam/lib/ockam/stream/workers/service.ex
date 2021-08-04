@@ -101,8 +101,8 @@ defmodule Ockam.Stream.Workers.Service do
   @spec ensure_stream(stream_id(), map(), state(), Keyword.t()) :: state()
   def ensure_stream(id, message, state, options) do
     case find_stream(id, state) do
-      {:ok, stream} ->
-        notify_create(stream, message, state, options)
+      {:ok, pid} ->
+        notify_create(pid, message, state, options)
 
       :error ->
         create_stream(id, message, state, options)
@@ -112,20 +112,21 @@ defmodule Ockam.Stream.Workers.Service do
   @spec find_stream(stream_id(), state()) :: {:ok, pid()} | :error
   def find_stream(id, state) do
     streams = Map.get(state, :streams, %{})
-    Map.fetch(streams, id)
+
+    with {:ok, address} <- Map.fetch(streams, id),
+         pid when is_pid(pid) <- Ockam.Node.whereis(address),
+         true <- Process.alive?(pid) do
+      {:ok, pid}
+    else
+      _error ->
+        :error
+    end
   end
 
   @spec register_stream(stream_id(), String.t(), state()) :: state()
   def register_stream(id, address, state) do
-    ## TODO: maybe use address in the registry?
-    case Ockam.Node.whereis(address) do
-      nil ->
-        raise("Stream not found on address #{address}")
-
-      pid when is_pid(pid) ->
-        streams = Map.get(state, :streams, %{})
-        Map.put(state, :streams, Map.put(streams, id, pid))
-    end
+    streams = Map.get(state, :streams, %{})
+    Map.put(state, :streams, Map.put(streams, id, address))
   end
 
   @spec notify_create(pid(), map(), state(), Keyword.t()) :: state()

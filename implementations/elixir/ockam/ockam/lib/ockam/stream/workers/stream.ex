@@ -30,9 +30,19 @@ defmodule Ockam.Stream.Workers.Stream do
 
   @impl true
   def handle_cast({:notify, return_route, options}, state) do
+    do_notify(return_route, options, state)
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_call({:notify, return_route, options}, _from, state) do
+    do_notify(return_route, options, state)
+    {:reply, :ok, state}
+  end
+
+  def do_notify(return_route, options, state) do
     init_protocol = init_protocol(options)
     reply_init(state.stream_name, state.partition, return_route, init_protocol, state)
-    {:noreply, state}
   end
 
   @impl true
@@ -99,6 +109,7 @@ defmodule Ockam.Stream.Workers.Stream do
     Logger.error("Error decoding request: #{inspect(err)}")
     error_reply = encode_error("Invalid request")
     send_reply(error_reply, return_route, state)
+    {:ok, state}
   end
 
   def handle_data(StreamProtocol.Push, push_request, return_route, state) do

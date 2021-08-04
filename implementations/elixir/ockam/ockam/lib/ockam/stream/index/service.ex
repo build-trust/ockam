@@ -4,6 +4,8 @@ defmodule Ockam.Stream.Index.Service do
   use Ockam.Protocol.Mapping
   use Ockam.Worker
 
+  alias Ockam.Stream.Index.Shard
+
   require Logger
 
   @default_mod Ockam.Stream.Index.Storage.Internal
@@ -50,7 +52,7 @@ defmodule Ockam.Stream.Index.Service do
     shard_id = {client_id, stream_name}
     {shard, state} = ensure_shard(shard_id, state)
 
-    GenServer.cast(shard, {:save_index, partition, index})
+    Shard.save_index(shard, partition, index)
     {:ok, state}
   end
 
@@ -62,7 +64,7 @@ defmodule Ockam.Stream.Index.Service do
     shard_id = {client_id, stream_name}
     {shard, state} = ensure_shard(shard_id, state)
 
-    case GenServer.call(shard, {:get_index, partition}) do
+    case Shard.get_index(shard, partition) do
       {:ok, index} ->
         reply_index(protocol, client_id, stream_name, partition, index, return_route, state)
         {:ok, state}
@@ -74,25 +76,33 @@ defmodule Ockam.Stream.Index.Service do
   end
 
   def ensure_shard(shard_id, state) do
-    case Map.get(Map.get(state, :shards, %{}), shard_id) do
-      nil ->
-        create_shard(shard_id, state)
+    case find_shard(shard_id, state) do
+      {:ok, pid} ->
+        {pid, state}
 
-      shard when is_pid(shard) ->
-        case Process.alive?(shard) do
-          true -> {shard, state}
-          false -> create_shard(shard_id, state)
-        end
+      :error ->
+        create_shard(shard_id, state)
+    end
+  end
+
+  def find_shard(shard_id, state) do
+    with {:ok, address} <- Map.fetch(Map.get(state, :shards, %{}), shard_id),
+         pid when is_pid(pid) <- Ockam.Node.whereis(address),
+         true <- Process.alive?(pid) do
+      {:ok, pid}
+    else
+      _error ->
+        :error
     end
   end
 
   def create_shard(shard_id, state) do
     storage = Map.get(state, :storage)
 
-    {:ok, shard} = Ockam.Stream.Index.Shard.start_link(shard_id, storage)
+    {:ok, shard} = Shard.create(shard_id: shard_id, storage: storage)
 
     shards = Map.get(state, :shards, %{})
-    {shard, Map.put(state, :shards, Map.put(shards, shard_id, shard))}
+    {Ockam.Node.whereis(shard), Map.put(state, :shards, Map.put(shards, shard_id, shard))}
   end
 
   def reply_index(protocol, client_id, stream_name, partition, index, return_route, state) do

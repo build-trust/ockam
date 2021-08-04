@@ -3,6 +3,8 @@ defmodule Ockam.Kafka do
   Helper functions for ockam kafka backends
   """
 
+  alias Ockam.Kafka.Config
+
   require Logger
 
   def client_id(options, default) do
@@ -85,6 +87,64 @@ defmodule Ockam.Kafka do
       {:error, :topic_already_exists} -> :ok
       {:error, err} -> {:error, err}
     end
+  end
+
+  def get_topics(options) do
+    brod_options = brod_options(options)
+
+    case :brod.get_metadata(brod_options.endpoints, :all, brod_options.client_config) do
+      {:ok, %{topic_metadata: topics}} ->
+        Enum.map(topics, fn topic ->
+          {Map.get(topic, :topic), Enum.count(Map.get(topic, :partition_metadata))}
+        end)
+
+      other ->
+        other
+    end
+  end
+
+  def resolve_offset(topic, partition, time, options) do
+    brod_options = brod_options(options)
+
+    :brod.resolve_offset(
+      brod_options.endpoints,
+      topic,
+      partition,
+      time,
+      brod_options.client_config
+    )
+  end
+
+  def fetch(topic, partition, offset, fetch_options, options) do
+    brod_options = brod_options(options)
+
+    :brod.fetch(
+      brod_options.endpoints,
+      topic,
+      partition,
+      offset,
+      fetch_options.max_wait_time,
+      fetch_options.min_bytes,
+      fetch_options.max_bytes,
+      brod_options.client_config
+    )
+  end
+
+  def delete_topics(topics, options) do
+    brod_options = brod_options(options)
+
+    :brod.delete_topics(brod_options.endpoints, topics, 100_000, brod_options.client_config)
+  end
+
+  def brod_options(options) do
+    endpoints = Config.endpoints(options)
+    ## TODO: this is not pretty
+    client_config = client_config(client_config: Config.client_config(options))
+
+    %{
+      endpoints: endpoints,
+      client_config: client_config
+    }
   end
 
   ## TODO: pass more options here

@@ -4,24 +4,34 @@ defmodule Ockam.Stream.Index.Shard do
   This module performs storage operations and keeping state per client_id/stream_name pair
   """
 
-  use GenServer
+  use Ockam.Worker
 
   require Logger
 
-  def start_link(shard_id, storage) do
-    GenServer.start_link(__MODULE__, [shard_id, storage])
+  def get_index(shard, partition) do
+    GenServer.call(shard, {:get_index, partition})
+  end
+
+  def save_index(shard, partition, index) do
+    GenServer.cast(shard, {:save_index, partition, index})
   end
 
   @impl true
-  def init([{client_id, stream_name}, {storage_mod, storage_options}]) do
+  def setup(options, state) do
+    {:ok, {client_id, stream_name}} = Keyword.fetch(options, :shard_id)
+    {:ok, {storage_mod, storage_options}} = Keyword.fetch(options, :storage)
+
     case storage_mod.init(storage_options) do
       {:ok, storage_state} ->
         {:ok,
-         %{
-           storage: {storage_mod, storage_state},
-           client_id: client_id,
-           stream_name: stream_name
-         }}
+         Map.merge(
+           state,
+           %{
+             storage: {storage_mod, storage_state},
+             client_id: client_id,
+             stream_name: stream_name
+           }
+         )}
 
       {:error, error} ->
         Logger.error("Stream index setup error: #{inspect(error)}")
@@ -30,12 +40,17 @@ defmodule Ockam.Stream.Index.Shard do
   end
 
   @impl true
+  def handle_message(_msg, state) do
+    {:ok, state}
+  end
+
+  @impl true
   def handle_cast({:save_index, partition, index}, state) do
     %{client_id: client_id, stream_name: stream_name} = state
 
     case save_index(client_id, stream_name, partition, index, state) do
       {:ok, state} ->
-        {:noreply, state}
+        {:noreply, update_ts(state)}
 
       {{:error, error}, state} ->
         Logger.error(
@@ -54,7 +69,7 @@ defmodule Ockam.Stream.Index.Shard do
 
     case get_index(client_id, stream_name, partition, state) do
       {{:ok, index}, state} ->
-        {:reply, {:ok, index}, state}
+        {:reply, {:ok, index}, update_ts(state)}
 
       {{:error, error}, state} ->
         Logger.error(
@@ -63,8 +78,12 @@ defmodule Ockam.Stream.Index.Shard do
           }"
         )
 
-        {:reply, {:error, error}, state}
+        {:reply, {:error, error}, update_ts(state)}
     end
+  end
+
+  def update_ts(state) do
+    Map.put(state, :last_message_ts, System.os_time(:millisecond))
   end
 
   def save_index(client_id, stream_name, partition, index, state) do

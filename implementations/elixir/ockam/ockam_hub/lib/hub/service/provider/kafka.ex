@@ -27,6 +27,7 @@ defmodule Ockam.Kafka.Hub.Service.Provider do
 
   @behaviour Ockam.Hub.Service.Provider
 
+  alias Ockam.Kafka.Config, as: KafkaConfig
   alias Ockam.Stream.Index.Service, as: StreamIndexService
   alias Ockam.Stream.Workers.Service, as: StreamService
 
@@ -95,70 +96,16 @@ defmodule Ockam.Kafka.Hub.Service.Provider do
   end
 
   def storage_options(args) do
-    stream_prefix =
-      Keyword.get(args, :stream_prefix, Application.get_env(:ockam_kafka, :stream_prefix, ""))
-
-    prefix =
-      case stream_prefix do
-        "" -> ""
-        string -> "#{string}_"
-      end
-
-    sasl_options = sasl_options(args)
-    ssl = Keyword.get(args, :ssl, Application.get_env(:ockam_kafka, :ssl))
-
-    replication_factor =
-      Keyword.get(
-        args,
-        :replication_factor,
-        Application.get_env(:ockam_kafka, :replication_factor)
-      )
-
-    endpoints = endpoints(args)
+    stream_prefix = KafkaConfig.stream_prefix(args)
+    client_config = KafkaConfig.client_config(args)
+    replication_factor = KafkaConfig.replication_factor(args)
+    endpoints = KafkaConfig.endpoints(args)
 
     [
       replication_factor: replication_factor,
       endpoints: endpoints,
-      client_config: [ssl: ssl] ++ sasl_options,
-      topic_prefix: prefix
+      client_config: client_config,
+      topic_prefix: stream_prefix
     ]
-  end
-
-  def sasl_options(args) do
-    sasl =
-      args |> Keyword.get(:sasl, Application.get_env(:ockam_kafka, :sasl)) |> String.to_atom()
-
-    user = Keyword.get(args, :user, Application.get_env(:ockam_kafka, :user))
-    password = Keyword.get(args, :password, Application.get_env(:ockam_kafka, :password))
-
-    case user do
-      nil ->
-        []
-
-      _defined ->
-        [sasl: {sasl, user, password}]
-    end
-  end
-
-  def endpoints(args) do
-    args
-    |> Keyword.get(:endpoints, Application.get_env(:ockam_kafka, :endpoints))
-    |> parse_endpoints()
-  end
-
-  def parse_endpoints(endpoints) when is_list(endpoints) do
-    Enum.map(endpoints, fn string when is_binary(string) ->
-      with [host, port_str] <- String.split(string, ":"),
-           port_int <- String.to_integer(port_str) do
-        {host, port_int}
-      else
-        err ->
-          raise("Unable to parse kafka endpoints: #{inspect(endpoints)}: #{inspect(err)}")
-      end
-    end)
-  end
-
-  def parse_endpoints(endpoints) do
-    parse_endpoints(String.split(endpoints, ","))
   end
 end

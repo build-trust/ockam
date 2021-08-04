@@ -184,7 +184,12 @@ defmodule Ockam.Stream.Index.KafkaOffset do
     timeout = Keyword.get(client_config, :connect_timeout, 20_000)
 
     args = %{type: :group, id: consumer_id, timeout: Keyword.get(options, :timeout, timeout)}
-    :kpro.connect_coordinator(endpoints, [{:nolink, true} | client_config], args)
+
+    with {:ok, coordinator} <-
+           :kpro.connect_coordinator(endpoints, [{:nolink, true} | client_config], args) do
+      Process.link(coordinator)
+      {:ok, coordinator}
+    end
   end
 
   def update_coordinator(coordinator, consumer_id, state) do
