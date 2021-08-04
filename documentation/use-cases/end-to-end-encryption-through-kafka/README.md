@@ -325,7 +325,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     cargo run --example alice
     ```
 
-The interaction will be very similar to when we ran the [docker based programs](#run-using-docker)
+The interaction will be very similar to when we ran the [docker based programs](#run-using-docker).
 
 ## Conclusion
 
