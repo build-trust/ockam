@@ -153,7 +153,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Next, create a new cargo project to get started:
 
 ```
-cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
+cargo new --lib ockam_kafka && cd ockam_kafka && mkdir examples &&
   echo 'ockam = "*"' >> Cargo.toml && cargo build
 ```
 
