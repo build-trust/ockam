@@ -10,7 +10,6 @@ use tokio::{
 };
 
 use crate::{
-    block_future,
     error::Error,
     node::NullWorker,
     parser,
@@ -33,17 +32,6 @@ impl Context {
     /// Return runtime clone
     pub fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
-    }
-}
-
-impl Drop for Context {
-    fn drop(&mut self) {
-        let addr = self.address.first();
-        trace!("Running Context::drop()");
-
-        if let Err(e) = block_future(self.rt.as_ref(), async { self.stop_worker(addr).await }) {
-            trace!("Error occured during Context::drop(): {}", e);
-        };
     }
 }
 
