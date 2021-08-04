@@ -1,9 +1,9 @@
-use crate::{error::Error, relay::RelayMessage, NodeMessage, NodeReply, NodeReplyResult};
+use crate::{
+    error::Error, relay::RelayMessage, AddressRecord, NodeMessage, NodeReply, NodeReplyResult,
+};
 use ockam_core::{Address, AddressSet, Result};
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-
-type RelaySender = Arc<Sender<RelayMessage>>;
 
 /// A combined address type and local worker router
 ///
@@ -15,19 +15,10 @@ type RelaySender = Arc<Sender<RelayMessage>>;
 /// registers itself with this router.  Only one router can be
 /// registered per address type.
 pub struct Router {
-    /// Primary mapping of worker senders
-    ///
-    /// For each address a worker listens to a reference to the same
-    /// sender will be store in this map, as to allow alias addresses
-    /// to be checked for collisions.
-    internal: BTreeMap<Address, RelaySender>,
-    /// Additional address map
-    ///
-    /// Each worker has a primary address, with secondary addresses
-    /// that are stored in this map.  When shutting down a worker,
-    /// secondary address senders also need to be cleared for the
-    /// worker to shut down
-    addr_map: BTreeMap<Address, AddressSet>,
+    /// Registry that maps primary address to all Addresses of a Worker and its Sender
+    internal: BTreeMap<Address, AddressRecord>,
+    /// Registry of primary addresses for all known addresses
+    addr_map: BTreeMap<Address, Address>,
     /// Externally registered router components
     external: BTreeMap<u8, Address>,
     /// Receiver for messages from node
@@ -62,8 +53,9 @@ impl Router {
     }
 
     pub fn init(&mut self, addr: Address, mb: Sender<RelayMessage>) {
-        self.internal.insert(addr.clone(), Arc::new(mb));
-        self.addr_map.insert(addr.clone(), addr.into());
+        self.internal
+            .insert(addr.clone(), AddressRecord::new(addr.clone().into(), mb));
+        self.addr_map.insert(addr.clone(), addr);
     }
 
     pub fn sender(&self) -> Sender<NodeMessage> {
@@ -133,15 +125,15 @@ impl Router {
     ) -> Result<()> {
         trace!("Starting new worker '{}'", addrs.first());
 
-        if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
-            trace!("{:#?}", self.internal);
-        }
+        let primary_addr = addrs.first();
 
-        let sender = Arc::new(sender);
+        let address_record = AddressRecord::new(addrs.clone(), sender);
+
+        self.internal.insert(primary_addr.clone(), address_record);
+
         addrs.iter().for_each(|addr| {
-            self.internal.insert(addr.clone(), Arc::clone(&sender));
+            self.addr_map.insert(addr.clone(), primary_addr.clone());
         });
-        self.addr_map.insert(addrs.first(), addrs);
 
         // For now we just send an OK back -- in the future we need to
         // communicate the current executor state
@@ -155,20 +147,39 @@ impl Router {
     async fn stop_worker(&mut self, addr: &Address, reply: &Sender<NodeReplyResult>) -> Result<()> {
         trace!("Stopping worker '{}'", addr);
 
-        let addrs = self.addr_map.remove(addr).unwrap();
+        let primary_address;
+        if let Some(p) = self.addr_map.get(addr) {
+            primary_address = p.clone();
+        } else {
+            reply
+                .send(NodeReply::no_such_worker(addr.clone()))
+                .await
+                .map_err(|_| Error::InternalIOFailure)?;
 
-        match addrs.iter().fold(Some(()), |opt, addr| {
-            match (opt, self.internal.remove(addr)) {
-                (Some(_), Some(_)) => Some(()),
-                (Some(_), None) => None,
-                (None, _) => None,
-            }
-        }) {
-            Some(_) => reply.send(NodeReply::ok()),
-            None => reply.send(NodeReply::no_such_worker(addr.clone())),
+            return Ok(());
         }
-        .await
-        .map_err(|_| Error::InternalIOFailure)?;
+
+        let record;
+        if let Some(r) = self.internal.remove(&primary_address) {
+            record = r;
+        } else {
+            // Actually should not happen
+            reply
+                .send(NodeReply::no_such_worker(addr.clone()))
+                .await
+                .map_err(|_| Error::InternalIOFailure)?;
+
+            return Ok(());
+        }
+
+        for addr in record.address_set().iter() {
+            self.addr_map.remove(&addr);
+        }
+
+        reply
+            .send(NodeReply::ok())
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
 
         Ok(())
     }
@@ -186,12 +197,20 @@ impl Router {
     ) -> Result<()> {
         trace!("Resolving worker address '{}'", addr);
 
-        match self.internal.get(addr) {
-            Some(sender) => reply.send(NodeReply::sender(
-                addr.clone(),
-                sender.as_ref().clone(),
-                wrap,
-            )),
+        let primary_address;
+        if let Some(p) = self.addr_map.get(addr) {
+            primary_address = p.clone();
+        } else {
+            reply
+                .send(NodeReply::no_such_worker(addr.clone()))
+                .await
+                .map_err(|_| Error::InternalIOFailure)?;
+
+            return Ok(());
+        }
+
+        match self.internal.get(&primary_address) {
+            Some(record) => reply.send(NodeReply::sender(addr.clone(), record.sender(), wrap)),
             None => reply.send(NodeReply::no_such_worker(addr.clone())),
         }
         .await

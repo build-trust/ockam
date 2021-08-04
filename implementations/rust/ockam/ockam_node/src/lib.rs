@@ -12,6 +12,7 @@
 #[macro_use]
 extern crate tracing;
 
+mod address_record;
 mod context;
 mod error;
 mod executor;
@@ -23,6 +24,7 @@ mod relay;
 mod router;
 mod tests;
 
+pub(crate) use address_record::*;
 pub use context::*;
 pub use executor::*;
 pub use mailbox::*;
