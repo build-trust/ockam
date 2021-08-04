@@ -15,7 +15,7 @@
 //! The `Relay` is then responsible for turning the message back into
 //! a type and notifying the companion actor.
 
-use crate::{parser, Context, Mailbox};
+use crate::{parser, Context};
 use ockam_core::{
     Address, LocalMessage, Message, Result, Route, Routed, RouterMessage, TransportMessage, Worker,
 };
@@ -204,13 +204,17 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
 }
 
 /// Build and spawn a new worker relay, returning a send handle to it
-pub(crate) fn build<W, M>(rt: &Runtime, worker: W, ctx: Context) -> Sender<RelayMessage>
+pub(crate) fn build<W, M>(
+    rt: &Runtime,
+    worker: W,
+    ctx: Context,
+    mb_tx: Sender<RelayMessage>,
+) -> Sender<RelayMessage>
 where
     W: Worker<Context = Context, Message = M>,
     M: Message + Send + 'static,
 {
     let (tx, rx) = channel(32);
-    let mb_tx = ctx.mailbox().sender();
     let relay = Relay::<W, M>::new(worker, ctx);
 
     rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
@@ -223,14 +227,16 @@ where
 /// The root relay is different from normal worker relays because its
 /// message inbox is never automatically run, and instead needs to be
 /// polled via a `receive()` call.
-pub(crate) fn build_root<W, M>(rt: Arc<Runtime>, mailbox: &Mailbox) -> Sender<RelayMessage>
+pub(crate) fn build_root<W, M>(
+    rt: Arc<Runtime>,
+    mb_tx: Sender<RelayMessage>,
+) -> Sender<RelayMessage>
 where
     W: Worker<Context = Context, Message = M>,
     M: Message + Send + 'static,
 {
     let (tx, rx) = channel(32);
 
-    let mb_tx = mailbox.sender();
     rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
     tx
 }

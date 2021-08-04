@@ -1,3 +1,4 @@
+use crate::relay::RelayMessage;
 use crate::{relay, Context, Executor, Mailbox, NodeMessage};
 use ockam_core::Address;
 use std::sync::Arc;
@@ -10,12 +11,16 @@ pub struct NullWorker;
 
 impl NullWorker {
     /// Create and register a new NullWorker context
-    pub fn new(rt: Arc<Runtime>, addr: &Address, tx: Sender<NodeMessage>) -> Context {
+    pub fn new(
+        rt: Arc<Runtime>,
+        addr: &Address,
+        tx: Sender<NodeMessage>,
+    ) -> (Context, Sender<RelayMessage>) {
         // Create a new Mailbox and Context
         let (mb_tx, mb_rx) = channel(32);
-        let mb = Mailbox::new(mb_rx, mb_tx);
+        let mb = Mailbox::new(mb_rx);
 
-        Context::new(rt, tx, addr.into(), mb)
+        (Context::new(rt, tx, addr.into(), mb), mb_tx)
     }
 }
 
@@ -35,10 +40,10 @@ pub fn start_node() -> (Context, Executor) {
 
     // The root application worker needs a mailbox and relay to accept
     // messages from workers, and to buffer incoming transcoded data.
-    let ctx = NullWorker::new(exe.runtime(), &addr, exe.sender());
+    let (ctx, mb_tx) = NullWorker::new(exe.runtime(), &addr, exe.sender());
 
     // Build a mailbox worker to buffer messages
-    let sender = relay::build_root::<NullWorker, _>(exe.runtime(), &ctx.mailbox());
+    let sender = relay::build_root::<NullWorker, _>(exe.runtime(), mb_tx);
 
     // Register this mailbox handle with the executor
     exe.initialize_system("app", sender);

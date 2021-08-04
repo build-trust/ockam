@@ -33,9 +33,6 @@ impl Context {
     pub fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
     }
-    pub(crate) fn mailbox(&self) -> &Mailbox {
-        &self.mailbox
-    }
     pub(crate) fn mailbox_mut(&mut self) -> &mut Mailbox {
         &mut self.mailbox
     }
@@ -80,10 +77,10 @@ impl Context {
     /// Create a new context without spawning a full worker
     pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
         let addr = addr.into();
-        let ctx = NullWorker::new(Arc::clone(&self.rt), &addr, self.sender.clone());
+        let (ctx, tx) = NullWorker::new(Arc::clone(&self.rt), &addr, self.sender.clone());
 
         // Create a small relay and register it with the internal router
-        let sender = relay::build_root::<NullWorker, _>(Arc::clone(&self.rt), &ctx.mailbox);
+        let sender = relay::build_root::<NullWorker, _>(Arc::clone(&self.rt), tx);
         let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender);
         self.sender
             .send(msg)
@@ -119,13 +116,13 @@ impl Context {
 
         // Build the mailbox first
         let (mb_tx, mb_rx) = channel(32);
-        let mb = Mailbox::new(mb_rx, mb_tx);
+        let mb = Mailbox::new(mb_rx);
 
         // Pass it to the context
         let ctx = Context::new(self.rt.clone(), self.sender.clone(), address.clone(), mb);
 
         // Then initialise the worker message relay
-        let sender = relay::build::<NW, NM>(self.rt.as_ref(), worker, ctx);
+        let sender = relay::build::<NW, NM>(self.rt.as_ref(), worker, ctx, mb_tx);
 
         // Send start request to router
         let (msg, mut rx) = NodeMessage::start_worker(address, sender);
@@ -330,11 +327,9 @@ impl Context {
             loop {
                 match self.next_from_mailbox().await {
                     Ok((m, data, addr)) if check(&m) => break Ok((m, data, addr)),
-                    Ok((_, data, addr)) => {
-                        let onward = data.transport().onward_route.clone();
-                        self.mailbox
-                            .requeue(RelayMessage::direct(addr, data, onward))
-                            .await;
+                    Ok((_, data, _)) => {
+                        // Requeue
+                        self.forward(data).await?;
                     }
                     e => break e,
                 }
@@ -393,10 +388,8 @@ impl Context {
             match parser::message(&data.transport().payload).ok() {
                 Some(msg) => break Ok((msg, data, addr)),
                 None => {
-                    let onward = data.transport().onward_route.clone();
-                    self.mailbox
-                        .requeue(RelayMessage::direct(addr, data, onward))
-                        .await;
+                    // Requeue
+                    self.forward(data).await?;
                 }
             }
         }
