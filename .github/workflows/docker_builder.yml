@@ -1,5 +1,11 @@
 name: docker_builder
 on:
+  # https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_run
+  workflow_run:
+      workflows:
+        - docker_base_builder
+      types:
+        - completed
   workflow_dispatch:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
