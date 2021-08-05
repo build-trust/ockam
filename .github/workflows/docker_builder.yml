@@ -1,16 +1,23 @@
 name: docker_builder
 on:
-  workflow_dispatch:
+  # https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_run
+  workflow_run:
+    workflows:
+      - docker_base
+    types:
+      - completed
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - 'tools/docker/builder'
+      - 'tools/docker/builder/**'
     branches:
       - develop
 
 jobs:
-  docker_builder_builder:
-    runs-on: debian:10.7-slim
+  docker_builder:
+    runs-on: ubuntu-20.04
+    # We shouldn't run it on forks.
+    if: github.repository_owner == 'ockam-network'
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
@@ -23,7 +30,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata for Docker
-        id: meta
         uses: docker/metadata-action@v3
         with:
           images: ghcr.io/ockam-network/ockam/builder
@@ -33,4 +39,4 @@ jobs:
         with:
           context: tools/docker/builder
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/ockam-network/ockam/builder:latest
