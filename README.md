@@ -1,7 +1,7 @@
 <div align="center">
 :sparkles:
-<a href="./documentation/guides/rust#readme">
-Step-by-Step: Build end-to-end encrypted, mutually-authenticated, secure communication in Rust
+<a href="./documentation/use-cases/end-to-end-encryption-with-rust#readme">
+Hands-on Introduction: Build end-to-end encrypted, mutually-authenticated, secure messaging in Rust
 </a>
 :sparkles:
 </div>
@@ -147,6 +147,27 @@ Here's a high-level view of the core ideas in Ockam.
 
 To learn more please see our [step-by-step guide](./documentation/guides/rust#readme).
 
+## Next Steps
+
+* [__End-to-End Encryption with Rust__](./documentation/use-cases/end-to-end-encryption-with-rust#readme):
+In this hands-on guide, we create two small Rust programs called Alice and Bob. Alice and Bob send each other
+messages, over the network, via a cloud service. They mutually authenticate each other and have a cryptographic
+guarantee that the integrity, authenticity, and confidentiality of their messages is protected end-to-end.
+[👉](./documentation/use-cases/end-to-end-encryption-with-rust#readme)
+
+* [__Step-by-Step Deep Dive__](./documentation/guides/rust#readme):
+In this step-by-step guide we write many small rust programs to understand the various building blocks
+that make up Ockam. We dive into Node, Workers, Routing, Transport, Secure Channels and more.
+[👉](./documentation/guides/rust#readme)
+
+* [__End-to-End Encryption through Kafka__](./documentation/use-cases/end-to-end-encryption-through-kafka#readme):
+In this guide, we show two programs called Alice and Bob. Alice and Bob send each other messages, over
+the network, via a cloud service, _through Kafka_. They mutually authenticate each other and have a
+cryptographic guarantee that the integrity, authenticity, and confidentiality of their messages is protected
+end-to-end. The Kafka instance, the intermediary cloud service and attackers on the network are not be able
+to see or change the contents of en-route messages. The application data in Kafka is encrypted.
+[👉](./documentation/use-cases/end-to-end-encryption-through-kafka#readme)
+
 ## License
 
 The code in this repository is licensed under the terms of the [Apache License 2.0](LICENSE).
@@ -168,8 +189,8 @@ The code in this repository is licensed under the terms of the [Apache License 2
 
 <div align="center">
 :sparkles:
-<a href="./documentation/guides/rust#readme">
-Step-by-Step: Build end-to-end encrypted, mutually-authenticated, secure communication in Rust
+<a href="./documentation/use-cases/end-to-end-encryption-with-rust#readme">
+Hands-on Introduction: Build end-to-end encrypted, mutually-authenticated, secure messaging in Rust
 </a>
 :sparkles:
 </div>
