@@ -1,5 +1,4 @@
-ARG BASE_IMAGE=ockam/builder_base:latest
-FROM ${BASE_IMAGE}
+FROM ghcr.io/ockam-network/ockam/builder_base:latest
 
 ARG CMAKE_VERSION=3.19.2
 ARG CMAKE_SHA256=4d8a6d852c530f263b22479aad196416bb4406447e918bd9759c6593b7f5f3f9
