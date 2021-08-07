@@ -24,8 +24,10 @@ defprotocol Ockam.Address do
   Allowed in guard tests. Inlined by the compiler.
   """
   @doc guard: true
-  defguard is_address_type(term)
-           when is_atom(term) or (is_integer(term) and term >= 0 and term <= 255)
+  Kernel.defguard(
+    is_address_type(term)
+    when is_atom(term) or (is_integer(term) and term >= 0 and term <= 255)
+  )
 end
 
 defimpl Ockam.Address, for: Any do
