@@ -5,6 +5,16 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.22.0 - 2021-08-09
+### Changed
+- Move sender out of Mailbox
+- Avoid RelayMessage cloning
+- Make mailbox field private
+- Restructure router internals
+- Dependencies updated.
+### Deleted
+- Remove Drop implementation for Context
+
 ## v0.21.0 - 2021-08-03
 ### Changed
 - Raised default message polling timeout to 30 seconds.
