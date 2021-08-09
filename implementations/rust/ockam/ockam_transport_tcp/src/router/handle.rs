@@ -1,8 +1,9 @@
 use crate::atomic::ArcBool;
-use crate::{parse_socket_addr, TcpError, TcpListenWorker, WorkerPair, TCP};
+use crate::{parse_socket_addr, TcpListenWorker, WorkerPair, TCP};
 use ockam_core::lib::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{Address, Result, RouterMessage};
 use ockam_node::{block_future, Context};
+use ockam_transport::TransportError;
 use std::sync::Arc;
 
 /// A handle to connect to a TcpRouter
@@ -72,12 +73,12 @@ impl TcpRouterHandle {
             if let Some(p) = iter.filter(|x| x.is_ipv4()).next() {
                 peer_addr = p;
             } else {
-                return Err(TcpError::InvalidAddress.into());
+                return Err(TransportError::InvalidAddress.into());
             }
 
             hostnames = vec![peer_str];
         } else {
-            return Err(TcpError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress.into());
         }
 
         let pair = WorkerPair::start(&self.ctx, peer_addr, hostnames).await?;

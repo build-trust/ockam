@@ -27,18 +27,19 @@ mod workers;
 pub(crate) use router::*;
 pub(crate) use workers::*;
 
-mod error;
 mod transport;
 
-pub use error::*;
 pub use transport::*;
 
 use ockam_core::lib::net::SocketAddr;
 use ockam_core::Result;
+use ockam_transport::TransportError;
 
 /// TCP address type constant
 pub const TCP: u8 = 1;
 
 fn parse_socket_addr(s: impl Into<String>) -> Result<SocketAddr> {
-    Ok(s.into().parse().map_err(|_| TcpError::InvalidAddress)?)
+    Ok(s.into()
+        .parse()
+        .map_err(|_| TransportError::InvalidAddress)?)
 }
