@@ -3,10 +3,11 @@ use std::{collections::BTreeMap, net::SocketAddr};
 
 use ockam_core::{async_trait, Address, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 
 use crate::atomic::{self, ArcBool};
 use crate::init::WorkerPair;
-use crate::{listener::WebSocketListenWorker, WebSocketError};
+use crate::listener::WebSocketListenWorker;
 
 /// A WebSocket address router and connection listener
 ///
@@ -92,7 +93,7 @@ impl Worker for WebSocketRouter {
                 let onward = msg.transport_mut().onward_route.step()?;
 
                 // Look up the connection worker responsible
-                let next = self.map.get(&onward).ok_or(WebSocketError::UnknownRoute)?;
+                let next = self.map.get(&onward).ok_or(TransportError::UnknownRoute)?;
 
                 // Modify the transport message route
                 msg.transport_mut()
@@ -108,12 +109,12 @@ impl Worker for WebSocketRouter {
                     trace!("TCP registration request: {} => {}", f, self_addr);
                 } else {
                     // Should not happen
-                    return Err(WebSocketError::InvalidAddress.into());
+                    return Err(TransportError::InvalidAddress.into());
                 }
 
                 for accept in &accepts {
                     if self.map.contains_key(accept) {
-                        return Err(WebSocketError::AlreadyConnected.into());
+                        return Err(TransportError::AlreadyConnected.into());
                     }
                 }
                 for accept in accepts {

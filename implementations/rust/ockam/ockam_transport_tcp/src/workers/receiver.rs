@@ -1,10 +1,8 @@
-use crate::{
-    atomic::{self, ArcBool},
-    TcpError,
-};
+use crate::atomic::{self, ArcBool};
 use async_trait::async_trait;
 use ockam_core::{Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, info, trace};
 
@@ -76,8 +74,8 @@ impl Worker for TcpRecvWorker {
             }
 
             // Deserialize the message now
-            let mut msg: TransportMessage =
-                serde_bare::from_slice(buf.as_slice()).map_err(|_| TcpError::RecvBadMessage)?;
+            let mut msg: TransportMessage = serde_bare::from_slice(buf.as_slice())
+                .map_err(|_| TransportError::RecvBadMessage)?;
 
             // Insert the peer address into the return route so that
             // reply routing can be properly resolved

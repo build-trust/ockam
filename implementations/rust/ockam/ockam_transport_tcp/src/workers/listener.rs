@@ -1,10 +1,11 @@
 use crate::{
     atomic::{self, ArcBool},
-    TcpError, TcpRouterHandle, WorkerPair,
+    TcpRouterHandle, WorkerPair,
 };
 use async_trait::async_trait;
 use ockam_core::{Address, Result, Worker};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tracing::{debug, trace};
@@ -25,7 +26,9 @@ impl TcpListenWorker {
         let waddr = Address::random(0);
 
         debug!("Binding TcpListener to {}", addr);
-        let inner = TcpListener::bind(addr).await.map_err(TcpError::from)?;
+        let inner = TcpListener::bind(addr)
+            .await
+            .map_err(TransportError::from)?;
         let worker = Self {
             inner,
             run,
@@ -50,7 +53,7 @@ impl Worker for TcpListenWorker {
             trace!("Waiting for incoming TCP connection...");
 
             // Wait for an incoming connection
-            let (stream, peer) = self.inner.accept().await.map_err(TcpError::from)?;
+            let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
 
             // And spawn a connection worker for it
             let pair = WorkerPair::new_with_stream(ctx, stream, peer, vec![]).await?;

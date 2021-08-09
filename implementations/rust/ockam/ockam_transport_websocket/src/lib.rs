@@ -28,6 +28,7 @@ use std::str::FromStr;
 
 use ockam_core::{Address, Result};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 
 pub use error::WebSocketError;
 pub use init::WorkerPair;
@@ -38,6 +39,8 @@ use crate::router::{WebSocketRouter, WebSocketRouterHandle};
 
 mod atomic;
 mod error;
+#[cfg(test)]
+mod error_test;
 mod init;
 mod listener;
 mod receiver;
@@ -91,7 +94,7 @@ pub const WS: u8 = 2;
 fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
     Ok(s.into()
         .parse()
-        .map_err(|_| WebSocketError::InvalidAddress)?)
+        .map_err(|_| TransportError::InvalidAddress)?)
 }
 
 impl WebSocketTransport {

@@ -39,12 +39,6 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
-
-[[package]]
-name = "ahash"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43bb833f0bf979d8475d38fbf09ed3b8a55e1885fe93ad3f93239fc6a4f17b98"
@@ -365,28 +359,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a471a38ef8ed83cd6e40aa59c1ffe17db6855c18e3604d9c4ed8c08ebc28678"
 
 [[package]]
-name = "futures"
-version = "0.3.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1adc00f486adfc9ce99f77d717836f0c5aa84965eb0b4f051f4e83f7cab53f8b"
-dependencies = [
- "futures-channel",
- "futures-core",
- "futures-executor",
- "futures-io",
- "futures-sink",
- "futures-task",
- "futures-util",
-]
-
-[[package]]
 name = "futures-channel"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74ed2411805f6e4e3d9bc904c95d5d423b89b3b25dc0250aa74729de20629ff9"
 dependencies = [
  "futures-core",
- "futures-sink",
 ]
 
 [[package]]
@@ -394,36 +372,6 @@ name = "futures-core"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af51b1b4a7fdff033703db39de8802c673eb91855f2e0d47dcf3bf2c0ef01f99"
-
-[[package]]
-name = "futures-executor"
-version = "0.3.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d0d535a57b87e1ae31437b892713aee90cd2d7b0ee48727cd11fc72ef54761c"
-dependencies = [
- "futures-core",
- "futures-task",
- "futures-util",
-]
-
-[[package]]
-name = "futures-io"
-version = "0.3.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b0e06c393068f3a6ef246c75cdca793d6a46347e75286933e5e75fd2fd11582"
-
-[[package]]
-name = "futures-macro"
-version = "0.3.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c54913bae956fb8df7f4dc6fc90362aa72e69148e3f39041fbe8742d21e0ac57"
-dependencies = [
- "autocfg",
- "proc-macro-hack",
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "futures-sink"
@@ -444,17 +392,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67eb846bfd58e44a8481a00049e82c43e0ccb5d61f8dc071057cb19249dd4d78"
 dependencies = [
  "autocfg",
- "futures-channel",
  "futures-core",
- "futures-io",
- "futures-macro",
  "futures-sink",
  "futures-task",
- "memchr",
  "pin-project-lite",
  "pin-utils",
- "proc-macro-hack",
- "proc-macro-nested",
  "slab",
  "tokio-io",
 ]
@@ -524,20 +466,11 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
-dependencies = [
- "ahash 0.4.7",
-]
-
-[[package]]
-name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
- "ahash 0.7.4",
+ "ahash",
  "serde",
 ]
 
@@ -804,13 +737,9 @@ dependencies = [
  "ockam_core",
  "ockam_entity",
  "ockam_key_exchange_core",
- "ockam_key_exchange_xx",
  "ockam_node",
  "ockam_node_attribute",
- "ockam_transport_tcp",
- "ockam_vault",
  "ockam_vault_core",
- "ockam_vault_sync_core",
  "rand 0.8.4",
  "serde",
  "serde-big-array",
@@ -829,11 +758,8 @@ dependencies = [
  "async-trait",
  "ockam_core",
  "ockam_key_exchange_core",
- "ockam_key_exchange_xx",
  "ockam_node",
- "ockam_vault",
  "ockam_vault_core",
- "ockam_vault_sync_core",
  "rand 0.8.4",
  "serde",
  "serde_bare 0.3.0",
@@ -845,7 +771,7 @@ name = "ockam_core"
 version = "0.25.0-dev"
 dependencies = [
  "async-trait",
- "hashbrown 0.11.2",
+ "hashbrown",
  "hex",
  "rand 0.8.4",
  "serde",
@@ -918,18 +844,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_transport_tcp"
-version = "0.19.0-dev"
+name = "ockam_transport_core"
+version = "0.1.0-dev"
 dependencies = [
- "async-trait",
- "futures 0.3.16",
- "hashbrown 0.9.1",
  "ockam_core",
- "ockam_node",
- "rand 0.7.3",
- "serde",
- "serde_bare 0.3.0",
- "tokio",
  "tracing",
 ]
 
@@ -942,6 +860,7 @@ dependencies = [
  "ockam",
  "ockam_core",
  "ockam_node",
+ "ockam_transport_core",
  "serde_bare 0.4.0",
  "tokio",
  "tokio-tungstenite",
@@ -1095,18 +1014,6 @@ name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
-
-[[package]]
-name = "proc-macro-nested"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 
 [[package]]
 name = "proc-macro2"
@@ -1438,7 +1345,7 @@ dependencies = [
  "digest",
  "ff",
  "group",
- "hashbrown 0.11.2",
+ "hashbrown",
  "heapless",
  "rand_core 0.6.3",
  "serde",
@@ -1571,7 +1478,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57fc868aae093479e3131e3d165c93b1c7474109d13c90ec0dda2a1bbfff0674"
 dependencies = [
  "bytes 0.4.12",
- "futures 0.1.31",
+ "futures",
  "log",
 ]
 

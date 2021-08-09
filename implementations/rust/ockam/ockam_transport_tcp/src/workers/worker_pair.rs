@@ -1,9 +1,10 @@
 use crate::{
     atomic::{self, ArcBool},
-    TcpError, TcpRecvWorker, TcpSendWorker,
+    TcpRecvWorker, TcpSendWorker,
 };
 use ockam_core::{Address, Result};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tracing::{debug, trace};
@@ -73,7 +74,9 @@ impl WorkerPair {
         debug!("Starting worker connection to remote {}", peer);
 
         // TODO: make i/o errors into ockam_error
-        let stream = TcpStream::connect(peer).await.map_err(TcpError::from)?;
+        let stream = TcpStream::connect(peer)
+            .await
+            .map_err(TransportError::from)?;
         Self::new_with_stream(ctx, stream, peer, hostnames).await
     }
 }

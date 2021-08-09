@@ -1,12 +1,6 @@
-// TODO: we might be able to make this error type more generic and
-// move it to an `ockam_transport` crate which would then aid authors
-// of transport channels in their implementations.
-
-use ockam_core::Error;
-
-/// A TCP connection worker specific error type
-#[derive(Clone, Copy, Debug)]
-pub enum TcpError {
+/// A Transport worker specific error type
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TransportError {
     /// Failed to send a malformed message
     SendBadMessage,
     /// Failed to receive a malformed message
@@ -19,35 +13,42 @@ pub enum TcpError {
     AlreadyConnected,
     /// Connection peer was not found
     PeerNotFound,
-    /// Peer requected the incoming connection
+    /// Peer requested the incoming connection
     PeerBusy,
     /// Failed to route to an unknown recipient
     UnknownRoute,
     /// Failed to parse the socket address
     InvalidAddress,
+    /// Failed to read message (buffer exhausted) or failed to send it (size is too big)
+    Capacity,
+    /// Failed to encode message
+    Encoding,
+    /// Transport protocol violation
+    Protocol,
     /// A generic I/O failure
     GenericIo,
 }
 
-impl TcpError {
+impl TransportError {
     /// Integer code associated with the error domain.
     pub const DOMAIN_CODE: u32 = 15_000;
     /// Error domain
-    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_TCP";
+    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_CORE";
 }
 
-impl From<TcpError> for Error {
-    fn from(e: TcpError) -> Error {
-        Error::new(TcpError::DOMAIN_CODE + (e as u32), TcpError::DOMAIN_NAME)
+impl From<TransportError> for ockam_core::Error {
+    fn from(e: TransportError) -> ockam_core::Error {
+        ockam_core::Error::new(
+            TransportError::DOMAIN_CODE + (e as u32),
+            TransportError::DOMAIN_NAME,
+        )
     }
 }
 
-impl From<std::io::Error> for TcpError {
+impl From<std::io::Error> for TransportError {
     fn from(e: std::io::Error) -> Self {
-        use std::io::ErrorKind::*;
-        dbg!();
         match e.kind() {
-            ConnectionRefused => Self::PeerNotFound,
+            std::io::ErrorKind::ConnectionRefused => Self::PeerNotFound,
             _ => Self::GenericIo,
         }
     }
