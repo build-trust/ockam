@@ -25,7 +25,7 @@ digest = "0.9"
 ff = "0.10"
 group = "0.10"
 hashbrown = { version = "0.11", features = ["serde"] }
-heapless = "0.7.3"
+heapless = "0.7"
 rand_core = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 subtle = "2.4"

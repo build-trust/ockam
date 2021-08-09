@@ -15,9 +15,9 @@ dependencies = [
 
 [[package]]
 name = "atomic-polyfill"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30302dda7a66f8c55932ebf208f7def840743ff64d495e9ceffcd97c18f11d39"
+checksum = "4a93ba5d6053837dbb76fd0ae26fd4f0c1859a008a783b0ce072b797c07f0f27"
 dependencies = [
  "cortex-m",
 ]
@@ -201,9 +201,9 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34e26526e7168021f34243a3c8faac4dc4f938cde75a0f9b8e373cca5eb4e7ce"
+checksum = "767c746c1943728fb6f2cdb24b2cbe292dd4d6976640758060adf4bb9855a7ca"
 dependencies = [
  "atomic-polyfill",
  "hash32",
