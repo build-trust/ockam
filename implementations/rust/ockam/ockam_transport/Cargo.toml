@@ -1,0 +1,25 @@
+[package]
+name = "ockam_transport"
+version = "0.1.0-dev"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport"
+readme = "README.md"
+keywords = ["ockam", "ockam-transport"]
+categories = ["network-programming", "asynchronous"]
+description = """
+Generic Transport primitives.
+"""
+exclude = [
+    "DEVELOP.md",
+    "LICENSE"
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ockam_core = { path = "../ockam_core", version = "0.24.0-dev" }
+tracing = "0.1"
+
