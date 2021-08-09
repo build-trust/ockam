@@ -35,6 +35,7 @@ pub use receiver::WebSocketRecvWorker;
 pub use sender::WebSocketSendWorker;
 
 use crate::router::{WebSocketRouter, WebSocketRouterHandle};
+use ockam_transport::TransportError;
 
 mod atomic;
 mod error;
@@ -91,7 +92,7 @@ pub const WS: u8 = 2;
 fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
     Ok(s.into()
         .parse()
-        .map_err(|_| WebSocketError::InvalidAddress)?)
+        .map_err(|_| TransportError::InvalidAddress)?)
 }
 
 impl WebSocketTransport {

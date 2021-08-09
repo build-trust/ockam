@@ -13,12 +13,18 @@ pub enum TransportError {
     AlreadyConnected,
     /// Connection peer was not found
     PeerNotFound,
-    /// Peer requected the incoming connection
+    /// Peer requested the incoming connection
     PeerBusy,
     /// Failed to route to an unknown recipient
     UnknownRoute,
     /// Failed to parse the socket address
     InvalidAddress,
+    /// Failed to read message (buffer exhausted) or failed to send it (size is too big)
+    Capacity,
+    /// Failed to encode message
+    Encoding,
+    /// Transport protocol violation
+    Protocol,
     /// A generic I/O failure
     GenericIo,
 }

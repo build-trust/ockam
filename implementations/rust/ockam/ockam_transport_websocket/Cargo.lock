@@ -918,6 +918,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_transport"
+version = "0.1.0-dev"
+dependencies = [
+ "ockam_core",
+ "tracing",
+]
+
+[[package]]
 name = "ockam_transport_tcp"
 version = "0.19.0-dev"
 dependencies = [
@@ -926,6 +934,7 @@ dependencies = [
  "hashbrown 0.9.1",
  "ockam_core",
  "ockam_node",
+ "ockam_transport",
  "rand 0.7.3",
  "serde",
  "serde_bare 0.3.0",
@@ -942,7 +951,9 @@ dependencies = [
  "ockam",
  "ockam_core",
  "ockam_node",
+ "ockam_transport",
  "serde_bare 0.4.0",
+ "thiserror",
  "tokio",
  "tokio-tungstenite",
  "tracing",

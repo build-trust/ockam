@@ -28,6 +28,7 @@ futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["tokio-io"] }
 ockam_core = { path = "../ockam_core", version = "0.25.0-dev"         }
 ockam_node = { path = "../ockam_node", version = "0.23.0-dev"         }
+ockam_transport = { path = "../ockam_transport", version = "0.1.0" }
 serde_bare = "0.4.0"
 tokio = { version = "1.8", features = ["rt-multi-thread", "sync", "net", "macros", "time"] }
 tokio-tungstenite = "0.15"

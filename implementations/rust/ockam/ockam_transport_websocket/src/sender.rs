@@ -8,7 +8,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
 use tokio_tungstenite::WebSocketStream;
 
-use crate::WebSocketError;
+use ockam_transport::TransportError;
 
 /// A WebSocket sending message worker
 ///
@@ -45,7 +45,7 @@ where
         msg.onward_route.step()?;
 
         // Create a message buffer with pre-pended length
-        let msg = serde_bare::to_vec(&msg.body()).map_err(|_| WebSocketError::SendBadMessage)?;
+        let msg = serde_bare::to_vec(&msg.body()).map_err(|_| TransportError::SendBadMessage)?;
         if self
             .ws_sink
             .send(WebSocketMessage::from(msg))
