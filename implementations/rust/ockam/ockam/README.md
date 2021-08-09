@@ -3,10 +3,12 @@
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
 [![license][license-image]][license-link]
+[![status][status-image]][status-link]
 [![discuss][discuss-image]][discuss-link]
 
 End-to-end encrypted, mutually authenticated, secure communication.
-_[A hands-on guide][e2ee-rust-guide]_.
+
+_[A hands-on guide 👉][e2ee-rust-guide]_.
 
 Data, within modern distributed applications, are rarely exchanged over a single point-to-point
 transport connection. Application messages routinely flow over complex, multi-hop, multi-protocol
@@ -26,18 +28,18 @@ _granular authorization decisions about all incoming information and commands._
 
 ## Features
 
-* End-to-end encrypted, transport agnostic, mutually authenticated _secure channels_.
+* End-to-end encrypted, mutually authenticated _secure channels_.
 * Multi-hop, multi-transport, application layer routing.
 * Key establishment, rotation, and revocation - _for fleets, at scale_.
 * Entities and Identity profiles isolated by _privacy contexts_.
-* Lightweight, Concurrent, Stateful Workers that enable _simple and safe APIs for complex protocols_.
+* Lightweight, Concurrent, Stateful Workers that enable _simple APIs_.
 * Attribute-based Access Control - credentials with _selective disclosure_.
 * Add-ons for a variety of operating environments, transport protocols, and _cryptographic hardware_.
 
 ## Get Started
 
 * [__End-to-End Encryption with Rust__][e2ee-rust-guide]:
-In this hands-on guide, we create two small Rust programs called Alice and Bob. Alice and Bob send each other
+In this guide, we create two small Rust programs called Alice and Bob. Alice and Bob send each other
 messages, over the network, via a cloud service. They mutually authenticate each other and have a cryptographic
 guarantee that the integrity, authenticity, and confidentiality of their messages is protected end-to-end.
 [👉][e2ee-rust-guide]
@@ -76,10 +78,13 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 [docs-image]: https://docs.rs/ockam/badge.svg
 [docs-link]: https://docs.rs/ockam
 
+[status-image]: https://img.shields.io/badge/Status-Preview-58E0C9.svg
+[status-link]: https://github.com/ockam-network/ockam/blob/develop/SECURITY.md
+
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE
 
-[discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
+[discuss-image]: https://img.shields.io/badge/Discuss-On%20Github-ff70b4.svg
 [discuss-link]: https://github.com/ockam-network/ockam/discussions
 
 [e2ee-rust-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme
