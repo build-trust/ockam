@@ -5,18 +5,55 @@
 [![license][license-image]][license-link]
 [![discuss][discuss-image]][discuss-link]
 
-End-to-end encrypted communication between edge devices and cloud services.
+End-to-end encrypted, mutually authenticated, secure communication.
+_[A hands-on guide][e2ee-rust-guide]_.
 
-Get started with our step-by-step [hands-on guide][guide].
+Data, within modern distributed applications, are rarely exchanged over a single point-to-point
+transport connection. Application messages routinely flow over complex, multi-hop, multi-protocol
+routes — _across data centers, through queues and caches, via gateways and brokers_ — before reaching
+their end destination.
+
+Transport layer security protocols are unable to protect application messages because their protection
+is constrained by the length and duration of the underlying transport connection.
+
+Ockam makes it simple for our applications to guarantee end-to-end integrity, authenticity,
+and confidentiality of data. We no longer have to implicitly depend on the defenses of every machine
+or application within the same, usually porous, network boundary. Our application's messages don't have
+to be vulnerable at every point, along their journey, where a transport connection terminates.
+
+Instead, our application can have a strikingly smaller vulnerability surface and easily make
+_granular authorization decisions about all incoming information and commands._
 
 ## Features
 
-* End-to-end encrypted secure channels.
+* End-to-end encrypted, transport agnostic, mutually authenticated _secure channels_.
 * Multi-hop, multi-transport, application layer routing.
-* Node - an asynchronous worker runtime.
-* Workers - actors that can handle routed messages.
-* Entities and Profiles.
-* Attribute-based credentials with selective disclosure.
+* Key establishment, rotation, and revocation - _for fleets, at scale_.
+* Entities and Identity profiles isolated by _privacy contexts_.
+* Lightweight, Concurrent, Stateful Workers that enable _simple and safe APIs for complex protocols_.
+* Attribute-based Access Control - credentials with _selective disclosure_.
+* Add-ons for a variety of operating environments, transport protocols, and _cryptographic hardware_.
+
+## Get Started
+
+* [__End-to-End Encryption with Rust__][e2ee-rust-guide]:
+In this hands-on guide, we create two small Rust programs called Alice and Bob. Alice and Bob send each other
+messages, over the network, via a cloud service. They mutually authenticate each other and have a cryptographic
+guarantee that the integrity, authenticity, and confidentiality of their messages is protected end-to-end.
+[👉][e2ee-rust-guide]
+
+* [__Step-by-Step Deep Dive__][step-by-step-rust-guide]:
+In this step-by-step guide we write many small rust programs to understand the various building blocks
+that make up Ockam. We dive into Node, Workers, Routing, Transport, Secure Channels and more.
+[👉][step-by-step-rust-guide]
+
+* [__End-to-End Encryption through Kafka__][e2ee-kafka-guide]:
+In this guide, we show two programs called Alice and Bob. Alice and Bob send each other messages, over
+the network, via a cloud service, _through Kafka_. They mutually authenticate each other and have a
+cryptographic guarantee that the integrity, authenticity, and confidentiality of their messages is protected
+end-to-end. The Kafka instance, the intermediary cloud service and attackers on the network are not be able
+to see or change the contents of en-route messages. The application data in Kafka is encrypted.
+[👉][e2ee-kafka-guide]
 
 ## Usage
 
@@ -26,29 +63,6 @@ Add this to your `Cargo.toml`:
 [dependencies]
 ockam = "0.22.0"
 ```
-
-## Crate Features
-
-The `ockam` crate has a Cargo feature named `"std"` that is enabled by
-default. In order to use this crate in a `no_std` context this feature can
-disabled as follows
-
-Additional features of the `ockam` crate:
-- `ockam_transport_tcp` - Enable TCP transport dependency.
-- `ockam_vault` - Enable the default Software Vault implementation.
-- `noise_xx` - Enable Noise Protocol XX key agreement dependency.
-- `software_vault` - Enable Software Vault dependency.
-
-```
-[dependencies]
-ockam = { version = "0.22.0"            , default-features = false }
-```
-
-Please note that Cargo features are unioned across the entire dependency
-graph of a project. If any other crate you depend on has not opted out of
-`ockam` default features, Cargo will build `ockam` with the std
-feature enabled whether or not your direct dependency on `ockam`
-has `default-features = false`.
 
 ## License
 
@@ -68,4 +82,6 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 [discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
 [discuss-link]: https://github.com/ockam-network/ockam/discussions
 
-[guide]: https://github.com/ockam-network/ockam/blob/develop/documentation/guides/rust/README.md#rust-guide
+[e2ee-rust-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme
+[e2ee-kafka-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-through-kafka#readme
+[step-by-step-rust-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/guides/rust#readme
