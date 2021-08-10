@@ -8,11 +8,12 @@ use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
 #[test]
 fn code_and_domain() {
-    let ws_errors_map = HashMap::<_, _>::from_iter(IntoIter::new([
+    let ws_errors_map = IntoIter::new([
         (12, WebSocketError::Transport(TransportError::GenericIo)),
         (0, WebSocketError::Http),
         (1, WebSocketError::Tls),
-    ]));
+    ])
+    .collect::<HashMap<_, _>>();
     for (expected_code, ws_err) in ws_errors_map {
         let err: ockam_core::Error = ws_err.into();
         match ws_err {

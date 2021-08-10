@@ -1,11 +1,10 @@
 use crate::TransportError;
 use ockam_core::lib::HashMap;
-use ockam_core::lib::iter::FromIterator;
 use std::array::IntoIter;
 
 #[test]
 fn code_and_domain() {
-    let tr_errors_map = HashMap::<_, _>::from_iter(IntoIter::new([
+    let tr_errors_map = IntoIter::new([
         (0, TransportError::SendBadMessage),
         (1, TransportError::RecvBadMessage),
         (2, TransportError::BindFailed),
@@ -19,7 +18,8 @@ fn code_and_domain() {
         (10, TransportError::Encoding),
         (11, TransportError::Protocol),
         (12, TransportError::GenericIo),
-    ]));
+    ])
+    .collect::<HashMap<_, _>>();
     for (expected_code, tr_err) in tr_errors_map {
         let err: ockam_core::Error = tr_err.into();
         assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
@@ -39,9 +39,11 @@ fn from_unmapped_io_error() {
 
 #[test]
 fn from_mapped_io_errors() {
-    let mapped_io_err_kinds = HashMap::<_, _>::from_iter(IntoIter::new([
-        (std::io::ErrorKind::ConnectionRefused, TransportError::PeerNotFound)
-    ]));
+    let mapped_io_err_kinds = IntoIter::new([(
+        std::io::ErrorKind::ConnectionRefused,
+        TransportError::PeerNotFound,
+    )])
+    .collect::<HashMap<_, _>>();
     for (io_err_kind, expected_tr_err) in mapped_io_err_kinds {
         let io_err = std::io::Error::new(io_err_kind, "io::Error");
         let tr_err: TransportError = io_err.into();
