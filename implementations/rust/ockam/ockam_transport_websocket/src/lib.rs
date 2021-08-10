@@ -39,6 +39,8 @@ use ockam_transport::TransportError;
 
 mod atomic;
 mod error;
+#[cfg(test)]
+mod error_test;
 mod init;
 mod listener;
 mod receiver;

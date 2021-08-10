@@ -21,11 +21,11 @@ impl WebSocketError {
     /// Error domain
     pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_WEBSOCKET";
 
-    fn code(&self) -> u32 {
+    pub fn code(&self) -> u32 {
         match self {
             WebSocketError::Transport(_) => 0,
-            WebSocketError::Http => 1,
-            WebSocketError::Tls => 2,
+            WebSocketError::Http => 0,
+            WebSocketError::Tls => 1,
         }
     }
 }

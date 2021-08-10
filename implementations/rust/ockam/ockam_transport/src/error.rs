@@ -1,5 +1,5 @@
 /// A Transport worker specific error type
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TransportError {
     /// Failed to send a malformed message
     SendBadMessage,
@@ -47,7 +47,6 @@ impl From<TransportError> for ockam_core::Error {
 
 impl From<std::io::Error> for TransportError {
     fn from(e: std::io::Error) -> Self {
-        dbg!();
         match e.kind() {
             std::io::ErrorKind::ConnectionRefused => Self::PeerNotFound,
             _ => Self::GenericIo,
