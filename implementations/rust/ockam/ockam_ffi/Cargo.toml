@@ -1,6 +1,6 @@
 [package]
 name = "ockam-ffi"
-version = "0.14.0"
+version = "0.15.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -19,7 +19,7 @@ crate-type = ["staticlib", "rlib", "cdylib"]
 lto = true
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.24.0"                          }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.18.0"                          }
-ockam_vault = { path = "../ockam_vault", version = "0.18.0"                          }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev"                           }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.19.0-dev"                           }
+ockam_vault = { path = "../ockam_vault", version = "0.19.0-dev"                           }
 lazy_static = "1.4"

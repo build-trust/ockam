@@ -712,9 +712,9 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.23.0"
+version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abf91909fc20dd950c98681a38cab60831f44fc20953da59d3fbaaa90d721700"
+checksum = "37057426cd871cce54c83e311cd6372bc387c65a125c1080df2043d4b87ef0ec"
 dependencies = [
  "arrayref",
  "async-trait",

@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",

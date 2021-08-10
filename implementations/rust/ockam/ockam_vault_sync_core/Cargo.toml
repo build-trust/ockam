@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_sync_core"
-version = "0.15.0"
+version = "0.16.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -18,10 +18,10 @@ default = []
 software_vault = ["ockam_vault"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.24.0"                          }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.18.0"                          }
-ockam_vault = { path = "../ockam_vault", version = "0.18.0"                         , optional = true }
-ockam_node = {path = "../ockam_node", version = "0.22.0"                         }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev"                           }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.19.0-dev"                           }
+ockam_vault = { path = "../ockam_vault", version = "0.19.0-dev"                          , optional = true }
+ockam_node = {path = "../ockam_node", version = "0.23.0-dev"                          }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 serde = {version = "1.0", features = ["derive"]}
 serde-big-array = "0.3"
@@ -30,6 +30,6 @@ async-trait = "0.1"
 rand = "0.8"
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "0.18.0"                          }
-ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.13.0"                          }
-ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.15.0"                         }
+ockam_vault = { path = "../ockam_vault", version = "0.19.0-dev"                           }
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.14.0-dev"                           }
+ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.16.0-dev"                          }

@@ -615,7 +615,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.19.0"
+version = "0.20.0-dev"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -635,7 +635,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.24.0"
+version = "0.25.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -656,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.15.0"
+version = "0.16.0-dev"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -667,7 +667,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -677,7 +677,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.22.0"
+version = "0.23.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -687,7 +687,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -706,7 +706,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -717,7 +717,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.15.0"
+version = "0.16.0-dev"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -1073,7 +1073,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1094,7 +1094,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.14.0"
+version = "0.15.0-dev"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1111,7 +1111,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1309,9 +1309,9 @@ dependencies = [
 
 [[package]]
 name = "trybuild"
-version = "1.0.44"
+version = "1.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb73edd97c8d9ffa8140971f07307f0994ae95138ee9cc0fba0369c953f0963a"
+checksum = "c02c413315329fc96167f922b46fd0caa3a43f4697b7a7896b183c7142635832"
 dependencies = [
  "dissimilar",
  "glob",

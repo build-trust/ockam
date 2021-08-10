@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_xx"
-version = "0.16.0"
+version = "0.17.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -13,12 +13,12 @@ description = """The Ockam Noise XX impementation.
 """
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.24.0"                          }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.18.0"                          }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.16.0"                          }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev"                           }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.19.0-dev"                           }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.17.0-dev"                           }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.15.0"                         }
-ockam_vault = { path = "../ockam_vault", version = "0.18.0"                         }
-ockam_node = { path = "../ockam_node" , version = "0.22.0"                         }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.16.0-dev"                          }
+ockam_vault = { path = "../ockam_vault", version = "0.19.0-dev"                          }
+ockam_node = { path = "../ockam_node" , version = "0.23.0-dev"                          }

@@ -1,6 +1,6 @@
 [package]
 name = "signature_ps"
-version = "0.14.0"
+version = "0.15.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -16,7 +16,7 @@ description = """The Ockam PS signature impementation.
 
 [dependencies]
 blake2 = "0.9"
-signature_bls = { version = "0.14.0"                         , path = "../signature_bls" }
+signature_bls = { version = "0.15.0-dev"                          , path = "../signature_bls" }
 bls12_381_plus = "0.5"
 digest = { version = "0.9", default-features = false }
 ff = "0.10"
@@ -27,7 +27,7 @@ pairing = "0.20"
 rand_core = "0.6"
 rand_chacha = { version = "0.3", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
-signature_core = { version = "0.16.0"                         , path = "../signature_core" }
+signature_core = { version = "0.17.0-dev"                          , path = "../signature_core" }
 subtle = { version = "2.4", default-features = false }
 typenum = "1.13"
 zeroize = { version = "1.2", features = ["zeroize_derive"] }

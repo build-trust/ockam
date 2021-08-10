@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_tcp"
-version = "0.18.0"
+version = "0.19.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -23,8 +23,8 @@ default = ["std"]
 std = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.24.0"                          }
-ockam_node = { path = "../ockam_node", version = "0.22.0"                          }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev"                           }
+ockam_node = { path = "../ockam_node", version = "0.23.0-dev"                           }
 serde_bare = "0.3.0"
 serde = {version = "1.0", features = ["derive"]}
 tokio = {version = "1.8", features = ["rt-multi-thread","sync","net","macros","time"]}

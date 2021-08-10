@@ -8,10 +8,10 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
 license = "Apache-2.0"
 name = "ockam_node"
-version = "0.22.0"
+version = "0.23.0-dev"
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.24.0"                          }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev"                           }
 tokio = {version = "1.8", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"] }

@@ -1,7 +1,7 @@
 [package]
 authors = ["Ockam Developers"]
 description = """Example projects using the Ockam APIs"""
-version = "0.13.0-dev"
+version = "0.14.0-dev"
 edition = "2018"
 homepage = "https://github.com/ockam-network/ockam"
 keywords = ["ockam", "crypto", "cryptography"]

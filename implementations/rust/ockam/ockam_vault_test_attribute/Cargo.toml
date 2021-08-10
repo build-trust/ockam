@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_test_attribute"
-version = "0.15.0"
+version = "0.16.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"

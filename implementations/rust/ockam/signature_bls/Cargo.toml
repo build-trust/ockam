@@ -1,6 +1,6 @@
 [package]
 name = "signature_bls"
-version = "0.14.0"
+version = "0.15.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"

@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.24.0"
+version = "0.25.0-dev"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.22.0"
+version = "0.23.0-dev"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -381,7 +381,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "async-trait",
  "futures",
@@ -826,9 +826,9 @@ dependencies = [
 
 [[package]]
 name = "trybuild"
-version = "1.0.44"
+version = "1.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb73edd97c8d9ffa8140971f07307f0994ae95138ee9cc0fba0369c953f0963a"
+checksum = "c02c413315329fc96167f922b46fd0caa3a43f4697b7a7896b183c7142635832"
 dependencies = [
  "dissimilar",
  "glob",
