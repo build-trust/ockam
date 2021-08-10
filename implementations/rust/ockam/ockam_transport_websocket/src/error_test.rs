@@ -1,10 +1,10 @@
-use crate::WebSocketError;
-use ockam_core::lib::iter::FromIterator;
+use std::array::IntoIter;
+
 use ockam_core::lib::HashMap;
 use ockam_transport::TransportError;
-use std::array::IntoIter;
-use tokio_tungstenite::tungstenite::http::Response;
-use tokio_tungstenite::tungstenite::Error as TungsteniteError;
+use tokio_tungstenite::tungstenite::{http::Response, Error as TungsteniteError};
+
+use crate::WebSocketError;
 
 #[test]
 fn code_and_domain() {

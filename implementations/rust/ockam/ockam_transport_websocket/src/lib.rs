@@ -28,6 +28,7 @@ use std::str::FromStr;
 
 use ockam_core::{Address, Result};
 use ockam_node::Context;
+use ockam_transport::TransportError;
 
 pub use error::WebSocketError;
 pub use init::WorkerPair;
@@ -35,7 +36,6 @@ pub use receiver::WebSocketRecvWorker;
 pub use sender::WebSocketSendWorker;
 
 use crate::router::{WebSocketRouter, WebSocketRouterHandle};
-use ockam_transport::TransportError;
 
 mod atomic;
 mod error;

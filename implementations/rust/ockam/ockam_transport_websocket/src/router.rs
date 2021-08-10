@@ -3,11 +3,11 @@ use std::{collections::BTreeMap, net::SocketAddr};
 
 use ockam_core::{async_trait, Address, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
+use ockam_transport::TransportError;
 
 use crate::atomic::{self, ArcBool};
 use crate::init::WorkerPair;
 use crate::listener::WebSocketListenWorker;
-use ockam_transport::TransportError;
 
 /// A WebSocket address router and connection listener
 ///

@@ -70,7 +70,7 @@ impl TcpRouter {
 
         let next;
         // Look up the connection worker responsible
-        if let Some(n) = self.map.get(&onward) {
+        if let Some(n) = self.map.get(onward) {
             // Connection already exists
             next = n;
         } else {

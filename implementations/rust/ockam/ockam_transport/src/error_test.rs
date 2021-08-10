@@ -1,6 +1,8 @@
-use crate::TransportError;
-use ockam_core::lib::HashMap;
 use std::array::IntoIter;
+
+use ockam_core::lib::HashMap;
+
+use crate::TransportError;
 
 #[test]
 fn code_and_domain() {
@@ -33,7 +35,7 @@ fn from_unmapped_io_error() {
     let tr_err: TransportError = io_err.into();
     assert_eq!(tr_err, TransportError::GenericIo);
     let err: ockam_core::Error = tr_err.into();
-    assert_eq!(err.code(), TransportError::DOMAIN_CODE + TransportError::GenericIo as u32);
+    assert_eq!(err.code(), TransportError::DOMAIN_CODE + tr_err as u32);
     assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
 }
 
@@ -49,7 +51,10 @@ fn from_mapped_io_errors() {
         let tr_err: TransportError = io_err.into();
         assert_eq!(tr_err, expected_tr_err);
         let err: ockam_core::Error = tr_err.into();
-        assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_tr_err as u32);
+        assert_eq!(
+            err.code(),
+            TransportError::DOMAIN_CODE + expected_tr_err as u32
+        );
         assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
     }
 }
