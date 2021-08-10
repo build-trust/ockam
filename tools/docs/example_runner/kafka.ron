@@ -1,0 +1,14 @@
+(
+    title: "Kafka Use Case",
+    stages: [
+        [   "bob",
+            "sleep 5",
+            "match alice-to-bob_", "match bob-to-alice_",
+            "out 1",
+            "out 0",
+            "alice",
+            "match End-to-end encrypted secure channel was established.",
+            "quit"
+        ],
+    ]
+)
