@@ -55,7 +55,7 @@ fn run_stage(stage: Stage) -> Result<()> {
             handle.kill().unwrap();
         });
         join_handles.lock().unwrap().push(join_handle);
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(2));
     }
 
     while !finished.load(Ordering::Relaxed) {
