@@ -1,13 +1,13 @@
-name: docker_base
+name: docker_hub
 on:
   workflow_dispatch:
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
-      - 'tools/docker/base/**'
+      - 'tools/docker/hub/**'
 
 jobs:
-  docker_base:
+  docker_hub:
     if: github.event.ref == 'refs/heads/develop' && github.repository_owner == 'ockam-network'
     runs-on: ubuntu-20.04
     steps:
@@ -16,5 +16,5 @@ jobs:
         with:
           token: ${{ secrets.SECRET_TOKEN }}
           repository: ockam-network/artifacts
-          event-type: docker_base
+          event-type: docker_hub
           client-payload: '{"sha": "${{ github.sha }}"}'
