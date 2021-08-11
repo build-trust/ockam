@@ -1,27 +1,34 @@
-defmodule Ockam.TokenLeaseManager.CloudServiceInfluxdb do
+defmodule Ockam.TokenLeaseManager.CloudService.Influxdb do
   @moduledoc false
-  @behaviour Ockam.TokenLeaseManager.CloudService
+  use Ockam.TokenLeaseManager.CloudService
 
   alias Ockam.TokenLeaseManager.Lease
 
   @endpoint_autorizations "/api/v2/authorizations"
+  @default_permissions [%{"action" => "read", "resource" => %{"type" => "authorizations"}}]
   @http_ok 200
   @http_created 201
   @http_delete 204
+  @http_not_found 404
 
-  def configuration() do
+  @impl true
+  def handle_init(_options) do
     host = Application.get_env(:ockam_hub, :influxdb)[:host]
     port = Application.get_env(:ockam_hub, :influxdb)[:port]
     token = Application.get_env(:ockam_hub, :influxdb)[:token]
     org = Application.get_env(:ockam_hub, :influxdb)[:org]
-    [host: host, port: port, token: token, endpoint: @endpoint_autorizations, org: org]
+    {:ok, [host: host, port: port, token: token, endpoint: @endpoint_autorizations, org: org]}
   end
 
-  def create(options, cloud_service_config \\ []) do
-    config = get_service_configuration(cloud_service_config)
-    url = build_url(config)
-    headers = build_headers(config)
-    {:ok, body} = Poison.encode(options)
+  @impl true
+  def handle_create(cloud_configuration, options) do
+    url = build_url(cloud_configuration)
+    headers = build_headers(cloud_configuration)
+
+    {:ok, body} =
+      options
+      |> fill_options(cloud_configuration[:org])
+      |> Poison.encode()
 
     request(
       fn -> HTTPoison.post(url, body, headers) end,
@@ -30,30 +37,36 @@ defmodule Ockam.TokenLeaseManager.CloudServiceInfluxdb do
     )
   end
 
-  def revoke(token_id, cloud_service_config \\ []) do
-    config = get_service_configuration(cloud_service_config)
-    url = "#{build_url(config)}/#{token_id}"
-    headers = build_headers(config)
+  @impl true
+  def handle_revoke(cloud_configuration, token_id) do
+    url = "#{build_url(cloud_configuration)}/#{token_id}"
+    headers = build_headers(cloud_configuration)
     request(fn -> HTTPoison.delete(url, headers) end, nil, @http_delete)
   end
 
-  def renew(_token_id, cloud_service_config \\ []) do
-    _config = get_service_configuration(cloud_service_config)
+  @impl true
+  def handle_renew(_cloud_configuration, _token_id) do
     # TODO
+    :ok
   end
 
-  def get(token_id, cloud_service_config \\ []) do
-    config = get_service_configuration(cloud_service_config)
-    url = "#{build_url(config)}/#{token_id}"
-    headers = build_headers(config)
+  @impl true
+  def handle_get(cloud_configuration, token_id) do
+    url = "#{build_url(cloud_configuration)}/#{token_id}"
+    headers = build_headers(cloud_configuration)
     request(fn -> HTTPoison.get(url, headers) end, fn body -> decode_one(body) end)
   end
 
-  def get_all(cloud_service_config \\ []) do
-    config = get_service_configuration(cloud_service_config)
-    url = build_url(config)
-    headers = build_headers(config)
+  @impl true
+  def handle_get_all(cloud_configuration) do
+    url = build_url(cloud_configuration)
+    headers = build_headers(cloud_configuration)
     request(fn -> HTTPoison.get(url, headers) end, fn body -> decode_all(body) end)
+  end
+
+  @impl true
+  def handle_get_address(cloud_configuration) do
+    {:ok, "#{cloud_configuration[:host]}:#{cloud_configuration[:port]}"}
   end
 
   defp request(req, decode, right_status_code \\ @http_ok) do
@@ -64,6 +77,9 @@ defmodule Ockam.TokenLeaseManager.CloudServiceInfluxdb do
         else
           :ok
         end
+
+      {:ok, %HTTPoison.Response{status_code: @http_not_found}} ->
+        :not_found
 
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         case Poison.decode(body) do
@@ -106,20 +122,12 @@ defmodule Ockam.TokenLeaseManager.CloudServiceInfluxdb do
         {:ok,
          %Lease{
            id: auth["id"],
-           # TODO convert to datetime
            issued: auth["createdAt"],
            value: auth["token"]
          }}
 
       {:error, err} ->
         {:error, err}
-    end
-  end
-
-  defp get_service_configuration(config) do
-    case Enum.empty?(config) do
-      true -> configuration()
-      false -> config
     end
   end
 
@@ -132,5 +140,22 @@ defmodule Ockam.TokenLeaseManager.CloudServiceInfluxdb do
       Authorization: "Token #{token}",
       "Content-Type": "application/json"
     ]
+  end
+
+  defp fill_options(%{"orgID" => _o, "permissions" => _p} = creation_options, _org),
+    do: creation_options
+
+  defp fill_options(%{"orgID" => _o} = creation_options, _org) do
+    Map.put(creation_options, "permissions", @default_permissions)
+  end
+
+  defp fill_options(%{"permissions" => _p} = creation_options, org) do
+    Map.put(creation_options, "orgID", org)
+  end
+
+  defp fill_options(creation_options, org) do
+    creation_options
+    |> Map.put("orgID", org)
+    |> Map.put("permissions", @default_permissions)
   end
 end

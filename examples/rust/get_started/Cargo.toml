@@ -8,6 +8,8 @@ license = "Apache-2.0"
 [dependencies]
 ockam = { path = "../../../implementations/rust/ockam/ockam" }
 ockam_transport_websocket = { path = "../../../implementations/rust/ockam/ockam_transport_websocket" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
 
 [dev-dependencies]
 rand = { version = "0.8.4", features = ["std_rng"] }

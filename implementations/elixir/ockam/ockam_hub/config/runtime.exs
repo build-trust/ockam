@@ -20,12 +20,32 @@ config :telemetry_influxdb,
   org: System.get_env("INFLUXDB_ORG"),
   token: influx_token
 
+token_manager_cloud_service_module =
+  case System.get_env("TOKEN_MANAGER_CLOUD_SERVICE", "INFLUXDB") do
+    "INFLUXDB" -> Ockam.TokenLeaseManager.CloudService.Influxdb
+  end
+
+token_manager_storage_service_module =
+  case System.get_env("TOKEN_MANAGER_STORAGE_SERVICE", "POSTGRES") do
+    "POSTGRES" -> Ockam.TokenLeaseManager.StorageService.Postgres
+  end
+
+config :ockam_hub, :token_manager,
+  cloud_service_module: token_manager_cloud_service_module,
+  storage_service_module: token_manager_storage_service_module
+
 config :ockam_hub, :influxdb,
-  host: System.get_env("INFLUXDB_HOST"),
-  port: System.get_env("INFLUXDB_PORT"),
-  bucket: System.get_env("INFLUXDB_BUCKET"),
-  org: System.get_env("INFLUXDB_ORG"),
-  token: influx_token
+  host: System.get_env("HUB_NODE_INFLUXDB_HOST"),
+  port: String.to_integer(System.get_env("HUB_NODE_INFLUXDB_PORT", "8086")),
+  token: System.get_env("HUB_NODE_INFLUXDB_TOKEN"),
+  org: System.get_env("HUB_NODE_INFLUXDB_ORG")
+
+config :ockam_hub, :postgres,
+  hostname: System.get_env("POSTGRES_HOST"),
+  port: String.to_integer(System.get_env("POSTGRES_PORT", "5432")),
+  username: System.get_env("POSTGRES_USERNAME"),
+  password: System.get_env("POSTGRES_PASSWORD"),
+  database: System.get_env("POSTGRES_DATABASE")
 
 ui_auth_message =
   with true <- File.exists?("/mnt/secrets/auth/message"),
@@ -156,7 +176,11 @@ config :ockam_hub,
     # stream services
     Ockam.Hub.Service.Provider.Stream,
     # kafka services
-    Ockam.Kafka.Hub.Service.Provider
+    Ockam.Kafka.Hub.Service.Provider,
+    # token lease services
+    Ockam.TokenLeaseManager.Hub.Service.Provider,
+    # secure channel services
+    Ockam.Hub.Service.Provider.SecureChannel
   ],
   services_config_source: services_config_source,
   # JSON version of the services definition
@@ -168,5 +192,6 @@ config :ockam_hub,
     :echo,
     :forwarding,
     :stream,
-    :stream_index
+    :stream_index,
+    :secure_channel
   ]

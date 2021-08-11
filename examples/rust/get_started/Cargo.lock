@@ -558,6 +558,8 @@ dependencies = [
  "ockam",
  "ockam_transport_websocket",
  "rand 0.8.4",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

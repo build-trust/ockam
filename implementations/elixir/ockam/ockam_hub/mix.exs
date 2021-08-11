@@ -52,6 +52,7 @@ defmodule Ockam.Hub.MixProject do
       {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ockam, path: "../ockam"},
       {:poison, "~> 4.0.1"},
+      {:postgrex, "~> 0.15.10"},
       {:ockam_kafka, path: "../ockam_kafka"},
       {:ranch, "~> 1.8"},
       {:telemetry, "~> 0.4.2"},
