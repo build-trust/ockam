@@ -9,6 +9,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e3e798aa0c8239776f54415bc06f3d74b1850f3f830b45c35cfc80556973f70"
 dependencies = [
  "generic-array",
+ "rand_core 0.6.3",
 ]
 
 [[package]]
@@ -293,8 +294,6 @@ checksum = "c762bae6dcaf24c4c84667b8579785430908723d5c889f469d76a41d59cc7a9d"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
- "rand 0.7.3",
- "serde",
  "sha2",
  "zeroize",
 ]
@@ -732,7 +731,7 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
- "serde_bare 0.4.0",
+ "serde_bare 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -754,7 +753,7 @@ dependencies = [
  "ockam_vault_sync_core",
  "rand 0.8.4",
  "serde",
- "serde_bare 0.3.0",
+ "serde_bare 0.4.0 (git+https://github.com/antoinevg/serde_bare.git?branch=antoinevg/no_std+alloc)",
  "tracing",
 ]
 
@@ -767,7 +766,7 @@ dependencies = [
  "hex",
  "rand 0.8.4",
  "serde",
- "serde_bare 0.4.0",
+ "serde_bare 0.4.0 (git+https://github.com/antoinevg/serde_bare.git?branch=antoinevg/no_std+alloc)",
 ]
 
 [[package]]
@@ -790,7 +789,7 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
- "serde_bare 0.4.0",
+ "serde_bare 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -829,6 +828,7 @@ dependencies = [
 name = "ockam_node"
 version = "0.23.0-dev"
 dependencies = [
+ "async-trait",
  "ockam_core",
  "tokio",
  "tracing",
@@ -1200,6 +1200,14 @@ name = "serde_bare"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_bare"
+version = "0.4.0"
+source = "git+https://github.com/antoinevg/serde_bare.git?branch=antoinevg/no_std+alloc#34fa8b1230c1d48af003035e53ba32997c82082b"
 dependencies = [
  "serde",
 ]
