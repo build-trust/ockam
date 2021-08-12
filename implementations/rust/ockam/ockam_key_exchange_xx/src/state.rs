@@ -1,4 +1,5 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE, SHA256_SIZE};
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_key_exchange_core::CompletedKeyExchange;
 use ockam_vault_core::{
@@ -32,8 +33,8 @@ impl<V: XXVault> Zeroize for State<V> {
     }
 }
 
-impl<V: XXVault> std::fmt::Debug for State<V> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl<V: XXVault> core::fmt::Debug for State<V> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
             "SymmetricState {{ key: {:?}, nonce: {:?}, h: {:?}, ck: {:?} }}",

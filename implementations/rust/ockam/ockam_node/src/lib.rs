@@ -8,6 +8,13 @@
     unused_import_braces,
     unused_qualifications
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 extern crate tracing;
@@ -32,7 +39,7 @@ pub use messages::*;
 
 pub use node::{start_node, NullWorker};
 
-use std::future::Future;
+use core::future::Future;
 use tokio::{runtime::Runtime, task};
 
 /// Execute a future without blocking the executor

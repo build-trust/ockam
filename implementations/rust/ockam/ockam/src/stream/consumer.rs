@@ -12,8 +12,8 @@ use crate::{
     DelayedEvent, Message, TransportMessage,
 };
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
+use core::time::Duration;
 use ockam_core::LocalMessage;
-use std::time::Duration;
 
 /// A stream worker
 pub struct StreamConsumer {

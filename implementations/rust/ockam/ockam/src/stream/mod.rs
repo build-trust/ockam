@@ -22,8 +22,8 @@ use crate::{
     Address, Any, Context, DelayedEvent, Error, Message, Result, Route, Routed, TransportMessage,
     Worker,
 };
+use core::{ops::Deref, time::Duration};
 use serde::{Deserialize, Serialize};
-use std::{ops::Deref, time::Duration};
 
 /// Ockam stream protocol controller
 ///

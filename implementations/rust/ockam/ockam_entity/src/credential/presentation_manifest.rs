@@ -1,6 +1,5 @@
 use super::CredentialSchema;
 use crate::SigningPublicKey;
-use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
 

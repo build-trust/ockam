@@ -7,8 +7,8 @@ pub struct X3dhNewKeyExchanger<V: X3dhVault> {
     vault: V,
 }
 
-impl<V: X3dhVault> std::fmt::Debug for X3dhNewKeyExchanger<V> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<V: X3dhVault> core::fmt::Debug for X3dhNewKeyExchanger<V> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "X3dhNewKeyExchanger {{ vault }}")
     }
 }

@@ -1,3 +1,4 @@
+use ockam_core::compat::string::String;
 use ockam_vault_core::{Buffer, PublicKey, Secret, SecretAttributes, Signature, SmallBuffer};
 use serde::{Deserialize, Serialize};
 

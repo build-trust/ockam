@@ -1,5 +1,5 @@
 use crate::{block_future, spawn, Address, Context, Message, Result, Route};
-use std::time::Duration;
+use core::time::Duration;
 
 /// Send a delayed event to a worker
 pub struct DelayedEvent<M: Message> {
@@ -26,7 +26,7 @@ impl<M: Message> DelayedEvent<M> {
         })
     }
 
-    /// Adjust the delay time with a [`Duration`](std::time::Duration)
+    /// Adjust the delay time with a [`Duration`](core::time::Duration)
     pub fn with_duration(self, d: Duration) -> Self {
         Self { d, ..self }
     }

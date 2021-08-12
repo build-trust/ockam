@@ -1,5 +1,5 @@
 #![allow(unused)]
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// A simple monotonic ID generator
 pub(crate) struct Monotonic {

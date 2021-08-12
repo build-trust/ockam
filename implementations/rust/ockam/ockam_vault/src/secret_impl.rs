@@ -1,7 +1,7 @@
 use crate::software_vault::{SoftwareVault, VaultEntry};
 use crate::VaultError;
 use arrayref::array_ref;
-use ockam_core::lib::convert::TryInto;
+use core::convert::TryInto;
 use ockam_vault_core::{
     KeyId, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
     SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,

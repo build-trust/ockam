@@ -1,4 +1,5 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
+use ockam_core::compat::string::ToString;
 use ockam_core::Result;
 use ockam_node::block_future;
 use ockam_vault_core::{KeyId, KeyIdVault, PublicKey, Secret};

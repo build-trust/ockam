@@ -1,6 +1,5 @@
 //! A crate for common methods used by short group signatures
 
-#![no_std]
 #![deny(
     trivial_casts,
     trivial_numeric_casts,
@@ -9,6 +8,13 @@
     unused_qualifications,
     warnings
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 /// Common methods for signature schemes
 #[macro_use]

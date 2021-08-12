@@ -4,9 +4,8 @@ use crate::{
     EntityIdentifier, OfferId, PresentationManifest, ProfileIdentifier, ProofBytes, ProofRequestId,
     SigningPublicKey, TrustPolicy,
 };
-use ockam_core::lib::convert::TryFrom;
-use ockam_core::lib::fmt::Formatter;
-use ockam_core::lib::Display;
+use core::convert::TryFrom;
+use core::fmt::{Display, Formatter};
 use ockam_core::{hex, Address, Error, Result, Route};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
@@ -116,7 +115,7 @@ impl CredentialIdentifier {
 }
 
 impl Display for CredentialIdentifier {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let str: String = self.clone().into();
         write!(f, "{}", &str)
     }

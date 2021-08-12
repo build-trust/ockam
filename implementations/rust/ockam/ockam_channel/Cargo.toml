@@ -17,21 +17,33 @@ in encrypted and authenticated way.
 default = ["std"]
 software_vault = ["ockam_vault", "ockam_vault_sync_core", "ockam_vault_sync_core/software_vault"]
 noise_xx = ["ockam_key_exchange_xx"]
-std = []
+
+# Option (enabled by default): "std" enables functionality expected to
+# be available on a standard platform.
+std = ["ockam_core/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_core/std", "ockam_vault_sync_core/std", "ockam_vault/std",  "serde_bare", "rand/std", "rand/std_rng"]
+
+# Option: "no_std" enables functionality required for platforms
+# without the standard library.
+no_std = ["ockam_core/no_std", "ockam_key_exchange_core/no_std", "ockam_key_exchange_xx/no_std", "ockam_node/no_std", "ockam_vault_core/no_std", "ockam_vault_sync_core/no_std", "ockam_vault/no_std", "rand_pcg"]
+
+# Option: "alloc" enables support for heap allocation on "no_std"
+# platforms, requires nightly.
+alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchange_xx/alloc", "ockam_node/alloc", "ockam_vault_core/alloc",  "ockam_vault_sync_core/alloc", "ockam_vault/alloc", "serde/alloc", "serde_bare"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.26.0-dev"                            }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.18.0-dev"                            }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.18.0-dev"                           , optional = true }
-ockam_node = { path = "../ockam_node", version = "0.24.0-dev"                            }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.20.0-dev"                            }
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.17.0-dev"                           , optional = true }
-ockam_vault = {path = "../ockam_vault", version = "0.20.0-dev"                           , optional = true}
-serde_bare = "0.3.0"
-rand = "0.8"
+ockam_core = { path = "../ockam_core", version = "0.26.0-dev", default_features = false }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "0.18.0-dev", default_features = false }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.18.0-dev", default_features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "0.24.0-dev", default_features = false }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.20.0-dev", default_features = false, optional = true }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.17.0-dev", default_features = false, optional = true }
+ockam_vault = { path = "../ockam_vault", version = "0.20.0-dev", default_features = false, optional = true }
+serde_bare = { version = "0.4.0", default-features = false, optional = true }
+rand = { version = "0.8", default-features = false }
+rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 async-trait = "0.1"
-serde = {version = "1.0", features = ["derive"]}
-tracing = "0.1"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+tracing = { version = "0.1", default_features = false }
 
 [dev-dependencies]
 ockam_vault = { path = "../ockam_vault", version = "0.20.0-dev"                         }

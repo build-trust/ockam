@@ -1,9 +1,13 @@
 use crate::{
-    lib::{
-        fmt::{self, Debug, Display, Formatter},
-        Deref, DerefMut, String, ToString, Vec,
+    compat::{
+        string::{String, ToString},
+        vec::Vec,
     },
     Address, LocalMessage, Result, Route, TransportMessage,
+};
+use core::{
+    fmt::{self, Debug, Display, Formatter},
+    ops::{Deref, DerefMut},
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -72,7 +76,6 @@ where
     }
 }
 
-// TODO: see comment in Cargo.toml about this dependency
 impl From<serde_bare::Error> for crate::Error {
     fn from(_: serde_bare::Error) -> Self {
         Self::new(1, "serde_bare")

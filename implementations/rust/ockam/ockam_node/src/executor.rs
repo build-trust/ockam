@@ -3,7 +3,8 @@
 use crate::{relay::RelayMessage, router::Router, NodeMessage};
 use ockam_core::{Address, Result};
 
-use std::{future::Future, sync::Arc};
+use core::future::Future;
+use ockam_core::compat::sync::Arc;
 use tokio::{runtime::Runtime, sync::mpsc::Sender};
 
 /// Ockam node and worker executor

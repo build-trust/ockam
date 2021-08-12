@@ -1,5 +1,6 @@
 use crate::{CreateResponderChannelMessage, LocalInfo, SecureChannelError, SecureChannelVault};
 use async_trait::async_trait;
+use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
     Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
 };

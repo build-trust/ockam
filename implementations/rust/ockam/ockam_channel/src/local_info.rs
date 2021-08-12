@@ -1,4 +1,5 @@
 use crate::SecureChannelError;
+use ockam_core::compat::string::{String, ToString};
 use ockam_core::{Encoded, Message, Result};
 use serde::{Deserialize, Serialize};
 

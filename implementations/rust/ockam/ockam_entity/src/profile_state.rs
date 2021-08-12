@@ -16,8 +16,8 @@ use crate::{
     PresentationManifest, ProfileChangeEvent, ProfileEventAttributes, ProfileIdentifier,
     ProfileVault, ProofBytes, ProofRequestId, SigningPublicKey,
 };
-use ockam_core::lib::convert::TryInto;
-use ockam_core::lib::{HashMap, HashSet};
+use core::convert::TryInto;
+use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_vault_core::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
 use rand::{thread_rng, CryptoRng, RngCore};
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};

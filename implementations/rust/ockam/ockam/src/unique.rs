@@ -1,4 +1,4 @@
-use ockam_core::lib::String;
+use ockam_core::compat::string::String;
 use rand::{thread_rng, Rng};
 
 /// A simple generator for unique, human-readable identifiers suitable
