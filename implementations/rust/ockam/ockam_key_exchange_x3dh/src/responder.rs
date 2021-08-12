@@ -1,5 +1,9 @@
 use crate::{PreKeyBundle, Signature, X3DHError, X3dhVault, CSUITE};
 use arrayref::array_ref;
+use ockam_core::compat::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::Result;
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 use ockam_vault_core::{
@@ -60,8 +64,8 @@ impl<V: X3dhVault> Responder<V> {
     }
 }
 
-impl<V: X3dhVault> std::fmt::Debug for Responder<V> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl<V: X3dhVault> core::fmt::Debug for Responder<V> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
             r#"X3dhResponder {{ identity_key: {:?},

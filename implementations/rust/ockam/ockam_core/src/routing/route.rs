@@ -1,10 +1,8 @@
 use crate::{
-    lib::{
-        fmt::{self, Display},
-        String, Vec, VecDeque,
-    },
+    compat::{collections::VecDeque, string::String, vec::Vec},
     Address, Result, RouteError,
 };
+use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
 
 /// A full route to a peer

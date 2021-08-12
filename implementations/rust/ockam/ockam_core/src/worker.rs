@@ -1,4 +1,4 @@
-use crate::{lib::Box, Message, Result, Routed};
+use crate::{compat::boxed::Box, Message, Result, Routed};
 use async_trait::async_trait;
 
 /// Base ockam worker trait.

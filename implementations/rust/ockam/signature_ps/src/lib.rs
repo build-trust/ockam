@@ -2,7 +2,6 @@
 //! as described in <https://eprint.iacr.org/2015/525.pdf>
 //! and <https://eprint.iacr.org/2017/1197.pdf>
 
-#![no_std]
 #![deny(
     missing_docs,
     trivial_casts,
@@ -12,6 +11,13 @@
     unused_qualifications,
     warnings
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 extern crate signature_core;

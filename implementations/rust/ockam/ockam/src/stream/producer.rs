@@ -8,7 +8,7 @@ use crate::{
     stream::StreamWorkerCmd,
     Any, Context, Message, Result, Route, Routed, TransportMessage, Worker,
 };
-use std::collections::VecDeque;
+use ockam_core::compat::collections::VecDeque;
 
 use super::StreamCmdParser;
 
@@ -41,7 +41,7 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
             );
 
             // Send queued messages
-            let mut outbox = std::mem::replace(&mut w.outbox, VecDeque::new());
+            let mut outbox = core::mem::replace(&mut w.outbox, VecDeque::new());
             outbox.into_iter().for_each(|trans| {
                 let route = w.route.clone();
                 debug!("Sending queued message to {}", route);

@@ -1,5 +1,9 @@
 use crate::{PreKeyBundle, X3DHError, X3dhVault, CSUITE};
-use ockam_core::lib::convert::TryFrom;
+use core::convert::TryFrom;
+use ockam_core::compat::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::Result;
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 use ockam_vault_core::Signature as GenericSignature;
@@ -52,8 +56,8 @@ impl<V: X3dhVault> Initiator<V> {
     }
 }
 
-impl<V: X3dhVault> std::fmt::Debug for Initiator<V> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl<V: X3dhVault> core::fmt::Debug for Initiator<V> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
             r#"X3dhInitiator {{ ephemeral_identity_key: {:?}, prekey_bundle: {:?}, state: {:?}, vault, completed_key_exchange: {:?}, identity_key: {:?} }}"#,

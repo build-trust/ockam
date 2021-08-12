@@ -3,19 +3,22 @@ use crate::{
     SecureChannelTrustInfo, TrustPolicy,
 };
 use async_trait::async_trait;
+use core::future::Future;
+use core::pin::Pin;
 use ockam_channel::{
     CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelInfo,
 };
+#[cfg(not(feature = "std"))]
+use ockam_core::compat::rand::random;
 use ockam_core::{
     route, Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
+#[cfg(feature = "std")]
 use rand::random;
 use serde::{Deserialize, Serialize};
-use std::future::Future;
-use std::pin::Pin;
 use tracing::{debug, info};
 
 #[derive(Serialize, Deserialize)]

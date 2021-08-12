@@ -1,5 +1,4 @@
 use super::*;
-use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 
 /// An attribute describes a statement that the issuer of a credential is

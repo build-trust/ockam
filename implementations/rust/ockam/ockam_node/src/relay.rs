@@ -16,10 +16,11 @@
 //! a type and notifying the companion actor.
 
 use crate::{parser, Context};
+use core::marker::PhantomData;
+use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     Address, LocalMessage, Message, Result, Route, Routed, RouterMessage, TransportMessage, Worker,
 };
-use std::{marker::PhantomData, sync::Arc};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 

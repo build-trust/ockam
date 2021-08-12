@@ -9,9 +9,13 @@
     unused_qualifications,
     warnings
 )]
-// ---
-// #![no_std] if the standard library is not present.
 #![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 extern crate tracing;
@@ -26,10 +30,10 @@ pub use ockam_node_attribute::*;
 // ---
 
 // Export node implementation
-#[cfg(all(feature = "std", feature = "ockam_node"))]
+#[cfg(feature = "std")]
 pub use ockam_node::*;
 
-#[cfg(all(not(feature = "std"), feature = "ockam_node_no_std"))]
+#[cfg(not(feature = "std"))]
 pub use ockam_node_no_std::*;
 // ---
 
@@ -44,6 +48,7 @@ mod unique;
 pub use delay::*;
 pub use error::*;
 pub use lease::*;
+pub use ockam_core::compat;
 pub use ockam_core::worker;
 pub use ockam_entity::*;
 pub use protocols::*;

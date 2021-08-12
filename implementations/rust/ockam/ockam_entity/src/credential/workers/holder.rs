@@ -4,7 +4,7 @@ use crate::{
     Profile, ProfileIdentifier, SigningPublicKey,
 };
 use async_trait::async_trait;
-use ockam_core::lib::convert::TryInto;
+use core::convert::TryInto;
 use ockam_core::{Address, Result, Route, Routed, Worker};
 use ockam_node::Context;
 use rand::random;

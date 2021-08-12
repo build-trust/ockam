@@ -2,11 +2,15 @@
 mod test {
     use crate::{start_node, Context};
     use async_trait::async_trait;
+    use core::sync::atomic::{AtomicBool, Ordering};
+    use core::time::Duration;
+    use ockam_core::compat::{
+        boxed::Box,
+        string::{String, ToString},
+        sync::Arc,
+    };
     use ockam_core::{route, Routed, Worker};
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::Arc;
     use std::thread::sleep;
-    use std::time::Duration;
 
     #[allow(non_snake_case)]
     #[test]

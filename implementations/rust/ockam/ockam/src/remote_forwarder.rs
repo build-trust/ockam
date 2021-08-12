@@ -1,7 +1,10 @@
 #![deny(missing_docs)]
 
 use crate::{route, Context, OckamError};
+#[cfg(not(feature = "std"))]
+use ockam_core::compat::rand::random;
 use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
+#[cfg(feature = "std")]
 use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};

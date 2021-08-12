@@ -1,7 +1,7 @@
 #![allow(conflicting_repr_hints)]
 
 use crate::FfiError;
-use ockam_core::lib::convert::TryFrom;
+use core::convert::TryFrom;
 use ockam_vault_core::{SecretAttributes, SecretPersistence, SecretType};
 
 /// Represents a handle id for the secret key

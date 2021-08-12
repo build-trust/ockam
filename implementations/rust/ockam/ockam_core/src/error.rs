@@ -1,6 +1,7 @@
 //! Error and Result types
 
-use crate::lib::{fmt::Formatter, Display, String};
+use crate::compat::string::String;
+use core::fmt::{self, Display, Formatter};
 use serde::{Deserialize, Serialize};
 
 /// The type of errors returned by Ockam functions.
@@ -25,12 +26,12 @@ use serde::{Deserialize, Serialize};
 pub struct Error {
     code: u32,
 
-    #[cfg(feature = "std")]
+    #[cfg(any(feature = "std", feature = "alloc"))]
     domain: String,
 }
 
 /// The type returned by Ockam functions.
-pub type Result<T> = crate::lib::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 /// Produces Ok(false), which reads confusingly in auth code.
 pub fn deny() -> Result<bool> {
@@ -44,13 +45,13 @@ pub fn allow() -> Result<bool> {
 
 impl Error {
     /// Creates a new [`Error`].
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     pub fn new(code: u32) -> Self {
         Self { code }
     }
 
     /// Creates a new [`Error`].
-    #[cfg(feature = "std")]
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn new<S: Into<String>>(code: u32, domain: S) -> Self {
         Self {
             code,
@@ -59,7 +60,7 @@ impl Error {
     }
 
     /// Returns an error's domain.
-    #[cfg(feature = "std")]
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[inline]
     pub fn domain(&self) -> &String {
         &self.domain
@@ -73,8 +74,8 @@ impl Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> crate::lib::fmt::Result {
-        #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        #[cfg(any(feature = "std", feature = "alloc"))]
         {
             write!(
                 f,
@@ -82,17 +83,16 @@ impl Display for Error {
                 self.code, self.domain
             )
         }
-        #[cfg(not(feature = "std"))]
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
         {
             write!(f, "Error {{ code: {} }}", self.code)
         }
     }
 }
 
-#[cfg(feature = "std")]
-impl crate::lib::error::Error for Error {}
+impl crate::compat::error::Error for Error {}
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 #[cfg(test)]
 mod std_test {
     use super::*;
@@ -135,12 +135,13 @@ mod std_test {
     }
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 #[cfg(test)]
 mod no_std_test {
-    // These following tests are only run when the std feature in not enabled
-    // cargo test --no-default-features
-
+    // These following tests are run for no_std targets without
+    // support for heap allocation:
+    //
+    //     cargo test --no-default-features --features="no_std"
     use super::*;
 
     #[test]

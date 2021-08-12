@@ -10,10 +10,21 @@ impl<V: SymmetricVault> SymmetricVault for VaultMutex<V> {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        self.0
+        #[cfg(feature = "std")]
+        return self
+            .0
             .lock()
             .unwrap()
-            .aead_aes_gcm_encrypt(context, plaintext, nonce, aad)
+            .aead_aes_gcm_encrypt(context, plaintext, nonce, aad);
+        #[cfg(not(feature = "std"))]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .aead_aes_gcm_encrypt(context, plaintext, nonce, aad)
+        });
     }
 
     fn aead_aes_gcm_decrypt(
@@ -23,10 +34,21 @@ impl<V: SymmetricVault> SymmetricVault for VaultMutex<V> {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        self.0
+        #[cfg(feature = "std")]
+        return self
+            .0
             .lock()
             .unwrap()
-            .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad)
+            .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad);
+        #[cfg(not(feature = "std"))]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad)
+        });
     }
 }
 

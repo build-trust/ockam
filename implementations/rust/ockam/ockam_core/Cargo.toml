@@ -20,20 +20,34 @@ exclude = [
 [features]
 default = ["std"]
 
-# Requires the Rust Standard Library.
-std = ["serde_bare", "serde", "async-trait", "hex/std"]
+# Option (enabled by default): "std" enables functionality expected to
+# be available on a standard platform.
+std = ["hex/std", "rand/std", "rand/std_rng", "serde_bare"]
 
-# Requires the Rust alloc library
-alloc = []
+# Option: "no_std" enables functionality required for platforms
+# without the standard library.
+no_std = ["core2", "hex", "rand_pcg", "serde_bare", "spin"]
 
-# No alloc and no standard library
-no_std = ["heapless"]
+# Option: "alloc" enables support for heap allocation on "no_std"
+# platforms, requires nightly.
+alloc = ["core2/alloc", "core2/nightly", "heapless", "hex/alloc", "serde/alloc", "serde_bare"]
+
+# Option: "unsafe_random" enables development support for random
+# number generation on no_std platforms that do not yet have
+# cryptographically secure implementations.
+# WARNING: Under no circumstances should this ever be enabled in
+#          production builds!
+unsafe_random  = []
+
 
 [dependencies]
-async-trait =  { version = "0.1", optional = true }
-serde_bare = { version =  "0.4", optional = true }
-hashbrown =  { version = "0.11", features = ["serde"]}
-heapless = { version = "0.7", optional = true }
-hex = { version = "0.4", default-features = false }
-serde =  { version = "1.0", features = ["derive"], optional = true }
-rand = "0.8"
+async-trait = "0.1.42"
+serde_bare = { version = "0.4.0", default-features = false, optional = true }
+hashbrown =  { version = "0.11", features = ["serde"] }
+heapless = { version = "0.7.1", optional = true }
+hex = { version = "0.4", default-features = false, optional = true }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+rand = { version = "0.8", default-features = false }
+rand_pcg = { version = "0.3.1", default-features = false, optional = true }
+core2 = { version = "0.3.1", default-features = false, optional = true }
+spin = { version = "0.9.1", default-features = false, features = ["mutex", "spin_mutex"], optional = true }

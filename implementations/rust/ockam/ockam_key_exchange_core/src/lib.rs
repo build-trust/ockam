@@ -14,7 +14,15 @@
     unused_qualifications,
     warnings
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(feature = "std")]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::Result;
 use ockam_vault_core::Secret;
 use zeroize::Zeroize;

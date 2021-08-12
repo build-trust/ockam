@@ -1,5 +1,4 @@
 //!
-#![no_std]
 #![deny(
     // TODO restore missing_docs,
     trivial_casts,
@@ -9,6 +8,13 @@
     unused_qualifications,
     warnings
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 extern crate signature_core;

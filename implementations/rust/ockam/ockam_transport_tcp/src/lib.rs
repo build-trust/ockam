@@ -18,6 +18,13 @@
     unused_import_braces,
     unused_qualifications
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate core;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 pub(crate) mod atomic;
 
@@ -33,7 +40,7 @@ mod transport;
 pub use error::*;
 pub use transport::*;
 
-use ockam_core::lib::net::SocketAddr;
+use ockam_core::compat::net::SocketAddr;
 use ockam_core::Result;
 
 /// TCP address type constant

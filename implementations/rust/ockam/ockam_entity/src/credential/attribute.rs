@@ -1,6 +1,5 @@
 use super::CredentialAttributeType;
 use bls12_381_plus::Scalar;
-use ockam_core::lib::*;
 use serde::{Deserialize, Serialize};
 use signature_core::lib::Message;
 

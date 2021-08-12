@@ -1,9 +1,13 @@
-use crate::lib::{
-    fmt::{self, Debug, Display},
-    str::from_utf8,
-    String, ToString, Vec,
+#[cfg(not(feature = "std"))]
+use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
+use crate::compat::{
+    string::{String, ToString},
+    vec::Vec,
 };
+use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
+use core::str::from_utf8;
+#[cfg(feature = "std")]
 use rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use serde::{Deserialize, Serialize};
 

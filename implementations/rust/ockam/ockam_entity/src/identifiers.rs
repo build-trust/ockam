@@ -1,9 +1,8 @@
 use crate::profile::Profile;
 use crate::EntityError;
+use core::convert::TryFrom;
+use core::fmt::{Display, Formatter};
 use ockam_core::hex::encode;
-use ockam_core::lib::convert::TryFrom;
-use ockam_core::lib::fmt::Formatter;
-use ockam_core::lib::Display;
 use ockam_core::{Error, Result};
 use ockam_vault_core::{Hasher, KeyId};
 use serde::{Deserialize, Serialize};
@@ -28,7 +27,7 @@ impl EntityIdentifier {
 }
 
 impl Display for EntityIdentifier {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let str: String = self.clone().into();
         write!(f, "{}", &str)
     }
@@ -91,7 +90,7 @@ impl EventIdentifier {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ockam_core::lib::convert::TryInto;
+    use core::convert::TryInto;
     use rand::{thread_rng, RngCore};
 
     impl EntityIdentifier {

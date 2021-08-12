@@ -17,7 +17,7 @@ pub const AES256_SECRET_LENGTH: usize = 32;
 pub const AES128_SECRET_LENGTH: usize = 16;
 
 cfg_if! {
-    if #[cfg(feature = "no_std")] {
+    if #[cfg(all(not(feature = "std"), not(feature = "alloc")))] {
         /// Secret Key Vector
         pub type SecretKeyVec = heapless::Vec<u8, 32>;
         /// Public Key Vector
@@ -26,10 +26,15 @@ cfg_if! {
         pub type SmallBuffer<T> = heapless::Vec<T, 4>;
         /// Buffer for large binaries (e.g. encrypted data). Max size - 512
         pub type Buffer<T> = heapless::Vec<T, 512>;
-        /// ID of a Key
         pub type KeyId = heapless::String<64>;
         /// Signature Vector. Max size - 112
         pub type SignatureVec = heapless::Vec<u8, 112>;
+
+        impl From<&str> for KeyId {
+            fn from(s: &str) -> Self {
+                heapless::String::from(s)
+            }
+        }
     }
     else {
         extern crate alloc;

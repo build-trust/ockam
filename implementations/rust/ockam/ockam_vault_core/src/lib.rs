@@ -4,7 +4,6 @@
 //! for use by other crates that either provide implementations for those traits,
 //! or use traits and types as an abstract dependency.
 
-#![no_std]
 #![deny(
     missing_docs,
     trivial_casts,
@@ -14,6 +13,7 @@
     unused_qualifications,
     warnings
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 mod asymmetric_vault;
 mod hasher;

@@ -9,7 +9,7 @@ use crate::{
     PresentationManifest, PresenterWorker, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
     SecureChannels, SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker,
 };
-use ockam_core::lib::convert::TryInto;
+use core::convert::TryInto;
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};

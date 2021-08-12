@@ -1,3 +1,4 @@
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Message, Result};
 
 // TODO: this function can not mutate the data vector it is given, and

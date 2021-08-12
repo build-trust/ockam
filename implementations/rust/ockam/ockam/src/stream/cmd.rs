@@ -41,7 +41,7 @@ where
     F: Fn(&mut W, &mut Context, Routed<StreamWorkerCmd>) -> Result<bool>,
 {
     f: F,
-    _w: std::marker::PhantomData<W>,
+    _w: core::marker::PhantomData<W>,
 }
 
 impl<W, F> StreamCmdParser<W, F>
@@ -52,7 +52,7 @@ where
     pub fn new(f: F) -> Self {
         Self {
             f,
-            _w: std::marker::PhantomData,
+            _w: core::marker::PhantomData,
         }
     }
 }

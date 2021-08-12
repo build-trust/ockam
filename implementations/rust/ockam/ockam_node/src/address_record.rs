@@ -2,6 +2,7 @@ use crate::relay::RelayMessage;
 use ockam_core::AddressSet;
 use tokio::sync::mpsc::Sender;
 
+#[derive(Debug)]
 pub struct AddressRecord {
     address_set: AddressSet,
     sender: Sender<RelayMessage>,

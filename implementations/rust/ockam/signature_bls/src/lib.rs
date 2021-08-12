@@ -13,7 +13,6 @@
 //! but provides some optimizations when an allocator exists for verifying
 //! aggregated signatures.
 
-#![no_std]
 #![deny(
     missing_docs,
     trivial_casts,
@@ -22,6 +21,10 @@
     unused_qualifications,
     warnings
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate core;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

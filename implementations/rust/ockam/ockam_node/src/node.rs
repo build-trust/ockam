@@ -1,7 +1,7 @@
 use crate::relay::RelayMessage;
 use crate::{relay, Context, Executor, Mailbox, NodeMessage};
+use ockam_core::compat::sync::Arc;
 use ockam_core::Address;
-use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Sender};
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
@@ -53,13 +53,16 @@ pub fn start_node() -> (Context, Executor) {
 
 /// Utility to setup tracing-subscriber from the environment
 fn setup_tracing() {
-    let filter = EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
-        EnvFilter::default()
-            .add_directive(LevelFilter::INFO.into())
-            .add_directive("ockam_node=info".parse().unwrap())
-    });
+    #[cfg(feature = "std")]
+    {
+        let filter = EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
+            EnvFilter::default()
+                .add_directive(LevelFilter::INFO.into())
+                .add_directive("ockam_node=info".parse().unwrap())
+        });
 
-    if fmt().with_env_filter(filter).try_init().is_err() {
-        debug!("Failed to initialise tracing_subscriber.  Is an instance already running?");
+        if fmt().with_env_filter(filter).try_init().is_err() {
+            debug!("Failed to initialise tracing_subscriber.  Is an instance already running?");
+        }
     }
 }

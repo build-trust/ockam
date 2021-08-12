@@ -1,7 +1,7 @@
 use crate::VaultError;
+use ockam_core::compat::{collections::BTreeMap, string::String};
 use ockam_vault_core::zdrop_impl;
 use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
-use std::collections::BTreeMap;
 use tracing::info;
 use zeroize::Zeroize;
 

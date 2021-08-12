@@ -12,7 +12,19 @@ keywords = ["ockam", "crypto", "kex", "cryptography", "encryption"]
 description = """The Ockam Key Exchange trait.
 """
 
+[features]
+default = ["std"]
+
+# Option (enabled by default): "std" enables functionality expected to be available on a standard platform.
+std = ["ockam_core/std", "ockam_vault_core/std"]
+
+# Option: "no_std" enables functionality required for platforms without the standard library.
+no_std = ["ockam_core/no_std", "ockam_vault_core/no_std"]
+
+# Option: "alloc" enables support for heap allocation on "no_std" platforms, requires nightly.
+alloc = ["ockam_core/alloc", "ockam_vault_core/alloc"]
+
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.25.0-dev"                           }
-ockam_vault_core = { path = "../ockam_vault_core" , version = "0.19.0-dev"                           }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev", default_features = false }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.19.0-dev", default_features = false }
 zeroize = { version = "1.1", features = ["zeroize_derive"] }

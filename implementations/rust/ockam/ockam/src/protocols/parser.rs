@@ -2,7 +2,9 @@ use crate::{
     error::OckamError, protocols::ProtocolPayload, Any, Context, Message, ProtocolId, Result,
     Routed, Worker,
 };
-use std::{collections::BTreeMap, marker::PhantomData, ops::Deref, sync::Arc, sync::RwLock};
+use core::{marker::PhantomData, ops::Deref};
+use ockam_core::compat::{collections::BTreeMap, sync::Arc};
+use std::sync::RwLock;
 
 /// A parser for a protocol fragment
 ///

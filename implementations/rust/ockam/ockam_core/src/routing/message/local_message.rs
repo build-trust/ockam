@@ -1,4 +1,4 @@
-use crate::{lib::Vec, TransportMessage};
+use crate::{compat::vec::Vec, TransportMessage};
 use serde::{Deserialize, Serialize};
 
 /// LocalMessage is a message type that is routed locally within one node.

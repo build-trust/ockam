@@ -14,13 +14,23 @@ description = """The Ockam Vault trait.
 
 [features]
 default = ["std"]
+
+# Option (enabled by default): "std" enables functionality expected to
+# be available on a standard platform.
 std = ["ockam_core/std"]
-no_std = ["heapless"]
+
+# Option: "no_std" enables functionality required for platforms
+# without the standard library.
+no_std = ["ockam_core/no_std", "heapless"]
+
+# Option: "alloc" enables support for heap allocation on "no_std"
+# platforms, requires nightly.
+alloc = ["ockam_core/alloc", "serde/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.25.0-dev"        }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev", default_features = false }
 heapless = { version = "0.7", features = ["serde"], optional = true }
-serde = {version = "1.0", features = ["derive"]}
+serde = {version = "1.0", default-features = false,features = ["derive"]}
 serde-big-array = "0.3"
 zeroize = { version = "1.1", features = ["zeroize_derive"] }
 cfg-if = "1.0"

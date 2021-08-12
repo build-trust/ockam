@@ -1,6 +1,6 @@
 use crate::atomic::ArcBool;
 use crate::{parse_socket_addr, TcpError, TcpListenWorker, WorkerPair, TCP};
-use ockam_core::lib::net::{SocketAddr, ToSocketAddrs};
+use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{Address, Result, RouterMessage};
 use ockam_node::{block_future, Context};
 use std::sync::Arc;
