@@ -15,10 +15,11 @@ and trustfully with cloud services and other devices.
 
 [features]
 default = ["std", "software_vault", "noise_xx"]
+std = ["serde_bare/std"]
+alloc = ["serde_bare/alloc"]
 noise_xx = ["ockam_key_exchange_xx"]
 software_vault = ["ockam_vault", "ockam_vault_sync_core", "ockam_vault_sync_core/software_vault"]
 lease_proto_json = ["serde_json"]
-std = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.31.0"    }
@@ -42,7 +43,7 @@ serde_json = { version ="1.0", optional = true }
 
 sha2 = "0.9"
 serde-big-array = "0.3"
-serde_bare = "0.4"
+serde_bare = { git = "ssh://git@github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc" }
 rand = "0.8"
 tracing = "0.1"
 
