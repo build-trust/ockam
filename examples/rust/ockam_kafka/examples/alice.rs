@@ -13,34 +13,39 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create an Entity to represent Alice.
     let mut alice = Entity::create(&ctx, &vault)?;
 
-    // This program expects that Bob has created a bi-directional stream that
-    // will relay messages for his secure channel listener, on the Ockam node
-    // at 1.node.ockam.network:4000.
-    //
-    // From standard input, read the bi-directional stream names for
-    // Bob's secure channel listener.
-    println!("\nEnter the stream sender name for Bob: ");
-    let mut sender_name = String::new();
-    io::stdin().read_line(&mut sender_name).expect("Error reading stdin.");
-    let sender_name = sender_name.trim();
+    // This program expects that Bob has created two streams
+    // bob_to_alice and alice_to_bob on the cloud node at 1.node.ockam.network:4000
+    // We need the user to provide the addresses of these streams.
 
-    println!("\nEnter the stream receiver name for Bob: ");
-    let mut receiver_name = String::new();
-    io::stdin().read_line(&mut receiver_name).expect("Error reading stdin.");
-    let receiver_name = receiver_name.trim();
+    // From standard input, read bob_to_alice stream address.
+    println!("\nEnter the bob_to_alice stream address: ");
+    let mut b_to_a_stream_address = String::new();
+    io::stdin().read_line(&mut b_to_a_stream_address).expect("Error stdin.");
+    let b_to_a_stream_address = b_to_a_stream_address.trim();
 
-    // Use the tcp address of the node to get a route to Bob's secure
-    // channel listener via the Kafka stream client.
-    let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000")];
+    // From standard input, read alice_to_bob stream address.
+    println!("\nEnter the alice_to_bob stream address: ");
+    let mut a_to_b_stream_address = String::new();
+    io::stdin().read_line(&mut a_to_b_stream_address).expect("Error stdin.");
+    let a_to_b_stream_address = a_to_b_stream_address.trim();
+
+    // We now know that the route to:
+    // - send messages to bob is [(TCP, "1.node.ockam.network:4000"), a_to_b_stream_address]
+    // - receive messages from bob is [(TCP, "1.node.ockam.network:4000"), b_to_a_stream_address]
+
+    // Starts a sender (producer) for the alice_to_bob stream and a receiver (consumer)
+    // for the `bob_to_alice` stream to get two-way communication.
+
+    let node_in_hub = (TCP, "1.node.ockam.network:4000");
     let (sender, _receiver) = Stream::new(&ctx)?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("alice"))
-        .connect(route_to_bob_listener, receiver_name, sender_name)
+        .connect(route![node_in_hub], a_to_b_stream_address, b_to_a_stream_address)
         .await?;
 
-    // As Alice, connect to Bob's secure channel listener, and perform
-    // an Authenticated Key Exchange to establish an encrypted secure
+    // As Alice, connect to Bob's secure channel listener using the sender, and
+    // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
     let channel = alice.create_secure_channel(r, TrustEveryonePolicy)?;

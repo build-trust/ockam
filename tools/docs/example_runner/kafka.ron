@@ -3,7 +3,7 @@
     stages: [
         [   "bob",
             "sleep 5",
-            "match alice-to-bob_", "match bob-to-alice_",
+            "match alice_to_bob_", "match bob_to_alice_",
             "out 1",
             "out 0",
             "alice",

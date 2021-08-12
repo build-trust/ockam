@@ -1,9 +1,9 @@
 # End-to-End Encryption through Kafka
 
 In this guide, we'll show two programs called Alice and Bob. Alice and Bob will send each other messages,
-over the network, via a cloud service, through Kafka. They will mutually authenticate each other and will
-have a cryptographic guarantee that the _integrity, authenticity, and confidentiality_ of their messages is
-protected _end-to-end_.
+over the network, via a cloud service, through Kafka. In our [example](#example), Alice and Bob will mutually
+authenticate each other and will have a cryptographic guarantee that the
+_integrity, authenticity, and confidentiality_ of their messages is protected _end-to-end_.
 
 The Kafka instance, the intermediary cloud service and attackers on the network will not be able to
 see or change the contents of en-route messages. The application data in Kafka would be encrypted.
@@ -15,6 +15,8 @@ see or change the contents of en-route messages. The application data in Kafka w
   src="./e2ee-ockam-kafka.svg" width="100%">
 </a>
 </p>
+
+[Show me the code](#example)
 
 ### Remove implicit trust in porous network boundaries
 
@@ -76,26 +78,31 @@ With end-to-end secure channels, we can make the vulnerability surface of our ap
 Let's build end-to-end protected communication between Alice and Bob,
 via a cloud service, through Kafka, using Ockam.
 
-In order to establish a Secure Channel we need to be able to send messages between two ends bidirectionally.
-For that we are going to use two Kafka topics and for simplicity we'll do this with single partition topics.
-
-Our goals are is to make the message exchange secure and guarantee at-least once delivery.
-
 We'll run two programs called Alice and Bob. We want Bob to create a secure channel listener
-and ask Alice to initiate a secure handshake (authenticated key exchange) with this listener. We'll imagine
-that Bob and Alice are running on two separate computers and this handshake must happen over the Internet.
+and Alice to initiate a secure handshake (authenticated key exchange) with this listener. We'll imagine
+that Bob and Alice are running on two separate, far-apart, computers and all communication between
+them must happen via a cloud service, through Kafka.
 
-We'll also imagine that Bob is running within a private network and cannot open a public port exposed to
-the Internet. Instead, Bob registers a bi-directional Ockam Stream on an Ockam Node. This Ockam Stream is
-configured to store data in Kafka.
+Our goal is to make the message exchange secure and guarantee that every message is delivered __at-least once__.
+In order to establish our end-to-end Secure Channel we need a two-way exchange of messages. We'll build this
+using two Ockam Streams that are backed by two, single partition, Kafka topics.
 
-The Ockam Node we'll use is running as a cloud service in Ockam Hub. This node's TCP address
-`1.node.ockam.network:4000` and it offers two Kafka related services:
-`stream_kafka` and `stream_kafka_index`.
+An Ockam Stream is a lightweight abstraction over _topics_ or _queues_ in steaming data systems
+like Kafka, Pulsar, RabbitMQ etc. In case of Kafka, one Ockam Stream maps to one Kafka topic. In our
+example below Bob will create two streams (topics). The first stream `alice_to_bob` is for Alice to leave
+messages for Bob and the second stream `bob_to_alice` is for Bob to leave messages for Alice.
+
+The cloud service, in our example, is an Ockam Node running in Ockam Hub. This node has the Kafka Add-on
+enabled which offers __two__ services for creating and managing Kafka backed Ockam Streams. The stream service
+is available at address `"stream_kafka"` and index service is available at address `"stream_kafka_index"`.
+
+The cloud node also an Ockam TCP Transport listener on address: `"1.node.ockam.network:4000"`.
 
 ### Run (Using Docker)
 
-For convenience, we created a Docker image with both Alice and Bob programs.
+To make it easy to try, we've created a Docker image that contains both Alice and Bob programs.
+
+[Later in this guide](#run-using-rust) we'll also show the code for these two programs in Rust.
 
 1. Run Bob’s program:
 
@@ -103,16 +110,18 @@ For convenience, we created a Docker image with both Alice and Bob programs.
     docker run --interactive --tty ghcr.io/ockam-network/examples/kafka bob
     ```
 
-    The Bob program creates a Secure Channel Listener to accept requests to begin an Authenticated
-    Key Exchange. It connects, over TCP, to the cloud node at `1.node.ockam.network:4000` and creates
-    a bi-directional, Kafka backed, Ockam stream on that cloud node. All messages that arrive on that
-    stream will be relayed to Bob using the TCP connection that Bob created as a client.
-
-    Bob also starts an Echoer worker that prints any message it receives and echoes it back on its
+    The Bob program creates a Secure Channel Listener to accept requests to begin an Authenticated Key
+    Exchange. Bob also starts an Echoer worker that prints any message it receives and echoes it back on its
     return route.
 
-2. The Bob program will print two stream names, a sender and receiver, which are the stream addresses
-for Bob on the cloud node, copy them.
+    Bob then connects, over TCP, to the cloud node at `1.node.ockam.network:4000` and requests the `stream_kafka`
+    service to create two Kafka backed streams - `alice_to_bob` and `bob_to_alice`.
+
+    Bob then, locally, starts a receiver (consumer) for the `alice_to_bob` stream and a sender (producer) for
+    the `bob_to_alice` stream.
+
+2. The Bob program prints two stream addresses, that exist on the cloud node, for - the `alice_to_bob` stream and
+    the `bob_to_alice` stream. Copy these addresses, Alice will need them to exchange messages with Bob.
 
 3. In a separate terminal window, run the Alice program:
 
@@ -120,25 +129,22 @@ for Bob on the cloud node, copy them.
     docker run --interactive --tty ghcr.io/ockam-network/examples/kafka alice
     ```
 
-4. It will stop to ask for Bob's stream names that were printed in step 2. Enter them.
+4. The Alice program will stop to ask for the stream addresses that were printed in step 2. Enter them.
 
-    This will tell Alice that the route to reach Bob is via the stream names registered on `"1.node.ockam.network"`.
+    This will tell Alice that:
+    - the route to send messages for Bob is `[(TCP, "1.node.ockam.network:4000"), alice_to_bob_stream_address]`.
+    - the route to receive messages from Bob is `[(TCP, "1.node.ockam.network:4000"), bob_to_alice_stream_address]`.
 
-    When Alice sends a message along this route, the Ockam routing layer will look at the first address
-    in the route and hand the message to the TCP transport. The TCP transport will connect with the cloud
-    node over TCP and hand the message to it.
+    Alice then, locally, starts a sender (producer) for the `alice_to_bob` stream and a receiver (consumer) for
+    the `bob_to_alice` stream. We now have two-way communication between Alice and Bob.
 
-    The routing layer on the cloud node will then take the message via the Kafka stream to Bob. The
-    Kafka client will send the message to Bob over the TCP connection Bob had earlier created with the
-    cloud node.
-
-    Replies, from Bob, take the same path back and the entire secure channel handshake is completed is this way.
+    Alice uses the sender to initiate and authenticated key exchange with Bob.
 
 5. End-to-end Secure Channel is established. Send messages to Bob and get their echoes back.
 
     Once the secure channel is established, the Alice program will stop and ask you to enter a message for
-    Bob. Any message that you enter, is delivered to Bob using the secure channel, via the cloud node. The echoer
-    on Bob will echo the messages back on the same path and Alice will print it.
+    Bob. Any message that you enter, is delivered to Bob using the secure channel, via the cloud node, through
+    Kafka. The echoer on Bob will echo the messages back and Alice will print it.
 
 ### Run (Using Rust)
 
@@ -202,29 +208,32 @@ async fn main(ctx: Context) -> Result<()> {
     // initiate an Authenticated Key Exchange.
     bob.create_secure_channel_listener("listener", TrustEveryonePolicy)?;
 
-    // The computer running this program is likely within a private network and not
-    // accessible over the internet.
+    // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
+    // request the `stream_kafka` service to create two Kafka backed streams -
+    // `alice_to_bob` and `bob_to_alice`.
     //
-    // To allow Alice and others to initiate an end-to-end secure channel with this program
-    // we connect to 1.node.ockam.network:4000 as a TCP client and ask the Kafka Add-on
-    // on that node to create a bi-directional stream for us.
-    //
-    // All messages sent to and arriving at the stream will be relayed
-    // using the TCP connection we created as a client.
+    // After the streams are created, create:
+    // - a receiver (consumer) for the `alice_to_bob` stream
+    // - a sender (producer) for the `bob_to_alice` stream.
+
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
-    let sender_name = Unique::with_prefix("bob-to-alice");
-    let receiver_name = Unique::with_prefix("alice-to-bob");
+    let b_to_a_stream_address = Unique::with_prefix("bob_to_alice");
+    let a_to_b_stream_address = Unique::with_prefix("alice_to_bob");
 
     Stream::new(&ctx)?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("bob"))
-        .connect(route![node_in_hub], sender_name.clone(), receiver_name.clone())
+        .connect(
+            route![node_in_hub],
+            b_to_a_stream_address.clone(),
+            a_to_b_stream_address.clone(),
+        )
         .await?;
 
-    println!("\n[✓] Stream client was created on the node at: 1.node.ockam.network:4000");
-    println!("\nStream sender name is: {}", sender_name);
-    println!("Stream receiver name is: {}\n", receiver_name);
+    println!("\n[✓] Streams were created on the node at: 1.node.ockam.network:4000");
+    println!("\nbob_to_alice stream address is: {}", b_to_a_stream_address);
+    println!("alice_to_bob stream address is: {}\n", a_to_b_stream_address);
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
@@ -257,34 +266,39 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create an Entity to represent Alice.
     let mut alice = Entity::create(&ctx, &vault)?;
 
-    // This program expects that Bob has created a bi-directional stream that
-    // will relay messages for his secure channel listener, on the Ockam node
-    // at 1.node.ockam.network:4000.
-    //
-    // From standard input, read the bi-directional stream names for
-    // Bob's secure channel listener.
-    println!("\nEnter the stream sender name for Bob: ");
-    let mut sender_name = String::new();
-    io::stdin().read_line(&mut sender_name).expect("Error reading stdin.");
-    let sender_name = sender_name.trim();
+    // This program expects that Bob has created two streams
+    // bob_to_alice and alice_to_bob on the cloud node at 1.node.ockam.network:4000
+    // We need the user to provide the addresses of these streams.
 
-    println!("\nEnter the stream receiver name for Bob: ");
-    let mut receiver_name = String::new();
-    io::stdin().read_line(&mut receiver_name).expect("Error reading stdin.");
-    let receiver_name = receiver_name.trim();
+    // From standard input, read bob_to_alice stream address.
+    println!("\nEnter the bob_to_alice stream address: ");
+    let mut b_to_a_stream_address = String::new();
+    io::stdin().read_line(&mut b_to_a_stream_address).expect("Error stdin.");
+    let b_to_a_stream_address = b_to_a_stream_address.trim();
 
-    // Use the tcp address of the node to get a route to Bob's secure
-    // channel listener via the Kafka stream client.
-    let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000")];
+    // From standard input, read alice_to_bob stream address.
+    println!("\nEnter the alice_to_bob stream address: ");
+    let mut a_to_b_stream_address = String::new();
+    io::stdin().read_line(&mut a_to_b_stream_address).expect("Error stdin.");
+    let a_to_b_stream_address = a_to_b_stream_address.trim();
+
+    // We now know that the route to:
+    // - send messages to bob is [(TCP, "1.node.ockam.network:4000"), a_to_b_stream_address]
+    // - receive messages from bob is [(TCP, "1.node.ockam.network:4000"), b_to_a_stream_address]
+
+    // Starts a sender (producer) for the alice_to_bob stream and a receiver (consumer)
+    // for the `bob_to_alice` stream to get two-way communication.
+
+    let node_in_hub = (TCP, "1.node.ockam.network:4000");
     let (sender, _receiver) = Stream::new(&ctx)?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("alice"))
-        .connect(route_to_bob_listener, receiver_name, sender_name)
+        .connect(route![node_in_hub], a_to_b_stream_address, b_to_a_stream_address)
         .await?;
 
-    // As Alice, connect to Bob's secure channel listener, and perform
-    // an Authenticated Key Exchange to establish an encrypted secure
+    // As Alice, connect to Bob's secure channel listener using the sender, and
+    // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
     let channel = alice.create_secure_channel(r, TrustEveryonePolicy)?;
@@ -346,4 +360,3 @@ To learn more, please see our [step-by-step guide](../../guides/rust#step-by-ste
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../../guides/rust#step-by-step">A step-by-step introduction</a>
 </div>
-
