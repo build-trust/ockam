@@ -138,7 +138,7 @@ To make it easy to try, we've created a Docker image that contains both Alice an
     Alice then, locally, starts a sender (producer) for the `alice_to_bob` stream and a receiver (consumer) for
     the `bob_to_alice` stream. We now have two-way communication between Alice and Bob.
 
-    Alice uses the sender to initiate and authenticated key exchange with Bob.
+    Alice uses the sender to initiate an authenticated key exchange with Bob.
 
 5. End-to-end Secure Channel is established. Send messages to Bob and get their echoes back.
 
@@ -355,8 +355,9 @@ Ockam combines proven cryptographic building blocks into a set of reusable proto
 applications to communicate security and privately. The above example only scratched the surface of what
 is possible with the tools that our included in Ockam.
 
-To learn more, please see our [step-by-step guide](../../guides/rust#step-by-step).
+To learn more, please see our [rust guide](../end-to-end-encryption-with-rust#readme) and
+[step-by-step guide](../../guides/rust#readme).
 
 <div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../../guides/rust#step-by-step">A step-by-step introduction</a>
+<hr><b>Next:</b> <a href="../../guides/rust#readme">A step-by-step introduction</a>
 </div>
