@@ -12,6 +12,6 @@ ockam_vault = {  path = "../../../ockam/ockam_vault" }
 okta-plugin = { path = "../" }
 rand = "0.7"
 serde = { version = "1.0", features = ["derive"] }
-serde_bare = "0.3"
+serde_bare = { git = "ssh://git@github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc" }
 serde_json = "1.0"
 structopt = "0.3"

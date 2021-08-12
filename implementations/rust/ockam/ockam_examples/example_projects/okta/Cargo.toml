@@ -17,6 +17,6 @@ ockam = { version = "*", path = "../../../ockam" }
 rpassword = "5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_bare = "0.3"
+serde_bare = { git = "ssh://git@github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc" }
 serde-big-array = "0.3"
 structopt = "0.3"

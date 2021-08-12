@@ -21,7 +21,7 @@ noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_node/std", "serde/std", "ockam_node_attribute/std"]
+std = ["ockam_core/std", "ockam_node/std", "serde/std", "serde_bare/std", "ockam_node_attribute/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -29,7 +29,7 @@ no_std = ["ockam_core/no_std", "ockam_node/no_std", "serde"]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
-alloc = ["ockam_core/alloc", "ockam_node/alloc", "serde/alloc", "ockam_node_attribute/no_std"]
+alloc = ["ockam_core/alloc", "ockam_node/alloc", "serde/alloc", "serde_bare/alloc", "ockam_node_attribute/no_std"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.31.0"    , default-features = false }
@@ -49,7 +49,7 @@ bls12_381_plus = "0.5"
 signature_core = { version = "0.23.0"    , path = "../signature_core" }
 signature_bbs_plus = { version = "0.23.0"    , path = "../signature_bbs_plus", package = "signature_bbs_plus" }
 signature_bls = { version = "0.21.0"    , path = "../signature_bls", package = "signature_bls" }
-serde_bare = "0.4"
+serde_bare = { git = "ssh://git@github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 serde-big-array = "0.3"
 sha2 = "0.9"
