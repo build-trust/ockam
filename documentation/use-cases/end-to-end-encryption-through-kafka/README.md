@@ -1,9 +1,9 @@
 # End-to-End Encryption through Kafka
 
-In this guide, we'll show two programs called Alice and Bob. Alice and Bob will send each other messages,
-over the network, via a cloud service, through Kafka. In our [example](#example), Alice and Bob will mutually
-authenticate each other and will have a cryptographic guarantee that the
-_integrity, authenticity, and confidentiality_ of their messages is protected _end-to-end_.
+In this guide, we'll show [two programs](#example) called Alice and Bob. Alice and Bob will send each other
+messages, over the network, via a cloud service, through Kafka. They will mutually authenticate each other
+and will have a cryptographic guarantee that the _integrity, authenticity, and confidentiality_ of their messages
+is protected _end-to-end_.
 
 The Kafka instance, the intermediary cloud service and attackers on the network will not be able to
 see or change the contents of en-route messages. The application data in Kafka would be encrypted.
@@ -26,9 +26,11 @@ computing mean that machines and applications are continuously leaving and enter
 Application architects have learnt that they must lower the amount of trust they place in network boundaries
 and infrastructure.
 
-The vulnerability surface of our application cannot include _all code_ that may be running within the same
-porous network boundary. That surface is too big, too dynamic and usually outside the control of an application
-developer. Applications must instead take control of the security and reliability of their own data. To
+The vulnerability surface of our application cannot include _all code_ that may be running within the
+same porous network boundary. That surface is too big, too dynamic and usually outside the control of an
+application developer.
+
+Applications must instead take control of the security and reliability of their own data. To
 do this, all messages that are received over the network must prove who sent them and show that they weren't
 tampered with or forged.
 
@@ -67,8 +69,10 @@ confidentiality of messages.
 
 An application can use Ockam Secure Channels to enforce __least-privileged access__ to commands, data,
 configuration, machine-learning models, and software updates that are flowing, as messages, between its
-distributed parts. Intermediary services and compromised software (that may be running within the same
-network boundary) no longer have implicit CRUD permissions on our application's messages. Instead, we have
+distributed parts.
+
+Intermediary services and compromised software (that may be running within the same
+network boundary) no longer have _implicit CRUD_ permissions on our application's messages. Instead, we have
 granular control over access permissions – tampering or forgery of _data-in-motion_ is immediately detected.
 
 With end-to-end secure channels, we can make the vulnerability surface of our application strikingly small.
@@ -96,7 +100,7 @@ The cloud service, in our example, is an Ockam Node running in Ockam Hub. This n
 enabled which offers __two__ services for creating and managing Kafka backed Ockam Streams. The stream service
 is available at address `"stream_kafka"` and index service is available at address `"stream_kafka_index"`.
 
-The cloud node also an Ockam TCP Transport listener on address: `"1.node.ockam.network:4000"`.
+The cloud node also has an Ockam TCP Transport listener on address: `"1.node.ockam.network:4000"`.
 
 ### Run (Using Docker)
 
