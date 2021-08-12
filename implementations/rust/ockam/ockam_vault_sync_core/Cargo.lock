@@ -9,6 +9,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e3e798aa0c8239776f54415bc06f3d74b1850f3f830b45c35cfc80556973f70"
 dependencies = [
  "generic-array",
+ "heapless",
+ "rand_core 0.6.3",
 ]
 
 [[package]]
@@ -199,6 +201,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "core2"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbceae1ad0d3679d016526dd5cc9863156e9d394c1a9591cf7ab20bb25cab490"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "cortex-m"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -287,8 +298,6 @@ checksum = "c762bae6dcaf24c4c84667b8579785430908723d5c889f469d76a41d59cc7a9d"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
- "rand 0.7.3",
- "serde",
  "sha2",
  "zeroize",
 ]
@@ -301,6 +310,29 @@ checksum = "e36cfb62ff156596c892272f3015ef952fe1525e85261fa3a7f327bd6b384ab9"
 dependencies = [
  "nb 0.1.3",
  "void",
+]
+
+[[package]]
+name = "executor"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fc386acdbd994c2c2dc45829352eaff2bfc3b3191c220e4b61d1bcc44b56191"
+dependencies = [
+ "executor-macros",
+ "lazy_static",
+ "spin 0.5.2",
+ "woke",
+]
+
+[[package]]
+name = "executor-macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76702ca666fb8b55aea1f5099cdbbdb42e50392de44ad60c86224e7d4236c401"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -401,6 +433,7 @@ checksum = "50530280e9a947b192e3a30a9d7bcead527b22da30ff7cbd334233d820aaf82a"
 dependencies = [
  "atomic-polyfill",
  "hash32",
+ "serde",
  "stable_deref_trait",
 ]
 
@@ -480,6 +513,9 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+dependencies = [
+ "spin 0.5.2",
+]
 
 [[package]]
 name = "libc"
@@ -606,21 +642,34 @@ name = "ockam_core"
 version = "0.26.0-dev"
 dependencies = [
  "async-trait",
+ "core2",
  "hashbrown",
+ "heapless",
  "hex",
- "rand 0.8.4",
+ "rand",
+ "rand_pcg",
  "serde",
  "serde_bare",
+ "spin 0.9.2",
 ]
 
 [[package]]
 name = "ockam_node"
 version = "0.24.0-dev"
 dependencies = [
+ "heapless",
  "ockam_core",
+ "ockam_node_no_std",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "ockam_node_no_std"
+version = "0.13.0-dev"
+dependencies = [
+ "executor",
 ]
 
 [[package]]
@@ -634,7 +683,8 @@ dependencies = [
  "hkdf",
  "ockam_core",
  "ockam_vault_core",
- "rand 0.8.4",
+ "rand",
+ "rand_pcg",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -650,6 +700,7 @@ name = "ockam_vault_core"
 version = "0.20.0-dev"
 dependencies = [
  "cfg-if",
+ "heapless",
  "ockam_core",
  "serde",
  "serde-big-array",
@@ -667,7 +718,8 @@ dependencies = [
  "ockam_vault_core",
  "ockam_vault_test_attribute",
  "ockam_vault_test_suite",
- "rand 0.8.4",
+ "rand",
+ "rand_pcg",
  "serde",
  "serde-big-array",
  "tracing",
@@ -787,37 +839,14 @@ checksum = "643f8f41a8ebc4c5dc4515c82bb8abd397b527fc20fd681b7c011c2aee5d44fb"
 
 [[package]]
 name = "rand"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
-dependencies = [
- "getrandom 0.1.16",
- "libc",
- "rand_chacha 0.2.2",
- "rand_core 0.5.1",
- "rand_hc 0.2.0",
-]
-
-[[package]]
-name = "rand"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
 dependencies = [
  "libc",
- "rand_chacha 0.3.1",
+ "rand_chacha",
  "rand_core 0.6.3",
- "rand_hc 0.3.1",
-]
-
-[[package]]
-name = "rand_chacha"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c8ed856279c9737206bf725bf36935d8666ead7aa69b52be55af369d193402"
-dependencies = [
- "ppv-lite86",
- "rand_core 0.5.1",
+ "rand_hc",
 ]
 
 [[package]]
@@ -850,18 +879,18 @@ dependencies = [
 
 [[package]]
 name = "rand_hc"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3129af7b92a17112d59ad498c6f81eaf463253766b90396d39ea7a39d6613c"
-dependencies = [
- "rand_core 0.5.1",
-]
-
-[[package]]
-name = "rand_hc"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
+dependencies = [
+ "rand_core 0.6.3",
+]
+
+[[package]]
+name = "rand_pcg"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59cad018caf63deb318e5a4586d99a24424a364f40f1e5778c29aca23f4fc73e"
 dependencies = [
  "rand_core 0.6.3",
 ]
@@ -1090,7 +1119,7 @@ dependencies = [
  "hkdf",
  "hmac-drbg",
  "pairing",
- "rand_chacha 0.3.1",
+ "rand_chacha",
  "rand_core 0.6.3",
  "serde",
  "signature_bls",
@@ -1105,6 +1134,18 @@ name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+
+[[package]]
+name = "spin"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
 
 [[package]]
 name = "stable_deref_trait"
@@ -1319,7 +1360,7 @@ checksum = "b809fb740b3dbd450f411269eec820bbd29dee9268ea1b7c48a0f7e8f283bbb0"
 dependencies = [
  "ff",
  "group",
- "rand_chacha 0.3.1",
+ "rand_chacha",
  "rand_core 0.6.3",
  "serde",
  "zeroize",
@@ -1358,6 +1399,12 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "woke"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eafdab77c9ee549298ca6585107832aa89d77b14ba13cda220fec6105b17dbb1"
 
 [[package]]
 name = "wyz"
