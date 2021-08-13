@@ -7,14 +7,12 @@ use crate::{
     SignatureType,
 };
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
+use ockam_vault_core::Signature as OckamVaultSignature;
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
 };
 use ockam_vault_sync_core::VaultSync;
 use serde::{Deserialize, Serialize};
-use serde_big_array::big_array;
-
-big_array! { BigArray; }
 
 /// Key change data creation
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -48,8 +46,7 @@ impl CreateKeyChangeData {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateKeyChange {
     data: CreateKeyChangeData,
-    #[serde(with = "BigArray")]
-    self_signature: [u8; 64],
+    self_signature: OckamVaultSignature,
 }
 
 impl CreateKeyChange {
@@ -58,14 +55,14 @@ impl CreateKeyChange {
         &self.data
     }
     /// Return self signature
-    pub fn self_signature(&self) -> &[u8; 64] {
+    pub fn self_signature(&self) -> &OckamVaultSignature {
         &self.self_signature
     }
 }
 
 impl CreateKeyChange {
     /// Create new CreateKeyChange
-    pub fn new(data: CreateKeyChangeData, self_signature: [u8; 64]) -> Self {
+    pub fn new(data: CreateKeyChangeData, self_signature: OckamVaultSignature) -> Self {
         CreateKeyChange {
             data,
             self_signature,

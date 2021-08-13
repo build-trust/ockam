@@ -2,6 +2,7 @@ use crate::{PreKeyBundle, X3DHError, X3dhVault, CSUITE};
 use ockam_core::lib::convert::TryFrom;
 use ockam_core::Result;
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
+use ockam_vault_core::Signature as GenericSignature;
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_SECRET_LENGTH,
@@ -111,7 +112,7 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
 
                 // Check the prekey_bundle signature
                 self.vault.verify(
-                    prekey_bundle.signature_prekey.as_ref(),
+                    &GenericSignature::new(prekey_bundle.signature_prekey.as_ref().to_vec()),
                     &prekey_bundle.identity_key,
                     prekey_bundle.signed_prekey.as_ref(),
                 )?;

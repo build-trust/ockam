@@ -1,18 +1,18 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 use ockam_core::Result;
 use ockam_node::block_future;
-use ockam_vault_core::{PublicKey, Verifier};
+use ockam_vault_core::{PublicKey, Signature, Verifier};
 
 impl Verifier for VaultSync {
     fn verify(
         &mut self,
-        signature: &[u8; 64],
+        signature: &Signature,
         public_key: &PublicKey,
         data: &[u8],
     ) -> Result<bool> {
         block_future(&self.ctx.runtime(), async move {
             self.send_message(VaultRequestMessage::Verify {
-                signature: *signature,
+                signature: signature.clone(),
                 public_key: public_key.clone(),
                 data: data.into(),
             })

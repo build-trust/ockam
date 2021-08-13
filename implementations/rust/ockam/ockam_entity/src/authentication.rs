@@ -1,24 +1,21 @@
 use crate::{EntityError, ProfileVault};
 use ockam_vault::{PublicKey, Secret};
+use ockam_vault_core::Signature;
 use serde::{Deserialize, Serialize};
-use serde_big_array::big_array;
-
-big_array! { BigArray; }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct AuthenticationProof {
-    #[serde(with = "BigArray")]
-    signature: [u8; 64],
+    signature: Signature,
 }
 
 impl AuthenticationProof {
-    pub(crate) fn signature(&self) -> &[u8; 64] {
+    pub(crate) fn signature(&self) -> &Signature {
         &self.signature
     }
 }
 
 impl AuthenticationProof {
-    pub(crate) fn new(signature: [u8; 64]) -> Self {
+    pub(crate) fn new(signature: Signature) -> Self {
         AuthenticationProof { signature }
     }
 }

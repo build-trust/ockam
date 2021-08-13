@@ -1,10 +1,7 @@
 use ockam_vault_core::{
-    Buffer, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SmallBuffer,
+    Buffer, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, Signature, SmallBuffer,
 };
 use serde::{Deserialize, Serialize};
-use serde_big_array::big_array;
-
-big_array! { BigArray; }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum VaultResponseMessage {
@@ -19,7 +16,7 @@ pub enum VaultResponseMessage {
     SecretAttributesGet(SecretAttributes),
     SecretPublicKeyGet(PublicKey),
     SecretDestroy,
-    Sign(#[serde(with = "BigArray")] [u8; 64]),
+    Sign(Signature),
     AeadAesGcmEncrypt(Buffer<u8>),
     AeadAesGcmDecrypt(Buffer<u8>),
     Verify(bool),
