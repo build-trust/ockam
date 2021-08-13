@@ -2,12 +2,15 @@ use crate::software_vault::SoftwareVault;
 use crate::xeddsa::XEddsaSigner;
 use crate::VaultError;
 use arrayref::array_ref;
-use ockam_vault_core::{Secret, SecretType, Signer, CURVE25519_SECRET_LENGTH};
+use ockam_vault_core::{Secret, SecretType, Signature, Signer, CURVE25519_SECRET_LENGTH};
 use rand::{thread_rng, RngCore};
+use signature_bbs_plus::{Issuer, MessageGenerators};
+use signature_bls::SecretKey;
+use signature_core::lib::Message;
 
 impl Signer for SoftwareVault {
     /// Sign data with xeddsa algorithm. Only curve25519 is supported.
-    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> ockam_core::Result<[u8; 64]> {
+    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> ockam_core::Result<Signature> {
         let entry = self.get_entry(secret_key)?;
         let key = entry.key().as_ref();
         match entry.key_attributes().stype() {
@@ -22,7 +25,7 @@ impl Signer for SoftwareVault {
                         CURVE25519_SECRET_LENGTH
                     ))
                     .sign(data.as_ref(), &nonce);
-                    Ok(sig)
+                    Ok(Signature::new(sig.to_vec()))
                 } else {
                     Err(VaultError::InvalidKeyType.into())
                 }

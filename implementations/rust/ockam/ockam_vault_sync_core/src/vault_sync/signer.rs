@@ -1,10 +1,10 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 use ockam_core::Result;
 use ockam_node::block_future;
-use ockam_vault_core::{Secret, Signer};
+use ockam_vault_core::{Secret, Signature, Signer};
 
 impl Signer for VaultSync {
-    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<[u8; 64]> {
+    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
         block_future(&self.ctx.runtime(), async move {
             self.send_message(VaultRequestMessage::Sign {
                 secret_key: secret_key.clone(),

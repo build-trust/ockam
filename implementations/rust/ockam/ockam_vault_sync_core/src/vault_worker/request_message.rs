@@ -1,8 +1,5 @@
-use ockam_vault_core::{Buffer, PublicKey, Secret, SecretAttributes, SmallBuffer};
+use ockam_vault_core::{Buffer, PublicKey, Secret, SecretAttributes, Signature, SmallBuffer};
 use serde::{Deserialize, Serialize};
-use serde_big_array::big_array;
-
-big_array! { BigArray; }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum VaultRequestMessage {
@@ -61,8 +58,7 @@ pub enum VaultRequestMessage {
         aad: Buffer<u8>,
     },
     Verify {
-        #[serde(with = "BigArray")]
-        signature: [u8; 64],
+        signature: Signature,
         public_key: PublicKey,
         data: Buffer<u8>,
     },

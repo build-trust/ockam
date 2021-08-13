@@ -8,6 +8,7 @@ pub enum X3DHError {
     None,
     InvalidState,
     MessageLenMismatch,
+    SignatureLenMismatch,
     InvalidHash,
 }
 

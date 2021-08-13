@@ -100,10 +100,14 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
                     .sign(identity_secret_key, signed_prekey_pub.as_ref())?;
                 let identity_key = self.vault.secret_public_key_get(identity_secret_key)?;
                 let one_time_prekey_pub = self.vault.secret_public_key_get(one_time_prekey)?;
+                if signature.as_ref().len() != 64 {
+                    return Err(X3DHError::SignatureLenMismatch.into());
+                }
+                let signature_array = array_ref![signature.as_ref(), 0, 64]; //check it against panic
                 let bundle = PreKeyBundle {
                     identity_key,
                     signed_prekey: signed_prekey_pub,
-                    signature_prekey: Signature(signature),
+                    signature_prekey: Signature(*signature_array),
                     one_time_prekey: one_time_prekey_pub,
                 };
                 self.state = ResponderState::Done;

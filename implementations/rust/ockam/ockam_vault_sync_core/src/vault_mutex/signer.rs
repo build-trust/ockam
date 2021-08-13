@@ -1,9 +1,9 @@
 use crate::VaultMutex;
 use ockam_core::Result;
-use ockam_vault_core::{Secret, Signer};
+use ockam_vault_core::{Secret, Signature, Signer};
 
 impl<V: Signer> Signer for VaultMutex<V> {
-    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<[u8; 64]> {
+    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
         self.0.lock().unwrap().sign(secret_key, data)
     }
 }

@@ -1,11 +1,11 @@
 use crate::VaultMutex;
 use ockam_core::Result;
-use ockam_vault_core::{PublicKey, Verifier};
+use ockam_vault_core::{PublicKey, Signature, Verifier};
 
 impl<V: Verifier> Verifier for VaultMutex<V> {
     fn verify(
         &mut self,
-        signature: &[u8; 64],
+        signature: &Signature,
         public_key: &PublicKey,
         data: &[u8],
     ) -> Result<bool> {
