@@ -23,8 +23,17 @@ impl Verifier for SoftwareVault {
                 0,
                 CURVE25519_PUBLIC_LENGTH
             ))
-        } else if public_key.as_ref().len() == 96 {
-            Ok(signature == &[0u8; 64])
+            .verify(data.as_ref(), signature_array))
+        } else if public_key.as_ref().len() == 96 && signature.as_ref().len() == 112 {
+            let bls_public_key =
+                ::signature_bls::PublicKey::from_bytes(array_ref!(public_key.as_ref(), 0, 96))
+                    .unwrap();
+            let generators = MessageGenerators::from_public_key(bls_public_key, 1);
+            let messages = [Message::hash(data.as_ref())];
+            let signature_array = array_ref!(signature.as_ref(), 0, 112);
+            let signature_bbs = BBSSignature::from_bytes(signature_array).unwrap();
+            let res = signature_bbs.verify(&bls_public_key, &generators, messages.as_ref());
+            Ok(res.unwrap_u8() == 1)
         } else {
             Err(VaultError::InvalidPublicKey.into())
         }

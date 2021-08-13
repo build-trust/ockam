@@ -31,7 +31,15 @@ impl Signer for SoftwareVault {
                 }
             }
             SecretType::Bls => {
-                Ok([0u8; 64]) // FIXME
+                if key.len() == 32 {
+                    let bls_secret_key = SecretKey::from_bytes(array_ref!(key, 0, 32)).unwrap();
+                    let generators = MessageGenerators::from_secret_key(&bls_secret_key, 1);
+                    let messages = [Message::hash(data)];
+                    let sig = Issuer::sign(&bls_secret_key, &generators, &messages).unwrap();
+                    Ok(Signature::new(sig.to_bytes().to_vec()))
+                } else {
+                    Err(VaultError::InvalidKeyType.into())
+                }
             }
             SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
                 Err(VaultError::InvalidKeyType.into())

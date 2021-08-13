@@ -970,6 +970,9 @@ dependencies = [
  "rand 0.8.4",
  "sha2",
  "signature_bbs_plus",
+ "signature_bls",
+ "signature_core",
+ "signature_ps",
  "tracing",
  "x25519-dalek",
  "zeroize",
@@ -1453,6 +1456,28 @@ dependencies = [
  "serde-big-array",
  "subtle",
  "typenum",
+]
+
+[[package]]
+name = "signature_ps"
+version = "0.15.0-dev"
+dependencies = [
+ "blake2",
+ "bls12_381_plus",
+ "digest",
+ "ff",
+ "group",
+ "hkdf",
+ "hmac-drbg",
+ "pairing",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "serde",
+ "signature_bls",
+ "signature_core",
+ "subtle",
+ "typenum",
+ "zeroize",
 ]
 
 [[package]]
