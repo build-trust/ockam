@@ -297,7 +297,7 @@ To learn more, please see our [step-by-step guide](../../guides/rust#step-by-ste
 
 ## Demo
 
-https://user-images.githubusercontent.com/159583/127915377-8777faf5-1b76-4ed4-ac8e-16e2aed2429f.mp4
+https://user-images.githubusercontent.com/159583/129489877-1e29754d-17ac-4137-a271-854c8e47191c.mp4
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../../guides/rust#step-by-step">A step-by-step introduction</a>
