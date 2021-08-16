@@ -28,7 +28,7 @@ use std::str::FromStr;
 
 use ockam_core::{Address, Result};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 
 pub use error::WebSocketError;
 pub use init::WorkerPair;

@@ -1,7 +1,7 @@
 use std::array::IntoIter;
 
 use ockam_core::lib::HashMap;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::{http::Response, Error as TungsteniteError};
 
 use crate::WebSocketError;

@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, net::SocketAddr};
 
 use ockam_core::{async_trait, Address, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 
 use crate::atomic::{self, ArcBool};
 use crate::init::WorkerPair;

@@ -2,7 +2,7 @@ use crate::atomic::{self, ArcBool};
 use async_trait::async_trait;
 use ockam_core::{Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, info, trace};
 

@@ -33,7 +33,7 @@ pub use transport::*;
 
 use ockam_core::lib::net::SocketAddr;
 use ockam_core::Result;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 
 /// TCP address type constant
 pub const TCP: u8 = 1;

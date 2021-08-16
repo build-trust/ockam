@@ -5,7 +5,7 @@ use crate::{
 use async_trait::async_trait;
 use ockam_core::{Address, Result, Worker};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tracing::{debug, trace};

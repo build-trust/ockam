@@ -1,11 +1,11 @@
 [package]
-name = "ockam_transport"
+name = "ockam_transport_core"
 version = "0.1.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_core"
 readme = "README.md"
 keywords = ["ockam", "ockam-transport"]
 categories = ["network-programming", "asynchronous"]
@@ -17,9 +17,7 @@ exclude = [
     "LICENSE"
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.24.0-dev" }
+ockam_core = { path = "../ockam_core", version = "0.25.0-dev" }
 tracing = "0.1"
 

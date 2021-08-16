@@ -1,11 +1,12 @@
 use std::fmt::{Display, Formatter};
 
 use ockam_core::Error;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
 /// A WebSocket connection worker specific error type
 #[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
 pub enum WebSocketError {
     /// A wrapped transport error
     Transport(TransportError),

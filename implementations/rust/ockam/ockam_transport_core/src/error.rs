@@ -33,7 +33,7 @@ impl TransportError {
     /// Integer code associated with the error domain.
     pub const DOMAIN_CODE: u32 = 15_000;
     /// Error domain
-    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT";
+    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_CORE";
 }
 
 impl From<TransportError> for ockam_core::Error {

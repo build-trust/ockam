@@ -4,7 +4,7 @@ use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::StreamExt;
 use ockam_core::{async_trait, Address, Result, RouterMessage, Worker};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 
 use crate::atomic::{self, ArcBool};

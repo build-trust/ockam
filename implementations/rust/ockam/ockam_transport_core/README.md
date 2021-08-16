@@ -1,4 +1,4 @@
-# ockam_transport
+# ockam_transport_core
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport = "0.1.0"
+ockam_transport_core = "0.1.0-dev"
 ```
 
 This crate requires the rust standard library `"std"`.
@@ -27,11 +27,11 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
 
-[crate-image]: https://img.shields.io/crates/v/ockam_transport.svg
-[crate-link]: https://crates.io/crates/ockam_transport
+[crate-image]: https://img.shields.io/crates/v/ockam_transport_core.svg
+[crate-link]: https://crates.io/crates/ockam_transport_core
 
-[docs-image]: https://docs.rs/ockam_transport/badge.svg
-[docs-link]: https://docs.rs/ockam_transport
+[docs-image]: https://docs.rs/ockam_transport_core/badge.svg
+[docs-link]: https://docs.rs/ockam_transport_core
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE

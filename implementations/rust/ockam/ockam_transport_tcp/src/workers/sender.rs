@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use ockam_core::{Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 use tracing::warn;

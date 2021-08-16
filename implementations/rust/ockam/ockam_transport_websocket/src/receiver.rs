@@ -2,7 +2,7 @@ use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
 use ockam_core::{async_trait, Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 

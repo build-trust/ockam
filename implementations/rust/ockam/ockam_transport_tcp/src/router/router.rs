@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use ockam_core::lib::Deref;
 use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use std::{collections::BTreeMap, sync::Arc};
 use tracing::{debug, trace};
 

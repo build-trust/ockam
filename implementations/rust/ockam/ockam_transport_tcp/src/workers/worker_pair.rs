@@ -4,7 +4,7 @@ use crate::{
 };
 use ockam_core::{Address, Result};
 use ockam_node::Context;
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tracing::{debug, trace};

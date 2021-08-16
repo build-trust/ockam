@@ -3,7 +3,7 @@ use crate::{parse_socket_addr, TcpListenWorker, WorkerPair, TCP};
 use ockam_core::lib::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{Address, Result, RouterMessage};
 use ockam_node::{block_future, Context};
-use ockam_transport::TransportError;
+use ockam_transport_core::TransportError;
 use std::sync::Arc;
 
 /// A handle to connect to a TcpRouter
