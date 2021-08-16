@@ -49,12 +49,10 @@ impl SecretVault for SoftwareVault {
         let mut rng = thread_rng(); // FIXME
         let key = match attributes.stype() {
             SecretType::Curve25519 => {
-                // FIXME
-                let mut bytes = [0u8; 32];
+                let mut bytes = vec![0u8; 32];
                 rng.fill_bytes(&mut bytes);
-                let sk = x25519_dalek::StaticSecret::from(bytes);
 
-                SecretKey::new(sk.to_bytes().to_vec())
+                SecretKey::new(bytes)
             }
             SecretType::Buffer => {
                 if attributes.persistence() != SecretPersistence::Ephemeral {
