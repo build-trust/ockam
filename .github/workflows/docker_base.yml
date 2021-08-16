@@ -2,14 +2,13 @@ name: docker_base
 on:
   workflow_dispatch:
   push:
-    # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
-    paths:
-      - 'tools/docker/base/**'
 
 jobs:
   docker_base:
-    if: github.event.ref == 'refs/heads/develop' && github.repository_owner == 'ockam-network'
     runs-on: ubuntu-20.04
+    environment:
+      name: artifacts
+
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
