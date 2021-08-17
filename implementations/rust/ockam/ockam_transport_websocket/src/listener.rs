@@ -32,6 +32,7 @@ impl WebSocketListenWorker {
             run,
             router_addr,
         };
+        println!("hello");
         let waddr = Address::random(0);
         ctx.start_worker(waddr, worker).await?;
         Ok(())
