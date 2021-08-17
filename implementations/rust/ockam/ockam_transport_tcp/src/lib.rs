@@ -28,9 +28,11 @@ extern crate alloc;
 
 pub(crate) mod atomic;
 
+mod portal;
 mod router;
 mod workers;
 
+pub(crate) use portal::*;
 pub(crate) use router::*;
 pub(crate) use workers::*;
 

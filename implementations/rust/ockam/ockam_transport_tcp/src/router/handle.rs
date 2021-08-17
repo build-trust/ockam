@@ -1,7 +1,10 @@
 use crate::atomic::ArcBool;
-use crate::{parse_socket_addr, TcpError, TcpListenWorker, WorkerPair, TCP};
+use crate::{
+    parse_socket_addr, PortalWorkerPair, TcpError, TcpInletListenWorker, TcpListenWorker,
+    WorkerPair, TCP,
+};
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
-use ockam_core::{Address, Result, RouterMessage};
+use ockam_core::{Address, Result, Route, RouterMessage};
 use ockam_node::{block_future, Context};
 use std::sync::Arc;
 
@@ -12,6 +15,12 @@ pub(crate) struct TcpRouterHandle {
     ctx: Context,
     addr: Address,
     run: ArcBool,
+}
+
+impl TcpRouterHandle {
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
 }
 
 impl Clone for TcpRouterHandle {
@@ -55,8 +64,23 @@ impl TcpRouterHandle {
         TcpListenWorker::start(&self.ctx, self.clone(), socket_addr, Arc::clone(&self.run)).await
     }
 
-    /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect(&self, peer: impl Into<String>) -> Result<()> {
+    /// Bind an incoming portal inlet connection listener for this router
+    pub async fn bind_inlet(
+        &self,
+        onward_route: impl Into<Route>,
+        addr: impl Into<SocketAddr>,
+    ) -> Result<()> {
+        let socket_addr = addr.into();
+        TcpInletListenWorker::start(
+            &self.ctx,
+            onward_route.into(),
+            socket_addr,
+            Arc::clone(&self.run),
+        )
+        .await
+    }
+
+    fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
         let hostnames;
@@ -80,9 +104,25 @@ impl TcpRouterHandle {
             return Err(TcpError::InvalidAddress.into());
         }
 
+        Ok((peer_addr, hostnames))
+    }
+
+    /// Establish an outgoing TCP connection on an existing transport
+    pub async fn connect(&self, peer: impl Into<String>) -> Result<()> {
+        let (peer_addr, hostnames) = Self::resolve_peer(peer)?;
+
         let pair = WorkerPair::start(&self.ctx, peer_addr, hostnames).await?;
         self.register(&pair).await?;
 
         Ok(())
+    }
+
+    /// Establish an outgoing TCP connection for Portal Outlet
+    pub async fn connect_outlet(&self, peer: impl Into<String>) -> Result<Address> {
+        let (peer_addr, _) = Self::resolve_peer(peer)?;
+
+        let address = PortalWorkerPair::new_outlet(&self.ctx, peer_addr).await?;
+
+        Ok(address)
     }
 }

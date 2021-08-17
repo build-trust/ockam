@@ -1,5 +1,5 @@
-use crate::{parse_socket_addr, TcpRouter, TcpRouterHandle};
-use ockam_core::Result;
+use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
+use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 
 /// High level management interface for TCP transports
@@ -61,6 +61,40 @@ impl TcpTransport {
     pub async fn listen(&self, bind_addr: impl Into<String>) -> Result<()> {
         let bind_addr = parse_socket_addr(bind_addr)?;
         self.router_handle.bind(bind_addr).await?;
+        Ok(())
+    }
+}
+
+impl TcpTransport {
+    /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
+    /// Messages and forward them to Outlet using onward_route. Inlet is bidirectional: Ockam
+    /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
+    /// Pair of corresponding Inlet and Outlet is called Portal.
+    pub async fn create_inlet(
+        &self,
+        bind_addr: impl Into<String>,
+        onward_route: impl Into<Route>,
+    ) -> Result<()> {
+        let bind_addr = parse_socket_addr(bind_addr)?;
+        self.router_handle
+            .bind_inlet(onward_route, bind_addr)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Create Tcp Outlet Listener at address, that connects to peer using Tcp, transforms Ockam Messages
+    /// received from Inlet into stream and sends it to peer Tcp stream. Outlet is bidirectional:
+    /// Tcp stream received from peer is transformed into Ockam Routable Messages and sent
+    /// to Inlet using return route.
+    /// Pair of corresponding Inlet and Outlet is called Portal.
+    pub async fn create_outlet(
+        &self,
+        address: impl Into<Address>,
+        peer: impl Into<String>,
+    ) -> Result<()> {
+        TcpOutletListenWorker::start(&self.router_handle, address.into(), peer.into()).await?;
+
         Ok(())
     }
 }
