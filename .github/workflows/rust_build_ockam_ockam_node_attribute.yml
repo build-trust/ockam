@@ -2,6 +2,9 @@ name: rust_build_ockam_ockam_node_attribute
 on:
   workflow_dispatch:
   push:
+    branches:
+      - develop
+  pull_request:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
       - 'build.gradle'

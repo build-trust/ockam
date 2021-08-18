@@ -2,6 +2,9 @@ name: rust_test_ockam_signature_bbs_plus
 on:
   workflow_dispatch:
   push:
+    branches:
+      - develop
+  pull_request:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
       - 'implementations/rust/ockam/signature_core/**'
