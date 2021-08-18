@@ -2,9 +2,13 @@ name: $name
 on:
   workflow_dispatch:
   push:
+    branches:
+      - develop
+  pull_request:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
 <% paths.each { println "      - '${it}'" } %>
+
 jobs:
   $name:
     runs-on: ubuntu-20.04

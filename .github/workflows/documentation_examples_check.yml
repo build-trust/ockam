@@ -1,9 +1,12 @@
 name: documentation_examples_check
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - develop
   schedule:
     - cron: '0 */2 * * *'
-  push:
+  pull_request:
 
 jobs:
     guide_examples_check:

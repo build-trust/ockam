@@ -2,6 +2,9 @@ name: elixir_lint_ockam_ockam_hub
 on:
   workflow_dispatch:
   push:
+    branches:
+      - develop
+  pull_request:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
       - 'implementations/elixir/ockam/ockam_vault_software/**'
