@@ -10,6 +10,8 @@ jobs:
   docker_builder:
     if: github.event.ref == 'refs/heads/develop' && github.repository_owner == 'ockam-network'
     runs-on: ubuntu-20.04
+    environment:
+      name: artifacts
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
