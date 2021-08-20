@@ -1,3 +1,4 @@
+use crate::relay::ShutdownHandle;
 use crate::{error::Error, relay::RelayMessage};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, AddressSet};
@@ -12,6 +13,15 @@ pub enum NodeMessage {
     ListWorkers(Sender<NodeReplyResult>),
     /// Stop an existing worker
     StopWorker(Address, Sender<NodeReplyResult>),
+    /// Start a new processor and store the send and shutdown handles
+    StartProcessor(
+        Address,
+        Sender<RelayMessage>,
+        Sender<NodeReplyResult>,
+        ShutdownHandle,
+    ),
+    /// Stop an existing processor
+    StopProcessor(Address, Sender<NodeReplyResult>),
     /// Stop the node (and all workers)
     StopNode,
     /// Request the sender for a worker address
@@ -30,6 +40,25 @@ impl NodeMessage {
     ) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
         (Self::StartWorker(address, sender, tx), rx)
+    }
+
+    /// Create a start worker message
+    pub fn start_processor(
+        address: Address,
+        sender: Sender<RelayMessage>,
+        shutdown_handle: ShutdownHandle,
+    ) -> (Self, Receiver<NodeReplyResult>) {
+        let (tx, rx) = channel(1);
+        (
+            Self::StartProcessor(address, sender, tx, shutdown_handle),
+            rx,
+        )
+    }
+
+    /// Create a stop worker message and reply receiver
+    pub fn stop_processor(address: Address) -> (Self, Receiver<NodeReplyResult>) {
+        let (tx, rx) = channel(1);
+        (Self::StopProcessor(address, tx), rx)
     }
 
     /// Create a list worker message and reply receiver
@@ -89,6 +118,8 @@ pub enum NodeReply {
 pub enum NodeError {
     /// No such worker
     NoSuchWorker(Address),
+    /// No such processor
+    NoSuchProcessor(Address),
     /// Worker already exists
     WorkerExists(Address),
     /// Router already exists
@@ -101,9 +132,14 @@ impl NodeReply {
         Ok(NodeReply::Ok)
     }
 
-    /// Return [NodeReply::Ok]
+    /// Return [NodeReply::NoSuchWorker]
     pub fn no_such_worker(a: Address) -> NodeReplyResult {
         Err(NodeError::NoSuchWorker(a))
+    }
+
+    /// Return [NodeReply::NoSuchProcessor]
+    pub fn no_such_processor(a: Address) -> NodeReplyResult {
+        Err(NodeError::NoSuchProcessor(a))
     }
 
     /// Return [NodeReply::WorkerExists] for the given address

@@ -1,5 +1,5 @@
-use crate::relay::RelayMessage;
-use crate::{relay, Context, Executor, Mailbox, NodeMessage};
+use crate::relay::{RelayMessage, WorkerRelay};
+use crate::{Context, Executor, Mailbox, NodeMessage};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Address;
 use tokio::runtime::Runtime;
@@ -43,7 +43,7 @@ pub fn start_node() -> (Context, Executor) {
     let (ctx, mb_tx) = NullWorker::new(exe.runtime(), &addr, exe.sender());
 
     // Build a mailbox worker to buffer messages
-    let sender = relay::build_root::<NullWorker, _>(exe.runtime(), mb_tx);
+    let sender = WorkerRelay::<NullWorker, _>::build_root(&exe.runtime(), mb_tx);
 
     // Register this mailbox handle with the executor
     exe.initialize_system("app", sender);

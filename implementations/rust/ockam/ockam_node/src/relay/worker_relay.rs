@@ -15,65 +15,15 @@
 //! The `Relay` is then responsible for turning the message back into
 //! a type and notifying the companion actor.
 
+use crate::relay::{run_mailbox, RelayMessage, RelayPayload};
 use crate::{parser, Context};
 use core::marker::PhantomData;
-use ockam_core::compat::{sync::Arc, vec::Vec};
-use ockam_core::{
-    Address, LocalMessage, Message, Result, Route, Routed, RouterMessage, TransportMessage, Worker,
-};
+use ockam_core::compat::vec::Vec;
+use ockam_core::{Address, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker};
 use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{channel, Sender};
 
-/// A message addressed to a relay
-#[derive(Clone, Debug)]
-pub struct RelayMessage {
-    addr: Address,
-    data: RelayPayload,
-    onward: Route,
-}
-
-impl RelayMessage {
-    /// Construct a message addressed to a user worker
-    pub fn direct(addr: Address, local_msg: LocalMessage, onward: Route) -> Self {
-        Self {
-            addr,
-            data: RelayPayload::Direct(local_msg),
-            onward,
-        }
-    }
-
-    /// Construct a message addressed to an middleware router
-    #[inline]
-    pub fn pre_router(addr: Address, local_msg: LocalMessage, onward: Route) -> Self {
-        let route = local_msg.transport().return_route.clone();
-        let r_msg = RouterMessage::Route(local_msg);
-        Self {
-            addr,
-            data: RelayPayload::PreRouter(r_msg.encode().unwrap(), route),
-            onward,
-        }
-    }
-
-    /// Consume this message into its base components
-    #[inline]
-    pub fn local_msg(self) -> (Address, LocalMessage) {
-        (
-            self.addr,
-            match self.data {
-                RelayPayload::Direct(msg) => msg,
-                _ => panic!("Called transport() on invalid RelayMessage type!"),
-            },
-        )
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum RelayPayload {
-    Direct(LocalMessage),
-    PreRouter(Vec<u8>, Route),
-}
-
-pub struct Relay<W, M>
+pub struct WorkerRelay<W, M>
 where
     W: Worker<Context = Context>,
     M: Message,
@@ -83,7 +33,7 @@ where
     _phantom: PhantomData<M>,
 }
 
-impl<W, M> Relay<W, M>
+impl<W, M> WorkerRelay<W, M>
 where
     W: Worker<Context = Context, Message = M>,
     M: Message + Send + 'static,
@@ -192,52 +142,30 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
         }
     }
 
-    /// Run the inner worker and restart it if errors occurs
-    async fn run_mailbox(mut rx: Receiver<RelayMessage>, mb_tx: Sender<RelayMessage>) {
-        // Relay messages into the worker mailbox
-        while let Some(enc) = rx.recv().await {
-            let addr = enc.addr.clone();
-            if mb_tx.send(enc).await.is_err() {
-                panic!("Failed to route message to address '{}'", &addr);
-            };
-        }
+    /// Build and spawn a new worker relay, returning a send handle to it
+    pub(crate) fn build(
+        rt: &Runtime,
+        worker: W,
+        ctx: Context,
+        mb_tx: Sender<RelayMessage>,
+    ) -> Sender<RelayMessage> {
+        let (tx, rx) = channel(32);
+        let relay = WorkerRelay::<W, M>::new(worker, ctx);
+
+        rt.spawn(run_mailbox(rx, mb_tx));
+        rt.spawn(relay.run());
+        tx
     }
-}
 
-/// Build and spawn a new worker relay, returning a send handle to it
-pub(crate) fn build<W, M>(
-    rt: &Runtime,
-    worker: W,
-    ctx: Context,
-    mb_tx: Sender<RelayMessage>,
-) -> Sender<RelayMessage>
-where
-    W: Worker<Context = Context, Message = M>,
-    M: Message + Send + 'static,
-{
-    let (tx, rx) = channel(32);
-    let relay = Relay::<W, M>::new(worker, ctx);
+    /// Build and spawn the root application relay
+    ///
+    /// The root relay is different from normal worker relays because its
+    /// message inbox is never automatically run, and instead needs to be
+    /// polled via a `receive()` call.
+    pub(crate) fn build_root(rt: &Runtime, mb_tx: Sender<RelayMessage>) -> Sender<RelayMessage> {
+        let (tx, rx) = channel(32);
 
-    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
-    rt.spawn(relay.run());
-    tx
-}
-
-/// Build and spawn the root application relay
-///
-/// The root relay is different from normal worker relays because its
-/// message inbox is never automatically run, and instead needs to be
-/// polled via a `receive()` call.
-pub(crate) fn build_root<W, M>(
-    rt: Arc<Runtime>,
-    mb_tx: Sender<RelayMessage>,
-) -> Sender<RelayMessage>
-where
-    W: Worker<Context = Context, Message = M>,
-    M: Message + Send + 'static,
-{
-    let (tx, rx) = channel(32);
-
-    rt.spawn(Relay::<W, M>::run_mailbox(rx, mb_tx));
-    tx
+        rt.spawn(run_mailbox(rx, mb_tx));
+        tx
+    }
 }

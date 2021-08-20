@@ -1,7 +1,7 @@
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
-    Address, AddressSet, LocalMessage, Message, Result, Route, TransportMessage, Worker,
+    Address, AddressSet, LocalMessage, Message, Processor, Result, Route, TransportMessage, Worker,
 };
 use tokio::{
     runtime::Runtime,
@@ -9,16 +9,27 @@ use tokio::{
     time::timeout,
 };
 
+use crate::relay::{ProcessorRelay, WorkerRelay};
 use crate::{
-    error::Error,
-    node::NullWorker,
-    parser,
-    relay::{self, RelayMessage},
-    Cancel, Mailbox, NodeMessage,
+    error::Error, node::NullWorker, parser, relay::RelayMessage, Cancel, Mailbox, NodeMessage,
 };
 
 /// A default timeout in seconds
 pub const DEFAULT_TIMEOUT: u64 = 30;
+
+enum AddressType {
+    Worker,
+    Processor,
+}
+
+impl AddressType {
+    fn str(&self) -> &'static str {
+        match self {
+            AddressType::Worker => "worker",
+            AddressType::Processor => "processor",
+        }
+    }
+}
 
 /// Context contains Node state and references to the runtime.
 pub struct Context {
@@ -80,7 +91,7 @@ impl Context {
         let (ctx, tx) = NullWorker::new(Arc::clone(&self.rt), &addr, self.sender.clone());
 
         // Create a small relay and register it with the internal router
-        let sender = relay::build_root::<NullWorker, _>(Arc::clone(&self.rt), tx);
+        let sender = WorkerRelay::<NullWorker, _>::build_root(&self.rt, tx);
         let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender);
         self.sender
             .send(msg)
@@ -122,7 +133,7 @@ impl Context {
         let ctx = Context::new(self.rt.clone(), self.sender.clone(), address.clone(), mb);
 
         // Then initialise the worker message relay
-        let sender = relay::build::<NW, NM>(self.rt.as_ref(), worker, ctx, mb_tx);
+        let sender = WorkerRelay::<NW, NM>::build(self.rt.as_ref(), worker, ctx, mb_tx);
 
         // Send start request to router
         let (msg, mut rx) = NodeMessage::start_worker(address, sender);
@@ -139,6 +150,73 @@ impl Context {
             .map(|_| ())?)
     }
 
+    /// Start a new processor at [`Address`](ockam_core::Address)
+    pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
+    where
+        P: Processor<Context = Context>,
+    {
+        let address = address.into();
+
+        // Build the mailbox first
+        let (mb_tx, mb_rx) = channel(32);
+        let mb = Mailbox::new(mb_rx);
+
+        // Pass it to the context
+        let ctx = Context::new(
+            self.rt.clone(),
+            self.sender.clone(),
+            address.clone().into(),
+            mb,
+        );
+
+        // Then initialise the worker message relay
+        let (sender, shutdown_handle) =
+            ProcessorRelay::<P>::build(self.rt.as_ref(), processor, ctx, mb_tx);
+
+        // Send start request to router
+        let (msg, mut rx) = NodeMessage::start_processor(address, sender, shutdown_handle);
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|_| Error::FailedStartProcessor)?;
+
+        // Wait for the actual return code
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)?
+            .map(|_| ())?)
+    }
+
+    /// Shut down a worker by its primary address
+    pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
+        self.stop_address(addr, AddressType::Worker).await
+    }
+
+    /// Shut down a processor by its address
+    pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
+        self.stop_address(addr, AddressType::Processor).await
+    }
+
+    async fn stop_address<A: Into<Address>>(&self, addr: A, t: AddressType) -> Result<()> {
+        let addr = addr.into();
+        debug!("Shutting down {} {}", t.str(), addr);
+
+        // Send the stop request
+        let (req, mut rx) = match t {
+            AddressType::Worker => NodeMessage::stop_worker(addr),
+            AddressType::Processor => NodeMessage::stop_processor(addr),
+        };
+        self.sender.send(req).await.map_err(Error::from)?;
+
+        // Then check that address was properly shut down
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)?
+            .map(|_| ())?)
+    }
+
     /// Signal to the local application runner to shut down
     pub async fn stop(&mut self) -> Result<()> {
         let tx = self.sender.clone();
@@ -147,23 +225,6 @@ impl Context {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStopNode.into()),
         }
-    }
-
-    /// Shut down a worker by its primary address
-    pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        let addr = addr.into();
-        debug!("Shutting down worker {}", addr);
-
-        // Send the stop request
-        let (req, mut rx) = NodeMessage::stop_worker(addr);
-        self.sender.send(req).await.map_err(Error::from)?;
-
-        // Then check that the worker was properly shut down
-        Ok(rx
-            .recv()
-            .await
-            .ok_or(Error::InternalIOFailure)?
-            .map(|_| ())?)
     }
 
     /// Send a message via a fully qualified route

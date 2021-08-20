@@ -1,3 +1,4 @@
+use crate::relay::ShutdownHandle;
 use crate::{
     error::Error, relay::RelayMessage, AddressRecord, NodeMessage, NodeReply, NodeReplyResult,
 };
@@ -15,12 +16,15 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 /// registers itself with this router.  Only one router can be
 /// registered per address type.
 pub struct Router {
+    // TODO: Should we have separate registry for Workers and for Processors?
     /// Registry that maps primary address to all Addresses of a Worker and its Sender
     internal: BTreeMap<Address, AddressRecord>,
     /// Registry of primary addresses for all known addresses
     addr_map: BTreeMap<Address, Address>,
     /// Externally registered router components
     external: BTreeMap<u8, Address>,
+    /// Shutdown handles for processors
+    shutdown_handles: BTreeMap<Address, ShutdownHandle>,
     /// Receiver for messages from node
     receiver: Receiver<NodeMessage>,
     /// Keeping a copy of the channel sender to pass out
@@ -47,6 +51,7 @@ impl Router {
             internal: BTreeMap::new(),
             addr_map: BTreeMap::new(),
             external: BTreeMap::new(),
+            shutdown_handles: BTreeMap::new(),
             receiver,
             sender,
         }
@@ -96,12 +101,23 @@ impl Router {
                 // Basic node control
                 StopNode => {
                     self.internal.clear();
+                    // TODO: BTreeMap::pop_first is unstable
+                    let addresses: Vec<Address> = self.shutdown_handles.keys().cloned().collect();
+                    for addr in addresses {
+                        let handle = self.shutdown_handles.remove(&addr).unwrap();
+                        handle.shutdown().await?;
+                    }
                     break;
                 }
                 ListWorkers(sender) => sender
                     .send(NodeReply::workers(self.internal.keys().cloned().collect()))
                     .await
                     .map_err(|_| Error::InternalIOFailure)?,
+                StartProcessor(addr, sender, ref reply, shutdown_handle) => {
+                    self.start_processor(addr.into(), sender, reply, shutdown_handle)
+                        .await?
+                }
+                StopProcessor(ref addr, ref reply) => self.stop_processor(addr, reply).await?,
 
                 // Handle route/ sender requests
                 SenderReq(ref addr, ref reply) => match determine_type(addr) {
@@ -148,6 +164,73 @@ impl Router {
             .send(NodeReply::ok())
             .await
             .map_err(|_| Error::InternalIOFailure)?;
+        Ok(())
+    }
+
+    async fn start_processor(
+        &mut self,
+        addr: Address,
+        sender: Sender<RelayMessage>,
+        reply: &Sender<NodeReplyResult>,
+        shutdown_handle: ShutdownHandle,
+    ) -> Result<()> {
+        trace!("Starting new processor '{}'", &addr);
+
+        let address_record = AddressRecord::new(addr.clone().into(), sender);
+
+        self.internal.insert(addr.clone(), address_record);
+
+        #[cfg(feature = "std")]
+        if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
+            trace!("{:#?}", self.internal);
+        }
+        #[cfg(all(not(feature = "std"), feature = "dump_internals"))]
+        trace!("{:#?}", self.internal);
+
+        self.addr_map.insert(addr.clone(), addr.clone());
+
+        self.shutdown_handles.insert(addr.clone(), shutdown_handle);
+
+        // For now we just send an OK back -- in the future we need to
+        // communicate the current executor state
+        reply
+            .send(NodeReply::ok())
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
+        Ok(())
+    }
+
+    async fn stop_processor(
+        &mut self,
+        addr: &Address,
+        reply: &Sender<NodeReplyResult>,
+    ) -> Result<()> {
+        trace!("Stopping processor '{}'", addr);
+
+        let record;
+        if let Some(r) = self.internal.remove(addr) {
+            record = r;
+        } else {
+            reply
+                .send(NodeReply::no_such_processor(addr.clone()))
+                .await
+                .map_err(|_| Error::InternalIOFailure)?;
+
+            return Ok(());
+        }
+
+        for addr in record.address_set().iter() {
+            self.addr_map.remove(&addr);
+        }
+
+        let shutdown_handle = self.shutdown_handles.remove(&addr).unwrap();
+        shutdown_handle.shutdown().await?;
+
+        reply
+            .send(NodeReply::ok())
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
+
         Ok(())
     }
 

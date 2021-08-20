@@ -10,10 +10,14 @@ pub enum Error {
     FailedStopNode,
     /// Unable to start a worker
     FailedStartWorker,
+    /// Unable to start a processor
+    FailedStartProcessor,
     /// Worker start failed because the address was already taken
     WorkerAddressTaken,
     /// The requested worker address is unknown
     UnknownWorker,
+    /// The requested processor address is unknown
+    UnknownProcessor,
     /// Unable to stop a worker
     FailedStopWorker,
     /// Unable to list available workers
@@ -26,6 +30,10 @@ pub enum Error {
     InternalIOFailure,
     /// Worker tried to send message from foreign address
     SenderAddressDoesntExist,
+    /// Error while receiving shutdown acknowledgment
+    ShutdownAckError,
+    /// Error while receiving shutdown signal
+    ShutdownRxError,
     /// Operation timed out
     Timeout,
 }
@@ -48,6 +56,7 @@ impl From<crate::NodeError> for ockam_core::Error {
         use crate::NodeError::*;
         match err {
             NoSuchWorker(_) => Error::UnknownWorker,
+            NoSuchProcessor(_) => Error::UnknownProcessor,
             WorkerExists(_) => Error::WorkerAddressTaken,
             RouterExists => Error::InternalIOFailure,
         }
