@@ -3,7 +3,7 @@ use crate::{
     TcpError,
 };
 use async_trait::async_trait;
-use ockam_core::{Address, LocalMessage, Result, TransportMessage, Worker};
+use ockam_core::{Address, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, info, trace};
@@ -16,24 +16,21 @@ use tracing::{error, info, trace};
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for incoming TCP packets, to relay into
 /// the node message system.
-pub(crate) struct TcpRecvWorker {
+pub(crate) struct TcpRecvProcessor {
     rx: OwnedReadHalf,
     run: ArcBool,
     peer_addr: Address,
 }
 
-impl TcpRecvWorker {
+impl TcpRecvProcessor {
     pub fn new(rx: OwnedReadHalf, run: ArcBool, peer_addr: Address) -> Self {
         Self { rx, run, peer_addr }
     }
 }
 
 #[async_trait]
-impl Worker for TcpRecvWorker {
+impl Processor for TcpRecvProcessor {
     type Context = Context;
-
-    // Do not actually listen for messages
-    type Message = ();
 
     // We are using the initialize function here to run a custom loop,
     // while never listening for messages sent to our address
@@ -43,12 +40,10 @@ impl Worker for TcpRecvWorker {
     //
     // Also: we must stop the TcpReceive loop when the worker gets
     // killed by the user or node.
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let self_addr = ctx.address();
-
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Run in a loop until TcpWorkerPair::stop() is called
         // FIXME: see ArcBool future note
-        while atomic::check(&self.run) {
+        if atomic::check(&self.run) {
             // First read a message length header...
             let len = match self.rx.read_u16().await {
                 Ok(len) => len,
@@ -57,7 +52,7 @@ impl Worker for TcpRecvWorker {
                         "Connection to peer '{}' was closed; dropping stream",
                         self.peer_addr
                     );
-                    break;
+                    return Ok(false);
                 }
             };
 
@@ -71,7 +66,7 @@ impl Worker for TcpRecvWorker {
                 Ok(_) => {}
                 _ => {
                     error!("Failed to receive message of length: {}", len);
-                    continue;
+                    return Ok(true);
                 }
             }
 
@@ -89,10 +84,10 @@ impl Worker for TcpRecvWorker {
 
             // Forward the message to the next hop in the route
             ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
-        }
 
-        // Stop the worker to not fall into the next read loop
-        ctx.stop_worker(self_addr).await?;
-        Ok(())
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }

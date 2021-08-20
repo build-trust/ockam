@@ -1,6 +1,6 @@
 use crate::atomic::ArcBool;
 use crate::{
-    parse_socket_addr, PortalWorkerPair, TcpError, TcpInletListenWorker, TcpListenWorker,
+    parse_socket_addr, PortalWorkerPair, TcpError, TcpInletListenProcessor, TcpListenProcessor,
     WorkerPair, TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
@@ -61,7 +61,7 @@ impl TcpRouterHandle {
     /// Bind an incoming connection listener for this router
     pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
         let socket_addr = addr.into();
-        TcpListenWorker::start(&self.ctx, self.clone(), socket_addr, Arc::clone(&self.run)).await
+        TcpListenProcessor::start(&self.ctx, self.clone(), socket_addr, Arc::clone(&self.run)).await
     }
 
     /// Bind an incoming portal inlet connection listener for this router
@@ -69,15 +69,23 @@ impl TcpRouterHandle {
         &self,
         onward_route: impl Into<Route>,
         addr: impl Into<SocketAddr>,
-    ) -> Result<()> {
+    ) -> Result<Address> {
         let socket_addr = addr.into();
-        TcpInletListenWorker::start(
+        let addr = TcpInletListenProcessor::start(
             &self.ctx,
             onward_route.into(),
             socket_addr,
             Arc::clone(&self.run),
         )
-        .await
+        .await?;
+
+        Ok(addr)
+    }
+
+    pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
+        self.ctx.stop_processor(addr).await?;
+
+        Ok(())
     }
 
     fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {

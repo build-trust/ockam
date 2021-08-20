@@ -3,19 +3,19 @@ use crate::{
     TcpError, TcpRouterHandle, WorkerPair,
 };
 use async_trait::async_trait;
-use ockam_core::{Address, Result, Worker};
+use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tracing::{debug, trace};
 
-pub(crate) struct TcpListenWorker {
+pub(crate) struct TcpListenProcessor {
     inner: TcpListener,
     run: ArcBool,
     router_handle: TcpRouterHandle,
 }
 
-impl TcpListenWorker {
+impl TcpListenProcessor {
     pub(crate) async fn start(
         ctx: &Context,
         router_handle: TcpRouterHandle,
@@ -32,21 +32,18 @@ impl TcpListenWorker {
             router_handle,
         };
 
-        ctx.start_worker(waddr, worker).await?;
+        ctx.start_processor(waddr, worker).await?;
         Ok(())
     }
 }
 
 #[async_trait]
-impl Worker for TcpListenWorker {
+impl Processor for TcpListenProcessor {
     type Context = Context;
 
-    // Do not actually listen for messages
-    type Message = ();
-
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         // FIXME: see ArcBool future note
-        while atomic::check(&self.run) {
+        if atomic::check(&self.run) {
             trace!("Waiting for incoming TCP connection...");
 
             // Wait for an incoming connection
@@ -57,8 +54,10 @@ impl Worker for TcpListenWorker {
 
             // Register the connection with the local TcpRouter
             self.router_handle.register(&pair).await?;
-        }
 
-        ctx.stop_worker(ctx.address()).await
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }

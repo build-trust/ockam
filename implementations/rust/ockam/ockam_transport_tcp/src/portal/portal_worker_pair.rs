@@ -1,4 +1,4 @@
-use crate::{TcpError, TcpPortalRecvWorker, TcpPortalSendWorker};
+use crate::{TcpError, TcpPortalRecvProcessor, TcpPortalSendWorker};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
@@ -32,7 +32,7 @@ impl PortalWorkerPair {
             tx_remote_addr.clone(),
             Some(onward_route),
         );
-        let receiver = TcpPortalRecvWorker::new(rx, tx_internal_addr.clone());
+        let receiver = TcpPortalRecvProcessor::new(rx, tx_internal_addr.clone());
 
         // Derive local worker addresses, and start them
         ctx.start_worker(
@@ -40,7 +40,7 @@ impl PortalWorkerPair {
             sender,
         )
         .await?;
-        ctx.start_worker(rx_addr.clone(), receiver).await?;
+        ctx.start_processor(rx_addr.clone(), receiver).await?;
 
         // Return a handle to the worker pair
         Ok(())
@@ -67,12 +67,12 @@ impl PortalWorkerPair {
             tx_remote_addr.clone(),
             None,
         );
-        let receiver = TcpPortalRecvWorker::new(rx, tx_internal_addr.clone());
+        let receiver = TcpPortalRecvProcessor::new(rx, tx_internal_addr.clone());
 
         // Derive local worker addresses, and start them
         ctx.start_worker(vec![tx_internal_addr, tx_remote_addr.clone()], sender)
             .await?;
-        ctx.start_worker(rx_addr.clone(), receiver).await?;
+        ctx.start_processor(rx_addr.clone(), receiver).await?;
 
         // Return a handle to the worker pair
         Ok(tx_remote_addr)

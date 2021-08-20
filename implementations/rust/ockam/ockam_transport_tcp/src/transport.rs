@@ -75,11 +75,19 @@ impl TcpTransport {
         &self,
         bind_addr: impl Into<String>,
         onward_route: impl Into<Route>,
-    ) -> Result<()> {
+    ) -> Result<Address> {
         let bind_addr = parse_socket_addr(bind_addr)?;
-        self.router_handle
+        let addr = self
+            .router_handle
             .bind_inlet(onward_route, bind_addr)
             .await?;
+
+        Ok(addr)
+    }
+
+    /// Stop inlet at addr
+    pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
+        self.router_handle.stop_inlet(addr).await?;
 
         Ok(())
     }

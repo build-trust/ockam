@@ -1,6 +1,6 @@
 use crate::{
     atomic::{self, ArcBool},
-    TcpError, TcpRecvWorker, TcpSendWorker,
+    TcpError, TcpRecvProcessor, TcpSendWorker,
 };
 use ockam_core::{Address, Result};
 use ockam_node::Context;
@@ -49,11 +49,11 @@ impl WorkerPair {
         let (rx, tx) = stream.into_split();
         let sender = TcpSendWorker::new(tx, peer);
         let receiver =
-            TcpRecvWorker::new(rx, run.clone(), format!("{}#{}", crate::TCP, peer).into());
+            TcpRecvProcessor::new(rx, run.clone(), format!("{}#{}", crate::TCP, peer).into());
 
         // Derive local worker addresses, and start them
         ctx.start_worker(tx_addr.clone(), sender).await?;
-        ctx.start_worker(rx_addr.clone(), receiver).await?;
+        ctx.start_processor(rx_addr.clone(), receiver).await?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
