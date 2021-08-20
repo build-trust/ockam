@@ -43,11 +43,13 @@ pub use async_trait::async_trait as worker;
 pub mod compat;
 mod error;
 mod message;
+mod processor;
 mod routing;
 mod worker;
 
 pub use error::*;
 pub use message::*;
+pub use processor::*;
 pub use routing::*;
 pub use worker::*;
 
