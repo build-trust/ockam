@@ -1,11 +1,22 @@
+use ockam::compat::collections::BTreeMap;
 use ockam::compat::rand::{thread_rng, Rng};
 use ockam::{
-    Context, Entity, Result, Routed, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault,
-    Worker,
+    Address, Context, Entity, Result, Routed, SecureChannels, TcpTransport, TrustEveryonePolicy,
+    Vault, Worker,
 };
 
 struct InletCreatorWorker {
     tcp: TcpTransport,
+    used_ports: BTreeMap<i32, Address>,
+}
+
+impl InletCreatorWorker {
+    pub fn new(tcp: TcpTransport) -> Self {
+        InletCreatorWorker {
+            tcp,
+            used_ports: Default::default(),
+        }
+    }
 }
 
 #[ockam::worker]
@@ -24,17 +35,27 @@ impl Worker for InletCreatorWorker {
         let mut inlet_route = return_route.clone();
         inlet_route.modify().pop_back().append(outlet_address);
 
-        // let port = {
-        //     let mut rng = thread_rng();
-        //     rng.gen_range(3000..3005)
-        // };
-        let port = 5000;
+        let port = {
+            let mut rng = thread_rng();
+            // TODO: Extend range according to exposed ports range
+            rng.gen_range(5000..5001)
+        };
 
-        self.tcp
+        let old_inlet = self.used_ports.remove(&port);
+
+        if let Some(old_inlet) = old_inlet {
+            println!("Shutting down inlet on port {}", port);
+            self.tcp.stop_inlet(old_inlet).await?;
+        }
+
+        let address = self
+            .tcp
             .create_inlet(format!("0.0.0.0:{}", port), inlet_route)
             .await?;
 
         println!("Created inlet on port {}", port);
+
+        self.used_ports.insert(port, address);
 
         ctx.send(return_route, port).await?;
 
@@ -44,8 +65,6 @@ impl Worker for InletCreatorWorker {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    println!("Hello, world!");
-
     let vault = Vault::create(&ctx)?;
     let mut hub = Entity::create(&ctx, &vault)?;
 
@@ -53,7 +72,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let fabric_worker = InletCreatorWorker { tcp: tcp.clone() };
+    let fabric_worker = InletCreatorWorker::new(tcp.clone());
 
     ctx.start_worker("inlet_fabric", fabric_worker).await?;
 

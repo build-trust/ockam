@@ -4,8 +4,6 @@ use ockam::{
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    println!("Hello, world!");
-
     let vault = Vault::create(&ctx)?;
     let mut fabric_machine = Entity::create(&ctx, &vault)?;
 
