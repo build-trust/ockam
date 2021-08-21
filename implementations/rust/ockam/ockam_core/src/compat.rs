@@ -168,6 +168,12 @@ pub mod sync {
     pub use std::sync::Mutex;
 }
 
+/// std::task
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::task;
+#[cfg(feature = "std")]
+pub use std::task;
+
 /// std::vec
 pub mod vec {
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
