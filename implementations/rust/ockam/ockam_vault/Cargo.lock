@@ -463,7 +463,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.26.0"
+version = "0.27.0-dev"
 dependencies = [
  "async-trait",
  "core2",
@@ -479,7 +479,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.20.0"
+version = "0.21.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.20.0"
+version = "0.21.0-dev"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.17.0"
+version = "0.18.0-dev"
 dependencies = [
  "quote",
  "syn",
@@ -524,7 +524,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.15.0"
+version = "0.16.0-dev"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -684,9 +684,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.128"
+version = "1.0.129"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1056a0db1978e9dbf0f6e4fca677f6f9143dc1c19de346f22cac23e422196834"
+checksum = "d1f72836d2aa753853178eda473a3b9d8e4eefdaf20523b919677e6de489f8f1"
 dependencies = [
  "serde_derive",
 ]
@@ -712,9 +712,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.128"
+version = "1.0.129"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13af2fbb8b60a8950d6c72a56d2095c28870367cc8e10c55e9745bac4995a2c4"
+checksum = "e57ae87ad533d9a56427558b516d0adac283614e347abf85b0dc0cbbf0a249f3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -742,7 +742,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -763,7 +763,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -780,7 +780,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -798,7 +798,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
