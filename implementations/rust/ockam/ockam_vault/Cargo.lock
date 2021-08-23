@@ -430,9 +430,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.99"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7f823d141fe0a24df1e23b4af4e3c7ba9e5966ec514ea068c93024aa7deb765"
+checksum = "a1fa8cddc8fbbee11227ef194b5317ed014b8acbf15139bd716a18ad3fe99ec5"
 
 [[package]]
 name = "managed"
@@ -463,7 +463,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.26.0-dev"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -479,7 +479,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.20.0-dev"
+version = "0.20.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.20.0-dev"
+version = "0.20.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.17.0-dev"
+version = "0.17.0"
 dependencies = [
  "quote",
  "syn",
@@ -524,7 +524,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.15.0-dev"
+version = "0.15.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -684,9 +684,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.127"
+version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f03b9878abf6d14e6779d3f24f07b2cfa90352cfec4acc5aab8f1ac7f146fae8"
+checksum = "1056a0db1978e9dbf0f6e4fca677f6f9143dc1c19de346f22cac23e422196834"
 dependencies = [
  "serde_derive",
 ]
@@ -712,9 +712,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.127"
+version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a024926d3432516606328597e0f224a51355a493b49fdd67e9209187cbe55ecc"
+checksum = "13af2fbb8b60a8950d6c72a56d2095c28870367cc8e10c55e9745bac4995a2c4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -742,7 +742,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.18.0-dev"
+version = "0.18.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -763,7 +763,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.16.0-dev"
+version = "0.16.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -780,7 +780,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.18.0-dev"
+version = "0.18.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -798,7 +798,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.16.0-dev"
+version = "0.16.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -838,9 +838,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.74"
+version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1873d832550d4588c3dbc20f01361ab00bfe741048f71e3fecf145a7cc18b29c"
+checksum = "b7f58f7e8eaa0009c5fec437aabf511bd9933e4b2d7407bd05273c01a8906ea7"
 dependencies = [
  "proc-macro2",
  "quote",
