@@ -1,0 +1,9 @@
+[package]
+name = "tunnel"
+version = "0.0.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+
+[dependencies]
+ockam = { path = "../../../ockam" }
+rand = "0.8"
