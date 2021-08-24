@@ -39,6 +39,7 @@ pub use ockam_node_no_std::*;
 
 mod delay;
 mod error;
+mod forwarder;
 mod lease;
 mod monotonic;
 mod protocols;
@@ -47,6 +48,7 @@ mod unique;
 
 pub use delay::*;
 pub use error::*;
+pub use forwarder::*;
 pub use lease::*;
 pub use ockam_core::compat;
 pub use ockam_core::worker;
