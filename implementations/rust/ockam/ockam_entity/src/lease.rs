@@ -1,3 +1,5 @@
+use ockam_core::compat::string::{String, ToString};
+
 #[cfg(feature = "lease_proto_json")]
 pub mod json_proto;
 

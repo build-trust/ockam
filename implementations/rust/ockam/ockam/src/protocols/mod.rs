@@ -1,5 +1,6 @@
 //! Advanced Ockam worker protocols
 
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Message, ProtocolId};
 use serde::{Deserialize, Serialize};
 

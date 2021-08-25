@@ -5,6 +5,7 @@ use crate::{
     ProfileIdentifier, ProofRequestId, SigningPublicKey,
 };
 use async_trait::async_trait;
+use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 

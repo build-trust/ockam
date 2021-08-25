@@ -5,6 +5,7 @@ use crate::{
     EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileVault, SignatureType,
 };
+use ockam_core::compat::{string::ToString, vec::Vec};
 use ockam_core::{allow, deny};
 use ockam_vault::{PublicKey, SecretAttributes};
 use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
@@ -193,7 +194,7 @@ impl ProfileChangeHistory {
             ProfileChangeProof::Signature(s) => match s.stype() {
                 SignatureType::RootSign => {
                     let events_to_look = if existing_events.is_empty() {
-                        std::slice::from_ref(new_change_event)
+                        core::slice::from_ref(new_change_event)
                     } else {
                         existing_events
                     };

@@ -1,6 +1,7 @@
 use bls12_381_plus::{G1Affine, G1Projective};
 use group::Curve;
 use heapless::Vec as HVec;
+use ockam_core::compat::vec::Vec;
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
 use signature_bbs_plus::{BlindSignatureContext, PokSignatureProof};

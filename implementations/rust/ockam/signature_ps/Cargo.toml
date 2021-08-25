@@ -3,6 +3,7 @@ name = "signature_ps"
 version = "0.21.0"
 authors = ["Ockam Developers"]
 edition = "2018"
+resolver = "2"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/signature_ps"
@@ -15,18 +16,18 @@ description = """The Ockam PS signature impementation.
 [features]
 
 [dependencies]
-blake2 = "0.9"
+blake2 = { version = "0.9", default-features = false }
 signature_bls = { version = "0.21.0"    , path = "../signature_bls" }
-bls12_381_plus = "0.5"
+bls12_381_plus = { version = "0.5", default-features = false }
 digest = { version = "0.9", default-features = false }
-ff = "0.10"
+ff = { version = "0.10", default-features = false }
 group = "0.10"
 hmac-drbg = "0.3"
-hkdf = "0.11"
+hkdf = { version = "0.11", default-features = false }
 pairing = "0.20"
 rand_core = "0.6"
 rand_chacha = { version = "0.3", default-features = false }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 signature_core = { version = "0.23.0"    , path = "../signature_core" }
 subtle = { version = "2.4", default-features = false }
 typenum = "1.13"

@@ -5,6 +5,7 @@ use crate::{
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
     ProfileState, Signature, SignatureType,
 };
+use ockam_core::compat::vec::Vec;
 use ockam_vault::ockam_vault_core::Signature as OckamVaultSignature;
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,5 @@
 use super::CredentialAttribute;
+use ockam_core::compat::vec::Vec;
 use serde::{Deserialize, Serialize};
 use signature_bbs_plus::BlindSignature;
 

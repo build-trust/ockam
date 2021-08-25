@@ -1,4 +1,5 @@
 use crate::{EntityError, ProfileVault};
+use ockam_core::compat::vec::Vec;
 use ockam_vault::{PublicKey, Secret};
 use ockam_vault_core::Signature;
 use serde::{Deserialize, Serialize};

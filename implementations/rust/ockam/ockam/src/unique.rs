@@ -1,4 +1,8 @@
 use ockam_core::compat::string::String;
+
+#[cfg(feature = "unsafe_random")]
+use ockam_core::compat::rand::{thread_rng, Rng};
+#[cfg(not(feature = "unsafe_random"))]
 use rand::{thread_rng, Rng};
 
 /// A simple generator for unique, human-readable identifiers suitable

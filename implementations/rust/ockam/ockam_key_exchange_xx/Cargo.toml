@@ -3,6 +3,7 @@ name = "ockam_key_exchange_xx"
 version = "0.23.0"
 authors = ["Ockam Developers"]
 edition = "2018"
+resolver = "2"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_key_exchange_xx"
@@ -26,6 +27,13 @@ no_std = ["ockam_core/no_std", "ockam_key_exchange_core/no_std", "ockam_vault_co
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "ockam_vault_core/alloc"]
+
+# Option: "unsafe_random" enables development support for random
+# number generation on no_std platforms that do not yet have
+# cryptographically secure implementations.
+# WARNING: Under no circumstances should this ever be enabled in
+#          production builds!
+unsafe_random = ["ockam_core/unsafe_random", "ockam_vault_core/unsafe_random", "ockam_key_exchange_core/unsafe_random"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.31.0"    , default_features = false }

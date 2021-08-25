@@ -16,12 +16,12 @@
 //! a type and notifying the companion actor.
 
 use crate::relay::{run_mailbox, RelayMessage, RelayPayload};
+use crate::tokio::runtime::Runtime;
+use crate::tokio::sync::mpsc::{channel, Sender};
 use crate::{parser, Context};
 use core::marker::PhantomData;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker};
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{channel, Sender};
 
 pub struct WorkerRelay<W, M>
 where

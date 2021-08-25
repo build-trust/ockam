@@ -1,8 +1,8 @@
 use crate::relay::{run_mailbox, RelayMessage, ShutdownHandle, ShutdownListener};
+use crate::tokio::runtime::Runtime;
+use crate::tokio::sync::mpsc;
 use crate::{error::Error, Context};
 use ockam_core::{Processor, Result};
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc;
 
 pub struct ProcessorRelay<P>
 where
@@ -52,6 +52,7 @@ where
             Result::<()>::Ok(())
         };
 
+        #[allow(dead_code)]
         enum StopReason {
             Shutdown,
             LoopStop,
@@ -59,8 +60,9 @@ where
             RxError(ockam_core::Error),
         }
 
+        #[cfg(feature = "std")]
         let stop_reason;
-
+        #[cfg(feature = "std")]
         tokio::select! {
             res = rx_shutdown => {
                 match res {
@@ -75,6 +77,13 @@ where
                 }
             }
         }
+
+        // TODO wait on run_loop until we have a no_std select! implementation
+        #[cfg(not(feature = "std"))]
+        let stop_reason = match run_loop.await {
+            Ok(_) => StopReason::LoopStop,
+            Err(err) => StopReason::ProcessError(err),
+        };
 
         match processor.shutdown(&mut ctx).await {
             Ok(()) => {}

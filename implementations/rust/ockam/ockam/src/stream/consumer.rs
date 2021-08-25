@@ -13,6 +13,7 @@ use crate::{
 };
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
 use core::time::Duration;
+use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::LocalMessage;
 
 /// A stream worker

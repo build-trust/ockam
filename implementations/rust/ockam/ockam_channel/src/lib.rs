@@ -20,6 +20,7 @@
 extern crate core;
 
 #[cfg(feature = "alloc")]
+#[macro_use]
 extern crate alloc;
 
 mod error;

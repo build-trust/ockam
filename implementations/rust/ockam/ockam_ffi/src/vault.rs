@@ -63,7 +63,7 @@ pub extern "C" fn ockam_vault_sha256(
     check_buffer!(input);
     check_buffer!(digest);
 
-    let input = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
+    let input = unsafe { core::slice::from_raw_parts(input, input_length as usize) };
 
     match call(context, |v| -> Result<(), FfiOckamError> {
         let d = v.sha256(input)?;
@@ -113,7 +113,7 @@ pub extern "C" fn ockam_vault_secret_import(
     *secret = match call(context, |v| -> Result<SecretKeyHandle, FfiOckamError> {
         let atts = attributes.try_into()?;
 
-        let secret_data = unsafe { std::slice::from_raw_parts(input, input_length as usize) };
+        let secret_data = unsafe { core::slice::from_raw_parts(input, input_length as usize) };
 
         let ctx = v.secret_import(secret_data, atts)?;
         Ok(ctx.index() as u64)
@@ -229,7 +229,7 @@ pub extern "C" fn ockam_vault_ecdh(
     check_buffer!(peer_publickey, peer_publickey_length);
 
     let peer_publickey =
-        unsafe { std::slice::from_raw_parts(peer_publickey, peer_publickey_length as usize) };
+        unsafe { core::slice::from_raw_parts(peer_publickey, peer_publickey_length as usize) };
     *shared_secret = match call(context, |v| -> Result<u64, FfiOckamError> {
         let ctx = Secret::new(secret as usize);
         let atts = v.secret_attributes_get(&ctx)?;
@@ -339,9 +339,9 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
     *ciphertext_and_tag_length = 0;
 
     let additional_data =
-        unsafe { std::slice::from_raw_parts(additional_data, additional_data_length as usize) };
+        unsafe { core::slice::from_raw_parts(additional_data, additional_data_length as usize) };
 
-    let plaintext = unsafe { std::slice::from_raw_parts(plaintext, plaintext_length as usize) };
+    let plaintext = unsafe { core::slice::from_raw_parts(plaintext, plaintext_length as usize) };
     match call(context, |v| -> Result<(), FfiOckamError> {
         let ctx = Secret::new(secret as usize);
         let mut nonce_vec = vec![0; 12 - 2];
@@ -382,10 +382,10 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
     *plaintext_length = 0;
 
     let additional_data =
-        unsafe { std::slice::from_raw_parts(additional_data, additional_data_length as usize) };
+        unsafe { core::slice::from_raw_parts(additional_data, additional_data_length as usize) };
 
     let ciphertext_and_tag = unsafe {
-        std::slice::from_raw_parts(ciphertext_and_tag, ciphertext_and_tag_length as usize)
+        core::slice::from_raw_parts(ciphertext_and_tag, ciphertext_and_tag_length as usize)
     };
     match call(context, |v| -> Result<(), FfiOckamError> {
         let ctx = Secret::new(secret as usize);

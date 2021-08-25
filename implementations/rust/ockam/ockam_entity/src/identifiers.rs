@@ -2,6 +2,7 @@ use crate::profile::Profile;
 use crate::EntityError;
 use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
+use ockam_core::compat::string::String;
 use ockam_core::hex::encode;
 use ockam_core::{Error, Result};
 use ockam_vault_core::{Hasher, KeyId};

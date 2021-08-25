@@ -1,4 +1,5 @@
 use crate::Contact;
+use ockam_core::compat::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]

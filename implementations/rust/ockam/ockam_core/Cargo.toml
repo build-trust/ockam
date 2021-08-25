@@ -3,6 +3,7 @@ name = "ockam_core"
 version = "0.31.0"
 authors = ["Ockam Developers"]
 edition = "2018"
+resolver = "2"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_core"
@@ -37,12 +38,12 @@ alloc = ["core2/alloc", "core2/nightly", "heapless", "hex/alloc", "serde/alloc",
 # cryptographically secure implementations.
 # WARNING: Under no circumstances should this ever be enabled in
 #          production builds!
-unsafe_random  = []
+unsafe_random = []
 
 [dependencies]
 async-trait = "0.1.42"
-serde_bare = { git = "ssh://git@github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc", default-features = false }
-hashbrown =  { version = "0.11", features = ["serde"] }
+serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc", default-features = false }
+hashbrown =  { version = "0.11", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

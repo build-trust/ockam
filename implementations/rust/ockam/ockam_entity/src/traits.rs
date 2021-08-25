@@ -5,6 +5,10 @@ use crate::{
     CredentialRequestFragment, CredentialSchema, EntityCredential, Lease, OfferId,
     PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId, TrustPolicy, TTL,
 };
+use ockam_core::compat::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::{Address, Result, Route};
 use ockam_vault_core::{PublicKey, Secret};
 use signature_bls::SecretKey;

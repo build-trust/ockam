@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 
+use ockam_core::compat::{string::String, vec::Vec};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// A lease for managing secrets

@@ -10,6 +10,10 @@ use crate::{
     SecureChannels, SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker, TTL,
 };
 use core::convert::TryInto;
+use ockam_core::compat::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::{Address, Result, Route};
 use ockam_node::{block_future, Context};
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};
