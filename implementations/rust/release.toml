@@ -1,3 +1,6 @@
 pre-release-replacements = [
   {file="Cargo.toml", search="-dev", replace=""},
 ]
+no-dev-version = true
+disable-push = true
+disable-tag = true
