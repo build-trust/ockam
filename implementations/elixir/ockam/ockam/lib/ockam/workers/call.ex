@@ -32,7 +32,7 @@ defmodule Ockam.Workers.Call do
 
   @impl true
   def handle_message(message, state) do
-    Map.put(state, :message, message)
+    state = Map.put(state, :message, message)
 
     case Map.get(state, :wait) do
       nil ->

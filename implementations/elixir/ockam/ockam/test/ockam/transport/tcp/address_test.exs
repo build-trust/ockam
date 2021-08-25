@@ -4,35 +4,27 @@ defmodule Ockam.Transport.TCPAddress.Tests do
   alias Ockam.Address
   alias Ockam.Transport.TCPAddress
 
-  @tcp 1
-  @four_thousand_encoded <<160, 15>>
-  @localhost_binary <<0, 127, 0, 0, 1>>
+  @encoded_localhost <<1, 14, 108, 111, 99, 97, 108, 104, 111, 115, 116, 58, 52, 48, 48, 48>>
 
   describe "Ockam.Transport.TCPAddress" do
     test "1 is the TCP address type" do
-      address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+      address = TCPAddress.new({127, 0, 0, 1}, 4000)
       assert 1 == Address.type(address)
     end
 
-    test "can be serialized and then deserialized back to the original address" do
-      address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+    test "can get host and port from address created with host and port" do
+      host = "myhost"
+      port = 3000
 
-      serialized = Ockam.Serializable.serialize(address)
-      deserialized = TCPAddress.deserialize(serialized)
+      address = TCPAddress.new(host, port)
 
-      assert address === deserialized
+      assert {:ok, {^host, ^port}} = TCPAddress.to_host_port(address)
     end
 
-    test "Serializing an address produces expected binary" do
-      address = %TCPAddress{ip: {127, 0, 0, 1}, port: 4000}
+    test "Encoded address produces expected binary" do
+      address = TCPAddress.new("localhost", 4000)
 
-      assert %{type: @tcp, value: <<0, 127, 0, 0, 1, 160, 15>>} ==
-               Ockam.Serializable.serialize(address)
-    end
-
-    test "Deserializing an address produces expected struct" do
-      serialized = [@localhost_binary, @four_thousand_encoded]
-      assert %TCPAddress{ip: {127, 0, 0, 1}, port: 4000} == TCPAddress.deserialize(serialized)
+      assert @encoded_localhost == :bare.encode(address, Ockam.Wire.Binary.V2.bare_spec(:address))
     end
   end
 end

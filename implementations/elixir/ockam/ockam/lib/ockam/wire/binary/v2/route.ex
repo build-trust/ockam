@@ -1,37 +1,23 @@
 defmodule Ockam.Wire.Binary.V2.Route do
   @moduledoc false
 
-  alias Ockam.Wire.Binary.V2.Address
+  alias Ockam.Address
   alias Ockam.Wire.DecodeError
   alias Ockam.Wire.EncodeError
 
   require DecodeError
   require EncodeError
 
-  @spec encode(any) :: {:error, Ockam.Wire.EncodeError.t()} | {:ok, list}
-  def encode(route) when is_list(route) do
-    case encode_addresses(route, []) do
-      {:error, error} ->
-        {:error, error}
+  @type formatted_address() :: %{type: Address.type(), value: binary()}
 
-      encoded_addresses ->
-        {:ok, encoded_addresses}
-    end
+  @spec encode(any) :: {:ok, list(formatted_address)}
+  def encode(route) when is_list(route) do
+    {:ok, Enum.map(route, &encode_address/1)}
   end
 
   def encode(input) do
     reason = {:argument_is_not_a_route, input}
     {:error, EncodeError.new(reason)}
-  end
-
-  @spec encode_addresses(maybe_improper_list, any) :: list | {:error, Ockam.Wire.EncodeError.t()}
-  def encode_addresses([], encoded), do: Enum.reverse(encoded)
-
-  def encode_addresses([address | remaining_route], encoded) do
-    case Address.encode(address) do
-      {:error, error} -> {:error, error}
-      encoded_address -> encode_addresses(remaining_route, [encoded_address | encoded])
-    end
   end
 
   @spec decode(maybe_improper_list) :: {:error, DecodeError.t()} | {:ok, list}
@@ -45,7 +31,7 @@ defmodule Ockam.Wire.Binary.V2.Route do
     # TODO: this is also kinda ugly
     decoded =
       Enum.map(addresses, fn address ->
-        Address.decode(address)
+        decode_address(address)
       end)
 
     if length(decoded) == length(addresses) do
@@ -58,4 +44,21 @@ defmodule Ockam.Wire.Binary.V2.Route do
   end
 
   def decode([]), do: {:ok, []}
+
+  @spec encode_address(Address.t()) :: formatted_address()
+  def encode_address(address) do
+    %{type: Address.type(address), value: Address.value(address)}
+  end
+
+  @spec decode_address(formatted_address()) :: Address.t()
+  def decode_address(%{type: type, value: value}) do
+    # TODO: there needs to be a way to do this programmatically
+    case type do
+      0 ->
+        value
+
+      _other ->
+        %Address{type: type, value: value}
+    end
+  end
 end

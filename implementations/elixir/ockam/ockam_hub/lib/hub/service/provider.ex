@@ -95,7 +95,7 @@ defmodule Ockam.Hub.Service.Provider do
   def do_get_service_child_spec({service_name, service_args}, service_providers_map) do
     case Map.get(service_providers_map, service_name) do
       nil ->
-        {:error, :unknown_service}
+        {:error, {:unknown_service, service_name}}
 
       provider_mod ->
         child_spec = provider_mod.child_spec(service_name, service_args)

@@ -4,35 +4,27 @@ defmodule Ockam.Transport.UDPAddress.Tests do
   alias Ockam.Address
   alias Ockam.Transport.UDPAddress
 
-  @udp 2
-  @four_thousand_encoded <<160, 15>>
-  @localhost_binary <<0, 127, 0, 0, 1>>
+  @encoded_localhost <<2, 14, 49, 50, 55, 46, 48, 46, 48, 46, 49, 58, 52, 48, 48, 48>>
 
   describe "Ockam.Transport.UDPAddress" do
     test "2 is the UDP address type" do
-      address = %UDPAddress{ip: {127, 0, 0, 1}, port: 4000}
+      address = UDPAddress.new({127, 0, 0, 1}, 4000)
       assert 2 === Address.type(address)
     end
 
-    test "can be serialized and then deserialized back to the original address" do
-      address = %UDPAddress{ip: {127, 0, 0, 1}, port: 4000}
+    test "can get ip and port from address created with ip and port" do
+      ip = {127, 0, 0, 1}
+      port = 3000
 
-      serialized = Ockam.Serializable.serialize(address)
-      deserialized = UDPAddress.deserialize(serialized)
+      address = UDPAddress.new(ip, port)
 
-      assert address === deserialized
+      assert {:ok, {^ip, ^port}} = UDPAddress.to_ip_port(address)
     end
 
-    test "Serializing an address produces expected binary" do
-      address = %UDPAddress{ip: {127, 0, 0, 1}, port: 4000}
+    test "Encoded address produces expected binary" do
+      address = UDPAddress.new({127, 0, 0, 1}, 4000)
 
-      assert %{type: @udp, value: <<0, 127, 0, 0, 1, 160, 15>>} ==
-               Ockam.Serializable.serialize(address)
-    end
-
-    test "Deserializing an address produces expected struct" do
-      serialized = [@localhost_binary, @four_thousand_encoded]
-      assert %UDPAddress{ip: {127, 0, 0, 1}, port: 4000} == UDPAddress.deserialize(serialized)
+      assert @encoded_localhost == :bare.encode(address, Ockam.Wire.Binary.V2.bare_spec(:address))
     end
   end
 end

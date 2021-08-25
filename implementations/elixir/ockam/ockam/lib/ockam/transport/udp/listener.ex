@@ -10,9 +10,6 @@ defmodule Ockam.Transport.UDP.Listener do
 
   @wire_encoder_decoder Ockam.Wire.Binary.V2
 
-  # udp address type
-  @udp 2
-
   @doc false
   @impl true
   def setup(options, state) do
@@ -20,7 +17,7 @@ defmodule Ockam.Transport.UDP.Listener do
     port = Keyword.get_lazy(options, :port, &default_port/0)
 
     udp_open_options = [:binary, :inet, {:ip, ip}, {:active, true}]
-    udp_address = %UDPAddress{ip: ip, port: port}
+    udp_address = UDPAddress.new(ip, port)
 
     route_outgoing = Keyword.get(options, :route_outgoing, false)
 
@@ -35,8 +32,7 @@ defmodule Ockam.Transport.UDP.Listener do
   defp setup_routed_message_handler(true, listener) do
     handler = fn message -> handle_routed_message(listener, message) end
 
-    with :ok <- Router.set_message_handler(@udp, handler),
-         :ok <- Router.set_message_handler(Ockam.Transport.UDPAddress, handler) do
+    with :ok <- Router.set_message_handler(UDPAddress.type(), handler) do
       :ok
     end
   end
@@ -51,6 +47,7 @@ defmodule Ockam.Transport.UDP.Listener do
   @impl true
 
   def handle_message({:udp, _socket, _from_ip, _from_port, _packet} = udp_message, state) do
+    ## TODO: use from_ip and from_port to route messages back
     decode_and_send_to_router(udp_message, state)
   end
 
@@ -95,24 +92,21 @@ defmodule Ockam.Transport.UDP.Listener do
   end
 
   defp pick_destination_and_set_onward_route(message, address) do
-    destination_and_onward_route =
+    {dest_address, onward_route} =
       message
       |> Message.onward_route()
       |> Enum.drop_while(fn a -> a === address end)
       |> List.pop_at(0)
 
-    case destination_and_onward_route do
-      {nil, []} -> {:error, :no_destination}
-      {%UDPAddress{} = destination, r} -> {:ok, destination, %{message | onward_route: r}}
-      {{@udp, address}, onward_route} -> deserialize_address(message, address, onward_route)
-      {destination, _onward_route} -> {:error, {:invalid_destination, destination}}
-    end
-  end
+    with true <- UDPAddress.is_udp_address(dest_address),
+         {:ok, {ip, port}} <- UDPAddress.to_ip_port(dest_address) do
+      {:ok, %{ip: ip, port: port}, %{message | onward_route: onward_route}}
+    else
+      false ->
+        {:error, {:invalid_destination, dest_address}}
 
-  defp deserialize_address(message, address, onward_route) do
-    case UDPAddress.deserialize(address) do
-      {:error, error} -> {:error, error}
-      destination -> {:ok, destination, %{message | onward_route: onward_route}}
+      error ->
+        error
     end
   end
 

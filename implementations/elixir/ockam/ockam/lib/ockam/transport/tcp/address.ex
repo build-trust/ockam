@@ -1,87 +1,55 @@
 defmodule Ockam.Transport.TCPAddress do
-  @moduledoc false
+  @moduledoc """
+  Functions to work with TCP transport address
+  """
+  alias Ockam.Address
 
-  alias __MODULE__
+  @address_type 1
 
-  defstruct [:ip, :port]
+  @type t :: Address.t(1)
 
-  # tcp address type
-  @tcp 1
+  def type(), do: @address_type
 
-  # ip address type tags
-  @ipv4 0
-  @ipv6 1
+  @spec to_host_port(t()) :: {:ok, {String.t(), integer()}} | {:error, any()}
+  def to_host_port(address) do
+    case is_tcp_address(address) do
+      true ->
+        parse_host_port(Address.value(address))
 
-  @spec deserialize(any) ::
-          {:error, {:not_a_valid_serialized_tcp_address, any}}
-          | %Ockam.Transport.TCPAddress{
-              ip: {byte, byte, byte, byte} | {byte, byte, byte, byte, byte, byte, byte, byte},
-              port: char
-            }
-
-  def deserialize(%{type: @tcp, value: value}), do: deserialize(value)
-
-  def deserialize(value) when is_list(value), do: deserialize(IO.iodata_to_binary(value))
-
-  def deserialize(<<@ipv4::8, a::8, b::8, c::8, d::8, port::unsigned-little-integer-16>>) do
-    %TCPAddress{ip: {a, b, c, d}, port: port}
-  end
-
-  def deserialize(
-        <<@ipv6::8, a::8, b::8, c::8, d::8, e::8, f::8, g::8, h::8,
-          port::unsigned-little-integer-16>>
-      ) do
-    %TCPAddress{ip: {a, b, c, d, e, f, g, h}, port: port}
-  end
-
-  def deserialize(value), do: {:error, {:not_a_valid_serialized_tcp_address, value}}
-end
-
-defimpl Ockam.Address, for: Ockam.Transport.TCPAddress do
-  alias Ockam.Transport.TCPAddress
-
-  def type(_address), do: 1
-  def value(address), do: address
-end
-
-defimpl Ockam.Serializable, for: Ockam.Transport.TCPAddress do
-  alias Ockam.Transport.TCPAddress
-
-  # tcp address type
-  @tcp 1
-
-  # ip address type tags
-  @ipv4 0
-  @ipv6 1
-
-  def serialize(%TCPAddress{ip: ip, port: port}) do
-    with {:ok, serialized_ip} <- serialize_ip(ip),
-         {:ok, serialized_port} <- serialize_port(port) do
-      %{type: @tcp, value: :binary.list_to_bin([serialized_ip, serialized_port])}
+      false ->
+        {:error, {:invalid_address_type, Address.type(address)}}
     end
   end
 
-  # Turns and IP into a binary.
+  def parse_host_port(value) do
+    case Regex.split(~r/(:)\d*$/, value, include_captures: true, on: :all_but_first, trim: true) do
+      [host, ":", port_str] ->
+        case Integer.parse(port_str) do
+          {port, ""} ->
+            {:ok, {host, port}}
 
-  defp serialize_ip({a, b, c, d}) do
-    {:ok, <<@ipv4::8, a::8, b::8, c::8, d::8>>}
+          _other ->
+            {:error, {:invalid_port, port_str}}
+        end
+
+      _other ->
+        {:error, {:invalid_host_port, value}}
+    end
   end
 
-  defp serialize_ip({a, b, c, d, e, f, g, h}) do
-    {:ok,
-     <<@ipv6::8, a::unsigned-little-integer-16, b::unsigned-little-integer-16,
-       c::unsigned-little-integer-16, d::unsigned-little-integer-16,
-       e::unsigned-little-integer-16, f::unsigned-little-integer-16,
-       g::unsigned-little-integer-16, h::unsigned-little-integer-16>>}
+  @spec new(String.t(), integer()) :: t()
+  def new(host, port) when is_binary(host) and is_integer(port) do
+    %Address{type: @address_type, value: "#{host}:#{port}"}
   end
 
-  defp serialize_ip(value), do: {:error, {:not_a_valid_ip, value}}
-
-  # Turn a ports into a binary.
-
-  defp serialize_port(port) when port >= 0 and port <= 65_535 do
-    {:ok, <<port::unsigned-little-integer-16>>}
+  @spec new(:inet.ip_address(), integer()) :: t()
+  def new(ip, port) when is_tuple(ip) and is_integer(port) do
+    host = to_string(:inet.ntoa(ip))
+    ## TODO: format IPV6 with brackets
+    %Address{type: @address_type, value: "#{host}:#{port}"}
   end
 
-  defp serialize_port(value), do: {:error, {:not_a_valid_port, value}}
+  def is_tcp_address(address) do
+    Address.type(address) == @address_type
+  end
 end

@@ -10,8 +10,6 @@ if Code.ensure_loaded?(:ranch) do
 
     require Logger
 
-    @tcp 1
-
     @doc false
     @impl true
     def setup(options, state) do
@@ -49,8 +47,7 @@ if Code.ensure_loaded?(:ranch) do
     defp setup_routed_message_handler(true, listener) do
       handler = fn message -> handle_routed_message(listener, message) end
 
-      with :ok <- Router.set_message_handler(@tcp, handler),
-           :ok <- Router.set_message_handler(Ockam.Transport.TCPAddress, handler) do
+      with :ok <- Router.set_message_handler(TCPAddress.type(), handler) do
         :ok
       end
     end
@@ -93,33 +90,21 @@ if Code.ensure_loaded?(:ranch) do
     end
 
     defp get_destination_and_onward_route(message, address) do
-      destination_and_onward_route =
+      {dest_address, onward_route} =
         message
         |> Message.onward_route()
         |> Enum.drop_while(fn a -> a === address end)
         |> List.pop_at(0)
 
-      case destination_and_onward_route do
-        {nil, []} ->
-          {:error, :no_destination}
+      with true <- TCPAddress.is_tcp_address(dest_address),
+           {:ok, destination} <- TCPAddress.to_host_port(dest_address) do
+        {:ok, destination, onward_route}
+      else
+        false ->
+          {:error, {:invalid_address_type, dest_address}}
 
-        {%TCPAddress{} = destination, r} ->
-          {:ok, destination, r}
-
-        {{@tcp, serialized}, r} ->
-          with {:ok, destination} <- deserialize_address(serialized) do
-            {:ok, destination, r}
-          end
-
-        {destination, _onward_route} ->
-          {:error, {:invalid_destination, destination}}
-      end
-    end
-
-    defp deserialize_address(address) do
-      case TCPAddress.deserialize(address) do
-        {:error, error} -> {:error, error}
-        destination -> {:ok, destination}
+        error ->
+          error
       end
     end
 

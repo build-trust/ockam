@@ -92,8 +92,6 @@ defmodule Ockam.Stream.Client.BiDirectional.Subscribe do
           payload: "irrelevant"
         })
 
-        {:ok, state}
-
       other ->
         Logger.error("Unexpected message: #{inspect(other)}")
     end

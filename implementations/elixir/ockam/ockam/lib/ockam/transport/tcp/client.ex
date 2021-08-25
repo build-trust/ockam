@@ -12,12 +12,31 @@ defmodule Ockam.Transport.TCP.Client do
 
   @impl true
   def setup(options, state) do
-    %{ip: ip, port: port} = Keyword.fetch!(options, :destination)
+    {host, port} = Keyword.fetch!(options, :destination)
+
+    {protocol, inet_address} =
+      case host do
+        string when is_binary(string) ->
+          {:inet, to_charlist(string)}
+
+        {_, _, _, _} = ipv4 ->
+          {:inet, ipv4}
+
+        {_, _, _, _, _, _, _, _} = ipv6 ->
+          {:inet6, ipv6}
+      end
+
     # TODO: connect/3 and controlling_process/2 should be in a callback.
-    case :gen_tcp.connect(ip, port, [:binary, :inet, active: true, packet: 2, nodelay: true]) do
+    case :gen_tcp.connect(inet_address, port, [
+           :binary,
+           protocol,
+           active: true,
+           packet: 2,
+           nodelay: true
+         ]) do
       {:ok, socket} ->
         :gen_tcp.controlling_process(socket, self())
-        {:ok, Map.merge(state, %{socket: socket, ip: ip, port: port})}
+        {:ok, Map.merge(state, %{socket: socket, inet_address: inet_address, port: port})}
 
       {:error, reason} ->
         Logger.error("Error starting TCP client: #{inspect(reason)}")
@@ -28,14 +47,6 @@ defmodule Ockam.Transport.TCP.Client do
   end
 
   @impl true
-  def handle_message(:connect, %{ip: ip, port: port} = state) do
-    {:ok, socket} = :gen_tcp.connect(ip, port, [:binary, :inet, {:packet, 2}])
-    :inet.setopts(socket, [{:active, true}, {:packet, 2}])
-    :gen_tcp.controlling_process(socket, self())
-
-    {:ok, Map.put(state, :socket, socket)}
-  end
-
   def handle_message({:tcp, socket, data}, %{socket: socket} = state) do
     with {:ok, message} <- Wire.decode(@wire_encoder_decoder, data),
          {:ok, message} <- update_return_route(message, state) do

@@ -4,7 +4,6 @@ defprotocol Ockam.Message do
   """
 
   alias Ockam.Address
-  alias Ockam.Serializable
 
   @fallback_to_any true
 
@@ -17,7 +16,7 @@ defprotocol Ockam.Message do
   def return_route(message)
 
   @doc "Returns the payload of a message."
-  @spec payload(t()) :: Serializable.t()
+  @spec payload(t()) :: binary()
   def payload(message)
 end
 
