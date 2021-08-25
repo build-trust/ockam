@@ -30,7 +30,7 @@ dump_internals = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.27.0-dev"  , default_features = false }
-tokio = {version = "1.8", features = ["full"], optional = true}
+tokio = {version = "1.10", features = ["full"], optional = true}
 tracing = { version = "0.1", default_features = false }
 tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"], optional = true }
 heapless = { version = "0.7", features = [ "mpmc_large" ], optional = true }
