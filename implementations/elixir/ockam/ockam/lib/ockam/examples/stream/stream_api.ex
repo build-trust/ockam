@@ -14,7 +14,7 @@ defmodule Ockam.Examples.Stream.StreamApi do
   end
 
   def outline() do
-    Ockam.Examples.Stream.StreamApi.init()
+    Ockam.Transport.TCP.start()
 
     Ockam.Examples.Stream.StreamApi.create_stream("my_api_stream")
 
@@ -72,13 +72,5 @@ defmodule Ockam.Examples.Stream.StreamApi do
     payload = Message.payload(pull_response)
 
     Ockam.Protocol.decode_payload(StreamProtocol.Pull, :response, payload)
-  end
-
-  def init() do
-    ensure_tcp(5000)
-  end
-
-  def ensure_tcp(port) do
-    Ockam.Transport.TCP.create_listener(port: port, route_outgoing: true)
   end
 end

@@ -147,9 +147,9 @@ defmodule Ockam.Router.Tests do
 
       :erlang.trace(printer, true, [:receive])
 
-      assert {:ok, _address_a} = UDP.create_listener(port: 3000, route_outgoing: true)
+      assert {:ok, _address_b} = UDP.start(port: 4000)
 
-      assert {:ok, _address_b} = UDP.create_listener(port: 4000)
+      assert {:ok, _address_a} = UDP.start(port: 3000)
 
       Ockam.Router.route(message)
 
@@ -177,9 +177,7 @@ defmodule Ockam.Router.Tests do
 
       :erlang.trace(printer, true, [:receive])
 
-      assert {:ok, _address_a} = TCP.create_listener(port: 3000, route_outgoing: true)
-
-      assert {:ok, _address_b} = TCP.create_listener(port: 4000)
+      assert {:ok, _address_b} = TCP.start(listen: [port: 4000])
 
       Ockam.Router.route(message)
 
@@ -205,9 +203,7 @@ defmodule Ockam.Router.Tests do
 
       :erlang.trace(printer, true, [:receive])
 
-      assert {:ok, _address_a} = TCP.create_listener(port: 3001, route_outgoing: true)
-
-      assert {:ok, _address_b} = TCP.create_listener(port: 4001)
+      assert {:ok, _address_b} = TCP.start(listen: [port: 4001])
 
       Ockam.Router.route(message)
 
@@ -234,11 +230,9 @@ defmodule Ockam.Router.Tests do
 
       :erlang.trace(printer, true, [:receive])
 
-      assert {:ok, _address_a} = TCP.create_listener(port: 3002, route_outgoing: true)
+      assert {:ok, _address_a} = TCP.start(listen: [port: 5002])
 
-      assert {:ok, _address_a} = TCP.create_listener(port: 5002, route_outgoing: true)
-
-      assert {:ok, _address_b} = TCP.create_listener(port: 4002, route_outgoing: true)
+      assert {:ok, _address_b} = TCP.start(listen: [port: 4002])
 
       Ockam.Router.route(message)
 
@@ -279,9 +273,7 @@ defmodule Ockam.Router.Tests do
       :erlang.trace(echo, true, [:receive])
       :erlang.trace(client_forwarder, true, [:receive])
 
-      assert {:ok, _listener_address_a} = TCP.create_listener(port: 6000, route_outgoing: true)
-
-      assert {:ok, _listener_address_b} = TCP.create_listener(port: 5000)
+      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 5000])
 
       Ockam.Router.route(request)
 
@@ -375,9 +367,7 @@ defmodule Ockam.Router.Tests do
         payload: "ping 1"
       }
 
-      assert {:ok, _listener_address_a} = TCP.create_listener(port: 6001, route_outgoing: true)
-
-      assert {:ok, _listener_address_b} = TCP.create_listener(port: 5001)
+      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 5001])
 
       Ockam.Router.route(request)
 

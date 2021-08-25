@@ -1,11 +1,20 @@
 defmodule Ockam.Transport.UDP do
-  @moduledoc false
+  @moduledoc """
+  UDP transport
+  """
 
   alias Ockam.Transport.UDP.Listener
 
-  @spec create_listener(keyword) :: :ignore | {:error, any} | {:ok, any}
-  @doc false
-  def create_listener(options \\ []) do
-    Listener.create(options)
+  @doc """
+  Start a UDP transport
+
+  ## Parameters
+  - options:
+      port: optional(integer) - port to listen on
+      ip: optional(integer) - ip address to listen on
+  """
+  @spec start(options :: keyword) :: :ignore | {:error, any} | {:ok, any}
+  def start(options \\ []) do
+    Listener.start_link(options)
   end
 end

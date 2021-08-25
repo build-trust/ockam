@@ -43,7 +43,7 @@ defmodule Ockam.Examples.Stream do
 
   def init() do
     options = stream_options()
-    ensure_tcp()
+    Ockam.Transport.TCP.start()
 
     Map.merge(
       create_publisher(options.stream_name, options.service_route),
@@ -105,10 +105,6 @@ defmodule Ockam.Examples.Stream do
         route_message("#{prefix}_#{n}")
       end
     )
-  end
-
-  def ensure_tcp() do
-    Ockam.Transport.TCP.create_listener(port: 3000, route_outgoing: true)
   end
 end
 

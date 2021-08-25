@@ -4,8 +4,13 @@ defmodule Ockam.Transport.UDP.Tests do
   alias Ockam.Transport.UDP
 
   describe "Ockam.Transport.UDP" do
-    test "create_listener/1 creates a listener with default options" do
-      assert {:ok, _listener} = UDP.create_listener()
+    test "start/1 creates a listener with default options" do
+      assert {:ok, listener} = UDP.start()
+      socket = listener |> :sys.get_state() |> Map.get(:socket)
+
+      info = Port.info(socket)
+
+      assert 'udp_inet' = Keyword.get(info, :name)
     end
   end
 end

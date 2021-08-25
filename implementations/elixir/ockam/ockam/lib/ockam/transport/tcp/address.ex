@@ -37,16 +37,19 @@ defmodule Ockam.Transport.TCPAddress do
     end
   end
 
-  @spec new(String.t(), integer()) :: t()
-  def new(host, port) when is_binary(host) and is_integer(port) do
-    %Address{type: @address_type, value: "#{host}:#{port}"}
+  @spec new(String.t() | :inet.ip_address(), integer()) :: t()
+  def new(host, port) when (is_binary(host) or is_tuple(host)) and is_integer(port) do
+    %Address{type: @address_type, value: format_host_port(host, port)}
   end
 
-  @spec new(:inet.ip_address(), integer()) :: t()
-  def new(ip, port) when is_tuple(ip) and is_integer(port) do
-    host = to_string(:inet.ntoa(ip))
+  def format_host_port(host, port) when is_binary(host) do
+    "#{host}:#{port}"
+  end
+
+  def format_host_port(ip, port) when is_tuple(ip) do
     ## TODO: format IPV6 with brackets
-    %Address{type: @address_type, value: "#{host}:#{port}"}
+    host = to_string(:inet.ntoa(ip))
+    format_host_port(host, port)
   end
 
   def is_tcp_address(address) do

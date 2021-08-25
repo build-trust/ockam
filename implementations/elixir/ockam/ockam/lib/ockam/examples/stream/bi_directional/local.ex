@@ -29,6 +29,8 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
   alias Ockam.Stream.Client.BiDirectional
   alias Ockam.Stream.Client.BiDirectional.PublisherRegistry
 
+  alias Ockam.Transport.TCP
+
   def config() do
     %{
       hub_ip: "127.0.0.1",
@@ -53,7 +55,7 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
 
   ## This should be run on the PONG node
   def init_pong() do
-    ensure_tcp(5000)
+    TCP.start()
     ## PONG worker
     {:ok, "pong"} = Pong.create(address: "pong")
 
@@ -62,7 +64,7 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
   end
 
   def run() do
-    ensure_tcp(3000)
+    TCP.start()
 
     ## PING worker
     Ping.create(address: "ping")
@@ -95,10 +97,6 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
     }
 
     Ockam.Router.route(msg)
-  end
-
-  def ensure_tcp(port) do
-    Ockam.Transport.TCP.create_listener(port: port, route_outgoing: true)
   end
 
   def subscribe(stream, subscription_id) do

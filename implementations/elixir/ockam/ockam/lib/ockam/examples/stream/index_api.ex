@@ -67,10 +67,10 @@ defmodule Ockam.Examples.Stream.IndexApi do
   end
 
   def init() do
-    ensure_tcp(5000)
+    ensure_tcp()
   end
 
-  def ensure_tcp(port) do
-    Ockam.Transport.TCP.create_listener(port: port, route_outgoing: true)
+  def ensure_tcp() do
+    Ockam.Transport.TCP.start()
   end
 end

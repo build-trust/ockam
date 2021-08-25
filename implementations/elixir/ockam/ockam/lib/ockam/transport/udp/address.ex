@@ -11,7 +11,7 @@ defmodule Ockam.Transport.UDPAddress do
   def type(), do: @address_type
 
   def new(ip, port) do
-    value = serialize_ip_port(ip, port)
+    value = format_ip_port(ip, port)
 
     %Address{type: @address_type, value: value}
   end
@@ -30,8 +30,13 @@ defmodule Ockam.Transport.UDPAddress do
     end
   end
 
-  defp serialize_ip_port(ip, port) do
+  def format_ip_port(ip, port) when is_tuple(ip) do
     ip_str = to_string(:inet.ntoa(ip))
+    "#{ip_str}:#{port}"
+  end
+
+  def format_ip_port(ip_str, port) when is_binary(ip_str) do
+    {:ok, _ip} = :inet.parse_address(to_charlist(ip_str))
     "#{ip_str}:#{port}"
   end
 

@@ -33,6 +33,8 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
   alias Ockam.Stream.Client.BiDirectional
   alias Ockam.Stream.Client.BiDirectional.PublisherRegistry
 
+  alias Ockam.Transport.TCP
+
   require Logger
 
   ## Ignore no local return for secure channel
@@ -65,7 +67,7 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
   end
 
   def init_pong() do
-    ensure_tcp(5000)
+    TCP.start()
 
     ## PONG worker
     {:ok, "pong"} = Pong.create(address: "pong")
@@ -78,7 +80,7 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
   end
 
   def run() do
-    ensure_tcp(3000)
+    TCP.start()
 
     ## PING worker
     {:ok, "ping"} = Ping.create(address: "ping")
@@ -166,12 +168,8 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
     Ockam.Router.route(msg)
   end
 
-  def ensure_tcp(port) do
-    Ockam.Transport.TCP.create_listener(port: port, route_outgoing: true)
-  end
-
   def ensure_udp(port) do
-    Ockam.Transport.UDP.create_listener(port: port, route_outgoing: true)
+    Ockam.Transport.UDP.start(port: port)
   end
 
   def stream_options(protocol) do
