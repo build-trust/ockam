@@ -8,7 +8,7 @@ use crate::{
     stream::StreamWorkerCmd,
     Any, Context, Message, Result, Route, Routed, TransportMessage, Worker,
 };
-use ockam_core::compat::collections::VecDeque;
+use ockam_core::compat::{boxed::Box, collections::VecDeque, string::String};
 
 use super::StreamCmdParser;
 

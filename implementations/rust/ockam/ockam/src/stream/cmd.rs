@@ -2,6 +2,7 @@ use crate::{
     protocols::{ParserFragment, ProtocolPayload},
     Address, Any, Context, Message, ProtocolId, Result, Route, Routed, TransportMessage, Worker,
 };
+use ockam_core::compat::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 /// A protocol exchanged between a stream consumer and stream producer

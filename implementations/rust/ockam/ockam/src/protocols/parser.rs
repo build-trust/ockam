@@ -3,8 +3,12 @@ use crate::{
     Routed, Worker,
 };
 use core::{marker::PhantomData, ops::Deref};
-use ockam_core::compat::{collections::BTreeMap, sync::Arc};
-use std::sync::RwLock;
+use ockam_core::compat::{
+    boxed::Box,
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
+    vec::Vec,
+};
 
 /// A parser for a protocol fragment
 ///
@@ -102,6 +106,9 @@ impl<W: Worker> ProtocolParserImpl<W> {
     {
         let p: Arc<Box<dyn ParserFragment<W> + Send + Sync>> = Arc::new(Box::new(parser));
 
+        #[cfg(not(feature = "std"))]
+        let mut map = self.map.write(); // TODO
+        #[cfg(feature = "std")]
         let mut map = self.map.write().unwrap();
         p.ids().into_iter().for_each(|pid| {
             map.insert(pid, Arc::clone(&p));
@@ -120,7 +127,9 @@ impl<W: Worker> ProtocolParserImpl<W> {
         trace!("Parsing message for '{}' protocol", proto.as_str());
 
         // Get the protocol specific parser
-        let map = self.map.read().unwrap();
+        let map = self.map.read(); // TODO
+        #[cfg(feature = "std")]
+        let map = map.unwrap();
         let parser = map.get(&proto).ok_or(OckamError::NoSuchParser)?;
 
         // Finally call the parser

@@ -62,7 +62,16 @@ impl SecretKey {
     }
 
     /// Compute a secret key from a CS-PRNG
+    #[cfg(not(feature = "unsafe_random"))]
     pub fn random(mut rng: impl RngCore + CryptoRng) -> Option<Self> {
+        let mut data = [0u8; Self::BYTES];
+        rng.fill_bytes(&mut data);
+        generate_secret_key(&data)
+    }
+
+    /// Compute a secret key from a CS-PRNG
+    #[cfg(feature = "unsafe_random")]
+    pub fn random(mut rng: impl RngCore) -> Option<Self> {
         let mut data = [0u8; Self::BYTES];
         rng.fill_bytes(&mut data);
         generate_secret_key(&data)

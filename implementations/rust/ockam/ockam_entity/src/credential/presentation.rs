@@ -1,5 +1,6 @@
 use super::CredentialAttribute;
 use crate::{ExtPokSignatureProof, PresentationIdBytes};
+use ockam_core::compat::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 /// Indicates how to present a credential

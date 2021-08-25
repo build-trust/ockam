@@ -6,10 +6,14 @@ use ockam_vault_core::{
     KeyId, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
     SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use rand::{thread_rng, RngCore};
 use signature_bbs_plus::PublicKey as BlsPublicKey;
 use signature_bbs_plus::SecretKey as BlsSecretKey;
 use zeroize::Zeroize;
+
+#[cfg(not(feature = "std"))]
+use ockam_core::compat::rand::{thread_rng, RngCore};
+#[cfg(feature = "std")]
+use rand::{thread_rng, RngCore};
 
 impl SoftwareVault {
     /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported

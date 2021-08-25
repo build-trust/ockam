@@ -3,6 +3,9 @@ use blake2::VarBlake2b;
 use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use digest::{Update, VariableOutput};
 use group::Curve;
+#[cfg(feature = "unsafe_random")]
+use rand_core::RngCore;
+#[cfg(not(feature = "unsafe_random"))]
 use rand_core::{CryptoRng, RngCore};
 use signature_core::{error::Error, lib::*};
 
@@ -19,7 +22,8 @@ impl Prover {
         messages: &[(usize, Message)],
         generators: &MessageGenerators,
         nonce: Nonce,
-        mut rng: impl RngCore + CryptoRng,
+        #[cfg(not(feature = "unsafe_random"))] mut rng: impl RngCore + CryptoRng,
+        #[cfg(feature = "unsafe_random")] mut rng: impl RngCore,
     ) -> Result<(BlindSignatureContext, SignatureBlinding), Error> {
         const BYTES: usize = 48;
         // Very uncommon to blind more than 1 or 2, so 16 should be plenty
@@ -91,11 +95,24 @@ impl Prover {
 
     /// Create a new signature proof of knowledge and selective disclosure proof
     /// from a verifier's request
+    #[cfg(not(feature = "unsafe_random"))]
     pub fn commit_signature_pok(
         signature: Signature,
         generators: &MessageGenerators,
         messages: &[ProofMessage],
         rng: impl RngCore + CryptoRng,
+    ) -> Result<PokSignature, Error> {
+        PokSignature::init(signature, generators, messages, rng)
+    }
+
+    /// Create a new signature proof of knowledge and selective disclosure proof
+    /// from a verifier's request
+    #[cfg(feature = "unsafe_random")]
+    pub fn commit_signature_pok(
+        signature: Signature,
+        generators: &MessageGenerators,
+        messages: &[ProofMessage],
+        rng: impl RngCore,
     ) -> Result<PokSignature, Error> {
         PokSignature::init(signature, generators, messages, rng)
     }

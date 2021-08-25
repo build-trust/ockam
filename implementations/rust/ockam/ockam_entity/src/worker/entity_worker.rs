@@ -6,7 +6,8 @@ use crate::{
 };
 use async_trait::async_trait;
 use core::result::Result::Ok;
-use ockam_core::{compat::collections::HashMap, Address, Result, Routed, Worker};
+use ockam_core::compat::{boxed::Box, collections::HashMap};
+use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
 

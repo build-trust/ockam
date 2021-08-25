@@ -104,7 +104,14 @@ pub mod rand {
         #[allow(unsafe_code)]
         pub fn thread_rng() -> rand_pcg::Lcg64Xsh32 {
             use rand::SeedableRng;
-            rand_pcg::Pcg32::seed_from_u64(1234)
+            // TODO safety
+            static mut RNG: Option<rand_pcg::Lcg64Xsh32> = None;
+            unsafe {
+                if RNG.is_none() {
+                    RNG = Some(rand_pcg::Pcg32::seed_from_u64(1234));
+                }
+            }
+            unsafe { rand_pcg::Pcg32::seed_from_u64(RNG.as_mut().unwrap().gen()) }
         }
 
         /// rand::random()
@@ -157,16 +164,37 @@ pub mod string {
 }
 
 /// std::sync
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod sync {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
     pub use alloc::sync::Arc;
-    #[cfg(feature = "std")]
-    pub use std::sync::Arc;
+    pub use spin::RwLock;
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use spin::Mutex;
-    #[cfg(feature = "std")]
-    pub use std::sync::Mutex;
+    /// spin::Mutex.lock() does not return Option<T>
+    pub struct Mutex<T>(spin::Mutex<T>);
+    impl<T> Mutex<T> {
+        pub fn new(value: T) -> Self {
+            Mutex(spin::Mutex::new(value))
+        }
+        pub fn lock(&self) -> Option<spin::MutexGuard<'_, T>> {
+            Some(self.0.lock())
+        }
+    }
+    impl<T> core::ops::Deref for Mutex<T> {
+        type Target = spin::Mutex<T>;
+        fn deref(&self) -> &spin::Mutex<T> {
+            &self.0
+        }
+    }
+    impl<T> core::ops::DerefMut for Mutex<T> {
+        fn deref_mut(&mut self) -> &mut spin::Mutex<T> {
+            &mut self.0
+        }
+    }
+}
+#[cfg(feature = "std")]
+pub mod sync {
+    pub use std::sync::Arc;
+    pub use std::sync::{Mutex, RwLock};
 }
 
 /// std::task

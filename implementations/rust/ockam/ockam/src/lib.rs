@@ -15,6 +15,7 @@
 extern crate core;
 
 #[cfg(feature = "alloc")]
+#[macro_use]
 extern crate alloc;
 
 #[macro_use]
@@ -30,11 +31,7 @@ pub use ockam_node_attribute::*;
 // ---
 
 // Export node implementation
-#[cfg(feature = "std")]
 pub use ockam_node::*;
-
-#[cfg(not(feature = "std"))]
-pub use ockam_node_no_std::*;
 // ---
 
 mod delay;
@@ -51,6 +48,7 @@ pub use error::*;
 pub use forwarder::*;
 pub use lease::*;
 pub use ockam_core::compat;
+pub use ockam_core::println;
 pub use ockam_core::worker;
 pub use ockam_entity::*;
 pub use protocols::*;

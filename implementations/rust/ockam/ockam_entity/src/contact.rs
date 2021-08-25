@@ -6,6 +6,8 @@ use ockam_vault::PublicKey;
 use crate::change_history::ProfileChangeHistory;
 use crate::profile::Profile;
 use crate::{EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
+
+use ockam_core::compat::{string::ToString, vec::Vec};
 use ockam_core::{allow, deny};
 
 /// Contact is an abstraction responsible for storing user's public data (mainly - public keys).

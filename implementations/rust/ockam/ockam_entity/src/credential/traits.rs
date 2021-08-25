@@ -6,6 +6,7 @@ use crate::{
 };
 use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
+use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{hex, Address, Error, Result, Route};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;

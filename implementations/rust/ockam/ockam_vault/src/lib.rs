@@ -18,6 +18,7 @@
 extern crate core;
 
 #[cfg(feature = "alloc")]
+#[macro_use]
 extern crate alloc;
 
 pub extern crate ockam_vault_core;

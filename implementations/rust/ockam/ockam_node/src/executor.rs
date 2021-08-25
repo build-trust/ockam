@@ -3,9 +3,9 @@
 use crate::{relay::RelayMessage, router::Router, NodeMessage};
 use ockam_core::{Address, Result};
 
+use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
-use tokio::{runtime::Runtime, sync::mpsc::Sender};
 
 /// Ockam node and worker executor
 pub struct Executor {
@@ -60,6 +60,12 @@ impl Executor {
 
         // Block this task executing the primary message router,
         // returning any critical failures that it encounters.
-        crate::block_future(&rt, self.router.run())
+        #[cfg(feature = "std")]
+        return crate::block_future(&rt, self.router.run());
+        #[cfg(not(feature = "std"))]
+        {
+            crate::tokio::runtime::execute(&rt, async move { self.router.run().await.unwrap() });
+            Ok(())
+        }
     }
 }

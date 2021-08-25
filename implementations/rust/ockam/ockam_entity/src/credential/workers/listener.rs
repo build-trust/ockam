@@ -3,6 +3,7 @@ use crate::{
     IssuerWorker, Profile, SecureChannelTrustInfo, TrustPolicy, TrustPolicyImpl,
 };
 use async_trait::async_trait;
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 

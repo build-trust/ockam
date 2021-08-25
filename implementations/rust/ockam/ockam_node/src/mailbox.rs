@@ -1,7 +1,7 @@
+use crate::tokio::sync::mpsc::Receiver;
 use crate::{relay::RelayMessage, Context};
 use core::fmt::{self, Debug, Display, Formatter};
 use ockam_core::{Address, LocalMessage, Message, Routed};
-use tokio::sync::mpsc::Receiver;
 
 /// A mailbox for encoded messages
 ///

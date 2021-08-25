@@ -161,8 +161,8 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         #[inline(always)]
         #input_function
 
-        fn main() -> ockam_core::Result<()> {
-            let (#ctx_ident, mut executor) = ockam_node::start_node();
+        fn main() -> ockam::Result<()> {
+            let (#ctx_ident, mut executor) = ockam::start_node();
             executor.execute(async move {
                 #input_function_call
             })

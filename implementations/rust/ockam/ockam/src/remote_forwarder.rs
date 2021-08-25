@@ -1,13 +1,19 @@
 #![deny(missing_docs)]
 
 use crate::{route, Context, OckamError};
-#[cfg(not(feature = "std"))]
-use ockam_core::compat::rand::random;
+use ockam_core::compat::{
+    boxed::Box,
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
-#[cfg(feature = "std")]
-use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
+
+#[cfg(not(feature = "std"))]
+use ockam_core::compat::rand::random;
+#[cfg(feature = "std")]
+use rand::random;
 
 /// Information about a remotely forwarded worker.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]

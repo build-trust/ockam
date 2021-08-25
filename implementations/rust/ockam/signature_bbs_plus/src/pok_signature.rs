@@ -4,6 +4,9 @@ use core::ops::Neg;
 use digest::Update;
 use ff::Field;
 use group::Curve;
+#[cfg(feature = "unsafe_random")]
+use rand_core::RngCore;
+#[cfg(not(feature = "unsafe_random"))]
 use rand_core::{CryptoRng, RngCore};
 use signature_core::{error::Error, lib::*};
 
@@ -33,7 +36,8 @@ impl PokSignature {
         signature: Signature,
         generators: &MessageGenerators,
         messages: &[ProofMessage],
-        mut rng: impl RngCore + CryptoRng,
+        #[cfg(not(feature = "unsafe_random"))] mut rng: impl RngCore + CryptoRng,
+        #[cfg(feature = "unsafe_random")] mut rng: impl RngCore,
     ) -> Result<Self, Error> {
         if messages.len() != generators.len() {
             return Err(Error::new(1, "mismatched messages with and generators"));

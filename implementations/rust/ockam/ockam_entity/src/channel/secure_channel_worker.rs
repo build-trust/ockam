@@ -8,18 +8,20 @@ use core::pin::Pin;
 use ockam_channel::{
     CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelInfo,
 };
-#[cfg(not(feature = "std"))]
-use ockam_core::compat::rand::random;
+use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
     route, Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
-#[cfg(feature = "std")]
-use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
+
+#[cfg(not(feature = "std"))]
+use ockam_core::compat::rand::random;
+#[cfg(feature = "std")]
+use rand::random;
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct AuthenticationConfirmation(pub Address);

@@ -1,5 +1,6 @@
+use crate::tokio::sync::mpsc::{Receiver, Sender};
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, LocalMessage, Message, Route, RouterMessage};
-use tokio::sync::mpsc::{Receiver, Sender};
 
 /// A message addressed to a relay
 #[derive(Clone, Debug)]

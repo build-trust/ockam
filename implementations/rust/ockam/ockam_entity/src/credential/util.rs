@@ -1,5 +1,6 @@
 use super::CredentialAttributeSchema;
 use core::fmt;
+use ockam_core::compat::{string::String, vec::Vec};
 
 use serde::{
     de::{Error as DError, SeqAccess, Visitor},
@@ -76,7 +77,7 @@ where
             let mut buf = Vec::new();
             while let Some(a) = s.next_element()? {
                 let _result = buf.push(a);
-                #[cfg(not(feature = "std"))]
+                #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
                 {
                     _result.map_err(|_| DError::invalid_length(_l, &self))?;
                 }

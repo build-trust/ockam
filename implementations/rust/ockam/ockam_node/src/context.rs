@@ -1,17 +1,17 @@
-use core::time::Duration;
-use ockam_core::compat::{sync::Arc, vec::Vec};
-use ockam_core::{
-    Address, AddressSet, LocalMessage, Message, Processor, Result, Route, TransportMessage, Worker,
-};
-use tokio::{
+use crate::relay::{ProcessorRelay, WorkerRelay};
+use crate::tokio::{
+    self,
     runtime::Runtime,
     sync::mpsc::{channel, Sender},
     time::timeout,
 };
-
-use crate::relay::{ProcessorRelay, WorkerRelay};
 use crate::{
     error::Error, node::NullWorker, parser, relay::RelayMessage, Cancel, Mailbox, NodeMessage,
+};
+use core::time::Duration;
+use ockam_core::compat::{sync::Arc, vec::Vec};
+use ockam_core::{
+    Address, AddressSet, LocalMessage, Message, Processor, Result, Route, TransportMessage, Worker,
 };
 
 /// A default timeout in seconds

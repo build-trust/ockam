@@ -1,3 +1,7 @@
+use ockam_core::compat::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::{allow, deny, Result, Route};
 use ockam_vault::{KeyIdVault, PublicKey, Secret, SecretAttributes};
 use ockam_vault_sync_core::VaultSync;
@@ -19,12 +23,16 @@ use crate::{
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_vault_core::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
-use rand::{thread_rng, CryptoRng, RngCore};
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
 use signature_bbs_plus::{Issuer as BbsIssuer, PokSignatureProof, Prover};
 use signature_bbs_plus::{MessageGenerators, ProofOfPossession};
 use signature_core::challenge::Challenge;
 use signature_core::lib::{HiddenMessage, Message, Nonce, ProofMessage};
+
+#[cfg(feature = "unsafe_random")]
+use ockam_core::compat::rand::{thread_rng, RngCore};
+#[cfg(not(feature = "unsafe_random"))]
+use rand::{thread_rng, CryptoRng, RngCore};
 
 /// Profile implementation
 #[derive(Clone)]
@@ -45,7 +53,8 @@ impl ProfileState {
         change_events: Changes,
         contacts: Contacts,
         vault: VaultSync,
-        rng: impl RngCore + CryptoRng + Clone,
+        #[cfg(not(feature = "unsafe_random"))] rng: impl RngCore + CryptoRng + Clone,
+        #[cfg(feature = "unsafe_random")] rng: impl RngCore + Clone,
     ) -> Self {
         Self {
             id: identifier,
@@ -238,7 +247,7 @@ impl Identity for ProfileState {
     }
 
     fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
-        let slice = std::slice::from_ref(&change_event);
+        let slice = core::slice::from_ref(&change_event);
         if ProfileChangeHistory::check_consistency(self.change_history.as_ref(), &slice) {
             self.change_history.push_event(change_event);
         }

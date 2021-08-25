@@ -15,26 +15,34 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "tokio", "tracing-subscriber"]
+std = ["ockam_core/std", "tokio/full", "tracing-subscriber"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
-no_std = ["ockam_core/no_std", "ockam_node_no_std/no_std", "heapless"]
+no_std = ["ockam_core/no_std", "ockam_executor/cortexm", "ockam_node_no_std/no_std", "heapless"]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
-alloc = ["ockam_core/alloc", "ockam_node_no_std/alloc"]
+alloc = ["ockam_core/alloc", "ockam_executor/alloc", "ockam_node_no_std/alloc"]
 
-# Feature: "dump_internals" when set, will dump the internal state of workers at startup via the trace! macro.
+# Option: "unsafe_random" enables development support for random
+# number generation on no_std platforms that do not yet have
+# cryptographically secure implementations.
+# WARNING: Under no circumstances should this ever be enabled in
+#          production builds!
+unsafe_random = ["ockam_core/unsafe_random"]
+
+# Option: "dump_internals" when set, will dump the internal state of workers at startup via the trace! macro.
 dump_internals = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.31.0"    , default_features = false }
-tokio = {version = "1.8", features = ["full"], optional = true}
+tokio = {version = "1.8", default-features = false, optional = true}
 tracing = { version = "0.1", default_features = false }
 tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"], optional = true }
 heapless = { version = "0.7", features = [ "mpmc_large" ], optional = true }
 ockam_node_no_std = { path = "../ockam_node_no_std", version = "0.6.0"    , default-features = false, optional = true }
+ockam_executor = { git = "https://github.com/ockam-network/ockam_executor.git", default-features = false, optional = true }
 
 [dev-dependencies]
 async-trait =  { version = "0.1" }

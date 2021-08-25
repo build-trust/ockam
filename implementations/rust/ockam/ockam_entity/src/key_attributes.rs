@@ -1,3 +1,4 @@
+use ockam_core::compat::string::{String, ToString};
 use ockam_vault::SecretAttributes;
 use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
 use serde::{Deserialize, Serialize};

@@ -1,8 +1,13 @@
 use crate::{Identity, SecureChannelWorker, TrustPolicy};
 use ockam_channel::{CreateResponderChannelMessage, SecureChannel};
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
+
+#[cfg(not(feature = "std"))]
+use ockam_core::compat::rand::random;
+#[cfg(feature = "std")]
 use rand::random;
 
 pub(crate) struct ProfileChannelListener<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> {

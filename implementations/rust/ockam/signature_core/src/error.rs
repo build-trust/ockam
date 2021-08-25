@@ -8,7 +8,6 @@ pub struct Error {
 }
 
 impl Error {
-    #[cfg(not(feature = "std"))]
     /// Create a new error
     pub fn new(code: u32, message: &str) -> Self {
         Self {

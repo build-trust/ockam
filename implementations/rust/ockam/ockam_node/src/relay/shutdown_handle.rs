@@ -1,6 +1,6 @@
 use crate::error::Error;
+use crate::tokio::sync::oneshot;
 use ockam_core::Result;
-use tokio::sync::oneshot;
 
 pub struct ShutdownListener {
     rx_shutdown: oneshot::Receiver<()>,
