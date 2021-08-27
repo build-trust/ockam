@@ -2,6 +2,8 @@ defmodule Ockam.Stream.Storage.Internal do
   @moduledoc false
   @behaviour Ockam.Stream.Storage
 
+  require Logger
+
   @type message() :: Ockam.Stream.Storage.message()
 
   @type storage() :: map() | nil
@@ -13,13 +15,13 @@ defmodule Ockam.Stream.Storage.Internal do
 
   @spec init_partition(String.t(), integer(), any(), list()) :: {:ok, storage()}
   def init_partition(_stream_name, _partition, _stream_state, _options) do
-    {:ok, %{latest: 0, earliest: 0}}
+    {:ok, %{latest: -1, earliest: 0}}
   end
 
   @spec save(String.t(), integer(), binary(), storage()) ::
           {{:ok, integer()} | {:error, any()}, storage()}
   def save(_stream_name, _partition, data, storage) do
-    latest = Map.get(storage, :latest, 0)
+    latest = Map.get(storage, :latest, -1)
     next = latest + 1
     message = %{index: next, data: data}
 

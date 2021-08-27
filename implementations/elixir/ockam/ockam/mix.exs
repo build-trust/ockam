@@ -27,6 +27,7 @@ defmodule Ockam.MixProject do
       # test
       test_coverage: [output: "_build/cover"],
       preferred_cli_env: ["test.cover": :test],
+      elixirc_paths: elixirc_paths(Mix.env()),
 
       # hex
       description: "A collection of tools for building connected systems that you can trust.",
@@ -75,6 +76,9 @@ defmodule Ockam.MixProject do
         "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/ockam/helpers"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp aliases do
     [

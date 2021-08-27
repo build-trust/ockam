@@ -12,7 +12,10 @@ defmodule Ockam.Stream.Index.Service do
   @protocol Ockam.Protocol.Stream.Index
   @partitioned_protocol Ockam.Protocol.Stream.Partitioned.Index
 
-  @protocol_mapping Ockam.Protocol.Mapping.server(Ockam.Protocol.Stream.Index)
+  @protocol_mapping Ockam.Protocol.Mapping.mapping(
+                      server: @protocol,
+                      server: @partitioned_protocol
+                    )
 
   @impl true
   def protocol_mapping() do
@@ -59,7 +62,7 @@ defmodule Ockam.Stream.Index.Service do
   def handle_get(protocol, data, return_route, state) do
     %{client_id: client_id, stream_name: stream_name} = data
     partition = Map.get(data, :partition, 0)
-    Logger.debug("get index #{inspect({client_id, stream_name})}")
+    Logger.debug("get index #{inspect({client_id, stream_name, partition})}")
 
     shard_id = {client_id, stream_name}
     {shard, state} = ensure_shard(shard_id, state)
