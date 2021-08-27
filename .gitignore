@@ -16,3 +16,4 @@ cmake_install.cmake
 .adr-dir
 target
 vendor
+.cargo
