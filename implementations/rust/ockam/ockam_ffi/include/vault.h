@@ -69,7 +69,7 @@ ockam_vault_extern_error_t ockam_vault_default_init(ockam_vault_t* vault);
  */
 ockam_vault_extern_error_t ockam_vault_sha256(ockam_vault_t  vault,
                                               const uint8_t* input,
-                                              size_t         input_length,
+                                              uint32_t       input_length,
                                               uint8_t*       digest);
 
 /**
@@ -98,7 +98,7 @@ ockam_vault_extern_error_t ockam_vault_secret_import(ockam_vault_t              
                                                      ockam_vault_secret_t*           secret,
                                                      ockam_vault_secret_attributes_t attributes,
                                                      const uint8_t*                  input,
-                                                     size_t                          input_length);
+                                                     uint32_t                        input_length);
 
 /**
  * @brief   Export data from an ockam vault secret into the supplied output buffer.
@@ -112,7 +112,7 @@ ockam_vault_extern_error_t ockam_vault_secret_import(ockam_vault_t              
 ockam_vault_extern_error_t ockam_vault_secret_export(ockam_vault_t        vault,
                                                      ockam_vault_secret_t secret,
                                                      uint8_t*             output_buffer,
-                                                     size_t               output_buffer_size,
+                                                     uint32_t             output_buffer_size,
                                                      size_t*              output_buffer_length);
 
 /**
@@ -127,7 +127,7 @@ ockam_vault_extern_error_t ockam_vault_secret_export(ockam_vault_t        vault,
 ockam_vault_extern_error_t ockam_vault_secret_publickey_get(ockam_vault_t        vault,
                                                             ockam_vault_secret_t secret,
                                                             uint8_t*             output_buffer,
-                                                            size_t               output_buffer_size,
+                                                            uint32_t             output_buffer_size,
                                                             size_t*              output_buffer_length);
 
 /**
@@ -162,7 +162,7 @@ ockam_vault_extern_error_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam
 ockam_vault_extern_error_t ockam_vault_ecdh(ockam_vault_t         vault,
                                             ockam_vault_secret_t  privatekey,
                                             const uint8_t*        peer_publickey,
-                                            size_t                peer_publickey_length,
+                                            uint32_t              peer_publickey_length,
                                             ockam_vault_secret_t* shared_secret);
 
 /**
@@ -200,11 +200,11 @@ ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t       
                                                             ockam_vault_secret_t key,
                                                             uint16_t             nonce,
                                                             const uint8_t*       additional_data,
-                                                            size_t               additional_data_length,
+                                                            uint32_t             additional_data_length,
                                                             const uint8_t*       plaintext,
-                                                            size_t               plaintext_length,
+                                                            uint32_t             plaintext_length,
                                                             uint8_t*             ciphertext_and_tag,
-                                                            size_t               ciphertext_and_tag_size,
+                                                            uint32_t             ciphertext_and_tag_size,
                                                             size_t*              ciphertext_and_tag_length);
 
 /**
@@ -225,11 +225,11 @@ ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t       
                                                             ockam_vault_secret_t key,
                                                             uint16_t             nonce,
                                                             const uint8_t*       additional_data,
-                                                            size_t               additional_data_length,
+                                                            uint32_t             additional_data_length,
                                                             const uint8_t*       ciphertext_and_tag,
-                                                            size_t               ciphertext_and_tag_length,
+                                                            uint32_t             ciphertext_and_tag_length,
                                                             uint8_t*             plaintext,
-                                                            size_t               plaintext_size,
+                                                            uint32_t             plaintext_size,
                                                             size_t*              plaintext_length);
 
 /**
