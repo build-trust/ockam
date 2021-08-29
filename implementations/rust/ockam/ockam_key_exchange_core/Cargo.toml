@@ -18,10 +18,10 @@ default = ["std"]
 # Option (enabled by default): "std" enables functionality expected to be available on a standard platform.
 std = ["ockam_core/std", "ockam_vault_core/std"]
 
-# Option: "no_std" enables functionality required for platforms without the standard library.
+# Feature: "no_std" enables functionality required for platforms without the standard library.
 no_std = ["ockam_core/no_std", "ockam_vault_core/no_std"]
 
-# Option: "alloc" enables support for heap allocation on "no_std" platforms, requires nightly.
+# Feature: "alloc" enables support for heap allocation on "no_std" platforms, requires nightly.
 alloc = ["ockam_core/alloc", "ockam_vault_core/alloc"]
 
 [dependencies]

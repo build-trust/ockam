@@ -20,15 +20,15 @@ exclude = [
 [features]
 default = ["std"]
 
-# Option (enabled by default): "std" enables functionality expected to
+# Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = []
 
-# Option: "no_std" enables functionality required for platforms
+# Feature "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = []
 
-# Option: "alloc" enables support for heap allocation on "no_std"
+# Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = []
 
