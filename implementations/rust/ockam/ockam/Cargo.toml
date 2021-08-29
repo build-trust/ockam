@@ -19,15 +19,15 @@ default = ["std", "ockam_transport_tcp", "software_vault", "noise_xx"]
 software_vault = ["ockam_vault", "ockam_vault_sync_core", "ockam_vault_sync_core/software_vault", "ockam_channel/software_vault"]
 noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
 
-# Option (enabled by default): "std" enables functionality expected to
+# Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = ["ockam_core/std", "ockam_node/std", "serde/std", "ockam_node_attribute/std"]
 
-# Option: "no_std" enables functionality required for platforms
+# Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = ["ockam_core/no_std", "ockam_node/no_std", "serde"]
 
-# Option: "alloc" enables support for heap allocation on "no_std"
+# Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = ["ockam_core/alloc", "ockam_node/alloc", "serde/alloc", "ockam_node_attribute/no_std"]
 

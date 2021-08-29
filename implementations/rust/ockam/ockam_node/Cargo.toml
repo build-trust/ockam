@@ -13,19 +13,19 @@ version = "0.25.0-dev"
 [features]
 default = ["std"]
 
-# Option (enabled by default): "std" enables functionality expected to
+# Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = ["ockam_core/std", "tokio", "tracing-subscriber"]
 
-# Option: "no_std" enables functionality required for platforms
+# Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = ["ockam_core/no_std", "ockam_node_no_std/no_std", "heapless"]
 
-# Option: "alloc" enables support for heap allocation on "no_std"
+# Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = ["ockam_core/alloc", "ockam_node_no_std/alloc"]
 
-# Option: "dump_internals" when set, will dump the internal state of workers at startup via the trace! macro.
+# Feature: "dump_internals" when set, will dump the internal state of workers at startup via the trace! macro.
 dump_internals = []
 
 [dependencies]
