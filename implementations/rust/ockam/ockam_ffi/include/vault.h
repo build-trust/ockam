@@ -113,7 +113,7 @@ ockam_vault_extern_error_t ockam_vault_secret_export(ockam_vault_t        vault,
                                                      ockam_vault_secret_t secret,
                                                      uint8_t*             output_buffer,
                                                      uint32_t             output_buffer_size,
-                                                     size_t*              output_buffer_length);
+                                                     uint32_t&            output_buffer_length);
 
 /**
  * @brief   Retrieve the public key from an ockam vault secret.
@@ -128,7 +128,7 @@ ockam_vault_extern_error_t ockam_vault_secret_publickey_get(ockam_vault_t       
                                                             ockam_vault_secret_t secret,
                                                             uint8_t*             output_buffer,
                                                             uint32_t             output_buffer_size,
-                                                            size_t*              output_buffer_length);
+                                                            uint32_t*            output_buffer_length);
 
 /**
  * @brief   Retrieve the attributes for a specified secret
@@ -205,7 +205,7 @@ ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t       
                                                             uint32_t             plaintext_length,
                                                             uint8_t*             ciphertext_and_tag,
                                                             uint32_t             ciphertext_and_tag_size,
-                                                            size_t*              ciphertext_and_tag_length);
+                                                            uint32_t*            ciphertext_and_tag_length);
 
 /**
  * @brief   Decrypt a payload using AES-GCM.
@@ -230,7 +230,7 @@ ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t       
                                                             uint32_t             ciphertext_and_tag_length,
                                                             uint8_t*             plaintext,
                                                             uint32_t             plaintext_size,
-                                                            size_t*              plaintext_length);
+                                                            uint32_t*            plaintext_length);
 
 /**
  * @brief   Deinitialize the specified ockam vault object
