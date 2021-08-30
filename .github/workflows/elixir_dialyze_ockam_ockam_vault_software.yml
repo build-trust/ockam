@@ -12,6 +12,7 @@ on:
       - 'settings.gradle'
       - 'implementations/elixir/settings.gradle'
       - 'implementations/elixir/ockam/ockam_vault_software/**'
+      - 'implementations/rust/ockam/ockam_ffi/**'
 
 jobs:
   elixir_dialyze_ockam_ockam_vault_software:
