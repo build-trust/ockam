@@ -71,7 +71,7 @@ checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
 
 [[package]]
 name = "ockam_core"
-version = "0.27.0-dev"
+version = "0.27.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -83,7 +83,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "ockam_core",
  "tracing",

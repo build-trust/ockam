@@ -5,6 +5,14 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.21.0 - 2021-08-30
+### Added
+- Created ockam_transport_core crate for generic transport code
+### Changed
+- Migrate TcpError to TransportError
+- Dependencies updated.
+- Implement Processors for TCP and Inlet listeners and receivers.
+
 ## v0.20.0 - 2021-08-23
 ### Added
 - Add TCP Portals.
