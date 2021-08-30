@@ -9,11 +9,13 @@ on:
     paths:
       - 'implementations/rust/ockam/ockam_core/**'
       - 'implementations/rust/ockam/ockam_node/**'
+      - 'implementations/rust/ockam/ockam_transport_core/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_transport_tcp/**'
+
 
 jobs:
   rust_build_ockam_ockam_transport_tcp:
