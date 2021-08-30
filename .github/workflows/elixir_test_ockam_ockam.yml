@@ -13,6 +13,7 @@ on:
       - 'settings.gradle'
       - 'implementations/elixir/settings.gradle'
       - 'implementations/elixir/ockam/ockam/**'
+      - 'implementations/rust/ockam/ockam_ffi/**'
 
 jobs:
   elixir_test_ockam_ockam:
