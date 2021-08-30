@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_core"
-version = "0.1.0"
+version = "0.2.0-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -18,5 +18,5 @@ exclude = [
 ]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.27.0"  }
+ockam_core = { path = "../ockam_core", version = "0.28.0-dev"   }
 tracing = "0.1"

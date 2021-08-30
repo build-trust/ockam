@@ -758,7 +758,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.26.0"
+version = "0.27.0-dev"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -791,7 +791,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.22.0"
+version = "0.23.0-dev"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.27.0"
+version = "0.28.0-dev"
 dependencies = [
  "async-trait",
  "core2",
@@ -825,7 +825,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "async-trait",
  "bls12_381_plus",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.19.0"
+version = "0.20.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -862,7 +862,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.19.0"
+version = "0.20.0-dev"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -872,7 +872,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.25.0"
+version = "0.26.0-dev"
 dependencies = [
  "heapless",
  "ockam_core",
@@ -884,7 +884,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.16.0"
+version = "0.17.0-dev"
 dependencies = [
  "quote",
  "syn",
@@ -892,14 +892,14 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
-version = "0.2.0"
+version = "0.3.0-dev"
 dependencies = [
  "executor",
 ]
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.1.0"
+version = "0.2.0-dev"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -907,7 +907,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.21.0"
+version = "0.22.0-dev"
 dependencies = [
  "async-trait",
  "futures",
@@ -924,7 +924,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.21.0"
+version = "0.22.0-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.21.0"
+version = "0.22.0-dev"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -957,7 +957,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.18.0"
+version = "0.19.0-dev"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -1349,7 +1349,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.19.0"
+version = "0.20.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1370,7 +1370,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.17.0"
+version = "0.18.0-dev"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1387,7 +1387,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.19.0"
+version = "0.20.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1405,7 +1405,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.17.0"
+version = "0.18.0-dev"
 dependencies = [
  "blake2",
  "bls12_381_plus",
