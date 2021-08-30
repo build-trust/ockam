@@ -1,6 +1,6 @@
 use crate::{
     atomic::{self, ArcBool},
-    TcpError, TcpRecvProcessor, TcpSendWorker,
+    TcpRecvProcessor, TcpSendWorker,
 };
 use ockam_core::{Address, Result};
 use ockam_node::Context;

@@ -1,6 +1,6 @@
 use std::array::IntoIter;
 
-use ockam_core::lib::HashMap;
+use ockam_core::compat::collections::HashMap;
 use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::{http::Response, Error as TungsteniteError};
 

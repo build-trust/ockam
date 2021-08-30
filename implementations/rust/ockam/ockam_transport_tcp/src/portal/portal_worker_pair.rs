@@ -1,7 +1,8 @@
-use crate::{TcpError, TcpPortalRecvProcessor, TcpPortalSendWorker};
+use crate::{TcpPortalRecvProcessor, TcpPortalSendWorker};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use tokio::net::TcpStream;
 use tracing::{debug, trace};
 
@@ -50,7 +51,9 @@ impl PortalWorkerPair {
         debug!("Starting worker connection to remote {}", peer);
 
         // TODO: make i/o errors into ockam_error
-        let stream = TcpStream::connect(peer).await.map_err(TcpError::from)?;
+        let stream = TcpStream::connect(peer)
+            .await
+            .map_err(TransportError::from)?;
 
         trace!("Creating new portal worker pair from stream");
 

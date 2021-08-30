@@ -1,7 +1,7 @@
 use crate::atomic::ArcBool;
 use crate::{
-    parse_socket_addr, PortalWorkerPair, TcpError, TcpInletListenProcessor, TcpListenProcessor,
-    WorkerPair, TCP,
+    parse_socket_addr, PortalWorkerPair, TcpInletListenProcessor, TcpListenProcessor, WorkerPair,
+    TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{Address, Result, Route, RouterMessage};

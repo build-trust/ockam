@@ -1,6 +1,6 @@
 use std::array::IntoIter;
 
-use ockam_core::lib::HashMap;
+use ockam_core::compat::collections::HashMap;
 
 use crate::TransportError;
 

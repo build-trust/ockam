@@ -1,10 +1,11 @@
-use crate::{PortalMessage, TcpError};
+use crate::PortalMessage;
 use async_trait::async_trait;
 use ockam_core::compat::collections::VecDeque;
 use ockam_core::{
     Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
 };
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 use tracing::warn;
@@ -67,7 +68,7 @@ impl Worker for TcpPortalSendWorker {
         let recipient = onward_route.step()?;
 
         if onward_route.next().is_ok() {
-            return Err(TcpError::UnknownRoute.into());
+            return Err(TransportError::UnknownRoute.into());
         }
 
         if recipient == self.internal_address {
