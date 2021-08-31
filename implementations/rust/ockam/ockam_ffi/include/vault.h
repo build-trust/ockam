@@ -113,7 +113,7 @@ ockam_vault_extern_error_t ockam_vault_secret_export(ockam_vault_t        vault,
                                                      ockam_vault_secret_t secret,
                                                      uint8_t*             output_buffer,
                                                      uint32_t             output_buffer_size,
-                                                     uint32_t&            output_buffer_length);
+                                                     uint32_t*            output_buffer_length);
 
 /**
  * @brief   Retrieve the public key from an ockam vault secret.
