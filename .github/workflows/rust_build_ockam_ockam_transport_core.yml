@@ -1,0 +1,45 @@
+name: rust_build_ockam_ockam_transport_core
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+  pull_request:
+    # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
+    paths:
+      - 'implementations/rust/ockam/ockam_core/**'
+      - 'build.gradle'
+      - 'implementations/rust/build.gradle'
+      - 'settings.gradle'
+      - 'implementations/rust/settings.gradle'
+      - 'implementations/rust/ockam/ockam_transport_core/**'
+
+
+jobs:
+  rust_build_ockam_ockam_transport_core:
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:3d41b8e711888f2525b786f7751016eca0770f65c3f925909e2c1db45c8c0714
+    steps:
+      - name: Checkout
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      - name: Generate random key
+        run: echo RANDOM=$(date +%s) >> $GITHUB_ENV
+
+      - name: Cache Gradle
+        uses: actions/cache@v2
+        with:
+          path: |
+            /root/.gradle/caches
+            /root/.gradle/wrapper
+            /root/.cargo/bin/
+            /root/.cargo/registry/index/
+            /root/.cargo/registry/cache/
+            /root/.cargo/git/db/
+            implementations/rust/ockam/ockam_transport_core/target
+          key: ${{ runner.os }}-cache-${{ env.RANDOM }}
+          restore-keys: ${{ runner.os }}-cache-
+
+      - id: rust_build_ockam_ockam_transport_core
+        working-directory: implementations/rust
+        run: ../../gradlew build_ockam_ockam_transport_core

@@ -1,12 +1,13 @@
 use crate::router::TcpRouterHandle;
 use crate::{
     atomic::{self, ArcBool},
-    TcpError, TCP,
+    TCP,
 };
 use async_trait::async_trait;
 use core::ops::Deref;
 use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use std::{collections::BTreeMap, sync::Arc};
 use tracing::{debug, trace};
 
@@ -40,12 +41,12 @@ impl TcpRouter {
             trace!("TCP registration request: {} => {}", f, self_addr);
         } else {
             // Should not happen
-            return Err(TcpError::InvalidAddress.into());
+            return Err(TransportError::InvalidAddress.into());
         }
 
         for accept in &accepts {
             if self.map.contains_key(accept) {
-                return Err(TcpError::AlreadyConnected.into());
+                return Err(TransportError::AlreadyConnected.into());
             }
         }
         for accept in accepts {
@@ -69,7 +70,7 @@ impl TcpRouter {
 
         let next;
         // Look up the connection worker responsible
-        if let Some(n) = self.map.get(&onward) {
+        if let Some(n) = self.map.get(onward) {
             // Connection already exists
             next = n;
         } else {
@@ -78,7 +79,7 @@ impl TcpRouter {
             if let Ok(s) = String::from_utf8(onward.deref().clone()) {
                 peer_str = s;
             } else {
-                return Err(TcpError::UnknownRoute.into());
+                return Err(TransportError::UnknownRoute.into());
             }
 
             // TODO: Check if this is the hostname and we have existing/pending connection to this IP
@@ -95,7 +96,7 @@ impl TcpRouter {
                 // Requeue the message
                 ctx.forward(msg).await?;
             } else {
-                return Err(TcpError::UnknownRoute.into());
+                return Err(TransportError::UnknownRoute.into());
             }
 
             return Ok(());

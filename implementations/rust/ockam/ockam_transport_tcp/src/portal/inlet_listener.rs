@@ -1,9 +1,10 @@
 use crate::atomic::ArcBool;
-use crate::{atomic, PortalWorkerPair, TcpError};
+use crate::{atomic, PortalWorkerPair};
 use async_trait::async_trait;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Processor, Result, Route};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::debug;
 
@@ -23,7 +24,9 @@ impl TcpInletListenProcessor {
         let waddr = Address::random(0);
 
         debug!("Binding TcpPortalListenerWorker to {}", addr);
-        let inner = TcpListener::bind(addr).await.map_err(TcpError::from)?;
+        let inner = TcpListener::bind(addr)
+            .await
+            .map_err(TransportError::from)?;
         let processor = Self {
             inner,
             onward_route,
