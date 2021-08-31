@@ -2,11 +2,11 @@ use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
 use ockam_core::{async_trait, Address, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
 use crate::atomic::{self, ArcBool};
-use crate::WebSocketError;
 
 pub struct WebSocketRecvWorker<AsyncStream>
 where
@@ -65,7 +65,7 @@ where
 
             // Deserialize the message now
             let mut msg: TransportMessage = serde_bare::from_slice(data.as_slice())
-                .map_err(|_| WebSocketError::RecvBadMessage)?;
+                .map_err(|_| TransportError::RecvBadMessage)?;
 
             // Insert the peer address into the return route so that
             // reply routing can be properly resolved
