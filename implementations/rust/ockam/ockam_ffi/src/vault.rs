@@ -130,7 +130,7 @@ pub extern "C" fn ockam_vault_secret_import(
 pub extern "C" fn ockam_vault_secret_export(
     context: FfiVaultFatPointer,
     secret: SecretKeyHandle,
-    output_buffer: &mut u8,
+    output_buffer: *mut u8,
     output_buffer_size: u32,
     output_buffer_length: &mut u32,
 ) -> FfiOckamError {
@@ -158,7 +158,7 @@ pub extern "C" fn ockam_vault_secret_export(
 pub extern "C" fn ockam_vault_secret_publickey_get(
     context: FfiVaultFatPointer,
     secret: SecretKeyHandle,
-    output_buffer: &mut u8,
+    output_buffer: *mut u8,
     output_buffer_size: u32,
     output_buffer_length: &mut u32,
 ) -> FfiOckamError {
