@@ -4,6 +4,7 @@ use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::StreamExt;
 use ockam_core::{async_trait, Address, Result, RouterMessage, Worker};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 
 use crate::atomic::{self, ArcBool};
@@ -26,7 +27,7 @@ impl WebSocketListenWorker {
         debug!("Binding WebSocketListener to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
-            .map_err(WebSocketError::from)?;
+            .map_err(TransportError::from)?;
         let worker = Self {
             inner,
             run,
