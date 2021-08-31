@@ -263,7 +263,7 @@ ERL_NIF_TERM secret_export(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
     }
 
     uint8_t buffer[MAX_SECRET_EXPORT_SIZE];
-    size_t length = 0;
+    uint32_t length = 0;
 
     ockam_vault_extern_error_t error = ockam_vault_secret_export(vault, secret_handle, buffer, MAX_SECRET_EXPORT_SIZE, &length);
     if (extern_error_has_error(&error)) {
@@ -297,7 +297,7 @@ ERL_NIF_TERM secret_publickey_get(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
     }
 
     uint8_t buffer[MAX_PUBLICKEY_SIZE];
-    size_t length = 0;
+    uint32_t length = 0;
 
     ockam_vault_extern_error_t error = ockam_vault_secret_publickey_get(vault, secret_handle, buffer, MAX_SECRET_EXPORT_SIZE, &length);
     if (extern_error_has_error(&error)) {
@@ -504,7 +504,7 @@ ERL_NIF_TERM aead_aes_gcm_encrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
 
     memset(cipher_text, 0, size);
 
-    size_t length = 0;
+    uint32_t length = 0;
 
     ockam_vault_extern_error_t error = ockam_vault_aead_aes_gcm_encrypt(vault,
                                                                         key_handle,
@@ -572,7 +572,7 @@ ERL_NIF_TERM aead_aes_gcm_decrypt(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
 
     memset(plain_text, 0, size);
 
-    size_t length = 0;
+    uint32_t length = 0;
 
     ockam_vault_extern_error_t error = ockam_vault_aead_aes_gcm_decrypt(vault,
                                                                         key_handle,
