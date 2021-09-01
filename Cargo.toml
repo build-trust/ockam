@@ -23,6 +23,5 @@ members = [
 ]
 
 exclude = [
-    "implementations/rust/ockam/ockam_transport_websocket",
     "implementations/rust/ockam/ockam_examples/WIP",
 ]

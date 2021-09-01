@@ -1,8 +1,9 @@
 [package]
-name = "tunnel"
+name = "tunnel_example"
 version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
+publish = false
 
 [dependencies]
 ockam = { path = "../../../ockam" }

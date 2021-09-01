@@ -3,9 +3,8 @@ name = "channel_examples"
 version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
-
-[lib]
-crate-type = ["rlib"]
+autobins = false
+publish = false
 
 [dependencies]
 ockam = { path = "../../../ockam" }
@@ -16,3 +15,11 @@ tracing = { version = "0.1", default-features = false }
 ockam_transport_tcp = { path = "../../../ockam_transport_tcp" }
 tokio = {version = "1.1.0", features = ["rt-multi-thread","sync","net","macros","time"]}
 rand = "0.8.3"
+
+[[bin]]
+path = "src/bin/client.rs"
+name = "channel_examples_client"
+
+[[bin]]
+path = "src/bin/server.rs"
+name = "channel_examples_server"

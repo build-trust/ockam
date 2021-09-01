@@ -1,12 +1,30 @@
 [package]
-name = "ports"
+name = "ports_example"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
+publish = false
+autobins = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 ockam = {  path = "../../../ockam" }
+
+[[bin]]
+name = "ports_example_inlet"
+path = "src/bin/inlet.rs"
+
+[[bin]]
+name = "ports_example_inlet_hub"
+path = "src/bin/inlet_hub.rs"
+
+[[bin]]
+name = "ports_example_outlet"
+path = "src/bin/outlet.rs"
+
+[[bin]]
+name = "ports_example_outlet_hub"
+path = "src/bin/outlet_hub.rs"

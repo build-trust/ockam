@@ -3,9 +3,7 @@ name = "tcp_examples"
 version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
-
-[lib]
-crate-type = ["rlib"]
+publish = false
 
 [dependencies]
 ockam = { path = "../../../ockam" }

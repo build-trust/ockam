@@ -1,4 +1,4 @@
-use lib::{
+use credentials_example::{
     read_line, DOOR_LISTENER_ADDRESS, DOOR_TCP_ADDRESS, DOOR_WORKER_ADDRESS,
     OFFICE_LISTENER_ADDRESS, OFFICE_TCP_ADDRESS,
 };

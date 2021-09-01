@@ -1,8 +1,9 @@
 [package]
-name = "management_service"
+name = "okta_example_management_service"
 version = "0.1.0"
 authors = ["Michael Lodder <mike@ockam.io>"]
 edition = "2018"
+publish = false
 
 [dependencies]
 arrayref = "0.3"

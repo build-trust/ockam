@@ -1,11 +1,10 @@
 [package]
-name = "examples"
+name = "node_examples"
 version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
-
-[lib]
-crate-type = ["rlib"]
+publish = false
+autobins = false
 
 [dependencies]
 ockam = { path = "../../../ockam" }

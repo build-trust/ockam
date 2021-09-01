@@ -3,6 +3,7 @@ authors = ["Ockam Developers"]
 name = "okta-plugin"
 version = "0.1.0"
 edition = "2018"
+publish = false
 
 [lib]
 name = "oktaplugin"
