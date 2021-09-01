@@ -1,0 +1,13 @@
+[package]
+name = "hub_inlet"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ockam = {  path = "../../../ockam" }
+tracing = { version = "0.1", default_features = false }
