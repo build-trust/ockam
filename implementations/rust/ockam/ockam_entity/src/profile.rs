@@ -22,9 +22,9 @@ use crate::{
     CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequest,
     CredentialRequestFragment, CredentialSchema, Entity, EntityCredential, Handle, Holder,
-    Identity, IdentityRequest, IdentityResponse, Issuer, OfferId, PresentationManifest,
+    Identity, IdentityRequest, IdentityResponse, Issuer, Lease, OfferId, PresentationManifest,
     ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
-    TrustPolicy,
+    TrustPolicy, TTL,
 };
 use ockam_core::{Address, Result, Route};
 use ockam_vault::{PublicKey, Secret};
@@ -155,6 +155,21 @@ impl Identity for Profile {
     ) -> Result<bool> {
         self.entity()
             .verify_and_update_contact(contact_id, change_events)
+    }
+
+    fn get_lease(
+        &self,
+        lease_manager_route: &Route,
+        org_id: impl ToString,
+        bucket: impl ToString,
+        ttl: TTL,
+    ) -> Result<Lease> {
+        self.entity()
+            .get_lease(lease_manager_route, org_id, bucket, ttl)
+    }
+
+    fn revoke_lease(&mut self, lease_manager_route: &Route, lease: Lease) -> Result<()> {
+        self.entity().revoke_lease(lease_manager_route, lease)
     }
 }
 

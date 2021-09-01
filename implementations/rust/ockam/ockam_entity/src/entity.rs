@@ -5,9 +5,9 @@ use crate::{
     CredentialPresentation, CredentialProof, CredentialProtocol, CredentialPublicKey,
     CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityBuilder,
     EntityCredential, Handle, Holder, HolderWorker, Identity, IdentityRequest, IdentityResponse,
-    Issuer, ListenerWorker, MaybeContact, OfferId, PresentationFinishedMessage,
+    Issuer, Lease, ListenerWorker, MaybeContact, OfferId, PresentationFinishedMessage,
     PresentationManifest, PresenterWorker, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
-    SecureChannels, SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker,
+    SecureChannels, SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker, TTL,
 };
 use core::convert::TryInto;
 use ockam_core::{Address, Result, Route};
@@ -232,6 +232,30 @@ impl Identity for Entity {
         } else {
             err()
         }
+    }
+
+    fn get_lease(
+        &self,
+        lease_manager_route: &Route,
+        org_id: impl ToString,
+        bucket: impl ToString,
+        ttl: TTL,
+    ) -> Result<Lease> {
+        if let Res::Lease(lease) = self.call(GetLease(
+            lease_manager_route.clone(),
+            self.id(),
+            org_id.to_string(),
+            bucket.to_string(),
+            ttl,
+        ))? {
+            Ok(lease)
+        } else {
+            err()
+        }
+    }
+
+    fn revoke_lease(&mut self, lease_manager_route: &Route, lease: Lease) -> Result<()> {
+        self.cast(RevokeLease(lease_manager_route.clone(), self.id(), lease))
     }
 }
 

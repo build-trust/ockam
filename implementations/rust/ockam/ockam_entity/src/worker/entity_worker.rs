@@ -10,6 +10,9 @@ use ockam_core::{compat::collections::HashMap, Address, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
 
+#[cfg(feature = "lease_proto_json")]
+use crate::lease::json_proto::{LeaseProtocolRequest, LeaseProtocolResponse};
+
 #[derive(Default)]
 pub struct EntityWorker {
     profiles: HashMap<ProfileIdentifier, ProfileState>,
@@ -355,6 +358,40 @@ impl Worker for EntityWorker {
                     err()
                 }
             }
+
+            GetLease(lease_manager_route, profile_id, org_id, bucket, ttl) => {
+                let profile = self.profile(&profile_id);
+                if let Ok(lease) =
+                    profile.get_lease(&lease_manager_route, org_id.clone(), bucket.clone(), ttl)
+                {
+                    ctx.send(reply, Res::Lease(lease)).await
+                } else {
+                    #[cfg(feature = "lease_proto_json")]
+                    {
+                        // Send service request
+                        let json = LeaseProtocolRequest::create(ttl, org_id, bucket).as_json();
+                        ctx.send(lease_manager_route.clone(), json).await?;
+
+                        // Wait for the response from the service
+                        let json = ctx.receive::<String>().await?;
+
+                        let lease_response = LeaseProtocolResponse::from_json(json.as_str());
+                        if lease_response.is_success() {
+                            ctx.send(reply.clone(), Res::Lease(lease_response.lease()))
+                                .await
+                        } else {
+                            tracing::error!("Failed to get a lease from the lease manager");
+                            err()
+                        }
+                    }
+                    #[cfg(not(feature = "lease_proto_json"))]
+                    panic!("No lease protocol implementations available")
+                }
+            }
+
+            RevokeLease(lease_manager_route, profile_id, lease) => self
+                .profile(&profile_id)
+                .revoke_lease(&lease_manager_route, lease),
         }
     }
 }

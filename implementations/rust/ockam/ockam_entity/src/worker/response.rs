@@ -1,7 +1,7 @@
 use crate::{
     AuthenticationProof, BbsCredential, BlsSecretKey, Changes, Contact, CredentialFragment2,
     CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
-    CredentialRequestFragment, EntityCredential, ProfileIdentifier, ProofRequestId,
+    CredentialRequestFragment, EntityCredential, Lease, ProfileIdentifier, ProofRequestId,
 };
 use ockam_core::Address;
 use ockam_vault::{PublicKey, Secret};
@@ -46,4 +46,5 @@ pub enum IdentityResponse {
     VerifyCredentialPresentation(bool),
     AddCredential,
     GetCredential(EntityCredential),
+    Lease(Lease),
 }

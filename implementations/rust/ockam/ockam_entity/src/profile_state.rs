@@ -1,4 +1,4 @@
-use ockam_core::{allow, deny, Result};
+use ockam_core::{allow, deny, Result, Route};
 use ockam_vault::{KeyIdVault, PublicKey, Secret, SecretAttributes};
 use ockam_vault_sync_core::VaultSync;
 
@@ -12,9 +12,9 @@ use crate::{
     CredentialPresentation, CredentialRequest, CredentialSchema, CredentialVerifier,
     EntityCredential, EntityError,
     EntityError::{ContactVerificationFailed, InvalidInternalState},
-    EventIdentifier, ExtPokSignatureProof, Identity, KeyAttributes, MetaKeyAttributes, OfferId,
-    PresentationManifest, ProfileChangeEvent, ProfileEventAttributes, ProfileIdentifier,
-    ProfileVault, ProofBytes, ProofRequestId, SigningPublicKey,
+    EventIdentifier, ExtPokSignatureProof, Identity, KeyAttributes, Lease, MetaKeyAttributes,
+    OfferId, PresentationManifest, ProfileChangeEvent, ProfileEventAttributes, ProfileIdentifier,
+    ProfileVault, ProofBytes, ProofRequestId, SigningPublicKey, TTL,
 };
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
@@ -35,6 +35,7 @@ pub struct ProfileState {
     vault: VaultSync,
     rand_msg: Message,
     credentials: Vec<EntityCredential>,
+    lease: Option<Lease>,
 }
 
 impl ProfileState {
@@ -53,6 +54,7 @@ impl ProfileState {
             vault,
             rand_msg: Message::random(rng),
             credentials: vec![],
+            lease: None,
         }
     }
 
@@ -148,6 +150,14 @@ impl ProfileState {
         }
 
         Err(EntityError::CredentialNotFound.into())
+    }
+
+    pub fn has_lease(&self) -> bool {
+        self.lease.is_some()
+    }
+
+    pub fn lease(&self) -> Option<&Lease> {
+        self.lease.as_ref()
     }
 }
 
@@ -309,6 +319,29 @@ impl Identity for ProfileState {
             .expect("contact not found");
 
         Ok(contact.verify_and_update(change_events, &mut self.vault)?)
+    }
+
+    fn get_lease(
+        &self,
+        _lease_manager_route: &Route,
+        _org_id: impl ToString,
+        _bucket: impl ToString,
+        _ttl: TTL,
+    ) -> Result<Lease> {
+        if let Some(lease) = self.lease.clone() {
+            Ok(lease)
+        } else {
+            Err(InvalidInternalState.into())
+        }
+    }
+
+    fn revoke_lease(&mut self, _lease_manager_route: &Route, lease: Lease) -> Result<()> {
+        if let Some(existing_lease) = &self.lease {
+            if existing_lease == &lease {
+                self.lease = None
+            }
+        }
+        Ok(())
     }
 }
 
