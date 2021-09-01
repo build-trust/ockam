@@ -4,7 +4,7 @@ use lib::{
 };
 use ockam::{
     credential_attribute_values, credential_type, reveal_attributes, route, Context,
-    CredentialProtocol, Entity, EntityIdentifier, IdentifierTrustPolicy, Identity, Result,
+    CredentialProtocol, Entity, EntityIdentifier, TrustIdentifierPolicy, Identity, Result,
     SecureChannels, TcpTransport, Vault, TCP,
 };
 use std::convert::TryFrom;
@@ -28,7 +28,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let office_channel = entity.create_secure_channel(
         route![(TCP, OFFICE_TCP_ADDRESS), OFFICE_LISTENER_ADDRESS],
-        IdentifierTrustPolicy::new(office_id.clone()),
+        TrustIdentifierPolicy::new(office_id.clone()),
     )?;
 
     let credential = entity.acquire_credential(
@@ -44,7 +44,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let door_channel = entity.create_secure_channel(
         route![(TCP, DOOR_TCP_ADDRESS), DOOR_LISTENER_ADDRESS],
-        IdentifierTrustPolicy::new(door_id.clone()),
+        TrustIdentifierPolicy::new(door_id.clone()),
     )?;
 
     entity.present_credential(

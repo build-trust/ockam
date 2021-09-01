@@ -1,0 +1,9 @@
+# Note that this config format has a few fields that also appear in `Cargo.toml`
+# (like `profile.release.lto`, as below), but is largely different. Notably, it
+# only applies for builds from this directory (or that are invoked with
+# `--manifest-path` pointing at it).
+#
+# See https://doc.rust-lang.org/cargo/reference/config.html for details
+
+[profile.release]
+lto = true

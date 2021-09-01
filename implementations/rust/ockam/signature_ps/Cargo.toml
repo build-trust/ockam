@@ -3,7 +3,6 @@ name = "signature_ps"
 version = "0.25.0"
 authors = ["Ockam Developers"]
 edition = "2018"
-resolver = "2"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/signature_ps"

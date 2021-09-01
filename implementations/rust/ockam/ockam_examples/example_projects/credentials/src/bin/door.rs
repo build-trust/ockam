@@ -4,8 +4,8 @@ use lib::{
 };
 use ockam::{
     credential_attribute_values, credential_type, route, Context, CredentialProtocol, Entity,
-    EntityIdentifier, IdentifierTrustPolicy, Identity, NoOpTrustPolicy, Result, SecureChannels,
-    TcpTransport, Vault, TCP,
+    EntityIdentifier, Identity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy,
+    TrustIdentifierPolicy, Vault, TCP,
 };
 use std::convert::TryFrom;
 
@@ -26,10 +26,10 @@ async fn main(ctx: Context) -> Result<()> {
     // Just to get office's profile
     let _office_channel = entity.create_secure_channel(
         route![(TCP, OFFICE_TCP_ADDRESS), OFFICE_LISTENER_ADDRESS],
-        IdentifierTrustPolicy::new(office_id.clone()),
+        TrustIdentifierPolicy::new(office_id.clone()),
     )?;
 
-    entity.create_secure_channel_listener(DOOR_LISTENER_ADDRESS, NoOpTrustPolicy {})?;
+    entity.create_secure_channel_listener(DOOR_LISTENER_ADDRESS, TrustEveryonePolicy)?;
 
     tcp.listen(DOOR_TCP_ADDRESS).await?;
 

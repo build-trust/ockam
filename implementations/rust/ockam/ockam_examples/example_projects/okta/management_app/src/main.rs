@@ -118,13 +118,15 @@ fn main() {
 
                 let mut public_key = [0u8; 32];
                 public_key.copy_from_slice(public.as_ref());
+                let mut proof_buf = [0u8; 64];
+                proof_buf.copy_from_slice(proof.as_ref());
 
                 let msg = Messages::OktaRequest {
                     token: access_token.clone(),
                     msg: OckamMessages::BecomeRequest {
                         role: OckamRole::Enroller {
                             public_key,
-                            proof
+                            proof: proof_buf,
                         }
                     }
                 };
@@ -238,7 +240,7 @@ fn main() {
                                     schema: services_data[&1].schemas[0].clone(),
                                     service: x3dh_bundles[&1].clone(),
                                     attributes,
-                                    attestation: signature.to_vec()
+                                    attestation: signature.as_ref().to_vec()
                                 }).unwrap();
                                 println!("done");
 

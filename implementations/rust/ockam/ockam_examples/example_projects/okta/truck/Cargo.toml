@@ -4,16 +4,14 @@ version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 
-[profile.release]
-lto = true
-
 [dependencies]
 colored = "2.0"
 rand = "0.7"
-ockam = { path = "../../../ockam/ockam" }
-ockam_vault = { path = "../../../ockam/ockam_vault"}
-ockam_key_exchange_core = { path = "../../../ockam/ockam_key_exchange_core" }
-ockam_key_exchange_x3dh = { path = "../../../ockam/ockam_key_exchange_x3dh" }
+ockam = { path = "../../../../ockam" }
+ockam_vault = { path = "../../../../ockam_vault"}
+ockam_vault_sync_core = { path = "../../../../ockam_vault_sync_core"}
+ockam_key_exchange_core = { path = "../../../../ockam_key_exchange_core" }
+ockam_key_exchange_x3dh = { path = "../../../../ockam_key_exchange_x3dh" }
 okta-plugin = { path = "../" }
 serde = "1.0"
 serde_json = "1.0"

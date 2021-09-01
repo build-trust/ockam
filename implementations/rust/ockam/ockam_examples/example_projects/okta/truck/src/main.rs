@@ -3,6 +3,7 @@ use ockam_vault::{
     SoftwareVault,
     ockam_vault_core::*,
 };
+use ockam_vault_sync_core::VaultMutex;
 use ockam_key_exchange_core::{NewKeyExchanger, KeyExchanger};
 use ockam_key_exchange_x3dh::*;
 use oktaplugin::*;
@@ -10,7 +11,6 @@ use rand::prelude::*;
 use std::{
     io::{self, Write},
     net::{TcpListener, TcpStream},
-    sync::{Arc, Mutex}
 };
 use colored::Colorize;
 use serde::Deserialize;
@@ -48,7 +48,7 @@ fn main() {
     let attestation_info;
 
     let listener = TcpListener::bind("127.0.0.1:8081").unwrap();
-    let vault = Arc::new(Mutex::new(SoftwareVault::default()));
+    let mut vault = VaultMutex::create(SoftwareVault::default());
 
     let res = listener.accept();
     if res.is_err() {
@@ -75,8 +75,7 @@ fn main() {
                 match m {
                     OckamMessages::BeginDeviceEnrollment { nonce } => {
                         //Just demo signing, nonce is the credential id
-                        let v = vault.lock().unwrap();
-                        let device_id = v.sha256(&id).unwrap();
+                        let device_id = vault.sha256(&id).unwrap();
                         let msg = OckamMessages::DeviceEnrollmentRequest {
                             nonce,
                             blind_device_secret: device_id,
@@ -119,9 +118,9 @@ fn main() {
     pass("success");
     let mut stream = res.unwrap();
     let mut de = serde_json::Deserializer::from_reader(stream.try_clone().unwrap());
-    let x3dh_kex = X3dhNewKeyExchanger::new(vault.clone(), vault.clone());
-    let mut initiator = Box::new(x3dh_kex.initiator());
-    let prekey = initiator.process(b"").unwrap();
+    let x3dh_kex = X3dhNewKeyExchanger::new(vault.clone());
+    let mut initiator = Box::new(x3dh_kex.initiator().unwrap());
+    let prekey = initiator.generate_request(b"").unwrap();
 
     print!("Sending service enrollment message 1...");
     io::stdout().flush().unwrap();
@@ -138,7 +137,7 @@ fn main() {
     }
     pass("success");
 
-    let ciphertext_and_tag = initiator.process(service.bundle.key_establishment_data.as_slice()).unwrap();
+    let ciphertext_and_tag = initiator.handle_response(service.bundle.key_establishment_data.as_slice()).unwrap();
     let enroll_msg = Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage2(ciphertext_and_tag));
 
     print!("Sending service enrollment message 2...");
@@ -153,10 +152,9 @@ fn main() {
         return;
     }
     let completed_key_exchange = initiator.finalize().unwrap();
-    let mut vv = vault.lock().unwrap();
     match res.unwrap() {
         OckamMessages::ServiceEnrollmentResponse(data) => {
-            match vv.aead_aes_gcm_decrypt(&completed_key_exchange.decrypt_key(), data.as_slice(), &[0u8; 12], &completed_key_exchange.h()[..]) {
+            match vault.aead_aes_gcm_decrypt(&completed_key_exchange.decrypt_key(), data.as_slice(), &[0u8; 12], &completed_key_exchange.h()[..]) {
                 Err(e) => {
                     fail("fail");
                     println!("Unable to decrypt message: {}", e.to_string());
@@ -190,7 +188,7 @@ fn main() {
     let plaintext = serde_json::to_string(&attestation).unwrap();
     let mut nonce = [0u8; 12];
     nonce[11] = 1;
-    let ciphertext_and_tag = vv.aead_aes_gcm_encrypt(
+    let ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
         &completed_key_exchange.encrypt_key(), plaintext.as_bytes(), &nonce, &completed_key_exchange.h()[..]).unwrap();
     serde_json::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage3(ciphertext_and_tag))).unwrap();
     stream.flush().unwrap();
@@ -207,7 +205,7 @@ fn main() {
     nonce[11] = 2;
     match res.unwrap() {
         OckamMessages::ServiceEnrollmentResponse(data) => {
-            match vv.aead_aes_gcm_decrypt(&completed_key_exchange.decrypt_key(), data.as_slice(), &nonce, &completed_key_exchange.h()[..]) {
+            match vault.aead_aes_gcm_decrypt(&completed_key_exchange.decrypt_key(), data.as_slice(), &nonce, &completed_key_exchange.h()[..]) {
                 Err(e) => {
                     fail("fail");
                     println!("Unable to decrypt message: {}", e.to_string());
@@ -245,7 +243,7 @@ fn main() {
             let mut n = [0u8; 12];
             n[10..].copy_from_slice(&nonce.to_be_bytes());
 
-            let ctt = vv.aead_aes_gcm_encrypt(&completed_key_exchange.encrypt_key(), text.as_bytes(), &n, &completed_key_exchange.h()[..]).unwrap();
+            let ctt = vault.aead_aes_gcm_encrypt(&completed_key_exchange.encrypt_key(), text.as_bytes(), &n, &completed_key_exchange.h()[..]).unwrap();
             serde_json::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::GeneralMessage(ctt))).unwrap();
             stream.flush().unwrap();
             buffer = String::new();

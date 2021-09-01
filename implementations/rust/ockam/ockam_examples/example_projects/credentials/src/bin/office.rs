@@ -1,7 +1,7 @@
 use lib::{read_line, OFFICE_ISSUER_ADDRESS, OFFICE_LISTENER_ADDRESS, OFFICE_TCP_ADDRESS};
 use ockam::{
-    credential_type, Context, CredentialProtocol, Entity, EntityIdentifier, IdentifierTrustPolicy,
-    Identity, NoOpTrustPolicy, Profile, Result, SecureChannels, TcpTransport, Vault,
+    credential_type, Context, CredentialProtocol, Entity, EntityIdentifier, Identity, Profile,
+    Result, SecureChannels, TcpTransport, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
 };
 use std::convert::TryFrom;
 
@@ -18,7 +18,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     println!("Office id: {}", entity.identifier()?);
 
-    entity.create_secure_channel_listener(OFFICE_LISTENER_ADDRESS, NoOpTrustPolicy)?;
+    entity.create_secure_channel_listener(OFFICE_LISTENER_ADDRESS, TrustEveryonePolicy)?;
 
     println!("Enter Bob id: ");
     let bob_id = read_line();
@@ -27,7 +27,7 @@ async fn main(ctx: Context) -> Result<()> {
     entity.create_credential_issuance_listener(
         OFFICE_ISSUER_ADDRESS,
         credential_type!["TYPE_ID"; "door_id", (Number, "can_open_door")],
-        IdentifierTrustPolicy::new(bob_id.clone()),
+        TrustIdentifierPolicy::new(bob_id.clone()),
         // TODO: TrustPolicy doesn't have access to enough data about the requested credential to make a decision
     )?;
 

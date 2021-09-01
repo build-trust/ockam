@@ -22,7 +22,7 @@ add_library(ockam::ffi ALIAS ockam_ffi)
 
 file(GLOB
         FFI_LIB_PATH
-        ${CMAKE_CURRENT_LIST_DIR}/../../../../../../rust/ockam/ockam_ffi/target/release/libockam_ffi${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${CMAKE_CURRENT_LIST_DIR}/../../../../../../../target/release/libockam_ffi${CMAKE_STATIC_LIBRARY_SUFFIX}
         )
 
 file(COPY ${FFI_LIB_PATH} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")

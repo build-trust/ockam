@@ -3,7 +3,6 @@ authors = ["Ockam Developers"]
 categories = ["cryptography", "asynchronous", "authentication", "network-programming", "embedded"]
 description = "End-to-end encryption and mutual authentication for distributed applications."
 edition = "2018"
-resolver = "2"
 exclude = [
     "tests/**"
 ]

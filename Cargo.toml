@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    # This trick (where we glob workspace members with `*/src/..`) helps avoid
+    # including some obvious non-code folders. For example: folders containing
+    # only gitignored contents which are leftover from a branch change are
+    # typical (note that this was the motivation).
+    #
+    # In an ideal world, we'd have a better way to identify all rust crates, but
+    # I'm not sure how — the only item that's guaranteed to be present in Rust
+    # crates is `Cargo.toml`, and `cargo` is unwilling to fall for something
+    # like `members = ["**/Cargo.toml/.."]`.
+    "implementations/rust/ockam/*/src/..",
+    "examples/rust/*/src/..",
+    # the example_projects folder has some nesting (for example, in the `okta`
+    # project), so we do a recursive glob.
+    #"implementations/rust/ockam/ockam_examples/example_projects/**/src/..",
+
+    "tools/ockam-hub-cli",
+    "tools/docs/example_runner",
+    "tools/docs/example_blocks",
+    "tools/scripts/release/wait_for_crate",
+]
+
+exclude = [
+    "implementations/rust/ockam/ockam_transport_websocket",
+    "implementations/rust/ockam/ockam_examples/WIP",
+]

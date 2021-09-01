@@ -17,6 +17,7 @@ use ockam_vault::{
     *,
     ockam_vault_core::*,
 };
+use ockam_vault_sync_core::VaultMutex;
 use ockam_key_exchange_core::{NewKeyExchanger, KeyExchanger};
 use ockam_key_exchange_x3dh::*;
 use oktaplugin::{
@@ -31,7 +32,7 @@ use std::{
     io::{self, stdout, Write},
     net::{TcpListener, TcpStream},
     path::Path,
-    sync::{Arc, Mutex},
+    sync::Mutex,
     thread,
 };
 use structopt::StructOpt;
@@ -314,9 +315,9 @@ fn channel_listener() {
     let mut enrollers: BTreeMap<String, BTreeSet<[u8; 32]>> = BTreeMap::new();
     let cfg = CFG.lock().unwrap().borrow().clone();
     let listener = TcpListener::bind(format!("127.0.0.1:{}", cfg.channel_port)).unwrap();
-    let xxvault = Arc::new(Mutex::new(SoftwareVault::default()));
-    let x3dh_kex = X3dhNewKeyExchanger::new(xxvault.clone(), xxvault.clone());
-    let mut responder = Some(Box::new(x3dh_kex.responder()));
+    let mut xxvault = VaultMutex::create(SoftwareVault::default());
+    let x3dh_kex = X3dhNewKeyExchanger::new(xxvault.clone());
+    let mut responder = Some(Box::new(x3dh_kex.responder().unwrap()));
     let mut nonce = 2u16;
 
     let mut connections = Vec::new();
@@ -438,7 +439,9 @@ fn channel_listener() {
                                     //     continue;
                                     // }
                                     let mut vault = SoftwareVault::default();
-                                    if vault.verify(&proof, &public_key, &public_key).is_err() {
+                                    let pub_key =  PublicKey::new(public_key.into());
+                                    let proof = ockam_vault_core::Signature::new(proof.into());
+                                    if vault.verify(&proof, &pub_key, pub_key.as_ref()).is_err() {
                                         println!("Invalid enroller key");
                                         let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: false, msg: "Invalid enroller key".to_string() } };
                                         serde_json::to_writer(&mut stream, &msg).unwrap();
@@ -495,7 +498,8 @@ fn channel_listener() {
                             println!("GetEstablishmentBundlesRequest: {:?}", services);
                             loop {
                                 if let Some(ref mut resp) = responder {
-                                    let res = resp.process(b"").unwrap();
+                                    // XXX(thom) is this right?
+                                    let res = resp.generate_request(b"").unwrap();
                                     let msg = OktaResponse {
                                         msg: OckamMessages::GetEstablishmentBundlesResponse {
                                             services: vec![EstablishmentBundle {
@@ -511,7 +515,7 @@ fn channel_listener() {
                                     break;
                                 } else {
                                     println!("Enrollment bundle already used. Creating new bundle");
-                                    responder = Some(Box::from(x3dh_kex.responder()));
+                                    responder = Some(Box::from(x3dh_kex.responder().unwrap()));
                                 }
                             }
                         },
@@ -524,7 +528,7 @@ fn channel_listener() {
                     match m {
                         OckamMessages::ServiceEnrollmentMessage1(data) => {
                             if let Some(ref mut resp) = responder {
-                                match resp.process(&data) {
+                                match resp.handle_response(&data) {
                                     Err(e) => eprintln!("{}", e.to_string()),
                                     Ok(d) => {
                                         serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(d)).unwrap();
@@ -536,10 +540,8 @@ fn channel_listener() {
                             }
                         },
                         OckamMessages::ServiceEnrollmentMessage2(data) => {
-                            if responder.is_some() {
-                                let mut resp = responder.unwrap();
-                                responder = None;
-                                let res = resp.process(&data);
+                            if let Some(mut resp) = responder.take() {
+                                let res = resp.handle_response(&data);
                                 match res {
                                     Err(e) => {
                                         eprintln!("{}", e.to_string());
@@ -547,8 +549,7 @@ fn channel_listener() {
                                     },
                                     Ok(_) => {
                                         let kex = resp.finalize().unwrap();
-                                        let mut v = xxvault.lock().unwrap();
-                                        let ctt = v.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[1], &[0u8; 12], &kex.h()[..]).unwrap();
+                                        let ctt = xxvault.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[1], &[0u8; 12], &kex.h()[..]).unwrap();
                                         completed_key_exchange = Some(kex);
                                         serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
                                         responder = None;
@@ -557,11 +558,10 @@ fn channel_listener() {
                             }
                         },
                         OckamMessages::ServiceEnrollmentMessage3(data) => {
-                            let mut v = xxvault.lock().unwrap();
                             let kex = completed_key_exchange.as_ref().unwrap();
                             let mut n= [0u8; 12];
                             n[11] = 1;
-                            let res = v.aead_aes_gcm_decrypt(&kex.decrypt_key(), data.as_slice(), &n, &kex.h()[..]);
+                            let res = xxvault.aead_aes_gcm_decrypt(&kex.decrypt_key(), data.as_slice(), &n, &kex.h()[..]);
                             match res {
                                 Err(e) => eprintln!("{}", e.to_string()),
                                 Ok(plaintext) => {
@@ -570,15 +570,15 @@ fn channel_listener() {
                                         Ok(attestation) => {
                                             let mut sig_data = Vec::new();
                                             for a in &attestation.attributes {
-                                                let hash = v.sha256(a).unwrap();
+                                                let hash = xxvault.sha256(a).unwrap();
                                                 sig_data.extend_from_slice(&hash);
                                             }
-                                            let sig_data = v.sha256(&sig_data).unwrap();
+                                            let sig_data = xxvault.sha256(&sig_data).unwrap();
                                             let signature = *array_ref![attestation.signature, 0, 64];
                                             let mut verified = false;
                                             for (_, keys) in &enrollers {
                                                 for key in keys {
-                                                    if v.verify(&signature, &key[..], &sig_data).is_ok() {
+                                                    if xxvault.verify(&ockam_vault_core::Signature::new(signature.to_vec()), &PublicKey::new(key.to_vec()), &sig_data).is_ok() {
                                                         verified = true;
                                                         break;
                                                     }
@@ -588,7 +588,7 @@ fn channel_listener() {
                                                 }
                                             }
                                             n[11] = 2;
-                                            let ctt = v.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[verified as u8], &n, &kex.h()[..]).unwrap();
+                                            let ctt = xxvault.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[verified as u8], &n, &kex.h()[..]).unwrap();
 
                                             serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
                                             stream.flush().unwrap();
@@ -601,9 +601,8 @@ fn channel_listener() {
                             nonce = nonce.wrapping_add(1);
                             let mut n = [0u8; 12];
                             n[10..].copy_from_slice(&nonce.to_be_bytes());
-                            let mut v = xxvault.lock().unwrap();
                             let kex = completed_key_exchange.as_ref().unwrap();
-                            match v.aead_aes_gcm_decrypt(&kex.decrypt_key(), data.as_slice(), &n, &kex.h()[..]) {
+                            match xxvault.aead_aes_gcm_decrypt(&kex.decrypt_key(), data.as_slice(), &n, &kex.h()[..]) {
                                 Err(e) => eprintln!("An error occurred while decrypting: {}", e.to_string()),
                                 Ok(s) => {
                                     print!("Received: ");
