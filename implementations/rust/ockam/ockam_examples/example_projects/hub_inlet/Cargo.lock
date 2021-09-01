@@ -571,6 +571,7 @@ name = "hub_inlet"
 version = "0.1.0"
 dependencies = [
  "ockam",
+ "tracing",
 ]
 
 [[package]]
