@@ -2,8 +2,17 @@
 name = "ockam_kafka"
 version = "0.1.0"
 edition = "2018"
+autoexamples = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 ockam = { path = "../../../implementations/rust/ockam/ockam", version = "0" }
+
+[[example]]
+path = "examples/bob.rs"
+name = "ockam_kafka_bob"
+
+[[example]]
+path = "examples/alice.rs"
+name = "ockam_kafka_alice"

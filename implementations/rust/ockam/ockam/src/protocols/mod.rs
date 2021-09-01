@@ -7,7 +7,11 @@ use serde::{Deserialize, Serialize};
 mod parser;
 pub use parser::*;
 
-pub mod stream;
+// XXX(thom): There was some shadowing here + glob re-exports causing this to be
+// inaccessable. We should find a better way to do this, though.
+pub(crate) mod stream;
+pub use stream::requests as stream_requests;
+pub use stream::responses as stream_responses;
 
 /// A protocol payload wrapper for pre-parsing
 #[derive(Debug, Serialize, Deserialize)]

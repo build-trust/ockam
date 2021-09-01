@@ -1,8 +1,4 @@
-use ockam::{
-    async_worker,
-    protocols::{stream::responses::*, ProtocolParser},
-    Any, Context, Result, Routed, Worker,
-};
+use ockam::{stream_responses::*, worker, Any, Context, ProtocolParser, Result, Routed, Worker};
 
 #[derive(Default)]
 struct MyWorker {
@@ -11,14 +7,15 @@ struct MyWorker {
 }
 
 /// Util function that maps stream-protocol responses to worker state
-fn handle_stream(w: &mut MyWorker, r: Response) {
-    match r {
+fn handle_stream(w: &mut MyWorker, _: &mut Context, r: Routed<Response>) -> bool {
+    match r.body() {
         Response::Init(Init { stream_name }) => w.stream = Some(stream_name),
         _ => {}
     }
+    true // XXX(thom): unsure if true or false is what this should be returning...
 }
 
-#[async_worker]
+#[worker]
 impl Worker for MyWorker {
     type Context = Context;
     type Message = Any;
@@ -30,7 +27,7 @@ impl Worker for MyWorker {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        self.parser.prepare().parse(self, msg)?;
+        self.parser.prepare().parse(self, ctx, &msg)?;
 
         println!("Stream name is now: `{:?}`", self.stream);
         ctx.stop().await

@@ -7,12 +7,17 @@ async fn main(mut ctx: Context) -> Result<()> {
     let hub_addr = "127.0.0.1:4000";
 
     let tcp = TcpTransport::create(&ctx).await?;
-    let serv = tcp.connect(hub_addr).await?.service("stream_service");
+    tcp.connect(hub_addr).await?; //.service("stream_service");
 
     // Create 2 new stream workers
     let (tx, mut rx) = Stream::new(&ctx)?
         .with_interval(Duration::from_millis(500))
-        .connect(serv, "test-stream".to_string())
+        .connect(
+            ockam::route![(ockam::TCP, hub_addr)],
+            // FIXME(thom): does this work?
+            "test-stream-send",
+            "test-stream-recv",
+        )
         .await?;
 
     // Send a message to the stream producer

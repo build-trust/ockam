@@ -1,4 +1,4 @@
-use ockam::{Any, Context, Result, Route, Routed, Worker};
+use ockam::{Any, Context, LocalMessage, Result, Route, Routed, Worker};
 
 struct MyRouter;
 
@@ -14,7 +14,7 @@ impl Worker for MyRouter {
         let mut msg = msg.into_transport_message();
         msg.onward_route.step()?;
         msg.return_route.modify().prepend(ctx.address());
-        ctx.forward(msg).await
+        ctx.forward(LocalMessage::new(msg, vec![])).await
     }
 }
 

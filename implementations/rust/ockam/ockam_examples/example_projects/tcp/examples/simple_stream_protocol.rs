@@ -1,10 +1,6 @@
 use ockam::{
-    block_future,
-    protocols::{
-        stream::{requests::*, responses::*},
-        ProtocolParser,
-    },
-    Any, Context, Result, Route, Routed, Worker,
+    block_future, stream_requests::*, stream_responses::*, Any, Context, ProtocolParser, Result,
+    Route, Routed, Worker,
 };
 use ockam_transport_tcp::{TcpTransport, TCP};
 

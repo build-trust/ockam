@@ -25,7 +25,7 @@ impl Worker for Picky {
                     let msg = ctx.receive::<Message>().await.unwrap();
                     if msg == Message::Bad {
                         println!("[PICKY]: Ignoring bad message");
-                        msg.cancel().await;
+                        msg.cancel().await?;
                     } else {
                         println!("[PICKY]: Yay, another good message!");
                         break;

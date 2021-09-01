@@ -18,11 +18,11 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Then you can run Bob and Alice examples described in the guide by running:
 
 ```bash
-cargo run --example bob
+cargo run --example ockam_kafka_bob
 ```
 
 ```bash
-cargo run --example alice
+cargo run --example ockam_kafka_alice
 ```
 
 ## Docker build
@@ -36,10 +36,10 @@ docker build -t ockam_kafka .
 Then you can run Bob and Alice examples as:
 
 ```bash
-docker run ockam_kafka bob
+docker run ockam_kafka ockam_kafka_bob
 ```
 
 ```bash
-docker run ockam_kafka alice
+docker run ockam_kafka ockam_kafka_alice
 ```
 
