@@ -11,23 +11,18 @@ mod objects;
 use colored::Colorize;
 use isahc::prelude::*;
 // use objects::UsersInGroup;
-use rand::RngCore;
-use ockam::{CredentialSchema, CredentialAttributeSchema, CredentialAttributeType};
-use ockam_vault::{
-    *,
-    ockam_vault_core::*,
-};
-use ockam_vault_sync_core::VaultMutex;
-use ockam_key_exchange_core::{NewKeyExchanger, KeyExchanger};
+use ockam::{CredentialAttributeSchema, CredentialAttributeType, CredentialSchema};
+use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_x3dh::*;
-use oktaplugin::{
-    *,
-    Messages::OktaResponse,
-};
+use ockam_vault::{ockam_vault_core::*, *};
+use ockam_vault_sync_core::VaultMutex;
+use oktaplugin::{Messages::OktaResponse, *};
+use rand::RngCore;
 use serde::Deserialize;
+use std::thread::sleep;
 use std::{
     cell::RefCell,
-    collections::{BTreeSet, BTreeMap},
+    collections::{BTreeMap, BTreeSet},
     fs,
     io::{self, stdout, Write},
     net::{TcpListener, TcpStream},
@@ -37,7 +32,6 @@ use std::{
 };
 use structopt::StructOpt;
 use warp::Filter;
-use std::thread::sleep;
 
 const FILE_NAME: &str = ".env";
 
@@ -52,15 +46,15 @@ lazy_static! {
 struct OktaData {
     state: BTreeMap<[u8; 16], StateData>,
     ids: BTreeMap<usize, [u8; 16]>,
-    redirect_uri: String
+    redirect_uri: String,
 }
 
 impl Default for OktaData {
     fn default() -> Self {
         Self {
             state: BTreeMap::new(),
-            ids : BTreeMap::new(),
-            redirect_uri: String::new()
+            ids: BTreeMap::new(),
+            redirect_uri: String::new(),
         }
     }
 }
@@ -79,12 +73,15 @@ struct StateData {
 #[derive(Debug, Deserialize)]
 struct OktaOpenIdResponse {
     code: String,
-    state: String
+    state: String,
 }
 
 impl Default for OktaOpenIdResponse {
     fn default() -> Self {
-        Self { code: String::new(), state: String::new() }
+        Self {
+            code: String::new(),
+            state: String::new(),
+        }
     }
 }
 
@@ -95,7 +92,7 @@ struct OktaTokenResponse {
     expires_in: usize,
     scope: String,
     refresh_token: Option<String>,
-    id_token: String
+    id_token: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,7 +110,7 @@ struct OktaIntrospectResponse {
     sub: Option<String>,
     token_type: Option<String>,
     uid: Option<String>,
-    username: Option<String>
+    username: Option<String>,
 }
 
 impl OktaIntrospectResponse {
@@ -137,7 +134,7 @@ async fn parse_query_params(query: OktaOpenIdResponse) -> WarpResult<impl warp::
         let state = lock.borrow();
         let lock = CFG.lock().unwrap();
         let cfg = lock.borrow();
-        start( &cfg, &state, query);
+        start(&cfg, &state, query);
     });
     Ok("Success. You may close this tab and return to the shell.")
 }
@@ -197,7 +194,9 @@ fn start(cfg: &config::Config, data: &OktaData, query: OktaOpenIdResponse) {
     print!("Sending code back to client...");
     stdout.flush().unwrap();
     let mut stream = &data.state[rx_state.as_slice()].stream;
-    let msg = Messages::OktaAccessToken { token: creds.access_token };
+    let msg = Messages::OktaAccessToken {
+        token: creds.access_token,
+    };
     let res = serde_json::to_writer(stream, &msg);
     if res.is_err() {
         fail("fail");
@@ -208,12 +207,21 @@ fn start(cfg: &config::Config, data: &OktaData, query: OktaOpenIdResponse) {
     pass("done");
 }
 
-fn exchange_code_for_access_token(cfg: &config::Config, data: &OktaData, code: &str) -> Result<OktaTokenResponse, String> {
+fn exchange_code_for_access_token(
+    cfg: &config::Config,
+    data: &OktaData,
+    code: &str,
+) -> Result<OktaTokenResponse, String> {
     let mut response = Request::post(format!("{}/oauth2/default/v1/token", cfg.okta_url))
         .header("accept", "application/json")
         .header("content-type", "application/x-www-form-urlencoded")
-        .body(format!("client_id={}&client_secret={}&grant_type=authorization_code&code={}&redirect_uri={}", cfg.client_id, cfg.client_secret, code, data.redirect_uri)).unwrap()
-        .send().unwrap();
+        .body(format!(
+            "client_id={}&client_secret={}&grant_type=authorization_code&code={}&redirect_uri={}",
+            cfg.client_id, cfg.client_secret, code, data.redirect_uri
+        ))
+        .unwrap()
+        .send()
+        .unwrap();
     let text = response.text().unwrap();
     serde_json::from_str(&text).map_err(|e| format!("{:?}", e))
 }
@@ -222,8 +230,13 @@ fn introspect(cfg: &config::Config, access_token: &str) -> Result<OktaIntrospect
     let mut response = Request::post(format!("{}/oauth2/default/v1/introspect", cfg.okta_url))
         .header("accept", "application/json")
         .header("content-type", "application/x-www-form-urlencoded")
-        .body(format!("client_id={}&client_secret={}&token_type_hint=access_token&token={}", cfg.client_id, cfg.client_secret, access_token)).unwrap()
-        .send().unwrap();
+        .body(format!(
+            "client_id={}&client_secret={}&token_type_hint=access_token&token={}",
+            cfg.client_id, cfg.client_secret, access_token
+        ))
+        .unwrap()
+        .send()
+        .unwrap();
     let text = response.text().unwrap();
     serde_json::from_str(&text).map_err(|e| format!("{:?}", e))
 }
@@ -274,17 +287,19 @@ fn fail(s: &str) {
 
 #[tokio::main]
 async fn main() {
-    let cfg =
-        if Path::new(FILE_NAME).is_file() {
-            let contents = fs::read_to_string(FILE_NAME).unwrap();
-            serde_json::from_str::<config::Config>(&contents).unwrap()
-        } else {
-            config::Config::from_args()
-        };
+    let cfg = if Path::new(FILE_NAME).is_file() {
+        let contents = fs::read_to_string(FILE_NAME).unwrap();
+        serde_json::from_str::<config::Config>(&contents).unwrap()
+    } else {
+        config::Config::from_args()
+    };
 
     let mut okta_data = OktaData::default();
 
-    okta_data.redirect_uri = format!("http://localhost:{}/authorization-code/callback", cfg.okta_port);
+    okta_data.redirect_uri = format!(
+        "http://localhost:{}/authorization-code/callback",
+        cfg.okta_port
+    );
 
     // println!("Open the following URL in a browser to continue");
     // println!("{}/oauth2/default/v1/authorize?response_type=code&client_id={}&redirect_uri={}&state={}&nonce={}&scope=openid",
@@ -300,7 +315,7 @@ async fn main() {
     *CFG.lock().unwrap().borrow_mut() = cfg;
 
     thread::spawn(|| {
-       channel_listener();
+        channel_listener();
     });
 
     let callback = warp::get()
@@ -308,7 +323,7 @@ async fn main() {
         .and(warp::path("callback"))
         .and(warp::query())
         .and_then(parse_query_params);
-    warp::serve(callback).run(([127,0,0,1], port)).await;
+    warp::serve(callback).run(([127, 0, 0, 1], port)).await;
 }
 
 fn channel_listener() {
@@ -334,7 +349,7 @@ fn channel_listener() {
                     if connections.is_empty() {
                         sleep(std::time::Duration::from_millis(1000));
                     }
-                },
+                }
                 _ => {
                     eprintln!("{:?}", err);
                 }
@@ -359,14 +374,13 @@ fn channel_listener() {
                         sleep(std::time::Duration::from_millis(1000));
                         i += 1;
                         continue;
-                    },
+                    }
                     serde_json::error::Category::Eof => {
                         eprintln!("Client closed connection");
                         connections.remove(i);
                         continue;
                     }
                     err => {
-
                         i += 1;
                         eprintln!("Unknown message type: {:?}", err);
                         continue;
@@ -392,11 +406,14 @@ fn channel_listener() {
                     } else {
                         rand::thread_rng().fill_bytes(&mut state);
                         okta_data.ids.insert(id, state);
-                        okta_data.state.insert(state, StateData {
+                        okta_data.state.insert(
                             state,
-                            id,
-                            stream: stream.try_clone().unwrap()
-                        });
+                            StateData {
+                                state,
+                                id,
+                                stream: stream.try_clone().unwrap(),
+                            },
+                        );
                     }
 
                     let msg = Messages::OktaLoginUrl {
@@ -410,7 +427,7 @@ fn channel_listener() {
                     };
                     serde_json::to_writer(&mut stream, &msg).unwrap();
                     stream.flush().unwrap();
-                },
+                }
                 Messages::OktaRequest { token, msg } => {
                     println!("Received token = {}\n msg = {:?}", token, msg);
                     // Verify Okta token
@@ -428,9 +445,9 @@ fn channel_listener() {
                     }
 
                     match msg {
-                        OckamMessages::BecomeRequest {role} => {
+                        OckamMessages::BecomeRequest { role } => {
                             match role {
-                                OckamRole::Enroller {public_key, proof} => {
+                                OckamRole::Enroller { public_key, proof } => {
                                     // if !is_user_in_group(&cfg, &introspect_res.id(), &OKTA_GROUPS) {
                                     //     println!("Access Denied, no Enroller group associated with user");
                                     //     let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: false, msg: "Access Denied, no Enroller group associated with user".to_string() } };
@@ -439,16 +456,26 @@ fn channel_listener() {
                                     //     continue;
                                     // }
                                     let mut vault = SoftwareVault::default();
-                                    let pub_key =  PublicKey::new(public_key.into());
+                                    let pub_key = PublicKey::new(public_key.into());
                                     let proof = ockam_vault_core::Signature::new(proof.into());
                                     if vault.verify(&proof, &pub_key, pub_key.as_ref()).is_err() {
                                         println!("Invalid enroller key");
-                                        let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: false, msg: "Invalid enroller key".to_string() } };
+                                        let msg = OktaResponse {
+                                            msg: OckamMessages::BecomeResponse {
+                                                result: false,
+                                                msg: "Invalid enroller key".to_string(),
+                                            },
+                                        };
                                         serde_json::to_writer(&mut stream, &msg).unwrap();
                                         stream.flush().unwrap();
                                         continue;
                                     }
-                                    let msg = OktaResponse {msg : OckamMessages::BecomeResponse { result: true, msg: String::new() } };
+                                    let msg = OktaResponse {
+                                        msg: OckamMessages::BecomeResponse {
+                                            result: true,
+                                            msg: String::new(),
+                                        },
+                                    };
                                     serde_json::to_writer(&mut stream, &msg).unwrap();
                                     stream.flush().unwrap();
                                     let uid = introspect_res.uid.clone().unwrap();
@@ -461,14 +488,20 @@ fn channel_listener() {
                                     }
                                 }
                             }
-                        },
-                        OckamMessages::ListServicesRequest { limit, offset  } => {
-                            println!("List no more than {} services starting at {}", limit, offset);
+                        }
+                        OckamMessages::ListServicesRequest { limit, offset } => {
+                            println!(
+                                "List no more than {} services starting at {}",
+                                limit, offset
+                            );
 
                             // Ignore limit and offset since its hardcoded
                             let services = vec![OckamService {
                                 id: 1,
-                                key_establishment: vec![KeyEstablishment::Xx, KeyEstablishment::X3dh],
+                                key_establishment: vec![
+                                    KeyEstablishment::Xx,
+                                    KeyEstablishment::X3dh,
+                                ],
                                 schemas: vec![CredentialSchema {
                                     id: "TruckManagement0001".to_string(),
                                     label: String::new(),
@@ -482,18 +515,21 @@ fn channel_listener() {
                                         },
                                         CredentialAttributeSchema {
                                             label: "can_access_data".to_string(),
-                                            description: "Is allowed to access the server data".to_string(),
+                                            description: "Is allowed to access the server data"
+                                                .to_string(),
                                             unknown: false,
                                             attribute_type: CredentialAttributeType::Number,
-                                        }
-                                    ]
-                                }]
+                                        },
+                                    ],
+                                }],
                             }];
 
-                            let msg = OktaResponse { msg: OckamMessages::ListServicesResponse { services }};
+                            let msg = OktaResponse {
+                                msg: OckamMessages::ListServicesResponse { services },
+                            };
                             serde_json::to_writer(&mut stream, &msg).unwrap();
                             stream.flush().unwrap();
-                        },
+                        }
                         OckamMessages::GetEstablishmentBundlesRequest { services } => {
                             println!("GetEstablishmentBundlesRequest: {:?}", services);
                             loop {
@@ -506,9 +542,9 @@ fn channel_listener() {
                                                 service_id: 1,
                                                 address: format!("127.0.0.1:{}", cfg.channel_port),
                                                 key_establishment: KeyEstablishment::X3dh,
-                                                key_establishment_data: res
-                                            }]
-                                        }
+                                                key_establishment_data: res,
+                                            }],
+                                        },
                                     };
                                     serde_json::to_writer(&mut stream, &msg).unwrap();
                                     stream.flush().unwrap();
@@ -518,106 +554,153 @@ fn channel_listener() {
                                     responder = Some(Box::from(x3dh_kex.responder().unwrap()));
                                 }
                             }
-                        },
-                        _ => {
-
                         }
+                        _ => {}
                     };
-                },
-                Messages::NonOktaRequest(m) => {
-                    match m {
-                        OckamMessages::ServiceEnrollmentMessage1(data) => {
-                            if let Some(ref mut resp) = responder {
-                                match resp.handle_response(&data) {
-                                    Err(e) => eprintln!("{}", e.to_string()),
-                                    Ok(d) => {
-                                        serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(d)).unwrap();
-                                    }
-                                }
-                            } else {
-                                eprintln!("Enrollment bundle already used.");
-                                serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(vec![])).unwrap();
-                            }
-                        },
-                        OckamMessages::ServiceEnrollmentMessage2(data) => {
-                            if let Some(mut resp) = responder.take() {
-                                let res = resp.handle_response(&data);
-                                match res {
-                                    Err(e) => {
-                                        eprintln!("{}", e.to_string());
-                                        serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(vec![0])).unwrap();
-                                    },
-                                    Ok(_) => {
-                                        let kex = resp.finalize().unwrap();
-                                        let ctt = xxvault.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[1], &[0u8; 12], &kex.h()[..]).unwrap();
-                                        completed_key_exchange = Some(kex);
-                                        serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
-                                        responder = None;
-                                    }
-                                }
-                            }
-                        },
-                        OckamMessages::ServiceEnrollmentMessage3(data) => {
-                            let kex = completed_key_exchange.as_ref().unwrap();
-                            let mut n= [0u8; 12];
-                            n[11] = 1;
-                            let res = xxvault.aead_aes_gcm_decrypt(&kex.decrypt_key(), data.as_slice(), &n, &kex.h()[..]);
-                            match res {
+                }
+                Messages::NonOktaRequest(m) => match m {
+                    OckamMessages::ServiceEnrollmentMessage1(data) => {
+                        if let Some(ref mut resp) = responder {
+                            match resp.handle_response(&data) {
                                 Err(e) => eprintln!("{}", e.to_string()),
-                                Ok(plaintext) => {
-                                    match serde_json::from_slice::<Attestation>(plaintext.as_slice()) {
-                                        Err(e) => eprintln!("{:?}", e),
-                                        Ok(attestation) => {
-                                            let mut sig_data = Vec::new();
-                                            for a in &attestation.attributes {
-                                                let hash = xxvault.sha256(a).unwrap();
-                                                sig_data.extend_from_slice(&hash);
-                                            }
-                                            let sig_data = xxvault.sha256(&sig_data).unwrap();
-                                            let signature = *array_ref![attestation.signature, 0, 64];
-                                            let mut verified = false;
-                                            for (_, keys) in &enrollers {
-                                                for key in keys {
-                                                    if xxvault.verify(&ockam_vault_core::Signature::new(signature.to_vec()), &PublicKey::new(key.to_vec()), &sig_data).is_ok() {
-                                                        verified = true;
-                                                        break;
-                                                    }
-                                                }
-                                                if verified {
+                                Ok(d) => {
+                                    serde_json::to_writer(
+                                        &mut stream,
+                                        &OckamMessages::ServiceEnrollmentResponse(d),
+                                    )
+                                    .unwrap();
+                                }
+                            }
+                        } else {
+                            eprintln!("Enrollment bundle already used.");
+                            serde_json::to_writer(
+                                &mut stream,
+                                &OckamMessages::ServiceEnrollmentResponse(vec![]),
+                            )
+                            .unwrap();
+                        }
+                    }
+                    OckamMessages::ServiceEnrollmentMessage2(data) => {
+                        if let Some(mut resp) = responder.take() {
+                            let res = resp.handle_response(&data);
+                            match res {
+                                Err(e) => {
+                                    eprintln!("{}", e.to_string());
+                                    serde_json::to_writer(
+                                        &mut stream,
+                                        &OckamMessages::ServiceEnrollmentResponse(vec![0]),
+                                    )
+                                    .unwrap();
+                                }
+                                Ok(_) => {
+                                    let kex = resp.finalize().unwrap();
+                                    let ctt = xxvault
+                                        .aead_aes_gcm_encrypt(
+                                            &kex.encrypt_key(),
+                                            &[1],
+                                            &[0u8; 12],
+                                            &kex.h()[..],
+                                        )
+                                        .unwrap();
+                                    completed_key_exchange = Some(kex);
+                                    serde_json::to_writer(
+                                        &mut stream,
+                                        &OckamMessages::ServiceEnrollmentResponse(ctt),
+                                    )
+                                    .unwrap();
+                                    responder = None;
+                                }
+                            }
+                        }
+                    }
+                    OckamMessages::ServiceEnrollmentMessage3(data) => {
+                        let kex = completed_key_exchange.as_ref().unwrap();
+                        let mut n = [0u8; 12];
+                        n[11] = 1;
+                        let res = xxvault.aead_aes_gcm_decrypt(
+                            &kex.decrypt_key(),
+                            data.as_slice(),
+                            &n,
+                            &kex.h()[..],
+                        );
+                        match res {
+                            Err(e) => eprintln!("{}", e.to_string()),
+                            Ok(plaintext) => {
+                                match serde_json::from_slice::<Attestation>(plaintext.as_slice()) {
+                                    Err(e) => eprintln!("{:?}", e),
+                                    Ok(attestation) => {
+                                        let mut sig_data = Vec::new();
+                                        for a in &attestation.attributes {
+                                            let hash = xxvault.sha256(a).unwrap();
+                                            sig_data.extend_from_slice(&hash);
+                                        }
+                                        let sig_data = xxvault.sha256(&sig_data).unwrap();
+                                        let signature = *array_ref![attestation.signature, 0, 64];
+                                        let mut verified = false;
+                                        for (_, keys) in &enrollers {
+                                            for key in keys {
+                                                if xxvault
+                                                    .verify(
+                                                        &ockam_vault_core::Signature::new(
+                                                            signature.to_vec(),
+                                                        ),
+                                                        &PublicKey::new(key.to_vec()),
+                                                        &sig_data,
+                                                    )
+                                                    .is_ok()
+                                                {
+                                                    verified = true;
                                                     break;
                                                 }
                                             }
-                                            n[11] = 2;
-                                            let ctt = xxvault.aead_aes_gcm_encrypt(&kex.encrypt_key(), &[verified as u8], &n, &kex.h()[..]).unwrap();
-
-                                            serde_json::to_writer(&mut stream, &OckamMessages::ServiceEnrollmentResponse(ctt)).unwrap();
-                                            stream.flush().unwrap();
+                                            if verified {
+                                                break;
+                                            }
                                         }
+                                        n[11] = 2;
+                                        let ctt = xxvault
+                                            .aead_aes_gcm_encrypt(
+                                                &kex.encrypt_key(),
+                                                &[verified as u8],
+                                                &n,
+                                                &kex.h()[..],
+                                            )
+                                            .unwrap();
+
+                                        serde_json::to_writer(
+                                            &mut stream,
+                                            &OckamMessages::ServiceEnrollmentResponse(ctt),
+                                        )
+                                        .unwrap();
+                                        stream.flush().unwrap();
                                     }
                                 }
                             }
-                        },
-                        OckamMessages::GeneralMessage(data) => {
-                            nonce = nonce.wrapping_add(1);
-                            let mut n = [0u8; 12];
-                            n[10..].copy_from_slice(&nonce.to_be_bytes());
-                            let kex = completed_key_exchange.as_ref().unwrap();
-                            match xxvault.aead_aes_gcm_decrypt(&kex.decrypt_key(), data.as_slice(), &n, &kex.h()[..]) {
-                                Err(e) => eprintln!("An error occurred while decrypting: {}", e.to_string()),
-                                Ok(s) => {
-                                    print!("Received: ");
-                                    highlight(std::str::from_utf8(&s).unwrap());
-                                },
-                            }
-                        },
-                        _ => {
-
                         }
                     }
+                    OckamMessages::GeneralMessage(data) => {
+                        nonce = nonce.wrapping_add(1);
+                        let mut n = [0u8; 12];
+                        n[10..].copy_from_slice(&nonce.to_be_bytes());
+                        let kex = completed_key_exchange.as_ref().unwrap();
+                        match xxvault.aead_aes_gcm_decrypt(
+                            &kex.decrypt_key(),
+                            data.as_slice(),
+                            &n,
+                            &kex.h()[..],
+                        ) {
+                            Err(e) => {
+                                eprintln!("An error occurred while decrypting: {}", e.to_string())
+                            }
+                            Ok(s) => {
+                                print!("Received: ");
+                                highlight(std::str::from_utf8(&s).unwrap());
+                            }
+                        }
+                    }
+                    _ => {}
                 },
-                _ => {
-
-                }
+                _ => {}
             }
         }
     }

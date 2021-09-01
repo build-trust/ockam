@@ -1,20 +1,16 @@
+use colored::Colorize;
 use ockam::*;
-use ockam_vault::{
-    SoftwareVault,
-    ockam_vault_core::*,
-};
-use ockam_vault_sync_core::VaultMutex;
-use ockam_key_exchange_core::{NewKeyExchanger, KeyExchanger};
+use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_x3dh::*;
+use ockam_vault::{ockam_vault_core::*, SoftwareVault};
+use ockam_vault_sync_core::VaultMutex;
 use oktaplugin::*;
 use rand::prelude::*;
+use serde::Deserialize;
 use std::{
     io::{self, Write},
     net::{TcpListener, TcpStream},
 };
-use colored::Colorize;
-use serde::Deserialize;
-
 
 #[cfg(target_os = "windows")]
 fn pass(s: &str) {
@@ -62,11 +58,11 @@ fn main() {
         match OckamMessages::deserialize(&mut de) {
             Err(e) => match e.classify() {
                 serde_json::error::Category::Eof => {
-                        eprintln!("Client closed connection");
-                        return;
-                },
+                    eprintln!("Client closed connection");
+                    return;
+                }
                 _ => {
-                    eprintln ! ("Unknown message type");
+                    eprintln!("Unknown message type");
                     stream.shutdown(std::net::Shutdown::Both).unwrap();
                     return;
                 }
@@ -79,23 +75,28 @@ fn main() {
                         let msg = OckamMessages::DeviceEnrollmentRequest {
                             nonce,
                             blind_device_secret: device_id,
-                            proof_of_secret: [0u8; 32]
+                            proof_of_secret: [0u8; 32],
                         };
                         serde_json::to_writer(&mut stream, &msg).unwrap();
                         stream.flush().unwrap();
-                    },
-                    OckamMessages::DeviceEnrollmentResponse {schema, service, attributes, attestation} => {
+                    }
+                    OckamMessages::DeviceEnrollmentResponse {
+                        schema,
+                        service,
+                        attributes,
+                        attestation,
+                    } => {
                         service_info = Some(Service {
                             schema,
-                            bundle: service
+                            bundle: service,
                         });
                         attestation_info = Some(Attestation {
                             attributes,
-                            signature: attestation
+                            signature: attestation,
                         });
                         println!("Received enrollment bundle");
                         println!("Closing connection to enroller");
-                        let _  = stream.shutdown(std::net::Shutdown::Both);
+                        let _ = stream.shutdown(std::net::Shutdown::Both);
                         break;
                     }
                     mm => {
@@ -137,8 +138,11 @@ fn main() {
     }
     pass("success");
 
-    let ciphertext_and_tag = initiator.handle_response(service.bundle.key_establishment_data.as_slice()).unwrap();
-    let enroll_msg = Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage2(ciphertext_and_tag));
+    let ciphertext_and_tag = initiator
+        .handle_response(service.bundle.key_establishment_data.as_slice())
+        .unwrap();
+    let enroll_msg =
+        Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage2(ciphertext_and_tag));
 
     print!("Sending service enrollment message 2...");
     io::stdout().flush().unwrap();
@@ -154,13 +158,18 @@ fn main() {
     let completed_key_exchange = initiator.finalize().unwrap();
     match res.unwrap() {
         OckamMessages::ServiceEnrollmentResponse(data) => {
-            match vault.aead_aes_gcm_decrypt(&completed_key_exchange.decrypt_key(), data.as_slice(), &[0u8; 12], &completed_key_exchange.h()[..]) {
+            match vault.aead_aes_gcm_decrypt(
+                &completed_key_exchange.decrypt_key(),
+                data.as_slice(),
+                &[0u8; 12],
+                &completed_key_exchange.h()[..],
+            ) {
                 Err(e) => {
                     fail("fail");
                     println!("Unable to decrypt message: {}", e.to_string());
                     stream.shutdown(std::net::Shutdown::Both).unwrap();
                     return;
-                },
+                }
                 Ok(plaintext) => {
                     if plaintext.len() == 1 && plaintext[0] == 1u8 {
                         pass("success");
@@ -172,7 +181,7 @@ fn main() {
                     }
                 }
             }
-        },
+        }
         _ => {
             fail("fail");
             println!("Unexpected response");
@@ -181,16 +190,29 @@ fn main() {
         }
     }
 
-    print!("Sending credential proof to match schema {:?}...", service.schema);
+    print!(
+        "Sending credential proof to match schema {:?}...",
+        service.schema
+    );
     io::stdout().flush().unwrap();
     let mut attestation = attestation_info.unwrap();
     attestation.attributes.insert(0, id.to_vec());
     let plaintext = serde_json::to_string(&attestation).unwrap();
     let mut nonce = [0u8; 12];
     nonce[11] = 1;
-    let ciphertext_and_tag = vault.aead_aes_gcm_encrypt(
-        &completed_key_exchange.encrypt_key(), plaintext.as_bytes(), &nonce, &completed_key_exchange.h()[..]).unwrap();
-    serde_json::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage3(ciphertext_and_tag))).unwrap();
+    let ciphertext_and_tag = vault
+        .aead_aes_gcm_encrypt(
+            &completed_key_exchange.encrypt_key(),
+            plaintext.as_bytes(),
+            &nonce,
+            &completed_key_exchange.h()[..],
+        )
+        .unwrap();
+    serde_json::to_writer(
+        &mut stream,
+        &Messages::NonOktaRequest(OckamMessages::ServiceEnrollmentMessage3(ciphertext_and_tag)),
+    )
+    .unwrap();
     stream.flush().unwrap();
 
     let res = OckamMessages::deserialize(&mut de);
@@ -205,13 +227,18 @@ fn main() {
     nonce[11] = 2;
     match res.unwrap() {
         OckamMessages::ServiceEnrollmentResponse(data) => {
-            match vault.aead_aes_gcm_decrypt(&completed_key_exchange.decrypt_key(), data.as_slice(), &nonce, &completed_key_exchange.h()[..]) {
+            match vault.aead_aes_gcm_decrypt(
+                &completed_key_exchange.decrypt_key(),
+                data.as_slice(),
+                &nonce,
+                &completed_key_exchange.h()[..],
+            ) {
                 Err(e) => {
                     fail("fail");
                     println!("Unable to decrypt message: {}", e.to_string());
                     stream.shutdown(std::net::Shutdown::Both).unwrap();
                     return;
-                },
+                }
                 Ok(plaintext) => {
                     if plaintext.len() == 1 && plaintext[0] == 1u8 {
                         pass("success");
@@ -223,7 +250,7 @@ fn main() {
                     }
                 }
             }
-        },
+        }
         _ => {
             fail("fail");
             println!("Unexpected response");
@@ -243,8 +270,19 @@ fn main() {
             let mut n = [0u8; 12];
             n[10..].copy_from_slice(&nonce.to_be_bytes());
 
-            let ctt = vault.aead_aes_gcm_encrypt(&completed_key_exchange.encrypt_key(), text.as_bytes(), &n, &completed_key_exchange.h()[..]).unwrap();
-            serde_json::to_writer(&mut stream, &Messages::NonOktaRequest(OckamMessages::GeneralMessage(ctt))).unwrap();
+            let ctt = vault
+                .aead_aes_gcm_encrypt(
+                    &completed_key_exchange.encrypt_key(),
+                    text.as_bytes(),
+                    &n,
+                    &completed_key_exchange.h()[..],
+                )
+                .unwrap();
+            serde_json::to_writer(
+                &mut stream,
+                &Messages::NonOktaRequest(OckamMessages::GeneralMessage(ctt)),
+            )
+            .unwrap();
             stream.flush().unwrap();
             buffer = String::new();
         }

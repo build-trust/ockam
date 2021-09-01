@@ -4,8 +4,8 @@ use credentials_example::{
 };
 use ockam::{
     credential_attribute_values, credential_type, reveal_attributes, route, Context,
-    CredentialProtocol, Entity, EntityIdentifier, TrustIdentifierPolicy, Identity, Result,
-    SecureChannels, TcpTransport, Vault, TCP,
+    CredentialProtocol, Entity, EntityIdentifier, Identity, Result, SecureChannels, TcpTransport,
+    TrustIdentifierPolicy, Vault, TCP,
 };
 use std::convert::TryFrom;
 

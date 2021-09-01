@@ -1,4 +1,6 @@
-use credentials_example::{read_line, OFFICE_ISSUER_ADDRESS, OFFICE_LISTENER_ADDRESS, OFFICE_TCP_ADDRESS};
+use credentials_example::{
+    read_line, OFFICE_ISSUER_ADDRESS, OFFICE_LISTENER_ADDRESS, OFFICE_TCP_ADDRESS,
+};
 use ockam::{
     credential_type, Context, CredentialProtocol, Entity, EntityIdentifier, Identity, Profile,
     Result, SecureChannels, TcpTransport, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
