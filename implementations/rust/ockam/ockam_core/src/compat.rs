@@ -101,6 +101,7 @@ pub mod rand {
 
         /// rand::thread_rng()
         /// WARNING: This implementation is neither random nor thread-local.
+        #[allow(unsafe_code)]
         pub fn thread_rng() -> rand_pcg::Lcg64Xsh32 {
             use rand::SeedableRng;
             rand_pcg::Pcg32::seed_from_u64(1234)
