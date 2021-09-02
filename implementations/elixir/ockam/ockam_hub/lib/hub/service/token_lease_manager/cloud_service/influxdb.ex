@@ -4,7 +4,7 @@ defmodule Ockam.TokenLeaseManager.CloudService.Influxdb do
 
   alias Ockam.TokenLeaseManager.Lease
 
-  @endpoint_autorizations "/api/v2/authorizations"
+  @auth_url "/api/v2/authorizations"
   @default_permissions [%{"action" => "read", "resource" => %{"type" => "authorizations"}}]
   @http_ok 200
   @http_created 201
@@ -13,11 +13,10 @@ defmodule Ockam.TokenLeaseManager.CloudService.Influxdb do
 
   @impl true
   def handle_init(_options) do
-    host = Application.get_env(:ockam_hub, :influxdb)[:host]
-    port = Application.get_env(:ockam_hub, :influxdb)[:port]
+    endpoint = Application.get_env(:ockam_hub, :influxdb)[:endpoint]
     token = Application.get_env(:ockam_hub, :influxdb)[:token]
     org = Application.get_env(:ockam_hub, :influxdb)[:org]
-    {:ok, [host: host, port: port, token: token, endpoint: @endpoint_autorizations, org: org]}
+    {:ok, [endpoint: endpoint, token: token, auth_url: @auth_url, org: org]}
   end
 
   @impl true
@@ -66,7 +65,7 @@ defmodule Ockam.TokenLeaseManager.CloudService.Influxdb do
 
   @impl true
   def handle_get_address(cloud_configuration) do
-    {:ok, "#{cloud_configuration[:host]}:#{cloud_configuration[:port]}"}
+    {:ok, "#{cloud_configuration[:endpoint]}"}
   end
 
   defp request(req, decode, right_status_code \\ @http_ok) do
@@ -131,11 +130,11 @@ defmodule Ockam.TokenLeaseManager.CloudService.Influxdb do
     end
   end
 
-  defp build_url(host: host, port: port, token: _token, endpoint: endpoint, org: _org) do
-    "#{host}:#{port}#{endpoint}"
+  defp build_url(endpoint: endpoint, token: _token, auth_url: auth_url, org: _org) do
+    "#{endpoint}#{auth_url}"
   end
 
-  defp build_headers(host: _host, port: _port, token: token, endpoint: _endpoint, org: _org) do
+  defp build_headers(endpoint: _endpoint, token: token, auth_url: _auth_url, org: _org) do
     [
       Authorization: "Token #{token}",
       "Content-Type": "application/json"

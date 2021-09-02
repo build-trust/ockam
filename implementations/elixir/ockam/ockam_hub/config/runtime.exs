@@ -35,8 +35,7 @@ config :ockam_hub, :token_manager,
   storage_service_module: token_manager_storage_service_module
 
 config :ockam_hub, :influxdb,
-  host: System.get_env("HUB_NODE_INFLUXDB_HOST"),
-  port: String.to_integer(System.get_env("HUB_NODE_INFLUXDB_PORT", "8086")),
+  endpoint: System.get_env("HUB_NODE_INFLUXDB_ENDPOINT"),
   token: System.get_env("HUB_NODE_INFLUXDB_TOKEN"),
   org: System.get_env("HUB_NODE_INFLUXDB_ORG")
 
