@@ -194,3 +194,33 @@ config :ockam_hub,
     :stream_index,
     :secure_channel
   ]
+
+cleanup_crontab = System.get_env("CLEANUP_CRONTAB")
+
+cleanup_idle_timeout =
+  case System.get_env("CLEANUP_IDLE_TIMEOUT") do
+    nil ->
+      nil
+
+    "" ->
+      nil
+
+    val ->
+      case Integer.parse(val) do
+        {int, ""} ->
+          int
+
+        _ ->
+          IO.puts("Invalid CLEANUP_IDLE_TIMEOUT: #{val}. Ignoring")
+          nil
+      end
+  end
+
+cleanup_kafka_topics = System.get_env("CLEANUP_KAFKA_TOPICS", "false") == "true"
+
+config :ockam_hub,
+  cleanup: [
+    crontab: cleanup_crontab,
+    idle_timeout: cleanup_idle_timeout,
+    cleanup_kafka_topics: cleanup_kafka_topics
+  ]

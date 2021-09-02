@@ -1,4 +1,4 @@
-defmodule Ockam.Hub.Kafka.TopicCleanup do
+defmodule Ockam.Hub.Cleanup.Kafka.TopicCleanup do
   @moduledoc """
   Helper module to cleanup idle kafka topics
   """
@@ -17,6 +17,12 @@ defmodule Ockam.Hub.Kafka.TopicCleanup do
       idle_topic?(topic, expired_time, options)
     end)
     |> Enum.map(fn {topic_name, _} -> topic_name end)
+  end
+
+  def cleanup_idle_topics(idle_time, options) do
+    idle_time
+    |> find_idle_topics(options)
+    |> cleanup_topics(options)
   end
 
   def cleanup_topics(topics, options) do

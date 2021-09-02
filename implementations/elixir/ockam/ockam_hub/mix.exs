@@ -59,7 +59,8 @@ defmodule Ockam.Hub.MixProject do
       {:telemetry_poller, "~> 0.5.1"},
       {:telemetry_influxdb, "~> 0.2.0"},
       {:jason, "~> 1.2"},
-      {:plug_cowboy, "~> 2.5"}
+      {:plug_cowboy, "~> 2.5"},
+      {:sched_ex, "~> 1.0"}
     ]
   end
 
