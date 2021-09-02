@@ -10,6 +10,11 @@ use std::net::SocketAddr;
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 use tracing::warn;
 
+pub(crate) enum TcpPortalSendWorkerState {
+    Inlet { listener_route: Route },
+    Outlet,
+}
+
 /// A TCP sending message worker
 ///
 /// Create this worker type by calling
@@ -19,6 +24,7 @@ use tracing::warn;
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
 pub(crate) struct TcpPortalSendWorker {
+    state: TcpPortalSendWorkerState,
     tx: OwnedWriteHalf,
     peer: SocketAddr,
     internal_address: Address,
@@ -29,18 +35,19 @@ pub(crate) struct TcpPortalSendWorker {
 
 impl TcpPortalSendWorker {
     pub fn new(
+        state: TcpPortalSendWorkerState,
         tx: OwnedWriteHalf,
         peer: SocketAddr,
         internal_address: Address,
         remote_address: Address,
-        onward_route: Option<Route>,
     ) -> Self {
         Self {
+            state,
             tx,
             peer,
             internal_address,
             remote_address,
-            onward_route,
+            onward_route: None,
             buffer: VecDeque::new(),
         }
     }
@@ -58,6 +65,24 @@ impl TcpPortalSendWorker {
 impl Worker for TcpPortalSendWorker {
     type Context = Context;
     type Message = Any;
+
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        match &self.state {
+            TcpPortalSendWorkerState::Inlet { listener_route } => {
+                let empty_payload: Vec<u8> = vec![];
+                // Force creation of Outlet on the other side
+                ctx.send_from_address(
+                    listener_route.clone(),
+                    empty_payload,
+                    self.remote_address.clone(),
+                )
+                .await?;
+            }
+            TcpPortalSendWorkerState::Outlet => {}
+        }
+
+        Ok(())
+    }
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
@@ -81,9 +106,38 @@ impl Worker for TcpPortalSendWorker {
                 self.buffer.push_back(payload);
             }
         } else {
-            let onward_route = msg.return_route();
-            let onward_value = self.onward_route.take();
-            if onward_value.is_none() {
+            if self.onward_route.is_none() {
+                // TODO: This should be serialized empty vec
+                if msg.payload().len() != 1 {
+                    return Err(TransportError::Protocol.into());
+                }
+                // Update route
+                let onward_route = msg.return_route();
+                self.onward_route = Some(onward_route.clone());
+
+                // If onward route was none, there is two possible reasons for that:
+                //    1. It's inlet, we sent initial empty message to outlet listener,
+                //       it created new dedicated outlet worker for us, and this is empty
+                //       response, the only purpose of which, is to give us correct route for
+                //       further messages
+                //    2. It's outlet, and it's empty initial message sent from inlet to inlet
+                //       listener, that listener forwarded to us. We need to respond so that
+                //       outlet is aware of route to us
+                // Either way, don't stream this message to tcp stream
+                match &self.state {
+                    TcpPortalSendWorkerState::Inlet { .. } => {}
+                    TcpPortalSendWorkerState::Outlet => {
+                        let empty_payload: Vec<u8> = vec![];
+                        ctx.send_from_address(
+                            onward_route.clone(),
+                            empty_payload,
+                            self.remote_address.clone(),
+                        )
+                        .await?
+                    }
+                }
+
+                // We just got correct onward_route, let's send all we had in buffer first
                 while let Some(msg) = self.buffer.pop_front() {
                     let msg = TransportMessage::v1(
                         onward_route.clone(),
@@ -92,17 +146,15 @@ impl Worker for TcpPortalSendWorker {
                     );
                     ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
                 }
-            }
-            // Update route
-            self.onward_route = Some(onward_route.clone());
+            } else {
+                // Send to Tcp stream
+                // Create a message buffer with pre-pended length
+                let msg = self.prepare_message(msg.payload())?;
 
-            // Send to Tcp stream
-            // Create a message buffer with pre-pended length
-            let msg = self.prepare_message(msg.payload())?;
-
-            if self.tx.write(&msg).await.is_err() {
-                warn!("Failed to send message to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+                if self.tx.write(&msg).await.is_err() {
+                    warn!("Failed to send message to peer {}", self.peer);
+                    ctx.stop_worker(ctx.address()).await?;
+                }
             }
         }
 

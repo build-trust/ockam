@@ -1,4 +1,4 @@
-use crate::{TcpPortalRecvProcessor, TcpPortalSendWorker};
+use crate::{TcpPortalRecvProcessor, TcpPortalSendWorker, TcpPortalSendWorkerState};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
@@ -19,7 +19,6 @@ impl PortalWorkerPair {
     ) -> Result<()> {
         trace!("Creating new portal worker pair from stream");
 
-        let tx_addr = Address::random(0);
         let tx_internal_addr = Address::random(0);
         let tx_remote_addr = Address::random(0);
         let rx_addr = Address::random(0);
@@ -27,20 +26,19 @@ impl PortalWorkerPair {
         // Create two workers based on the split TCP I/O streams
         let (rx, tx) = stream.into_split();
         let sender = TcpPortalSendWorker::new(
+            TcpPortalSendWorkerState::Inlet {
+                listener_route: onward_route,
+            },
             tx,
             peer,
             tx_internal_addr.clone(),
             tx_remote_addr.clone(),
-            Some(onward_route),
         );
         let receiver = TcpPortalRecvProcessor::new(rx, tx_internal_addr.clone());
 
         // Derive local worker addresses, and start them
-        ctx.start_worker(
-            vec![tx_addr.clone(), tx_internal_addr, tx_remote_addr],
-            sender,
-        )
-        .await?;
+        ctx.start_worker(vec![tx_internal_addr, tx_remote_addr], sender)
+            .await?;
         ctx.start_processor(rx_addr.clone(), receiver).await?;
 
         // Return a handle to the worker pair
@@ -64,11 +62,11 @@ impl PortalWorkerPair {
         // Create two workers based on the split TCP I/O streams
         let (rx, tx) = stream.into_split();
         let sender = TcpPortalSendWorker::new(
+            TcpPortalSendWorkerState::Outlet,
             tx,
             peer,
             tx_internal_addr.clone(),
             tx_remote_addr.clone(),
-            None,
         );
         let receiver = TcpPortalRecvProcessor::new(rx, tx_internal_addr.clone());
 

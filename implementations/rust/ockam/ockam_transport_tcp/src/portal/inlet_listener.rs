@@ -47,7 +47,7 @@ impl Processor for TcpInletListenProcessor {
         // FIXME: see ArcBool future note
 
         if atomic::check(&self.run) {
-            let (stream, peer) = self.inner.accept().await.unwrap(); //map_err(TcpError::from)?;
+            let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
             PortalWorkerPair::new_inlet(ctx, stream, peer, self.onward_route.clone()).await?;
 
             Ok(true)
