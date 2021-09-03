@@ -8,7 +8,7 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
 license = "Apache-2.0"
 name = "ockam_node"
-version = "0.26.0"
+version = "0.27.0-dev"
 
 [features]
 default = ["std"]
@@ -29,12 +29,12 @@ alloc = ["ockam_core/alloc", "ockam_node_no_std/alloc"]
 dump_internals = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.28.0"     , default_features = false }
+ockam_core = { path = "../ockam_core", version = "0.29.0-dev"      , default_features = false }
 tokio = {version = "1.8", features = ["full"], optional = true}
 tracing = { version = "0.1", default_features = false }
 tracing-subscriber = { version = "0.2", features = ["fmt", "env-filter"], optional = true }
 heapless = { version = "0.7", features = [ "mpmc_large" ], optional = true }
-ockam_node_no_std = { path = "../ockam_node_no_std", version = "0.3.0"    , default-features = false, optional = true }
+ockam_node_no_std = { path = "../ockam_node_no_std", version = "0.4.0-dev"     , default-features = false, optional = true }
 
 [dev-dependencies]
 async-trait =  { version = "0.1" }
