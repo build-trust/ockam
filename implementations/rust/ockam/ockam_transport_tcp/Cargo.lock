@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.28.0-dev"
+version = "0.28.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.26.0-dev"
+version = "0.26.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -381,7 +381,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.2.0-dev"
+version = "0.2.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.22.0-dev"
+version = "0.22.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -720,9 +720,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.10.1"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92036be488bb6594459f2e03b60e42df6f937fe6ca5c5ffdcb539c6b84dc40f5"
+checksum = "b4efe6fc2395938c8155973d7be49fe8d03a843726e285e100a8a383cc0154ce"
 dependencies = [
  "autocfg",
  "bytes",

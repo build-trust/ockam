@@ -475,7 +475,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.20.0-dev"
+version = "0.20.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -498,7 +498,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.18.0-dev"
+version = "0.18.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -515,7 +515,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.20.0-dev"
+version = "0.20.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -574,9 +574,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "typenum"
-version = "1.13.0"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
+checksum = "b63708a265f51345575b27fe43f9500ad611579e764c79edbc2037b1121959ec"
 
 [[package]]
 name = "unicode-xid"
