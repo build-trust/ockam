@@ -5,6 +5,11 @@ on:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
       - 'tools/docker/hub/**'
+      - 'implementations/elixir/ockam/ockam_vault_software/**'
+      - 'implementations/elixir/ockam/ockam/**'
+      - 'implementations/elixir/ockam/ockam_kafka/**'
+      - 'implementations/elixir/ockam/ockam_hub/**'
+      - 'implementations/elixir/ockam/ockam_node_web/**'
 
 jobs:
   docker_hub:
