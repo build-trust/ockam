@@ -17,3 +17,7 @@ indent_size = 2
 # Let the corresponding language formatters deal with indent size
 [{*.{ex,exs,c,h,rs,cmake,cmake.in},CMakeLists.txt,Cargo.lock}]
 indent_size = unset
+
+[*.{drawio,svg}]
+trim_trailing_whitespace = unset
+insert_final_newline = unset
