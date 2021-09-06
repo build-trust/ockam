@@ -1,10 +1,10 @@
-# Secure Remote Access Tunnels
+# Build a secure access tunnel to a service in a remote private network
 
 In this guide, we'll write a few simple [Rust programs](#setup) to programmatically create
 **secure access tunnels to remote services and devices that are running in a private network**,
 behind a NAT. We'll then tunnel arbitrary communication protocols through these secure tunnels.
 
-Ockam is a suite of open source programming libraries that make it easy to create lightweight,
+Ockam is a suite of open source programming libraries that make it easy to create lightweight
 secure channels over complex, multi-hop, multi-protocol transport routes. When we combine
 *Ockam Secure Channels* with *Ockam Routing* and *Transport Inlets/Outlets*, we can
 **transparently tunnel** arbitrary protocols through Ockam's end-to-end encrypted and mutually
@@ -13,6 +13,10 @@ authenticated secure channels.
 This gives us a highly composable set of building blocks that can enable secure access in a wide
 variety of communication topologies - channels can extend to non-IP protocols, channels have end-to-end
 trust guarantees and channels can be tunneled inside other channels.
+
+With this approach, we can easily create secure remote access tunnels to enterprise services in a
+private data center, machines in a factory, health devices in a hospital, microservices in a Kubernetes
+cluster, or even an in-development web-service running on your laptop at home.
 
 <p><img alt="Secure Remote Access Tunnels using Ockam" src="./diagrams/04.png"></p>
 
@@ -23,7 +27,7 @@ is critical for many businesses. However, to make remote access possible, teams 
 exposing their network by opening ports to the Internet.
 
 The 2020 Unit 42 Incident Response and Breach Report studied 1000 ransomware incidents and found
-that **in 50% of ransomware cases the initial attack vector was exposed remote desktop access**.
+that **in 50% of ransomware cases the initial attack vector was - exposed remote desktop access**.
 In February 2021, an attack tried to poison the water supply of a town in Florida using Internet
 exposed TeamViewer access.
 
@@ -38,7 +42,7 @@ authorize access to specific applications. If any one application within a VPN i
 attacker gets unfettered ability to laterally move within that boundary and compromise more systems
 and services.
 
-A much safer approach is to **dynamically create policy-drive, short-lived, granularly authorized,
+A much safer approach is to **dynamically create policy-driven, short-lived, granularly authorized,
 least-privileged access to specific remote services**. The below examples show how we can do
 this, using Ockam, in a few lines of Rust.
 
@@ -103,7 +107,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // 2. Wrap any raw TCP data it receives, from the target TCP server,
     //    as payload of a new Ockam Routing Message. This Ockam Routing Message will have
-    //    its onward_route be set to the route to an Inlet that is knows about because of
+    //    its onward_route be set to the route to an Inlet, that it knows about, because of
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(2).expect("no outlet target given");
@@ -121,7 +125,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
-    //    and send it as raw TCP data to q connected TCP client.
+    //    and send it as raw TCP data to a connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
     tcp.create_inlet(inlet_address, route!["outlet"]).await?;
@@ -172,7 +176,7 @@ a TCP listener to receive Ockam Routing Messages from the outlet node. Since TCP
 enter our private network without exposing listening ports from that private network.
 
 The next two code snippets show how we can create such inlet and outlet nodes and tunnel
-HTTP, over TCP, through it.
+HTTP, over TCP, through them.
 
 Create a file at `examples/02-inlet.rs` and copy the below code snippet to it.
 
@@ -213,7 +217,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     //    the 2nd argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
-    //    and send it as raw TCP data to q connected TCP client.
+    //    and send it as raw TCP data to a connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
     tcp.create_inlet(inlet_address, route_to_outlet).await?;
@@ -249,7 +253,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // 2. Wrap any raw TCP data it receives, from the target TCP server,
     //    as payload of a new Ockam Routing Message. This Ockam Routing Message will have
-    //    its onward_route be set to the route to an Inlet that is knows about because of
+    //    its onward_route be set to the route to an Inlet, that it knows about, because of
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
@@ -367,7 +371,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     //    the 2nd argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
-    //    and send it as raw TCP data to q connected TCP client.
+    //    and send it as raw TCP data to a connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
     tcp.create_inlet(inlet_address, route_to_outlet).await?;
@@ -417,7 +421,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // 2. Wrap any raw TCP data it receives, from the target TCP server,
     //    as payload of a new Ockam Routing Message. This Ockam Routing Message will have
-    //    its onward_route be set to the route to an Inlet that is knows about because of
+    //    its onward_route be set to the route to an Inlet, that it knows about, because of
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
@@ -468,8 +472,8 @@ When we run this, we see the data flow as shown in the [diagram above](#03-tunne
 
 * An HTTP request is wrapped in an Ockam Routing message and routed to the mutually authenticated
   secure channel.
-* The channel encrypts this routing message using an AEAD construction and makes the encrypted
-  message the payload of a brand new Ockam Routing message.
+* The channel encrypts this routing message (using an AEAD construction) and makes this encrypted
+  message in-turn a payload of a brand new Ockam Routing message.
 * This new message is routed over TCP to the other end of the channel where it is decrypted and checked
   for authenticity and integrity.
 * This decrypted message is itself an Ockam Routing message destined for the Outlet.
@@ -532,7 +536,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     //
     // 2. Wrap any raw TCP data it receives, from the target TCP server,
     //    as payload of a new Ockam Routing Message. This Ockam Routing Message will have
-    //    its onward_route be set to the route to an Inlet that is knows about because of
+    //    its onward_route be set to the route to an Inlet, that it knows about, because of
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
@@ -594,7 +598,7 @@ SSH, netcat and various monitoring and logging protocols can all be tunneled in 
 
 The above pattern of matryoshka dolls like nesting of Ockam Routing messages inside other Ockam
 Routing messages is incredibly powerful, lightweight and composable. It allows us to create
-**tunnels inside tunnels inside tunnels.**
+**tunnels - inside tunnels - inside tunnels.**
 
 In the examples above, we saw a glimpse of the flexible set of
 [composable building blocks](../../guides/rust#readme) available in the Ockam rust crates. These building
@@ -602,7 +606,7 @@ blocks can be easily combined for a variety of end-to-end secure, private,
 and [trustful communication use-cases](../../../#next-steps).
 
 Ockam's Identity and Trust features plug into existing workforce identity and enterprise access
-policy engines to enable **dynamically created, policy-drive, short-lived, granularly authorized,
+policy engines to enable **dynamically created, policy-driven, short-lived, granularly authorized,
 least-privileged access to specific remote services**.
 
 This approach minimizes the vulnerability surface of remote access. Inlets can be opened just-in-time
