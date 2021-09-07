@@ -48,5 +48,5 @@ hex = { version = "0.4", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
-core2 = { git = "ssh://git@github.com/ockam-network/core2.git", branch = "ockam-network/add-read-to-end", default-features = false, optional = true }
-spin = { version = "0.9.1", default-features = false, features = ["mutex", "spin_mutex"], optional = true }
+core2 = { git = "https://github.com/technocreatives/core2.git", default-features = false, optional = true }
+spin = { version = "0.9.1", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
