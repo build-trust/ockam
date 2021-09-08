@@ -1,25 +1,14 @@
-use ockam::{Context, Result, Route, TcpTransport};
+use ockam::{route, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
-    tcp.listen("127.0.0.1:4000").await?;
+    // We know network address of the node with an Outlet, we also now that Outlet lives at "outlet"
+    // address at that node.
 
-    // Wait to receive a message from an Ockam Node that is running a TCP Transport Outlet
-    // at Ockam Worker address - "outlet".
-    //
-    // Return Route of that message, with a little modification, gives us route to the outlet
-    // We replace the last hop address in return route - "app" with "outlet".
-    //
-    // The works because the message is sent to us from the main function of the node that
-    // is running the outlet. Main functions have Ockam worker address "app". We replace it
-    // with "outlet" to get route to our TCP Transport Outlet.
-
-    let msg = ctx.receive::<String>().await?.take();
-    let route_to_outlet: Route = msg.return_route().modify().pop_back().append("outlet").into();
+    let route_to_outlet = route![(TCP, "127.0.0.1:4000"), "outlet"];
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001

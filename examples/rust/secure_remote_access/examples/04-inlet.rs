@@ -1,4 +1,4 @@
-use ockam::{route, Context, Result, TcpTransport, TCP};
+use ockam::{route, Context, Result, Route, TcpTransport, TCP};
 use ockam::{Entity, SecureChannels, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
@@ -11,18 +11,19 @@ async fn main(ctx: Context) -> Result<()> {
     // TCP Transport Outlet.
     //
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
-    // over TCP at "127.0.0.1:4000" and its secure channel listener is
-    // at address: "secure_channel_listener_service".
-
+    // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
+    // points to secure channel listener.
     let vault = Vault::create(&ctx)?;
     let mut e = Entity::create(&ctx, &vault)?;
-    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener_service"];
+
+    // Expect second command line argument to be the Outlet node forwarder address
+    let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
+    let r = route![(TCP, "1.node.ockam.network:4000"), forwarding_address];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy)?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
-
-    let route_to_outlet = route![channel, "outlet"];
+    let route_to_outlet: Route = route![channel, "outlet"];
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
