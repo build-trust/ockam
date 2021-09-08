@@ -1,4 +1,4 @@
-use ockam::{route, Context, Result, TcpTransport, TCP};
+use ockam::{Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -24,15 +24,8 @@ async fn main(ctx: Context) -> Result<()> {
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
     tcp.create_outlet("outlet", outlet_target).await?;
 
-    // Send a Ockam Routing Message, over TCP, to the node that is
-    // running a TCP Transport Inlet.
-    //
-    // For this example we know that this node is listening for Ockam Routing Messages
-    // over TCP at "127.0.0.1:4000" and its main function is waiting for a message from us.
-    // The Ockam Worker address of the main function is "app".
-
-    let r = route![(TCP, "127.0.0.1:4000"), "app"];
-    ctx.send(r, "outlet".to_string()).await?;
+    // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
+    tcp.listen("127.0.0.1:4000").await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
