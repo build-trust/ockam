@@ -36,7 +36,7 @@ jobs:
             /root/.cargo/registry/index/
             /root/.cargo/registry/cache/
             /root/.cargo/git/db/
-            implementations/rust/ockam/ockam_node/target
+            target
           key: ${{ runner.os }}-cache-${{ env.RANDOM }}
           restore-keys: ${{ runner.os }}-cache-
 
