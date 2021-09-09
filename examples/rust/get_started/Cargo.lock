@@ -804,7 +804,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.28.0-dev"
+version = "0.28.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -834,7 +834,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.24.0-dev"
+version = "0.24.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -852,7 +852,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.29.0-dev"
+version = "0.29.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.18.0-dev"
+version = "0.18.0"
 dependencies = [
  "async-trait",
  "bls12_381_plus",
@@ -892,7 +892,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.21.0-dev"
+version = "0.21.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -901,7 +901,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.21.0-dev"
+version = "0.21.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -911,7 +911,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.27.0-dev"
+version = "0.27.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -921,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.18.0-dev"
+version = "0.18.0"
 dependencies = [
  "quote",
  "syn",
@@ -929,7 +929,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.3.0-dev"
+version = "0.3.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -937,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.23.0-dev"
+version = "0.23.0"
 dependencies = [
  "async-trait",
  "futures 0.3.17",
@@ -954,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.17.0-dev"
+version = "0.17.0"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -969,7 +969,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.23.0-dev"
+version = "0.23.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -991,7 +991,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.23.0-dev"
+version = "0.23.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -1002,7 +1002,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.20.0-dev"
+version = "0.20.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -1378,9 +1378,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.6"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9204c41a1597a8c5af23c82d1c921cb01ec0a4c59e07a9c7306062829a3903f3"
+checksum = "b69f9a4c9740d74c5baa3fd2e547f9525fa8088a8a958e0ca2409a514e33f5fa"
 dependencies = [
  "block-buffer",
  "cfg-if",
@@ -1415,7 +1415,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.21.0-dev"
+version = "0.21.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1436,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.19.0-dev"
+version = "0.19.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1453,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.21.0-dev"
+version = "0.21.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1471,7 +1471,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.19.0-dev"
+version = "0.19.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1517,9 +1517,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.75"
+version = "1.0.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7f58f7e8eaa0009c5fec437aabf511bd9933e4b2d7407bd05273c01a8906ea7"
+checksum = "c6f107db402c2c2055242dbf4d2af0e69197202e9faacbef9571bbe47f5a1b84"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1546,18 +1546,18 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "thiserror"
-version = "1.0.28"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "283d5230e63df9608ac7d9691adc1dfb6e701225436eb64d0b9a7f0a5a04f6ec"
+checksum = "602eca064b2d83369e2b2f34b09c70b605402801927c65c11071ac911d299b88"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.28"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa3884228611f5cd3608e2d409bf7dce832e4eb3135e3f11addbd7e41bd68e71"
+checksum = "bad553cc2c78e8de258400763a647e80e6d1b31ee237275d756f6836d204494c"
 dependencies = [
  "proc-macro2",
  "quote",
