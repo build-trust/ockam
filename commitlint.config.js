@@ -88,5 +88,7 @@ module.exports = {
   },
   "ignores": [
     (commit) => commit === '664b8f72b90c4686c513042bcd72666418953f09',
+    (commit) => commit === '168029387b702b9727a5d22a41281b9bb7c152a7',
+    (commit) => commit === '55d0acb15f70ae42b65c03323a8d84d527d43194',
   ],
 };
