@@ -27,7 +27,7 @@ disabled as follows
 
 ```
 [dependencies]
-signature_bls = { version = "0.19.0"   , default-features = false }
+signature_bls = { version = "0.19.0"    , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

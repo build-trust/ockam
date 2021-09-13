@@ -33,7 +33,7 @@ disabled as follows
 
 ```
 [dependencies]
-ockam_vault = { version = "0.23.0"   , default-features = false }
+ockam_vault = { version = "0.23.0"    , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

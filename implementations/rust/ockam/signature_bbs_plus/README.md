@@ -25,7 +25,7 @@ signature_bbs_plus = "0.21.0"
 
 ```
 [dependencies]
-signature_bbs_plus = { version = "0.21.0"   , default-features = false }
+signature_bbs_plus = { version = "0.21.0"    , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

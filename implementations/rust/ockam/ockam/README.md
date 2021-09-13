@@ -57,6 +57,12 @@ end-to-end. The Kafka instance, the intermediary cloud service and attackers on 
 to see or change the contents of en-route messages. The application data in Kafka is encrypted.
 [👉][e2ee-kafka-guide]
 
+* [__Build Secure Remote Access Tunnels__](./documentation/use-cases/secure-remote-access-tunnels#readme):
+In this guide, we'll write a few simple Rust programs to programmatically create secure access tunnels to remote
+services and devices that are running in a private network, behind a NAT. We'll then tunnel arbitrary communication
+protocols through these secure tunnels.
+[👉](./documentation/use-cases/secure-remote-access-tunnels#readme)
+
 ## Usage
 
 Add this to your `Cargo.toml`:
