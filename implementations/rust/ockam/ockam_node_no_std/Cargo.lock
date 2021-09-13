@@ -36,7 +36,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "executor",
 ]

@@ -6,7 +6,7 @@ change_dir "$OCKAM_RUST"
 for CRATE in *
 do
   change_dir $CRATE
-    cargo -q bump minor -p dev
+    cargo -q bump minor
     cargo -q generate-lockfile
     VERSION="$(crate_version "$CRATE")"
     echo "$CRATE $VERSION"
