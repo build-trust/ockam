@@ -32,7 +32,7 @@ disabled as follows
 
 ```
 [dependencies]
-ockam_core = { version = "0.29.0"   , default-features = false }
+ockam_core = { version = "0.29.0"    , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

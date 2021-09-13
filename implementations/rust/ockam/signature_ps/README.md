@@ -23,7 +23,7 @@ signature_ps = "0.19.0"
 
 ```
 [dependencies]
-signature_ps = { version = "0.19.0"   , default-features = false }
+signature_ps = { version = "0.19.0"    , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

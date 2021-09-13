@@ -12,8 +12,7 @@ change_dir "$OCKAM_RUST"
 
     change_dir "$CRATE"
       echo "Versioning $CRATE"
-      export DEV_VERSION=$(crate_version $CRATE)
-      VERSION=$(echo $DEV_VERSION | perl -e '<STDIN> =~ m/^(.*?)-dev/ and print "$1\n"')
+      export VERSION=$(crate_version $CRATE)
       echo "Updating $CRATE README.md to $VERSION"
       echo "Updating $CRATE Cargo.toml to $VERSION"
       "$SCRIPT_DIR"/upgrade-version.sh "$PWD/Cargo.toml" "$VERSION"
