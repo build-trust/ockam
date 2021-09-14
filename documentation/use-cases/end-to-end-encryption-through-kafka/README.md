@@ -179,6 +179,7 @@ Create a file at `examples/bob.rs` and copy the below code snippet to it.
 // examples/bob.rs
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
+use std::env;
 
 struct Echoer;
 
@@ -220,7 +221,9 @@ async fn main(ctx: Context) -> Result<()> {
     // - a receiver (consumer) for the `alice_to_bob` stream
     // - a sender (producer) for the `bob_to_alice` stream.
 
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let ockam_hub_hostname: &str = &env::var("OCKAM_HUB_NODE").unwrap_or("1.node.ockam.network:4000".to_string());
+
+    let node_in_hub = (TCP, ockam_hub_hostname);
     let b_to_a_stream_address = Unique::with_prefix("bob_to_alice");
     let a_to_b_stream_address = Unique::with_prefix("alice_to_bob");
 
@@ -235,7 +238,7 @@ async fn main(ctx: Context) -> Result<()> {
         )
         .await?;
 
-    println!("\n[✓] Streams were created on the node at: 1.node.ockam.network:4000");
+    println!("\n[✓] Streams were created on the node at: {}", ockam_hub_hostname);
     println!("\nbob_to_alice stream address is: {}", b_to_a_stream_address);
     println!("alice_to_bob stream address is: {}\n", a_to_b_stream_address);
 
@@ -257,6 +260,7 @@ Create a file at `examples/alice.rs` and copy the below code snippet to it.
 // examples/alice.rs
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, TcpTransport, Unique, TCP};
+use std::env;
 use std::io;
 
 #[ockam::node]
@@ -293,7 +297,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Starts a sender (producer) for the alice_to_bob stream and a receiver (consumer)
     // for the `bob_to_alice` stream to get two-way communication.
 
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let ockam_hub_hostname: &str = &env::var("OCKAM_HUB_NODE").unwrap_or("1.node.ockam.network:4000".to_string());
+
+    let node_in_hub = (TCP, ockam_hub_hostname);
     let (sender, _receiver) = Stream::new(&ctx)?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
