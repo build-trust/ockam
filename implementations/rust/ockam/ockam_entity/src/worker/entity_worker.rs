@@ -1,14 +1,14 @@
 use crate::{
     CredentialHolder, CredentialIssuer, CredentialProof, CredentialPublicKey,
-    CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed, Handle,
-    Identity, IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact, Profile,
+    CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed, Identity,
+    IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact, Profile,
     ProfileIdentifier, ProfileState, SecureChannelTrait, TrustPolicyImpl,
 };
-use async_trait::async_trait;
 use core::result::Result::Ok;
-use ockam_core::compat::{boxed::Box, collections::HashMap};
-use ockam_core::{Address, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{
+    async_trait::async_trait, compat::collections::HashMap, Address, Result, Routed, Worker,
+};
+use ockam_node::{Context, Handle};
 use ockam_vault_sync_core::VaultSync;
 
 #[cfg(feature = "lease_proto_json")]
