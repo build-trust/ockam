@@ -57,11 +57,11 @@ end-to-end. The Kafka instance, the intermediary cloud service and attackers on 
 to see or change the contents of en-route messages. The application data in Kafka is encrypted.
 [👉][e2ee-kafka-guide]
 
-* [__Build Secure Remote Access Tunnels__](./documentation/use-cases/secure-remote-access-tunnels#readme):
+* [__Build Secure Remote Access Tunnels__][secure-remote-access-tunnels]:
 In this guide, we'll write a few simple Rust programs to programmatically create secure access tunnels to remote
 services and devices that are running in a private network, behind a NAT. We'll then tunnel arbitrary communication
 protocols through these secure tunnels.
-[👉](./documentation/use-cases/secure-remote-access-tunnels#readme)
+[👉][secure-remote-access-tunnels]
 
 ## Usage
 
@@ -69,7 +69,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam = "0.28.0"
+ockam = "0.28.1"
 ```
 
 ## License
@@ -96,3 +96,4 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 [e2ee-rust-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme
 [e2ee-kafka-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-through-kafka#readme
 [step-by-step-rust-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/guides/rust#readme
+[secure-remote-access-tunnels]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/secure-remote-access-tunnels
