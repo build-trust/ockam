@@ -69,3 +69,17 @@ impl Handle {
     }
 
 }
+
+
+// Author : Martin <mcodesmith@gmail.com>
+impl Handle {
+    /// Gets inner `Context` as reference
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
+
+    /// Gets inner `Address` as reference
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+}
