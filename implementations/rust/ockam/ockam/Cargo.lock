@@ -210,10 +210,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f29fb62df98b3994d31d6ebb80607e75f784bc814bb801b4c75d6a595fcead26"
 dependencies = [
  "digest",
- "ff",
- "group",
+ "ff 0.10.1",
+ "group 0.10.0",
  "heapless",
- "pairing",
+ "pairing 0.20.0",
+ "rand_core 0.6.3",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "bls12_381_plus"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d9ca230350e9fa6d2bcbf2eec0dd805a8aa0996ee8884da282097ca7e50a29b"
+dependencies = [
+ "digest",
+ "ff 0.11.0",
+ "group 0.11.0",
+ "heapless",
+ "pairing 0.21.0",
  "rand_core 0.6.3",
  "serde",
  "subtle",
@@ -486,6 +503,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ff"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2958d04124b9f27f175eaeb9a9f383d026098aa837eadd8ba22c11f13a05b9e"
+dependencies = [
+ "bitvec",
+ "rand_core 0.6.3",
+ "subtle",
+]
+
+[[package]]
 name = "funty"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -658,7 +686,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c363a5301b8f153d80747126a04b3c82073b9fe3130571a9d170cacdeaf7912"
 dependencies = [
  "byteorder",
- "ff",
+ "ff 0.10.1",
+ "rand_core 0.6.3",
+ "subtle",
+]
+
+[[package]]
+name = "group"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5ac374b108929de78460075f3dc439fa66df9d8fc77e8f12caa5165fcf0c89"
+dependencies = [
+ "byteorder",
+ "ff 0.11.0",
  "rand_core 0.6.3",
  "subtle",
 ]
@@ -916,7 +956,7 @@ version = "0.32.0"
 dependencies = [
  "arrayref",
  "async-trait",
- "bls12_381_plus",
+ "bls12_381_plus 0.6.0",
  "hex",
  "ockam_channel",
  "ockam_core",
@@ -981,9 +1021,9 @@ name = "ockam_entity"
 version = "0.22.0"
 dependencies = [
  "async-trait",
- "bls12_381_plus",
+ "bls12_381_plus 0.5.1",
  "cfg-if",
- "group",
+ "group 0.10.0",
  "heapless",
  "ockam_channel",
  "ockam_core",
@@ -1161,7 +1201,16 @@ version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7de9d09263c9966e8196fe0380c9dbbc7ea114b5cf371ba29004bc1f9c6db7f3"
 dependencies = [
- "group",
+ "group 0.10.0",
+]
+
+[[package]]
+name = "pairing"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2e415e349a3006dd7d9482cdab1c980a845bed1377777d768cb693a44540b42"
+dependencies = [
+ "group 0.11.0",
 ]
 
 [[package]]
@@ -1554,13 +1603,13 @@ name = "signature_bbs_plus"
 version = "0.25.0"
 dependencies = [
  "blake2",
- "bls12_381_plus",
+ "bls12_381_plus 0.5.1",
  "digest",
- "ff",
- "group",
+ "ff 0.10.1",
+ "group 0.10.0",
  "hmac-drbg",
  "managed",
- "pairing",
+ "pairing 0.20.0",
  "rand_core 0.6.3",
  "serde",
  "signature_bls",
@@ -1574,11 +1623,11 @@ dependencies = [
 name = "signature_bls"
 version = "0.23.0"
 dependencies = [
- "bls12_381_plus",
- "ff",
- "group",
+ "bls12_381_plus 0.5.1",
+ "ff 0.10.1",
+ "group 0.10.0",
  "hkdf",
- "pairing",
+ "pairing 0.20.0",
  "rand_core 0.6.3",
  "serde",
  "sha2",
@@ -1592,10 +1641,10 @@ name = "signature_core"
 version = "0.25.0"
 dependencies = [
  "blake2",
- "bls12_381_plus",
+ "bls12_381_plus 0.5.1",
  "digest",
- "ff",
- "group",
+ "ff 0.10.1",
+ "group 0.10.0",
  "hashbrown 0.11.2",
  "heapless",
  "rand_core 0.6.3",
@@ -1610,13 +1659,13 @@ name = "signature_ps"
 version = "0.23.0"
 dependencies = [
  "blake2",
- "bls12_381_plus",
+ "bls12_381_plus 0.5.1",
  "digest",
- "ff",
- "group",
+ "ff 0.10.1",
+ "group 0.10.0",
  "hkdf",
  "hmac-drbg",
- "pairing",
+ "pairing 0.20.0",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "serde",
@@ -1886,8 +1935,8 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ab2c37f12d35ff2f9b754e450a6e0930e1d2b7b9df6d6bf4494505e4b71071b"
 dependencies = [
- "ff",
- "group",
+ "ff 0.10.1",
+ "group 0.10.0",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "serde",
