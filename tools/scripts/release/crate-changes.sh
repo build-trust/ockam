@@ -10,8 +10,8 @@ function crate_changes {
   SPAN="$SHA..HEAD"
   CHANGES="$CRATE_DIR/Changelog-INCOMING.md"
   VERSION=$(crate_version $CRATE)
-  printf "## v%s - $(date -I)\n### Added\n### Changed\n- Dependencies updated.\n### Deleted\n\n"  "$VERSION" >"$CHANGES"
-  git log --oneline --pretty=reference "$SPAN" "$CRATE_DIR" | perl -pe 's/^[\w\d]+\s+\(|,\s+.*?\)$//g' >>"$CHANGES"
+  printf "## v%s - $(date -I)\n### Changed\n- Fixed incorrect link in README\n\n"  "$VERSION" >"$CHANGES"
+#  git log --oneline --pretty=reference "$SPAN" "$CRATE_DIR" | perl -pe 's/^[\w\d]+\s+\(|,\s+.*?\)$//g' >>"$CHANGES"
   cat "$CHANGES"
 }
 
