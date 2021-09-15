@@ -1,6 +1,6 @@
-use crate::{Entity, EntityWorker, Handle};
+use crate::{Entity, EntityWorker};
 use ockam_core::{Address, Result};
-use ockam_node::{block_future, Context};
+use ockam_node::{block_future, Context, Handle};
 
 /// Builder for `Entity`
 pub struct EntityBuilder {
