@@ -23,6 +23,7 @@ mod address_record;
 mod context;
 mod error;
 mod executor;
+mod handle;
 mod mailbox;
 mod messages;
 mod node;
@@ -34,6 +35,7 @@ mod tests;
 pub(crate) use address_record::*;
 pub use context::*;
 pub use executor::*;
+pub use handle::*;
 pub use mailbox::*;
 pub use messages::*;
 
