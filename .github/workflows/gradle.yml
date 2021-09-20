@@ -22,7 +22,7 @@ jobs:
       matrix:
         # https://github.com/actions/virtual-environments#available-environments
         os: [ubuntu-18.04, ubuntu-20.04, macos-10.15] # windows-2016, windows-2019
-        java: [8, 9, 10, 11, 12, 13, 14, 15, 16]
+        java: [8, 9, 10, 11, 12, 13, 15, 16]
 
     runs-on: ${{ matrix.os }}
 
