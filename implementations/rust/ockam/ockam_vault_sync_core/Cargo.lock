@@ -519,9 +519,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.101"
+version = "0.2.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
+checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
 
 [[package]]
 name = "lock_api"
@@ -639,7 +639,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -655,7 +655,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "heapless",
  "ockam_core",
@@ -667,14 +667,14 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "executor",
 ]
 
 [[package]]
 name = "ockam_vault"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -697,7 +697,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -709,7 +709,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -728,7 +728,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "quote",
  "syn",
@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -1053,7 +1053,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1074,7 +1074,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1091,7 +1091,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1109,7 +1109,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1230,9 +1230,9 @@ dependencies = [
 
 [[package]]
 name = "tracing"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2ba9ab62b7d6497a8638dfda5e5c4fb3b2d5a7fca4118f2b96151c8ef1a437e"
+checksum = "84f96e095c0c82419687c20ddf5cb3eadb61f4e1405923c9dc8e53a1adacbda8"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
@@ -1283,9 +1283,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.22"
+version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62af966210b88ad5776ee3ba12d5f35b8d6a2b2a12168f3080cf02b814d7376b"
+checksum = "fdd0568dbfe3baf7048b7908d2b32bca0d81cd56bec6d2a8f894b01d74f86be3"
 dependencies = [
  "ansi_term",
  "chrono",
