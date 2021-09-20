@@ -141,9 +141,9 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "libc"
-version = "0.2.101"
+version = "0.2.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
+checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
 
 [[package]]
 name = "memchr"
@@ -168,7 +168,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "cfg-if",
  "heapless",
