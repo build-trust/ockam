@@ -1,5 +1,5 @@
 [package]
-name = "secure_remote_access"
+name = "tcp_inlet_and_outlet"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2018"
