@@ -78,8 +78,18 @@ impl Handle {
         &self.ctx
     }
 
+    /// Gets inner `Context` as mutable reference
+    pub fn ctx_mut(&mut self) -> &mut Context {
+        &mut self.ctx
+    }
+
     /// Gets inner `Address` as reference
     pub fn address(&self) -> &Address {
         &self.address
+    }
+
+    /// Gets inner `Address` as mutable reference
+    pub fn address_mut(&mut self) -> &mut Address {
+        &mut self.address
     }
 }
