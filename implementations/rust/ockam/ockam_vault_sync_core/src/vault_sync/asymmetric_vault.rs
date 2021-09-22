@@ -1,6 +1,5 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 use ockam_core::Result;
-use ockam_node::block_future;
 use ockam_vault_core::{AsymmetricVault, PublicKey, Secret};
 
 impl AsymmetricVault for VaultSync {
@@ -9,21 +8,16 @@ impl AsymmetricVault for VaultSync {
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        block_future(&self.ctx.runtime(), async move {
-            self.send_message(VaultRequestMessage::EcDiffieHellman {
-                context: context.clone(),
-                peer_public_key: peer_public_key.clone(),
-            })
-            .await?;
+        let resp = self.call(VaultRequestMessage::EcDiffieHellman {
+            context: context.clone(),
+            peer_public_key: peer_public_key.clone(),
+        })?;
 
-            let resp = self.receive_message().await?;
-
-            if let VaultResponseMessage::EcDiffieHellman(s) = resp {
-                Ok(s)
-            } else {
-                Err(VaultSyncCoreError::InvalidResponseType.into())
-            }
-        })
+        if let VaultResponseMessage::EcDiffieHellman(s) = resp {
+            Ok(s)
+        } else {
+            Err(VaultSyncCoreError::InvalidResponseType.into())
+        }
     }
 }
 
