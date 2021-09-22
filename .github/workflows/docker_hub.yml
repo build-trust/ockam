@@ -1,6 +1,11 @@
 name: docker_hub
 on:
   workflow_dispatch:
+    inputs:
+      semver_bump:
+        description: 'semver bump, one of: major, minor, patch'
+        required: true
+        default: 'patch'
   push:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
@@ -17,10 +22,20 @@ jobs:
     environment:
       name: artifacts
     steps:
+      - name: Set environment variables
+        id: set
+        run: |
+          INPUTS_semver_bump=${{ github.event.inputs.semver_bump }}
+          if [ -z "$INPUTS_semver_bump" ]; then # if empty set to patch
+            echo "::set-output name=SEMVER_BUMP::patch"
+          else
+            echo "::set-output name=SEMVER_BUMP::${INPUTS_semver_bump}"
+          fi
+
       - name: Repository Dispatch To Dev Builder
         uses: peter-evans/repository-dispatch@a3b37769d28120b0a633f6985f454bbc6293c946
         with:
-          token: ${{ secrets.SECRET_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
           repository: ockam-network/ockam_node_release
           event-type: hub_dev_builder
-          client-payload: '{"sha": "${{ github.sha }}"}'
+          client-payload: '{"sha": "${{ github.sha }}", "semver_bump": "${{ steps.set.outputs.SEMVER_BUMP }}"}'
