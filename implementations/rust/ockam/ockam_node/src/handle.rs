@@ -2,7 +2,8 @@ use ockam_core::{Address, Message, Result};
 
 use crate::{block_future, Context};
 
-/// Wrapper for `Context` and `Address`
+/// Generic component wrapper for `Context` and `Address`
+/// where frequent request and response are necessary.
 pub struct Handle {
     ctx: Context,
     address: Address,
@@ -24,7 +25,7 @@ impl Clone for Handle {
 }
 
 impl Handle {
-    /// Create a new `Handle` from a `Context` and `Address`
+    /// Create a new `Handle` with  a `Context` and `Address`
     pub fn new(ctx: Context, address: Address) -> Self {
         Handle { ctx, address }
     }
@@ -42,7 +43,7 @@ impl Handle {
         )
     }
 
-    /// Asynchronously sends and receiving a message using a new `Context`
+    /// Asynchronously preform a request & response
     pub async fn async_call<I: Message + Send + 'static, O: Message + Send + 'static>(
         &self,
         msg: I,
@@ -57,7 +58,7 @@ impl Handle {
         Ok(msg.take().body())
     }
 
-    /// Send and receiving a message that blocks current `Worker` without blocking the executor.
+    /// Request & response that blocks current `Worker` without blocking the executor.
     pub fn call<I: Message + Send + 'static, O: Message + Send + 'static>(
         &self,
         msg: I,
