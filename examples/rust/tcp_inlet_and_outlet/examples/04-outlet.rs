@@ -8,7 +8,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
     let mut e = Entity::create(&ctx, &vault)?;
-    e.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
@@ -36,9 +36,9 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "secure_channel_listener_service").await?;
+    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "secure_channel_listener").await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
-    println!("Forwarding address for Outlet is:");
+    println!("Forwarding address in Hub is:");
     println!("{}", forwarder.remote_address());
 
     // We won't call ctx.stop() here,

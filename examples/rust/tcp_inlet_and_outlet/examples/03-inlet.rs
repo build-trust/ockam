@@ -12,11 +12,11 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
     // over TCP at "127.0.0.1:4000" and its secure channel listener is
-    // at address: "secure_channel_listener_service".
+    // at address: "secure_channel_listener".
 
     let vault = Vault::create(&ctx)?;
     let mut e = Entity::create(&ctx, &vault)?;
-    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener_service"];
+    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy)?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
