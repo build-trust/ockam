@@ -18,7 +18,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // 2. Wrap any raw TCP data it receives, from the target TCP server,
     //    as payload of a new Ockam Routing Message. This Ockam Routing Message will have
-    //    its onward_route be set to the route to an Inlet that is knows about because of
+    //    its onward_route be set to the route to an Inlet, that it knows about, because of
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(2).expect("no outlet target given");
@@ -36,7 +36,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
-    //    and send it as raw TCP data to q connected TCP client.
+    //    and send it as raw TCP data to a connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
     tcp.create_inlet(inlet_address, route!["outlet"]).await?;

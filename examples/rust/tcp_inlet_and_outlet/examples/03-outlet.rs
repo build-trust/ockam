@@ -9,12 +9,12 @@ async fn main(ctx: Context) -> Result<()> {
     // Create:
     //   1. A Vault to store our cryptographic keys
     //   2. An Entity to represent this Node
-    //   3. A Secure Channel Listener at Worker address - secure_channel_listener_service
+    //   3. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create(&ctx)?;
     let mut e = Entity::create(&ctx, &vault)?;
-    e.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
