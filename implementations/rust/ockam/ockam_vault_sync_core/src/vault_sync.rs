@@ -2,7 +2,7 @@ use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
 #[cfg(not(feature = "std"))]
 use ockam_core::compat::rand::random;
 use ockam_core::{Address, Result, ResultMessage, Route};
-use ockam_node::{block_future, Context};
+use ockam_node::{block_future, Context, Handle};
 #[cfg(feature = "std")]
 use rand::random;
 use tracing::debug;
@@ -26,19 +26,26 @@ pub use verifier::*;
 
 /// Vault sync wrapper
 pub struct VaultSync {
-    ctx: Context,
-    vault_worker_address: Address,
+    // ctx: Context,
+    // vault_worker_address: Address,
+    handle: Handle
 }
 
 impl VaultSync {
+    // Todo: mark as deprecated
+    #[deprecated]
+    #[allow(unused)]
     pub(crate) async fn send_message(&self, m: VaultRequestMessage) -> Result<()> {
-        self.ctx
-            .send(Route::new().append(self.vault_worker_address.clone()), m)
+        self.handle.ctx()
+            .send(Route::new().append(self.handle.address().clone()), m)
             .await
     }
 
+    // Todo: mark as deprecated
+    #[deprecated]
+    #[allow(unused)]
     pub(crate) async fn receive_message(&mut self) -> Result<VaultResponseMessage> {
-        self.ctx
+        self.handle.ctx_mut()
             .receive::<ResultMessage<VaultResponseMessage>>()
             .await?
             .take()
@@ -56,9 +63,9 @@ impl Clone for VaultSync {
 impl VaultSync {
     /// Start another Vault at the same address.
     pub fn start_another(&self) -> Result<Self> {
-        let vault_worker_address = self.vault_worker_address.clone();
+        let vault_worker_address = self.handle.address().clone();
 
-        let clone = VaultSync::create_with_worker(&self.ctx, &vault_worker_address)?;
+        let clone = VaultSync::create_with_worker(&self.handle.ctx(), &vault_worker_address)?;
 
         Ok(clone)
     }
@@ -80,9 +87,9 @@ impl VaultSync {
             async move { ctx.new_context(address).await },
         )?;
 
+
         Ok(Self {
-            ctx,
-            vault_worker_address: vault.clone(),
+            handle: Handle::new(ctx, vault.clone())
         })
     }
 
@@ -95,6 +102,6 @@ impl VaultSync {
 
     /// Return the Vault worker address
     pub fn address(&self) -> Address {
-        self.vault_worker_address.clone()
+        self.handle.address().clone()
     }
 }
