@@ -2,12 +2,13 @@
 
 In this hands-on guide, we'll create two simple [rust programs](#code-walkthrough) to
 __transparently tunnel__ arbitrary application layer communication through Ockam's end-to-end encrypted,
-mutually authenticated secure channels. These example programs are also available in a docker image
-so you can [try them](#an-end-to-end-encrypted-tunnel) without setting up a rust toolchain.
+mutually authenticated secure channels. These example programs are also available in a docker image so you
+can [try them](#end-to-end-encryption-over-two-tcp-connection-hops) without setting up a rust toolchain.
 
-We'll walk through ~30 lines of Rust that combine Ockam's Routing, Transports, and Secure
-Channel building blocks to create an end-to-end guarantee of _integrity, authenticity, and confidentiality_
-for application data over multi-hop, multi-protocol, transport routes.
+We'll walk through [~30 lines of Rust](#04-end-to-end-encryption-over-two-tcp-connection-hops) that
+combine Ockam's Routing, Transports, and Secure Channel building blocks to create an end-to-end guarantee
+of _integrity, authenticity, and confidentiality_ for application data
+over multi-hop, multi-protocol, transport routes.
 
 Ockam is a collection of composable building blocks. In a
 [previous guide](../end-to-end-encryption-with-rust#readme), we built encrypted communication using the
@@ -30,28 +31,48 @@ You can use this approach to create end-to-end secure communication between two 
 between two microservices in different VPCs, or from a work tablet to a machine in a factory, or from an app
 on a remote worker's home desktop to an internal enterprise service in Kubernetes.
 
-<p><img alt="end-to-end encrypt all application layer communication with ockam" src="./diagrams/04.png"></p>
+To enable communication between two programs that are behind private NATs or firewalls, we use an Ockam Node
+in the cloud `1.node.ockam.network:4000`. This node understands the Ockam application layer Routing Protocol
+and provides a forwarding service. We'll use this node to relay end-to-end encrypted messages between our
+sidecar programs. This node cannot see or manipulate encrypted application data that is carried as payloads
+inside Ockam Routing messages.
+
+If we dig a little bit deeper this is how the communication works under the hood.
+
+<p id="04">
+<img alt="end-to-end encrypt all application layer communication with ockam" src="./diagrams/04.png">
+</p>
+
+This picture may seem a little complicated but, after we try our first example, we'll
+[assemble it](#code-walkthrough) piece-by-piece using simple composable build blocks. We'll see how
+creating this end-to-end encrypted communication only takes ~15 lines of code on each side, most of
+which is setup.
+
+The underlying cryptographic, messaging, and routing protocols are hidden behind composable
+abstractions and exposed as simple library functions. Before we dive into the code, let's try an end-to-end
+encrypted HTTP request and response:
 
 Start a target HTTP server listening on port `5000`:
 
 ```
-docker run --rm -it --network=host --name=http-server \
+docker run --rm -it --network=host --name=server \
   python:3-alpine python -m http.server --bind 0.0.0.0 5000
 ```
 
-Next start the outlet program and give it the address of the local target HTTP server. It will print the
-assigned forwarding address in the cloud node, copy it.
+Next, in a separate terminal window, start the outlet program and give it the address of our target
+HTTP server. It will create a forwarder in the cloud node and print the assigned forwarding address, copy it.
 
 ```
-docker run --rm -it --network=host --name=04-outlet \
+docker run --rm -it --network=host --name=outlet \
   ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-outlet 127.0.0.1:5000
 ```
 
-Then start the inlet program and give it the address on which the Inlet will wait for incoming TCP connections
-along with the forwarding address of the outlet.
+Then start the inlet program, in a separate terminal window, and give it the TCP address on which the
+Inlet will wait for incoming TCP connections (port `4001`) along with the forwarding address of the outlet
+that was printed in the previous step.
 
 ```
-docker run --rm -it --network=host --name=04-inlet \
+docker run --rm -it --network=host --name=inlet \
   ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-inlet 127.0.0.1:4001 [[FORWARDING_ADDRESS]]
 ```
 
@@ -62,28 +83,37 @@ the Inlet at port `4001`.
 docker run --rm -it --network=host curlimages/curl http://localhost:4001
 ```
 
-When we run this, we see the data flow as shown in the [diagram above](#04-end-to-end-secure-channel).
+When we run this, we see the data flow as shown in the [diagram above](#04).
 
-Our target HTTP server can receive requests from the client over an end-to-end encrypted channel.
-The Outlet and the Inlet nodes an both run in private networks without opening any listening ports that
-expose them to attacks from the Internet.
+Our target HTTP server can receive requests from the HTTP client over an end-to-end encrypted channel that
+passes through a node in the cloud. The cloud node only sees encrypted data and any tampering is immediately
+detected. The outlet and the inlet sidecar programs an both run in private networks without opening any
+listening ports that expose them to attacks from the Internet.
 
-You can stop the above docker images as follows:
+The Inlet and Outlet pair that we used in this example are general TCP Inlet and Outlet so that can be used
+to tunnel any TCP based protocol through Ockam Secure Channels. Try replacing the HTTP server and client in
+above example with some other TCP based client and server.
+We'd love to [hear about your experiments](https://github.com/ockam-network/ockam/discussions).
+
+Next let's dig into the [code behind the above example](#code-walkthrough). You can stop the above docker
+containers as follows:
 
 ```
-docker kill http-server 04-outlet 04-inlet
+docker kill server outlet inlet
 ```
 
 ## Code Walkthrough
 
-Each example below incrementally builds on the examples before it, only a few lines of new code
+Each code example below incrementally builds on the examples before it, only a few lines of new code
 is introduced in each example.
+If you just want to see the final code, jump directly to
+[step 4](#04-end-to-end-encryption-over-two-tcp-connection-hops).
 
 * [Step 0](#setup) - Setup
 * [Step 1](#01-setup-an-inlet-and-an-outlet) - Create an Inlet and an Outlet
 * [Step 2](#02-route-over-a-transport) - Route over a Transport
 * [Step 3](#03-tunnel-through-a-secure-channel) - Tunnel through a Secure Channel
-* [Step 4](#04-end-to-end-secure-channel) - End-to-End Secure Channel over two transport connection hops
+* [Step 4](#04-end-to-end-encryption-over-two-tcp-connection-hops) - End-to-End Encrypted Channel over two transport connection hops
 
 ### Setup
 
@@ -104,9 +134,9 @@ If the above instructions don't work on your machine please
 [post a question](https://github.com/ockam-network/ockam/discussions/1642),
 we would love to help.
 
-## 01: Setup an Inlet and an Outlet
+### 01: Setup an Inlet and an Outlet
 
-<p><img alt="Secure Remote Access using Ockam" src="./diagrams/01.png"></p>
+<p><img alt="ockam tcp inlet and outlet" src="./diagrams/01.png"></p>
 
 In our first example, let's create a TCP Inlet and Outlet pair.
 
@@ -198,9 +228,9 @@ curl http://127.0.0.1:4001
 When we run this, we see the data flow as shown in the [diagram above](#01-setup-an-inlet-and-an-outlet) -
 HTTP requests and responses are wrapped in Ockam Routing messages and tunneled through our simple Rust program.
 
-## 02: Route over a Transport
+### 02: Route over a Transport
 
-<p><img alt="Secure Remote Access using Ockam" src="./diagrams/02.png"></p>
+<p><img alt="route over an ockam transport" src="./diagrams/02.png"></p>
 
 Next let's separate the Inlet and Outlet from [example 01](#01-setup-an-inlet-and-an-outlet) into
 two programs connected using the Ockam TCP Transport. An Ockam Transport carries Ockam Routing messages
@@ -261,8 +291,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // We know network address of the node with an Outlet, we also now that Outlet lives at "outlet"
-    // address at that node.
+    // We know the network address of the node with an Outlet, we also know that the Outlet is
+    // running at Ockam Worker address "outlet" on that node.
 
     let route_to_outlet = route![(TCP, "127.0.0.1:4000"), "outlet"];
 
@@ -319,20 +349,19 @@ When we run this, we see the data flow as shown in the [diagram above](#02-route
 HTTP requests and responses are wrapped in Ockam Routing messages, carried over TCP, unwrapped and
 then delivered to the target HTTP server.
 
-## 03: Tunnel through a Secure Channel
+### 03: Tunnel through a Secure Channel
 
 <p><img alt="Secure Remote Access using Ockam" src="./diagrams/03.png"></p>
 
-Next let's add an end-to-end encrypted and mutually authenticated secure channel to
-[example 02](#02-route-over-a-transport). The rest of the code will stay the same.
+Next let's add an encrypted and mutually authenticated secure channel to [example 02](#02-route-over-a-transport).
+The rest of the code will stay the same.
 
-For the remote access use-case, our outlet program is running the TCP listener at port `4000`. To
-make the communication between our two nodes secure, we'll also make it run a secure channel listener
-at address: `secure_channel_listener_service`.
+We'll make the outlet program run a Secure Channel Listener and make the Inlet program initiate a secure
+handshake (authenticated key exchange) with this listener.
 
 The inlet program will then initiate a secure channel handshake over the route:
 ```
-route![(TCP, "127.0.0.1:4000"), "secure_channel_listener_service"]
+route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"]
 ```
 
 Create a file at `examples/03-outlet.rs` and copy the below code snippet to it.
@@ -350,12 +379,12 @@ async fn main(ctx: Context) -> Result<()> {
     // Create:
     //   1. A Vault to store our cryptographic keys
     //   2. An Entity to represent this Node
-    //   3. A Secure Channel Listener at Worker address - secure_channel_listener_service
+    //   3. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create(&ctx)?;
     let mut e = Entity::create(&ctx, &vault)?;
-    e.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
@@ -404,11 +433,11 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
     // over TCP at "127.0.0.1:4000" and its secure channel listener is
-    // at address: "secure_channel_listener_service".
+    // at address: "secure_channel_listener".
 
     let vault = Vault::create(&ctx)?;
     let mut e = Entity::create(&ctx, &vault)?;
-    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener_service"];
+    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy)?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
@@ -477,23 +506,28 @@ When we run this, we see the data flow as shown in the [diagram above](#03-tunne
 * When it reaches the Outlet, the Outlet unwraps the HTTP request payload and sends it over TCP to our
   target HTTP server.
 
-## 04: End-to-End Secure Channel
+### 04: End-to-End Encryption over two TCP connection hops
 
-<p><img alt="Secure Remote Access using Ockam" src="./diagrams/04.png"></p>
+<p><img alt="End-to-End Encryption over two TCP connection hops" src="./diagrams/04.png"></p>
 
-As a final step, let's create a Forwarder on an Ockam Node in public cloud.
+To enable communication between two programs that are behind private NATs or firewalls, our final step
+is to route our end-to-end encrypted channel through a public Ockam Node in the cloud `1.node.ockam.network:4000`.
+This node understands the Ockam application layer Routing Protocol and provides a forwarding service.
 
-To allow an Inlet Node to initiate an end-to-end secure channel with and the Outlet Node
-which is not exposed to the Internet. We connect with an existing node at `1.node.ockam.network:4000`
-as a TCP client and ask the forwarding service on that node to create a forwarder for us.
+The outlet program will connect with the node at `1.node.ockam.network:4000` as a TCP client and ask the
+forwarding service on that node to create a forwarder for it. The forwarding service will create
+this forwarder and assign it a new generated forwarding address. The outlet program receives this forwarding
+address and prints it.
 
-All messages that arrive at that forwarding address will be sent to this program using the TCP
-connection we created as a client. The forwarding node only sees end-to-end encrypted data.
+We give this address to the inlet program, which also connects with the node at `1.node.ockam.network:4000`
+as a TCP client and sends messages to the outlet's forwarding address. All messages that arrive at that
+forwarding address are sent to the outlet program using the TCP connection it created as a client.
+The cloud node only sees end-to-end encrypted data.
+
 You can easily [create your own forwarding nodes](../../guides/rust#step-by-step), for this example we've
-created one that live at `1.node.ockam.network:4000`.
+created one that lives at `1.node.ockam.network:4000`.
 
-We only need to change a few minor details of our program in
-[example 03](#03-tunnel-through-a-secure-channel).
+We only need to add a few new lines to our code from [example 03](#03-tunnel-through-a-secure-channel).
 
 Create a file at `examples/04-outlet.rs` and copy the below code snippet to it.
 
@@ -509,7 +543,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create(&ctx)?;
     let mut e = Entity::create(&ctx, &vault)?;
-    e.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
@@ -537,7 +571,7 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "secure_channel_listener_service").await?;
+    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "secure_channel_listener").await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address in Hub is:");
     println!("{}", forwarder.remote_address());
@@ -604,34 +638,38 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Before we can run our example, let's start a local target HTTP server listening on port `5000`.
+Before we can run our example, let's start a target HTTP server listening on port `5000`.
 
 ```
 pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
 ```
 
-Next start the outlet program and give it the address of the local target server. It will print the
-assigned forwarding address in the cloud node, copy it.
+Next, in a separate terminal window, start the outlet program and give it the address of our target
+HTTP server. It will create a forwarder in the cloud node and print the assigned forwarding address, copy it.
 
 ```
 cargo run --example 04-outlet 127.0.0.1:5000
 ```
 
-Then start the inlet program and give it the address on which the Inlet will wait for incoming TCP connections
-along with the forwarding address.
+Then start the inlet program, in a separate terminal window, and give it the TCP address on which the
+Inlet will wait for incoming TCP connections (port `4001`) along with the forwarding address of the outlet
+that was printed in the previous step.
 
 ```
-cargo run --example 04-inlet 127.0.0.1:4001 FORWARDING_ADDRESS_PRINTED_BY_OUTLET_PROGRAM
+cargo run --example 04-inlet 127.0.0.1:4001 [[FORWARDING_ADDRESS]]
 ```
 
-Now run an HTTP client and make a request to the Inlet address that was printed by the outlet program.
+Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to the
+Inlet at port `4001`.
 
 ```
 curl http://127.0.0.1:4001
 ```
 
-When we run this, we see the data flow as shown in the [diagram above](#04-end-to-end-secure-channel).
+When we run this, we see the data flow as shown in the
+[diagram above](#04-end-to-end-encryption-over-two-tcp-connection-hops).
 
-Our target program can receive requests from the client over an end-to-end encrypted channel. The Outlet and
-the Inlet nodes an both run in private networks without opening a listening port that exposes them to attacks
-from the Internet.
+Our target HTTP server can receive requests from the HTTP client over an end-to-end encrypted channel that
+passes through a node in the cloud. The cloud node only sees encrypted data and any tampering is immediately
+detected. The outlet and the inlet sidecar programs an both run in private networks without opening any
+listening ports that expose them to attacks from the Internet.
