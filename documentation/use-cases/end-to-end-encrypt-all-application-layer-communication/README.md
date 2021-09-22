@@ -1,50 +1,58 @@
 # How to end-to-end encrypt all application layer communication
 
-In this hands-on guide, we'll create two simple [Rust programs](#code-walkthrough) to
-__transparently tunnel__ arbitrary communication protocols through Ockam's end-to-end encrypted,
+In this hands-on guide, we'll create two simple [rust programs](#code-walkthrough) to
+__transparently tunnel__ arbitrary application layer communication through Ockam's end-to-end encrypted,
 mutually authenticated secure channels. These example programs are also available in a docker image
-so you can [try them](#try-it) without setting up a Rust toolchain.
+so you can [try them](#an-end-to-end-encrypted-tunnel) without setting up a rust toolchain.
 
-Ockam is a library of composable building blocks to create end-to-end trust within distributed
-applications. We'll walk through ~30 lines of Rust that combine Ockam's Routing, Transports, and Secure
-Channel building blocks to guarantee _integrity, authenticity, and confidentiality_ of data over
-multi-hop, multi-protocol, transport routes.
+We'll walk through ~30 lines of Rust that combine Ockam's Routing, Transports, and Secure
+Channel building blocks to create an end-to-end guarantee of _integrity, authenticity, and confidentiality_
+for application data over multi-hop, multi-protocol, transport routes.
 
-In a [previous guide](../end-to-end-encryption-with-rust#readme), we saw how end-to-end encrypted
-communication by using Ockam as a Rust library but that requires changing your application code. In this
-guide we'll see how can get started without changing your application code.
+Ockam is a collection of composable building blocks. In a
+[previous guide](../end-to-end-encryption-with-rust#readme), we built encrypted communication using the
+Ockam Rust library. That approach requires modifying an application to include Ockam.
 
-Pluggable Transport Inlets and Outlets enable transparent tunneling of arbitrary application layer
-protocols through Ockam Secure Channels. This makes is possible to create end-to-end encrypted communication
-between distributed parts of an application without requiring any changes to application code.
+In this guide, we'll add end-to-end encryption without changing application code. We'll create two
+sidecar programs that run next to our primary application within the same security context. These sidecars
+use pluggable Transport Inlets and Outlets to transparently tunnel application layer protocols
+through Ockam Secure Channels.
 
-Let's build a simple example that performs an end-to-end encrypted HTTP API call over two TCP connection
-hops from one private network to another private network.
+## End-to-End Encryption over two TCP connection hops
 
-<p><img alt="End-to-End Encrypt Any Protocol with Ockam" src="./diagrams/04.png"></p>
+Let's start with a simple example that tunnels an application's HTTP API calls through an end-to-end
+encrypted channel. This channel spans __end-to-end over two TCP transport connection hops__ from one private
+network to another private network and no listening port is exposed publicly from either private network.
 
-## Try it
+<p><img alt="end-to-end encrypt all application layer communication with ockam" src="./diagrams/05.png"></p>
 
-Let's start by trying the final example in docker.
+You can use this approach to create end-to-end secure communication between two mobile applications, or
+between two microservices in different VPCs, or from a work tablet to a machine in a factory, or from an app
+on a remote worker's home desktop to an internal enterprise service in Kubernetes.
+
+<p><img alt="end-to-end encrypt all application layer communication with ockam" src="./diagrams/04.png"></p>
 
 Start a target HTTP server listening on port `5000`:
 
 ```
-docker run --rm -it --network=host --name=http-server python:3-alpine python -m http.server --bind 0.0.0.0 5000
+docker run --rm -it --network=host --name=http-server \
+  python:3-alpine python -m http.server --bind 0.0.0.0 5000
 ```
 
 Next start the outlet program and give it the address of the local target HTTP server. It will print the
 assigned forwarding address in the cloud node, copy it.
 
 ```
-docker run --rm -it --network=host --name=04-outlet ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-outlet 127.0.0.1:5000
+docker run --rm -it --network=host --name=04-outlet \
+  ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-outlet 127.0.0.1:5000
 ```
 
 Then start the inlet program and give it the address on which the Inlet will wait for incoming TCP connections
 along with the forwarding address of the outlet.
 
 ```
-docker run --rm -it --network=host --name=04-inlet ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-inlet 127.0.0.1:4001 FORWARDING_ADDRESS_PRINTED_BY_OUTLET_PROGRAM
+docker run --rm -it --network=host --name=04-inlet \
+  ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-inlet 127.0.0.1:4001 [[FORWARDING_ADDRESS]]
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
