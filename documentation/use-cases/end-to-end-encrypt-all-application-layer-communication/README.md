@@ -10,7 +10,8 @@ combine Ockam's Routing, Transports, and Secure Channel building blocks to creat
 of _integrity, authenticity, and confidentiality_ for application data
 over multi-hop, multi-protocol, transport routes.
 
-Ockam is a collection of composable building blocks. In a
+Ockam is a collection of
+[composable building blocks](#composable-building-blocks-for-securing-any-communication-topology). In a
 [previous guide](../end-to-end-encryption-with-rust#readme), we built encrypted communication using the
 Ockam Rust library. That approach requires modifying an application to include Ockam.
 
@@ -126,7 +127,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Next, create a new cargo project to get started:
 
 ```
-cargo new --lib secure_remote_access && cd secure_remote_access && mkdir examples &&
+cargo new --lib ockam_tcp_inlet_outlet && cd ockam_tcp_inlet_outlet && mkdir examples &&
   echo 'ockam = "*"' >> Cargo.toml && cargo build
 ```
 
@@ -673,3 +674,61 @@ Our target HTTP server can receive requests from the HTTP client over an end-to-
 passes through a node in the cloud. The cloud node only sees encrypted data and any tampering is immediately
 detected. The outlet and the inlet sidecar programs an both run in private networks without opening any
 listening ports that expose them to attacks from the Internet.
+
+## Composable building blocks for securing any communication topology
+
+In the above examples we stepped through code to create an end-to-end encrypted and mutually authenticated
+secure channel over two TCP transport connection hops.
+
+We then used a TCP Inlet and a TCP Outlet to _transparently tunnel_ an application protocol
+through our secure channel. Inlets and Outlets wrap incoming application messages an Ockam Routing messages
+and unwrap outgoing Ockam Routing messages into application messages. The type of Inlet or Outlet we use
+for our application is easily pluggable. For example we could replace TCP Inlet/Outlet with a UDP Inlet/Outlet
+and easily tunnel UDP based protocols through Ockam Secure Channels.
+
+The Ockam Routing protocol is designed to decouple Ockam secure channels from transport layer protocols.
+This is why an Ockam Secure Channel can span multiple transport layer hops. In the above examples we created
+an secure channel over a route that looked like this:
+
+```
+route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"]
+```
+
+but we can just as easily create an end-to-end secure channel over a route that has many TCP hops:
+
+```
+route![(TCP, "22.103.63.130:4000"), (TCP, "215.227.62.96:4000"), (TCP, "79.102.180.116:4000"), "listener"]
+```
+
+Ockam Transports are lightweight add-ons that plug into the Ockam Routing layer. So with a bluetooth
+transport we can have a route that looks like this.
+
+```
+route![(BLUETOOTH, "5b8e2be26fdc"), (TCP, "215.227.62.96:4000"), "listener"]
+```
+
+We can then easily establish end-to-end encrypted channels over such a route where the first hop is
+bluetooth and the second hop is tcp. The data integrity, authenticity and confidentiality guarantees are
+maintained end-to-end and we only need to change the route argument
+to the `create_secure_channel` function call.
+
+This type of end-to-end encrypted channels that span multi-hop, multi-protocol routes are simply not possible
+with traditional transport layer security protocols because their protection is constrained by the length and
+duration of the underlying transport connection.
+
+In the guide on
+[end-to-end encryption through kafka](../end-to-end-encryption-through-kafka#readme) we walk through
+how this composable design makes it possible to move end-to-end encrypted secure channels through messaging
+systems like Kafka using Ockam Streams.
+
+Data, within modern distributed applications, are rarely exchanged over a single point-to-point
+transport connection. Application messages routinely flow over complex, multi-hop, multi-protocol
+routes — _across data centers, through queues and caches, via gateways and brokers_ — before reaching
+their end destination.
+
+Ockam's application layer routing, secure channels and pluggable transports together provide a powerful
+collection of composable building blocks that make it simple to create an end-to-end guarantee of
+_integrity, authenticity, and confidentiality_ for application data over a wide variety of communication
+topologies that are common in modern distributed applications.
+
+To learn more check our [step-by-step](../../guides/rust#readme) deep dive.
