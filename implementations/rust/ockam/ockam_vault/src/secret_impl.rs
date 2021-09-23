@@ -1,15 +1,19 @@
 use crate::software_vault::{SoftwareVault, VaultEntry};
 use crate::VaultError;
 use arrayref::array_ref;
-use core::convert::TryInto;
+use cfg_if::cfg_if;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_vault_core::{
     KeyId, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
     SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use signature_bbs_plus::PublicKey as BlsPublicKey;
-use signature_bbs_plus::SecretKey as BlsSecretKey;
+cfg_if! {
+    if #[cfg(feature = "bls")] {
+        use signature_bbs_plus::PublicKey as BlsPublicKey;
+        use signature_bbs_plus::SecretKey as BlsSecretKey;
+    }
+}
 use zeroize::Zeroize;
 
 impl SoftwareVault {
@@ -33,7 +37,10 @@ impl SoftwareVault {
                     ))?,
                 )
             }
+            #[cfg(feature = "bls")]
             SecretType::Bls => {
+                use core::convert::TryInto;
+
                 let bls_secret_key = BlsSecretKey::from_bytes(secret.try_into().unwrap()).unwrap();
                 let public_key =
                     PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
@@ -50,14 +57,20 @@ impl SoftwareVault {
         attributes: &SecretAttributes,
     ) -> ockam_core::Result<()> {
         match attributes.stype() {
+            #[cfg(feature = "bls")]
             SecretType::Bls => {
+                use core::convert::TryInto;
+
                 let bytes = TryInto::<[u8; BlsSecretKey::BYTES]>::try_into(secret)
                     .map_err(|_| VaultError::InvalidBlsSecretLength)?;
                 if BlsSecretKey::from_bytes(&bytes).is_none().into() {
                     return Err(VaultError::InvalidBlsSecret.into());
                 }
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::Curve25519 => {}
+            SecretType::Buffer | SecretType::Aes | SecretType::Curve25519 => {
+                // Avoid unused variable warning
+                let _ = secret;
+            }
             SecretType::P256 => { /* FIXME */ }
         }
         Ok(())
@@ -101,6 +114,7 @@ impl SecretVault for SoftwareVault {
             SecretType::P256 => {
                 return Err(VaultError::InvalidKeyType.into());
             }
+            #[cfg(feature = "bls")]
             SecretType::Bls => {
                 let bls_secret_key = BlsSecretKey::random(&mut rng).unwrap();
 
@@ -172,7 +186,10 @@ impl SecretVault for SoftwareVault {
                 let pk = x25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec()))
             }
+            #[cfg(feature = "bls")]
             SecretType::Bls => {
+                use core::convert::TryInto;
+
                 let bls_secret_key =
                     BlsSecretKey::from_bytes(&entry.key().as_ref().try_into().unwrap()).unwrap();
                 Ok(PublicKey::new(
@@ -213,8 +230,8 @@ mod tests {
         ockam_vault_core::{KeyId, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH},
         KeyIdVault, Secret, SecretAttributes, SecretVault, SoftwareVault,
     };
+    use cfg_if::cfg_if;
     use ockam_vault_test_attribute::*;
-    use signature_bbs_plus::SecretKey as BlsSecretKey;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
@@ -232,20 +249,28 @@ mod tests {
     #[vault_test]
     fn secret_attributes_get() {}
 
-    fn new_curve255519_attrs() -> SecretAttributes {
-        SecretAttributes::new(
+    fn new_curve255519_attrs() -> Option<SecretAttributes> {
+        Some(SecretAttributes::new(
             SecretType::Curve25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH,
-        )
+        ))
     }
 
-    fn new_bls_attrs() -> SecretAttributes {
-        SecretAttributes::new(
-            SecretType::Bls,
-            SecretPersistence::Ephemeral,
-            BlsSecretKey::BYTES,
-        )
+    fn new_bls_attrs() -> Option<SecretAttributes> {
+        cfg_if! {
+            if #[cfg(feature = "bls")] {
+                use signature_bbs_plus::SecretKey as BlsSecretKey;
+                Some(SecretAttributes::new(
+                    SecretType::Bls,
+                    SecretPersistence::Ephemeral,
+                    BlsSecretKey::BYTES,
+                ))
+            }
+            else {
+                None
+            }
+        }
     }
 
     fn check_key_id_computation(mut vault: SoftwareVault, sec_idx: Secret) {
@@ -255,25 +280,34 @@ mod tests {
         assert_eq!(sec_idx, sec_idx_2)
     }
 
+    fn flat_map_options<T>(vec: Vec<Option<T>>) -> Vec<T> {
+        vec.into_iter()
+            .flat_map(|x| match x {
+                None => vec![],
+                Some(y) => vec![y],
+            })
+            .collect()
+    }
+
     #[test]
     fn secret_generate_compute_key_id() {
-        for attrs in &[new_curve255519_attrs(), new_bls_attrs()] {
+        for attrs in flat_map_options(vec![new_curve255519_attrs(), new_bls_attrs()]) {
             let mut vault = new_vault();
-            let sec_idx = vault.secret_generate(*attrs).unwrap();
+            let sec_idx = vault.secret_generate(attrs).unwrap();
             check_key_id_computation(vault, sec_idx);
         }
     }
 
     #[test]
     fn secret_import_compute_key_id() {
-        for attrs in &[new_curve255519_attrs(), new_bls_attrs()] {
+        for attrs in flat_map_options(vec![new_curve255519_attrs(), new_bls_attrs()]) {
             let mut vault = new_vault();
-            let sec_idx = vault.secret_generate(*attrs).unwrap();
+            let sec_idx = vault.secret_generate(attrs).unwrap();
             let secret = vault.secret_export(&sec_idx).unwrap();
             drop(vault); // The first vault was only used to generate random keys
 
             let mut vault = new_vault();
-            let sec_idx = vault.secret_import(secret.as_ref(), *attrs).unwrap();
+            let sec_idx = vault.secret_import(secret.as_ref(), attrs).unwrap();
 
             check_key_id_computation(vault, sec_idx);
         }
@@ -292,7 +326,7 @@ mod tests {
             0x00, 0x61, 0xb4, 0x01, 0xc1, 0xbf, 0x39, 0xd0, 0x8b, 0x7e, 0x4b, 0xf0, 0xa4, 0x90,
             0xbb, 0x1c, 0x91, 0x67,
         ];
-        let attrs = new_curve255519_attrs();
+        let attrs = new_curve255519_attrs().unwrap();
         let mut vault = new_vault();
         let key_id = import_key(&mut vault, bytes_c25519, attrs);
         assert_eq!(
@@ -300,17 +334,21 @@ mod tests {
             &key_id
         );
 
-        let bytes_bls = &[
-            0x3b, 0xcd, 0x36, 0xf3, 0xe2, 0x18, 0xf1, 0x8a, 0x37, 0xd6, 0x4d, 0x62, 0xe4, 0xb7,
-            0x27, 0xc9, 0xc7, 0xf8, 0xcc, 0x32, 0x6c, 0xf6, 0x66, 0x94, 0x7c, 0x62, 0xfd, 0xff,
-            0x18, 0xc0, 0x0e, 0x08,
-        ];
-        let attrs = new_bls_attrs();
-        let mut vault = new_vault();
-        let key_id = import_key(&mut vault, bytes_bls, attrs);
-        assert_eq!(
-            "604b7cf225a832c8fa822792dc7c484f5c49fb7a70ce87f1636b294ba7dbdc7b",
-            &key_id
-        );
+        cfg_if! {
+            if #[cfg(feature = "bls")] {
+                let bytes_bls = &[
+                    0x3b, 0xcd, 0x36, 0xf3, 0xe2, 0x18, 0xf1, 0x8a, 0x37, 0xd6, 0x4d, 0x62, 0xe4, 0xb7,
+                    0x27, 0xc9, 0xc7, 0xf8, 0xcc, 0x32, 0x6c, 0xf6, 0x66, 0x94, 0x7c, 0x62, 0xfd, 0xff,
+                    0x18, 0xc0, 0x0e, 0x08,
+                ];
+                let attrs = new_bls_attrs().unwrap();
+                let mut vault = new_vault();
+                let key_id = import_key(&mut vault, bytes_bls, attrs);
+                assert_eq!(
+                    "604b7cf225a832c8fa822792dc7c484f5c49fb7a70ce87f1636b294ba7dbdc7b",
+                    &key_id
+                );
+            }
+        }
     }
 }

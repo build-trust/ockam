@@ -1,8 +1,5 @@
-use crate::{
-    AuthenticationProof, BbsCredential, BlsSecretKey, Changes, Contact, CredentialFragment2,
-    CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
-    CredentialRequestFragment, EntityCredential, Lease, ProfileIdentifier, ProofRequestId,
-};
+use crate::{AuthenticationProof, Changes, Contact, Lease, ProfileIdentifier};
+use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Address;
 use ockam_vault::{PublicKey, Secret};
@@ -32,20 +29,37 @@ pub enum IdentityResponse {
     VerifyAndAddContact(bool),
     CreateSecureChannelListener,
     CreateSecureChannel(Address),
-    GetSigningKey(BlsSecretKey),
-    GetIssuerPublicKey(CredentialPublicKey),
-    CreateOffer(CredentialOffer),
-    CreateProofOfPossession(CredentialProof),
-    SignCredential(BbsCredential),
-    SignCredentialRequest(CredentialFragment2),
-    AcceptCredentialOffer(CredentialRequestFragment),
-    CombineCredentialFragments(BbsCredential),
-    IsValidCredential(bool),
-    PresentCredential(CredentialPresentation),
-    CreateProofRequestId(ProofRequestId),
-    VerifyProofOfPossession(bool),
-    VerifyCredentialPresentation(bool),
-    AddCredential,
-    GetCredential(EntityCredential),
     Lease(Lease),
+    #[cfg(feature = "credentials")]
+    CredentialResponse(IdentityCredentialResponse),
+}
+
+cfg_if! {
+    if #[cfg(feature = "credentials")] {
+        use crate::{
+            BlsSecretKey,
+            BbsCredential, CredentialFragment2, CredentialOffer, CredentialPresentation, CredentialProof,
+            CredentialPublicKey, CredentialRequestFragment, EntityCredential, ProofRequestId,
+        };
+
+        #[derive(Serialize, Deserialize)]
+        pub enum IdentityCredentialResponse {
+            GetSigningKey(BlsSecretKey),
+            GetIssuerPublicKey(CredentialPublicKey),
+            CreateOffer(CredentialOffer),
+            CreateProofOfPossession(CredentialProof),
+            SignCredential(BbsCredential),
+            SignCredentialRequest(CredentialFragment2),
+            AcceptCredentialOffer(CredentialRequestFragment),
+            CombineCredentialFragments(BbsCredential),
+            IsValidCredential(bool),
+            PresentCredential(CredentialPresentation),
+            CreateProofRequestId(ProofRequestId),
+            VerifyProofOfPossession(bool),
+            VerifyCredentialPresentation(bool),
+            AddCredential,
+            GetCredential(EntityCredential),
+        }
+
+    }
 }
