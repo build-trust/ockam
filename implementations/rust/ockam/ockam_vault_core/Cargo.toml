@@ -14,6 +14,7 @@ description = """The Ockam Vault trait.
 
 [features]
 default = ["std"]
+bls = []
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.

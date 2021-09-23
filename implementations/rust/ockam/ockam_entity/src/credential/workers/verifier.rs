@@ -1,4 +1,4 @@
-use crate::traits::Verifier;
+use crate::credential::Verifier;
 use crate::{
     check_message_origin, get_secure_channel_participant_id, CredentialAttribute,
     CredentialProtocolMessage, CredentialSchema, EntityError, PresentationManifest, Profile,
