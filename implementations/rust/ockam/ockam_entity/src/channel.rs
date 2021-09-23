@@ -91,7 +91,7 @@ pub fn get_secure_channel_participant_id<T: Message>(msg: &Routed<T>) -> Result<
 mod test {
     use super::*;
     use crate::{Entity, SecureChannels};
-    use ockam_core::{route, Message};
+    use ockam_core::route;
     use ockam_vault_sync_core::Vault;
 
     #[test]

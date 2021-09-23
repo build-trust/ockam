@@ -19,6 +19,7 @@ version = "0.31.0"
 default = ["std", "ockam_transport_tcp", "software_vault", "noise_xx"]
 software_vault = ["ockam_vault", "ockam_vault_sync_core", "ockam_vault_sync_core/software_vault", "ockam_channel/software_vault"]
 noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
+credentials = ["ockam_entity/credentials", "ockam_vault/bls", "bls12_381_plus", "signature_core", "signature_bbs_plus", "signature_bls"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -80,10 +81,10 @@ ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "0.24.0" 
 ockam_entity = { path = "../ockam_entity", version = "0.21.0" , default_features = false }
 arrayref = "0.3"
 async-trait = "0.1"
-bls12_381_plus = { version = "0.5", default-features = false }
-signature_core = { version = "0.24.0"     , path = "../signature_core" }
-signature_bbs_plus = { version = "0.24.0"     , path = "../signature_bbs_plus", package = "signature_bbs_plus" }
-signature_bls = { version = "0.22.0"     , path = "../signature_bls", package = "signature_bls" }
+bls12_381_plus = { version = "0.5", default-features = false, optional = true }
+signature_core = { version = "0.24.0"     , path = "../signature_core", optional = true }
+signature_bbs_plus = { version = "0.24.0"     , path = "../signature_bbs_plus", package = "signature_bbs_plus", optional = true }
+signature_bls = { version = "0.22.0"     , path = "../signature_bls", package = "signature_bls", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"
 sha2 = { version = "0.9", default-features = false }

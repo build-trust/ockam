@@ -6,6 +6,7 @@ use crate::{
     ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileState, Signature,
     SignatureType,
 };
+use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Encodable;
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
@@ -82,16 +83,28 @@ impl ProfileState {
         vault: &mut VaultSync,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // FIXME
-        let is_bls = key_attributes.label() == Profile::CREDENTIALS_ISSUE;
+        cfg_if! {
+            if #[cfg(feature = "credentials")] {
+                let is_bls = key_attributes.label() == Profile::CREDENTIALS_ISSUE;
 
-        let secret_attributes = if is_bls {
-            SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
-        } else {
-            SecretAttributes::new(
-                SecretType::Curve25519,
-                SecretPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH,
-            )
+                let secret_attributes = if is_bls {
+                    SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
+                }
+                else {
+                    SecretAttributes::new(
+                        SecretType::Curve25519,
+                        SecretPersistence::Persistent,
+                        CURVE25519_SECRET_LENGTH,
+                    )
+                };
+            }
+            else {
+                let secret_attributes = SecretAttributes::new(
+                    SecretType::Curve25519,
+                    SecretPersistence::Persistent,
+                    CURVE25519_SECRET_LENGTH,
+                );
+            }
         };
 
         let secret_key = vault.async_secret_generate(secret_attributes).await?;

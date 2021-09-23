@@ -118,6 +118,7 @@ pub enum SecretType {
     /// P256 key
     P256,
     /// BLS key
+    #[cfg(feature = "bls")]
     Bls,
 }
 

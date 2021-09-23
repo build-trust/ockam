@@ -14,6 +14,7 @@ description = """FFI layer for ockam_vault.
 
 [lib]
 crate-type = ["staticlib", "rlib", "cdylib"]
+bls = ["ockam_vault/bls"]
 
 [profile.release]
 lto = true

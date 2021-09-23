@@ -4,10 +4,9 @@ use serde::{Deserialize, Serialize};
 use ockam_vault::PublicKey;
 
 use crate::change_history::ProfileChangeHistory;
-use crate::profile::Profile;
 use crate::{EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
 
-use ockam_core::compat::{string::ToString, vec::Vec};
+use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny};
 
 /// Contact is an abstraction responsible for storing user's public data (mainly - public keys).
@@ -138,7 +137,9 @@ impl Contact {
         self.change_history.get_last_event_id()
     }
     /// Get BBS+ signing public key
+    #[cfg(feature = "credentials")]
     pub fn get_signing_public_key(&self) -> ockam_core::Result<PublicKey> {
+        use crate::Profile;
         self.get_public_key(&KeyAttributes::new(Profile::CREDENTIALS_ISSUE.to_string()))
     }
 }

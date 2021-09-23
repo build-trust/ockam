@@ -5,9 +5,6 @@ use arrayref::array_ref;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_vault_core::{Secret, SecretType, Signature, Signer, CURVE25519_SECRET_LENGTH};
-use signature_bbs_plus::{Issuer, MessageGenerators};
-use signature_bls::SecretKey;
-use signature_core::lib::Message;
 
 use ockam_core::async_trait::async_trait;
 #[async_trait]
@@ -33,7 +30,11 @@ impl Signer for SoftwareVault {
                     Err(VaultError::InvalidKeyType.into())
                 }
             }
+            #[cfg(feature = "bls")]
             SecretType::Bls => {
+                use signature_bbs_plus::{Issuer, MessageGenerators};
+                use signature_bls::SecretKey;
+                use signature_core::lib::Message;
                 if key.len() == 32 {
                     let bls_secret_key = SecretKey::from_bytes(array_ref!(key, 0, 32)).unwrap();
                     let generators = MessageGenerators::from_secret_key(&bls_secret_key, 1);
