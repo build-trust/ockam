@@ -20,14 +20,13 @@ noise_xx = ["ockam_key_exchange_xx"]
 
 # Option (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_core/std", "ockam_vault_sync_core/std", "ockam_vault/std", "rand/std", "rand/std_rng"]
+std = ["alloc", "ockam_core/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_core/std", "ockam_vault_sync_core/std", "ockam_vault/std", "rand/std", "rand/std_rng"]
 
 # Feature: "no_std" enables functionality required for platforms
-# without the standard library.
+# without the standard library, requires nightly.
 no_std = ["ockam_core/no_std", "ockam_key_exchange_core/no_std", "ockam_key_exchange_xx/no_std", "ockam_node/no_std", "ockam_vault_core/no_std", "ockam_vault_sync_core/no_std", "ockam_vault/no_std", "rand_pcg"]
 
-# Feature: "alloc" enables support for heap allocation on "no_std"
-# platforms, requires nightly.
+# Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchange_xx/alloc", "ockam_node/alloc", "ockam_vault_core/alloc",  "ockam_vault_sync_core/alloc", "ockam_vault/alloc", "serde/alloc"]
 
 [dependencies]

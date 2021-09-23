@@ -22,15 +22,21 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["hex/std", "rand/std", "rand/std_rng", "serde_bare/std"]
+std = ["alloc", "hex/std", "rand/std", "rand/std_rng", "serde_bare/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = ["core2", "hex", "rand_pcg", "spin"]
 
-# Feature: "alloc" enables support for heap allocation on "no_std"
-# platforms, requires nightly.
-alloc = ["core2/alloc", "core2/nightly", "heapless", "hex/alloc", "serde/alloc", "serde_bare/alloc"]
+# Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
+alloc = ["core2/alloc", "heapless", "hex/alloc", "serde/alloc", "serde_bare/alloc"]
+
+# Feature: "unsafe_random" enables development support for random
+# number generation on no_std platforms that do not yet have
+# cryptographically secure implementations.
+# WARNING: Under no circumstances should this ever be enabled in
+#          production builds!
+unsafe_random  = []
 
 [dependencies]
 async-trait = "0.1.42"

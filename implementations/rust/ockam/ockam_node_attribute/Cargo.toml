@@ -27,6 +27,9 @@ default = []
 # own program entry-point rather than having ockam define the main()
 # function. This is particularly useful on baremetal platforms.
 no_main = []
+std = ["alloc"]
+no_std = []
+alloc = []
 
 [dependencies]
 quote = "1.0.9"

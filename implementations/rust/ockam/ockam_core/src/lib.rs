@@ -16,9 +16,6 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(all(feature = "std", feature = "alloc"))]
-compile_error!(r#"Cannot compile both features "std" and "alloc""#);
-
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 compile_error!(r#"The "no_std" feature currently requires the "alloc" feature"#);
 

@@ -18,14 +18,13 @@ bls = []
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std"]
+std = ["ockam_core/std", "alloc"]
 
 # Feature: "no_std" enables functionality required for platforms
-# without the standard library.
+# without the standard library, requires nightly.
 no_std = ["ockam_core/no_std", "heapless"]
 
-# Feature: "alloc" enables support for heap allocation on "no_std"
-# platforms, requires nightly.
+# Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "serde/alloc"]
 
 [dependencies]

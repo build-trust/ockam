@@ -23,6 +23,7 @@ credentials = ["ockam_entity/credentials", "ockam_vault/bls", "bls12_381_plus", 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
+    "alloc",
     "ockam_core/std",
     "ockam_node/std",
     "ockam_vault_core/std",
@@ -37,7 +38,7 @@ std = [
 ]
 
 # Feature: "no_std" enables functionality required for platforms
-# without the standard library.
+# without the standard library, requires nightly.
 no_std = [
     "ockam_core/no_std",
     "ockam_node/no_std",
@@ -50,8 +51,7 @@ no_std = [
     "ockam_entity/no_std"
 ]
 
-# Feature: "alloc" enables support for heap allocation on "no_std"
-# platforms, requires nightly.
+# Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = [
     "ockam_core/alloc",
     "ockam_node/alloc",

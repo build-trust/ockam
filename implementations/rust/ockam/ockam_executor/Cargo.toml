@@ -15,11 +15,14 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std     = ["futures/std", "ockam_core/std"]
+std     = ["alloc", "futures/std", "ockam_core/std"]
 
-# Feature: "alloc" enables support for heap allocation on "no_std"
-# platforms, requires nightly.
-alloc   = ["futures/alloc", "ockam_core/alloc", "ockam_core/no_std"]
+# Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
+alloc   = ["futures/alloc", "ockam_core/alloc"]
+
+# Feature: "no_std" enables functionality required for platforms
+# without the standard library, requires nightly.
+no_std  = ["ockam_core/no_std"]
 
 [dependencies]
 crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }

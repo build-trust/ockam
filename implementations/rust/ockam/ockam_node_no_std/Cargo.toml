@@ -22,14 +22,13 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = []
+std = ["alloc"]
 
 # Feature "no_std" enables functionality required for platforms
-# without the standard library.
+# without the standard library, requires nightly.
 no_std = []
 
-# Feature: "alloc" enables support for heap allocation on "no_std"
-# platforms, requires nightly.
+# Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = []
 
 [dependencies]
