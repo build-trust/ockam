@@ -527,6 +527,7 @@ version = "0.28.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
+ "cfg-if",
  "curve25519-dalek",
  "ed25519-dalek",
  "hkdf",

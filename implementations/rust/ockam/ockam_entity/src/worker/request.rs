@@ -1,10 +1,7 @@
 use crate::{
-    AuthenticationProof, BbsCredential, Changes, Contact, Credential, CredentialAttribute,
-    CredentialFragment1, CredentialFragment2, CredentialOffer, CredentialPresentation,
-    CredentialProof, CredentialPublicKey, CredentialRequest, CredentialSchema, EntityCredential,
-    Lease, OfferId, PresentationManifest, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
-    TTL,
+    AuthenticationProof, Changes, Contact, Lease, ProfileChangeEvent, ProfileIdentifier, TTL,
 };
+use cfg_if::cfg_if;
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{Address, Route};
 use serde::{Deserialize, Serialize};
@@ -36,32 +33,49 @@ pub enum IdentityRequest {
     RemoveProfile(Id),
     CreateSecureChannelListener(Id, Address, Address),
     CreateSecureChannel(Id, Route, Address),
-    GetSigningKey(Id),
-    GetIssuerPublicKey(Id),
-    CreateOffer(Id, CredentialSchema),
-    CreateProofOfPossession(Id),
-    SignCredential(Id, CredentialSchema, Vec<CredentialAttribute>),
-    SignCredentialRequest(
-        Id,
-        CredentialRequest,
-        CredentialSchema,
-        Vec<(String, CredentialAttribute)>,
-        OfferId,
-    ),
-    AcceptCredentialOffer(Id, CredentialOffer, CredentialPublicKey),
-    CombineCredentialFragments(Id, CredentialFragment1, CredentialFragment2),
-    IsValidCredential(Id, BbsCredential, CredentialPublicKey),
-    PresentCredential(Id, BbsCredential, PresentationManifest, ProofRequestId),
-    CreateProofRequestId(Id),
-    VerifyProofOfPossession(Id, CredentialPublicKey, CredentialProof),
-    VerifyCredentialPresentation(
-        Id,
-        CredentialPresentation,
-        PresentationManifest,
-        ProofRequestId,
-    ),
-    AddCredential(Id, EntityCredential),
-    GetCredential(Id, Credential),
     GetLease(Route, Id, String, String, TTL),
     RevokeLease(Route, Id, Lease),
+    #[cfg(feature = "credentials")]
+    CredentialRequest(IdentityCredentialRequest),
+}
+
+cfg_if! {
+    if #[cfg(feature = "credentials")] {
+        use crate::{
+            BbsCredential, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
+            CredentialOffer, CredentialPresentation, CredentialProof, CredentialPublicKey,
+            CredentialRequest, CredentialSchema, EntityCredential, OfferId, PresentationManifest,
+            ProofRequestId,
+        };
+
+        #[derive(Clone, Serialize, Deserialize)]
+        pub enum IdentityCredentialRequest {
+            GetSigningKey(Id),
+            GetIssuerPublicKey(Id),
+            CreateOffer(Id, CredentialSchema),
+            CreateProofOfPossession(Id),
+            SignCredential(Id, CredentialSchema, Vec<CredentialAttribute>),
+            SignCredentialRequest(
+                Id,
+                CredentialRequest,
+                CredentialSchema,
+                Vec<(String, CredentialAttribute)>,
+                OfferId,
+            ),
+            AcceptCredentialOffer(Id, CredentialOffer, CredentialPublicKey),
+            CombineCredentialFragments(Id, CredentialFragment1, CredentialFragment2),
+            IsValidCredential(Id, BbsCredential, CredentialPublicKey),
+            PresentCredential(Id, BbsCredential, PresentationManifest, ProofRequestId),
+            CreateProofRequestId(Id),
+            VerifyProofOfPossession(Id, CredentialPublicKey, CredentialProof),
+            VerifyCredentialPresentation(
+                Id,
+                CredentialPresentation,
+                PresentationManifest,
+                ProofRequestId,
+            ),
+            AddCredential(Id, EntityCredential),
+            GetCredential(Id, Credential),
+        }
+    }
 }
