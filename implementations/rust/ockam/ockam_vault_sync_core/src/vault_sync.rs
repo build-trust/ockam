@@ -33,7 +33,7 @@ pub struct VaultSync {
 
 impl VaultSync {
     // Todo: mark as deprecated
-    #[deprecated]
+    // #[deprecated]
     #[allow(unused)]
     pub(crate) async fn send_message(&self, m: VaultRequestMessage) -> Result<()> {
         self.handle.ctx()
@@ -42,7 +42,7 @@ impl VaultSync {
     }
 
     // Todo: mark as deprecated
-    #[deprecated]
+    // #[deprecated]
     #[allow(unused)]
     pub(crate) async fn receive_message(&mut self) -> Result<VaultResponseMessage> {
         self.handle.ctx_mut()
