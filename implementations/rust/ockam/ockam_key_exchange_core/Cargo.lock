@@ -85,6 +85,14 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "core2"
 version = "0.3.1"
+source = "git+https://github.com/technocreatives/core2.git?rev=57c84bc#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "core2"
+version = "0.3.1"
 source = "git+https://github.com/technocreatives/core2.git#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
 dependencies = [
  "memchr",
@@ -220,7 +228,7 @@ name = "ockam_core"
 version = "0.31.0"
 dependencies = [
  "async-trait",
- "core2",
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
  "hashbrown",
  "heapless",
  "hex",
@@ -421,9 +429,9 @@ dependencies = [
 [[package]]
 name = "serde_bare"
 version = "0.4.0"
-source = "git+https://github.com/ockam-network/serde_bare.git?branch=ockam-network/no_std+alloc#c4630d202018803efe4153f000fbe234ac3fe18a"
+source = "git+https://github.com/ockam-network/serde_bare.git?rev=c4630d2#c4630d202018803efe4153f000fbe234ac3fe18a"
 dependencies = [
- "core2",
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git)",
  "serde",
 ]
 

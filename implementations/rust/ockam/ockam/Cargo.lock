@@ -66,6 +66,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "aligned"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a785a543aea40f5e4e2e93bb2655d31bc21bb391fff65697150973e383f16bb"
+dependencies = [
+ "as-slice",
+]
+
+[[package]]
+name = "alloc-cortex-m"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a67ad0fe14be887ed94e5722d14861c1877b128edbda2dd372e64d5243d614ae"
+dependencies = [
+ "cortex-m 0.6.7",
+ "linked_list_allocator",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -243,6 +262,14 @@ dependencies = [
 [[package]]
 name = "core2"
 version = "0.3.1"
+source = "git+https://github.com/technocreatives/core2.git?rev=57c84bc#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "core2"
+version = "0.3.1"
 source = "git+https://github.com/technocreatives/core2.git#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
 dependencies = [
  "memchr",
@@ -320,17 +347,11 @@ checksum = "673b836c1c5a73bd981805236f46dfddbe1092a6a829b22464bd40d7ceefd2f9"
 dependencies = [
  "bare-metal 1.0.0",
  "cfg-if",
-<<<<<<< HEAD
- "cortex-m",
-=======
  "cortex-m 0.7.3",
->>>>>>> 3f553db4 (feat(rust): eliminate unsafe_random feature)
  "riscv",
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "crossbeam-queue"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -350,7 +371,6 @@ dependencies = [
 ]
 
 [[package]]
->>>>>>> 3f553db4 (feat(rust): eliminate unsafe_random feature)
 name = "crypto-mac"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -954,7 +974,7 @@ name = "ockam_core"
 version = "0.31.0"
 dependencies = [
  "async-trait",
- "core2",
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
  "hashbrown 0.11.2",
  "heapless",
  "hex",
@@ -968,10 +988,10 @@ dependencies = [
 [[package]]
 name = "ockam_core"
 version = "0.31.0"
-source = "git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc#de3b3bdd7ebec00ccdeeb0878804caaf96804042"
+source = "git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc#29e2287e54199ffb335753f9665504b4c7612457"
 dependencies = [
  "async-trait",
- "core2",
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
  "hashbrown 0.11.2",
  "heapless",
  "hex",
@@ -1013,7 +1033,7 @@ dependencies = [
 [[package]]
 name = "ockam_executor"
 version = "0.0.1"
-source = "git+https://github.com/ockam-network/ockam_executor.git#e11a5068097a6f28658689dbee6545ad743df65d"
+source = "git+https://github.com/ockam-network/ockam_executor.git?rev=3daeffa#3daeffa593f2d55611a8e4229978bb6839f4c669"
 dependencies = [
  "alloc-cortex-m",
  "cortex-m 0.7.3",
@@ -1493,9 +1513,9 @@ dependencies = [
 [[package]]
 name = "serde_bare"
 version = "0.4.0"
-source = "git+https://github.com/ockam-network/serde_bare.git?branch=ockam-network/no_std+alloc#c4630d202018803efe4153f000fbe234ac3fe18a"
+source = "git+https://github.com/ockam-network/serde_bare.git?rev=c4630d2#c4630d202018803efe4153f000fbe234ac3fe18a"
 dependencies = [
- "core2",
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git)",
  "serde",
 ]
 

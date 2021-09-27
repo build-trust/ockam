@@ -177,8 +177,7 @@ dependencies = [
 [[package]]
 name = "serde_bare"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
+source = "git+https://github.com/ockam-network/serde_bare.git?rev=c4630d2#c4630d202018803efe4153f000fbe234ac3fe18a"
 dependencies = [
  "serde",
 ]
