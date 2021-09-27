@@ -53,7 +53,7 @@ impl CreateResponderChannelMessage {
 }
 
 #[async_trait]
-impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
+impl<V: SecureChannelVault + Sync, N: SecureChannelNewKeyExchanger + Sync> Worker
     for SecureChannelListener<V, N>
 {
     type Message = CreateResponderChannelMessage;
@@ -82,8 +82,8 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             address_local.clone(),
             msg.completed_callback_address().clone(),
             None,
-            self.new_key_exchanger.responder()?,
-            self.vault.clone(),
+            self.new_key_exchanger.async_responder().await?,
+            self.vault.async_clone().await,
         )?;
 
         ctx.start_worker(vec![address_remote.clone(), address_local], channel)

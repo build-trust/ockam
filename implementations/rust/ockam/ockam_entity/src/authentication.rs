@@ -37,6 +37,18 @@ impl Authentication {
         proof.encode().map_err(|_| EntityError::BareError.into())
     }
 
+    pub(crate) async fn async_generate_proof<V: ProfileVault>(
+        channel_state: &[u8],
+        secret: &Secret,
+        vault: &mut V,
+    ) -> ockam_core::Result<Vec<u8>> {
+        let signature = vault.async_sign(secret, channel_state).await?;
+
+        let proof = AuthenticationProof::new(signature);
+
+        proof.encode().map_err(|_| EntityError::BareError.into())
+    }
+
     pub(crate) fn verify_proof<V: ProfileVault>(
         channel_state: &[u8],
         responder_public_key: &PublicKey,
@@ -46,6 +58,19 @@ impl Authentication {
         let proof = AuthenticationProof::decode(&proof).map_err(|_| EntityError::BareError)?;
 
         vault.verify(proof.signature(), responder_public_key, channel_state)
+    }
+
+    pub(crate) async fn async_verify_proof<V: ProfileVault>(
+        channel_state: &[u8],
+        responder_public_key: &PublicKey,
+        proof: &[u8],
+        vault: &mut V,
+    ) -> ockam_core::Result<bool> {
+        let proof = AuthenticationProof::decode(proof).map_err(|_| EntityError::BareError)?;
+
+        vault
+            .async_verify(proof.signature(), responder_public_key, channel_state)
+            .await
     }
 }
 

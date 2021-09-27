@@ -50,8 +50,8 @@ impl SecureChannel {
     /// Create and start channel listener with given address.
     pub async fn create_listener_extended<
         A: Into<Address>,
-        N: SecureChannelNewKeyExchanger,
-        V: SecureChannelVault,
+        N: SecureChannelNewKeyExchanger + Sync,
+        V: SecureChannelVault + Sync,
     >(
         ctx: &Context,
         address: A,

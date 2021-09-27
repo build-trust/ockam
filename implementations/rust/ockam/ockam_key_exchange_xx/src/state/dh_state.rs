@@ -34,6 +34,22 @@ impl<V: XXVault> DhState<V> {
             vault,
         })
     }
+
+    pub(crate) async fn async_new(protocol_name: &[u8; 32], mut vault: V) -> Result<Self> {
+        let attributes = SecretAttributes::new(
+            SecretType::Buffer,
+            SecretPersistence::Ephemeral,
+            SHA256_SIZE,
+        );
+
+        let ck = vault.async_secret_import(protocol_name, attributes).await?;
+
+        Ok(Self {
+            key: None,
+            ck: Some(ck),
+            vault,
+        })
+    }
 }
 
 impl<V: XXVault> DhState<V> {
@@ -87,6 +103,57 @@ impl<V: XXVault> DhState<V> {
         let ck = self.ck.take();
 
         self.vault.secret_destroy(ck.unwrap())?;
+        self.ck = Some(hkdf_output.pop().unwrap());
+
+        Ok(())
+    }
+
+    /// Perform the diffie-hellman computation
+    pub(crate) async fn async_dh(
+        &mut self,
+        secret_handle: &Secret,
+        public_key: &PublicKey,
+    ) -> Result<()> {
+        let ck = self.ck.as_ref().ok_or(XXError::InvalidState)?;
+
+        let attributes_ck = SecretAttributes::new(
+            SecretType::Buffer,
+            SecretPersistence::Ephemeral,
+            SHA256_SIZE,
+        );
+
+        let symmetric_secret_info = self.get_symmetric_key_type_and_length();
+
+        let attributes_k = SecretAttributes::new(
+            symmetric_secret_info.0,
+            SecretPersistence::Ephemeral,
+            symmetric_secret_info.1,
+        );
+
+        let ecdh = self
+            .vault
+            .async_ec_diffie_hellman(secret_handle, public_key)
+            .await?;
+
+        let mut hkdf_output = self
+            .vault
+            .async_hkdf_sha256(ck, b"", Some(&ecdh), vec![attributes_ck, attributes_k])
+            .await?;
+
+        if hkdf_output.len() != 2 {
+            return Err(XXError::InternalVaultError.into());
+        }
+
+        let key = self.key.take();
+        if key.is_some() {
+            self.vault.async_secret_destroy(key.unwrap()).await?;
+        }
+
+        self.key = Some(hkdf_output.pop().unwrap());
+
+        let ck = self.ck.take();
+
+        self.vault.async_secret_destroy(ck.unwrap()).await?;
         self.ck = Some(hkdf_output.pop().unwrap());
 
         Ok(())

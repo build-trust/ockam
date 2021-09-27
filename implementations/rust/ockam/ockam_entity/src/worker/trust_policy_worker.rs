@@ -38,11 +38,31 @@ impl TrustPolicyImpl {
     }
 }
 
+#[async_trait]
+impl ockam_core::traits::AsyncClone for TrustPolicyImpl {
+    async fn async_clone(&self) -> TrustPolicyImpl {
+        TrustPolicyImpl {
+            handle: self.handle.async_clone().await,
+        }
+    }
+}
+
+#[async_trait]
 impl TrustPolicy for TrustPolicyImpl {
     fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         let response: TrustPolicyResponse = self.handle.call(TrustPolicyRequest {
             info: trust_info.clone(),
         })?;
+
+        Ok(response.res)
+    }
+    async fn async_check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+        let response: TrustPolicyResponse = self
+            .handle
+            .async_call(TrustPolicyRequest {
+                info: trust_info.clone(),
+            })
+            .await?;
 
         Ok(response.res)
     }

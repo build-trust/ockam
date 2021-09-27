@@ -12,10 +12,17 @@ use ockam_transport_tcp::{TcpTransport, TCP};
 #[tokio::test(flavor = "multi_thread")]
 async fn send_receive() {
     let (tx, rx) = oneshot::channel::<Result<()>>();
-    let (ctx, mut executor) = ockam_node::start_node();
-    executor
-        .execute(async move { run_with_timeout(tx, ctx).await })
-        .expect("Executor should not fail");
+    let (ctx, executor) = ockam_node::start_node();
+    fn blocking_context(
+        tx: oneshot::Sender<Result<()>>,
+        ctx: Context,
+        mut executor: ockam_node::Executor,
+    ) {
+        executor
+            .execute(async { run_with_timeout(tx, ctx).await })
+            .expect("Executor should not fail");
+    }
+    blocking_context(tx, ctx, executor);
     assert!(rx.await.unwrap().is_ok(), "'run' method should return Ok");
 }
 

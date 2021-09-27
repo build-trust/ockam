@@ -78,6 +78,13 @@ impl EventIdentifier {
         };
         EventIdentifier::from_hash(h)
     }
+    pub async fn async_initial<H: Hasher>(mut hasher: H) -> Self {
+        let h = match hasher.async_sha256(Profile::NO_EVENT).await {
+            Ok(hash) => hash,
+            Err(_) => panic!("failed to hash initial event"),
+        };
+        EventIdentifier::from_hash(h)
+    }
     /// Create identifier from public key hash
     pub fn from_hash(hash: [u8; 32]) -> Self {
         Self { 0: hash }

@@ -22,25 +22,33 @@ extern crate core;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::async_trait::async_trait;
+use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::Result;
 use ockam_vault_core::Secret;
 use zeroize::Zeroize;
 
+#[async_trait]
 /// A trait implemented by both Initiator and Responder peers.
 pub trait KeyExchanger {
     /// Return key exchange unique name.
     fn name(&self) -> String;
     /// Generate request that should be sent to the other party.
     fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
+    /// Generate request that should be sent to the other party.
+    async fn async_generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
     /// Handle response from other party and return payload.
     fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>>;
+    /// Handle response from other party and return payload.
+    async fn async_handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>>;
     /// Returns true if the key exchange process is complete.
     fn is_complete(&self) -> bool;
     /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.
     fn finalize(self) -> Result<CompletedKeyExchange>;
+    /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.
+    async fn async_finalize(self) -> Result<CompletedKeyExchange>;
 }
-
+#[async_trait]
 /// A creator of both initiator and responder peers of a key exchange.
 pub trait NewKeyExchanger {
     /// Initiator
@@ -52,6 +60,11 @@ pub trait NewKeyExchanger {
     fn initiator(&self) -> Result<Self::Initiator>;
     /// Create a new Key Exchanger with the responder role
     fn responder(&self) -> Result<Self::Responder>;
+
+    /// Create a new Key Exchanger with the initiator role
+    async fn async_initiator(&self) -> Result<Self::Initiator>;
+    /// Create a new Key Exchanger with the responder role
+    async fn async_responder(&self) -> Result<Self::Responder>;
 }
 
 /// The state of a completed key exchange.

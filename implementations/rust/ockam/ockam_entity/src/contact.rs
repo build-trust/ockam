@@ -75,6 +75,34 @@ impl Contact {
         allow()
     }
 
+    /// Verify cryptographically whole event chain. Also verify sequence correctness
+    pub async fn async_verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<bool> {
+        if !ProfileChangeHistory::check_consistency(&[], self.change_events()) {
+            return deny();
+        }
+
+        if !self
+            .change_history
+            .async_verify_all_existing_events(vault)
+            .await?
+        {
+            return deny();
+        }
+
+        let root_public_key = self.change_history.get_first_root_public_key()?;
+
+        let root_key_id = vault
+            .async_compute_key_id_for_public_key(&root_public_key)
+            .await?;
+        let profile_id = ProfileIdentifier::from_key_id(root_key_id);
+
+        if &profile_id != self.identifier() {
+            return deny(); // ProfileIdDoesntMatch Err(EntityError::.into());
+        }
+
+        allow()
+    }
+
     /// Update [`Contact`] by using new change events
     pub fn verify_and_update<C: AsRef<[ProfileChangeEvent]>>(
         &mut self,

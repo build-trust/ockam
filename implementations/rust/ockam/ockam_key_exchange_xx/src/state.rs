@@ -62,6 +62,23 @@ impl<V: XXVault> State<V> {
             vault: vault.clone(),
         })
     }
+
+    #[allow(dead_code)]
+    pub(crate) async fn async_new(vault: &V) -> Result<Self> {
+        Ok(Self {
+            run_prologue: true,
+            identity_key: None,
+            identity_public_key: None,
+            ephemeral_secret: None,
+            ephemeral_public: None,
+            _remote_static_public_key: None,
+            remote_ephemeral_public_key: None,
+            dh_state: DhState::empty(vault.async_clone().await),
+            nonce: 0,
+            h: None,
+            vault: vault.async_clone().await,
+        })
+    }
 }
 
 impl<V: XXVault> State<V> {
@@ -111,6 +128,51 @@ impl<V: XXVault> State<V> {
         Ok(())
     }
 
+    /// Create a new `HandshakeState` starting with the prologue
+    async fn async_prologue(&mut self) -> Result<()> {
+        let attributes = SecretAttributes::new(
+            SecretType::Curve25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        );
+        // 1. Generate a static key pair for this handshake and set it to `s`
+        if let Some(ik) = &self.identity_key {
+            self.identity_public_key = Some(self.vault.secret_public_key_get(ik)?);
+        } else {
+            let static_secret_handle = self.vault.async_secret_generate(attributes).await?;
+            self.identity_public_key = Some(
+                self.vault
+                    .async_secret_public_key_get(static_secret_handle.clone())
+                    .await?,
+            );
+            self.identity_key = Some(static_secret_handle)
+        };
+
+        // 2. Generate an ephemeral key pair for this handshake and set it to e
+        let ephemeral_secret_handle = self.vault.async_secret_generate(attributes).await?;
+        self.ephemeral_public = Some(
+            self.vault
+                .async_secret_public_key_get(ephemeral_secret_handle.clone())
+                .await?,
+        );
+        self.ephemeral_secret = Some(ephemeral_secret_handle);
+
+        // 3. Set k to empty, Set n to 0
+        // let nonce = 0;
+        self.nonce = 0;
+
+        // 4. Set h and ck to protocol name
+        // 5. h = SHA256(h || prologue),
+        // prologue is empty
+        // mix_hash(xx, NULL, 0);
+        let mut h = [0u8; SHA256_SIZE];
+        h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
+        self.dh_state = DhState::async_new(&h, self.vault.async_clone().await).await?;
+        self.h = Some(self.vault.async_sha256(&h).await?);
+
+        Ok(())
+    }
+
     /// mix hash step in Noise protocol
     fn mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<[u8; 32]> {
         let h = &self.h.ok_or(XXError::InvalidState)?;
@@ -118,6 +180,16 @@ impl<V: XXVault> State<V> {
         let mut input = h.to_vec();
         input.extend_from_slice(data.as_ref());
         let h = self.vault.sha256(&input)?;
+        Ok(h)
+    }
+
+    /// mix hash step in Noise protocol
+    async fn async_mix_hash<B: AsRef<[u8]>>(&mut self, data: B) -> Result<[u8; 32]> {
+        let h = &self.h.ok_or(XXError::InvalidState)?;
+
+        let mut input = h.to_vec();
+        input.extend_from_slice(data.as_ref());
+        let h = self.vault.async_sha256(&input).await?;
         Ok(h)
     }
 
@@ -140,6 +212,26 @@ impl<V: XXVault> State<V> {
         Ok((ciphertext_and_tag, h))
     }
 
+    /// Encrypt and mix step in Noise protocol
+    async fn async_encrypt_and_mix_hash<B: AsRef<[u8]>>(
+        &mut self,
+        plaintext: B,
+    ) -> Result<(Vec<u8>, [u8; 32])> {
+        let h = &self.h.ok_or(XXError::InvalidState)?;
+
+        let mut nonce = [0u8; 12];
+        nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
+
+        let ciphertext_and_tag = {
+            let key = self.dh_state.key().ok_or(XXError::InvalidState)?;
+            self.vault
+                .async_aead_aes_gcm_encrypt(key, plaintext.as_ref(), nonce.as_ref(), h)
+                .await?
+        };
+        let h = self.async_mix_hash(&ciphertext_and_tag).await?;
+        Ok((ciphertext_and_tag, h))
+    }
+
     /// Decrypt and mix step in Noise protocol
     fn decrypt_and_mix_hash<B: AsRef<[u8]>>(
         &mut self,
@@ -156,6 +248,26 @@ impl<V: XXVault> State<V> {
                 .aead_aes_gcm_decrypt(key, ciphertext, nonce.as_ref(), h)?
         };
         let h = self.mix_hash(ciphertext)?;
+        Ok((plaintext, h))
+    }
+
+    /// Decrypt and mix step in Noise protocol
+    async fn async_decrypt_and_mix_hash<B: AsRef<[u8]>>(
+        &mut self,
+        ciphertext: B,
+    ) -> Result<(Vec<u8>, [u8; 32])> {
+        let h = &self.h.ok_or(XXError::InvalidState)?;
+
+        let mut nonce = [0u8; 12];
+        nonce[10..].copy_from_slice(&self.nonce.to_be_bytes());
+        let ciphertext = ciphertext.as_ref();
+        let plaintext = {
+            let key = self.dh_state.key().ok_or(XXError::InvalidState)?;
+            self.vault
+                .async_aead_aes_gcm_decrypt(key, ciphertext, nonce.as_ref(), h)
+                .await?
+        };
+        let h = self.async_mix_hash(ciphertext).await?;
         Ok((plaintext, h))
     }
 
@@ -183,6 +295,31 @@ impl<V: XXVault> State<V> {
         Ok((res0, res1))
     }
 
+    /// Split step in Noise protocol
+    async fn async_split(&mut self) -> Result<(Secret, Secret)> {
+        let ck = self.dh_state.ck().ok_or(XXError::InvalidState)?;
+
+        let symmetric_key_info = self.get_symmetric_key_type_and_length();
+        let attributes = SecretAttributes::new(
+            symmetric_key_info.0,
+            SecretPersistence::Ephemeral,
+            symmetric_key_info.1,
+        );
+        let mut hkdf_output = self
+            .vault
+            .async_hkdf_sha256(ck, b"", None, vec![attributes, attributes])
+            .await?;
+
+        if hkdf_output.len() != 2 {
+            return Err(XXError::InternalVaultError.into());
+        }
+
+        let res1 = hkdf_output.pop().unwrap();
+        let res0 = hkdf_output.pop().unwrap();
+
+        Ok((res0, res1))
+    }
+
     /// Set this state up to send and receive messages
     fn finalize(self, encrypt_key: Secret, decrypt_key: Secret) -> Result<CompletedKeyExchange> {
         let h = self.h.ok_or(XXError::InvalidState)?;
@@ -195,6 +332,14 @@ impl<V: XXVault> State<V> {
     pub(crate) fn run_prologue(&mut self) -> Result<()> {
         if self.run_prologue {
             self.prologue()
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(crate) async fn async_run_prologue(&mut self) -> Result<()> {
+        if self.run_prologue {
+            self.async_prologue().await
         } else {
             Ok(())
         }
@@ -213,6 +358,25 @@ impl<V: XXVault> State<V> {
         let payload = payload.as_ref();
         self.h = Some(self.mix_hash(ephemeral_public_key.as_ref())?);
         self.h = Some(self.mix_hash(payload)?);
+
+        let mut output = ephemeral_public_key.as_ref().to_vec();
+        output.extend_from_slice(payload);
+        Ok(output)
+    }
+
+    pub(crate) async fn async_encode_message_1<B: AsRef<[u8]>>(
+        &mut self,
+        payload: B,
+    ) -> Result<Vec<u8>> {
+        let ephemeral_public_key = self
+            .ephemeral_public
+            .as_ref()
+            .ok_or(XXError::InvalidState)?
+            .clone();
+
+        let payload = payload.as_ref();
+        self.h = Some(self.async_mix_hash(ephemeral_public_key.as_ref()).await?);
+        self.h = Some(self.async_mix_hash(payload).await?);
 
         let mut output = ephemeral_public_key.as_ref().to_vec();
         output.extend_from_slice(payload);
@@ -254,6 +418,52 @@ impl<V: XXVault> State<V> {
         Ok(payload)
     }
 
+    /// Decode the second message in the sequence, sent from the responder
+    pub(crate) async fn async_decode_message_2<B: AsRef<[u8]>>(
+        &mut self,
+        message: B,
+    ) -> Result<Vec<u8>> {
+        let public_key_size = CURVE25519_PUBLIC_LENGTH;
+        let message = message.as_ref();
+        if message.len() < 2 * public_key_size + AES_GCM_TAGSIZE {
+            return Err(XXError::MessageLenMismatch.into());
+        }
+
+        let ephemeral_secret_handle = self.ephemeral_secret.clone().ok_or(XXError::InvalidState)?;
+
+        let mut index_l = 0;
+        let mut index_r = public_key_size;
+        let re = &message[..index_r];
+        let re = PublicKey::new(re.to_vec());
+        index_l += public_key_size;
+        index_r += public_key_size + AES_GCM_TAGSIZE;
+        let encrypted_rs_and_tag = &message[index_l..index_r];
+        let encrypted_payload_and_tag = &message[index_r..];
+
+        self.h = Some(self.async_mix_hash(re.as_ref()).await?);
+        self.dh_state
+            .async_dh(&ephemeral_secret_handle, &re)
+            .await?;
+        self.remote_ephemeral_public_key = Some(re);
+        let (rs, h) = self
+            .async_decrypt_and_mix_hash(encrypted_rs_and_tag)
+            .await?;
+        self.h = Some(h);
+        let rs = PublicKey::new(rs);
+        self.dh_state
+            .async_dh(&ephemeral_secret_handle, &rs)
+            .await?;
+        self._remote_static_public_key = Some(rs);
+        self.nonce = 0;
+
+        let (payload, h) = self
+            .async_decrypt_and_mix_hash(encrypted_payload_and_tag)
+            .await?;
+        self.h = Some(h);
+        self.nonce += 1;
+        Ok(payload)
+    }
+
     /// Encode the final message to be sent
     pub(crate) fn encode_message_3<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>> {
         let static_secret = self.identity_key.clone().ok_or(XXError::InvalidState)?;
@@ -280,14 +490,52 @@ impl<V: XXVault> State<V> {
         Ok(encrypted_s_and_tag)
     }
 
+    /// Encode the final message to be sent
+    pub(crate) async fn async_encode_message_3<B: AsRef<[u8]>>(
+        &mut self,
+        payload: B,
+    ) -> Result<Vec<u8>> {
+        let static_secret = self.identity_key.clone().ok_or(XXError::InvalidState)?;
+
+        let static_public = self
+            .identity_public_key
+            .clone()
+            .ok_or(XXError::InvalidState)?;
+
+        let remote_ephemeral_public_key = self
+            .remote_ephemeral_public_key
+            .clone()
+            .ok_or(XXError::InvalidState)?;
+
+        let (mut encrypted_s_and_tag, h) = self
+            .async_encrypt_and_mix_hash(static_public.as_ref())
+            .await?;
+        self.h = Some(h);
+        self.dh_state
+            .async_dh(&static_secret, &remote_ephemeral_public_key)
+            .await?;
+        self.nonce = 0;
+        let (mut encrypted_payload_and_tag, h) = self.async_encrypt_and_mix_hash(payload).await?;
+        self.h = Some(h);
+        self.nonce += 1;
+        encrypted_s_and_tag.append(&mut encrypted_payload_and_tag);
+        Ok(encrypted_s_and_tag)
+    }
+
     pub(crate) fn finalize_initiator(mut self) -> Result<CompletedKeyExchange> {
         let keys = { self.split()? };
 
         self.finalize(keys.1, keys.0)
     }
+
+    pub(crate) async fn async_finalize_initiator(mut self) -> Result<CompletedKeyExchange> {
+        let keys = { self.async_split().await? };
+
+        self.finalize(keys.1, keys.0)
+    }
 }
 
-impl<V: XXVault> State<V> {
+impl<V: XXVault + Sync> State<V> {
     /// Decode the first message sent
     pub(crate) fn decode_message_1<B: AsRef<[u8]>>(&mut self, message_1: B) -> Result<Vec<u8>> {
         let public_key_size = CURVE25519_PUBLIC_LENGTH;
@@ -300,6 +548,25 @@ impl<V: XXVault> State<V> {
         let re = PublicKey::new(re.to_vec());
         self.h = Some(self.mix_hash(re.as_ref())?);
         self.h = Some(self.mix_hash(&message_1[public_key_size..])?);
+        self.remote_ephemeral_public_key = Some(re);
+        Ok(message_1[public_key_size..].to_vec())
+    }
+
+    /// Decode the first message sent
+    pub(crate) async fn async_decode_message_1<B: AsRef<[u8]>>(
+        &mut self,
+        message_1: B,
+    ) -> Result<Vec<u8>> {
+        let public_key_size = CURVE25519_PUBLIC_LENGTH;
+        let message_1 = message_1.as_ref();
+        if message_1.len() < public_key_size {
+            return Err(XXError::MessageLenMismatch.into());
+        }
+
+        let re = &message_1[..public_key_size];
+        let re = PublicKey::new(re.to_vec());
+        self.h = Some(self.async_mix_hash(re.as_ref()).await?);
+        self.h = Some(self.async_mix_hash(&message_1[public_key_size..]).await?);
         self.remote_ephemeral_public_key = Some(re);
         Ok(message_1[public_key_size..].to_vec())
     }
@@ -337,6 +604,46 @@ impl<V: XXVault> State<V> {
         Ok(output)
     }
 
+    /// Encode the second message to be sent
+    pub(crate) async fn async_encode_message_2<B: AsRef<[u8]>>(
+        &mut self,
+        payload: B,
+    ) -> Result<Vec<u8>> {
+        let static_secret = self.identity_key.clone().ok_or(XXError::InvalidState)?;
+        let static_public = self
+            .identity_public_key
+            .clone()
+            .ok_or(XXError::InvalidState)?;
+        let ephemeral_public = self.ephemeral_public.clone().ok_or(XXError::InvalidState)?;
+        let ephemeral_secret = self.ephemeral_secret.clone().ok_or(XXError::InvalidState)?;
+        let remote_ephemeral_public_key = self
+            .remote_ephemeral_public_key
+            .clone()
+            .ok_or(XXError::InvalidState)?;
+
+        self.h = Some(self.async_mix_hash(ephemeral_public.as_ref()).await?);
+        self.dh_state
+            .async_dh(&ephemeral_secret, &remote_ephemeral_public_key)
+            .await?;
+
+        let (mut encrypted_s_and_tag, h) = self
+            .async_encrypt_and_mix_hash(static_public.as_ref())
+            .await?;
+        self.h = Some(h);
+        self.dh_state
+            .async_dh(&static_secret, &remote_ephemeral_public_key)
+            .await?;
+        self.nonce = 0;
+        let (mut encrypted_payload_and_tag, h) = self.async_encrypt_and_mix_hash(payload).await?;
+        self.h = Some(h);
+        self.nonce += 1;
+
+        let mut output = ephemeral_public.as_ref().to_vec();
+        output.append(&mut encrypted_s_and_tag);
+        output.append(&mut encrypted_payload_and_tag);
+        Ok(output)
+    }
+
     /// Decode the final message received for the handshake
     pub(crate) fn decode_message_3<B: AsRef<[u8]>>(&mut self, message_3: B) -> Result<Vec<u8>> {
         let public_key_size = CURVE25519_PUBLIC_LENGTH;
@@ -360,8 +667,43 @@ impl<V: XXVault> State<V> {
         Ok(payload)
     }
 
+    /// Decode the final message received for the handshake
+    pub(crate) async fn async_decode_message_3<B: AsRef<[u8]>>(
+        &mut self,
+        message_3: B,
+    ) -> Result<Vec<u8>> {
+        let public_key_size = CURVE25519_PUBLIC_LENGTH;
+        let message_3 = message_3.as_ref();
+        if message_3.len() < public_key_size + AES_GCM_TAGSIZE {
+            return Err(XXError::MessageLenMismatch.into());
+        }
+
+        let ephemeral_secret = &self.ephemeral_secret.clone().ok_or(XXError::InvalidState)?;
+
+        let (rs, h) = self
+            .async_decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])
+            .await?;
+        self.h = Some(h);
+        let rs = PublicKey::new(rs);
+        self.dh_state.async_dh(ephemeral_secret, &rs).await?;
+        self.nonce = 0;
+        let (payload, h) = self
+            .async_decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])
+            .await?;
+        self.h = Some(h);
+        self.nonce += 1;
+        self._remote_static_public_key = Some(rs);
+        Ok(payload)
+    }
+
     pub(crate) fn finalize_responder(mut self) -> Result<CompletedKeyExchange> {
         let keys = { self.split()? };
+
+        self.finalize(keys.0, keys.1)
+    }
+
+    pub(crate) async fn async_finalize_responder(mut self) -> Result<CompletedKeyExchange> {
+        let keys = { self.async_split().await? };
 
         self.finalize(keys.0, keys.1)
     }

@@ -1,6 +1,8 @@
 use crate::{PreKeyBundle, X3DHError, X3dhVault, CSUITE};
 use core::convert::TryFrom;
+use ockam_core::async_trait::async_trait;
 use ockam_core::compat::{
+    boxed::Box,
     string::{String, ToString},
     vec::Vec,
 };
@@ -70,12 +72,40 @@ impl<V: X3dhVault> core::fmt::Debug for Initiator<V> {
     }
 }
 
-impl<V: X3dhVault> KeyExchanger for Initiator<V> {
+#[async_trait]
+impl<V: X3dhVault + Sync> KeyExchanger for Initiator<V> {
     fn name(&self) -> String {
         "X3DH".to_string()
     }
 
     fn generate_request(&mut self, _payload: &[u8]) -> Result<Vec<u8>> {
+        match self.state {
+            InitiatorState::GenerateEphemeralIdentityKey => {
+                self.prologue()?;
+                let identity_key = self.identity_key.as_ref().ok_or(X3DHError::InvalidState)?;
+                let pubkey = self.vault.secret_public_key_get(identity_key)?;
+
+                let ephemeral_identity_key = self.vault.secret_generate(SecretAttributes::new(
+                    SecretType::Curve25519,
+                    SecretPersistence::Ephemeral,
+                    CURVE25519_SECRET_LENGTH,
+                ))?;
+                let ephemeral_pubkey = self.vault.secret_public_key_get(&ephemeral_identity_key)?;
+                self.ephemeral_identity_key = Some(ephemeral_identity_key);
+                self.state = InitiatorState::ProcessPreKeyBundle;
+
+                let mut response = Vec::new();
+                response.extend_from_slice(pubkey.as_ref());
+                response.extend_from_slice(ephemeral_pubkey.as_ref());
+                Ok(response)
+            }
+            InitiatorState::ProcessPreKeyBundle | InitiatorState::Done => {
+                Err(X3DHError::InvalidState.into())
+            }
+        }
+    }
+
+    async fn async_generate_request(&mut self, _payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             InitiatorState::GenerateEphemeralIdentityKey => {
                 self.prologue()?;
@@ -182,6 +212,10 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
         }
     }
 
+    async fn async_handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
+        self.handle_response(response)
+    }
+
     fn is_complete(&self) -> bool {
         matches!(self.state, InitiatorState::Done)
     }
@@ -189,5 +223,9 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
     fn finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
         self.completed_key_exchange
             .ok_or_else(|| X3DHError::InvalidState.into())
+    }
+
+    async fn async_finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
+        self.finalize()
     }
 }

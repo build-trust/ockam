@@ -1,6 +1,8 @@
 use crate::{PreKeyBundle, Signature, X3DHError, X3dhVault, CSUITE};
 use arrayref::array_ref;
+use ockam_core::async_trait::async_trait;
 use ockam_core::compat::{
+    boxed::Box,
     string::{String, ToString},
     vec::Vec,
 };
@@ -83,12 +85,48 @@ impl<V: X3dhVault> core::fmt::Debug for Responder<V> {
     }
 }
 
-impl<V: X3dhVault> KeyExchanger for Responder<V> {
+#[async_trait]
+impl<V: X3dhVault + Sync> KeyExchanger for Responder<V> {
     fn name(&self) -> String {
         "X3DH".to_string()
     }
 
     fn generate_request(&mut self, _payload: &[u8]) -> Result<Vec<u8>> {
+        match self.state {
+            ResponderState::SendBundle => {
+                let identity_secret_key =
+                    self.identity_key.as_ref().ok_or(X3DHError::InvalidState)?;
+                let signed_prekey = self.signed_prekey.as_ref().ok_or(X3DHError::InvalidState)?;
+                let one_time_prekey = self
+                    .one_time_prekey
+                    .as_ref()
+                    .ok_or(X3DHError::InvalidState)?;
+                let signed_prekey_pub = self.vault.secret_public_key_get(signed_prekey)?;
+                let signature = self
+                    .vault
+                    .sign(identity_secret_key, signed_prekey_pub.as_ref())?;
+                let identity_key = self.vault.secret_public_key_get(identity_secret_key)?;
+                let one_time_prekey_pub = self.vault.secret_public_key_get(one_time_prekey)?;
+                if signature.as_ref().len() != 64 {
+                    return Err(X3DHError::SignatureLenMismatch.into());
+                }
+                let signature_array = array_ref![signature.as_ref(), 0, 64]; //check it against panic
+                let bundle = PreKeyBundle {
+                    identity_key,
+                    signed_prekey: signed_prekey_pub,
+                    signature_prekey: Signature(*signature_array),
+                    one_time_prekey: one_time_prekey_pub,
+                };
+                self.state = ResponderState::Done;
+                Ok(bundle.to_bytes())
+            }
+            ResponderState::HandleInitiatorKeys | ResponderState::Done => {
+                Err(X3DHError::InvalidState.into())
+            }
+        }
+    }
+
+    async fn async_generate_request(&mut self, _payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             ResponderState::SendBundle => {
                 let identity_secret_key =
@@ -202,6 +240,10 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
         }
     }
 
+    async fn async_handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
+        self.handle_response(response)
+    }
+
     fn is_complete(&self) -> bool {
         matches!(self.state, ResponderState::Done)
     }
@@ -209,5 +251,9 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
     fn finalize(self) -> Result<CompletedKeyExchange> {
         self.completed_key_exchange
             .ok_or_else(|| X3DHError::InvalidState.into())
+    }
+
+    async fn async_finalize(self) -> Result<CompletedKeyExchange> {
+        self.finalize()
     }
 }

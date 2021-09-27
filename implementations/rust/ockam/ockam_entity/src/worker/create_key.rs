@@ -74,7 +74,7 @@ impl CreateKeyChange {
 
 impl ProfileState {
     /// Create a new key
-    pub fn create_key_static(
+    pub async fn async_create_key_static(
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
@@ -94,13 +94,15 @@ impl ProfileState {
             )
         };
 
-        let secret_key = vault.secret_generate(secret_attributes)?;
-        let public_key = vault.secret_public_key_get(&secret_key)?;
+        let secret_key = vault.async_secret_generate(secret_attributes).await?;
+        let public_key = vault
+            .async_secret_public_key_get(secret_key.clone())
+            .await?;
 
         let data = CreateKeyChangeData::new(key_attributes, public_key.as_ref().to_vec());
         let data_binary = data.encode().map_err(|_| EntityError::BareError)?;
-        let data_hash = vault.sha256(data_binary.as_slice())?;
-        let self_signature = vault.sign(&secret_key, &data_hash)?;
+        let data_hash = vault.async_sha256(data_binary.as_slice()).await?;
+        let self_signature = vault.async_sign(&secret_key, &data_hash).await?;
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
@@ -112,7 +114,7 @@ impl ProfileState {
         let changes = ChangeSet::new(prev_id, vec![profile_change]);
         let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
 
-        let event_id = vault.sha256(&changes_binary)?;
+        let event_id = vault.async_sha256(&changes_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
 
         // If we have root_key passed we should sign using it
@@ -124,7 +126,7 @@ impl ProfileState {
             sign_key = &secret_key;
         }
 
-        let signature = vault.sign(sign_key, event_id.as_ref())?;
+        let signature = vault.async_sign(sign_key, event_id.as_ref()).await?;
 
         let proof =
             ProfileChangeProof::Signature(Signature::new(SignatureType::RootSign, signature));
@@ -134,7 +136,16 @@ impl ProfileState {
     }
 
     /// Create a new key
-    pub(crate) fn create_key(
+    pub(crate) fn sync_create_key(
+        &mut self,
+        _key_attributes: KeyAttributes,
+        _attributes: ProfileEventAttributes,
+    ) -> ockam_core::Result<ProfileChangeEvent> {
+        unimplemented!(); // TODO
+    }
+
+    /// Create a new key
+    pub(crate) async fn async_create_key(
         &mut self,
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
@@ -157,12 +168,13 @@ impl ProfileState {
         let root_secret = self.get_root_secret().expect("can't get root secret");
         let root_key = Some(&root_secret);
 
-        Self::create_key_static(
+        Self::async_create_key_static(
             prev_id,
             key_attributes,
             attributes,
             root_key,
             &mut self.vault(),
         )
+        .await
     }
 }

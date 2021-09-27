@@ -19,4 +19,18 @@ impl Vault {
             VaultWorker::create_with_inner(ctx, inner).await
         })
     }
+
+    /// Start a Vault with SoftwareVault implementation.
+    #[cfg(feature = "software_vault")]
+    pub async fn async_create(ctx: &Context) -> Result<Address> {
+        use ockam_vault::SoftwareVault;
+        Self::async_create_with_inner(ctx, SoftwareVault::default()).await
+    }
+    /// Start a Vault Worker with given implementation.
+    pub async fn async_create_with_inner<V: VaultTrait>(
+        ctx: &Context,
+        inner: V,
+    ) -> Result<Address> {
+        VaultWorker::create_with_inner(ctx, inner).await
+    }
 }

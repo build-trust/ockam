@@ -33,12 +33,26 @@ pub const AES_GCM_TAGSIZE: usize = 16;
 
 /// Vault with XX required functionality
 pub trait XXVault:
-    SecretVault + Hasher + AsymmetricVault + SymmetricVault + Clone + Send + 'static
+    SecretVault
+    + Hasher
+    + AsymmetricVault
+    + SymmetricVault
+    + ockam_core::traits::AsyncClone
+    + Clone
+    + Send
+    + 'static
 {
 }
 
 impl<D> XXVault for D where
-    D: SecretVault + Hasher + AsymmetricVault + SymmetricVault + Clone + Send + 'static
+    D: SecretVault
+        + Hasher
+        + AsymmetricVault
+        + SymmetricVault
+        + ockam_core::traits::AsyncClone
+        + Clone
+        + Send
+        + 'static
 {
 }
 

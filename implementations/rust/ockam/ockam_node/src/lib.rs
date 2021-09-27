@@ -17,8 +17,12 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
+#[cfg(feature = "std")]
 #[macro_use]
 extern crate tracing;
+#[cfg(not(feature = "std"))]
+#[macro_use]
+extern crate ockam_executor;
 
 #[cfg(not(feature = "std"))]
 pub use ockam_executor::{interrupt, tokio};

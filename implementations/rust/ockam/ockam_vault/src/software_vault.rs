@@ -1,5 +1,7 @@
 use crate::VaultError;
-use ockam_core::compat::{collections::BTreeMap, string::String};
+use ockam_core::async_trait::async_trait;
+use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
+use ockam_core::traits::AsyncClone;
 use ockam_vault_core::zdrop_impl;
 use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use tracing::info;
@@ -32,7 +34,7 @@ use zeroize::Zeroize;
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SoftwareVault {
     pub(crate) entries: BTreeMap<usize, VaultEntry>,
     pub(crate) next_id: usize,
@@ -46,6 +48,13 @@ impl SoftwareVault {
             entries: Default::default(),
             next_id: 0,
         }
+    }
+}
+
+#[async_trait]
+impl AsyncClone for SoftwareVault {
+    async fn async_clone(&self) -> Self {
+        self.clone()
     }
 }
 
@@ -75,7 +84,7 @@ impl Zeroize for SoftwareVault {
 
 zdrop_impl!(SoftwareVault);
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct VaultEntry {
     key_id: Option<String>,
     key_attributes: SecretAttributes,

@@ -28,7 +28,7 @@ signature_core = { version = "0.24.0"     , path = "../signature_core" }
 signature_bls = { version = "0.22.0"     , path = "../signature_bls" }
 subtle = { version = "2.4", default-features = false }
 typenum = "1.13"
-zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
+zeroize = { version = "1.4.2", default-features = false, features = ["zeroize_derive"] }
 
 [dev-dependencies]
 rand_xorshift = "0.3"
