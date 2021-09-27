@@ -1,4 +1,3 @@
-#[cfg(not(feature = "std"))]
 use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use crate::compat::{
     string::{String, ToString},
@@ -7,8 +6,6 @@ use crate::compat::{
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
 use core::str::from_utf8;
-#[cfg(feature = "std")]
-use rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use serde::{Deserialize, Serialize};
 
 /// A collection of Addresses

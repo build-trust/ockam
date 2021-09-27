@@ -1,13 +1,9 @@
 #![allow(unused)]
 
 use crate::protocols::stream::responses::StreamMessage;
+use ockam_core::compat::rand::{self, distributions::Standard, prelude::Distribution, Rng};
 use ockam_core::compat::string::String;
 use ockam_core::RouteBuilder;
-
-#[cfg(feature = "unsafe_random")]
-use ockam_core::compat::rand::{self, distributions::Standard, prelude::Distribution, Rng};
-#[cfg(not(feature = "unsafe_random"))]
-use rand::{distributions::Standard, prelude::Distribution, Rng};
 
 mod cmd;
 pub use cmd::{StreamCmdParser, StreamWorkerCmd};

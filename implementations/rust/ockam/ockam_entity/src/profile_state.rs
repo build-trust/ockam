@@ -22,17 +22,13 @@ use crate::{
 };
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
+use ockam_core::compat::rand::{thread_rng, CryptoRng, RngCore};
 use ockam_vault_core::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
 use signature_bbs_plus::{Issuer as BbsIssuer, PokSignatureProof, Prover};
 use signature_bbs_plus::{MessageGenerators, ProofOfPossession};
 use signature_core::challenge::Challenge;
 use signature_core::lib::{HiddenMessage, Message, Nonce, ProofMessage};
-
-#[cfg(feature = "unsafe_random")]
-use ockam_core::compat::rand::{thread_rng, RngCore};
-#[cfg(not(feature = "unsafe_random"))]
-use rand::{thread_rng, CryptoRng, RngCore};
 
 /// Profile implementation
 #[derive(Clone)]
@@ -53,8 +49,7 @@ impl ProfileState {
         change_events: Changes,
         contacts: Contacts,
         vault: VaultSync,
-        #[cfg(not(feature = "unsafe_random"))] rng: impl RngCore + CryptoRng + Clone,
-        #[cfg(feature = "unsafe_random")] rng: impl RngCore + Clone,
+        rng: impl RngCore + CryptoRng + Clone,
     ) -> Self {
         Self {
             id: identifier,

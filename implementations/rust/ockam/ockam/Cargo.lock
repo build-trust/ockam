@@ -8,7 +8,8 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b613b8e1e3cf911a086f53f03bf286f52fd7a7258e4fa606f0ef220d39d8877"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.4",
+ "heapless",
  "rand_core 0.6.3",
 ]
 
@@ -78,6 +79,18 @@ name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4c527152e37cf757a3f78aae5a06fbeefdb07ccc535c980a3208ee3060dd544"
+
+[[package]]
+name = "as-slice"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45403b49e3954a4b8428a0ac21a4b7afadccf92bfd96273f1a58cd4812496ae0"
+dependencies = [
+ "generic-array 0.12.4",
+ "generic-array 0.13.3",
+ "generic-array 0.14.4",
+ "stable_deref_trait",
+]
 
 [[package]]
 name = "async-trait"
@@ -168,7 +181,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.4",
 ]
 
 [[package]]
@@ -224,16 +237,28 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ee52072ec15386f770805afd189a01c8841be8696bed250fa2f13c4c0d6dfb7"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.4",
 ]
 
 [[package]]
 name = "core2"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbceae1ad0d3679d016526dd5cc9863156e9d394c1a9591cf7ab20bb25cab490"
+source = "git+https://github.com/technocreatives/core2.git#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "cortex-m"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9075300b07c6a56263b9b582c214d0ff037b00d45ec9fde1cc711490c56f1bb9"
+dependencies = [
+ "aligned",
+ "bare-metal 0.2.5",
+ "bitfield",
+ "cortex-m 0.7.3",
+ "volatile-register",
 ]
 
 [[package]]
@@ -246,6 +271,36 @@ dependencies = [
  "bitfield",
  "embedded-hal",
  "volatile-register",
+]
+
+[[package]]
+name = "cortex-m-rt"
+version = "0.6.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "454f278bf469e2de0a4d22ea019d169d8944f86957c8207a39e3f66c32be2fc6"
+dependencies = [
+ "cortex-m-rt-macros",
+ "r0",
+]
+
+[[package]]
+name = "cortex-m-rt-macros"
+version = "0.6.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8e3aa52243e26f5922fa522b0814019e0c98fc567e2756d715dce7ad7a81f49"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "cortex-m-semihosting"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6bffa6c1454368a6aa4811ae60964c38e6996d397ff8095a8b9211b1c1f749bc"
+dependencies = [
+ "cortex-m 0.7.3",
 ]
 
 [[package]]
@@ -265,17 +320,43 @@ checksum = "673b836c1c5a73bd981805236f46dfddbe1092a6a829b22464bd40d7ceefd2f9"
 dependencies = [
  "bare-metal 1.0.0",
  "cfg-if",
+<<<<<<< HEAD
  "cortex-m",
+=======
+ "cortex-m 0.7.3",
+>>>>>>> 3f553db4 (feat(rust): eliminate unsafe_random feature)
  "riscv",
 ]
 
 [[package]]
+<<<<<<< HEAD
+=======
+name = "crossbeam-queue"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b10ddc024425c88c2ad148c1b0fd53f4c6d38db9697c9f1588381212fa657c9"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
+>>>>>>> 3f553db4 (feat(rust): eliminate unsafe_random feature)
 name = "crypto-mac"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.4",
  "subtle",
 ]
 
@@ -285,7 +366,7 @@ version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1d1a86f49236c215f271d40892d5fc950490551400b02ef360692c29815c714"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.4",
  "subtle",
 ]
 
@@ -317,7 +398,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.4",
 ]
 
 [[package]]
@@ -493,6 +574,24 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffdf9f34f1447443d37393cc6c2b8313aebddcd96906caf34e54c68d8e57d7bd"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f797e67af32588215eaaab8327027ee8e71b9dd0b2b26996aedf20c030fce309"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
+name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
@@ -587,6 +686,7 @@ checksum = "fe65ef062f1af5b1b189842b0bc45bd671c38e1d22c6aa22e6ada03d01026d53"
 dependencies = [
  "atomic-polyfill",
  "hash32",
+ "serde",
  "spin 0.9.2",
  "stable_deref_trait",
 ]
@@ -643,7 +743,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17ea0a1394df5b6574da6e0c1ade9e78868c9fb0a4e5ef4428e32da4676b85b1"
 dependencies = [
  "digest",
- "generic-array",
+ "generic-array 0.14.4",
  "hmac 0.8.1",
 ]
 
@@ -676,6 +776,12 @@ name = "libc"
 version = "0.2.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
+
+[[package]]
+name = "linked_list_allocator"
+version = "0.8.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "822add9edb1860698b79522510da17bef885171f75aa395cff099d770c609c24"
 
 [[package]]
 name = "lock_api"
@@ -800,7 +906,7 @@ dependencies = [
  "bls12_381_plus",
  "hex",
  "ockam_channel",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_entity",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
@@ -814,7 +920,7 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "serde-big-array",
- "serde_bare 0.4.0",
+ "serde_bare",
  "serde_json",
  "sha2",
  "signature_bbs_plus",
@@ -829,7 +935,7 @@ name = "ockam_channel"
 version = "0.26.0"
 dependencies = [
  "async-trait",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_node",
@@ -837,8 +943,9 @@ dependencies = [
  "ockam_vault_core",
  "ockam_vault_sync_core",
  "rand 0.8.4",
+ "rand_pcg",
  "serde",
- "serde_bare 0.4.0",
+ "serde_bare",
  "tracing",
 ]
 
@@ -854,7 +961,24 @@ dependencies = [
  "rand 0.8.4",
  "rand_pcg",
  "serde",
- "serde_bare 0.4.0",
+ "serde_bare",
+ "spin 0.9.2",
+]
+
+[[package]]
+name = "ockam_core"
+version = "0.31.0"
+source = "git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc#de3b3bdd7ebec00ccdeeb0878804caaf96804042"
+dependencies = [
+ "async-trait",
+ "core2",
+ "hashbrown 0.11.2",
+ "heapless",
+ "hex",
+ "rand 0.8.4",
+ "rand_pcg",
+ "serde",
+ "serde_bare",
  "spin 0.9.2",
 ]
 
@@ -868,7 +992,7 @@ dependencies = [
  "group",
  "heapless",
  "ockam_channel",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_node",
@@ -878,7 +1002,7 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
- "serde_bare 0.4.0",
+ "serde_bare",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -887,10 +1011,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_executor"
+version = "0.0.1"
+source = "git+https://github.com/ockam-network/ockam_executor.git#e11a5068097a6f28658689dbee6545ad743df65d"
+dependencies = [
+ "alloc-cortex-m",
+ "cortex-m 0.7.3",
+ "cortex-m-rt",
+ "cortex-m-semihosting",
+ "crossbeam-queue",
+ "futures",
+ "heapless",
+ "ockam_core 0.31.0 (git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc)",
+ "panic-semihosting",
+ "pin-project-lite",
+ "pin-utils",
+]
+
+[[package]]
 name = "ockam_key_exchange_core"
 version = "0.23.0"
 dependencies = [
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_vault_core",
  "zeroize",
 ]
@@ -899,7 +1041,7 @@ dependencies = [
 name = "ockam_key_exchange_xx"
 version = "0.23.0"
 dependencies = [
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_key_exchange_core",
  "ockam_vault_core",
  "zeroize",
@@ -910,7 +1052,8 @@ name = "ockam_node"
 version = "0.29.0"
 dependencies = [
  "heapless",
- "ockam_core",
+ "ockam_core 0.31.0",
+ "ockam_executor",
  "ockam_node_no_std",
  "tokio",
  "tracing",
@@ -936,7 +1079,7 @@ dependencies = [
 name = "ockam_transport_core"
 version = "0.5.0"
 dependencies = [
- "ockam_core",
+ "ockam_core 0.31.0",
  "tracing",
 ]
 
@@ -947,12 +1090,12 @@ dependencies = [
  "async-trait",
  "futures",
  "hashbrown 0.9.1",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_node",
  "ockam_transport_core",
  "rand 0.7.3",
  "serde",
- "serde_bare 0.3.0",
+ "serde_bare",
  "tokio",
  "tracing",
 ]
@@ -966,9 +1109,10 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "hkdf",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_vault_core",
  "rand 0.8.4",
+ "rand_pcg",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -984,7 +1128,8 @@ name = "ockam_vault_core"
 version = "0.25.0"
 dependencies = [
  "cfg-if",
- "ockam_core",
+ "heapless",
+ "ockam_core 0.31.0",
  "serde",
  "serde-big-array",
  "zeroize",
@@ -995,11 +1140,12 @@ name = "ockam_vault_sync_core"
 version = "0.22.0"
 dependencies = [
  "async-trait",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_node",
  "ockam_vault",
  "ockam_vault_core",
  "rand 0.8.4",
+ "rand_pcg",
  "serde",
  "serde-big-array",
  "tracing",
@@ -1025,6 +1171,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7de9d09263c9966e8196fe0380c9dbbc7ea114b5cf371ba29004bc1f9c6db7f3"
 dependencies = [
  "group",
+]
+
+[[package]]
+name = "panic-semihosting"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d55dedd501dfd02514646e0af4d7016ce36bc12ae177ef52056989966a1eec"
+dependencies = [
+ "cortex-m 0.7.3",
+ "cortex-m-semihosting",
 ]
 
 [[package]]
@@ -1111,6 +1267,12 @@ checksum = "c3d0b9745dc2debf507c8422de05d7226cc1f0644216dfdfead988f9b1ab32a7"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "r0"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2a38df5b15c8d5c7e8654189744d8e396bddc18ad48041a500ce52d6948941f"
 
 [[package]]
 name = "radium"
@@ -1330,19 +1492,10 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01db2255aa98fb93ad74272d8b2e6fd4851860e733e944b9439cf148127164b2"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde_bare"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
+source = "git+https://github.com/ockam-network/serde_bare.git?branch=ockam-network/no_std+alloc#c4630d202018803efe4153f000fbe234ac3fe18a"
 dependencies = [
+ "core2",
  "serde",
 ]
 
@@ -1717,7 +1870,7 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f214e8f697e925001e66ec2c6e37a4ef93f0f78c2eed7814394e10c62025b05"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.4",
  "subtle",
 ]
 

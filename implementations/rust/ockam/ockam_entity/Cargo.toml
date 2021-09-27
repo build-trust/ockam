@@ -32,13 +32,6 @@ no_std = ["ockam_core/no_std", "ockam_channel/no_std", "ockam_key_exchange_core/
 # platforms, requires nightly.
 alloc = ["ockam_core/alloc","ockam_channel/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchange_xx/alloc", "ockam_node/alloc", "ockam_vault_core/alloc",  "ockam_vault_sync_core/alloc", "ockam_vault/alloc", "serde_bare/alloc"]
 
-# Option: "unsafe_random" enables development support for random
-# number generation on no_std platforms that do not yet have
-# cryptographically secure implementations.
-# WARNING: Under no circumstances should this ever be enabled in
-#          production builds!
-unsafe_random = ["ockam_core/unsafe_random", "signature_bbs_plus/unsafe_random"]
-
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.31.0", default-features = false  }
 ockam_node = {path = "../ockam_node", version = "0.29.0", default-features = false }

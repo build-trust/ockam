@@ -2,11 +2,8 @@ use crate::software_vault::SoftwareVault;
 use crate::xeddsa::XEddsaSigner;
 use crate::VaultError;
 use arrayref::array_ref;
-#[cfg(not(feature = "std"))]
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_vault_core::{Secret, SecretType, Signature, Signer, CURVE25519_SECRET_LENGTH};
-#[cfg(feature = "std")]
-use rand::{thread_rng, RngCore};
 use signature_bbs_plus::{Issuer, MessageGenerators};
 use signature_bls::SecretKey;
 use signature_core::lib::Message;

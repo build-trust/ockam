@@ -1,15 +1,11 @@
 use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker};
 use async_trait::async_trait;
+use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{Address, LocalMessage, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
-
-#[cfg(not(feature = "std"))]
-use ockam_core::compat::rand::random;
-#[cfg(feature = "std")]
-use rand::random;
 
 /// SecureChannelListener listens for messages from SecureChannel initiators
 /// and creates responder SecureChannels

@@ -93,16 +93,41 @@ pub mod rand {
     /// Placeholders for various features from 'rand' that are not
     /// supported on no_std targets.
     ///
-    /// WARNING: Thess implementations are NOT random, please do not
+    /// WARNING: These implementations are NOT random, please do not
     /// try to use these in production!
-    #[cfg(all(not(feature = "std"), feature = "unsafe_random"))]
+    #[cfg(not(feature = "std"))]
     mod not_random {
         use super::*;
+
+        #[derive(Clone)]
+        pub struct FakeRng(rand_pcg::Lcg64Xsh32);
+
+        impl CryptoRng for FakeRng {}
+
+        impl RngCore for FakeRng {
+            fn next_u32(&mut self) -> u32 {
+                self.0.gen()
+            }
+
+            fn next_u64(&mut self) -> u64 {
+                self.0.gen()
+            }
+
+            fn fill_bytes(&mut self, dest: &mut [u8]) {
+                if let Err(e) = self.0.try_fill_bytes(dest) {
+                    panic!("Error: {}", e);
+                }
+            }
+
+            fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+                self.0.try_fill(dest)
+            }
+        }
 
         /// rand::thread_rng()
         /// WARNING: This implementation is neither random nor thread-local.
         #[allow(unsafe_code)]
-        pub fn thread_rng() -> rand_pcg::Lcg64Xsh32 {
+        pub fn thread_rng() -> FakeRng {
             use rand::SeedableRng;
             // TODO safety
             static mut RNG: Option<rand_pcg::Lcg64Xsh32> = None;
@@ -111,7 +136,9 @@ pub mod rand {
                     RNG = Some(rand_pcg::Pcg32::seed_from_u64(1234));
                 }
             }
-            unsafe { rand_pcg::Pcg32::seed_from_u64(RNG.as_mut().unwrap().gen()) }
+            let lcg = unsafe { rand_pcg::Pcg32::seed_from_u64(RNG.as_mut().unwrap().gen()) };
+
+            FakeRng(lcg)
         }
 
         /// rand::random()
