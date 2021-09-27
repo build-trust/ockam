@@ -1,0 +1,12 @@
+error: Function body Cannot be Empty.
+ --> $DIR/fail_if_unused_context_empty_fnbody.rs:5:10
+  |
+5 | async fn main(_ctx: ockam::Context) {}
+  |          ^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/fail_if_unused_context_empty_fnbody.rs:4:1
+  |
+4 | / #[ockam_node_test_attribute::node]
+5 | | async fn main(_ctx: ockam::Context) {}
+  | |______________________________________^ consider adding a `main` function to `$DIR/tests/node/fail_if_unused_context_empty_fnbody.rs`
