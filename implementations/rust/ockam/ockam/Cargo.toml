@@ -86,7 +86,7 @@ bls12_381_plus = { version = "0.5", default-features = false }
 signature_core = { version = "0.23.0"    , path = "../signature_core" }
 signature_bbs_plus = { version = "0.23.0"    , path = "../signature_bbs_plus", package = "signature_bbs_plus" }
 signature_bls = { version = "0.21.0"    , path = "../signature_bls", package = "signature_bls" }
-serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc", default-features = false }
+serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "c4630d2", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"
 sha2 = { version = "0.9", default-features = false }

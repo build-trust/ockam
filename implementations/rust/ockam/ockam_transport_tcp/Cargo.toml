@@ -27,7 +27,7 @@ alloc = ["serde_bare/alloc"]
 ockam_core = { path = "../ockam_core", version = "0.31.0"    }
 ockam_node = { path = "../ockam_node", version = "0.29.0"    }
 ockam_transport_core = { path = "../ockam_transport_core", version = "0.5.0"    }
-serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", branch = "ockam-network/no_std+alloc", default-features = false }
+serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "c4630d2", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1.8", features = ["rt-multi-thread","sync","net","macros","time"] }
 futures = "0.3.10"
