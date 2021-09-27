@@ -27,7 +27,7 @@ serde = { version = "1.0", features = ["derive"] }
 sha2 = { version = "0.9", default-features = false }
 subtle = { version = "2.4", default-features = false }
 vsss-rs = { version = "1.0.0", default-features = false }
-zeroize = { version = "1.2", features = ["zeroize_derive"] }
+zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 rand_xorshift = "0.3"
