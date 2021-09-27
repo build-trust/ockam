@@ -1,0 +1,12 @@
+error: Input argument should be of type `ockam::Context`
+ --> $DIR/fail_if_passed_param_is_self.rs:6:15
+  |
+6 | async fn main(self) {}
+  |               ^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/fail_if_passed_param_is_self.rs:5:1
+  |
+5 | / #[ockam_node_test_attribute::node]
+6 | | async fn main(self) {}
+  | |______________________^ consider adding a `main` function to `$DIR/tests/node/fail_if_passed_param_is_self.rs`

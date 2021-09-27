@@ -1,0 +1,22 @@
+error: Expected `ockam::Context` found `String`
+ --> $DIR/fail_if_passed_param_is_wrong_type_using_use_statement.rs:8:23
+  |
+8 | async fn my_test(ctx: String) {}
+  |                       ^^^^^^
+
+warning: unused import: `std::string::String`
+ --> $DIR/fail_if_passed_param_is_wrong_type_using_use_statement.rs:5:5
+  |
+5 | use std::string::String;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/fail_if_passed_param_is_wrong_type_using_use_statement.rs:5:1
+  |
+5 | / use std::string::String;
+6 | |
+7 | | #[ockam_node_test_attribute::node_test]
+8 | | async fn my_test(ctx: String) {}
+  | |________________________________^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_passed_param_is_wrong_type_using_use_statement.rs`
