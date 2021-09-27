@@ -443,6 +443,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_node_test_attribute"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ockam_transport_core"
 version = "0.9.0"
 dependencies = [
@@ -459,6 +468,7 @@ dependencies = [
  "hashbrown 0.9.1",
  "ockam_core",
  "ockam_node",
+ "ockam_node_test_attribute",
  "ockam_transport_core",
  "rand 0.7.3",
  "serde",
