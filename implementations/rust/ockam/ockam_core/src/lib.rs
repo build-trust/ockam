@@ -69,6 +69,7 @@ macro_rules! println {
 }
 
 /// Module for custom implementation of standard traits.
+/// TODO @antoinevg lose AsyncClone
 pub mod traits {
     use crate::error::Result;
 
@@ -77,5 +78,15 @@ pub mod traits {
     pub trait AsyncTryClone: Sized {
         /// Try cloning a object and return an `Err` in case of failure.
         async fn async_try_clone(&self) -> Result<Self>;
+    }
+
+    use crate::compat::boxed::Box;
+    use async_trait::async_trait;
+
+    #[async_trait]
+    /// Async version of the Clone trait
+    pub trait AsyncClone: Sized {
+        /// Returns a copy of the value.
+        async fn async_clone(&self) -> Self;
     }
 }

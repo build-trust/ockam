@@ -26,10 +26,13 @@ use crate::{
     ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
     TrustPolicy, TTL,
 };
+use ockam_core::async_trait::async_trait;
 use ockam_core::compat::{
+    boxed::Box,
     string::{String, ToString},
     vec::Vec,
 };
+use ockam_core::traits::AsyncClone;
 use ockam_core::{Address, Result, Route};
 use ockam_vault::{PublicKey, Secret};
 use signature_bls::SecretKey;
@@ -46,10 +49,25 @@ impl From<Profile> for Entity {
     }
 }
 
+#[async_trait]
+impl AsyncClone for Profile {
+    async fn async_clone(&self) -> Profile {
+        Profile {
+            id: self.id.clone(),
+            handle: self.handle.async_clone().await,
+        }
+    }
+}
+
 impl Profile {
     pub fn new<I: Into<ProfileIdentifier>>(id: I, handle: Handle) -> Self {
         let id = id.into();
         Profile { id, handle }
+    }
+
+    pub async fn async_entity(&self) -> Entity {
+        //Entity::async_from(self.async_clone().await).await
+        Entity::new(self.handle.async_clone().await, Some(self.id.clone()))
     }
 
     pub fn entity(&self) -> Entity {
@@ -76,13 +94,22 @@ impl Profile {
     pub const CURRENT_CHANGE_VERSION: u8 = 1;
 }
 
+#[async_trait]
 impl Identity for Profile {
     fn identifier(&self) -> Result<ProfileIdentifier> {
         self.entity().identifier()
     }
 
-    fn create_key<S: Into<String>>(&mut self, label: S) -> Result<()> {
+    async fn async_identifier(&self) -> Result<ProfileIdentifier> {
+        self.async_entity().await.async_identifier().await
+    }
+
+    fn create_key<S: Into<String> + Send + 'static>(&mut self, label: S) -> Result<()> {
         self.entity().create_key(label)
+    }
+
+    async fn async_create_key<S: Into<String> + Send + 'static>(&mut self, label: S) -> Result<()> {
+        self.entity().async_create_key(label).await
     }
 
     fn rotate_profile_key(&mut self) -> Result<()> {
@@ -109,6 +136,16 @@ impl Identity for Profile {
         self.entity().create_auth_proof(state_slice)
     }
 
+    async fn async_create_auth_proof<S: AsRef<[u8]> + Send + Sync>(
+        &mut self,
+        state_slice: S,
+    ) -> Result<AuthenticationProof> {
+        self.async_entity()
+            .await
+            .async_create_auth_proof(state_slice)
+            .await
+    }
+
     fn verify_auth_proof<S: AsRef<[u8]>, P: AsRef<[u8]>>(
         &mut self,
         state_slice: S,
@@ -119,12 +156,28 @@ impl Identity for Profile {
             .verify_auth_proof(state_slice, peer_id, proof_slice)
     }
 
+    async fn async_verify_auth_proof<S: AsRef<[u8]> + Send + Sync, P: AsRef<[u8]> + Send + Sync>(
+        &mut self,
+        state_slice: S,
+        peer_id: &ProfileIdentifier,
+        proof_slice: P,
+    ) -> Result<bool> {
+        self.async_entity()
+            .await
+            .async_verify_auth_proof(state_slice, peer_id, proof_slice)
+            .await
+    }
+
     fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
         self.entity().add_change(change_event)
     }
 
     fn get_changes(&self) -> Result<Changes> {
         self.entity().get_changes()
+    }
+
+    async fn async_get_changes(&self) -> Result<Changes> {
+        self.async_entity().await.async_get_changes().await
     }
 
     fn verify_changes(&mut self) -> Result<bool> {
@@ -140,16 +193,48 @@ impl Identity for Profile {
         Ok(Contact::new(self.id.clone(), changes))
     }
 
+    async fn async_as_contact(&mut self) -> Result<Contact> {
+        let changes = self.async_get_changes().await?;
+        Ok(Contact::new(self.id.clone(), changes))
+    }
+
     fn get_contact(&mut self, contact_id: &ProfileIdentifier) -> Result<Option<Contact>> {
         self.entity().get_contact(contact_id)
+    }
+
+    async fn async_get_contact(
+        &mut self,
+        contact_id: &ProfileIdentifier,
+    ) -> Result<Option<Contact>> {
+        self.async_entity()
+            .await
+            .async_get_contact(contact_id)
+            .await
     }
 
     fn verify_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool> {
         self.entity().verify_contact(contact)
     }
 
+    async fn async_verify_contact<C: Into<Contact> + Send>(&mut self, contact: C) -> Result<bool> {
+        self.async_entity()
+            .await
+            .async_verify_contact(contact)
+            .await
+    }
+
     fn verify_and_add_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool> {
         self.entity().verify_and_add_contact(contact)
+    }
+
+    async fn async_verify_and_add_contact<C: Into<Contact> + Send>(
+        &mut self,
+        contact: C,
+    ) -> Result<bool> {
+        self.async_entity()
+            .await
+            .async_verify_and_add_contact(contact)
+            .await
     }
 
     fn verify_and_update_contact<C: AsRef<[ProfileChangeEvent]>>(
@@ -177,6 +262,7 @@ impl Identity for Profile {
     }
 }
 
+#[async_trait]
 impl SecureChannels for Profile {
     fn create_secure_channel_listener(
         &mut self,
@@ -193,6 +279,32 @@ impl SecureChannels for Profile {
         trust_policy: impl TrustPolicy,
     ) -> Result<Address> {
         self.entity().create_secure_channel(route, trust_policy)
+    }
+
+    async fn async_create_secure_channel_listener<A>(
+        &mut self,
+        address: A,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<()>
+    where
+        A: Into<Address> + Send,
+    {
+        self.entity()
+            .async_create_secure_channel_listener(address, trust_policy)
+            .await
+    }
+
+    async fn async_create_secure_channel<R>(
+        &mut self,
+        route: R,
+        trust_policy: impl TrustPolicy,
+    ) -> Result<Address>
+    where
+        R: Into<Route> + Send,
+    {
+        self.entity()
+            .async_create_secure_channel(route, trust_policy)
+            .await
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::{Identity, ProfileIdentifier};
 use async_trait::async_trait;
 use ockam_core::compat::boxed::Box;
+use ockam_core::traits::AsyncClone;
 use ockam_core::{Address, Decodable, Message, Result, Route, Routed};
 use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
@@ -22,7 +23,7 @@ pub trait SecureChannelTrait {
         self,
         ctx: &Context,
         route: Route,
-        trust_policy: impl TrustPolicy,
+        trust_policy: impl TrustPolicy + Sync,
         vault: &Address,
     ) -> Result<Address>;
 
@@ -30,22 +31,22 @@ pub trait SecureChannelTrait {
         self,
         ctx: &Context,
         address: Address,
-        trust_policy: impl TrustPolicy,
+        trust_policy: impl TrustPolicy + Sync,
         vault: &Address,
     ) -> Result<()>;
 }
 
 #[async_trait]
-impl<P: Identity + Send + Clone> SecureChannelTrait for P {
+impl<P: Identity + Send + AsyncClone + Clone + Sync> SecureChannelTrait for P {
     /// Create mutually authenticated secure channel
     async fn create_secure_channel_async(
         self,
         ctx: &Context,
         route: Route,
-        trust_policy: impl TrustPolicy,
+        trust_policy: impl TrustPolicy + Sync,
         vault: &Address,
     ) -> Result<Address> {
-        let vault = VaultSync::create_with_worker(ctx, vault)?;
+        let vault = VaultSync::async_create_with_worker(ctx, vault).await?;
         SecureChannelWorker::create_initiator(ctx, route, self, trust_policy, vault).await
     }
 
@@ -54,10 +55,10 @@ impl<P: Identity + Send + Clone> SecureChannelTrait for P {
         self,
         ctx: &Context,
         address: Address,
-        trust_policy: impl TrustPolicy,
+        trust_policy: impl TrustPolicy + Sync,
         vault: &Address,
     ) -> Result<()> {
-        let vault = VaultSync::create_with_worker(ctx, vault)?;
+        let vault = VaultSync::async_create_with_worker(ctx, vault).await?;
         let listener = ProfileChannelListener::new(trust_policy, self, vault);
         ctx.start_worker(address, listener).await
     }

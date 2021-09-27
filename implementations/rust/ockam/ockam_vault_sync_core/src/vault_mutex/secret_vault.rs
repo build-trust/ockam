@@ -1,8 +1,11 @@
 use crate::VaultMutex;
+use ockam_core::compat::boxed::Box;
 use ockam_core::Result;
 use ockam_vault_core::{PublicKey, Secret, SecretAttributes, SecretKey, SecretVault};
 
-impl<V: SecretVault> SecretVault for VaultMutex<V> {
+use ockam_core::async_trait::async_trait;
+#[async_trait]
+impl<V: SecretVault + Send> SecretVault for VaultMutex<V> {
     fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
         #[cfg(feature = "std")]
         return self.0.lock().unwrap().secret_generate(attributes);
@@ -17,6 +20,10 @@ impl<V: SecretVault> SecretVault for VaultMutex<V> {
         });
     }
 
+    async fn async_secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
+        self.secret_generate(attributes)
+    }
+
     fn secret_import(&mut self, secret: &[u8], attributes: SecretAttributes) -> Result<Secret> {
         #[cfg(feature = "std")]
         return self.0.lock().unwrap().secret_import(secret, attributes);
@@ -29,6 +36,14 @@ impl<V: SecretVault> SecretVault for VaultMutex<V> {
                 .unwrap()
                 .secret_import(secret, attributes)
         });
+    }
+
+    async fn async_secret_import(
+        &mut self,
+        secret: &[u8],
+        attributes: SecretAttributes,
+    ) -> Result<Secret> {
+        self.secret_import(secret, attributes)
     }
 
     fn secret_export(&mut self, context: &Secret) -> Result<SecretKey> {
@@ -73,6 +88,10 @@ impl<V: SecretVault> SecretVault for VaultMutex<V> {
         });
     }
 
+    async fn async_secret_public_key_get(&mut self, context: Secret) -> Result<PublicKey> {
+        self.secret_public_key_get(&context)
+    }
+
     fn secret_destroy(&mut self, context: Secret) -> Result<()> {
         #[cfg(feature = "std")]
         return self.0.lock().unwrap().secret_destroy(context);
@@ -84,6 +103,20 @@ impl<V: SecretVault> SecretVault for VaultMutex<V> {
                 .as_mut()
                 .unwrap()
                 .secret_destroy(context)
+        });
+    }
+
+    async fn async_secret_destroy(&mut self, context: Secret) -> Result<()> {
+        #[cfg(feature = "std")]
+        return self.0.lock().unwrap().secret_destroy(context); // TODO @antoinevg async_secret_destroy
+        #[cfg(not(feature = "std"))]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .secret_destroy(context) // TODO @antoinevg async_secret_destroy
         });
     }
 }

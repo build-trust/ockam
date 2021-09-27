@@ -1,13 +1,13 @@
 use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use crate::compat::{
     string::{String, ToString},
-    vec::Vec,
+    vec::{self, Vec},
 };
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
 use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
-use std::iter::FromIterator;
+use core::iter::FromIterator;
 
 /// A collection of Addresses
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl AddressSet {
 
 impl IntoIterator for AddressSet {
     type Item = Address;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()

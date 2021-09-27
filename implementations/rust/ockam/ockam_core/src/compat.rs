@@ -233,9 +233,9 @@ pub use std::task;
 /// std::vec
 pub mod vec {
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::vec::Vec;
+    pub use alloc::vec::*;
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     pub type Vec<T> = heapless::Vec<T, 64>;
     #[cfg(feature = "std")]
-    pub use std::vec::Vec;
+    pub use std::vec::*;
 }

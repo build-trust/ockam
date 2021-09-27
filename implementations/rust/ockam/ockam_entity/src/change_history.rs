@@ -173,6 +173,21 @@ impl ProfileChangeHistory {
         }
         allow()
     }
+
+    pub(crate) async fn async_verify_all_existing_events(
+        &self,
+        vault: &mut impl ProfileVault,
+    ) -> ockam_core::Result<bool> {
+        for i in 0..self.0.len() {
+            let existing_events = &self.as_ref()[..i];
+            let new_event = &self.as_ref()[i];
+            if !Self::async_verify_event(existing_events, new_event, vault).await? {
+                return deny();
+            }
+        }
+        allow()
+    }
+
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
     pub(crate) fn verify_event(
@@ -244,6 +259,97 @@ impl ProfileChangeHistory {
                             ProfileChangeHistory::get_change_public_key(prev_key_change)?;
 
                         vault.verify(c.prev_signature(), &public_key, &data_hash)?
+                    }
+                }
+            } {
+                return Err(EntityError::VerifyFailed.into());
+            }
+        }
+
+        allow()
+    }
+
+    /// WARNING: This function assumes all existing events in chain are verified.
+    /// WARNING: Correctness of events sequence is not verified here.
+    pub(crate) async fn async_verify_event(
+        existing_events: &[ProfileChangeEvent],
+        new_change_event: &ProfileChangeEvent,
+        vault: &mut impl ProfileVault,
+    ) -> ockam_core::Result<bool> {
+        let changes = new_change_event.changes();
+        let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
+
+        let event_id = vault.async_sha256(&changes_binary).await?;
+        let event_id = EventIdentifier::from_hash(event_id);
+
+        if &event_id != new_change_event.identifier() {
+            return deny(); // EventIdDoesntMatch
+        }
+
+        match new_change_event.proof() {
+            ProfileChangeProof::Signature(s) => match s.stype() {
+                SignatureType::RootSign => {
+                    let events_to_look = if existing_events.is_empty() {
+                        core::slice::from_ref(new_change_event)
+                    } else {
+                        existing_events
+                    };
+                    let root_public_key =
+                        Self::get_current_profile_update_public_key(events_to_look)?;
+                    if !vault
+                        .async_verify(s.data(), &root_public_key, event_id.as_ref())
+                        .await?
+                    {
+                        return deny();
+                    }
+                }
+            },
+        }
+
+        for change in new_change_event.changes().data() {
+            if !match change.change_type() {
+                CreateKey(c) => {
+                    // Should have 1 self signature
+                    let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
+                    let data_hash = vault.async_sha256(data_binary.as_slice()).await?;
+
+                    // if verification failed, there is no channel back. Return bool msg?
+                    vault
+                        .async_verify(
+                            c.self_signature(),
+                            &PublicKey::new(c.data().public_key().into()),
+                            &data_hash,
+                        )
+                        .await?
+                }
+                RotateKey(c) => {
+                    // Should have 1 self signature and 1 prev signature
+                    let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
+                    let data_hash = vault.sha256(data_binary.as_slice())?;
+
+                    if !vault
+                        .async_verify(
+                            c.self_signature(),
+                            &PublicKey::new(c.data().public_key().into()),
+                            &data_hash,
+                        )
+                        .await?
+                    {
+                        false
+                    } else {
+                        let prev_key_event =
+                            Self::find_last_key_event(existing_events, c.data().key_attributes())?;
+                        let prev_key_change = ProfileChangeHistory::find_key_change_in_event(
+                            prev_key_event,
+                            c.data().key_attributes(),
+                        )
+                        .ok_or(EntityError::InvalidInternalState)?;
+                        let public_key =
+                            ProfileChangeHistory::get_change_public_key(prev_key_change)?;
+
+                        vault
+                            .async_verify(c.prev_signature(), &public_key, &data_hash)
+                            .await?
                     }
                 }
             } {

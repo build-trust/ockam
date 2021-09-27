@@ -1,15 +1,22 @@
 use crate::software_vault::SoftwareVault;
 use crate::VaultError;
 use arrayref::array_ref;
-use ockam_core::compat::vec::Vec;
+use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_vault_core::{
     Hasher, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
     AES256_SECRET_LENGTH,
 };
 use sha2::{Digest, Sha256};
 
+use ockam_core::async_trait::async_trait;
+#[async_trait]
 impl Hasher for SoftwareVault {
     fn sha256(&mut self, data: &[u8]) -> ockam_core::Result<[u8; 32]> {
+        let digest = Sha256::digest(data);
+        Ok(*array_ref![digest, 0, 32])
+    }
+
+    async fn async_sha256(&mut self, data: &[u8]) -> ockam_core::Result<[u8; 32]> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
     }
@@ -76,6 +83,19 @@ impl Hasher for SoftwareVault {
         }
 
         Ok(secrets)
+    }
+
+    /// Compute sha256.
+    /// Salt and Ikm should be of Buffer type.
+    /// Output secrets should be only of type Buffer or AES
+    async fn async_hkdf_sha256(
+        &mut self,
+        salt: &Secret,
+        info: &[u8],
+        ikm: Option<&Secret>,
+        output_attributes: Vec<SecretAttributes>,
+    ) -> ockam_core::Result<Vec<Secret>> {
+        self.hkdf_sha256(salt, info, ikm, output_attributes)
     }
 }
 

@@ -20,6 +20,15 @@ impl EntityBuilder {
         })
     }
 
+    pub async fn async_new(ctx: &Context, vault: &Address) -> Result<Self> {
+        let child_ctx = ctx.new_context(Address::random(0)).await?;
+
+        Ok(Self {
+            ctx: child_ctx,
+            vault: vault.clone(),
+        })
+    }
+
     // TODO: enable_credentials_signing_key
 
     pub fn build(self) -> Result<Entity> {
@@ -35,6 +44,19 @@ impl EntityBuilder {
 
             Ok(entity)
         })
+    }
+
+    pub async fn async_build(self) -> Result<Entity> {
+        let address = Address::random(0);
+        self.ctx
+            .start_worker(&address, EntityWorker::default())
+            .await?;
+
+        let mut entity = Entity::new(Handle::new(self.ctx, address), None);
+
+        let _ = entity.async_create_profile(&self.vault).await?;
+
+        Ok(entity)
     }
 }
 

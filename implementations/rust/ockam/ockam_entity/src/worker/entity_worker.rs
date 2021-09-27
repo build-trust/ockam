@@ -45,11 +45,13 @@ impl Worker for EntityWorker {
         let req = msg.body();
         match req {
             CreateProfile(vault_address) => {
-                let vault_sync = VaultSync::create_with_worker(ctx, &vault_address)
+                let vault_sync = VaultSync::async_create_with_worker(ctx, &vault_address)
+                    .await
                     .expect("couldn't create profile vault");
 
-                let profile_state =
-                    ProfileState::create(vault_sync).expect("failed to create ProfileState");
+                let profile_state = ProfileState::async_create(vault_sync)
+                    .await
+                    .expect("failed to create ProfileState");
 
                 let id = profile_state
                     .identifier()
@@ -64,7 +66,7 @@ impl Worker for EntityWorker {
             CreateKey(profile_id, label) => {
                 let profile = self.profile(&profile_id);
 
-                Identity::create_key(profile, label)
+                Identity::async_create_key(profile, label).await
             }
             RotateKey(profile_id) => {
                 let profile = self.profile(&profile_id);
@@ -102,7 +104,8 @@ impl Worker for EntityWorker {
             CreateAuthenticationProof(profile_id, state) => {
                 if let Ok(proof) = self
                     .profile(&profile_id)
-                    .create_auth_proof(state.as_slice())
+                    .async_create_auth_proof(state.as_slice())
+                    .await
                 {
                     ctx.send(reply, Res::CreateAuthenticationProof(proof)).await
                 } else {
@@ -110,11 +113,11 @@ impl Worker for EntityWorker {
                 }
             }
             VerifyAuthenticationProof(profile_id, state, peer_id, proof) => {
-                if let Ok(verified) = self.profile(&profile_id).verify_auth_proof(
-                    state.as_slice(),
-                    &peer_id,
-                    proof.as_slice(),
-                ) {
+                if let Ok(verified) = self
+                    .profile(&profile_id)
+                    .async_verify_auth_proof(state.as_slice(), &peer_id, proof.as_slice())
+                    .await
+                {
                     ctx.send(reply, Res::VerifyAuthenticationProof(verified))
                         .await
                 } else {
@@ -136,7 +139,8 @@ impl Worker for EntityWorker {
             VerifyAndAddContact(profile_id, contact_id) => {
                 let verified_and_added = self
                     .profile(&profile_id)
-                    .verify_and_add_contact(contact_id)?;
+                    .async_verify_and_add_contact(contact_id)
+                    .await?;
                 ctx.send(reply, Res::VerifyAndAddContact(verified_and_added))
                     .await
             }
@@ -167,7 +171,7 @@ impl Worker for EntityWorker {
                     ctx.new_context(Address::random(0)).await?,
                     trust_policy_address,
                 ));
-                let vault_address = self.profile(&profile_id).vault().address();
+                let vault_address = self.profile(&profile_id).async_vault().await.address();
                 let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
                 let profile = Profile::new(profile_id, handle);
                 SecureChannelTrait::create_secure_channel_listener_async(
@@ -185,7 +189,7 @@ impl Worker for EntityWorker {
                     ctx.new_context(Address::random(0)).await?,
                     trust_policy_address,
                 ));
-                let vault_address = self.profile(&profile_id).vault().address();
+                let vault_address = self.profile(&profile_id).async_vault().await.address();
                 let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
                 let profile = Profile::new(profile_id.clone(), handle);
 
@@ -199,10 +203,15 @@ impl Worker for EntityWorker {
                         trust_policy,
                         &vault_address,
                     )
-                    .await?;
+                    .await
+                    .ok()
+                    .unwrap();
                     child_ctx
                         .send(reply, Res::CreateSecureChannel(address))
                         .await
+                        .ok()
+                        .unwrap();
+                    ()
                 });
 
                 Ok(())

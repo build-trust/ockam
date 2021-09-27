@@ -145,12 +145,10 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
 
             let (small_nonce, nonce) = Self::convert_nonce_u16(nonce);
 
-            let mut cipher_text = self.vault.aead_aes_gcm_encrypt(
-                &keys.encrypt_key,
-                payload.as_slice(),
-                &nonce,
-                &[],
-            )?;
+            let mut cipher_text = self
+                .vault
+                .async_aead_aes_gcm_encrypt(&keys.encrypt_key, payload.as_slice(), &nonce, &[])
+                .await?;
 
             let mut res = Vec::new();
             res.extend_from_slice(&small_nonce);
@@ -188,7 +186,8 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
             let nonce = Self::convert_nonce_small(&payload.as_slice()[..2])?;
 
             self.vault
-                .aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[2..], &nonce, &[])?
+                .async_aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[2..], &nonce, &[])
+                .await?
         };
 
         let mut transport_message = TransportMessage::decode(&payload)?;
@@ -227,10 +226,12 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         } else {
             return Err(SecureChannelError::InvalidInternalState.into());
         }
-        let _ = key_exchanger.handle_response(payload.as_slice())?;
+        let _ = key_exchanger
+            .async_handle_response(payload.as_slice())
+            .await?;
 
         if !key_exchanger.is_complete() {
-            let payload = key_exchanger.generate_request(&[])?;
+            let payload = key_exchanger.async_generate_request(&[]).await?;
             self.send_key_exchange_payload(ctx, payload, false).await?;
         }
 
@@ -247,7 +248,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
             } else {
                 return Err(SecureChannelError::InvalidInternalState.into());
             }
-            let keys = key_exchanger.finalize()?;
+            let keys = key_exchanger.async_finalize().await?;
 
             self.keys = Some(ChannelKeys {
                 encrypt_key: keys.encrypt_key().clone(),
@@ -310,7 +311,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> Worker for SecureC
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if self.is_initiator {
             if let Some(initiator) = self.key_exchanger.as_mut() {
-                let payload = initiator.generate_request(&[])?;
+                let payload = initiator.async_generate_request(&[]).await?;
 
                 self.send_key_exchange_payload(ctx, payload, true).await?;
             } else {

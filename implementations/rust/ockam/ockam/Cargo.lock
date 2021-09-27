@@ -261,9 +261,16 @@ dependencies = [
 
 [[package]]
 name = "core2"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cf12d2dad3ed124aa116f59561428478993d69ab81ae4d30e5349c9c5b5a5f6"
+version = "0.3.1"
+source = "git+https://github.com/technocreatives/core2.git?rev=57c84bc#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "core2"
+version = "0.3.1"
+source = "git+https://github.com/technocreatives/core2.git#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
 dependencies = [
  "memchr",
 ]
@@ -786,9 +793,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.103"
+version = "0.2.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
+checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
 
 [[package]]
 name = "linked_list_allocator"
@@ -912,14 +919,18 @@ dependencies = [
 
 [[package]]
 name = "ockam"
+<<<<<<< HEAD
 version = "0.32.0"
+=======
+version = "0.30.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "arrayref",
  "async-trait",
  "bls12_381_plus",
  "hex",
  "ockam_channel",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_entity",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
@@ -933,6 +944,7 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "serde-big-array",
+ "serde_bare",
  "serde_json",
  "sha2",
  "signature_bbs_plus",
@@ -944,10 +956,14 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
+<<<<<<< HEAD
 version = "0.28.0"
+=======
+version = "0.26.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "async-trait",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_node",
@@ -957,15 +973,37 @@ dependencies = [
  "rand 0.8.4",
  "rand_pcg",
  "serde",
+ "serde_bare",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_core"
+<<<<<<< HEAD
 version = "0.33.0"
+=======
+version = "0.31.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "async-trait",
- "core2",
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
+ "hashbrown 0.11.2",
+ "heapless",
+ "hex",
+ "rand 0.8.4",
+ "rand_pcg",
+ "serde",
+ "serde_bare",
+ "spin 0.9.2",
+]
+
+[[package]]
+name = "ockam_core"
+version = "0.31.0"
+source = "git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc#4392ede03ec10e420e64285547a48c946a21bcbe"
+dependencies = [
+ "async-trait",
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
  "hashbrown 0.11.2",
  "heapless",
  "hex",
@@ -978,7 +1016,11 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
+<<<<<<< HEAD
 version = "0.22.0"
+=======
+version = "0.20.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "async-trait",
  "bls12_381_plus",
@@ -986,7 +1028,7 @@ dependencies = [
  "group",
  "heapless",
  "ockam_channel",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_node",
@@ -996,6 +1038,7 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
+ "serde_bare",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -1005,7 +1048,12 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
+<<<<<<< HEAD
 version = "0.2.0"
+=======
+version = "0.0.1"
+source = "git+https://github.com/ockam-network/ockam_executor.git?rev=3daeffa#3daeffa593f2d55611a8e4229978bb6839f4c669"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "alloc-cortex-m",
  "cortex-m 0.7.3",
@@ -1014,7 +1062,7 @@ dependencies = [
  "crossbeam-queue",
  "futures",
  "heapless",
- "ockam_core",
+ "ockam_core 0.31.0 (git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc)",
  "panic-semihosting",
  "pin-project-lite",
  "pin-utils",
@@ -1022,18 +1070,26 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
+<<<<<<< HEAD
 version = "0.25.0"
+=======
+version = "0.23.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_vault_core",
  "zeroize",
 ]
 
 [[package]]
 name = "ockam_key_exchange_xx"
+<<<<<<< HEAD
 version = "0.25.0"
+=======
+version = "0.23.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_key_exchange_core",
  "ockam_vault_core",
  "zeroize",
@@ -1041,10 +1097,15 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
+<<<<<<< HEAD
 version = "0.31.0"
+=======
+version = "0.29.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
+ "cortex-m-semihosting",
  "heapless",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_executor",
  "ockam_node_no_std",
  "tokio",
@@ -1054,7 +1115,11 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
+<<<<<<< HEAD
 version = "0.22.0"
+=======
+version = "0.20.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "quote",
  "syn",
@@ -1062,45 +1127,62 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
+<<<<<<< HEAD
 version = "0.8.0"
+=======
+version = "0.6.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "executor",
 ]
 
 [[package]]
 name = "ockam_transport_core"
+<<<<<<< HEAD
 version = "0.7.0"
+=======
+version = "0.5.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
- "ockam_core",
+ "ockam_core 0.31.0",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_transport_tcp"
+<<<<<<< HEAD
 version = "0.27.0"
+=======
+version = "0.25.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "async-trait",
  "futures",
  "hashbrown 0.9.1",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_node",
  "ockam_transport_core",
  "rand 0.7.3",
  "serde",
+ "serde_bare",
  "tokio",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_vault"
+<<<<<<< HEAD
 version = "0.27.0"
+=======
+version = "0.25.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "aes-gcm",
  "arrayref",
  "curve25519-dalek",
  "ed25519-dalek",
  "hkdf",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_vault_core",
  "rand 0.8.4",
  "rand_pcg",
@@ -1116,11 +1198,15 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
+<<<<<<< HEAD
 version = "0.27.0"
+=======
+version = "0.25.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "cfg-if",
  "heapless",
- "ockam_core",
+ "ockam_core 0.31.0",
  "serde",
  "serde-big-array",
  "zeroize",
@@ -1128,10 +1214,14 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
+<<<<<<< HEAD
 version = "0.24.0"
+=======
+version = "0.22.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "async-trait",
- "ockam_core",
+ "ockam_core 0.31.0",
  "ockam_node",
  "ockam_vault",
  "ockam_vault_core",
@@ -1483,10 +1573,10 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51c55386eed0f1ae957b091dc2ca8122f287b60c79c774cbe3d5f2b69fded660"
+version = "0.4.0"
+source = "git+https://github.com/ockam-network/serde_bare.git?rev=c4630d2#c4630d202018803efe4153f000fbe234ac3fe18a"
 dependencies = [
+ "core2 0.3.1 (git+https://github.com/technocreatives/core2.git)",
  "serde",
 ]
 
@@ -1551,7 +1641,11 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
+<<<<<<< HEAD
 version = "0.25.0"
+=======
+version = "0.23.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1572,7 +1666,11 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
+<<<<<<< HEAD
 version = "0.23.0"
+=======
+version = "0.21.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1589,7 +1687,11 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
+<<<<<<< HEAD
 version = "0.25.0"
+=======
+version = "0.23.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1607,7 +1709,11 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
+<<<<<<< HEAD
 version = "0.23.0"
+=======
+version = "0.21.0"
+>>>>>>> d23e0138 (feat(rust): provide async implementations of blocking entity and vault functions)
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1761,7 +1867,19 @@ checksum = "375a639232caf30edfc78e8d89b2d4c375515393e7af7e16f01cd96917fb2105"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
+ "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

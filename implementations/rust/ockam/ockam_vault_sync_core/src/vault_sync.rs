@@ -1,4 +1,5 @@
 use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
+use ockam_core::compat::boxed::Box;
 use ockam_core::compat::rand::random;
 use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage, Route};
 use ockam_node::{block_future, Context};
@@ -44,6 +45,13 @@ impl VaultSync {
     }
 }
 
+#[async_trait]
+impl ockam_core::traits::AsyncClone for VaultSync {
+    async fn async_clone(&self) -> Self {
+        self.async_start_another().await.unwrap()
+    }
+}
+
 impl Clone for VaultSync {
     fn clone(&self) -> Self {
         self.start_another().unwrap()
@@ -53,7 +61,7 @@ impl Clone for VaultSync {
 #[async_trait]
 impl AsyncTryClone for VaultSync {
     async fn async_try_clone(&self) -> Result<Self> {
-        self.start_another()
+        self.async_start_another().await
     }
 }
 
@@ -63,6 +71,15 @@ impl VaultSync {
         let vault_worker_address = self.vault_worker_address.clone();
 
         let clone = VaultSync::create_with_worker(&self.ctx, &vault_worker_address)?;
+
+        Ok(clone)
+    }
+
+    /// Start another Vault at the same address.
+    pub async fn async_start_another(&self) -> Result<Self> {
+        let vault_worker_address = self.vault_worker_address.clone();
+
+        let clone = VaultSync::async_create_with_worker(&self.ctx, &vault_worker_address).await?;
 
         Ok(clone)
     }
@@ -83,6 +100,20 @@ impl VaultSync {
             &ctx.runtime(),
             async move { ctx.new_context(address).await },
         )?;
+
+        Ok(Self {
+            ctx,
+            vault_worker_address: vault.clone(),
+        })
+    }
+
+    /// Create and start a new Vault using Worker.
+    pub async fn async_create_with_worker(ctx: &Context, vault: &Address) -> Result<Self> {
+        let address: Address = random();
+
+        debug!("Starting VaultSync at {}", &address);
+
+        let ctx = ctx.new_context(address).await?;
 
         Ok(Self {
             ctx,

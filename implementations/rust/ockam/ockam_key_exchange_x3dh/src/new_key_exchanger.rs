@@ -1,4 +1,6 @@
 use crate::{Initiator, Responder, X3dhVault};
+use ockam_core::async_trait::async_trait;
+use ockam_core::compat::boxed::Box;
 use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
@@ -20,7 +22,8 @@ impl<V: X3dhVault> X3dhNewKeyExchanger<V> {
     }
 }
 
-impl<V: X3dhVault> NewKeyExchanger for X3dhNewKeyExchanger<V> {
+#[async_trait]
+impl<V: X3dhVault + Sync> NewKeyExchanger for X3dhNewKeyExchanger<V> {
     type Initiator = Initiator<V>;
     type Responder = Responder<V>;
 
@@ -29,6 +32,14 @@ impl<V: X3dhVault> NewKeyExchanger for X3dhNewKeyExchanger<V> {
     }
 
     fn responder(&self) -> ockam_core::Result<Responder<V>> {
+        Ok(Responder::new(self.vault.clone(), None))
+    }
+
+    async fn async_initiator(&self) -> ockam_core::Result<Initiator<V>> {
+        Ok(Initiator::new(self.vault.clone(), None))
+    }
+
+    async fn async_responder(&self) -> ockam_core::Result<Responder<V>> {
         Ok(Responder::new(self.vault.clone(), None))
     }
 }

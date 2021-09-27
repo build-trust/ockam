@@ -1,4 +1,7 @@
 use crate::ProfileIdentifier;
+use ockam_core::async_trait::async_trait;
+use ockam_core::compat::boxed::Box;
+use ockam_core::traits::AsyncClone;
 use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 
@@ -29,8 +32,10 @@ impl SecureChannelTrustInfo {
     }
 }
 
-pub trait TrustPolicy: Clone + Send + 'static {
+#[async_trait]
+pub trait TrustPolicy: AsyncClone + Clone + Send + 'static {
     fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool>;
+    async fn async_check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool>;
 }
 
 pub trait ConjunctionTrustPolicy: TrustPolicy {

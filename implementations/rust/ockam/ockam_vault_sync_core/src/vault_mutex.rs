@@ -1,10 +1,13 @@
+use ockam_core::async_trait::async_trait;
+use ockam_core::compat::boxed::Box;
+use ockam_core::traits::AsyncClone;
+use tracing::debug;
+use zeroize::Zeroize;
+
 #[cfg(not(feature = "std"))]
 use ockam_node::interrupt::Mutex;
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
-
-use tracing::debug;
-use zeroize::Zeroize;
 
 /// Vault inside Arc Mutex
 #[cfg(feature = "std")]
@@ -30,6 +33,13 @@ impl<V: Clone> Clone for VaultMutex<V> {
             let clone = self.0.borrow(cs).borrow_mut().clone();
             Self(Mutex::new(RefCell::new(clone)))
         });
+    }
+}
+
+#[async_trait]
+impl<V: Clone + Send> AsyncClone for VaultMutex<V> {
+    async fn async_clone(&self) -> Self {
+        self.clone()
     }
 }
 

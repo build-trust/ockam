@@ -1,8 +1,11 @@
 use crate::VaultMutex;
+use ockam_core::compat::boxed::Box;
 use ockam_core::Result;
 use ockam_vault_core::{Hasher, Secret, SecretAttributes, SmallBuffer};
 
-impl<V: Hasher> Hasher for VaultMutex<V> {
+use ockam_core::async_trait::async_trait;
+#[async_trait]
+impl<V: Hasher + Send> Hasher for VaultMutex<V> {
     fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
         #[cfg(feature = "std")]
         return self.0.lock().unwrap().sha256(data);
@@ -14,6 +17,20 @@ impl<V: Hasher> Hasher for VaultMutex<V> {
                 .as_mut()
                 .unwrap()
                 .sha256(data)
+        });
+    }
+
+    async fn async_sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
+        #[cfg(feature = "std")]
+        return self.0.lock().unwrap().sha256(data); // TODO @antoinevg async_sha256
+        #[cfg(not(feature = "std"))]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .sha256(data) // TODO @antoinevg async_sha256
         });
     }
 
@@ -38,6 +55,30 @@ impl<V: Hasher> Hasher for VaultMutex<V> {
                 .as_mut()
                 .unwrap()
                 .hkdf_sha256(salt, info, ikm, output_attributes)
+        });
+    }
+
+    async fn async_hkdf_sha256(
+        &mut self,
+        salt: &Secret,
+        info: &[u8],
+        ikm: Option<&Secret>,
+        output_attributes: SmallBuffer<SecretAttributes>,
+    ) -> Result<SmallBuffer<Secret>> {
+        #[cfg(feature = "std")]
+        return self
+            .0
+            .lock()
+            .unwrap()
+            .hkdf_sha256(salt, info, ikm, output_attributes); // TODO @antoinevg async_hkdf_sha256
+        #[cfg(not(feature = "std"))]
+        return ockam_node::interrupt::free(|cs| {
+            self.0
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .hkdf_sha256(salt, info, ikm, output_attributes) // TODO @antoinevg async_hkdf_sha256
         });
     }
 }
