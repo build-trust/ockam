@@ -5,6 +5,15 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.32.0 - 2021-09-27
+### Changed
+- Add ockam_core::compat::task.
+- Use forked version of crates core2 and serde_bare.
+- Use main core2 repo.
+- Ockam compiles under no_std + alloc.
+- thread_rng state does not advance with repeated instantiations.
+- Dependencies updated
+
 ## v0.31.0 - 2021-09-20
 ### Changed
 - Dependencies updated

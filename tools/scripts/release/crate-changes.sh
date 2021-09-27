@@ -11,7 +11,7 @@ function crate_changes {
   CHANGES="$CRATE_DIR/Changelog-INCOMING.md"
   VERSION=$(crate_version $CRATE)
   printf "## v%s - $(date -I)\n### Changed\n- Dependencies updated\n\n"  "$VERSION" >"$CHANGES"
-#  git log --oneline --pretty=reference "$SPAN" "$CRATE_DIR" | perl -pe 's/^[\w\d]+\s+\(|,\s+.*?\)$//g' >>"$CHANGES"
+  git log --oneline --pretty=reference "$SPAN" "$CRATE_DIR" | perl -pe 's/^[\w\d]+\s+\(|,\s+.*?\)$//g' >>"$CHANGES"
   cat "$CHANGES"
 }
 
