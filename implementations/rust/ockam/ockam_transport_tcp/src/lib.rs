@@ -11,7 +11,6 @@
 
 #![deny(
     missing_docs,
-    dead_code,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,
