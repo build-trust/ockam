@@ -25,13 +25,6 @@ no_std = ["ockam_core/no_std", "ockam_executor/cortexm", "ockam_node_no_std/no_s
 # platforms, requires nightly.
 alloc = ["ockam_core/alloc", "ockam_executor/alloc", "ockam_node_no_std/alloc"]
 
-# Option: "unsafe_random" enables development support for random
-# number generation on no_std platforms that do not yet have
-# cryptographically secure implementations.
-# WARNING: Under no circumstances should this ever be enabled in
-#          production builds!
-unsafe_random = ["ockam_core/unsafe_random"]
-
 # Option: "dump_internals" when set, will dump the internal state of workers at startup via the trace! macro.
 dump_internals = []
 

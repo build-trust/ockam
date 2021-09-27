@@ -164,8 +164,7 @@ dependencies = [
 [[package]]
 name = "core2"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbceae1ad0d3679d016526dd5cc9863156e9d394c1a9591cf7ab20bb25cab490"
+source = "git+https://github.com/technocreatives/core2.git#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
 dependencies = [
  "memchr",
 ]
@@ -720,9 +719,9 @@ dependencies = [
 [[package]]
 name = "serde_bare"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
+source = "git+https://github.com/ockam-network/serde_bare.git?branch=ockam-network/no_std+alloc#c4630d202018803efe4153f000fbe234ac3fe18a"
 dependencies = [
+ "core2",
  "serde",
 ]
 
@@ -892,19 +891,7 @@ checksum = "84f96e095c0c82419687c20ddf5cb3eadb61f4e1405923c9dc8e53a1adacbda8"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
- "tracing-attributes",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

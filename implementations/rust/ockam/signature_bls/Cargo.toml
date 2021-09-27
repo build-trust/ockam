@@ -16,13 +16,6 @@ description = """The Ockam BLS signature impementation.
 default = ["alloc"]
 alloc = []
 
-# Option: "unsafe_random" enables development support for random
-# number generation on no_std platforms that do not yet have
-# cryptographically secure implementations.
-# WARNING: Under no circumstances should this ever be enabled in
-#          production builds!
-unsafe_random = []
-
 [dependencies]
 bls12_381_plus = { version = "0.5", default-features = false, features = ["alloc", "hashing", "pairings"] }
 ff = { version = "0.10", default-features = false }

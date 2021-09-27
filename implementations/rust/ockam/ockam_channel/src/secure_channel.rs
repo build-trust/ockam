@@ -2,13 +2,10 @@ use crate::{
     KeyExchangeCompleted, SecureChannelListener, SecureChannelNewKeyExchanger, SecureChannelVault,
     SecureChannelWorker,
 };
-#[cfg(not(feature = "std"))]
 use ockam_core::compat::rand::random;
 use ockam_core::{Address, Result, Route};
 use ockam_key_exchange_core::KeyExchanger;
 use ockam_node::Context;
-#[cfg(feature = "std")]
-use rand::random;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 

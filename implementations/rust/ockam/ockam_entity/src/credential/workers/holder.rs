@@ -5,14 +5,10 @@ use crate::{
 };
 use async_trait::async_trait;
 use core::convert::TryInto;
+use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{Address, Result, Route, Routed, Worker};
 use ockam_node::Context;
-
-#[cfg(not(feature = "std"))]
-use ockam_core::compat::rand::random;
-#[cfg(feature = "std")]
-use rand::random;
 
 enum State {
     AcceptOffer,
