@@ -225,7 +225,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
@@ -241,7 +241,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "cfg-if",
  "heapless",

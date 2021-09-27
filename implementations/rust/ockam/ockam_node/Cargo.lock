@@ -597,6 +597,7 @@ dependencies = [
 [[package]]
 name = "ockam_core"
 version = "0.31.0"
+source = "git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc#6a3d1e715d564fe2a65136e8ea71367b7f752b6f"
 dependencies = [
  "async-trait",
  "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
@@ -612,8 +613,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.31.0"
-source = "git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc#29e2287e54199ffb335753f9665504b4c7612457"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
@@ -639,7 +639,7 @@ dependencies = [
  "crossbeam-queue",
  "futures",
  "heapless",
- "ockam_core 0.31.0 (git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc)",
+ "ockam_core 0.31.0",
  "panic-semihosting",
  "pin-project-lite",
  "pin-utils",
@@ -647,11 +647,11 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "async-trait",
  "heapless",
- "ockam_core 0.31.0",
+ "ockam_core 0.32.0",
  "ockam_executor",
  "ockam_node_no_std",
  "tokio",
@@ -661,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "executor",
 ]

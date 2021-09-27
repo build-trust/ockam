@@ -654,7 +654,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
@@ -670,7 +670,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -679,7 +679,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -692,7 +692,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -702,7 +702,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -1083,7 +1083,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1104,7 +1104,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1121,7 +1121,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1139,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
