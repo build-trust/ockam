@@ -255,16 +255,9 @@ dependencies = [
 
 [[package]]
 name = "core2"
-version = "0.3.1"
-source = "git+https://github.com/technocreatives/core2.git?rev=57c84bc#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "core2"
-version = "0.3.1"
-source = "git+https://github.com/technocreatives/core2.git#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cf12d2dad3ed124aa116f59561428478993d69ab81ae4d30e5349c9c5b5a5f6"
 dependencies = [
  "memchr",
 ]
@@ -891,7 +884,7 @@ name = "ockam_channel"
 version = "0.27.0"
 dependencies = [
  "async-trait",
- "ockam_core 0.32.0",
+ "ockam_core",
  "ockam_key_exchange_core",
  "ockam_key_exchange_x3dh",
  "ockam_key_exchange_xx",
@@ -909,27 +902,10 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.31.0"
-source = "git+https://github.com/ockam-network/ockam.git?branch=antoinevg/nostd+alloc#6a3d1e715d564fe2a65136e8ea71367b7f752b6f"
-dependencies = [
- "async-trait",
- "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
- "hashbrown",
- "heapless",
- "hex",
- "rand",
- "rand_pcg",
- "serde",
- "serde_bare",
- "spin 0.9.2",
-]
-
-[[package]]
-name = "ockam_core"
 version = "0.32.0"
 dependencies = [
  "async-trait",
- "core2 0.3.1 (git+https://github.com/technocreatives/core2.git?rev=57c84bc)",
+ "core2",
  "hashbrown",
  "heapless",
  "hex",
@@ -942,8 +918,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.0.1"
-source = "git+https://github.com/ockam-network/ockam_executor.git?rev=3daeffa#3daeffa593f2d55611a8e4229978bb6839f4c669"
+version = "0.1.0"
 dependencies = [
  "alloc-cortex-m",
  "cortex-m 0.7.3",
@@ -952,7 +927,7 @@ dependencies = [
  "crossbeam-queue",
  "futures",
  "heapless",
- "ockam_core 0.31.0",
+ "ockam_core",
  "panic-semihosting",
  "pin-project-lite",
  "pin-utils",
@@ -962,7 +937,7 @@ dependencies = [
 name = "ockam_key_exchange_core"
 version = "0.24.0"
 dependencies = [
- "ockam_core 0.32.0",
+ "ockam_core",
  "ockam_vault_core",
  "zeroize",
 ]
@@ -972,7 +947,7 @@ name = "ockam_key_exchange_x3dh"
 version = "0.23.0"
 dependencies = [
  "arrayref",
- "ockam_core 0.32.0",
+ "ockam_core",
  "ockam_key_exchange_core",
  "ockam_vault_core",
  "zeroize",
@@ -982,7 +957,7 @@ dependencies = [
 name = "ockam_key_exchange_xx"
 version = "0.24.0"
 dependencies = [
- "ockam_core 0.32.0",
+ "ockam_core",
  "ockam_key_exchange_core",
  "ockam_vault_core",
  "zeroize",
@@ -993,7 +968,7 @@ name = "ockam_node"
 version = "0.30.0"
 dependencies = [
  "heapless",
- "ockam_core 0.32.0",
+ "ockam_core",
  "ockam_executor",
  "ockam_node_no_std",
  "tokio",
@@ -1017,7 +992,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "hkdf",
- "ockam_core 0.32.0",
+ "ockam_core",
  "ockam_vault_core",
  "rand",
  "rand_pcg",
@@ -1037,7 +1012,7 @@ version = "0.26.0"
 dependencies = [
  "cfg-if",
  "heapless",
- "ockam_core 0.32.0",
+ "ockam_core",
  "serde",
  "serde-big-array",
  "zeroize",
@@ -1048,7 +1023,7 @@ name = "ockam_vault_sync_core"
 version = "0.23.0"
 dependencies = [
  "async-trait",
- "ockam_core 0.32.0",
+ "ockam_core",
  "ockam_node",
  "ockam_vault",
  "ockam_vault_core",
@@ -1360,9 +1335,9 @@ dependencies = [
 [[package]]
 name = "serde_bare"
 version = "0.4.0"
-source = "git+https://github.com/ockam-network/serde_bare.git?rev=c4630d2#c4630d202018803efe4153f000fbe234ac3fe18a"
+source = "git+https://github.com/ockam-network/serde_bare.git?rev=fdbb431#fdbb431d706c0062718e74e1e8ef5a78f8cd8f58"
 dependencies = [
- "core2 0.3.1 (git+https://github.com/technocreatives/core2.git)",
+ "core2",
  "serde",
 ]
 
@@ -1631,19 +1606,7 @@ checksum = "84f96e095c0c82419687c20ddf5cb3eadb61f4e1405923c9dc8e53a1adacbda8"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
- "tracing-attributes",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

@@ -193,7 +193,7 @@ dependencies = [
 [[package]]
 name = "serde_bare"
 version = "0.4.0"
-source = "git+https://github.com/ockam-network/serde_bare.git?rev=c4630d2#c4630d202018803efe4153f000fbe234ac3fe18a"
+source = "git+https://github.com/ockam-network/serde_bare.git?rev=fdbb431#fdbb431d706c0062718e74e1e8ef5a78f8cd8f58"
 dependencies = [
  "serde",
 ]
