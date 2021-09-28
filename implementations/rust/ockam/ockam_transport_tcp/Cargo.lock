@@ -76,15 +76,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "core2"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cf12d2dad3ed124aa116f59561428478993d69ab81ae4d30e5349c9c5b5a5f6"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "dissimilar"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -630,10 +621,10 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.4.0"
-source = "git+https://github.com/ockam-network/serde_bare.git?rev=fdbb431#fdbb431d706c0062718e74e1e8ef5a78f8cd8f58"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51c55386eed0f1ae957b091dc2ca8122f287b60c79c774cbe3d5f2b69fded660"
 dependencies = [
- "core2",
  "serde",
 ]
 
