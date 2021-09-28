@@ -76,8 +76,8 @@ where
     }
 }
 
-impl From<serde_bare::Error> for crate::Error {
-    fn from(_: serde_bare::Error) -> Self {
+impl From<serde_bare::error::Error> for crate::Error {
+    fn from(_: serde_bare::error::Error) -> Self {
         Self::new(1, "serde_bare")
     }
 }

@@ -53,7 +53,7 @@ signature_bbs_plus = { path = "../signature_bbs_plus", version = "0.24.0"     }
 serde_json = { version ="1.0", optional = true }
 sha2 = { version = "0.9", default-features = false }
 serde-big-array = "0.3"
-serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "fdbb431", default-features = false }
+serde_bare = { version = "0.5.0", default-features = false }
 rand = { version = "0.8", default-features = false }
 tracing = { version = "0.1", default_features = false }
 
