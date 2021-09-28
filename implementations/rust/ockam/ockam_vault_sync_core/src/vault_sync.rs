@@ -52,6 +52,13 @@ impl VaultSync {
             .body()
             .into()
     }
+
+    pub(crate) fn call(&mut self, msg: VaultRequestMessage) -> Result<VaultResponseMessage> {
+        self.handle
+            .call::<VaultRequestMessage, ResultMessage<VaultResponseMessage>>(
+                msg
+            )?.into()
+    }
 }
 
 impl Clone for VaultSync {
