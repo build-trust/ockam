@@ -19,4 +19,4 @@ exclude = [
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.32.0"     }
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false }

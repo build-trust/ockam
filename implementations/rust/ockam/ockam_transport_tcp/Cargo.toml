@@ -34,7 +34,7 @@ futures = "0.3.10"
 async-trait = "0.1"
 rand = "0.7"
 hashbrown =  { version = "0.9" }
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 trybuild = { version = "1.0", features = ["diff"] }

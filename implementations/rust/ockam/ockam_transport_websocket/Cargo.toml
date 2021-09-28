@@ -33,7 +33,7 @@ ockam_transport_core = { path = "../ockam_transport_core", version = "0.6.0"    
 serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "c4630d2", default-features = false }
 tokio = { version = "1.8", features = ["rt-multi-thread", "sync", "net", "macros", "time"] }
 tokio-tungstenite = "0.15"
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 ockam = { path = "../ockam", default-features = false, features = ["std"] }
