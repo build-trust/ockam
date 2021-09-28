@@ -35,7 +35,7 @@ alloc = ["core2/alloc", "core2/nightly", "heapless", "hex/alloc", "serde/alloc",
 
 [dependencies]
 async-trait = "0.1.42"
-serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "c4630d2", default-features = false }
+serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "fdbb431", default-features = false }
 hashbrown =  { version = "0.11", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
