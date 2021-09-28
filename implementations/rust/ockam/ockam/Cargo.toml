@@ -35,7 +35,6 @@ std = [
     "ockam_entity/std",
     "rand/default",
     "serde/std",
-    "serde_bare/std"
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -65,7 +64,6 @@ alloc = [
     "ockam_key_exchange_xx/alloc",
     "ockam_entity/alloc",
     "serde/alloc",
-    "serde_bare/alloc"
 ]
 
 [dependencies]
@@ -86,7 +84,6 @@ bls12_381_plus = { version = "0.5", default-features = false }
 signature_core = { version = "0.24.0"     , path = "../signature_core" }
 signature_bbs_plus = { version = "0.24.0"     , path = "../signature_bbs_plus", package = "signature_bbs_plus" }
 signature_bls = { version = "0.22.0"     , path = "../signature_bls", package = "signature_bls" }
-serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "fdbb431", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"
 sha2 = { version = "0.9", default-features = false }

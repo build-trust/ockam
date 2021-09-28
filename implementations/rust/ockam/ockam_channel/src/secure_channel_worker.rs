@@ -2,7 +2,8 @@ use crate::{CreateResponderChannelMessage, LocalInfo, SecureChannelError, Secure
 use async_trait::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
-    Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
+    Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed, TransportMessage,
+    Worker,
 };
 use ockam_key_exchange_core::KeyExchanger;
 use ockam_node::Context;
@@ -175,7 +176,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
 
         let transport_message = msg.into_transport_message();
         let payload = transport_message.payload;
-        let payload = <Vec<u8> as Message>::decode(&payload)?;
+        let payload = Vec::<u8>::decode(&payload)?;
 
         let payload = {
             let keys = Self::get_keys(&mut self.keys)?;
@@ -215,7 +216,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         let reply = msg.return_route();
         let transport_message = msg.into_transport_message();
         let payload = transport_message.payload;
-        let payload = <Vec<u8> as Message>::decode(&payload)?;
+        let payload = Vec::<u8>::decode(&payload)?;
 
         // Update route to a remote
         self.remote_route = reply;

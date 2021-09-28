@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use ockam_core::{Result, Routed, TransportMessage, Worker};
+use ockam_core::{Encodable, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
@@ -26,7 +26,7 @@ impl TcpSendWorker {
 }
 
 fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
-    let mut msg_buf = serde_bare::to_vec(&msg).map_err(|_| TransportError::SendBadMessage)?;
+    let mut msg_buf = msg.encode().map_err(|_| TransportError::SendBadMessage)?;
 
     // Create a buffer that includes the message length in big endian
     let mut len = (msg_buf.len() as u16).to_be_bytes().to_vec();

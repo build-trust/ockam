@@ -14,7 +14,7 @@ use crate::{
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
-use ockam_core::LocalMessage;
+use ockam_core::{Decodable, LocalMessage};
 
 /// A stream worker
 pub struct StreamConsumer {
@@ -65,10 +65,10 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
         Response::Index(IndexResp {
             stream_name, index, ..
         }) => {
-            let index = index.unwrap_or(serde_bare::Uint(0));
-            info!("Updating index '{}' to: {}", stream_name, index.0);
+            let index = index.unwrap_or(0.into());
+            info!("Updating index '{}' to: {}", stream_name, index.u64());
             w.index_route = return_route.clone();
-            w.idx = index.0;
+            w.idx = index.u64();
 
             // Queue a near-immediate fetch event -- however future
             // events will be using the specified user interval
@@ -87,7 +87,7 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
 
             // Update the index if we received messages
             if let Some(ref msg) = messages.last() {
-                w.idx = msg.index.0 + 1;
+                w.idx = msg.index.u64() + 1;
             }
 
             for msg in messages {

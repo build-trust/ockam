@@ -2,7 +2,7 @@ use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorke
 use async_trait::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{Address, LocalMessage, Message, Result, Routed, TransportMessage, Worker};
+use ockam_core::{Address, Encodable, LocalMessage, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::debug;

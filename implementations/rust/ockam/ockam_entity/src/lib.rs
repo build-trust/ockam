@@ -31,7 +31,7 @@ pub use key_attributes::*;
 pub use lease::*;
 use ockam_channel::SecureChannelVault;
 use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
-use ockam_core::{Address, Message, Result};
+use ockam_core::{Address, Decodable, Encodable, Message, Result};
 use ockam_node::{block_future, Context};
 use ockam_vault::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
 pub use profile::*;
@@ -152,26 +152,27 @@ pub struct ProfileSerializationUtil;
 impl ProfileSerializationUtil {
     /// Serialize [`Contact`] in binary form for storing/transferring over the network
     pub fn serialize_contact(contact: &Contact) -> Result<Vec<u8>> {
-        serde_bare::to_vec(&contact).map_err(|_| EntityError::BareError.into())
+        contact.encode().map_err(|_| EntityError::BareError.into())
     }
 
     /// Deserialize [`Contact`] from binary form
     pub fn deserialize_contact(contact: &[u8]) -> Result<Contact> {
-        let contact: Contact =
-            serde_bare::from_slice(contact).map_err(|_| EntityError::BareError)?;
+        let contact = Contact::decode(contact).map_err(|_| EntityError::BareError)?;
 
         Ok(contact)
     }
 
     /// Serialize [`ProfileChangeEvent`]s to binary form for storing/transferring over the network
     pub fn serialize_change_events(change_events: &[ProfileChangeEvent]) -> Result<Vec<u8>> {
-        serde_bare::to_vec(&change_events).map_err(|_| EntityError::BareError.into())
+        change_events
+            .encode()
+            .map_err(|_| EntityError::BareError.into())
     }
 
     /// Deserialize [`ProfileChangeEvent`]s from binary form
     pub fn deserialize_change_events(change_events: &[u8]) -> Result<Vec<ProfileChangeEvent>> {
-        let change_events: Vec<ProfileChangeEvent> =
-            serde_bare::from_slice(change_events).map_err(|_| EntityError::BareError)?;
+        let change_events =
+            Vec::<ProfileChangeEvent>::decode(change_events).map_err(|_| EntityError::BareError)?;
 
         Ok(change_events)
     }

@@ -766,7 +766,6 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
- "serde_bare",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -788,7 +787,6 @@ dependencies = [
  "ockam_vault_sync_core",
  "rand 0.8.4",
  "serde",
- "serde_bare",
  "tracing",
 ]
 
@@ -824,7 +822,6 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
- "serde_bare",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -897,7 +894,6 @@ dependencies = [
  "ockam_transport_core",
  "rand 0.7.3",
  "serde",
- "serde_bare",
  "tokio",
  "tracing",
 ]
@@ -1257,8 +1253,9 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.4.0"
-source = "git+https://github.com/ockam-network/serde_bare.git?rev=fdbb431#fdbb431d706c0062718e74e1e8ef5a78f8cd8f58"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51c55386eed0f1ae957b091dc2ca8122f287b60c79c774cbe3d5f2b69fded660"
 dependencies = [
  "serde",
 ]

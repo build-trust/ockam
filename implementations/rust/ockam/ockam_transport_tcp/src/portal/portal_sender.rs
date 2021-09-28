@@ -2,7 +2,7 @@ use crate::PortalMessage;
 use async_trait::async_trait;
 use ockam_core::compat::collections::VecDeque;
 use ockam_core::{
-    Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
+    Address, Any, Decodable, LocalMessage, Result, Route, Routed, TransportMessage, Worker,
 };
 use ockam_node::Context;
 use ockam_transport_core::TransportError;

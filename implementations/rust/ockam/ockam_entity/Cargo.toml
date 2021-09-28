@@ -22,7 +22,7 @@ lease_proto_json = ["serde_json"]
 
 # Option (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_channel/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_core/std", "ockam_vault_sync_core/std", "ockam_vault/std", "serde_bare/std"]
+std = ["ockam_core/std", "ockam_channel/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_core/std", "ockam_vault_sync_core/std", "ockam_vault/std"]
 
 # Option: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -30,7 +30,7 @@ no_std = ["ockam_core/no_std", "ockam_channel/no_std", "ockam_key_exchange_core/
 
 # Option: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
-alloc = ["ockam_core/alloc","ockam_channel/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchange_xx/alloc", "ockam_node/alloc", "ockam_vault_core/alloc",  "ockam_vault_sync_core/alloc", "ockam_vault/alloc", "serde_bare/alloc"]
+alloc = ["ockam_core/alloc","ockam_channel/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchange_xx/alloc", "ockam_node/alloc", "ockam_vault_core/alloc",  "ockam_vault_sync_core/alloc", "ockam_vault/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.32.0" , default-features = false  }
@@ -53,7 +53,6 @@ signature_bbs_plus = { path = "../signature_bbs_plus", version = "0.24.0"     }
 serde_json = { version ="1.0", optional = true }
 sha2 = { version = "0.9", default-features = false }
 serde-big-array = "0.3"
-serde_bare = { git = "https://github.com/ockam-network/serde_bare.git", rev = "fdbb431", default-features = false }
 rand = { version = "0.8", default-features = false }
 tracing = { version = "0.1", default_features = false }
 

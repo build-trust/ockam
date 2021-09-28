@@ -1,6 +1,5 @@
 use crate::{
-    error::OckamError, protocols::ProtocolPayload, Any, Context, Message, ProtocolId, Result,
-    Routed, Worker,
+    error::OckamError, protocols::ProtocolPayload, Any, Context, ProtocolId, Result, Routed, Worker,
 };
 use core::{marker::PhantomData, ops::Deref};
 use ockam_core::compat::{
@@ -9,6 +8,7 @@ use ockam_core::compat::{
     sync::{Arc, RwLock},
     vec::Vec,
 };
+use ockam_core::Decodable;
 
 /// A parser for a protocol fragment
 ///

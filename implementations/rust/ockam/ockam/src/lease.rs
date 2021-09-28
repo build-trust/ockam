@@ -24,6 +24,8 @@ where
 
 #[test]
 fn test_serialization() {
+    use ockam_core::{Decodable, Encodable};
+
     let secret = [0xFFu8; 32];
     let lease = Lease {
         id: [0x33; 16],
@@ -45,10 +47,10 @@ fn test_serialization() {
     assert_eq!(lease.tags, lease2.tags);
     assert_eq!(lease.value, lease2.value);
 
-    let res = serde_bare::to_vec(&lease);
+    let res = lease.encode();
     assert!(res.is_ok());
     let bare = res.unwrap();
-    let res = serde_bare::from_slice::<Lease<[u8; 32]>>(&bare);
+    let res = Lease::<[u8; 32]>::decode(&bare);
     assert!(res.is_ok());
     let lease2 = res.unwrap();
 

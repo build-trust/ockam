@@ -1,6 +1,6 @@
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use ockam_core::{async_trait, Address, LocalMessage, Result, TransportMessage, Worker};
+use ockam_core::{async_trait, Address, Decodable, LocalMessage, Result, TransportMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -64,8 +64,8 @@ where
             trace!("Received message header for {} bytes", data.len());
 
             // Deserialize the message now
-            let mut msg: TransportMessage = serde_bare::from_slice(data.as_slice())
-                .map_err(|_| TransportError::RecvBadMessage)?;
+            let mut msg =
+                TransportMessage::decode(&data).map_err(|_| TransportError::RecvBadMessage)?;
 
             // Insert the peer address into the return route so that
             // reply routing can be properly resolved

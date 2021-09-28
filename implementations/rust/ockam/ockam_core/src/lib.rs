@@ -45,12 +45,14 @@ mod error;
 mod message;
 mod processor;
 mod routing;
+mod uint;
 mod worker;
 
 pub use error::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
+pub use uint::*;
 pub use worker::*;
 
 #[cfg(feature = "std")]

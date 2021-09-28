@@ -11,6 +11,7 @@ use crate::{
 use ockam_core::compat::{boxed::Box, collections::VecDeque, string::String};
 
 use super::StreamCmdParser;
+use ockam_core::Encodable;
 
 pub struct StreamProducer {
     sender_name: String,
@@ -62,7 +63,9 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
             // TODO: handle status == ERROR
             debug!(
                 "PushConfirm for request_id: {}, index: {}, status == {:?}",
-                request_id.0, index.0, status
+                request_id.u64(),
+                index.u64(),
+                status
             );
             true
         }

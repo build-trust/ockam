@@ -6,7 +6,7 @@ use crate::{
     ProfileChangeEvent, ProfileChangeProof, ProfileVault, SignatureType,
 };
 use ockam_core::compat::{string::ToString, vec::Vec};
-use ockam_core::{allow, deny};
+use ockam_core::{allow, deny, Encodable};
 use ockam_vault::{PublicKey, SecretAttributes};
 use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
 use serde::{Deserialize, Serialize};
@@ -181,7 +181,7 @@ impl ProfileChangeHistory {
         vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<bool> {
         let changes = new_change_event.changes();
-        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| EntityError::BareError)?;
+        let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
 
         let event_id = vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);
@@ -211,8 +211,7 @@ impl ProfileChangeHistory {
             if !match change.change_type() {
                 CreateKey(c) => {
                     // Should have 1 self signature
-                    let data_binary =
-                        serde_bare::to_vec(c.data()).map_err(|_| EntityError::BareError)?;
+                    let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
                     // if verification failed, there is no channel back. Return bool msg?
@@ -224,8 +223,7 @@ impl ProfileChangeHistory {
                 }
                 RotateKey(c) => {
                     // Should have 1 self signature and 1 prev signature
-                    let data_binary =
-                        serde_bare::to_vec(c.data()).map_err(|_| EntityError::BareError)?;
+                    let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
                     let data_hash = vault.sha256(data_binary.as_slice())?;
 
                     if !vault.verify(

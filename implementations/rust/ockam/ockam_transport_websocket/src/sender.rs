@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
-use ockam_core::{async_trait, Result, Routed, TransportMessage, Worker};
+use ockam_core::{async_trait, Encodable, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -44,7 +44,10 @@ where
         msg.onward_route.step()?;
 
         // Create a message buffer with pre-pended length
-        let msg = serde_bare::to_vec(&msg.body()).map_err(|_| TransportError::SendBadMessage)?;
+        let msg = msg
+            .body()
+            .encode()
+            .map_err(|_| TransportError::SendBadMessage)?;
         if self
             .ws_sink
             .send(WebSocketMessage::from(msg))

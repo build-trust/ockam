@@ -1,5 +1,6 @@
 use crate::{EntityError, ProfileVault};
 use ockam_core::compat::vec::Vec;
+use ockam_core::{Decodable, Encodable};
 use ockam_vault::{PublicKey, Secret};
 use ockam_vault_core::Signature;
 use serde::{Deserialize, Serialize};
@@ -33,7 +34,7 @@ impl Authentication {
 
         let proof = AuthenticationProof::new(signature);
 
-        serde_bare::to_vec(&proof).map_err(|_| EntityError::BareError.into())
+        proof.encode().map_err(|_| EntityError::BareError.into())
     }
 
     pub(crate) fn verify_proof<V: ProfileVault>(
@@ -42,8 +43,7 @@ impl Authentication {
         proof: &[u8],
         vault: &mut V,
     ) -> ockam_core::Result<bool> {
-        let proof: AuthenticationProof =
-            serde_bare::from_slice(proof).map_err(|_| EntityError::BareError)?;
+        let proof = AuthenticationProof::decode(&proof).map_err(|_| EntityError::BareError)?;
 
         vault.verify(proof.signature(), responder_public_key, channel_state)
     }

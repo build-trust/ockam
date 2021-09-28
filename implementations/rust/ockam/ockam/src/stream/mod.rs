@@ -3,7 +3,7 @@
 use crate::protocols::stream::responses::StreamMessage;
 use ockam_core::compat::rand::{self, distributions::Standard, prelude::Distribution, Rng};
 use ockam_core::compat::string::String;
-use ockam_core::RouteBuilder;
+use ockam_core::{Decodable, RouteBuilder};
 
 mod cmd;
 pub use cmd::{StreamCmdParser, StreamWorkerCmd};

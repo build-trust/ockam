@@ -6,6 +6,7 @@ use crate::{
     ProfileState, Signature, SignatureType,
 };
 use ockam_core::compat::vec::Vec;
+use ockam_core::Encodable;
 use ockam_vault::ockam_vault_core::Signature as OckamVaultSignature;
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
 use serde::{Deserialize, Serialize};
@@ -105,7 +106,7 @@ impl ProfileState {
         let public_key = vault.secret_public_key_get(&secret_key)?.as_ref().to_vec();
 
         let data = RotateKeyChangeData::new(key_attributes, public_key);
-        let data_binary = serde_bare::to_vec(&data).map_err(|_| EntityError::BareError)?;
+        let data_binary = data.encode().map_err(|_| EntityError::BareError)?;
         let data_hash = vault.sha256(data_binary.as_slice())?;
         let self_signature = vault.sign(&secret_key, &data_hash)?;
         let prev_signature = vault.sign(&last_key_in_chain, &data_hash)?;
@@ -117,7 +118,7 @@ impl ProfileState {
             ProfileChangeType::RotateKey(change),
         );
         let changes = ChangeSet::new(prev_event_id, vec![profile_change]);
-        let changes_binary = serde_bare::to_vec(&changes).map_err(|_| EntityError::BareError)?;
+        let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
 
         let event_id = vault.sha256(&changes_binary)?;
         let event_id = EventIdentifier::from_hash(event_id);

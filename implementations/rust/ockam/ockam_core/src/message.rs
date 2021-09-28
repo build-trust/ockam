@@ -52,32 +52,46 @@ impl Display for ProtocolId {
     }
 }
 
-/// A user defined message that can be serialised and deserialised
-pub trait Message: Sized + Send + 'static {
-    /// Encode the type representation into an [`Encoded`] type.
+/// Encode the type into an [`Encoded`] type.
+pub trait Encodable {
+    /// Encode the type into an [`Encoded`] type.
     fn encode(&self) -> Result<Encoded>;
-
-    /// Decode an [`Encoded`] type into the Message's type.
-    #[allow(clippy::ptr_arg)]
-    fn decode(e: &Encoded) -> Result<Self>;
 }
 
+/// Decode a slice.
+pub trait Decodable: Sized {
+    /// Decode a slice.
+    #[allow(clippy::ptr_arg)]
+    fn decode(e: &[u8]) -> Result<Self>;
+}
+
+/// A user defined message that can be serialised and deserialised
+pub trait Message: Encodable + Decodable + Send + 'static {}
+
 // Auto-implement message trait for types that _can_ be messages
-impl<T> Message for T
+impl<T> Encodable for T
 where
-    T: Serialize + DeserializeOwned + Send + 'static,
+    T: Serialize,
 {
     fn encode(&self) -> Result<Encoded> {
         Ok(serde_bare::to_vec(self)?)
     }
+}
 
-    fn decode(encoded: &Encoded) -> Result<Self> {
-        Ok(serde_bare::from_slice(encoded.as_slice())?)
+// Auto-implement message trait for types that _can_ be messages
+impl<T> Decodable for T
+where
+    T: DeserializeOwned,
+{
+    fn decode(encoded: &[u8]) -> Result<Self> {
+        Ok(serde_bare::from_slice(encoded)?)
     }
 }
 
-impl From<serde_bare::Error> for crate::Error {
-    fn from(_: serde_bare::Error) -> Self {
+impl<T> Message for T where T: Encodable + Decodable + Send + 'static {}
+
+impl From<serde_bare::error::Error> for crate::Error {
+    fn from(_: serde_bare::error::Error) -> Self {
         Self::new(1, "serde_bare")
     }
 }
@@ -220,12 +234,14 @@ impl Display for Any {
     }
 }
 
-impl Message for Any {
+impl Encodable for Any {
     fn encode(&self) -> Result<Encoded> {
         Ok(vec![])
     }
+}
 
-    fn decode(_: &Encoded) -> Result<Self> {
+impl Decodable for Any {
+    fn decode(_: &[u8]) -> Result<Self> {
         Ok(Self)
     }
 }

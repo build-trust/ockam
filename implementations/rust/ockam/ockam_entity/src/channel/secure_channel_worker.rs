@@ -11,7 +11,8 @@ use ockam_channel::{
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    route, Address, Any, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker,
+    route, Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed,
+    TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};

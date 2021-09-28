@@ -2,8 +2,8 @@
 
 use crate::protocols::ProtocolPayload;
 use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::Uint;
 use serde::{Deserialize, Serialize};
-use serde_bare::Uint;
 
 /// Request a new mailbox to be created
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ impl PushRequest {
         ProtocolPayload::new(
             "stream_push",
             Self {
-                request_id: Uint(request_id),
+                request_id: request_id.into(),
                 data: data.into(),
             },
         )
@@ -60,9 +60,9 @@ impl PullRequest {
         ProtocolPayload::new(
             "stream_pull",
             Self {
-                request_id: Uint(request_id),
-                index: Uint(index),
-                limit: Uint(limit),
+                request_id: request_id.into(),
+                index: index.into(),
+                limit: limit.into(),
             },
         )
     }
@@ -103,7 +103,7 @@ impl Index {
             Self::Save {
                 client_id: client_id.into(),
                 stream_name: stream_name.into(),
-                index: Uint(index),
+                index: index.into(),
             },
         )
     }

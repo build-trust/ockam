@@ -1,7 +1,7 @@
 use crate::{Identity, ProfileIdentifier};
 use async_trait::async_trait;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Message, Result, Route, Routed};
+use ockam_core::{Address, Decodable, Message, Result, Route, Routed};
 use ockam_node::Context;
 use ockam_vault_sync_core::VaultSync;
 

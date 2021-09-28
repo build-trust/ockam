@@ -2,11 +2,11 @@
 
 use crate::{
     protocols::{ParserFragment, ProtocolPayload},
-    Any, Context, Message, ProtocolId, Result, Routed, Worker,
+    Any, Context, ProtocolId, Result, Routed, Worker,
 };
 use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::{Decodable, Uint};
 use serde::{Deserialize, Serialize};
-use serde_bare::Uint;
 
 /// Response to a `CreateStreamRequest`
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -42,8 +42,8 @@ impl PushConfirm {
         ProtocolPayload::new(
             "stream_push",
             Self {
-                request_id: Uint(request_id),
-                index: Uint(index),
+                request_id: request_id.into(),
+                index: index.into(),
                 status: status.into(),
             },
         )
@@ -87,7 +87,7 @@ impl PullResponse {
         ProtocolPayload::new(
             "stream_pull",
             Self {
-                request_id: Uint(request_id),
+                request_id: request_id.into(),
                 messages: messages.into(),
             },
         )

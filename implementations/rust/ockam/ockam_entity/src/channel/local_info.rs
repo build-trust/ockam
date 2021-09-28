@@ -1,6 +1,6 @@
 use crate::{EntityError, ProfileIdentifier};
 use ockam_core::compat::string::{String, ToString};
-use ockam_core::{Encoded, Message, Result};
+use ockam_core::{Decodable, Encodable, Encoded, Result};
 use serde::{Deserialize, Serialize};
 
 /// Entity SecureChannel LocalInfo unique Identifier
@@ -17,12 +17,14 @@ pub struct LocalInfo {
     internal: Internal,
 }
 
-impl Message for LocalInfo {
+impl Encodable for LocalInfo {
     fn encode(&self) -> Result<Encoded> {
         self.internal.encode()
     }
+}
 
-    fn decode(e: &Encoded) -> Result<Self> {
+impl Decodable for LocalInfo {
+    fn decode(e: &[u8]) -> Result<Self> {
         let internal = Internal::decode(e)?;
         if internal.identifier != LOCAL_INFO_IDENTIFIER {
             return Err(EntityError::InvalidLocalInfoType.into());
