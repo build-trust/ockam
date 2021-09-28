@@ -1,0 +1,43 @@
+[package]
+authors = ["Ockam Developers"]
+categories = ["cryptography", "asynchronous", "authentication","no-std", "algorithms"]
+description = "Ockam async executor crate"
+edition = "2018"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_executor"
+keywords = ["ockam", "crypto", "encryption", "authentication"]
+license = "Apache-2.0"
+name = "ockam_executor"
+version = "0.1.0"
+
+[features]
+default = ["std"]
+
+# Feature (enabled by default): "std" enables functionality expected to
+# be available on a standard platform.
+std     = ["futures/std", "ockam_core/std", "async-std/default"]
+
+# Feature: "alloc" enables support for heap allocation on "no_std"
+# platforms, requires nightly.
+alloc   = ["futures/alloc", "ockam_core/alloc", "ockam_core/no_std"]
+
+# Feature: "cortexm" provides compiler intrinsics and runtime support for
+# ARM cortex-m processors.
+cortexm = ["alloc-cortex-m", "cortex-m", "cortex-m-rt", "cortex-m-semihosting", "panic-semihosting"]
+
+[dependencies]
+crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }
+futures = { version = "0.3.15", default-features = false, features = [ "async-await" ] }
+heapless = { version = "0.7", features = [ "mpmc_large" ] }
+ockam_core = { path = "../ockam_core", version = "0.32.0", default_features = false }
+pin-project-lite = "0.2"
+pin-utils = "0.1.0"
+
+alloc-cortex-m = { version = "0.4.1", optional = true }
+cortex-m = { version = "0.7.2", optional = true }
+cortex-m-rt = { version = "0.6.14", optional = true }
+cortex-m-semihosting = { version = "0.3.7", optional = true }
+panic-semihosting = { version = "0.5.6", optional = true }
+
+[dev-dependencies]
+async-std = { version = "1.9.0", default_features = false }

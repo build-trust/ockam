@@ -5,6 +5,7 @@
         "implementations/rust/ockam/ockam_core/Cargo.toml",
         "implementations/rust/ockam/ockam_entity/Cargo.toml",
         "implementations/rust/ockam/ockam_examples/Cargo.toml",
+        "implementations/rust/ockam/ockam_executor/Cargo.toml",
         "implementations/rust/ockam/ockam_ffi/Cargo.toml",
         "implementations/rust/ockam/ockam_key_exchange_core/Cargo.toml",
         "implementations/rust/ockam/ockam_key_exchange_x3dh/Cargo.toml",
