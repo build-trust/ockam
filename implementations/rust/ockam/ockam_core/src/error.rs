@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 pub struct Error {
     code: u32,
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "alloc")]
     domain: String,
 }
 
@@ -45,13 +45,13 @@ pub fn allow() -> Result<bool> {
 
 impl Error {
     /// Creates a new [`Error`].
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(not(feature = "alloc"))]
     pub fn new(code: u32) -> Self {
         Self { code }
     }
 
     /// Creates a new [`Error`].
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "alloc")]
     pub fn new<S: Into<String>>(code: u32, domain: S) -> Self {
         Self {
             code,
@@ -60,8 +60,8 @@ impl Error {
     }
 
     /// Returns an error's domain.
-    #[cfg(any(feature = "std", feature = "alloc"))]
     #[inline]
+    #[cfg(feature = "alloc")]
     pub fn domain(&self) -> &String {
         &self.domain
     }
@@ -75,7 +75,7 @@ impl Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "alloc")]
         {
             write!(
                 f,
@@ -83,7 +83,7 @@ impl Display for Error {
                 self.code, self.domain
             )
         }
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(not(feature = "alloc"))]
         {
             write!(f, "Error {{ code: {} }}", self.code)
         }
@@ -92,7 +92,7 @@ impl Display for Error {
 
 impl crate::compat::error::Error for Error {}
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 #[cfg(test)]
 mod std_test {
     use super::*;
@@ -135,7 +135,7 @@ mod std_test {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "alloc"))]
 #[cfg(test)]
 mod no_std_test {
     // These following tests are run for no_std targets without

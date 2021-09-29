@@ -30,7 +30,7 @@ impl CredentialError {
     /// Integer code associated with the error domain.
     pub const DOMAIN_CODE: u32 = 33_000;
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "alloc")]
     /// Descriptive name for the error domain
     pub const DOMAIN_NAME: &'static str = "OCKAM_CREDENTIAL";
 
@@ -50,7 +50,7 @@ impl CredentialError {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 impl From<CredentialError> for Error {
     fn from(v: CredentialError) -> Error {
         let t = v.as_u32();
@@ -61,7 +61,7 @@ impl From<CredentialError> for Error {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "alloc"))]
 impl From<CredentialError> for Error {
     fn from(v: CredentialError) -> Error {
         Error::new(CredentialError::DOMAIN_CODE + v.as_u32())

@@ -12,25 +12,19 @@
 #![allow(missing_docs)]
 
 /// std::borrow
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(feature = "alloc")]
 pub use alloc::borrow;
-#[cfg(feature = "std")]
-pub use std::borrow;
 
 /// std::boxed
 pub mod boxed {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    #[cfg(feature = "alloc")]
     pub use alloc::boxed::Box;
-    #[cfg(feature = "std")]
-    pub use std::boxed::Box;
 }
 
 /// std::collections
 pub mod collections {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    #[cfg(feature = "alloc")]
     pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
-    #[cfg(feature = "std")]
-    pub use std::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
 
     pub use hashbrown::{HashMap, HashSet};
 }
@@ -48,10 +42,8 @@ pub mod error {
 }
 
 /// std::format
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(feature = "alloc")]
 pub use alloc::format;
-#[cfg(feature = "std")]
-pub use std::format;
 
 /// std::io
 #[cfg(not(feature = "std"))]
@@ -182,16 +174,14 @@ pub mod rand {
 
 /// std::string
 pub mod string {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    #[cfg(feature = "alloc")]
     pub use alloc::string::{String, ToString};
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(not(feature = "alloc"))]
     use heapless::String as ByteString;
-    #[cfg(feature = "std")]
-    pub use std::string::{String, ToString};
 }
 
 /// std::sync
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub mod sync {
     pub use alloc::sync::Arc;
     pub use spin::RwLock;
@@ -225,17 +215,22 @@ pub mod sync {
 }
 
 /// std::task
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::task;
 #[cfg(feature = "std")]
 pub use std::task;
 
+#[cfg(not(feature = "std"))]
+pub mod task {
+    // Include both `alloc::task::*` and `core::task::*` for a better
+    // approximation of `std::task::*` (which contains both).
+    #[cfg(feature = "alloc")]
+    pub use alloc::task::*;
+    pub use core::task::*;
+}
+
 /// std::vec
 pub mod vec {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    #[cfg(feature = "alloc")]
     pub use alloc::vec::*;
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(not(feature = "alloc"))]
     pub type Vec<T> = heapless::Vec<T, 64>;
-    #[cfg(feature = "std")]
-    pub use std::vec::*;
 }

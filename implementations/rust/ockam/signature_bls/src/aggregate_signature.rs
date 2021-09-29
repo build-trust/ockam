@@ -73,7 +73,7 @@ impl AggregateSignature {
             return Choice::from(0u8);
         }
 
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(feature = "alloc"))]
         fn core_aggregate_verify<B: AsRef<[u8]>>(
             sig: &G1Projective,
             data: &[(PublicKey, B)],
@@ -91,7 +91,7 @@ impl AggregateSignature {
             res += pairing(&sig.to_affine(), &G2Affine::generator().neg());
             res.is_identity()
         }
-        #[cfg(any(feature = "alloc"))]
+        #[cfg(feature = "alloc")]
         fn core_aggregate_verify<B: AsRef<[u8]>>(
             sig: &G1Projective,
             data: &[(PublicKey, B)],

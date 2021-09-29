@@ -77,7 +77,7 @@ where
             let mut buf = Vec::new();
             while let Some(a) = s.next_element()? {
                 let _result = buf.push(a);
-                #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+                #[cfg(not(feature = "alloc"))]
                 {
                     _result.map_err(|_| DError::invalid_length(_l, &self))?;
                 }

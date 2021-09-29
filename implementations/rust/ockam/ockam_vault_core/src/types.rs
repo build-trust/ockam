@@ -17,7 +17,7 @@ pub const AES256_SECRET_LENGTH: usize = 32;
 pub const AES128_SECRET_LENGTH: usize = 16;
 
 cfg_if! {
-    if #[cfg(all(not(feature = "std"), not(feature = "alloc")))] {
+    if #[cfg(not(feature = "alloc"))] {
         /// Secret Key Vector
         pub type SecretKeyVec = heapless::Vec<u8, 32>;
         /// Public Key Vector
@@ -37,7 +37,6 @@ cfg_if! {
         }
     }
     else {
-        extern crate alloc;
         use alloc::vec::Vec;
         use alloc::string::String;
         /// Secret Key Vector
