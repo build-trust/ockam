@@ -18,13 +18,8 @@
 /// TODO
 ///
 use crate::{
-    traits::Verifier, AuthenticationProof, BbsCredential, Changes, Contact, Credential,
-    CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
-    CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequest,
-    CredentialRequestFragment, CredentialSchema, Entity, EntityCredential, Holder, Identity,
-    IdentityRequest, IdentityResponse, Issuer, Lease, OfferId, PresentationManifest,
-    ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
-    TrustPolicy, TTL,
+    AuthenticationProof, Changes, Contact, Entity, Identity, IdentityRequest, IdentityResponse,
+    Lease, ProfileChangeEvent, ProfileIdentifier, SecureChannels, TrustPolicy, TTL,
 };
 use ockam_core::compat::{
     string::{String, ToString},
