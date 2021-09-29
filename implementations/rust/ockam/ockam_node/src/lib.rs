@@ -25,7 +25,7 @@ extern crate tracing;
 extern crate ockam_executor;
 
 #[cfg(not(feature = "std"))]
-pub use ockam_executor::{interrupt, tokio};
+pub use ockam_executor::tokio;
 #[cfg(feature = "std")]
 pub use tokio;
 

@@ -52,15 +52,6 @@ pub mod tokio {
     pub use crate::time;
 }
 
-/// Placeholder Mutex implementation for use on cortex_m platforms
-///
-/// TODO Provide a std::sync::Mutex compatible mutex interface and
-/// abstract the implementations into the target specific crates.
-#[cfg(not(feature = "std"))]
-pub mod interrupt {
-    pub use cortex_m::interrupt::{free, Mutex};
-}
-
 // simple logging
 
 #[cfg(not(feature = "std"))]

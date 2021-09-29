@@ -11,21 +11,11 @@ impl<V: AsymmetricVault + Send> AsymmetricVault for VaultMutex<V> {
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        #[cfg(feature = "std")]
         return self
             .0
             .lock()
             .unwrap()
             .ec_diffie_hellman(context, peer_public_key);
-        #[cfg(not(feature = "std"))]
-        return ockam_node::interrupt::free(|cs| {
-            self.0
-                .borrow(cs)
-                .borrow_mut()
-                .as_mut()
-                .unwrap()
-                .ec_diffie_hellman(context, peer_public_key)
-        });
     }
 
     async fn async_ec_diffie_hellman(
@@ -33,21 +23,11 @@ impl<V: AsymmetricVault + Send> AsymmetricVault for VaultMutex<V> {
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        #[cfg(feature = "std")]
         return self
             .0
             .lock()
             .unwrap()
-            .ec_diffie_hellman(context, peer_public_key); // TODO @antoinevg async
-        #[cfg(not(feature = "std"))]
-        return ockam_node::interrupt::free(|cs| {
-            self.0
-                .borrow(cs)
-                .borrow_mut()
-                .as_mut()
-                .unwrap()
-                .ec_diffie_hellman(context, peer_public_key) // TODO @antoinevg async
-        });
+            .ec_diffie_hellman(context, peer_public_key);
     }
 }
 
