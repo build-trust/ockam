@@ -91,14 +91,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "core2"
-version = "0.3.1"
-source = "git+https://github.com/technocreatives/core2.git#57c84bc79b28fb42cca57f369f5eda0c0826b16f"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "cortex-m"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -121,9 +113,9 @@ dependencies = [
 
 [[package]]
 name = "dissimilar"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc4b29f4b9bb94bf267d57269fd0706d343a160937108e9619fe380645428abb"
+checksum = "31ad93652f40969dead8d4bf897a41e9462095152eb21c56e5830537e41179dd"
 
 [[package]]
 name = "embedded-hal"
@@ -293,9 +285,9 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "instant"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bee0328b1209d157ef001c94dd85b4f8f64139adb0eac2659f4b08382b2f474d"
+checksum = "716d3d89f35ac6a34fd0eed635395f4c3b76fa889338a4632e5231a8684216bd"
 dependencies = [
  "cfg-if",
 ]
@@ -314,9 +306,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.102"
+version = "0.2.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
+checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
 
 [[package]]
 name = "lock_api"
@@ -428,7 +420,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -440,7 +432,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "cortex-m-semihosting",
  "ockam_core",
@@ -451,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -459,7 +451,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -469,7 +461,6 @@ dependencies = [
  "ockam_transport_core",
  "rand 0.7.3",
  "serde",
- "serde_bare",
  "tokio",
  "tracing",
  "trybuild",
@@ -715,10 +706,10 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.4.0"
-source = "git+https://github.com/ockam-network/serde_bare.git?rev=c4630d2#c4630d202018803efe4153f000fbe234ac3fe18a"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51c55386eed0f1ae957b091dc2ca8122f287b60c79c774cbe3d5f2b69fded660"
 dependencies = [
- "core2",
  "serde",
 ]
 
@@ -770,15 +761,15 @@ checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
 
 [[package]]
 name = "smallvec"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "syn"
-version = "1.0.76"
+version = "1.0.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6f107db402c2c2055242dbf4d2af0e69197202e9faacbef9571bbe47f5a1b84"
+checksum = "5239bc68e0fef57495900cfea4e8dc75596d9a319d7e16b1e0a440d24e6fe0a0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -851,19 +842,7 @@ checksum = "84f96e095c0c82419687c20ddf5cb3eadb61f4e1405923c9dc8e53a1adacbda8"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
- "tracing-attributes",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
