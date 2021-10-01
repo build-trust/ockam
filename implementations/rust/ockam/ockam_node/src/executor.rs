@@ -51,6 +51,7 @@ impl Executor {
     }
 
     /// Execute a future
+    #[cfg(feature = "std")]
     pub fn execute<F>(&mut self, future: F) -> Result<F::Output>
     where
         F: Future + Send + 'static,
@@ -65,5 +66,22 @@ impl Executor {
             .map_err(|_| Error::ExecutorBodyJoinError)?;
 
         Ok(res)
+    }
+
+    #[cfg(not(feature = "std"))]
+    /// Execute a future
+    /// TODO @antoinevg - support @thomm join & merge with std version
+    pub fn execute<F>(&mut self, future: F) -> Result<()>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        let rt = Arc::clone(&self.rt);
+        let _join = rt.spawn(future);
+
+        // Block this task executing the primary message router,
+        // returning any critical failures that it encounters.
+        crate::tokio::runtime::execute(&rt, async move { self.router.run().await.unwrap() });
+        Ok(())
     }
 }

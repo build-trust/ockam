@@ -6,7 +6,7 @@
 //!
 //! The ockam_node crate re-exports types defined in this crate when the 'std'
 //! feature is not enabled.
-#![deny(
+#![allow(
     //missing_docs,
     //trivial_casts,
     trivial_numeric_casts,
@@ -27,8 +27,6 @@ extern crate core;
 #[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
-
-mod alloc_bump;
 
 pub mod channel;
 pub mod executor;

@@ -14,31 +14,11 @@ use ockam_core::compat::vec::Vec;
 
 use pin_utils::pin_mut;
 
-use crate::alloc_bump::Alloc;
-
-/// Reserved memory for the bump allocator
-const HEAP_SIZE: usize = 1024 * 128;
-
-static mut ALLOCATOR: UnsafeCell<MaybeUninit<Alloc>> = UnsafeCell::new(MaybeUninit::uninit());
-
-/// abort
-#[cfg(target_arch = "arm")]
-pub use cortex_m::asm::udf as abort;
-
-/// abort
-#[cfg(not(target_arch = "arm"))]
-pub fn abort() -> ! {
-    loop {
-        panic!();
-    }
-}
-
 /// Returns current executor.
-/// WARNING: this is not thread-safe
+/// WARNING: TODO this is not thread-safe
 pub fn current() -> &'static Executor<'static> {
     static INIT: AtomicBool = AtomicBool::new(false);
     static mut EXECUTOR: UnsafeCell<MaybeUninit<Executor>> = UnsafeCell::new(MaybeUninit::uninit());
-    static mut MEMORY: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 
     if INIT.load(Ordering::Relaxed) {
         unsafe { &*(EXECUTOR.get() as *const Executor) }
@@ -46,8 +26,6 @@ pub fn current() -> &'static Executor<'static> {
         unsafe {
             let executorp = EXECUTOR.get() as *mut Executor;
             executorp.write(Executor::new());
-            let allocatorp = ALLOCATOR.get() as *mut Alloc;
-            allocatorp.write(Alloc::new(&mut MEMORY));
             atomic::compiler_fence(Ordering::Release);
             INIT.store(true, Ordering::Relaxed);
             &*executorp
@@ -57,75 +35,93 @@ pub fn current() -> &'static Executor<'static> {
 
 /// Executor
 pub struct Executor<'a> {
-    tasks: UnsafeCell<Vec<&'a Task>>,
-
+    tasks: UnsafeCell<BTreeMap<TaskId, Box<Task>>>,
+    waker_cache: UnsafeCell<BTreeMap<TaskId, Waker>>,
+    // TODO tasks: Arc<Mutex<BTreeMap<TaskId, Box<Task>>>>,
+    // TODO waker_cache: Arc<Mutex<BTreeMap<TaskId, Waker>>>,
     task_queue: Arc<SegQueue<TaskId>>,
-    task_cache: Arc<Mutex<BTreeMap<TaskId, &'a Task>>>,
-
     marker: core::marker::PhantomData<&'a ()>,
 }
 
 impl<'a> Executor<'a> {
     pub fn new() -> Self {
         Self {
-            tasks: UnsafeCell::new(Vec::new()),
-
+            tasks: UnsafeCell::new(BTreeMap::new()),
+            waker_cache: UnsafeCell::new(BTreeMap::new()),
+            // TODO tasks: Arc::new(Mutex::new(BTreeMap::new())),
+            // TODO waker_cache: Arc::new(Mutex::new(BTreeMap::new())),
             task_queue: Arc::new(SegQueue::new()),
-            task_cache: Arc::new(Mutex::new(BTreeMap::new())),
-
             marker: core::marker::PhantomData,
         }
     }
 
     pub fn block_on<T>(&self, future: impl Future<Output = T>) -> T {
-        pin_mut!(future);
-        let ready = AtomicBool::new(true);
-        let waker =
-            unsafe { Waker::from_raw(RawWaker::new(&ready as *const _ as *const _, &VTABLE)) };
+        let mut node = Node {
+            id: TaskId::new(),
+            future: UnsafeCell::new(future),
+        };
+        let node_waker = NodeWaker::new(node.id);
 
         let result = loop {
-            if ready.load(Ordering::Acquire) {
-                ready.store(false, Ordering::Release);
-                let mut context = Context::from_waker(&waker);
-                if let Poll::Ready(result) = future.as_mut().poll(&mut context) {
-                    // exit main task
-                    break result;
-                }
+            // progress on main task
+            let mut context = Context::from_waker(&node_waker);
+            if let Poll::Ready(result) = node.poll(&mut context) {
+                // exit main task
+                break result;
             }
 
-            let len = unsafe { (*self.tasks.get()).len() };
-            for i in 0..len {
-                let task = unsafe { (*self.tasks.get()).get_unchecked(i) };
-                if task.ready.load(Ordering::Acquire) {
-                    task.ready.store(false, Ordering::Release);
-                    let waker = unsafe {
-                        Waker::from_raw(RawWaker::new(&task.ready as *const _ as *const _, &VTABLE))
-                    };
-                    let mut context = Context::from_waker(&waker);
-                    unsafe {
-                        let _ready = Pin::new_unchecked(&mut *task.future.get())
-                            .poll(&mut context)
-                            .is_ready();
-                    }
-                }
+            while let Some(task_id) = self.task_queue.pop() {
+                self.poll_task(task_id);
             }
-
             self.sleep_if_idle();
         };
         result
     }
 
+    /// poll_task
+    fn poll_task(&self, task_id: TaskId) {
+        let tasks = unsafe {
+            let tasksp = self.tasks.get() as *mut BTreeMap<TaskId, Box<Task>>;
+            &mut (*tasksp)
+        };
+        let task = match tasks.get_mut(&task_id) {
+            Some(task) => task,
+            None => {
+                // TODO ockam_core::println!("No task for id: {:?}", task_id);
+                return;
+            }
+        };
+
+        let waker_cache = unsafe {
+            let waker_cachep = self.waker_cache.get() as *mut BTreeMap<TaskId, Waker>;
+            &mut (*waker_cachep)
+        };
+        let waker = waker_cache
+            .entry(task_id)
+            .or_insert_with(|| TaskWaker::new(task_id, self.task_queue.clone()));
+
+        let mut context = Context::from_waker(waker);
+        match task.poll(&mut context) {
+            Poll::Ready(()) => {
+                // task completed, remove it and its cached waker
+                tasks.remove(&task_id);
+                waker_cache.remove(&task_id);
+            }
+            Poll::Pending => (),
+        }
+    }
+
     /// spawn
     pub fn spawn(&self, future: impl Future + 'static) {
-        let task: &'static mut Task = Task::new(future);
+        let task = Task::allocate(future);
         self.task_queue.push(task.id);
-
-        let mut guard = self.task_cache.lock().unwrap();
-        if guard.insert(task.id, task).is_some() {
-            panic!("task with same ID already in tasks");
+        let tasks = unsafe {
+            let tasksp = self.tasks.get() as *mut BTreeMap<TaskId, Box<Task>>;
+            &mut (*tasksp)
+        };
+        if tasks.insert(task.id, task).is_some() {
+            panic!("task with same id already exists");
         }
-
-        unsafe { (*self.tasks.get()).push(task) };
     }
 
     fn sleep_if_idle(&self) {
@@ -146,28 +142,39 @@ where
     F: ?Sized,
 {
     id: TaskId,
-    ready: AtomicBool,
     future: UnsafeCell<F>,
+    // TODO future: Pin<Box<F>>,
+}
+
+impl<F, T> Node<F>
+where
+    F: ?Sized + Future<Output = T>,
+{
+    fn poll(&mut self, context: &mut Context) -> Poll<T> {
+        //self.future.as_mut().poll(context)
+        let future = unsafe {
+            let futurep = self.future.get() as *mut F;
+            &mut (*futurep)
+        };
+        let result = unsafe { Pin::new_unchecked(future).poll(context) };
+        result
+    }
 }
 
 impl Task {
-    fn new(future: impl Future + 'static) -> &'static mut Self {
-        let task = Node {
+    fn allocate(future: impl Future + 'static) -> Box<Task> {
+        Box::new(Node {
             id: TaskId::new(),
-            ready: AtomicBool::new(true),
             future: UnsafeCell::new(async {
                 // task terminating
                 future.await;
             }),
-        };
-        unsafe {
-            let allocator = ALLOCATOR.get() as *mut Alloc;
-            (*allocator).alloc_init(task)
-        }
+            // TODO future: Box::pin(future),
+        })
     }
 }
 
-// - TaskId ---------------------------------------------------------------
+// - TaskId -------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct TaskId(usize);
@@ -179,25 +186,20 @@ impl TaskId {
     }
 }
 
-// - VTABLE -------------------------------------------------------------------
+// - Waker --------------------------------------------------------------------
 
-// NOTE `*const ()` is &AtomicBool
-static VTABLE: RawWakerVTable = {
-    unsafe fn clone(p: *const ()) -> RawWaker {
-        RawWaker::new(p, &VTABLE)
+struct NodeWaker;
+impl NodeWaker {
+    fn new(task_id: TaskId) -> Waker {
+        Waker::from(Arc::new(NodeWaker {}))
     }
-    unsafe fn wake(p: *const ()) {
-        wake_by_ref(p)
-    }
-    unsafe fn wake_by_ref(p: *const ()) {
-        (*(p as *const AtomicBool)).store(true, Ordering::Release)
-    }
-    unsafe fn drop(_: *const ()) {
+}
+
+impl Wake for NodeWaker {
+    fn wake(self: Arc<Self>) {
         // no-op
     }
-
-    RawWakerVTable::new(clone, wake, wake_by_ref, drop)
-};
+}
 
 struct TaskWaker<'a> {
     task_id: TaskId,
@@ -206,6 +208,14 @@ struct TaskWaker<'a> {
 }
 
 impl<'a> TaskWaker<'a> {
+    fn new(task_id: TaskId, task_queue: Arc<SegQueue<TaskId>>) -> Waker {
+        Waker::from(Arc::new(TaskWaker {
+            task_id,
+            task_queue,
+            marker: core::marker::PhantomData,
+        }))
+    }
+
     fn reschedule_task(&self) {
         self.task_queue.push(self.task_id);
     }

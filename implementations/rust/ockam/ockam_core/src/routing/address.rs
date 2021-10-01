@@ -4,10 +4,10 @@ use crate::compat::{
     vec::Vec,
 };
 use core::fmt::{self, Debug, Display};
+use core::iter::FromIterator;
 use core::ops::Deref;
 use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
-use std::iter::FromIterator;
 
 /// A collection of Addresses
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
