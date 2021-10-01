@@ -1,6 +1,9 @@
 use crate::relay::{run_mailbox, RelayMessage, ShutdownHandle, ShutdownListener};
 use crate::tokio::runtime::Runtime;
 use crate::tokio::sync::mpsc;
+#[cfg(not(feature = "std"))]
+use crate::Context;
+#[cfg(feature = "std")]
 use crate::{error::Error, Context};
 use ockam_core::{Processor, Result};
 
@@ -26,7 +29,7 @@ where
     }
 
     async fn run(self) {
-        let (rx_shutdown, tx_ack) = self.shutdown_listener.consume();
+        let (_rx_shutdown, tx_ack) = self.shutdown_listener.consume();
         let mut ctx = self.ctx;
         let mut processor = self.processor;
 
@@ -64,7 +67,7 @@ where
         let stop_reason;
         #[cfg(feature = "std")]
         tokio::select! {
-            res = rx_shutdown => {
+            res = _rx_shutdown => {
                 match res {
                     Ok(_) => stop_reason = StopReason::Shutdown,
                     Err(_) => stop_reason = StopReason::RxError(Error::ShutdownRxError.into()),

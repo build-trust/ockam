@@ -15,15 +15,11 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std     = ["futures/std", "ockam_core/std", "async-std/default"]
+std     = ["futures/std", "ockam_core/std"]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc   = ["futures/alloc", "ockam_core/alloc", "ockam_core/no_std"]
-
-# Feature: "cortexm" provides compiler intrinsics and runtime support for
-# ARM cortex-m processors.
-cortexm = ["alloc-cortex-m", "cortex-m", "cortex-m-rt", "cortex-m-semihosting", "panic-semihosting"]
 
 [dependencies]
 crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }
@@ -32,12 +28,3 @@ heapless = { version = "0.7", features = [ "mpmc_large" ] }
 ockam_core = { path = "../ockam_core", version = "0.33.0" , default_features = false }
 pin-project-lite = "0.2"
 pin-utils = "0.1.0"
-
-alloc-cortex-m = { version = "0.4.1", optional = true }
-cortex-m = { version = "0.7.2", optional = true }
-cortex-m-rt = { version = "0.6.14", optional = true }
-cortex-m-semihosting = { version = "0.3.7", optional = true }
-panic-semihosting = { version = "0.5.6", optional = true }
-
-[dev-dependencies]
-async-std = { version = "1.9.0", default_features = false }

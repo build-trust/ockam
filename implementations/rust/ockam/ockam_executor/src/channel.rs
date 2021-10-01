@@ -119,7 +119,7 @@ impl<T: core::fmt::Debug> Receiver<T> {
             }
             None => {
                 self.0.wake_receiver.register(&context.waker());
-                if self.0.is_sender_closed.load(Ordering::Relaxed) {
+                if self.0.is_sender_closed.load(Ordering::Acquire) {
                     Poll::Ready(None)
                 } else {
                     Poll::Pending
