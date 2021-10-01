@@ -52,6 +52,7 @@ pub use error::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
+pub use traits::*;
 pub use uint::*;
 pub use worker::*;
 
