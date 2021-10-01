@@ -75,7 +75,7 @@ pub mod traits {
     /// Clone trait for async structs.
     #[async_trait]
     pub trait AsyncTryClone: Sized {
-        /// Try cloning a object and return an `Err` in case of failure.
+        /// Try cloning an object and return an `Err` in case of failure.
         async fn async_try_clone(&self) -> Result<Self>;
     }
 }

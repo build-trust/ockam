@@ -1,6 +1,6 @@
 use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
 use ockam_core::compat::rand::random;
-use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage, Route};
+use ockam_core::{Address, Result, ResultMessage, Route};
 use ockam_node::{block_future, Context};
 use tracing::debug;
 use zeroize::Zeroize;
@@ -47,13 +47,6 @@ impl VaultSync {
 impl Clone for VaultSync {
     fn clone(&self) -> Self {
         self.start_another().unwrap()
-    }
-}
-
-#[async_trait]
-impl AsyncTryClone for VaultSync {
-    async fn async_try_clone(&self) -> Result<Self> {
-        self.start_another()
     }
 }
 
