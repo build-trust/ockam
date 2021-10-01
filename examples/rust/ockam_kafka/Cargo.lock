@@ -746,7 +746,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -766,7 +766,6 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
- "serde_bare 0.4.0",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -776,7 +775,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -788,25 +787,24 @@ dependencies = [
  "ockam_vault_sync_core",
  "rand 0.8.4",
  "serde",
- "serde_bare 0.4.0",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_core"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
  "hex",
  "rand 0.8.4",
  "serde",
- "serde_bare 0.4.0",
+ "serde_bare",
 ]
 
 [[package]]
 name = "ockam_entity"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "async-trait",
  "bls12_381_plus",
@@ -824,7 +822,6 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde-big-array",
- "serde_bare 0.4.0",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -841,7 +838,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -850,7 +847,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -860,7 +857,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -870,7 +867,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "quote",
  "syn",
@@ -878,7 +875,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -886,7 +883,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -896,14 +893,13 @@ dependencies = [
  "ockam_transport_core",
  "rand 0.7.3",
  "serde",
- "serde_bare 0.3.0",
  "tokio",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_vault"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -925,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -936,7 +932,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -1256,18 +1252,9 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.3.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01db2255aa98fb93ad74272d8b2e6fd4851860e733e944b9439cf148127164b2"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde_bare"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
+checksum = "51c55386eed0f1ae957b091dc2ca8122f287b60c79c774cbe3d5f2b69fded660"
 dependencies = [
  "serde",
 ]
@@ -1333,7 +1320,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1354,7 +1341,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1371,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1389,7 +1376,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1417,9 +1404,9 @@ checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
 
 [[package]]
 name = "smallvec"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "spin"
@@ -1502,9 +1489,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "1.3.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54473be61f4ebe4efd09cec9bd5d16fa51d70ea0192213d754d2d500457db110"
+checksum = "154794c8f499c2619acd19e839294703e9e32e7630ef5f46ea80d4ef0fbee5eb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1519,19 +1506,7 @@ checksum = "84f96e095c0c82419687c20ddf5cb3eadb61f4e1405923c9dc8e53a1adacbda8"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
- "tracing-attributes",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
