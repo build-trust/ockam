@@ -137,7 +137,7 @@ impl<T> Future for Receiver<T> {
             }
             None => {
                 self.0.wake_receiver.register(&context.waker());
-                if self.0.is_sender_closed.load(Ordering::Relaxed) {
+                if self.0.is_sender_closed.load(Ordering::Acquire) {
                     panic!("called after complete");
                 } else {
                     Poll::Pending
