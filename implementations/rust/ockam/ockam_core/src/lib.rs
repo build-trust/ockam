@@ -66,3 +66,15 @@ macro_rules! println {
         cortex_m_semihosting::hprintln!($($arg)*).unwrap();
     }};
 }
+
+/// Module for custom implementation of standard traits.
+pub mod traits {
+    use crate::error::Result;
+
+    /// Clone trait for async structs.
+    #[async_trait]
+    pub trait AsyncTryClone: Sized {
+        /// Try cloning a object and return an `Err` in case of failure.
+        async fn async_try_clone(&self) -> Result<Self>;
+    }
+}
