@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -381,7 +381,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -681,9 +681,9 @@ checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "syn"
-version = "1.0.77"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5239bc68e0fef57495900cfea4e8dc75596d9a319d7e16b1e0a440d24e6fe0a0"
+checksum = "a4eac2e6c19f5c3abc0c229bea31ff0b9b091c7b14990e8924b92902a303a0c0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -761,9 +761,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.20"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46125608c26121c81b0c6d693eab5a420e416da7e43c426d2e8f7df8da8a3acf"
+checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
 dependencies = [
  "lazy_static",
 ]

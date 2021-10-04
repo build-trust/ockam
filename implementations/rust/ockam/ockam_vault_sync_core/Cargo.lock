@@ -869,7 +869,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -885,7 +885,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "alloc-cortex-m",
  "cortex-m 0.7.3",
@@ -902,7 +902,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "heapless",
  "ockam_core",
@@ -915,14 +915,14 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "executor",
 ]
 
 [[package]]
 name = "ockam_vault"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -945,7 +945,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -957,7 +957,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -976,7 +976,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "quote",
  "syn",
@@ -984,7 +984,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -1358,7 +1358,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1379,7 +1379,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1396,7 +1396,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1414,7 +1414,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1469,9 +1469,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.77"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5239bc68e0fef57495900cfea4e8dc75596d9a319d7e16b1e0a440d24e6fe0a0"
+checksum = "a4eac2e6c19f5c3abc0c229bea31ff0b9b091c7b14990e8924b92902a303a0c0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1549,9 +1549,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.20"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46125608c26121c81b0c6d693eab5a420e416da7e43c426d2e8f7df8da8a3acf"
+checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
 dependencies = [
  "lazy_static",
 ]

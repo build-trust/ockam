@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_executor = "0.1.0"
+ockam_executor = "0.2.0"
 ```
 
 ## License

@@ -589,7 +589,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -605,7 +605,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "alloc-cortex-m",
  "cortex-m 0.7.3",
@@ -622,7 +622,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "async-trait",
  "heapless",
@@ -636,7 +636,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "executor",
 ]
@@ -964,9 +964,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "syn"
-version = "1.0.77"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5239bc68e0fef57495900cfea4e8dc75596d9a319d7e16b1e0a440d24e6fe0a0"
+checksum = "a4eac2e6c19f5c3abc0c229bea31ff0b9b091c7b14990e8924b92902a303a0c0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1026,9 +1026,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.20"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46125608c26121c81b0c6d693eab5a420e416da7e43c426d2e8f7df8da8a3acf"
+checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
 dependencies = [
  "lazy_static",
 ]
