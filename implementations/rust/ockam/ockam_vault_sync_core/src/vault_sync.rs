@@ -25,7 +25,7 @@ pub use verifier::*;
 pub struct VaultSync {
     // ctx: Context,
     // vault_worker_address: Address,
-    handle: Handle
+    handle: Handle,
 }
 
 impl VaultSync {
@@ -33,7 +33,8 @@ impl VaultSync {
     // #[deprecated]
     #[allow(unused)]
     pub(crate) async fn send_message(&self, m: VaultRequestMessage) -> Result<()> {
-        self.handle.ctx()
+        self.handle
+            .ctx()
             .send(Route::new().append(self.handle.address().clone()), m)
             .await
     }
@@ -42,7 +43,8 @@ impl VaultSync {
     // #[deprecated]
     #[allow(unused)]
     pub(crate) async fn receive_message(&mut self) -> Result<VaultResponseMessage> {
-        self.handle.ctx_mut()
+        self.handle
+            .ctx_mut()
             .receive::<ResultMessage<VaultResponseMessage>>()
             .await?
             .take()
@@ -52,9 +54,8 @@ impl VaultSync {
 
     pub(crate) fn call(&mut self, msg: VaultRequestMessage) -> Result<VaultResponseMessage> {
         self.handle
-            .call::<VaultRequestMessage, ResultMessage<VaultResponseMessage>>(
-                msg
-            )?.into()
+            .call::<VaultRequestMessage, ResultMessage<VaultResponseMessage>>(msg)?
+            .into()
     }
 }
 
@@ -98,9 +99,8 @@ impl VaultSync {
             async move { ctx.new_context(address).await },
         )?;
 
-
         Ok(Self {
-            handle: Handle::new(ctx, vault.clone())
+            handle: Handle::new(ctx, vault.clone()),
         })
     }
 

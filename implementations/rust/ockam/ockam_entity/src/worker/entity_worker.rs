@@ -1,13 +1,12 @@
 use crate::{
     CredentialHolder, CredentialIssuer, CredentialProof, CredentialPublicKey,
-    CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed,
-    Identity, IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact, Profile,
+    CredentialRequestFragment, CredentialVerifier, EntityError::IdentityApiFailed, Identity,
+    IdentityRequest, IdentityRequest::*, IdentityResponse as Res, MaybeContact, Profile,
     ProfileIdentifier, ProfileState, SecureChannelTrait, TrustPolicyImpl,
 };
 use core::result::Result::Ok;
 use ockam_core::{
-    async_trait::async_trait, compat::collections::HashMap, Address, Result,
-    Routed, Worker
+    async_trait::async_trait, compat::collections::HashMap, Address, Result, Routed, Worker,
 };
 use ockam_node::{Context, Handle};
 use ockam_vault_sync_core::VaultSync;

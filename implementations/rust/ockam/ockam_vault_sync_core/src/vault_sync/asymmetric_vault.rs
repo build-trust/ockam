@@ -9,9 +9,9 @@ impl AsymmetricVault for VaultSync {
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
         let resp = self.call(VaultRequestMessage::EcDiffieHellman {
-                context: context.clone(),
-                peer_public_key: peer_public_key.clone(),}
-            )?;
+            context: context.clone(),
+            peer_public_key: peer_public_key.clone(),
+        })?;
 
         if let VaultResponseMessage::EcDiffieHellman(s) = resp {
             Ok(s)

@@ -5,9 +5,7 @@ use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreE
 
 impl Hasher for VaultSync {
     fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
-        let resp = self.call(VaultRequestMessage::Sha256 {
-            data: data.into()
-        })?;
+        let resp = self.call(VaultRequestMessage::Sha256 { data: data.into() })?;
 
         if let VaultResponseMessage::Sha256(s) = resp {
             Ok(s)
@@ -23,13 +21,12 @@ impl Hasher for VaultSync {
         ikm: Option<&Secret>,
         output_attributes: SmallBuffer<SecretAttributes>,
     ) -> Result<SmallBuffer<Secret>> {
-        let resp = self.call(
-                VaultRequestMessage::HkdfSha256 {
-                    salt: salt.clone(),
-                    info: info.into(),
-                    ikm: ikm.cloned(),
-                    output_attributes,
-                })?;
+        let resp = self.call(VaultRequestMessage::HkdfSha256 {
+            salt: salt.clone(),
+            info: info.into(),
+            ikm: ikm.cloned(),
+            output_attributes,
+        })?;
 
         if let VaultResponseMessage::HkdfSha256(s) = resp {
             Ok(s)

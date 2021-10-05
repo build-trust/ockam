@@ -4,8 +4,8 @@ use crate::{
     Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialProof, CredentialProtocol, CredentialPublicKey,
     CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityBuilder,
-    EntityCredential, Holder, HolderWorker, Identity, IdentityRequest, IdentityResponse,
-    Issuer, Lease, ListenerWorker, MaybeContact, OfferId, PresentationFinishedMessage,
+    EntityCredential, Holder, HolderWorker, Identity, IdentityRequest, IdentityResponse, Issuer,
+    Lease, ListenerWorker, MaybeContact, OfferId, PresentationFinishedMessage,
     PresentationManifest, PresenterWorker, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
     SecureChannels, SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker, TTL,
 };

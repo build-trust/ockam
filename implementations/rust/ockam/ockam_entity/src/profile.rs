@@ -21,8 +21,8 @@ use crate::{
     traits::Verifier, AuthenticationProof, BbsCredential, Changes, Contact, Credential,
     CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequest,
-    CredentialRequestFragment, CredentialSchema, Entity, EntityCredential, Holder,
-    Identity, IdentityRequest, IdentityResponse, Issuer, Lease, OfferId, PresentationManifest,
+    CredentialRequestFragment, CredentialSchema, Entity, EntityCredential, Holder, Identity,
+    IdentityRequest, IdentityResponse, Issuer, Lease, OfferId, PresentationManifest,
     ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
     TrustPolicy, TTL,
 };
