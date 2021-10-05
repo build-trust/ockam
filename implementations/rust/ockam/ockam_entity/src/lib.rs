@@ -8,7 +8,7 @@
     unsafe_code,
     unused_import_braces,
     unused_qualifications,
-    // warnings
+    warnings
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
