@@ -30,9 +30,7 @@ pub use identifiers::*;
 pub use key_attributes::*;
 pub use lease::*;
 use ockam_channel::SecureChannelVault;
-use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
-use ockam_core::{Address, Decodable, Encodable, Message, Result};
-use ockam_node::{block_future, Context};
+use ockam_core::{compat::collections::HashMap, Decodable, Encodable, Result};
 use ockam_vault::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
 pub use profile::*;
 pub use profile_state::*;
@@ -40,67 +38,6 @@ pub use traits::*;
 pub use worker::*;
 
 use crate::EntityError;
-
-pub struct Handle {
-    ctx: Context,
-    address: Address,
-}
-
-impl Clone for Handle {
-    fn clone(&self) -> Self {
-        block_future(&self.ctx.runtime(), async move {
-            Handle {
-                ctx: self
-                    .ctx
-                    .new_context(Address::random(0))
-                    .await
-                    .expect("new_context failed"),
-                address: self.address.clone(),
-            }
-        })
-    }
-}
-
-impl Handle {
-    pub fn new(ctx: Context, address: Address) -> Self {
-        Handle { ctx, address }
-    }
-
-    pub async fn async_cast<M: Message + Send + 'static>(&self, msg: M) -> Result<()> {
-        self.ctx.send(self.address.clone(), msg).await
-    }
-
-    pub fn cast<M: Message + Send + 'static>(&self, msg: M) -> Result<()> {
-        block_future(
-            &self.ctx.runtime(),
-            async move { self.async_cast(msg).await },
-        )
-    }
-
-    pub async fn async_call<I: Message + Send + 'static, O: Message + Send + 'static>(
-        &self,
-        msg: I,
-    ) -> Result<O> {
-        let mut ctx = self
-            .ctx
-            .new_context(Address::random(0))
-            .await
-            .expect("new_context failed");
-        ctx.send(self.address.clone(), msg).await?;
-        let msg = ctx.receive::<O>().await?;
-        Ok(msg.take().body())
-    }
-
-    pub fn call<I: Message + Send + 'static, O: Message + Send + 'static>(
-        &self,
-        msg: I,
-    ) -> Result<O> {
-        block_future(
-            &self.ctx.runtime(),
-            async move { self.async_call(msg).await },
-        )
-    }
-}
 
 mod authentication;
 mod change;

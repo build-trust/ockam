@@ -4,7 +4,7 @@ use crate::{
     Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialProof, CredentialProtocol, CredentialPublicKey,
     CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityBuilder,
-    EntityCredential, Handle, Holder, HolderWorker, Identity, IdentityRequest, IdentityResponse,
+    EntityCredential, Holder, HolderWorker, Identity, IdentityRequest, IdentityResponse,
     Issuer, Lease, ListenerWorker, MaybeContact, OfferId, PresentationFinishedMessage,
     PresentationManifest, PresenterWorker, ProfileChangeEvent, ProfileIdentifier, ProofRequestId,
     SecureChannels, SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker, TTL,
@@ -15,7 +15,7 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::{Address, Result, Route};
-use ockam_node::{block_future, Context};
+use ockam_node::{block_future, Context, Handle};
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};
 use signature_bls::SecretKey;
 use IdentityRequest::*;
@@ -270,9 +270,9 @@ impl SecureChannels for Entity {
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
         let profile = self.current_profile().expect("no current profile");
-        let ctx = &self.handle().ctx;
-        let trust_policy_address = block_future(&self.handle.ctx.runtime(), async move {
-            TrustPolicyImpl::create_worker(ctx, trust_policy).await
+        let handle = &self.handle();
+        let trust_policy_address = block_future(&self.handle.ctx().runtime(), async move {
+            TrustPolicyImpl::create_worker(handle.ctx(), trust_policy).await
         })?;
         if let Res::CreateSecureChannelListener = self.call(CreateSecureChannelListener(
             profile.identifier().expect("couldn't get profile id"),
@@ -291,9 +291,9 @@ impl SecureChannels for Entity {
         trust_policy: impl TrustPolicy,
     ) -> Result<Address> {
         let profile = self.current_profile().expect("no current profile");
-        let ctx = &self.handle().ctx;
-        let trust_policy_address = block_future(&self.handle.ctx.runtime(), async move {
-            TrustPolicyImpl::create_worker(ctx, trust_policy).await
+        let handle = &self.handle();
+        let trust_policy_address = block_future(&self.handle.ctx().runtime(), async move {
+            TrustPolicyImpl::create_worker(handle.ctx(), trust_policy).await
         })?;
         if let Res::CreateSecureChannel(address) = self.call(CreateSecureChannel(
             profile.identifier().expect("couldn't get profile id"),
@@ -553,13 +553,13 @@ impl CredentialProtocol for Entity {
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
         let profile = self.clone().current_profile().expect("no current profile");
-        block_future(&self.handle.ctx.runtime(), async move {
+        block_future(&self.handle.ctx().runtime(), async move {
             let trust_policy =
-                TrustPolicyImpl::create_using_impl(&self.handle.ctx, trust_policy).await?;
+                TrustPolicyImpl::create_using_impl(self.handle.ctx(), trust_policy).await?;
 
             let address = address.into();
             let worker = ListenerWorker::new(profile, schema, trust_policy);
-            self.handle.ctx.start_worker(address, worker).await?;
+            self.handle.ctx().start_worker(address, worker).await?;
 
             Ok(())
         })
@@ -573,8 +573,8 @@ impl CredentialProtocol for Entity {
         values: Vec<CredentialAttribute>,
     ) -> Result<Credential> {
         let profile = self.clone().current_profile().expect("no current profile");
-        block_future(&self.handle.ctx.runtime(), async move {
-            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+        block_future(&self.handle.ctx().runtime(), async move {
+            let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
 
             let worker = HolderWorker::new(
                 profile.clone(),
@@ -603,10 +603,10 @@ impl CredentialProtocol for Entity {
         reveal_attributes: Vec<String>,
     ) -> Result<()> {
         let profile = self.clone().current_profile().expect("no current profile");
-        block_future(&self.handle.ctx.runtime(), async move {
+        block_future(&self.handle.ctx().runtime(), async move {
             let credential = self.get_credential(&credential)?;
 
-            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+            let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
             let worker = PresenterWorker::new(
                 profile.clone(),
                 verifier_route,
@@ -634,11 +634,11 @@ impl CredentialProtocol for Entity {
         attributes_values: Vec<CredentialAttribute>,
     ) -> Result<bool> {
         let mut profile = self.clone().current_profile().expect("no current profile");
-        block_future(&self.handle.ctx.runtime(), async move {
+        block_future(&self.handle.ctx().runtime(), async move {
             let issuer = profile.get_contact(issuer_id)?.unwrap();
             let pubkey = issuer.get_signing_public_key()?;
 
-            let mut ctx = self.handle.ctx.new_context(Address::random(0)).await?;
+            let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
             let worker = VerifierWorker::new(
                 profile.clone(),
                 pubkey.as_ref().try_into().unwrap(), // FIXME

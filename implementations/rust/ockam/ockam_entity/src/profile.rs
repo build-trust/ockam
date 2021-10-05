@@ -21,7 +21,7 @@ use crate::{
     traits::Verifier, AuthenticationProof, BbsCredential, Changes, Contact, Credential,
     CredentialAttribute, CredentialFragment1, CredentialFragment2, CredentialOffer,
     CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequest,
-    CredentialRequestFragment, CredentialSchema, Entity, EntityCredential, Handle, Holder,
+    CredentialRequestFragment, CredentialSchema, Entity, EntityCredential, Holder,
     Identity, IdentityRequest, IdentityResponse, Issuer, Lease, OfferId, PresentationManifest,
     ProfileChangeEvent, ProfileIdentifier, ProofRequestId, SecureChannels, SigningPublicKey,
     TrustPolicy, TTL,
@@ -31,6 +31,7 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::{Address, Result, Route};
+use ockam_node::Handle;
 use ockam_vault::{PublicKey, Secret};
 use signature_bls::SecretKey;
 
