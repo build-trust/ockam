@@ -13,7 +13,7 @@ To do it please create a new PR to the https://github.com/ockam-network/contribu
     runs-on: ubuntu-latest
     steps:
       - name: Clone CONTRIBUTORS
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
         with:
           repository: ockam-network/contributors
           path: contributors
