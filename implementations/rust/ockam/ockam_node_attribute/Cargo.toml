@@ -27,5 +27,5 @@ no_std = []
 alloc = []
 
 [dependencies]
-quote = "1.0.9"
+quote = "1.0.10"
 syn = {version = "1.0", features = ["full", "extra-traits"]}
