@@ -1,0 +1,22 @@
+name: crate_release
+on:
+  workflow_dispatch:
+  push:
+    # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
+    paths:
+      - 'implementations/rust/ockam/**'
+
+jobs:
+  docker_base:
+    if: github.event.ref == 'refs/heads/develop' && github.repository_owner == 'ockam-network'
+    runs-on: ubuntu-20.04
+    environment:
+      name: artifacts
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@a3b37769d28120b0a633f6985f454bbc6293c946
+        with:
+          token: ${{ secrets.SECRET_TOKEN }}
+          repository: ockam-network/artifacts
+          event-type: crate_release
+          client-payload: '{"sha": "${{ github.sha }}"}'
