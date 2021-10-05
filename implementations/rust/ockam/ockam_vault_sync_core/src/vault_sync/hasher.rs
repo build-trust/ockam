@@ -1,22 +1,19 @@
-use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 use ockam_core::Result;
-use ockam_node::block_future;
 use ockam_vault_core::{Hasher, Secret, SecretAttributes, SmallBuffer};
+
+use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
 impl Hasher for VaultSync {
     fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
-        block_future(&self.ctx.runtime(), async move {
-            self.send_message(VaultRequestMessage::Sha256 { data: data.into() })
-                .await?;
+        let resp = self.call(VaultRequestMessage::Sha256 {
+            data: data.into()
+        })?;
 
-            let resp = self.receive_message().await?;
-
-            if let VaultResponseMessage::Sha256(s) = resp {
-                Ok(s)
-            } else {
-                Err(VaultSyncCoreError::InvalidResponseType.into())
-            }
-        })
+        if let VaultResponseMessage::Sha256(s) = resp {
+            Ok(s)
+        } else {
+            Err(VaultSyncCoreError::InvalidResponseType.into())
+        }
     }
 
     fn hkdf_sha256(
@@ -26,29 +23,26 @@ impl Hasher for VaultSync {
         ikm: Option<&Secret>,
         output_attributes: SmallBuffer<SecretAttributes>,
     ) -> Result<SmallBuffer<Secret>> {
-        block_future(&self.ctx.runtime(), async move {
-            self.send_message(VaultRequestMessage::HkdfSha256 {
-                salt: salt.clone(),
-                info: info.into(),
-                ikm: ikm.cloned(),
-                output_attributes,
-            })
-            .await?;
+        let resp = self.call(
+                VaultRequestMessage::HkdfSha256 {
+                    salt: salt.clone(),
+                    info: info.into(),
+                    ikm: ikm.cloned(),
+                    output_attributes,
+                })?;
 
-            let resp = self.receive_message().await?;
-
-            if let VaultResponseMessage::HkdfSha256(s) = resp {
-                Ok(s)
-            } else {
-                Err(VaultSyncCoreError::InvalidResponseType.into())
-            }
-        })
+        if let VaultResponseMessage::HkdfSha256(s) = resp {
+            Ok(s)
+        } else {
+            Err(VaultSyncCoreError::InvalidResponseType.into())
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use ockam_vault::SoftwareVault;
+
     use ockam_vault_test_attribute::*;
 
     fn new_vault() -> SoftwareVault {
