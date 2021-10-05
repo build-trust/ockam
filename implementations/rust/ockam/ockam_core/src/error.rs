@@ -31,7 +31,7 @@ pub struct Error {
 }
 
 /// The type returned by Ockam functions.
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T, E = Error> = core::result::Result<T, E>;
 
 /// Produces Ok(false), which reads confusingly in auth code.
 pub fn deny() -> Result<bool> {
