@@ -29,7 +29,7 @@ pub use identifiers::*;
 pub use key_attributes::*;
 pub use lease::*;
 use ockam_channel::SecureChannelVault;
-use ockam_core::{compat::collections::HashMap, Result};
+use ockam_core::{compat::collections::HashMap, Decodable, Encodable, Result};
 use ockam_vault::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
 pub use profile::*;
 pub use profile_state::*;
