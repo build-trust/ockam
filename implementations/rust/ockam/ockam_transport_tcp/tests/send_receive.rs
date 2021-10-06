@@ -1,33 +1,21 @@
 use core::iter;
-use std::time::Duration;
 
-use ockam_core::{route, Address, Error, Result, Routed, Worker};
+use ockam_core::{route, Address, Result, Routed, Worker};
 use ockam_node::Context;
 use rand::Rng;
-use tokio::sync::oneshot;
-use tokio::time::timeout;
 
 use ockam_transport_tcp::{TcpTransport, TCP};
 
-#[tokio::test(flavor = "multi_thread")]
-async fn send_receive() {
-    let (tx, rx) = oneshot::channel::<Result<()>>();
-    let (ctx, mut executor) = ockam_node::start_node();
+#[test]
+fn send_receive() {
+    let (mut ctx, mut executor) = ockam_node::start_node();
     executor
-        .execute(async move { run_with_timeout(tx, ctx).await })
+        .execute(async move { run_test(&mut ctx).await })
+        .expect("Executor should not fail")
         .expect("Executor should not fail");
-    assert!(rx.await.unwrap().is_ok(), "'run' method should return Ok");
 }
 
-async fn run_with_timeout(tx: oneshot::Sender<Result<()>>, mut ctx: Context) {
-    match timeout(Duration::from_secs(1), run_test(&ctx)).await {
-        Ok(res) => tx.send(res).unwrap(),
-        Err(_) => tx.send(Err(Error::new(0, ""))).unwrap(),
-    };
-    let _ = ctx.stop().await;
-}
-
-async fn run_test(ctx: &Context) -> Result<()> {
+async fn run_test(ctx: &mut Context) -> Result<()> {
     let _listener = {
         let transport = TcpTransport::create(ctx).await?;
         transport.listen("127.0.0.1:4000").await?;
@@ -47,8 +35,8 @@ async fn run_test(ctx: &Context) -> Result<()> {
 
         let reply = ctx.receive::<String>().await?;
         assert_eq!(reply, msg, "Should receive the same message");
-        ctx.stop().await?;
     };
+    ctx.stop().await?;
     Ok(())
 }
 
