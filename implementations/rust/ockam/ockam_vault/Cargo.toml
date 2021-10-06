@@ -14,7 +14,7 @@ description = """A software-only Ockam Vault implementation.
 """
 
 [lib]
-crate-type = ["rlib", "cdylib"]
+crate-type = ["rlib"]
 
 [features]
 default = ["std"]

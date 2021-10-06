@@ -23,6 +23,10 @@ commands {
       'cargo --locked build',
       'cargo --locked build --examples'
     ],
+    buildRelease: [
+      'cargo --locked build --release',
+      'cargo --locked build --release --examples'
+    ],
     test: 'cargo --locked test',
     clean: 'cargo clean',
     lint: [
