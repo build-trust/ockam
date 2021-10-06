@@ -80,6 +80,7 @@ mod tests {
                 assert_eq!(ctx.receive::<String>().await?, test_msg);
                 ctx.stop().await
             })
+            .unwrap()
             .unwrap();
     }
 }
