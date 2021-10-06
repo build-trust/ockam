@@ -71,6 +71,7 @@ defmodule Ockam.Vault.Software.MixProject do
   defp aliases do
     [
       "compile.native": &compile_native/1,
+      "recompile.native": &recompile_native/1,
       "clean.native": &clean_native/1,
       compile: ["compile.native", "compile"],
       clean: ["clean", "clean.native"],
@@ -89,7 +90,46 @@ defmodule Ockam.Vault.Software.MixProject do
     Path.join([Mix.Project.app_path(), "priv", "native"])
   end
 
-  defp compile_native(_args) do
+  defp compile_native(args) do
+    case prebuilt_lib_path() do
+      {:ok, _path} ->
+        :ok
+
+      _ ->
+        recompile_native(args)
+    end
+  end
+
+  defp prebuilt_lib_path() do
+    with {:ok, subdir} <- os_subdir() do
+      case Path.wildcard(Path.join(["priv", subdir, "native", "libockam_elixir_ffi.*"])) do
+        [] -> :error
+        [_file] -> {:ok, Path.join("priv", subdir)}
+      end
+    end
+  end
+
+  ## NOTE: duplicate in vault_software.ex
+  ## we need to run this both in compile-time and in runtime
+  defp os_subdir() do
+    case {:os.type(), to_string(:erlang.system_info(:system_architecture))} do
+      ## Linux libs only built for x86_64
+      {{:unix, :linux}, "x86_64" <> _} ->
+        {:ok, "linux_x86_64"}
+
+      ## MacOS libs are multi-arch
+      {{:unix, :darwin}, "x86_64" <> _} ->
+        {:ok, "darwin_universal"}
+
+      {{:unix, :darwin}, "aarch64" <> _} ->
+        {:ok, "darwin_universal"}
+
+      _ ->
+        :error
+    end
+  end
+
+  defp recompile_native(_args) do
     :ok = cmake_generate()
     :ok = cmake_build()
     :ok = copy_to_priv()
@@ -105,7 +145,14 @@ defmodule Ockam.Vault.Software.MixProject do
     {_, 0} =
       System.cmd(
         "cmake",
-        ["-S", "native", "-B", native_build_path(), "-DBUILD_SHARED_LIBS=ON"],
+        [
+          "-S",
+          "native",
+          "-B",
+          native_build_path(),
+          "-DBUILD_SHARED_LIBS=ON",
+          "-DCMAKE_BUILD_TYPE=Release"
+        ],
         into: IO.stream(:stdio, :line),
         env: [{"ERL_INCLUDE_DIR", erl_include_dir()}]
       )

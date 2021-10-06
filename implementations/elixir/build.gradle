@@ -55,9 +55,11 @@ commands {
 }
 
 tasks.whenTaskAdded { task ->
-  def isCleanTask = task.name.contains('clean') || task.name.contains('veryClean')
+  def isVeryClean = task.name.contains('veryClean')
+  def isCleanTask = isVeryClean || task.name.contains('clean')
   if(!isCleanTask) {
-    task.dependsOn(gradle.includedBuild('rust').task(':build_ockam_ockam_ffi'))
-    task.dependsOn(gradle.includedBuild('rust').task(':build_ockam_ockam_vault'))
+    task.dependsOn(gradle.includedBuild('rust').task(':buildRelease_ockam_ockam_ffi'))
+  } else if (isVeryClean) {
+    task.dependsOn(gradle.includedBuild('rust').task(':clean_ockam_ockam_ffi'))
   }
 }

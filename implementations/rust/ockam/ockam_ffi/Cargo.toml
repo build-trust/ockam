@@ -13,7 +13,7 @@ description = """FFI layer for ockam_vault.
 """
 
 [lib]
-crate-type = ["staticlib", "rlib", "cdylib"]
+crate-type = ["staticlib"]
 
 [profile.release]
 lto = true

@@ -14,9 +14,77 @@ defmodule Ockam.Vault.Software do
   app = Mix.Project.config()[:app]
 
   def load_natively_implemented_functions do
-    path_components = [:code.priv_dir(unquote(app)), 'native', 'libockam_elixir_ffi']
-    path = :filename.join(path_components)
-    :ok = :erlang.load_nif(path, 0)
+    native_path = native_lib_path()
+
+    case :erlang.load_nif(to_charlist(native_path), 0) do
+      :ok ->
+        :ok
+
+      {:error, {reason, text}} when reason == :load_failed or reason == :bad_lib ->
+        error =
+          case prebuilt_path?(native_path) do
+            true ->
+              "Failed to load pre-built ockam vault NIF: #{text}\nYou can run `mix recompile.native` for ockam_vault_software to re-build the NIF library"
+
+            false ->
+              "Failed to load ockam vault NIF: #{text}\n"
+          end
+
+        raise error
+    end
+  end
+
+  defp native_lib_path() do
+    custom_build_path = get_native_lib_path("")
+
+    case lib_path_exists?(custom_build_path) do
+      ## There is a custom-build lib
+      true ->
+        custom_build_path
+
+      false ->
+        with {:ok, subdir} <- os_subdir(),
+             prebuilt <- get_native_lib_path(subdir),
+             true <- lib_path_exists?(prebuilt) do
+          prebuilt
+        else
+          _err ->
+            error =
+              "Ockam vault NIF lib not found. Please run `mix recompile.native` for ockam_vault_software to re-build the NIF library"
+
+            raise error
+        end
+    end
+  end
+
+  defp prebuilt_path?(lib_path) do
+    lib_path != get_native_lib_path("")
+  end
+
+  defp lib_path_exists?(lib_path) do
+    Enum.count(Path.wildcard(lib_path <> "*")) > 0
+  end
+
+  defp get_native_lib_path(subdir) do
+    Path.join([:code.priv_dir(unquote(app)), subdir, "native", "libockam_elixir_ffi"])
+  end
+
+  defp os_subdir() do
+    case {:os.type(), to_string(:erlang.system_info(:system_architecture))} do
+      ## Linux libs only built for x86_64
+      {{:unix, :linux}, "x86_64" <> _} ->
+        {:ok, "linux_x86_64"}
+
+      ## MacOS libs are multi-arch
+      {{:unix, :darwin}, "x86_64" <> _} ->
+        {:ok, "darwin_universal"}
+
+      {{:unix, :darwin}, "aarch64" <> _} ->
+        {:ok, "darwin_universal"}
+
+      _err ->
+        :error
+    end
   end
 
   # Called when the Ockam application is started.
