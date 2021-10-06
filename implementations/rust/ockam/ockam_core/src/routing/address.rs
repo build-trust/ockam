@@ -85,9 +85,10 @@ pub struct AddressParseError {
 }
 /// Enum to store the cause of address parsing failure
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AddressParseErrorKind {
     /// Unable to parse address num in the address string
-    InvalidAddr(std::num::ParseIntError),
+    InvalidType(core::num::ParseIntError),
     /// Address string has more than one '#' separator
     MultipleSep,
 }
@@ -105,7 +106,7 @@ impl AddressParseError {
 impl Display for AddressParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            AddressParseErrorKind::InvalidAddr(e) => {
+            AddressParseErrorKind::InvalidType(e) => {
                 write!(f, "Failed to parse address type: '{}'", e)
             }
             AddressParseErrorKind::MultipleSep => {
@@ -117,7 +118,7 @@ impl Display for AddressParseError {
         }
     }
 }
-impl std::error::Error for AddressParseError {}
+impl crate::compat::error::Error for AddressParseError {}
 impl Address {
     /// Create a new address from separate type and data parts
     pub fn new<S: Into<String>>(tt: u8, inner: S) -> Self {
@@ -168,7 +169,7 @@ impl core::str::FromStr for Address {
                     tt,
                     inner: vec.remove(0).as_bytes().to_vec(),
                 }),
-                Err(e) => Err(AddressParseError::new(AddressParseErrorKind::InvalidAddr(
+                Err(e) => Err(AddressParseError::new(AddressParseErrorKind::InvalidType(
                     e,
                 ))),
             }
