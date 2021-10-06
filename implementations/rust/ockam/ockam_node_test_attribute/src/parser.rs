@@ -1,8 +1,7 @@
 use proc_macro::TokenStream;
 
-use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
+use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned, ToTokens};
-use syn::token;
 
 use crate::args;
 use crate::args::Args;
@@ -31,16 +30,10 @@ pub(crate) fn parse_macro(
         last_stmt.last().map_or(start, |t| t.span())
     };
     let ctx_ident = &ctx_pat.ident;
-    // If the input function doesn't use a mutable Context, it won't be able to stop it.
-    let ctx_stop_stmt = if ctx_pat.mutability.is_none() {
-        quote! { #ctx_ident.stop().await.expect("Failed to stop the node context"); }
-    } else {
-        quote! {}
-    };
     if is_test {
-        output_node_test(input, args, last_stmt_end_span, ctx_ident, &ctx_stop_stmt)
+        output_node_test(input, args, last_stmt_end_span, ctx_ident)
     } else {
-        output_node(input, ctx_ident, &ctx_stop_stmt)
+        output_node(input, ctx_ident)
     }
 }
 
@@ -49,7 +42,6 @@ fn output_node_test(
     args: Args,
     last_stmt_end_span: Span,
     ctx_ident: &Ident,
-    ctx_stop_stmt: &TokenStream2,
 ) -> Result<TokenStream, syn::Error> {
     let body = &input.block;
     match args.timeout_ms {
@@ -64,8 +56,10 @@ fn output_node_test(
                     executor
                         .execute(async move {
                             let is_ok = timeout(Duration::from_millis(#timeout as u64), async #body).await.is_ok();
-                            #ctx_stop_stmt
                             tx.send(is_ok).expect("Failed to send test result");
+                            if !is_ok {
+                                #ctx_ident.stop().await.expect("Failed to stop the node context");
+                            }
                         })
                         .expect("Executor failed");
                     let test_res = rx.try_recv().expect("Failed to receive test response from executor");
@@ -80,8 +74,10 @@ fn output_node_test(
                     let (mut #ctx_ident, mut executor) = ockam_node::start_node();
                     executor
                     .execute(async move {
-                        #body
-                        #ctx_stop_stmt
+                        let res = #body;
+                        if res.is_err() {
+                            #ctx_ident.stop().await.expect("Failed to stop the node context");
+                        }
                     })
                     .expect("Executor failed");
                 }
@@ -97,11 +93,7 @@ fn output_node_test(
     Ok(output.into())
 }
 
-fn output_node(
-    input: syn::ItemFn,
-    ctx_ident: &Ident,
-    ctx_stop_stmt: &TokenStream2,
-) -> Result<TokenStream, syn::Error> {
+fn output_node(input: syn::ItemFn, ctx_ident: &Ident) -> Result<TokenStream, syn::Error> {
     let body = &input.block;
     #[cfg(feature = "std")]
     let output = quote! {
@@ -109,7 +101,6 @@ fn output_node(
             let (mut #ctx_ident, mut executor) = ockam::start_node();
             executor.execute(async move {
                 #body
-                #ctx_stop_stmt
             })
         }
     };
@@ -119,7 +110,6 @@ fn output_node(
             let (mut #ctx_ident, mut executor) = ockam_node::start_node();
             executor.execute(async move {
                 #body
-                #ctx_stop_stmt
             })
         }
         main().unwrap();
