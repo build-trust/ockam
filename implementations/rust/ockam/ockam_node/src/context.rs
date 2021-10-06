@@ -71,12 +71,7 @@ impl Context {
 
     /// Return all addresses of this worker
     pub fn aliases(&self) -> AddressSet {
-        self.address
-            .clone()
-            .into_iter()
-            .skip(1)
-            .collect::<Vec<_>>()
-            .into()
+        self.address.clone().into_iter().skip(1).collect()
     }
 
     /// Utility function to sleep tasks from other crates

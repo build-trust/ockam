@@ -7,6 +7,7 @@ use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
 use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
+use std::iter::FromIterator;
 
 /// A collection of Addresses
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
@@ -39,9 +40,21 @@ impl AsRef<Vec<Address>> for AddressSet {
     }
 }
 
+impl<A> FromIterator<A> for AddressSet
+where
+    A: Into<Address>,
+{
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = A>,
+    {
+        Self(iter.into_iter().map(Into::into).collect())
+    }
+}
+
 impl<T: Into<Address>> From<Vec<T>> for AddressSet {
     fn from(v: Vec<T>) -> Self {
-        Self(v.into_iter().map(Into::into).collect())
+        v.into_iter().collect()
     }
 }
 
