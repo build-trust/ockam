@@ -3,6 +3,7 @@
 use crate::{relay::RelayMessage, router::Router, NodeMessage};
 use ockam_core::{Address, Result};
 
+use crate::error::Error;
 use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
@@ -50,22 +51,19 @@ impl Executor {
     }
 
     /// Execute a future
-    pub fn execute<F>(&mut self, future: F) -> Result<()>
+    pub fn execute<F>(&mut self, future: F) -> Result<F::Output>
     where
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
         let rt = Arc::clone(&self.rt);
-        let _join = rt.spawn(future);
+        let join_body = rt.spawn(future);
 
-        // Block this task executing the primary message router,
-        // returning any critical failures that it encounters.
-        #[cfg(feature = "std")]
-        return crate::block_future(&rt, self.router.run());
-        #[cfg(not(feature = "std"))]
-        {
-            crate::tokio::runtime::execute(&rt, async move { self.router.run().await.unwrap() });
-            Ok(())
-        }
+        crate::block_future(&rt, async move { self.router.run().await })?;
+
+        let res = crate::block_future(&rt, async move { join_body.await })
+            .map_err(|_| Error::ExecutorBodyJoinError)?;
+
+        Ok(res)
     }
 }

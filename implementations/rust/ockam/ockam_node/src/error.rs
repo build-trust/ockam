@@ -36,6 +36,8 @@ pub enum Error {
     ShutdownRxError,
     /// Operation timed out
     Timeout,
+    /// Executor body join error
+    ExecutorBodyJoinError,
 }
 
 impl Error {
