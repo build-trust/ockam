@@ -18,15 +18,18 @@ impl AddressSet {
         self.0.iter()
     }
 
-    /// Turn this set into an iterator
-    #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self) -> impl Iterator<Item = Address> {
-        self.0.into_iter()
-    }
-
     /// Take the first address of the set.
     pub fn first(&self) -> Address {
         self.0.first().cloned().unwrap()
+    }
+}
+
+impl IntoIterator for AddressSet {
+    type Item = Address;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
