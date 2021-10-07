@@ -54,13 +54,13 @@ impl TcpTransport {
     }
 
     /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect(&self, peer: impl Into<String>) -> Result<()> {
-        self.router_handle.connect(peer).await
+    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+        self.router_handle.connect(peer.as_ref()).await
     }
 
     /// Start listening to incoming connections on an existing transport
-    pub async fn listen(&self, bind_addr: impl Into<String>) -> Result<()> {
-        let bind_addr = parse_socket_addr(bind_addr)?;
+    pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<()> {
+        let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         self.router_handle.bind(bind_addr).await?;
         Ok(())
     }
@@ -71,12 +71,12 @@ impl TcpTransport {
     /// Messages and forward them to Outlet using onward_route. Inlet is bidirectional: Ockam
     /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
     /// Pair of corresponding Inlet and Outlet is called Portal.
-    pub async fn create_inlet(
+    pub async fn create_inlet<S: AsRef<str>>(
         &self,
-        bind_addr: impl Into<String>,
+        bind_addr: S,
         onward_route: impl Into<Route>,
     ) -> Result<Address> {
-        let bind_addr = parse_socket_addr(bind_addr)?;
+        let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         let addr = self
             .router_handle
             .bind_inlet(onward_route, bind_addr)
