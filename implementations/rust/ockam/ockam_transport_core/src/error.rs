@@ -1,3 +1,5 @@
+use ockam_core::compat::io;
+
 /// A Transport worker specific error type
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TransportError {
@@ -45,10 +47,10 @@ impl From<TransportError> for ockam_core::Error {
     }
 }
 
-impl From<std::io::Error> for TransportError {
-    fn from(e: std::io::Error) -> Self {
+impl From<io::Error> for TransportError {
+    fn from(e: io::Error) -> Self {
         match e.kind() {
-            std::io::ErrorKind::ConnectionRefused => Self::PeerNotFound,
+            io::ErrorKind::ConnectionRefused => Self::PeerNotFound,
             _ => Self::GenericIo,
         }
     }
