@@ -47,8 +47,8 @@ use ockam_transport_core::TransportError;
 /// TCP address type constant
 pub const TCP: u8 = 1;
 
-fn parse_socket_addr(s: impl Into<String>) -> Result<SocketAddr> {
-    Ok(s.into()
+fn parse_socket_addr<S: AsRef<str>>(s: S) -> Result<SocketAddr> {
+    Ok(s.as_ref()
         .parse()
         .map_err(|_| TransportError::InvalidAddress)?)
 }
