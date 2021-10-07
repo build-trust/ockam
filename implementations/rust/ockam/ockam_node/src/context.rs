@@ -82,7 +82,10 @@ impl Context {
 
     /// Create a new context without spawning a full worker
     pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
-        let addr = addr.into();
+        self.new_context_impl(addr.into()).await
+    }
+
+    async fn new_context_impl(&self, addr: Address) -> Result<Context> {
         let (ctx, tx) = NullWorker::new(Arc::clone(&self.rt), &addr, self.sender.clone());
 
         // Create a small relay and register it with the internal router
@@ -107,8 +110,14 @@ impl Context {
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        let address = address.into();
+        self.start_worker_impl(address.into(), worker).await
+    }
 
+    async fn start_worker_impl<NM, NW>(&self, address: AddressSet, worker: NW) -> Result<()>
+    where
+        NM: Message + Send + 'static,
+        NW: Worker<Context = Context, Message = NM>,
+    {
         // Check if the address set is available
         // TODO: There is not much sense of checking for address collisions here, since in
         // async environment there may be new Workers started between the check and actual adding
@@ -150,8 +159,13 @@ impl Context {
     where
         P: Processor<Context = Context>,
     {
-        let address = address.into();
+        self.start_processor_impl(address.into(), processor).await
+    }
 
+    async fn start_processor_impl<P>(&self, address: Address, processor: P) -> Result<()>
+    where
+        P: Processor<Context = Context>,
+    {
         // Build the mailbox first
         let (mb_tx, mb_rx) = channel(32);
         let mb = Mailbox::new(mb_rx);
@@ -185,16 +199,15 @@ impl Context {
 
     /// Shut down a worker by its primary address
     pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr, AddressType::Worker).await
+        self.stop_address(addr.into(), AddressType::Worker).await
     }
 
     /// Shut down a processor by its address
     pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr, AddressType::Processor).await
+        self.stop_address(addr.into(), AddressType::Processor).await
     }
 
-    async fn stop_address<A: Into<Address>>(&self, addr: A, t: AddressType) -> Result<()> {
-        let addr = addr.into();
+    async fn stop_address(&self, addr: Address, t: AddressType) -> Result<()> {
         debug!("Shutting down {} {}", t.str(), addr);
 
         // Send the stop request
@@ -236,7 +249,8 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address(route, msg, self.address()).await
+        self.send_from_address(route.into(), msg, self.address())
+            .await
     }
 
     /// Send a message via a fully qualified route using specific Worker address
@@ -248,21 +262,19 @@ impl Context {
     ///
     /// [`Address`]: ockam_core::Address
     /// [`RouteBuilder`]: ockem_core::RouteBuilder
-    pub async fn send_from_address<R, M>(
+    pub async fn send_from_address<M>(
         &self,
-        route: R,
+        route: Route,
         msg: M,
         sending_address: Address,
     ) -> Result<()>
     where
-        R: Into<Route>,
         M: Message + Send + 'static,
     {
         if !self.address.as_ref().contains(&sending_address) {
             return Err(Error::SenderAddressDoesntExist.into());
         }
 
-        let route = route.into();
         let (reply_tx, mut reply_rx) = channel(1);
         let next = route.next().unwrap(); // TODO: communicate bad routes
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
@@ -412,7 +424,10 @@ impl Context {
 
     /// Register a router for a specific address type
     pub async fn register<A: Into<Address>>(&self, type_: u8, addr: A) -> Result<()> {
-        let addr = addr.into();
+        self.register_impl(type_, addr.into()).await
+    }
+
+    async fn register_impl(&self, type_: u8, addr: Address) -> Result<()> {
         let (tx, mut rx) = channel(1);
         self.sender
             .send(NodeMessage::Router(type_, addr, tx))
