@@ -100,9 +100,9 @@ impl TcpRouterHandle {
             hostnames = vec![];
         }
         // Try to resolve hostname
-        else if let Ok(iter) = peer_str.to_socket_addrs() {
+        else if let Ok(mut iter) = peer_str.to_socket_addrs() {
             // FIXME: We only take ipv4 for now
-            if let Some(p) = iter.filter(|x| x.is_ipv4()).next() {
+            if let Some(p) = iter.find(|x| x.is_ipv4()) {
                 peer_addr = p;
             } else {
                 return Err(TransportError::InvalidAddress.into());
@@ -117,8 +117,8 @@ impl TcpRouterHandle {
     }
 
     /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect(&self, peer: impl Into<String>) -> Result<()> {
-        let (peer_addr, hostnames) = Self::resolve_peer(peer)?;
+    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+        let (peer_addr, hostnames) = Self::resolve_peer(peer.as_ref())?;
 
         let pair = WorkerPair::start(&self.ctx, peer_addr, hostnames).await?;
         self.register(&pair).await?;
@@ -127,8 +127,8 @@ impl TcpRouterHandle {
     }
 
     /// Establish an outgoing TCP connection for Portal Outlet
-    pub async fn connect_outlet(&self, peer: impl Into<String>) -> Result<Address> {
-        let (peer_addr, _) = Self::resolve_peer(peer)?;
+    pub async fn connect_outlet<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
+        let (peer_addr, _) = Self::resolve_peer(peer.as_ref())?;
 
         let address = PortalWorkerPair::new_outlet(&self.ctx, peer_addr).await?;
 
