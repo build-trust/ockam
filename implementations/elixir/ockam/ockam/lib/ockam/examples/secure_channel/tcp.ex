@@ -1,10 +1,15 @@
-defmodule Ockam.Examples.SecureChannel.Local do
+defmodule Ockam.Examples.SecureChannel.TCP do
   @moduledoc """
   Local node secure channel example
 
-  run/0 - run the example. Creates a secure channel and sends a message
+  responder() - creates a secure channel listener and pong worker
+  responder(port) - creates a responder listening on port default is 5000
+  initiator() - creates a secure channel to the responder, ping worker and starts the ping-pong process
+  initiator(host, port) - creates a secure channel to a responder on host:port
 
-  send_and_wait/0 - send more messages through the channel
+  send_and_wait/0 - send more messages through existing channel
+
+  Responder should be running for initiator to work
   """
 
   ## Ignore no local return for secure channel
@@ -16,27 +21,32 @@ defmodule Ockam.Examples.SecureChannel.Local do
 
   alias Ockam.Examples.Echoer
 
+  alias Ockam.Transport.TCP
+  alias Ockam.Transport.TCPAddress
+
   require Logger
 
-  def run() do
-    responder()
+  @default_host "localhost"
+  @default_port 5000
 
-    initiator()
-  end
+  def responder(port \\ @default_port) do
+    TCP.start(listen: [port: port])
 
-  def responder() do
     {:ok, "echoer"} = Echoer.create(address: "echoer")
     create_secure_channel_listener()
   end
 
-  def initiator() do
-    {:ok, channel} = create_secure_channel(["SC_listener"])
+  def initiator(host \\ @default_host, port \\ @default_port) do
+    TCP.start()
+
+    tcp_address = TCPAddress.new(host, port)
+    {:ok, channel} = create_secure_channel([tcp_address, "SC_listener"])
 
     ## Register this process to receive messages
     my_address = "example_run"
     Ockam.Node.register_address(my_address, self())
 
-    send_and_wait(channel, "Hello secure channel!", my_address)
+    send_and_wait(channel, "Hello secure channel over TCP!", my_address)
 
     {:ok, channel}
   end

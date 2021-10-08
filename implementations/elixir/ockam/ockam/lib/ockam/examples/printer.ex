@@ -1,4 +1,4 @@
-defmodule Ockam.Examples.Transport.Printer do
+defmodule Ockam.Examples.Printer do
   @moduledoc """
   An ockam worker to log all messages
   """

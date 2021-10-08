@@ -1,4 +1,4 @@
-defmodule Ockam.Example.Stream.BiDirectional.Local do
+defmodule Ockam.Examples.Stream.BiDirectional.Local do
   @moduledoc """
 
   Ping-pong example for bi-directional stream communication using local subsctiption
@@ -23,8 +23,8 @@ defmodule Ockam.Example.Stream.BiDirectional.Local do
 
   Ping and pong nodes create local consumers and publishers to exchange messages
   """
-  alias Ockam.Example.Stream.Ping
-  alias Ockam.Example.Stream.Pong
+  alias Ockam.Examples.Ping
+  alias Ockam.Examples.Pong
 
   alias Ockam.Stream.Client.BiDirectional
   alias Ockam.Stream.Client.BiDirectional.PublisherRegistry

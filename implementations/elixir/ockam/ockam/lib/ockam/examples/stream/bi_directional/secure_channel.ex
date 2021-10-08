@@ -1,4 +1,4 @@
-defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
+defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   @moduledoc """
 
   Ping-pong example for bi-directional stream communication using local subsctiption
@@ -27,8 +27,8 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
   alias Ockam.Vault
   alias Ockam.Vault.Software, as: SoftwareVault
 
-  alias Ockam.Example.Stream.Ping
-  alias Ockam.Example.Stream.Pong
+  alias Ockam.Examples.Ping
+  alias Ockam.Examples.Pong
 
   alias Ockam.Stream.Client.BiDirectional
   alias Ockam.Stream.Client.BiDirectional.PublisherRegistry
@@ -48,10 +48,10 @@ defmodule Ockam.Example.Stream.BiDirectional.SecureChannel do
 
   def outline() do
     ## On one node:
-    Ockam.Example.Stream.BiDirectional.SecureChannel.init_pong()
+    Ockam.Examples.Stream.BiDirectional.SecureChannel.init_pong()
 
     ## On another node:
-    Ockam.Example.Stream.BiDirectional.SecureChannel.run()
+    Ockam.Examples.Stream.BiDirectional.SecureChannel.run()
   end
 
   def config() do
