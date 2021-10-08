@@ -45,6 +45,15 @@ pub struct TcpTransport {
 
 impl TcpTransport {
     /// Create a new TCP transport and router for the current node
+    ///
+    /// ```rust
+    /// use ockam_transport_tcp::TcpTransport;
+    /// # use ockam_node::Context;
+    /// # use ockam_core::Result;
+    /// # async fn test(ctx: Context) -> Result<()> {
+    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// # Ok(()) }
+    /// ```
     pub async fn create(ctx: &Context) -> Result<Self> {
         let router = TcpRouter::register(ctx).await?;
 
@@ -54,11 +63,28 @@ impl TcpTransport {
     }
 
     /// Establish an outgoing TCP connection on an existing transport
+    /// ```rust
+    /// use ockam_transport_tcp::TcpTransport;
+    /// # use ockam_node::Context;
+    /// # use ockam_core::Result;
+    /// # async fn test(ctx: Context) -> Result<()> {
+    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
+    /// # Ok(()) }
+    /// ```
     pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
         self.router_handle.connect(peer.as_ref()).await
     }
 
     /// Start listening to incoming connections on an existing transport
+    /// ```rust
+    /// use ockam_transport_tcp::TcpTransport;
+    /// # use ockam_node::Context;
+    /// # use ockam_core::Result;
+    /// # async fn test(ctx: Context) -> Result<()> {
+    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
+    /// # Ok(()) }
     pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<()> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         self.router_handle.bind(bind_addr).await?;
@@ -71,6 +97,20 @@ impl TcpTransport {
     /// Messages and forward them to Outlet using onward_route. Inlet is bidirectional: Ockam
     /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
     /// Pair of corresponding Inlet and Outlet is called Portal.
+    ///
+    /// ```rust
+    /// use ockam_transport_tcp::{TcpTransport, TCP};
+    /// # use ockam_node::Context;
+    /// # use ockam_core::{Result, route};
+    /// # async fn test(ctx: Context) -> Result<()> {
+    /// let hop_addr = "INTERMEDIARY_HOP:8000";
+    /// let route_path = route![(TCP, hop_addr), "outlet"];
+    ///
+    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// tcp.create_inlet("inlet", route_path).await?;
+    /// # tcp.stop_inlet("inlet").await?;
+    /// # Ok(()) }
+    /// ```
     pub async fn create_inlet<S: AsRef<str>>(
         &self,
         bind_addr: S,
@@ -86,6 +126,20 @@ impl TcpTransport {
     }
 
     /// Stop inlet at addr
+    ///
+    /// ```rust
+    /// use ockam_transport_tcp::{TcpTransport, TCP};
+    /// # use ockam_node::Context;
+    /// # use ockam_core::{Result, route};
+    /// # async fn test(ctx: Context) -> Result<()> {
+    /// let hop_addr = "INTERMEDIARY_HOP:8000";
+    /// let route = route![(TCP, hop_addr), "outlet"];
+    ///
+    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// tcp.create_inlet("inlet", route).await?;
+    /// tcp.stop_inlet("inlet").await?;
+    /// # Ok(()) }
+    /// ```
     pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
         self.router_handle.stop_inlet(addr).await?;
 
@@ -97,6 +151,18 @@ impl TcpTransport {
     /// Tcp stream received from peer is transformed into Ockam Routable Messages and sent
     /// to Inlet using return route.
     /// Pair of corresponding Inlet and Outlet is called Portal.
+    ///
+    /// ```rust
+    /// use ockam_transport_tcp::TcpTransport;
+    /// # use ockam_node::Context;
+    /// # use ockam_core::Result;
+    /// # async fn test(ctx: Context) -> Result<()> {
+    ///
+    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// tcp.create_outlet("outlet", "localhost:9000").await?;
+    /// # tcp.stop_outlet("outlet").await?;
+    /// # Ok(()) }
+    /// ```
     pub async fn create_outlet(
         &self,
         address: impl Into<Address>,
@@ -104,6 +170,24 @@ impl TcpTransport {
     ) -> Result<()> {
         TcpOutletListenWorker::start(&self.router_handle, address.into(), peer.into()).await?;
 
+        Ok(())
+    }
+
+    /// Stop outlet at addr
+    /// ```rust
+    /// use ockam_transport_tcp::TcpTransport;
+    /// # use ockam_node::Context;
+    /// # use ockam_core::Result;
+    /// # async fn test(ctx: Context) -> Result<()> {
+    /// const TARGET_PEER: &str = "127.0.0.1:5000";
+    ///
+    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// tcp.create_outlet("outlet", TARGET_PEER).await?;
+    /// tcp.stop_outlet("outlet").await?;
+    /// # Ok(()) }
+    /// ```
+    pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
+        self.router_handle.stop_outlet(addr).await?;
         Ok(())
     }
 }
