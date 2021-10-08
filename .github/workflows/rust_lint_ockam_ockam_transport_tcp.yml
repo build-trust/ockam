@@ -15,6 +15,7 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_transport_tcp/**'
+      - '.github/workflows/rust_lint_ockam_ockam_transport_tcp.yml'
 
 jobs:
   rust_lint_ockam_ockam_transport_tcp:
@@ -45,3 +46,7 @@ jobs:
       - id: rust_lint_ockam_ockam_transport_tcp
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_transport_tcp
+
+      - name: Test Clippy Fix
+        working-directory: implementations/rust/ockam/ockam_transport_tcp
+        run: cargo clean && cargo clippy -- -D warnings
