@@ -267,7 +267,21 @@ impl Context {
     ///
     /// [`Address`]: ockam_core::Address
     /// [`RouteBuilder`]: ockem_core::RouteBuilder
-    pub async fn send_from_address<M>(
+    pub async fn send_from_address<R, M>(
+        &self,
+        route: R,
+        msg: M,
+        sending_address: Address,
+    ) -> Result<()>
+    where
+        R: Into<Route>,
+        M: Message + Send + 'static,
+    {
+        self.send_from_address_impl(route.into(), msg, sending_address)
+            .await
+    }
+
+    async fn send_from_address_impl<M>(
         &self,
         route: Route,
         msg: M,
