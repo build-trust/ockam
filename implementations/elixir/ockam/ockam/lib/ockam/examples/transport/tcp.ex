@@ -2,13 +2,14 @@ defmodule Ockam.Examples.Transport.TCP do
   @moduledoc """
   Example usage of tcp transport
   """
+  alias Ockam.Examples.Printer
   alias Ockam.Transport.TCP
   alias Ockam.Transport.TCPAddress
 
   def server() do
     ## Start a transport with listener on port 4000
     TCP.start(listen: [port: 4000])
-    Ockam.Examples.Transport.Printer.create(address: "printer")
+    Printer.create(address: "printer")
   end
 
   def client() do
@@ -19,7 +20,7 @@ defmodule Ockam.Examples.Transport.TCP do
 
     Ockam.Router.route(%{
       onward_route: [server_host_address, "printer"],
-      payload: "Hello!",
+      payload: "Hello localhost!",
       return_route: []
     })
 
@@ -27,7 +28,7 @@ defmodule Ockam.Examples.Transport.TCP do
 
     Ockam.Router.route(%{
       onward_route: [server_ip_address, "printer"],
-      payload: "Hello!",
+      payload: "Hello tuple IP!",
       return_route: []
     })
 
@@ -35,7 +36,7 @@ defmodule Ockam.Examples.Transport.TCP do
 
     Ockam.Router.route(%{
       onward_route: [server_string_ip_address, "printer"],
-      payload: "Hello!",
+      payload: "Hello string IP!",
       return_route: []
     })
   end
