@@ -2,201 +2,319 @@ This file contains attributions for any 3rd-party open source code used in this 
 
 
 
-This project uses mbed-crypto (https://github.com/ARMmbed/mbed-crypto)
-which is licensed under the following license
----
-
-1. Definitions.
-
-"License" shall mean the terms and conditions for use, reproduction,
-and distribution as defined by Sections 1 through 9 of this document.
-
-"Licensor" shall mean the copyright owner or entity authorized by
-the copyright owner that is granting the License.
-
-"Legal Entity" shall mean the union of the acting entity and all
-other entities that control, are controlled by, or are under common
-control with that entity. For the purposes of this definition,
-"control" means (i) the power, direct or indirect, to cause the
-direction or management of such entity, whether by contract or
-otherwise, or (ii) ownership of fifty percent (50%) or more of the
-outstanding shares, or (iii) beneficial ownership of such entity.
-
-"You" (or "Your") shall mean an individual or Legal Entity
-exercising permissions granted by this License.
-
-"Source" form shall mean the preferred form for making modifications,
-including but not limited to software source code, documentation
-source, and configuration files.
-
-"Object" form shall mean any form resulting from mechanical
-transformation or translation of a Source form, including but
-not limited to compiled object code, generated documentation,
-and conversions to other media types.
-
-"Work" shall mean the work of authorship, whether in Source or
-Object form, made available under the License, as indicated by a
-copyright notice that is included in or attached to the work
-(an example is provided in the Appendix below).
-
-"Derivative Works" shall mean any work, whether in Source or Object
-form, that is based on (or derived from) the Work and for which the
-editorial revisions, annotations, elaborations, or other modifications
-represent, as a whole, an original work of authorship. For the purposes
-of this License, Derivative Works shall not include works that remain
-separable from, or merely link (or bind by name) to the interfaces of,
-the Work and Derivative Works thereof.
-
-"Contribution" shall mean any work of authorship, including
-the original version of the Work and any modifications or additions
-to that Work or Derivative Works thereof, that is intentionally
-submitted to Licensor for inclusion in the Work by the copyright owner
-or by an individual or Legal Entity authorized to submit on behalf of
-the copyright owner. For the purposes of this definition, "submitted"
-means any form of electronic, verbal, or written communication sent
-to the Licensor or its representatives, including but not limited to
-communication on electronic mailing lists, source code control systems,
-and issue tracking systems that are managed by, or on behalf of, the
-Licensor for the purpose of discussing and improving the Work, but
-excluding communication that is conspicuously marked or otherwise
-designated in writing by the copyright owner as "Not a Contribution."
-
-"Contributor" shall mean Licensor and any individual or Legal Entity
-on behalf of whom a Contribution has been received by Licensor and
-subsequently incorporated within the Work.
-
-2. Grant of Copyright License. Subject to the terms and conditions of
-this License, each Contributor hereby grants to You a perpetual,
-worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-copyright license to reproduce, prepare Derivative Works of,
-publicly display, publicly perform, sublicense, and distribute the
-Work and such Derivative Works in Source or Object form.
-
-3. Grant of Patent License. Subject to the terms and conditions of
-this License, each Contributor hereby grants to You a perpetual,
-worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-(except as stated in this section) patent license to make, have made,
-use, offer to sell, sell, import, and otherwise transfer the Work,
-where such license applies only to those patent claims licensable
-by such Contributor that are necessarily infringed by their
-Contribution(s) alone or by combination of their Contribution(s)
-with the Work to which such Contribution(s) was submitted. If You
-institute patent litigation against any entity (including a
-cross-claim or counterclaim in a lawsuit) alleging that the Work
-or a Contribution incorporated within the Work constitutes direct
-or contributory patent infringement, then any patent licenses
-granted to You under this License for that Work shall terminate
-as of the date such litigation is filed.
-
-4. Redistribution. You may reproduce and distribute copies of the
-Work or Derivative Works thereof in any medium, with or without
-modifications, and in Source or Object form, provided that You
-meet the following conditions:
-
-(a) You must give any other recipients of the Work or
-Derivative Works a copy of this License; and
-
-(b) You must cause any modified files to carry prominent notices
-stating that You changed the files; and
-
-(c) You must retain, in the Source form of any Derivative Works
-that You distribute, all copyright, patent, trademark, and
-attribution notices from the Source form of the Work,
-excluding those notices that do not pertain to any part of
-the Derivative Works; and
-
-(d) If the Work includes a "NOTICE" text file as part of its
-distribution, then any Derivative Works that You distribute must
-include a readable copy of the attribution notices contained
-within such NOTICE file, excluding those notices that do not
-pertain to any part of the Derivative Works, in at least one
-of the following places: within a NOTICE text file distributed
-as part of the Derivative Works; within the Source form or
-documentation, if provided along with the Derivative Works; or,
-within a display generated by the Derivative Works, if and
-wherever such third-party notices normally appear. The contents
-of the NOTICE file are for informational purposes only and
-do not modify the License. You may add Your own attribution
-notices within Derivative Works that You distribute, alongside
-or as an addendum to the NOTICE text from the Work, provided
-that such additional attribution notices cannot be construed
-as modifying the License.
-
-You may add Your own copyright statement to Your modifications and
-may provide additional or different license terms and conditions
-for use, reproduction, or distribution of Your modifications, or
-for any such Derivative Works as a whole, provided Your use,
-reproduction, and distribution of the Work otherwise complies with
-the conditions stated in this License.
-
-5. Submission of Contributions. Unless You explicitly state otherwise,
-any Contribution intentionally submitted for inclusion in the Work
-by You to the Licensor shall be under the terms and conditions of
-this License, without any additional terms or conditions.
-Notwithstanding the above, nothing herein shall supersede or modify
-the terms of any separate license agreement you may have executed
-with Licensor regarding such Contributions.
-
-6. Trademarks. This License does not grant permission to use the trade
-names, trademarks, service marks, or product names of the Licensor,
-except as required for reasonable and customary use in describing the
-origin of the Work and reproducing the content of the NOTICE file.
-
-7. Disclaimer of Warranty. Unless required by applicable law or
-agreed to in writing, Licensor provides the Work (and each
-Contributor provides its Contributions) on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-implied, including, without limitation, any warranties or conditions
-of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-PARTICULAR PURPOSE. You are solely responsible for determining the
-appropriateness of using or redistributing the Work and assume any
-risks associated with Your exercise of permissions under this License.
-
-8. Limitation of Liability. In no event and under no legal theory,
-whether in tort (including negligence), contract, or otherwise,
-unless required by applicable law (such as deliberate and grossly
-negligent acts) or agreed to in writing, shall any Contributor be
-liable to You for damages, including any direct, indirect, special,
-incidental, or consequential damages of any character arising as a
-result of this License or out of the use or inability to use the
-Work (including but not limited to damages for loss of goodwill,
-work stoppage, computer failure or malfunction, or any and all
-other commercial damages or losses), even if such Contributor
-has been advised of the possibility of such damages.
-
-9. Accepting Warranty or Additional Liability. While redistributing
-the Work or Derivative Works thereof, You may choose to offer,
-and charge a fee for, acceptance of support, warranty, indemnity,
-or other liability obligations and/or rights consistent with this
-License. However, in accepting such obligations, You may act only
-on Your own behalf and on Your sole responsibility, not on behalf
-of any other Contributor, and only if You agree to indemnify,
-defend, and hold each Contributor harmless for any liability
-incurred by, or claims asserted against, such Contributor by reason
-of your accepting any such warranty or additional liability.
----
-
-
-
-This project uses CryptoAuthLib (https://github.com/MicrochipTech/cryptoauthlib)
-which is licensed under the following license
----
-(c) 2015-2018 Microchip Technology Inc. and its subsidiaries.
-
-Subject to your compliance with these terms, you may use Microchip software
-and any derivatives exclusively with Microchip products. It is your
-responsibility to comply with third party license terms applicable to your
-use of third party software (including open source software) that may
-accompany Microchip software.
-
-THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES, WHETHER
-EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE, INCLUDING ANY IMPLIED
-WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY, AND FITNESS FOR A
-PARTICULAR PURPOSE. IN NO EVENT WILL MICROCHIP BE LIABLE FOR ANY INDIRECT,
-SPECIAL, PUNITIVE, INCIDENTAL OR CONSEQUENTIAL LOSS, DAMAGE, COST OR EXPENSE
-OF ANY KIND WHATSOEVER RELATED TO THE SOFTWARE, HOWEVER CAUSED, EVEN IF
-MICROCHIP HAS BEEN ADVISED OF THE POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.
-TO THE FULLEST EXTENT ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL
-CLAIMS IN ANY WAY RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF
-FEES, IF ANY, THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
----
+| Name                          | License                                              | Link                                                                      |
+|-------------------------------|------------------------------------------------------|---------------------------------------------------------------------------|
+| aead                          | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/traits                                      |
+| aes                           | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/block-ciphers                               |
+| aes-gcm                       | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/AEADs                                       |
+| ahash                         | Apache-2.0 OR MIT                                    | https://github.com/tkaitchuck/ahash                                       |
+| aho-corasick                  | MIT OR Unlicense                                     | https://github.com/BurntSushi/aho-corasick                                |
+| ansi_term                     | MIT                                                  |                                                                           |
+| anyhow                        | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/anyhow                                         |
+| arrayref                      | BSD-2-Clause                                         | https://github.com/droundy/arrayref                                       |
+| async-channel                 | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/async-channel                                  |
+| async-executor                | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/async-executor                                 |
+| async-global-executor         | Apache-2.0 OR MIT                                    | https://github.com/Keruspe/async-global-executor                          |
+| async-io                      | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/async-io                                       |
+| async-lock                    | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/async-lock                                     |
+| async-mutex                   | Apache-2.0 OR MIT                                    | https://github.com/stjepang/async-lock                                    |
+| async-std                     | Apache-2.0 OR MIT                                    | https://github.com/async-rs/async-std                                     |
+| async-task                    | Apache-2.0 OR MIT                                    | https://github.com/stjepang/async-task                                    |
+| async-trait                   | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/async-trait                                    |
+| atomic-polyfill               | Apache-2.0 OR MIT                                    | https://github.com/embassy-rs/atomic-polyfill                             |
+| atomic-waker                  | Apache-2.0 OR MIT                                    | https://github.com/stjepang/atomic-waker                                  |
+| atty                          | MIT                                                  | https://github.com/softprops/atty                                         |
+| autocfg                       | Apache-2.0 OR MIT                                    | https://github.com/cuviper/autocfg                                        |
+| bare-metal                    | Apache-2.0 OR MIT                                    | https://github.com/japaric/bare-metal                                     |
+| base64                        | Apache-2.0 OR MIT                                    | https://github.com/marshallpierce/rust-base64                             |
+| bit_field                     | Apache-2.0 OR MIT                                    | https://github.com/phil-opp/rust-bit-field                                |
+| bitfield                      | Apache-2.0 OR MIT                                    | https://github.com/dzamlo/rust-bitfield                                   |
+| bitflags                      | Apache-2.0 OR MIT                                    | https://github.com/bitflags/bitflags                                      |
+| bitvec                        | MIT                                                  | https://github.com/myrrlyn/bitvec                                         |
+| blake2                        | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/hashes                                      |
+| block-buffer                  | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/utils                                       |
+| blocking                      | Apache-2.0 OR MIT                                    | https://github.com/stjepang/blocking                                      |
+| bls12_381_plus                | Apache-2.0 OR MIT                                    | https://github.com/mikelodder7/bls12_381_plus                             |
+| bumpalo                       | Apache-2.0 OR MIT                                    | https://github.com/fitzgen/bumpalo                                        |
+| byteorder                     | MIT OR Unlicense                                     | https://github.com/BurntSushi/byteorder                                   |
+| bytes                         | MIT                                                  | https://github.com/carllerche/bytes                                       |
+| cache-padded                  | Apache-2.0 OR MIT                                    | https://github.com/stjepang/cache-padded                                  |
+| cc                            | Apache-2.0 OR MIT                                    | https://github.com/alexcrichton/cc-rs                                     |
+| cfg-if                        | Apache-2.0 OR MIT                                    | https://github.com/alexcrichton/cfg-if                                    |
+| chrono                        | Apache-2.0 OR MIT                                    | https://github.com/chronotope/chrono                                      |
+| cipher                        | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/traits                                      |
+| clap                          | MIT                                                  | https://github.com/clap-rs/clap                                           |
+| colored                       | MPL-2.0                                              | https://github.com/mackwic/colored                                        |
+| concurrent-queue              | Apache-2.0 OR MIT                                    | https://github.com/stjepang/concurrent-queue                              |
+| core-foundation               | Apache-2.0 OR MIT                                    | https://github.com/servo/core-foundation-rs                               |
+| core-foundation-sys           | Apache-2.0 OR MIT                                    | https://github.com/servo/core-foundation-rs                               |
+| cortex-m                      | Apache-2.0 OR MIT                                    | https://github.com/rust-embedded/cortex-m                                 |
+| cpufeatures                   | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/utils                                       |
+| crates_io_api                 | Apache-2.0 OR MIT                                    | https://github.com/theduke/crates_io_api                                  |
+| critical-section              | Apache-2.0 OR MIT                                    | https://github.com/embassy-rs/critical-section                            |
+| crossbeam-queue               | Apache-2.0 OR MIT                                    | https://github.com/crossbeam-rs/crossbeam                                 |
+| crossbeam-utils               | Apache-2.0 OR MIT                                    | https://github.com/crossbeam-rs/crossbeam                                 |
+| crypto-mac                    | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/traits                                      |
+| ctor                          | Apache-2.0 OR MIT                                    | https://github.com/mmastrac/rust-ctor                                     |
+| ctr                           | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/stream-ciphers                              |
+| curve25519-dalek              | BSD-3-Clause                                         | https://github.com/dalek-cryptography/curve25519-dalek                    |
+| digest                        | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/traits                                      |
+| dissimilar                    | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/dissimilar                                     |
+| duct                          | MIT                                                  | https://github.com/oconnor663/duct.rs                                     |
+| ed25519                       | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/signatures                                  |
+| ed25519-dalek                 | BSD-3-Clause                                         | https://github.com/dalek-cryptography/ed25519-dalek                       |
+| embedded-hal                  | Apache-2.0 OR MIT                                    | https://github.com/rust-embedded/embedded-hal                             |
+| encoding_rs                   | Apache-2.0 OR MIT                                    | https://github.com/hsivonen/encoding_rs                                   |
+| event-listener                | Apache-2.0 OR MIT                                    | https://github.com/stjepang/event-listener                                |
+| executor                      | Apache-2.0 OR MIT                                    | https://www.github.com/richardanaya/executor                              |
+| executor-macros               | Apache-2.0 OR MIT                                    |                                                                           |
+| fastrand                      | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/fastrand                                       |
+| ff                            | Apache-2.0 OR MIT                                    | https://github.com/zkcrypto/ff                                            |
+| fnv                           | Apache-2.0 OR MIT                                    | https://github.com/servo/rust-fnv                                         |
+| foreign-types                 | Apache-2.0 OR MIT                                    | https://github.com/sfackler/foreign-types                                 |
+| foreign-types-shared          | Apache-2.0 OR MIT                                    | https://github.com/sfackler/foreign-types                                 |
+| form_urlencoded               | Apache-2.0 OR MIT                                    | https://github.com/servo/rust-url                                         |
+| funty                         | MIT                                                  | https://github.com/myrrlyn/funty                                          |
+| futures                       | Apache-2.0 OR MIT                                    | https://github.com/rust-lang-nursery/futures-rs                           |
+| futures-channel               | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| futures-core                  | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| futures-executor              | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| futures-io                    | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| futures-lite                  | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/futures-lite                                   |
+| futures-macro                 | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| futures-sink                  | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| futures-task                  | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| futures-util                  | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/futures-rs                                   |
+| generic-array                 | MIT                                                  | https://github.com/fizyk20/generic-array.git                              |
+| getrandom                     | Apache-2.0 OR MIT                                    | https://github.com/rust-random/getrandom                                  |
+| ghash                         | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/universal-hashes                            |
+| glob                          | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/glob                                         |
+| gloo-timers                   | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/gloo/tree/master/crates/timers                |
+| group                         | Apache-2.0 OR MIT                                    | https://github.com/zkcrypto/group                                         |
+| h2                            | MIT                                                  | https://github.com/hyperium/h2                                            |
+| hash32                        | Apache-2.0 OR MIT                                    | https://github.com/japaric/hash32                                         |
+| hashbrown                     | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/hashbrown                                    |
+| heapless                      | Apache-2.0 OR MIT                                    | https://github.com/japaric/heapless                                       |
+| heck                          | Apache-2.0 OR MIT                                    | https://github.com/withoutboats/heck                                      |
+| hermit-abi                    | Apache-2.0 OR MIT                                    | https://github.com/hermitcore/libhermit-rs                                |
+| hex                           | Apache-2.0 OR MIT                                    | https://github.com/KokaKiwi/rust-hex                                      |
+| hkdf                          | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/KDFs/                                       |
+| hmac                          | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/MACs                                        |
+| hmac-drbg                     | Apache-2.0                                           |                                                                           |
+| http                          | Apache-2.0 OR MIT                                    | https://github.com/hyperium/http                                          |
+| http-body                     | MIT                                                  | https://github.com/hyperium/http-body                                     |
+| httparse                      | Apache-2.0 OR MIT                                    | https://github.com/seanmonstar/httparse                                   |
+| httpdate                      | Apache-2.0 OR MIT                                    | https://github.com/pyfisch/httpdate                                       |
+| hyper                         | MIT                                                  | https://github.com/hyperium/hyper                                         |
+| hyper-tls                     | Apache-2.0 OR MIT                                    | https://github.com/hyperium/hyper-tls                                     |
+| idna                          | Apache-2.0 OR MIT                                    | https://github.com/servo/rust-url/                                        |
+| indexmap                      | Apache-2.0 OR MIT                                    | https://github.com/bluss/indexmap                                         |
+| instant                       | BSD-3-Clause                                         | https://github.com/sebcrozet/instant                                      |
+| iovec                         | Apache-2.0 OR MIT                                    | https://github.com/carllerche/iovec                                       |
+| ipnet                         | Apache-2.0 OR MIT                                    | https://github.com/krisprice/ipnet                                        |
+| itoa                          | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/itoa                                           |
+| js-sys                        | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen/tree/master/crates/js-sys        |
+| kv-log-macro                  | Apache-2.0 OR MIT                                    | https://github.com/yoshuawuyts/kv-log-macro                               |
+| lazy_static                   | Apache-2.0 OR MIT                                    | https://github.com/rust-lang-nursery/lazy-static.rs                       |
+| libc                          | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/libc                                         |
+| lock_api                      | Apache-2.0 OR MIT                                    | https://github.com/Amanieu/parking_lot                                    |
+| log                           | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/log                                          |
+| managed                       | 0BSD                                                 | https://github.com/m-labs/rust-managed.git                                |
+| matchers                      | MIT                                                  | https://github.com/hawkw/matchers                                         |
+| matches                       | MIT                                                  | https://github.com/SimonSapin/rust-std-candidates                         |
+| memchr                        | MIT OR Unlicense                                     | https://github.com/BurntSushi/memchr                                      |
+| mime                          | Apache-2.0 OR MIT                                    | https://github.com/hyperium/mime                                          |
+| mio                           | MIT                                                  | https://github.com/tokio-rs/mio                                           |
+| miow                          | Apache-2.0 OR MIT                                    | https://github.com/yoshuawuyts/miow                                       |
+| native-tls                    | Apache-2.0 OR MIT                                    | https://github.com/sfackler/rust-native-tls                               |
+| nb                            | Apache-2.0 OR MIT                                    | https://github.com/rust-embedded/nb                                       |
+| ntapi                         | Apache-2.0 OR MIT                                    | https://github.com/MSxDOS/ntapi                                           |
+| num-integer                   | Apache-2.0 OR MIT                                    | https://github.com/rust-num/num-integer                                   |
+| num-traits                    | Apache-2.0 OR MIT                                    | https://github.com/rust-num/num-traits                                    |
+| num_cpus                      | Apache-2.0 OR MIT                                    | https://github.com/seanmonstar/num_cpus                                   |
+| once_cell                     | Apache-2.0 OR MIT                                    | https://github.com/matklad/once_cell                                      |
+| opaque-debug                  | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/utils                                       |
+| openssl                       | Apache-2.0                                           | https://github.com/sfackler/rust-openssl                                  |
+| openssl-probe                 | Apache-2.0 OR MIT                                    | https://github.com/alexcrichton/openssl-probe                             |
+| openssl-sys                   | MIT                                                  | https://github.com/sfackler/rust-openssl                                  |
+| os_pipe                       | MIT                                                  | https://github.com/oconnor663/os_pipe.rs                                  |
+| pairing                       | Apache-2.0 OR MIT                                    | https://github.com/zkcrypto/pairing                                       |
+| parking                       | Apache-2.0 OR MIT                                    | https://github.com/stjepang/parking                                       |
+| parking_lot                   | Apache-2.0 OR MIT                                    | https://github.com/Amanieu/parking_lot                                    |
+| parking_lot_core              | Apache-2.0 OR MIT                                    | https://github.com/Amanieu/parking_lot                                    |
+| percent-encoding              | Apache-2.0 OR MIT                                    | https://github.com/servo/rust-url/                                        |
+| pin-project                   | Apache-2.0 OR MIT                                    | https://github.com/taiki-e/pin-project                                    |
+| pin-project-internal          | Apache-2.0 OR MIT                                    | https://github.com/taiki-e/pin-project                                    |
+| pin-project-lite              | Apache-2.0 OR MIT                                    | https://github.com/taiki-e/pin-project-lite                               |
+| pin-utils                     | Apache-2.0 OR MIT                                    | https://github.com/rust-lang-nursery/pin-utils                            |
+| pkg-config                    | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/pkg-config-rs                                |
+| polling                       | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/polling                                        |
+| polyval                       | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/universal-hashes                            |
+| ppv-lite86                    | Apache-2.0 OR MIT                                    | https://github.com/cryptocorrosion/cryptocorrosion                        |
+| proc-macro-error              | Apache-2.0 OR MIT                                    | https://gitlab.com/CreepySkeleton/proc-macro-error                        |
+| proc-macro-error-attr         | Apache-2.0 OR MIT                                    | https://gitlab.com/CreepySkeleton/proc-macro-error                        |
+| proc-macro-hack               | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/proc-macro-hack                                |
+| proc-macro-nested             | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/proc-macro-hack                                |
+| proc-macro2                   | Apache-2.0 OR MIT                                    | https://github.com/alexcrichton/proc-macro2                               |
+| quote                         | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/quote                                          |
+| radium                        | MIT                                                  | https://github.com/bitvecto-rs/radium                                     |
+| rand                          | Apache-2.0 OR MIT                                    | https://github.com/rust-random/rand                                       |
+| rand_chacha                   | Apache-2.0 OR MIT                                    | https://github.com/rust-random/rand                                       |
+| rand_core                     | Apache-2.0 OR MIT                                    | https://github.com/rust-random/rand                                       |
+| rand_hc                       | Apache-2.0 OR MIT                                    | https://github.com/rust-random/rand                                       |
+| rand_xorshift                 | Apache-2.0 OR MIT                                    | https://github.com/rust-random/rngs                                       |
+| redox_syscall                 | MIT                                                  | https://gitlab.redox-os.org/redox-os/syscall                              |
+| regex                         | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/regex                                        |
+| regex-automata                | MIT OR Unlicense                                     | https://github.com/BurntSushi/regex-automata                              |
+| regex-syntax                  | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/regex                                        |
+| remove_dir_all                | Apache-2.0 OR MIT                                    | https://github.com/XAMPPRocky/remove_dir_all.git                          |
+| reqwest                       | Apache-2.0 OR MIT                                    | https://github.com/seanmonstar/reqwest                                    |
+| riscv                         | ISC                                                  | https://github.com/rust-embedded/riscv                                    |
+| riscv-target                  | ISC                                                  | https://github.com/ilya-epifanov/riscv-target                             |
+| ron                           | Apache-2.0 OR MIT                                    | https://github.com/ron-rs/ron                                             |
+| rustc_version                 | Apache-2.0 OR MIT                                    | https://github.com/Kimundi/rustc-version-rs                               |
+| ryu                           | Apache-2.0 OR BSL-1.0                                | https://github.com/dtolnay/ryu                                            |
+| schannel                      | MIT                                                  | https://github.com/steffengy/schannel-rs                                  |
+| scopeguard                    | Apache-2.0 OR MIT                                    | https://github.com/bluss/scopeguard                                       |
+| security-framework            | Apache-2.0 OR MIT                                    | https://github.com/kornelski/rust-security-framework                      |
+| security-framework-sys        | Apache-2.0 OR MIT                                    | https://github.com/kornelski/rust-security-framework                      |
+| semver                        | Apache-2.0 OR MIT                                    | https://github.com/steveklabnik/semver                                    |
+| semver-parser                 | Apache-2.0 OR MIT                                    | https://github.com/steveklabnik/semver-parser                             |
+| serde                         | Apache-2.0 OR MIT                                    | https://github.com/serde-rs/serde                                         |
+| serde-big-array               | Apache-2.0 OR MIT                                    | https://github.com/est31/serde-big-array                                  |
+| serde_bare                    | Apache-2.0 OR MIT                                    | https://git.sr.ht/~tdeo/serde_bare                                        |
+| serde_derive                  | Apache-2.0 OR MIT                                    | https://github.com/serde-rs/serde                                         |
+| serde_json                    | Apache-2.0 OR MIT                                    | https://github.com/serde-rs/json                                          |
+| serde_urlencoded              | Apache-2.0 OR MIT                                    | https://github.com/nox/serde_urlencoded                                   |
+| sha-1                         | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/hashes                                      |
+| sha2                          | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/hashes                                      |
+| sharded-slab                  | MIT                                                  | https://github.com/hawkw/sharded-slab                                     |
+| shared_child                  | MIT                                                  | https://github.com/oconnor663/shared_child.rs                             |
+| signal-hook-registry          | Apache-2.0 OR MIT                                    | https://github.com/vorner/signal-hook                                     |
+| signature                     | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/traits/tree/master/signature                |
+| slab                          | MIT                                                  | https://github.com/tokio-rs/slab                                          |
+| smallvec                      | Apache-2.0 OR MIT                                    | https://github.com/servo/rust-smallvec                                    |
+| socket2                       | Apache-2.0 OR MIT                                    | https://github.com/rust-lang/socket2                                      |
+| spin                          | MIT                                                  | https://github.com/mvdnes/spin-rs.git                                     |
+| stable_deref_trait            | Apache-2.0 OR MIT                                    | https://github.com/storyyeller/stable_deref_trait                         |
+| strsim                        | MIT                                                  | https://github.com/dguo/strsim-rs                                         |
+| structopt                     | Apache-2.0 OR MIT                                    | https://github.com/TeXitoi/structopt                                      |
+| structopt-derive              | Apache-2.0 OR MIT                                    | https://github.com/TeXitoi/structopt                                      |
+| subtle                        | BSD-3-Clause                                         | https://github.com/dalek-cryptography/subtle                              |
+| syn                           | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/syn                                            |
+| synstructure                  | MIT                                                  | https://github.com/mystor/synstructure                                    |
+| tap                           | MIT                                                  | https://github.com/myrrlyn/tap                                            |
+| tempfile                      | Apache-2.0 OR MIT                                    | https://github.com/Stebalien/tempfile                                     |
+| termcolor                     | MIT OR Unlicense                                     | https://github.com/BurntSushi/termcolor                                   |
+| textwrap                      | MIT                                                  | https://github.com/mgeisler/textwrap                                      |
+| thiserror                     | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/thiserror                                      |
+| thiserror-impl                | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/thiserror                                      |
+| thread_local                  | Apache-2.0 OR MIT                                    | https://github.com/Amanieu/thread_local-rs                                |
+| tinyvec                       | Apache-2.0 OR MIT OR Zlib                            | https://github.com/Lokathor/tinyvec                                       |
+| tinyvec_macros                | Apache-2.0 OR MIT OR Zlib                            | https://github.com/Soveu/tinyvec_macros                                   |
+| tokio                         | MIT                                                  | https://github.com/tokio-rs/tokio                                         |
+| tokio-io                      | MIT                                                  | https://github.com/tokio-rs/tokio                                         |
+| tokio-macros                  | MIT                                                  | https://github.com/tokio-rs/tokio                                         |
+| tokio-native-tls              | MIT                                                  | https://github.com/tokio-rs/tls                                           |
+| tokio-tungstenite             | MIT                                                  | https://github.com/snapview/tokio-tungstenite                             |
+| tokio-util                    | MIT                                                  | https://github.com/tokio-rs/tokio                                         |
+| toml                          | Apache-2.0 OR MIT                                    | https://github.com/alexcrichton/toml-rs                                   |
+| tower-service                 | MIT                                                  | https://github.com/tower-rs/tower                                         |
+| tracing                       | MIT                                                  | https://github.com/tokio-rs/tracing                                       |
+| tracing-core                  | MIT                                                  | https://github.com/tokio-rs/tracing                                       |
+| tracing-log                   | MIT                                                  | https://github.com/tokio-rs/tracing                                       |
+| tracing-serde                 | MIT                                                  | https://github.com/tokio-rs/tracing                                       |
+| tracing-subscriber            | MIT                                                  | https://github.com/tokio-rs/tracing                                       |
+| try-lock                      | MIT                                                  | https://github.com/seanmonstar/try-lock                                   |
+| trybuild                      | Apache-2.0 OR MIT                                    | https://github.com/dtolnay/trybuild                                       |
+| tungstenite                   | Apache-2.0 OR MIT                                    | https://github.com/snapview/tungstenite-rs                                |
+| typenum                       | Apache-2.0 OR MIT                                    | https://github.com/paholg/typenum                                         |
+| unicode-bidi                  | Apache-2.0 OR MIT                                    | https://github.com/servo/unicode-bidi                                     |
+| unicode-normalization         | Apache-2.0 OR MIT                                    | https://github.com/unicode-rs/unicode-normalization                       |
+| unicode-segmentation          | Apache-2.0 OR MIT                                    | https://github.com/unicode-rs/unicode-segmentation                        |
+| unicode-width                 | Apache-2.0 OR MIT                                    | https://github.com/unicode-rs/unicode-width                               |
+| unicode-xid                   | Apache-2.0 OR MIT                                    | https://github.com/unicode-rs/unicode-xid                                 |
+| universal-hash                | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/traits                                      |
+| url                           | Apache-2.0 OR MIT                                    | https://github.com/servo/rust-url                                         |
+| utf-8                         | Apache-2.0 OR MIT                                    | https://github.com/SimonSapin/rust-utf8                                   |
+| value-bag                     | Apache-2.0 OR MIT                                    | https://github.com/sval-rs/value-bag                                      |
+| vcell                         | Apache-2.0 OR MIT                                    | https://github.com/japaric/vcell                                          |
+| vcpkg                         | Apache-2.0 OR MIT                                    | https://github.com/mcgoo/vcpkg-rs                                         |
+| vec_map                       | Apache-2.0 OR MIT                                    | https://github.com/contain-rs/vec-map                                     |
+| version_check                 | Apache-2.0 OR MIT                                    | https://github.com/SergioBenitez/version_check                            |
+| void                          | MIT                                                  | https://github.com/reem/rust-void.git                                     |
+| volatile-register             | Apache-2.0 OR MIT                                    | https://github.com/japaric/volatile-register                              |
+| vsss-rs                       | Apache-2.0                                           | https://github.com/mikelodder7/vsss-rs                                    |
+| waker-fn                      | Apache-2.0 OR MIT                                    | https://github.com/stjepang/waker-fn                                      |
+| want                          | MIT                                                  | https://github.com/seanmonstar/want                                       |
+| wasi                          | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT  | https://github.com/bytecodealliance/wasi                                  |
+| wasm-bindgen                  | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen                                  |
+| wasm-bindgen-backend          | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen/tree/master/crates/backend       |
+| wasm-bindgen-futures          | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen/tree/master/crates/futures       |
+| wasm-bindgen-macro            | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen/tree/master/crates/macro         |
+| wasm-bindgen-macro-support    | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen/tree/master/crates/macro-support |
+| wasm-bindgen-shared           | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen/tree/master/crates/shared        |
+| web-sys                       | Apache-2.0 OR MIT                                    | https://github.com/rustwasm/wasm-bindgen/tree/master/crates/web-sys       |
+| webbrowser                    | Apache-2.0 OR MIT                                    | https://github.com/amodm/webbrowser-rs                                    |
+| wepoll-ffi                    | Apache-2.0 OR BSD-2-Clause OR MIT                    | https://github.com/aclysma/wepoll-ffi                                     |
+| widestring                    | Apache-2.0 OR MIT                                    | https://github.com/starkat99/widestring-rs.git                            |
+| winapi                        | Apache-2.0 OR MIT                                    | https://github.com/retep998/winapi-rs                                     |
+| winapi-i686-pc-windows-gnu    | Apache-2.0 OR MIT                                    | https://github.com/retep998/winapi-rs                                     |
+| winapi-util                   | MIT OR Unlicense                                     | https://github.com/BurntSushi/winapi-util                                 |
+| winapi-x86_64-pc-windows-gnu  | Apache-2.0 OR MIT                                    | https://github.com/retep998/winapi-rs                                     |
+| winreg                        | MIT                                                  | https://github.com/gentoo90/winreg-rs                                     |
+| woke                          | Apache-2.0 OR MIT                                    |                                                                           |
+| wyz                           | MIT                                                  | https://github.com/myrrlyn/wyz                                            |
+| x25519-dalek                  | BSD-3-Clause                                         | https://github.com/dalek-cryptography/x25519-dalek                        |
+| zeroize                       | Apache-2.0 OR MIT                                    | https://github.com/iqlusioninc/crates/tree/main/zeroize                   |
+| bare                          | Apache 2.0                                           | https://hex.pm/packages/bare                                              |
+| bunt                          | MIT                                                  | https://hex.pm/packages/bunt                                              |
+| credo                         | MIT                                                  | https://hex.pm/packages/credo                                             |
+| dialyxir                      | Apache 2.0                                           | https://hex.pm/packages/dialyxir                                          |
+| earmark_parser                | Apache 2.0                                           | https://hex.pm/packages/earmark_parser                                    |
+| erlex                         | Apache 2.0                                           | https://hex.pm/packages/erlex                                             |
+| ex_doc                        | Apache 2.0                                           | https://hex.pm/packages/ex_doc                                            |
+| file_system                   | WTFPL                                                | https://hex.pm/packages/file_system                                       |
+| gen_state_machine             | Apache 2.0                                           | https://hex.pm/packages/gen_state_machine                                 |
+| jason                         | Apache 2.0                                           | https://hex.pm/packages/jason                                             |
+| makeup                        | BSD                                                  | https://hex.pm/packages/makeup                                            |
+| makeup_elixir                 | BSD                                                  | https://hex.pm/packages/makeup_elixir                                     |
+| makeup_erlang                 | BSD                                                  | https://hex.pm/packages/makeup_erlang                                     |
+| nimble_parsec                 | Apache 2.0                                           | https://hex.pm/packages/nimble_parsec                                     |
+| ranch                         | ISC                                                  | https://hex.pm/packages/ranch                                             |
+| telemetry                     | Apache 2.0                                           | https://hex.pm/packages/telemetry                                         |
+| zeroize_derive                | Apache-2.0 OR MIT                                    | https://github.com/iqlusioninc/crates/tree/main/zeroize/derive            |
+| brod                          | Apache 2.0                                           | https://hex.pm/packages/telemetry/brod                                    |
+| certifi                       | BSD                                                  | https://hex.pm/packages/telemetry/certifi                                 |
+| combine                       | MIT                                                  | https://hex.pm/packages/telemetry/combine                                 |
+| connection                    | Apache 2.0                                           | https://hex.pm/packages/telemetry/connection                              |
+| cowboy                        | ISC                                                  | https://hex.pm/packages/telemetry/cowboy                                  |
+| cowboy_telemetry              | Apache 2.0                                           | https://hex.pm/packages/telemetry/cowboy_telemetry                        |
+| cowlib                        | ISC                                                  | https://hex.pm/packages/telemetry/cowlib                                  |
+| crc32cer                      | Apache 2.0                                           | https://hex.pm/packages/telemetry/crc32cer                                |
+| crontab                       | MIT                                                  | https://hex.pm/packages/telemetry/crontab                                 |
+| db_connection                 | Apache 2.0                                           | https://hex.pm/packages/telemetry/db_connection                           |
+| decimal                       | Apache 2.0                                           | https://hex.pm/packages/telemetry/decimal                                 |
+| gettext                       | Apache 2.0                                           | https://hex.pm/packages/telemetry/gettext                                 |
+| hackney                       | Apache 2.0                                           | https://hex.pm/packages/telemetry/hackney                                 |
+| hex2bin                       | Apache                                               | https://hex.pm/packages/telemetry/hex2bin                                 |
+| httpoison                     | MIT                                                  | https://hex.pm/packages/telemetry/httpoison                               |
+| kafka_protocol                | Apache 2.0                                           | https://hex.pm/packages/telemetry/kafka_protocol                          |
+| metrics                       | BSD                                                  | https://hex.pm/packages/telemetry/metrics                                 |
+| mimerl                        | MIT                                                  | https://hex.pm/packages/telemetry/mimerl                                  |
+| parse_trans                   | Apache 2.0                                           | https://hex.pm/packages/telemetry/parse_trans                             |
+| plug                          | Apache 2.0                                           | https://hex.pm/packages/telemetry/plug                                    |
+| plug_cowboy                   | Apache 2.0                                           | https://hex.pm/packages/telemetry/plug_cowboy                             |
+| plug_crypto                   | Apache 2.0                                           | https://hex.pm/packages/telemetry/plug_crypto                             |
+| poison                        | CC0-1.0                                              | https://hex.pm/packages/telemetry/poison                                  |
+| postgrex                      | Apache 2.0                                           | https://hex.pm/packages/telemetry/postgrex                                |
+| sched_ex                      | MIT                                                  | https://hex.pm/packages/telemetry/sched_ex                                |
+| snappyer                      | Unlicensed                                           | https://hex.pm/packages/telemetry/snappyer                                |
+| ssl_verify_fun                | MIT                                                  | https://hex.pm/packages/telemetry/ssl_verify_fun                          |
+| supervisor3                   | MPL                                                  | https://hex.pm/packages/telemetry/supervisor3                             |
+| telemetry_influxdb            | MIT                                                  | https://hex.pm/packages/telemetry/telemetry_influxdb                      |
+| telemetry_poller              | Apache 2.0                                           | https://hex.pm/packages/telemetry/telemetry_poller                        |
+| timex                         | MIT                                                  | https://hex.pm/packages/telemetry/timex                                   |
+| tzdata                        | MIT                                                  | https://hex.pm/packages/telemetry/tzdata                                  |
+| unicode_util_compat           | Apache 2.0                                           | https://hex.pm/packages/telemetry/unicode_util_compat                     |
+| worker_pool                   | Apache2, Apache 2.0                                  | https://hex.pm/packages/telemetry/worker_pool                             |
