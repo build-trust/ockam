@@ -91,8 +91,8 @@ pub struct WebSocketTransport {
 /// WebSocket address type constant
 pub const WS: u8 = 2;
 
-fn parse_socket_addr<S: Into<String>>(s: S) -> Result<SocketAddr> {
-    Ok(s.into()
+fn parse_socket_addr<S: AsRef<str>>(s: S) -> Result<SocketAddr> {
+    Ok(s.as_ref()
         .parse()
         .map_err(|_| TransportError::InvalidAddress)?)
 }
@@ -115,14 +115,14 @@ impl WebSocketTransport {
     }
 
     /// Establish an outgoing WebSocket connection on an existing transport
-    pub async fn connect<S: Into<String>>(&self, peer: S) -> Result<()> {
-        let peer = WebSocketAddr::from_str(&peer.into())?;
+    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+        let peer = WebSocketAddr::from_str(peer.as_ref())?;
         init::start_connection(&self.ctx, &self.router, peer).await?;
         Ok(())
     }
 
     /// Start listening to incoming connections on an existing transport
-    pub async fn listen<S: Into<String>>(&self, bind_addr: S) -> Result<()> {
+    pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<()> {
         let bind_addr = parse_socket_addr(bind_addr)?;
         self.router.bind(bind_addr).await?;
         Ok(())
