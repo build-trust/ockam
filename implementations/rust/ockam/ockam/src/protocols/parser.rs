@@ -12,9 +12,6 @@ use ockam_core::Decodable;
 
 /// A parser for a protocol fragment
 ///
-/// **If you are not a protocol author, you may want to use
-/// [`UserParser`](UserParser) instead!**
-///
 /// Protocols are implemented as separate structures, wrapped in a
 /// carrier type.  Because Rust can't have a function return different
 /// types from a function, each protocol message (here called
