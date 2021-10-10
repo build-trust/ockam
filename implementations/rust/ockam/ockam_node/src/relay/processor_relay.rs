@@ -1,9 +1,9 @@
+#[cfg(feature = "std")]
+use crate::error::Error;
 use crate::relay::{run_mailbox, RelayMessage, ShutdownHandle, ShutdownListener};
 use crate::tokio::runtime::Runtime;
 use crate::tokio::sync::mpsc;
 use crate::Context;
-#[cfg(feature = "std")]
-use crate::error::Error;
 use ockam_core::{Processor, Result};
 
 pub struct ProcessorRelay<P>

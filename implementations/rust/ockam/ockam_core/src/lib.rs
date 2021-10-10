@@ -63,8 +63,21 @@ pub use std::println;
 #[macro_export]
 macro_rules! println {
     ($($arg:tt)*) => {{
-        // TODO replace with defmt or similiar
+        // TODO replace with cortex-m-log or defmt
+        #[cfg(target_arch="arm")]
         cortex_m_semihosting::hprintln!($($arg)*).unwrap();
+        // dummy fallback definition
+        #[cfg(not(target_arch="arm"))]
+        {
+            use ockam_core::compat::io::Write;
+            let mut buffer = [0 as u8; 1];
+            let mut cursor = ockam_core::compat::io::Cursor::new(&mut buffer[..]);
+            match write!(&mut cursor, $($arg)*) {
+                Ok(()) => (),
+                Err(_) => (),
+            }
+        }
+
     }};
 }
 

@@ -15,8 +15,8 @@ pub(crate) struct WorkerPair {
     hostnames: Vec<String>,
     peer: SocketAddr,
     tx_addr: Address,
-    rx_addr: Address,
-    run: ArcBool,
+    _rx_addr: Address,
+    _run: ArcBool,
 }
 
 impl WorkerPair {
@@ -60,9 +60,9 @@ impl WorkerPair {
         Ok(WorkerPair {
             hostnames,
             peer,
-            rx_addr,
             tx_addr,
-            run,
+            _rx_addr: rx_addr,
+            _run: run,
         })
     }
 
