@@ -1,7 +1,7 @@
 use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use crate::compat::{
     string::{String, ToString},
-    vec::Vec,
+    vec::{self, Vec},
 };
 use core::fmt::{self, Debug, Display};
 use core::iter::FromIterator;
@@ -27,7 +27,7 @@ impl AddressSet {
 
 impl IntoIterator for AddressSet {
     type Item = Address;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
