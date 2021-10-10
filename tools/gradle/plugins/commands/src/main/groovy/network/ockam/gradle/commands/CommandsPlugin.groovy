@@ -86,18 +86,21 @@ class CommandsPlugin implements Plugin<Project> {
           def p = Paths.get(Paths.get(projectDirPath, dirPath.toString()).toFile().getCanonicalPath())
           paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
 
-          def templateEngine = new groovy.text.SimpleTemplateEngine()
-          def templateFile = Paths.get(rootDirPath.toString(), '.github', 'workflow_template.yml').toFile()
+          def workflowFileName = "${project.name}_${dirTaskName}.yml"
+          def workflowFile = Paths.get(rootDirPath.toString(), '.github', 'workflows', workflowFileName).toFile()
+          paths << rootDirPath.relativize(Paths.get(workflowFile.getCanonicalPath()))
+
           def data = [
             "name": "${project.name}_${dirTaskName.replaceAll('\\.\\.', '')}",
             "wd": "implementations/${project.name}",
             "command": "../../gradlew ${dirTaskName}",
             "paths": paths
           ]
+
+          def templateEngine = new groovy.text.SimpleTemplateEngine()
+          def templateFile = Paths.get(rootDirPath.toString(), '.github', 'workflow_template.yml').toFile()
           def rendered = templateEngine.createTemplate(templateFile.text).make(data).toString()
 
-          def workflowFileName = "${project.name}_${dirTaskName}.yml"
-          def workflowFile = Paths.get(rootDirPath.toString(), '.github', 'workflows', workflowFileName).toFile()
           // def workflowCheckTaskName = "check_workflow_exists_for_${dirTaskName}"
           def workflowGenerateTaskName = "generate_workflow_for_${dirTaskName}"
 
