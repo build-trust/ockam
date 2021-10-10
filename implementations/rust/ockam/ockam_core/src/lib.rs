@@ -83,6 +83,7 @@ macro_rules! println {
 
 /// Module for custom implementation of standard traits.
 pub mod traits {
+    use crate::compat::boxed::Box;
     use crate::error::Result;
 
     /// Clone trait for async structs.

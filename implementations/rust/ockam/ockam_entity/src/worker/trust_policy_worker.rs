@@ -1,4 +1,5 @@
 use crate::{SecureChannelTrustInfo, TrustPolicy};
+use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait::async_trait, Address, Result, Routed, Worker};
 use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
