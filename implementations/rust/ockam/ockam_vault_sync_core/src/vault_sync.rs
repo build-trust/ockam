@@ -1,5 +1,5 @@
 use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
-use ockam_core::compat::rand::random;
+use ockam_core::compat::{boxed::Box, rand::random};
 use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage};
 use ockam_node::{block_future, Context, Handle};
 use tracing::debug;

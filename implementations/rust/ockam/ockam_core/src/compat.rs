@@ -11,6 +11,16 @@
 //!      namespace. (e.g. compat::vec::Vec and not compat::Vec)
 #![allow(missing_docs)]
 
+/// std::array
+pub mod array {
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    pub use alloc::array::*;
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    pub type Array<T> = heapless::Array<T, 64>;
+    #[cfg(feature = "std")]
+    pub use std::array::*;
+}
+
 /// std::borrow
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::borrow;
@@ -233,9 +243,9 @@ pub use std::task;
 /// std::vec
 pub mod vec {
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::vec::Vec;
+    pub use alloc::vec::*;
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     pub type Vec<T> = heapless::Vec<T, 64>;
     #[cfg(feature = "std")]
-    pub use std::vec::Vec;
+    pub use std::vec::*;
 }

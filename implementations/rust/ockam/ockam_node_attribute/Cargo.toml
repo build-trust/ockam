@@ -21,10 +21,12 @@ exclude = [
 proc-macro = true
 
 [features]
-default = ["std"]
-std = []
-no_std = []
-alloc = []
+default = []
+
+# Feature: "no_main" allows you to define an ockam node inside your
+# own program entry-point rather than having ockam define the main()
+# function. This is particularly useful on baremetal platforms.
+no_main = []
 
 [dependencies]
 quote = "1.0.9"

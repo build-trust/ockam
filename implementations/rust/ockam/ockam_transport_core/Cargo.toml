@@ -29,7 +29,7 @@ std = [
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = [
-   "ockam_core/no_std",
+    "ockam_core/no_std",
 ]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"

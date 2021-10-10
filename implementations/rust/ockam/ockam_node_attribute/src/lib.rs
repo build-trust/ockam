@@ -143,7 +143,8 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    #[cfg(feature = "std")]
+    // Assumes the target platform knows about main() functions
+    #[cfg(not(feature = "no_main"))]
     let output_function = quote! {
         #[inline(always)]
         #input_function
@@ -156,18 +157,19 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    #[cfg(not(feature = "std"))]
+    // Assumes you will be defining the ockam node inside your own entry point
+    #[cfg(feature = "no_main")]
     let output_function = quote! {
         #[inline(always)]
         #input_function
 
-        fn main() -> ockam::Result<()> {
+        fn ockam_async_main() -> ockam::Result<()> {
             let (#ctx_ident, mut executor) = ockam::start_node();
             executor.execute(async move {
                 #input_function_call
             })
         }
-        main().unwrap();
+        ockam_async_main().unwrap();
     };
 
     // Create a token stream of the transformed output_function and return it.
