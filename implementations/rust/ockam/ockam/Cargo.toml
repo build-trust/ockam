@@ -26,7 +26,6 @@ credentials = ["ockam_entity/credentials", "ockam_vault/bls", "bls12_381_plus", 
 std = [
     "ockam_core/std",
     "ockam_node/std",
-    "ockam_node_attribute/std",
     "ockam_vault_core/std",
     "ockam_vault_sync_core/std",
     "ockam_vault/std",
@@ -65,6 +64,13 @@ alloc = [
     "ockam_key_exchange_xx/alloc",
     "ockam_entity/alloc",
     "serde/alloc",
+]
+
+# Feature: "no_main" allows you to define an ockam node inside your
+# own program entry-point rather than having ockam define the main()
+# function. This is particularly useful on baremetal platforms.
+no_main = [
+    "ockam_node_attribute/no_main",
 ]
 
 [dependencies]

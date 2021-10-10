@@ -25,7 +25,8 @@ no_std = ["ockam_core/no_std", "ockam_node_no_std/no_std", "heapless", "cortex-m
 # platforms, requires nightly.
 alloc = ["ockam_core/alloc", "ockam_executor/alloc", "ockam_node_no_std/alloc"]
 
-# Option: "dump_internals" when set, will dump the internal state of workers at startup via the trace! macro.
+# Feature: "dump_internals" when set, will dump the internal state of
+# workers at startup via the trace! macro.
 dump_internals = []
 
 [dependencies]
