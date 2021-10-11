@@ -53,6 +53,7 @@ where
         };
 
         #[allow(dead_code)]
+        #[derive(Debug)]
         enum StopReason {
             Shutdown,
             LoopStop,
@@ -98,13 +99,18 @@ where
 
         tx_ack.send(()).unwrap();
 
+        debug!("Stopping processor '{}' with reason {:?}", ctx.address(), stop_reason);
+
         match stop_reason {
             StopReason::Shutdown => {}
             StopReason::LoopStop => {
-                ctx.stop_processor(ctx.address()).await.unwrap();
+                if let Err(err) = ctx.stop_processor(ctx.address()).await
+                {
+                    error!("Failure during '{}' processor stop: {}", ctx.address(), err)
+                }
             }
             StopReason::ProcessError(err) | StopReason::RxError(err) => {
-                error!("Failure during '{}' processor stop: {}", ctx.address(), err)
+                error!("Processor '{}' error: {}", ctx.address(), err)
             }
         };
     }
