@@ -24,6 +24,8 @@ pub enum NodeMessage {
     StopProcessor(Address, Sender<NodeReplyResult>),
     /// Stop the node (and all workers)
     StopNode,
+    /// Hard stop the node
+    HardStopNode,
     /// Request the sender for a worker address
     SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type

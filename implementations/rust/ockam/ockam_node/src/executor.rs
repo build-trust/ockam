@@ -19,7 +19,7 @@ pub struct Executor {
 impl Default for Executor {
     fn default() -> Self {
         let rt = Arc::new(Runtime::new().unwrap());
-        let router = Router::new();
+        let router = Router::new(rt.clone());
         Self { rt, router }
     }
 }
@@ -31,7 +31,7 @@ impl Executor {
     }
 
     /// Sender
-    pub fn sender(&self) -> Sender<NodeMessage> {
+    pub(crate) fn sender(&self) -> Sender<NodeMessage> {
         self.router.sender()
     }
 

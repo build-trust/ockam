@@ -5,6 +5,9 @@ use crate::{
 };
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_core::{Address, AddressSet, Result};
+use ockam_core::compat::sync::Arc;
+use crate::tokio::runtime::Runtime;
+use crate::tokio::time::{Duration, sleep};
 
 /// A combined address type and local worker router
 ///
@@ -29,6 +32,9 @@ pub struct Router {
     receiver: Receiver<NodeMessage>,
     /// Keeping a copy of the channel sender to pass out
     sender: Sender<NodeMessage>,
+
+    is_shutting_down: bool,
+    rt: Arc<Runtime>,
 }
 
 enum RouteType {
@@ -45,7 +51,7 @@ fn determine_type(next: &Address) -> RouteType {
 }
 
 impl Router {
-    pub fn new() -> Self {
+    pub fn new(rt: Arc<Runtime>,) -> Self {
         let (sender, receiver) = channel(32);
         Self {
             internal: BTreeMap::new(),
@@ -54,6 +60,8 @@ impl Router {
             shutdown_handles: BTreeMap::new(),
             receiver,
             sender,
+            is_shutting_down: false,
+            rt,
         }
     }
 
@@ -74,6 +82,11 @@ impl Router {
             match msg {
                 // Internal registration commands
                 Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip Router message during Node stop");
+                        continue
+                    }
+
                     trace!("Registering new router for type {}", tt);
 
                     self.external.insert(tt, addr);
@@ -82,24 +95,44 @@ impl Router {
                         .await
                         .map_err(|_| Error::InternalIOFailure)?
                 }
-                Router(_, _, sender) => sender
-                    .send(NodeReply::router_exists())
-                    .await
-                    .map_err(|_| Error::InternalIOFailure)?,
+                Router(_, _, sender) => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip Router message during Node stop");
+                        continue
+                    }
+
+                    sender
+                        .send(NodeReply::router_exists())
+                        .await
+                        .map_err(|_| Error::InternalIOFailure)?
+                },
 
                 // Basic worker control
                 StartWorker(addr, sender, ref reply) => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip StartWorker message during Node stop");
+                        continue
+                    }
                     self.start_worker(addr, sender, reply).await?
                 }
                 StopWorker(ref addr, ref reply) => self.stop_worker(addr, reply).await?,
 
                 // Check whether a set of addresses is available
                 CheckAddress(ref addrs, ref reply) => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip CheckAddress message during Node stop");
+                        continue
+                    }
                     self.check_addr_collisions(addrs, reply).await?
                 }
 
                 // Basic node control
                 StopNode => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip StopNode message during Node stop");
+                        continue
+                    }
+
                     self.internal.clear();
                     // TODO: BTreeMap::pop_first is unstable
                     let addresses: Vec<Address> = self.shutdown_handles.keys().cloned().collect();
@@ -107,26 +140,55 @@ impl Router {
                         let handle = self.shutdown_handles.remove(&addr).unwrap();
                         handle.shutdown().await?;
                     }
+                    self.is_shutting_down = true;
+                    let sender = self.sender.clone();
+                    self.rt.spawn(async move {
+                        sleep(Duration::from_millis(10)).await;
+                        sender.send(HardStopNode).await.unwrap()
+                    }).await.unwrap();
+                }
+                HardStopNode => {
                     break;
                 }
-                ListWorkers(sender) => sender
-                    .send(NodeReply::workers(self.internal.keys().cloned().collect()))
-                    .await
-                    .map_err(|_| Error::InternalIOFailure)?,
+                ListWorkers(sender) => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip ListWorkers message during Node stop");
+                        continue
+                    }
+
+                    sender
+                        .send(NodeReply::workers(self.internal.keys().cloned().collect()))
+                        .await
+                        .map_err(|_| Error::InternalIOFailure)?
+                },
                 StartProcessor(addr, sender, ref reply, shutdown_handle) => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip StartProcessor message during Node stop");
+                        continue
+                    }
+
                     self.start_processor(addr.into(), sender, reply, shutdown_handle)
                         .await?
                 }
                 StopProcessor(ref addr, ref reply) => self.stop_processor(addr, reply).await?,
 
                 // Handle route/ sender requests
-                SenderReq(ref addr, ref reply) => match determine_type(addr) {
-                    RouteType::Internal(ref addr) => self.resolve(addr, reply, false).await?,
-                    RouteType::External(tt) => {
-                        let addr = self.router_addr(tt)?;
-                        self.resolve(&addr, reply, true).await?
+                SenderReq(ref addr, ref reply) => {
+                    if self.is_shutting_down {
+                        debug!("Router: Skip SenderReq message during Node stop");
+                        continue
+                    }
+
+                    match determine_type(addr) {
+                        RouteType::Internal(ref addr) => self.resolve(addr, reply, false).await?,
+                        RouteType::External(tt) => {
+                            let addr = self.router_addr(tt)?;
+                            self.resolve(&addr, reply, true).await?
+                        }
                     }
                 },
+
+
             }
         }
 
@@ -211,6 +273,14 @@ impl Router {
         if let Some(r) = self.internal.remove(addr) {
             record = r;
         } else {
+            if self.is_shutting_down {
+                reply
+                    .send(NodeReply::ok())
+                    .await
+                    .map_err(|_| Error::InternalIOFailure)?;
+                return Ok(());
+            }
+
             reply
                 .send(NodeReply::no_such_processor(addr.clone()))
                 .await
@@ -253,7 +323,14 @@ impl Router {
         if let Some(r) = self.internal.remove(&primary_address) {
             record = r;
         } else {
-            // Actually should not happen
+            if self.is_shutting_down {
+                reply
+                    .send(NodeReply::ok())
+                    .await
+                    .map_err(|_| Error::InternalIOFailure)?;
+                return Ok(());
+            }
+
             reply
                 .send(NodeReply::no_such_worker(addr.clone()))
                 .await
