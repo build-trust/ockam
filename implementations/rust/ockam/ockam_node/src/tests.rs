@@ -29,6 +29,7 @@ mod test {
 
                     ctx.stop().await
                 })
+                .unwrap()
                 .unwrap();
         }
     }
