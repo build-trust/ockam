@@ -225,7 +225,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // We know network address of the node with an Outlet, we also now that Outlet lives at "outlet"
+    // We know network address of the node with an Outlet, we also know that Outlet lives at "outlet"
     // address at that node.
 
     let route_to_outlet = route![(TCP, "127.0.0.1:4000"), "outlet"];
