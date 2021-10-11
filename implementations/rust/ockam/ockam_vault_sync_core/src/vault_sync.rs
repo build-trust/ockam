@@ -1,6 +1,6 @@
 use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
 use ockam_core::compat::rand::random;
-use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage, Route};
+use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage};
 use ockam_node::{block_future, Context, Handle};
 use tracing::debug;
 use zeroize::Zeroize;
@@ -23,35 +23,10 @@ pub use verifier::*;
 
 /// Vault sync wrapper
 pub struct VaultSync {
-    // ctx: Context,
-    // vault_worker_address: Address,
     handle: Handle,
 }
 
 impl VaultSync {
-    // Todo: mark as deprecated
-    // #[deprecated]
-    #[allow(unused)]
-    pub(crate) async fn send_message(&self, m: VaultRequestMessage) -> Result<()> {
-        self.handle
-            .ctx()
-            .send(Route::new().append(self.handle.address().clone()), m)
-            .await
-    }
-
-    // Todo: mark as deprecated
-    // #[deprecated]
-    #[allow(unused)]
-    pub(crate) async fn receive_message(&mut self) -> Result<VaultResponseMessage> {
-        self.handle
-            .ctx_mut()
-            .receive::<ResultMessage<VaultResponseMessage>>()
-            .await?
-            .take()
-            .body()
-            .into()
-    }
-
     pub(crate) fn call(&mut self, msg: VaultRequestMessage) -> Result<VaultResponseMessage> {
         self.handle
             .call::<VaultRequestMessage, ResultMessage<VaultResponseMessage>>(msg)?

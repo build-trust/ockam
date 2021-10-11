@@ -69,7 +69,6 @@ impl Handle {
     }
 }
 
-// Author : Martin <mcodesmith@gmail.com>
 impl Handle {
     /// Gets inner `Context` as reference
     pub fn ctx(&self) -> &Context {
