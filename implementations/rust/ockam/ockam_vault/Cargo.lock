@@ -41,9 +41,9 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43bb833f0bf979d8475d38fbf09ed3b8a55e1885fe93ad3f93239fc6a4f17b98"
+checksum = "991984e3fd003e7ba02eb724f87a0f997b78677c46c0e91f8424ad7394c9886a"
 dependencies = [
  "getrandom 0.2.3",
  "once_cell",
@@ -940,9 +940,9 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.12.5"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "474aaa926faa1603c40b7885a9eaea29b444d1cb2850cb7c0e37bb1a4182f4fa"
+checksum = "f36bdaa60a83aca3921b5259d5400cbf5e90fc51931376a9bd4a0eb79aa7210f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1027,15 +1027,17 @@ dependencies = [
 
 [[package]]
 name = "vsss-rs"
-version = "1.1.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ab2c37f12d35ff2f9b754e450a6e0930e1d2b7b9df6d6bf4494505e4b71071b"
+checksum = "efa31aec01a02f6609e70e415d568a880fe740ec80bf506ac30d24c8da92865c"
 dependencies = [
  "ff",
  "group",
  "rand_chacha",
  "rand_core 0.6.3",
  "serde",
+ "serde-big-array",
+ "sha2",
  "zeroize",
 ]
 
