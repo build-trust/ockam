@@ -700,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.33.0"
+version = "0.34.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -716,7 +716,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "alloc-cortex-m",
  "async-std",

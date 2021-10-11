@@ -1,6 +1,6 @@
 [package]
 name = "signature_core"
-version = "0.25.0"
+version = "0.26.0"
 authors = ["Ockam Deveopers"]
 edition = "2018"
 resolver = "2"

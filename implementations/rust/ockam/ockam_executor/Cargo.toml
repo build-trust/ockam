@@ -8,7 +8,7 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 keywords = ["ockam", "crypto", "encryption", "authentication"]
 license = "Apache-2.0"
 name = "ockam_executor"
-version = "0.2.0"
+version = "0.3.0"
 
 [features]
 default = ["std"]
@@ -29,7 +29,7 @@ cortexm = ["alloc-cortex-m", "cortex-m", "cortex-m-rt", "cortex-m-semihosting", 
 crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }
 futures = { version = "0.3.15", default-features = false, features = [ "async-await" ] }
 heapless = { version = "0.7", features = [ "mpmc_large" ] }
-ockam_core = { path = "../ockam_core", version = "0.33.0" , default_features = false }
+ockam_core = { path = "../ockam_core", version = "0.34.0"  , default_features = false }
 pin-project-lite = "0.2"
 pin-utils = "0.1.0"
 

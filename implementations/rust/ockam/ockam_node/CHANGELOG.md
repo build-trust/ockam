@@ -5,6 +5,15 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.32.0 - 2021-10-11
+### Added
+- Introduce Context send_from_address_impl
+- Implement From<Iterator> for AddressSet
+### Changed
+- Extract private implementations and Into wrappers
+- Forward error from executor::execute()
+- Dependencies updated
+
 ## v0.31.0 - 2021-10-04
 ### Changed
 - Dependencies updated

@@ -71,7 +71,7 @@ checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
 
 [[package]]
 name = "ockam_core"
-version = "0.33.0"
+version = "0.34.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -83,7 +83,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "arrayref",
  "ockam_core",

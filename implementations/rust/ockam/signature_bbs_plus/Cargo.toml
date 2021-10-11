@@ -1,6 +1,6 @@
 [package]
 name = "signature_bbs_plus"
-version = "0.25.0"
+version = "0.26.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 resolver = "2"
@@ -24,8 +24,8 @@ managed = { version = "0.8", default-features = false, features = ["map"] }
 pairing = "0.20"
 rand_core = "0.6"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-signature_core = { version = "0.25.0"      , path = "../signature_core" }
-signature_bls = { version = "0.23.0"      , path = "../signature_bls" }
+signature_core = { version = "0.26.0"       , path = "../signature_core" }
+signature_bls = { version = "0.24.0"       , path = "../signature_bls" }
 subtle = { version = "2.4", default-features = false }
 typenum = "1.13"
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
