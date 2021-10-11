@@ -12,7 +12,7 @@ fn send_receive() {
     executor
         .execute(async move { run_test(&mut ctx).await })
         .expect("Executor should not fail")
-        .expect("Executor should not fail");
+        .expect("Main function should not fail");
 }
 
 async fn run_test(ctx: &mut Context) -> Result<()> {
