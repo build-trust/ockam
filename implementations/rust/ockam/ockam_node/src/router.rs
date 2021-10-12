@@ -1,13 +1,13 @@
 use crate::relay::ShutdownHandle;
+use crate::tokio::runtime::Runtime;
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
+use crate::tokio::time::{sleep, Duration};
 use crate::{
     error::Error, relay::RelayMessage, AddressRecord, NodeMessage, NodeReply, NodeReplyResult,
 };
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_core::{Address, AddressSet, Result};
-use ockam_core::compat::sync::Arc;
-use crate::tokio::runtime::Runtime;
-use crate::tokio::time::{Duration, sleep};
 
 /// A combined address type and local worker router
 ///
@@ -51,7 +51,7 @@ fn determine_type(next: &Address) -> RouteType {
 }
 
 impl Router {
-    pub fn new(rt: Arc<Runtime>,) -> Self {
+    pub fn new(rt: Arc<Runtime>) -> Self {
         let (sender, receiver) = channel(32);
         Self {
             internal: BTreeMap::new(),
@@ -84,7 +84,7 @@ impl Router {
                 Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
                     if self.is_shutting_down {
                         debug!("Router: Skip Router message during Node stop");
-                        continue
+                        continue;
                     }
 
                     trace!("Registering new router for type {}", tt);
@@ -98,20 +98,20 @@ impl Router {
                 Router(_, _, sender) => {
                     if self.is_shutting_down {
                         debug!("Router: Skip Router message during Node stop");
-                        continue
+                        continue;
                     }
 
                     sender
                         .send(NodeReply::router_exists())
                         .await
                         .map_err(|_| Error::InternalIOFailure)?
-                },
+                }
 
                 // Basic worker control
                 StartWorker(addr, sender, ref reply) => {
                     if self.is_shutting_down {
                         debug!("Router: Skip StartWorker message during Node stop");
-                        continue
+                        continue;
                     }
                     self.start_worker(addr, sender, reply).await?
                 }
@@ -121,7 +121,7 @@ impl Router {
                 CheckAddress(ref addrs, ref reply) => {
                     if self.is_shutting_down {
                         debug!("Router: Skip CheckAddress message during Node stop");
-                        continue
+                        continue;
                     }
                     self.check_addr_collisions(addrs, reply).await?
                 }
@@ -130,7 +130,7 @@ impl Router {
                 StopNode => {
                     if self.is_shutting_down {
                         debug!("Router: Skip StopNode message during Node stop");
-                        continue
+                        continue;
                     }
 
                     self.internal.clear();
@@ -142,10 +142,13 @@ impl Router {
                     }
                     self.is_shutting_down = true;
                     let sender = self.sender.clone();
-                    self.rt.spawn(async move {
-                        sleep(Duration::from_millis(10)).await;
-                        sender.send(HardStopNode).await.unwrap()
-                    }).await.unwrap();
+                    self.rt
+                        .spawn(async move {
+                            sleep(Duration::from_millis(10)).await;
+                            sender.send(HardStopNode).await.unwrap()
+                        })
+                        .await
+                        .unwrap();
                 }
                 HardStopNode => {
                     break;
@@ -153,18 +156,18 @@ impl Router {
                 ListWorkers(sender) => {
                     if self.is_shutting_down {
                         debug!("Router: Skip ListWorkers message during Node stop");
-                        continue
+                        continue;
                     }
 
                     sender
                         .send(NodeReply::workers(self.internal.keys().cloned().collect()))
                         .await
                         .map_err(|_| Error::InternalIOFailure)?
-                },
+                }
                 StartProcessor(addr, sender, ref reply, shutdown_handle) => {
                     if self.is_shutting_down {
                         debug!("Router: Skip StartProcessor message during Node stop");
-                        continue
+                        continue;
                     }
 
                     self.start_processor(addr.into(), sender, reply, shutdown_handle)
@@ -176,7 +179,7 @@ impl Router {
                 SenderReq(ref addr, ref reply) => {
                     if self.is_shutting_down {
                         debug!("Router: Skip SenderReq message during Node stop");
-                        continue
+                        continue;
                     }
 
                     match determine_type(addr) {
@@ -186,9 +189,7 @@ impl Router {
                             self.resolve(&addr, reply, true).await?
                         }
                     }
-                },
-
-
+                }
             }
         }
 
