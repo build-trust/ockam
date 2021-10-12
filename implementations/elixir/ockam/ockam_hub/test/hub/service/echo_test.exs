@@ -11,6 +11,10 @@ defmodule Test.Hub.Service.EchoTest do
 
     {:ok, _echo, _echo_address} = EchoService.start_link(address: "echo_address")
 
+    on_exit(fn ->
+      Ockam.Node.stop("echo_address")
+    end)
+
     msg = %{
       onward_route: [worker_address],
       return_route: [],

@@ -14,7 +14,9 @@ defmodule Test.Hub.Service.ForwardingTest do
     {:ok, _forwarding, _forwarding_address} =
       ForwardingService.start_link(address: "forwarding_address")
 
-    {:ok, _echo, _echo_address} = EchoService.start_link(address: "echo_address")
+    on_exit(fn ->
+      Ockam.Node.stop("forwarding_address")
+    end)
 
     msg = %{onward_route: [worker_address], return_route: [], payload: Utils.pid_to_string()}
     Router.route(msg)
