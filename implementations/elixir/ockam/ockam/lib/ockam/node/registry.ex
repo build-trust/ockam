@@ -44,6 +44,10 @@ defmodule Ockam.Node.Registry do
   # See the "Name registration" section of the `GenServer` module.
   def unregister_name(address), do: Registry.unregister_name({__MODULE__, address})
 
+  @spec addresses(pid) :: [any]
+
+  def addresses(pid), do: Registry.keys(__MODULE__, pid)
+
   # This function is used when a process is registed using the `:via` option.
   #
   # The Gen* modules expect this function to be exported.
