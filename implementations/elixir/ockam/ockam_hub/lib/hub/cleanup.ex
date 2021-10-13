@@ -19,6 +19,8 @@ defmodule Ockam.Hub.Cleanup do
     Logger.info("Start cleanup")
     Logger.info("Cleanup stream workers older than #{idle_timeout} ms")
     WorkerCleanup.cleanup_idle_workers(Ockam.Stream.Workers.Stream, idle_timeout)
+    Logger.info("Cleanup stream index shards older than #{idle_timeout} ms")
+    WorkerCleanup.cleanup_idle_workers(Ockam.Stream.Index.Shard, idle_timeout)
     Logger.info("Cleanup forwarders older than #{idle_timeout} ms")
     WorkerCleanup.cleanup_idle_workers(Ockam.Hub.Service.Forwarding.Forwarder, idle_timeout)
 
