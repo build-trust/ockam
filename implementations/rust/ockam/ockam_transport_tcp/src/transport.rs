@@ -9,11 +9,13 @@ use ockam_node::Context;
 /// calls to [`TcpTransport::create`](crate::TcpTransport::create)
 /// will fail.
 ///
+/// To listen for incoming connections use
+/// [`tcp.listen()`](crate::TcpTransport::listen).
+///
 /// To register additional connections on an already initialised
-/// `TcpTransport`, use
-/// [`tcp.connect()`](crate::TcpTransport::connect).  To listen for
-/// incoming connections use
-/// [`tcp.listen()`](crate::TcpTransport::listen)
+/// `TcpTransport`, use [`tcp.connect()`](crate::TcpTransport::connect).  
+/// This step is optional because the underlying TcpRouter is capable of lazily
+/// establishing a connection upon arrival of an initial message.
 ///
 /// ```rust
 /// use ockam_transport_tcp::TcpTransport;
@@ -62,7 +64,10 @@ impl TcpTransport {
         })
     }
 
-    /// Establish an outgoing TCP connection on an existing transport
+    /// Manually establish an outgoing TCP connection on an existing transport.
+    /// This step is optional because the underlying TcpRouter is capable of lazily establishing
+    /// a connection upon arrival of the initial message.
+    ///
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
@@ -70,6 +75,7 @@ impl TcpTransport {
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
+    /// tcp.connect("127.0.0.1:5000").await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
     pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
@@ -83,7 +89,7 @@ impl TcpTransport {
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
+    /// tcp.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
     pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<()> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
