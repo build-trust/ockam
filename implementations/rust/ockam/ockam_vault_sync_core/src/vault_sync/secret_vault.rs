@@ -1,11 +1,15 @@
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{PublicKey, Secret, SecretAttributes, SecretKey, SecretVault};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
+#[async_trait]
 impl SecretVault for VaultSync {
-    fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
-        let resp = self.call(VaultRequestMessage::SecretGenerate { attributes })?;
+    async fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
+        let resp = self
+            .call(VaultRequestMessage::SecretGenerate { attributes })
+            .await?;
 
         if let VaultResponseMessage::SecretGenerate(s) = resp {
             Ok(s)
@@ -14,11 +18,17 @@ impl SecretVault for VaultSync {
         }
     }
 
-    fn secret_import(&mut self, secret: &[u8], attributes: SecretAttributes) -> Result<Secret> {
-        let resp = self.call(VaultRequestMessage::SecretImport {
-            secret: secret.into(),
-            attributes,
-        })?;
+    async fn secret_import(
+        &mut self,
+        secret: &[u8],
+        attributes: SecretAttributes,
+    ) -> Result<Secret> {
+        let resp = self
+            .call(VaultRequestMessage::SecretImport {
+                secret: secret.into(),
+                attributes,
+            })
+            .await?;
 
         if let VaultResponseMessage::SecretImport(s) = resp {
             Ok(s)
@@ -27,10 +37,12 @@ impl SecretVault for VaultSync {
         }
     }
 
-    fn secret_export(&mut self, context: &Secret) -> Result<SecretKey> {
-        let resp = self.call(VaultRequestMessage::SecretExport {
-            context: context.clone(),
-        })?;
+    async fn secret_export(&mut self, context: &Secret) -> Result<SecretKey> {
+        let resp = self
+            .call(VaultRequestMessage::SecretExport {
+                context: context.clone(),
+            })
+            .await?;
 
         if let VaultResponseMessage::SecretExport(s) = resp {
             Ok(s)
@@ -39,10 +51,12 @@ impl SecretVault for VaultSync {
         }
     }
 
-    fn secret_attributes_get(&mut self, context: &Secret) -> Result<SecretAttributes> {
-        let resp = self.call(VaultRequestMessage::SecretAttributesGet {
-            context: context.clone(),
-        })?;
+    async fn secret_attributes_get(&mut self, context: &Secret) -> Result<SecretAttributes> {
+        let resp = self
+            .call(VaultRequestMessage::SecretAttributesGet {
+                context: context.clone(),
+            })
+            .await?;
 
         if let VaultResponseMessage::SecretAttributesGet(s) = resp {
             Ok(s)
@@ -51,10 +65,12 @@ impl SecretVault for VaultSync {
         }
     }
 
-    fn secret_public_key_get(&mut self, context: &Secret) -> Result<PublicKey> {
-        let resp = self.call(VaultRequestMessage::SecretPublicKeyGet {
-            context: context.clone(),
-        })?;
+    async fn secret_public_key_get(&mut self, context: &Secret) -> Result<PublicKey> {
+        let resp = self
+            .call(VaultRequestMessage::SecretPublicKeyGet {
+                context: context.clone(),
+            })
+            .await?;
 
         if let VaultResponseMessage::SecretPublicKeyGet(s) = resp {
             Ok(s)
@@ -63,10 +79,12 @@ impl SecretVault for VaultSync {
         }
     }
 
-    fn secret_destroy(&mut self, context: Secret) -> Result<()> {
-        let resp = self.call(VaultRequestMessage::SecretDestroy {
-            context: context.clone(),
-        })?;
+    async fn secret_destroy(&mut self, context: Secret) -> Result<()> {
+        let resp = self
+            .call(VaultRequestMessage::SecretDestroy {
+                context: context.clone(),
+            })
+            .await?;
 
         if let VaultResponseMessage::SecretDestroy = resp {
             Ok(())

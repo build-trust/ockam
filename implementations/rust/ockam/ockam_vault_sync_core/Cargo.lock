@@ -768,6 +768,7 @@ dependencies = [
  "rand_pcg",
  "serde",
  "serde-big-array",
+ "tokio",
  "tracing",
  "zeroize",
 ]

@@ -1,18 +1,20 @@
 use crate::VaultMutex;
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{AsymmetricVault, PublicKey, Secret};
 
-impl<V: AsymmetricVault> AsymmetricVault for VaultMutex<V> {
-    fn ec_diffie_hellman(
+#[async_trait]
+impl<V: AsymmetricVault + Send> AsymmetricVault for VaultMutex<V> {
+    async fn ec_diffie_hellman(
         &mut self,
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        return self
-            .0
+        self.0
             .lock()
-            .unwrap()
-            .ec_diffie_hellman(context, peer_public_key);
+            .await
+            .ec_diffie_hellman(context, peer_public_key)
+            .await
     }
 }
 

@@ -1,14 +1,18 @@
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{Secret, Signature, Signer};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
+#[async_trait]
 impl Signer for VaultSync {
-    fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
-        let resp = self.call(VaultRequestMessage::Sign {
-            secret_key: secret_key.clone(),
-            data: data.into(),
-        })?;
+    async fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
+        let resp = self
+            .call(VaultRequestMessage::Sign {
+                secret_key: secret_key.clone(),
+                data: data.into(),
+            })
+            .await?;
 
         if let VaultResponseMessage::Sign(s) = resp {
             Ok(s)

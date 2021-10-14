@@ -1,30 +1,36 @@
 use crate::VaultMutex;
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{PublicKey, Secret, SecretAttributes, SecretKey, SecretVault};
 
-impl<V: SecretVault> SecretVault for VaultMutex<V> {
-    fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
-        return self.0.lock().unwrap().secret_generate(attributes);
+#[async_trait]
+impl<V: SecretVault + Send> SecretVault for VaultMutex<V> {
+    async fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
+        self.0.lock().await.secret_generate(attributes).await
     }
 
-    fn secret_import(&mut self, secret: &[u8], attributes: SecretAttributes) -> Result<Secret> {
-        return self.0.lock().unwrap().secret_import(secret, attributes);
+    async fn secret_import(
+        &mut self,
+        secret: &[u8],
+        attributes: SecretAttributes,
+    ) -> Result<Secret> {
+        self.0.lock().await.secret_import(secret, attributes).await
     }
 
-    fn secret_export(&mut self, context: &Secret) -> Result<SecretKey> {
-        return self.0.lock().unwrap().secret_export(context);
+    async fn secret_export(&mut self, context: &Secret) -> Result<SecretKey> {
+        self.0.lock().await.secret_export(context).await
     }
 
-    fn secret_attributes_get(&mut self, context: &Secret) -> Result<SecretAttributes> {
-        return self.0.lock().unwrap().secret_attributes_get(context);
+    async fn secret_attributes_get(&mut self, context: &Secret) -> Result<SecretAttributes> {
+        self.0.lock().await.secret_attributes_get(context).await
     }
 
-    fn secret_public_key_get(&mut self, context: &Secret) -> Result<PublicKey> {
-        return self.0.lock().unwrap().secret_public_key_get(context);
+    async fn secret_public_key_get(&mut self, context: &Secret) -> Result<PublicKey> {
+        self.0.lock().await.secret_public_key_get(context).await
     }
 
-    fn secret_destroy(&mut self, context: Secret) -> Result<()> {
-        return self.0.lock().unwrap().secret_destroy(context);
+    async fn secret_destroy(&mut self, context: Secret) -> Result<()> {
+        self.0.lock().await.secret_destroy(context).await
     }
 }
 

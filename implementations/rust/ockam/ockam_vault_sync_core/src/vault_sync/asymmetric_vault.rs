@@ -1,17 +1,21 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{AsymmetricVault, PublicKey, Secret};
 
+#[async_trait]
 impl AsymmetricVault for VaultSync {
-    fn ec_diffie_hellman(
+    async fn ec_diffie_hellman(
         &mut self,
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        let resp = self.call(VaultRequestMessage::EcDiffieHellman {
-            context: context.clone(),
-            peer_public_key: peer_public_key.clone(),
-        })?;
+        let resp = self
+            .call(VaultRequestMessage::EcDiffieHellman {
+                context: context.clone(),
+                peer_public_key: peer_public_key.clone(),
+            })
+            .await?;
 
         if let VaultResponseMessage::EcDiffieHellman(s) = resp {
             Ok(s)

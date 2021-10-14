@@ -1,11 +1,15 @@
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{Hasher, Secret, SecretAttributes, SmallBuffer};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
+#[async_trait]
 impl Hasher for VaultSync {
-    fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
-        let resp = self.call(VaultRequestMessage::Sha256 { data: data.into() })?;
+    async fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
+        let resp = self
+            .call(VaultRequestMessage::Sha256 { data: data.into() })
+            .await?;
 
         if let VaultResponseMessage::Sha256(s) = resp {
             Ok(s)
@@ -14,19 +18,21 @@ impl Hasher for VaultSync {
         }
     }
 
-    fn hkdf_sha256(
+    async fn hkdf_sha256(
         &mut self,
         salt: &Secret,
         info: &[u8],
         ikm: Option<&Secret>,
         output_attributes: SmallBuffer<SecretAttributes>,
     ) -> Result<SmallBuffer<Secret>> {
-        let resp = self.call(VaultRequestMessage::HkdfSha256 {
-            salt: salt.clone(),
-            info: info.into(),
-            ikm: ikm.cloned(),
-            output_attributes,
-        })?;
+        let resp = self
+            .call(VaultRequestMessage::HkdfSha256 {
+                salt: salt.clone(),
+                info: info.into(),
+                ikm: ikm.cloned(),
+                output_attributes,
+            })
+            .await?;
 
         if let VaultResponseMessage::HkdfSha256(s) = resp {
             Ok(s)

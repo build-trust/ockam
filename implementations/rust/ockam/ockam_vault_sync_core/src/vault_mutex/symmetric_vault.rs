@@ -1,34 +1,36 @@
 use crate::VaultMutex;
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{Buffer, Secret, SymmetricVault};
 
-impl<V: SymmetricVault> SymmetricVault for VaultMutex<V> {
-    fn aead_aes_gcm_encrypt(
+#[async_trait]
+impl<V: SymmetricVault + Send> SymmetricVault for VaultMutex<V> {
+    async fn aead_aes_gcm_encrypt(
         &mut self,
         context: &Secret,
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        return self
-            .0
+        self.0
             .lock()
-            .unwrap()
-            .aead_aes_gcm_encrypt(context, plaintext, nonce, aad);
+            .await
+            .aead_aes_gcm_encrypt(context, plaintext, nonce, aad)
+            .await
     }
 
-    fn aead_aes_gcm_decrypt(
+    async fn aead_aes_gcm_decrypt(
         &mut self,
         context: &Secret,
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        return self
-            .0
+        self.0
             .lock()
-            .unwrap()
-            .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad);
+            .await
+            .aead_aes_gcm_decrypt(context, cipher_text, nonce, aad)
+            .await
     }
 }
 
