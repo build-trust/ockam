@@ -1,4 +1,5 @@
-use ockam_core::compat::{array::IntoIter, collections::HashMap};
+use core::array::IntoIter;
+use ockam_core::compat::collections::HashMap;
 
 use crate::TransportError;
 
