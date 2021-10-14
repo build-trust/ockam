@@ -1,4 +1,5 @@
-use ockam_core::compat::sync::{Arc, Mutex};
+use ockam_core::compat::sync::Arc;
+use tokio::sync::Mutex;
 use tracing::debug;
 use zeroize::Zeroize;
 
@@ -13,7 +14,8 @@ impl<V> Clone for VaultMutex<V> {
 
 impl<V: Zeroize> Zeroize for VaultMutex<V> {
     fn zeroize(&mut self) {
-        return self.0.lock().unwrap().zeroize();
+        panic!()
+        // return self.0.lock().await.zeroize();
     }
 }
 
