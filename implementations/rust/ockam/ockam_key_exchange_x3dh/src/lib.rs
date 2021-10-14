@@ -8,7 +8,7 @@ extern crate alloc;
 
 use arrayref::array_ref;
 use core::convert::TryFrom;
-use ockam_core::{compat::vec::Vec, hex::encode};
+use ockam_core::{compat::vec::Vec, hex::encode, AsyncTryClone};
 use ockam_vault_core::{
     AsymmetricVault, Hasher, PublicKey, SecretVault, Signer, SymmetricVault, Verifier,
 };
@@ -98,7 +98,16 @@ const CSUITE: &[u8] = b"X3DH_25519_AESGCM_SHA256\0\0\0\0\0\0\0\0";
 
 /// Vault with X3DH required functionality
 pub trait X3dhVault:
-    SecretVault + Signer + Verifier + AsymmetricVault + SymmetricVault + Hasher + Clone + Send + 'static
+    SecretVault
+    + Signer
+    + Verifier
+    + AsymmetricVault
+    + SymmetricVault
+    + Hasher
+    + AsyncTryClone
+    + Send
+    + Sync
+    + 'static
 {
 }
 
@@ -109,8 +118,9 @@ impl<D> X3dhVault for D where
         + AsymmetricVault
         + SymmetricVault
         + Hasher
-        + Clone
+        + AsyncTryClone
         + Send
+        + Sync
         + 'static
 {
 }
@@ -120,47 +130,55 @@ mod tests {
     use super::*;
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
     use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultMutex;
+    use ockam_vault_sync_core::VaultSync;
 
     #[allow(non_snake_case)]
     #[test]
     fn full_flow__correct_credentials__keys_should_match() {
-        let mut vault = VaultMutex::create(SoftwareVault::default());
+        let (mut ctx, mut exec) = ockam_node::start_node();
+        exec.execute(async move {
+            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
+                .await
+                .unwrap();
 
-        let key_exchanger = X3dhNewKeyExchanger::new(vault.clone());
+            let key_exchanger = X3dhNewKeyExchanger::new(vault.async_try_clone().await.unwrap());
 
-        let mut initiator = key_exchanger.initiator().unwrap();
-        let mut responder = key_exchanger.responder().unwrap();
+            let mut initiator = key_exchanger.initiator().await.unwrap();
+            let mut responder = key_exchanger.responder().await.unwrap();
 
-        loop {
-            if !initiator.is_complete() {
-                let m = initiator.generate_request(&[]).unwrap();
-                let _ = responder.handle_response(&m).unwrap();
+            loop {
+                if !initiator.is_complete().await.unwrap() {
+                    let m = initiator.generate_request(&[]).await.unwrap();
+                    let _ = responder.handle_response(&m).await.unwrap();
+                }
+
+                if !responder.is_complete().await.unwrap() {
+                    let m = responder.generate_request(&[]).await.unwrap();
+                    let _ = initiator.handle_response(&m).await.unwrap();
+                }
+
+                if initiator.is_complete().await.unwrap() && responder.is_complete().await.unwrap()
+                {
+                    break;
+                }
             }
 
-            if !responder.is_complete() {
-                let m = responder.generate_request(&[]).unwrap();
-                let _ = initiator.handle_response(&m).unwrap();
-            }
+            let initiator = initiator.finalize().await.unwrap();
+            let responder = responder.finalize().await.unwrap();
 
-            if initiator.is_complete() && responder.is_complete() {
-                break;
-            }
-        }
+            assert_eq!(initiator.h(), responder.h());
 
-        let initiator = initiator.finalize().unwrap();
-        let responder = responder.finalize().unwrap();
+            let s1 = vault.secret_export(&initiator.encrypt_key()).await.unwrap();
+            let s2 = vault.secret_export(&responder.decrypt_key()).await.unwrap();
 
-        assert_eq!(initiator.h(), responder.h());
+            assert_eq!(s1, s2);
 
-        let s1 = vault.secret_export(&initiator.encrypt_key()).unwrap();
-        let s2 = vault.secret_export(&responder.decrypt_key()).unwrap();
+            let s1 = vault.secret_export(&initiator.decrypt_key()).await.unwrap();
+            let s2 = vault.secret_export(&responder.encrypt_key()).await.unwrap();
 
-        assert_eq!(s1, s2);
-
-        let s1 = vault.secret_export(&initiator.decrypt_key()).unwrap();
-        let s2 = vault.secret_export(&responder.encrypt_key()).unwrap();
-
-        assert_eq!(s1, s2);
+            assert_eq!(s1, s2);
+            ctx.stop().await.unwrap();
+        })
+        .unwrap();
     }
 }

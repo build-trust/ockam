@@ -24,34 +24,37 @@ extern crate alloc;
 
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::Secret;
 use zeroize::Zeroize;
 
 /// A trait implemented by both Initiator and Responder peers.
+#[async_trait]
 pub trait KeyExchanger {
     /// Return key exchange unique name.
-    fn name(&self) -> String;
+    async fn name(&self) -> Result<String>;
     /// Generate request that should be sent to the other party.
-    fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
+    async fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>>;
     /// Handle response from other party and return payload.
-    fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>>;
+    async fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>>;
     /// Returns true if the key exchange process is complete.
-    fn is_complete(&self) -> bool;
+    async fn is_complete(&self) -> Result<bool>;
     /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.
-    fn finalize(self) -> Result<CompletedKeyExchange>;
+    async fn finalize(self) -> Result<CompletedKeyExchange>;
 }
 
 /// A creator of both initiator and responder peers of a key exchange.
+#[async_trait]
 pub trait NewKeyExchanger {
     /// Initiator
-    type Initiator: KeyExchanger + Send + 'static;
+    type Initiator: KeyExchanger + Send + Sync + 'static;
     /// Responder
-    type Responder: KeyExchanger + Send + 'static;
+    type Responder: KeyExchanger + Send + Sync + 'static;
 
     /// Create a new Key Exchanger with the initiator role
-    fn initiator(&self) -> Result<Self::Initiator>;
+    async fn initiator(&self) -> Result<Self::Initiator>;
     /// Create a new Key Exchanger with the responder role
-    fn responder(&self) -> Result<Self::Responder>;
+    async fn responder(&self) -> Result<Self::Responder>;
 }
 
 /// The state of a completed key exchange.

@@ -5,6 +5,7 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 use ockam_vault_core::Signature as GenericSignature;
 use ockam_vault_core::{
@@ -42,7 +43,7 @@ impl<V: X3dhVault> Initiator<V> {
         }
     }
 
-    fn prologue(&mut self) -> ockam_core::Result<()> {
+    async fn prologue(&mut self) -> Result<()> {
         if self.identity_key.is_none() {
             let p_atts = SecretAttributes::new(
                 SecretType::Curve25519,
@@ -50,7 +51,7 @@ impl<V: X3dhVault> Initiator<V> {
                 CURVE25519_SECRET_LENGTH,
             );
 
-            self.identity_key = Some(self.vault.secret_generate(p_atts)?);
+            self.identity_key = Some(self.vault.secret_generate(p_atts).await?);
         }
         Ok(())
     }
@@ -70,24 +71,31 @@ impl<V: X3dhVault> core::fmt::Debug for Initiator<V> {
     }
 }
 
+#[async_trait]
 impl<V: X3dhVault> KeyExchanger for Initiator<V> {
-    fn name(&self) -> String {
-        "X3DH".to_string()
+    async fn name(&self) -> Result<String> {
+        Ok("X3DH".to_string())
     }
 
-    fn generate_request(&mut self, _payload: &[u8]) -> Result<Vec<u8>> {
+    async fn generate_request(&mut self, _payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             InitiatorState::GenerateEphemeralIdentityKey => {
-                self.prologue()?;
+                self.prologue().await?;
                 let identity_key = self.identity_key.as_ref().ok_or(X3DHError::InvalidState)?;
-                let pubkey = self.vault.secret_public_key_get(identity_key)?;
+                let pubkey = self.vault.secret_public_key_get(identity_key).await?;
 
-                let ephemeral_identity_key = self.vault.secret_generate(SecretAttributes::new(
-                    SecretType::Curve25519,
-                    SecretPersistence::Ephemeral,
-                    CURVE25519_SECRET_LENGTH,
-                ))?;
-                let ephemeral_pubkey = self.vault.secret_public_key_get(&ephemeral_identity_key)?;
+                let ephemeral_identity_key = self
+                    .vault
+                    .secret_generate(SecretAttributes::new(
+                        SecretType::Curve25519,
+                        SecretPersistence::Ephemeral,
+                        CURVE25519_SECRET_LENGTH,
+                    ))
+                    .await?;
+                let ephemeral_pubkey = self
+                    .vault
+                    .secret_public_key_get(&ephemeral_identity_key)
+                    .await?;
                 self.ephemeral_identity_key = Some(ephemeral_identity_key);
                 self.state = InitiatorState::ProcessPreKeyBundle;
 
@@ -102,7 +110,7 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
         }
     }
 
-    fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
+    async fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             InitiatorState::ProcessPreKeyBundle => {
                 let prekey_bundle = PreKeyBundle::try_from(response)?;
@@ -115,42 +123,54 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
                     .ok_or(X3DHError::InvalidState)?;
 
                 // Check the prekey_bundle signature
-                self.vault.verify(
-                    &GenericSignature::new(prekey_bundle.signature_prekey.as_ref().to_vec()),
-                    &prekey_bundle.identity_key,
-                    prekey_bundle.signed_prekey.as_ref(),
-                )?;
+                self.vault
+                    .verify(
+                        &GenericSignature::new(prekey_bundle.signature_prekey.as_ref().to_vec()),
+                        &prekey_bundle.identity_key,
+                        prekey_bundle.signed_prekey.as_ref(),
+                    )
+                    .await?;
 
                 let dh1 = self
                     .vault
-                    .ec_diffie_hellman(identity_key, &prekey_bundle.signed_prekey)?;
+                    .ec_diffie_hellman(identity_key, &prekey_bundle.signed_prekey)
+                    .await?;
                 let dh2 = self
                     .vault
-                    .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.identity_key)?;
+                    .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.identity_key)
+                    .await?;
                 let dh3 = self
                     .vault
-                    .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.signed_prekey)?;
+                    .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.signed_prekey)
+                    .await?;
                 let dh4 = self
                     .vault
-                    .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.one_time_prekey)?;
+                    .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.one_time_prekey)
+                    .await?;
                 let mut ikm_bytes = vec![0xFFu8; 32]; // FIXME: Why is it here?
-                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh1)?.as_ref());
-                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh2)?.as_ref());
-                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh3)?.as_ref());
-                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh4)?.as_ref());
+                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh1).await?.as_ref());
+                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh2).await?.as_ref());
+                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh3).await?.as_ref());
+                ikm_bytes.extend_from_slice(self.vault.secret_export(&dh4).await?.as_ref());
 
-                let ikm = self.vault.secret_import(
-                    &ikm_bytes,
-                    SecretAttributes::new(
-                        SecretType::Buffer,
-                        SecretPersistence::Ephemeral,
-                        ikm_bytes.len(),
-                    ),
-                )?;
-                let salt = self.vault.secret_import(
-                    &[0u8; 32],
-                    SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 32),
-                )?;
+                let ikm = self
+                    .vault
+                    .secret_import(
+                        &ikm_bytes,
+                        SecretAttributes::new(
+                            SecretType::Buffer,
+                            SecretPersistence::Ephemeral,
+                            ikm_bytes.len(),
+                        ),
+                    )
+                    .await?;
+                let salt = self
+                    .vault
+                    .secret_import(
+                        &[0u8; 32],
+                        SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 32),
+                    )
+                    .await?;
 
                 let atts = SecretAttributes::new(
                     SecretType::Aes,
@@ -158,15 +178,16 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
                     AES256_SECRET_LENGTH,
                 );
 
-                let mut keyrefs =
-                    self.vault
-                        .hkdf_sha256(&salt, CSUITE, Some(&ikm), vec![atts, atts])?;
+                let mut keyrefs = self
+                    .vault
+                    .hkdf_sha256(&salt, CSUITE, Some(&ikm), vec![atts, atts])
+                    .await?;
                 let encrypt_key = keyrefs.pop().ok_or(X3DHError::InvalidState)?;
                 let decrypt_key = keyrefs.pop().ok_or(X3DHError::InvalidState)?;
 
-                let mut state_hash = self.vault.sha256(CSUITE)?.to_vec();
+                let mut state_hash = self.vault.sha256(CSUITE).await?.to_vec();
                 state_hash.append(&mut ikm_bytes);
-                let state_hash = self.vault.sha256(state_hash.as_slice())?;
+                let state_hash = self.vault.sha256(state_hash.as_slice()).await?;
 
                 self.completed_key_exchange = Some(CompletedKeyExchange::new(
                     state_hash,
@@ -182,11 +203,11 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
         }
     }
 
-    fn is_complete(&self) -> bool {
-        matches!(self.state, InitiatorState::Done)
+    async fn is_complete(&self) -> Result<bool> {
+        Ok(matches!(self.state, InitiatorState::Done))
     }
 
-    fn finalize(self) -> ockam_core::Result<CompletedKeyExchange> {
+    async fn finalize(self) -> Result<CompletedKeyExchange> {
         self.completed_key_exchange
             .ok_or_else(|| X3DHError::InvalidState.into())
     }
