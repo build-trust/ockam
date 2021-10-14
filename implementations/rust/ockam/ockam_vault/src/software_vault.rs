@@ -1,5 +1,6 @@
 use crate::VaultError;
 use ockam_core::compat::{collections::BTreeMap, string::String};
+use ockam_core::Result;
 use ockam_vault_core::zdrop_impl;
 use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use tracing::info;
@@ -10,9 +11,10 @@ use zeroize::Zeroize;
 /// # Examples
 /// ```
 /// use ockam_vault::SoftwareVault;
+/// use ockam_core::Result;
 /// use ockam_vault_core::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, Signer, Verifier};
 ///
-/// fn example() -> ockam_core::Result<()> {
+/// async fn example() -> Result<()> {
 ///     let mut vault = SoftwareVault::default();
 ///
 ///     let mut attributes = SecretAttributes::new(
@@ -21,13 +23,13 @@ use zeroize::Zeroize;
 ///         CURVE25519_SECRET_LENGTH,
 ///     );
 ///
-///     let secret = vault.secret_generate(attributes)?;
-///     let public = vault.secret_public_key_get(&secret)?;
+///     let secret = vault.secret_generate(attributes).await?;
+///     let public = vault.secret_public_key_get(&secret).await?;
 ///
 ///     let data = "Very important stuff".as_bytes();
 ///
-///     let signature = vault.sign(&secret, data)?;
-///     assert!(vault.verify(&signature, &public, data)?);
+///     let signature = vault.sign(&secret, data).await?;
+///     assert!(vault.verify(&signature, &public, data).await?);
 ///
 ///     Ok(())
 /// }
@@ -56,7 +58,7 @@ impl Default for SoftwareVault {
 }
 
 impl SoftwareVault {
-    pub(crate) fn get_entry(&self, context: &Secret) -> ockam_core::Result<&VaultEntry> {
+    pub(crate) fn get_entry(&self, context: &Secret) -> Result<&VaultEntry> {
         self.entries
             .get(&context.index())
             .ok_or_else(|| VaultError::EntryNotFound.into())

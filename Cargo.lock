@@ -1477,6 +1477,7 @@ dependencies = [
  "signature_bls",
  "signature_core",
  "signature_ps",
+ "tokio",
  "tracing",
  "x25519-dalek",
  "zeroize",

@@ -1,5 +1,7 @@
 use crate::{SoftwareVault, VaultEntry, VaultError};
 use arrayref::array_ref;
+use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::Buffer;
 use ockam_vault_core::{
     AsymmetricVault, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
@@ -7,10 +9,7 @@ use ockam_vault_core::{
 };
 
 impl SoftwareVault {
-    fn ecdh_internal(
-        vault_entry: &VaultEntry,
-        peer_public_key: &PublicKey,
-    ) -> ockam_core::Result<Buffer<u8>> {
+    fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {
         let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
             SecretType::Curve25519 => {
@@ -42,19 +41,20 @@ impl SoftwareVault {
     }
 }
 
+#[async_trait]
 impl AsymmetricVault for SoftwareVault {
-    fn ec_diffie_hellman(
+    async fn ec_diffie_hellman(
         &mut self,
         context: &Secret,
         peer_public_key: &PublicKey,
-    ) -> ockam_core::Result<Secret> {
+    ) -> Result<Secret> {
         let entry = self.get_entry(context)?;
 
         let dh = Self::ecdh_internal(entry, peer_public_key)?;
 
         let attributes =
             SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());
-        self.secret_import(&dh, attributes)
+        self.secret_import(&dh, attributes).await
     }
 }
 
