@@ -13,7 +13,7 @@ use ockam_node::Context;
 /// [`tcp.listen()`](crate::TcpTransport::listen).
 ///
 /// To register additional connections on an already initialised
-/// `TcpTransport`, use [`tcp.connect()`](crate::TcpTransport::connect).  
+/// `TcpTransport`, use [`tcp.connect()`](crate::TcpTransport::connect).
 /// This step is optional because the underlying TcpRouter is capable of lazily
 /// establishing a connection upon arrival of an initial message.
 ///
