@@ -37,7 +37,6 @@ zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"
 tracing = { version = "0.1", default_features = false }
-async-trait = "0.1"
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 

@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod test {
     use crate::{start_node, Context};
-    use async_trait::async_trait;
     use core::sync::atomic::{AtomicBool, Ordering};
     use core::time::Duration;
+    use ockam_core::async_trait;
     use ockam_core::compat::{
         boxed::Box,
         string::{String, ToString},

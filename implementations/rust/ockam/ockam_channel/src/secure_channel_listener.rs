@@ -1,5 +1,5 @@
 use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker};
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{Address, Encodable, LocalMessage, Result, Routed, TransportMessage, Worker};

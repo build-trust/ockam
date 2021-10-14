@@ -2,7 +2,7 @@ use crate::{
     get_secure_channel_participant_id, CredentialProtocolMessage, CredentialSchema, EntityError,
     IssuerWorker, Profile, SecureChannelTrustInfo, TrustPolicy, TrustPolicyImpl,
 };
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;

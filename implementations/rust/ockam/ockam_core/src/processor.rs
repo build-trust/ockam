@@ -1,6 +1,5 @@
 use crate::compat::boxed::Box;
-use crate::Result;
-use async_trait::async_trait;
+use crate::{async_trait, Result};
 
 /// Base ockam processor trait.
 #[async_trait]

@@ -1,4 +1,4 @@
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, rand::random};
 use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
 use ockam_node::Context;
