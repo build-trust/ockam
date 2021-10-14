@@ -18,14 +18,15 @@ pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");
-    let run_test =
-        TokenStream::from_str(format!("{}(&mut vault);", original_fn_ident.to_string()).as_str())
-            .unwrap();
+    let run_test = TokenStream::from_str(
+        format!("{}(&mut vault).await;", original_fn_ident.to_string()).as_str(),
+    )
+    .unwrap();
     let run_test: Stmt = syn::parse(run_test).expect("B");
 
     let output_function = quote! {
-        #[test]
-        fn #original_fn_ident() {
+        #[tokio::test]
+        async fn #original_fn_ident() {
             #import_test
             let mut vault = new_vault();
             #run_test
@@ -48,9 +49,10 @@ pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");
-    let run_test =
-        TokenStream::from_str(format!("{}(&mut vault);", original_fn_ident.to_string()).as_str())
-            .unwrap();
+    let run_test = TokenStream::from_str(
+        format!("{}(&mut vault).await;", original_fn_ident.to_string()).as_str(),
+    )
+    .unwrap();
     let run_test: Stmt = syn::parse(run_test).expect("B");
 
     let output_function = quote! {
@@ -63,7 +65,7 @@ pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
             executor
             .execute(async move {
                 let vault = new_vault();
-                let mut vault = VaultSync::create(&ctx, vault).unwrap();
+                let mut vault = VaultSync::create(&ctx, vault).await.unwrap();
                 #run_test
 
                 ctx.stop().await.unwrap()

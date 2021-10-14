@@ -1,8 +1,8 @@
 use ockam_core::hex::encode;
 use ockam_vault_core::{Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 
-pub fn sha256(vault: &mut impl Hasher) {
-    let res = vault.sha256(b"a");
+pub async fn sha256(vault: &mut impl Hasher) {
+    let res = vault.sha256(b"a").await;
     assert!(res.is_ok());
     let digest = res.unwrap();
     assert_eq!(
@@ -11,14 +11,17 @@ pub fn sha256(vault: &mut impl Hasher) {
     );
 }
 
-pub fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
+pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
     let salt_value = b"hkdf_test";
     let attributes = SecretAttributes::new(
         SecretType::Buffer,
         SecretPersistence::Ephemeral,
         salt_value.len(),
     );
-    let salt = vault.secret_import(&salt_value[..], attributes).unwrap();
+    let salt = vault
+        .secret_import(&salt_value[..], attributes)
+        .await
+        .unwrap();
 
     let ikm_value = b"a";
     let attributes = SecretAttributes::new(
@@ -26,15 +29,20 @@ pub fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
         SecretPersistence::Ephemeral,
         ikm_value.len(),
     );
-    let ikm = vault.secret_import(&ikm_value[..], attributes).unwrap();
+    let ikm = vault
+        .secret_import(&ikm_value[..], attributes)
+        .await
+        .unwrap();
 
     let attributes = SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24);
 
-    let res = vault.hkdf_sha256(&salt, b"", Some(&ikm), vec![attributes]);
+    let res = vault
+        .hkdf_sha256(&salt, b"", Some(&ikm), vec![attributes])
+        .await;
     assert!(res.is_ok());
     let digest = res.unwrap();
     assert_eq!(digest.len(), 1);
-    let digest = vault.secret_export(&digest[0]).unwrap();
+    let digest = vault.secret_export(&digest[0]).await.unwrap();
     assert_eq!(
         encode(digest.as_ref()),
         "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
