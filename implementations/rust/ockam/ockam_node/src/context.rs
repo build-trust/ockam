@@ -5,7 +5,12 @@ use crate::tokio::{
     sync::mpsc::{channel, Receiver, Sender},
     time::timeout,
 };
-use crate::{error::Error, parser, relay::RelayMessage, Cancel, NodeMessage};
+use crate::{
+    error::Error,
+    parser,
+    relay::{RelayMessage, PROC_ADDR_SUFFIX},
+    Cancel, NodeMessage,
+};
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
@@ -169,15 +174,21 @@ impl Context {
     where
         P: Processor<Context = Context>,
     {
-        // Create a context and receive the mailbox sender
-        let (ctx, sender) =
-            Context::new(self.rt.clone(), self.sender.clone(), address.clone().into());
+        let main_addr = address.clone();
+        let aux_addr = main_addr.suffix(PROC_ADDR_SUFFIX);
 
-        // Then initialise the processor message relay
-        let shutdown_handle = ProcessorRelay::<P>::build(self.rt.as_ref(), processor, ctx);
+        // We create two contexts for the processor.  One is used for
+        // the external representation of the processor worker
+        // (i.e. sending messages, receiving messages, etc), while the
+        // other is used by the router to signal shutdown conditions.
+        let (main, main_tx) = Context::new(self.rt.clone(), self.sender.clone(), main_addr.into());
+        let (aux, aux_tx) = Context::new(self.rt.clone(), self.sender.clone(), aux_addr.into());
+
+        // Initialise the processor relay with the two contexts
+        ProcessorRelay::<P>::init(self.rt.as_ref(), processor, main, aux);
 
         // Send start request to router
-        let (msg, mut rx) = NodeMessage::start_processor(address, sender, shutdown_handle);
+        let (msg, mut rx) = NodeMessage::start_processor(address, main_tx, aux_tx);
         self.sender
             .send(msg)
             .await

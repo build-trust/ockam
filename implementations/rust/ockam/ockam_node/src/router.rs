@@ -1,9 +1,11 @@
-use crate::relay::ShutdownHandle;
+// use crate::relay::ShutdownHandle;
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
-    error::Error, relay::RelayMessage, AddressRecord, NodeMessage, NodeReply, NodeReplyResult,
+    error::Error,
+    relay::{RelayMessage, PROC_ADDR_SUFFIX},
+    AddressRecord, NodeMessage, NodeReply, NodeReplyResult,
 };
-use ockam_core::compat::{collections::BTreeMap, vec::Vec};
+use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, AddressSet, Result};
 
 /// A combined address type and local worker router
@@ -23,8 +25,6 @@ pub struct Router {
     addr_map: BTreeMap<Address, Address>,
     /// Externally registered router components
     external: BTreeMap<u8, Address>,
-    /// Shutdown handles for processors
-    shutdown_handles: BTreeMap<Address, ShutdownHandle>,
     /// Receiver for messages from node
     receiver: Receiver<NodeMessage>,
     /// Keeping a copy of the channel sender to pass out
@@ -51,7 +51,6 @@ impl Router {
             internal: BTreeMap::new(),
             addr_map: BTreeMap::new(),
             external: BTreeMap::new(),
-            shutdown_handles: BTreeMap::new(),
             receiver,
             sender,
         }
@@ -98,23 +97,19 @@ impl Router {
                     self.check_addr_collisions(addrs, reply).await?
                 }
 
-                // Basic node control
+                // Stop node will stop all workers and processors by
+                // dropping their sending channels.
                 StopNode => {
                     self.internal.clear();
-                    // TODO: BTreeMap::pop_first is unstable
-                    let addresses: Vec<Address> = self.shutdown_handles.keys().cloned().collect();
-                    for addr in addresses {
-                        let handle = self.shutdown_handles.remove(&addr).unwrap();
-                        handle.shutdown().await?;
-                    }
                     break;
                 }
                 ListWorkers(sender) => sender
                     .send(NodeReply::workers(self.internal.keys().cloned().collect()))
                     .await
                     .map_err(|_| Error::InternalIOFailure)?,
-                StartProcessor(addr, sender, ref reply, shutdown_handle) => {
-                    self.start_processor(addr, sender, reply, shutdown_handle)
+                StartProcessor(addr, main_sender, aux_sender, ref reply) => {
+                    self.start_processor(addr.into(), main_sender, aux_sender, reply)
+
                         .await?
                 }
                 StopProcessor(ref addr, ref reply) => self.stop_processor(addr, reply).await?,
@@ -170,15 +165,24 @@ impl Router {
     async fn start_processor(
         &mut self,
         addr: Address,
-        sender: Sender<RelayMessage>,
+        main_sender: Sender<RelayMessage>,
+        aux_sender: Sender<RelayMessage>,
         reply: &Sender<NodeReplyResult>,
-        shutdown_handle: ShutdownHandle,
     ) -> Result<()> {
         trace!("Starting new processor '{}'", &addr);
 
-        let address_record = AddressRecord::new(addr.clone().into(), sender);
+        let aux_addr = addr.suffix(PROC_ADDR_SUFFIX);
 
-        self.internal.insert(addr.clone(), address_record);
+        let main_record = AddressRecord::new(addr.clone().into(), main_sender);
+        let aux_record = AddressRecord::new(aux_addr.clone().into(), aux_sender);
+
+        // We insert both records without a reference to each other
+        // because when we stop the processor we can easily derive the
+        // aux address via the well-known suffix.  If this is at some
+        // point no longer sufficient, we should start adding the
+        // addresses as full aliases via address-record or addr_map
+        self.internal.insert(addr.clone(), main_record);
+        self.internal.insert(aux_addr.clone(), aux_record);
 
         #[cfg(feature = "std")]
         if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
@@ -188,8 +192,6 @@ impl Router {
         trace!("{:#?}", self.internal);
 
         self.addr_map.insert(addr.clone(), addr.clone());
-
-        self.shutdown_handles.insert(addr.clone(), shutdown_handle);
 
         // For now we just send an OK back -- in the future we need to
         // communicate the current executor state
@@ -202,30 +204,41 @@ impl Router {
 
     async fn stop_processor(
         &mut self,
-        addr: &Address,
+        main_addr: &Address,
         reply: &Sender<NodeReplyResult>,
     ) -> Result<()> {
-        trace!("Stopping processor '{}'", addr);
+        trace!("Stopping processor '{}'", main_addr);
 
-        let record;
-        if let Some(r) = self.internal.remove(addr) {
-            record = r;
-        } else {
-            reply
-                .send(NodeReply::no_such_processor(addr.clone()))
-                .await
-                .map_err(|_| Error::InternalIOFailure)?;
+        let aux_addr = main_addr.suffix(PROC_ADDR_SUFFIX);
 
-            return Ok(());
-        }
+        // First check if a processor of this address exists and
+        // remove both address records.  We can drop both records here
+        // too.  For the main address this means that no more messages
+        // can be sent to this processor, and for the aux address this
+        // initiates processor shutdown.
+        match (
+            self.internal.remove(&aux_addr),
+            self.internal.remove(main_addr),
+        ) {
+            (Some(_), Some(_)) => {}
+            // If by any chance only one of the records existed we are
+            // in an undefined router state and will panic (for now)
+            (Some(_), None) | (None, Some(_)) => {
+                panic!("Invalid router state: mismatching processor address records!")
+            }
+            _ => {
+                reply
+                    .send(NodeReply::no_such_processor(main_addr.clone()))
+                    .await
+                    .map_err(|_| Error::InternalIOFailure)?;
+                return Ok(());
+            }
+        };
 
-        for addr in record.address_set().iter() {
-            self.addr_map.remove(addr);
-        }
+        // Remove  main address from addr_map too
+        self.addr_map.remove(main_addr);
 
-        let shutdown_handle = self.shutdown_handles.remove(addr).unwrap();
-        shutdown_handle.shutdown().await?;
-
+        // Signal back that everything went OK
         reply
             .send(NodeReply::ok())
             .await
