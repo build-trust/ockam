@@ -1,22 +1,23 @@
-["install.exs"] |> Enum.map(&Code.require_file/1)
+["setup.exs"] |> Enum.map(&Code.require_file/1)
 
-alias Ockam.Transport.TCPAddress
-Ockam.Transport.TCP.start()
-
-# Register this process as address "app".
+# Register this process as worker address "app".
 Ockam.Node.register_address("app", self())
 
-# Prepare our message.
+# Start the TCP Transport Add-on for Ockam Routing.
+Ockam.Transport.TCP.start()
+
+# Prepare the message.
+alias Ockam.Transport.TCPAddress
 message = %{
   onward_route: [TCPAddress.new("localhost", 3000), "h1", TCPAddress.new("localhost", 4000), "echoer"],
   return_route: ["app"],
   payload: "Hello Ockam!"
 }
 
-# Send the message to the worker at address "echoer".
+# Route the message.
 Ockam.Router.route(message)
 
-# Wait to receive a reply
+# Wait to receive a reply.
 receive do
   message -> IO.puts("Address: app\t Received: #{inspect(message)}")
 end

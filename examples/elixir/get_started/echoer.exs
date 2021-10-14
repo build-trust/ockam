@@ -5,11 +5,17 @@ defmodule Echoer do
   alias Ockam.Router
 
   @impl true
-  def handle_message(message, state) do
-    IO.puts("Address: #{state.address}\t Received: #{inspect(message)}")
+  def handle_message(message, %{address: address} = state) do
+    IO.puts("Address: #{address}\t Received: #{inspect(message)}")
 
-    r = %{onward_route: Message.return_route(message), return_route: [state.address], payload: Message.payload(message)}
-    :ok = Router.route(r)
+    Router.route(%{
+      # Make return_route of incoming message, onward_route of outgoing message.
+      onward_route: Message.return_route(message),
+      # Make my address the the return_route of the new message.
+      return_route: [address],
+      # Echo back the same payload.
+      payload: Message.payload(message)
+    })
 
     {:ok, state}
   end

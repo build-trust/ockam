@@ -1,17 +1,15 @@
-["setup.exs", "echoer.exs", "hop.exs"] |> Enum.map(&Code.require_file/1)
+["setup.exs"] |> Enum.map(&Code.require_file/1)
 
 # Register this process as worker address "app".
 Ockam.Node.register_address("app", self())
 
-# Create a Echoer type worker at address "echoer".
-{:ok, _echoer} = Echoer.create(address: "echoer")
-
-# Create a Hop type worker at address "h1".
-{:ok, _h1} = Hop.create(address: "h1")
+# Start the TCP Transport Add-on for Ockam Routing.
+Ockam.Transport.TCP.start()
 
 # Prepare the message.
+alias Ockam.Transport.TCPAddress
 message = %{
-  onward_route: ["h1", "echoer"],
+  onward_route: [TCPAddress.new("localhost", 4000), "echoer"],
   return_route: ["app"],
   payload: "Hello Ockam!"
 }

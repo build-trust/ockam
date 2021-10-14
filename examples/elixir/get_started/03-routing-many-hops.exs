@@ -1,4 +1,7 @@
-["install.exs", "echoer.exs", "hop.exs"] |> Enum.map(&Code.require_file/1)
+["setup.exs", "echoer.exs", "hop.exs"] |> Enum.map(&Code.require_file/1)
+
+# Register this process as worker address "app".
+Ockam.Node.register_address("app", self())
 
 # Create a Echoer type worker at address "echoer".
 {:ok, _echoer} = Echoer.create(address: "echoer")
@@ -8,16 +11,17 @@
 {:ok, _h2} = Hop.create(address: "h2")
 {:ok, _h3} = Hop.create(address: "h3")
 
-# Register this process as address "app".
-Ockam.Node.register_address("app", self())
+# Prepare the message.
+message = %{
+  onward_route: ["h1", "h2", "h3", "echoer"],
+  return_route: ["app"],
+  payload: "Hello Ockam!"
+}
 
-# Prepare our message.
-message = %{onward_route: ["h1", "h2", "h3", "echoer"], return_route: ["app"], payload: "Hello Ockam!"}
-
-# Send the message to the worker at address "echoer".
+# Route the message.
 Ockam.Router.route(message)
 
-# Wait to receive a reply
+# Wait to receive a reply.
 receive do
   message -> IO.puts("Address: app\t Received: #{inspect(message)}")
 end
