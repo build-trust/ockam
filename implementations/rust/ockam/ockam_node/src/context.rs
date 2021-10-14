@@ -2,12 +2,10 @@ use crate::relay::{ProcessorRelay, WorkerRelay};
 use crate::tokio::{
     self,
     runtime::Runtime,
-    sync::mpsc::{channel, Sender},
+    sync::mpsc::{channel, Receiver, Sender},
     time::timeout,
 };
-use crate::{
-    error::Error, node::NullWorker, parser, relay::RelayMessage, Cancel, Mailbox, NodeMessage,
-};
+use crate::{error::Error, parser, relay::RelayMessage, Cancel, NodeMessage};
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
@@ -36,7 +34,7 @@ pub struct Context {
     address: AddressSet,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
-    mailbox: Mailbox,
+    mailbox: Receiver<RelayMessage>,
 }
 
 impl Context {
@@ -44,24 +42,29 @@ impl Context {
     pub fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
     }
-    pub(crate) fn mailbox_mut(&mut self) -> &mut Mailbox {
-        &mut self.mailbox
+    /// Wait for the next message from the mailbox
+    pub(crate) async fn mailbox_next(&mut self) -> Option<RelayMessage> {
+        self.mailbox.recv().await
     }
 }
 
 impl Context {
+    /// Create a new context returning itself and the associated mailbox sender
     pub(crate) fn new(
         rt: Arc<Runtime>,
         sender: Sender<NodeMessage>,
         address: AddressSet,
-        mailbox: Mailbox,
-    ) -> Self {
-        Self {
-            rt,
-            sender,
-            address,
-            mailbox,
-        }
+    ) -> (Self, Sender<RelayMessage>) {
+        let (mb_tx, mailbox) = channel(32);
+        (
+            Self {
+                rt,
+                sender,
+                address,
+                mailbox,
+            },
+            mb_tx,
+        )
     }
 
     /// Return the primary worker address
@@ -86,10 +89,14 @@ impl Context {
     }
 
     async fn new_context_impl(&self, addr: Address) -> Result<Context> {
-        let (ctx, tx) = NullWorker::create(Arc::clone(&self.rt), &addr, self.sender.clone());
+        // Create a new context and get access to the mailbox senders
+        let (ctx, sender) = Self::new(
+            Arc::clone(&self.rt),
+            self.sender.clone(),
+            addr.clone().into(),
+        );
 
         // Create a small relay and register it with the internal router
-        let sender = WorkerRelay::<NullWorker, _>::build_root(&self.rt, tx);
         let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender);
         self.sender
             .send(msg)
@@ -129,15 +136,11 @@ impl Context {
             .map_err(|_| Error::InternalIOFailure)?;
         check_rx.recv().await.ok_or(Error::InternalIOFailure)??;
 
-        // Build the mailbox first
-        let (mb_tx, mb_rx) = channel(32);
-        let mb = Mailbox::new(mb_rx);
-
         // Pass it to the context
-        let ctx = Context::new(self.rt.clone(), self.sender.clone(), address.clone(), mb);
+        let (ctx, sender) = Context::new(self.rt.clone(), self.sender.clone(), address.clone());
 
         // Then initialise the worker message relay
-        let sender = WorkerRelay::<NW, NM>::build(self.rt.as_ref(), worker, ctx, mb_tx);
+        WorkerRelay::<NW, NM>::init(self.rt.as_ref(), worker, ctx);
 
         // Send start request to router
         let (msg, mut rx) = NodeMessage::start_worker(address, sender);
@@ -166,21 +169,12 @@ impl Context {
     where
         P: Processor<Context = Context>,
     {
-        // Build the mailbox first
-        let (mb_tx, mb_rx) = channel(32);
-        let mb = Mailbox::new(mb_rx);
+        // Create a context and receive the mailbox sender
+        let (ctx, sender) =
+            Context::new(self.rt.clone(), self.sender.clone(), address.clone().into());
 
-        // Pass it to the context
-        let ctx = Context::new(
-            self.rt.clone(),
-            self.sender.clone(),
-            address.clone().into(),
-            mb,
-        );
-
-        // Then initialise the worker message relay
-        let (sender, shutdown_handle) =
-            ProcessorRelay::<P>::build(self.rt.as_ref(), processor, ctx, mb_tx);
+        // Then initialise the processor message relay
+        let shutdown_handle = ProcessorRelay::<P>::build(self.rt.as_ref(), processor, ctx);
 
         // Send start request to router
         let (msg, mut rx) = NodeMessage::start_processor(address, sender, shutdown_handle);
@@ -466,7 +460,7 @@ impl Context {
     /// has woken it.
     async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, LocalMessage, Address)> {
         loop {
-            let msg = self.mailbox.next().await.ok_or(Error::FailedLoadData)?;
+            let msg = self.mailbox_next().await.ok_or(Error::FailedLoadData)?;
             let (addr, data) = msg.local_msg();
 
             // FIXME: make message parsing idempotent to avoid cloning

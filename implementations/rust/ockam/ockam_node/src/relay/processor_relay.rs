@@ -1,8 +1,7 @@
 #[cfg(feature = "std")]
 use crate::error::Error;
-use crate::relay::{run_mailbox, RelayMessage, ShutdownHandle, ShutdownListener};
+use crate::relay::{ShutdownHandle, ShutdownListener};
 use crate::tokio::runtime::Runtime;
-use crate::tokio::sync::mpsc;
 use crate::Context;
 use ockam_core::{Processor, Result};
 
@@ -122,24 +121,14 @@ where
         };
     }
 
-    pub(crate) fn build(
-        rt: &Runtime,
-        processor: P,
-        ctx: Context,
-        mb_tx: mpsc::Sender<RelayMessage>,
-    ) -> (mpsc::Sender<RelayMessage>, ShutdownHandle)
+    pub(crate) fn build(rt: &Runtime, processor: P, ctx: Context) -> ShutdownHandle
     where
         P: Processor<Context = Context>,
     {
-        let (tx, rx) = mpsc::channel(32);
-
         let (handle, listener) = ShutdownHandle::create();
-
         let relay = ProcessorRelay::<P>::new(processor, ctx, listener);
 
-        rt.spawn(run_mailbox(rx, mb_tx));
         rt.spawn(relay.run());
-
-        (tx, handle)
+        handle
     }
 }

@@ -31,11 +31,11 @@ pub use ockam_executor::tokio;
 pub use tokio;
 
 mod address_record;
+mod cancel;
 mod context;
 mod error;
 mod executor;
 mod handle;
-mod mailbox;
 mod messages;
 mod node;
 mod parser;
@@ -44,10 +44,10 @@ mod router;
 mod tests;
 
 pub(crate) use address_record::*;
+pub use cancel::*;
 pub use context::*;
 pub use executor::*;
 pub use handle::*;
-pub use mailbox::*;
 pub use messages::*;
 
 pub use node::{start_node, NullWorker};

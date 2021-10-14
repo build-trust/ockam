@@ -15,9 +15,8 @@
 //! The `Relay` is then responsible for turning the message back into
 //! a type and notifying the companion actor.
 
-use crate::relay::{run_mailbox, RelayMessage, RelayPayload};
+use crate::relay::{RelayMessage, RelayPayload};
 use crate::tokio::runtime::Runtime;
-use crate::tokio::sync::mpsc::{channel, Sender};
 use crate::{parser, Context};
 use core::marker::PhantomData;
 use ockam_core::compat::vec::Vec;
@@ -87,7 +86,7 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
             }
         }
 
-        while let Some(RelayMessage { addr, data, .. }) = self.ctx.mailbox_mut().next().await {
+        while let Some(RelayMessage { addr, data, .. }) = self.ctx.mailbox_next().await {
             // Extract the message type based on the relay message
             // wrap state.  Messages addressed to a router will be of
             // type `RouterMessage`, while generic userspace workers
@@ -143,29 +142,8 @@ Is your router accepting the correct message type? (ockam_core::RouterMessage)",
     }
 
     /// Build and spawn a new worker relay, returning a send handle to it
-    pub(crate) fn build(
-        rt: &Runtime,
-        worker: W,
-        ctx: Context,
-        mb_tx: Sender<RelayMessage>,
-    ) -> Sender<RelayMessage> {
-        let (tx, rx) = channel(32);
+    pub(crate) fn init(rt: &Runtime, worker: W, ctx: Context) {
         let relay = WorkerRelay::<W, M>::new(worker, ctx);
-
-        rt.spawn(run_mailbox(rx, mb_tx));
         rt.spawn(relay.run());
-        tx
-    }
-
-    /// Build and spawn the root application relay
-    ///
-    /// The root relay is different from normal worker relays because its
-    /// message inbox is never automatically run, and instead needs to be
-    /// polled via a `receive()` call.
-    pub(crate) fn build_root(rt: &Runtime, mb_tx: Sender<RelayMessage>) -> Sender<RelayMessage> {
-        let (tx, rx) = channel(32);
-
-        rt.spawn(run_mailbox(rx, mb_tx));
-        tx
     }
 }

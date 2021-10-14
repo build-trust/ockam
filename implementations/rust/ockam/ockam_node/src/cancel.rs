@@ -1,29 +1,6 @@
-use crate::tokio::sync::mpsc::Receiver;
-use crate::{relay::RelayMessage, Context};
+use crate::Context;
 use core::fmt::{self, Debug, Display, Formatter};
 use ockam_core::{Address, LocalMessage, Message, Routed};
-
-/// A mailbox for encoded messages
-///
-/// Message type information can't be exposed at this stage because
-/// they need to either be typed in the `Relay` or in the worker's
-/// [`Context`](crate::Context).
-#[derive(Debug)]
-pub struct Mailbox {
-    rx: Receiver<RelayMessage>,
-}
-
-impl Mailbox {
-    /// Create a new mailbox
-    pub fn new(rx: Receiver<RelayMessage>) -> Self {
-        Self { rx }
-    }
-
-    /// Get the next message from the mailbox
-    pub async fn next(&mut self) -> Option<RelayMessage> {
-        self.rx.recv().await
-    }
-}
 
 /// A message wraper type that allows users to cancel message receival
 ///
