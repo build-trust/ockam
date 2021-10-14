@@ -580,6 +580,7 @@ dependencies = [
  "arrayref",
  "ockam_core",
  "ockam_key_exchange_core",
+ "ockam_node",
  "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
