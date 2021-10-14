@@ -1,4 +1,4 @@
-use crate::relay::ShutdownHandle;
+// use crate::relay::ShutdownHandle;
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{error::Error, relay::RelayMessage};
 use ockam_core::compat::vec::Vec;
@@ -13,12 +13,12 @@ pub enum NodeMessage {
     ListWorkers(Sender<NodeReplyResult>),
     /// Stop an existing worker
     StopWorker(Address, Sender<NodeReplyResult>),
-    /// Start a new processor and store the send and shutdown handles
+    /// Start a new processor and store
     StartProcessor(
         Address,
         Sender<RelayMessage>,
+        Sender<RelayMessage>,
         Sender<NodeReplyResult>,
-        ShutdownHandle,
     ),
     /// Stop an existing processor
     StopProcessor(Address, Sender<NodeReplyResult>),
@@ -45,12 +45,12 @@ impl NodeMessage {
     /// Create a start worker message
     pub fn start_processor(
         address: Address,
-        sender: Sender<RelayMessage>,
-        shutdown_handle: ShutdownHandle,
+        main_sender: Sender<RelayMessage>,
+        aux_sender: Sender<RelayMessage>,
     ) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
         (
-            Self::StartProcessor(address, sender, tx, shutdown_handle),
+            Self::StartProcessor(address, main_sender, aux_sender, tx),
             rx,
         )
     }
