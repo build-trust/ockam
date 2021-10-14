@@ -3,8 +3,8 @@ use crate::{
     CredentialProtocolMessage, CredentialSchema, EntityCredential, EntityError, Holder, Identity,
     Profile, ProfileIdentifier, SigningPublicKey,
 };
-use async_trait::async_trait;
 use core::convert::TryInto;
+use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{Address, Result, Route, Routed, Worker};

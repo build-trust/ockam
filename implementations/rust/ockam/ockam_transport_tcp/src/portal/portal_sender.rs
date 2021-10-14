@@ -1,5 +1,5 @@
 use crate::PortalMessage;
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::compat::collections::VecDeque;
 use ockam_core::{
     Address, Any, Decodable, LocalMessage, Result, Route, Routed, TransportMessage, Worker,

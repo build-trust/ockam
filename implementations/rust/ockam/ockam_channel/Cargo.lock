@@ -688,7 +688,6 @@ dependencies = [
 name = "ockam_channel"
 version = "0.30.0"
 dependencies = [
- "async-trait",
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_key_exchange_x3dh",
@@ -820,7 +819,6 @@ dependencies = [
 name = "ockam_vault_sync_core"
 version = "0.26.0"
 dependencies = [
- "async-trait",
  "ockam_core",
  "ockam_node",
  "ockam_vault",

@@ -688,7 +688,6 @@ name = "ockam"
 version = "0.34.0"
 dependencies = [
  "arrayref",
- "async-trait",
  "hex",
  "ockam_channel",
  "ockam_core",
@@ -711,7 +710,6 @@ dependencies = [
 name = "ockam_channel"
 version = "0.30.0"
 dependencies = [
- "async-trait",
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
@@ -740,7 +738,6 @@ dependencies = [
 name = "ockam_entity"
 version = "0.24.0"
 dependencies = [
- "async-trait",
  "cfg-if",
  "group",
  "heapless",
@@ -855,7 +852,6 @@ dependencies = [
 name = "ockam_vault_sync_core"
 version = "0.26.0"
 dependencies = [
- "async-trait",
  "ockam_core",
  "ockam_node",
  "ockam_vault",

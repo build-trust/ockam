@@ -1,5 +1,5 @@
 use crate::{PortalMessage, TcpRouterHandle};
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::{route, Address, LocalMessage, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use tracing::debug;

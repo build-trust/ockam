@@ -2,7 +2,7 @@ use crate::{
     CredentialProtocolMessage, EntityCredential, EntityError, Holder, PresentationFinishedMessage,
     PresentationManifest, Profile,
 };
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{Address, Result, Route, Routed, Worker};
 use ockam_node::Context;

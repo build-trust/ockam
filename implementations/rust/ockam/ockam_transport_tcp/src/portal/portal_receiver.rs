@@ -1,5 +1,5 @@
 use crate::PortalMessage;
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::{route, Address, Processor, Result};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};

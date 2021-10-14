@@ -3,9 +3,9 @@ use crate::{
     atomic::{self, ArcBool},
     TCP,
 };
-use async_trait::async_trait;
 use core::ops::Deref;
 pub(crate) use handle::*;
+use ockam_core::async_trait;
 use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
