@@ -7,11 +7,13 @@ jobs:
   Checker:
     name: Check Submitter For CLA
     env:
-      MESSAGE: "@${{ github.event.client_payload.user }} can we please sign your commits ❤️.\n "
+      MESSAGE: "Thanks for signing the CLA @${{ github.event.client_payload.user }}. We need you to do one more thing to get the PR merged.
+      Can we have your commits signed?. Here's a [helpful guide](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
+      Please do not hesitate to @mrinalwadhwa if you encounter any issue ❤️."
+
     environment:
       name: contributors
     runs-on: ubuntu-20.04
-
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -38,27 +40,21 @@ jobs:
       - name: Git Checkout To PR
         if: steps.PR.outputs.PR_NUMBER
         run: |
-          git fetch origin pull/${{ steps.PR.outputs.PR_NUMBER }}/head:${{ steps.PR.outputs.PR_NUMBER }}
+          git fetch origin pull/${{ steps.PR.outputs.PR_NUMBER }}/head:${{ github.event.client_payload.user }}-${{ steps.PR.outputs.PR_NUMBER }}
 
       - name: Verify Users Commit Signature
         if: steps.PR.outputs.PR_NUMBER
         run: |
           # Ensure user commit is gpg signed with their mail.
-          if git merge --no-ff --no-edit --no-commit --verify-signatures ${{ steps.PR.outputs.PR_NUMBER }}; then
+          if git merge --no-ff --no-edit --no-commit --verify-signatures ${{ github.event.client_payload.user }}-${{ steps.PR.outputs.PR_NUMBER }}; then
             echo "COMMIT_SIGNED=1" >> $GITHUB_ENV
           else
             echo "COMMIT_SIGNED=0" >> $GITHUB_ENV
           fi
 
-      - name: Prepare Message
-        if: env.COMMIT_SIGNED && env.COMMIT_SIGNED == 0
-        run: |
-          OUTPUT=$(echo $MESSAGE | sed -e "s#<USER>#$USER#g")
-          echo "MESSAGE=$OUTPUT" >> $GITHUB_ENV
-
       - name: Create Comment
         if: env.COMMIT_SIGNED && env.COMMIT_SIGNED == 0
         run: |
-          curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
-            -X POST -d '{ "body": "${{ env.MESSAGE }}"" }' \
+          curl -s -H "Authorization: token ${{ secrets.CONTRIBUTORS_PAT }}" \
+            -X POST -d '{ "body": "${{ env.MESSAGE }}" }' \
             "https://api.github.com/repos/ockam-network/ockam/issues/${{ steps.PR.outputs.PR_NUMBER }}/comments"
