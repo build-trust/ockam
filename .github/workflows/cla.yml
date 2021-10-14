@@ -1,18 +1,22 @@
 name: Check CLA
 on:
-  issues:
-    types: [opened]
   pull_request:
     types: [opened]
 jobs:
   check-submitter-for-cla:
-    name: Check submitter for CLA
+    if: github.repository_owner == 'ockam-network'
+    name: Check Submitter For CLA
+
     env:
-      MESSAGE: "Thank you <USER> for creating this <EVENT>. Before you continue you will need to sign our CLA.
-To do it please create a new PR to the https://github.com/ockam-network/contributors repo adding yourself to the CSV file."
-    runs-on: ubuntu-latest
+      MESSAGE: "Yay! thanks for contributing to the Ockam repository @${{ github.actor }}. We are glad to see more contributors contributing to this open source origanization.\\n
+      Do you mind signing our CLA by creating a pull request, adding your name to the [contributors.csv file](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv).\\n
+      Please feel free to @mrinalwadhwa if you encounter any issue ❤️."
+
+    environment:
+      name: contributors
+    runs-on: ubuntu-20.04
     steps:
-      - name: Clone CONTRIBUTORS
+      - name: Clone Contributors
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
         with:
           repository: ockam-network/contributors
@@ -21,20 +25,13 @@ To do it please create a new PR to the https://github.com/ockam-network/contribu
       # Gather necessary information
       - name: Setup
         run: |
-          if [ ${{ github.event_name }} = "issues" ]; then
-            USER=${{ github.event.issue.user.login }}
-            EVENT=issue
-          else
-            USER=${{ github.event.pull_request.user.login }}
-            EVENT=PR
-          fi
+          USER=${{ github.actor }}
 
           # Export variable
           # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
           echo "USER=$USER" >> $GITHUB_ENV
-          echo "EVENT=$EVENT" >> $GITHUB_ENV
 
-      - name: Check submitter
+      - name: Check Submitter
         continue-on-error: true
         shell: bash
         run: |
@@ -50,25 +47,9 @@ To do it please create a new PR to the https://github.com/ockam-network/contribu
             echo "CLA_NOT_SIGNED=0" >> $GITHUB_ENV
           fi
 
-      - name: Prepare message
-        if: env.CLA_NOT_SIGNED == 1
+      - name: Create Comment
+        if: env.CLA_NOT_SIGNED && env.CLA_NOT_SIGNED == 1
         run: |
-          OUTPUT=$(echo $MESSAGE | sed -e "s#<USER>#$USER#g" -e "s#<EVENT>#$EVENT#g")
-          echo "MESSAGE=$OUTPUT" >> $GITHUB_ENV
-
-      - name: Add PR comment
-        if: env.CLA_NOT_SIGNED == 1  &&  github.event_name == 'pull_request'
-        uses: mshick/add-pr-comment@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          repo-token-user-login: 'Ockam[bot]' # The user.login for temporary GitHub tokens
-          message: |
-            ${{ env.MESSAGE }}
-
-      - name: Add ISSUE comment
-        if: env.CLA_NOT_SIGNED == 1  &&  github.event_name == 'issues'
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            ${{ env.MESSAGE }}
+          curl -s -H "Authorization: token ${{ secrets.CONTRIBUTORS_PAT }}" \
+            -X POST -d '{ "body": "${{ env.MESSAGE }}" }' \
+            "https://api.github.com/repos/ockam-network/ockam/issues/${{ github.event.issue.number }}/comments"
