@@ -55,3 +55,4 @@ tracing = { version = "0.1", default-features = false }
 [dev-dependencies]
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "0.24.0"        }
 ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.26.0"        }
+tokio = {version = "1.8", features = ["full"]}
