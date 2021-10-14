@@ -1,10 +1,20 @@
 use crate::{Initiator, Responder, X3dhVault};
+use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{AsyncTryClone, Result};
 use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
-#[derive(Clone)]
 pub struct X3dhNewKeyExchanger<V: X3dhVault> {
     vault: V,
+}
+
+#[async_trait]
+impl<V: X3dhVault> AsyncTryClone for X3dhNewKeyExchanger<V> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            vault: self.vault.async_try_clone().await?,
+        })
+    }
 }
 
 impl<V: X3dhVault> core::fmt::Debug for X3dhNewKeyExchanger<V> {
@@ -20,15 +30,16 @@ impl<V: X3dhVault> X3dhNewKeyExchanger<V> {
     }
 }
 
+#[async_trait]
 impl<V: X3dhVault> NewKeyExchanger for X3dhNewKeyExchanger<V> {
     type Initiator = Initiator<V>;
     type Responder = Responder<V>;
 
-    fn initiator(&self) -> ockam_core::Result<Initiator<V>> {
-        Ok(Initiator::new(self.vault.clone(), None))
+    async fn initiator(&self) -> Result<Initiator<V>> {
+        Ok(Initiator::new(self.vault.async_try_clone().await?, None))
     }
 
-    fn responder(&self) -> ockam_core::Result<Responder<V>> {
-        Ok(Responder::new(self.vault.clone(), None))
+    async fn responder(&self) -> Result<Responder<V>> {
+        Ok(Responder::new(self.vault.async_try_clone().await?, None))
     }
 }

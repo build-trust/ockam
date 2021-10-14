@@ -5,6 +5,7 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug)]
@@ -31,15 +32,16 @@ impl<V: XXVault> Responder<V> {
     }
 }
 
+#[async_trait]
 impl<V: XXVault> KeyExchanger for Responder<V> {
-    fn name(&self) -> String {
-        "NOISE_XX".to_string()
+    async fn name(&self) -> Result<String> {
+        Ok("NOISE_XX".to_string())
     }
 
-    fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
+    async fn generate_request(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             ResponderState::EncodeMessage2 => {
-                let msg = self.state_data.encode_message_2(payload)?;
+                let msg = self.state_data.encode_message_2(payload).await?;
                 self.state = ResponderState::DecodeMessage3;
                 Ok(msg)
             }
@@ -49,16 +51,16 @@ impl<V: XXVault> KeyExchanger for Responder<V> {
         }
     }
 
-    fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
+    async fn handle_response(&mut self, response: &[u8]) -> Result<Vec<u8>> {
         match self.state {
             ResponderState::DecodeMessage1 => {
-                self.state_data.run_prologue()?;
-                let msg = self.state_data.decode_message_1(response)?;
+                self.state_data.run_prologue().await?;
+                let msg = self.state_data.decode_message_1(response).await?;
                 self.state = ResponderState::EncodeMessage2;
                 Ok(msg)
             }
             ResponderState::DecodeMessage3 => {
-                let msg = self.state_data.decode_message_3(response)?;
+                let msg = self.state_data.decode_message_3(response).await?;
                 self.state = ResponderState::Done;
                 Ok(msg)
             }
@@ -68,13 +70,13 @@ impl<V: XXVault> KeyExchanger for Responder<V> {
         }
     }
 
-    fn is_complete(&self) -> bool {
-        matches!(self.state, ResponderState::Done)
+    async fn is_complete(&self) -> Result<bool> {
+        Ok(matches!(self.state, ResponderState::Done))
     }
 
-    fn finalize(self) -> Result<CompletedKeyExchange> {
+    async fn finalize(self) -> Result<CompletedKeyExchange> {
         match self.state {
-            ResponderState::Done => self.state_data.finalize_responder(),
+            ResponderState::Done => self.state_data.finalize_responder().await,
             _ => Err(XXError::InvalidState.into()),
         }
     }
