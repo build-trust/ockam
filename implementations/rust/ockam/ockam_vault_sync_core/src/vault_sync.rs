@@ -1,7 +1,7 @@
 use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
 use ockam_core::compat::{boxed::Box, rand::random};
 use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage};
-use ockam_node::{block_future, Context, Handle};
+use ockam_node::{Context, Handle};
 use tracing::debug;
 use zeroize::Zeroize;
 
@@ -27,32 +27,28 @@ pub struct VaultSync {
 }
 
 impl VaultSync {
-    pub(crate) fn call(&mut self, msg: VaultRequestMessage) -> Result<VaultResponseMessage> {
+    pub(crate) async fn call(&mut self, msg: VaultRequestMessage) -> Result<VaultResponseMessage> {
         self.handle
-            .call::<VaultRequestMessage, ResultMessage<VaultResponseMessage>>(msg)?
+            .call::<VaultRequestMessage, ResultMessage<VaultResponseMessage>>(msg)
+            .await?
             .into()
-    }
-}
-
-impl Clone for VaultSync {
-    fn clone(&self) -> Self {
-        self.start_another().unwrap()
     }
 }
 
 #[async_trait]
 impl AsyncTryClone for VaultSync {
     async fn async_try_clone(&self) -> Result<Self> {
-        self.start_another()
+        self.start_another().await
     }
 }
 
 impl VaultSync {
     /// Start another Vault at the same address.
-    pub fn start_another(&self) -> Result<Self> {
+    pub async fn start_another(&self) -> Result<Self> {
         let vault_worker_address = self.handle.address().clone();
 
-        let clone = VaultSync::create_with_worker(&self.handle.ctx(), &vault_worker_address)?;
+        let clone =
+            VaultSync::create_with_worker(&self.handle.ctx(), &vault_worker_address).await?;
 
         Ok(clone)
     }
@@ -64,26 +60,23 @@ impl Zeroize for VaultSync {
 
 impl VaultSync {
     /// Create and start a new Vault using Worker.
-    pub fn create_with_worker(ctx: &Context, vault: &Address) -> Result<Self> {
+    pub async fn create_with_worker(ctx: &Context, vault: &Address) -> Result<Self> {
         let address: Address = random();
 
         debug!("Starting VaultSync at {}", &address);
 
-        let ctx = block_future(
-            &ctx.runtime(),
-            async move { ctx.new_context(address).await },
-        )?;
+        let child_ctx = ctx.new_context(address).await?;
 
         Ok(Self {
-            handle: Handle::new(ctx, vault.clone()),
+            handle: Handle::new(child_ctx, vault.clone()),
         })
     }
 
     /// Start a Vault.
-    pub fn create<T: VaultTrait>(ctx: &Context, vault: T) -> Result<Self> {
-        let vault_address = Vault::create_with_inner(ctx, vault)?;
+    pub async fn create<T: VaultTrait>(ctx: &Context, vault: T) -> Result<Self> {
+        let vault_address = Vault::create_with_inner(ctx, vault).await?;
 
-        Self::create_with_worker(ctx, &vault_address)
+        Self::create_with_worker(ctx, &vault_address).await
     }
 
     /// Return the Vault worker address
