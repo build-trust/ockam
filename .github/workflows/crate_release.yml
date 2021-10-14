@@ -7,7 +7,7 @@ on:
       - 'implementations/rust/ockam/**'
 
 jobs:
-  docker_base:
+  crate_release:
     if: github.event.ref == 'refs/heads/develop' && github.repository_owner == 'ockam-network'
     runs-on: ubuntu-20.04
     environment:
@@ -16,7 +16,7 @@ jobs:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@a3b37769d28120b0a633f6985f454bbc6293c946
         with:
-          token: ${{ secrets.SECRET_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
           repository: ockam-network/artifacts
           event-type: crate_release
-          client-payload: '{"sha": "${{ github.sha }}"}'
+          client-payload: '{"sha": "${{ github.sha }}", "timestamp": "$(date +%s)"}'
