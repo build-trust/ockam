@@ -2,7 +2,7 @@ use crate::{
     atomic::{self, ArcBool},
     TcpRouterHandle, WorkerPair,
 };
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;

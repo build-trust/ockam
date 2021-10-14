@@ -1,6 +1,6 @@
 use crate::atomic::ArcBool;
 use crate::{atomic, PortalWorkerPair};
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{Address, Processor, Result, Route};
 use ockam_node::Context;

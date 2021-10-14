@@ -1,4 +1,4 @@
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::{Encodable, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;

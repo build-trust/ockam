@@ -1,5 +1,5 @@
 use crate::atomic::{self, ArcBool};
-use async_trait::async_trait;
+use ockam_core::async_trait;
 use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
