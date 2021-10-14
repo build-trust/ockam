@@ -65,7 +65,11 @@ macro_rules! println {
     ($($arg:tt)*) => {{
         // TODO replace with cortex-m-log or defmt
         #[cfg(target_arch="arm")]
-        cortex_m_semihosting::hprintln!($($arg)*).unwrap();
+        //cortex_m_semihosting::hprintln!($($arg)*).unwrap();
+        {
+            let itm = unsafe { &mut *cortex_m::peripheral::ITM::ptr() };
+            cortex_m::iprintln!(&mut itm.stim[0], $($arg)*);
+        }
         // dummy fallback definition
         #[cfg(not(target_arch="arm"))]
         {

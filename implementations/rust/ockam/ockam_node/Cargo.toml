@@ -19,7 +19,7 @@ std = ["ockam_core/std", "tokio/full", "tracing-subscriber"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
-no_std = ["ockam_core/no_std", "ockam_node_no_std/no_std", "heapless", "cortex-m-semihosting"]
+no_std = ["ockam_core/no_std", "ockam_node_no_std/no_std", "heapless"]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
@@ -40,7 +40,8 @@ ockam_executor = { path = "../ockam_executor", version = "0.2.0", default-featur
 
 [target.'cfg(target_arch = "arm")'.dependencies]
 # TODO replace cortex-m-semihosting with 'log'
-cortex-m-semihosting = { version = "0.3.7", optional = true }
+cortex-m = "0.7.3"
+cortex-m-semihosting = "0.3.7"
 
 [dev-dependencies]
 async-trait =  { version = "0.1" }
