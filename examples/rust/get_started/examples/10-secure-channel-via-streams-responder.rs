@@ -11,11 +11,12 @@ async fn main(ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
-    let vault = Vault::create(&ctx)?;
-    let mut bob = Entity::create(&ctx, &vault)?;
+    let vault = Vault::create(&ctx).await?;
+    let mut bob = Entity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
+    bob.create_secure_channel_listener("secure_channel_listener".into(), TrustEveryonePolicy)
+        .await?;
 
     // Create a stream client
     Stream::new(&ctx)?
