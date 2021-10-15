@@ -1,5 +1,5 @@
 use crate::{PortalMessage, TcpRouterHandle};
-use ockam_core::async_trait;
+use ockam_core::{async_trait, AsyncTryClone};
 use ockam_core::{route, Address, LocalMessage, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use tracing::debug;
@@ -16,7 +16,7 @@ impl TcpOutletListenWorker {
         peer: String,
     ) -> Result<()> {
         let worker = Self {
-            router_handle: router_handle.clone(),
+            router_handle: router_handle.async_try_clone().await?,
             peer,
         };
 
