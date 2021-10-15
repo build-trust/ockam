@@ -1,11 +1,13 @@
-use crate::{CreateResponderChannelMessage, LocalInfo, SecureChannelError, SecureChannelVault};
+use crate::{
+    CreateResponderChannelMessage, LocalInfo, SecureChannelError, SecureChannelKeyExchanger,
+    SecureChannelVault,
+};
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
     Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed, TransportMessage,
     Worker,
 };
-use ockam_key_exchange_core::KeyExchanger;
 use ockam_node::Context;
 use ockam_vault_core::Secret;
 use serde::{Deserialize, Serialize};
@@ -20,7 +22,7 @@ pub(crate) struct ChannelKeys {
 /// SecureChannel is an abstraction responsible for sending messages (usually over the network) in
 /// encrypted and authenticated way.
 /// SecureChannel always has two ends: initiator and responder.
-pub struct SecureChannelWorker<V: SecureChannelVault, K: KeyExchanger + Send + 'static> {
+pub struct SecureChannelWorker<V: SecureChannelVault, K: SecureChannelKeyExchanger> {
     is_initiator: bool,
     remote_route: Route,
     address_remote: Address,
@@ -35,9 +37,9 @@ pub struct SecureChannelWorker<V: SecureChannelVault, K: KeyExchanger + Send + '
     key_exchange_name: String,
 }
 
-impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorker<V, K> {
+impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V, K> {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
+    pub(crate) async fn new(
         is_initiator: bool,
         remote_route: Route,
         address_remote: Address,
@@ -47,7 +49,7 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         key_exchanger: K,
         vault: V,
     ) -> Result<Self> {
-        let key_exchange_name = key_exchanger.name();
+        let key_exchange_name = key_exchanger.name().await?;
         Ok(SecureChannelWorker {
             is_initiator,
             remote_route,
@@ -145,12 +147,10 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
 
             let (small_nonce, nonce) = Self::convert_nonce_u16(nonce);
 
-            let mut cipher_text = self.vault.aead_aes_gcm_encrypt(
-                &keys.encrypt_key,
-                payload.as_slice(),
-                &nonce,
-                &[],
-            )?;
+            let mut cipher_text = self
+                .vault
+                .aead_aes_gcm_encrypt(&keys.encrypt_key, payload.as_slice(), &nonce, &[])
+                .await?;
 
             let mut res = Vec::new();
             res.extend_from_slice(&small_nonce);
@@ -188,7 +188,8 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
             let nonce = Self::convert_nonce_small(&payload.as_slice()[..2])?;
 
             self.vault
-                .aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[2..], &nonce, &[])?
+                .aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[2..], &nonce, &[])
+                .await?
         };
 
         let mut transport_message = TransportMessage::decode(&payload)?;
@@ -227,10 +228,10 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         } else {
             return Err(SecureChannelError::InvalidInternalState.into());
         }
-        let _ = key_exchanger.handle_response(payload.as_slice())?;
+        let _ = key_exchanger.handle_response(payload.as_slice()).await?;
 
-        if !key_exchanger.is_complete() {
-            let payload = key_exchanger.generate_request(&[])?;
+        if !key_exchanger.is_complete().await? {
+            let payload = key_exchanger.generate_request(&[]).await?;
             self.send_key_exchange_payload(ctx, payload, false).await?;
         }
 
@@ -240,14 +241,14 @@ impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> SecureChannelWorke
         } else {
             return Err(SecureChannelError::InvalidInternalState.into());
         }
-        if key_exchanger.is_complete() {
+        if key_exchanger.is_complete().await? {
             let key_exchanger;
             if let Some(k) = self.key_exchanger.take() {
                 key_exchanger = k;
             } else {
                 return Err(SecureChannelError::InvalidInternalState.into());
             }
-            let keys = key_exchanger.finalize()?;
+            let keys = key_exchanger.finalize().await?;
 
             self.keys = Some(ChannelKeys {
                 encrypt_key: keys.encrypt_key().clone(),
@@ -303,14 +304,14 @@ impl KeyExchangeCompleted {
 }
 
 #[async_trait]
-impl<V: SecureChannelVault, K: KeyExchanger + Send + 'static> Worker for SecureChannelWorker<V, K> {
+impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> Worker for SecureChannelWorker<V, K> {
     type Message = Any;
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if self.is_initiator {
             if let Some(initiator) = self.key_exchanger.as_mut() {
-                let payload = initiator.generate_request(&[])?;
+                let payload = initiator.generate_request(&[]).await?;
 
                 self.send_key_exchange_payload(ctx, payload, true).await?;
             } else {

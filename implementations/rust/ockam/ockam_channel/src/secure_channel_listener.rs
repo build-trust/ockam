@@ -75,6 +75,8 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             &address_local, &address_remote
         );
 
+        let responder = self.new_key_exchanger.responder().await?;
+        let vault = self.vault.async_try_clone().await?;
         let channel = SecureChannelWorker::new(
             false,
             reply.clone(),
@@ -82,9 +84,10 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             address_local.clone(),
             msg.completed_callback_address().clone(),
             None,
-            self.new_key_exchanger.responder()?,
-            self.vault.clone(),
-        )?;
+            responder,
+            vault,
+        )
+        .await?;
 
         ctx.start_worker(vec![address_remote.clone(), address_local], channel)
             .await?;

@@ -41,32 +41,34 @@ pub use traits::*;
 mod tests {
     use crate::SecureChannel;
     use ockam_core::compat::string::{String, ToString};
-    use ockam_core::Route;
+    use ockam_core::{AsyncTryClone, Route};
     use ockam_key_exchange_core::NewKeyExchanger;
     use ockam_key_exchange_xx::XXNewKeyExchanger;
     use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::{Vault, VaultSync};
+    use ockam_vault_sync_core::VaultSync;
 
     #[test]
     fn simplest_channel() {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let vault = Vault::create_with_inner(&ctx, SoftwareVault::default())?;
-                let vault_sync = VaultSync::create_with_worker(&ctx, &vault).unwrap();
-                let new_key_exchanger = XXNewKeyExchanger::new(vault_sync.clone());
+                let vault_sync = VaultSync::create(&ctx, SoftwareVault::default())
+                    .await
+                    .unwrap();
+                let new_key_exchanger =
+                    XXNewKeyExchanger::new(vault_sync.async_try_clone().await.unwrap());
                 SecureChannel::create_listener_extended(
                     &ctx,
                     "secure_channel_listener".to_string(),
-                    new_key_exchanger.clone(),
-                    vault_sync.clone(),
+                    new_key_exchanger.async_try_clone().await.unwrap(),
+                    vault_sync.async_try_clone().await.unwrap(),
                 )
                 .await?;
                 let initiator = SecureChannel::create_extended(
                     &ctx,
                     Route::new().append("secure_channel_listener"),
                     None,
-                    new_key_exchanger.initiator()?,
+                    new_key_exchanger.initiator().await?,
                     vault_sync,
                 )
                 .await?;
