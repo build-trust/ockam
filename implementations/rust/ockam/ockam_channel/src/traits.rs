@@ -1,17 +1,18 @@
+use ockam_core::AsyncTryClone;
 use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_vault_core::SymmetricVault;
 
 /// Vault with XX required functionality
-pub trait SecureChannelVault: SymmetricVault + Clone + Send + 'static {}
+pub trait SecureChannelVault: SymmetricVault + AsyncTryClone + Send + Sync + 'static {}
 
-impl<D> SecureChannelVault for D where D: SymmetricVault + Clone + Send + 'static {}
+impl<D> SecureChannelVault for D where D: SymmetricVault + AsyncTryClone + Send + Sync + 'static {}
 
-/// Vault with XX required functionality
-pub trait SecureChannelKeyExchanger: KeyExchanger + Send + 'static {}
+/// KeyExchanger with extra constraints
+pub trait SecureChannelKeyExchanger: KeyExchanger + Send + Sync + 'static {}
 
-impl<D> SecureChannelKeyExchanger for D where D: KeyExchanger + Send + 'static {}
+impl<D> SecureChannelKeyExchanger for D where D: KeyExchanger + Send + Sync + 'static {}
 
-/// Vault with XX required functionality
-pub trait SecureChannelNewKeyExchanger: NewKeyExchanger + Send + 'static {}
+/// NewKeyExchanger with extra constraints
+pub trait SecureChannelNewKeyExchanger: NewKeyExchanger + Send + Sync + 'static {}
 
-impl<D> SecureChannelNewKeyExchanger for D where D: NewKeyExchanger + Send + 'static {}
+impl<D> SecureChannelNewKeyExchanger for D where D: NewKeyExchanger + Send + Sync + 'static {}
