@@ -10,8 +10,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
-    let vault = Vault::create(&ctx)?;
-    let mut alice = Entity::create(&ctx, &vault)?;
+    let vault = Vault::create(&ctx).await?;
+    let mut alice = Entity::create(&ctx, &vault).await?;
 
     // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)?
@@ -26,13 +26,15 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create a secure channel
-    let secure_channel = alice.create_secure_channel(
-        route![
-            sender.clone(),            // via the "sc-initiator-to-responder" stream
-            "secure_channel_listener"  // to the "secure_channel_listener" listener
-        ],
-        TrustEveryonePolicy,
-    )?;
+    let secure_channel = alice
+        .create_secure_channel(
+            route![
+                sender.clone(),            // via the "sc-initiator-to-responder" stream
+                "secure_channel_listener"  // to the "secure_channel_listener" listener
+            ],
+            TrustEveryonePolicy,
+        )
+        .await?;
 
     // Send a message
     ctx.send(
