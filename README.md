@@ -155,11 +155,6 @@ messages, over the network, via a cloud service. They mutually authenticate each
 guarantee that the integrity, authenticity, and confidentiality of their messages is protected end-to-end.
 [👉](./documentation/use-cases/end-to-end-encryption-with-rust#readme)
 
-* [__Step-by-Step Deep Dive__](./documentation/guides/rust#readme):
-In this step-by-step guide we write many small rust programs to understand the various building blocks
-that make up Ockam. We dive into Node, Workers, Routing, Transport, Secure Channels and more.
-[👉](./documentation/guides/rust#readme)
-
 * [__Build End-to-End Encryption through Kafka__](./documentation/use-cases/end-to-end-encryption-through-kafka#readme):
 In this guide, we show two programs called Alice and Bob. Alice and Bob send each other messages, over
 the network, via a cloud service, _through Kafka_. They mutually authenticate each other and have a
@@ -168,11 +163,23 @@ end-to-end. The Kafka instance, the intermediary cloud service and attackers on 
 to see or change the contents of en-route messages. The application data in Kafka is encrypted.
 [👉](./documentation/use-cases/end-to-end-encryption-through-kafka#readme)
 
-* [__Build Secure Remote Access Tunnels__](./documentation/use-cases/secure-remote-access-tunnels#readme):
+* [__How to end-to-end encrypt all application layer communication__](./documentation/use-cases/end-to-end-encrypt-all-application-layer-communication#readme):
+In this hands-on guide, we'll create two simple Rust programs to __transparently tunnel__ arbitrary
+application layer communication through Ockam's end-to-end encrypted, mutually authenticated secure channels.
+These example programs are also available in a docker image so you can try them without setting up a rust
+toolchain.
+[👉](./documentation/use-cases/end-to-end-encrypt-all-application-layer-communication#readme)
+
+* [__Build a secure access tunnel to a service in a remote private network__](./documentation/use-cases/secure-remote-access-tunnels#readme):
 In this guide, we'll write a few simple Rust programs to programmatically create secure access tunnels to remote
 services and devices that are running in a private network, behind a NAT. We'll then tunnel arbitrary communication
 protocols through these secure tunnels.
 [👉](./documentation/use-cases/secure-remote-access-tunnels#readme)
+
+* [__Step-by-Step Deep Dive__](./documentation/guides/rust#readme):
+In this step-by-step guide we write many small rust programs to understand the various building blocks
+that make up Ockam. We dive into Node, Workers, Routing, Transport, Secure Channels and more.
+[👉](./documentation/guides/rust#readme)
 
 ## License
 
