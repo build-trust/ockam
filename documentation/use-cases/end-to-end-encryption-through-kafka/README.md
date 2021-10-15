@@ -12,7 +12,7 @@ see or change the contents of en-route messages. The application data in Kafka w
 <a href="#example">
 <img
   alt="End-to-end protected communication between Alice and Bob, via a cloud service, through Kafka"
-  src="./e2ee-ockam-kafka.svg" width="100%">
+  src="./e2ee-ockam-kafka.png">
 </a>
 </p>
 

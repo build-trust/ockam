@@ -14,7 +14,7 @@ a variety of transport protocols and many intermediaries.
 <a href="#rust-example">
 <img
   alt="End-to-end protected communication between Alice and Bob, through a cloud service"
-  src="./end-to-end-protected-secure-channel.svg" width="100%">
+  src="./end-to-end-protected-secure-channel.png">
 </a>
 </p>
 
