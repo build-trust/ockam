@@ -11,12 +11,9 @@
 
 mod error;
 mod macros;
-mod mutex_storage;
 mod vault;
 mod vault_types;
 
 pub use error::*;
 pub use vault::*;
-
-use mutex_storage::*;
 use vault_types::*;
