@@ -640,6 +640,7 @@ dependencies = [
  "rand",
  "serde",
  "serde-big-array",
+ "tokio",
  "tracing",
  "zeroize",
 ]
