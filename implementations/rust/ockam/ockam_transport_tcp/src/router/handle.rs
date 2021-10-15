@@ -4,8 +4,9 @@ use crate::{
     TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
-use ockam_core::{Address, Result, Route, RouterMessage};
-use ockam_node::{block_future, Context};
+use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{Address, AsyncTryClone, Result, Route, RouterMessage};
+use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::sync::Arc;
 
@@ -24,12 +25,11 @@ impl TcpRouterHandle {
     }
 }
 
-impl Clone for TcpRouterHandle {
-    fn clone(&self) -> Self {
-        let child_ctx = block_future(&self.ctx.runtime(), async {
-            self.ctx.new_context(Address::random(0)).await.unwrap()
-        });
-        Self::new(child_ctx, self.addr.clone(), self.run.clone())
+#[async_trait]
+impl AsyncTryClone for TcpRouterHandle {
+    async fn async_try_clone(&self) -> Result<Self> {
+        let child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        Ok(Self::new(child_ctx, self.addr.clone(), self.run.clone()))
     }
 }
 
@@ -62,7 +62,13 @@ impl TcpRouterHandle {
     /// Bind an incoming connection listener for this router
     pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
         let socket_addr = addr.into();
-        TcpListenProcessor::start(&self.ctx, self.clone(), socket_addr, Arc::clone(&self.run)).await
+        TcpListenProcessor::start(
+            &self.ctx,
+            self.async_try_clone().await?,
+            socket_addr,
+            Arc::clone(&self.run),
+        )
+        .await
     }
 
     /// Bind an incoming portal inlet connection listener for this router

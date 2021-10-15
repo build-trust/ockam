@@ -40,7 +40,6 @@ use ockam_node::Context;
 /// tcp.listen("127.0.0.1:9000").await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
-#[derive(Clone)]
 pub struct TcpTransport {
     router_handle: TcpRouterHandle,
 }
