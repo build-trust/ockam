@@ -45,7 +45,7 @@ impl Worker for IssuerWorker {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if let State::CreateOffer(return_route) = &self.state {
-            let offer = self.profile.create_offer(&self.schema)?;
+            let offer = self.profile.create_offer(&self.schema).await?;
             let offer_id = offer.id.clone();
             ctx.send(
                 return_route.clone(),
@@ -85,12 +85,15 @@ impl Worker for IssuerWorker {
                         .collect();
 
                     // Office signs the credentials.
-                    let frag2 = self.profile.sign_credential_request(
-                        &request,
-                        &self.schema,
-                        &(signing_attributes.clone()),
-                        offer_id.clone(),
-                    )?;
+                    let frag2 = self
+                        .profile
+                        .sign_credential_request(
+                            &request,
+                            &self.schema,
+                            &(signing_attributes.clone()),
+                            offer_id.clone(),
+                        )
+                        .await?;
 
                     ctx.send(route, CredentialProtocolMessage::IssueResponse(frag2))
                         .await?;

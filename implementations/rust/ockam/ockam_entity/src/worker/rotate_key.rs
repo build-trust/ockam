@@ -79,7 +79,7 @@ impl RotateKeyChange {
 
 impl ProfileState {
     /// Rotate key event
-    pub(crate) fn rotate_key(
+    pub(crate) async fn rotate_key(
         &mut self,
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
@@ -92,24 +92,28 @@ impl ProfileState {
         )?
         .clone();
 
-        let mut vault = self.vault();
-
         let last_key_in_chain =
-            Self::get_secret_key_from_event(&key_attributes, &last_event_in_chain, &mut vault)?;
+            Self::get_secret_key_from_event(&key_attributes, &last_event_in_chain, &mut self.vault)
+                .await?;
 
         let secret_attributes = match key_attributes.meta() {
             MetaKeyAttributes::SecretAttributes(secret_attributes) => *secret_attributes,
             _ => panic!("missing secret attributes"),
         };
 
-        let secret_key = vault.secret_generate(secret_attributes)?;
-        let public_key = vault.secret_public_key_get(&secret_key)?.as_ref().to_vec();
+        let secret_key = self.vault.secret_generate(secret_attributes).await?;
+        let public_key = self
+            .vault
+            .secret_public_key_get(&secret_key)
+            .await?
+            .as_ref()
+            .to_vec();
 
         let data = RotateKeyChangeData::new(key_attributes, public_key);
         let data_binary = data.encode().map_err(|_| EntityError::BareError)?;
-        let data_hash = vault.sha256(data_binary.as_slice())?;
-        let self_signature = vault.sign(&secret_key, &data_hash)?;
-        let prev_signature = vault.sign(&last_key_in_chain, &data_hash)?;
+        let data_hash = self.vault.sha256(data_binary.as_slice()).await?;
+        let self_signature = self.vault.sign(&secret_key, &data_hash).await?;
+        let prev_signature = self.vault.sign(&last_key_in_chain, &data_hash).await?;
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
@@ -120,12 +124,12 @@ impl ProfileState {
         let changes = ChangeSet::new(prev_event_id, vec![profile_change]);
         let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
 
-        let event_id = vault.sha256(&changes_binary)?;
+        let event_id = self.vault.sha256(&changes_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
 
-        let root_key = self.get_root_secret()?;
+        let root_key = self.get_root_secret().await?;
 
-        let signature = vault.sign(&root_key, event_id.as_ref())?;
+        let signature = self.vault.sign(&root_key, event_id.as_ref()).await?;
 
         let proof =
             ProfileChangeProof::Signature(Signature::new(SignatureType::RootSign, signature));

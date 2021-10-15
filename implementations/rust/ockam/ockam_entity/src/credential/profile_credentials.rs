@@ -6,118 +6,134 @@ use crate::{
     Issuer, OfferId, PresentationManifest, Profile, ProofRequestId, SigningPublicKey,
 };
 use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use signature_bls::SecretKey;
 
+#[async_trait]
 impl Issuer for Profile {
-    fn get_signing_key(&mut self) -> Result<SecretKey> {
-        self.entity().get_signing_key()
+    async fn get_signing_key(&mut self) -> Result<SecretKey> {
+        self.entity().await?.get_signing_key().await
     }
 
-    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
-        self.entity().get_signing_public_key()
+    async fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
+        self.entity().await?.get_signing_public_key().await
     }
 
-    fn create_offer(&self, schema: &CredentialSchema) -> Result<CredentialOffer> {
-        self.entity().create_offer(schema)
+    async fn create_offer(&self, schema: &CredentialSchema) -> Result<CredentialOffer> {
+        self.entity().await?.create_offer(schema).await
     }
 
-    fn create_proof_of_possession(&self) -> Result<CredentialProof> {
-        self.entity().create_proof_of_possession()
+    async fn create_proof_of_possession(&self) -> Result<CredentialProof> {
+        self.entity().await?.create_proof_of_possession().await
     }
 
-    fn sign_credential<A: AsRef<[CredentialAttribute]>>(
+    async fn sign_credential(
         &self,
         schema: &CredentialSchema,
-        attributes: A,
+        attributes: &[CredentialAttribute],
     ) -> Result<BbsCredential> {
-        self.entity().sign_credential(schema, attributes)
+        self.entity()
+            .await?
+            .sign_credential(schema, attributes)
+            .await
     }
 
-    fn sign_credential_request<A: AsRef<[(String, CredentialAttribute)]>>(
+    async fn sign_credential_request(
         &self,
         request: &CredentialRequest,
         schema: &CredentialSchema,
-        attributes: A,
+        attributes: &[(String, CredentialAttribute)],
         offer_id: OfferId,
     ) -> Result<CredentialFragment2> {
         self.entity()
+            .await?
             .sign_credential_request(request, schema, attributes, offer_id)
+            .await
     }
 }
 
+#[async_trait]
 impl Holder for Profile {
-    fn accept_credential_offer(
+    async fn accept_credential_offer(
         &self,
         offer: &CredentialOffer,
         issuer_public_key: SigningPublicKey,
     ) -> Result<CredentialRequestFragment> {
         self.entity()
+            .await?
             .accept_credential_offer(offer, issuer_public_key)
+            .await
     }
 
-    fn combine_credential_fragments(
+    async fn combine_credential_fragments(
         &self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
     ) -> Result<BbsCredential> {
         self.entity()
+            .await?
             .combine_credential_fragments(credential_fragment1, credential_fragment2)
+            .await
     }
 
-    fn is_valid_credential(
+    async fn is_valid_credential(
         &self,
         credential: &BbsCredential,
         verifier_key: SigningPublicKey,
     ) -> Result<bool> {
-        self.entity().is_valid_credential(credential, verifier_key)
+        self.entity()
+            .await?
+            .is_valid_credential(credential, verifier_key)
+            .await
     }
 
-    fn create_credential_presentation(
+    async fn create_credential_presentation(
         &self,
         credential: &BbsCredential,
         presentation_manifests: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<CredentialPresentation> {
-        self.entity().create_credential_presentation(
-            credential,
-            presentation_manifests,
-            proof_request_id,
-        )
+        self.entity()
+            .await?
+            .create_credential_presentation(credential, presentation_manifests, proof_request_id)
+            .await
     }
 
-    fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
-        self.entity().add_credential(credential)
+    async fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
+        self.entity().await?.add_credential(credential).await
     }
 
-    fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential> {
-        self.entity().get_credential(credential)
+    async fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential> {
+        self.entity().await?.get_credential(credential).await
     }
 }
 
+#[async_trait]
 impl Verifier for Profile {
-    fn create_proof_request_id(&self) -> Result<ProofRequestId> {
-        self.entity().create_proof_request_id()
+    async fn create_proof_request_id(&self) -> Result<ProofRequestId> {
+        self.entity().await?.create_proof_request_id().await
     }
 
-    fn verify_proof_of_possession(
+    async fn verify_proof_of_possession(
         &self,
         signing_public_key: CredentialPublicKey,
         proof: CredentialProof,
     ) -> Result<bool> {
         self.entity()
+            .await?
             .verify_proof_of_possession(signing_public_key, proof)
+            .await
     }
 
-    fn verify_credential_presentation(
+    async fn verify_credential_presentation(
         &self,
         presentation: &CredentialPresentation,
         presentation_manifest: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<bool> {
-        self.entity().verify_credential_presentation(
-            presentation,
-            presentation_manifest,
-            proof_request_id,
-        )
+        self.entity()
+            .await?
+            .verify_credential_presentation(presentation, presentation_manifest, proof_request_id)
+            .await
     }
 }

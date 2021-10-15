@@ -846,6 +846,7 @@ dependencies = [
 name = "ockam_entity"
 version = "0.24.0"
 dependencies = [
+ "bls12_381_plus",
  "cfg-if",
  "group",
  "heapless",
@@ -867,6 +868,7 @@ dependencies = [
  "signature_bbs_plus",
  "signature_bls",
  "signature_core",
+ "tokio",
  "tracing",
 ]
 

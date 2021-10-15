@@ -5,7 +5,6 @@ use ockam_core::{AsyncTryClone, Result};
 use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
-#[derive(Clone)]
 pub struct XXNewKeyExchanger<V: XXVault> {
     vault: V,
 }

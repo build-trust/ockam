@@ -53,18 +53,24 @@ impl Contact {
 
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    pub fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<bool> {
+    pub async fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<bool> {
         if !ProfileChangeHistory::check_consistency(&[], self.change_events()) {
             return deny();
         }
 
-        if !self.change_history.verify_all_existing_events(vault)? {
+        if !self
+            .change_history
+            .verify_all_existing_events(vault)
+            .await?
+        {
             return deny();
         }
 
         let root_public_key = self.change_history.get_first_root_public_key()?;
 
-        let root_key_id = vault.compute_key_id_for_public_key(&root_public_key)?;
+        let root_key_id = vault
+            .compute_key_id_for_public_key(&root_public_key)
+            .await?;
         let profile_id = ProfileIdentifier::from_key_id(root_key_id);
 
         if &profile_id != self.identifier() {
@@ -75,7 +81,7 @@ impl Contact {
     }
 
     /// Update [`Contact`] by using new change events
-    pub fn verify_and_update<C: AsRef<[ProfileChangeEvent]>>(
+    pub async fn verify_and_update<C: AsRef<[ProfileChangeEvent]>>(
         &mut self,
         change_events: C,
         vault: &mut impl ProfileVault,
@@ -85,7 +91,7 @@ impl Contact {
         }
 
         for event in change_events.as_ref().iter() {
-            if !ProfileChangeHistory::verify_event(self.change_events(), event, vault)? {
+            if !ProfileChangeHistory::verify_event(self.change_events(), event, vault).await? {
                 return deny();
             }
             self.change_history.push_event(event.clone());

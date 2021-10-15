@@ -2,8 +2,8 @@ use crate::{
     get_secure_channel_participant_id, CredentialProtocolMessage, CredentialSchema, EntityError,
     IssuerWorker, Profile, SecureChannelTrustInfo, TrustPolicy, TrustPolicyImpl,
 };
-use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
+use ockam_core::{async_trait, AsyncTryClone};
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 
@@ -35,7 +35,7 @@ impl Worker for ListenerWorker {
     ) -> Result<()> {
         let their_profile_id = get_secure_channel_participant_id(&msg)?;
         let trust_info = SecureChannelTrustInfo::new(their_profile_id.clone());
-        let res = self.trust_policy.check(&trust_info)?;
+        let res = self.trust_policy.check(&trust_info).await?;
 
         if !res {
             return Err(EntityError::CredentialTrustCheckFailed.into());
@@ -52,7 +52,7 @@ impl Worker for ListenerWorker {
 
         let address = Address::random(0);
         let worker = IssuerWorker::new(
-            self.profile.clone(),
+            self.profile.async_try_clone().await?,
             their_profile_id,
             self.schema.clone(),
             return_route,

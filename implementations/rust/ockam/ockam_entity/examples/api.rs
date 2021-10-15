@@ -3,15 +3,17 @@ use ockam_node::Context;
 use ockam_vault_sync_core::Vault;
 
 async fn test(ctx: Context) -> ockam_core::Result<()> {
-    let vault = Vault::create(&ctx).expect("failed to create vault");
+    let vault = Vault::create(&ctx).await.expect("failed to create vault");
 
-    let mut bob = Entity::create(&ctx, &vault)?;
+    let mut bob = Entity::create(&ctx, &vault).await?;
 
-    let _home = bob.create_profile(&vault)?;
+    let _home = bob.create_profile(&vault).await?;
     Ok(())
 }
 
 fn main() {
     let (ctx, mut exec) = ockam_node::start_node();
-    exec.execute(async move { test(ctx).await }).unwrap();
+    exec.execute(async move { test(ctx).await })
+        .unwrap()
+        .unwrap();
 }

@@ -21,23 +21,33 @@ use crate::{
     AuthenticationProof, Changes, Contact, Entity, Identity, IdentityRequest, IdentityResponse,
     Lease, ProfileChangeEvent, ProfileIdentifier, SecureChannels, TrustPolicy, TTL,
 };
-use ockam_core::compat::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone};
 use ockam_core::{Address, Result, Route};
 use ockam_node::Handle;
 use ockam_vault::{PublicKey, Secret};
 
-#[derive(Clone)]
 pub struct Profile {
     id: ProfileIdentifier,
     handle: Handle,
 }
 
-impl From<Profile> for Entity {
-    fn from(p: Profile) -> Entity {
-        Entity::new(p.handle.clone(), Some(p.id.clone()))
+#[async_trait]
+impl AsyncTryClone for Profile {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            id: self.id.clone(),
+            handle: self.handle.async_try_clone().await?,
+        })
+    }
+}
+
+impl Entity {
+    async fn from_profile(p: &Profile) -> Result<Entity> {
+        Ok(Entity::new(
+            p.handle.async_try_clone().await?,
+            Some(p.id.clone()),
+        ))
     }
 }
 
@@ -47,16 +57,16 @@ impl Profile {
         Profile { id, handle }
     }
 
-    pub fn entity(&self) -> Entity {
-        Entity::from(self.clone())
+    pub async fn entity(&self) -> Result<Entity> {
+        Entity::from_profile(self).await
     }
 
-    pub fn call(&self, req: IdentityRequest) -> Result<IdentityResponse> {
-        self.handle.call(req)
+    pub async fn call(&self, req: IdentityRequest) -> Result<IdentityResponse> {
+        self.handle.call(req).await
     }
 
-    pub fn cast(&self, req: IdentityRequest) -> Result<()> {
-        self.handle.cast(req)
+    pub async fn cast(&self, req: IdentityRequest) -> Result<()> {
+        self.handle.cast(req).await
     }
 }
 
@@ -72,122 +82,139 @@ impl Profile {
     pub const CURRENT_CHANGE_VERSION: u8 = 1;
 }
 
+#[async_trait]
 impl Identity for Profile {
-    fn identifier(&self) -> Result<ProfileIdentifier> {
-        self.entity().identifier()
+    async fn identifier(&self) -> Result<ProfileIdentifier> {
+        // FIXME: Clone on every call
+        self.entity().await?.identifier().await
     }
 
-    fn create_key<S: Into<String>>(&mut self, label: S) -> Result<()> {
-        self.entity().create_key(label)
+    async fn create_key(&mut self, label: String) -> Result<()> {
+        self.entity().await?.create_key(label).await
     }
 
-    fn rotate_profile_key(&mut self) -> Result<()> {
-        self.entity().rotate_profile_key()
+    async fn rotate_profile_key(&mut self) -> Result<()> {
+        self.entity().await?.rotate_profile_key().await
     }
 
-    fn get_profile_secret_key(&self) -> Result<Secret> {
-        self.entity().get_profile_secret_key()
+    async fn get_profile_secret_key(&self) -> Result<Secret> {
+        self.entity().await?.get_profile_secret_key().await
     }
 
-    fn get_secret_key<S: Into<String>>(&self, label: S) -> Result<Secret> {
-        self.entity().get_secret_key(label)
+    async fn get_secret_key(&self, label: String) -> Result<Secret> {
+        self.entity().await?.get_secret_key(label).await
     }
 
-    fn get_profile_public_key(&self) -> Result<PublicKey> {
-        self.entity().get_profile_public_key()
+    async fn get_profile_public_key(&self) -> Result<PublicKey> {
+        self.entity().await?.get_profile_public_key().await
     }
 
-    fn get_public_key<S: Into<String>>(&self, label: S) -> Result<PublicKey> {
-        self.entity().get_public_key(label)
+    async fn get_public_key(&self, label: String) -> Result<PublicKey> {
+        self.entity().await?.get_public_key(label).await
     }
 
-    fn create_auth_proof<S: AsRef<[u8]>>(&mut self, state_slice: S) -> Result<AuthenticationProof> {
-        self.entity().create_auth_proof(state_slice)
+    async fn create_auth_proof(&mut self, state_slice: &[u8]) -> Result<AuthenticationProof> {
+        self.entity().await?.create_auth_proof(state_slice).await
     }
 
-    fn verify_auth_proof<S: AsRef<[u8]>, P: AsRef<[u8]>>(
+    async fn verify_auth_proof(
         &mut self,
-        state_slice: S,
+        state_slice: &[u8],
         peer_id: &ProfileIdentifier,
-        proof_slice: P,
+        proof_slice: &[u8],
     ) -> Result<bool> {
         self.entity()
+            .await?
             .verify_auth_proof(state_slice, peer_id, proof_slice)
+            .await
     }
 
-    fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
-        self.entity().add_change(change_event)
+    async fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
+        self.entity().await?.add_change(change_event).await
     }
 
-    fn get_changes(&self) -> Result<Changes> {
-        self.entity().get_changes()
+    async fn get_changes(&self) -> Result<Changes> {
+        self.entity().await?.get_changes().await
     }
 
-    fn verify_changes(&mut self) -> Result<bool> {
-        self.entity().verify_changes()
+    async fn verify_changes(&mut self) -> Result<bool> {
+        self.entity().await?.verify_changes().await
     }
 
-    fn get_contacts(&self) -> Result<Vec<Contact>> {
-        self.entity().get_contacts()
+    async fn get_contacts(&self) -> Result<Vec<Contact>> {
+        self.entity().await?.get_contacts().await
     }
 
-    fn as_contact(&mut self) -> Result<Contact> {
-        let changes = self.get_changes()?;
+    async fn as_contact(&mut self) -> Result<Contact> {
+        let changes = self.get_changes().await?;
         Ok(Contact::new(self.id.clone(), changes))
     }
 
-    fn get_contact(&mut self, contact_id: &ProfileIdentifier) -> Result<Option<Contact>> {
-        self.entity().get_contact(contact_id)
+    async fn get_contact(&mut self, contact_id: &ProfileIdentifier) -> Result<Option<Contact>> {
+        self.entity().await?.get_contact(contact_id).await
     }
 
-    fn verify_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool> {
-        self.entity().verify_contact(contact)
+    async fn verify_contact(&mut self, contact: Contact) -> Result<bool> {
+        self.entity().await?.verify_contact(contact).await
     }
 
-    fn verify_and_add_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool> {
-        self.entity().verify_and_add_contact(contact)
+    async fn verify_and_add_contact(&mut self, contact: Contact) -> Result<bool> {
+        self.entity().await?.verify_and_add_contact(contact).await
     }
 
-    fn verify_and_update_contact<C: AsRef<[ProfileChangeEvent]>>(
+    async fn verify_and_update_contact(
         &mut self,
         contact_id: &ProfileIdentifier,
-        change_events: C,
+        change_events: &[ProfileChangeEvent],
     ) -> Result<bool> {
         self.entity()
+            .await?
             .verify_and_update_contact(contact_id, change_events)
+            .await
     }
 
-    fn get_lease(
+    async fn get_lease(
         &self,
         lease_manager_route: &Route,
-        org_id: impl ToString,
-        bucket: impl ToString,
+        org_id: String,
+        bucket: String,
         ttl: TTL,
     ) -> Result<Lease> {
         self.entity()
+            .await?
             .get_lease(lease_manager_route, org_id, bucket, ttl)
+            .await
     }
 
-    fn revoke_lease(&mut self, lease_manager_route: &Route, lease: Lease) -> Result<()> {
-        self.entity().revoke_lease(lease_manager_route, lease)
+    async fn revoke_lease(&mut self, lease_manager_route: &Route, lease: Lease) -> Result<()> {
+        self.entity()
+            .await?
+            .revoke_lease(lease_manager_route, lease)
+            .await
     }
 }
 
+#[async_trait]
 impl SecureChannels for Profile {
-    fn create_secure_channel_listener(
+    async fn create_secure_channel_listener(
         &mut self,
-        address: impl Into<Address> + Send,
+        address: Address,
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
         self.entity()
+            .await?
             .create_secure_channel_listener(address, trust_policy)
+            .await
     }
 
-    fn create_secure_channel(
+    async fn create_secure_channel(
         &mut self,
-        route: impl Into<Route> + Send,
+        route: Route,
         trust_policy: impl TrustPolicy,
     ) -> Result<Address> {
-        self.entity().create_secure_channel(route, trust_policy)
+        self.entity()
+            .await?
+            .create_secure_channel(route, trust_policy)
+            .await
     }
 }
