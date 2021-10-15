@@ -7,6 +7,7 @@ use crate::{
 use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{hex, Address, Error, Result, Route};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
@@ -17,28 +18,29 @@ use serde_big_array::big_array;
 big_array! { BigArray; }
 
 /// Credential Issuer
+#[async_trait]
 pub trait CredentialIssuer {
     /// Return the signing key associated with this CredentialIssuer
-    fn get_signing_key(&mut self) -> Result<BlsSecretKey>;
+    async fn get_signing_key(&mut self) -> Result<BlsSecretKey>;
 
     /// Return the public key
-    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey>;
+    async fn get_signing_public_key(&mut self) -> Result<SigningPublicKey>;
 
     /// Create a credential offer
-    fn create_offer(&mut self, schema: &CredentialSchema) -> Result<CredentialOffer>;
+    async fn create_offer(&mut self, schema: &CredentialSchema) -> Result<CredentialOffer>;
 
     /// Create a proof of possession for this issuers signing key
-    fn create_proof_of_possession(&mut self) -> Result<ProofBytes>;
+    async fn create_proof_of_possession(&mut self) -> Result<ProofBytes>;
 
     /// Sign the claims into the credential
-    fn sign_credential(
+    async fn sign_credential(
         &mut self,
         schema: &CredentialSchema,
         attributes: &[CredentialAttribute],
     ) -> Result<BbsCredential>;
 
     /// Sign a credential request where certain claims have already been committed and signs the remaining claims
-    fn sign_credential_request(
+    async fn sign_credential_request(
         &mut self,
         request: &CredentialRequest,
         schema: &CredentialSchema,
@@ -48,23 +50,24 @@ pub trait CredentialIssuer {
 }
 
 /// Credential Holder
+#[async_trait]
 pub trait CredentialHolder {
     /// Accepts a credential offer from an issuer
-    fn accept_credential_offer(
+    async fn accept_credential_offer(
         &mut self,
         offer: &CredentialOffer,
         signing_public_key: SigningPublicKey,
     ) -> Result<(CredentialRequest, CredentialFragment1)>;
 
     /// Combine credential fragments to yield a completed credential
-    fn combine_credential_fragments(
+    async fn combine_credential_fragments(
         &mut self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
     ) -> Result<BbsCredential>;
 
     /// Check a credential to make sure its valid
-    fn is_valid_credential(
+    async fn is_valid_credential(
         &mut self,
         credential: &BbsCredential,
         verifier_key: SigningPublicKey,
@@ -72,7 +75,7 @@ pub trait CredentialHolder {
 
     /// Given a list of credentials, and a list of manifests
     /// generates a zero-knowledge presentation. Each credential maps to a presentation manifest
-    fn present_credentials(
+    async fn present_credentials(
         &mut self,
         credential: &[BbsCredential],
         presentation_manifests: &[PresentationManifest],
@@ -81,19 +84,20 @@ pub trait CredentialHolder {
 }
 
 /// Credential Verifier
+#[async_trait]
 pub trait CredentialVerifier {
     /// Create a unique proof request id so the holder must create a fresh proof
-    fn create_proof_request_id(&mut self) -> Result<ProofRequestId>;
+    async fn create_proof_request_id(&mut self) -> Result<ProofRequestId>;
 
     /// Verify a proof of possession
-    fn verify_proof_of_possession(
+    async fn verify_proof_of_possession(
         &mut self,
         issuer_vk: SigningPublicKey,
         proof: ProofBytes,
     ) -> Result<bool>;
 
     /// Check if the credential presentations are valid
-    fn verify_credential_presentations(
+    async fn verify_credential_presentations(
         &mut self,
         presentations: &[CredentialPresentation],
         presentation_manifests: &[PresentationManifest],
@@ -217,15 +221,16 @@ impl EntityCredential {
     }
 }
 
+#[async_trait]
 pub trait CredentialProtocol {
-    fn create_credential_issuance_listener(
+    async fn create_credential_issuance_listener(
         &mut self,
-        address: impl Into<Address> + Send,
+        address: Address,
         schema: CredentialSchema,
         trust_policy: impl TrustPolicy,
     ) -> Result<()>;
 
-    fn acquire_credential(
+    async fn acquire_credential(
         &mut self,
         issuer_route: Route,
         issuer_id: &ProfileIdentifier,
@@ -233,16 +238,16 @@ pub trait CredentialProtocol {
         values: Vec<CredentialAttribute>,
     ) -> Result<Credential>;
 
-    fn present_credential(
+    async fn present_credential(
         &mut self,
         worker_route: Route,
         credential: Credential,
         reveal_attributes: Vec<String>,
     ) -> Result<()>;
 
-    fn verify_credential(
+    async fn verify_credential(
         &mut self,
-        address: impl Into<Address> + Send,
+        address: Address,
         issuer_id: &ProfileIdentifier,
         schema: CredentialSchema,
         attributes_values: Vec<CredentialAttribute>,

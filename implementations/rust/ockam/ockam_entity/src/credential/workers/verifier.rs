@@ -67,7 +67,7 @@ impl Worker for VerifierWorker {
         match &self.state {
             State::CreateRequestId => {
                 if let CredentialProtocolMessage::PresentationOffer = msg {
-                    let id = self.profile.create_proof_request_id()?;
+                    let id = self.profile.create_proof_request_id().await?;
                     ctx.send(route, CredentialProtocolMessage::PresentationRequest(id))
                         .await?;
 
@@ -100,11 +100,10 @@ impl Worker for VerifierWorker {
                         revealed,
                     };
 
-                    let credential_is_valid = self.profile.verify_credential_presentation(
-                        &presentation,
-                        &manifest,
-                        id.clone(),
-                    )?;
+                    let credential_is_valid = self
+                        .profile
+                        .verify_credential_presentation(&presentation, &manifest, id.clone())
+                        .await?;
 
                     // TODO: Add some mechanism to identify participant as an owner of the valid credential
                     ctx.send(self.callback_address.clone(), credential_is_valid)

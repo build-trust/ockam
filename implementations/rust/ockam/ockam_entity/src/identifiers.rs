@@ -71,8 +71,8 @@ impl AsRef<[u8]> for EventIdentifier {
 }
 
 impl EventIdentifier {
-    pub fn initial<H: Hasher>(mut hasher: H) -> Self {
-        let h = match hasher.sha256(Profile::NO_EVENT) {
+    pub async fn initial(hasher: &mut (impl Hasher + Sync)) -> Self {
+        let h = match hasher.sha256(Profile::NO_EVENT).await {
             Ok(hash) => hash,
             Err(_) => panic!("failed to hash initial event"),
         };

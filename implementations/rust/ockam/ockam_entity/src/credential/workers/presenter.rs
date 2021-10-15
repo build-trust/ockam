@@ -89,11 +89,14 @@ impl Worker for PresenterWorker {
                         revealed,
                     };
 
-                    let presentation = self.profile.create_credential_presentation(
-                        self.credential.bbs_credential(),
-                        &manifest,
-                        request_id,
-                    )?;
+                    let presentation = self
+                        .profile
+                        .create_credential_presentation(
+                            self.credential.bbs_credential(),
+                            &manifest,
+                            request_id,
+                        )
+                        .await?;
 
                     ctx.send(
                         route,

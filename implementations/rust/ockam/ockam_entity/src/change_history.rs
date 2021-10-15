@@ -160,14 +160,14 @@ impl ProfileChangeHistory {
 }
 
 impl ProfileChangeHistory {
-    pub(crate) fn verify_all_existing_events(
+    pub(crate) async fn verify_all_existing_events(
         &self,
         vault: &mut impl ProfileVault,
     ) -> ockam_core::Result<bool> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
             let new_event = &self.as_ref()[i];
-            if !Self::verify_event(existing_events, new_event, vault)? {
+            if !Self::verify_event(existing_events, new_event, vault).await? {
                 return deny();
             }
         }
@@ -175,7 +175,7 @@ impl ProfileChangeHistory {
     }
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
-    pub(crate) fn verify_event(
+    pub(crate) async fn verify_event(
         existing_events: &[ProfileChangeEvent],
         new_change_event: &ProfileChangeEvent,
         vault: &mut impl ProfileVault,
@@ -183,7 +183,7 @@ impl ProfileChangeHistory {
         let changes = new_change_event.changes();
         let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
 
-        let event_id = vault.sha256(&changes_binary)?;
+        let event_id = vault.sha256(&changes_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
 
         if &event_id != new_change_event.identifier() {
@@ -200,7 +200,10 @@ impl ProfileChangeHistory {
                     };
                     let root_public_key =
                         Self::get_current_profile_update_public_key(events_to_look)?;
-                    if !vault.verify(s.data(), &root_public_key, event_id.as_ref())? {
+                    if !vault
+                        .verify(s.data(), &root_public_key, event_id.as_ref())
+                        .await?
+                    {
                         return deny();
                     }
                 }
@@ -212,25 +215,30 @@ impl ProfileChangeHistory {
                 CreateKey(c) => {
                     // Should have 1 self signature
                     let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
-                    let data_hash = vault.sha256(data_binary.as_slice())?;
+                    let data_hash = vault.sha256(data_binary.as_slice()).await?;
 
                     // if verification failed, there is no channel back. Return bool msg?
-                    vault.verify(
-                        c.self_signature(),
-                        &PublicKey::new(c.data().public_key().into()),
-                        &data_hash,
-                    )?
+                    vault
+                        .verify(
+                            c.self_signature(),
+                            &PublicKey::new(c.data().public_key().into()),
+                            &data_hash,
+                        )
+                        .await?
                 }
                 RotateKey(c) => {
                     // Should have 1 self signature and 1 prev signature
                     let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
-                    let data_hash = vault.sha256(data_binary.as_slice())?;
+                    let data_hash = vault.sha256(data_binary.as_slice()).await?;
 
-                    if !vault.verify(
-                        c.self_signature(),
-                        &PublicKey::new(c.data().public_key().into()),
-                        &data_hash,
-                    )? {
+                    if !vault
+                        .verify(
+                            c.self_signature(),
+                            &PublicKey::new(c.data().public_key().into()),
+                            &data_hash,
+                        )
+                        .await?
+                    {
                         false
                     } else {
                         let prev_key_event =
@@ -243,7 +251,9 @@ impl ProfileChangeHistory {
                         let public_key =
                             ProfileChangeHistory::get_change_public_key(prev_key_change)?;
 
-                        vault.verify(c.prev_signature(), &public_key, &data_hash)?
+                        vault
+                            .verify(c.prev_signature(), &public_key, &data_hash)
+                            .await?
                     }
                 }
             } {

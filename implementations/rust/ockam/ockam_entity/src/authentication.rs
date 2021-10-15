@@ -25,19 +25,19 @@ impl AuthenticationProof {
 pub(crate) struct Authentication {}
 
 impl Authentication {
-    pub(crate) fn generate_proof<V: ProfileVault>(
+    pub(crate) async fn generate_proof<V: ProfileVault>(
         channel_state: &[u8],
         secret: &Secret,
         vault: &mut V,
     ) -> ockam_core::Result<Vec<u8>> {
-        let signature = vault.sign(secret, channel_state)?;
+        let signature = vault.sign(secret, channel_state).await?;
 
         let proof = AuthenticationProof::new(signature);
 
         proof.encode().map_err(|_| EntityError::BareError.into())
     }
 
-    pub(crate) fn verify_proof<V: ProfileVault>(
+    pub(crate) async fn verify_proof<V: ProfileVault>(
         channel_state: &[u8],
         responder_public_key: &PublicKey,
         proof: &[u8],
@@ -45,7 +45,9 @@ impl Authentication {
     ) -> ockam_core::Result<bool> {
         let proof = AuthenticationProof::decode(proof).map_err(|_| EntityError::BareError)?;
 
-        vault.verify(proof.signature(), responder_public_key, channel_state)
+        vault
+            .verify(proof.signature(), responder_public_key, channel_state)
+            .await
     }
 }
 
@@ -63,74 +65,95 @@ mod test {
     }
 
     async fn test_auth_use_case(ctx: &Context) -> ockam_core::Result<()> {
-        let alice_vault = Vault::create(&ctx).expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(&ctx, &alice_vault)?;
-        let mut bob = Entity::create(&ctx, &bob_vault)?;
+        let mut alice = Entity::create(&ctx, &alice_vault).await?;
+        let mut bob = Entity::create(&ctx, &bob_vault).await?;
 
         // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile(&alice_vault)?;
-        let mut bob_chat = bob.create_profile(&bob_vault)?;
+        let mut alice_chat = alice.create_profile(&alice_vault).await?;
+        let mut bob_chat = bob.create_profile(&bob_vault).await?;
 
         // Alice and Bob create Contacts
-        let alice_contact = alice_chat.as_contact()?;
-        let bob_contact = bob_chat.as_contact()?;
+        let alice_contact = alice_chat.as_contact().await?;
+        let bob_contact = bob_chat.as_contact().await?;
 
         // Alice and Bob exchange Contacts
-        if !alice_chat.verify_and_add_contact(bob_contact.clone())? {
+        if !alice_chat
+            .verify_and_add_contact(bob_contact.clone())
+            .await?
+        {
             return test_error("alice failed to add bob");
         }
 
-        if !bob_chat.verify_and_add_contact(alice_contact.clone())? {
+        if !bob_chat
+            .verify_and_add_contact(alice_contact.clone())
+            .await?
+        {
             return test_error("bob failed to add alice");
         }
 
         // Some state known to both parties. In Noise this would be a computed hash, for example.
-        let mut state = [0u8; 32];
-        let mut rng = thread_rng();
-        rng.fill_bytes(&mut state);
+        let state = {
+            let mut state = [0u8; 32];
+            let mut rng = thread_rng();
+            rng.fill_bytes(&mut state);
+            state
+        };
 
-        let alice_proof = alice_chat.create_auth_proof(state)?;
-        let bob_proof = bob_chat.create_auth_proof(state)?;
+        let alice_proof = alice_chat.create_auth_proof(&state).await?;
+        let bob_proof = bob_chat.create_auth_proof(&state).await?;
 
-        if !alice_chat.verify_auth_proof(state, bob_contact.identifier(), bob_proof)? {
+        if !alice_chat
+            .verify_auth_proof(&state, bob_contact.identifier(), &bob_proof)
+            .await?
+        {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat.verify_auth_proof(state, alice_contact.identifier(), alice_proof)? {
+        if !bob_chat
+            .verify_auth_proof(&state, alice_contact.identifier(), &alice_proof)
+            .await?
+        {
             return test_error("alice's proof was invalid");
         }
         Ok(())
     }
 
     async fn test_key_rotation(ctx: &Context) -> ockam_core::Result<()> {
-        let alice_vault = Vault::create(&ctx).expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(&ctx, &alice_vault)?;
-        let mut bob = Entity::create(&ctx, &bob_vault)?;
+        let mut alice = Entity::create(&ctx, &alice_vault).await?;
+        let mut bob = Entity::create(&ctx, &bob_vault).await?;
 
         // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile(&alice_vault)?;
-        let mut bob_chat = bob.create_profile(&bob_vault)?;
+        let mut alice_chat = alice.create_profile(&alice_vault).await?;
+        let mut bob_chat = bob.create_profile(&bob_vault).await?;
 
         // Both profiles rotate keys.
-        alice_chat.rotate_profile_key()?;
-        bob_chat.rotate_profile_key()?;
+        alice_chat.rotate_profile_key().await?;
+        bob_chat.rotate_profile_key().await?;
 
         // Alice and Bob create Contacts
-        let alice_contact = alice_chat.as_contact()?;
-        let bob_contact = bob_chat.as_contact()?;
+        let alice_contact = alice_chat.as_contact().await?;
+        let bob_contact = bob_chat.as_contact().await?;
 
         // Alice and Bob exchange Contacts. Verification still works with a rotation.
-        if !alice_chat.verify_and_add_contact(bob_contact.clone())? {
+        if !alice_chat
+            .verify_and_add_contact(bob_contact.clone())
+            .await?
+        {
             return test_error("alice failed to add bob");
         }
 
-        if !bob_chat.verify_and_add_contact(alice_contact.clone())? {
+        if !bob_chat
+            .verify_and_add_contact(alice_contact.clone())
+            .await?
+        {
             return test_error("bob failed to add alice");
         }
 
@@ -138,76 +161,106 @@ mod test {
     }
 
     async fn test_update_contact_and_reprove(ctx: &Context) -> ockam_core::Result<()> {
-        let alice_vault = Vault::create(&ctx).expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
 
-        let mut alice = Entity::create(&ctx, &alice_vault)?;
-        let mut bob = Entity::create(&ctx, &bob_vault)?;
+        let mut alice = Entity::create(&ctx, &alice_vault).await?;
+        let mut bob = Entity::create(&ctx, &bob_vault).await?;
 
         // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile(&alice_vault)?;
-        let mut bob_chat = bob.create_profile(&bob_vault)?;
+        let mut alice_chat = alice.create_profile(&alice_vault).await?;
+        let mut bob_chat = bob.create_profile(&bob_vault).await?;
 
         // Alice and Bob create Contacts
-        let alice_contact = alice_chat.as_contact()?;
-        let bob_contact = bob_chat.as_contact()?;
+        let alice_contact = alice_chat.as_contact().await?;
+        let bob_contact = bob_chat.as_contact().await?;
 
         // Alice and Bob exchange Contacts
-        if !alice_chat.verify_and_add_contact(bob_contact.clone())? {
+        if !alice_chat
+            .verify_and_add_contact(bob_contact.clone())
+            .await?
+        {
             return test_error("alice failed to add bob");
         }
 
-        if !bob_chat.verify_and_add_contact(alice_contact.clone())? {
+        if !bob_chat
+            .verify_and_add_contact(alice_contact.clone())
+            .await?
+        {
             return test_error("bob failed to add alice");
         }
 
         // Some state known to both parties. In Noise this would be a computed hash, for example.
-        let mut state = [0u8; 32];
-        let mut rng = thread_rng();
-        rng.fill_bytes(&mut state);
+        let state = {
+            let mut state = [0u8; 32];
+            let mut rng = thread_rng();
+            rng.fill_bytes(&mut state);
+            state
+        };
 
-        let alice_proof = alice_chat.create_auth_proof(state)?;
-        let bob_proof = bob_chat.create_auth_proof(state)?;
+        let alice_proof = alice_chat.create_auth_proof(&state).await?;
+        let bob_proof = bob_chat.create_auth_proof(&state).await?;
 
-        if !alice_chat.verify_auth_proof(state, bob_contact.identifier(), bob_proof)? {
+        if !alice_chat
+            .verify_auth_proof(&state, bob_contact.identifier(), &bob_proof)
+            .await?
+        {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat.verify_auth_proof(state, alice_contact.identifier(), alice_proof)? {
+        if !bob_chat
+            .verify_auth_proof(&state, alice_contact.identifier(), &alice_proof)
+            .await?
+        {
             return test_error("alice's proof was invalid");
         }
 
-        alice_chat.rotate_profile_key()?;
-        bob_chat.rotate_profile_key()?;
+        alice_chat.rotate_profile_key().await?;
+        bob_chat.rotate_profile_key().await?;
 
-        let alice_contact = alice_chat.as_contact()?;
-        let bob_contact = bob_chat.as_contact()?;
+        let alice_contact = alice_chat.as_contact().await?;
+        let bob_contact = bob_chat.as_contact().await?;
 
         // Copy Bob's last event (the rotation) and update Alice's view of Bob's Contact.
         let bob_last_event = bob_contact.change_events().last().unwrap().clone();
-        if !alice_chat.verify_and_update_contact(bob_contact.identifier(), &[bob_last_event])? {
+        if !alice_chat
+            .verify_and_update_contact(bob_contact.identifier(), &[bob_last_event])
+            .await?
+        {
             return test_error("alice failed to add bob");
         }
 
         // Copy Bob's last event (the rotation) and update Bob's view of Alice's Contact.
         let alice_last_event = alice_contact.change_events().last().unwrap().clone();
-        if !bob_chat.verify_and_update_contact(alice_contact.identifier(), &[alice_last_event])? {
+        if !bob_chat
+            .verify_and_update_contact(alice_contact.identifier(), &[alice_last_event])
+            .await?
+        {
             return test_error("bob failed to add alice");
         }
 
         // Re-Prove
-        let mut state = [0u8; 32];
-        let mut rng = thread_rng();
-        rng.fill_bytes(&mut state);
+        let state = {
+            let mut state = [0u8; 32];
+            let mut rng = thread_rng();
+            rng.fill_bytes(&mut state);
+            state
+        };
 
-        let alice_proof = alice_chat.create_auth_proof(state)?;
-        let bob_proof = bob_chat.create_auth_proof(state)?;
+        let alice_proof = alice_chat.create_auth_proof(&state).await?;
+        let bob_proof = bob_chat.create_auth_proof(&state).await?;
 
-        if !alice_chat.verify_auth_proof(state, bob_contact.identifier(), bob_proof)? {
+        if !alice_chat
+            .verify_auth_proof(&state, bob_contact.identifier(), &bob_proof)
+            .await?
+        {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat.verify_auth_proof(state, alice_contact.identifier(), alice_proof)? {
+        if !bob_chat
+            .verify_auth_proof(&state, alice_contact.identifier(), &alice_proof)
+            .await?
+        {
             return test_error("alice's proof was invalid");
         }
 
