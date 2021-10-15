@@ -8,10 +8,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Alice.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent Alice.
-    let mut alice = Entity::create(&ctx, &vault)?;
+    let mut alice = Entity::create(&ctx, &vault).await?;
 
     // This program expects that Bob has setup a forwarding address,
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.
@@ -28,7 +28,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
-    let channel = alice.create_secure_channel(route_to_bob_listener, TrustEveryonePolicy)?;
+    let channel = alice
+        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy)
+        .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 
