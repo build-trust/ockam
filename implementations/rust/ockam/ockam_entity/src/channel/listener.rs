@@ -6,14 +6,14 @@ use ockam_core::{Address, Result, Routed, Worker};
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
 
-pub(crate) struct ProfileChannelListener<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> {
+pub(crate) struct ProfileChannelListener<T: TrustPolicy, P: Identity, V: XXVault> {
     trust_policy: T,
     profile: P,
     vault: V,
     listener_address: Address,
 }
 
-impl<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> ProfileChannelListener<T, P, V> {
+impl<T: TrustPolicy, P: Identity, V: XXVault> ProfileChannelListener<T, P, V> {
     pub fn new(trust_policy: T, profile: P, vault: V) -> Self {
         let listener_address: Address = random();
         ProfileChannelListener {
@@ -26,15 +26,13 @@ impl<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> ProfileChannelListe
 }
 
 #[ockam_core::worker]
-impl<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> Worker
-    for ProfileChannelListener<T, P, V>
-{
+impl<T: TrustPolicy, P: Identity, V: XXVault> Worker for ProfileChannelListener<T, P, V> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let new_key_exchanger = XXNewKeyExchanger::new(self.vault.clone());
-        let vault = self.vault.clone();
+        let new_key_exchanger = XXNewKeyExchanger::new(self.vault.async_try_clone().await?);
+        let vault = self.vault.async_try_clone().await?;
         SecureChannel::create_listener_extended(
             ctx,
             self.listener_address.clone(),
@@ -58,8 +56,8 @@ impl<T: TrustPolicy, P: Identity + Clone, V: XXVault + Sync> Worker
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let trust_policy = self.trust_policy.clone();
-        let profile = self.profile.clone();
+        let trust_policy = self.trust_policy.async_try_clone().await?;
+        let profile = self.profile.async_try_clone().await?;
         SecureChannelWorker::create_responder(
             ctx,
             profile,

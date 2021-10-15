@@ -46,16 +46,20 @@ impl Worker for EntityWorker {
         match req {
             CreateProfile(vault_address) => {
                 let vault_sync = VaultSync::create_with_worker(ctx, &vault_address)
+                    .await
                     .expect("couldn't create profile vault");
 
-                let profile_state =
-                    ProfileState::create(vault_sync).expect("failed to create ProfileState");
+                let profile_state = ProfileState::create(vault_sync)
+                    .await
+                    .expect("failed to create ProfileState");
 
                 let id = profile_state
                     .identifier()
+                    .await
                     .expect("failed to get profile id");
 
                 self.add_profile_state(profile_state)
+                    .await
                     .expect("failed to add profile state");
 
                 ctx.send(reply, Res::CreateProfile(id)).await
@@ -64,36 +68,36 @@ impl Worker for EntityWorker {
             CreateKey(profile_id, label) => {
                 let profile = self.profile(&profile_id);
 
-                Identity::create_key(profile, label)
+                Identity::create_key(profile, label).await
             }
             RotateKey(profile_id) => {
                 let profile = self.profile(&profile_id);
 
-                Identity::rotate_profile_key(profile)
+                Identity::rotate_profile_key(profile).await
             }
             GetProfilePublicKey(profile_id) => {
-                if let Ok(public_key) = self.profile(&profile_id).get_profile_public_key() {
+                if let Ok(public_key) = self.profile(&profile_id).get_profile_public_key().await {
                     ctx.send(reply, Res::GetProfilePublicKey(public_key)).await
                 } else {
                     err()
                 }
             }
             GetProfileSecretKey(profile_id) => {
-                if let Ok(secret) = self.profile(&profile_id).get_profile_secret_key() {
+                if let Ok(secret) = self.profile(&profile_id).get_profile_secret_key().await {
                     ctx.send(reply, Res::GetProfileSecretKey(secret)).await
                 } else {
                     err()
                 }
             }
             GetPublicKey(profile_id, label) => {
-                if let Ok(public_key) = self.profile(&profile_id).get_public_key(label) {
+                if let Ok(public_key) = self.profile(&profile_id).get_public_key(label).await {
                     ctx.send(reply, Res::GetPublicKey(public_key)).await
                 } else {
                     err()
                 }
             }
             GetSecretKey(profile_id, label) => {
-                if let Ok(secret) = self.profile(&profile_id).get_secret_key(label) {
+                if let Ok(secret) = self.profile(&profile_id).get_secret_key(label).await {
                     ctx.send(reply, Res::GetSecretKey(secret)).await
                 } else {
                     err()
@@ -103,6 +107,7 @@ impl Worker for EntityWorker {
                 if let Ok(proof) = self
                     .profile(&profile_id)
                     .create_auth_proof(state.as_slice())
+                    .await
                 {
                     ctx.send(reply, Res::CreateAuthenticationProof(proof)).await
                 } else {
@@ -110,52 +115,55 @@ impl Worker for EntityWorker {
                 }
             }
             VerifyAuthenticationProof(profile_id, state, peer_id, proof) => {
-                if let Ok(verified) = self.profile(&profile_id).verify_auth_proof(
-                    state.as_slice(),
-                    &peer_id,
-                    proof.as_slice(),
-                ) {
+                if let Ok(verified) = self
+                    .profile(&profile_id)
+                    .verify_auth_proof(state.as_slice(), &peer_id, proof.as_slice())
+                    .await
+                {
                     ctx.send(reply, Res::VerifyAuthenticationProof(verified))
                         .await
                 } else {
                     err()
                 }
             }
-            AddChange(profile_id, change) => self.profile(&profile_id).add_change(change),
+            AddChange(profile_id, change) => self.profile(&profile_id).add_change(change).await,
             GetChanges(profile_id) => {
                 let changes = self
                     .profile(&profile_id)
                     .get_changes()
+                    .await
                     .expect("get_changes failed");
                 ctx.send(reply, Res::GetChanges(changes)).await
             }
             VerifyChanges(profile_id) => {
-                let verified = self.profile(&profile_id).verify_changes()?;
+                let verified = self.profile(&profile_id).verify_changes().await?;
                 ctx.send(reply, Res::VerifyChanges(verified)).await
             }
             VerifyAndAddContact(profile_id, contact_id) => {
                 let verified_and_added = self
                     .profile(&profile_id)
-                    .verify_and_add_contact(contact_id)?;
+                    .verify_and_add_contact(contact_id)
+                    .await?;
                 ctx.send(reply, Res::VerifyAndAddContact(verified_and_added))
                     .await
             }
             GetContacts(profile_id) => {
-                let contacts = self.profile(&profile_id).get_contacts()?;
+                let contacts = self.profile(&profile_id).get_contacts().await?;
                 ctx.send(reply, Res::Contacts(contacts)).await
             }
             VerifyContact(profile_id, contact) => {
-                let verified = self.profile(&profile_id).verify_contact(contact)?;
+                let verified = self.profile(&profile_id).verify_contact(contact).await?;
                 ctx.send(reply, Res::VerifyContact(verified)).await
             }
             VerifyAndUpdateContact(profile_id, contact_id, changes) => {
                 let verified = self
                     .profile(&profile_id)
-                    .verify_and_update_contact(&contact_id, changes)?;
+                    .verify_and_update_contact(&contact_id, &changes)
+                    .await?;
                 ctx.send(reply, Res::VerifyAndUpdateContact(verified)).await
             }
             GetContact(profile_id, contact_id) => {
-                let contact = self.profile(&profile_id).get_contact(&contact_id)?;
+                let contact = self.profile(&profile_id).get_contact(&contact_id).await?;
                 let message = match contact {
                     None => MaybeContact::None,
                     Some(contact) => MaybeContact::Contact(contact),
@@ -167,7 +175,7 @@ impl Worker for EntityWorker {
                     ctx.new_context(Address::random(0)).await?,
                     trust_policy_address,
                 ));
-                let vault_address = self.profile(&profile_id).vault().address();
+                let vault_address = self.profile(&profile_id).vault_address();
                 let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
                 let profile = Profile::new(profile_id, handle);
                 SecureChannelTrait::create_secure_channel_listener_async(
@@ -185,7 +193,7 @@ impl Worker for EntityWorker {
                     ctx.new_context(Address::random(0)).await?,
                     trust_policy_address,
                 ));
-                let vault_address = self.profile(&profile_id).vault().address();
+                let vault_address = self.profile(&profile_id).vault_address();
                 let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
                 let profile = Profile::new(profile_id.clone(), handle);
 
@@ -209,8 +217,9 @@ impl Worker for EntityWorker {
             }
             GetLease(lease_manager_route, profile_id, org_id, bucket, ttl) => {
                 let profile = self.profile(&profile_id);
-                if let Ok(lease) =
-                    profile.get_lease(&lease_manager_route, org_id.clone(), bucket.clone(), ttl)
+                if let Ok(lease) = profile
+                    .get_lease(&lease_manager_route, org_id.clone(), bucket.clone(), ttl)
+                    .await
                 {
                     ctx.send(reply, Res::Lease(lease)).await
                 } else {
@@ -236,9 +245,11 @@ impl Worker for EntityWorker {
                     panic!("No lease protocol implementations available")
                 }
             }
-            RevokeLease(lease_manager_route, profile_id, lease) => self
-                .profile(&profile_id)
-                .revoke_lease(&lease_manager_route, lease),
+            RevokeLease(lease_manager_route, profile_id, lease) => {
+                self.profile(&profile_id)
+                    .revoke_lease(&lease_manager_route, lease)
+                    .await
+            }
             #[cfg(feature = "credentials")]
             CredentialRequest(req) => {
                 use crate::IdentityCredentialRequest::*;
@@ -249,7 +260,7 @@ impl Worker for EntityWorker {
                 };
                 match req {
                     GetSigningKey(profile_id) => {
-                        if let Ok(signing_key) = self.profile(&profile_id).get_signing_key() {
+                        if let Ok(signing_key) = self.profile(&profile_id).get_signing_key().await {
                             ctx.send(
                                 reply,
                                 Res::CredentialResponse(CredRes::GetSigningKey(signing_key)),
@@ -260,7 +271,9 @@ impl Worker for EntityWorker {
                         }
                     }
                     GetIssuerPublicKey(profile_id) => {
-                        if let Ok(public_key) = self.profile(&profile_id).get_signing_public_key() {
+                        if let Ok(public_key) =
+                            self.profile(&profile_id).get_signing_public_key().await
+                        {
                             ctx.send(
                                 reply,
                                 Res::CredentialResponse(CredRes::GetIssuerPublicKey(
@@ -273,7 +286,7 @@ impl Worker for EntityWorker {
                         }
                     }
                     CreateOffer(profile_id, schema) => {
-                        if let Ok(offer) = self.profile(&profile_id).create_offer(&schema) {
+                        if let Ok(offer) = self.profile(&profile_id).create_offer(&schema).await {
                             ctx.send(reply, Res::CredentialResponse(CredRes::CreateOffer(offer)))
                                 .await
                         } else {
@@ -281,7 +294,9 @@ impl Worker for EntityWorker {
                         }
                     }
                     CreateProofOfPossession(profile_id) => {
-                        if let Ok(pop) = self.profile(&profile_id).create_proof_of_possession() {
+                        if let Ok(pop) =
+                            self.profile(&profile_id).create_proof_of_possession().await
+                        {
                             ctx.send(
                                 reply,
                                 Res::CredentialResponse(CredRes::CreateProofOfPossession(
@@ -297,6 +312,7 @@ impl Worker for EntityWorker {
                         if let Ok(credential) = self
                             .profile(&profile_id)
                             .sign_credential(&schema, attributes.as_slice())
+                            .await
                         {
                             ctx.send(
                                 reply,
@@ -308,12 +324,16 @@ impl Worker for EntityWorker {
                         }
                     }
                     SignCredentialRequest(profile_id, request, schema, attributes, offer_id) => {
-                        if let Ok(frag) = self.profile(&profile_id).sign_credential_request(
-                            &request,
-                            &schema,
-                            attributes.as_slice(),
-                            offer_id,
-                        ) {
+                        if let Ok(frag) = self
+                            .profile(&profile_id)
+                            .sign_credential_request(
+                                &request,
+                                &schema,
+                                attributes.as_slice(),
+                                offer_id,
+                            )
+                            .await
+                        {
                             ctx.send(
                                 reply,
                                 Res::CredentialResponse(CredRes::SignCredentialRequest(frag)),
@@ -327,6 +347,7 @@ impl Worker for EntityWorker {
                         if let Ok(cred_and_fragment) = self
                             .profile(&profile_id)
                             .accept_credential_offer(&offer, signing_public_key.0)
+                            .await
                         {
                             ctx.send(
                                 reply,
@@ -346,6 +367,7 @@ impl Worker for EntityWorker {
                         if let Ok(credential) = self
                             .profile(&profile_id)
                             .combine_credential_fragments(frag1, frag2)
+                            .await
                         {
                             ctx.send(
                                 reply,
@@ -362,6 +384,7 @@ impl Worker for EntityWorker {
                         if let Ok(valid) = self
                             .profile(&profile_id)
                             .is_valid_credential(&credential, issuer_public_key.0)
+                            .await
                         {
                             ctx.send(
                                 reply,
@@ -373,11 +396,11 @@ impl Worker for EntityWorker {
                         }
                     }
                     PresentCredential(profile_id, credential, manifest, request_id) => {
-                        if let Ok(presentations) = self.profile(&profile_id).present_credentials(
-                            &[credential],
-                            &[manifest],
-                            request_id,
-                        ) {
+                        if let Ok(presentations) = self
+                            .profile(&profile_id)
+                            .present_credentials(&[credential], &[manifest], request_id)
+                            .await
+                        {
                             let presentation = presentations
                                 .first()
                                 .expect("expected at least one presentation");
@@ -394,7 +417,8 @@ impl Worker for EntityWorker {
                         }
                     }
                     CreateProofRequestId(profile_id) => {
-                        if let Ok(request_id) = self.profile(&profile_id).create_proof_request_id()
+                        if let Ok(request_id) =
+                            self.profile(&profile_id).create_proof_request_id().await
                         {
                             ctx.send(
                                 reply,
@@ -413,6 +437,7 @@ impl Worker for EntityWorker {
                         if let Ok(valid) = self
                             .profile(&profile_id)
                             .verify_proof_of_possession(signing_public_key.0, proof_of_possession.0)
+                            .await
                         {
                             ctx.send(
                                 reply,
@@ -429,12 +454,14 @@ impl Worker for EntityWorker {
                         manifest,
                         request_id,
                     ) => {
-                        if let Ok(valid) =
-                            self.profile(&profile_id).verify_credential_presentations(
+                        if let Ok(valid) = self
+                            .profile(&profile_id)
+                            .verify_credential_presentations(
                                 &[presentation],
                                 &[manifest],
                                 request_id,
                             )
+                            .await
                         {
                             ctx.send(
                                 reply,
@@ -470,8 +497,8 @@ impl Worker for EntityWorker {
 }
 
 impl EntityWorker {
-    fn add_profile_state(&mut self, profile_state: ProfileState) -> Result<()> {
-        let id = profile_state.identifier().unwrap();
+    async fn add_profile_state(&mut self, profile_state: ProfileState) -> Result<()> {
+        let id = profile_state.identifier().await.unwrap();
         self.profiles.insert(id, profile_state);
         Ok(())
     }

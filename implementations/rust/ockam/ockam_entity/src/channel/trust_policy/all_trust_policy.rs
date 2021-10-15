@@ -1,7 +1,7 @@
 use crate::{SecureChannelTrustInfo, TrustPolicy};
-use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{AsyncTryClone, Result};
 
-#[derive(Clone)]
 pub struct AllTrustPolicy<F: TrustPolicy, S: TrustPolicy> {
     // TODO: Extend for more than 2 policies
     first: F,
@@ -14,9 +14,20 @@ impl<F: TrustPolicy, S: TrustPolicy> AllTrustPolicy<F, S> {
     }
 }
 
+#[async_trait]
+impl<F: TrustPolicy, S: TrustPolicy> AsyncTryClone for AllTrustPolicy<F, S> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            first: self.first.async_try_clone().await?,
+            second: self.second.async_try_clone().await?,
+        })
+    }
+}
+
+#[async_trait]
 impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AllTrustPolicy<F, S> {
-    fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
-        Ok(self.first.check(trust_info)? && self.second.check(trust_info)?)
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+        Ok(self.first.check(trust_info).await? && self.second.check(trust_info).await?)
     }
 }
 
@@ -24,14 +35,16 @@ impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AllTrustPolicy<F, S> {
 mod test {
     use crate::{ConjunctionTrustPolicy, ProfileIdentifier, SecureChannelTrustInfo, TrustPolicy};
     use ockam_core::Result;
+    use ockam_core::{async_trait, compat::boxed::Box};
 
-    #[test]
-    fn test() {
+    #[tokio::test]
+    async fn test() {
         #[derive(Clone)]
         struct TrustPolicyStub(bool);
 
+        #[async_trait]
         impl TrustPolicy for TrustPolicyStub {
-            fn check(&self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+            async fn check(&self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
                 Ok(self.0)
             }
         }
@@ -42,18 +55,22 @@ mod test {
         assert!(TrustPolicyStub(true)
             .and(TrustPolicyStub(true))
             .check(&trust_info)
+            .await
             .unwrap());
         assert!(!TrustPolicyStub(true)
             .and(TrustPolicyStub(false))
             .check(&trust_info)
+            .await
             .unwrap());
         assert!(!TrustPolicyStub(false)
             .and(TrustPolicyStub(true))
             .check(&trust_info)
+            .await
             .unwrap());
         assert!(!TrustPolicyStub(false)
             .and(TrustPolicyStub(false))
             .check(&trust_info)
+            .await
             .unwrap());
     }
 }

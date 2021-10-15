@@ -9,6 +9,7 @@ use crate::{
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::{allow, deny, Result};
+use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::SecretVault;
 use rand::thread_rng;
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
@@ -44,35 +45,38 @@ impl ProfileState {
     }
 }
 
+#[async_trait]
 impl CredentialIssuer for ProfileState {
-    fn get_signing_key(&mut self) -> Result<BlsSecretKey> {
-        let secret = self.get_secret_key(Profile::CREDENTIALS_ISSUE)?;
-        let secret = self.vault.secret_export(&secret)?;
+    async fn get_signing_key(&mut self) -> Result<BlsSecretKey> {
+        let secret = self
+            .get_secret_key(Profile::CREDENTIALS_ISSUE.into())
+            .await?;
+        let secret = self.vault.secret_export(&secret).await?;
         let secret = BlsSecretKey::from_bytes(&secret.as_ref().try_into().unwrap()).unwrap();
 
         Ok(secret)
     }
 
-    fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
+    async fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
         // FIXME
-        let pk = BlsPublicKey::from(&self.get_signing_key()?);
+        let pk = BlsPublicKey::from(&self.get_signing_key().await?);
         Ok(pk.to_bytes())
     }
 
-    fn create_offer(&mut self, schema: &CredentialSchema) -> Result<CredentialOffer> {
+    async fn create_offer(&mut self, schema: &CredentialSchema) -> Result<CredentialOffer> {
         Ok(CredentialOffer {
             id: Nonce::random(thread_rng()).to_bytes(),
             schema: schema.clone(),
         })
     }
 
-    fn create_proof_of_possession(&mut self) -> Result<ProofBytes> {
-        Ok(ProofOfPossession::new(&self.get_signing_key()?)
+    async fn create_proof_of_possession(&mut self) -> Result<ProofBytes> {
+        Ok(ProofOfPossession::new(&self.get_signing_key().await?)
             .expect("bad signing key")
             .to_bytes())
     }
 
-    fn sign_credential(
+    async fn sign_credential(
         &mut self,
         schema: &CredentialSchema,
         attributes: &[CredentialAttribute],
@@ -98,10 +102,12 @@ impl CredentialIssuer for ProfileState {
             }
         }
 
-        let generators =
-            MessageGenerators::from_secret_key(&self.get_signing_key()?, schema.attributes.len());
+        let generators = MessageGenerators::from_secret_key(
+            &self.get_signing_key().await?,
+            schema.attributes.len(),
+        );
 
-        let signature = BbsIssuer::sign(&self.get_signing_key()?, &generators, &messages)
+        let signature = BbsIssuer::sign(&self.get_signing_key().await?, &generators, &messages)
             .map_err(|_| CredentialError::MismatchedAttributesAndClaims)?;
         Ok(BbsCredential {
             attributes: attributes.to_vec(),
@@ -109,7 +115,7 @@ impl CredentialIssuer for ProfileState {
         })
     }
 
-    fn sign_credential_request(
+    async fn sign_credential_request(
         &mut self,
         request: &CredentialRequest,
         schema: &CredentialSchema,
@@ -152,12 +158,14 @@ impl CredentialIssuer for ProfileState {
             }
         }
 
-        let generators =
-            MessageGenerators::from_secret_key(&self.get_signing_key()?, schema.attributes.len());
+        let generators = MessageGenerators::from_secret_key(
+            &self.get_signing_key().await?,
+            schema.attributes.len(),
+        );
 
         let signature = BbsIssuer::blind_sign(
             &request.context.clone().into(),
-            &self.get_signing_key()?,
+            &self.get_signing_key().await?,
             &generators,
             &messages,
             Nonce::from_bytes(&offer_id).unwrap(),
@@ -173,8 +181,9 @@ impl CredentialIssuer for ProfileState {
 
 pub const SECRET_ID: &str = "secret_id";
 
+#[async_trait]
 impl CredentialHolder for ProfileState {
-    fn accept_credential_offer(
+    async fn accept_credential_offer(
         &mut self,
         offer: &CredentialOffer,
         signing_public_key: SigningPublicKey,
@@ -214,7 +223,7 @@ impl CredentialHolder for ProfileState {
         ))
     }
 
-    fn combine_credential_fragments(
+    async fn combine_credential_fragments(
         &mut self,
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
@@ -234,7 +243,7 @@ impl CredentialHolder for ProfileState {
         })
     }
 
-    fn is_valid_credential(
+    async fn is_valid_credential(
         &mut self,
         credential: &BbsCredential,
         verifier_key: SigningPublicKey,
@@ -251,7 +260,7 @@ impl CredentialHolder for ProfileState {
         Ok(res.unwrap_u8() == 1)
     }
 
-    fn present_credentials(
+    async fn present_credentials(
         &mut self,
         credential: &[BbsCredential],
         presentation_manifests: &[PresentationManifest],
@@ -329,12 +338,17 @@ impl CredentialHolder for ProfileState {
     }
 }
 
+#[async_trait]
 impl CredentialVerifier for ProfileState {
-    fn create_proof_request_id(&mut self) -> Result<ProofRequestId> {
+    async fn create_proof_request_id(&mut self) -> Result<ProofRequestId> {
         Ok(Nonce::random(thread_rng()).to_bytes())
     }
 
-    fn verify_proof_of_possession(&mut self, issuer_vk: [u8; 96], proof: [u8; 48]) -> Result<bool> {
+    async fn verify_proof_of_possession(
+        &mut self,
+        issuer_vk: [u8; 96],
+        proof: [u8; 48],
+    ) -> Result<bool> {
         let public_key = BlsPublicKey::from_bytes(&issuer_vk);
         let proof = ProofOfPossession::from_bytes(&proof);
 
@@ -347,7 +361,7 @@ impl CredentialVerifier for ProfileState {
         }
     }
 
-    fn verify_credential_presentations(
+    async fn verify_credential_presentations(
         &mut self,
         presentations: &[CredentialPresentation],
         presentation_manifests: &[PresentationManifest],

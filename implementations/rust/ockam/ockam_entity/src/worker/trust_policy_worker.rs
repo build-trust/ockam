@@ -1,12 +1,20 @@
 use crate::{SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait::async_trait, Address, Result, Routed, Worker};
+use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, Routed, Worker};
 use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
 pub struct TrustPolicyImpl {
     handle: Handle,
+}
+
+#[async_trait]
+impl AsyncTryClone for TrustPolicyImpl {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            handle: self.handle.async_try_clone().await?,
+        })
+    }
 }
 
 impl TrustPolicyImpl {
@@ -37,11 +45,15 @@ impl TrustPolicyImpl {
     }
 }
 
+#[async_trait]
 impl TrustPolicy for TrustPolicyImpl {
-    fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
-        let response: TrustPolicyResponse = self.handle.call(TrustPolicyRequest {
-            info: trust_info.clone(),
-        })?;
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+        let response: TrustPolicyResponse = self
+            .handle
+            .call(TrustPolicyRequest {
+                info: trust_info.clone(),
+            })
+            .await?;
 
         Ok(response.res)
     }
@@ -80,7 +92,7 @@ impl<T: TrustPolicy> Worker for TrustPolicyWorker<T> {
         let route = msg.return_route();
         let msg = msg.body();
 
-        let res = self.trust_policy.check(&msg.info)?;
+        let res = self.trust_policy.check(&msg.info).await?;
         ctx.send(route, TrustPolicyResponse { res }).await?;
 
         Ok(())

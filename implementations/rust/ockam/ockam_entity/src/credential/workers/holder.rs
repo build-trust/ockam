@@ -76,7 +76,7 @@ impl Worker for HolderWorker {
             State::AcceptOffer => {
                 if let CredentialProtocolMessage::IssueOffer(offer) = msg {
                     let issuer_contact;
-                    if let Some(i) = self.profile.get_contact(&self.issuer_id)? {
+                    if let Some(i) = self.profile.get_contact(&self.issuer_id).await? {
                         issuer_contact = i;
                     } else {
                         return Err(EntityError::ContactNotFound.into());
@@ -85,7 +85,8 @@ impl Worker for HolderWorker {
                     let issuer_pubkey = issuer_pubkey.as_ref().try_into().unwrap();
                     let frag = self
                         .profile
-                        .accept_credential_offer(&offer, issuer_pubkey)?;
+                        .accept_credential_offer(&offer, issuer_pubkey)
+                        .await?;
 
                     ctx.send(
                         route,
@@ -102,7 +103,8 @@ impl Worker for HolderWorker {
                 if let CredentialProtocolMessage::IssueResponse(frag2) = msg {
                     let bbs_credential = self
                         .profile
-                        .combine_credential_fragments(frag1.clone(), frag2)?;
+                        .combine_credential_fragments(frag1.clone(), frag2)
+                        .await?;
 
                     let credential =
                         Credential::new(random(), self.issuer_id.clone(), self.schema.id.clone());
@@ -114,7 +116,7 @@ impl Worker for HolderWorker {
                         self.schema.clone(),
                     );
 
-                    self.profile.add_credential(entity_credential)?;
+                    self.profile.add_credential(entity_credential).await?;
 
                     ctx.send(self.callback_address.clone(), credential).await?;
 

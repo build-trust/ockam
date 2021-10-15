@@ -32,7 +32,7 @@ pub use key_attributes::*;
 pub use lease::*;
 use ockam_channel::SecureChannelVault;
 use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
-use ockam_core::{Decodable, Encodable, Result};
+use ockam_core::{AsyncTryClone, Decodable, Encodable, Result};
 use ockam_vault::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
 pub use profile::*;
 pub use profile_state::*;
@@ -67,7 +67,15 @@ cfg_if! {
 
 /// Traits required for a Vault implementation suitable for use in a Profile
 pub trait ProfileVault:
-    SecretVault + SecureChannelVault + KeyIdVault + Hasher + Signer + Verifier + Clone + Send + 'static
+    SecretVault
+    + SecureChannelVault
+    + KeyIdVault
+    + Hasher
+    + Signer
+    + Verifier
+    + AsyncTryClone
+    + Send
+    + 'static
 {
 }
 
@@ -78,7 +86,7 @@ impl<D> ProfileVault for D where
         + Hasher
         + Signer
         + Verifier
-        + Clone
+        + AsyncTryClone
         + Send
         + 'static
 {
@@ -135,22 +143,24 @@ mod test {
         Err(Error::new(0, msg.into()))
     }
 
-    fn test_basic_profile_key_ops<P: Identity>(profile: &mut P) -> Result<()> {
-        if !profile.verify_changes()? {
+    async fn test_basic_profile_key_ops(profile: &mut (impl Identity + Sync)) -> Result<()> {
+        if !profile.verify_changes().await? {
             return test_error("verify_changes failed");
         }
 
-        let secret1 = profile.get_profile_secret_key()?;
-        let public1 = profile.get_profile_public_key()?;
+        let secret1 = profile.get_profile_secret_key().await?;
+        let public1 = profile.get_profile_public_key().await?;
 
-        profile.create_key("Truck management")?;
+        profile.create_key("Truck management".to_string()).await?;
 
-        if !profile.verify_changes()? {
+        if !profile.verify_changes().await? {
             return test_error("verify_changes failed");
         }
 
-        let secret2 = profile.get_secret_key("Truck management")?;
-        let public2 = profile.get_public_key("Truck management")?;
+        let secret2 = profile
+            .get_secret_key("Truck management".to_string())
+            .await?;
+        let public2 = profile.get_public_key("Truck management".into()).await?;
 
         if secret1 == secret2 {
             return test_error("secret did not change after create_key");
@@ -160,18 +170,18 @@ mod test {
             return test_error("public did not change after create_key");
         }
 
-        profile.rotate_profile_key()?;
+        profile.rotate_profile_key().await?;
 
-        if !profile.verify_changes()? {
+        if !profile.verify_changes().await? {
             return test_error("verify_changes failed");
         }
 
-        let secret3 = profile.get_profile_secret_key()?;
-        let public3 = profile.get_profile_public_key()?;
+        let secret3 = profile.get_profile_secret_key().await?;
+        let public3 = profile.get_profile_public_key().await?;
 
-        profile.rotate_profile_key()?;
+        profile.rotate_profile_key().await?;
 
-        if !profile.verify_changes()? {
+        if !profile.verify_changes().await? {
             return test_error("verify_changes failed");
         }
 
@@ -186,18 +196,24 @@ mod test {
         Ok(())
     }
 
-    fn test_update_contact_after_change<P: Identity>(alice: &mut P, bob: &mut P) -> Result<()> {
-        let contact_alice = alice.as_contact()?;
+    async fn test_update_contact_after_change(
+        alice: &mut (impl Identity + Sync),
+        bob: &mut (impl Identity + Sync),
+    ) -> Result<()> {
+        let contact_alice = alice.as_contact().await?;
         let alice_id = contact_alice.identifier().clone();
-        if !bob.verify_and_add_contact(contact_alice)? {
+        if !bob.verify_and_add_contact(contact_alice).await? {
             return test_error("bob failed to add alice");
         }
 
-        alice.rotate_profile_key()?;
-        let alice_changes = alice.get_changes()?;
+        alice.rotate_profile_key().await?;
+        let alice_changes = alice.get_changes().await?;
         let last_change = alice_changes.last().unwrap().clone();
 
-        if !bob.verify_and_update_contact(&alice_id, &[last_change])? {
+        if !bob
+            .verify_and_update_contact(&alice_id, &[last_change])
+            .await?
+        {
             return test_error("bob failed to update alice");
         }
         Ok(())
@@ -208,18 +224,18 @@ mod test {
         let (mut ctx, mut executor) = ockam_node::start_node();
         executor
             .execute(async move {
-                let alice_vault = Vault::create(&ctx).expect("failed to create vault");
-                let bob_vault = Vault::create(&ctx).expect("failed to create vault");
+                let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
+                let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
 
-                let mut entity_alice = Entity::create(&ctx, &alice_vault).unwrap();
-                let mut entity_bob = Entity::create(&ctx, &bob_vault).unwrap();
+                let entity_alice = Entity::create(&ctx, &alice_vault).await.unwrap();
+                let entity_bob = Entity::create(&ctx, &bob_vault).await.unwrap();
 
-                let mut alice = entity_alice.current_profile().unwrap();
-                let mut bob = entity_bob.current_profile().unwrap();
+                let mut alice = entity_alice.current_profile().await.unwrap().unwrap();
+                let mut bob = entity_bob.current_profile().await.unwrap().unwrap();
 
                 let mut results = vec![];
-                results.push(test_basic_profile_key_ops(&mut alice));
-                results.push(test_update_contact_after_change(&mut alice, &mut bob));
+                results.push(test_basic_profile_key_ops(&mut alice).await);
+                results.push(test_update_contact_after_change(&mut alice, &mut bob).await);
                 ctx.stop().await.unwrap();
 
                 for r in results {
