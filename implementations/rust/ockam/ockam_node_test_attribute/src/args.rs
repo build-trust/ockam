@@ -1,10 +1,18 @@
 use proc_macro2::Span;
 
-const VALID_ARGS: &[&str] = &[];
-const VALID_TEST_ARGS: &[&str] = &["timeout"];
+pub(crate) fn node(args: syn::AttributeArgs) -> Result<Args, syn::Error> {
+    match args.first() {
+        None => Ok(Args {}),
+        Some(arg) => Err(syn::Error::new_spanned(
+            arg,
+            "This macro doesn't accept any argument",
+        )),
+    }
+}
+pub(crate) struct Args {}
 
-pub(crate) fn parse(args: syn::AttributeArgs, is_test: bool) -> Result<Args, syn::Error> {
-    let mut parsed_args = ArgsBuilder::default();
+pub(crate) fn node_test(args: syn::AttributeArgs) -> Result<TestArgs, syn::Error> {
+    let mut parsed_args = TestArgsBuilder::default();
 
     for arg in args {
         match arg {
@@ -17,18 +25,18 @@ pub(crate) fn parse(args: syn::AttributeArgs, is_test: bool) -> Result<Args, syn
                     })?
                     .to_string()
                     .to_lowercase();
-                match (ident.as_str(), is_test) {
-                    ("timeout", true) => {
+                match ident.as_str() {
+                    "timeout" => {
                         parsed_args.set_timeout(
                             namevalue.lit.clone(),
                             syn::spanned::Spanned::span(&namevalue.lit),
                         )?;
                     }
-                    (name, _) => {
+                    name => {
                         let msg = format!(
                             "Unknown attribute {} is specified; expected one of: {}",
                             name,
-                            print_valid_arts(is_test)
+                            print_valid_test_args()
                         );
                         return Err(syn::Error::new_spanned(namevalue, msg));
                     }
@@ -40,15 +48,15 @@ pub(crate) fn parse(args: syn::AttributeArgs, is_test: bool) -> Result<Args, syn
                     .ok_or_else(|| syn::Error::new_spanned(&path, "Must have specified ident"))?
                     .to_string()
                     .to_lowercase();
-                let msg = match (name.as_str(), is_test) {
-                    ("timeout", true) => {
+                let msg = match name.as_str() {
+                    "timeout" => {
                         format!("The `{}` attribute requires an argument.", name)
                     }
-                    (name, is_test) => {
+                    name => {
                         format!(
                             "Unknown attribute {} is specified; expected one of: {}",
                             name,
-                            print_valid_arts(is_test)
+                            print_valid_test_args()
                         )
                     }
                 };
@@ -62,24 +70,29 @@ pub(crate) fn parse(args: syn::AttributeArgs, is_test: bool) -> Result<Args, syn
             }
         }
     }
-    parsed_args.build()
+    Ok(parsed_args.build())
 }
 
-fn print_valid_arts(is_test: bool) -> String {
-    let args = if is_test { VALID_TEST_ARGS } else { VALID_ARGS };
-    args.join(".")
+const VALID_TEST_ARGS: &[&str] = &["timeout"];
+
+fn print_valid_test_args() -> String {
+    VALID_TEST_ARGS.join(".")
 }
 
-pub(crate) struct Args {
-    pub(crate) timeout_ms: Option<usize>,
+pub(crate) struct TestArgs {
+    pub(crate) timeout_ms: usize,
+}
+
+impl TestArgs {
+    const DEFAULT_TIMEOUT_MS: usize = 30000;
 }
 
 #[derive(Default)]
-struct ArgsBuilder {
+struct TestArgsBuilder {
     timeout_ms: Option<(usize, Span)>,
 }
 
-impl ArgsBuilder {
+impl TestArgsBuilder {
     fn set_timeout(&mut self, timeout: syn::Lit, span: Span) -> Result<(), syn::Error> {
         if self.timeout_ms.is_some() {
             return Err(syn::Error::new(span, "`timeout` set multiple times."));
@@ -87,16 +100,18 @@ impl ArgsBuilder {
 
         let timeout = parse_int(timeout, span, "timeout")?;
         if timeout == 0 {
-            return Err(syn::Error::new(span, "`timeout` may not be 0."));
+            return Err(syn::Error::new(span, "`timeout` can't be 0."));
         }
         self.timeout_ms = Some((timeout, span));
         Ok(())
     }
 
-    fn build(&self) -> Result<Args, syn::Error> {
-        Ok(Args {
-            timeout_ms: self.timeout_ms.map(|x| x.0),
-        })
+    fn build(&self) -> TestArgs {
+        let timeout_ms = match self.timeout_ms {
+            None => TestArgs::DEFAULT_TIMEOUT_MS,
+            Some(arg) => arg.0,
+        };
+        TestArgs { timeout_ms }
     }
 }
 

@@ -1,19 +1,28 @@
 use proc_macro::TokenStream;
 
-use proc_macro2::{Ident, Span};
+use proc_macro2::Span;
 use quote::{quote, quote_spanned, ToTokens};
+use syn::PatIdent;
 
 use crate::args;
-use crate::args::Args;
+use crate::args::{Args, TestArgs};
 use crate::hygiene;
 
-pub(crate) fn parse_macro(
+pub(crate) fn node(
     input: syn::ItemFn,
     args: syn::AttributeArgs,
-    is_test: bool,
 ) -> Result<TokenStream, syn::Error> {
-    let (input, ctx_pat) = hygiene::input(input, is_test)?;
-    let args = args::parse(args, is_test)?;
+    let (input, ctx_pat) = hygiene::node(input)?;
+    let args = args::node(args)?;
+    output_node(input, args, ctx_pat)
+}
+
+pub(crate) fn node_test(
+    input: syn::ItemFn,
+    args: syn::AttributeArgs,
+) -> Result<TokenStream, syn::Error> {
+    let (input, ctx_pat) = hygiene::node_test(input)?;
+    let args = args::node_test(args)?;
     let last_stmt_end_span = {
         let mut last_stmt = input
             .block
@@ -29,72 +38,16 @@ pub(crate) fn parse_macro(
         let start = last_stmt.next().map_or_else(Span::call_site, |t| t.span());
         last_stmt.last().map_or(start, |t| t.span())
     };
-    let ctx_ident = &ctx_pat.ident;
-    if is_test {
-        output_node_test(input, args, last_stmt_end_span, ctx_ident)
-    } else {
-        output_node(input, ctx_ident)
-    }
+    output_node_test(input, args, last_stmt_end_span, ctx_pat)
 }
 
-fn output_node_test(
-    mut input: syn::ItemFn,
-    args: Args,
-    last_stmt_end_span: Span,
-    ctx_ident: &Ident,
+fn output_node(
+    input: syn::ItemFn,
+    _args: Args,
+    ctx_pat: PatIdent,
 ) -> Result<TokenStream, syn::Error> {
     let body = &input.block;
-    match args.timeout_ms {
-        Some(timeout) => {
-            input.block = syn::parse2(quote_spanned! {last_stmt_end_span=>
-                {
-                    use core::time::Duration;
-                    use tokio::time::timeout;
-
-                    let (tx, rx) = std::sync::mpsc::channel::<bool>();
-                    let (mut #ctx_ident, mut executor) = ockam_node::start_node();
-                    executor
-                        .execute(async move {
-                            let is_ok = timeout(Duration::from_millis(#timeout as u64), async #body).await.is_ok();
-                            tx.send(is_ok).expect("Failed to send test result");
-                            if !is_ok {
-                                #ctx_ident.stop().await.expect("Failed to stop the node context");
-                            }
-                        })
-                        .expect("Executor failed");
-                    let test_res = rx.try_recv().expect("Failed to receive test response from executor");
-                    assert!(test_res, "Test timeout reached");
-                }
-            })
-                .expect("Parsing failure");
-        }
-        _ => {
-            input.block = syn::parse2(quote_spanned! {last_stmt_end_span=>
-                {
-                    let (mut #ctx_ident, mut executor) = ockam_node::start_node();
-                    executor
-                    .execute(async move {
-                        let res = #body;
-                        if res.is_err() {
-                            #ctx_ident.stop().await.expect("Failed to stop the node context");
-                        }
-                    })
-                    .expect("Executor failed");
-                }
-            })
-            .expect("Parsing failure");
-        }
-    }
-    let header = quote! { #[::core::prelude::v1::test] };
-    let output = quote! {
-        #header
-        #input
-    };
-    Ok(output.into())
-}
-
-fn output_node(input: syn::ItemFn, ctx_ident: &Ident) -> Result<TokenStream, syn::Error> {
-    let body = &input.block;
+    let ctx_ident = &ctx_pat.ident;
     #[cfg(feature = "std")]
     let output = quote! {
         fn main() -> ockam::Result<()> {
@@ -113,6 +66,47 @@ fn output_node(input: syn::ItemFn, ctx_ident: &Ident) -> Result<TokenStream, syn
             })
         }
         main().unwrap();
+    };
+    Ok(output.into())
+}
+
+fn output_node_test(
+    mut input: syn::ItemFn,
+    args: TestArgs,
+    last_stmt_end_span: Span,
+    ctx_pat: PatIdent,
+) -> Result<TokenStream, syn::Error> {
+    let body = &input.block;
+    let ctx_ident = &ctx_pat.ident;
+    let ctx_stop_stmt =
+        quote! { #ctx_ident.stop().await.expect("Failed to stop the node context"); };
+    let timeout_ms = args.timeout_ms;
+    input.block = syn::parse2(quote_spanned! {last_stmt_end_span=>
+        {
+            use core::time::Duration;
+            use tokio::time::timeout;
+
+            let (mut #ctx_ident, mut executor) = ockam_node::start_node();
+            executor
+                .execute(async move {
+                    match timeout(Duration::from_millis(#timeout_ms as u64), async #body).await {
+                        Err(err) => {
+                            #ctx_stop_stmt
+                            err
+                        },
+                        Ok(_) => Ok(()),
+                    };
+                })
+                .expect("Executor should not fail")
+                .expect("Test function should not fail");
+        }
+    })
+    .expect("Parsing failure");
+    let header = quote! { #[::core::prelude::v1::test] };
+    let output = quote! {
+        #[::core::prelude::v1::test]
+        #header
+        #input
     };
     Ok(output.into())
 }

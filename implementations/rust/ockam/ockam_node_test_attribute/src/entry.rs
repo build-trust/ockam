@@ -5,8 +5,7 @@ use crate::parser;
 pub(crate) fn main(args: TokenStream, item: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemFn);
     let args = syn::parse_macro_input!(args as syn::AttributeArgs);
-
-    parser::parse_macro(input, args, false).unwrap_or_else(|e| e.to_compile_error().into())
+    parser::node(input, args).unwrap_or_else(|e| e.to_compile_error().into())
 }
 
 pub(crate) fn test(args: TokenStream, item: TokenStream) -> TokenStream {
@@ -22,5 +21,5 @@ pub(crate) fn test(args: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
 
-    parser::parse_macro(input, args, true).unwrap_or_else(|e| e.to_compile_error().into())
+    parser::node_test(input, args).unwrap_or_else(|e| e.to_compile_error().into())
 }
