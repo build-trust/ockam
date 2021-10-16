@@ -1,7 +1,21 @@
 [package]
 name = "ockam_node_test_attribute"
+categories = ["cryptography", "asynchronous", "authentication","network-programming"]
+authors = ["Ockam Developers"]
 version = "0.1.0"
 edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_node_test_attribute"
+readme = "README.md"
+keywords = ["ockam", "crypto", "macro", "proc-macro", "attribute"]
+description = """
+Ockam node attribute proc_macros.
+"""
+exclude = [
+    "DEVELOP.md",
+    "LICENSE"
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
