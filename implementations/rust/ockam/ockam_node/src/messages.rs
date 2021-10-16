@@ -132,22 +132,22 @@ impl NodeReply {
         Ok(NodeReply::Ok)
     }
 
-    /// Return [NodeReply::NoSuchWorker]
+    /// Return [NodeError::NoSuchWorker]
     pub fn no_such_worker(a: Address) -> NodeReplyResult {
         Err(NodeError::NoSuchWorker(a))
     }
 
-    /// Return [NodeReply::NoSuchProcessor]
+    /// Return [NodeError::NoSuchProcessor]
     pub fn no_such_processor(a: Address) -> NodeReplyResult {
         Err(NodeError::NoSuchProcessor(a))
     }
 
-    /// Return [NodeReply::WorkerExists] for the given address
+    /// Return [NodeError::WorkerExists] for the given address
     pub fn worker_exists(a: Address) -> NodeReplyResult {
         Err(NodeError::WorkerExists(a))
     }
 
-    /// Return [NodeReply::RouterExists]
+    /// Return [NodeError::RouterExists]
     pub fn router_exists() -> NodeReplyResult {
         Err(NodeError::RouterExists)
     }
