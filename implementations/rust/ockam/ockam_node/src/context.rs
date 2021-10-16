@@ -261,7 +261,7 @@ impl Context {
     /// be handled by specific domain workers.
     ///
     /// [`Address`]: ockam_core::Address
-    /// [`RouteBuilder`]: ockem_core::RouteBuilder
+    /// [`RouteBuilder`]: ockam_core::RouteBuilder
     pub async fn send_from_address<R, M>(
         &self,
         route: R,
@@ -322,12 +322,12 @@ impl Context {
 
     /// Forward a transport message to its next routing destination
     ///
-    /// Similar to [`Context::send_message`], but taking a
+    /// Similar to [`Context::send`], but taking a
     /// [`TransportMessage`], which contains the full destination
     /// route, and calculated return route for this hop.
     ///
     /// **Note:** you most likely want to use
-    /// [`Context::send_message`] instead, unless you are writing an
+    /// [`Context::send`] instead, unless you are writing an
     /// external router implementation for ockam node.
     ///
     /// [`Context::send`]: crate::Context::send
