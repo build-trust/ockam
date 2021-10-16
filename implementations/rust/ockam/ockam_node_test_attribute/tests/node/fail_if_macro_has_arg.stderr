@@ -1,0 +1,14 @@
+error: This macro doesn't accept any argument
+ --> $DIR/fail_if_macro_has_arg.rs:1:35
+  |
+1 | #[ockam_node_test_attribute::node(timeout = 100)]
+  |                                   ^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/fail_if_macro_has_arg.rs:1:1
+  |
+1 | / #[ockam_node_test_attribute::node(timeout = 100)]
+2 | | async fn main(mut c: ockam::Context) {
+3 | |     c.stop().await.unwrap();
+4 | | }
+  | |_^ consider adding a `main` function to `$DIR/tests/node/fail_if_macro_has_arg.rs`

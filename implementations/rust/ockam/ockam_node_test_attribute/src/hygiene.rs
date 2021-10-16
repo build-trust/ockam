@@ -56,7 +56,8 @@ fn arg_is_ctx(input: &syn::ItemFn) -> Result<(PatIdent, Type), syn::Error> {
         Some(seg) => {
             let ident = seg.ident.to_string();
             if ident != "Context" {
-                let msg = format!("Expected `ockam::Context` found `{}`", &ident);
+                let path_ident = quote! {#path}.to_string().replace(' ', "");
+                let msg = format!("Expected `ockam::Context` found `{}`", &path_ident);
                 return Err(syn::Error::new_spanned(&path, msg));
             }
             Ok(())

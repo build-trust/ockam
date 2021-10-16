@@ -643,7 +643,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.30.0"
+version = "0.33.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -653,13 +653,15 @@ dependencies = [
  "ockam_core",
  "ockam_entity",
  "ockam_key_exchange_core",
+ "ockam_key_exchange_xx",
  "ockam_node",
  "ockam_node_attribute",
+ "ockam_vault",
  "ockam_vault_core",
+ "ockam_vault_sync_core",
  "rand",
  "serde",
  "serde-big-array",
- "serde_bare",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -669,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.26.0"
+version = "0.29.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -681,13 +683,12 @@ dependencies = [
  "ockam_vault_sync_core",
  "rand",
  "serde",
- "serde_bare",
  "tracing",
 ]
 
 [[package]]
 name = "ockam_core"
-version = "0.31.0"
+version = "0.34.0"
 dependencies = [
  "async-trait",
  "hashbrown",
@@ -699,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.20.0"
+version = "0.23.0"
 dependencies = [
  "async-trait",
  "bls12_381_plus",
@@ -717,7 +718,6 @@ dependencies = [
  "rand",
  "serde",
  "serde-big-array",
- "serde_bare",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -727,7 +727,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.23.0"
+version = "0.26.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.23.0"
+version = "0.26.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -746,7 +746,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.29.0"
+version = "0.32.0"
 dependencies = [
  "ockam_core",
  "tokio",
@@ -756,7 +756,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.20.0"
+version = "0.23.0"
 dependencies = [
  "quote",
  "syn",
@@ -776,7 +776,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.25.0"
+version = "0.28.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -798,7 +798,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.25.0"
+version = "0.28.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.22.0"
+version = "0.25.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -1079,9 +1079,9 @@ dependencies = [
 
 [[package]]
 name = "serde_bare"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adbd09b1e0b45fadbc163e4ea1f4224b451146ba4f01963c69975780c33215fa"
+checksum = "51c55386eed0f1ae957b091dc2ca8122f287b60c79c774cbe3d5f2b69fded660"
 dependencies = [
  "serde",
 ]
@@ -1147,7 +1147,7 @@ checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.23.0"
+version = "0.26.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1168,7 +1168,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.21.0"
+version = "0.24.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -1185,7 +1185,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.23.0"
+version = "0.26.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.21.0"
+version = "0.24.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -1345,19 +1345,7 @@ checksum = "84f96e095c0c82419687c20ddf5cb3eadb61f4e1405923c9dc8e53a1adacbda8"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
- "tracing-attributes",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
