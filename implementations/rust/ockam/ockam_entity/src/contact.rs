@@ -15,16 +15,15 @@ use ockam_core::{allow, deny};
 /// Public keys together with metadata are organised into verifiable events chain exactly like [`crate::Profile`].
 /// There are two ways to get Contact:
 ///   1. From another user (in this case Contact will be cryptographically verified)
-///   2. Generate one from user's own [`crate::Profile`]
+///   2. Generate one from user's own [`Profile`](crate::Profile)
 ///
 /// Public keys from Contact can be used for many purposes, e.g. running key exchange, or signing&encrypting data.
 ///
 /// # Examples
 ///
-/// Creating [`Contact`] from [`crate::Profile`]
+/// Creating [`Contact`] from [`Profile`](crate::Profile)
 ///
 /// TODO
-/// ```
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Contact {
     identifier: ProfileIdentifier,
@@ -32,7 +31,7 @@ pub struct Contact {
 }
 
 impl Contact {
-    /// Return unique identifier, which equals to [`crate::Profile`]'s identifier
+    /// Return unique identifier, which equals to [`Profile`](crate::Profile)'s identifier
     pub fn identifier(&self) -> &ProfileIdentifier {
         &self.identifier
     }
