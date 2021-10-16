@@ -1,21 +1,19 @@
 use quote::quote;
-use syn::{
-    punctuated::Punctuated, FnArg, Pat, PatIdent, Path, PathSegment, ReturnType, Type, TypePath,
-};
+use syn::{punctuated::Punctuated, FnArg, Pat, PatIdent, Path, ReturnType, Type, TypePath};
 
-pub(crate) fn input(
-    input: syn::ItemFn,
-    is_test: bool,
-) -> Result<(syn::ItemFn, PatIdent), syn::Error> {
+pub(crate) fn node(input: syn::ItemFn) -> Result<(syn::ItemFn, PatIdent), syn::Error> {
+    has_one_arg(&input)?;
+    let (ctx_pat, _ctx_type) = arg_is_ctx(&input)?;
+    ctx_is_used(&input, &ctx_pat)?;
+    fn_name_is_main(&input)?;
+    Ok((cleanup(input)?, ctx_pat))
+}
+
+pub(crate) fn node_test(input: syn::ItemFn) -> Result<(syn::ItemFn, PatIdent), syn::Error> {
     has_one_arg(&input)?;
     let (ctx_pat, ctx_type) = arg_is_ctx(&input)?;
-    if is_test {
-        ctx_is_mut_ref(&input, &ctx_type)?;
-        returns_result(&input)?;
-    } else {
-        ctx_is_used(&input, &ctx_pat)?;
-        fn_name_is_main(&input)?;
-    }
+    ctx_is_mut_ref(&input, &ctx_type)?;
+    returns_result(&input)?;
     Ok((cleanup(input)?, ctx_pat))
 }
 
@@ -53,7 +51,7 @@ fn arg_is_ctx(input: &syn::ItemFn) -> Result<(PatIdent, Type), syn::Error> {
     let parse_path = |path: &Path| match path.segments.last() {
         None => {
             let msg = "Input argument should be of type `ockam::Context`";
-            return Err(syn::Error::new_spanned(&path, msg));
+            Err(syn::Error::new_spanned(&path, msg))
         }
         Some(seg) => {
             let ident = seg.ident.to_string();
@@ -106,7 +104,7 @@ fn ctx_is_used(input: &syn::ItemFn, ctx_pat: &PatIdent) -> Result<(), syn::Error
 }
 
 fn fn_name_is_main(input: &syn::ItemFn) -> Result<(), syn::Error> {
-    if input.sig.ident.to_string() != "main" {
+    if input.sig.ident != "main" {
         let msg = "The function name must be `main`";
         return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
     }
@@ -141,16 +139,11 @@ fn returns_result(input: &syn::ItemFn) -> Result<(), syn::Error> {
         }
         ReturnType::Type(_, return_type) => match return_type.as_ref() {
             Type::Path(p) => {
-                let returns_result = p
-                    .path
-                    .segments
-                    .iter()
-                    .find(|s| {
-                        let ident = &s.ident;
-                        let type_ident = quote! {#ident}.to_string();
-                        type_ident == "Result"
-                    })
-                    .is_some();
+                let returns_result = p.path.segments.iter().any(|s| {
+                    let ident = &s.ident;
+                    let type_ident = quote! {#ident}.to_string();
+                    type_ident == "Result"
+                });
                 if !returns_result {
                     let msg = "The test function must return a Result";
                     return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
