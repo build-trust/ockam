@@ -6,16 +6,8 @@ use rand::Rng;
 
 use ockam_transport_tcp::{TcpTransport, TCP};
 
-#[test]
-fn send_receive() {
-    let (mut ctx, mut executor) = ockam_node::start_node();
-    executor
-        .execute(async move { run_test(&mut ctx).await })
-        .expect("Executor should not fail")
-        .expect("Main function should not fail");
-}
-
-async fn run_test(ctx: &mut Context) -> Result<()> {
+#[ockam_node_test_attribute::node_test(timeout = 1000)]
+async fn send_receive(ctx: &mut Context) -> Result<()> {
     let _listener = {
         let transport = TcpTransport::create(ctx).await?;
         transport.listen("127.0.0.1:4000").await?;

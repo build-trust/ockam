@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 
-use proc_macro2::Span;
+use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::PatIdent;
 
@@ -15,30 +15,6 @@ pub(crate) fn node(
     let (input, ctx_pat) = hygiene::node(input)?;
     let args = args::node(args)?;
     output_node(input, args, ctx_pat)
-}
-
-pub(crate) fn node_test(
-    input: syn::ItemFn,
-    args: syn::AttributeArgs,
-) -> Result<TokenStream, syn::Error> {
-    let (input, ctx_pat) = hygiene::node_test(input)?;
-    let args = args::node_test(args)?;
-    let last_stmt_end_span = {
-        let mut last_stmt = input
-            .block
-            .stmts
-            .last()
-            .map(ToTokens::into_token_stream)
-            .unwrap_or_default()
-            .into_iter();
-        // `Span` on stable Rust has a limitation that only points to the first
-        // token, not the whole tokens. We can work around this limitation by
-        // using the first/last span of the tokens like
-        // `syn::Error::new_spanned` does.
-        let start = last_stmt.next().map_or_else(Span::call_site, |t| t.span());
-        last_stmt.last().map_or(start, |t| t.span())
-    };
-    output_node_test(input, args, last_stmt_end_span, ctx_pat)
 }
 
 fn output_node(
@@ -70,16 +46,46 @@ fn output_node(
     Ok(output.into())
 }
 
+pub(crate) fn node_test(
+    input: syn::ItemFn,
+    args: syn::AttributeArgs,
+) -> Result<TokenStream, syn::Error> {
+    let test_input = {
+        let mut test_input = input.clone();
+        let inner_ident = test_input.sig.ident;
+        test_input.sig.ident = Ident::new(&format!("_{}", &inner_ident), inner_ident.span());
+        test_input
+    };
+    let (input, ctx_pat) = hygiene::node_test(input)?;
+    let args = args::node_test(args)?;
+    let last_stmt_end_span = {
+        let mut last_stmt = input
+            .block
+            .stmts
+            .last()
+            .map(ToTokens::into_token_stream)
+            .unwrap_or_default()
+            .into_iter();
+        // `Span` on stable Rust has a limitation that only points to the first
+        // token, not the whole tokens. We can work around this limitation by
+        // using the first/last span of the tokens like
+        // `syn::Error::new_spanned` does.
+        let start = last_stmt.next().map_or_else(Span::call_site, |t| t.span());
+        last_stmt.last().map_or(start, |t| t.span())
+    };
+    output_node_test(input, test_input, args, last_stmt_end_span, ctx_pat)
+}
+
 fn output_node_test(
     mut input: syn::ItemFn,
+    test_input: syn::ItemFn,
     args: TestArgs,
     last_stmt_end_span: Span,
     ctx_pat: PatIdent,
 ) -> Result<TokenStream, syn::Error> {
-    let body = &input.block;
     let ctx_ident = &ctx_pat.ident;
-    let ctx_stop_stmt =
-        quote! { #ctx_ident.stop().await.expect("Failed to stop the node context"); };
+    let ctx_stop_stmt = quote! { let _ = #ctx_ident.stop().await; };
+    let test_input_ident = &test_input.sig.ident;
     let timeout_ms = args.timeout_ms;
     input.block = syn::parse2(quote_spanned! {last_stmt_end_span=>
         {
@@ -89,23 +95,22 @@ fn output_node_test(
             let (mut #ctx_ident, mut executor) = ockam_node::start_node();
             executor
                 .execute(async move {
-                    match timeout(Duration::from_millis(#timeout_ms as u64), async #body).await {
+                    match timeout(Duration::from_millis(#timeout_ms as u64), #test_input_ident(&mut #ctx_ident)).await.expect("Failed to run timeout") {
                         Err(err) => {
                             #ctx_stop_stmt
-                            err
+                            Err(err)
                         },
                         Ok(_) => Ok(()),
-                    };
+                    }
                 })
                 .expect("Executor should not fail")
                 .expect("Test function should not fail");
         }
     })
     .expect("Parsing failure");
-    let header = quote! { #[::core::prelude::v1::test] };
     let output = quote! {
+        #test_input
         #[::core::prelude::v1::test]
-        #header
         #input
     };
     Ok(output.into())
