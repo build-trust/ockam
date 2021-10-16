@@ -10,7 +10,7 @@ pub type AuthenticationProof = Vec<u8>;
 
 /// Identity
 pub trait Identity: Send + 'static {
-    /// Return unique [`Profile`] identifier, which is equal to sha256 of the root public key
+    /// Return unique [`Profile`](crate::Profile) identifier, which is equal to sha256 of the root public key
     fn identifier(&self) -> Result<ProfileIdentifier>;
 
     /// Create new key.
@@ -54,7 +54,7 @@ pub trait Identity: Send + 'static {
     /// Return all known to this profile [`Contact`]s
     fn get_contacts(&self) -> Result<Vec<Contact>>;
 
-    /// Convert [`Profile`] to [`Contact`]
+    /// Convert [`Profile`](crate::Profile) to [`Contact`]
     fn as_contact(&mut self) -> Result<Contact>;
 
     /// Return [`Contact`] with given [`ProfileIdentifier`]
@@ -63,7 +63,7 @@ pub trait Identity: Send + 'static {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
     fn verify_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool>;
 
-    /// Verify and add new [`Contact`] to [`Profile`]'s Contact list
+    /// Verify and add new [`Contact`] to [`Profile`](crate::Profile)'s Contact list
     fn verify_and_add_contact<C: Into<Contact>>(&mut self, contact: C) -> Result<bool>;
 
     /// Verify and update known [`Contact`] with new [`ProfileChangeEvent`]s
