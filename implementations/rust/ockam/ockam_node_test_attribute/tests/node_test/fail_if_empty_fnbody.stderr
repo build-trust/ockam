@@ -1,12 +1,12 @@
 error: Function body Cannot be Empty.
  --> $DIR/fail_if_empty_fnbody.rs:5:10
   |
-5 | async fn my_test(_ctx: ockam::Context) -> ockam::Result<()> {}
+5 | async fn my_test(_ctx: &mut ockam::Context) -> ockam::Result<()> {}
   |          ^^^^^^^
 
 error[E0601]: `main` function not found in crate `$CRATE`
  --> $DIR/fail_if_empty_fnbody.rs:4:1
   |
 4 | / #[ockam_node_test_attribute::node_test]
-5 | | async fn my_test(_ctx: ockam::Context) -> ockam::Result<()> {}
-  | |______________________________________________________________^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_empty_fnbody.rs`
+5 | | async fn my_test(_ctx: &mut ockam::Context) -> ockam::Result<()> {}
+  | |___________________________________________________________________^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_empty_fnbody.rs`

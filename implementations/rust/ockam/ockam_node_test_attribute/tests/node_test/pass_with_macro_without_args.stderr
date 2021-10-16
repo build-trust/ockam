@@ -1,0 +1,8 @@
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/pass_with_macro_without_args.rs:1:1
+  |
+1 | / #[ockam_node_test_attribute::node_test]
+2 | | async fn my_test(ctx: &mut Context) -> ockam::Result<()> {
+3 | |     ctx.stop().await.unwrap();
+4 | | }
+  | |_^ consider adding a `main` function to `$DIR/tests/node_test/pass_with_macro_without_args.rs`

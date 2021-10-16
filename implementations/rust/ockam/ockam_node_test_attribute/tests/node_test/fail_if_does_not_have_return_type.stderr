@@ -1,14 +1,14 @@
 error: The test function must have a return type
  --> $DIR/fail_if_does_not_have_return_type.rs:2:7
   |
-2 | async fn my_test(ctx: ockam::Context) {
+2 | async fn my_test(ctx: &mut ockam::Context) {
   |       ^^
 
 error[E0601]: `main` function not found in crate `$CRATE`
  --> $DIR/fail_if_does_not_have_return_type.rs:1:1
   |
 1 | / #[ockam_node_test_attribute::node_test]
-2 | | async fn my_test(ctx: ockam::Context) {
+2 | | async fn my_test(ctx: &mut ockam::Context) {
 3 | |     ctx.address();
 4 | | }
   | |_^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_does_not_have_return_type.rs`

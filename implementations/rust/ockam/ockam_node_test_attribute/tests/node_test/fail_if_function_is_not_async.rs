@@ -2,6 +2,6 @@
 // if the item it is defined on is not an async function.
 
 #[ockam_node_test_attribute::node_test]
-fn my_test(c: ockam::Context) -> ockam::Result<()> {
+fn my_test(c: &mut ockam::Context) -> ockam::Result<()> {
     c.stop().await.unwrap();
 }
