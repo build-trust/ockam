@@ -7,6 +7,7 @@ on:
   pull_request:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
+      - 'implementations/rust/ockam/ockam_ffi/**'
       - 'build.gradle'
       - 'implementations/elixir/build.gradle'
       - 'settings.gradle'
