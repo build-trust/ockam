@@ -40,6 +40,7 @@ RUN set -xe; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
     PATH="${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:$PATH"; \
     rustup component add rustfmt; \
+    rustup install nightly; \
     rustup component add clippy; \
     cargo install cargo-audit; \
     cargo install --locked cargo-deny; \
