@@ -8,9 +8,9 @@ jobs:
     name: Check Submitter For CLA
 
     env:
-      MESSAGE: "Yay! thanks for contributing to the Ockam repository @${{ github.actor }}. We are glad to see more contributors contributing to this open source origanization.\\n
-      Do you mind signing our CLA by creating a pull request, adding your name to the [contributors.csv file](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv).\\n
-      Please feel free to @mrinalwadhwa if you encounter any issue ❤️."
+      MESSAGE: "Thank you for contributing to Ockam @${{ github.actor }}!. We are excited to have you as a contributor.\\n
+      Please sign our CLA by creating a pull request that adds your name to the [contributors.csv file](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv).\\n
+      If you encounter any issue, please contact @mrinalwadhwa ❤️."
 
     environment:
       name: contributors
@@ -26,7 +26,6 @@ jobs:
       - name: Setup
         run: |
           USER=${{ github.actor }}
-
           # Export variable
           # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
           echo "USER=$USER" >> $GITHUB_ENV
@@ -38,7 +37,6 @@ jobs:
           # Below attempt is to prevent following situation
           # https://github.community/t/github-actions-using-grep-when-no-lines-selected/126719
           CVS_USER=$(grep --max-count=1 --only-matching ${{ env.USER }} contributors/CONTRIBUTORS.csv || echo '<MISSING>')
-
           if [[ "$CVS_USER" == "<MISSING>" ]]
           then
             echo "CLA_NOT_SIGNED=1" >> $GITHUB_ENV
