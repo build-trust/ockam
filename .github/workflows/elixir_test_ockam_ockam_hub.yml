@@ -10,6 +10,7 @@ on:
       - 'implementations/elixir/ockam/ockam_vault_software/**'
       - 'implementations/elixir/ockam/ockam/**'
       - 'implementations/elixir/ockam/ockam_kafka/**'
+      - 'implementations/rust/ockam/ockam_ffi/**'
       - 'build.gradle'
       - 'implementations/elixir/build.gradle'
       - 'settings.gradle'

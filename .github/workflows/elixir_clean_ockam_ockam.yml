@@ -8,12 +8,12 @@ on:
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
     paths:
       - 'implementations/elixir/ockam/ockam_vault_software/**'
+      - 'implementations/rust/ockam/ockam_ffi/**'
       - 'build.gradle'
       - 'implementations/elixir/build.gradle'
       - 'settings.gradle'
       - 'implementations/elixir/settings.gradle'
       - 'implementations/elixir/ockam/ockam/**'
-      - 'implementations/rust/ockam/ockam_ffi/**'
 
 jobs:
   elixir_clean_ockam_ockam:

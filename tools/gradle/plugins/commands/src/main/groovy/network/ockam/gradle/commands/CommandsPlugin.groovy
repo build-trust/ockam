@@ -76,6 +76,7 @@ class CommandsPlugin implements Plugin<Project> {
               def p = Paths.get(Paths.get(projectDirPath, dirPath.toString(), it).toFile().getCanonicalPath())
               paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
             }
+            paths << Paths.get('implementations/rust/ockam/ockam_ffi', '**')
           }
 
           ['build.gradle', 'settings.gradle'].each {
