@@ -5,6 +5,13 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.35.0 - 2021-10-18
+### Added
+- Added new 'no_main' feature to control ockam_node_attribute behavior on bare metal platforms
+### Changed
+- Only use cortex_m_semihosting on arm platforms
+- Dependencies updated
+
 ## v0.34.0 - 2021-10-11
 ### Added
 - Implement From<Iterator> and Into<Iterator> for AddressSet

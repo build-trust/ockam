@@ -324,7 +324,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 
 [[package]]
 name = "ockam_core"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -340,7 +340,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "crossbeam-queue",
  "futures",

@@ -5,6 +5,14 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.26.0 - 2021-10-18
+### Added
+- Added new 'no_main' feature to control ockam_node_attribute behavior on bare metal platforms
+- Use ockam_core::compat::mutex instead of cortex_m::interrupt::*
+### Changed
+- Dependencies updated
+- Make vault_sync use `Handle`
+
 ## v0.25.0 - 2021-10-11
 ### Changed
 - Dependencies updated

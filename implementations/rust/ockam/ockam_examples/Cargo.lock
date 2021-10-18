@@ -670,7 +670,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.33.0"
+version = "0.34.0"
 dependencies = [
  "arrayref",
  "async-trait",
@@ -695,7 +695,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "async-trait",
  "ockam_core",
@@ -712,7 +712,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "async-trait",
  "hashbrown 0.11.2",
@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -755,7 +755,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "cortex-m",
  "cortex-m-semihosting",
@@ -786,7 +786,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "quote",
  "syn",
@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -802,7 +802,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -818,7 +818,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -837,7 +837,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "cfg-if",
  "ockam_core",
@@ -848,7 +848,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "ockam_core",

@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -566,7 +566,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -575,7 +575,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "cortex-m",
  "cortex-m-semihosting",
@@ -600,7 +600,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -631,7 +631,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "ockam_core",
