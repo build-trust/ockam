@@ -1,7 +1,7 @@
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
-use ockam::{route, Context, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Result, TrustEveryonePolicy, Vault};
 use ockam::{Entity, TcpTransport, TCP};
 
 #[ockam::node]

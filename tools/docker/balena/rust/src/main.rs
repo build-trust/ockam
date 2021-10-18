@@ -1,5 +1,5 @@
 use ockam::{route, Context, RemoteForwarder, Result, Route, TcpTransport, TCP};
-use ockam::{Entity, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{Entity, TrustEveryonePolicy, Vault};
 
 async fn inlet_main(ctx: Context, inlet: &str, hub: &str) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;

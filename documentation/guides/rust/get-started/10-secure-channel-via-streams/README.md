@@ -55,14 +55,14 @@ async fn main(ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
-    let vault = Vault::create(&ctx)?;
-    let mut bob = Entity::create(&ctx, &vault)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
+    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
 
     // Create a stream client
-    Stream::new(&ctx)?
+    Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id("secure-channel-over-stream-over-cloud-node-responder")
@@ -106,11 +106,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
-    let vault = Vault::create(&ctx)?;
-    let mut alice = Entity::create(&ctx, &vault)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create a stream client
-    let (sender, _receiver) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
@@ -122,19 +122,21 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create a secure channel
-    let secure_channel = alice.create_secure_channel(
+    let secure_channel = SecureChannel::create(
+        &ctx,
         route![
-            sender.clone(),            // via the "sc-initiator-to-responder" stream
-            "secure_channel_listener"  // to the "secure_channel_listener" listener
+            sender.clone(),           // via the "sc-initiator-to-responder" stream
+            "secure_channel_listener" // to the "secure_channel_listener" listener
         ],
-        TrustEveryonePolicy,
-    )?;
+        &vault,
+    )
+    .await?;
 
     // Send a message
     ctx.send(
         route![
-            secure_channel, // via the secure channel
-            "echoer"        // to the "echoer" worker
+            secure_channel.address(), // via the secure channel
+            "echoer"                  // to the "echoer" worker
         ],
         "Hello World!".to_string(),
     )

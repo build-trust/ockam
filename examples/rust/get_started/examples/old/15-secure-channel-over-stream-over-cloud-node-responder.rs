@@ -9,13 +9,13 @@ async fn main(ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
 
     // Create a stream client
-    Stream::new(&ctx)?
+    Stream::new(&ctx).await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id("secure-channel-over-stream-over-cloud-node-responder")

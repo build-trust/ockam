@@ -1,4 +1,4 @@
-use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
 
 struct Echoer;
@@ -24,14 +24,15 @@ async fn main(ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent Bob.
-    let mut bob = Entity::create(&ctx, &vault)?;
+    let mut bob = Entity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)?;
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
+        .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
     // request the `stream_kafka` service to create two Kafka backed streams -
@@ -45,7 +46,8 @@ async fn main(ctx: Context) -> Result<()> {
     let b_to_a_stream_address = Unique::with_prefix("bob_to_alice");
     let a_to_b_stream_address = Unique::with_prefix("alice_to_bob");
 
-    Stream::new(&ctx)?
+    Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("bob"))

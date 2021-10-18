@@ -177,7 +177,7 @@ Create a file at `examples/ockam_kafka_bob.rs` and copy the below code snippet t
 
 ```rust
 // examples/ockam_kafka_bob.rs
-use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
 
 struct Echoer;
@@ -203,14 +203,15 @@ async fn main(ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent Bob.
-    let mut bob = Entity::create(&ctx, &vault)?;
+    let mut bob = Entity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)?;
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
+        .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
     // request the `stream_kafka` service to create two Kafka backed streams -
@@ -224,7 +225,8 @@ async fn main(ctx: Context) -> Result<()> {
     let b_to_a_stream_address = Unique::with_prefix("bob_to_alice");
     let a_to_b_stream_address = Unique::with_prefix("alice_to_bob");
 
-    Stream::new(&ctx)?
+    Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("bob"))
@@ -255,7 +257,7 @@ Create a file at `examples/ockam_kafka_alice.rs` and copy the below code snippet
 
 ```rust
 // examples/ockam_kafka_alice.rs
-use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, TcpTransport, Unique, TCP};
 use std::io;
 
@@ -265,10 +267,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Alice.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent Alice.
-    let mut alice = Entity::create(&ctx, &vault)?;
+    let mut alice = Entity::create(&ctx, &vault).await?;
 
     // This program expects that Bob has created two streams
     // bob_to_alice and alice_to_bob on the cloud node at 1.node.ockam.network:4000
@@ -294,7 +296,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     // for the `bob_to_alice` stream to get two-way communication.
 
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
-    let (sender, _receiver) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id(Unique::with_prefix("alice"))
@@ -305,7 +308,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy)?;
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 

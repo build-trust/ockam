@@ -1,5 +1,5 @@
 use ockam::{route, Context, Result, TcpTransport, TCP};
-use ockam::{Entity, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{Entity, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -14,10 +14,10 @@ async fn main(ctx: Context) -> Result<()> {
     // over TCP at "127.0.0.1:4000" and its secure channel listener is
     // at address: "secure_channel_listener".
 
-    let vault = Vault::create(&ctx)?;
-    let mut e = Entity::create(&ctx, &vault)?;
+    let vault = Vault::create(&ctx).await?;
+    let mut e = Entity::create(&ctx, &vault).await?;
     let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy)?;
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.

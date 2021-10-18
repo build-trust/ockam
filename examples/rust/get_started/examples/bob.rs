@@ -1,4 +1,4 @@
-use ockam::{Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{Context, Entity, Result, TrustEveryonePolicy, Vault};
 use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 
 struct Echoer;
@@ -31,7 +31,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener".into(), TrustEveryonePolicy)
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
     // The computer that is running this program is likely within a private network and

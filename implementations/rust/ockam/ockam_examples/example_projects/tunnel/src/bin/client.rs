@@ -1,5 +1,5 @@
 use ockam::{
-    route, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
+    route, Context, Entity, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 
 const OUTLET_NAME: &str = "outlet";
@@ -19,7 +19,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // create secure channel to the server
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut me = Entity::create(&ctx, &vault)?;
     let route = route![(TCP, "127.0.0.1:8000"), "secure_listener"];
     let secure_channel = me.create_secure_channel(route, TrustEveryonePolicy)?;

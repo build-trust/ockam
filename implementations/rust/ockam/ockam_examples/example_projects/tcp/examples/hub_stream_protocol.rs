@@ -10,7 +10,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     tcp.connect(hub_addr).await?; //.service("stream_service");
 
     // Create 2 new stream workers
-    let (tx, mut rx) = Stream::new(&ctx)?
+    let (tx, mut rx) = Stream::new(&ctx)
+        .await?
         .with_interval(Duration::from_millis(500))
         .connect(
             ockam::route![(ockam::TCP, hub_addr)],

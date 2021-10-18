@@ -9,7 +9,7 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("echoer", Echoer).await?;
 
     // Create the stream
-    Stream::new(&ctx)?
+    Stream::new(&ctx).await?
         .connect(
             route![(TCP, "localhost:4000")],
             // Stream name from THIS to OTHER

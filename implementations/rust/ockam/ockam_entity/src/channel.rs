@@ -39,7 +39,7 @@ pub fn get_secure_channel_participant_id<T: Message>(msg: &Routed<T>) -> Result<
 mod test {
     use super::*;
     use crate::{Entity, Identity};
-    use ockam_core::{Route, route};
+    use ockam_core::{route, Route};
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -203,12 +203,9 @@ mod test {
                     .await
                     .unwrap();
 
-                bob.create_secure_channel_listener(
-                    "bob_yet_another_listener",
-                    bob_trust_policy,
-                )
-                .await
-                .unwrap();
+                bob.create_secure_channel_listener("bob_yet_another_listener", bob_trust_policy)
+                    .await
+                    .unwrap();
 
                 let alice_yet_another_channel = alice
                     .create_secure_channel(
@@ -259,12 +256,9 @@ mod test {
                 let n = rand::random::<u8>() % 5 + 4;
                 let mut channels = vec![];
                 for i in 0..n {
-                    bob.create_secure_channel_listener(
-                        i.to_string(),
-                        bob_trust_policy.clone(),
-                    )
-                    .await
-                    .unwrap();
+                    bob.create_secure_channel_listener(i.to_string(), bob_trust_policy.clone())
+                        .await
+                        .unwrap();
                     let channel_route: Route;
                     if i > 0 {
                         channel_route = route![channels.pop().unwrap(), i.to_string()];
