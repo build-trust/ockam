@@ -2,7 +2,7 @@ use core::time::Duration;
 use ockam::compat::collections::VecDeque;
 use ockam::compat::rand::{thread_rng, Rng};
 use ockam::{
-    route, Address, Context, DelayedEvent, Entity, Result, Routed, SecureChannels, TcpTransport,
+    route, Address, Context, DelayedEvent, Entity, Result, Routed, TcpTransport,
     TrustEveryonePolicy, Vault, Worker,
 };
 use std::env;
@@ -187,7 +187,7 @@ impl Config {
 async fn main(ctx: Context) -> Result<()> {
     let config = Config::new();
 
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut hub = Entity::create(&ctx, &vault)?;
 
     hub.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)?;

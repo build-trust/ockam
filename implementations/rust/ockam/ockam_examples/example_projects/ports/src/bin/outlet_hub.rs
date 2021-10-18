@@ -1,10 +1,10 @@
 use ockam::{
-    route, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
+    route, Context, Entity, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut fabric_machine = Entity::create(&ctx, &vault)?;
 
     let tcp = TcpTransport::create(&ctx).await?;

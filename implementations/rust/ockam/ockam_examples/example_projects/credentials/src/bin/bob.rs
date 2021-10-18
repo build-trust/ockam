@@ -4,14 +4,14 @@ use credentials_example::{
 };
 use ockam::{
     credential_attribute_values, credential_type, reveal_attributes, route, Context,
-    CredentialProtocol, Entity, EntityIdentifier, Identity, Result, SecureChannels, TcpTransport,
+    CredentialProtocol, Entity, EntityIdentifier, Identity, Result, TcpTransport,
     TrustIdentifierPolicy, Vault, TCP,
 };
 use std::convert::TryFrom;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut entity = Entity::create(&ctx, &vault)?;
     println!("Bob id: {}", entity.identifier()?);
 

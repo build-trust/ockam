@@ -1,5 +1,5 @@
 use ockam::{route, Context, Result, Route, TcpTransport, TCP};
-use ockam::{Entity, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{Entity, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -13,13 +13,13 @@ async fn main(ctx: Context) -> Result<()> {
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
     // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
-    let vault = Vault::create(&ctx)?;
-    let mut e = Entity::create(&ctx, &vault)?;
+    let vault = Vault::create(&ctx).await?;
+    let mut e = Entity::create(&ctx, &vault).await?;
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
     let r = route![(TCP, "1.node.ockam.network:4000"), forwarding_address];
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy)?;
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.

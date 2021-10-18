@@ -33,7 +33,8 @@ For example:
 
 ```rust
 // Create a stream client
-let stream = Stream::new(&ctx)?
+let stream = Stream::new(&ctx)
+    .await?
     .stream_service("stream")
     .index_service("stream_index")
     .client_id("streams-responder");
@@ -129,7 +130,8 @@ async fn main(ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a stream client
-    Stream::new(&ctx)?
+    Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id("stream-over-cloud-node-initiator")
@@ -171,7 +173,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a stream client
-    let (sender, _receiver) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id("stream-over-cloud-node-initiator")

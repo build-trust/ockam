@@ -2,9 +2,7 @@
 /// clients.  A stream is a buffered message sending channel, which
 /// means that you can run `initiator` and `responder` in any order
 /// you like.
-use ockam::{
-    route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
-};
+use ockam::{route, stream::Stream, Context, Entity, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -18,7 +16,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let mut alice = Entity::create(&ctx, &vault).await?;
 
     // Create a stream client
-    let (sender, _receiver) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx)
+        .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")

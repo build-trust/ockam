@@ -1,5 +1,5 @@
 use ockam::{
-    Context, Entity, Result, Routed, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault,
+    Context, Entity, Result, Routed, TcpTransport, TrustEveryonePolicy, Vault,
     Worker,
 };
 use rand::{thread_rng, Rng};
@@ -65,7 +65,7 @@ impl Worker for ConnectionBrokerWorker {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // create a secure listening channel
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut me = Entity::create(&ctx, &vault)?;
     me.create_secure_channel_listener("secure_listener", TrustEveryonePolicy)?;
 

@@ -2,7 +2,7 @@
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
 use ockam::{
-    route, Address, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault, TCP,
+    route, Address, Context, Entity, Result, TrustEveryonePolicy, Vault, TCP,
 };
 use ockam_transport_websocket::{WebSocketTransport, WS};
 
@@ -15,13 +15,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     ws.connect("127.0.0.1:3000").await?;
 
     let alice_vault = Vault::create(&ctx).expect("failed to create vault");
-    let mut alice = Entity::create(&ctx, &alice_vault)?;
+    let mut alice = Entity::create(&ctx, &alice_vault).await?;
     let middle: Address = (WS, "127.0.0.1:3000").into();
     let responder: Address = (TCP, "127.0.0.1:4000").into();
     let route = route![middle, responder, "bob_secure_channel_listener"];
 
     // Connect to a secure channel listener and perform a handshake.
-    let channel = alice.create_secure_channel(route, TrustEveryonePolicy)?;
+    let channel = alice.create_secure_channel(route, TrustEveryonePolicy).await?;
 
     // Send a message to the echoer worker via the channel.
     let echoer_route = route![channel, "echoer"];

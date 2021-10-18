@@ -1,4 +1,4 @@
-use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
 use ockam::{TcpTransport, TCP};
 use std::io;
 

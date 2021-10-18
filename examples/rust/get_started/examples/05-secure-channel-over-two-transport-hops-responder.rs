@@ -2,7 +2,7 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::{Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault};
+use ockam::{Context, Entity, Result, TcpTransport, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -22,7 +22,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob_listener".into(), TrustEveryonePolicy)
+    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
         .await?;
 
     // Don't call ctx.stop() here so this node runs forever.

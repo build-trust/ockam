@@ -1,11 +1,11 @@
 use ockam::{
-    route, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
+    route, Context, Entity, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent this machine
     let mut fabric_machine = Entity::create(&ctx, &vault)?;

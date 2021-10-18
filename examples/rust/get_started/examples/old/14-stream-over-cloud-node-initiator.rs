@@ -8,7 +8,7 @@ use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
 async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let (sender, _receiver) = Stream::new(&ctx)?
+    let (sender, _receiver) = Stream::new(&ctx).await?
         .connect(
             route![(TCP, "localhost:4000")],
             // Stream name from THIS node to the OTHER node
