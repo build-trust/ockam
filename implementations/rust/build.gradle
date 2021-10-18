@@ -33,7 +33,6 @@ commands {
       'cargo check',
       'cargo fmt --all -- --check',
       'cargo clippy --all --all-targets -- --cap-lints=warn',
-      'cargo audit',
       'cargo deny check licenses advisories',
     ],
     veryClean: [
