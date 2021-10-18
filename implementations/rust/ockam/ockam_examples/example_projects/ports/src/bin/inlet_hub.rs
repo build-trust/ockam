@@ -65,7 +65,7 @@ impl Worker for InletCreatorWorker {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut hub = Entity::create(&ctx, &vault)?;
 
     hub.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;

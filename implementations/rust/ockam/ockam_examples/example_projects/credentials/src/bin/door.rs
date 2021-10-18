@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut entity = Entity::create(&ctx, &vault)?;
 
     println!("Door id: {}", entity.identifier()?);

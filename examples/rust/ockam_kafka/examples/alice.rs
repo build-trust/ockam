@@ -8,10 +8,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Alice.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent Alice.
-    let mut alice = Entity::create(&ctx, &vault)?;
+    let mut alice = Entity::create(&ctx, &vault).await?;
 
     // This program expects that Bob has created two streams
     // bob_to_alice and alice_to_bob on the cloud node at 1.node.ockam.network:4000
@@ -48,7 +48,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy)?;
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 

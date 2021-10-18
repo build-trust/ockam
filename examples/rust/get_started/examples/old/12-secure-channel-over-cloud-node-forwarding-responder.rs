@@ -15,10 +15,10 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
     let vault = Vault::create(&ctx).expect("failed to create vault");
-    let mut bob = Entity::create(&ctx, &vault)?;
+    let mut bob = Entity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener at address "bob_secure_channel_listener"
-    bob.create_secure_channel_listener("bob_secure_channel_listener", TrustEveryonePolicy)?;
+    bob.create_secure_channel_listener("bob_secure_channel_listener", TrustEveryonePolicy).await?;
 
     let forwarder = RemoteForwarder::create(
         &ctx,

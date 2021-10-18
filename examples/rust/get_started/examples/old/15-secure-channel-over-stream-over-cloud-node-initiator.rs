@@ -9,7 +9,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // Create a vault
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create a bi-directional stream
     let (sender, _receiver) = Stream::new(&ctx)?

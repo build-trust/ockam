@@ -51,14 +51,15 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen("127.0.0.1:4000").await?;
 
     // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent Bob.
-    let mut bob = Entity::create(&ctx, &vault)?;
+    let mut bob = Entity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)?;
+    bob.create_secure_channel_listener("bob_listener".into(), TrustEveryonePolicy)
+        .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
@@ -123,14 +124,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Alice.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
 
     // Create an Entity to represent Alice.
-    let mut alice = Entity::create(&ctx, &vault)?;
+    let mut alice = Entity::create(&ctx, &vault).await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let r = route![(TCP, "localhost:3000"), (TCP, "localhost:4000"), "bob_listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy)?;
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;

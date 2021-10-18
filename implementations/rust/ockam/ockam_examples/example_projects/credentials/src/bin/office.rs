@@ -11,7 +11,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen(OFFICE_TCP_ADDRESS).await?;
 
     // The Office is an Issuer of credentials. In this case, permission to open doors.
-    let vault = Vault::create(&ctx)?;
+    let vault = Vault::create(&ctx).await?;
     let mut entity = Entity::create(&ctx, &vault)?; // TODO: add options to setup entity from creation
                                                     // Rename to create_credential_issuance_key
     entity.create_key(/* Move to Entity? */ Profile::CREDENTIALS_ISSUE)?;

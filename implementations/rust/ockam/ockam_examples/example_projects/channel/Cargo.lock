@@ -824,6 +824,7 @@ dependencies = [
  "rand 0.8.3",
  "serde",
  "serde-big-array",
+ "tokio",
  "tracing",
  "zeroize",
 ]

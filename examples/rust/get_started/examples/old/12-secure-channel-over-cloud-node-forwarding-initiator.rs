@@ -14,13 +14,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create(&ctx).expect("failed to create vault");
-    let mut alice = Entity::create(&ctx, &vault)?;
+    let mut alice = Entity::create(&ctx, &vault).await?;
     let cloud_node_route = route![
         (TCP, cloud_node_tcp_address),
         secure_channel_listener_forwarding_address
     ];
 
-    let channel = alice.create_secure_channel(cloud_node_route, TrustEveryonePolicy)?;
+    let channel = alice.create_secure_channel(cloud_node_route, TrustEveryonePolicy).await?;
 
     let echoer_route = route![channel, "echoer"];
 

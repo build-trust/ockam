@@ -6,9 +6,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let vault = Vault::create(&ctx)?;
-    let mut e = Entity::create(&ctx, &vault)?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
+    let vault = Vault::create(&ctx).await?;
+    let mut e = Entity::create(&ctx, &vault).await?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy).await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
