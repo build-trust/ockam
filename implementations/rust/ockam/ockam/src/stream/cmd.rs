@@ -1,9 +1,8 @@
 use crate::{
-    protocols::{ParserFragment, ProtocolPayload},
-    Address, Any, Context, Message, ProtocolId, Result, Route, Routed, TransportMessage, Worker,
+    protocols::{ProtocolParser, ProtocolPayload},
+    ProtocolId, Result,
 };
-use ockam_core::compat::vec::Vec;
-use ockam_core::Decodable;
+use ockam_core::{compat::collections::BTreeSet, Decodable};
 use serde::{Deserialize, Serialize};
 
 /// A protocol exchanged between a stream consumer and stream producer
@@ -33,53 +32,15 @@ impl StreamWorkerCmd {
     }
 }
 
-pub(crate) fn parse(msg: &TransportMessage) -> Option<StreamWorkerCmd> {
-    StreamWorkerCmd::decode(&msg.payload).ok()
-}
-
-pub struct StreamCmdParser<W, F>
-where
-    W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<StreamWorkerCmd>) -> Result<bool>,
-{
-    f: F,
-    _w: core::marker::PhantomData<W>,
-}
-
-impl<W, F> StreamCmdParser<W, F>
-where
-    W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<StreamWorkerCmd>) -> Result<bool>,
-{
-    pub fn new(f: F) -> Self {
-        Self {
-            f,
-            _w: core::marker::PhantomData,
-        }
-    }
-}
-
-impl<W, F> ParserFragment<W> for StreamCmdParser<W, F>
-where
-    W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<StreamWorkerCmd>) -> Result<bool>,
-{
-    fn ids(&self) -> Vec<ProtocolId> {
+impl ProtocolParser for StreamWorkerCmd {
+    fn check_id(id: &str) -> bool {
         vec!["internal.stream.fetch", "internal.stream.pull"]
             .into_iter()
-            .map(Into::into)
-            .collect()
+            .collect::<BTreeSet<_>>()
+            .contains(id)
     }
 
-    fn parse(
-        &self,
-        state: &mut W,
-        ctx: &mut Context,
-        routed: &Routed<Any>,
-        msg: ProtocolPayload,
-    ) -> Result<bool> {
-        let cmd = StreamWorkerCmd::decode(&msg.data)?;
-        let (addr, local_msg) = routed.dissolve();
-        (&self.f)(state, ctx, Routed::new(cmd, addr, local_msg))
+    fn parse(pp: ProtocolPayload) -> Result<Self> {
+        Ok(StreamWorkerCmd::decode(&pp.data)?)
     }
 }
