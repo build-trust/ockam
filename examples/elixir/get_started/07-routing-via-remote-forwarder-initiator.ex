@@ -19,3 +19,8 @@ message = %{
 
 # Route the message.
 Ockam.Router.route(message)
+
+# Wait to receive a reply.
+receive do
+  message -> IO.puts("Address: app\t Received: #{inspect(message)}")
+end
