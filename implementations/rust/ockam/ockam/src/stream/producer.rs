@@ -1,23 +1,19 @@
 use crate::{
-    block_future,
     monotonic::Monotonic,
     protocols::{
         stream::{requests::*, responses::*},
         ProtocolParser, ProtocolPayload,
     },
-    stream::StreamWorkerCmd,
-    Any, Context, Message, Result, Route, Routed, TransportMessage, Worker,
+    Any, Context, OckamError, Result, Route, Routed, Worker,
 };
 use ockam_core::compat::{boxed::Box, collections::VecDeque, string::String};
-
-use super::StreamCmdParser;
-use ockam_core::Encodable;
+use ockam_core::{Decodable, Encodable};
 
 pub struct StreamProducer {
     sender_name: String,
     route: Route,
     stream_service: String,
-    parser: ProtocolParser<Self>,
+    // parser: ProtocolParser<Self>,
     outbox: VecDeque<ProtocolPayload>,
     ids: Monotonic,
     /// Keep track of whether this producer has been initialised
@@ -28,10 +24,15 @@ pub struct StreamProducer {
     init: bool,
 }
 
-fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Response>) -> bool {
-    let return_route = resp.return_route();
+async fn handle_response(
+    w: &mut StreamProducer,
+    ctx: &mut Context,
+    route: Routed<Any>,
+    response: Response,
+) -> Result<()> {
+    let return_route = route.return_route();
 
-    match resp.body() {
+    match response {
         Response::Init(Init { stream_name }) => {
             w.route = return_route;
             w.init = true;
@@ -42,17 +43,14 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
             );
 
             // Send queued messages
-            let mut outbox = core::mem::take(&mut w.outbox);
-            outbox.into_iter().for_each(|trans| {
+            let outbox = core::mem::take(&mut w.outbox);
+            for trans in outbox.into_iter() {
                 let route = w.route.clone();
                 debug!("Sending queued message to {}", route);
-                if let Err(e) = block_future(&ctx.runtime(), async { ctx.send(route, trans).await })
-                {
-                    error!("Failed to send queued message: {}", e);
-                }
-            });
+                ctx.send(route, trans).await?;
+            }
 
-            true
+            Ok(())
         }
 
         Response::PushConfirm(PushConfirm {
@@ -67,9 +65,9 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
                 index.u64(),
                 status
             );
-            true
+            Ok(())
         }
-        _ => false,
+        _ => Err(OckamError::NoSuchProtocol)?,
     }
 }
 
@@ -79,8 +77,6 @@ impl Worker for StreamProducer {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.parser.attach(ResponseParser::new(parse_response));
-
         debug!("Create producer stream: {}", self.sender_name);
 
         // Create a stream for this sender
@@ -95,8 +91,13 @@ impl Worker for StreamProducer {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        if let Ok(true) = self.parser.prepare().parse(self, ctx, &msg) {
-            return Ok(());
+        if let Ok(pp) = ProtocolPayload::decode(msg.payload()) {
+            let id = pp.protocol.as_str();
+
+            if Response::check_id(id) {
+                let response = Response::parse(pp)?;
+                return handle_response(self, ctx, msg, response).await;
+            }
         }
 
         let mut trans = msg.into_transport_message();
@@ -128,7 +129,6 @@ impl StreamProducer {
             sender_name,
             route,
             stream_service,
-            parser: ProtocolParser::new(),
             outbox: VecDeque::new(),
             ids: Monotonic::new(),
             init: false,

@@ -1,12 +1,5 @@
-#![allow(unused)]
-
-use crate::protocols::stream::responses::StreamMessage;
-use ockam_core::compat::rand::{self, distributions::Standard, prelude::Distribution, Rng};
-use ockam_core::compat::string::String;
-use ockam_core::{Decodable, RouteBuilder};
-
 mod cmd;
-pub use cmd::{StreamCmdParser, StreamWorkerCmd};
+pub use cmd::StreamWorkerCmd;
 
 mod consumer;
 use consumer::StreamConsumer;
@@ -15,16 +8,13 @@ mod producer;
 use producer::StreamProducer;
 
 use crate::{
-    block_future,
-    protocols::{
-        stream::{requests::*, responses::*},
-        ProtocolParser,
-    },
-    Address, Any, Context, DelayedEvent, Error, Message, Result, Route, Routed, TransportMessage,
-    Worker,
+    protocols::stream::responses::*, Address, Context, Message, Result, Route, Routed,
+    TransportMessage,
 };
 use core::{ops::Deref, time::Duration};
-use serde::{Deserialize, Serialize};
+use ockam_core::compat::rand::{self, Rng};
+use ockam_core::compat::string::String;
+use ockam_core::{Decodable, RouteBuilder};
 
 /// Ockam stream protocol controller
 ///
@@ -72,7 +62,7 @@ impl From<SenderAddress> for Route {
 
 pub struct ReceiverAddress {
     ctx: Context,
-    inner: Address,
+    _inner: Address,
 }
 
 impl ReceiverAddress {
@@ -92,16 +82,14 @@ impl Stream {
     ///
     /// By default, the created stream will poll for new messages
     /// every 250 milliseconds.
-    pub fn new(ctx: &Context) -> Result<Self> {
-        block_future(&ctx.runtime(), async {
-            ctx.new_context(Address::random(16)).await.map(|ctx| Self {
-                ctx,
-                interval: Duration::from_millis(250),
-                forwarding_address: None,
-                stream_service: "stream".into(),
-                index_service: "stream_index".into(),
-                client_id: None,
-            })
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        ctx.new_context(Address::random(16)).await.map(|ctx| Self {
+            ctx,
+            interval: Duration::from_millis(250),
+            forwarding_address: None,
+            stream_service: "stream".into(),
+            index_service: "stream_index".into(),
+            client_id: None,
         })
     }
 
@@ -226,7 +214,7 @@ impl Stream {
                 inner: sender_address,
             },
             ReceiverAddress {
-                inner: receiver_address,
+                _inner: receiver_address,
                 ctx: self.ctx.new_context(receiver_rx).await?,
             },
         ))

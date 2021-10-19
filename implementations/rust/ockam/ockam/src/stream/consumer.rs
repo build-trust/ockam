@@ -1,5 +1,4 @@
 use crate::{
-    block_future,
     monotonic::Monotonic,
     protocols::{
         stream::{
@@ -8,8 +7,8 @@ use crate::{
         },
         ProtocolParser,
     },
-    stream::{StreamCmdParser, StreamWorkerCmd},
-    DelayedEvent, Message, TransportMessage,
+    stream::StreamWorkerCmd,
+    DelayedEvent, OckamError, ProtocolPayload, TransportMessage,
 };
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
 use core::time::Duration;
@@ -34,14 +33,18 @@ pub struct StreamConsumer {
     receiver_rx: Address,
     /// Last known index position
     idx: u64,
-    parser: ProtocolParser<Self>,
     ids: Monotonic,
 }
 
-fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Response>) -> bool {
-    let return_route = resp.return_route();
-    match resp.body() {
-        // When our stream is initialised we start the fetch_interval
+/// Function which is called whenever a `Response` message is parsed
+async fn handle_response(
+    w: &mut StreamConsumer,
+    ctx: &mut Context,
+    r: Routed<Any>,
+    response: Response,
+) -> Result<()> {
+    let return_route = r.return_route();
+    match response {
         Response::Init(Init { stream_name }) => {
             info!(
                 "Initialised consumer for stream '{}' and route: {}",
@@ -51,16 +54,11 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             assert_eq!(w.receiver_name, stream_name);
             w.service_route = return_route;
 
-            // Next up we get the current index
-            block_future(&ctx.runtime(), async move {
-                ctx.send(
-                    w.index_route.clone(),
-                    IndexReq::get(stream_name, w.client_id.clone()),
-                )
-                .await
-            });
-
-            true
+            ctx.send(
+                w.index_route.clone(),
+                IndexReq::get(stream_name, w.client_id.clone()),
+            )
+            .await
         }
         Response::Index(IndexResp {
             stream_name, index, ..
@@ -75,12 +73,9 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             fetch_interval(ctx, Duration::from_millis(10))
                 .expect("Failed to start fetch event loop!");
 
-            true
+            Ok(())
         }
-        Response::PullResponse(PullResponse {
-            request_id,
-            messages,
-        }) => {
+        Response::PullResponse(PullResponse { messages, .. }) => {
             trace!("PullResponse, {} message(s) available", messages.len());
 
             let last_idx = w.idx;
@@ -109,13 +104,11 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
                     Ok(addr) => {
                         info!("Forwarding {} message to addr: {}", w.receiver_name, addr);
                         let local_msg = LocalMessage::new(trans, Vec::new());
-                        block_future(&ctx.runtime(), async { ctx.forward(local_msg).await })
+                        ctx.forward(local_msg).await
                     }
                     Err(_) => {
                         info!("Forwarding {} message to receiver.next()", w.receiver_name);
-                        block_future(&ctx.runtime(), async {
-                            ctx.send(w.receiver_rx.clone(), msg).await
-                        })
+                        ctx.send(w.receiver_rx.clone(), msg).await
                     }
                 };
 
@@ -129,50 +122,48 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
 
             // If the index was updated, save it
             if last_idx != w.idx {
-                block_future(&ctx.runtime(), async {
-                    ctx.send(
-                        w.index_route.clone(),
-                        IndexReq::save(w.receiver_name.clone(), w.client_id.clone(), w.idx),
-                    )
-                    .await
-                });
+                ctx.send(
+                    w.index_route.clone(),
+                    IndexReq::save(w.receiver_name.clone(), w.client_id.clone(), w.idx),
+                )
+                .await?;
             }
 
             // Queue a new fetch event and mark this event as handled
             fetch_interval(ctx, w.interval).unwrap();
 
-            true
+            Ok(())
         }
-        _ => false,
+
+        _ => Err(OckamError::NoSuchProtocol)?,
     }
 }
 
-fn parse_cmd(
+async fn handle_cmd(
     w: &mut StreamConsumer,
     ctx: &mut Context,
-    cmd: Routed<StreamWorkerCmd>,
-) -> Result<bool> {
-    match cmd.body() {
+    _r: Routed<Any>,
+    cmd: StreamWorkerCmd,
+) -> Result<()> {
+    match cmd {
         StreamWorkerCmd::Fetch => {
             trace!("Handling StreamWorkerCmd::Fetch");
 
             // Generate a new request_id and send a PullRequest
-            block_future(&ctx.runtime(), async {
-                let request_id = w.ids.next() as u64;
-                trace!("Sending PullRequest to stream {:?}...", w.receiver_name);
-                ctx.send(
-                    w.service_route.clone(),
-                    // TOOD: make fetch amount configurable/ dynamic?
-                    PullRequest::new(request_id, w.idx, 8),
-                )
-                .await
-            })?;
+            let request_id = w.ids.next() as u64;
+            trace!("Sending PullRequest to stream {:?}...", w.receiver_name);
+            ctx.send(
+                w.service_route.clone(),
+                // TOOD: make fetch amount configurable/ dynamic?
+                PullRequest::new(request_id, w.idx, 8),
+            )
+            .await?;
 
-            Ok(true)
+            Ok(())
         }
         f => {
             warn!("Unhandled message type {:?}", f);
-            Ok(false)
+            Err(OckamError::NoSuchProtocol)?
         }
     }
 }
@@ -200,13 +191,10 @@ impl Worker for StreamConsumer {
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         info!("Initialising stream consumer {}", ctx.address());
 
-        self.parser.attach(ResponseParser::new(parse_response));
-        self.parser.attach(StreamCmdParser::new(parse_cmd));
-
-        // Send a create stream request with the registered name
+        // Send a create_stream_request with the registered name
         ctx.send(
             self.service_route.clone(),
-            (CreateStreamRequest::new(self.receiver_name.clone())),
+            CreateStreamRequest::new(self.receiver_name.clone()),
         )
         .await?;
 
@@ -214,16 +202,23 @@ impl Worker for StreamConsumer {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        // Handle payloads via our protocol parser
-        if let Ok(true) = self.parser.prepare().parse(self, ctx, &msg) {
-            return Ok(());
+        let pp = ProtocolPayload::decode(msg.payload())?;
+        let id = pp.protocol.as_str();
+
+        if Response::check_id(id) {
+            let response = Response::parse(pp)?;
+            handle_response(self, ctx, msg, response).await?;
+        } else if StreamWorkerCmd::check_id(id) {
+            let cmd = StreamWorkerCmd::parse(pp)?;
+            handle_cmd(self, ctx, msg, cmd).await?;
+        } else {
+            warn!(
+                "Unhandled message for consumer {}: {:?}", // TODO: attempt to get protocol ID
+                ctx.address(),
+                msg.body()
+            );
         }
 
-        warn!(
-            "Unhandled message for consumer {}: {:?}", // TODO: attempt to get protocol ID
-            ctx.address(),
-            msg.as_body(),
-        );
         Ok(())
     }
 }
@@ -250,7 +245,6 @@ impl StreamConsumer {
             interval,
             receiver_rx,
             idx: 0,
-            parser: ProtocolParser::new(),
             ids: Monotonic::new(),
         }
     }

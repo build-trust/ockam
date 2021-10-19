@@ -1,10 +1,10 @@
 //! Stream protocol response payloads and parser
 
 use crate::{
-    protocols::{ParserFragment, ProtocolPayload},
-    Any, Context, ProtocolId, Result, Routed, Worker,
+    protocols::{ProtocolParser, ProtocolPayload},
+    OckamError, Result,
 };
-use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::compat::{collections::BTreeSet, string::String, vec::Vec};
 use ockam_core::{Decodable, Uint};
 use serde::{Deserialize, Serialize};
 
@@ -124,43 +124,8 @@ pub enum Response {
     Index(Index),
 }
 
-/// A stream protocol parser with user-provided receive hook
-pub struct ResponseParser<W, F>
-where
-    W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<Response>) -> bool,
-{
-    f: F,
-    _w: core::marker::PhantomData<W>,
-}
-
-impl<W, F> ResponseParser<W, F>
-where
-    W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<Response>) -> bool,
-{
-    //noinspection RsExternalLinter
-    /// Create a new stream protocol parser with a response closure
-    ///
-    /// The provided function will be called for every incoming
-    /// response to the stream protocol.  You can use it, and the
-    /// mutable access to your worker state to map response messages
-    /// to the worker state.
-    #[allow(dead_code)]
-    pub fn new(f: F) -> Self {
-        Self {
-            f,
-            _w: core::marker::PhantomData,
-        }
-    }
-}
-
-impl<W, F> ParserFragment<W> for ResponseParser<W, F>
-where
-    W: Worker,
-    F: Fn(&mut W, &mut Context, Routed<Response>) -> bool,
-{
-    fn ids(&self) -> Vec<ProtocolId> {
+impl ProtocolParser for Response {
+    fn check_id(id: &str) -> bool {
         vec![
             "stream_create",
             "stream_push",
@@ -168,30 +133,17 @@ where
             "stream_index",
         ]
         .into_iter()
-        .map(Into::into)
-        .collect()
+        .collect::<BTreeSet<_>>()
+        .contains(id)
     }
 
-    fn parse(
-        &self,
-        state: &mut W,
-        ctx: &mut Context,
-        routed: &Routed<Any>,
-        ProtocolPayload { protocol, data }: ProtocolPayload,
-    ) -> Result<bool> {
-        // Parse payload into a response
-        let resp = match protocol.as_str() {
+    fn parse(ProtocolPayload { protocol, data }: ProtocolPayload) -> Result<Self> {
+        Ok(match protocol.as_str() {
             "stream_create" => Response::Init(Init::decode(&data)?),
             "stream_push" => Response::PushConfirm(PushConfirm::decode(&data)?),
             "stream_pull" => Response::PullResponse(PullResponse::decode(&data)?),
             "stream_index" => Response::Index(Index::decode(&data)?),
-            _ => unreachable!(),
-        };
-
-        let (addr, local_msg) = routed.dissolve();
-
-        // Call the user code
-        let handled = (&self.f)(state, ctx, Routed::new(resp, addr, local_msg));
-        Ok(handled)
+            _ => Err(OckamError::NoSuchProtocol)?,
+        })
     }
 }
