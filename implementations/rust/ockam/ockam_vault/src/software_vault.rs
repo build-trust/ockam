@@ -1,10 +1,8 @@
 use crate::VaultError;
 use ockam_core::compat::{collections::BTreeMap, string::String};
 use ockam_core::Result;
-use ockam_vault_core::zdrop_impl;
 use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use tracing::info;
-use zeroize::Zeroize;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
 ///
@@ -65,18 +63,6 @@ impl SoftwareVault {
     }
 }
 
-impl Zeroize for SoftwareVault {
-    fn zeroize(&mut self) {
-        for (_, v) in self.entries.iter_mut() {
-            v.zeroize();
-        }
-        self.entries.clear();
-        self.next_id = 0;
-    }
-}
-
-zdrop_impl!(SoftwareVault);
-
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct VaultEntry {
     key_id: Option<String>,
@@ -105,14 +91,6 @@ impl VaultEntry {
         }
     }
 }
-
-impl Zeroize for VaultEntry {
-    fn zeroize(&mut self) {
-        self.key.zeroize()
-    }
-}
-
-zdrop_impl!(VaultEntry);
 
 #[cfg(test)]
 mod tests {

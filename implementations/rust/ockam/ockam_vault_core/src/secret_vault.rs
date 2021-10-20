@@ -2,11 +2,10 @@ use crate::secret::Secret;
 use crate::types::{PublicKey, SecretAttributes, SecretKey};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use zeroize::Zeroize;
 
 /// [`Secret`]-management functionality
 #[async_trait]
-pub trait SecretVault: Zeroize {
+pub trait SecretVault {
     /// Generate fresh secret with given attributes
     async fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret>;
     /// Import a secret with given attributes from binary form into the vault

@@ -5,7 +5,6 @@ use ockam_node::Context;
 use ockam_vault_core::{
     AsymmetricVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
-use zeroize::Zeroize;
 
 /// Super-trait of traits required for a Vault Worker.
 pub trait VaultTrait:
@@ -41,7 +40,6 @@ mod response_message;
 pub(crate) use response_message::*;
 
 /// A Worker that exposes a Vault API.
-#[derive(Zeroize)]
 pub struct VaultWorker<V>
 where
     V: VaultTrait,

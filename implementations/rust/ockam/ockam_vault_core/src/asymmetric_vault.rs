@@ -1,11 +1,10 @@
 use crate::{PublicKey, Secret};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use zeroize::Zeroize;
 
 /// Vault with asymmetric encryption functionality
 #[async_trait]
-pub trait AsymmetricVault: Zeroize {
+pub trait AsymmetricVault {
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
     /// and the specified uncompressed public key
     async fn ec_diffie_hellman(

@@ -1,11 +1,10 @@
 use crate::{Buffer, Secret};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use zeroize::Zeroize;
 
 /// Trait with symmetric encryption
 #[async_trait]
-pub trait SymmetricVault: Zeroize {
+pub trait SymmetricVault {
     /// Encrypt a payload using AES-GCM
     async fn aead_aes_gcm_encrypt(
         &mut self,

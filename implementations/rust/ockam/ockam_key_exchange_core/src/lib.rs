@@ -59,6 +59,7 @@ pub trait NewKeyExchanger {
 
 /// The state of a completed key exchange.
 #[derive(Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct CompletedKeyExchange {
     h: [u8; 32],
     encrypt_key: Secret,

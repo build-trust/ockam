@@ -3,7 +3,6 @@ use ockam_core::compat::{boxed::Box, rand::random};
 use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage};
 use ockam_node::{Context, Handle};
 use tracing::debug;
-use zeroize::Zeroize;
 
 mod asymmetric_vault;
 mod hasher;
@@ -52,10 +51,6 @@ impl VaultSync {
 
         Ok(clone)
     }
-}
-
-impl Zeroize for VaultSync {
-    fn zeroize(&mut self) {}
 }
 
 impl VaultSync {

@@ -1233,6 +1233,8 @@ dependencies = [
  "ockam_core",
  "ockam_vault",
  "ockam_vault_core",
+ "ockam_vault_sync_core",
+ "tokio",
 ]
 
 [[package]]
@@ -1288,6 +1290,7 @@ dependencies = [
 name = "ockam_entity"
 version = "0.24.0"
 dependencies = [
+ "bls12_381_plus",
  "cfg-if",
  "group",
  "heapless",
@@ -1309,6 +1312,7 @@ dependencies = [
  "signature_bbs_plus",
  "signature_bls",
  "signature_core",
+ "tokio",
  "tracing",
 ]
 
@@ -1355,10 +1359,10 @@ dependencies = [
  "arrayref",
  "ockam_core",
  "ockam_key_exchange_core",
+ "ockam_node",
  "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
- "zeroize",
 ]
 
 [[package]]
@@ -1371,7 +1375,6 @@ dependencies = [
  "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
- "zeroize",
 ]
 
 [[package]]
@@ -1480,7 +1483,6 @@ dependencies = [
  "tokio",
  "tracing",
  "x25519-dalek",
- "zeroize",
 ]
 
 [[package]]
@@ -1509,8 +1511,8 @@ dependencies = [
  "rand_pcg",
  "serde",
  "serde-big-array",
+ "tokio",
  "tracing",
- "zeroize",
 ]
 
 [[package]]

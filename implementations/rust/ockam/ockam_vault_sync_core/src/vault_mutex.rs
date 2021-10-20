@@ -1,7 +1,6 @@
 use ockam_core::compat::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::debug;
-use zeroize::Zeroize;
 
 /// Vault inside Arc Mutex
 pub struct VaultMutex<V>(Arc<Mutex<V>>);
@@ -9,13 +8,6 @@ pub struct VaultMutex<V>(Arc<Mutex<V>>);
 impl<V> Clone for VaultMutex<V> {
     fn clone(&self) -> Self {
         return Self(self.0.clone());
-    }
-}
-
-impl<V: Zeroize> Zeroize for VaultMutex<V> {
-    fn zeroize(&mut self) {
-        panic!()
-        // return self.0.lock().await.zeroize();
     }
 }
 

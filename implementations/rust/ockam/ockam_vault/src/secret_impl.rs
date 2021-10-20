@@ -15,7 +15,6 @@ cfg_if! {
         use signature_bbs_plus::SecretKey as BlsSecretKey;
     }
 }
-use zeroize::Zeroize;
 
 impl SoftwareVault {
     /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported
@@ -197,10 +196,10 @@ impl SecretVault for SoftwareVault {
 
     /// Remove secret from memory
     async fn secret_destroy(&mut self, context: Secret) -> Result<()> {
-        if let Some(mut k) = self.entries.remove(&context.index()) {
-            k.zeroize();
+        match self.entries.remove(&context.index()) {
+            None => Err(VaultError::EntryNotFound.into()),
+            Some(_) => Ok(()),
         }
-        Ok(())
     }
 }
 
