@@ -27,7 +27,7 @@ impl StreamWorkerCmd {
     ///
     /// When sending `Pull { num: 0 }` all available messages are
     /// pulled.  It is recommended to configure your stream consumer
-    /// into ["forwarding mode"](crate::stream::Stream::recipient).
+    /// into ["forwarding mode"](crate::stream::Stream::with_recipient).
     pub fn pull(num: usize) -> ProtocolPayload {
         ProtocolPayload::new(ProtocolId::from("internal.stream.pull"), Self::Pull { num })
     }
