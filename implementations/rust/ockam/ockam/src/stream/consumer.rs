@@ -71,6 +71,7 @@ async fn handle_response(
             // Queue a near-immediate fetch event -- however future
             // events will be using the specified user interval
             fetch_interval(ctx, Duration::from_millis(10))
+                .await
                 .expect("Failed to start fetch event loop!");
 
             Ok(())
@@ -130,7 +131,7 @@ async fn handle_response(
             }
 
             // Queue a new fetch event and mark this event as handled
-            fetch_interval(ctx, w.interval).unwrap();
+            fetch_interval(ctx, w.interval).await.unwrap();
 
             Ok(())
         }
@@ -172,8 +173,9 @@ async fn handle_cmd(
 ///
 /// This function must be re-called whenever a fetch event is handled
 /// in the `parse_cmd` function.
-fn fetch_interval(ctx: &Context, interval: Duration) -> Result<()> {
-    DelayedEvent::new(ctx, ctx.address().into(), StreamWorkerCmd::fetch())?
+async fn fetch_interval(ctx: &Context, interval: Duration) -> Result<()> {
+    DelayedEvent::new(ctx, ctx.address().into(), StreamWorkerCmd::fetch())
+        .await?
         .with_duration(interval)
         .spawn();
     Ok(())

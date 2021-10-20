@@ -1,4 +1,4 @@
-use crate::{block_future, spawn, Address, Context, Message, Result, Route};
+use crate::{spawn, Address, Context, Message, Result, Route};
 use core::time::Duration;
 
 /// Send a delayed event to a worker
@@ -11,16 +11,17 @@ pub struct DelayedEvent<M: Message> {
 
 impl<M: Message> DelayedEvent<M> {
     /// Create a new 100ms delayed message event
-    pub fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
-        let ctx = block_future(&ctx.runtime(), async {
-            ctx.new_context(Address::random(0)).await
-        })?;
+    pub async fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
+        let child_ctx = ctx.new_context(Address::random(0)).await?;
 
-        debug!("Creating a delayed event with address '{}'", ctx.address());
+        debug!(
+            "Creating a delayed event with address '{}'",
+            child_ctx.address()
+        );
 
         Ok(Self {
             route,
-            ctx,
+            ctx: child_ctx,
             d: Duration::from_millis(100),
             msg,
         })
@@ -63,15 +64,6 @@ impl<M: Message> DelayedEvent<M> {
             if let Err(e) = ctx.send(route, msg).await {
                 error!("Failed to send delayed message: {}", e);
             }
-        })
-    }
-
-    /// Block on this delayed event, returning the result
-    pub fn block(self) -> Result<()> {
-        let Self { route, ctx, d, msg } = self;
-        block_future(&ctx.runtime(), async move {
-            ctx.sleep(d).await;
-            ctx.send(route, msg).await
         })
     }
 }
