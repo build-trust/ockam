@@ -213,7 +213,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         msg: Routed<<Self as Worker>::Message>,
         mut state: ResponderWaitForKex<I, T>,
     ) -> Result<()> {
-        let kex_msg = KeyExchangeCompleted::decode(&msg.payload())?;
+        let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
 
         // Prove we posses Profile key
         let proof = state.identity.create_auth_proof(&kex_msg.auth_hash())?;
@@ -264,7 +264,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
             let contact_result = state.identity.get_contact(&their_profile_id);
 
-            if let Some(_) = contact_result? {
+            if contact_result?.is_some() {
                 // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
             } else {
                 state.identity.verify_and_add_contact(their_contact)?;
@@ -329,7 +329,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
             Ok(())
         } else {
-            return Err(EntityError::InvalidSecureChannelInternalState.into());
+            Err(EntityError::InvalidSecureChannelInternalState.into())
         }
     }
 
@@ -358,12 +358,10 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
             let contact_result = state.identity.get_contact(&their_profile_id);
 
-            if let Some(_) = contact_result? {
+            if contact_result?.is_some() {
                 // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
             } else {
-                state
-                    .identity
-                    .verify_and_add_contact(their_contact.clone())?;
+                state.identity.verify_and_add_contact(their_contact)?;
             }
 
             // Verify initiator posses their Profile key
@@ -402,7 +400,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
             Ok(())
         } else {
-            return Err(EntityError::InvalidSecureChannelInternalState.into());
+            Err(EntityError::InvalidSecureChannelInternalState.into())
         }
     }
 
@@ -410,7 +408,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         if let Some(s) = self.state.take() {
             Ok(s)
         } else {
-            return Err(EntityError::InvalidSecureChannelInternalState.into());
+            Err(EntityError::InvalidSecureChannelInternalState.into())
         }
     }
 

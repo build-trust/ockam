@@ -172,7 +172,7 @@ impl Worker for EntityWorker {
                 let profile = Profile::new(profile_id, handle);
                 SecureChannelTrait::create_secure_channel_listener_async(
                     profile,
-                    &ctx,
+                    ctx,
                     address,
                     trust_policy,
                     &vault_address,
@@ -472,7 +472,7 @@ impl Worker for EntityWorker {
 impl EntityWorker {
     fn add_profile_state(&mut self, profile_state: ProfileState) -> Result<()> {
         let id = profile_state.identifier().unwrap();
-        self.profiles.insert(id.clone(), profile_state);
+        self.profiles.insert(id, profile_state);
         Ok(())
     }
 

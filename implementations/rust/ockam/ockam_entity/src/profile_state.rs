@@ -96,7 +96,7 @@ impl ProfileState {
             ProfileChangeHistory::find_key_change_in_event(&create_key_event, &key_attribs)
                 .ok_or(InvalidInternalState)?;
 
-        let public_key = ProfileChangeHistory::get_change_public_key(&create_key_change)?;
+        let public_key = ProfileChangeHistory::get_change_public_key(create_key_change)?;
         let public_key_id = vault.compute_key_id_for_public_key(&public_key)?;
         let public_key_id = ProfileIdentifier::from_key_id(public_key_id);
 
@@ -219,7 +219,7 @@ impl Identity for ProfileState {
 
     fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
         let slice = core::slice::from_ref(&change_event);
-        if ProfileChangeHistory::check_consistency(self.change_history.as_ref(), &slice) {
+        if ProfileChangeHistory::check_consistency(self.change_history.as_ref(), slice) {
             self.change_history.push_event(change_event);
         }
         Ok(())
@@ -294,11 +294,11 @@ impl Identity for ProfileState {
     ) -> Result<bool> {
         let contact = self
             .contacts
-            .get_mut(&contact_id)
+            .get_mut(contact_id)
             .ok_or(EntityError::ContactNotFound)
             .expect("contact not found");
 
-        Ok(contact.verify_and_update(change_events, &mut self.vault)?)
+        contact.verify_and_update(change_events, &mut self.vault)
     }
 
     fn get_lease(
