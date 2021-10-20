@@ -4,10 +4,8 @@ use ockam_core::Error;
 /// an Ockam vault sync core
 #[derive(Clone, Copy, Debug)]
 pub enum VaultSyncCoreError {
-    /// No error.
-    None,
     /// Invalid response type.
-    InvalidResponseType,
+    InvalidResponseType = 1,
 }
 
 impl VaultSyncCoreError {

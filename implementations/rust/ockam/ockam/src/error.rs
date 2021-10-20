@@ -2,8 +2,7 @@
 #![allow(missing_docs)] // Contents are self describing for now.
 #[derive(Clone, Copy, Debug)]
 pub enum OckamError {
-    None,
-    BareError,
+    BareError = 1,
     VerifyFailed,
     InvalidInternalState,
     InvalidProof,

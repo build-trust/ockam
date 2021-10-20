@@ -2,10 +2,8 @@ use ockam_core::Error;
 
 /// Types of errors that may occur constructing a secure channel.
 pub enum SecureChannelError {
-    /// No error.
-    None,
     /// The key exchange process failed.
-    KeyExchange,
+    KeyExchange = 1,
     /// Internal state is invalid.
     InvalidInternalState,
     /// Expected nonce was invalid.

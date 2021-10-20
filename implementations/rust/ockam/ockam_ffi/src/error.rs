@@ -45,11 +45,8 @@ impl From<Error> for FfiOckamError {
 /// Represents the failures that can occur in an Ockam FFI Vault.
 #[derive(Clone, Copy, Debug)]
 pub enum FfiError {
-    /// No error.
-    None,
-
     /// Persistence is not supported for this Vault implementation.
-    VaultDoesntSupportPersistence,
+    VaultDoesntSupportPersistence = 1,
 
     /// An underlying filesystem error prevented Vault creation.
     ErrorCreatingFilesystemVault,

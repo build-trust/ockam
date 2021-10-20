@@ -4,10 +4,8 @@ use ockam_core::Error;
 /// an Ockam vault
 #[derive(Clone, Copy, Debug)]
 pub enum VaultError {
-    /// No error
-    None,
     /// Secret does not belong to this vault
-    SecretFromAnotherVault,
+    SecretFromAnotherVault = 1,
     /// Public key is invalid
     InvalidPublicKey,
     /// Unknown ECDH key type
