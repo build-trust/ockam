@@ -91,12 +91,30 @@ defmodule Ockam.Vault.Software.MixProject do
   end
 
   defp compile_native(args) do
-    case prebuilt_lib_path() do
-      {:ok, _path} ->
-        :ok
+    case need_recompile_native?() do
+      true -> recompile_native(args)
+      false -> :ok
+    end
+  end
+
+  def need_recompile_native?() do
+    case {prebuilt_lib_exists?(), test_recompile?()} do
+      {true, false} ->
+        false
 
       _ ->
-        recompile_native(args)
+        true
+    end
+  end
+
+  def test_recompile?() do
+    Mix.env() == :test and System.get_env("NO_RECOMPILE_NATIVE") != "true"
+  end
+
+  def prebuilt_lib_exists?() do
+    case prebuilt_lib_path() do
+      {:ok, _path} -> true
+      _ -> false
     end
   end
 
@@ -129,7 +147,8 @@ defmodule Ockam.Vault.Software.MixProject do
     end
   end
 
-  defp recompile_native(_args) do
+  defp recompile_native(args) do
+    clean_native(args)
     :ok = cmake_generate()
     :ok = cmake_build()
     :ok = copy_to_priv()
