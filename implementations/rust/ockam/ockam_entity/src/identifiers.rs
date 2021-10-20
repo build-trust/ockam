@@ -34,9 +34,9 @@ impl Display for EntityIdentifier {
     }
 }
 
-impl Into<String> for EntityIdentifier {
-    fn into(self) -> String {
-        format!("{}{}", Self::PREFIX, &self.0)
+impl From<EntityIdentifier> for String {
+    fn from(id: EntityIdentifier) -> Self {
+        format!("{}{}", EntityIdentifier::PREFIX, &id.0)
     }
 }
 

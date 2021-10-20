@@ -43,7 +43,7 @@ impl Authentication {
         proof: &[u8],
         vault: &mut V,
     ) -> ockam_core::Result<bool> {
-        let proof = AuthenticationProof::decode(&proof).map_err(|_| EntityError::BareError)?;
+        let proof = AuthenticationProof::decode(proof).map_err(|_| EntityError::BareError)?;
 
         vault.verify(proof.signature(), responder_public_key, channel_state)
     }
