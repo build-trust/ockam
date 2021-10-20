@@ -66,7 +66,7 @@ impl Deref for SenderAddress {
 
 impl From<SenderAddress> for Route {
     fn from(addr: SenderAddress) -> Self {
-        Route::new().append(addr.inner.clone()).into()
+        Route::new().append(addr.inner).into()
     }
 }
 
@@ -203,7 +203,7 @@ impl Stream {
                     route.clone(),
                     Some(sender_address.clone()),
                     receiver_name.clone(),
-                    self.interval.clone(),
+                    self.interval,
                     self.forwarding_address.clone(),
                     receiver_rx.clone(),
                     self.stream_service.clone(),

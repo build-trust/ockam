@@ -115,6 +115,7 @@ pub struct Index {
 ///
 /// In your worker you will want to match this enum, given to you via
 /// the `ProtocolParser` abstraction.
+#[allow(clippy::enum_variant_names)]
 #[derive(Serialize, Deserialize)]
 pub enum Response {
     Init(Init),
