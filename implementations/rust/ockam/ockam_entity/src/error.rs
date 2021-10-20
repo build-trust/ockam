@@ -1,7 +1,6 @@
 #[derive(Clone, Copy, Debug)]
 pub enum EntityError {
-    None,
-    BareError,
+    BareError = 1,
     VerifyFailed,
     InvalidInternalState,
     InvalidProof,

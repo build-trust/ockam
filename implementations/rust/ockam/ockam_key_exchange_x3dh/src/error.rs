@@ -4,9 +4,7 @@ use ockam_core::Error;
 /// an Ockam X3DH kex
 #[derive(Clone, Copy, Debug)]
 pub enum X3DHError {
-    /// None
-    None,
-    InvalidState,
+    InvalidState = 1,
     MessageLenMismatch,
     SignatureLenMismatch,
     InvalidHash,

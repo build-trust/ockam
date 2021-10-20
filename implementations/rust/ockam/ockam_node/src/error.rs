@@ -4,10 +4,8 @@ use core::fmt::Debug;
 /// Error declarations.
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
-    /// No error
-    None,
     /// Unable to gracefully stop the Node.
-    FailedStopNode,
+    FailedStopNode = 1,
     /// Unable to start a worker
     FailedStartWorker,
     /// Unable to start a processor

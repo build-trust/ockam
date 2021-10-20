@@ -4,10 +4,8 @@ use ockam_core::Error;
 /// a credential.
 #[derive(Clone, Copy, Debug)]
 pub enum CredentialError {
-    /// No error
-    None,
     /// Mismatched number of attributes in schema and provided claims to be signed
-    MismatchedAttributesAndClaims,
+    MismatchedAttributesAndClaims = 1,
     /// Mismatched attribute type and provided claim
     MismatchedAttributeClaimType,
     /// Data that cannot be converted to a claim
@@ -38,7 +36,6 @@ impl CredentialError {
 
     pub(crate) const fn as_u32(self) -> u32 {
         match self {
-            CredentialError::None => 0,
             CredentialError::MismatchedAttributesAndClaims => 100,
             CredentialError::MismatchedAttributeClaimType => 200,
             CredentialError::InvalidCredentialAttribute => 300,
