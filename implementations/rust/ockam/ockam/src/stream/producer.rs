@@ -42,7 +42,7 @@ fn parse_response(w: &mut StreamProducer, ctx: &mut Context, resp: Routed<Respon
             );
 
             // Send queued messages
-            let mut outbox = core::mem::replace(&mut w.outbox, VecDeque::new());
+            let mut outbox = core::mem::take(&mut w.outbox);
             outbox.into_iter().for_each(|trans| {
                 let route = w.route.clone();
                 debug!("Sending queued message to {}", route);

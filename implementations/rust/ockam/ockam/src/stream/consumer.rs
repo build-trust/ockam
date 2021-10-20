@@ -49,7 +49,7 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             );
 
             assert_eq!(w.receiver_name, stream_name);
-            w.service_route = return_route.clone();
+            w.service_route = return_route;
 
             // Next up we get the current index
             block_future(&ctx.runtime(), async move {
@@ -65,9 +65,9 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
         Response::Index(IndexResp {
             stream_name, index, ..
         }) => {
-            let index = index.unwrap_or(0.into());
+            let index = index.unwrap_or_else(|| 0.into());
             info!("Updating index '{}' to: {}", stream_name, index.u64());
-            w.index_route = return_route.clone();
+            w.index_route = return_route;
             w.idx = index.u64();
 
             // Queue a near-immediate fetch event -- however future
@@ -86,7 +86,7 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             let last_idx = w.idx;
 
             // Update the index if we received messages
-            if let Some(ref msg) = messages.last() {
+            if let Some(msg) = messages.last() {
                 w.idx = msg.index.u64() + 1;
             }
 
@@ -139,7 +139,7 @@ fn parse_response(w: &mut StreamConsumer, ctx: &mut Context, resp: Routed<Respon
             }
 
             // Queue a new fetch event and mark this event as handled
-            fetch_interval(ctx, w.interval.clone()).unwrap();
+            fetch_interval(ctx, w.interval).unwrap();
 
             true
         }
@@ -229,9 +229,10 @@ impl Worker for StreamConsumer {
 }
 
 impl StreamConsumer {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         client_id: String,
-        route: Route,
+        mut route: Route,
         sender_address: Option<Address>,
         receiver_name: String,
         interval: Duration,
@@ -243,7 +244,7 @@ impl StreamConsumer {
         Self {
             client_id,
             service_route: route.clone().modify().append(stream_service).into(),
-            index_route: route.clone().modify().append(index_service).into(),
+            index_route: route.modify().append(index_service).into(),
             sender_address,
             receiver_name,
             interval,
