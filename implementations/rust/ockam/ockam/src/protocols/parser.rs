@@ -115,7 +115,7 @@ impl<W: Worker> ProtocolParserImpl<W> {
 
     /// Parse a message based on its protocol
     ///
-    /// You may want to call [`prepare()`](Self::prepare) before
+    /// You may want to call [`prepare()`](ProtocolParser::prepare) before
     /// calling this function.
     pub fn parse(self: Arc<Self>, w: &mut W, ctx: &mut Context, msg: &Routed<Any>) -> Result<bool> {
         // Parse message as a ProtocolPayload to grab the ProtocolId
