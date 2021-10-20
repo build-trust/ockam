@@ -6,7 +6,6 @@ use ockam_vault_core::{
     PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use zeroize::Zeroize;
 
 mod dh_state;
 pub(crate) use dh_state::*;
@@ -24,13 +23,6 @@ pub(crate) struct State<V: XXVault> {
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
     vault: V,
-}
-
-impl<V: XXVault> Zeroize for State<V> {
-    fn zeroize(&mut self) {
-        self.nonce.zeroize();
-        self.h.zeroize()
-    }
 }
 
 impl<V: XXVault> core::fmt::Debug for State<V> {

@@ -6,6 +6,7 @@ use zeroize::Zeroize;
 /// into implementation-specific Secret representations (e.g. binaries, or HSM references)
 /// stored inside Vault (e.g. using HashMap)
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct Secret {
     index: usize,
 }

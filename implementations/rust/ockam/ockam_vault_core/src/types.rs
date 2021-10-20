@@ -1,4 +1,3 @@
-use crate::zdrop_impl;
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -56,6 +55,7 @@ cfg_if! {
 
 /// Binary representation of a Secret.
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretKey(SecretKeyVec);
 
 impl SecretKey {
@@ -73,6 +73,7 @@ impl AsRef<[u8]> for SecretKey {
 
 /// A public key
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[zeroize(drop)]
 pub struct PublicKey(PublicKeyVec);
 
 impl PublicKey {
@@ -90,6 +91,7 @@ impl AsRef<[u8]> for PublicKey {
 
 ///Binary representation of Signature
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[zeroize(drop)]
 pub struct Signature(SignatureVec);
 
 impl Signature {
@@ -106,7 +108,7 @@ impl AsRef<[u8]> for Signature {
 }
 
 /// All possible [`SecretType`]s
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SecretType {
     /// Secret buffer
     Buffer,
@@ -122,7 +124,7 @@ pub enum SecretType {
 }
 
 /// Possible [`SecretKey`]'s persistence
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SecretPersistence {
     /// An ephemeral/temporary secret
     Ephemeral,
@@ -131,7 +133,7 @@ pub enum SecretPersistence {
 }
 
 /// Attributes for a specific vault [`SecretKey`]
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub struct SecretAttributes {
     stype: SecretType,
     persistence: SecretPersistence,
@@ -163,5 +165,3 @@ impl SecretAttributes {
         }
     }
 }
-
-zdrop_impl!(SecretKey);
