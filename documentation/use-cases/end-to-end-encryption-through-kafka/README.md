@@ -111,7 +111,7 @@ To make it easy to try, we've created a Docker image that contains both Alice an
 1. Run Bob’s program:
 
     ```
-    docker run --rm --interactive --tty ghcr.io/ockam-network/examples/kafka bob
+    docker run --rm --interactive --tty ghcr.io/ockam-network/examples/kafka ockam_kafka_bob
     ```
 
     The Bob program creates a Secure Channel Listener to accept requests to begin an Authenticated Key
@@ -130,7 +130,7 @@ To make it easy to try, we've created a Docker image that contains both Alice an
 3. In a separate terminal window, run the Alice program:
 
     ```
-    docker run --rm --interactive --tty ghcr.io/ockam-network/examples/kafka alice
+    docker run --rm --interactive --tty ghcr.io/ockam-network/examples/kafka ockam_kafka_alice
     ```
 
 4. The Alice program will stop to ask for the stream addresses that were printed in step 2. Enter them.
@@ -173,10 +173,10 @@ we would love to help.
 
 #### Bob
 
-Create a file at `examples/bob.rs` and copy the below code snippet to it.
+Create a file at `examples/ockam_kafka_bob.rs` and copy the below code snippet to it.
 
 ```rust
-// examples/bob.rs
+// examples/ockam_kafka_bob.rs
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
 
@@ -251,10 +251,10 @@ async fn main(ctx: Context) -> Result<()> {
 
 #### Alice
 
-Create a file at `examples/alice.rs` and copy the below code snippet to it.
+Create a file at `examples/ockam_kafka_alice.rs` and copy the below code snippet to it.
 
 ```rust
-// examples/alice.rs
+// examples/ockam_kafka_alice.rs
 use ockam::{route, Context, Entity, Result, SecureChannels, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, TcpTransport, Unique, TCP};
 use std::io;
@@ -332,13 +332,13 @@ async fn main(mut ctx: Context) -> Result<()> {
 1. Run Bob’s program:
 
     ```
-    cargo run --example bob
+    cargo run --example ockam_kafka_bob
     ```
 
 2. In a separate terminal window, in the same directory path, run the Alice program:
 
     ```
-    cargo run --example alice
+    cargo run --example ockam_kafka_alice
     ```
 
 The interaction will be very similar to when we ran the [docker based programs](#run-using-docker).

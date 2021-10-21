@@ -13,7 +13,7 @@ If you don't have it, please [install](https://www.rust-lang.org/tools/install) 
 
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-````
+```
 
 Then you can run Bob and Alice examples described in the guide by running:
 
