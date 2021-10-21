@@ -1,0 +1,13 @@
+[package]
+name = "balena_ockam"
+version = "0.1.0"
+edition = "2018"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[dependencies]
+ockam = "0"

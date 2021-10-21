@@ -1,0 +1,6 @@
+FROM balenalib/%%BALENA_MACHINE_NAME%%-alpine:edge-run
+COPY dist/ockam-entry.sh /ockam/ockam-entry.sh
+COPY dist/%%BALENA_ARCH%%/balena_ockam /ockam/balena_ockam
+WORKDIR /ockam
+ENV UDEV=1
+CMD ["/ockam/ockam-entry.sh"]
