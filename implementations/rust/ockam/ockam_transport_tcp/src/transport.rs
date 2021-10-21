@@ -1,5 +1,6 @@
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
-use ockam_core::{Address, Result, Route};
+use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 
 /// High level management interface for TCP transports
@@ -42,6 +43,15 @@ use ockam_node::Context;
 /// ```
 pub struct TcpTransport {
     router_handle: TcpRouterHandle,
+}
+
+#[async_trait]
+impl AsyncTryClone for TcpTransport {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            router_handle: self.router_handle.async_try_clone().await?,
+        })
+    }
 }
 
 impl TcpTransport {
