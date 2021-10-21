@@ -43,7 +43,8 @@ defmodule Ockam.MixProject do
   def application do
     [
       mod: {Ockam, []},
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      env: [{Ockam.Wire, [default: Ockam.Wire.Binary.V2]}]
     ]
   end
 

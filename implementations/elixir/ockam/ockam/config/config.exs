@@ -1,8 +1,6 @@
+## Application configuration used in release as sys.config or mix run
+## THIS CONFIGURATION IS NOT LOADED IF THE APP IS LOADED AS A DEPENDENCY
+
 import Config
-
-config :ockam, Ockam.Wire, default: Ockam.Wire.Binary.V2
-
-config :logger, :console, metadata: [:module, :line, :pid], level: :info
-# config :logger, handle_sasl_reports: true
 
 import_config "#{Mix.env()}.exs"

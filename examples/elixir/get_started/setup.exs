@@ -8,4 +8,4 @@ Mix.install([
   {:ranch, "~> 1.8"}
 ])
 
-Application.put_env(:ockam, Ockam.Wire, default: Ockam.Wire.Binary.V2)
+Application.load(:ockam)
