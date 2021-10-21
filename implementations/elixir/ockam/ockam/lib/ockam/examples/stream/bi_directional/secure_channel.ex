@@ -1,7 +1,7 @@
 defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   @moduledoc """
 
-  Ping-pong example for bi-directional stream communication using local subsctiption
+  Ping-pong example for bi-directional stream communication
 
   Use-case: integrate ockam nodes which implement stream protocol consumer and publisher
 
@@ -22,6 +22,12 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   Stream service is running on the hub node
 
   Ping and pong nodes create local consumers and publishers to exchange messages
+
+  Ping establishes an ordered channel to pong over the stream publisher
+
+  Ping creates a secure channel over the ordered channel
+
+  Ping exchanges messages with ping using the secure channel
   """
   alias Ockam.SecureChannel
   alias Ockam.Vault
@@ -32,6 +38,10 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
 
   alias Ockam.Stream.Client.BiDirectional
   alias Ockam.Stream.Client.BiDirectional.PublisherRegistry
+
+  alias Ockam.Messaging.PipeChannel
+
+  alias Ockam.Messaging.Ordering.Strict.IndexPipe
 
   alias Ockam.Transport.TCP
 
@@ -72,7 +82,15 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     ## PONG worker
     {:ok, "pong"} = Pong.create(address: "pong")
 
+    ## Create secure channel listener
     create_secure_channel_listener()
+
+    ## Create ordered channel spawner
+    {:ok, "ord_channel_spawner"} =
+      PipeChannel.Spawner.create(
+        responder_options: [pipe_mods: IndexPipe],
+        address: "ord_channel_spawner"
+      )
 
     config = config()
     ## Create a local subscription to forward pong_topic messages to local node
@@ -93,9 +111,18 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     ## messages to send responses to ping_topic
     {:ok, publisher} = init_publisher(config.pong_stream, config.ping_stream, "ping", :tcp)
 
-    {:ok, channel} = create_secure_channel([publisher, "SC_listener"])
+    ## Create an ordered channel over the stream communication
+    ## Strictly ordered channel would de-duplicate messages
+    {:ok, ord_channel} =
+      PipeChannel.Initiator.create(
+        pipe_mods: IndexPipe,
+        spawner_route: [publisher, "ord_channel_spawner"]
+      )
 
-    ## Send a message THROUGH the local publisher to the remote worker
+    ## Create a secure channel over the ordered channel
+    {:ok, channel} = create_secure_channel([ord_channel, "SC_listener"])
+
+    ## Send a message THROUGH the channel to the remote worker
     send_message([channel, "pong"], ["ping"], "0")
   end
 

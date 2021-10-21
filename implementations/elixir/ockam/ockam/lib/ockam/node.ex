@@ -39,6 +39,10 @@ defmodule Ockam.Node do
     end
   end
 
+  def register_address(address) do
+    Registry.register_name(address, self())
+  end
+
   @doc """
   Registers the address of a `pid`.
   """
@@ -60,6 +64,16 @@ defmodule Ockam.Node do
     end
   end
 
+  def register_random_address(length_in_bytes \\ @default_address_length_in_bytes) do
+    address = get_random_unregistered_address(length_in_bytes)
+
+    case register_address(address) do
+      :yes -> {:ok, address}
+      ## TODO: recursion limit
+      :no -> register_random_address(length_in_bytes)
+    end
+  end
+
   @doc """
   Returns a random address that is currently not registed on the node.
   """
@@ -68,6 +82,7 @@ defmodule Ockam.Node do
 
     case whereis(candidate) do
       nil -> candidate
+      ## TODO: recursion limit
       _pid -> get_random_unregistered_address(length_in_bytes)
     end
   end
