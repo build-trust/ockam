@@ -5,4 +5,5 @@
 async fn my_test(_ctx: &mut ockam::Context) -> ockam::Result<()> {
     // _ctx.stop().unwrap();
     let _x = 42 as u8;
+    Ok(())
 }

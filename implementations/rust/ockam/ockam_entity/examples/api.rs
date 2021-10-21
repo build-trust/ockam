@@ -13,5 +13,7 @@ async fn test(ctx: Context) -> ockam_core::Result<()> {
 
 fn main() {
     let (ctx, mut exec) = ockam_node::start_node();
-    exec.execute(async move { test(ctx).await }).unwrap();
+    exec.execute(async move { test(ctx).await })
+        .unwrap()
+        .unwrap();
 }

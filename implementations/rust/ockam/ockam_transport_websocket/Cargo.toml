@@ -36,3 +36,4 @@ tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 ockam = { path = "../ockam", default-features = false, features = ["std"] }
+tokio = { version = "1.8", features = ["io-std"] }
