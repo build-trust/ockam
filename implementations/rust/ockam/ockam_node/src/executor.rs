@@ -3,7 +3,6 @@
 use crate::{relay::RelayMessage, router::Router, NodeMessage};
 use ockam_core::{Address, Result};
 
-use crate::error::Error;
 use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
@@ -63,7 +62,7 @@ impl Executor {
         crate::block_future(&rt, async move { self.router.run().await })?;
 
         let res = crate::block_future(&rt, async move { join_body.await })
-            .map_err(|_| Error::ExecutorBodyJoinError)?;
+            .map_err(|_| crate::error::Error::ExecutorBodyJoinError)?;
 
         Ok(res)
     }

@@ -17,7 +17,7 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-#[macro_use]
+#[cfg_attr(feature = "std", macro_use)]
 extern crate tracing;
 
 #[cfg(not(feature = "std"))]
