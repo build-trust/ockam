@@ -18,4 +18,4 @@ jobs:
             uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
 
           - id: rust_build_ockam_ockam
-            run: export OCKAM_HOME=$PWD && tools/docs/check_documentation.sh && tools/docs/run_examples.sh && tools/docs/run_kafka_example.sh && tools/docs/run_e2ee_example.sh
+            run: export OCKAM_HOME=$PWD && tools/docs/check_documentation.sh && tools/docs/run_examples.sh && tools/docs/run_kafka_example.sh

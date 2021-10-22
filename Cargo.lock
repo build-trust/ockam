@@ -532,7 +532,6 @@ dependencies = [
  "anyhow",
  "duct",
  "rand 0.8.4",
- "reqwest",
  "ron",
  "serde",
 ]
