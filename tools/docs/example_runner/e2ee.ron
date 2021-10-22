@@ -1,0 +1,32 @@
+(
+    title: "E2EE",
+    stages: [
+        [
+            "01-inlet-outlet 127.0.0.1:4001 ockam.io:80",
+            "match Initializing ockam node",
+            "sleep 1",
+            "http http://127.0.0.1:4001 <html",
+            "quit"
+        ],
+        [
+            "02-outlet ockam.io:80",
+            "match Initializing ockam node",
+            "sleep 1",
+            "02-inlet 127.0.0.1:4001",
+            "match Initializing ockam node",
+            "sleep 1",
+            "http http://127.0.0.1:4001 <html",
+            "quit"
+        ],
+        [
+            "03-outlet ockam.io:80",
+            "match Initializing ockam node",
+            "sleep 1",
+            "03-inlet 127.0.0.1:4001",
+            "match Initializing ockam node",
+            "sleep 1",
+            "http http://127.0.0.1:4001 <html",
+            "quit"
+        ]
+    ]
+)

@@ -5,8 +5,8 @@ use ron::de::from_str;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -30,9 +30,16 @@ fn run_stage(stage: Stage) -> Result<()> {
     let mut match_stack: Vec<String> = Vec::new();
     let mut out_order: Vec<String> = Vec::new();
     let mut outputs: Vec<String> = Vec::new();
+    let pids: Arc<Mutex<Vec<u32>>> = Arc::new(Mutex::new(Vec::new()));
 
     for mut step in stage {
         let stop = stop.clone();
+        let pids = pids.clone();
+
+        if stop.load(Ordering::Relaxed) {
+            break;
+        }
+
         let finished = finished.clone();
         let join_handles = join_handles.clone();
 
@@ -75,8 +82,46 @@ fn run_stage(stage: Stage) -> Result<()> {
             continue;
         }
 
+        if step.starts_with("http ") {
+            let step = step.split_off(5);
+            let mut args = step.split(" ");
+            let addr = args.next().expect("missing url");
+            let http_match = args.next().expect("expect byte match");
+
+            println!("Addr: {}", addr);
+            let response = reqwest::blocking::get(addr)?.text()?;
+            if !response.contains(http_match) {
+                println!(
+                    "No match for '{}' in response from '{}': {}",
+                    http_match, addr, response
+                );
+                break;
+            } else {
+                println!("Matched {} in HTTP response", http_match)
+            }
+            continue;
+        }
+
         if step.starts_with("quit") {
-            std::process::exit(0);
+            println!("Quit");
+            let mut kill_args = Vec::from(["-9".to_string()]);
+            if let Ok(pids) = pids.lock() {
+                for pid in pids.iter() {
+                    let pid = pid.to_string();
+                    println!("Killing {}", pid);
+                    kill_args.push(pid.clone())
+                }
+                cmd("kill", kill_args).run().unwrap();
+            }
+            break;
+        }
+
+        let step = step.clone();
+        let step_and_args = step.split_whitespace();
+        let mut args = Vec::from(["run".to_string(), "--example".to_string()]);
+
+        for arg in step_and_args {
+            args.push(arg.to_string())
         }
 
         let output_file = format!("/tmp/exrun-{}", rand::thread_rng().next_u32());
@@ -89,11 +134,16 @@ fn run_stage(stage: Stage) -> Result<()> {
         }
 
         let join_handle = std::thread::spawn(move || {
-            let handle = cmd!("cargo", "run", "--example", step)
+            let handle = cmd("cargo", args)
                 .stdout_file(File::create(output_file.clone()).unwrap())
                 .stdin_bytes(stdin)
                 .start()
                 .unwrap();
+
+            if let Ok(mut pids) = pids.lock() {
+                pids.append(&mut handle.pids())
+            }
+
             while !stop.load(Relaxed) {
                 match handle.try_wait() {
                     Ok(maybe_output) => match maybe_output {
@@ -114,22 +164,29 @@ fn run_stage(stage: Stage) -> Result<()> {
                 sleep(Duration::from_secs(1));
             }
             handle.kill().unwrap();
+            finished.store(true, Relaxed);
         });
         join_handles.lock().unwrap().push(join_handle);
         sleep(Duration::from_secs(2));
     }
 
+    stop.store(true, Relaxed);
+
     while !finished.load(Relaxed) {
         sleep(Duration::from_secs(1));
     }
 
-    stop.store(true, Relaxed);
+    println!("Joining tasks");
+
     let join_handles = join_handles.clone();
     let mut join_handles = join_handles.lock().unwrap();
     while !join_handles.is_empty() {
         let h = join_handles.pop().unwrap();
         h.join().unwrap();
     }
+
+    println!("Done");
+
     Ok(())
 }
 

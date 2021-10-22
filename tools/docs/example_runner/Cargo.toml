@@ -11,3 +11,5 @@ ron = "*"
 serde = "*"
 anyhow = "*"
 rand = "*"
+reqwest = {version = "*", features = ["blocking"] }
+

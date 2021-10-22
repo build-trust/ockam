@@ -532,6 +532,7 @@ dependencies = [
  "anyhow",
  "duct",
  "rand 0.8.4",
+ "reqwest",
  "ron",
  "serde",
 ]
@@ -2339,6 +2340,13 @@ name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
+
+[[package]]
+name = "tcp_inlet_and_outlet"
+version = "0.1.0"
+dependencies = [
+ "ockam",
+]
 
 [[package]]
 name = "tempfile"
