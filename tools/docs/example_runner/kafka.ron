@@ -1,12 +1,12 @@
 (
     title: "Kafka Use Case",
     stages: [
-        [   "bob",
+        [   "ockam_kafka_bob",
             "sleep 5",
             "match alice_to_bob_", "match bob_to_alice_",
             "out 1",
             "out 0",
-            "alice",
+            "ockam_kafka_alice",
             "match End-to-end encrypted secure channel was established.",
             "quit"
         ],
