@@ -18,7 +18,7 @@ jobs:
   rust_lint_ockam_ockam_examples:
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:a4ee49a588dffbaef61eba29b4de0fe0be134b84aac3ab2f634ad92c74fe3802
+      image: ghcr.io/ockam-network/ockam/builder@sha256:e382c8800a89ce43acb675131d9f30e74093d195a95047f87e9206a0c52c17a7
     steps:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
