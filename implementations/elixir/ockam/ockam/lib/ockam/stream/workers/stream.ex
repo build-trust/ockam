@@ -71,9 +71,7 @@ defmodule Ockam.Stream.Workers.Stream do
 
         {:error, error} ->
           raise(
-            "Unable to create storage: #{
-              inspect({storage_mod, stream_name, partition, storage_options})
-            }. Reason: #{inspect(error)}"
+            "Unable to create storage: #{inspect({storage_mod, stream_name, partition, storage_options})}. Reason: #{inspect(error)}"
           )
       end
 

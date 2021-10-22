@@ -154,9 +154,7 @@ defmodule Ockam.Protocol.Mapping do
 
       _list ->
         raise(
-          "Protocol name conflict in #{inspect(protocol_specs)}. Duplicate names: #{
-            inspect(duplicate_names)
-          }"
+          "Protocol name conflict in #{inspect(protocol_specs)}. Duplicate names: #{inspect(duplicate_names)}"
         )
     end
   end

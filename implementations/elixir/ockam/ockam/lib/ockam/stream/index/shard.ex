@@ -54,9 +54,7 @@ defmodule Ockam.Stream.Index.Shard do
 
       {{:error, error}, state} ->
         Logger.error(
-          "Unable to save index: #{inspect({client_id, stream_name, partition, index})}. Reason: #{
-            inspect(error)
-          }"
+          "Unable to save index: #{inspect({client_id, stream_name, partition, index})}. Reason: #{inspect(error)}"
         )
 
         {:stop, :normal, state}
@@ -73,9 +71,7 @@ defmodule Ockam.Stream.Index.Shard do
 
       {{:error, error}, state} ->
         Logger.error(
-          "Unable to get index for: #{inspect({client_id, stream_name, partition})}. Reason: #{
-            inspect(error)
-          }"
+          "Unable to get index for: #{inspect({client_id, stream_name, partition})}. Reason: #{inspect(error)}"
         )
 
         {:reply, {:error, error}, update_ts(state)}
