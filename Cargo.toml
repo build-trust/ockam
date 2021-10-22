@@ -12,6 +12,7 @@ members = [
     # like `members = ["**/Cargo.toml/.."]`.
     "implementations/rust/ockam/*/src/..",
     "examples/rust/*/src/..",
+    "examples/rust/*/examples/..",
 
     "tools/ockam-hub-cli",
     "tools/docs/example_runner",
