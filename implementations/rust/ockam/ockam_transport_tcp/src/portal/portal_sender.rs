@@ -105,8 +105,7 @@ impl Worker for TcpPortalSendWorker {
             } else {
                 self.buffer.push_back(payload);
             }
-        }
-        if self.onward_route.is_none() {
+        } else if self.onward_route.is_none() {
             // TODO: This should be serialized empty vec
             if msg.payload().len() != 1 {
                 return Err(TransportError::Protocol.into());
