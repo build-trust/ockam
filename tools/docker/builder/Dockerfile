@@ -5,10 +5,10 @@ ARG CMAKE_SHA256=4d8a6d852c530f263b22479aad196416bb4406447e918bd9759c6593b7f5f3f
 ARG RUSTUP_INIT_VERSION=1.24.3
 ARG RUSTUP_INIT_SHA256=3dc5ef50861ee18657f9db2eeb7392f9c2a6c95c90ab41e45ab4ca71476b4338
 ARG RUST_VERSION=1.56.0
-ARG ERLANG_VERSION=23.2.1-1~debian~buster
-ARG ERLANG_SHA256=b6fba5aa2f9c3c51d3f0373713663d7cbd1df5109e4d0d69e96c99abc536e637
-ARG ELIXIR_VERSION=1.11.2-1~debian~buster
-ARG ELIXIR_SHA256=01fa394c470f675c1b093f313d40adbf055a58877461a922634d94d6e9b48d29
+ARG ERLANG_VERSION=24.1-1~debian~buster
+ARG ERLANG_SHA256=079ca10987c51befeb5e7eb73c7ce4ba402763b4d74a49fd0b871ff18019f51b
+ARG ELIXIR_VERSION=1.12.2-1~debian~buster
+ARG ELIXIR_SHA256=5e8251c5d2557373ecfab986fa481844a2f659597abbfb623f45ad3a1974bb1f
 
 ENV CMAKE_HOME=/opt/cmake \
     RUSTUP_HOME=/opt/rust/rustup \
@@ -64,10 +64,10 @@ RUN set -xe; \
     mix local.hex --force && mix local.rebar --force; \
 # Setup jdk
     cd /tmp; \
-    JAVA_PACKAGE='OpenJDK11U-jdk_x64_linux_hotspot_2020-10-23-08-51.tar.gz'; \
+    JAVA_PACKAGE='OpenJDK11U-jdk_x64_linux_hotspot_11.0.13_8.tar.gz'; \
     curl -sSOL \
-      "https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk11u-2020-10-23-08-51/${JAVA_PACKAGE}"; \
-    echo "a118a5d0d6a288d05bbe99bb86e9a8d70ce40c67ba0ebc917f23250705fd3644  ${JAVA_PACKAGE}"; \
+      "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.13%2B8/${JAVA_PACKAGE}"; \
+    echo "3b1c0c34be4c894e64135a454f2d5aaa4bd10aea04ec2fa0c0efe6bb26528e30  ${JAVA_PACKAGE}"; \
     mv "${JAVA_PACKAGE}" openjdk.tar.gz; \
     mkdir -p "${JAVA_HOME}"; \
     cd "${JAVA_HOME}"; \
