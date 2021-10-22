@@ -24,8 +24,6 @@ defmodule Ockam.Hub do
     ## Get configured services child specs
     {:ok, services_specs} = Ockam.Hub.Service.Provider.configured_child_specs()
 
-    web_port = Application.get_env(:ockam_hub, :web_port)
-
     schedule_specs = cleanup_schedule(Application.get_env(:ockam_hub, :cleanup))
 
     # Specifications of child processes that will be started and supervised.
@@ -46,8 +44,7 @@ defmodule Ockam.Hub do
         {Ockam.Transport.UDP.Listener,
          [
            port: udp_transport_port
-         ]},
-        {Ockam.Hub.Web.Router, [port: Application.get_env(:ockam_hub, :web_port, web_port)]}
+         ]}
       ] ++
         services_specs ++
         schedule_specs

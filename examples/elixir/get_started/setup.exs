@@ -5,7 +5,7 @@ Mix.install([
     git: repo, branch: "develop", sparse: "implementations/elixir/ockam/ockam"},
   {:ockam_vault_software, override: true,
     git: repo, branch: "develop", sparse: "implementations/elixir/ockam/ockam_vault_software"},
-  {:ranch, "~> 1.8"}
+  {:ranch, "~> 2.1"}
 ])
 
 Application.load(:ockam)

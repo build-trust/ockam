@@ -45,11 +45,13 @@ defmodule Ockam.Node.Web.MixProject do
 
   defp deps do
     [
-      {:cowboy, "~> 2.8"},
-      {:plug, "~> 1.11"},
-      {:plug_cowboy, "~> 2.4"},
+      {:ranch, "~> 2.1", override: true},
+      {:cowboy, "~> 2.9"},
+      {:plug, "~> 1.12"},
+      {:plug_cowboy, "~> 2.5"},
       {:jason, "~> 1.2"},
-      {:ex_doc, "~> 0.24.0", only: :dev, runtime: false},
+      {:ockam, path: "../ockam"},
+      {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
     ]

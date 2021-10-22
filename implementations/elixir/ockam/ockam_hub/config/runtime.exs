@@ -90,8 +90,7 @@ config :ockam_hub,
   auth_host: ui_auth_host,
   node_fqdn: node_fqdn,
   tcp_transport_port: 4000,
-  udp_transport_port: 7000,
-  web_port: 4001
+  udp_transport_port: 7000
 
 ## Kafka default config
 

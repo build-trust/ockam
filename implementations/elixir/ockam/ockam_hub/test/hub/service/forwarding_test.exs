@@ -1,7 +1,6 @@
 defmodule Test.Hub.Service.ForwardingTest do
   use ExUnit.Case
 
-  alias Ockam.Hub.Service.Echo, as: EchoService
   alias Ockam.Hub.Service.Forwarding, as: ForwardingService
 
   alias Ockam.Router

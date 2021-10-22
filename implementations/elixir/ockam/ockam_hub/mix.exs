@@ -47,19 +47,18 @@ defmodule Ockam.Hub.MixProject do
     [
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
-      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:httpoison, "~> 1.8"},
       {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ockam, path: "../ockam"},
       {:poison, "~> 4.0.1"},
       {:postgrex, "~> 0.15.10"},
       {:ockam_kafka, path: "../ockam_kafka"},
-      {:ranch, "~> 1.8"},
+      {:ranch, "~> 2.1"},
       {:telemetry, "~> 0.4.2"},
       {:telemetry_poller, "~> 0.5.1"},
       {:telemetry_influxdb, "~> 0.2.0"},
       {:jason, "~> 1.2"},
-      {:plug_cowboy, "~> 2.5"},
       {:sched_ex, "~> 1.0"}
     ]
   end

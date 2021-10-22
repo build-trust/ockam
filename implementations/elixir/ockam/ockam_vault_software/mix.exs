@@ -45,7 +45,7 @@ defmodule Ockam.Vault.Software.MixProject do
 
   defp deps do
     [
-      {:ex_doc, "~> 0.24.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
     ]
