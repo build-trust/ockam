@@ -98,7 +98,7 @@ impl Worker for TcpPortalSendWorker {
 
         if recipient == self.internal_address {
             // Forward message
-            let payload = msg.payload().clone();
+            let payload = msg.payload().to_vec();
             if let Some(r) = &self.onward_route {
                 let msg = TransportMessage::v1(r.clone(), self.remote_address.clone(), payload);
                 ctx.forward(LocalMessage::new(msg, Vec::new())).await?;

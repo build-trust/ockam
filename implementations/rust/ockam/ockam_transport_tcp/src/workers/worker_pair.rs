@@ -20,7 +20,7 @@ pub(crate) struct WorkerPair {
 }
 
 impl WorkerPair {
-    pub fn hostnames(&self) -> &Vec<String> {
+    pub fn hostnames(&self) -> &[String] {
         &self.hostnames
     }
     pub fn peer(&self) -> SocketAddr {

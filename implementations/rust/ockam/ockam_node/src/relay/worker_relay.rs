@@ -64,7 +64,7 @@ where
     }
 
     #[inline]
-    fn handle_pre_router(&mut self, msg: &Vec<u8>, msg_addr: Address) -> Result<M> {
+    fn handle_pre_router(&mut self, msg: &[u8], msg_addr: Address) -> Result<M> {
         M::decode(msg).map_err(|e| {
             error!(
                 "Failed to decode wrapped router message for worker {}.  \

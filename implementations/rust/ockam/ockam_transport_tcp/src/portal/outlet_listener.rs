@@ -40,7 +40,7 @@ impl Worker for TcpOutletListenWorker {
 
         debug!("Created Tcp Outlet at {}", &address);
 
-        let msg = TransportMessage::v1(route![address], msg.return_route(), msg.payload().clone());
+        let msg = TransportMessage::v1(route![address], msg.return_route(), msg.payload().to_vec());
 
         ctx.forward(LocalMessage::new(msg, vec![])).await?;
 

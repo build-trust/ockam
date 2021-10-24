@@ -172,7 +172,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
         // Change completed callback address and forward message for regular key exchange to happen
         let body = CreateResponderChannelMessage::new(
-            body.payload().clone(),
+            body.payload().to_vec(),
             Some(self_local_address.clone()),
         );
 
@@ -444,7 +444,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             .modify()
             .prepend(self.self_remote_address.clone());
 
-        let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
+        let transport_msg = TransportMessage::v1(onward_route, return_route, payload.to_vec());
 
         ctx.forward(LocalMessage::new(transport_msg, Vec::new()))
             .await?;
@@ -488,7 +488,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             .pop_front()
             .prepend(self.self_local_address.clone());
 
-        let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
+        let transport_msg = TransportMessage::v1(onward_route, return_route, payload.to_vec());
 
         let local_info = LocalInfo::new(state.their_profile_id.clone());
         let local_info = local_info.encode()?;

@@ -33,7 +33,7 @@ pub struct CreateResponderChannelMessage {
 
 impl CreateResponderChannelMessage {
     /// Channel information.
-    pub fn payload(&self) -> &Vec<u8> {
+    pub fn payload(&self) -> &[u8] {
         &self.payload
     }
     /// Callback Address

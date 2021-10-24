@@ -179,7 +179,7 @@ impl<M: Message> Routed<M> {
 
     /// Get a reference to the underlying binary message payload
     #[inline]
-    pub fn payload(&self) -> &Vec<u8> {
+    pub fn payload(&self) -> &[u8] {
         &self.local_msg.transport().payload
     }
 }

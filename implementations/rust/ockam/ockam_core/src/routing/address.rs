@@ -34,8 +34,8 @@ impl IntoIterator for AddressSet {
     }
 }
 
-impl AsRef<Vec<Address>> for AddressSet {
-    fn as_ref(&self) -> &Vec<Address> {
+impl AsRef<[Address]> for AddressSet {
+    fn as_ref(&self) -> &[Address] {
         &self.0
     }
 }

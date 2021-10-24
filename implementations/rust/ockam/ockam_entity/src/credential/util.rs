@@ -43,7 +43,7 @@ impl rand::RngCore for MockRng {
 }
 
 #[allow(clippy::ptr_arg)]
-pub fn write_attributes<S>(v: &Vec<CredentialAttributeSchema>, s: S) -> Result<S::Ok, S::Error>
+pub fn write_attributes<S>(v: &[CredentialAttributeSchema], s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
