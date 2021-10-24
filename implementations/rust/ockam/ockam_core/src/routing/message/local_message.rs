@@ -32,7 +32,7 @@ impl LocalMessage {
         &mut self.transport_message
     }
     /// LocalInfo added by Workers within the same node
-    pub fn local_info(&self) -> &Vec<u8> {
+    pub fn local_info(&self) -> &[u8] {
         &self.local_info
     }
 }
