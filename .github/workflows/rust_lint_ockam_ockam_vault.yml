@@ -20,6 +20,7 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_vault/**'
+      - '.github/workflows/rust_lint_ockam_ockam_vault.yml'
 
 
 jobs:
@@ -31,6 +32,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
 
+      - name: Generate random key
+        run: echo RANDOM=$(date +%s) >> $GITHUB_ENV
+
+      - name: Cache Gradle
+        uses: actions/cache@v2
+        with:
+          path: |
+            /root/.gradle/caches
+            /root/.gradle/wrapper
+            /root/.cargo/bin/
+            /root/.cargo/registry/index/
+            /root/.cargo/registry/cache/
+            /root/.cargo/git/db/
+            implementations/rust/ockam/ockam_vault/target
+          key: ${{ runner.os }}-cache-${{ env.RANDOM }}
+          restore-keys: ${{ runner.os }}-cache-
+
       - id: rust_lint_ockam_ockam_vault
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_vault
+
+      # TODO: tasks below will be integrated to implementations/rust/build.gradle
+      # after all cargo docs and clippy fixes are done.
+      - name: check cargo clippy
+        working-directory: implementations/rust/ockam/ockam_vault
+        run: cargo clippy -V && cargo clean && cargo clippy --all-targets --all-features && cargo clippy --all-targets --all-features -- -D warnings

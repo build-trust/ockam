@@ -47,6 +47,8 @@ jobs:
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_transport_tcp
 
+      # TODO: tasks below will be integrated to implementations/rust/build.gradle
+      # after all cargo docs and clippy fixes are done.
       - name: Check for clippy warnings
         working-directory: implementations/rust/ockam/ockam_transport_tcp
         run: cargo clean && cargo clippy -- --no-deps -D warnings
