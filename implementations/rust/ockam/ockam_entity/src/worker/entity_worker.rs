@@ -1,7 +1,7 @@
 use crate::{
     EntityError::IdentityApiFailed, Identity, IdentityRequest, IdentityRequest::*,
-    IdentityResponse as Res, MaybeContact, Profile, ProfileIdentifier, ProfileState,
-    SecureChannelTrait, TrustPolicyImpl,
+    IdentityResponse as Res, MaybeContact, Profile, ProfileChannelListener, ProfileIdentifier,
+    ProfileState, SecureChannelWorker, TrustPolicyImpl,
 };
 use core::result::Result::Ok;
 use ockam_core::{
@@ -178,14 +178,9 @@ impl Worker for EntityWorker {
                 let vault_address = self.profile(&profile_id).vault_address();
                 let handle = Handle::new(ctx.new_context(Address::random(0)).await?, ctx.address());
                 let profile = Profile::new(profile_id, handle);
-                SecureChannelTrait::create_secure_channel_listener_async(
-                    profile,
-                    ctx,
-                    address,
-                    trust_policy,
-                    &vault_address,
-                )
-                .await?;
+                let vault = VaultSync::create_with_worker(ctx, &vault_address).await?;
+                let listener = ProfileChannelListener::new(trust_policy, profile, vault);
+                ctx.start_worker(address, listener).await?;
                 ctx.send(reply, Res::CreateSecureChannelListener).await
             }
             CreateSecureChannel(profile_id, route, trust_policy_address) => {
@@ -200,12 +195,13 @@ impl Worker for EntityWorker {
                 let child_ctx = ctx.new_context(Address::random(0)).await?;
                 let rt = ctx.runtime();
                 rt.spawn(async move {
-                    let address = SecureChannelTrait::create_secure_channel_async(
-                        profile,
+                    let vault = VaultSync::create_with_worker(&child_ctx, &vault_address).await?;
+                    let address = SecureChannelWorker::create_initiator(
                         &child_ctx,
                         route,
+                        profile,
                         trust_policy,
-                        &vault_address,
+                        vault,
                     )
                     .await?;
                     child_ctx

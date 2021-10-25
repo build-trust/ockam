@@ -19,11 +19,11 @@
 ///
 use crate::{
     AuthenticationProof, Changes, Contact, Entity, Identity, IdentityRequest, IdentityResponse,
-    Lease, ProfileChangeEvent, ProfileIdentifier, SecureChannels, TrustPolicy, TTL,
+    Lease, ProfileChangeEvent, ProfileIdentifier, TTL,
 };
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone};
-use ockam_core::{Address, Result, Route};
+use ockam_core::{Result, Route};
 use ockam_node::Handle;
 use ockam_vault::{PublicKey, Secret};
 
@@ -190,31 +190,6 @@ impl Identity for Profile {
         self.entity()
             .await?
             .revoke_lease(lease_manager_route, lease)
-            .await
-    }
-}
-
-#[async_trait]
-impl SecureChannels for Profile {
-    async fn create_secure_channel_listener(
-        &mut self,
-        address: Address,
-        trust_policy: impl TrustPolicy,
-    ) -> Result<()> {
-        self.entity()
-            .await?
-            .create_secure_channel_listener(address, trust_policy)
-            .await
-    }
-
-    async fn create_secure_channel(
-        &mut self,
-        route: Route,
-        trust_policy: impl TrustPolicy,
-    ) -> Result<Address> {
-        self.entity()
-            .await?
-            .create_secure_channel(route, trust_policy)
             .await
     }
 }
