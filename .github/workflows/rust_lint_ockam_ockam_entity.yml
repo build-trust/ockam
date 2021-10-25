@@ -24,6 +24,7 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_entity/**'
+      - '.github/workflows/rust_lint_ockam_ockam_entity.yml'
 
 jobs:
   rust_lint_ockam_ockam_entity:
@@ -54,3 +55,9 @@ jobs:
       - id: rust_lint_ockam_ockam_entity
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_entity
+
+      # TODO: tasks below will be integrated to implementations/rust/build.gradle
+      # after all cargo docs and clippy fixes are done.
+      - name: check cargo clippy
+        working-directory: implementations/rust/ockam/ockam_entity
+        run: cargo clippy -V && cargo clean && cargo clippy --all-targets --all-features && cargo clippy --all-targets --all-features -- -D warnings
