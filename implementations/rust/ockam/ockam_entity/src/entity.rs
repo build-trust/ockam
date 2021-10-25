@@ -2,7 +2,7 @@ use crate::EntityError::IdentityApiFailed;
 use crate::{
     profile::Profile, AuthenticationProof, Changes, Contact, EntityBuilder, Identity,
     IdentityRequest, IdentityResponse, Lease, MaybeContact, ProfileChangeEvent, ProfileIdentifier,
-    SecureChannels, TrustPolicy, TrustPolicyImpl, TTL,
+    TrustPolicy, TrustPolicyImpl, TTL,
 };
 use ockam_core::compat::{
     string::{String, ToString},
@@ -292,11 +292,10 @@ impl Identity for Entity {
     }
 }
 
-#[async_trait]
-impl SecureChannels for Entity {
-    async fn create_secure_channel_listener(
+impl Entity {
+    pub async fn create_secure_channel_listener(
         &mut self,
-        address: Address,
+        address: impl Into<Address>,
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
         let profile = self
@@ -309,7 +308,7 @@ impl SecureChannels for Entity {
         if let Res::CreateSecureChannelListener = self
             .call(CreateSecureChannelListener(
                 profile.identifier().await.expect("couldn't get profile id"),
-                address,
+                address.into(),
                 trust_policy_address,
             ))
             .await?
@@ -320,9 +319,9 @@ impl SecureChannels for Entity {
         }
     }
 
-    async fn create_secure_channel(
+    pub async fn create_secure_channel(
         &mut self,
-        route: Route,
+        route: impl Into<Route>,
         trust_policy: impl TrustPolicy,
     ) -> Result<Address> {
         let profile = self
@@ -335,7 +334,7 @@ impl SecureChannels for Entity {
         if let Res::CreateSecureChannel(address) = self
             .call(CreateSecureChannel(
                 profile.identifier().await.expect("couldn't get profile id"),
-                route,
+                route.into(),
                 trust_policy_address,
             ))
             .await?

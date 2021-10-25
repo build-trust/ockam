@@ -1,7 +1,7 @@
-use crate::{Changes, Contact, Lease, ProfileChangeEvent, ProfileIdentifier, TrustPolicy, TTL};
+use crate::{Changes, Contact, Lease, ProfileChangeEvent, ProfileIdentifier, TTL};
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone};
-use ockam_core::{Address, Result, Route};
+use ockam_core::{Result, Route};
 use ockam_vault_core::{PublicKey, Secret};
 
 pub type AuthenticationProof = Vec<u8>;
@@ -81,19 +81,4 @@ pub trait Identity: AsyncTryClone + Send + Sync + 'static {
     ) -> Result<Lease>;
 
     async fn revoke_lease(&mut self, lease_manager_route: &Route, lease: Lease) -> Result<()>;
-}
-
-#[async_trait]
-pub trait SecureChannels {
-    async fn create_secure_channel_listener(
-        &mut self,
-        address: Address,
-        trust_policy: impl TrustPolicy,
-    ) -> Result<()>;
-
-    async fn create_secure_channel(
-        &mut self,
-        route: Route,
-        trust_policy: impl TrustPolicy,
-    ) -> Result<Address>;
 }

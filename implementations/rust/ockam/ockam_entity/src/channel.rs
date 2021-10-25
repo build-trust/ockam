@@ -1,9 +1,5 @@
-use crate::{Identity, ProfileIdentifier};
-use ockam_core::async_trait;
-use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Decodable, Message, Result, Route, Routed};
-use ockam_node::Context;
-use ockam_vault_sync_core::VaultSync;
+use crate::ProfileIdentifier;
+use ockam_core::{Decodable, Message, Result, Routed};
 
 mod secure_channel_worker;
 pub(crate) use secure_channel_worker::*;
@@ -15,53 +11,6 @@ mod trust_policy;
 pub use trust_policy::*;
 mod local_info;
 pub use local_info::*;
-
-#[async_trait]
-pub trait SecureChannelTrait {
-    async fn create_secure_channel_async(
-        self,
-        ctx: &Context,
-        route: Route,
-        trust_policy: impl TrustPolicy,
-        vault: &Address,
-    ) -> Result<Address>;
-
-    async fn create_secure_channel_listener_async(
-        self,
-        ctx: &Context,
-        address: Address,
-        trust_policy: impl TrustPolicy,
-        vault: &Address,
-    ) -> Result<()>;
-}
-
-#[async_trait]
-impl<P: Identity> SecureChannelTrait for P {
-    /// Create mutually authenticated secure channel
-    async fn create_secure_channel_async(
-        self,
-        ctx: &Context,
-        route: Route,
-        trust_policy: impl TrustPolicy,
-        vault: &Address,
-    ) -> Result<Address> {
-        let vault = VaultSync::create_with_worker(ctx, vault).await?;
-        SecureChannelWorker::create_initiator(ctx, route, self, trust_policy, vault).await
-    }
-
-    /// Create mutually authenticated secure channel listener
-    async fn create_secure_channel_listener_async(
-        self,
-        ctx: &Context,
-        address: Address,
-        trust_policy: impl TrustPolicy,
-        vault: &Address,
-    ) -> Result<()> {
-        let vault = VaultSync::create_with_worker(ctx, vault).await?;
-        let listener = ProfileChannelListener::new(trust_policy, self, vault);
-        ctx.start_worker(address, listener).await
-    }
-}
 
 // TODO: rename
 pub fn check_message_origin<T: Message>(
@@ -89,8 +38,8 @@ pub fn get_secure_channel_participant_id<T: Message>(msg: &Routed<T>) -> Result<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Entity, SecureChannels};
-    use ockam_core::route;
+    use crate::{Entity, Identity};
+    use ockam_core::{Route, route};
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -109,7 +58,7 @@ mod test {
                 let bob_trust_policy =
                     TrustIdentifierPolicy::new(alice.identifier().await.unwrap());
 
-                bob.create_secure_channel_listener("bob_listener".into(), bob_trust_policy)
+                bob.create_secure_channel_listener("bob_listener", bob_trust_policy)
                     .await
                     .unwrap();
 
@@ -171,7 +120,7 @@ mod test {
                 let bob_trust_policy =
                     TrustIdentifierPolicy::new(alice.identifier().await.unwrap());
 
-                bob.create_secure_channel_listener("bob_listener".into(), bob_trust_policy.clone())
+                bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone())
                     .await
                     .unwrap();
 
@@ -180,7 +129,7 @@ mod test {
                     .await
                     .unwrap();
 
-                bob.create_secure_channel_listener("bob_another_listener".into(), bob_trust_policy)
+                bob.create_secure_channel_listener("bob_another_listener", bob_trust_policy)
                     .await
                     .unwrap();
 
@@ -230,7 +179,7 @@ mod test {
                 let bob_trust_policy =
                     TrustIdentifierPolicy::new(alice.identifier().await.unwrap());
 
-                bob.create_secure_channel_listener("bob_listener".into(), bob_trust_policy.clone())
+                bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone())
                     .await
                     .unwrap();
 
@@ -240,7 +189,7 @@ mod test {
                     .unwrap();
 
                 bob.create_secure_channel_listener(
-                    "bob_another_listener".into(),
+                    "bob_another_listener",
                     bob_trust_policy.clone(),
                 )
                 .await
@@ -255,7 +204,7 @@ mod test {
                     .unwrap();
 
                 bob.create_secure_channel_listener(
-                    "bob_yet_another_listener".into(),
+                    "bob_yet_another_listener",
                     bob_trust_policy,
                 )
                 .await
@@ -311,7 +260,7 @@ mod test {
                 let mut channels = vec![];
                 for i in 0..n {
                     bob.create_secure_channel_listener(
-                        i.to_string().into(),
+                        i.to_string(),
                         bob_trust_policy.clone(),
                     )
                     .await
