@@ -54,4 +54,4 @@ jobs:
       # after all cargo docs and clippy fixes are done.
       - name: check cargo clippy
         working-directory: implementations/rust/ockam/ockam_key_exchange_xx
-        run: cargo clippy -V && cargo clean && cargo clippy --all-targets --all-features && cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy -V && cargo clippy --no-deps && cargo clippy --no-deps -- -D warnings
