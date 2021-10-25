@@ -431,7 +431,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
         let mut onward_route = msg.onward_route();
         let mut return_route = msg.return_route();
-        let payload = msg.payload().clone();
+        let payload = msg.payload().to_vec();
 
         // Send to the other party using local regular SecureChannel
         let _ = onward_route.step()?;
@@ -444,7 +444,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             .modify()
             .prepend(self.self_remote_address.clone());
 
-        let transport_msg = TransportMessage::v1(onward_route, return_route, payload.to_vec());
+        let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
         ctx.forward(LocalMessage::new(transport_msg, Vec::new()))
             .await?;
@@ -477,7 +477,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             return Err(EntityError::UnknownChannelMsgDestination.into());
         }
 
-        let payload = msg.payload().clone();
+        let payload = msg.payload().to_vec();
 
         // Forward to local workers
         let _ = onward_route.step()?;
@@ -488,7 +488,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             .pop_front()
             .prepend(self.self_local_address.clone());
 
-        let transport_msg = TransportMessage::v1(onward_route, return_route, payload.to_vec());
+        let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
         let local_info = LocalInfo::new(state.their_profile_id.clone());
         let local_info = local_info.encode()?;
