@@ -1,4 +1,5 @@
 use core::iter;
+use std::time::Duration;
 
 use ockam_core::{route, Address, Result, Routed, Worker};
 use ockam_node::Context;
@@ -8,11 +9,17 @@ use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam_node_test_attribute::node_test(timeout = 1000)]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
+    let rand_port = rand::thread_rng().gen_range(10000, 65535);
+    let bind_address = format!("127.0.0.1:{}", rand_port);
+    let bind_address = bind_address.as_str();
+
     let _listener = {
         let transport = TcpTransport::create(ctx).await?;
-        transport.listen("127.0.0.1:4000").await?;
+        transport.listen(bind_address).await?;
         ctx.start_worker("echoer", Echoer).await?;
     };
+    std::thread::sleep(Duration::from_millis(500));
+
     let _sender = {
         let mut ctx = ctx.new_context(Address::random(0)).await?;
         let msg: String = {
@@ -22,13 +29,16 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
                 .take(10)
                 .collect()
         };
-        let r = route![(TCP, "127.0.0.1:4000"), "echoer"];
+        let r = route![(TCP, bind_address), "echoer"];
         ctx.send(r, msg.clone()).await?;
 
         let reply = ctx.receive::<String>().await?;
         assert_eq!(reply, msg, "Should receive the same message");
     };
-    ctx.stop().await?;
+
+    if let Err(e) = ctx.stop().await {
+        println!("Unclean stop: {}", e)
+    }
     Ok(())
 }
 
