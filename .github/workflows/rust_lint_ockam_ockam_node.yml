@@ -45,9 +45,3 @@ jobs:
       - id: rust_lint_ockam_ockam_node
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_node
-
-      # TODO: tasks below will be integrated to implementations/rust/build.gradle
-      # after all cargo docs and clippy fixes are done.
-      - name: check cargo clippy
-        working-directory: implementations/rust/ockam/ockam_node
-        run: cargo clippy -V && cargo clippy --no-deps && cargo clippy --no-deps -- -D warnings
