@@ -5,6 +5,15 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.31.0 - 2021-10-25
+### Changed
+- Make SecureChannel APIs async.
+- Make async-trait crate used through ockam_core.
+- Replace instances of `&Vec<T>` with `&[T]`.
+- Dependencies updated
+### Removed
+- Remove `None` errors from Error enums.
+
 ## v0.30.0 - 2021-10-18
 ### Changed
 - Dependencies updated

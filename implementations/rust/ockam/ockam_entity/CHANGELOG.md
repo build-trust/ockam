@@ -5,6 +5,20 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.25.0 - 2021-10-25
+### Changed
+- Dependencies updated
+- Various documentation improvements.
+- Make APIs async.
+- Make async-trait crate used through ockam_core.
+- Replace instances of `&Vec<T>` with `&[T]`.
+- Simplified feature usage.
+- Move as many things as possible into a workspace.
+
+### Removed
+- Remove SecureChannels trait.
+- Remove `None` errors from Error enums.
+
 ## v0.24.0 - 2021-10-18
 ### Added
 - Added new 'no_main' feature to control ockam_node_attribute behavior on bare metal platforms

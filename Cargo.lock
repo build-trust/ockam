@@ -740,9 +740,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c06815895acec637cd6ed6e9662c935b866d20a106f8361892893a7d9234964"
+checksum = "7fd819562fcebdac5afc5c113c3ec36f902840b70fd4fc458799c8ce4607ae55"
 dependencies = [
  "bytes 1.1.0",
  "fnv",
@@ -887,9 +887,9 @@ dependencies = [
 
 [[package]]
 name = "http-body"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "399c583b2979440c60be0821a6199eca73bc3c8dcd9d070d75ac726e2c6186e5"
+checksum = "1ff4f84919677303da5f147645dbea6b1881f368d03ac84e1dc09031ebd7b2c6"
 dependencies = [
  "bytes 1.1.0",
  "http",
@@ -910,9 +910,9 @@ checksum = "6456b8a6c8f33fee7d958fcd1b60d55b11940a79e63ae87013e6d22e26034440"
 
 [[package]]
 name = "hyper"
-version = "0.14.13"
+version = "0.14.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15d1cfb9e4f68655fa04c01f59edb405b6074a0f7118ea881e5026e4a1cd8593"
+checksum = "2b91bb1f221b6ea1f1e4371216b70f40748774c2fb5971b450c07773fb92d26b"
 dependencies = [
  "bytes 1.1.0",
  "futures-channel",
@@ -1016,9 +1016,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.104"
+version = "0.2.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b2f96d100e1cf1929e7719b7edb3b90ab5298072638fccd77be9ce942ecdfce"
+checksum = "869d572136620d55835903746bcb5cdc54cb2851fd0aeec53220b4bb65ef3013"
 
 [[package]]
 name = "lock_api"
@@ -1147,7 +1147,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "arrayref",
  "bls12_381_plus",
@@ -1178,7 +1178,7 @@ dependencies = [
 
 [[package]]
 name = "ockam-ffi"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "lazy_static",
  "ockam_core",
@@ -1204,7 +1204,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -1223,7 +1223,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.35.0"
+version = "0.36.0"
 dependencies = [
  "async-trait",
  "core2",
@@ -1239,7 +1239,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "bls12_381_plus",
  "cfg-if",
@@ -1269,7 +1269,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_examples"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "ockam",
  "tracing",
@@ -1277,7 +1277,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "crossbeam-queue",
  "futures 0.3.17",
@@ -1296,7 +1296,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "ockam_core",
  "ockam_vault_core",
@@ -1305,7 +1305,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -1318,7 +1318,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -1330,7 +1330,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.33.0"
+version = "0.34.0"
 dependencies = [
  "cortex-m",
  "cortex-m-semihosting",
@@ -1345,7 +1345,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_attribute"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "quote",
  "syn",
@@ -1353,7 +1353,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_no_std"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "executor",
 ]
@@ -1372,7 +1372,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -1380,7 +1380,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "futures 0.3.17",
  "hashbrown 0.9.1",
@@ -1397,7 +1397,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -1412,7 +1412,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -1438,7 +1438,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_core"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "cfg-if",
  "heapless",
@@ -1450,7 +1450,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "ockam_core",
  "ockam_node",
@@ -1468,7 +1468,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_attribute"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "quote",
  "syn",
@@ -1476,7 +1476,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -1612,9 +1612,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkg-config"
-version = "0.3.20"
+version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
+checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
 
 [[package]]
 name = "polyval"
@@ -1630,9 +1630,9 @@ dependencies = [
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3ca011bd0129ff4ae15cd04c4eef202cadf6c51c21e47aba319b4e0501db741"
+checksum = "ed0cfbc8191465bed66e1718596ee0b0b35d5ee1f41c5df2189d0fe8bde535ba"
 
 [[package]]
 name = "proc-macro-error"
@@ -1895,9 +1895,9 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.6.5"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45005aa836116903a49cf3461474da697cfe66221762c6e95871092009ec86d6"
+checksum = "1b861ecaade43ac97886a512b360d01d66be9f41f3c61088b42cedf92e03d678"
 dependencies = [
  "base64",
  "bitflags",
@@ -2097,7 +2097,7 @@ checksum = "02658e48d89f2bec991f9a78e69cfa4c316f8d6a6c4ec12fae1aeb263d486788"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -2120,7 +2120,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
@@ -2138,7 +2138,7 @@ dependencies = [
 
 [[package]]
 name = "signature_core"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
@@ -2158,7 +2158,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",

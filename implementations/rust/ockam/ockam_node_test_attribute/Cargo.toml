@@ -34,6 +34,6 @@ quote = "1.0"
 syn = {version = "1.0", features = ["full", "extra-traits"]}
 
 [dev-dependencies]
-ockam = { path = "../ockam", default-features = false, features = ["std"] }
-ockam_node = { path = "../ockam_node", default-features = false, features = ["std"] }
+ockam = { path = "../ockam", version = "0.35.0", default-features = false, features = ["std"] }
+ockam_node = { path = "../ockam_node", version = "0.34.0", default-features = false, features = ["std"] }
 trybuild = "1.0"

@@ -5,6 +5,15 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.26.0 - 2021-10-25
+### Changed
+- Update FFI to async.
+- Move as many things as possible into a workspace.
+- Dependencies updated
+
+### Removed
+- Remove `None` errors from Error enums.
+
 ## v0.25.0 - 2021-10-18
 ### Changed
 - Make credentials optional (disabled by default)

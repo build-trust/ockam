@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_channel = "0.30.0"
+ockam_channel = "0.31.0"
 ```
 
 ## License
