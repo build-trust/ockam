@@ -16,8 +16,7 @@ members = [
 
     "tools/ockam-hub-cli",
     "tools/docs/example_runner",
-    "tools/docs/example_blocks",
-    "tools/scripts/release/wait_for_crate",
+    "tools/docs/example_blocks"
 ]
 
 exclude = [
