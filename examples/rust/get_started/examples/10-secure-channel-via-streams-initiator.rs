@@ -1,7 +1,3 @@
-/// This example uses the stream service to send messages between two
-/// clients.  A stream is a buffered message sending channel, which
-/// means that you can run `initiator` and `responder` in any order
-/// you like.
 use ockam::{
     route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };

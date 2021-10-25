@@ -118,8 +118,9 @@ touch examples/09-streams-responder.rs
 Add the following code to this file:
 
 ```rust
+// examples/09-streams-responder.rs
+use hello_ockam::Echoer;
 use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
-use ockam_get_started::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -146,6 +147,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
 }
+
 ```
 
 This code creates a stream client on the Hub node at `127.0.0.1:4000` and starts an echoer worker.
@@ -161,6 +163,7 @@ touch examples/09-streams-initiator.rs
 Add the following code to this file:
 
 ```rust
+// examples/09-streams-initiator.rs
 use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
@@ -176,9 +179,9 @@ async fn main(mut ctx: Context) -> Result<()> {
         .index_service("stream_kafka_index")
         .client_id("stream-over-cloud-node-initiator")
         .connect(
-            route![(TCP, hub_node_tcp_address)],  // route to hub
-            "initiator-to-responder",             // outgoing stream
-            "responder-to-initiator",             // incoming stream
+            route![(TCP, hub_node_tcp_address)], // route to hub
+            "initiator-to-responder",            // outgoing stream
+            "responder-to-initiator",            // incoming stream
         )
         .await?;
 
@@ -188,7 +191,7 @@ async fn main(mut ctx: Context) -> Result<()> {
             sender.clone(), // via the "initiator-to-responder" stream
             "echoer"        // to the "echoer" worker
         ],
-        "Hello World!".to_string()
+        "Hello World!".to_string(),
     )
     .await?;
 
@@ -198,6 +201,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.stop().await
 }
+
 ```
 
 This code creates a stream client, sends a message to the echoer through this client and expects a response.

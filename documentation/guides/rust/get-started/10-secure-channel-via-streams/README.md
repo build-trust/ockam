@@ -41,8 +41,11 @@ touch examples/10-secure-channel-via-streams-responder.rs
 Add the following code to this file:
 
 ```rust
-use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
-use ockam_get_started::Echoer;
+// examples/10-secure-channel-via-streams-responder.rs
+use hello_ockam::Echoer;
+use ockam::{
+    route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
+};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -53,9 +56,10 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
+    let mut bob = Entity::create(&ctx, &vault)?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
+    bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 
     // Create a stream client
     Stream::new(&ctx)?
@@ -75,6 +79,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
 }
+
 ```
 
 ### Initiator node
@@ -88,7 +93,10 @@ touch examples/10-secure-channel-via-streams-initiator.rs
 Add the following code to this file:
 
 ```rust
-use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
+// examples/10-secure-channel-via-streams-initiator.rs
+use ockam::{
+    route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -99,6 +107,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a vault
     let vault = Vault::create(&ctx)?;
+    let mut alice = Entity::create(&ctx, &vault)?;
 
     // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)?
@@ -113,21 +122,19 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create a secure channel
-    let secure_channel = SecureChannel::create(
-        &ctx,
+    let secure_channel = alice.create_secure_channel(
         route![
-            sender.clone(),           // via the "sc-initiator-to-responder" stream
-            "secure_channel_listener" // to the "secure_channel_listener" listener
+            sender.clone(),            // via the "sc-initiator-to-responder" stream
+            "secure_channel_listener"  // to the "secure_channel_listener" listener
         ],
-        &vault,
-    )
-    .await?;
+        TrustEveryonePolicy,
+    )?;
 
     // Send a message
     ctx.send(
         route![
-            secure_channel.address(), // via the secure channel
-            "echoer"                  // to the "echoer" worker
+            secure_channel, // via the secure channel
+            "echoer"        // to the "echoer" worker
         ],
         "Hello World!".to_string(),
     )
@@ -139,6 +146,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     ctx.stop().await
 }
+
 ```
 
 This code starts a stream client, creates a bi-directional stream and then establishes a secure channel between the client and the stream address.
