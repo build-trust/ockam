@@ -1,6 +1,6 @@
 %{
   "bare": {:hex, :bare, "0.1.1", "d9dc757cdf6a4f236055d7d098b523fcc70ff7e805a981e3e82786c7a99725b9", [:rebar3], [], "hexpm", "07797a39167e37108c0827fe1a686e69d5f27d7b658fb64f14496a6db72a2415"},
-  "brod": {:git, "https://github.com/hairyhum/brod.git", "d70fc872984ffe9771cfbb264ca6a7571ed3b176", [branch: "kpro-connection-timeout"]},
+  "brod": {:git, "https://github.com/hairyhum/brod.git", "214995934873f001f59efa2a6403c4ed4db29be1", [branch: "kpro-connection-timeout-3.15"]},
   "bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [:mix], [], "hexpm", "7af5c7e09fe1d40f76c8e4f9dd2be7cebd83909f31fee7cd0e9eadc567da8353"},
   "connection": {:hex, :connection, "1.0.4", "a1cae72211f0eef17705aaededacac3eb30e6625b04a6117c1b2db6ace7d5976", [:mix], [], "hexpm", "4a0850c9be22a43af9920a71ab17c051f5f7d45c209e40269a1938832510e4d9"},
   "crc32cer": {:git, "https://github.com/zmstone/crc32cer", "da457f8003f8f2176458d73aced2600e53b583a2", [tag: "0.1.4"]},
