@@ -1,6 +1,4 @@
-use ockam::{
-    route, stream::Stream, Context, Entity, Result, SecureChannels, TcpTransport, TrustEveryonePolicy, Vault, TCP,
-};
+use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -11,7 +9,6 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a vault
     let vault = Vault::create(&ctx).await?;
-    let mut alice = Entity::create(&ctx, &vault).await?;
 
     // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)
@@ -27,21 +24,21 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create a secure channel
-    let secure_channel = alice
-        .create_secure_channel(
-            route![
-                sender.clone(),            // via the "sc-initiator-to-responder" stream
-                "secure_channel_listener"  // to the "secure_channel_listener" listener
-            ],
-            TrustEveryonePolicy,
-        )
-        .await?;
+    let secure_channel = SecureChannel::create(
+        &ctx,
+        route![
+            sender.clone(),            // via the "sc-initiator-to-responder" stream
+            "secure_channel_listener"  // to the "secure_channel_listener" listener
+        ],
+        &vault,
+    )
+    .await?;
 
     // Send a message
     ctx.send(
         route![
-            secure_channel, // via the secure channel
-            "echoer"        // to the "echoer" worker
+            secure_channel.address(), // via the secure channel
+            "echoer"                  // to the "echoer" worker
         ],
         "Hello World!".to_string(),
     )
