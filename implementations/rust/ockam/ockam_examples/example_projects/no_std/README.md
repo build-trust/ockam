@@ -1,24 +1,30 @@
 # no_std example
 
-(Initially adapted from https://github.com/antoinevg/talk-rustlondon22)
+## Setup
 
-## Install dependencies
+```
+rustup target add thumbv7em-none-eabihf --toolchain nightly
+brew install qemu
+```
 
-    rustup target add thumbv7em-none-eabihf --toolchain nightly
-    brew install qemu
+## Hello Ockam
 
-## 01-node
+```
+cargo run --example $(example)
+```
 
-    make example=01-node std
-    make example=01-node no_std
-    make example=01-node qemu
-    make example=01-node atsame54
-    make example=01-node stm32f4
+```
+cargo run --example $(example) --no-default-features --features="alloc, no_std"
+```
 
-## hello
+```
+cargo +nightly run --example $(example) --target thumbv7em-none-eabihf --no-default-features --features="qemu"
+```
 
-    make example=hello std
-    make example=hello no_std
-    make example=hello qemu
-    make example=hello atsame54
-    make example=hello stm32f4
+```
+cargo +nightly run --example $(example) --target thumbv7em-none-eabihf --no-default-features --features="atsame54"
+```
+
+```
+cargo +nightly run --example $(example) --target thumbv7em-none-eabihf --no-default-features --features="stm32f4"
+```
