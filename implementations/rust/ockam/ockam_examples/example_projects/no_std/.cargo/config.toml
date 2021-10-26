@@ -1,0 +1,8 @@
+[build]
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+runner = "qemu-system-arm -cpu cortex-m7 -machine mps2-an500 -nographic -semihosting-config enable=on,target=native -kernel"
+
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
