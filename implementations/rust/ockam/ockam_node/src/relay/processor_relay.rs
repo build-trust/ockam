@@ -99,7 +99,7 @@ where
             }
         }
 
-        if let Err(_) = tx_ack.send(()) {
+        if tx_ack.send(()).is_err() {
             error!("Failure during shutdown ack '{}'", ctx.address())
         }
 

@@ -2,6 +2,7 @@ use crate::tokio::{self, sync::mpsc::error::SendError};
 use core::fmt::Debug;
 
 /// Error declarations.
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug)]
 pub enum Error {
     /// Unable to gracefully stop the Node.
