@@ -114,7 +114,7 @@ impl Router {
                     .await
                     .map_err(|_| Error::InternalIOFailure)?,
                 StartProcessor(addr, sender, ref reply, shutdown_handle) => {
-                    self.start_processor(addr.into(), sender, reply, shutdown_handle)
+                    self.start_processor(addr, sender, reply, shutdown_handle)
                         .await?
                 }
                 StopProcessor(ref addr, ref reply) => self.stop_processor(addr, reply).await?,
@@ -220,10 +220,10 @@ impl Router {
         }
 
         for addr in record.address_set().iter() {
-            self.addr_map.remove(&addr);
+            self.addr_map.remove(addr);
         }
 
-        let shutdown_handle = self.shutdown_handles.remove(&addr).unwrap();
+        let shutdown_handle = self.shutdown_handles.remove(addr).unwrap();
         shutdown_handle.shutdown().await?;
 
         reply
@@ -263,7 +263,7 @@ impl Router {
         }
 
         for addr in record.address_set().iter() {
-            self.addr_map.remove(&addr);
+            self.addr_map.remove(addr);
         }
 
         reply

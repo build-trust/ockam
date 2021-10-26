@@ -86,7 +86,7 @@ impl Context {
     }
 
     async fn new_context_impl(&self, addr: Address) -> Result<Context> {
-        let (ctx, tx) = NullWorker::new(Arc::clone(&self.rt), &addr, self.sender.clone());
+        let (ctx, tx) = NullWorker::create(Arc::clone(&self.rt), &addr, self.sender.clone());
 
         // Create a small relay and register it with the internal router
         let sender = WorkerRelay::<NullWorker, _>::build_root(&self.rt, tx);
@@ -360,7 +360,7 @@ impl Context {
     }
 
     /// Receive a message without a timeout
-    pub async fn receive_block<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
+    pub async fn receive_block<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
         let (msg, data, addr) = self.next_from_mailbox().await?;
         Ok(Cancel::new(msg, data, addr, self))
     }
@@ -375,15 +375,15 @@ impl Context {
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
-    pub async fn receive<'ctx, M: Message>(&'ctx mut self) -> Result<Cancel<'ctx, M>> {
+    pub async fn receive<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
         self.receive_timeout(DEFAULT_TIMEOUT).await
     }
 
     /// Block to wait for a typed message, with explicit timeout
-    pub async fn receive_timeout<'ctx, M: Message>(
-        &'ctx mut self,
+    pub async fn receive_timeout<M: Message>(
+        &mut self,
         timeout_secs: u64,
-    ) -> Result<Cancel<'ctx, M>> {
+    ) -> Result<Cancel<'_, M>> {
         let (msg, data, addr) = timeout(Duration::from_secs(timeout_secs), async {
             self.next_from_mailbox().await
         })
@@ -400,7 +400,7 @@ impl Context {
     ///
     /// Internally this function calls `receive` and `.cancel()` in a
     /// loop until a matching message is found.
-    pub async fn receive_match<'ctx, M, F>(&'ctx mut self, check: F) -> Result<Cancel<'ctx, M>>
+    pub async fn receive_match<M, F>(&mut self, check: F) -> Result<Cancel<'_, M>>
     where
         M: Message,
         F: Fn(&M) -> bool,

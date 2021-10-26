@@ -12,7 +12,7 @@ pub struct NullWorker;
 
 impl NullWorker {
     /// Create and register a new NullWorker context
-    pub fn new(
+    pub fn create(
         rt: Arc<Runtime>,
         addr: &Address,
         tx: Sender<NodeMessage>,
@@ -41,7 +41,7 @@ pub fn start_node() -> (Context, Executor) {
 
     // The root application worker needs a mailbox and relay to accept
     // messages from workers, and to buffer incoming transcoded data.
-    let (ctx, mb_tx) = NullWorker::new(exe.runtime(), &addr, exe.sender());
+    let (ctx, mb_tx) = NullWorker::create(exe.runtime(), &addr, exe.sender());
 
     // Build a mailbox worker to buffer messages
     let sender = WorkerRelay::<NullWorker, _>::build_root(&exe.runtime(), mb_tx);

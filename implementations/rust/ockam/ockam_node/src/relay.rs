@@ -2,6 +2,14 @@ use crate::tokio::sync::mpsc::{Receiver, Sender};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Encodable, LocalMessage, Route, RouterMessage};
 
+mod processor_relay;
+mod shutdown_handle;
+mod worker_relay;
+
+pub use processor_relay::*;
+pub use shutdown_handle::*;
+pub use worker_relay::*;
+
 /// A message addressed to a relay
 #[derive(Clone, Debug)]
 pub struct RelayMessage {

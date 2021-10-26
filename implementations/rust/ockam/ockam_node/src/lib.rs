@@ -68,7 +68,7 @@ use tokio::{runtime::Runtime, task};
 /// tokio.
 #[doc(hidden)]
 #[cfg(feature = "std")]
-pub fn block_future<'r, F>(rt: &'r Runtime, f: F) -> <F as Future>::Output
+pub fn block_future<F>(rt: &Runtime, f: F) -> <F as Future>::Output
 where
     F: Future + Send,
     F::Output: Send,
