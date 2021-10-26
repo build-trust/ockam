@@ -23,12 +23,14 @@ extern crate alloc;
 
 mod error;
 mod vault;
+#[cfg(feature = "std")]
 mod vault_mutex;
 mod vault_sync;
 mod vault_worker;
 
 pub use error::*;
 pub use vault::*;
+#[cfg(feature = "std")]
 pub use vault_mutex::*;
 pub use vault_sync::*;
 pub use vault_worker::*;
