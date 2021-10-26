@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_sync_core"
-version = "0.27.0"
+version = "0.28.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -32,7 +32,7 @@ alloc = ["ockam_core/alloc", "ockam_vault_core/alloc", "ockam_vault/alloc", "ock
 ockam_core = { path = "../ockam_core", version = "0.36.0", default_features = false }
 ockam_vault_core = { path = "../ockam_vault_core", version = "0.30.0", default_features = false }
 ockam_vault = { path = "../ockam_vault", version = "0.30.0", default_features = false, optional = true }
-ockam_node = { path = "../ockam_node", version = "0.34.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "0.35.0" , default_features = false }
 tokio = { version = "1.8", default-features = false, features = ["sync"], optional = true}
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"

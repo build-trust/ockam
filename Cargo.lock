@@ -1147,7 +1147,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.35.0"
+version = "0.36.0"
 dependencies = [
  "arrayref",
  "bls12_381_plus",
@@ -1178,7 +1178,7 @@ dependencies = [
 
 [[package]]
 name = "ockam-ffi"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "lazy_static",
  "ockam_core",
@@ -1204,7 +1204,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -1239,7 +1239,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "bls12_381_plus",
  "cfg-if",
@@ -1269,7 +1269,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_examples"
-version = "0.21.0"
+version = "0.22.0"
 dependencies = [
  "ockam",
  "tracing",
@@ -1305,7 +1305,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "arrayref",
  "ockam_core",
@@ -1318,7 +1318,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -1330,7 +1330,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "cortex-m",
  "cortex-m-semihosting",
@@ -1380,7 +1380,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "futures 0.3.17",
  "hashbrown 0.9.1",
@@ -1397,7 +1397,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -1450,7 +1450,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "ockam_core",
  "ockam_node",
@@ -1672,9 +1672,9 @@ checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.30"
+version = "1.0.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edc3358ebc67bc8b7fa0c007f945b0b18226f78437d61bec735a9eb96b61ee70"
+checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
 dependencies = [
  "unicode-xid",
 ]
@@ -2261,9 +2261,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.80"
+version = "1.0.81"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d010a1623fbd906d51d650a9916aaefc05ffa0e4053ff7fe601167f3e715d194"
+checksum = "f2afee18b8beb5a596ecb4a2dce128c719b4ba399d34126b9e4396e3f9860966"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2522,9 +2522,9 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "trybuild"
-version = "1.0.50"
+version = "1.0.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbaccfa9796293406a02ec790614628c88d0b3246249a620ac1ee7076274716b"
+checksum = "150e726dc059e6fbd4fce3288f5bb3cf70128cf63b0dde23b938a3cad810fb23"
 dependencies = [
  "dissimilar",
  "glob",
