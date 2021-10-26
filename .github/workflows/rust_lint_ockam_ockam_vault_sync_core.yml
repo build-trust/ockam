@@ -18,7 +18,6 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_vault_sync_core/**'
-      - '.github/workflows/rust_lint_ockam_ockam_vault_sync_core.yml'
 
 jobs:
   rust_lint_ockam_ockam_vault_sync_core:

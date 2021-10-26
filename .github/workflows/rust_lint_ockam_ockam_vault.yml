@@ -20,7 +20,6 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_vault/**'
-      - '.github/workflows/rust_lint_ockam_ockam_vault.yml'
 
 
 jobs:
@@ -52,9 +51,3 @@ jobs:
       - id: rust_lint_ockam_ockam_vault
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_vault
-
-      # TODO: tasks below will be integrated to implementations/rust/build.gradle
-      # after all cargo docs and clippy fixes are done.
-      - name: check cargo clippy
-        working-directory: implementations/rust/ockam/ockam_vault
-        run: cargo clippy -V && cargo clippy --no-deps && cargo clippy --no-deps -- -D warnings

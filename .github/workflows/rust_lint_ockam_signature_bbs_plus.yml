@@ -14,7 +14,6 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/signature_bbs_plus/**'
-      - '.github/workflows/rust_lint_ockam_signature_bbs_plus.yml'
 
 jobs:
   rust_lint_ockam_signature_bbs_plus:
@@ -45,9 +44,3 @@ jobs:
       - id: rust_lint_ockam_signature_bbs_plus
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_signature_bbs_plus
-
-      # TODO: tasks below will be integrated to implementations/rust/build.gradle
-      # after all cargo docs and clippy fixes are done.
-      - name: check cargo clippy
-        working-directory: implementations/rust/ockam/signature_bbs_plus
-        run: cargo clippy -V && cargo clippy --no-deps && cargo clippy --no-deps -- -D warnings

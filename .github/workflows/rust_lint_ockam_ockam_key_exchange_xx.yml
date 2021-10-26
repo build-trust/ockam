@@ -18,7 +18,6 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_key_exchange_xx/**'
-      - '.github/workflows/rust_lint_ockam_ockam_key_exchange_xx.yml'
 
 jobs:
   rust_lint_ockam_ockam_key_exchange_xx:
@@ -49,9 +48,3 @@ jobs:
       - id: rust_lint_ockam_ockam_key_exchange_xx
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_key_exchange_xx
-
-      # TODO: tasks below will be integrated to implementations/rust/build.gradle
-      # after all cargo docs and clippy fixes are done.
-      - name: check cargo clippy
-        working-directory: implementations/rust/ockam/ockam_key_exchange_xx
-        run: cargo clippy -V && cargo clippy --no-deps && cargo clippy --no-deps -- -D warnings

@@ -14,7 +14,6 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_node/**'
-      - '.github/workflows/rust_lint_ockam_ockam_node.yml'
 
 jobs:
   rust_lint_ockam_ockam_node:

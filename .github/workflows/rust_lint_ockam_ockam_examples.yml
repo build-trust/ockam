@@ -13,7 +13,6 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_examples/**'
-      - '.github/workflows/rust_lint_ockam_ockam_examples.yml'
 
 jobs:
   rust_lint_ockam_ockam_examples:
@@ -44,9 +43,3 @@ jobs:
       - id: rust_lint_ockam_ockam_examples
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_examples
-
-      # TODO: tasks below will be integrated to implementations/rust/build.gradle
-      # after all cargo docs and clippy fixes are done.
-      - name: check cargo clippy
-        working-directory: implementations/rust/ockam/ockam_examples
-        run: cargo clippy -V && cargo clippy --no-deps && cargo clippy --no-deps -- -D warnings

@@ -12,7 +12,6 @@ on:
       - 'settings.gradle'
       - 'implementations/rust/settings.gradle'
       - 'implementations/rust/ockam/ockam_node_no_std/**'
-      - '.github/workflows/rust_lint_ockam_ockam_node_no_std.yml'
 
 jobs:
   rust_lint_ockam_ockam_node_no_std:
@@ -43,9 +42,3 @@ jobs:
       - id: rust_lint_ockam_ockam_node_no_std
         working-directory: implementations/rust
         run: ../../gradlew lint_ockam_ockam_node_no_std
-
-      # TODO: tasks below will be integrated to implementations/rust/build.gradle
-      # after all cargo docs and clippy fixes are done.
-      - name: check cargo clippy
-        working-directory: implementations/rust/ockam/ockam_node_no_std
-        run: cargo clippy -V && cargo clippy --no-deps && cargo clippy --no-deps -- -D warnings
