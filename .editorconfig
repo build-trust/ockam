@@ -21,3 +21,7 @@ indent_size = unset
 [*.{drawio,svg}]
 trim_trailing_whitespace = unset
 insert_final_newline = unset
+
+[Makefile]
+# Make requires tab.
+indent_style = tab
