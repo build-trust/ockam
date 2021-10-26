@@ -31,7 +31,7 @@ commands {
     clean: 'cargo clean',
     lint: [
       'cargo fmt --all -- --check',
-      'cargo clippy --all --all-targets -- --cap-lints=warn',
+      'cargo clippy --no-deps -- -D warnings',
       'cargo doc',
       'cargo deny check licenses advisories',
     ],
