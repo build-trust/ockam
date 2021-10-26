@@ -41,6 +41,6 @@ impl ProtocolParser for StreamWorkerCmd {
     }
 
     fn parse(pp: ProtocolPayload) -> Result<Self> {
-        Ok(StreamWorkerCmd::decode(&pp.data)?)
+        StreamWorkerCmd::decode(&pp.data)
     }
 }

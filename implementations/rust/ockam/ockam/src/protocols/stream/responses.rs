@@ -143,7 +143,7 @@ impl ProtocolParser for Response {
             "stream_push" => Response::PushConfirm(PushConfirm::decode(&data)?),
             "stream_pull" => Response::PullResponse(PullResponse::decode(&data)?),
             "stream_index" => Response::Index(Index::decode(&data)?),
-            _ => Err(OckamError::NoSuchProtocol)?,
+            _ => return Err(OckamError::NoSuchProtocol.into()),
         })
     }
 }
