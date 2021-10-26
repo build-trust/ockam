@@ -46,8 +46,7 @@ impl VaultSync {
     pub async fn start_another(&self) -> Result<Self> {
         let vault_worker_address = self.handle.address().clone();
 
-        let clone =
-            VaultSync::create_with_worker(&self.handle.ctx(), &vault_worker_address).await?;
+        let clone = VaultSync::create_with_worker(self.handle.ctx(), &vault_worker_address).await?;
 
         Ok(clone)
     }

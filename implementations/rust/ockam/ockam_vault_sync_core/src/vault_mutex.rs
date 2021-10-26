@@ -7,7 +7,7 @@ pub struct VaultMutex<V>(Arc<Mutex<V>>);
 
 impl<V> Clone for VaultMutex<V> {
     fn clone(&self) -> Self {
-        return Self(self.0.clone());
+        Self(self.0.clone())
     }
 }
 
@@ -16,7 +16,7 @@ impl<V> VaultMutex<V> {
     pub fn create(vault: V) -> Self {
         debug!("Starting VaultMutex");
 
-        return Self(Arc::new(Mutex::new(vault)));
+        Self(Arc::new(Mutex::new(vault)))
     }
 }
 
