@@ -1,6 +1,6 @@
 use super::{AddressRecord, NodeState, Router};
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error::Error, relay::RelayMessage, NodeReply, NodeReplyResult};
+use crate::{error::Error, relay::RelayMessage, NodeReply, NodeReplyResult, Reason};
 
 use ockam_core::{AddressSet, Result};
 
@@ -46,6 +46,19 @@ async fn start(
     // communicate the current executor state
     reply
         .send(NodeReply::ok())
+        .await
+        .map_err(|_| Error::InternalIOFailure)?;
+    Ok(())
+}
+
+async fn reject(
+    addrs: AddressSet,
+    sender: Sender<RelayMessage>,
+    reply: &Sender<NodeReplyResult>,
+) -> Result<()> {
+    trace!("StartWorker command rejected: node shutting down");
+    reply
+        .send(NodeReply::rejected(Reason::NodeShutdown))
         .await
         .map_err(|_| Error::InternalIOFailure)?;
     Ok(())
