@@ -18,7 +18,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
         transport.listen(bind_address).await?;
         ctx.start_worker("echoer", Echoer).await?;
     };
-    std::thread::sleep(Duration::from_millis(500));
+    tokio::time::sleep(Duration::from_millis(500)).await;
 
     let _sender = {
         let mut ctx = ctx.new_context(Address::random(0)).await?;
