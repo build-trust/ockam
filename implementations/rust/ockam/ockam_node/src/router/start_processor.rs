@@ -3,12 +3,27 @@ use crate::tokio::sync::mpsc::Sender;
 use crate::{
     error::Error,
     relay::{RelayMessage, PROC_ADDR_SUFFIX},
-    NodeReply, NodeReplyResult,
+    NodeReply, NodeReplyResult, Reason
 };
 
 use ockam_core::{Address, Result};
 
+/// Execute a `StartWorker` command
 pub(super) async fn exec(
+    router: &mut Router,
+    addrs: Address,
+    main_sender: Sender<RelayMessage>,
+    aux_sender: Sender<RelayMessage>,
+    reply: &Sender<NodeReplyResult>,
+) -> Result<()> {
+    match router.state.node_state() {
+        NodeState::Running => start(router, addrs, main_sender, aux_sender, reply).await,
+        NodeState::Stopping => reject(addrs, main_sender, reply).await,
+    }?;
+    Ok(())
+}
+
+async fn start(
     router: &mut Router,
     addr: Address,
     main_sender: Sender<RelayMessage>,
@@ -43,6 +58,19 @@ pub(super) async fn exec(
     // communicate the current executor state
     reply
         .send(NodeReply::ok())
+        .await
+        .map_err(|_| Error::InternalIOFailure)?;
+    Ok(())
+}
+
+async fn reject(
+    addrs: Address,
+    sender: Sender<RelayMessage>,
+    reply: &Sender<NodeReplyResult>,
+) -> Result<()> {
+    trace!("StartWorker command rejected: node shutting down");
+    reply
+        .send(NodeReply::rejected(Reason::NodeShutdown))
         .await
         .map_err(|_| Error::InternalIOFailure)?;
     Ok(())

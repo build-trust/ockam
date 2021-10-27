@@ -124,6 +124,17 @@ pub enum NodeError {
     WorkerExists(Address),
     /// Router already exists
     RouterExists,
+    /// Command rejected
+    Rejected(Reason),
+}
+
+/// The reason why a command was rejected
+#[derive(Debug, Copy, Clone)]
+pub enum Reason {
+    /// Rejected because the node is currently shutting down
+    NodeShutdown,
+    /// Rejected because the worker is currently shutting down
+    WorkerShutdown,
 }
 
 impl NodeReply {
@@ -150,6 +161,11 @@ impl NodeReply {
     /// Return [NodeError::RouterExists]
     pub fn router_exists() -> NodeReplyResult {
         Err(NodeError::RouterExists)
+    }
+
+    /// Return [NodeReply::Rejected(reason)]
+    pub fn rejected(reason: Reason) -> NodeReplyResult {
+        Err(NodeError::Rejected(reason))
     }
 
     /// Return [NodeReply::Workers] for the given addresses

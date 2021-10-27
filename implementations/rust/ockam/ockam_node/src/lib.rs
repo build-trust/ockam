@@ -30,7 +30,6 @@ pub use ockam_executor::tokio;
 #[cfg(feature = "std")]
 pub use tokio;
 
-mod address_record;
 mod cancel;
 mod context;
 mod error;
@@ -43,7 +42,6 @@ mod relay;
 mod router;
 mod tests;
 
-pub(crate) use address_record::*;
 pub use cancel::*;
 pub use context::*;
 pub use executor::*;
