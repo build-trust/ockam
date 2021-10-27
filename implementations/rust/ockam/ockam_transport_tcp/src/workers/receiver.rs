@@ -1,4 +1,3 @@
-use crate::atomic::{self, ArcBool};
 use ockam_core::async_trait;
 use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::Context;
@@ -16,13 +15,12 @@ use tracing::{error, info, trace};
 /// the node message system.
 pub(crate) struct TcpRecvProcessor {
     rx: OwnedReadHalf,
-    run: ArcBool,
     peer_addr: Address,
 }
 
 impl TcpRecvProcessor {
-    pub fn new(rx: OwnedReadHalf, run: ArcBool, peer_addr: Address) -> Self {
-        Self { rx, run, peer_addr }
+    pub fn new(rx: OwnedReadHalf, peer_addr: Address) -> Self {
+        Self { rx, peer_addr }
     }
 }
 
@@ -40,52 +38,46 @@ impl Processor for TcpRecvProcessor {
     // killed by the user or node.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Run in a loop until TcpWorkerPair::stop() is called
-        // FIXME: see ArcBool future note
-        if atomic::check(&self.run) {
-            // First read a message length header...
-            let len = match self.rx.read_u16().await {
-                Ok(len) => len,
-                Err(_e) => {
-                    info!(
-                        "Connection to peer '{}' was closed; dropping stream",
-                        self.peer_addr
-                    );
-                    return Ok(false);
-                }
-            };
-
-            trace!("Received message header for {} bytes", len);
-
-            // Allocate a buffer of that size
-            let mut buf = vec![0; len as usize];
-
-            // Then Read into the buffer
-            match self.rx.read_exact(&mut buf).await {
-                Ok(_) => {}
-                _ => {
-                    error!("Failed to receive message of length: {}", len);
-                    return Ok(true);
-                }
+        // First read a message length header...
+        let len = match self.rx.read_u16().await {
+            Ok(len) => len,
+            Err(_e) => {
+                info!(
+                    "Connection to peer '{}' was closed; dropping stream",
+                    self.peer_addr
+                );
+                return Ok(false);
             }
+        };
 
-            // Deserialize the message now
-            let mut msg =
-                TransportMessage::decode(&buf).map_err(|_| TransportError::RecvBadMessage)?;
+        trace!("Received message header for {} bytes", len);
 
-            // Insert the peer address into the return route so that
-            // reply routing can be properly resolved
-            msg.return_route.modify().prepend(self.peer_addr.clone());
+        // Allocate a buffer of that size
+        let mut buf = vec![0; len as usize];
 
-            // Some verbose logging we may want to remove
-            trace!("Message onward route: {}", msg.onward_route);
-            trace!("Message return route: {}", msg.return_route);
-
-            // Forward the message to the next hop in the route
-            ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
-
-            Ok(true)
-        } else {
-            Ok(false)
+        // Then Read into the buffer
+        match self.rx.read_exact(&mut buf).await {
+            Ok(_) => {}
+            _ => {
+                error!("Failed to receive message of length: {}", len);
+                return Ok(true);
+            }
         }
+
+        // Deserialize the message now
+        let mut msg = TransportMessage::decode(&buf).map_err(|_| TransportError::RecvBadMessage)?;
+
+        // Insert the peer address into the return route so that
+        // reply routing can be properly resolved
+        msg.return_route.modify().prepend(self.peer_addr.clone());
+
+        // Some verbose logging we may want to remove
+        trace!("Message onward route: {}", msg.onward_route);
+        trace!("Message return route: {}", msg.return_route);
+
+        // Forward the message to the next hop in the route
+        ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
+
+        Ok(true)
     }
 }

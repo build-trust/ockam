@@ -1,14 +1,12 @@
-use crate::atomic::ArcBool;
 use crate::{
-    parse_socket_addr, PortalWorkerPair, TcpInletListenProcessor, TcpListenProcessor, WorkerPair,
-    TCP,
+    parse_socket_addr, PortalWorkerPair, TcpInletListenProcessor, TcpListenProcessor,
+    TcpSendWorker, WorkerPair, TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, AsyncTryClone, Result, Route, RouterMessage};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use std::sync::Arc;
 
 /// A handle to connect to a TcpRouter
 ///
@@ -16,7 +14,6 @@ use std::sync::Arc;
 pub(crate) struct TcpRouterHandle {
     ctx: Context,
     addr: Address,
-    run: ArcBool,
 }
 
 impl TcpRouterHandle {
@@ -29,13 +26,13 @@ impl TcpRouterHandle {
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
         let child_ctx = self.ctx.new_context(Address::random(0)).await?;
-        Ok(Self::new(child_ctx, self.addr.clone(), self.run.clone()))
+        Ok(Self::new(child_ctx, self.addr.clone()))
     }
 }
 
 impl TcpRouterHandle {
-    pub(crate) fn new(ctx: Context, addr: Address, run: ArcBool) -> Self {
-        TcpRouterHandle { ctx, addr, run }
+    pub(crate) fn new(ctx: Context, addr: Address) -> Self {
+        TcpRouterHandle { ctx, addr }
     }
 }
 
@@ -62,13 +59,7 @@ impl TcpRouterHandle {
     /// Bind an incoming connection listener for this router
     pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
         let socket_addr = addr.into();
-        TcpListenProcessor::start(
-            &self.ctx,
-            self.async_try_clone().await?,
-            socket_addr,
-            Arc::clone(&self.run),
-        )
-        .await
+        TcpListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
     }
 
     /// Bind an incoming portal inlet connection listener for this router
@@ -78,13 +69,8 @@ impl TcpRouterHandle {
         addr: impl Into<SocketAddr>,
     ) -> Result<Address> {
         let socket_addr = addr.into();
-        let addr = TcpInletListenProcessor::start(
-            &self.ctx,
-            onward_route.into(),
-            socket_addr,
-            Arc::clone(&self.run),
-        )
-        .await?;
+        let addr =
+            TcpInletListenProcessor::start(&self.ctx, onward_route.into(), socket_addr).await?;
 
         Ok(addr)
     }
@@ -95,7 +81,7 @@ impl TcpRouterHandle {
         Ok(())
     }
 
-    fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
+    pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
         let hostnames;
@@ -126,7 +112,7 @@ impl TcpRouterHandle {
     pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
         let (peer_addr, hostnames) = Self::resolve_peer(peer.as_ref())?;
 
-        let pair = WorkerPair::start(&self.ctx, peer_addr, hostnames).await?;
+        let pair = TcpSendWorker::start_pair(&self.ctx, None, peer_addr, hostnames).await?;
         self.register(&pair).await?;
 
         Ok(())

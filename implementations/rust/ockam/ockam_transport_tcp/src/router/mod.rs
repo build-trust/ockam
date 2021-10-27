@@ -1,15 +1,12 @@
 mod handle;
-use crate::{
-    atomic::{self, ArcBool},
-    TCP,
-};
+use crate::{TcpSendWorker, TCP};
 use core::ops::Deref;
 pub(crate) use handle::*;
 use ockam_core::async_trait;
 use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 use tracing::{debug, trace};
 
 /// A TCP address router and connection listener
@@ -21,18 +18,17 @@ use tracing::{debug, trace};
 /// Optionally you can also start listening for incoming connections
 /// if the local node is part of a server architecture.
 pub(crate) struct TcpRouter {
+    ctx: Context,
     addr: Address,
     map: BTreeMap<Address, Address>,
     allow_auto_connection: bool,
-    pending_connections: Vec<String>,
-    run: ArcBool,
 }
 
 impl TcpRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<TcpRouterHandle> {
         let handle_ctx = ctx.new_context(Address::random(0)).await?;
 
-        let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone(), Arc::clone(&self.run));
+        let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone());
 
         Ok(handle)
     }
@@ -51,13 +47,29 @@ impl TcpRouter {
             }
         }
         for accept in accepts {
-            let accept_str = accept.to_string();
             self.map.insert(accept.clone(), self_addr.clone());
-            // Remove value from pending_connections list
-            self.pending_connections.retain(|x| x != &accept_str);
         }
 
         Ok(())
+    }
+
+    async fn connect(&mut self, peer: String) -> Result<Address> {
+        let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer)?;
+
+        let pair = TcpSendWorker::start_pair(&self.ctx, None, peer_addr, hostnames).await?;
+
+        let tcp_address: Address = format!("{}#{}", TCP, pair.peer()).into();
+        let mut accepts = vec![tcp_address];
+        accepts.extend(
+            pair.hostnames()
+                .iter()
+                .map(|x| Address::from_string(format!("{}#{}", TCP, x))),
+        );
+        let self_addr = pair.tx_addr();
+
+        self.handle_register(accepts, self_addr.clone()).await?;
+
+        Ok(self_addr)
     }
 
     async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
@@ -73,7 +85,7 @@ impl TcpRouter {
         // Look up the connection worker responsible
         if let Some(n) = self.map.get(onward) {
             // Connection already exists
-            next = n;
+            next = n.clone();
         } else {
             // No existing connection
             let peer_str;
@@ -84,23 +96,11 @@ impl TcpRouter {
             }
 
             // TODO: Check if this is the hostname and we have existing/pending connection to this IP
-
-            let peer_addr_str = format!("{}#{}", TCP, &peer_str);
-            if self.pending_connections.contains(&peer_addr_str) {
-                // We already trying to connect to this address - Requeue the message
-                ctx.forward(msg).await?;
-            } else if self.allow_auto_connection {
-                // Create connection
-                self.pending_connections.push(peer_addr_str);
-                let handle = self.create_self_handle(ctx).await?;
-                let _ = handle.connect(peer_str).await?;
-                // Requeue the message
-                ctx.forward(msg).await?;
+            if self.allow_auto_connection {
+                next = self.connect(peer_str).await?;
             } else {
                 return Err(TransportError::UnknownRoute.into());
             }
-
-            return Ok(());
         }
 
         let _ = msg.transport_mut().onward_route.step()?;
@@ -146,12 +146,6 @@ impl Worker for TcpRouter {
 
         Ok(())
     }
-
-    async fn shutdown(&mut self, _: &mut Context) -> Result<()> {
-        // Shut down the ListeningWorker if it exists
-        atomic::stop(&self.run);
-        Ok(())
-    }
 }
 
 impl TcpRouter {
@@ -163,14 +157,13 @@ impl TcpRouter {
         let addr = Address::random(0);
         debug!("Initialising new TcpRouter with address {}", &addr);
 
-        let run = atomic::new(true);
+        let child_ctx = ctx.new_context(Address::random(0)).await?;
 
         let router = Self {
+            ctx: child_ctx,
             addr: addr.clone(),
             map: BTreeMap::new(),
             allow_auto_connection: true,
-            pending_connections: vec![],
-            run: Arc::clone(&run),
         };
 
         let handle = router.create_self_handle(ctx).await?;

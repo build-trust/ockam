@@ -26,8 +26,6 @@ extern crate core;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-pub(crate) mod atomic;
-
 mod portal;
 mod router;
 mod workers;
