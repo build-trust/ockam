@@ -11,7 +11,7 @@ assets:
   logo:
     type: blob.asset
     data:
-      url: 'https://github.com/ockam-network/ockam/tree/develop/tools/docker/balena/'
+      url: 'https://raw.githubusercontent.com/ockam-network/ockam/develop/tools/docker/balena/ockam-logo-512.png'
 data:
   defaultDeviceType: raspberrypi3-64
   supportedDeviceTypes:
