@@ -16,7 +16,7 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe do
   end
 
   def receiver() do
-    Ockam.Messaging.Ordering.Strict.ConfirmPipe.Receiver
+    Ockam.Messaging.ConfirmPipe.Receiver
   end
 end
 
@@ -30,10 +30,16 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
   After confirmation is received - next message from the queue is sent
 
   Confirmations are received on the INNER address
+
+  Options:
+
+  `receiver_route` - a route to receiver
   """
   use Ockam.AsymmetricWorker
 
   alias Ockam.Message
+
+  alias Ockam.Messaging.ConfirmPipe.Wrapper
 
   @impl true
   def inner_setup(options, state) do
@@ -44,7 +50,7 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
 
   @impl true
   def handle_inner_message(message, state) do
-    case is_confirm?(message) do
+    case is_valid_confirm?(message, state) do
       true ->
         confirm(state)
 
@@ -57,40 +63,46 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
   def handle_outer_message(message, state) do
     case waiting_confirm?(state) do
       true ->
-        queue_message(message, state)
+        enqueue_message(message, state)
 
       false ->
         send_message(message, state)
     end
   end
 
-  def is_confirm?(message) do
-    ## TODO: do we need some payload here?
-    ## Revisit when we have message types
-    Message.payload(message) == ""
+  def is_valid_confirm?(message, state) do
+    payload = Message.payload(message)
+    {:ok, ref, ""} = :bare.decode(payload, :uint)
+
+    case Map.get(state, :send_ref) do
+      current_ref when current_ref <= ref ->
+        true
+
+      other_ref ->
+        Logger.warn(
+          "Received confirm for ref #{inspect(ref)}, current ref is #{inspect(other_ref)}"
+        )
+
+        false
+    end
   end
 
   def waiting_confirm?(state) do
     Map.get(state, :waiting_confirm, false)
   end
 
-  def queue_message(message, state) do
+  def enqueue_message(message, state) do
     queue = Map.get(state, :queue, [])
     {:ok, Map.put(state, :queue, queue ++ [message])}
   end
 
   def send_message(message, state) do
-    ## TODO: do we need to wrap the message?
     receiver_route = Map.get(state, :receiver_route)
-    [_me | onward_route] = Message.onward_route(message)
 
-    forwarded_message = %{
-      onward_route: onward_route,
-      return_route: Message.return_route(message),
-      payload: Message.payload(message)
-    }
+    forwarded_message = make_forwarded_message(message)
 
-    {:ok, wrapped_message} = Ockam.Wire.encode(forwarded_message)
+    {ref, state} = bump_send_ref(state)
+    {:ok, wrapped_message} = Wrapper.wrap_message(forwarded_message, ref)
 
     Ockam.Router.route(%{
       onward_route: receiver_route,
@@ -99,6 +111,21 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
     })
 
     {:ok, Map.put(state, :waiting_confirm, true)}
+  end
+
+  def bump_send_ref(state) do
+    ref = Map.get(state, :send_ref, 0) + 1
+    {ref, Map.put(state, :send_ref, ref)}
+  end
+
+  def make_forwarded_message(message) do
+    [_me | onward_route] = Message.onward_route(message)
+
+    %{
+      onward_route: onward_route,
+      return_route: Message.return_route(message),
+      payload: Message.payload(message)
+    }
   end
 
   def confirm(state) do
@@ -111,43 +138,5 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
       [] ->
         {:ok, Map.put(state, :waiting_confirm, false)}
     end
-  end
-end
-
-defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Receiver do
-  @moduledoc """
-  Confirm receiver sends a confirm message for every message received
-  """
-  use Ockam.Worker
-
-  alias Ockam.Message
-  alias Ockam.Router
-
-  require Logger
-
-  @impl true
-  def handle_message(message, state) do
-    return_route = Message.return_route(message)
-    wrapped_message = Message.payload(message)
-
-    case Ockam.Wire.decode(wrapped_message) do
-      {:ok, message} ->
-        Router.route(message)
-        send_confirm(return_route, state)
-        {:ok, state}
-
-      {:error, err} ->
-        Logger.error("Error unwrapping message: #{inspect(err)}")
-        {:error, err}
-    end
-  end
-
-  def send_confirm(return_route, state) do
-    Router.route(%{
-      onward_route: return_route,
-      return_route: [state.address],
-      ## TODO: see `Sender.is_confirm?`
-      payload: ""
-    })
   end
 end

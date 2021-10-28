@@ -3,4 +3,6 @@
 
 import Config
 
+config :logger, :console, metadata: [:module, :line, :pid]
+
 import_config "#{Mix.env()}.exs"

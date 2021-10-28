@@ -21,6 +21,9 @@ defmodule Ockam.PubSubSubscriber do
   alias Ockam.Router
 
   @impl true
+  def address_prefix(_options), do: "PS_"
+
+  @impl true
   def setup(options, state) do
     pub_sub_route = Keyword.fetch!(options, :pub_sub_route)
     topic = Keyword.fetch!(options, :topic)

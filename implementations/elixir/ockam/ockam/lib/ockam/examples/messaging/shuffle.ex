@@ -21,7 +21,6 @@ defmodule Ockam.Examples.Messaging.Shuffle do
 
   def forward_message(message, _state) do
     :timer.sleep(10)
-    Logger.info("Forward #{inspect(message)}")
     [_me | onward_route] = Message.onward_route(message)
 
     Ockam.Router.route(%{

@@ -9,7 +9,7 @@ defmodule Ockam.Messaging.Ordering.Monotonic.IndexPipe do
 
   @doc "Get sender module"
   def sender() do
-    Ockam.Messaging.Ordering.IndexPipe.Sender
+    Ockam.Messaging.IndexPipe.Sender
   end
 
   @doc "Get receiver module"
@@ -30,7 +30,7 @@ defmodule Ockam.Messaging.Ordering.Monotonic.IndexPipe.Receiver do
   """
   use Ockam.Worker
 
-  alias Ockam.Messaging.Ordering.IndexPipe.Wrapper
+  alias Ockam.Messaging.IndexPipe.Wrapper
 
   require Logger
 

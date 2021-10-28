@@ -97,8 +97,8 @@ defmodule Ockam.Messaging.PipeChannel do
   end
 
   @doc false
-  def pipe_mods(options) do
-    case Keyword.fetch(options, :pipe_mods) do
+  def pipe_mod(options) do
+    case Keyword.fetch(options, :pipe_mod) do
       {:ok, {sender_mod, receiver_mod}} ->
         {:ok, {sender_mod, receiver_mod}}
 
@@ -137,6 +137,42 @@ defmodule Ockam.Messaging.PipeChannel.Metadata do
   end
 end
 
+defmodule Ockam.Messaging.PipeChannel.Simple do
+  @moduledoc """
+  Simple implementation of pipe channel.
+  Does not manage the session.
+  Requires a known address to the local pipe sender and remote channel end
+
+  Options:
+
+  `sender` - address of the sender worker
+  `channel_route` - route from remote receiver to remote channel end
+  """
+  use Ockam.AsymmetricWorker
+
+  alias Ockam.Messaging.PipeChannel
+
+  @impl true
+  def inner_setup(options, state) do
+    sender = Keyword.fetch!(options, :sender)
+    channel_route = Keyword.fetch!(options, :channel_route)
+
+    {:ok, Map.merge(state, %{sender: sender, channel_route: channel_route})}
+  end
+
+  @impl true
+  def handle_inner_message(message, state) do
+    PipeChannel.forward_inner(message, state)
+    {:ok, state}
+  end
+
+  @impl true
+  def handle_outer_message(message, state) do
+    PipeChannel.forward_outer(message, state)
+    {:ok, state}
+  end
+end
+
 defmodule Ockam.Messaging.PipeChannel.Initiator do
   @moduledoc """
   Pipe channel initiator.
@@ -156,7 +192,7 @@ defmodule Ockam.Messaging.PipeChannel.Initiator do
 
   Options:
 
-  `pipe_mods` - pipe modules to use, either {sender, receiver} or a module implementing `Ockam.Messaging.Pipe`
+  `pipe_mod` - pipe modules to use, either {sender, receiver} or a module implementing `Ockam.Messaging.Pipe`
   `spawner_route` - a route to responder spawner
 
   """
@@ -172,10 +208,12 @@ defmodule Ockam.Messaging.PipeChannel.Initiator do
   @impl true
   def inner_setup(options, state) do
     spawner_route = Keyword.fetch!(options, :spawner_route)
+    sender_options = Keyword.get(options, :sender_options, [])
+    receiver_options = Keyword.get(options, :receiver_options, [])
 
-    {:ok, {sender_mod, receiver_mod}} = PipeChannel.pipe_mods(options)
+    {:ok, {sender_mod, receiver_mod}} = PipeChannel.pipe_mod(options)
 
-    {:ok, receiver} = receiver_mod.create([])
+    {:ok, receiver} = receiver_mod.create(receiver_options)
 
     send_handshake(spawner_route, receiver, state)
 
@@ -185,7 +223,8 @@ defmodule Ockam.Messaging.PipeChannel.Initiator do
        spawner_route: spawner_route,
        state: :handshake,
        sender_mod: sender_mod,
-       receiver_mod: receiver_mod
+       receiver_mod: receiver_mod,
+       sender_options: sender_options
      })}
   end
 
@@ -203,7 +242,10 @@ defmodule Ockam.Messaging.PipeChannel.Initiator do
     receiver_route = make_receiver_route(spawner_route, remote_receiver_route)
 
     sender_mod = Map.get(state, :sender_mod)
-    {:ok, sender} = sender_mod.create(receiver_route: receiver_route)
+    sender_options = Map.get(state, :sender_options, [])
+
+    {:ok, sender} =
+      sender_mod.create(Keyword.merge([receiver_route: receiver_route], sender_options))
 
     process_buffer(
       Map.merge(state, %{
@@ -282,7 +324,7 @@ defmodule Ockam.Messaging.PipeChannel.Responder do
 
   Options:
 
-  `pipe_mods` - pipe modules to use, either {sender, receiver} or an atom namespace, which has .Sender and .Receiver (e.g. `Ockam.Messaging.Ordering.Monotonic.IndexPipe`)
+  `pipe_mod` - pipe modules to use, either {sender, receiver} or an atom namespace, which has .Sender and .Receiver (e.g. `Ockam.Messaging.Ordering.Monotonic.IndexPipe`)
   `receiver_route` - route to the receiver on the initiator side, used to create a sender
   `channel_route` - route from initiator receiver to initiator, used in forwarding
   """
@@ -300,11 +342,15 @@ defmodule Ockam.Messaging.PipeChannel.Responder do
   def inner_setup(options, state) do
     receiver_route = Keyword.fetch!(options, :receiver_route)
     channel_route = Keyword.fetch!(options, :channel_route)
+    sender_options = Keyword.get(options, :sender_options, [])
+    receiver_options = Keyword.get(options, :receiver_options, [])
 
-    {:ok, {sender_mod, receiver_mod}} = PipeChannel.pipe_mods(options)
+    {:ok, {sender_mod, receiver_mod}} = PipeChannel.pipe_mod(options)
 
-    {:ok, receiver} = receiver_mod.create([])
-    {:ok, sender} = sender_mod.create(receiver_route: receiver_route)
+    {:ok, receiver} = receiver_mod.create(receiver_options)
+
+    {:ok, sender} =
+      sender_mod.create(Keyword.merge([receiver_route: receiver_route], sender_options))
 
     send_handshake_response(receiver, sender, channel_route, state)
 
@@ -321,11 +367,13 @@ defmodule Ockam.Messaging.PipeChannel.Responder do
   @impl true
   def handle_inner_message(message, state) do
     PipeChannel.forward_inner(message, state)
+    {:ok, state}
   end
 
   @impl true
   def handle_outer_message(message, state) do
     PipeChannel.forward_outer(message, state)
+    {:ok, state}
   end
 
   defp send_handshake_response(receiver, sender, channel_route, state) do

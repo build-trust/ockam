@@ -88,7 +88,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     ## Create ordered channel spawner
     {:ok, "ord_channel_spawner"} =
       PipeChannel.Spawner.create(
-        responder_options: [pipe_mods: IndexPipe],
+        responder_options: [pipe_mod: IndexPipe],
         address: "ord_channel_spawner"
       )
 
@@ -115,7 +115,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     ## Strictly ordered channel would de-duplicate messages
     {:ok, ord_channel} =
       PipeChannel.Initiator.create(
-        pipe_mods: IndexPipe,
+        pipe_mod: IndexPipe,
         spawner_route: [publisher, "ord_channel_spawner"]
       )
 

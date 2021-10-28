@@ -1,6 +1,6 @@
-defmodule Ockam.Messaging.Ordering.IndexPipe.Sender do
+defmodule Ockam.Messaging.IndexPipe.Sender do
   @moduledoc """
-  Sender side of ordered pipe using indexing to enforce ordering
+  Sender side of indexed pipe
   Each incoming message is assigned an monotonic index, wrapped and sent to receiver
 
   Options:
@@ -12,7 +12,7 @@ defmodule Ockam.Messaging.Ordering.IndexPipe.Sender do
 
   alias Ockam.Message
 
-  alias Ockam.Messaging.Ordering.IndexPipe.Wrapper
+  alias Ockam.Messaging.IndexPipe.Wrapper
 
   @impl true
   def setup(options, state) do

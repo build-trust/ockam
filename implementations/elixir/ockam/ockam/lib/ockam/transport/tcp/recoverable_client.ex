@@ -20,6 +20,9 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
   require Logger
 
   @impl true
+  def address_prefix(_options), do: "TCP_C_R_"
+
+  @impl true
   def inner_setup(options, state) do
     destination = Keyword.fetch!(options, :destination)
     refresh_timeout = Keyword.get(options, :refresh_timeout, 5_000)
