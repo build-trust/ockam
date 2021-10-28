@@ -11,6 +11,19 @@ defmodule Ockam.Worker do
 
   @callback address_prefix(options :: Keyword.t()) :: String.t()
 
+  def call(worker, call, timeout \\ 5000)
+
+  def call(worker, call, timeout) when is_pid(worker) do
+    GenServer.call(worker, call, timeout)
+  end
+
+  def call(worker, call, timeout) do
+    case Ockam.Node.whereis(worker) do
+      nil -> raise "Worker #{inspect(worker)} not found"
+      pid -> call(pid, call, timeout)
+    end
+  end
+
   defmacro __using__(_options) do
     quote do
       # use GenServer, makes this module a GenServer.
@@ -40,7 +53,7 @@ defmodule Ockam.Worker do
       alias Ockam.Router
       alias Ockam.Telemetry
 
-      def create(options) when is_list(options) do
+      def create(options \\ []) when is_list(options) do
         address_prefix = Keyword.get(options, :address_prefix, address_prefix(options))
 
         options =

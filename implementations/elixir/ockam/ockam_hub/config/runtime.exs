@@ -189,6 +189,7 @@ config :ockam_hub,
   services: [
     :echo,
     :forwarding,
+    :pub_sub,
     :stream,
     :stream_index,
     :secure_channel
