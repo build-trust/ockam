@@ -16,7 +16,7 @@ pub(super) async fn exec(
     trace!("Stopping worker '{}'", addr);
 
     let primary_address;
-    if let Some(p) = router.addr_map.get(addr) {
+    if let Some(p) = router.map.addr_map.get(addr) {
         primary_address = p.clone();
     } else {
         reply
@@ -28,7 +28,7 @@ pub(super) async fn exec(
     }
 
     let record;
-    if let Some(r) = router.internal.remove(&primary_address) {
+    if let Some(r) = router.map.internal.remove(&primary_address) {
         record = r;
     } else {
         // Actually should not happen
@@ -41,7 +41,7 @@ pub(super) async fn exec(
     }
 
     for addr in record.address_set().iter() {
-        router.addr_map.remove(&addr);
+        router.map.addr_map.remove(addr);
     }
 
     reply
