@@ -3,7 +3,7 @@ use crate::tokio::sync::mpsc::Sender;
 use crate::{
     error::Error,
     relay::{RelayMessage, PROC_ADDR_SUFFIX},
-    NodeReply, NodeReplyResult, Reason
+    NodeReply, NodeReplyResult, Reason,
 };
 
 use ockam_core::{Address, Result};

@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 mod record;
+mod shutdown;
 mod start_processor;
 mod start_worker;
 mod state;
@@ -8,7 +9,7 @@ mod stop_processor;
 mod stop_worker;
 mod utils;
 
-use record::{InternalMap, AddressRecord, AddressState};
+use record::{AddressRecord, AddressState, InternalMap};
 use state::{NodeState, RouterState};
 
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -66,7 +67,8 @@ impl Router {
 
     pub fn init(&mut self, addr: Address, mb: Sender<RelayMessage>) {
         self.map
-            .internal.insert(addr.clone(), AddressRecord::new(addr.clone().into(), mb));
+            .internal
+            .insert(addr.clone(), AddressRecord::new(addr.clone().into(), mb));
         self.map.addr_map.insert(addr.clone(), addr);
     }
 
@@ -116,14 +118,12 @@ impl Router {
                     utils::check_addr_collisions(self, addrs, reply).await?
                 }
 
-                // Stop node will stop all workers and processors by
-                // dropping their sending channels.
-                StopNode => {
-                    self.map.internal.clear();
-                    break;
-                }
+                StopNode(tt) => if shutdown::exec(self, tt).await.is_ok() && break {},
+
                 ListWorkers(sender) => sender
-                    .send(NodeReply::workers(self.map.internal.keys().cloned().collect()))
+                    .send(NodeReply::workers(
+                        self.map.internal.keys().cloned().collect(),
+                    ))
                     .await
                     .map_err(|_| Error::InternalIOFailure)?,
 
