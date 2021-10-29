@@ -42,17 +42,17 @@ async fn start(
     // aux address via the well-known suffix.  If this is at some
     // point no longer sufficient, we should start adding the
     // addresses as full aliases via address-record or addr_map
-    router.internal.insert(addr.clone(), main_record);
-    router.internal.insert(aux_addr.clone(), aux_record);
+    router.map.internal.insert(addr.clone(), main_record);
+    router.map.internal.insert(aux_addr.clone(), aux_record);
 
     #[cfg(feature = "std")]
     if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
-        trace!("{:#?}", router.internal);
+        trace!("{:#?}", router.map.internal);
     }
     #[cfg(all(not(feature = "std"), feature = "dump_internals"))]
-    trace!("{:#?}", router.internal);
+    trace!("{:#?}", router.map.internal);
 
-    router.addr_map.insert(addr.clone(), addr.clone());
+    router.map.addr_map.insert(addr.clone(), addr.clone());
 
     // For now we just send an OK back -- in the future we need to
     // communicate the current executor state

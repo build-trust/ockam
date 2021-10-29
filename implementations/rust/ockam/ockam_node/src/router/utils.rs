@@ -22,7 +22,7 @@ pub(super) async fn resolve(
     trace!("Resolving worker address '{}'", addr);
 
     let primary_address;
-    if let Some(p) = router.addr_map.get(addr) {
+    if let Some(p) = router.map.addr_map.get(addr) {
         primary_address = p.clone();
     } else {
         reply
@@ -33,7 +33,7 @@ pub(super) async fn resolve(
         return Ok(());
     }
 
-    match router.internal.get(&primary_address) {
+    match router.map.internal.get(&primary_address) {
         Some(record) => reply.send(NodeReply::sender(addr.clone(), record.sender(), wrap)),
         None => reply.send(NodeReply::no_such_worker(addr.clone())),
     }
@@ -58,7 +58,7 @@ pub(super) async fn check_addr_collisions(
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
     if let Some(addr) = addrs.iter().fold(None, |acc, addr| {
-        match (acc, router.internal.contains_key(addr)) {
+        match (acc, router.map.internal.contains_key(addr)) {
             (None, true) => Some(addr.clone()),
             (None, false) => None,
             // If a collision was already found, ignore further collisions

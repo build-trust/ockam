@@ -23,8 +23,8 @@ pub(super) async fn exec(
     // can be sent to this processor, and for the aux address this
     // initiates processor shutdown.
     match (
-        router.internal.remove(&aux_addr),
-        router.internal.remove(main_addr),
+        router.map.internal.remove(&aux_addr),
+        router.map.internal.remove(main_addr),
     ) {
         (Some(_), Some(_)) => {}
         // If by any chance only one of the records existed we are
@@ -43,7 +43,7 @@ pub(super) async fn exec(
     };
 
     // Remove  main address from addr_map too
-    router.addr_map.remove(main_addr);
+    router.map.addr_map.remove(main_addr);
 
     // Signal back that everything went OK
     reply

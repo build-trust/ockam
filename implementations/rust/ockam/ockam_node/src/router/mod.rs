@@ -8,7 +8,7 @@ mod stop_processor;
 mod stop_worker;
 mod utils;
 
-use record::{AddressRecord, AddressState};
+use record::{InternalMap, AddressRecord, AddressState};
 use state::{NodeState, RouterState};
 
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -30,16 +30,14 @@ use ockam_core::{Address, AddressSet, Result};
 /// registers itself with this router.  Only one router can be
 /// registered per address type.
 pub struct Router {
-    /// Registry of primary address to worker address record state
-    internal: BTreeMap<Address, AddressRecord>,
-    /// Alias-registry to map arbitrary address to primary addresses
-    addr_map: BTreeMap<Address, Address>,
+    /// Keep track of some additional router state information
+    state: RouterState,
+    /// Internal address state
+    map: InternalMap,
     /// Externally registered router components
     external: BTreeMap<u8, Address>,
     /// Receiver for messages from node
     receiver: Receiver<NodeMessage>,
-    /// Keep track of some additional router state information
-    state: RouterState,
 }
 
 enum RouteType {
@@ -59,18 +57,17 @@ impl Router {
     pub fn new() -> Self {
         let (sender, receiver) = channel(32);
         Self {
-            internal: BTreeMap::new(),
-            addr_map: BTreeMap::new(),
+            state: RouterState::new(sender),
+            map: InternalMap::default(),
             external: BTreeMap::new(),
             receiver,
-            state: RouterState::new(sender),
         }
     }
 
     pub fn init(&mut self, addr: Address, mb: Sender<RelayMessage>) {
-        self.internal
-            .insert(addr.clone(), AddressRecord::new(addr.clone().into(), mb));
-        self.addr_map.insert(addr.clone(), addr);
+        self.map
+            .internal.insert(addr.clone(), AddressRecord::new(addr.clone().into(), mb));
+        self.map.addr_map.insert(addr.clone(), addr);
     }
 
     pub fn sender(&self) -> Sender<NodeMessage> {
@@ -82,7 +79,7 @@ impl Router {
         use NodeMessage::*;
         while let Some(msg) = self.receiver.recv().await {
             match msg {
-                // Internal registration commands
+                // Successful router registration command
                 Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
                     trace!("Registering new router for type {}", tt);
 
@@ -92,23 +89,27 @@ impl Router {
                         .await
                         .map_err(|_| Error::InternalIOFailure)?
                 }
+                // Rejected router registration command
                 Router(_, _, sender) => sender
                     .send(NodeReply::router_exists())
                     .await
                     .map_err(|_| Error::InternalIOFailure)?,
 
-                // Basic worker control
+                //// ==! Basic worker control
                 StartWorker(addr, sender, ref reply) => {
                     start_worker::exec(self, addr, sender, reply).await?
                 }
                 StopWorker(ref addr, ref reply) => stop_worker::exec(self, addr, reply).await?,
 
+                //// ==! Basic processor control
                 StartProcessor(addr, main_sender, aux_sender, ref reply) => {
                     start_processor::exec(self, addr, main_sender, aux_sender, reply).await?
                 }
                 StopProcessor(ref addr, ref reply) => {
                     stop_processor::exec(self, addr, reply).await?
                 }
+
+                //// ==! Core node controls
 
                 // Check whether a set of addresses is available
                 CheckAddress(ref addrs, ref reply) => {
@@ -118,11 +119,11 @@ impl Router {
                 // Stop node will stop all workers and processors by
                 // dropping their sending channels.
                 StopNode => {
-                    self.internal.clear();
+                    self.map.internal.clear();
                     break;
                 }
                 ListWorkers(sender) => sender
-                    .send(NodeReply::workers(self.internal.keys().cloned().collect()))
+                    .send(NodeReply::workers(self.map.internal.keys().cloned().collect()))
                     .await
                     .map_err(|_| Error::InternalIOFailure)?,
 

@@ -15,8 +15,6 @@ pub enum NodeState {
 pub struct RouterState {
     pub(super) sender: Sender<NodeMessage>,
     node_state: NodeState,
-    cluster_order: Vec<String>,
-    clusters: BTreeMap<String, BTreeSet<Address>>,
 }
 
 impl RouterState {
@@ -24,8 +22,6 @@ impl RouterState {
         Self {
             sender,
             node_state: NodeState::Running,
-            cluster_order: vec![],
-            clusters: BTreeMap::new(),
         }
     }
 
@@ -38,18 +34,5 @@ impl RouterState {
     /// spawning new workers and processors
     pub fn node_state(&self) -> &NodeState {
         &self.node_state
-    }
-
-    pub fn set_cluster(&mut self, label: String, addrs: AddressSet) {
-        // If this is the first time we see this cluster ID
-        if !self.clusters.contains_key(&label) {
-            self.clusters.insert(label.clone(), BTreeSet::new());
-            self.cluster_order.push(label.clone());
-        }
-
-        // Add all addresses to the cluster set
-        for addr in addrs {
-            self.clusters.get_mut(&label).unwrap().insert(addr);
-        }
     }
 }
