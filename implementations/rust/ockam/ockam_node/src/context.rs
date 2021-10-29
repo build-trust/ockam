@@ -9,7 +9,7 @@ use crate::{
     error::Error,
     parser,
     relay::{RelayMessage, PROC_ADDR_SUFFIX},
-    Cancel, NodeMessage,
+    Cancel, NodeMessage, ShutdownType,
 };
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
@@ -234,7 +234,10 @@ impl Context {
     pub async fn stop(&mut self) -> Result<()> {
         let tx = self.sender.clone();
         info!("Shutting down all workers");
-        match tx.send(NodeMessage::StopNode).await {
+        match tx
+            .send(NodeMessage::StopNode(ShutdownType::Immediate))
+            .await
+        {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStopNode.into()),
         }

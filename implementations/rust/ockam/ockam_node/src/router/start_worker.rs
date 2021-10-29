@@ -29,7 +29,10 @@ async fn start(
     // Create an address record and insert it into the internal map
     let primary_addr = addrs.first();
     let address_record = AddressRecord::new(addrs.clone(), sender);
-    router.map.internal.insert(primary_addr.clone(), address_record);
+    router
+        .map
+        .internal
+        .insert(primary_addr.clone(), address_record);
 
     #[cfg(feature = "std")]
     if std::env::var("OCKAM_DUMP_INTERNALS").is_ok() {
@@ -39,7 +42,10 @@ async fn start(
     trace!("{:#?}", router.map.internal);
 
     addrs.iter().for_each(|addr| {
-        router.map.addr_map.insert(addr.clone(), primary_addr.clone());
+        router
+            .map
+            .addr_map
+            .insert(addr.clone(), primary_addr.clone());
     });
 
     // For now we just send an OK back -- in the future we need to
