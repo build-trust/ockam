@@ -5,7 +5,7 @@ on:
     branches:
       - develop
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 23 * * *'
   pull_request:
 
 jobs:
