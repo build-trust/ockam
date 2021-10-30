@@ -3,12 +3,12 @@
 macro_rules! check_buffer {
     ($buffer:expr) => {
         if $buffer.is_null() {
-            return FfiError::InvalidParam.into();
+            return Err(FfiError::InvalidParam.into());
         }
     };
     ($buffer:expr, $length:expr) => {
         if $buffer.is_null() || $length == 0 {
-            return FfiError::InvalidParam.into();
+            return Err(FfiError::InvalidParam.into());
         }
     };
 }

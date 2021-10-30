@@ -74,6 +74,9 @@ pub enum FfiError {
 
     /// Ownership error.
     OwnershipError,
+
+    /// Caught a panic (which would be UB if we let it unwind across the FFI).
+    UnexpectedPanic,
 }
 
 impl FfiError {
