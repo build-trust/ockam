@@ -95,3 +95,13 @@ impl From<FfiError> for FfiOckamError {
         Self::from(err)
     }
 }
+
+/// # Safety
+/// frees `FfiOckamError::domain` if it's non-null
+#[no_mangle]
+pub unsafe extern "C" fn ockam_vault_free_error(context: &mut FfiOckamError) {
+    if !context.domain.is_null() {
+        let _ = CString::from_raw(context.domain as *mut _);
+        context.domain = core::ptr::null();
+    }
+}
