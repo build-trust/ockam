@@ -2,14 +2,14 @@
 
 use crate::{
     protocols::{ProtocolParser, ProtocolPayload},
-    OckamError, Result,
+    Message, OckamError, Result,
 };
 use ockam_core::compat::{collections::BTreeSet, string::String, vec::Vec};
 use ockam_core::{Decodable, Uint};
 use serde::{Deserialize, Serialize};
 
 /// Response to a `CreateStreamRequest`
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct Init {
     pub stream_name: String,
 }
@@ -28,7 +28,7 @@ impl Init {
 }
 
 /// Confirm push operation on the mailbox
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct PushConfirm {
     pub request_id: Uint,
     pub status: Status,
@@ -74,7 +74,7 @@ impl From<Option<()>> for Status {
 }
 
 /// Response to a `PullRequest`
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct PullResponse {
     pub request_id: Uint,
     pub messages: Vec<StreamMessage>,
@@ -95,7 +95,7 @@ impl PullResponse {
 }
 
 /// A stream message with a reference index
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct StreamMessage {
     /// Index of the message in the stream
     pub index: Uint,
@@ -116,7 +116,7 @@ pub struct Index {
 /// In your worker you will want to match this enum, given to you via
 /// the `ProtocolParser` abstraction.
 #[allow(clippy::enum_variant_names)]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Message)]
 pub enum Response {
     Init(Init),
     PushConfirm(PushConfirm),

@@ -1,8 +1,9 @@
-use ockam_core::compat::string::String;
+use ockam_core::{compat::string::String, Message};
+use ockam_message_derive::Message;
 use ockam_vault_core::{Buffer, PublicKey, Secret, SecretAttributes, Signature, SmallBuffer};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
 pub enum VaultRequestMessage {
     EcDiffieHellman {
         context: Secret,

@@ -1,5 +1,8 @@
 use crate::{Message, Result};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+
+impl<M: Message + Serialize + DeserializeOwned> Message for ResultMessage<M> {}
 
 /// Message that is meant to be sent between workers if Error-handling is needed.
 #[derive(Serialize, Deserialize)]

@@ -1,9 +1,9 @@
-use ockam::{Context, Result, Routed, Worker};
+use ockam::{Context, Message, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Square;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Message)]
 struct Num(usize);
 
 #[ockam::worker]

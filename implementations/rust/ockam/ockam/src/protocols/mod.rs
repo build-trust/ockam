@@ -3,14 +3,14 @@
 //! This module primarily contains types and parsing utilities used in
 //! different high-level Ockam utility protocols
 
-use crate::Result;
-use ockam_core::{compat::vec::Vec, Message, ProtocolId};
+use crate::{Message, Result};
+use ockam_core::{compat::vec::Vec, ProtocolId};
 use serde::{Deserialize, Serialize};
 
 pub mod stream;
 
 /// A protocol payload wrapper for pre-parsing
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Message)]
 pub struct ProtocolPayload {
     pub protocol: ProtocolId,
     pub data: Vec<u8>,

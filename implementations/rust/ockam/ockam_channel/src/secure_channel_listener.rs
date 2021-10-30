@@ -2,7 +2,10 @@ use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorke
 use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{Address, Encodable, LocalMessage, Result, Routed, TransportMessage, Worker};
+use ockam_core::{
+    Address, Encodable, LocalMessage, Message, Result, Routed, TransportMessage, Worker,
+};
+use ockam_message_derive::Message;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
@@ -25,7 +28,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> SecureChannelListen
 }
 
 /// SecureChannelListener message wrapper.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
 pub struct CreateResponderChannelMessage {
     payload: Vec<u8>,
     completed_callback_address: Option<Address>,

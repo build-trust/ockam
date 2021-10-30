@@ -30,6 +30,7 @@ alloc = ["ockam_core/alloc", "ockam_vault_core/alloc", "ockam_vault/alloc", "ock
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.36.0", default_features = false }
+ockam_message_derive = { path = "../ockam_message_derive", version = "0.1.0", default_features = false }
 ockam_vault_core = { path = "../ockam_vault_core", version = "0.30.0", default_features = false }
 ockam_vault = { path = "../ockam_vault", version = "0.30.0", default_features = false, optional = true }
 ockam_node = { path = "../ockam_node", version = "0.35.0" , default_features = false }

@@ -1,12 +1,12 @@
 use crate::{
     protocols::{ProtocolParser, ProtocolPayload},
-    ProtocolId, Result,
+    Message, ProtocolId, Result,
 };
 use ockam_core::{compat::collections::BTreeSet, Decodable};
 use serde::{Deserialize, Serialize};
 
 /// A protocol exchanged between a stream consumer and stream producer
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Message)]
 pub enum StreamWorkerCmd {
     /// Trigger a fetch event
     ///

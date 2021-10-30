@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-use crate::{route, Context, OckamError};
+use crate::{route, Context, Message, OckamError};
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{
     boxed::Box,
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 /// Information about a remotely forwarded worker.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
 pub struct RemoteForwarderInfo {
     forwarding_route: Route,
     remote_address: String,

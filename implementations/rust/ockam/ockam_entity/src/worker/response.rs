@@ -1,7 +1,8 @@
 use crate::{AuthenticationProof, Changes, Contact, Lease, ProfileIdentifier};
 use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
-use ockam_core::Address;
+use ockam_core::{Address, Message};
+use ockam_message_derive::Message;
 use ockam_vault::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +12,7 @@ pub enum MaybeContact {
     Contact(Contact),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Message)]
 pub enum IdentityResponse {
     CreateProfile(ProfileIdentifier),
     CreateAuthenticationProof(AuthenticationProof),

@@ -5,9 +5,10 @@ use crate::{
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
-    Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed, TransportMessage,
-    Worker,
+    Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
+    TransportMessage, Worker,
 };
+use ockam_message_derive::Message;
 use ockam_node::Context;
 use ockam_vault_core::Secret;
 use serde::{Deserialize, Serialize};
@@ -286,7 +287,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
 }
 
 /// Key Exchange completed message
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
 pub struct KeyExchangeCompleted {
     address: Address,
     auth_hash: [u8; 32],
