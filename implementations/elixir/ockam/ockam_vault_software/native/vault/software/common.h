@@ -6,7 +6,8 @@
 #include <ockam/vault.h>
 #include "erl_nif.h"
 
-bool extern_error_has_error(const ockam_vault_extern_error_t* error);
+bool extern_error_has_error(const ockam_vault_extern_error_t *error);
+bool extern_error_check_and_free_error(ockam_vault_extern_error_t *error);
 
 ERL_NIF_TERM ok_void(ErlNifEnv *env);
 

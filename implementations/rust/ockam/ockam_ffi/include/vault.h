@@ -17,6 +17,14 @@ typedef struct {
 
 typedef uint64_t ockam_vault_secret_t;
 
+/**
+ * @struct ockam_vault_extern_error_t
+ * @brief Represents an error that occured in one of the `ockam_vault` functions.
+ *
+ * In the case of an error, resources associated with this error (the `domain` string)
+ * must be released using @ref ockam_vault_free_error (which is a no-op if an error did
+ * not occur) in order to avoid a memory leak.
+ */
 typedef struct {
     int32_t code;
     const char *domain;
@@ -55,7 +63,7 @@ typedef struct {
 /**
  * @brief   Initialize the specified ockam vault object
  * @param   vault[out] The ockam vault object to initialize with the default vault.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_default_init(ockam_vault_t* vault);
 
@@ -65,7 +73,7 @@ ockam_vault_extern_error_t ockam_vault_default_init(ockam_vault_t* vault);
  * @param   input[in]           Buffer containing data to run through SHA-256.
  * @param   input_length[in]    Length of the data to run through SHA-256.
  * @param   digest[out]         Buffer to place the resulting SHA-256 hash in. Must be 32 bytes.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_sha256(ockam_vault_t  vault,
                                               const uint8_t* input,
@@ -78,7 +86,7 @@ ockam_vault_extern_error_t ockam_vault_sha256(ockam_vault_t  vault,
  * @param   vault[in]       Vault object to use for generating a secret key.
  * @param   secret[out]     Pointer to an ockam secret object to be populated with a handle to the secret
  * @param   attributes[in]  Desired attribtes for the secret to be generated.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_secret_generate(ockam_vault_t                   vault,
                                                        ockam_vault_secret_t*           secret,
@@ -91,7 +99,7 @@ ockam_vault_extern_error_t ockam_vault_secret_generate(ockam_vault_t            
  * @param   attributes[in]    Desired attributes for the secret being imported.
  * @param   input[in]         Data to load into the supplied secret.
  * @param   input_length[in]  Length of data to load into the secret.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 
 ockam_vault_extern_error_t ockam_vault_secret_import(ockam_vault_t                   vault,
@@ -107,7 +115,7 @@ ockam_vault_extern_error_t ockam_vault_secret_import(ockam_vault_t              
  * @param   output_buffer[out]        Buffer to place the exported secret data in.
  * @param   output_buffer_size[in]    Size of the output buffer.
  * @param   output_buffer_length[out] Amount of data placed in the output buffer.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_secret_export(ockam_vault_t        vault,
                                                      ockam_vault_secret_t secret,
@@ -122,7 +130,7 @@ ockam_vault_extern_error_t ockam_vault_secret_export(ockam_vault_t        vault,
  * @param   output_buffer[out]        Buffer to place the public key in.
  * @param   output_buffer_size[in]    Size of the output buffer.
  * @param   output_buffer_length[out] Amount of data placed in the output buffer.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_secret_publickey_get(ockam_vault_t        vault,
                                                             ockam_vault_secret_t secret,
@@ -135,7 +143,7 @@ ockam_vault_extern_error_t ockam_vault_secret_publickey_get(ockam_vault_t       
  * @param   vault[in]               Vault object to use for retrieving ockam vault secret attributes.
  * @param   secret[in]              Ockam vault secret to get attributes for.
  * @param   secret_attributes[out]  Pointer to the attributes for the specified secret.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_secret_attributes_get(ockam_vault_t                    vault,
                                                              uint64_t                         secret,
@@ -145,7 +153,7 @@ ockam_vault_extern_error_t ockam_vault_secret_attributes_get(ockam_vault_t      
  * @brief   Delete an ockam vault secret.
  * @param   vault[in]   Vault object to use for deleting the ockam vault secret.
  * @param   secret[in]  Ockam vault secret to delete.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam_vault_secret_t secret);
 
@@ -157,7 +165,7 @@ ockam_vault_extern_error_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam
 * @param   peer_publickey[in]        Public key data to use for ECDH.
 * @param   peer_publickey_length[in] Length of the public key.
 * @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
-* @return  error.
+* @return  an error, which should be freed using @ref ockam_vault_free_error.
 */
 ockam_vault_extern_error_t ockam_vault_ecdh(ockam_vault_t         vault,
                                             ockam_vault_secret_t  privatekey,
@@ -173,7 +181,7 @@ ockam_vault_extern_error_t ockam_vault_ecdh(ockam_vault_t         vault,
  * @param   derived_outputs_attributes[in] Attibutes of output secrets.
  * @param   derived_outputs_count[in]      Length of outputs attributes array.
  * @param   derived_outputs[out]           Array of ockam vault secrets resulting from HKDF.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_hkdf_sha256(ockam_vault_t                          vault,
                                                    ockam_vault_secret_t                   salt,
@@ -194,7 +202,7 @@ ockam_vault_extern_error_t ockam_vault_hkdf_sha256(ockam_vault_t                
  * @param   ciphertext_and_tag[in]          Buffer containing the generated ciphertext and tag data.
  * @param   ciphertext_and_tag_size[in]     Size of the ciphertext + tag buffer. Must be plaintext_size + 16.
  * @param   ciphertext_and_tag_length[out]  Amount of data placed in the ciphertext + tag buffer.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t        vault,
                                                             ockam_vault_secret_t key,
@@ -219,7 +227,7 @@ ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t       
  * @param   plaintext[out]                Buffer to place the decrypted data in.
  * @param   plaintext_size[in]            Size of the plaintext buffer. Must be ciphertext_tag_size - 16.
  * @param   plaintext_length[out]         Amount of data placed in the plaintext buffer.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t       vault,
                                                             ockam_vault_secret_t key,
@@ -235,10 +243,15 @@ ockam_vault_extern_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t       
 /**
  * @brief   Deinitialize the specified ockam vault object
  * @param   vault[in] The ockam vault object to deinitialize.
- * @return  error.
+ * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_deinit(ockam_vault_t vault);
 
+/**
+ * @brief   Free any resources associated with a @ref ockam_vault_extern_error_t.
+ * @param   error[in] the error to free.
+ */
+void ockam_vault_free_error(ockam_vault_extern_error_t *error);
 
 #ifdef __cplusplus
 } // extern "C"

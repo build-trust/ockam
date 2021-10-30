@@ -5,6 +5,12 @@ bool extern_error_has_error(const ockam_vault_extern_error_t* error) {
     return error->code != 0;
 }
 
+bool extern_error_check_and_free_error(ockam_vault_extern_error_t* error) {
+    bool result = extern_error_has_error(error);
+    ockam_vault_free_error(error);
+    return result;
+}
+
 ERL_NIF_TERM ok_void(ErlNifEnv *env) {
     return enif_make_atom(env, "ok");
 }
