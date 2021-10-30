@@ -31,7 +31,7 @@ use ockam::{Address, Message, Worker};
 
 struct MyWorker;
 
-#[derive(Debug)]
+#[derive(Debug, Message)]
 struct enum MyMessage {
     Ping(Address),
     Stop,

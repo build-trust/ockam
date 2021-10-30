@@ -1,4 +1,5 @@
-use crate::{compat::vec::Vec, TransportMessage};
+use crate::{compat::vec::Vec, Message, TransportMessage};
+use ockam_message_derive::Message;
 use serde::{Deserialize, Serialize};
 
 /// LocalMessage is a message type that is routed locally within one node.
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// from the same node, which is convenient for delegating Authentication/Authorization mechanisms
 /// to dedicated local Workers.
 ///
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub struct LocalMessage {
     transport_message: TransportMessage,
     local_info: Vec<u8>,

@@ -1157,6 +1157,7 @@ dependencies = [
  "ockam_entity",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
+ "ockam_message_derive",
  "ockam_node",
  "ockam_node_attribute",
  "ockam_transport_tcp",
@@ -1210,6 +1211,7 @@ dependencies = [
  "ockam_key_exchange_core",
  "ockam_key_exchange_x3dh",
  "ockam_key_exchange_xx",
+ "ockam_message_derive",
  "ockam_node",
  "ockam_vault",
  "ockam_vault_core",
@@ -1230,6 +1232,7 @@ dependencies = [
  "hashbrown 0.11.2",
  "heapless",
  "hex",
+ "ockam_message_derive",
  "rand 0.8.4",
  "rand_pcg",
  "serde",
@@ -1249,6 +1252,7 @@ dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
+ "ockam_message_derive",
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
@@ -1329,6 +1333,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_message_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ockam_node"
 version = "0.35.0"
 dependencies = [
@@ -1385,6 +1397,7 @@ dependencies = [
  "futures 0.3.17",
  "hashbrown 0.9.1",
  "ockam_core",
+ "ockam_message_derive",
  "ockam_node",
  "ockam_node_test_attribute",
  "ockam_transport_core",
@@ -1421,6 +1434,7 @@ dependencies = [
  "ed25519-dalek",
  "hkdf",
  "ockam_core",
+ "ockam_message_derive",
  "ockam_vault_core",
  "ockam_vault_test_attribute",
  "ockam_vault_test_suite",
@@ -1453,6 +1467,7 @@ name = "ockam_vault_sync_core"
 version = "0.28.0"
 dependencies = [
  "ockam_core",
+ "ockam_message_derive",
  "ockam_node",
  "ockam_vault",
  "ockam_vault_core",

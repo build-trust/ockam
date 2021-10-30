@@ -11,16 +11,17 @@ use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    route, Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed,
+    route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
+use ockam_message_derive::Message;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Message)]
 pub(crate) struct AuthenticationConfirmation(pub Address);
 
 trait StartSecureChannelFuture: Future<Output = Result<SecureChannelInfo>> + Send + 'static {}

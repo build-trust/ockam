@@ -1,12 +1,13 @@
 use crate::compat::vec::Vec;
-use crate::{Address, LocalMessage};
+use crate::{Address, LocalMessage, Message};
+use ockam_message_derive::Message;
 use serde::{Deserialize, Serialize};
 
 /// A command message for router implementations
 ///
 /// If a router is implemented as a worker, it should accept this
 /// message type.
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub enum RouterMessage {
     /// Route the provided message towards its destination
     Route(LocalMessage),

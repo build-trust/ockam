@@ -9,6 +9,7 @@ use core::{
     fmt::{self, Debug, Display, Formatter},
     ops::{Deref, DerefMut},
 };
+use ockam_message_derive::Message;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Alias of the type used for encoded data.
@@ -65,8 +66,12 @@ pub trait Decodable: Sized {
     fn decode(e: &[u8]) -> Result<Self>;
 }
 
-/// A user defined message that can be serialised and deserialised
+/// A user defined message that can be serialised and deserialized
 pub trait Message: Encodable + Decodable + Send + 'static {}
+
+impl Message for () {}
+impl Message for Vec<u8> {}
+impl Message for String {}
 
 // Auto-implement message trait for types that _can_ be messages
 impl<T> Encodable for T
@@ -87,8 +92,6 @@ where
         Ok(serde_bare::from_slice(encoded)?)
     }
 }
-
-impl<T> Message for T where T: Encodable + Decodable + Send + 'static {}
 
 impl From<serde_bare::error::Error> for crate::Error {
     fn from(_: serde_bare::error::Error) -> Self {
@@ -225,7 +228,7 @@ impl<M: Message + Display> Display for Routed<M> {
 /// This is especially useful for implementing middleware workers
 /// which need access to the route information of a message, without
 /// understanding its payload.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Message)]
 pub struct Any;
 
 impl Display for Any {

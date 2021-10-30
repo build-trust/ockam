@@ -34,6 +34,9 @@ pub use ockam_node_attribute::*;
 pub use ockam_node::*;
 // ---
 
+// Export the #[derive(Message)] macro
+pub use ockam_message_derive::*;
+
 mod delay;
 mod error;
 mod forwarder;

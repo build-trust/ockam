@@ -3,7 +3,8 @@ use crate::{
 };
 use cfg_if::cfg_if;
 use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::{Address, Route};
+use ockam_core::{Address, Message, Route};
+use ockam_message_derive::Message;
 use serde::{Deserialize, Serialize};
 
 pub type EventAttribute = (String, String);
@@ -11,7 +12,7 @@ pub type EventAttributes = Vec<EventAttribute>;
 pub type ByteVec = Vec<u8>;
 pub type Id = ProfileIdentifier;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Message)]
 pub enum IdentityRequest {
     CreateProfile(Address),
     CreateAuthenticationProof(Id, ByteVec),

@@ -1,12 +1,13 @@
 //! Stream protocol request payloads
 
 use crate::protocols::ProtocolPayload;
+use crate::Message;
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::Uint;
 use serde::{Deserialize, Serialize};
 
 /// Request a new mailbox to be created
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct CreateStreamRequest {
     pub stream_name: Option<String>,
 }
@@ -25,7 +26,7 @@ impl CreateStreamRequest {
 }
 
 /// Push a message into the mailbox
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct PushRequest {
     pub request_id: Uint, // uint
     pub data: Vec<u8>,
@@ -46,7 +47,7 @@ impl PushRequest {
 }
 
 /// Pull messages from the mailbox
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct PullRequest {
     pub request_id: Uint,
     pub index: Uint,
@@ -69,7 +70,7 @@ impl PullRequest {
 }
 
 /// Index request protocols to get and save indices
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub enum Index {
     Get {
         client_id: String,

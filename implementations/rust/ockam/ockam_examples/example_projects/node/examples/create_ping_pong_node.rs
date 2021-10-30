@@ -1,6 +1,6 @@
 //! Spawn to workers that play some ping-pong
 
-use ockam::{Address, Context, Result, Routed, Worker};
+use ockam::{Address, Context, Message, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 
 struct Player {
@@ -21,7 +21,7 @@ impl Player {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Message)]
 enum Action {
     Intro(Address),
     Ping,

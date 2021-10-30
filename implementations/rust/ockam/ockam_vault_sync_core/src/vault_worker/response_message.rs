@@ -1,9 +1,11 @@
+use ockam_core::Message;
+use ockam_message_derive::Message;
 use ockam_vault_core::{
     Buffer, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, Signature, SmallBuffer,
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
 pub enum VaultResponseMessage {
     EcDiffieHellman(Secret),
     Sha256([u8; 32]),

@@ -38,6 +38,7 @@ credentials = [ "ockam_vault/bls", "ockam_vault_core/bls", "signature_core", "si
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "0.36.0", default-features = false  }
+ockam_message_derive = { path = "../ockam_message_derive", version = "0.1.0", default-features = false }
 ockam_node = {path = "../ockam_node", version = "0.35.0" , default-features = false }
 ockam_vault_core = { path = "../ockam_vault_core", version = "0.30.0", default-features = false }
 ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "0.28.0" , default-features = false, optional = true}

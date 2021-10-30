@@ -1,6 +1,9 @@
 use crate::{SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, Routed, Worker};
+use ockam_core::{
+    async_trait::async_trait, Address, AsyncTryClone, Message, Result, Routed, Worker,
+};
+use ockam_message_derive::Message;
 use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
 
@@ -69,12 +72,12 @@ impl<T: TrustPolicy> TrustPolicyWorker<T> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Message)]
 pub struct TrustPolicyRequest {
     pub info: SecureChannelTrustInfo,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Message)]
 pub struct TrustPolicyResponse {
     pub res: bool,
 }

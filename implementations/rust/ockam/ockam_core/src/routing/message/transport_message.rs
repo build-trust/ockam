@@ -1,5 +1,6 @@
-use crate::{compat::vec::Vec, Route};
+use crate::{compat::vec::Vec, Message, Route};
 use core::fmt::{self, Display, Formatter};
+use ockam_message_derive::Message;
 use serde::{Deserialize, Serialize};
 
 /// A generic transport message
@@ -8,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// crate) in order to provide a mechanism for third-party developers
 /// to create custom transport channel routers.  Casual users of ockam
 /// should never have to interact with this type directly.
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub struct TransportMessage {
     /// The transport protocol version
     pub version: u8,
