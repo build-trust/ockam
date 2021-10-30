@@ -16,9 +16,9 @@ description = """FFI layer for ockam_vault.
 crate-type = ["staticlib"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.36.0"         }
-ockam_vault_core = { path = "../ockam_vault_core", version = "0.30.0"         }
-ockam_vault = { path = "../ockam_vault", version = "0.30.0"         }
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.28.0"         }
+ockam_core = { path = "../ockam_core", version = "0.36.0" }
+ockam_vault_core = { path = "../ockam_vault_core", version = "0.30.0" }
+ockam_vault = { path = "../ockam_vault", version = "0.30.0" }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "0.28.0" }
 lazy_static = "1.4"
 tokio = {version = "1.8", features = ["full"]}

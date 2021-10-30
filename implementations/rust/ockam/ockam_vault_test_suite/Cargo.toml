@@ -13,6 +13,6 @@ homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_test_suite"
 
 [dependencies]
-ockam_core = {path = "../ockam_core", version = "0.36.0"         }
-ockam_vault_core = {path = "../ockam_vault_core", version = "0.30.0"         }
+ockam_core = {path = "../ockam_core", version = "0.36.0" }
+ockam_vault_core = {path = "../ockam_vault_core", version = "0.30.0" }
 arrayref = "0.3"
