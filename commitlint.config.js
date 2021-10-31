@@ -65,7 +65,7 @@ module.exports = {
 
     // scope is optional, when used it must be in lower case and have one of the below values.
     'scope-case': [2, 'always', 'lower-case'],
-    'scope-enum': [2, 'always', ['c', 'elixir', 'go', 'javascript', 'rust', 'swift']],
+    'scope-enum': [2, 'always', ['c', 'elixir', 'typescript', 'rust']],
 
     // subject is required, must be lower case and not end in period
     //

@@ -1,0 +1,16 @@
+{
+  "name": "@ockam/ockam",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rimraf lib tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@ockam/nodejs_native": "0.0.0"
+  }
+}

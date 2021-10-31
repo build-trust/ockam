@@ -1,0 +1,19 @@
+{
+  "name": "ockam-project",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "ockam/*"
+  ],
+  "scripts": {
+    "build": "lerna run build --stream",
+    "clean": "lerna run clean --parallel",
+    "tsc": "tsc"
+  },
+  "devDependencies": {
+    "lerna": "^4.0.0",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.4.4"
+  },
+  "packageManager": "yarn@3.1.0"
+}
