@@ -12,10 +12,6 @@ keywords = ["ockam", "crypto", "macro", "proc-macro", "attribute"]
 description = """
 Ockam Message trait [derive] macro.
 """
-exclude = [
-    "DEVELOP.md",
-    "LICENSE"
-]
 
 [lib]
 proc-macro = true
