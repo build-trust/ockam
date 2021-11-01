@@ -42,3 +42,4 @@ rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 core2 = { version = "0.3.2", default-features = false, optional = true }
 spin = { version = "0.9.1", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
+tokio = {version = "1", default-features = false, features = ["macros"]}
