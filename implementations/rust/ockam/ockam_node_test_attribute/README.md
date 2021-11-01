@@ -13,6 +13,15 @@ an async input main function into a regular output main function that sets up
 an ockam node and executes the body of the input function inside the node. The `#[node_test]` does the same
 but for test functions.
 
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```
+[dependencies]
+ockam_node_test_attribute = "0.1.0"
+```
+
 ## License
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].
