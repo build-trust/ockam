@@ -8,7 +8,9 @@ declare -A modified_crates;
 crates=(
     "signature_core"
     "signature_bls"
+    "ockam_node_test_attribute"
     "ockam_vault_test_attribute"
+    "ockam_message_derive"
     "ockam_node_no_std"
     "ockam_node_attribute"
     "ockam_core"
