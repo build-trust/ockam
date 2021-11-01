@@ -16,6 +16,15 @@ The main [Ockam][main-ockam-crate-link] crate re-exports this macro and it is
 intended to be used as `#[ockam::node]`, see [Ockam][main-ockam-crate-link]
 crate.
 
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```
+[dependencies]
+ockam_node_attribute = "0.25.0"
+```
+
 ## License
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].
