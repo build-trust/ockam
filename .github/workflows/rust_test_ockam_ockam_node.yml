@@ -9,6 +9,7 @@ on:
     paths:
       - 'implementations/rust/ockam/ockam_core/**'
       - 'implementations/rust/ockam/ockam_node_no_std/**'
+      - 'implementations/rust/ockam/ockam_executor/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
       - 'settings.gradle'
