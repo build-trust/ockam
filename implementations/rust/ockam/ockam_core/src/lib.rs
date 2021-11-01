@@ -39,6 +39,9 @@ pub extern crate hex;
 pub extern crate async_trait;
 pub use async_trait::async_trait as worker;
 
+pub extern crate tokio;
+pub use tokio::try_join;
+
 pub mod compat;
 mod error;
 mod message;
@@ -91,7 +94,6 @@ pub mod traits {
         /// Try cloning a object and return an `Err` in case of failure.
         async fn async_try_clone(&self) -> Result<Self>;
     }
-
     #[async_trait]
     impl<D> AsyncTryClone for D
     where

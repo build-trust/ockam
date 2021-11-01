@@ -1,0 +1,21 @@
+[package]
+name = "ockam_macro"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dev-dependencies]
+async-trait = "0.1.42"
+trybuild = "1.0"
+ockam_core = { path = "../ockam_core", version = "0.37.0"}
+
+[[test]]
+name="tests"
+path = "tests/main.rs"
+
+[dependencies]
+proc-macro2= "1.0.30"
+syn = "1.0.80"
+quote = "1.0.10"
