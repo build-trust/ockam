@@ -18,7 +18,6 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn;
 
 /// Implements Message trait for a type.
 #[proc_macro_derive(Message)]
