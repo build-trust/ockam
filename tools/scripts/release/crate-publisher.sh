@@ -137,7 +137,7 @@ fi
 
 read -p "Please confirm git diff and press enter to push to upstream branch or ctrl-c to abort:   ";
 
-commit_message="feat(rust): crate release $(date +'%b %d %Y')";
+commit_message="feat(rust): crate release $(date +'%b %d %Y' | tr A-Z a-z)";
 
 if git add --all; then
     echo "$(tput setaf 2)'git added' all files$(tput sgr0)";
@@ -202,6 +202,7 @@ for d in "${crates[@]}"; do
     )
 done
 
+read -p "All crates tagged, press enter to start Cargo publish:     ";
 
 
 
