@@ -7,7 +7,7 @@ assets:
   repository:
     type: blob.asset
     data:
-      url: 'https://github.com/ockam-network/ockam/tree/develop/tools/docker/balena'
+      url: 'https://github.com/ockam-network/ockam'
   logo:
     type: blob.asset
     data:
