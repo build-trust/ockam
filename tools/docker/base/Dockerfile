@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=debian:10.7-slim
+ARG BASE_IMAGE=debian:11.1-slim
 FROM ${BASE_IMAGE}
 
 ARG GOSU_VERSION
@@ -10,7 +10,7 @@ COPY entrypoint.sh /docker-entrypoint.sh
 
 RUN set -xe; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends ca-certificates curl locales; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends ca-certificates curl locales build-essential qemu-system-arm; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*; \
 # Setup locale
