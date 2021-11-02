@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_tcp"
-version = "0.31.0"
+version = "0.32.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
@@ -24,10 +24,10 @@ std = []
 alloc = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.36.0"   }
-ockam_node = { path = "../ockam_node", version = "0.35.0"    }
-ockam_message_derive = { path = "../ockam_message_derive", version = "0.1.0", default-features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "0.10.0"   }
+ockam_core = { path = "../ockam_core", version = "0.37.0"    }
+ockam_node = { path = "../ockam_node", version = "0.36.0"     }
+ockam_message_derive = { path = "../ockam_message_derive", version = "0.1.0" , default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "0.11.0"    }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1.8", features = ["rt-multi-thread","sync","net","macros","time","io-util"] }
 futures = "0.3.10"
@@ -37,4 +37,4 @@ tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 trybuild = { version = "1.0", features = ["diff"] }
-ockam_node_test_attribute = { path = "../ockam_node_test_attribute", version = "0.1.0"  }
+ockam_node_test_attribute = { path = "../ockam_node_test_attribute", version = "0.2.0"   }

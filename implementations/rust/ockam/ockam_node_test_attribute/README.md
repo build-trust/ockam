@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_node_test_attribute = "0.1.0"
+ockam_node_test_attribute = "0.2.0"
 ```
 
 ## License
