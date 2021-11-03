@@ -113,8 +113,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
     for p in &mut generics.params {
         if let GenericParam::Type(ref mut t) = *p {
             // Every generic type must be Send + Sync
-            t.bounds.push(parse_quote!(::std::marker::Send));
-            t.bounds.push(parse_quote!(::std::marker::Sync));
+            t.bounds.push(parse_quote!(::core::marker::Send));
+            t.bounds.push(parse_quote!(::core::marker::Sync));
 
             // Generic simple type must also be AsyncTryClone
             if simple_generic_fields
@@ -136,7 +136,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     }
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let async_trait: Attribute = parse_quote!(#[async_trait]);
+    let async_trait: Attribute = parse_quote!(#[ockam_core::async_trait]);
     let fields = named_fields.iter().map(|f| {
         let field_name = &f.ident;
         quote! {
@@ -156,10 +156,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 #(#fields_async_impls),*
             );
             match results {
-                Ok((#(#fields),*))=> {
+                Ok((#(#fields_clone),* ,))=> {
                     Ok(
                         Self{
-                            #(#fields_clone),*
+                            #(#fields),*
                         }
                     )
                 }

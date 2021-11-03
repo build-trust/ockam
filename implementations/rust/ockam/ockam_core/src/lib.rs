@@ -39,8 +39,8 @@ pub extern crate hex;
 pub extern crate async_trait;
 pub use async_trait::async_trait as worker;
 
-pub extern crate tokio;
-pub use tokio::try_join;
+pub extern crate futures_util;
+pub use futures_util::try_join;
 
 pub mod compat;
 mod error;

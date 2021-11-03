@@ -1,6 +1,8 @@
-use async_trait::async_trait;
 use ockam_macro::AsyncTryClone;
-pub struct Error;
+#[derive(AsyncTryClone)]
+pub struct Tmp1 {
+    a: u32,
+}
 #[derive(AsyncTryClone)]
 pub struct Tmp<T> {
     a: u32,

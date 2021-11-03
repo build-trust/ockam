@@ -1220,6 +1220,7 @@ version = "0.37.0"
 dependencies = [
  "async-trait",
  "core2",
+ "futures-util",
  "hashbrown 0.11.2",
  "heapless",
  "hex",
@@ -1229,7 +1230,6 @@ dependencies = [
  "serde",
  "serde_bare",
  "spin 0.9.2",
- "tokio",
 ]
 
 [[package]]
@@ -1329,7 +1329,6 @@ dependencies = [
 name = "ockam_macro"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "ockam_core",
  "proc-macro2",
  "quote",
