@@ -39,10 +39,10 @@ pub extern crate hex;
 pub extern crate async_trait;
 pub use async_trait::async_trait as worker;
 
-pub extern crate ockam_macro;
+extern crate ockam_macro;
 pub use ockam_macro::AsyncTryClone;
-pub extern crate futures_util;
-pub use futures_util::try_join;
+
+extern crate futures_util;
 
 pub mod compat;
 mod error;
@@ -56,11 +56,12 @@ pub use error::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
-#[cfg(feature = "std")]
-pub use std::println;
 pub use traits::*;
 pub use uint::*;
 pub use worker::*;
+
+#[cfg(feature = "std")]
+pub use std::println;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 /// println macro for no_std
 #[macro_export]
