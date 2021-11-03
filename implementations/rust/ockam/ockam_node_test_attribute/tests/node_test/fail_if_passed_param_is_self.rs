@@ -3,4 +3,4 @@
 // `Receiver` function.
 
 #[ockam_node_test_attribute::node_test]
-async fn my_test(self) {}
+async fn my_test(self) -> ockam::Result<()> {}

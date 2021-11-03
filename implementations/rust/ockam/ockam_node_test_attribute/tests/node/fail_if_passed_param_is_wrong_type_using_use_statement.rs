@@ -5,4 +5,6 @@
 use std::string::String;
 
 #[ockam_node_test_attribute::node]
-async fn main(ctx: String) {}
+async fn main(ctx: String) -> Result<()> {
+    Ok(())
+}

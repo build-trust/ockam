@@ -3,4 +3,6 @@
 // `Receiver` function.
 
 #[ockam_node_test_attribute::node]
-async fn main(self) {}
+async fn main(self) {
+    let a = 1;
+}

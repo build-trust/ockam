@@ -2,30 +2,32 @@ use proc_macro::TokenStream;
 
 use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned, ToTokens};
-use syn::{PatIdent, ReturnType, Type};
+use syn::ReturnType;
 
 use crate::args;
 use crate::args::{Args, TestArgs};
-use crate::hygiene;
+use crate::hygiene::{self, NodeCtx, NodeReturn};
 
 pub(crate) fn node(
     input: syn::ItemFn,
     args: syn::AttributeArgs,
 ) -> Result<TokenStream, syn::Error> {
-    let (input, ctx_pat, ctx_type, ret_type) = hygiene::node(input)?;
+    let (input, ret, ctx) = hygiene::node(input)?;
     let args = args::node(args)?;
-    output_node(input, args, ctx_pat, ctx_type, ret_type)
+    output_node(input, args, ret, ctx)
 }
 
 fn output_node(
     input: syn::ItemFn,
     _args: Args,
-    ctx_pat: PatIdent,
-    ctx_type: Type,
-    ret_type: ReturnType,
+    ret: NodeReturn,
+    ctx: NodeCtx,
 ) -> Result<TokenStream, syn::Error> {
     let body = &input.block;
-    let ctx_ident = &ctx_pat.ident;
+    let ret_type = ret.ty;
+    let ctx_ident = &ctx.pat.ident;
+    let ctx_path = &ctx.path;
+    let ctx_mut = &ctx.mutability;
 
     // Handles error if inner function returns Result, unwraps it otherwise.
     let err_handling = if ret_type == ReturnType::Default {
@@ -34,29 +36,19 @@ fn output_node(
         quote! {?}
     };
 
-    // Get the type without reference or mutability
-    let ctx_type = match ctx_type {
-        Type::Reference(ty) => {
-            let ctx_type = ty.elem;
-            quote! {#ctx_type}
-        }
-        _ => quote! {#ctx_type},
-    };
-
     // Assumes the target platform knows about main() functions
     #[cfg(not(feature = "no_main"))]
     let output = quote! {
         fn main() #ret_type {
-            let (mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_type, ockam::Executor);
+            let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
             executor.execute(async move #body)#err_handling
         }
     };
-
     // Assumes you will be defining the ockam node inside your own entry point
     #[cfg(feature = "no_main")]
     let output = quote! {
         fn ockam_async_main() #ret_type {
-            let (mut #ctx_ident, mut executor) = ockam_node::start_node() as (#ctx_type, ockam::Executor);
+            let (#ctx_mut #ctx_ident, mut executor) = ockam_node::start_node() as (#ctx_path, ockam::Executor);
             executor.execute(async move #body)#err_handling
         }
         // TODO: safe way to print the error before panicking?
@@ -75,7 +67,7 @@ pub(crate) fn node_test(
         test_input.sig.ident = Ident::new(&format!("_{}", &inner_ident), inner_ident.span());
         test_input
     };
-    let (input, ctx_pat) = hygiene::node_test(input)?;
+    let (input, ret, ctx) = hygiene::node_test(input)?;
     let args = args::node_test(args)?;
     let last_stmt_end_span = {
         let mut last_stmt = input
@@ -92,7 +84,7 @@ pub(crate) fn node_test(
         let start = last_stmt.next().map_or_else(Span::call_site, |t| t.span());
         last_stmt.last().map_or(start, |t| t.span())
     };
-    output_node_test(input, test_input, args, last_stmt_end_span, ctx_pat)
+    output_node_test(input, test_input, args, last_stmt_end_span, ret, ctx)
 }
 
 fn output_node_test(
@@ -100,9 +92,10 @@ fn output_node_test(
     test_input: syn::ItemFn,
     args: TestArgs,
     last_stmt_end_span: Span,
-    ctx_pat: PatIdent,
+    _ret: NodeReturn,
+    ctx: NodeCtx,
 ) -> Result<TokenStream, syn::Error> {
-    let ctx_ident = &ctx_pat.ident;
+    let ctx_ident = &ctx.pat;
     let ctx_stop_stmt = quote! { let _ = #ctx_ident.stop().await; };
     let test_input_ident = &test_input.sig.ident;
     let timeout_ms = args.timeout_ms;
