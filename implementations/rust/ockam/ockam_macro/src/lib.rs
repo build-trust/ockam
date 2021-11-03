@@ -152,7 +152,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     });
     let trait_fn = quote! {
         async fn async_try_clone(&self) -> ockam_core::Result<Self>{
-            let results = ockam_core::try_join!(
+            let results = ockam_core::compat::try_join!(
                 #(#fields_async_impls),*
             );
             match results {

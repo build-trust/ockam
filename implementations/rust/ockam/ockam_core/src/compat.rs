@@ -15,6 +15,9 @@
 #[cfg(feature = "alloc")]
 pub use alloc::borrow;
 
+#[doc(hidden)]
+pub use futures_util::try_join;
+
 /// std::boxed
 pub mod boxed {
     #[cfg(feature = "alloc")]
