@@ -1,5 +1,5 @@
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 
@@ -41,17 +41,9 @@ use ockam_node::Context;
 /// tcp.listen("127.0.0.1:9000").await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
+#[derive(AsyncTryClone)]
 pub struct TcpTransport {
     router_handle: TcpRouterHandle,
-}
-
-#[async_trait]
-impl AsyncTryClone for TcpTransport {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            router_handle: self.router_handle.async_try_clone().await?,
-        })
-    }
 }
 
 impl TcpTransport {

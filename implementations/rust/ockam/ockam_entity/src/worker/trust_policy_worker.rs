@@ -6,18 +6,9 @@ use ockam_core::{
 use ockam_message_derive::Message;
 use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
-
+#[derive(AsyncTryClone)]
 pub struct TrustPolicyImpl {
     handle: Handle,
-}
-
-#[async_trait]
-impl AsyncTryClone for TrustPolicyImpl {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            handle: self.handle.async_try_clone().await?,
-        })
-    }
 }
 
 impl TrustPolicyImpl {

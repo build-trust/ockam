@@ -14,20 +14,10 @@ use ockam_node::{Context, Handle};
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};
 use IdentityRequest::*;
 use IdentityResponse as Res;
-
+#[derive(AsyncTryClone)]
 pub struct Entity {
     pub(crate) handle: Handle,
     current_profile_id: Option<ProfileIdentifier>,
-}
-
-#[async_trait]
-impl AsyncTryClone for Entity {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            handle: self.handle.async_try_clone().await?,
-            current_profile_id: self.current_profile_id.clone(),
-        })
-    }
 }
 
 impl Entity {

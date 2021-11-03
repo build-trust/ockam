@@ -2,6 +2,7 @@ use crate::{SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 
+#[derive(AsyncTryClone)]
 pub struct AllTrustPolicy<F: TrustPolicy, S: TrustPolicy> {
     // TODO: Extend for more than 2 policies
     first: F,
@@ -11,16 +12,6 @@ pub struct AllTrustPolicy<F: TrustPolicy, S: TrustPolicy> {
 impl<F: TrustPolicy, S: TrustPolicy> AllTrustPolicy<F, S> {
     pub fn new(first: F, second: S) -> Self {
         AllTrustPolicy { first, second }
-    }
-}
-
-#[async_trait]
-impl<F: TrustPolicy, S: TrustPolicy> AsyncTryClone for AllTrustPolicy<F, S> {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            first: self.first.async_try_clone().await?,
-            second: self.second.async_try_clone().await?,
-        })
     }
 }
 

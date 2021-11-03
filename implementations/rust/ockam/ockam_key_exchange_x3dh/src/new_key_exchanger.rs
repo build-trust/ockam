@@ -4,17 +4,9 @@ use ockam_core::{AsyncTryClone, Result};
 use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
+#[derive(AsyncTryClone)]
 pub struct X3dhNewKeyExchanger<V: X3dhVault> {
     vault: V,
-}
-
-#[async_trait]
-impl<V: X3dhVault> AsyncTryClone for X3dhNewKeyExchanger<V> {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            vault: self.vault.async_try_clone().await?,
-        })
-    }
 }
 
 impl<V: X3dhVault> core::fmt::Debug for X3dhNewKeyExchanger<V> {

@@ -27,6 +27,7 @@ cfg_if! {
 }
 
 /// Profile implementation
+#[derive(AsyncTryClone)]
 pub struct ProfileState {
     id: ProfileIdentifier,
     change_history: ProfileChangeHistory,
@@ -37,23 +38,6 @@ pub struct ProfileState {
     #[cfg(feature = "credentials")]
     pub(crate) credentials: Vec<EntityCredential>,
     lease: Option<Lease>,
-}
-
-#[async_trait]
-impl AsyncTryClone for ProfileState {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            id: self.id.clone(),
-            change_history: self.change_history.clone(),
-            contacts: self.contacts.clone(),
-            vault: self.vault.async_try_clone().await?,
-            #[cfg(feature = "credentials")]
-            rand_msg: self.rand_msg.clone(),
-            #[cfg(feature = "credentials")]
-            credentials: self.credentials.clone(),
-            lease: self.lease.clone(),
-        })
-    }
 }
 
 impl ProfileState {
