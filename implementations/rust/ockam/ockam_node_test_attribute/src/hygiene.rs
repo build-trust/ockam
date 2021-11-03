@@ -1,13 +1,16 @@
 use quote::quote;
 use syn::{punctuated::Punctuated, FnArg, Pat, PatIdent, Path, ReturnType, Type, TypePath};
 
-pub(crate) fn node(input: syn::ItemFn) -> Result<(syn::ItemFn, PatIdent), syn::Error> {
+pub(crate) fn node(
+    input: syn::ItemFn,
+) -> Result<(syn::ItemFn, PatIdent, Type, ReturnType), syn::Error> {
     has_one_arg(&input)?;
-    let (ctx_pat, _ctx_type) = arg_is_ctx(&input)?;
+    let (ctx_pat, ctx_type) = arg_is_ctx(&input)?;
     ctx_is_used(&input, &ctx_pat)?;
     #[cfg(not(feature = "no_main"))]
     fn_name_is_main(&input)?;
-    Ok((cleanup(input)?, ctx_pat))
+    let ret_type = input.sig.output.clone();
+    Ok((cleanup(input)?, ctx_pat, ctx_type, ret_type))
 }
 
 pub(crate) fn node_test(input: syn::ItemFn) -> Result<(syn::ItemFn, PatIdent), syn::Error> {
@@ -131,13 +134,12 @@ fn ctx_is_mut_ref(input: &syn::ItemFn, ctx_type: &Type) -> Result<(), syn::Error
 }
 
 fn returns_result(input: &syn::ItemFn) -> Result<(), syn::Error> {
+    let msg = "The function must have a return type";
     if input.sig.output == ReturnType::Default {
-        let msg = "The test function must have a return type";
         return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
     }
     match &input.sig.output {
         ReturnType::Default => {
-            let msg = "The test function must have a return type";
             return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
         }
         ReturnType::Type(_, return_type) => match return_type.as_ref() {
@@ -148,12 +150,10 @@ fn returns_result(input: &syn::ItemFn) -> Result<(), syn::Error> {
                     type_ident == "Result"
                 });
                 if !returns_result {
-                    let msg = "The test function must return a Result";
                     return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
                 }
             }
             _ => {
-                let msg = "The test function must return a Result";
                 return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
             }
         },

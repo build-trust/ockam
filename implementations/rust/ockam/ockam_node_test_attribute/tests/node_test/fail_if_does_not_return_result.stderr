@@ -1,11 +1,11 @@
-error: The test function must return a Result
- --> $DIR/fail_if_does_not_return_result.rs:2:7
+error: The function must have a return type
+ --> tests/node_test/fail_if_does_not_return_result.rs:2:7
   |
 2 | async fn my_test(ctx: &mut ockam::Context) -> String {
   |       ^^
 
 error[E0601]: `main` function not found in crate `$CRATE`
- --> $DIR/fail_if_does_not_return_result.rs:1:1
+ --> tests/node_test/fail_if_does_not_return_result.rs:1:1
   |
 1 | / #[ockam_node_test_attribute::node_test]
 2 | | async fn my_test(ctx: &mut ockam::Context) -> String {

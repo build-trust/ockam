@@ -1,4 +1,4 @@
-error: The test function must have a return type
+error: The function must have a return type
  --> $DIR/fail_if_does_not_have_return_type.rs:2:7
   |
 2 | async fn my_test(ctx: &mut ockam::Context) {
