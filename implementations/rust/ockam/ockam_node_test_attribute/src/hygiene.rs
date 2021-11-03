@@ -5,6 +5,7 @@ pub(crate) fn node(input: syn::ItemFn) -> Result<(syn::ItemFn, PatIdent), syn::E
     has_one_arg(&input)?;
     let (ctx_pat, _ctx_type) = arg_is_ctx(&input)?;
     ctx_is_used(&input, &ctx_pat)?;
+    #[cfg(not(feature = "no_main"))]
     fn_name_is_main(&input)?;
     Ok((cleanup(input)?, ctx_pat))
 }
@@ -104,6 +105,7 @@ fn ctx_is_used(input: &syn::ItemFn, ctx_pat: &PatIdent) -> Result<(), syn::Error
     Ok(())
 }
 
+#[cfg(not(feature = "no_main"))]
 fn fn_name_is_main(input: &syn::ItemFn) -> Result<(), syn::Error> {
     if input.sig.ident != "main" {
         let msg = "The function name must be `main`";
