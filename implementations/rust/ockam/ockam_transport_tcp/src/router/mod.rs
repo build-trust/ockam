@@ -27,9 +27,7 @@ pub(crate) struct TcpRouter {
 impl TcpRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<TcpRouterHandle> {
         let handle_ctx = ctx.new_context(Address::random(0)).await?;
-
         let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone());
-
         Ok(handle)
     }
 
@@ -125,6 +123,7 @@ impl Worker for TcpRouter {
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         trace!("Registering TCP router for type = {}", TCP);
         ctx.register(TCP, ctx.address()).await?;
+        ctx.set_cluster(crate::CLUSTER_NAME).await?;
         Ok(())
     }
 

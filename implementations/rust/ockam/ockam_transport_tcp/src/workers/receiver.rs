@@ -28,6 +28,10 @@ impl TcpRecvProcessor {
 impl Processor for TcpRecvProcessor {
     type Context = Context;
 
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        ctx.set_cluster(crate::CLUSTER_NAME).await
+    }
+
     // We are using the initialize function here to run a custom loop,
     // while never listening for messages sent to our address
     //

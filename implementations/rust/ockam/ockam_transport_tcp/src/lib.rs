@@ -45,6 +45,8 @@ use ockam_transport_core::TransportError;
 /// TCP address type constant
 pub const TCP: u8 = 1;
 
+pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
+
 fn parse_socket_addr<S: AsRef<str>>(s: S) -> Result<SocketAddr> {
     Ok(s.as_ref()
         .parse()

@@ -103,6 +103,8 @@ impl Worker for TcpSendWorker {
     type Message = TransportMessage;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+
         if self.tx.is_none() {
             let (rx, tx) = TcpStream::connect(self.peer)
                 .await
