@@ -3,18 +3,9 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, Routed, Worker};
 use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
-
+#[derive(AsyncTryClone)]
 pub struct TrustPolicyImpl {
     handle: Handle,
-}
-
-#[async_trait]
-impl AsyncTryClone for TrustPolicyImpl {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            handle: self.handle.async_try_clone().await?,
-        })
-    }
 }
 
 impl TrustPolicyImpl {

@@ -27,19 +27,10 @@ use ockam_core::{Result, Route};
 use ockam_node::Handle;
 use ockam_vault::{PublicKey, Secret};
 
+#[derive(AsyncTryClone)]
 pub struct Profile {
     id: ProfileIdentifier,
     handle: Handle,
-}
-
-#[async_trait]
-impl AsyncTryClone for Profile {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            id: self.id.clone(),
-            handle: self.handle.async_try_clone().await?,
-        })
-    }
 }
 
 impl Entity {

@@ -1231,6 +1231,7 @@ dependencies = [
  "hashbrown 0.11.2",
  "heapless",
  "hex",
+ "ockam_macro",
  "rand 0.8.4",
  "rand_pcg",
  "serde",

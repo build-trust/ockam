@@ -5,6 +5,7 @@ use ockam_core::{AsyncTryClone, Result};
 use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
+#[derive(AsyncTryClone)]
 pub struct XXNewKeyExchanger<V: XXVault> {
     vault: V,
 }
@@ -13,15 +14,6 @@ impl<V: XXVault> XXNewKeyExchanger<V> {
     /// Create a new XXNewKeyExchanger
     pub fn new(vault: V) -> Self {
         Self { vault }
-    }
-}
-
-#[async_trait]
-impl<V: XXVault> AsyncTryClone for XXNewKeyExchanger<V> {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            vault: self.vault.async_try_clone().await?,
-        })
     }
 }
 
