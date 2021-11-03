@@ -2,7 +2,5 @@
 // if the function is passed a param that is not of type `ockam::Context`
 // The param is not fully qualified (ie. using `use` statement).
 
-use std::string::String;
-
 #[ockam_node_test_attribute::node_test]
-async fn my_test(ctx: String) {}
+async fn my_test(ctx: String) -> ockam::Result<()> {}

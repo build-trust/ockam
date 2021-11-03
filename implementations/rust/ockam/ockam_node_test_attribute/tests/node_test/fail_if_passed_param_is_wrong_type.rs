@@ -2,4 +2,4 @@
 // if the function is passed a param that is not of type `ockam::Context`
 
 #[ockam_node_test_attribute::node_test]
-async fn my_test(ctx: std::string::String) {}
+async fn my_test(ctx: std::string::String) -> ockam::Result<()> {}

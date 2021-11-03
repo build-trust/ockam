@@ -2,4 +2,6 @@
 // if the function is passed a param that is not of type `ockam::Context`
 
 #[ockam_node_test_attribute::node]
-async fn main(ctx: std::string::String) {}
+async fn main(ctx: std::string::String) -> Result<()> {
+    Ok(())
+}
