@@ -24,7 +24,9 @@ fn output_node(
 ) -> Result<TokenStream, syn::Error> {
     let body = &input.block;
     let ctx_ident = &ctx_pat.ident;
-    #[cfg(feature = "std")]
+
+    // Assumes the target platform knows about main() functions
+    #[cfg(not(feature = "no_main"))]
     let output = quote! {
         fn main() -> ockam::Result<()> {
             let (mut #ctx_ident, mut executor) = ockam::start_node();
@@ -33,15 +35,17 @@ fn output_node(
             })
         }
     };
-    #[cfg(not(feature = "std"))]
+
+    // Assumes you will be defining the ockam node inside your own entry point
+    #[cfg(feature = "no_main")]
     let output = quote! {
-        fn main() -> ockam_core::Result<()> {
+        fn ockam_async_main() -> ockam_core::Result<()> {
             let (mut #ctx_ident, mut executor) = ockam_node::start_node();
             executor.execute(async move {
                 #body
             })
         }
-        main().unwrap();
+        ockam_async_main().unwrap();
     };
     Ok(output.into())
 }
