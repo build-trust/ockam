@@ -1,4 +1,3 @@
-use crate::relay::{ProcessorRelay, WorkerRelay};
 use crate::tokio::{
     self,
     runtime::Runtime,
@@ -8,7 +7,8 @@ use crate::tokio::{
 use crate::{
     error::Error,
     parser,
-    relay::{RelayMessage, PROC_ADDR_SUFFIX},
+    relay::{CtrlSignal, ProcessorRelay, RelayMessage, WorkerRelay},
+    router::SenderPair,
     Cancel, NodeMessage, ShutdownType,
 };
 use core::time::Duration;
@@ -54,13 +54,17 @@ impl Context {
 }
 
 impl Context {
-    /// Create a new context returning itself and the associated mailbox sender
+    /// Create a new context
+    ///
+    /// This function returns a new instance of Context, the relay
+    /// sender pair, and relay control signal receiver.
     pub(crate) fn new(
         rt: Arc<Runtime>,
         sender: Sender<NodeMessage>,
         address: AddressSet,
-    ) -> (Self, Sender<RelayMessage>) {
-        let (mb_tx, mailbox) = channel(32);
+    ) -> (Self, SenderPair, Receiver<CtrlSignal>) {
+        let (mailbox_tx, mailbox) = channel(32);
+        let (ctrl_tx, ctrl_rx) = channel(1);
         (
             Self {
                 rt,
@@ -68,7 +72,11 @@ impl Context {
                 address,
                 mailbox,
             },
-            mb_tx,
+            SenderPair {
+                msgs: mailbox_tx,
+                ctrl: ctrl_tx,
+            },
+            ctrl_rx,
         )
     }
 
@@ -95,14 +103,14 @@ impl Context {
 
     async fn new_context_impl(&self, addr: Address) -> Result<Context> {
         // Create a new context and get access to the mailbox senders
-        let (ctx, sender) = Self::new(
+        let (ctx, sender, _) = Self::new(
             Arc::clone(&self.rt),
             self.sender.clone(),
             addr.clone().into(),
         );
 
-        // Create a small relay and register it with the internal router
-        let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender);
+        // Create a "bare relay" and register it with the router
+        let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender, true);
         self.sender
             .send(msg)
             .await
@@ -142,13 +150,14 @@ impl Context {
         check_rx.recv().await.ok_or(Error::InternalIOFailure)??;
 
         // Pass it to the context
-        let (ctx, sender) = Context::new(self.rt.clone(), self.sender.clone(), address.clone());
+        let (ctx, sender, ctrl_rx) =
+            Context::new(self.rt.clone(), self.sender.clone(), address.clone());
 
         // Then initialise the worker message relay
-        WorkerRelay::<NW, NM>::init(self.rt.as_ref(), worker, ctx);
+        WorkerRelay::<NW, NM>::init(self.rt.as_ref(), worker, ctx, ctrl_rx);
 
         // Send start request to router
-        let (msg, mut rx) = NodeMessage::start_worker(address, sender);
+        let (msg, mut rx) = NodeMessage::start_worker(address, sender, false);
         self.sender
             .send(msg)
             .await
@@ -174,21 +183,16 @@ impl Context {
     where
         P: Processor<Context = Context>,
     {
-        let main_addr = address.clone();
-        let aux_addr = main_addr.suffix(PROC_ADDR_SUFFIX);
+        let addr = address.clone();
 
-        // We create two contexts for the processor.  One is used for
-        // the external representation of the processor worker
-        // (i.e. sending messages, receiving messages, etc), while the
-        // other is used by the router to signal shutdown conditions.
-        let (main, main_tx) = Context::new(self.rt.clone(), self.sender.clone(), main_addr.into());
-        let (aux, aux_tx) = Context::new(self.rt.clone(), self.sender.clone(), aux_addr.into());
+        let (ctx, senders, ctrl_rx) =
+            Context::new(self.rt.clone(), self.sender.clone(), addr.into());
 
-        // Initialise the processor relay with the two contexts
-        ProcessorRelay::<P>::init(self.rt.as_ref(), processor, main, aux);
+        // Initialise the processor relay with the ctrl receiver
+        ProcessorRelay::<P>::init(self.rt.as_ref(), processor, ctx, ctrl_rx);
 
         // Send start request to router
-        let (msg, mut rx) = NodeMessage::start_processor(address, main_tx, aux_tx);
+        let (msg, mut rx) = NodeMessage::start_processor(address, senders);
         self.sender
             .send(msg)
             .await
@@ -230,17 +234,46 @@ impl Context {
             .map(|_| ())?)
     }
 
-    /// Signal to the local application runner to shut down
-    pub async fn stop(&mut self) -> Result<()> {
+    /// Signal to the local runtime to shut down immediately
+    ///
+    /// **WARNING**: calling this function may result in data loss.
+    /// It is recommended to use the much safer
+    /// [`Context::stop`](Context::stop) function instead!
+    pub async fn stop_now(&mut self) -> Result<()> {
         let tx = self.sender.clone();
         info!("Shutting down all workers");
-        match tx
-            .send(NodeMessage::StopNode(ShutdownType::Immediate))
-            .await
-        {
+        let (msg, _) = NodeMessage::stop_node(ShutdownType::Immediate);
+
+        match tx.send(msg).await {
             Ok(()) => Ok(()),
             Err(_e) => Err(Error::FailedStopNode.into()),
         }
+    }
+
+    /// Signal to the local runtime to shut down
+    ///
+    /// This call will hang until a safe shutdown has been completed.
+    /// The default timeout for a safe shutdown is 1 second.  You can
+    /// change this behaviour by calling
+    /// [`Context::stop_timeout`](Context::stop_timeout) directly.
+    pub async fn stop(&mut self) -> Result<()> {
+        self.stop_timeout(1).await
+    }
+
+    /// Signal to the local runtime to shut down
+    ///
+    /// This call will hang until a safe shutdown has been completed
+    /// or the desired timeout has been reached.
+    pub async fn stop_timeout(&mut self, seconds: u8) -> Result<()> {
+        let (req, mut rx) = NodeMessage::stop_node(ShutdownType::Graceful(seconds));
+        self.sender.send(req).await.map_err(Error::from)?;
+
+        // Wait until we get the all-clear
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(Error::InternalIOFailure)?
+            .map(|_| ())?)
     }
 
     /// Send a message via a fully qualified route
@@ -431,6 +464,27 @@ impl Context {
         Ok(Cancel::new(m, data, addr, self))
     }
 
+    /// Assign the current worker to a cluster
+    ///
+    /// A cluster is a set of workers that should be stopped together
+    /// when the node is stopped or parts of the system are reloaded.
+    /// **This is not to be confused with supervisors!**
+    ///
+    /// By adding your worker to a cluster you signal to the runtime
+    /// that your worker may be depended on by other workers that
+    /// should be stopped first.
+    ///
+    /// **Your cluster name MUST NOT start with `_internals.` or
+    /// `ockam.`!**
+    ///
+    /// Clusters are de-allocated in reverse order of their
+    /// initialisation when the node is stopped.
+    pub async fn set_cluster<S: Into<String>>(&self, label: S) -> Result<()> {
+        let (msg, mut rx) = NodeMessage::set_cluster(self.address(), label.into());
+        self.sender.send(msg).await.map_err(Error::from)?;
+        Ok(rx.recv().await.ok_or(Error::InternalIOFailure)??.is_ok()?)
+    }
+
     /// Return a list of all available worker addresses on a node
     pub async fn list_workers(&self) -> Result<Vec<Address>> {
         let (msg, mut reply_rx) = NodeMessage::list_workers();
@@ -447,6 +501,15 @@ impl Context {
     /// Register a router for a specific address type
     pub async fn register<A: Into<Address>>(&self, type_: u8, addr: A) -> Result<()> {
         self.register_impl(type_, addr.into()).await
+    }
+
+    /// Send a shutdown acknowlegement to the router
+    pub(crate) async fn send_stop_ack(&self) -> Result<()> {
+        self.sender
+            .send(NodeMessage::StopAck(self.address()))
+            .await
+            .map_err(Error::from)?;
+        Ok(())
     }
 
     async fn register_impl(&self, type_: u8, addr: Address) -> Result<()> {

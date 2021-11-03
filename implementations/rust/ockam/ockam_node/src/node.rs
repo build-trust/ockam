@@ -22,7 +22,7 @@ pub fn start_node() -> (Context, Executor) {
 
     // The root application worker needs a mailbox and relay to accept
     // messages from workers, and to buffer incoming transcoded data.
-    let (ctx, sender) = Context::new(exe.runtime(), exe.sender(), addr.into());
+    let (ctx, sender, _) = Context::new(exe.runtime(), exe.sender(), addr.into());
 
     // Register this mailbox handle with the executor
     exe.initialize_system("app", sender);

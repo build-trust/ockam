@@ -2,11 +2,9 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Encodable, LocalMessage, Route, RouterMessage};
 
 mod processor_relay;
-mod shutdown_handle;
 mod worker_relay;
 
 pub use processor_relay::*;
-pub use shutdown_handle::*;
 pub use worker_relay::*;
 
 /// A message addressed to a relay
@@ -56,4 +54,13 @@ impl RelayMessage {
 pub enum RelayPayload {
     Direct(LocalMessage),
     PreRouter(Vec<u8>, Route),
+}
+
+/// A signal type used to communicate between router and worker relay
+#[derive(Clone, Debug)]
+pub enum CtrlSignal {
+    /// Interrupt current message execution but resume run-loop
+    Interrupt,
+    /// Interrupt current message execution and shut down
+    InterruptStop,
 }

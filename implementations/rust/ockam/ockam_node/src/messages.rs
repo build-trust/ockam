@@ -1,6 +1,5 @@
-// use crate::relay::ShutdownHandle;
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
-use crate::{error::Error, relay::RelayMessage};
+use crate::{error::Error, relay::RelayMessage, router::SenderPair};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, AddressSet};
 
@@ -8,22 +7,32 @@ use ockam_core::{Address, AddressSet};
 #[derive(Debug)]
 pub enum NodeMessage {
     /// Start a new worker and store the send handle
-    StartWorker(AddressSet, Sender<RelayMessage>, Sender<NodeReplyResult>),
+    StartWorker {
+        /// The set of addresses in use by this worker
+        addrs: AddressSet,
+        /// Pair of senders to the worker relay (msgs and ctrl)
+        senders: SenderPair,
+        /// A bare worker runs no relay state
+        bare: bool,
+        /// Reply channel for command confirmation
+        reply: Sender<NodeReplyResult>,
+    },
     /// Return a list of all worker addresses
     ListWorkers(Sender<NodeReplyResult>),
+    /// Add an existing address to a cluster
+    SetCluster(Address, String, Sender<NodeReplyResult>),
     /// Stop an existing worker
     StopWorker(Address, Sender<NodeReplyResult>),
-    /// Start a new processor and store
-    StartProcessor(
-        Address,
-        Sender<RelayMessage>,
-        Sender<RelayMessage>,
-        Sender<NodeReplyResult>,
-    ),
+    /// Start a new processor
+    StartProcessor(Address, SenderPair, Sender<NodeReplyResult>),
     /// Stop an existing processor
     StopProcessor(Address, Sender<NodeReplyResult>),
     /// Stop the node (and all workers)
-    StopNode(ShutdownType),
+    StopNode(ShutdownType, Sender<NodeReplyResult>),
+    /// Immediately stop the node runtime
+    AbortNode,
+    /// Let the router know a particular address has stopped
+    StopAck(Address),
     /// Request the sender for a worker address
     SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type
@@ -34,25 +43,37 @@ pub enum NodeMessage {
 
 impl NodeMessage {
     /// Create a start worker message
+    ///
+    /// * `senders`: message and command senders for the relay
+    ///
+    /// * `bare`: indicate whether this worker address has a full
+    ///   relay behind it that can respond to shutdown commands.
+    ///   Setting this to `true` will disable stop ACK support in the
+    ///   router
     pub fn start_worker(
-        address: AddressSet,
-        sender: Sender<RelayMessage>,
+        addrs: AddressSet,
+        senders: SenderPair,
+        bare: bool,
     ) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
-        (Self::StartWorker(address, sender, tx), rx)
+        let (reply, rx) = channel(1);
+        (
+            Self::StartWorker {
+                addrs,
+                senders,
+                bare,
+                reply,
+            },
+            rx,
+        )
     }
 
     /// Create a start worker message
     pub fn start_processor(
         address: Address,
-        main_sender: Sender<RelayMessage>,
-        aux_sender: Sender<RelayMessage>,
+        senders: SenderPair,
     ) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
-        (
-            Self::StartProcessor(address, main_sender, aux_sender, tx),
-            rx,
-        )
+        (Self::StartProcessor(address, senders, tx), rx)
     }
 
     /// Create a stop worker message and reply receiver
@@ -67,6 +88,12 @@ impl NodeMessage {
         (Self::ListWorkers(tx), rx)
     }
 
+    /// Create a set cluster message and reply receiver
+    pub fn set_cluster(addr: Address, label: String) -> (Self, Receiver<NodeReplyResult>) {
+        let (tx, rx) = channel(1);
+        (Self::SetCluster(addr, label, tx), rx)
+    }
+
     /// Create a stop worker message and reply receiver
     pub fn stop_worker(address: Address) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
@@ -74,8 +101,9 @@ impl NodeMessage {
     }
 
     /// Create a stop node message
-    pub fn stop_node() -> Self {
-        Self::StopNode(ShutdownType::Immediate)
+    pub fn stop_node(tt: ShutdownType) -> (Self, Receiver<NodeReplyResult>) {
+        let (tx, rx) = channel(1);
+        (Self::StopNode(tt, tx), rx)
     }
 
     /// Create a sender request message and reply receiver
@@ -142,6 +170,7 @@ pub enum Reason {
 /// For most users `ShutdownType::Graceful()` is recommended.  The
 /// `Default` implementation uses a 1 second timeout.
 #[derive(Debug, Copy, Clone)]
+#[non_exhaustive]
 pub enum ShutdownType {
     /// Execute a graceful shutdown given a maximum timeout
     ///

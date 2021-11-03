@@ -1,8 +1,9 @@
-use crate::relay::RelayMessage;
+use crate::relay::{CtrlSignal, RelayMessage};
 use crate::tokio::sync::mpsc::Sender;
+use crate::{error::Error, NodeError, NodeReply, NodeReplyResult};
 use ockam_core::{
     compat::collections::{BTreeMap, BTreeSet},
-    Address, AddressSet,
+    Address, AddressSet, Result,
 };
 
 /// Address states and associated logic
@@ -16,10 +17,18 @@ pub struct InternalMap {
     cluster_order: Vec<String>,
     /// Cluster data records
     clusters: BTreeMap<String, BTreeSet<Address>>,
+    /// Track stop information
+    stopping: BTreeSet<Address>,
 }
 
 impl InternalMap {
-    pub(super) fn set_cluster(&mut self, label: String, addrs: AddressSet) {
+    /// Add an address to a particular cluster
+    pub(super) fn set_cluster(&mut self, label: String, primary: Address) -> NodeReplyResult {
+        let rec = self
+            .internal
+            .get(&primary)
+            .ok_or(NodeError::NoSuchWorker(primary))?;
+
         // If this is the first time we see this cluster ID
         if !self.clusters.contains_key(&label) {
             self.clusters.insert(label.clone(), BTreeSet::new());
@@ -27,15 +36,42 @@ impl InternalMap {
         }
 
         // Add all addresses to the cluster set
-        for addr in addrs {
-            self.clusters.get_mut(&label).unwrap().insert(addr);
+        for addr in rec.address_set().clone() {
+            self.clusters
+                .get_mut(&label)
+                .expect("No such cluster??")
+                .insert(addr);
         }
+
+        NodeReply::ok()
     }
 
     /// Retrieve the next cluster in reverse-initialsation order
-    pub(super) fn next_cluster(&mut self) -> Option<BTreeSet<Address>> {
+    pub(super) fn next_cluster(&mut self) -> Option<Vec<&mut AddressRecord>> {
         let name = self.cluster_order.pop()?;
-        self.clusters.remove(&name)
+        let addrs = self.clusters.remove(&name)?;
+        Some(
+            self.internal
+                .iter_mut()
+                .filter_map(|(primary, rec)| {
+                    if addrs.contains(primary) {
+                        Some(rec)
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        )
+    }
+
+    /// Mark this address as "having started to stop"
+    pub(super) fn init_stop(&mut self, addr: Address) {
+        self.stopping.insert(addr);
+    }
+
+    /// Check whether the current cluster of addresses was stopped
+    pub(super) fn cluster_done(&self) -> bool {
+        self.stopping.is_empty()
     }
 
     /// Get all addresses of workers not in a cluster
@@ -57,14 +93,36 @@ impl InternalMap {
                     Some(rec)
                 }
             })
+            // Filter all bare workers because they don't matter
+            .filter(|rec| !rec.meta.bare)
             .collect()
     }
+
+    /// Permanently free all remainin resources associated to a particular address
+    pub(super) fn free_address(&mut self, primary: Address) {
+        self.stopping.remove(&primary);
+        if let Some(record) = self.internal.remove(&primary) {
+            for addr in record.address_set {
+                self.addr_map.remove(&addr);
+            }
+        }
+    }
+}
+
+/// Additional metadata for address records
+#[derive(Debug)]
+pub struct AddressMeta {
+    pub processor: bool,
+    pub bare: bool,
 }
 
 #[derive(Debug)]
 pub struct AddressRecord {
     address_set: AddressSet,
-    sender: Sender<RelayMessage>,
+    sender: Option<Sender<RelayMessage>>,
+    ctrl_tx: Sender<CtrlSignal>,
+    state: AddressState,
+    meta: AddressMeta,
 }
 
 impl AddressRecord {
@@ -72,16 +130,40 @@ impl AddressRecord {
         &self.address_set
     }
     pub fn sender(&self) -> Sender<RelayMessage> {
-        self.sender.clone()
+        self.sender.clone().expect("No such sender!")
     }
-}
-
-impl AddressRecord {
-    pub fn new(address_set: AddressSet, sender: Sender<RelayMessage>) -> Self {
+    pub fn new(
+        address_set: AddressSet,
+        sender: Sender<RelayMessage>,
+        ctrl_tx: Sender<CtrlSignal>,
+        meta: AddressMeta,
+    ) -> Self {
         AddressRecord {
             address_set,
-            sender,
+            sender: Some(sender),
+            ctrl_tx,
+            state: AddressState::Running,
+            meta,
         }
+    }
+
+    /// Signal this worker to stop -- it will no longer be able to receive messages
+    pub async fn stop(&mut self) -> Result<()> {
+        if self.meta.processor {
+            self.ctrl_tx
+                .send(CtrlSignal::InterruptStop)
+                .await
+                .map_err(|_| Error::InternalIOFailure)?;
+        } else {
+            self.sender = None;
+        }
+        self.state = AddressState::Stopping;
+        Ok(())
+    }
+
+    /// Check the integrity of this record
+    pub fn check(&self) -> bool {
+        self.state == AddressState::Running
     }
 }
 
@@ -92,10 +174,11 @@ impl AddressRecord {
 /// * Stopping - the runner was signalled to shut-down (running `shutdown()`)
 /// * Faulty - the runner has experienced an error and is waiting for
 ///   supervisor intervention
-#[derive(Debug)]
-#[allow(unused)]
+#[derive(Debug, PartialEq)]
 pub enum AddressState {
     Running,
     Stopping,
+    // Will be used with the supervisor system
+    #[allow(unused)]
     Faulty,
 }
