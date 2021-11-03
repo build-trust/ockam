@@ -6,7 +6,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-colored = "2.0"
+owo-colors = "3"
 rand = "0.7"
 ockam = { path = "../../../../ockam" }
 ockam_vault = { path = "../../../../ockam_vault"}

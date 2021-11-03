@@ -8,7 +8,7 @@ mod macros;
 mod config;
 mod objects;
 
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use isahc::prelude::*;
 // use objects::UsersInGroup;
 use ockam::{CredentialAttributeSchema, CredentialAttributeType, CredentialSchema};

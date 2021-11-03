@@ -1,7 +1,8 @@
 [package]
 name = "ockam-hub-cli"
 version = "0.1.0"
-authors = ["piiih <piih_@live.com>"]
+authors = ["Ockam Developers"]
+license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
@@ -12,4 +13,4 @@ serde = { version = "1.0.125", features = ["derive"]  }
 serde_json = "1.0.59"
 url = "2.2.1"
 webbrowser = "0.5.5"
-colored = "2.0.0"
+owo-colors = "3"

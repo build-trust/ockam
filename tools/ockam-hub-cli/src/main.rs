@@ -1,7 +1,7 @@
 mod auth;
 
 use auth::github;
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use std::process;
 use structopt::StructOpt;
 

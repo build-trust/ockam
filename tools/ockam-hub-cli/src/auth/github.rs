@@ -1,4 +1,4 @@
-use colored::*;
+use owo_colors::OwoColorize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
