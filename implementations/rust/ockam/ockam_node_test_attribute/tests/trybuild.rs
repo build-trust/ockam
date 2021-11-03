@@ -1,5 +1,3 @@
-use trybuild::TestCases;
-
 #[test]
 fn trybuild() {
     let t = trybuild::TestCases::new();
