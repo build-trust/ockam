@@ -7,7 +7,6 @@ edition = "2018"
 proc-macro = true
 
 [dev-dependencies]
-async-trait = "0.1.42"
 trybuild = "1.0"
 ockam_core = { path = "../ockam_core", version = "0.36.0"}
 
