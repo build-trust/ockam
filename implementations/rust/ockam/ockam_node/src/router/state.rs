@@ -1,15 +1,11 @@
 //! Router run state utilities
 
-use crate::messages::NodeMessage;
-use ockam_core::{
-    compat::collections::{BTreeMap, BTreeSet},
-    Address, AddressSet,
-};
-use tokio::sync::mpsc::Sender;
+use crate::messages::{NodeMessage, NodeReplyResult};
+use crate::tokio::sync::mpsc::Sender;
 
 pub enum NodeState {
     Running,
-    Stopping,
+    Stopping(Sender<NodeReplyResult>),
 }
 
 pub struct RouterState {
@@ -26,8 +22,19 @@ impl RouterState {
     }
 
     /// Toggle this router to shut down soon
-    pub fn shutdown(&mut self) {
-        self.node_state = NodeState::Stopping
+    pub(super) fn shutdown(&mut self, reply: Sender<NodeReplyResult>) {
+        self.node_state = NodeState::Stopping(reply)
+    }
+
+    pub(super) fn stop_reply(&self) -> Option<Sender<NodeReplyResult>> {
+        match &self.node_state {
+            NodeState::Stopping(sender) => Some(sender.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn running(&self) -> bool {
+        core::matches!(self.node_state, NodeState::Running)
     }
 
     /// Check if this router is still `running`, meaning allows

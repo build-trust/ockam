@@ -1,10 +1,6 @@
-use super::{AddressRecord, NodeState, Router};
+use super::Router;
 use crate::tokio::sync::mpsc::Sender;
-use crate::{
-    error::Error,
-    relay::{RelayMessage, PROC_ADDR_SUFFIX},
-    NodeReply, NodeReplyResult, Reason,
-};
+use crate::{error::Error, NodeReply, NodeReplyResult, Reason};
 
 use ockam_core::{Address, AddressSet, Result};
 
@@ -34,13 +30,14 @@ pub(super) async fn resolve(
     }
 
     match router.map.internal.get(&primary_address) {
-        Some(record) => reply.send(NodeReply::sender(addr.clone(), record.sender(), wrap)),
+        Some(record) if record.check() => {
+            reply.send(NodeReply::sender(addr.clone(), record.sender(), wrap))
+        }
+        Some(_) => reply.send(NodeReply::rejected(Reason::WorkerShutdown)),
         None => reply.send(NodeReply::no_such_worker(addr.clone())),
     }
     .await
-    .expect("Ockam node internal I/O failed!");
-
-    Ok(())
+    .map_err(|_| Error::InternalIOFailure.into())
 }
 
 pub(super) fn router_addr(router: &mut Router, tt: u8) -> Result<Address> {

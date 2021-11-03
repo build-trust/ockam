@@ -1,10 +1,6 @@
-use super::{AddressRecord, NodeState, Router};
+use super::Router;
 use crate::tokio::sync::mpsc::Sender;
-use crate::{
-    error::Error,
-    relay::{RelayMessage, PROC_ADDR_SUFFIX},
-    NodeReply, NodeReplyResult,
-};
+use crate::{error::Error, NodeReply, NodeReplyResult};
 
 use ockam_core::{Address, Result};
 

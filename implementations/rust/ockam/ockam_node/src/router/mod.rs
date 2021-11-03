@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod record;
 mod shutdown;
 mod start_processor;
@@ -9,17 +7,24 @@ mod stop_processor;
 mod stop_worker;
 mod utils;
 
-use record::{AddressRecord, AddressState, InternalMap};
+use record::{AddressMeta, AddressRecord, InternalMap};
 use state::{NodeState, RouterState};
 
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
     error::Error,
-    relay::{RelayMessage, PROC_ADDR_SUFFIX},
-    NodeMessage, NodeReply, NodeReplyResult,
+    relay::{CtrlSignal, RelayMessage},
+    NodeMessage, NodeReply, ShutdownType,
 };
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::{Address, AddressSet, Result};
+use ockam_core::{Address, Result};
+
+/// A pair of senders to a worker relay
+#[derive(Debug)]
+pub struct SenderPair {
+    pub msgs: Sender<RelayMessage>,
+    pub ctrl: Sender<CtrlSignal>,
+}
 
 /// A combined address type and local worker router
 ///
@@ -65,10 +70,19 @@ impl Router {
         }
     }
 
-    pub fn init(&mut self, addr: Address, mb: Sender<RelayMessage>) {
-        self.map
-            .internal
-            .insert(addr.clone(), AddressRecord::new(addr.clone().into(), mb));
+    pub fn init(&mut self, addr: Address, senders: SenderPair) {
+        self.map.internal.insert(
+            addr.clone(),
+            AddressRecord::new(
+                addr.clone().into(),
+                senders.msgs,
+                senders.ctrl,
+                AddressMeta {
+                    processor: false,
+                    bare: true,
+                },
+            ),
+        );
         self.map.addr_map.insert(addr.clone(), addr);
     }
 
@@ -98,14 +112,17 @@ impl Router {
                     .map_err(|_| Error::InternalIOFailure)?,
 
                 //// ==! Basic worker control
-                StartWorker(addr, sender, ref reply) => {
-                    start_worker::exec(self, addr, sender, reply).await?
-                }
+                StartWorker {
+                    addrs,
+                    senders,
+                    bare,
+                    ref reply,
+                } => start_worker::exec(self, addrs, senders, bare, reply).await?,
                 StopWorker(ref addr, ref reply) => stop_worker::exec(self, addr, reply).await?,
 
                 //// ==! Basic processor control
-                StartProcessor(addr, main_sender, aux_sender, ref reply) => {
-                    start_processor::exec(self, addr, main_sender, aux_sender, reply).await?
+                StartProcessor(addr, senders, ref reply) => {
+                    start_processor::exec(self, addr, senders, reply).await?
                 }
                 StopProcessor(ref addr, ref reply) => {
                     stop_processor::exec(self, addr, reply).await?
@@ -118,7 +135,55 @@ impl Router {
                     utils::check_addr_collisions(self, addrs, reply).await?
                 }
 
-                StopNode(tt) => if shutdown::exec(self, tt).await.is_ok() && break {},
+                StopNode(ShutdownType::Graceful(timeout), reply) => {
+                    if shutdown::graceful(self, timeout, reply).await? {
+                        info!("No more workers left.  Goodbye!");
+                        if let Some(sender) = self.state.stop_reply() {
+                            sender
+                                .send(NodeReply::ok())
+                                .await
+                                .map_err(|_| Error::InternalIOFailure)?;
+                            break;
+                        };
+                    }
+                }
+                StopNode(ShutdownType::Immediate, reply) => {
+                    shutdown::immediate(self, reply).await?;
+                    break;
+                }
+
+                AbortNode => {
+                    if let Some(sender) = self.state.stop_reply() {
+                        sender
+                            .send(NodeReply::ok())
+                            .await
+                            .map_err(|_| Error::InternalIOFailure)?;
+                        self.map.internal.clear();
+                        break;
+                    }
+                }
+
+                StopAck(addr) if self.state.running() => {
+                    debug!("Received shutdown ACK for address {}", addr);
+                    if let Some(rec) = self.map.internal.remove(&addr) {
+                        rec.address_set().iter().for_each(|addr| {
+                            self.map.addr_map.remove(addr);
+                        });
+                    }
+                }
+
+                StopAck(addr) => {
+                    if shutdown::ack(self, addr).await? {
+                        info!("No more workers left.  Goodbye!");
+                        if let Some(sender) = self.state.stop_reply() {
+                            sender
+                                .send(NodeReply::ok())
+                                .await
+                                .map_err(|_| Error::InternalIOFailure)?;
+                            break;
+                        }
+                    }
+                }
 
                 ListWorkers(sender) => sender
                     .send(NodeReply::workers(
@@ -126,6 +191,16 @@ impl Router {
                     ))
                     .await
                     .map_err(|_| Error::InternalIOFailure)?,
+
+                SetCluster(addr, label, reply) => {
+                    info!("Setting cluster on address {}", addr);
+                    let msg = self.map.set_cluster(label, addr);
+                    reply
+                        .send(msg)
+                        .await
+                        .map_err(|_| Error::InternalIOFailure)
+                        .expect("Failed to send a message for some reason,,,");
+                }
 
                 // Handle route/ sender requests
                 SenderReq(ref addr, ref reply) => match determine_type(addr) {

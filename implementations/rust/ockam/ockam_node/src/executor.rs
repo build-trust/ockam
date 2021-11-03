@@ -1,6 +1,9 @@
 // use crate::message::BaseMessage;
 
-use crate::{relay::RelayMessage, router::Router, NodeMessage};
+use crate::{
+    router::{Router, SenderPair},
+    NodeMessage,
+};
 use ockam_core::{Address, Result};
 
 use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
@@ -40,13 +43,9 @@ impl Executor {
     }
 
     /// Initialize the root application worker
-    pub fn initialize_system<S: Into<Address>>(
-        &mut self,
-        address: S,
-        mailbox: Sender<RelayMessage>,
-    ) {
+    pub fn initialize_system<S: Into<Address>>(&mut self, address: S, senders: SenderPair) {
         trace!("Initializing node executor");
-        self.router.init(address.into(), mailbox);
+        self.router.init(address.into(), senders);
     }
 
     /// Execute a future

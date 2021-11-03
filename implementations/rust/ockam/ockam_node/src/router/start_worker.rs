@@ -1,6 +1,6 @@
-use super::{AddressRecord, NodeState, Router};
+use super::{AddressMeta, AddressRecord, NodeState, Router, SenderPair};
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error::Error, relay::RelayMessage, NodeReply, NodeReplyResult, Reason};
+use crate::{error::Error, NodeReply, NodeReplyResult, Reason};
 
 use ockam_core::{AddressSet, Result};
 
@@ -8,12 +8,13 @@ use ockam_core::{AddressSet, Result};
 pub(super) async fn exec(
     router: &mut Router,
     addrs: AddressSet,
-    sender: Sender<RelayMessage>,
+    senders: SenderPair,
+    bare: bool,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
     match router.state.node_state() {
-        NodeState::Running => start(router, addrs, sender, reply).await,
-        NodeState::Stopping => reject(addrs, sender, reply).await,
+        NodeState::Running => start(router, addrs, senders, bare, reply).await,
+        NodeState::Stopping(_) => reject(reply).await,
     }?;
     Ok(())
 }
@@ -21,14 +22,24 @@ pub(super) async fn exec(
 async fn start(
     router: &mut Router,
     addrs: AddressSet,
-    sender: Sender<RelayMessage>,
+    senders: SenderPair,
+    bare: bool,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
-    trace!("Starting new worker '{}'", addrs.first());
+    info!("Starting new worker '{}'", addrs.first());
+    let SenderPair { msgs, ctrl } = senders;
 
     // Create an address record and insert it into the internal map
     let primary_addr = addrs.first();
-    let address_record = AddressRecord::new(addrs.clone(), sender);
+    let address_record = AddressRecord::new(
+        addrs.clone(),
+        msgs,
+        ctrl,
+        AddressMeta {
+            processor: false,
+            bare,
+        },
+    );
     router
         .map
         .internal
@@ -57,11 +68,7 @@ async fn start(
     Ok(())
 }
 
-async fn reject(
-    addrs: AddressSet,
-    sender: Sender<RelayMessage>,
-    reply: &Sender<NodeReplyResult>,
-) -> Result<()> {
+async fn reject(reply: &Sender<NodeReplyResult>) -> Result<()> {
     trace!("StartWorker command rejected: node shutting down");
     reply
         .send(NodeReply::rejected(Reason::NodeShutdown))
