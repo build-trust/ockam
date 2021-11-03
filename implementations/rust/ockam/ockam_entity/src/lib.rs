@@ -137,6 +137,7 @@ impl ProfileSerializationUtil {
 mod test {
     use super::*;
     use ockam_core::Error;
+    use ockam_node::Context;
     use ockam_vault_sync_core::Vault;
 
     fn test_error<S: Into<String>>(msg: S) -> Result<()> {
@@ -219,32 +220,28 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn async_tests() {
-        let (mut ctx, mut executor) = ockam_node::start_node();
-        executor
-            .execute(async move {
-                let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
-                let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
+    #[ockam_node_test_attribute::node_test]
+    async fn async_tests(ctx: &mut Context) -> Result<()> {
+        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
 
-                let entity_alice = Entity::create(&ctx, &alice_vault).await.unwrap();
-                let entity_bob = Entity::create(&ctx, &bob_vault).await.unwrap();
+        let entity_alice = Entity::create(&ctx, &alice_vault).await?;
+        let entity_bob = Entity::create(&ctx, &bob_vault).await?;
 
-                let mut alice = entity_alice.current_profile().await.unwrap().unwrap();
-                let mut bob = entity_bob.current_profile().await.unwrap().unwrap();
+        let mut alice = entity_alice.current_profile().await.unwrap().unwrap();
+        let mut bob = entity_bob.current_profile().await.unwrap().unwrap();
 
-                let mut results = vec![];
-                results.push(test_basic_profile_key_ops(&mut alice).await);
-                results.push(test_update_contact_after_change(&mut alice, &mut bob).await);
-                ctx.stop().await.unwrap();
+        let mut results = vec![];
+        results.push(test_basic_profile_key_ops(&mut alice).await);
+        results.push(test_update_contact_after_change(&mut alice, &mut bob).await);
+        ctx.stop().await?;
 
-                for r in results {
-                    match r {
-                        Err(e) => panic!("{}", e.domain().clone()),
-                        _ => (),
-                    }
-                }
-            })
-            .unwrap();
+        for r in results {
+            match r {
+                Err(e) => panic!("{}", e.domain().clone()),
+                _ => (),
+            }
+        }
+        Ok(())
     }
 }
