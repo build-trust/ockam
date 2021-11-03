@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 arrayref = "0.3"
 base64-url = "1.4"
-colored = "2.0"
+owo-colors = "3"
 isahc = "0.9"
 lazy_static = "1.4"
 percent-encoding = "2.1"

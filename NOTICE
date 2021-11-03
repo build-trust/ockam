@@ -44,7 +44,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | chrono                        | Apache-2.0 OR MIT                                    | https://github.com/chronotope/chrono                                      |
 | cipher                        | Apache-2.0 OR MIT                                    | https://github.com/RustCrypto/traits                                      |
 | clap                          | MIT                                                  | https://github.com/clap-rs/clap                                           |
-| colored                       | MPL-2.0                                              | https://github.com/mackwic/colored                                        |
 | concurrent-queue              | Apache-2.0 OR MIT                                    | https://github.com/stjepang/concurrent-queue                              |
 | core-foundation               | Apache-2.0 OR MIT                                    | https://github.com/servo/core-foundation-rs                               |
 | core-foundation-sys           | Apache-2.0 OR MIT                                    | https://github.com/servo/core-foundation-rs                               |
@@ -138,6 +137,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | openssl-probe                 | Apache-2.0 OR MIT                                    | https://github.com/alexcrichton/openssl-probe                             |
 | openssl-sys                   | MIT                                                  | https://github.com/sfackler/rust-openssl                                  |
 | os_pipe                       | MIT                                                  | https://github.com/oconnor663/os_pipe.rs                                  |
+| owo-colors                    | MIT                                                  | https://github.com/jam1garner/owo-colors                                  |
 | pairing                       | Apache-2.0 OR MIT                                    | https://github.com/zkcrypto/pairing                                       |
 | parking                       | Apache-2.0 OR MIT                                    | https://github.com/stjepang/parking                                       |
 | parking_lot                   | Apache-2.0 OR MIT                                    | https://github.com/Amanieu/parking_lot                                    |

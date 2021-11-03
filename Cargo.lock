@@ -286,17 +286,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "colored"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3616f750b84d8f0de8a58bda93e08e2a81ad3f523089b05f1dffecab48c6cbd"
-dependencies = [
- "atty",
- "lazy_static",
- "winapi",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1193,7 +1182,7 @@ dependencies = [
 name = "ockam-hub-cli"
 version = "0.1.0"
 dependencies = [
- "colored",
+ "owo-colors",
  "reqwest",
  "serde",
  "serde_json",
@@ -1552,6 +1541,12 @@ dependencies = [
  "libc",
  "winapi",
 ]
+
+[[package]]
+name = "owo-colors"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9ad6d222cdc2351ccabb7af4f68bfaecd601b33c5f10d410ec89d2a273f6fff"
 
 [[package]]
 name = "pairing"

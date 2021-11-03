@@ -1,5 +1,5 @@
-use colored::Colorize;
 use ockam::*;
+use owo_colors::OwoColorize;
 use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_x3dh::*;
 use ockam_vault::{ockam_vault_core::*, SoftwareVault};
