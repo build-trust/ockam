@@ -1,7 +1,10 @@
 use quote::quote;
-use syn::{punctuated::Punctuated, FnArg, Pat, PatIdent, Path, ReturnType, Token, Type, TypePath};
+use syn::{
+    punctuated::Punctuated, Error, FnArg, ItemFn, Pat, PatIdent, Path, ReturnType, Token, Type,
+    TypePath,
+};
 
-pub(crate) fn node(input: syn::ItemFn) -> Result<(syn::ItemFn, NodeReturn, NodeCtx), syn::Error> {
+pub(crate) fn node(input: ItemFn) -> Result<(ItemFn, NodeReturn, NodeCtx), Error> {
     let ret = NodeReturn::new(&input)?;
     ret.node_checks(&input)?;
 
@@ -11,9 +14,7 @@ pub(crate) fn node(input: syn::ItemFn) -> Result<(syn::ItemFn, NodeReturn, NodeC
     Ok((cleanup(input)?, ret, ctx))
 }
 
-pub(crate) fn node_test(
-    input: syn::ItemFn,
-) -> Result<(syn::ItemFn, NodeReturn, NodeCtx), syn::Error> {
+pub(crate) fn node_test(input: ItemFn) -> Result<(ItemFn, NodeReturn, NodeCtx), Error> {
     let ret = NodeReturn::new(&input)?;
     ret.node_test_checks(&input)?;
 
@@ -28,13 +29,13 @@ pub(crate) struct NodeReturn {
 }
 
 impl NodeReturn {
-    fn new(input: &syn::ItemFn) -> Result<Self, syn::Error> {
+    fn new(input: &ItemFn) -> Result<Self, Error> {
         Ok(Self {
             ty: input.sig.output.clone(),
         })
     }
 
-    fn node_checks(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn node_checks(&self, input: &ItemFn) -> Result<(), Error> {
         #[cfg(not(feature = "no_main"))]
         self.fn_name_is_main(input)?;
         self.fn_is_async(input)?;
@@ -43,37 +44,37 @@ impl NodeReturn {
         Ok(())
     }
 
-    fn node_test_checks(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn node_test_checks(&self, input: &ItemFn) -> Result<(), Error> {
         self.fn_is_async(input)?;
         self.has_one_arg(input)?;
         self.returns_result(input)?;
         Ok(())
     }
 
-    fn fn_is_async(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn fn_is_async(&self, input: &ItemFn) -> Result<(), Error> {
         if input.sig.asyncness.is_none() {
             let msg = "the `async` keyword is missing from the function declaration";
-            return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+            return Err(Error::new_spanned(input.sig.fn_token, msg));
         }
         Ok(())
     }
 
-    fn has_one_arg(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn has_one_arg(&self, input: &ItemFn) -> Result<(), Error> {
         if input.sig.inputs.len() != 1 {
             let msg = "the function must have exactly one argument";
-            return Err(syn::Error::new_spanned(&input.sig.fn_token, msg));
+            return Err(Error::new_spanned(&input.sig.fn_token, msg));
         }
         Ok(())
     }
 
-    fn returns_result(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn returns_result(&self, input: &ItemFn) -> Result<(), Error> {
         let msg = "The function must have a return type";
         if self.ty == ReturnType::Default {
-            return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+            return Err(Error::new_spanned(input.sig.fn_token, msg));
         }
         match &self.ty {
             ReturnType::Default => {
-                return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+                return Err(Error::new_spanned(input.sig.fn_token, msg));
             }
             ReturnType::Type(_, return_type) => match return_type.as_ref() {
                 Type::Path(p) => {
@@ -83,11 +84,11 @@ impl NodeReturn {
                         type_ident == "Result"
                     });
                     if !returns_result {
-                        return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+                        return Err(Error::new_spanned(input.sig.fn_token, msg));
                     }
                 }
                 _ => {
-                    return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+                    return Err(Error::new_spanned(input.sig.fn_token, msg));
                 }
             },
         }
@@ -95,19 +96,19 @@ impl NodeReturn {
     }
 
     #[cfg(not(feature = "no_main"))]
-    fn fn_name_is_main(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn fn_name_is_main(&self, input: &ItemFn) -> Result<(), Error> {
         if input.sig.ident != "main" {
             let msg = "The function name must be `main`";
-            return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+            return Err(Error::new_spanned(input.sig.fn_token, msg));
         }
         Ok(())
     }
 
-    fn body_is_not_empty(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn body_is_not_empty(&self, input: &ItemFn) -> Result<(), Error> {
         // Function body cannot be empty (Special case of unused `context`).
         if input.block.stmts.is_empty() {
             let msg = "Function body Cannot be Empty.";
-            return Err(syn::Error::new_spanned(&input.sig.ident, msg));
+            return Err(Error::new_spanned(&input.sig.ident, msg));
         }
         Ok(())
     }
@@ -122,7 +123,7 @@ pub(crate) struct NodeCtx {
 }
 
 impl NodeCtx {
-    fn new(input: &syn::ItemFn) -> Result<Self, syn::Error> {
+    fn new(input: &ItemFn) -> Result<Self, Error> {
         // Capture the identifier of the argument.
         let function_arg = input.sig.inputs.first().expect("Input has no inputs");
         let (pat, ty) = match function_arg {
@@ -130,7 +131,7 @@ impl NodeCtx {
             FnArg::Receiver(_) => {
                 // Passed parameter is a `self`.
                 let msg = "Input argument should be of type `ockam::Context`";
-                return Err(syn::Error::new_spanned(function_arg, msg));
+                return Err(Error::new_spanned(function_arg, msg));
             }
         };
         let ident = match pat {
@@ -140,7 +141,7 @@ impl NodeCtx {
                     "Expected an identifier, found `{}`",
                     quote! {#pat}.to_string()
                 );
-                return Err(syn::Error::new_spanned(pat, msg));
+                return Err(Error::new_spanned(pat, msg));
             }
         };
         let (mutability, and_token) = match ty {
@@ -156,7 +157,7 @@ impl NodeCtx {
         })
     }
 
-    fn path(ty: &Type) -> Result<TypePath, syn::Error> {
+    fn path(ty: &Type) -> Result<TypePath, Error> {
         match ty {
             Type::Path(type_path) => Ok(type_path.clone()),
             Type::Reference(type_ref) => {
@@ -164,42 +165,42 @@ impl NodeCtx {
                     Ok(type_path.clone())
                 } else {
                     let msg = format!("Unexpected argument type {:?}", ty);
-                    Err(syn::Error::new_spanned(ty, msg))
+                    Err(Error::new_spanned(ty, msg))
                 }
             }
             _ => {
                 let msg = format!("Unexpected argument type {:?}", ty);
-                Err(syn::Error::new_spanned(ty, msg))
+                Err(Error::new_spanned(ty, msg))
             }
         }
     }
 
-    fn node_checks(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn node_checks(&self, input: &ItemFn) -> Result<(), Error> {
         self.arg_is_ctx()?;
         self.ctx_is_used(input)?;
         Ok(())
     }
 
-    fn node_test_checks(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn node_test_checks(&self, input: &ItemFn) -> Result<(), Error> {
         self.arg_is_ctx()?;
         self.ctx_is_mut_ref(input)?;
         Ok(())
     }
 
-    fn arg_is_ctx(&self) -> Result<(), syn::Error> {
+    fn arg_is_ctx(&self) -> Result<(), Error> {
         // Verify that the type is `ockam::Context` (We only verify that the type is `Context`).
         // If it is some other context, there might be other compiler error, so that's fine.
         let parse_path = |path: &Path| match path.segments.last() {
             None => {
                 let msg = "Input argument should be of type `ockam::Context`";
-                Err(syn::Error::new_spanned(&path, msg))
+                Err(Error::new_spanned(&path, msg))
             }
             Some(seg) => {
                 let ident = seg.ident.to_string();
                 if ident != "Context" {
                     let path_ident = quote! {#path}.to_string().replace(' ', "");
                     let msg = format!("Expected `ockam::Context` found `{}`", &path_ident);
-                    return Err(syn::Error::new_spanned(&path, msg));
+                    return Err(Error::new_spanned(&path, msg));
                 }
                 Ok(())
             }
@@ -211,17 +212,17 @@ impl NodeCtx {
                     Ok(parse_path(path)?)
                 } else {
                     let msg = format!("Unexpected argument type {:?}", &self.ty);
-                    Err(syn::Error::new_spanned(ty, msg))
+                    Err(Error::new_spanned(ty, msg))
                 }
             }
             _ => {
                 let msg = format!("Unexpected argument type {:?}", &self.ty);
-                Err(syn::Error::new_spanned(&self.ty, msg))
+                Err(Error::new_spanned(&self.ty, msg))
             }
         }
     }
 
-    fn ctx_is_used(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn ctx_is_used(&self, input: &ItemFn) -> Result<(), Error> {
         let mut ctx_used = false;
         for st in &input.block.stmts {
             let stmt_str = quote! {#st}.to_string().replace(' ', "");
@@ -234,25 +235,25 @@ impl NodeCtx {
                 "Unused `{}`. Passed `ockam::Context` should be used.",
                 &self.pat.ident.to_string()
             );
-            return Err(syn::Error::new_spanned(&self.pat.ident, msg));
+            return Err(Error::new_spanned(&self.pat.ident, msg));
         }
         Ok(())
     }
 
-    fn ctx_is_mut_ref(&self, input: &syn::ItemFn) -> Result<(), syn::Error> {
+    fn ctx_is_mut_ref(&self, input: &ItemFn) -> Result<(), Error> {
         if self.and_token.is_none() {
             let msg = "The context argument must be passed as reference";
-            return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+            return Err(Error::new_spanned(input.sig.fn_token, msg));
         }
         if self.mutability.is_none() {
             let msg = "The context argument must be mutable";
-            return Err(syn::Error::new_spanned(input.sig.fn_token, msg));
+            return Err(Error::new_spanned(input.sig.fn_token, msg));
         }
         Ok(())
     }
 }
 
-pub(super) fn cleanup(mut input: syn::ItemFn) -> Result<syn::ItemFn, syn::Error> {
+fn cleanup(mut input: ItemFn) -> Result<ItemFn, Error> {
     // Remove the arguments
     input.sig.inputs = Punctuated::new();
     // Remove the output

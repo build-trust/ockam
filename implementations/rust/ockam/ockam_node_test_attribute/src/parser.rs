@@ -2,27 +2,24 @@ use proc_macro::TokenStream;
 
 use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned, ToTokens};
-use syn::ReturnType;
+use syn::{parse2, AttributeArgs, Error, ItemFn, ReturnType};
 
 use crate::args;
 use crate::args::{Args, TestArgs};
 use crate::hygiene::{self, NodeCtx, NodeReturn};
 
-pub(crate) fn node(
-    input: syn::ItemFn,
-    args: syn::AttributeArgs,
-) -> Result<TokenStream, syn::Error> {
+pub(crate) fn node(input: ItemFn, args: AttributeArgs) -> Result<TokenStream, Error> {
     let (input, ret, ctx) = hygiene::node(input)?;
     let args = args::node(args)?;
     output_node(input, args, ret, ctx)
 }
 
 fn output_node(
-    input: syn::ItemFn,
+    input: ItemFn,
     _args: Args,
     ret: NodeReturn,
     ctx: NodeCtx,
-) -> Result<TokenStream, syn::Error> {
+) -> Result<TokenStream, Error> {
     let body = &input.block;
     let ret_type = ret.ty;
     let ctx_ident = &ctx.pat.ident;
@@ -57,10 +54,7 @@ fn output_node(
     Ok(output.into())
 }
 
-pub(crate) fn node_test(
-    input: syn::ItemFn,
-    args: syn::AttributeArgs,
-) -> Result<TokenStream, syn::Error> {
+pub(crate) fn node_test(input: ItemFn, args: AttributeArgs) -> Result<TokenStream, Error> {
     let test_input = {
         let mut test_input = input.clone();
         let inner_ident = test_input.sig.ident;
@@ -80,7 +74,7 @@ pub(crate) fn node_test(
         // `Span` on stable Rust has a limitation that only points to the first
         // token, not the whole tokens. We can work around this limitation by
         // using the first/last span of the tokens like
-        // `syn::Error::new_spanned` does.
+        // `Error::new_spanned` does.
         let start = last_stmt.next().map_or_else(Span::call_site, |t| t.span());
         last_stmt.last().map_or(start, |t| t.span())
     };
@@ -88,18 +82,18 @@ pub(crate) fn node_test(
 }
 
 fn output_node_test(
-    mut input: syn::ItemFn,
-    test_input: syn::ItemFn,
+    mut input: ItemFn,
+    test_input: ItemFn,
     args: TestArgs,
     last_stmt_end_span: Span,
     _ret: NodeReturn,
     ctx: NodeCtx,
-) -> Result<TokenStream, syn::Error> {
+) -> Result<TokenStream, Error> {
     let ctx_ident = &ctx.pat;
     let ctx_stop_stmt = quote! { let _ = #ctx_ident.stop().await; };
     let test_input_ident = &test_input.sig.ident;
     let timeout_ms = args.timeout_ms;
-    input.block = syn::parse2(quote_spanned! {last_stmt_end_span=>
+    input.block = parse2(quote_spanned! {last_stmt_end_span=>
         {
             use core::time::Duration;
             use tokio::time::timeout;
