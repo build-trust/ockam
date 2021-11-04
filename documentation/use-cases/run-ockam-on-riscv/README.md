@@ -2,6 +2,8 @@
 
 In this hands-on guide, we'll show how to cross compile Ockam for [RISC-V](https://riscv.org/) Linux systems. We will also show how to test RISC-V Linux programs using [qemu](https://www.qemu.org/).
 
+https://user-images.githubusercontent.com/1097548/140435127-567722a4-89f2-4c77-8a48-7db27146962c.mp4
+
 ## What is RISC-V?
 
 RISC-V is a free, open CPU instruction set architecture (ISA) that is revolutionizing hardware. The open source nature of the ISA has allowed global innovation and creativity in much the same way Open Source revolutionized software. Since
