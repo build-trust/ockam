@@ -64,6 +64,12 @@ impl From<Address> for AddressSet {
     }
 }
 
+impl From<crate::Route> for AddressSet {
+    fn from(r: crate::Route) -> Self {
+        r.inner.into_iter().collect()
+    }
+}
+
 impl<'a> From<&'a Address> for AddressSet {
     fn from(a: &'a Address) -> Self {
         Self(vec![a.clone()])

@@ -1,12 +1,12 @@
 use ockam_core::compat::string::ToString;
 use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{async_trait, compat::boxed::Box, NodeContext};
 use ockam_vault_core::{KeyId, KeyIdVault, PublicKey, Secret};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
 #[async_trait]
-impl KeyIdVault for VaultSync {
+impl<C: NodeContext> KeyIdVault for VaultSync<C> {
     async fn get_secret_by_key_id(&mut self, key_id: &str) -> Result<Secret> {
         let resp = self
             .call(VaultRequestMessage::GetSecretByKeyId {

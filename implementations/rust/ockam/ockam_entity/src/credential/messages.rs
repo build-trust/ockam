@@ -18,3 +18,6 @@ pub enum CredentialProtocolMessage {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct PresentationFinishedMessage;
+
+impl ockam_core::Message for CredentialProtocolMessage {}
+impl ockam_core::Message for PresentationFinishedMessage {}

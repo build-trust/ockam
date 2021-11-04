@@ -1,17 +1,16 @@
 use crate::{PortalMessage, TcpRouterHandle};
-use ockam_core::{async_trait, AsyncTryClone};
+use ockam_core::{async_trait, AsyncTryClone, NodeContext};
 use ockam_core::{route, Address, LocalMessage, Result, Routed, TransportMessage, Worker};
-use ockam_node::Context;
 use tracing::debug;
 
-pub(crate) struct TcpOutletListenWorker {
-    router_handle: TcpRouterHandle,
+pub(crate) struct TcpOutletListenWorker<C> {
+    router_handle: TcpRouterHandle<C>,
     peer: String,
 }
 
-impl TcpOutletListenWorker {
+impl<C: NodeContext> TcpOutletListenWorker<C> {
     pub(crate) async fn start(
-        router_handle: &TcpRouterHandle,
+        router_handle: &TcpRouterHandle<C>,
         address: Address,
         peer: String,
     ) -> Result<()> {
@@ -20,22 +19,20 @@ impl TcpOutletListenWorker {
             peer,
         };
 
-        router_handle.ctx().start_worker(address, worker).await?;
+        router_handle
+            .ctx()
+            .start_worker(address.into(), worker)
+            .await?;
 
         Ok(())
     }
 }
 
 #[async_trait]
-impl Worker for TcpOutletListenWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for TcpOutletListenWorker<C> {
     type Message = PortalMessage;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let address = self.router_handle.connect_outlet(self.peer.clone()).await?;
 
         debug!("Created Tcp Outlet at {}", &address);

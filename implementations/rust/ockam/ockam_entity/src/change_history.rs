@@ -1,5 +1,5 @@
 //! Profile history
-use crate::profile::Profile;
+use crate::profile::PROFILE_UPDATE;
 use crate::ProfileChangeType::{CreateKey, RotateKey};
 use crate::{
     EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
@@ -112,7 +112,7 @@ impl ProfileChangeHistory {
         existing_events: &[ProfileChangeEvent],
     ) -> ockam_core::Result<PublicKey> {
         let key_attributes = KeyAttributes::with_attributes(
-            Profile::PROFILE_UPDATE.to_string(),
+            PROFILE_UPDATE.to_string(),
             MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
                 SecretType::Curve25519,
                 SecretPersistence::Persistent,

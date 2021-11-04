@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::{collections::BTreeMap, net::SocketAddr};
 
-use ockam_core::{async_trait, Address, Result, Routed, RouterMessage, Worker};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, NodeContext, Result, Routed, RouterMessage, Worker};
 use ockam_transport_core::TransportError;
 
 use crate::atomic::{self, ArcBool};
@@ -25,13 +24,13 @@ pub struct WebSocketRouter {
 /// A handle to connect to a WebSocketRouter
 ///
 /// Dropping this handle is harmless.
-pub struct WebSocketRouterHandle {
-    ctx: Context,
+pub struct WebSocketRouterHandle<C: NodeContext> {
+    ctx: C,
     addr: Address,
     run: ArcBool,
 }
 
-impl WebSocketRouterHandle {
+impl<C: NodeContext> WebSocketRouterHandle<C> {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
         let accepts = vec![format!("{}#{}", crate::WS, pair.peer.clone()).into()];
@@ -59,27 +58,22 @@ impl WebSocketRouterHandle {
 }
 
 #[async_trait::async_trait]
-impl Worker for WebSocketRouter {
+impl<C: NodeContext> Worker<C> for WebSocketRouter {
     type Message = RouterMessage;
-    type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         trace!("Registering WebSocket router for type = {}", crate::WS);
         ctx.register(crate::WS, ctx.address()).await?;
         Ok(())
     }
 
-    async fn shutdown(&mut self, _: &mut Context) -> Result<()> {
+    async fn shutdown(&mut self, _: &mut C) -> Result<()> {
         // Shut down the ListeningWorker if it exists
         atomic::stop(&self.run);
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<RouterMessage>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<RouterMessage>) -> Result<()> {
         let msg = msg.body();
         use RouterMessage::*;
         match msg {
@@ -128,13 +122,13 @@ impl Worker for WebSocketRouter {
 }
 
 impl WebSocketRouter {
-    async fn start(ctx: &Context, waddr: &Address, run: ArcBool) -> Result<()> {
+    async fn start(ctx: &impl NodeContext, waddr: &Address, run: ArcBool) -> Result<()> {
         debug!("Initialising new WebSocketRouter with address {}", waddr);
         let router = Self {
             map: BTreeMap::new(),
             run,
         };
-        ctx.start_worker(waddr.clone(), router).await?;
+        ctx.start_worker(waddr.into(), router).await?;
         Ok(())
     }
 
@@ -142,7 +136,10 @@ impl WebSocketRouter {
     ///
     /// To also handle incoming connections, use
     /// [`WebSocketRouter::bind`](WebSocketRouter::bind)
-    pub async fn register(ctx: Context, addr: Address) -> Result<WebSocketRouterHandle> {
+    pub async fn register<C: NodeContext>(
+        ctx: C,
+        addr: Address,
+    ) -> Result<WebSocketRouterHandle<C>> {
         let run = atomic::new(true);
         Self::start(&ctx, &addr, Arc::clone(&run)).await?;
         Ok(WebSocketRouterHandle { ctx, addr, run })

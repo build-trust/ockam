@@ -1,15 +1,14 @@
 use crate::{Entity, EntityWorker};
-use ockam_core::{Address, Result};
-use ockam_node::{Context, Handle};
+use ockam_core::{Address, Handle, NodeContext, Result};
 
 /// Builder for `Entity`
-pub struct EntityBuilder {
-    ctx: Context,
+pub struct EntityBuilder<C> {
+    ctx: C,
     vault: Address,
 }
 
-impl EntityBuilder {
-    pub async fn new(ctx: &Context, vault: &Address) -> Result<Self> {
+impl<C: NodeContext> EntityBuilder<C> {
+    pub async fn new(ctx: &C, vault: &Address) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random(0)).await?;
 
         Ok(Self {
@@ -20,10 +19,10 @@ impl EntityBuilder {
 
     // TODO: enable_credentials_signing_key
 
-    pub async fn build(self) -> Result<Entity> {
+    pub async fn build(self) -> Result<Entity<C>> {
         let address = Address::random(0);
         self.ctx
-            .start_worker(&address, EntityWorker::default())
+            .start_worker(address.clone().into(), EntityWorker::<C>::default())
             .await?;
 
         let mut entity = Entity::new(Handle::new(self.ctx, address), None);

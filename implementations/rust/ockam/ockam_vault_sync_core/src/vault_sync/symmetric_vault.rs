@@ -1,10 +1,10 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
-use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{NodeContext, Result};
 use ockam_vault_core::{Buffer, Secret, SymmetricVault};
 
 #[async_trait]
-impl SymmetricVault for VaultSync {
+impl<C: NodeContext> SymmetricVault for VaultSync<C> {
     async fn aead_aes_gcm_encrypt(
         &mut self,
         context: &Secret,

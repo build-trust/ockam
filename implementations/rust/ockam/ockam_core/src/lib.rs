@@ -22,6 +22,11 @@ compile_error!(r#"The "no_std" feature currently requires the "alloc" feature"#)
 #[cfg(feature = "std")]
 extern crate core;
 
+extern crate ockam_macro;
+pub use ockam_macro::AsyncTryClone;
+
+extern crate futures_util;
+
 #[cfg(feature = "alloc")]
 #[macro_use]
 extern crate alloc;
@@ -39,21 +44,22 @@ pub extern crate hex;
 pub extern crate async_trait;
 pub use async_trait::async_trait as worker;
 
-extern crate ockam_macro;
-pub use ockam_macro::AsyncTryClone;
-
-extern crate futures_util;
-
+mod cancel;
 pub mod compat;
 mod error;
+mod handle;
 mod message;
+mod node_context;
 mod processor;
 mod routing;
 mod uint;
 mod worker;
 
+pub use cancel::Cancel;
 pub use error::*;
+pub use handle::Handle;
 pub use message::*;
+pub use node_context::NodeContext;
 pub use processor::*;
 pub use routing::*;
 pub use traits::*;
@@ -95,6 +101,7 @@ pub mod traits {
         /// Try cloning a object and return an `Err` in case of failure.
         async fn async_try_clone(&self) -> Result<Self>;
     }
+
     #[async_trait]
     impl<D> AsyncTryClone for D
     where

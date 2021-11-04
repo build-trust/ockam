@@ -1,12 +1,12 @@
 use crate::change_history::ProfileChangeHistory;
-use crate::profile::Profile;
+use crate::profile::CURRENT_CHANGE_VERSION;
 use crate::{
     ChangeSet, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
     ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
     ProfileState, Signature, SignatureType,
 };
 use ockam_core::compat::vec::Vec;
-use ockam_core::Encodable;
+use ockam_core::{Encodable, NodeContext};
 use ockam_vault::ockam_vault_core::Signature as OckamVaultSignature;
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
 use serde::{Deserialize, Serialize};
@@ -77,7 +77,7 @@ impl RotateKeyChange {
     }
 }
 
-impl ProfileState {
+impl<C: NodeContext> ProfileState<C> {
     /// Rotate key event
     pub(crate) async fn rotate_key(
         &mut self,
@@ -117,7 +117,7 @@ impl ProfileState {
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CURRENT_CHANGE_VERSION,
+            CURRENT_CHANGE_VERSION,
             attributes,
             ProfileChangeType::RotateKey(change),
         );

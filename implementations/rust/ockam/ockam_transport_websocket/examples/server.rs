@@ -5,6 +5,7 @@
 extern crate tracing;
 
 use ockam::{worker, Context, Result, Routed, Worker};
+use ockam_core::NodeContext;
 
 use ockam_transport_websocket::WebSocketTransport;
 
@@ -25,11 +26,10 @@ async fn main(ctx: Context) -> Result<()> {
 struct Responder;
 
 #[worker]
-impl Worker for Responder {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for Responder {
     type Message = String;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<String>) -> Result<()> {
         info!("Message: {}", msg);
         debug!("Replying back to {}", &msg.return_route());
         ctx.send(msg.return_route(), msg.body()).await?;

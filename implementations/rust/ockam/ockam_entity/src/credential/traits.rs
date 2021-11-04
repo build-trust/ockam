@@ -159,6 +159,8 @@ pub struct Credential {
     type_id: String,
 }
 
+impl ockam_core::Message for Credential {}
+
 impl Credential {
     pub fn new(id: CredentialIdentifier, issuer_id: EntityIdentifier, type_id: String) -> Self {
         Credential {

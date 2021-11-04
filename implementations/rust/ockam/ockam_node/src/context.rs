@@ -9,12 +9,13 @@ use crate::{
     parser,
     relay::{CtrlSignal, ProcessorRelay, RelayMessage, WorkerRelay},
     router::SenderPair,
-    Cancel, NodeMessage, ShutdownType,
+    NodeMessage, ShutdownType,
 };
 use core::time::Duration;
-use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
+use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
-    Address, AddressSet, LocalMessage, Message, Processor, Result, Route, TransportMessage, Worker,
+    Address, AddressSet, Cancel, LocalMessage, Message, NodeContext, Processor, Result, Route,
+    TransportMessage, Worker,
 };
 
 /// A default timeout in seconds
@@ -128,7 +129,7 @@ impl Context {
     where
         S: Into<AddressSet>,
         NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
+        NW: Worker<Context, Message = NM>,
     {
         self.start_worker_impl(address.into(), worker).await
     }
@@ -136,7 +137,7 @@ impl Context {
     async fn start_worker_impl<NM, NW>(&self, address: AddressSet, worker: NW) -> Result<()>
     where
         NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
+        NW: Worker<Context, Message = NM>,
     {
         // Pass it to the context
         let (ctx, sender, ctrl_rx) =
@@ -163,14 +164,14 @@ impl Context {
     /// Start a new processor at [`Address`](ockam_core::Address)
     pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
-        P: Processor<Context = Context>,
+        P: Processor<Context>,
     {
         self.start_processor_impl(address.into(), processor).await
     }
 
     async fn start_processor_impl<P>(&self, address: Address, processor: P) -> Result<()>
     where
-        P: Processor<Context = Context>,
+        P: Processor<Context>,
     {
         let addr = address.clone();
 
@@ -246,15 +247,15 @@ impl Context {
     /// change this behaviour by calling
     /// [`Context::stop_timeout`](Context::stop_timeout) directly.
     pub async fn stop(&mut self) -> Result<()> {
-        self.stop_timeout(1).await
+        self.stop_timeout(Duration::from_secs(1)).await
     }
 
     /// Signal to the local runtime to shut down
     ///
     /// This call will hang until a safe shutdown has been completed
     /// or the desired timeout has been reached.
-    pub async fn stop_timeout(&mut self, seconds: u8) -> Result<()> {
-        let (req, mut rx) = NodeMessage::stop_node(ShutdownType::Graceful(seconds));
+    pub async fn stop_timeout(&mut self, timeout: Duration) -> Result<()> {
+        let (req, mut rx) = NodeMessage::stop_node(ShutdownType::Graceful(timeout));
         self.sender.send(req).await.map_err(Error::from)?;
 
         // Wait until we get the all-clear
@@ -390,7 +391,7 @@ impl Context {
     }
 
     /// Receive a message without a timeout
-    pub async fn receive_block<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
+    pub async fn receive_block<M: Message>(&mut self) -> Result<Cancel<'_, Self, M>> {
         let (msg, data, addr) = self.next_from_mailbox().await?;
         Ok(Cancel::new(msg, data, addr, self))
     }
@@ -405,7 +406,7 @@ impl Context {
     ///
     /// Will return `None` if the corresponding worker has been
     /// stopped, or the underlying Node has shut down.
-    pub async fn receive<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
+    pub async fn receive<M: Message>(&mut self) -> Result<Cancel<'_, Self, M>> {
         self.receive_timeout(DEFAULT_TIMEOUT).await
     }
 
@@ -413,7 +414,7 @@ impl Context {
     pub async fn receive_timeout<M: Message>(
         &mut self,
         timeout_secs: u64,
-    ) -> Result<Cancel<'_, M>> {
+    ) -> Result<Cancel<'_, Self, M>> {
         let (msg, data, addr) = timeout(Duration::from_secs(timeout_secs), async {
             self.next_from_mailbox().await
         })
@@ -430,7 +431,7 @@ impl Context {
     ///
     /// Internally this function calls `receive` and `.cancel()` in a
     /// loop until a matching message is found.
-    pub async fn receive_match<M, F>(&mut self, check: F) -> Result<Cancel<'_, M>>
+    pub async fn receive_match<M, F>(&mut self, check: F) -> Result<Cancel<'_, Self, M>>
     where
         M: Message,
         F: Fn(&M) -> bool,
@@ -538,5 +539,105 @@ impl Context {
                 }
             }
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl NodeContext for Context {
+    fn address(&self) -> Address {
+        self.address.first()
+    }
+
+    fn aliases(&self) -> AddressSet {
+        self.address.clone().into_iter().skip(1).collect()
+    }
+
+    async fn new_context(&self, addr: Address) -> Result<Self> {
+        Context::new_context(self, addr).await
+    }
+
+    async fn stop(&mut self) -> Result<()> {
+        Context::stop(self).await
+    }
+
+    async fn stop_timeout(&mut self, d: Duration) -> Result<()> {
+        Context::stop_timeout(self, d).await
+    }
+
+    async fn send_from_address<M: Message>(
+        &self,
+        route: Route,
+        msg: M,
+        sending_address: Address,
+    ) -> Result<()> {
+        Context::send_from_address(self, route, msg, sending_address).await
+    }
+
+    async fn receive_match<'a, M, F>(&'a mut self, check: F) -> Result<Cancel<'a, Self, M>>
+    where
+        M: Message,
+        F: Send + Sync + Fn(&M) -> bool,
+    {
+        self.receive_match(check).await
+    }
+
+    async fn set_cluster(&self, label: String) -> Result<()> {
+        Context::set_cluster(self, label).await
+    }
+
+    async fn receive_block<'a, M: Message>(&mut self) -> Result<Cancel<'_, Self, M>> {
+        let (msg, data, addr) = self.next_from_mailbox().await?;
+        Ok(Cancel::new(msg, data, addr, self))
+    }
+
+    async fn receive_timeout<'a, M: Message>(
+        &'a mut self,
+        timeout: Duration,
+    ) -> Result<Cancel<'a, Self, M>> {
+        self.receive_timeout::<M>(timeout.as_secs()).await
+    }
+
+    async fn start_worker<W, M>(&self, address: AddressSet, worker: W) -> Result<()>
+    where
+        M: Message,
+        W: Worker<Self, Message = M>,
+    {
+        self.start_worker_impl(address, worker).await
+    }
+
+    async fn start_processor<P>(&self, address: Address, processor: P) -> Result<()>
+    where
+        P: Processor<Self>,
+    {
+        self.start_processor_impl(address, processor).await
+    }
+
+    async fn stop_worker(&self, addr: Address) -> Result<()> {
+        self.stop_address(addr, AddressType::Worker).await
+    }
+
+    async fn stop_processor(&self, addr: Address) -> Result<()> {
+        self.stop_address(addr, AddressType::Processor).await
+    }
+
+    async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
+        self.forward(local_msg).await
+    }
+
+    async fn register(&self, ty: u8, addr: Address) -> Result<()> {
+        self.register(ty, addr).await
+    }
+
+    // TODO: this belongs on some async runtime abstraction.
+    fn spawn_detached<F>(&self, f: F)
+    where
+        F: core::future::Future<Output = ()> + Send + 'static,
+    {
+        self.runtime().spawn(f);
+    }
+
+    #[doc(hidden)]
+    async fn sleep(&self, dur: Duration) {
+        Context::sleep(self, dur).await
     }
 }

@@ -23,18 +23,26 @@ use crate::{
 };
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone};
-use ockam_core::{Result, Route};
-use ockam_node::Handle;
+use ockam_core::{Handle, NodeContext, Result, Route};
 use ockam_vault::{PublicKey, Secret};
 
-#[derive(AsyncTryClone)]
-pub struct Profile {
+pub struct Profile<C> {
     id: ProfileIdentifier,
-    handle: Handle,
+    handle: Handle<C>,
 }
 
-impl Entity {
-    async fn from_profile(p: &Profile) -> Result<Entity> {
+#[async_trait]
+impl<C: NodeContext> AsyncTryClone for Profile<C> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            id: self.id.clone(),
+            handle: self.handle.async_try_clone().await?,
+        })
+    }
+}
+
+impl<C: NodeContext> Entity<C> {
+    async fn from_profile(p: &Profile<C>) -> Result<Self> {
         Ok(Entity::new(
             p.handle.async_try_clone().await?,
             Some(p.id.clone()),
@@ -42,13 +50,13 @@ impl Entity {
     }
 }
 
-impl Profile {
-    pub fn new<I: Into<ProfileIdentifier>>(id: I, handle: Handle) -> Self {
+impl<C: NodeContext> Profile<C> {
+    pub fn new<I: Into<ProfileIdentifier>>(id: I, handle: Handle<C>) -> Self {
         let id = id.into();
         Profile { id, handle }
     }
 
-    pub async fn entity(&self) -> Result<Entity> {
+    pub async fn entity(&self) -> Result<Entity<C>> {
         Entity::from_profile(self).await
     }
 
@@ -60,21 +68,18 @@ impl Profile {
         self.handle.cast(req).await
     }
 }
-
-impl Profile {
-    /// Sha256 of that value is used as previous event id for first event in a [`Profile`]
-    pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
-    /// Label for [`Profile`] update key
-    pub const PROFILE_UPDATE: &'static str = "OCKAM_PUK";
-    /// Label for key used to issue credentials
-    #[cfg(feature = "credentials")]
-    pub const CREDENTIALS_ISSUE: &'static str = "OCKAM_CIK";
-    /// Current version of change structure
-    pub const CURRENT_CHANGE_VERSION: u8 = 1;
-}
+/// Sha256 of that value is used as previous event id for first event in a [`Profile`]
+pub const NO_EVENT: &[u8] = "OCKAM_NO_EVENT".as_bytes();
+/// Label for [`Profile`] update key
+pub const PROFILE_UPDATE: &str = "OCKAM_PUK";
+/// Label for key used to issue credentials
+#[cfg(feature = "credentials")]
+pub const CREDENTIALS_ISSUE: &str = "OCKAM_CIK";
+/// Current version of change structure
+pub const CURRENT_CHANGE_VERSION: u8 = 1;
 
 #[async_trait]
-impl Identity for Profile {
+impl<C: NodeContext> Identity for Profile<C> {
     async fn identifier(&self) -> Result<ProfileIdentifier> {
         // FIXME: Clone on every call
         self.entity().await?.identifier().await

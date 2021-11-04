@@ -2,8 +2,7 @@ use std::net::SocketAddr;
 
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
-use ockam_core::{async_trait, Encodable, Result, Routed, TransportMessage, Worker};
-use ockam_node::Context;
+use ockam_core::{async_trait, Encodable, NodeContext, Result, Routed, TransportMessage, Worker};
 use ockam_transport_core::TransportError;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
@@ -23,18 +22,17 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AsyncStream> Worker for WebSocketSendWorker<AsyncStream>
+impl<AsyncStream, C: NodeContext> Worker<C> for WebSocketSendWorker<AsyncStream>
 where
     AsyncStream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     type Message = TransportMessage;
-    type Context = Context;
 
     // WebSocketSendWorker will receive messages from the WebSocketRouter to send
     // across the TcpStream to the next remote peer.
     async fn handle_message(
         &mut self,
-        ctx: &mut Context,
+        ctx: &mut C,
         mut msg: Routed<TransportMessage>,
     ) -> Result<()> {
         trace!("Handling message in WebSocketSendWorker");

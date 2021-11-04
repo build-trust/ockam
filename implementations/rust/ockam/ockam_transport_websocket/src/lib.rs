@@ -26,8 +26,7 @@ use std::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use ockam_core::{Address, Result};
-use ockam_node::Context;
+use ockam_core::{Address, NodeContext, Result};
 use ockam_transport_core::TransportError;
 
 pub use error::WebSocketError;
@@ -83,9 +82,9 @@ mod sender;
 /// ws.listen("127.0.0.1:9000").await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
-pub struct WebSocketTransport {
-    ctx: Context,
-    router: WebSocketRouterHandle,
+pub struct WebSocketTransport<C: NodeContext> {
+    ctx: C,
+    router: WebSocketRouterHandle<C>,
 }
 
 /// WebSocket address type constant
@@ -97,9 +96,9 @@ fn parse_socket_addr<S: AsRef<str>>(s: S) -> Result<SocketAddr> {
         .map_err(|_| TransportError::InvalidAddress)?)
 }
 
-impl WebSocketTransport {
+impl<C: NodeContext> WebSocketTransport<C> {
     /// Create a new WebSocket transport and router for the current node
-    pub async fn create(ctx: &Context) -> Result<WebSocketTransport> {
+    pub async fn create(ctx: &C) -> Result<WebSocketTransport<C>> {
         let addr = Address::random(0);
         let ctx = ctx.new_context(addr).await?;
 

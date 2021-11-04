@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// A full route to a peer
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Route {
-    inner: VecDeque<Address>,
+    pub(crate) inner: VecDeque<Address>,
 }
 
 impl Route {
@@ -184,6 +184,11 @@ impl RouteBuilder<'_> {
     pub fn pop_back(mut self) -> Self {
         self.inner.pop_back();
         self
+    }
+
+    /// Convert into a [`Route`].
+    pub fn route(self) -> Route {
+        self.into()
     }
 }
 

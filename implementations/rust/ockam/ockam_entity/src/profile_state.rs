@@ -1,38 +1,32 @@
 use crate::change_history::ProfileChangeHistory;
+use crate::profile::PROFILE_UPDATE;
 use crate::{
     authentication::Authentication,
-    profile::Profile,
     AuthenticationProof, Changes, Contact, Contacts, EntityError,
     EntityError::{ContactVerificationFailed, InvalidInternalState},
     EventIdentifier, Identity, KeyAttributes, Lease, MetaKeyAttributes, ProfileChangeEvent,
     ProfileEventAttributes, ProfileIdentifier, ProfileVault, TTL,
 };
-use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, CryptoRng, RngCore};
 use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::{allow, deny, Address, AsyncTryClone, Result, Route};
+use ockam_core::{allow, deny, Address, AsyncTryClone, NodeContext, Result, Route};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault::{KeyIdVault, PublicKey, Secret, SecretAttributes};
 use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
 use ockam_vault_sync_core::VaultSync;
 
-cfg_if! {
-    if #[cfg(feature = "credentials")] {
-        use signature_core::message::Message;
-        use crate::credential::EntityCredential;
-    }
-}
+#[cfg(feature = "credentials")]
+use {crate::credential::EntityCredential, signature_core::message::Message};
 
 /// Profile implementation
-#[derive(AsyncTryClone)]
-pub struct ProfileState {
+pub struct ProfileState<C> {
     id: ProfileIdentifier,
     change_history: ProfileChangeHistory,
     contacts: Contacts,
-    pub(crate) vault: VaultSync,
+    pub(crate) vault: VaultSync<C>,
     #[cfg(feature = "credentials")]
     pub(crate) rand_msg: Message,
     #[cfg(feature = "credentials")]
@@ -40,13 +34,30 @@ pub struct ProfileState {
     lease: Option<Lease>,
 }
 
-impl ProfileState {
+#[async_trait]
+impl<C: NodeContext> AsyncTryClone for ProfileState<C> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            id: self.id.clone(),
+            change_history: self.change_history.clone(),
+            contacts: self.contacts.clone(),
+            vault: self.vault.async_try_clone().await?,
+            #[cfg(feature = "credentials")]
+            rand_msg: self.rand_msg.clone(),
+            #[cfg(feature = "credentials")]
+            credentials: self.credentials.clone(),
+            lease: self.lease.clone(),
+        })
+    }
+}
+
+impl<C: NodeContext> ProfileState<C> {
     /// Profile constructor
     pub fn new(
         identifier: ProfileIdentifier,
         change_events: Changes,
         contacts: Contacts,
-        vault: VaultSync,
+        vault: VaultSync<C>,
         rng: impl RngCore + CryptoRng + Clone,
     ) -> Self {
         // Avoid warning
@@ -73,11 +84,11 @@ impl ProfileState {
     }
 
     /// Create ProfileState
-    pub(crate) async fn create(mut vault: VaultSync) -> Result<Self> {
+    pub(crate) async fn create(mut vault: VaultSync<C>) -> Result<Self> {
         let initial_event_id = EventIdentifier::initial(&mut vault).await;
 
         let key_attribs = KeyAttributes::with_attributes(
-            Profile::PROFILE_UPDATE.to_string(),
+            PROFILE_UPDATE.to_string(),
             MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
                 SecretType::Curve25519,
                 SecretPersistence::Persistent,
@@ -147,7 +158,7 @@ impl ProfileState {
 }
 
 #[async_trait]
-impl Identity for ProfileState {
+impl<C: NodeContext> Identity for ProfileState<C> {
     async fn identifier(&self) -> Result<ProfileIdentifier> {
         Ok(self.id.clone())
     }
@@ -165,7 +176,7 @@ impl Identity for ProfileState {
     async fn rotate_profile_key(&mut self) -> Result<()> {
         let event = {
             self.rotate_key(
-                KeyAttributes::new(Profile::PROFILE_UPDATE.to_string()),
+                KeyAttributes::new(PROFILE_UPDATE.to_string()),
                 ProfileEventAttributes::new(),
             )
             .await?
@@ -175,8 +186,7 @@ impl Identity for ProfileState {
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
     async fn get_profile_secret_key(&self) -> Result<Secret> {
-        self.get_secret_key(Profile::PROFILE_UPDATE.to_string())
-            .await
+        self.get_secret_key(PROFILE_UPDATE.to_string()).await
     }
 
     async fn get_secret_key(&self, label: String) -> Result<Secret> {
@@ -195,8 +205,7 @@ impl Identity for ProfileState {
     }
 
     async fn get_profile_public_key(&self) -> Result<PublicKey> {
-        self.get_public_key(Profile::PROFILE_UPDATE.to_string())
-            .await
+        self.get_public_key(PROFILE_UPDATE.to_string()).await
     }
 
     async fn get_public_key(&self, label: String) -> Result<PublicKey> {
@@ -204,15 +213,16 @@ impl Identity for ProfileState {
             .get_public_key(&KeyAttributes::new(label))
     }
 
-    /// Generate Proof of possession of [`Profile`].
+    /// Generate Proof of possession of [`Profile`](crate::Profile).
     /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
     async fn create_auth_proof(&mut self, channel_state: &[u8]) -> Result<AuthenticationProof> {
         let root_secret = self.get_root_secret().await?;
 
         Authentication::generate_proof(channel_state, &root_secret, &mut self.vault).await
     }
-    /// Verify Proof of possession of [`Profile`] with given [`ProfileIdentifier`].
-    /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
+    /// Verify Proof of possession of [`Profile`](crate::Profile) with
+    /// given [`ProfileIdentifier`]. channel_state should be tied to channel's
+    /// cryptographical material (e.g. h value for Noise XX)
     async fn verify_auth_proof(
         &mut self,
         channel_state: &[u8],
@@ -245,7 +255,7 @@ impl Identity for ProfileState {
         Ok(self.change_history.as_ref().to_vec())
     }
 
-    /// Verify whole event chain of current [`Profile`]
+    /// Verify whole event chain of current [`Profile`](crate::profile::Profile)
     async fn verify_changes(&mut self) -> Result<bool> {
         if !ProfileChangeHistory::check_consistency(&[], self.change_history().as_ref()) {
             return deny();

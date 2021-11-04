@@ -222,11 +222,11 @@ mod test {
 
     #[ockam_node_test_attribute::node_test]
     async fn async_tests(ctx: &mut Context) -> Result<()> {
-        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
-        let entity_alice = Entity::create(&ctx, &alice_vault).await?;
-        let entity_bob = Entity::create(&ctx, &bob_vault).await?;
+        let entity_alice = Entity::create(ctx, &alice_vault).await?;
+        let entity_bob = Entity::create(ctx, &bob_vault).await?;
 
         let mut alice = entity_alice.current_profile().await.unwrap().unwrap();
         let mut bob = entity_bob.current_profile().await.unwrap().unwrap();

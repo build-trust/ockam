@@ -116,7 +116,7 @@ impl Contact {
     /// Get BBS+ signing public key
     #[cfg(feature = "credentials")]
     pub fn get_signing_public_key(&self) -> ockam_core::Result<PublicKey> {
-        use crate::Profile;
-        self.get_public_key(&KeyAttributes::new(Profile::CREDENTIALS_ISSUE.to_string()))
+        use crate::profile::CREDENTIALS_ISSUE;
+        self.get_public_key(&KeyAttributes::new(CREDENTIALS_ISSUE.to_string()))
     }
 }

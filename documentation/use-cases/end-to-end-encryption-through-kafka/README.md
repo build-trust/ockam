@@ -177,7 +177,7 @@ Create a file at `examples/ockam_kafka_bob.rs` and copy the below code snippet t
 
 ```rust
 // examples/ockam_kafka_bob.rs
-use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Entity, NodeContext, Result, TrustEveryonePolicy, Vault};
 use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
 
 struct Echoer;
@@ -185,11 +185,10 @@ struct Echoer;
 // Define an Echoer worker that prints any message it receives and
 // echoes it back on its return route.
 #[ockam::worker]
-impl Worker for Echoer {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for Echoer {
     type Message = String;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<String>) -> Result<()> {
         println!("\n[✓] Address: {}, Received: {}", ctx.address(), msg);
 
         // Echo the message body back on its return_route.

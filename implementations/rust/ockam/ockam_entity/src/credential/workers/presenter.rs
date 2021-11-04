@@ -2,28 +2,27 @@ use crate::{
     CredentialProtocolMessage, EntityCredential, EntityError, Holder, PresentationFinishedMessage,
     PresentationManifest, Profile,
 };
-use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{Address, Result, Route, Routed, Worker};
-use ockam_node::Context;
 
 enum State {
     CreatePresentation,
     Done,
 }
 
-pub struct PresenterWorker {
+pub struct PresenterWorker<C> {
     state: State,
-    profile: Profile,
+    profile: Profile<C>,
     verifier_route: Route,
     credential: EntityCredential,
     reveal_attributes: Vec<String>,
     callback_address: Address,
 }
 
-impl PresenterWorker {
+impl<C: NodeContext> PresenterWorker<C> {
     pub fn new(
-        profile: Profile,
+        profile: Profile<C>,
         verifier_route: Route,
         credential: EntityCredential,
         reveal_attributes: Vec<String>,
@@ -41,11 +40,10 @@ impl PresenterWorker {
 }
 
 #[async_trait]
-impl Worker for PresenterWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for PresenterWorker<C> {
     type Message = CredentialProtocolMessage;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         ctx.send(
             self.verifier_route.clone(),
             CredentialProtocolMessage::PresentationOffer,
@@ -55,11 +53,7 @@ impl Worker for PresenterWorker {
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         // FIXME: Should we check that? check_message_origin(&msg, &self.verifier_id)?;
 
         let route = msg.return_route();

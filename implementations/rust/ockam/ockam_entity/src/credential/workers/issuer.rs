@@ -4,8 +4,7 @@ use crate::{
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
-use ockam_core::{Result, Route, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{NodeContext, Result, Route, Routed, Worker};
 
 enum State {
     CreateOffer(Route),
@@ -13,16 +12,16 @@ enum State {
     Done,
 }
 
-pub struct IssuerWorker {
+pub struct IssuerWorker<C> {
     state: State,
-    profile: Profile,
+    profile: Profile<C>,
     holder_id: ProfileIdentifier,
     schema: CredentialSchema,
 }
 
-impl IssuerWorker {
+impl<C: NodeContext> IssuerWorker<C> {
     pub fn new(
-        profile: Profile,
+        profile: Profile<C>,
         holder_id: ProfileIdentifier,
         schema: CredentialSchema,
         return_route: Route,
@@ -39,11 +38,10 @@ impl IssuerWorker {
 }
 
 #[async_trait]
-impl Worker for IssuerWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for IssuerWorker<C> {
     type Message = CredentialProtocolMessage;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         if let State::CreateOffer(return_route) = &self.state {
             let offer = self.profile.create_offer(&self.schema).await?;
             let offer_id = offer.id.clone();
@@ -59,11 +57,7 @@ impl Worker for IssuerWorker {
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         check_message_origin(&msg, &self.holder_id)?;
 
         let route = msg.return_route();

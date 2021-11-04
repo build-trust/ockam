@@ -12,7 +12,7 @@ use crate::{
 };
 use core::convert::TryInto;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{Address, Result, Route};
+use ockam_core::{Address, NodeContext, Result, Route};
 use signature_bls::SecretKey;
 use IdentityRequest::*;
 use IdentityResponse as Res;
@@ -22,7 +22,7 @@ fn err<T>() -> Result<T> {
 }
 
 #[async_trait]
-impl Issuer for Entity {
+impl<C: NodeContext> Issuer for Entity<C> {
     async fn get_signing_key(&mut self) -> Result<SecretKey> {
         // FIXME: Clone on every call
         let profile = self
@@ -176,7 +176,7 @@ impl Issuer for Entity {
 }
 
 #[async_trait]
-impl Holder for Entity {
+impl<C: NodeContext> Holder for Entity<C> {
     async fn accept_credential_offer(
         &self,
         offer: &CredentialOffer,
@@ -339,7 +339,7 @@ impl Holder for Entity {
 }
 
 #[async_trait]
-impl Verifier for Entity {
+impl<C: NodeContext> Verifier for Entity<C> {
     async fn create_proof_request_id(&self) -> Result<ProofRequestId> {
         let profile = self
             .current_profile()
@@ -423,7 +423,7 @@ impl Verifier for Entity {
 }
 
 #[async_trait]
-impl CredentialProtocol for Entity {
+impl<C: NodeContext> CredentialProtocol for Entity<C> {
     async fn create_credential_issuance_listener(
         &mut self,
         address: Address,
@@ -436,10 +436,13 @@ impl CredentialProtocol for Entity {
             .unwrap()
             .expect("no current profile");
         let trust_policy =
-            TrustPolicyImpl::create_using_impl(&self.handle.ctx(), trust_policy).await?;
+            TrustPolicyImpl::create_using_impl(self.handle.ctx(), trust_policy).await?;
 
         let worker = ListenerWorker::new(profile, schema, trust_policy);
-        self.handle.ctx().start_worker(address, worker).await?;
+        self.handle
+            .ctx()
+            .start_worker(address.into(), worker)
+            .await?;
 
         Ok(())
     }
@@ -466,10 +469,10 @@ impl CredentialProtocol for Entity {
             values,
             ctx.address(),
         );
-        ctx.start_worker(Address::random(0), worker).await?;
+        ctx.start_worker(Address::random(0).into(), worker).await?;
 
         let credential = ctx
-            .receive_timeout::<Credential>(120 /* FIXME */)
+            .receive_timeout::<Credential>(core::time::Duration::from_secs(120) /* FIXME */)
             .await?
             .take()
             .body();
@@ -498,10 +501,12 @@ impl CredentialProtocol for Entity {
             reveal_attributes,
             ctx.address(),
         );
-        ctx.start_worker(Address::random(0), worker).await?;
+        ctx.start_worker(Address::random(0).into(), worker).await?;
 
         let _ = ctx
-            .receive_timeout::<PresentationFinishedMessage>(120 /* FIXME */)
+            .receive_timeout::<PresentationFinishedMessage>(
+                core::time::Duration::from_secs(120), /* FIXME */
+            )
             .await?
             .take()
             .body();
@@ -533,10 +538,10 @@ impl CredentialProtocol for Entity {
             ctx.address(),
         );
 
-        ctx.start_worker(address, worker).await?;
+        ctx.start_worker(address.into(), worker).await?;
 
         let res = ctx
-            .receive_timeout::<bool>(120 /* FIXME */)
+            .receive_timeout::<bool>(core::time::Duration::from_secs(120) /* FIXME */)
             .await?
             .take()
             .body();

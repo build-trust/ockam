@@ -1,12 +1,12 @@
 use crate::{start_node, Context};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
-use ockam_core::async_trait;
 use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
     sync::Arc,
 };
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{route, Processor, Result, Routed, Worker};
 use std::sync::atomic::AtomicI8;
 use tokio::time::sleep;
@@ -38,18 +38,17 @@ struct SimpleWorker {
 }
 
 #[async_trait]
-impl Worker for SimpleWorker {
+impl<C: NodeContext> Worker<C> for SimpleWorker {
     type Message = String;
-    type Context = Context;
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut C) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut C) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
@@ -57,11 +56,7 @@ impl Worker for SimpleWorker {
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         ctx.send(msg.return_route(), msg.body()).await
     }
 }
@@ -110,17 +105,15 @@ struct CountingProcessor {
 }
 
 #[async_trait]
-impl Processor for CountingProcessor {
-    type Context = Context;
-
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+impl<C: NodeContext> Processor<C> for CountingProcessor {
+    async fn initialize(&mut self, _context: &mut C) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut C) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
@@ -128,7 +121,7 @@ impl Processor for CountingProcessor {
         Ok(())
     }
 
-    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, _ctx: &mut C) -> Result<bool> {
         let val = self.run_called_count.fetch_add(1, Ordering::Relaxed);
 
         Ok(val < 4)
@@ -175,17 +168,15 @@ struct WaitingProcessor {
 }
 
 #[async_trait]
-impl Processor for WaitingProcessor {
-    type Context = Context;
-
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+impl<C: NodeContext> Processor<C> for WaitingProcessor {
+    async fn initialize(&mut self, _context: &mut C) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut C) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
@@ -193,7 +184,7 @@ impl Processor for WaitingProcessor {
         Ok(())
     }
 
-    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, _ctx: &mut C) -> Result<bool> {
         sleep(Duration::new(1, 0)).await;
 
         Ok(true)
@@ -241,17 +232,15 @@ struct MessagingProcessor {
 }
 
 #[async_trait]
-impl Processor for MessagingProcessor {
-    type Context = Context;
-
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+impl<C: NodeContext> Processor<C> for MessagingProcessor {
+    async fn initialize(&mut self, _context: &mut C) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut C) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
@@ -259,7 +248,7 @@ impl Processor for MessagingProcessor {
         Ok(())
     }
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut C) -> Result<bool> {
         let msg = ctx.receive::<String>().await.unwrap().take();
         let route = msg.return_route();
         let body = msg.body();
@@ -327,8 +316,7 @@ fn waiting_processor__messaging__should_work() {
 struct BadWorker;
 
 #[ockam_core::worker]
-impl Worker for BadWorker {
-    type Context = Context;
+impl Worker<Context> for BadWorker {
     type Message = ();
 
     /// This shutdown function takes _way_ too long to complete

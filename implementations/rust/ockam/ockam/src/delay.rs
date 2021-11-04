@@ -1,17 +1,17 @@
-use crate::{spawn, Address, Context, Message, Result, Route};
+use crate::{Address, Message, NodeContext, Result, Route};
 use core::time::Duration;
 
 /// Send a delayed event to a worker
-pub struct DelayedEvent<M: Message> {
+pub struct DelayedEvent<C: NodeContext, M: Message> {
     route: Route,
-    ctx: Context,
+    ctx: C,
     d: Duration,
     msg: M,
 }
 
-impl<M: Message> DelayedEvent<M> {
+impl<C: NodeContext, M: Message> DelayedEvent<C, M> {
     /// Create a new 100ms delayed message event
-    pub async fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
+    pub async fn new(ctx: &C, route: Route, msg: M) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random(0)).await?;
 
         debug!(
@@ -59,7 +59,10 @@ impl<M: Message> DelayedEvent<M> {
     /// Run this delayed event
     pub fn spawn(self) {
         let Self { route, ctx, d, msg } = self;
-        spawn(async move {
+        // FIXME: use `ctx.spawn_detached` (can't because we borrow ctx inside
+        // but it takes 'static, but also even that should be replaced by async
+        // abstraction, so for now this is okay)
+        crate::spawn(async move {
             ctx.sleep(d).await;
             if let Err(e) = ctx.send(route, msg).await {
                 error!("Failed to send delayed message: {}", e);

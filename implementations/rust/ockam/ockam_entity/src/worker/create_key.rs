@@ -1,5 +1,5 @@
 use crate::change_history::ProfileChangeHistory;
-use crate::profile::Profile;
+use crate::profile::CURRENT_CHANGE_VERSION;
 use crate::EntityError::InvalidInternalState;
 use crate::{
     ChangeSet, EntityError, EventIdentifier, KeyAttributes, ProfileChange, ProfileChangeEvent,
@@ -8,7 +8,7 @@ use crate::{
 };
 use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
-use ockam_core::Encodable;
+use ockam_core::{Encodable, NodeContext};
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
 use ockam_vault_core::Signature as OckamVaultSignature;
 use ockam_vault_core::{
@@ -73,19 +73,19 @@ impl CreateKeyChange {
     }
 }
 
-impl ProfileState {
+impl<C: NodeContext> ProfileState<C> {
     /// Create a new key
     pub async fn create_key_static(
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
         root_key: Option<&Secret>,
-        vault: &mut VaultSync,
+        vault: &mut VaultSync<C>,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // FIXME
         cfg_if! {
             if #[cfg(feature = "credentials")] {
-                let is_bls = key_attributes.label() == Profile::CREDENTIALS_ISSUE;
+                let is_bls = key_attributes.label() == crate::profile::CREDENTIALS_ISSUE;
 
                 let secret_attributes = if is_bls {
                     SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
@@ -117,7 +117,7 @@ impl ProfileState {
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CURRENT_CHANGE_VERSION,
+            CURRENT_CHANGE_VERSION,
             attributes,
             ProfileChangeType::CreateKey(change),
         );

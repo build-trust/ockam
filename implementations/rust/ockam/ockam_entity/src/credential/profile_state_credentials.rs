@@ -1,5 +1,5 @@
 use crate::{
-    profile::Profile, BbsCredential, BlsPublicKey, BlsSecretKey, Credential, CredentialAttribute,
+    BbsCredential, BlsPublicKey, BlsSecretKey, Credential, CredentialAttribute,
     CredentialAttributeType, CredentialError, CredentialFragment1, CredentialFragment2,
     CredentialHolder, CredentialIssuer, CredentialOffer, CredentialPresentation, CredentialRequest,
     CredentialSchema, CredentialVerifier, EntityCredential, EntityError, ExtPokSignatureProof,
@@ -9,7 +9,7 @@ use crate::{
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::{allow, deny, Result};
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{async_trait, compat::boxed::Box, NodeContext};
 use ockam_vault_core::SecretVault;
 use rand::thread_rng;
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
@@ -18,7 +18,7 @@ use signature_bbs_plus::{MessageGenerators, ProofOfPossession};
 use signature_core::challenge::Challenge;
 use signature_core::lib::{HiddenMessage, Message, Nonce, ProofMessage};
 
-impl ProfileState {
+impl<C: NodeContext> ProfileState<C> {
     pub fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
         if let Some(_) = self
             .credentials
@@ -46,10 +46,10 @@ impl ProfileState {
 }
 
 #[async_trait]
-impl CredentialIssuer for ProfileState {
+impl<C: NodeContext> CredentialIssuer for ProfileState<C> {
     async fn get_signing_key(&mut self) -> Result<BlsSecretKey> {
         let secret = self
-            .get_secret_key(Profile::CREDENTIALS_ISSUE.into())
+            .get_secret_key(crate::profile::CREDENTIALS_ISSUE.into())
             .await?;
         let secret = self.vault.secret_export(&secret).await?;
         let secret = BlsSecretKey::from_bytes(&secret.as_ref().try_into().unwrap()).unwrap();
@@ -182,7 +182,7 @@ impl CredentialIssuer for ProfileState {
 pub const SECRET_ID: &str = "secret_id";
 
 #[async_trait]
-impl CredentialHolder for ProfileState {
+impl<C: NodeContext> CredentialHolder for ProfileState<C> {
     async fn accept_credential_offer(
         &mut self,
         offer: &CredentialOffer,
@@ -339,7 +339,7 @@ impl CredentialHolder for ProfileState {
 }
 
 #[async_trait]
-impl CredentialVerifier for ProfileState {
+impl<C: NodeContext> CredentialVerifier for ProfileState<C> {
     async fn create_proof_request_id(&mut self) -> Result<ProofRequestId> {
         Ok(Nonce::random(thread_rng()).to_bytes())
     }

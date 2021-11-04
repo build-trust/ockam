@@ -1,7 +1,6 @@
 use crate::TcpRecvProcessor;
-use ockam_core::async_trait;
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{Address, Encodable, Result, Routed, TransportMessage, Worker};
-use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::io::AsyncWriteExt;
@@ -56,8 +55,8 @@ impl TcpSendWorker {
         Self { rx, tx, peer }
     }
 
-    pub(crate) async fn start_pair(
-        ctx: &Context,
+    pub(crate) async fn start_pair<C: NodeContext>(
+        ctx: &C,
         stream: Option<TcpStream>,
         peer: SocketAddr,
         hostnames: Vec<String>,
@@ -67,7 +66,7 @@ impl TcpSendWorker {
         let tx_addr = Address::random(0);
         let sender = TcpSendWorker::new(stream, peer);
 
-        ctx.start_worker(tx_addr.clone(), sender).await?;
+        ctx.start_worker(tx_addr.clone().into(), sender).await?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
@@ -98,12 +97,11 @@ fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
 }
 
 #[async_trait]
-impl Worker for TcpSendWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for TcpSendWorker {
     type Message = TransportMessage;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
+        ctx.set_cluster(crate::CLUSTER_NAME.into()).await?;
 
         if self.tx.is_none() {
             let (rx, tx) = TcpStream::connect(self.peer)
@@ -129,7 +127,7 @@ impl Worker for TcpSendWorker {
     // across the TcpStream to our friend
     async fn handle_message(
         &mut self,
-        ctx: &mut Context,
+        ctx: &mut C,
         mut msg: Routed<TransportMessage>,
     ) -> Result<()> {
         let tx;

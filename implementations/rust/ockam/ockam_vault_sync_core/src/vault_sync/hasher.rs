@@ -1,11 +1,11 @@
-use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{NodeContext, Result};
 use ockam_vault_core::{Hasher, Secret, SecretAttributes, SmallBuffer};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
 #[async_trait]
-impl Hasher for VaultSync {
+impl<C: NodeContext> Hasher for VaultSync<C> {
     async fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
         let resp = self
             .call(VaultRequestMessage::Sha256 { data: data.into() })

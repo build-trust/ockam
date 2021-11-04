@@ -4,9 +4,12 @@ use crate::{
         stream::{requests::*, responses::*},
         ProtocolParser, ProtocolPayload,
     },
-    Any, Context, OckamError, Result, Route, Routed, Worker,
+    Any, OckamError, Result, Route, Routed, Worker,
 };
-use ockam_core::compat::{boxed::Box, collections::VecDeque, string::String};
+use ockam_core::{
+    compat::{boxed::Box, collections::VecDeque, string::String},
+    NodeContext,
+};
 use ockam_core::{Decodable, Encodable};
 
 pub struct StreamProducer {
@@ -26,7 +29,7 @@ pub struct StreamProducer {
 
 async fn handle_response(
     w: &mut StreamProducer,
-    ctx: &mut Context,
+    ctx: &mut impl NodeContext,
     route: Routed<Any>,
     response: Response,
 ) -> Result<()> {
@@ -72,11 +75,10 @@ async fn handle_response(
 }
 
 #[crate::worker]
-impl Worker for StreamProducer {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for StreamProducer {
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         debug!("Create producer stream: {}", self.sender_name);
 
         // Create a stream for this sender
@@ -84,13 +86,14 @@ impl Worker for StreamProducer {
             self.route
                 .clone()
                 .modify()
-                .append(self.stream_service.clone()),
+                .append(self.stream_service.clone())
+                .route(),
             CreateStreamRequest::new(Some(self.sender_name.clone())),
         )
         .await
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Any>) -> Result<()> {
         if let Ok(pp) = ProtocolPayload::decode(msg.payload()) {
             let id = pp.protocol.as_str();
 

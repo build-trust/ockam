@@ -72,6 +72,7 @@ pub trait Message: Encodable + Decodable + Send + 'static {}
 impl Message for () {}
 impl Message for Vec<u8> {}
 impl Message for String {}
+impl Message for bool {}
 
 // Auto-implement message trait for types that _can_ be messages
 impl<T> Encodable for T

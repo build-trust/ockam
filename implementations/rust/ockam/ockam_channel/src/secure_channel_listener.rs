@@ -1,12 +1,11 @@
 use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker};
-use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{
     Address, Encodable, LocalMessage, Message, Result, Routed, TransportMessage, Worker,
 };
 use ockam_message_derive::Message;
-use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
@@ -56,17 +55,12 @@ impl CreateResponderChannelMessage {
 }
 
 #[async_trait]
-impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
+impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger, C: NodeContext> Worker<C>
     for SecureChannelListener<V, N>
 {
     type Message = CreateResponderChannelMessage;
-    type Context = Context;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let reply = msg.return_route().clone();
         let msg = msg.body();
 
@@ -92,7 +86,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
         )
         .await?;
 
-        ctx.start_worker(vec![address_remote.clone(), address_local], channel)
+        ctx.start_worker(vec![address_remote.clone(), address_local].into(), channel)
             .await?;
 
         // We want this message's return route lead to the remote channel worker, not listener

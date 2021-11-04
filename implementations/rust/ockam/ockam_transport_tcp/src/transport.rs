@@ -1,7 +1,5 @@
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
-use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, AsyncTryClone, Result, Route};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, AsyncTryClone, NodeContext, Result, Route};
 
 /// High level management interface for TCP transports
 ///
@@ -41,12 +39,20 @@ use ockam_node::Context;
 /// tcp.listen("127.0.0.1:9000").await?; // Listen on port 9000
 /// # Ok(()) }
 /// ```
-#[derive(AsyncTryClone)]
-pub struct TcpTransport {
-    router_handle: TcpRouterHandle,
+pub struct TcpTransport<C> {
+    router_handle: TcpRouterHandle<C>,
 }
 
-impl TcpTransport {
+#[async_trait]
+impl<C: NodeContext> AsyncTryClone for TcpTransport<C> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            router_handle: self.router_handle.async_try_clone().await?,
+        })
+    }
+}
+
+impl<C: NodeContext> TcpTransport<C> {
     /// Create a new TCP transport and router for the current node
     ///
     /// ```rust
@@ -57,7 +63,7 @@ impl TcpTransport {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// # Ok(()) }
     /// ```
-    pub async fn create(ctx: &Context) -> Result<Self> {
+    pub async fn create(ctx: &C) -> Result<Self> {
         let router = TcpRouter::register(ctx).await?;
 
         Ok(Self {
@@ -99,7 +105,7 @@ impl TcpTransport {
     }
 }
 
-impl TcpTransport {
+impl<C: NodeContext> TcpTransport<C> {
     /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
     /// Messages and forward them to Outlet using onward_route. Inlet is bidirectional: Ockam
     /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.

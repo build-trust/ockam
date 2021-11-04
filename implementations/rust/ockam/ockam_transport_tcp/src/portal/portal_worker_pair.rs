@@ -1,7 +1,6 @@
 use crate::{TcpPortalRecvProcessor, TcpPortalSendWorker, TcpPortalSendWorkerState};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{Address, Result, Route};
-use ockam_node::Context;
+use ockam_core::{Address, NodeContext, Result, Route};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpStream;
 use tracing::{debug, trace};
@@ -12,7 +11,7 @@ pub(crate) struct PortalWorkerPair;
 
 impl PortalWorkerPair {
     pub(crate) async fn new_inlet(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         stream: TcpStream,
         peer: SocketAddr,
         onward_route: Route,
@@ -37,7 +36,7 @@ impl PortalWorkerPair {
         let receiver = TcpPortalRecvProcessor::new(rx, tx_internal_addr.clone());
 
         // Derive local worker addresses, and start them
-        ctx.start_worker(vec![tx_internal_addr, tx_remote_addr], sender)
+        ctx.start_worker(vec![tx_internal_addr, tx_remote_addr].into(), sender)
             .await?;
         ctx.start_processor(rx_addr.clone(), receiver).await?;
 
@@ -45,7 +44,7 @@ impl PortalWorkerPair {
         Ok(())
     }
 
-    pub(crate) async fn new_outlet(ctx: &Context, peer: SocketAddr) -> Result<Address> {
+    pub(crate) async fn new_outlet(ctx: &impl NodeContext, peer: SocketAddr) -> Result<Address> {
         debug!("Starting worker connection to remote {}", peer);
 
         // TODO: make i/o errors into ockam_error
@@ -71,8 +70,11 @@ impl PortalWorkerPair {
         let receiver = TcpPortalRecvProcessor::new(rx, tx_internal_addr.clone());
 
         // Derive local worker addresses, and start them
-        ctx.start_worker(vec![tx_internal_addr, tx_remote_addr.clone()], sender)
-            .await?;
+        ctx.start_worker(
+            vec![tx_internal_addr, tx_remote_addr.clone()].into(),
+            sender,
+        )
+        .await?;
         ctx.start_processor(rx_addr.clone(), receiver).await?;
 
         // Return a handle to the worker pair

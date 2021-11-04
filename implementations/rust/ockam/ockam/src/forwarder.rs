@@ -1,6 +1,8 @@
 use crate::Context;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{
+    Address, Any, LocalMessage, NodeContext, Result, Route, Routed, TransportMessage, Worker,
+};
 use tracing::info;
 
 /// Alias worker to register remote workers under local names.
@@ -20,15 +22,10 @@ impl ForwardingService {
 }
 
 #[crate::worker]
-impl Worker for ForwardingService {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for ForwardingService {
     type Message = Any;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let forward_route = msg.return_route();
         let payload = msg.into_transport_message().payload;
         Forwarder::create(ctx, forward_route, payload).await?;
@@ -47,7 +44,7 @@ struct Forwarder {
 
 impl Forwarder {
     async fn create(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         forward_route: Route,
         registration_payload: Vec<u8>,
     ) -> Result<()> {
@@ -57,18 +54,17 @@ impl Forwarder {
             forward_route,
             payload: Some(registration_payload),
         };
-        ctx.start_worker(address, forwarder).await?;
+        ctx.start_worker(address.into(), forwarder).await?;
 
         Ok(())
     }
 }
 
 #[crate::worker]
-impl Worker for Forwarder {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for Forwarder {
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         let payload = self
             .payload
             .take()
@@ -80,11 +76,7 @@ impl Worker for Forwarder {
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         info!(
             "Alias forward from {} to {}",
             msg.sender(),

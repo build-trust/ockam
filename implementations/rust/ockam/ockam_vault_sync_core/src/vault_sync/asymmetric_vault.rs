@@ -1,10 +1,10 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
-use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{NodeContext, Result};
 use ockam_vault_core::{AsymmetricVault, PublicKey, Secret};
 
 #[async_trait]
-impl AsymmetricVault for VaultSync {
+impl<C: NodeContext> AsymmetricVault for VaultSync<C> {
     async fn ec_diffie_hellman(
         &mut self,
         context: &Secret,

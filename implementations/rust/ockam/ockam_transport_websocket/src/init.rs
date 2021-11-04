@@ -1,8 +1,7 @@
 use std::net::SocketAddr;
 
 use futures_util::StreamExt;
-use ockam_core::{Address, Result};
-use ockam_node::Context;
+use ockam_core::{Address, NodeContext, Result};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
@@ -21,7 +20,7 @@ pub struct WorkerPair {
 
 impl WorkerPair {
     /// Stop the worker pair
-    pub async fn stop(self, ctx: &Context) -> Result<()> {
+    pub async fn stop(self, ctx: &impl NodeContext) -> Result<()> {
         ctx.stop_worker(self.tx_addr).await?;
         ctx.stop_worker(self.rx_addr).await?;
         atomic::stop(&self.run);
@@ -40,7 +39,7 @@ impl WorkerPair {
 
 impl WorkerPair {
     pub(crate) async fn with_stream<AsyncStream>(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         stream: WebSocketStream<AsyncStream>,
         peer: SocketAddr,
     ) -> Result<Self>
@@ -63,8 +62,8 @@ impl WorkerPair {
         };
 
         // Derive local worker addresses, and start them
-        ctx.start_worker(tx_addr.clone(), sender).await?;
-        ctx.start_worker(rx_addr.clone(), receiver).await?;
+        ctx.start_worker(tx_addr.clone().into(), sender).await?;
+        ctx.start_worker(rx_addr.clone().into(), receiver).await?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
@@ -75,7 +74,7 @@ impl WorkerPair {
         })
     }
 
-    async fn start(ctx: &Context, peer: WebSocketAddr) -> Result<Self> {
+    async fn start(ctx: &impl NodeContext, peer: WebSocketAddr) -> Result<Self> {
         debug!("Starting worker connection to remote {}", &peer);
         let (stream, _) = tokio_tungstenite::connect_async(peer.to_string())
             .await
@@ -89,9 +88,9 @@ impl WorkerPair {
 /// One worker handles outgoing messages, while another handles
 /// incoming messages. The local worker address is chosen based on
 /// the peer the worker is meant to be connected to.
-pub async fn start_connection(
-    ctx: &Context,
-    router: &WebSocketRouterHandle,
+pub async fn start_connection<C: NodeContext>(
+    ctx: &C,
+    router: &WebSocketRouterHandle<C>,
     peer: WebSocketAddr,
 ) -> Result<()> {
     let pair = WorkerPair::start(ctx, peer).await?;

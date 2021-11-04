@@ -2,9 +2,9 @@ use crate::{
     KeyExchangeCompleted, SecureChannelKeyExchanger, SecureChannelListener,
     SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker,
 };
+use core::time::Duration;
 use ockam_core::compat::rand::random;
-use ockam_core::{Address, Result, Route};
-use ockam_node::Context;
+use ockam_core::{Address, NodeContext, Result, Route};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -34,8 +34,8 @@ pub struct SecureChannel;
 impl SecureChannel {
     /// Create and start channel listener with given address using noise xx and software vault.
     #[cfg(all(feature = "software_vault", feature = "noise_xx"))]
-    pub async fn create_listener<A: Into<Address>>(
-        ctx: &Context,
+    pub async fn create_listener<A: Into<Address>, C: NodeContext>(
+        ctx: &C,
         address: A,
         vault: &Address,
     ) -> Result<()> {
@@ -52,8 +52,9 @@ impl SecureChannel {
         A: Into<Address>,
         N: SecureChannelNewKeyExchanger,
         V: SecureChannelVault,
+        C: NodeContext,
     >(
-        ctx: &Context,
+        ctx: &C,
         address: A,
         new_key_exchanger: N,
         vault: V,
@@ -61,7 +62,7 @@ impl SecureChannel {
         let address = address.into();
         let channel_listener = SecureChannelListener::new(new_key_exchanger, vault);
         info!("Starting SecureChannel listener at {}", &address);
-        ctx.start_worker(address, channel_listener).await?;
+        ctx.start_worker(address.into(), channel_listener).await?;
 
         Ok(())
     }
@@ -69,7 +70,7 @@ impl SecureChannel {
     /// Create initiator channel with given route to a remote channel listener using noise xx and software vault.
     #[cfg(all(feature = "software_vault", feature = "noise_xx"))]
     pub async fn create(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         route: impl Into<Route>,
         vault: &Address,
     ) -> Result<SecureChannelInfo> {
@@ -91,7 +92,7 @@ impl SecureChannel {
 
     /// Create initiator channel with given route to a remote channel listener.
     pub async fn create_extended(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         route: impl Into<Route>,
         first_responder_address: Option<Address>,
         key_exchanger: impl SecureChannelKeyExchanger,
@@ -121,11 +122,14 @@ impl SecureChannel {
         )
         .await?;
 
-        ctx.start_worker(vec![address_remote.clone(), address_local.clone()], channel)
-            .await?;
+        ctx.start_worker(
+            vec![address_remote.clone(), address_local.clone()].into(),
+            channel,
+        )
+        .await?;
 
         let resp = child_ctx
-            .receive_timeout::<KeyExchangeCompleted>(120)
+            .receive_timeout::<KeyExchangeCompleted>(Duration::from_secs(120))
             .await?
             .take()
             .body();

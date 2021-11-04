@@ -7,7 +7,9 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{
+    Address, Any, LocalMessage, NodeContext, Result, Route, Routed, TransportMessage, Worker,
+};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -80,11 +82,10 @@ impl RemoteForwarder {
 }
 
 #[crate::worker]
-impl Worker for RemoteForwarder {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for RemoteForwarder {
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         debug!("RemoteForwarder registering...");
         ctx.send(self.route.clone(), "register".to_string()).await?;
         let resp = ctx.receive::<String>().await?.take();
@@ -115,11 +116,7 @@ impl Worker for RemoteForwarder {
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let return_route = msg.return_route();
         let payload = msg.into_transport_message().payload;
         debug!("RemoteForwarder received message");

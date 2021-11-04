@@ -39,18 +39,17 @@ Add the following code to this file:
 ```rust
 // src/hop.rs
 
-use ockam::{Any, Context, Result, Routed, Worker};
+use ockam::{Any, NodeContext, Result, Routed, Worker};
 
 pub struct Hop;
 
 #[ockam::worker]
-impl Worker for Hop {
-    type Context = Context;
+impl<C: NodeContext> Worker for Hop {
     type Message = Any;
 
     /// This handle function takes any incoming message and forwards
     /// it to the next hop in it's onward route
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Any>) -> Result<()> {
         println!("Address: {}, Received: {}", ctx.address(), msg);
 
         // Some type conversion

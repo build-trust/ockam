@@ -5,12 +5,12 @@ use crate::{
     CredentialRequest, CredentialRequestFragment, CredentialSchema, EntityCredential, Holder,
     Issuer, OfferId, PresentationManifest, Profile, ProofRequestId, SigningPublicKey,
 };
-use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{NodeContext, Result};
 use signature_bls::SecretKey;
 
 #[async_trait]
-impl Issuer for Profile {
+impl<C: NodeContext> Issuer for Profile<C> {
     async fn get_signing_key(&mut self) -> Result<SecretKey> {
         self.entity().await?.get_signing_key().await
     }
@@ -53,7 +53,7 @@ impl Issuer for Profile {
 }
 
 #[async_trait]
-impl Holder for Profile {
+impl<C: NodeContext> Holder for Profile<C> {
     async fn accept_credential_offer(
         &self,
         offer: &CredentialOffer,
@@ -109,7 +109,7 @@ impl Holder for Profile {
 }
 
 #[async_trait]
-impl Verifier for Profile {
+impl<C: NodeContext> Verifier for Profile<C> {
     async fn create_proof_request_id(&self) -> Result<ProofRequestId> {
         self.entity().await?.create_proof_request_id().await
     }

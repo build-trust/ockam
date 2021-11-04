@@ -2,9 +2,8 @@ use crate::{Identity, SecureChannelWorker, TrustPolicy};
 use ockam_channel::{CreateResponderChannelMessage, SecureChannel};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::rand::random;
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::{Address, NodeContext, Result, Routed, Worker};
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
-use ockam_node::Context;
 
 pub(crate) struct ProfileChannelListener<T: TrustPolicy, P: Identity, V: XXVault> {
     trust_policy: T,
@@ -26,11 +25,12 @@ impl<T: TrustPolicy, P: Identity, V: XXVault> ProfileChannelListener<T, P, V> {
 }
 
 #[ockam_core::worker]
-impl<T: TrustPolicy, P: Identity, V: XXVault> Worker for ProfileChannelListener<T, P, V> {
+impl<T: TrustPolicy, P: Identity, V: XXVault, C: NodeContext> Worker<C>
+    for ProfileChannelListener<T, P, V>
+{
     type Message = CreateResponderChannelMessage;
-    type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         let new_key_exchanger = XXNewKeyExchanger::new(self.vault.async_try_clone().await?);
         let vault = self.vault.async_try_clone().await?;
         SecureChannel::create_listener_extended(
@@ -44,18 +44,14 @@ impl<T: TrustPolicy, P: Identity, V: XXVault> Worker for ProfileChannelListener<
         Ok(())
     }
 
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut C) -> Result<()> {
         // Ignore the error in case node is shutting down and this listener was stopped already
         let _ = ctx.stop_worker(self.listener_address.clone()).await;
 
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let trust_policy = self.trust_policy.async_try_clone().await?;
         let profile = self.profile.async_try_clone().await?;
         SecureChannelWorker::create_responder(

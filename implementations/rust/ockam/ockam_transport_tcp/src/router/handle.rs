@@ -4,39 +4,32 @@ use crate::{
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{Address, AsyncTryClone, Result, Route, RouterMessage};
-use ockam_node::Context;
+use ockam_core::{Address, AsyncTryClone, NodeContext, Result, Route, RouterMessage};
 use ockam_transport_core::TransportError;
 
 /// A handle to connect to a TcpRouter
 ///
 /// Dropping this handle is harmless.
-pub(crate) struct TcpRouterHandle {
-    ctx: Context,
+pub(crate) struct TcpRouterHandle<C> {
+    ctx: C,
     addr: Address,
 }
 
-impl TcpRouterHandle {
-    pub fn ctx(&self) -> &Context {
-        &self.ctx
-    }
-}
-
 #[async_trait]
-impl AsyncTryClone for TcpRouterHandle {
+impl<C: NodeContext> AsyncTryClone for TcpRouterHandle<C> {
     async fn async_try_clone(&self) -> Result<Self> {
         let child_ctx = self.ctx.new_context(Address::random(0)).await?;
         Ok(Self::new(child_ctx, self.addr.clone()))
     }
 }
 
-impl TcpRouterHandle {
-    pub(crate) fn new(ctx: Context, addr: Address) -> Self {
+impl<C: NodeContext> TcpRouterHandle<C> {
+    pub fn ctx(&self) -> &C {
+        &self.ctx
+    }
+    pub(crate) fn new(ctx: C, addr: Address) -> Self {
         TcpRouterHandle { ctx, addr }
     }
-}
-
-impl TcpRouterHandle {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
         let tcp_address: Address = format!("{}#{}", TCP, pair.peer()).into();
@@ -76,41 +69,14 @@ impl TcpRouterHandle {
     }
 
     pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_processor(addr).await?;
+        self.ctx.stop_processor(addr.into()).await?;
 
         Ok(())
     }
 
-    pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
-        let peer_str = peer.into();
-        let peer_addr;
-        let hostnames;
-
-        // Try to parse as SocketAddr
-        if let Ok(p) = parse_socket_addr(peer_str.clone()) {
-            peer_addr = p;
-            hostnames = vec![];
-        }
-        // Try to resolve hostname
-        else if let Ok(mut iter) = peer_str.to_socket_addrs() {
-            // FIXME: We only take ipv4 for now
-            if let Some(p) = iter.find(|x| x.is_ipv4()) {
-                peer_addr = p;
-            } else {
-                return Err(TransportError::InvalidAddress.into());
-            }
-
-            hostnames = vec![peer_str];
-        } else {
-            return Err(TransportError::InvalidAddress.into());
-        }
-
-        Ok((peer_addr, hostnames))
-    }
-
     /// Establish an outgoing TCP connection on an existing transport
     pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
-        let (peer_addr, hostnames) = Self::resolve_peer(peer.as_ref())?;
+        let (peer_addr, hostnames) = resolve_peer(peer.as_ref())?;
 
         let pair = TcpSendWorker::start_pair(&self.ctx, None, peer_addr, hostnames).await?;
         self.register(&pair).await?;
@@ -120,7 +86,7 @@ impl TcpRouterHandle {
 
     /// Establish an outgoing TCP connection for Portal Outlet
     pub async fn connect_outlet<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
-        let (peer_addr, _) = Self::resolve_peer(peer.as_ref())?;
+        let (peer_addr, _) = resolve_peer(peer.as_ref())?;
 
         let address = PortalWorkerPair::new_outlet(&self.ctx, peer_addr).await?;
 
@@ -128,7 +94,34 @@ impl TcpRouterHandle {
     }
 
     pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_worker(addr).await?;
+        self.ctx.stop_worker(addr.into()).await?;
         Ok(())
     }
+}
+
+pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
+    let peer_str = peer.into();
+    let peer_addr;
+    let hostnames;
+
+    // Try to parse as SocketAddr
+    if let Ok(p) = parse_socket_addr(peer_str.clone()) {
+        peer_addr = p;
+        hostnames = vec![];
+    }
+    // Try to resolve hostname
+    else if let Ok(mut iter) = peer_str.to_socket_addrs() {
+        // FIXME: We only take ipv4 for now
+        if let Some(p) = iter.find(|x| x.is_ipv4()) {
+            peer_addr = p;
+        } else {
+            return Err(TransportError::InvalidAddress.into());
+        }
+
+        hostnames = vec![peer_str];
+    } else {
+        return Err(TransportError::InvalidAddress.into());
+    }
+
+    Ok((peer_addr, hostnames))
 }

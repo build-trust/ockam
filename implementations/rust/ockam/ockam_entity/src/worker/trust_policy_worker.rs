@@ -1,38 +1,44 @@
 use crate::{SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::compat::boxed::Box;
 use ockam_core::{
-    async_trait::async_trait, Address, AsyncTryClone, Message, Result, Routed, Worker,
+    async_trait::async_trait, Address, AsyncTryClone, Handle, Message, NodeContext, Result, Routed,
+    Worker,
 };
 use ockam_message_derive::Message;
-use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
-#[derive(AsyncTryClone)]
-pub struct TrustPolicyImpl {
-    handle: Handle,
+
+pub struct TrustPolicyImpl<C> {
+    handle: Handle<C>,
 }
 
-impl TrustPolicyImpl {
-    pub fn new(handle: Handle) -> Self {
-        TrustPolicyImpl { handle }
+#[async_trait]
+impl<C: NodeContext> AsyncTryClone for TrustPolicyImpl<C> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            handle: self.handle.async_try_clone().await?,
+        })
     }
 }
 
-impl TrustPolicyImpl {
-    pub async fn create_using_worker(ctx: &Context, address: &Address) -> Result<Self> {
+impl<C: NodeContext> TrustPolicyImpl<C> {
+    pub fn new(handle: Handle<C>) -> Self {
+        TrustPolicyImpl { handle }
+    }
+    pub async fn create_using_worker(ctx: &C, address: &Address) -> Result<Self> {
         let handle = Handle::new(ctx.new_context(Address::random(0)).await?, address.clone());
 
         Ok(Self::new(handle))
     }
 
-    pub async fn create_using_impl(ctx: &Context, trust_policy: impl TrustPolicy) -> Result<Self> {
+    pub async fn create_using_impl(ctx: &C, trust_policy: impl TrustPolicy) -> Result<Self> {
         let address = Self::create_worker(ctx, trust_policy).await?;
         Self::create_using_worker(ctx, &address).await
     }
 
-    pub async fn create_worker(ctx: &Context, trust_policy: impl TrustPolicy) -> Result<Address> {
+    pub async fn create_worker(ctx: &C, trust_policy: impl TrustPolicy) -> Result<Address> {
         let address = Address::random(0);
 
-        ctx.start_worker(address.clone(), TrustPolicyWorker::new(trust_policy))
+        ctx.start_worker(address.clone().into(), TrustPolicyWorker::new(trust_policy))
             .await?;
 
         Ok(address)
@@ -40,7 +46,7 @@ impl TrustPolicyImpl {
 }
 
 #[async_trait]
-impl TrustPolicy for TrustPolicyImpl {
+impl<C: NodeContext> TrustPolicy for TrustPolicyImpl<C> {
     async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         let response: TrustPolicyResponse = self
             .handle
@@ -74,15 +80,10 @@ pub struct TrustPolicyResponse {
 }
 
 #[async_trait]
-impl<T: TrustPolicy> Worker for TrustPolicyWorker<T> {
+impl<T: TrustPolicy, C: NodeContext> Worker<C> for TrustPolicyWorker<T> {
     type Message = TrustPolicyRequest;
-    type Context = Context;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let route = msg.return_route();
         let msg = msg.body();
 

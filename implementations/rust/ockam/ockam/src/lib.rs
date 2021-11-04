@@ -62,8 +62,8 @@ pub use unique::*;
 pub mod stream;
 
 pub use ockam_core::{
-    Address, Any, Encoded, Error, LocalMessage, Message, ProtocolId, Result, Route, Routed,
-    RouterMessage, TransportMessage, Worker,
+    Address, Any, Encoded, Error, LocalMessage, Message, NodeContext, ProtocolId, Result, Route,
+    Routed, RouterMessage, TransportMessage, Worker,
 };
 
 pub use ockam_channel::SecureChannel;

@@ -1,7 +1,8 @@
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use ockam_core::{async_trait, Address, Decodable, LocalMessage, Result, TransportMessage, Worker};
-use ockam_node::Context;
+use ockam_core::{
+    async_trait, Address, Decodable, LocalMessage, NodeContext, Result, TransportMessage, Worker,
+};
 use ockam_transport_core::TransportError;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
@@ -18,13 +19,12 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AsyncStream> Worker for WebSocketRecvWorker<AsyncStream>
+impl<C: NodeContext, AsyncStream> Worker<C> for WebSocketRecvWorker<AsyncStream>
 where
     AsyncStream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     // Do not actually listen for messages
     type Message = ();
-    type Context = Context;
 
     // We are using the initialize function here to run a custom loop,
     // while never listening for messages sent to our address
@@ -34,7 +34,7 @@ where
     //
     // Also: we must stop the loop when the worker gets killed by
     // the user or node.
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         loop {
             if !atomic::check(&self.run) {
                 break;

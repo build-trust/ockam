@@ -4,7 +4,7 @@ use ockam_core::{Processor, Result};
 
 pub struct ProcessorRelay<P>
 where
-    P: Processor<Context = Context>,
+    P: Processor<Context>,
 {
     processor: P,
     ctx: Context,
@@ -12,7 +12,7 @@ where
 
 impl<P> ProcessorRelay<P>
 where
-    P: Processor<Context = Context>,
+    P: Processor<Context>,
 {
     pub fn new(processor: P, ctx: Context) -> Self {
         Self { processor, ctx }

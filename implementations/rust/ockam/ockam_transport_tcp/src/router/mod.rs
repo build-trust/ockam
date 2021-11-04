@@ -3,8 +3,7 @@ use crate::{TcpSendWorker, TCP};
 use core::ops::Deref;
 pub(crate) use handle::*;
 use ockam_core::async_trait;
-use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
-use ockam_node::Context;
+use ockam_core::{Address, LocalMessage, NodeContext, Result, Routed, RouterMessage, Worker};
 use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
 use tracing::{debug, trace};
@@ -17,15 +16,15 @@ use tracing::{debug, trace};
 ///
 /// Optionally you can also start listening for incoming connections
 /// if the local node is part of a server architecture.
-pub(crate) struct TcpRouter {
-    ctx: Context,
+pub(crate) struct TcpRouter<C> {
+    ctx: C,
     addr: Address,
     map: BTreeMap<Address, Address>,
     allow_auto_connection: bool,
 }
 
-impl TcpRouter {
-    async fn create_self_handle(&self, ctx: &Context) -> Result<TcpRouterHandle> {
+impl<C: NodeContext> TcpRouter<C> {
+    async fn create_self_handle(&self, ctx: &C) -> Result<TcpRouterHandle<C>> {
         let handle_ctx = ctx.new_context(Address::random(0)).await?;
         let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone());
         Ok(handle)
@@ -52,7 +51,7 @@ impl TcpRouter {
     }
 
     async fn connect(&mut self, peer: String) -> Result<Address> {
-        let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer)?;
+        let (peer_addr, hostnames) = resolve_peer(peer)?;
 
         let pair = TcpSendWorker::start_pair(&self.ctx, None, peer_addr, hostnames).await?;
 
@@ -70,7 +69,7 @@ impl TcpRouter {
         Ok(self_addr)
     }
 
-    async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
+    async fn handle_route(&mut self, ctx: &C, mut msg: LocalMessage) -> Result<()> {
         trace!(
             "TCP route request: {:?}",
             msg.transport().onward_route.next()
@@ -116,22 +115,17 @@ impl TcpRouter {
 }
 
 #[async_trait]
-impl Worker for TcpRouter {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for TcpRouter<C> {
     type Message = RouterMessage;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         trace!("Registering TCP router for type = {}", TCP);
         ctx.register(TCP, ctx.address()).await?;
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(crate::CLUSTER_NAME.into()).await?;
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<RouterMessage>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<RouterMessage>) -> Result<()> {
         let msg = msg.body();
         use RouterMessage::*;
         match msg {
@@ -147,12 +141,12 @@ impl Worker for TcpRouter {
     }
 }
 
-impl TcpRouter {
+impl<C: NodeContext> TcpRouter<C> {
     /// Create and register a new TCP router with the node context
     ///
     /// To also handle incoming connections, use
     /// [`TcpRouter::bind`](TcpRouter::bind)
-    pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
+    pub async fn register(ctx: &C) -> Result<TcpRouterHandle<C>> {
         let addr = Address::random(0);
         debug!("Initialising new TcpRouter with address {}", &addr);
 
@@ -167,7 +161,7 @@ impl TcpRouter {
 
         let handle = router.create_self_handle(ctx).await?;
 
-        ctx.start_worker(addr.clone(), router).await?;
+        ctx.start_worker(addr.into(), router).await?;
 
         Ok(handle)
     }

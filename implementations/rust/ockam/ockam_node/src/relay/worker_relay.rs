@@ -12,7 +12,7 @@ use ockam_core::{Address, LocalMessage, Message, Result, Route, Routed, Transpor
 /// The relay manages this state and runtime behaviour.
 pub struct WorkerRelay<W, M>
 where
-    W: Worker<Context = Context>,
+    W: Worker<Context>,
     M: Message,
 {
     worker: W,
@@ -22,7 +22,7 @@ where
 
 impl<W, M> WorkerRelay<W, M>
 where
-    W: Worker<Context = Context, Message = M>,
+    W: Worker<Context, Message = M>,
     M: Message + Send + 'static,
 {
     pub fn new(worker: W, ctx: Context) -> Self {

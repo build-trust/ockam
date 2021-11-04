@@ -6,8 +6,7 @@ use crate::{
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
-use ockam_core::{Address, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{Address, NodeContext, Result, Routed, Worker};
 
 enum State {
     CreateRequestId,
@@ -15,9 +14,9 @@ enum State {
     Done,
 }
 
-pub struct VerifierWorker {
+pub struct VerifierWorker<C> {
     state: State,
-    profile: Profile,
+    profile: Profile<C>,
     presenter_id: Option<ProfileIdentifier>,
     pubkey: SigningPublicKey,
     schema: CredentialSchema,
@@ -25,9 +24,9 @@ pub struct VerifierWorker {
     callback_address: Address,
 }
 
-impl VerifierWorker {
+impl<C: NodeContext> VerifierWorker<C> {
     pub fn new(
-        profile: Profile,
+        profile: Profile<C>,
         pubkey: SigningPublicKey,
         schema: CredentialSchema,
         attributes_values: Vec<CredentialAttribute>,
@@ -46,15 +45,10 @@ impl VerifierWorker {
 }
 
 #[async_trait]
-impl Worker for VerifierWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for VerifierWorker<C> {
     type Message = CredentialProtocolMessage;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         if let Some(presenter_id) = &self.presenter_id {
             check_message_origin(&msg, presenter_id)?;
         } else {

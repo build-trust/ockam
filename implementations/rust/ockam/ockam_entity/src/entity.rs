@@ -10,25 +10,35 @@ use ockam_core::compat::{
 };
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
-use ockam_node::{Context, Handle};
+use ockam_core::{Handle, NodeContext};
 use ockam_vault::ockam_vault_core::{PublicKey, Secret};
 use IdentityRequest::*;
 use IdentityResponse as Res;
-#[derive(AsyncTryClone)]
-pub struct Entity {
-    pub(crate) handle: Handle,
+
+pub struct Entity<C> {
+    pub(crate) handle: Handle<C>,
     current_profile_id: Option<ProfileIdentifier>,
 }
 
-impl Entity {
-    pub(crate) fn new(handle: Handle, profile_id: Option<ProfileIdentifier>) -> Self {
+#[async_trait]
+impl<C: NodeContext> AsyncTryClone for Entity<C> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            handle: self.handle.async_try_clone().await?,
+            current_profile_id: self.current_profile_id.clone(),
+        })
+    }
+}
+
+impl<C: NodeContext> Entity<C> {
+    pub(crate) fn new(handle: Handle<C>, profile_id: Option<ProfileIdentifier>) -> Self {
         Entity {
             handle,
             current_profile_id: profile_id,
         }
     }
 
-    pub async fn create(ctx: &Context, vault_address: &Address) -> Result<Entity> {
+    pub async fn create(ctx: &C, vault_address: &Address) -> Result<Entity<C>> {
         EntityBuilder::new(ctx, vault_address).await?.build().await
     }
 
@@ -39,20 +49,12 @@ impl Entity {
     pub async fn cast(&self, req: IdentityRequest) -> Result<()> {
         self.handle.cast(req).await
     }
-}
 
-impl Entity {
     pub fn id(&self) -> ProfileIdentifier {
         self.current_profile_id.as_ref().unwrap().clone()
     }
-}
 
-fn err<T>() -> Result<T> {
-    Err(IdentityApiFailed.into())
-}
-
-impl Entity {
-    pub async fn create_profile(&mut self, vault_address: &Address) -> Result<Profile> {
+    pub async fn create_profile(&mut self, vault_address: &Address) -> Result<Profile<C>> {
         if let Res::CreateProfile(id) = self.call(CreateProfile(vault_address.clone())).await? {
             // Set current_profile_id, if it's first profile
             if self.current_profile_id.is_none() {
@@ -71,7 +73,7 @@ impl Entity {
         self.cast(RemoveProfile(profile_id.into())).await
     }
 
-    pub async fn current_profile(&self) -> Result<Option<Profile>> {
+    pub async fn current_profile(&self) -> Result<Option<Profile<C>>> {
         match &self.current_profile_id {
             None => Ok(None),
             Some(id) => Ok(Some(Profile::new(
@@ -82,8 +84,12 @@ impl Entity {
     }
 }
 
+fn err<T>() -> Result<T> {
+    Err(IdentityApiFailed.into())
+}
+
 #[async_trait]
-impl Identity for Entity {
+impl<C: NodeContext> Identity for Entity<C> {
     async fn identifier(&self) -> Result<ProfileIdentifier> {
         Ok(self.current_profile_id.as_ref().unwrap().clone())
     }
@@ -282,7 +288,7 @@ impl Identity for Entity {
     }
 }
 
-impl Entity {
+impl<C: NodeContext> Entity<C> {
     pub async fn create_secure_channel_listener(
         &mut self,
         address: impl Into<Address>,

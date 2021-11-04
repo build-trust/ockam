@@ -1,7 +1,6 @@
 use crate::PortalMessage;
-use ockam_core::async_trait;
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{route, Address, Processor, Result};
-use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::info;
 
@@ -27,9 +26,7 @@ impl TcpPortalRecvProcessor {
 }
 
 #[async_trait]
-impl Processor for TcpPortalRecvProcessor {
-    type Context = Context;
-
+impl<C: NodeContext> Processor<C> for TcpPortalRecvProcessor {
     // We are using the initialize function here to run a custom loop,
     // while never listening for messages sent to our address
     //
@@ -38,7 +35,7 @@ impl Processor for TcpPortalRecvProcessor {
     //
     // Also: we must stop the TcpReceive loop when the worker gets
     // killed by the user or node.
-    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut C) -> Result<bool> {
         let mut buf = [0u8; BUFFER_SIZE];
         let len = match self.rx.read(&mut buf).await {
             Ok(len) => len,

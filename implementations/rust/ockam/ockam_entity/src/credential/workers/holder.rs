@@ -7,8 +7,7 @@ use core::convert::TryInto;
 use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{Address, Result, Route, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{Address, NodeContext, Result, Route, Routed, Worker};
 
 enum State {
     AcceptOffer,
@@ -16,9 +15,9 @@ enum State {
     Done,
 }
 
-pub struct HolderWorker {
+pub struct HolderWorker<C> {
     state: State,
-    profile: Profile,
+    profile: Profile<C>,
     issuer_id: ProfileIdentifier,
     issuer_route: Route,
     schema: CredentialSchema,
@@ -26,9 +25,9 @@ pub struct HolderWorker {
     callback_address: Address,
 }
 
-impl HolderWorker {
+impl<C: NodeContext> HolderWorker<C> {
     pub fn new(
-        profile: Profile,
+        profile: Profile<C>,
         issuer_id: ProfileIdentifier,
         issuer_route: Route,
         schema: CredentialSchema,
@@ -48,11 +47,10 @@ impl HolderWorker {
 }
 
 #[async_trait]
-impl Worker for HolderWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for HolderWorker<C> {
     type Message = CredentialProtocolMessage;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         ctx.send(
             self.issuer_route.clone(),
             CredentialProtocolMessage::IssueOfferRequest(self.schema.id.clone()),
@@ -62,11 +60,7 @@ impl Worker for HolderWorker {
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         check_message_origin(&msg, &self.issuer_id)?;
 
         let route = msg.return_route();

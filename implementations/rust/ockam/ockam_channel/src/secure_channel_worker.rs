@@ -5,11 +5,10 @@ use crate::{
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
-    Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
+    Address, Any, Decodable, Encodable, LocalMessage, Message, NodeContext, Result, Route, Routed,
     TransportMessage, Worker,
 };
 use ockam_message_derive::Message;
-use ockam_node::Context;
 use ockam_vault_core::Secret;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -95,7 +94,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
 
     async fn send_key_exchange_payload(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
+        ctx: &mut impl NodeContext,
         payload: Vec<u8>,
         is_first_initiator_msg: bool,
     ) -> Result<()> {
@@ -118,11 +117,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
         }
     }
 
-    async fn handle_encrypt(
-        &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
-    ) -> Result<()> {
+    async fn handle_encrypt(&mut self, ctx: &mut impl NodeContext, msg: Routed<Any>) -> Result<()> {
         debug!("SecureChannel received Encrypt");
 
         let reply = msg.return_route();
@@ -168,11 +163,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
         .await
     }
 
-    async fn handle_decrypt(
-        &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
-    ) -> Result<()> {
+    async fn handle_decrypt(&mut self, ctx: &mut impl NodeContext, msg: Routed<Any>) -> Result<()> {
         debug!("SecureChannel received Decrypt");
 
         let transport_message = msg.into_transport_message();
@@ -209,8 +200,8 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
 
     async fn handle_key_exchange(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        ctx: &mut impl NodeContext,
+        msg: Routed<Any>,
     ) -> Result<()> {
         // Received key exchange message from remote channel, need to forward it to local key exchange
         debug!("SecureChannel received KeyExchangeRemote");
@@ -271,7 +262,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
             // Notify interested worker about finished key exchange
             if let Some(r) = self.key_exchange_completed_callback_route.take() {
                 ctx.send_from_address(
-                    r,
+                    r.into(),
                     KeyExchangeCompleted {
                         address: self.address_local.clone(),
                         auth_hash: *keys.h(),
@@ -305,11 +296,12 @@ impl KeyExchangeCompleted {
 }
 
 #[async_trait]
-impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> Worker for SecureChannelWorker<V, K> {
+impl<V: SecureChannelVault, K: SecureChannelKeyExchanger, C: NodeContext> Worker<C>
+    for SecureChannelWorker<V, K>
+{
     type Message = Any;
-    type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         if self.is_initiator {
             if let Some(initiator) = self.key_exchanger.as_mut() {
                 let payload = initiator.generate_request(&[]).await?;
@@ -323,11 +315,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> Worker for SecureChann
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let msg_addr = msg.msg_addr();
 
         if msg_addr == self.address_local {

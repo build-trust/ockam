@@ -11,13 +11,12 @@ use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
-    TransportMessage, Worker,
+    route, Address, Any, Decodable, Encodable, LocalMessage, Message, NodeContext, Result, Route,
+    Routed, TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_message_derive::Message;
-use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -82,7 +81,7 @@ pub(crate) struct SecureChannelWorker<I: Identity, T: TrustPolicy> {
 
 impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
     pub async fn create_initiator(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         route: Route,
         identity: I,
         trust_policy: T,
@@ -129,7 +128,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         };
 
         ctx.start_worker(
-            vec![self_local_address.clone(), self_remote_address.clone()],
+            vec![self_local_address.clone(), self_remote_address.clone()].into(),
             worker,
         )
         .await?;
@@ -141,7 +140,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
         let _ = child_ctx
             .receive_timeout::<AuthenticationConfirmation>(
-                120, /* TODO: What is the correct timeout here? */
+                core::time::Duration::from_secs(120), /* TODO: What is the correct timeout here? */
             )
             .await?;
 
@@ -149,7 +148,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
     }
 
     pub(crate) async fn create_responder(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         identity: I,
         trust_policy: T,
         listener_address: Address,
@@ -195,7 +194,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         };
 
         ctx.start_worker(
-            vec![self_local_address.clone(), self_remote_address.clone()],
+            vec![self_local_address.clone(), self_remote_address.clone()].into(),
             worker,
         )
         .await?;
@@ -212,8 +211,8 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
     async fn handle_kex_done(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        ctx: &mut impl NodeContext,
+        msg: Routed<Any>,
         mut state: ResponderWaitForKex<I, T>,
     ) -> Result<()> {
         let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
@@ -247,8 +246,8 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
     async fn handle_send_profile(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        ctx: &mut impl NodeContext,
+        msg: Routed<Any>,
         mut state: InitiatorSendProfile<I, T>,
     ) -> Result<()> {
         let return_route = msg.return_route();
@@ -341,8 +340,8 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
     async fn handle_receive_profile(
         &mut self,
-        _ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        _ctx: &mut impl NodeContext,
+        msg: Routed<Any>,
         mut state: ResponderWaitForProfile<I, T>,
     ) -> Result<()> {
         let return_route = msg.return_route();
@@ -423,8 +422,8 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
     async fn handle_encrypt(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        ctx: &mut impl NodeContext,
+        msg: Routed<Any>,
         state: Initialized,
     ) -> Result<()> {
         debug!(
@@ -463,8 +462,8 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
     async fn handle_decrypt(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        ctx: &mut impl NodeContext,
+        msg: Routed<Any>,
         state: Initialized,
     ) -> Result<()> {
         debug!(
@@ -510,11 +509,10 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 }
 
 #[async_trait]
-impl<I: Identity, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
+impl<I: Identity, T: TrustPolicy, C: NodeContext> Worker<C> for SecureChannelWorker<I, T> {
     type Message = Any;
-    type Context = Context;
 
-    async fn initialize(&mut self, _ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _ctx: &mut C) -> Result<()> {
         if self.is_initiator {
             match self.take_state()? {
                 State::InitiatorStartChannel(s) => {
@@ -534,11 +532,7 @@ impl<I: Identity, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let msg_addr = msg.msg_addr();
 
         match self.take_state()? {

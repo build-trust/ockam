@@ -1,10 +1,9 @@
 use crate::PortalMessage;
-use ockam_core::async_trait;
 use ockam_core::compat::collections::VecDeque;
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{
     Address, Any, Decodable, LocalMessage, Result, Route, Routed, TransportMessage, Worker,
 };
-use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
@@ -62,11 +61,10 @@ impl TcpPortalSendWorker {
 }
 
 #[async_trait]
-impl Worker for TcpPortalSendWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for TcpPortalSendWorker {
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         match &self.state {
             TcpPortalSendWorkerState::Inlet { listener_route } => {
                 let empty_payload: Vec<u8> = vec![];
@@ -86,7 +84,7 @@ impl Worker for TcpPortalSendWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Any>) -> Result<()> {
         // Remove our own address from the route so the other end
         // knows what to do with the incoming message
         let mut onward_route = msg.onward_route();

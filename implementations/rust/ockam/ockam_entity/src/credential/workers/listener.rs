@@ -3,18 +3,21 @@ use crate::{
     IssuerWorker, Profile, SecureChannelTrustInfo, TrustPolicy, TrustPolicyImpl,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, AsyncTryClone};
+use ockam_core::{async_trait, AsyncTryClone, NodeContext};
 use ockam_core::{Address, Result, Routed, Worker};
-use ockam_node::Context;
 
-pub struct ListenerWorker {
-    profile: Profile,
+pub struct ListenerWorker<C> {
+    profile: Profile<C>,
     schema: CredentialSchema,
-    trust_policy: TrustPolicyImpl,
+    trust_policy: TrustPolicyImpl<C>,
 }
 
-impl ListenerWorker {
-    pub fn new(profile: Profile, schema: CredentialSchema, trust_policy: TrustPolicyImpl) -> Self {
+impl<C: NodeContext> ListenerWorker<C> {
+    pub fn new(
+        profile: Profile<C>,
+        schema: CredentialSchema,
+        trust_policy: TrustPolicyImpl<C>,
+    ) -> Self {
         Self {
             profile,
             schema,
@@ -24,15 +27,10 @@ impl ListenerWorker {
 }
 
 #[async_trait]
-impl Worker for ListenerWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for ListenerWorker<C> {
     type Message = CredentialProtocolMessage;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let their_profile_id = get_secure_channel_participant_id(&msg)?;
         let trust_info = SecureChannelTrustInfo::new(their_profile_id.clone());
         let res = self.trust_policy.check(&trust_info).await?;
@@ -57,7 +55,7 @@ impl Worker for ListenerWorker {
             self.schema.clone(),
             return_route,
         )?;
-        ctx.start_worker(address, worker).await?;
+        ctx.start_worker(address.into(), worker).await?;
 
         Ok(())
     }

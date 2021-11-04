@@ -1,13 +1,12 @@
 use crate::{Context, Executor};
-use ockam_core::Address;
+use ockam_core::{Address, NodeContext, Worker};
 #[cfg(feature = "std")]
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
 
-impl ockam_core::Worker for NullWorker {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for NullWorker {
     type Message = (); // This message type is never used
 }
 

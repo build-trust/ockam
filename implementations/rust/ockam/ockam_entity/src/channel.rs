@@ -45,11 +45,11 @@ mod test {
 
     #[ockam_node_test_attribute::node_test]
     async fn test_channel(ctx: &mut Context) -> Result<()> {
-        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
-        let mut alice = Entity::create(&ctx, &alice_vault).await?;
-        let mut bob = Entity::create(&ctx, &bob_vault).await?;
+        let mut alice = Entity::create(ctx, &alice_vault).await?;
+        let mut bob = Entity::create(ctx, &bob_vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -90,10 +90,10 @@ mod test {
 
     #[ockam_node_test_attribute::node_test]
     async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-        let vault = Vault::create(&ctx).await?;
+        let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(&ctx, &vault).await?;
-        let mut bob = Entity::create(&ctx, &vault).await?;
+        let mut alice = Entity::create(ctx, &vault).await?;
+        let mut bob = Entity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -135,10 +135,10 @@ mod test {
 
     #[ockam_node_test_attribute::node_test]
     async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-        let vault = Vault::create(&ctx).await?;
+        let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(&ctx, &vault).await?;
-        let mut bob = Entity::create(&ctx, &vault).await?;
+        let mut alice = Entity::create(ctx, &vault).await?;
+        let mut bob = Entity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -190,10 +190,10 @@ mod test {
 
     #[ockam_node_test_attribute::node_test]
     async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-        let vault = Vault::create(&ctx).await?;
+        let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(&ctx, &vault).await?;
-        let mut bob = Entity::create(&ctx, &vault).await?;
+        let mut alice = Entity::create(ctx, &vault).await?;
+        let mut bob = Entity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);

@@ -1,5 +1,6 @@
 use super::Router;
 use crate::{error::Error, tokio::sync::mpsc::Sender, NodeReply, NodeReplyResult};
+use core::time::Duration;
 use ockam_core::{Address, Result};
 
 /// Register a stop ACK
@@ -42,7 +43,7 @@ async fn stop_next_cluster(r: &mut Router) -> Result<bool> {
 #[cfg_attr(not(feature = "std"), allow(unused_variables))]
 pub(super) async fn graceful(
     router: &mut Router,
-    seconds: u8,
+    dur: Duration,
     reply: Sender<NodeReplyResult>,
 ) -> Result<bool> {
     // Mark the router as shutting down to prevent spawning
@@ -71,11 +72,9 @@ pub(super) async fn graceful(
     #[cfg(feature = "std")]
     {
         use crate::NodeMessage;
-        use core::time::Duration;
         use tokio::{task, time};
 
         let sender = router.sender();
-        let dur = Duration::from_secs(seconds as u64);
         task::spawn(async move {
             time::sleep(dur).await;
             warn!("Shutdown timeout reached; aborting node!");

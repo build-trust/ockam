@@ -1,21 +1,20 @@
 use crate::{TcpRouterHandle, TcpSendWorker};
-use ockam_core::async_trait;
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{Address, Processor, Result};
-use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tracing::{debug, trace};
 
-pub(crate) struct TcpListenProcessor {
+pub(crate) struct TcpListenProcessor<C> {
     inner: TcpListener,
-    router_handle: TcpRouterHandle,
+    router_handle: TcpRouterHandle<C>,
 }
 
-impl TcpListenProcessor {
+impl<C: NodeContext> TcpListenProcessor<C> {
     pub(crate) async fn start(
-        ctx: &Context,
-        router_handle: TcpRouterHandle,
+        ctx: &C,
+        router_handle: TcpRouterHandle<C>,
         addr: SocketAddr,
     ) -> Result<()> {
         let waddr = Address::random(0);
@@ -35,14 +34,12 @@ impl TcpListenProcessor {
 }
 
 #[async_trait]
-impl Processor for TcpListenProcessor {
-    type Context = Context;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
+impl<C: NodeContext> Processor<C> for TcpListenProcessor<C> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
+        ctx.set_cluster(crate::CLUSTER_NAME.into()).await
     }
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut C) -> Result<bool> {
         trace!("Waiting for incoming TCP connection...");
 
         // Wait for an incoming connection

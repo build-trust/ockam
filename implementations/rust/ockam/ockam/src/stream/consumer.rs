@@ -10,9 +10,12 @@ use crate::{
     stream::StreamWorkerCmd,
     DelayedEvent, OckamError, ProtocolPayload, TransportMessage,
 };
-use crate::{Address, Any, Context, Result, Route, Routed, Worker};
+use crate::{Address, Any, Result, Route, Routed, Worker};
 use core::time::Duration;
-use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
+use ockam_core::{
+    compat::{boxed::Box, string::String, vec::Vec},
+    NodeContext,
+};
 use ockam_core::{Decodable, LocalMessage};
 
 /// A stream worker
@@ -39,7 +42,7 @@ pub struct StreamConsumer {
 /// Function which is called whenever a `Response` message is parsed
 async fn handle_response(
     w: &mut StreamConsumer,
-    ctx: &mut Context,
+    ctx: &mut impl NodeContext,
     r: Routed<Any>,
     response: Response,
 ) -> Result<()> {
@@ -144,7 +147,7 @@ async fn handle_response(
 
 async fn handle_cmd(
     w: &mut StreamConsumer,
-    ctx: &mut Context,
+    ctx: &mut impl NodeContext,
     _r: Routed<Any>,
     cmd: StreamWorkerCmd,
 ) -> Result<()> {
@@ -175,7 +178,7 @@ async fn handle_cmd(
 ///
 /// This function must be re-called whenever a fetch event is handled
 /// in the `parse_cmd` function.
-async fn fetch_interval(ctx: &Context, interval: Duration) -> Result<()> {
+async fn fetch_interval(ctx: &impl NodeContext, interval: Duration) -> Result<()> {
     DelayedEvent::new(ctx, ctx.address().into(), StreamWorkerCmd::fetch())
         .await?
         .with_duration(interval)
@@ -184,15 +187,14 @@ async fn fetch_interval(ctx: &Context, interval: Duration) -> Result<()> {
 }
 
 #[crate::worker]
-impl Worker for StreamConsumer {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for StreamConsumer {
     type Message = Any;
 
     /// Initialise the stream consumer
     ///
     /// This involves sending a CreateStreamRequest to the peer and
     /// waiting for a reply.
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         info!("Initialising stream consumer {}", ctx.address());
 
         // Send a create_stream_request with the registered name
@@ -205,7 +207,7 @@ impl Worker for StreamConsumer {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Any>) -> Result<()> {
         let pp = ProtocolPayload::decode(msg.payload())?;
         let id = pp.protocol.as_str();
 

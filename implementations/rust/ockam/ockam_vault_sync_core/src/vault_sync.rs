@@ -1,7 +1,7 @@
 use crate::{Vault, VaultRequestMessage, VaultResponseMessage, VaultTrait};
 use ockam_core::compat::{boxed::Box, rand::random};
-use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Result, ResultMessage};
-use ockam_node::{Context, Handle};
+use ockam_core::NodeContext;
+use ockam_core::{async_trait::async_trait, Address, AsyncTryClone, Handle, Result, ResultMessage};
 use tracing::debug;
 
 mod asymmetric_vault;
@@ -21,27 +21,24 @@ pub use symmetric_vault::*;
 pub use verifier::*;
 
 /// Vault sync wrapper
-pub struct VaultSync {
-    handle: Handle,
+pub struct VaultSync<C> {
+    handle: Handle<C>,
 }
 
-impl VaultSync {
+#[async_trait]
+impl<C: NodeContext> AsyncTryClone for VaultSync<C> {
+    async fn async_try_clone(&self) -> Result<Self> {
+        self.start_another().await
+    }
+}
+
+impl<C: NodeContext> VaultSync<C> {
     pub(crate) async fn call(&mut self, msg: VaultRequestMessage) -> Result<VaultResponseMessage> {
         self.handle
             .call::<VaultRequestMessage, ResultMessage<VaultResponseMessage>>(msg)
             .await?
             .into()
     }
-}
-
-#[async_trait]
-impl AsyncTryClone for VaultSync {
-    async fn async_try_clone(&self) -> Result<Self> {
-        self.start_another().await
-    }
-}
-
-impl VaultSync {
     /// Start another Vault at the same address.
     pub async fn start_another(&self) -> Result<Self> {
         let vault_worker_address = self.handle.address().clone();
@@ -50,11 +47,9 @@ impl VaultSync {
 
         Ok(clone)
     }
-}
 
-impl VaultSync {
     /// Create and start a new Vault using Worker.
-    pub async fn create_with_worker(ctx: &Context, vault: &Address) -> Result<Self> {
+    pub async fn create_with_worker(ctx: &C, vault: &Address) -> Result<Self> {
         let address: Address = random();
 
         debug!("Starting VaultSync at {}", &address);
@@ -67,7 +62,7 @@ impl VaultSync {
     }
 
     /// Start a Vault.
-    pub async fn create<T: VaultTrait>(ctx: &Context, vault: T) -> Result<Self> {
+    pub async fn create<T: VaultTrait>(ctx: &C, vault: T) -> Result<Self> {
         let vault_address = Vault::create_with_inner(ctx, vault).await?;
 
         Self::create_with_worker(ctx, &vault_address).await

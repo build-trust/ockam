@@ -1,4 +1,3 @@
-use crate::profile::Profile;
 use crate::EntityError;
 use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
@@ -72,7 +71,7 @@ impl AsRef<[u8]> for EventIdentifier {
 
 impl EventIdentifier {
     pub async fn initial(hasher: &mut (impl Hasher + Sync)) -> Self {
-        let h = match hasher.sha256(Profile::NO_EVENT).await {
+        let h = match hasher.sha256(crate::profile::NO_EVENT).await {
             Ok(hash) => hash,
             Err(_) => panic!("failed to hash initial event"),
         };

@@ -65,12 +65,12 @@ mod test {
     }
 
     async fn test_auth_use_case(ctx: &Context) -> ockam_core::Result<()> {
-        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(&ctx, &alice_vault).await?;
-        let mut bob = Entity::create(&ctx, &bob_vault).await?;
+        let mut alice = Entity::create(ctx, &alice_vault).await?;
+        let mut bob = Entity::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create unique profiles for a Chat app.
         let mut alice_chat = alice.create_profile(&alice_vault).await?;
@@ -123,12 +123,12 @@ mod test {
     }
 
     async fn test_key_rotation(ctx: &Context) -> ockam_core::Result<()> {
-        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(&ctx, &alice_vault).await?;
-        let mut bob = Entity::create(&ctx, &bob_vault).await?;
+        let mut alice = Entity::create(ctx, &alice_vault).await?;
+        let mut bob = Entity::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create unique profiles for a Chat app.
         let mut alice_chat = alice.create_profile(&alice_vault).await?;
@@ -161,11 +161,11 @@ mod test {
     }
 
     async fn test_update_contact_and_reprove(ctx: &Context) -> ockam_core::Result<()> {
-        let alice_vault = Vault::create(&ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(&ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
-        let mut alice = Entity::create(&ctx, &alice_vault).await?;
-        let mut bob = Entity::create(&ctx, &bob_vault).await?;
+        let mut alice = Entity::create(ctx, &alice_vault).await?;
+        let mut bob = Entity::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create unique profiles for a Chat app.
         let mut alice_chat = alice.create_profile(&alice_vault).await?;

@@ -30,11 +30,9 @@ pub use ockam_executor::tokio;
 #[cfg(feature = "std")]
 pub use tokio;
 
-mod cancel;
 mod context;
 mod error;
 mod executor;
-mod handle;
 mod messages;
 mod node;
 mod parser;
@@ -44,11 +42,12 @@ mod router;
 #[cfg(test)]
 mod tests;
 
-pub use cancel::*;
 pub use context::*;
 pub use executor::*;
-pub use handle::*;
 pub use messages::*;
+
+/// Alias for a `ockam_core::Handle` that uses our `Context` type
+pub type Handle = ockam_core::Handle<Context>;
 
 pub use node::{start_node, NullWorker};
 

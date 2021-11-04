@@ -2,8 +2,7 @@ use std::net::SocketAddr;
 
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::StreamExt;
-use ockam_core::{async_trait, Address, Result, RouterMessage, Worker};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, NodeContext, Result, RouterMessage, Worker};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 
@@ -19,7 +18,7 @@ pub struct WebSocketListenWorker {
 
 impl WebSocketListenWorker {
     pub(crate) async fn start(
-        ctx: &Context,
+        ctx: &impl NodeContext,
         router_addr: Address,
         addr: SocketAddr,
         run: ArcBool,
@@ -34,13 +33,13 @@ impl WebSocketListenWorker {
             router_addr,
         };
         let waddr = Address::random(0);
-        ctx.start_worker(waddr, worker).await?;
+        ctx.start_worker(waddr.into(), worker).await?;
         Ok(())
     }
 
     async fn accept_tcp_streams(
         &self,
-        ctx: &Context,
+        ctx: &impl NodeContext,
         tx: UnboundedSender<WorkerPair>,
     ) -> Result<()> {
         while let Ok((tcp_stream, peer)) = self.inner.accept().await {
@@ -73,7 +72,7 @@ impl WebSocketListenWorker {
 
     async fn on_tcp_stream_accepted(
         &self,
-        ctx: &Context,
+        ctx: &impl NodeContext,
         mut rx: UnboundedReceiver<WorkerPair>,
     ) -> Result<()> {
         while let Some(pair) = rx.next().await {
@@ -94,12 +93,11 @@ impl WebSocketListenWorker {
 }
 
 #[async_trait::async_trait]
-impl Worker for WebSocketListenWorker {
+impl<C: NodeContext> Worker<C> for WebSocketListenWorker {
     // Do not actually listen for messages
     type Message = ();
-    type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut C) -> Result<()> {
         trace!("Waiting for incoming TCP connection...");
         let (tx, rx) = futures_channel::mpsc::unbounded();
         let (handled_accept_tcp_streams, handled_on_tcp_stream_accepted) = tokio::join!(

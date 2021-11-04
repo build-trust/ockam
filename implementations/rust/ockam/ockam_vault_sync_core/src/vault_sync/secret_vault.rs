@@ -1,11 +1,11 @@
-use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{NodeContext, Result};
 use ockam_vault_core::{PublicKey, Secret, SecretAttributes, SecretKey, SecretVault};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
 #[async_trait]
-impl SecretVault for VaultSync {
+impl<C: NodeContext> SecretVault for VaultSync<C> {
     async fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
         let resp = self
             .call(VaultRequestMessage::SecretGenerate { attributes })

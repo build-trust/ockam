@@ -1,5 +1,6 @@
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{error::Error, relay::RelayMessage, router::SenderPair};
+use core::time::Duration;
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{Address, AddressSet};
 
@@ -180,7 +181,7 @@ pub enum ShutdownType {
     /// Graceful shutdown procedure will be pre-maturely terminated
     /// when reaching the timeout (failover into `Immediate`
     /// strategy).  **A given timeout of `0` will wait forever!**
-    Graceful(u8),
+    Graceful(Duration),
     /// Immediately shutdown workers and run shutdown hooks
     ///
     /// This strategy can lead to data loss:
@@ -196,7 +197,7 @@ pub enum ShutdownType {
 
 impl Default for ShutdownType {
     fn default() -> Self {
-        Self::Graceful(1)
+        Self::Graceful(Duration::from_secs(1))
     }
 }
 

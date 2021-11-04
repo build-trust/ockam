@@ -26,9 +26,8 @@ defined as a field-less unit struct.
 This struct:
 * Must implement the `ockam::Worker` trait.
 * Must have the `#[ockam::worker]` attribute on the Worker trait implementation
-* Must define two associated types `Context` and `Message`
-  * The `Context` type is usually set to `ockam::Context` which is provided by the node implementation.
-  * The `Message` type must be set to the type of message the worker wishes to handle.
+* Must define an associated type `Message`, the type of message the worker wishes to handle.
+* Generally, the trait implementation should be done generically over `NodeContext`, the node implementation's `Context` type.
 
 For a new `Echoer` worker, create a new file at `src/echoer.rs` in your
 [hello_ockam](../../#setup) project. We're creating this inside the `src`
@@ -44,16 +43,15 @@ Add the following code to this file:
 ```rust
 // src/echoer.rs
 
-use ockam::{Context, Result, Routed, Worker};
+use ockam::{NodeContext, Result, Routed, Worker};
 
 pub struct Echoer;
 
 #[ockam::worker]
-impl Worker for Echoer {
-    type Context = Context;
+impl<C: NodeContext> Worker<C> for Echoer {
     type Message = String;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<String>) -> Result<()> {
         println!("Address: {}, Received: {}", ctx.address(), msg);
 
         // Echo the message body back on its return_route.

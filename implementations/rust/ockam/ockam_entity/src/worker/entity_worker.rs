@@ -5,22 +5,28 @@ use crate::{
 };
 use core::result::Result::Ok;
 use ockam_core::{
-    async_trait::async_trait, compat::boxed::Box, compat::collections::HashMap, Address, Result,
-    Routed, Worker,
+    async_trait::async_trait, compat::boxed::Box, compat::collections::HashMap, Address, Handle,
+    NodeContext, Result, Routed, Worker,
 };
-use ockam_node::{Context, Handle};
 use ockam_vault_sync_core::VaultSync;
 
 #[cfg(feature = "lease_proto_json")]
 use crate::lease::json_proto::{LeaseProtocolRequest, LeaseProtocolResponse};
 
-#[derive(Default)]
-pub struct EntityWorker {
-    profiles: HashMap<ProfileIdentifier, ProfileState>,
+pub struct EntityWorker<C> {
+    profiles: HashMap<ProfileIdentifier, ProfileState<C>>,
 }
 
-impl EntityWorker {
-    fn profile(&mut self, profile_id: &ProfileIdentifier) -> &mut ProfileState {
+impl<C: NodeContext> Default for EntityWorker<C> {
+    fn default() -> Self {
+        Self {
+            profiles: Default::default(),
+        }
+    }
+}
+
+impl<C: NodeContext> EntityWorker<C> {
+    fn profile(&mut self, profile_id: &ProfileIdentifier) -> &mut ProfileState<C> {
         self.profiles
             .get_mut(profile_id)
             .expect("default profile invalid")
@@ -32,15 +38,10 @@ fn err<T>() -> Result<T> {
 }
 
 #[async_trait]
-impl Worker for EntityWorker {
+impl<C: NodeContext> Worker<C> for EntityWorker<C> {
     type Message = IdentityRequest;
-    type Context = Context;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let reply = msg.return_route();
         let req = msg.body();
         match req {
@@ -180,7 +181,7 @@ impl Worker for EntityWorker {
                 let profile = Profile::new(profile_id, handle);
                 let vault = VaultSync::create_with_worker(ctx, &vault_address).await?;
                 let listener = ProfileChannelListener::new(trust_policy, profile, vault);
-                ctx.start_worker(address, listener).await?;
+                ctx.start_worker(address.into(), listener).await?;
                 ctx.send(reply, Res::CreateSecureChannelListener).await
             }
             CreateSecureChannel(profile_id, route, trust_policy_address) => {
@@ -193,9 +194,11 @@ impl Worker for EntityWorker {
                 let profile = Profile::new(profile_id.clone(), handle);
 
                 let child_ctx = ctx.new_context(Address::random(0)).await?;
-                let rt = ctx.runtime();
-                rt.spawn(async move {
-                    let vault = VaultSync::create_with_worker(&child_ctx, &vault_address).await?;
+
+                ctx.spawn_detached(async move {
+                    let vault = VaultSync::create_with_worker(&child_ctx, &vault_address)
+                        .await
+                        .unwrap();
                     let address = SecureChannelWorker::create_initiator(
                         &child_ctx,
                         route,
@@ -203,10 +206,12 @@ impl Worker for EntityWorker {
                         trust_policy,
                         vault,
                     )
-                    .await?;
+                    .await
+                    .unwrap();
                     child_ctx
                         .send(reply, Res::CreateSecureChannel(address))
                         .await
+                        .unwrap()
                 });
 
                 Ok(())
@@ -492,8 +497,8 @@ impl Worker for EntityWorker {
     }
 }
 
-impl EntityWorker {
-    async fn add_profile_state(&mut self, profile_state: ProfileState) -> Result<()> {
+impl<C: NodeContext> EntityWorker<C> {
+    async fn add_profile_state(&mut self, profile_state: ProfileState<C>) -> Result<()> {
         let id = profile_state.identifier().await.unwrap();
         self.profiles.insert(id, profile_state);
         Ok(())

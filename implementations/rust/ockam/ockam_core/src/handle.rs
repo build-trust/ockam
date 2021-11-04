@@ -1,15 +1,14 @@
-use crate::Context;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{Address, AsyncTryClone, Message, Result};
+use crate::{async_trait, compat::boxed::Box, NodeContext};
+use crate::{Address, AsyncTryClone, Message, Result};
 
-/// Wrapper for `Context` and `Address`
-pub struct Handle {
-    ctx: Context,
+/// Wrapper for some `NodeContext` and `Address`
+pub struct Handle<C> {
+    ctx: C,
     address: Address,
 }
 
 #[async_trait]
-impl AsyncTryClone for Handle {
+impl<C: NodeContext> AsyncTryClone for Handle<C> {
     async fn async_try_clone(&self) -> Result<Self> {
         Ok(Handle {
             ctx: self.ctx.new_context(Address::random(0)).await?,
@@ -18,9 +17,9 @@ impl AsyncTryClone for Handle {
     }
 }
 
-impl Handle {
+impl<C: NodeContext> Handle<C> {
     /// Create a new `Handle` from a `Context` and `Address`
-    pub fn new(ctx: Context, address: Address) -> Self {
+    pub fn new(ctx: C, address: Address) -> Self {
         Handle { ctx, address }
     }
 
@@ -41,14 +40,14 @@ impl Handle {
     }
 }
 
-impl Handle {
+impl<C: NodeContext> Handle<C> {
     /// Gets inner `Context` as reference
-    pub fn ctx(&self) -> &Context {
+    pub fn ctx(&self) -> &C {
         &self.ctx
     }
 
     /// Gets inner `Context` as mutable reference
-    pub fn ctx_mut(&mut self) -> &mut Context {
+    pub fn ctx_mut(&mut self) -> &mut C {
         &mut self.ctx
     }
 

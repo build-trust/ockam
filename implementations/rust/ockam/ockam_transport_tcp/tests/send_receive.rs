@@ -45,11 +45,10 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
 pub struct Echoer;
 
 #[ockam_core::worker]
-impl Worker for Echoer {
+impl<C: ockam_core::NodeContext> Worker<C> for Echoer {
     type Message = String;
-    type Context = Context;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<String>) -> Result<()> {
         ctx.send(msg.return_route(), msg.body()).await
     }
 }

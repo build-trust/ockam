@@ -1,7 +1,6 @@
-use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, rand::random};
+use ockam_core::{async_trait, NodeContext};
 use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
-use ockam_node::Context;
 use ockam_vault_core::{
     AsymmetricVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
@@ -57,18 +56,16 @@ where
     }
 
     /// Start a VaultWorker.
-    pub async fn create_with_inner(ctx: &Context, inner: V) -> Result<Address> {
+    pub async fn create_with_inner<C: NodeContext>(ctx: &C, inner: V) -> Result<Address> {
         let address: Address = random();
 
-        ctx.start_worker(address.clone(), Self::new(inner)).await?;
+        ctx.start_worker(address.clone().into(), Self::new(inner))
+            .await?;
 
         Ok(address)
     }
 
-    async fn handle_request(
-        &mut self,
-        msg: <Self as Worker>::Message,
-    ) -> Result<VaultResponseMessage> {
+    async fn handle_request(&mut self, msg: VaultRequestMessage) -> Result<VaultResponseMessage> {
         Ok(match msg {
             VaultRequestMessage::EcDiffieHellman {
                 context,
@@ -176,18 +173,14 @@ where
 }
 
 #[async_trait]
-impl<V> Worker for VaultWorker<V>
+impl<V, C> Worker<C> for VaultWorker<V>
 where
     V: VaultTrait,
+    C: NodeContext,
 {
     type Message = VaultRequestMessage;
-    type Context = Context;
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<Self::Message>) -> Result<()> {
         let return_route = msg.return_route();
         let response = self.handle_request(msg.body()).await;
 
