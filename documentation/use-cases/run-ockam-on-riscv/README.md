@@ -1,8 +1,13 @@
 # How to run Ockam on RISC-V Linux
 
-In this hands-on guide, we'll show how to cross compile Ockam for [RISC-V](https://riscv.org/) Linux systems. We will also show how to test RISC-V Linux programs using [qemu](https://www.qemu.org/).
+In this hands-on guide, we'll show how to cross compile Ockam for RISC-V Linux systems. We will also show how to test RISC-V Linux programs using qemu.
 
-https://user-images.githubusercontent.com/1097548/140435127-567722a4-89f2-4c77-8a48-7db27146962c.mp4
+Before we dig in, here's a ~2 minute demo of the example we'll walkthrough below running on
+Microchip's PolarFire SoC Icicle kit.
+
+https://user-images.githubusercontent.com/159583/140436789-09d4236d-83cd-4c45-964f-3be18b554a3f.mp4
+
+<div align="center"><i>Please unmute to listen to the explanation of the demo</i></div>
 
 ## What is RISC-V?
 
@@ -227,3 +232,6 @@ From here, you can either copy binaries into your vm over the local network or m
 
 Like with Debian on qemu, you can copy your test binary over the network, or use any other facility that qemu provides.
 
+<div style="display: none; visibility: hidden;">
+<hr><b>Next:</b> <a href="../end-to-end-encryption-with-rust#readme">End-to-End Encryption with Rust</a>
+</div>
