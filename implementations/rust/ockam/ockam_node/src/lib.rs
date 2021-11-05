@@ -40,6 +40,8 @@ mod node;
 mod parser;
 mod relay;
 mod router;
+
+#[cfg(test)]
 mod tests;
 
 pub use cancel::*;
