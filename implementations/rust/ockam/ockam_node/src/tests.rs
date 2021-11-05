@@ -1,4 +1,3 @@
-
 use crate::{start_node, Context};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
@@ -322,5 +321,37 @@ fn waiting_processor__messaging__should_work() {
 
             ctx.stop().await.unwrap();
         })
+        .unwrap();
+}
+
+struct BadWorker;
+
+#[ockam_core::worker]
+impl Worker for BadWorker {
+    type Context = Context;
+    type Message = ();
+
+    /// This shutdown function takes _way_ too long to complete
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
+        ctx.sleep(Duration::from_secs(10)).await;
+        Ok(())
+    }
+}
+
+/// This test enforces that a shutdown that is blocked by a worker
+/// will be aborted eventually.
+#[test]
+fn abort_blocked_shutdown() {
+    // Create an executor
+    let (mut ctx, mut executor) = start_node();
+    executor
+        .execute(async move {
+            ctx.start_worker("bad", BadWorker).await?;
+
+            crate::tokio::time::timeout(Duration::from_secs(2), async { ctx.stop().await })
+                .await
+                .unwrap()
+        })
+        .unwrap()
         .unwrap();
 }

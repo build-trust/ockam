@@ -1,7 +1,8 @@
-use super::{NodeState, Router};
+use super::Router;
 use crate::{
+    error::Error,
     tokio::{sync::mpsc::Sender, task, time},
-    NodeMessage, NodeReply, NodeReplyResult, ShutdownType,
+    NodeMessage, NodeReply, NodeReplyResult,
 };
 use core::time::Duration;
 use ockam_core::{Address, Result};
@@ -45,7 +46,7 @@ async fn stop_next_cluster(r: &mut Router) -> Result<bool> {
 /// Implement the graceful shutdown strategy
 pub(super) async fn graceful(
     router: &mut Router,
-    _seconds: u8,
+    seconds: u8,
     reply: Sender<NodeReplyResult>,
 ) -> Result<bool> {
     // Mark the router as shutting down to prevent spawning
@@ -72,13 +73,12 @@ pub(super) async fn graceful(
 
     // Start a timeout task to interrupt us...
     let sender = router.sender();
+    let dur = Duration::from_secs(seconds as u64);
     task::spawn(async move {
-        if seconds != 0 {
-            time::timeout(Duration::from_secs(seconds as u64), async move {
-                warn!("Shutdown timeout reached");
-                sender.send(NodeMessage::AbortNode).await;
-            })
-            .await;
+        time::sleep(dur).await;
+        warn!("Shutdown timeout reached; aborting node!");
+        if sender.send(NodeMessage::AbortNode).await.is_err() {
+            error!("Failed to send node abort signal to router");
         }
     });
 
