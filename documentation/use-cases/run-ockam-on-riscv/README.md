@@ -1,9 +1,9 @@
 # How to run Ockam on RISC-V Linux
 
-In this hands-on guide, we'll show how to cross compile Ockam for RISC-V Linux systems. We will also show how to test RISC-V Linux programs using qemu.
+In this hands-on guide, we'll show how to cross compile a Rust example of Ockam for RISC-V Linux systems.
+We'll also see how to test RISC-V Linux programs using qemu.
 
-Before we dig in, here's a ~2 minute demo of the example we'll walkthrough below running on
-Microchip's PolarFire SoC Icicle kit.
+Before we dive in, let's start with a ~2 minute demo of how to run Ockam's end-to-end encryption example on Microchip's PolarFire SoC Icicle kit.
 
 https://user-images.githubusercontent.com/159583/140436789-09d4236d-83cd-4c45-964f-3be18b554a3f.mp4
 
