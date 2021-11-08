@@ -2,6 +2,14 @@
 name = "ockam_macro"
 version = "0.1.0"
 edition = "2018"
+license = "Apache-2.0"
+authors = ["Ockam Developers"]
+categories = ["cryptography", "asynchronous", "authentication", "network-programming", "embedded"]
+description = "End-to-end encryption and mutual authentication for distributed applications."
+homepage = "https://github.com/ockam-network/ockam"
+keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
+readme = "README.md"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_macro"
 
 [lib]
 proc-macro = true
