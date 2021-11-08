@@ -42,6 +42,7 @@ pub use pok_signature::*;
 pub use pok_signature_proof::*;
 pub use prover::*;
 pub use signature::*;
+pub use signature_core::error::Error;
 pub use signature_bls::{ProofOfPossession, PublicKey, SecretKey, Signature as BlsSignature};
 #[cfg(test)]
 pub use util::MockRng;

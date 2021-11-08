@@ -24,7 +24,6 @@ bls12_381_plus = { version = "0.5", default-features = false, features = ["group
 digest = { version = "0.9", default-features = false }
 ff = { version = "0.10", default-features = false }
 group = "0.10"
-hashbrown = { version = "0.11", default-features = false, features = ["ahash"] }
 heapless = "0.7"
 rand_core = "0.6"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
