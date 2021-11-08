@@ -131,7 +131,9 @@ async fn handle_response(
             }
 
             // Queue a new fetch event and mark this event as handled
-            fetch_interval(ctx, w.interval).await.unwrap();
+            if fetch_interval(ctx, w.interval).await.is_err() {
+                warn!("Failed to create fetch_interval event: node shutting down");
+            }
 
             Ok(())
         }
