@@ -28,7 +28,7 @@ no_std = ["ockam_core/no_std", "heapless"]
 alloc = ["ockam_core/alloc", "serde/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "0.37.0" , default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.38.0", default_features = false }
 heapless = { version = "0.7", features = ["serde"], optional = true }
 serde = {version = "1.0", default-features = false, features = ["derive"]}
 serde-big-array = "0.3"

@@ -16,7 +16,7 @@ proc-macro = true
 
 [dev-dependencies]
 trybuild = "1.0"
-ockam_core = { path = "../ockam_core", version = "0.37.0"}
+ockam_core = { path = "../ockam_core", version = "^0.38.0"}
 
 [[test]]
 name="tests"
