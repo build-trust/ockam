@@ -2,7 +2,7 @@ use super::Router;
 use crate::tokio::sync::mpsc::Sender;
 use crate::{error::Error, NodeReply, NodeReplyResult, Reason};
 
-use ockam_core::{Address, AddressSet, Result};
+use ockam_core::{Address, Result};
 
 /// Receive an address and resolve it to a sender
 ///
@@ -46,26 +46,4 @@ pub(super) fn router_addr(router: &mut Router, tt: u8) -> Result<Address> {
         .get(&tt)
         .cloned()
         .ok_or_else(|| Error::InternalIOFailure.into())
-}
-
-/// Check if an address is already in-use by another worker
-pub(super) async fn check_addr_collisions(
-    router: &Router,
-    addrs: &AddressSet,
-    reply: &Sender<NodeReplyResult>,
-) -> Result<()> {
-    if let Some(addr) = addrs.iter().fold(None, |acc, addr| {
-        match (acc, router.map.internal.contains_key(addr)) {
-            (None, true) => Some(addr.clone()),
-            (None, false) => None,
-            // If a collision was already found, ignore further collisions
-            (Some(addr), _) => Some(addr),
-        }
-    }) {
-        reply.send(NodeReply::worker_exists(addr))
-    } else {
-        reply.send(NodeReply::ok())
-    }
-    .await
-    .map_err(|_| Error::InternalIOFailure.into())
 }

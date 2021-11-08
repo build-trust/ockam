@@ -129,12 +129,6 @@ impl Router {
                 }
 
                 //// ==! Core node controls
-
-                // Check whether a set of addresses is available
-                CheckAddress(ref addrs, ref reply) => {
-                    utils::check_addr_collisions(self, addrs, reply).await?
-                }
-
                 StopNode(ShutdownType::Graceful(timeout), reply) => {
                     if shutdown::graceful(self, timeout, reply).await? {
                         info!("No more workers left.  Goodbye!");

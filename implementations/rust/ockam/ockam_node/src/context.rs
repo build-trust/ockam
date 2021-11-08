@@ -138,17 +138,6 @@ impl Context {
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        // Check if the address set is available
-        // TODO: There is not much sense of checking for address collisions here, since in
-        // async environment there may be new Workers started between the check and actual adding
-        // of this Worker to the Router map, so check only should happen during Router::start_worker
-        let (check_addrs, mut check_rx) = NodeMessage::check_address(address.clone());
-        self.sender
-            .send(check_addrs)
-            .await
-            .map_err(|_| Error::InternalIOFailure)?;
-        check_rx.recv().await.ok_or(Error::InternalIOFailure)??;
-
         // Pass it to the context
         let (ctx, sender, ctrl_rx) =
             Context::new(self.rt.clone(), self.sender.clone(), address.clone());

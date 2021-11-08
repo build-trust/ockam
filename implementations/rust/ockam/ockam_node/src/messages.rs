@@ -37,8 +37,6 @@ pub enum NodeMessage {
     SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type
     Router(u8, Address, Sender<NodeReplyResult>),
-    /// Check if a given address is already registered
-    CheckAddress(AddressSet, Sender<NodeReplyResult>),
 }
 
 impl NodeMessage {
@@ -110,12 +108,6 @@ impl NodeMessage {
     pub fn sender_request(route: Address) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
         (Self::SenderReq(route, tx), rx)
-    }
-
-    /// Create a message to check the availability of an address set
-    pub fn check_address(addrs: AddressSet) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
-        (Self::CheckAddress(addrs, tx), rx)
     }
 }
 
