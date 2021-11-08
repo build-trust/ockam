@@ -1377,7 +1377,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node_test_attribute"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ockam",
  "ockam_node",
