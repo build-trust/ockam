@@ -5,6 +5,20 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.37.0 - 2021-11-08
+### Changed
+- Dependencies updated
+- reduce log spam from start operations
+- implement shutdown abortion on timeout
+- implement graceful stop mechanism in ockam node
+- introduce node shutdown type
+- remove double-nested tests module from ockam_node
+- pull router address state out into separate module
+- implement command rejection during node shutdown
+- break router out into separate module tree
+- simplify processor stop mechanism
+- simplify mailbox architecture
+
 ## v0.36.0 - 2021-11-01
 ### Changed
 - Dependencies updated

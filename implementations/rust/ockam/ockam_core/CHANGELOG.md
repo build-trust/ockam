@@ -5,6 +5,14 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.38.0 - 2021-11-08
+### Added
+- add proc macro to auto derive `AsyncTryClone` trait
+### Changed
+- replace `AsyncTryClone` trait impls with `#[derive(AsyncTryClone)]` wherever applicable
+- replaced tokio::try_join with futures_util::try_join
+- Dependencies updated
+
 ## v0.37.0 - 2021-11-01
 ### Changed
 - Explicitly derive Message trait
