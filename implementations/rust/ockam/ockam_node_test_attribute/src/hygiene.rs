@@ -151,7 +151,7 @@ impl NodeCtx {
         Ok(Self {
             pat: ident.clone(),
             ty: ty.clone(),
-            path: Self::path(&ty)?,
+            path: Self::path(ty)?,
             mutability,
             and_token,
         })
