@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 use signature_bbs_plus::{Issuer, MessageGenerators, Prover};
-use signature_core::{error::Error, lib::*};
+use signature_core::error::Error;
 
 type ExampleResult = Result<(), Error>;
 

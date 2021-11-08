@@ -2155,7 +2155,6 @@ dependencies = [
  "digest",
  "ff",
  "group",
- "hashbrown 0.11.2",
  "heapless",
  "rand 0.8.4",
  "rand_core 0.6.3",
