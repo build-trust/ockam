@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault"
-version = "0.31.0"
+version = "0.32.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
