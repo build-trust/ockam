@@ -26,7 +26,7 @@ async fn start(
     bare: bool,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
-    info!("Starting new worker '{}'", addrs.first());
+    debug!("Starting new worker '{}'", addrs.first());
     let SenderPair { msgs, ctrl } = senders;
 
     // Create an address record and insert it into the internal map
