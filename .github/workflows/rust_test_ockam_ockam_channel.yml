@@ -16,6 +16,7 @@ on:
       - 'implementations/rust/ockam/ockam_vault_sync_core/**'
       - 'implementations/rust/ockam/ockam_vault/**'
       - 'implementations/rust/ockam/ockam_key_exchange_x3dh/**'
+      - 'implementations/rust/ockam/ockam_node_test_attribute/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
       - 'settings.gradle'

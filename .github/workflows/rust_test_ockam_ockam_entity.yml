@@ -20,6 +20,7 @@ on:
       - 'implementations/rust/ockam/signature_bls/**'
       - 'implementations/rust/ockam/signature_bbs_plus/**'
       - 'implementations/rust/ockam/ockam_transport_tcp/**'
+      - 'implementations/rust/ockam/ockam_node_test_attribute/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
       - 'settings.gradle'
