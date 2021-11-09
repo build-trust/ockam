@@ -162,4 +162,4 @@ The `Merge` stage takes the Package Fork and creates a PR back to the primary re
 The `Publish` stage is the last stage, and performs the actual publishing of the Packaged Fork to all external
 parties such as crates.io and GitHub.
 
-**Tooling*: `cargo-publish` or `crates.io API` and `gh`
+**Tooling**: `cargo-publish` or `crates.io API` and `gh`
