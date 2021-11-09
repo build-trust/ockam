@@ -139,8 +139,11 @@ In this stage, `README.md` and `Changelog.md` for each crate in the Release Plan
 
 For each crate in the Release Plan, a `.crate` file is generated, but not yet published.
 
-**Tooling**: git-cliff or some other purpose built system for managing Changelogs. The Changelog updating features
+**Tooling**:
+
+- git-cliff or some other purpose built system for managing Changelogs. The Changelog updating features
 of `cargo release` are awkward and less powerful than tools like `cliff`.
+- [comby](https://comby.dev/)
 
 ---
 
