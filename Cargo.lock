@@ -1224,7 +1224,7 @@ dependencies = [
  "hashbrown 0.11.2",
  "heapless",
  "hex",
- "ockam_macro",
+ "ockam_macro 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ockam_message_derive",
  "rand 0.8.4",
  "rand_pcg",
@@ -1335,6 +1335,17 @@ dependencies = [
  "quote",
  "syn",
  "trybuild",
+]
+
+[[package]]
+name = "ockam_macro"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a41de6e650a7d738af7c6b4bf8421a7cd9962f125ce97dc864b2411482a3a3c5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
