@@ -14,10 +14,6 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 [lib]
 proc-macro = true
 
-[dev-dependencies]
-trybuild = "1.0"
-ockam_core = { path = "../ockam_core", version = "^0.38.0"}
-
 [[test]]
 name="tests"
 path = "tests/main.rs"
@@ -26,3 +22,7 @@ path = "tests/main.rs"
 proc-macro2= "1.0.30"
 syn = "1.0.80"
 quote = "1.0.10"
+
+[dev-dependencies]
+trybuild = "1.0"
+ockam_core = { path = "../ockam_core"}
