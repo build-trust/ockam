@@ -62,6 +62,7 @@ whereas a single branch will probably use less space and be less complex.
 ### Activate
 
 **Input**: Triggering event such as a commit, merge, or manual invocation.
+
 **Output**: Release Fork
 
 `Activate` is the entry point to the pipeline. Multiple triggering conditions can be configured to start the stage.
@@ -72,6 +73,7 @@ Using a fork allows us to more securely and safely run source modifying operatio
 ### Validate
 
 **Input**: Release Fork
+
 **Output**: Release Fork
 
 The `Validate` stage runs initial checks and verification on the Release Fork. The individual checks in this stage
@@ -80,6 +82,7 @@ can be enhanced over time. This stage should not modify the Release Fork.
 ### Test
 
 **Input**: Release Fork
+
 **Output**: Release Fork
 
 The `Test` stage runs multiple test scenarios, including but not limited to:
@@ -94,6 +97,7 @@ This stage should not modify the Release Fork.
 ### Version
 
 **Input**: Release Fork, Git History
+
 **Output**: Versioned Fork
 
 The `Version` stage is responsible for:
@@ -116,6 +120,7 @@ information (such as old and new versions).
 ### Package
 
 **Input**: Versioned Fork, Git History
+
 **Output**: Packaged Fork
 
 The `Package` stage updates all metadata files that contain version information, and build `.crate` files.
@@ -130,6 +135,7 @@ of `cargo release` are awkward and less powerful than tools like `cliff`.
 ### Tag
 
 **Input**: Packaged Fork
+
 **Output**: Packaged Fork, Git Tags
 
 The `Tag` stage is responsible for tagging commits and pushing them to GitHub. It does not modify the source fork, but
@@ -140,6 +146,7 @@ creates new tags.
 ### Merge
 
 **Input**: Packaged Fork
+
 **Output**: PR of Packaged Fork to Repo
 
 The `Merge` stage takes the Package Fork and creates a PR back to the primary repository.
@@ -149,6 +156,7 @@ The `Merge` stage takes the Package Fork and creates a PR back to the primary re
 ### Publish
 
 **Input**: Packaged Fork
+
 **Output**: External Publish
 
 The `Publish` stage is the last stage, and performs the actual publishing of the Packaged Fork to all external
