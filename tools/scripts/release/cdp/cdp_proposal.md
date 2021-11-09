@@ -59,6 +59,8 @@ could either be distinct branches that are created through the pipeline, or a si
 updated. There are tradeoff to both strategies: multiple intermediate branches allows for better debugging and auditing,
 whereas a single branch will probably use less space and be less complex.
 
+---
+
 ### Activate
 
 **Input**: Triggering event such as a commit, merge, or manual invocation.
@@ -70,6 +72,8 @@ whereas a single branch will probably use less space and be less complex.
 The output of `Activate` is a _Release Fork_. Release Fork is a private fork of the repository at a particular commit.
 Using a fork allows us to more securely and safely run source modifying operations on a branch.
 
+---
+
 ### Validate
 
 **Input**: Release Fork
@@ -78,6 +82,8 @@ Using a fork allows us to more securely and safely run source modifying operatio
 
 The `Validate` stage runs initial checks and verification on the Release Fork. The individual checks in this stage
 can be enhanced over time. This stage should not modify the Release Fork.
+
+---
 
 ### Test
 
@@ -93,6 +99,8 @@ The `Test` stage runs multiple test scenarios, including but not limited to:
 - Performance testing
 
 This stage should not modify the Release Fork.
+
+---
 
 ### Version
 
@@ -117,6 +125,8 @@ every crate in the Release Plan on the Release Fork.
 tags and changelogs should _not be used_ at this stage. Post release hooks can be used to record version change
 information (such as old and new versions).
 
+---
+
 ### Package
 
 **Input**: Versioned Fork, Git History
@@ -132,6 +142,8 @@ For each crate in the Release Plan, a `.crate` file is generated, but not yet pu
 **Tooling**: git-cliff or some other purpose built system for managing Changelogs. The Changelog updating features
 of `cargo release` are awkward and less powerful than tools like `cliff`.
 
+---
+
 ### Tag
 
 **Input**: Packaged Fork
@@ -143,6 +155,8 @@ creates new tags.
 
 **Tooling**: `git` and `gh`
 
+---
+
 ### Merge
 
 **Input**: Packaged Fork
@@ -152,6 +166,8 @@ creates new tags.
 The `Merge` stage takes the Package Fork and creates a PR back to the primary repository.
 
 **Tooling**: `git` and `gh`
+
+---
 
 ### Publish
 
