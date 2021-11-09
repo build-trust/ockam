@@ -5,7 +5,7 @@ Miro board: https://miro.com/app/board/o9J_lkvpyIY=/
 ## Goals
 
 - A build pipeline comprised of decoupled, idempotent stages.
-- Automated creation of releasable artifacts.
+- Automated creation of releasable artifacts, that we can test as if they are released.
 - Maintenance of Changelogs derived from git history.
 - Real time status notification and error alerting.
 
@@ -163,7 +163,9 @@ creates new tags.
 
 **Output**: PR of Packaged Fork to Repo
 
-The `Merge` stage takes the Package Fork and creates a PR back to the primary repository.
+In the `Merge` stage, the CDP commits back any relevant changes from the release process to the main repo `develop` and or `main` branches.
+
+The integrity of the git commit history needs to be maintained, and the release must reference tags and commits that are visible in the public repo.
 
 **Tooling**: `git` and `gh`
 
