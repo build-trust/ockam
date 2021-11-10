@@ -141,7 +141,7 @@ defmodule Ockam.Worker do
       @doc false
       def setup(options, state) do
         state_with_options = Map.merge(state, options)
-        {:ok, state}
+        {:ok, state_with_options}
       end
 
       @doc false
