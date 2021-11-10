@@ -28,7 +28,7 @@ pub enum Error {
     /// An umbrella for internal I/O failures
     InternalIOFailure,
     /// Worker tried to send message from foreign address
-    SenderAddressDoesntExist,
+    SenderAddressDoesNotExist,
     /// Error while receiving shutdown acknowledgment
     ShutdownAckError,
     /// Error while receiving shutdown signal

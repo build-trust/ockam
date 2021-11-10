@@ -187,7 +187,7 @@ impl ProfileChangeHistory {
         let event_id = EventIdentifier::from_hash(event_id);
 
         if &event_id != new_change_event.identifier() {
-            return deny(); // EventIdDoesntMatch
+            return deny(); // EventIdDoesNotMatch
         }
 
         match new_change_event.proof() {

@@ -46,7 +46,7 @@ impl From<Error> for FfiOckamError {
 #[derive(Clone, Copy, Debug)]
 pub enum FfiError {
     /// Persistence is not supported for this Vault implementation.
-    VaultDoesntSupportPersistence = 1,
+    VaultDoesNotSupportPersistence = 1,
 
     /// An underlying filesystem error prevented Vault creation.
     ErrorCreatingFilesystemVault,

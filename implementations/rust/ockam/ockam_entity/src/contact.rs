@@ -73,7 +73,7 @@ impl Contact {
         let profile_id = ProfileIdentifier::from_key_id(root_key_id);
 
         if &profile_id != self.identifier() {
-            return deny(); // ProfileIdDoesntMatch Err(EntityError::.into());
+            return deny(); // ProfileIdDoesNotMatch Err(EntityError::.into());
         }
 
         allow()
