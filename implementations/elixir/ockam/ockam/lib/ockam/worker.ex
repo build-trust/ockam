@@ -140,7 +140,7 @@ defmodule Ockam.Worker do
 
       @doc false
       def setup(options, state) do
-        options = Map.to_list(options)
+        options = Map.to_list(options) |> IO.inspect
         state_with_options = Keyword.merge(state, options)
         {:ok, state}
       end
