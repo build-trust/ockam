@@ -316,7 +316,7 @@ impl Context {
         M: Message + Send + 'static,
     {
         if !self.address.as_ref().contains(&sending_address) {
-            return Err(Error::SenderAddressDoesntExist.into());
+            return Err(Error::SenderAddressDoesNotExist.into());
         }
 
         let (reply_tx, mut reply_rx) = channel(1);

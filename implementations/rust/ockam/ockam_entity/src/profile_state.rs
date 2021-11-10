@@ -268,7 +268,7 @@ impl Identity for ProfileState {
         let profile_id = ProfileIdentifier::from_key_id(root_key_id);
 
         if profile_id != self.identifier().await? {
-            return Err(EntityError::ProfileIdDoesntMatch.into());
+            return Err(EntityError::ProfileIdDoesNotMatch.into());
         }
 
         allow()

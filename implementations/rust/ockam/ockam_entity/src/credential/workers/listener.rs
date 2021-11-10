@@ -44,7 +44,7 @@ impl Worker for ListenerWorker {
         let return_route = msg.return_route();
         if let CredentialProtocolMessage::IssueOfferRequest(schema_id) = msg.body() {
             if schema_id != self.schema.id {
-                return Err(EntityError::SchemaIdDoesntMatch.into());
+                return Err(EntityError::SchemaIdDoesNotMatch.into());
             }
         } else {
             return Err(EntityError::IssuerListenerInvalidMessage.into());
