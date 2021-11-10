@@ -139,7 +139,10 @@ defmodule Ockam.Worker do
       end
 
       @doc false
-      def setup(_options, state), do: {:ok, state}
+      def setup(options, state) do
+        state_with_options = Map.merge(state, options)
+        {:ok, state}
+      end
 
       @doc false
       def address_prefix(_options), do: ""
