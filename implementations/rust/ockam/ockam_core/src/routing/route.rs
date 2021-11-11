@@ -164,6 +164,16 @@ impl RouteBuilder<'_> {
         self
     }
 
+    /// Prepend a full route to an existing route
+    pub fn prepend_route(mut self, route: Route) -> Self {
+        route
+            .inner
+            .into_iter()
+            .rev()
+            .for_each(|addr| self.inner.push_front(addr));
+        self
+    }
+
     /// Replace the next item in the route with a new address
     ///
     /// Similar to [`Self::prepend(...)`](RouteBuilder::prepend), but
@@ -255,5 +265,14 @@ mod tests {
         let _ = route.step();
         let _ = route.step();
         route.recipient();
+    }
+
+    #[test]
+    fn test_route_prepend_route() {
+        let mut r1: Route = vec!["a", "b", "c"].into();
+        let r2: Route = vec!["1", "2", "3"].into();
+
+        r1.modify().prepend_route(r2);
+        assert_eq!(r1, vec!["1", "2", "3", "a", "b", "c"].into());
     }
 }
