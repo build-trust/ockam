@@ -12,6 +12,8 @@ defmodule Ockam.Address do
   @type t(address_type) ::
           {address_type, binary()} | %__MODULE__{type: address_type, value: binary()}
 
+  @type route() :: [t()]
+
   @doc """
   Returns `true` if `term` is a valid `t:Ockam.Router.Address.type/0`;
   otherwise returns `false`.

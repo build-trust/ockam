@@ -5,7 +5,6 @@ defmodule Ockam.Stream.Workers.Tests do
   doctest Ockam.Stream.Workers.Stream
 
   alias Ockam.Stream.Workers.Service
-  alias Ockam.Stream.Workers.Stream
 
   alias Ockam.Workers.Call, as: CallHelper
 
@@ -146,7 +145,7 @@ defmodule Ockam.Stream.Workers.Tests do
 
       %{payload: response} = CallHelper.call(%{onward_route: [stream], payload: push_req})
 
-      assert {:ok, %{request_id: ^request_id, status: :ok, index: index}} =
+      assert {:ok, %{request_id: ^request_id, status: :ok, index: _index}} =
                Ockam.Protocol.decode_payload(Ockam.Protocol.Stream.Push, :response, response)
     end
 
@@ -189,7 +188,7 @@ defmodule Ockam.Stream.Workers.Tests do
       Enum.map(:lists.seq(0, 100), fn n ->
         push_req =
           Ockam.Protocol.encode_payload(Ockam.Protocol.Stream.Push, :request, %{
-            request_id: :rand.uniform(1000),
+            request_id: request_id,
             data: "#{data}_#{n}"
           })
 

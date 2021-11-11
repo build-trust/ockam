@@ -4,7 +4,6 @@ defmodule Ockam.Protocol.Mapping.Tests do
   alias Ockam.Protocol.Mapping
 
   alias Ockam.Protocol.Mapping.Tests.Proto1
-  alias Ockam.Protocol.Mapping.Tests.Proto2
 
   describe "Protocol mapping definition" do
     test "Created from server/1" do

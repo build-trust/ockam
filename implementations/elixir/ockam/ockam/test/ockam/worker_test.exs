@@ -11,7 +11,7 @@ defmodule Ockam.Worker.Tests.OuterWorker do
   use Ockam.Worker
 
   @impl true
-  def setup(options, state) do
+  def setup(_options, state) do
     {:ok, inner_worker} = Ockam.Worker.Tests.InnerWorker.create([])
     {:ok, Map.put(state, :inner, inner_worker)}
   end

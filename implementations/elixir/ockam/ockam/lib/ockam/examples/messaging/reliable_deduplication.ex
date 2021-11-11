@@ -46,16 +46,16 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
     {:ok, "ping"} = Ping.create(address: "ping", delay: 500)
 
     {:ok, resend_channel} =
-      PipeChannel.Initiator.create(
+      PipeChannel.Initiator.create_and_wait(
         pipe_mod: ResendPipe,
-        spawner_route: [filter, shuffle, resend_spawner],
+        init_route: [filter, shuffle, resend_spawner],
         sender_options: [confirm_timeout: 200]
       )
 
     {:ok, _ord_channel} =
-      PipeChannel.Initiator.create(
+      PipeChannel.Initiator.create_and_wait(
         pipe_mod: IndexPipe,
-        spawner_route: [resend_channel, ord_spawner]
+        init_route: [resend_channel, ord_spawner]
       )
   end
 
@@ -134,9 +134,9 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
       )
 
     {:ok, _ord_channel} =
-      PipeChannel.Initiator.create(
+      PipeChannel.Initiator.create_and_wait(
         pipe_mod: IndexPipe,
-        spawner_route: ["resend_channel", "ord_spawner"]
+        init_route: ["resend_channel", "ord_spawner"]
       )
   end
 

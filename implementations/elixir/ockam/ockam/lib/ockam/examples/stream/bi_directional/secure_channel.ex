@@ -116,7 +116,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     {:ok, ord_channel} =
       PipeChannel.Initiator.create(
         pipe_mod: IndexPipe,
-        spawner_route: [publisher, "ord_channel_spawner"]
+        init_route: [publisher, "ord_channel_spawner"]
       )
 
     ## Create a secure channel over the ordered channel

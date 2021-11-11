@@ -32,6 +32,7 @@ defmodule Ockam.Messaging.Delivery.Tests do
         receive do
           %{onward_route: [^me], payload: ^expected_payload} ->
             :ok
+            ## TODO: optimize test run time
         after
           60_000 ->
             raise "Message not delivered #{n}"
@@ -74,6 +75,7 @@ defmodule Ockam.Messaging.Delivery.Tests do
         receive do
           %{onward_route: [^me], payload: ^expected_payload} ->
             :ok
+            ## TODO: optimize test run time
         after
           60_000 ->
             raise "Message not delivered #{n}"

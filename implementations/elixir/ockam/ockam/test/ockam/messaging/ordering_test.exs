@@ -65,7 +65,9 @@ defmodule Ockam.Messaging.Ordering.Tests do
         1..100
         |> Enum.map(fn _n ->
           receive do
-            %{payload: pl} -> String.to_integer(pl)
+            %{payload: pl} ->
+              String.to_integer(pl)
+              ## TODO: optimize test run time
           after
             100 ->
               nil
