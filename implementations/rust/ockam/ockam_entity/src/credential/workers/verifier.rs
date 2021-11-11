@@ -1,8 +1,8 @@
 use crate::credential::Verifier;
 use crate::{
-    check_message_origin, get_secure_channel_participant_id, CredentialAttribute,
-    CredentialProtocolMessage, CredentialSchema, EntityError, PresentationManifest, Profile,
-    ProfileIdentifier, ProofRequestId, SigningPublicKey,
+    get_secure_channel_participant_id, CredentialAttribute, CredentialProtocolMessage,
+    CredentialSchema, EntityError, PresentationManifest, Profile, ProfileIdentifier,
+    ProofRequestId, SigningPublicKey,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
