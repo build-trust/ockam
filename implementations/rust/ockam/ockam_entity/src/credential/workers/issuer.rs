@@ -1,6 +1,6 @@
 use crate::{
-    check_message_origin, CredentialAttribute, CredentialProtocolMessage, CredentialSchema,
-    EntityError, Issuer, OfferId, Profile, ProfileIdentifier,
+    CredentialAttribute, CredentialProtocolMessage, CredentialSchema, EntityError, Issuer, OfferId,
+    Profile, ProfileIdentifier,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};

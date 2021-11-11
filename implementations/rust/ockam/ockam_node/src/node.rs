@@ -1,5 +1,5 @@
 use crate::{Context, Executor};
-use ockam_core::Address;
+use ockam_core::{Address, Passthrough};
 #[cfg(feature = "std")]
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
@@ -22,7 +22,7 @@ pub fn start_node() -> (Context, Executor) {
 
     // The root application worker needs a mailbox and relay to accept
     // messages from workers, and to buffer incoming transcoded data.
-    let (ctx, sender, _) = Context::new(exe.runtime(), exe.sender(), addr.into());
+    let (ctx, sender, _) = Context::new(exe.runtime(), exe.sender(), addr.into(), Passthrough);
 
     // Register this mailbox handle with the executor
     exe.initialize_system("app", sender);

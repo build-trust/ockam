@@ -1,7 +1,7 @@
 use crate::{
-    check_message_origin, Credential, CredentialAttribute, CredentialFragment1,
-    CredentialProtocolMessage, CredentialSchema, EntityCredential, EntityError, Holder, Identity,
-    Profile, ProfileIdentifier, SigningPublicKey,
+    Credential, CredentialAttribute, CredentialFragment1, CredentialProtocolMessage,
+    CredentialSchema, EntityCredential, EntityError, Holder, Identity, Profile, ProfileIdentifier,
+    SigningPublicKey,
 };
 use core::convert::TryInto;
 use ockam_core::async_trait;
@@ -53,6 +53,8 @@ impl Worker for HolderWorker {
     type Message = CredentialProtocolMessage;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        // TODO: Set access control
+
         ctx.send(
             self.issuer_route.clone(),
             CredentialProtocolMessage::IssueOfferRequest(self.schema.id.clone()),

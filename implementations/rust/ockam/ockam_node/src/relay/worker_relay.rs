@@ -67,7 +67,7 @@ where
     /// Report errors as they occur, and signal whether the loop should
     /// continue running or not
     async fn recv_message(&mut self) -> Result<bool> {
-        let RelayMessage { addr, data, .. } = match self.ctx.mailbox_next().await {
+        let RelayMessage { addr, data, .. } = match self.ctx.mailbox_next().await? {
             Some(msg) => msg,
             None => {
                 trace!("No more messages for worker {}", self.ctx.address());
