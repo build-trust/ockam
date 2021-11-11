@@ -19,18 +19,18 @@ software_vault = ["ockam_vault"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_vault_core/std", "ockam_vault/std", "ockam_node/std", "rand/std", "rand/std_rng", "alloc", "tokio"]
+std = ["ockam_core/std", "ockam_macros/std", "ockam_vault_core/std", "ockam_vault/std", "ockam_node/std", "rand/std", "rand/std_rng", "alloc", "tokio"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std = ["ockam_core/no_std", "ockam_vault_core/no_std", "ockam_vault/no_std", "ockam_node/no_std", "rand_pcg"]
+no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_vault_core/no_std", "ockam_vault/no_std", "ockam_node/no_std", "rand_pcg"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_vault_core/alloc", "ockam_vault/alloc", "ockam_node/alloc", "serde/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.40.0", default_features = false }
-ockam_message_derive = { path = "../ockam_message_derive", version = "0.1.0" , default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "0.1.0" , default_features = false }
 ockam_vault_core = { path = "../ockam_vault_core", version = "^0.34.0", default_features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.34.0", default_features = false, optional = true }
 ockam_node = { path = "../ockam_node", version = "^0.39.0", default_features = false }
@@ -44,4 +44,4 @@ rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 [dev-dependencies]
 ockam_vault = { path = "../ockam_vault", version = "^0.34.0"}
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.29.0"}
-ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "^0.29.0"}
+ockam_test_macros_internal = { path = "../ockam_test_macros_internal", version = "0.28.0"          }

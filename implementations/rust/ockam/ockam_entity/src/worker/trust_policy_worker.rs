@@ -3,7 +3,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::{
     async_trait::async_trait, Address, AsyncTryClone, Message, Result, Routed, Worker,
 };
-use ockam_message_derive::Message;
+use ockam_macros::Message;
 use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
 #[derive(AsyncTryClone)]

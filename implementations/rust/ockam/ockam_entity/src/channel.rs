@@ -43,7 +43,7 @@ mod test {
     use ockam_node::Context;
     use ockam_vault_sync_core::Vault;
 
-    #[ockam_node_test_attribute::node_test]
+    #[ockam_test_macros::node_test]
     async fn test_channel(ctx: &mut Context) -> Result<()> {
         let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
@@ -88,7 +88,7 @@ mod test {
         ctx.stop().await
     }
 
-    #[ockam_node_test_attribute::node_test]
+    #[ockam_test_macros::node_test]
     async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create(ctx).await?;
 
@@ -133,7 +133,7 @@ mod test {
         ctx.stop().await
     }
 
-    #[ockam_node_test_attribute::node_test]
+    #[ockam_test_macros::node_test]
     async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create(ctx).await?;
 
@@ -188,7 +188,7 @@ mod test {
         ctx.stop().await
     }
 
-    #[ockam_node_test_attribute::node_test]
+    #[ockam_test_macros::node_test]
     async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create(ctx).await?;
 

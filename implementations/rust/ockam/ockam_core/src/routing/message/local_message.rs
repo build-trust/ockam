@@ -1,5 +1,5 @@
 use crate::{compat::vec::Vec, Message, TransportMessage};
-use ockam_message_derive::Message;
+use ockam_macros::Message;
 use serde::{Deserialize, Serialize};
 
 /// LocalMessage is a message type that is routed locally within one node.

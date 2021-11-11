@@ -1,0 +1,14 @@
+error: the `async` keyword is missing from the function declaration
+ --> $DIR/fail_if_function_is_not_async.rs:5:1
+  |
+5 | fn main(mut c: ockam::Context) {
+  | ^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/fail_if_function_is_not_async.rs:4:1
+  |
+4 | / #[ockam_macros::node]
+5 | | fn main(mut c: ockam::Context) {
+6 | |     c.stop().await.unwrap();
+7 | | }
+  | |_^ consider adding a `main` function to `$DIR/tests/node/fail_if_function_is_not_async.rs`

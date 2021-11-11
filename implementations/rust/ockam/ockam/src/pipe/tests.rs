@@ -7,7 +7,7 @@ use ockam_core::{async_trait, Address, Result, Route};
 
 use super::behavior::ReceiverOrdering;
 
-#[ockam_node_test_attribute::node_test]
+#[ockam_test_macros::node_test]
 async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
     receiver(ctx, "pipe-receiver").await?;
     let tx = connect_static(ctx, vec!["pipe-receiver"]).await?;
@@ -24,7 +24,7 @@ async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
-#[ockam_node_test_attribute::node_test]
+#[ockam_test_macros::node_test]
 async fn static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", PipeBehavior::with(ReceiverConfirm)).await?;
     let tx = connect_static_with_behavior(
@@ -106,7 +106,7 @@ impl BehaviorHook for DropDelivery {
     }
 }
 
-#[ockam_node_test_attribute::node_test]
+#[ockam_test_macros::node_test]
 async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", DropDelivery).await?;
     let tx = connect_static_with_behavior(
@@ -129,7 +129,7 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
 }
 
 /// A simple test to ensure static ordering pipes can deliver messages
-#[ockam_node_test_attribute::node_test]
+#[ockam_test_macros::node_test]
 async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", ReceiverOrdering::new()).await?;
     let tx = connect_static(ctx, "pipe-receiver").await?;
@@ -155,7 +155,7 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
-#[ockam_node_test_attribute::node_test]
+#[ockam_test_macros::node_test]
 async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
     // Create a pipe spawn listener and connect to it via a dynamic sender
     let listener = listen(ctx).await.unwrap();

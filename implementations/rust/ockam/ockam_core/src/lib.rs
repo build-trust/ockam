@@ -38,8 +38,8 @@ pub extern crate hex;
 pub extern crate async_trait;
 pub use async_trait::async_trait as worker;
 
-extern crate ockam_macro;
-pub use ockam_macro::AsyncTryClone;
+extern crate ockam_macros;
+pub use ockam_macros::AsyncTryClone;
 
 extern crate futures_util;
 

@@ -86,7 +86,7 @@ impl SymmetricVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
-    use ockam_vault_test_attribute::*;
+    use ockam_test_macros_internal::*;
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
     }

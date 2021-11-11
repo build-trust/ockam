@@ -1,0 +1,12 @@
+error: expected `fn`
+ --> $DIR/fail_if_item_is_not_a_function.rs:5:1
+  |
+5 | struct A {}
+  | ^^^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/fail_if_item_is_not_a_function.rs:4:1
+  |
+4 | / #[ockam_macros::node]
+5 | | struct A {}
+  | |___________^ consider adding a `main` function to `$DIR/tests/node/fail_if_item_is_not_a_function.rs`

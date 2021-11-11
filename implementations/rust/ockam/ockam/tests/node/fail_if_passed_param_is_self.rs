@@ -1,0 +1,8 @@
+// This test checks that #[ockam_macros::node] causes a compile time error
+// if the function is passed a `self` param (thus making it a
+// `Receiver` function.
+
+#[ockam_macros::node]
+async fn main(self) {
+    let a = 1;
+}

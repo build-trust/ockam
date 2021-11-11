@@ -47,7 +47,7 @@ mod tests {
     use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultSync;
 
-    #[ockam_node_test_attribute::node_test]
+    #[ockam_test_macros::node_test]
     async fn simplest_channel(ctx: &mut Context) -> Result<()> {
         let vault_sync = VaultSync::create(ctx, SoftwareVault::default()).await?;
         let new_key_exchanger = XXNewKeyExchanger::new(vault_sync.async_try_clone().await?);
