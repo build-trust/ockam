@@ -1,4 +1,4 @@
-name: rust_lint_ockam_ockam_macro
+name: rust_test_ockam_ockam_macro
 on:
   workflow_dispatch:
   push:
@@ -17,7 +17,7 @@ on:
 
 
 jobs:
-  rust_lint_ockam_ockam_macro:
+  rust_test_ockam_ockam_macros:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:e382c8800a89ce43acb675131d9f30e74093d195a95047f87e9206a0c52c17a7
@@ -25,6 +25,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
 
-      - id: rust_lint_ockam_ockam_macro
+      - id: rust_test_ockam_ockam_macros
         working-directory: implementations/rust
-        run: ../../gradlew lint_ockam_ockam_macro
+        run: ../../gradlew test_ockam_ockam_macros

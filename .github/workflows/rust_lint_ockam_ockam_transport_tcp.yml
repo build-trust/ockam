@@ -9,9 +9,9 @@ on:
     paths:
       - 'implementations/rust/ockam/ockam_core/**'
       - 'implementations/rust/ockam/ockam_node/**'
-      - 'implementations/rust/ockam/ockam_message_derive/**'
+      - 'implementations/rust/ockam/ockam_macros/**'
       - 'implementations/rust/ockam/ockam_transport_core/**'
-      - 'implementations/rust/ockam/ockam_node_test_attribute/**'
+      - 'implementations/rust/ockam/ockam_test_macros/**'
       - 'build.gradle'
       - 'implementations/rust/build.gradle'
       - 'settings.gradle'
