@@ -1,6 +1,6 @@
 use crate::compat::vec::Vec;
 use crate::{Address, LocalMessage, Message};
-use ockam_message_derive::Message;
+use ockam_macros::Message;
 use serde::{Deserialize, Serialize};
 
 /// A command message for router implementations

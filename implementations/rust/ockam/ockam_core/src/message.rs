@@ -9,7 +9,7 @@ use core::{
     fmt::{self, Debug, Display, Formatter},
     ops::{Deref, DerefMut},
 };
-use ockam_message_derive::Message;
+use ockam_macros::Message;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Alias of the type used for encoded data.

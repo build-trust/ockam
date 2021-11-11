@@ -32,7 +32,7 @@ no_std = ["core2", "hex", "rand_pcg", "spin"]
 alloc = ["core2/alloc", "heapless", "hex/alloc", "serde/alloc", "serde_bare/alloc"]
 
 [dependencies]
-ockam_message_derive = { path = "../ockam_message_derive", version = "0.1.0"     , default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "0.1.0"     , default_features = false }
 async-trait = "0.1.42"
 hashbrown =  { version = "0.11", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
@@ -43,5 +43,4 @@ rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 core2 = { version = "0.3.2", default-features = false, optional = true }
 spin = { version = "0.9.1", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
-ockam_macro = { version = "0.1.0" }
 futures-util = { version = "0.3.17", default-features = false, features = ["alloc", "async-await-macro", "sink"] }

@@ -210,7 +210,7 @@ mod tests {
         KeyIdVault, Secret, SecretAttributes, SecretVault, SoftwareVault,
     };
     use cfg_if::cfg_if;
-    use ockam_vault_test_attribute::*;
+    use ockam_test_macros_internal::*;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()

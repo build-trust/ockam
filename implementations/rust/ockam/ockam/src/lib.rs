@@ -26,16 +26,13 @@ extern crate tracing;
 pub extern crate hex;
 
 // ---
-// Export the #[node] attribute macro.
-pub use ockam_node_attribute::*;
+// Export the ockam macros.
+pub use ockam_macros::*;
 // ---
 
 // Export node implementation
 pub use ockam_node::*;
 // ---
-
-// Export the #[derive(Message)] macro
-pub use ockam_message_derive::*;
 
 mod delay;
 mod error;

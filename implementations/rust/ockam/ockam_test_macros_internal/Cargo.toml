@@ -1,0 +1,20 @@
+[package]
+name = "ockam_test_macros_internal"
+version = "0.28.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_test_macros_internal"
+readme = "README.md"
+categories = ["cryptography", "asynchronous", "authentication", "no-std", "algorithms"]
+keywords = ["ockam", "crypto", "encryption", "authentication"]
+description = """Ockam Vault test support attribute.
+"""
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0"
+syn = { version = "1.0", features = ["full", "extra-traits"] }

@@ -1,0 +1,14 @@
+error: The function name must be `main`
+ --> $DIR/fail_if_function_is_not_named_main.rs:2:1
+  |
+2 | fn foo(mut c: ockam::Context) {
+  | ^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> $DIR/fail_if_function_is_not_named_main.rs:1:1
+  |
+1 | / #[ockam_macros::node]
+2 | | fn foo(mut c: ockam::Context) {
+3 | |     c.stop().await.unwrap();
+4 | | }
+  | |_^ consider adding a `main` function to `$DIR/tests/node/fail_if_function_is_not_named_main.rs`

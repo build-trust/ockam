@@ -5,7 +5,7 @@ use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
     Address, Encodable, LocalMessage, Message, Result, Routed, TransportMessage, Worker,
 };
-use ockam_message_derive::Message;
+use ockam_macros::Message;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::debug;

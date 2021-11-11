@@ -2,7 +2,7 @@ use crate::{AuthenticationProof, Changes, Contact, Lease, ProfileIdentifier};
 use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Message};
-use ockam_message_derive::Message;
+use ockam_macros::Message;
 use ockam_vault::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
 

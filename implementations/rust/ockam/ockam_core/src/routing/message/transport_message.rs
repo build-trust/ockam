@@ -1,6 +1,6 @@
 use crate::{compat::vec::Vec, Message, Route};
 use core::fmt::{self, Display, Formatter};
-use ockam_message_derive::Message;
+use ockam_macros::Message;
 use serde::{Deserialize, Serialize};
 
 /// A generic transport message

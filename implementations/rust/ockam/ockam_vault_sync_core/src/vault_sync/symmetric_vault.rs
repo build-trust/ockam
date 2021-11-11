@@ -54,8 +54,8 @@ impl SymmetricVault for VaultSync {
 
 #[cfg(test)]
 mod tests {
+    use ockam_test_macros_internal::*;
     use ockam_vault::SoftwareVault;
-    use ockam_vault_test_attribute::*;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
