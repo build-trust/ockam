@@ -58,6 +58,7 @@ pub use protocols::*;
 pub use remote_forwarder::*;
 pub use unique::*;
 
+pub mod pipe;
 pub mod stream;
 
 pub use ockam_core::{
