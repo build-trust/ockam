@@ -6,7 +6,7 @@ fn async_try_clone() {
 
 #[test]
 fn node() {
-    #[cfg(feature = "std")]
+    #[cfg(not(feature = "no_main"))]
     {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/node/fail*.rs");
