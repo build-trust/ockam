@@ -972,7 +972,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ockam/nodejs_native@0.0.0, @ockam/nodejs_native@workspace:ockam/ockam_nodejs_native":
+"@ockam/nodejs_native@workspace:ockam/ockam_nodejs_native":
   version: 0.0.0-use.local
   resolution: "@ockam/nodejs_native@workspace:ockam/ockam_nodejs_native"
   dependencies:
@@ -984,8 +984,6 @@ __metadata:
 "@ockam/ockam@workspace:ockam/ockam":
   version: 0.0.0-use.local
   resolution: "@ockam/ockam@workspace:ockam/ockam"
-  dependencies:
-    "@ockam/nodejs_native": 0.0.0
   languageName: unknown
   linkType: soft
 

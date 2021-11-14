@@ -9,8 +9,5 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rimraf lib tsconfig.tsbuildinfo"
-  },
-  "dependencies": {
-    "@ockam/nodejs_native": "0.0.0"
   }
 }
