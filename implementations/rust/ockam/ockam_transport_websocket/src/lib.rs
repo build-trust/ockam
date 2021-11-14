@@ -89,7 +89,7 @@ pub struct WebSocketTransport {
 }
 
 /// WebSocket address type constant
-pub const WS: u8 = 2;
+pub const WS: u8 = 3;
 
 fn parse_socket_addr<S: AsRef<str>>(s: S) -> Result<SocketAddr> {
     Ok(s.as_ref()
