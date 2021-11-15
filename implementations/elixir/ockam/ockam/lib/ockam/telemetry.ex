@@ -1,5 +1,6 @@
 if Code.ensure_loaded?(:telemetry) do
   defmodule Ockam.Telemetry do
+
     @moduledoc """
     Provides functions to emit `:telemetry` events.
     """
