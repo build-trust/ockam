@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_vault = "0.32.0"
+ockam_vault = "0.33.0"
 ```
 
 ## Crate Features

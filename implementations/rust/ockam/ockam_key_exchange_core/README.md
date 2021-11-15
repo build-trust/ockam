@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_key_exchange_core = "0.30.0"
+ockam_key_exchange_core = "0.31.0"
 ```
 
 ## License
