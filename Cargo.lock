@@ -1480,7 +1480,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
  "ockam_core",
  "ockam_message_derive",
