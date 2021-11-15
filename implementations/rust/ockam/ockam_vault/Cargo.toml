@@ -51,6 +51,6 @@ cfg-if = "1.0"
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.27.0"}
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.28.0"}
 ockam_vault_test_attribute = { path = "../ockam_vault_test_attribute", version = "0.28.0"          }
 tokio = {version = "1.8", features = ["full"]}
