@@ -2,7 +2,7 @@
 name = "ockam_node_test_attribute"
 categories = ["cryptography", "asynchronous", "authentication","network-programming"]
 authors = ["Ockam Developers"]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2018"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
