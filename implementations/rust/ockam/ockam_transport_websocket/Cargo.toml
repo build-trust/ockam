@@ -27,7 +27,7 @@ alloc = []
 [dependencies]
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["tokio-io"] }
-ockam_core = { path = "../ockam_core", version = "^0.38.0"}
+ockam_core = { path = "../ockam_core", version = "^0.39.0"}
 ockam_node = { path = "../ockam_node", version = "^0.37.0"}
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.12.0"}
 tokio = { version = "1.8", features = ["rt-multi-thread", "sync", "net", "macros", "time"] }

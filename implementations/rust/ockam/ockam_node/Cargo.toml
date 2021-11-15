@@ -29,7 +29,7 @@ alloc = ["ockam_core/alloc", "ockam_executor/alloc", "ockam_node_no_std/alloc"]
 dump_internals = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.38.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.39.0", default_features = false }
 tokio = {version = "1.8", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"]}
 tracing = { version = "0.1", default_features = false }
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
