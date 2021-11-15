@@ -57,20 +57,6 @@ pub use ockam_core::println;
 
 #[cfg(not(feature = "std"))]
 pub mod logging_no_std {
-    /// info!
-    #[macro_export]
-    macro_rules! info {
-        ($($arg:tt)*) => (
-            ockam_core::println!($($arg)*);
-        )
-    }
-    /// trace!
-    #[macro_export]
-    macro_rules! trace {
-        ($($arg:tt)*) => (
-            ockam_core::println!($($arg)*);
-        )
-    }
     /// error!
     #[macro_export]
     macro_rules! error {
@@ -78,9 +64,30 @@ pub mod logging_no_std {
             ockam_core::println!($($arg)*);
         )
     }
+    /// warn!
+    #[macro_export]
+    macro_rules! warn {
+        ($($arg:tt)*) => (
+            ockam_core::println!($($arg)*);
+        )
+    }
+    /// info!
+    #[macro_export]
+    macro_rules! info {
+        ($($arg:tt)*) => (
+            ockam_core::println!($($arg)*);
+        )
+    }
     /// debug!
     #[macro_export]
     macro_rules! debug {
+        ($($arg:tt)*) => (
+            ockam_core::println!($($arg)*);
+        )
+    }
+    /// trace!
+    #[macro_export]
+    macro_rules! trace {
         ($($arg:tt)*) => (
             ockam_core::println!($($arg)*);
         )
