@@ -70,8 +70,15 @@ impl<'a> Executor<'a> {
                 break result;
             }
 
+            let mut task_budget = self.task_queue.len();
+
             while let Some(task_id) = self.task_queue.pop() {
                 self.poll_task(task_id);
+
+                if task_budget == 0 {
+                    break;
+                }
+                task_budget -= 1;
             }
             self.sleep_if_idle();
         };

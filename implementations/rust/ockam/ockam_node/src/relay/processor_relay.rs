@@ -42,7 +42,6 @@ where
                     break;
                 }
             }
-
             Result::<()>::Ok(())
         };
 
