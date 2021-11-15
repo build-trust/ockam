@@ -15,12 +15,13 @@ pub(super) async fn resolve(
     reply: &Sender<NodeReplyResult>,
     wrap: bool,
 ) -> Result<()> {
-    trace!("Resolving worker address '{}'", addr);
+    let base = format!("Resolving worker address '{}'...", addr);
 
     let primary_address;
     if let Some(p) = router.map.addr_map.get(addr) {
         primary_address = p.clone();
     } else {
+        trace!("{} FAILED; no such worker", base);
         reply
             .send(NodeReply::no_such_worker(addr.clone()))
             .await
@@ -31,10 +32,17 @@ pub(super) async fn resolve(
 
     match router.map.internal.get(&primary_address) {
         Some(record) if record.check() => {
+            trace!("{} OK", base);
             reply.send(NodeReply::sender(addr.clone(), record.sender(), wrap))
         }
-        Some(_) => reply.send(NodeReply::rejected(Reason::WorkerShutdown)),
-        None => reply.send(NodeReply::no_such_worker(addr.clone())),
+        Some(_) => {
+            trace!("{} REJECTED; worker shutting down", base);
+            reply.send(NodeReply::rejected(Reason::WorkerShutdown))
+        }
+        None => {
+            trace!("{} FAILED; no such worker", base);
+            reply.send(NodeReply::no_such_worker(addr.clone()))
+        }
     }
     .await
     .map_err(|_| Error::InternalIOFailure.into())

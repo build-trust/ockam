@@ -49,7 +49,10 @@ impl Context {
     }
     /// Wait for the next message from the mailbox
     pub(crate) async fn mailbox_next(&mut self) -> Option<RelayMessage> {
-        self.mailbox.recv().await
+        self.mailbox.recv().await.map(|msg| {
+            trace!("{}: received new message!", self.address());
+            msg
+        })
     }
 }
 
