@@ -81,7 +81,6 @@ macro_rules! println {
                 Err(_) => (),
             }
         }
-
     }};
 }
 

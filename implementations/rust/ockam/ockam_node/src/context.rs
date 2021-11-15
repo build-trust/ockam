@@ -12,7 +12,7 @@ use crate::{
     Cancel, NodeMessage, ShutdownType,
 };
 use core::time::Duration;
-use ockam_core::compat::{sync::Arc, vec::Vec};
+use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     Address, AddressSet, LocalMessage, Message, Processor, Result, Route, TransportMessage, Worker,
 };

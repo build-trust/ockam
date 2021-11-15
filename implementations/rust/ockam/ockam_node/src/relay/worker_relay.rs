@@ -109,6 +109,8 @@ where
         Ok(true)
     }
 
+    #[cfg_attr(not(feature = "std"), allow(unused_mut))]
+    #[cfg_attr(not(feature = "std"), allow(unused_variables))]
     async fn run(mut self, mut ctrl_rx: Receiver<CtrlSignal>) {
         match self.worker.initialize(&mut self.ctx).await {
             Ok(()) => {}
@@ -123,6 +125,7 @@ where
 
         let address = self.ctx.address();
 
+        #[cfg(feature = "std")]
         loop {
             let _ = crate::tokio::select! {
                 result = self.recv_message() => {
@@ -142,6 +145,22 @@ where
                     break;
                 }
             };
+        }
+        #[cfg(not(feature = "std"))]
+        loop {
+            match self.recv_message().await {
+                // Successful message handling -- keep running
+                Ok(true) => {}
+                // Successful message handling -- stop now
+                Ok(false) => {
+                    break;
+                }
+                // An error occured -- log and continue
+                Err(e) => error!(
+                    "Error encountered during '{}' message handling: {}",
+                    address, e
+                ),
+            }
         }
 
         // Run the shutdown hook for this worker

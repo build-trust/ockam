@@ -2,7 +2,11 @@ use crate::relay::{CtrlSignal, RelayMessage};
 use crate::tokio::sync::mpsc::Sender;
 use crate::{error::Error, NodeError, NodeReply, NodeReplyResult};
 use ockam_core::{
-    compat::collections::{BTreeMap, BTreeSet},
+    compat::{
+        collections::{BTreeMap, BTreeSet},
+        string::String,
+        vec::Vec,
+    },
     Address, AddressSet, Result,
 };
 
