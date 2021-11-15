@@ -987,6 +987,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@ockam/wasm@workspace:ockam/ockam_wasm":
+  version: 0.0.0-use.local
+  resolution: "@ockam/wasm@workspace:ockam/ockam_wasm"
+  languageName: unknown
+  linkType: soft
+
 "@octokit/auth-token@npm:^2.4.4":
   version: 2.5.0
   resolution: "@octokit/auth-token@npm:2.5.0"
