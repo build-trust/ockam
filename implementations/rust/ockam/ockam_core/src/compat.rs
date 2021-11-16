@@ -190,22 +190,24 @@ pub mod sync {
     pub use spin::RwLock;
 
     /// spin::Mutex.lock() does not return Option<T>
-    pub struct Mutex<T>(spin::Mutex<T>);
+    pub struct Mutex<T: ?Sized>(spin::Mutex<T>);
     impl<T> Mutex<T> {
         pub fn new(value: T) -> Self {
             Mutex(spin::Mutex::new(value))
         }
+    }
+    impl<T: ?Sized> Mutex<T> {
         pub fn lock(&self) -> Option<spin::MutexGuard<'_, T>> {
             Some(self.0.lock())
         }
     }
-    impl<T> core::ops::Deref for Mutex<T> {
+    impl<T: ?Sized> core::ops::Deref for Mutex<T> {
         type Target = spin::Mutex<T>;
         fn deref(&self) -> &spin::Mutex<T> {
             &self.0
         }
     }
-    impl<T> core::ops::DerefMut for Mutex<T> {
+    impl<T: ?Sized> core::ops::DerefMut for Mutex<T> {
         fn deref_mut(&mut self) -> &mut spin::Mutex<T> {
             &mut self.0
         }

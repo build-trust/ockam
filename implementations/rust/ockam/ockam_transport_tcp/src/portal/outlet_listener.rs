@@ -1,4 +1,5 @@
-use crate::{PortalMessage, TcpRouterHandle};
+use crate::handle::TcpRouterHandle;
+use crate::PortalMessage;
 use ockam_core::{async_trait, AsyncTryClone};
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;

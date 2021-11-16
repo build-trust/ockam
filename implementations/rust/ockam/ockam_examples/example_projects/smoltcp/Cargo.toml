@@ -1,0 +1,36 @@
+[package]
+name = "tcp_examples"
+version = "0.0.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+publish = false
+
+[features]
+default = ["std"]
+
+# Feature (enabled by default): "std" enables functionality expected to
+# be available on a standard platform.
+std = ["ockam/default", "ockam_node/default", "ockam_transport_smoltcp/default"]
+
+# Feature: "no_std" enables functionality required for platforms
+# without the standard library.
+no_std = ["ockam/no_std", "ockam_node/no_std", "ockam_transport_smoltcp/no_std"]
+
+# Feature: "alloc" enables support for heap allocation on "no_std"
+# platforms, requires nightly.
+alloc = ["ockam/alloc", "ockam_node/alloc", "ockam_transport_smoltcp/alloc"]
+
+[dependencies]
+ockam = { path = "../../../ockam", default_features = false, features = [
+    "software_vault",
+] }
+ockam_node = { path = "../../../ockam_node", default_features = false }
+ockam_transport_smoltcp = { path = "../../../ockam_transport_smoltcp", default_features = false }
+smoltcp = "0.8"
+lazy_static = "1.4"
+
+# TODO: this dependency here is required because rustc doesn't yet
+# support re-exporting attributes from crates.  Tracking issue:
+# https://github.com/rust-lang/rust/issues/27812
+serde = { version = "1.0", features = ["derive"] }
+tracing = { version = "0.1", default-features = false }

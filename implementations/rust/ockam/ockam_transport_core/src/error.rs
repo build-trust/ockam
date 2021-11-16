@@ -29,8 +29,10 @@ pub enum TransportError {
     Protocol,
     /// A generic I/O failure
     GenericIo,
-    /// PortalInvalidState
+    /// Portal invalid state
     PortalInvalidState,
+    /// Unexpected end of stream encountered
+    UnexpectedEof,
 }
 
 impl TransportError {
@@ -53,6 +55,18 @@ impl From<io::Error> for TransportError {
     fn from(e: io::Error) -> Self {
         match e.kind() {
             io::ErrorKind::ConnectionRefused => Self::PeerNotFound,
+            io::ErrorKind::UnexpectedEof => Self::UnexpectedEof,
+            io::ErrorKind::WriteZero => Self::ConnectionDrop,
+            _ => Self::GenericIo,
+        }
+    }
+}
+
+impl From<smoltcp::Error> for TransportError {
+    fn from(e: smoltcp::Error) -> Self {
+        match e {
+            smoltcp::Error::Illegal => Self::BindFailed,
+            smoltcp::Error::Exhausted => Self::Capacity,
             _ => Self::GenericIo,
         }
     }

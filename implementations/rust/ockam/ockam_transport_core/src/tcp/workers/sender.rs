@@ -1,30 +1,43 @@
-use crate::TcpRecvProcessor;
+use super::TcpRecvProcessor;
+use crate::tcp::traits::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
+use crate::tcp::traits::{IntoSplit, TcpStreamConnector};
+use crate::TransportError;
+use core::fmt::Display;
+use core::ops::Deref;
 use core::time::Duration;
-use ockam_core::{async_trait, route, Any, Decodable, LocalMessage};
-use ockam_core::{Address, Encodable, Result, Routed, TransportMessage, Worker};
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::vec::Vec;
+use ockam_core::{
+    async_trait, route, Address, Any, Decodable, Encodable, LocalMessage, Result, Routed,
+    TransportMessage, Worker,
+};
 use ockam_node::{Context, Heartbeat};
-use ockam_transport_core::TransportError;
-use std::net::SocketAddr;
-use tokio::io::AsyncWriteExt;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
 use tracing::{debug, trace, warn};
 
 /// Transmit and receive peers of a TCP connection
 #[derive(Debug)]
-pub(crate) struct WorkerPair {
-    hostnames: Vec<String>,
-    peer: SocketAddr,
+pub struct WorkerPair<T, U> {
+    hostnames: T,
+    endpoint: U,
     tx_addr: Address,
 }
 
-impl WorkerPair {
-    pub fn hostnames(&self) -> &[String] {
+impl<T, U, V> WorkerPair<T, U>
+where
+    T: Deref<Target = [V]>,
+    U: Clone,
+{
+    /// Returns the hostnames of the remote peer associated with the worker pair.
+    pub fn hostnames(&self) -> &[V] {
         &self.hostnames
     }
-    pub fn peer(&self) -> SocketAddr {
-        self.peer
+
+    /// Returns the socket address of the peer to the worker pair.
+    pub fn peer(&self) -> U {
+        self.endpoint.clone()
     }
+
+    /// Returns the external address of the pair.
     pub fn tx_addr(&self) -> Address {
         self.tx_addr.clone()
     }
@@ -33,27 +46,41 @@ impl WorkerPair {
 /// A TCP sending message worker
 ///
 /// Create this worker type by calling
-/// [`start_tcp_worker`](crate::start_tcp_worker)!
+/// [TcpSendWorker::start_pair]
 ///
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
-pub(crate) struct TcpSendWorker {
-    rx: Option<OwnedReadHalf>,
-    tx: Option<OwnedWriteHalf>,
-    peer: SocketAddr,
+pub struct TcpSendWorker<T, U, V, W> {
+    rx: Option<T>,
+    tx: Option<U>,
+    stream_connector: V,
+    endpoint: W,
     internal_addr: Address,
     heartbeat: Heartbeat<Vec<u8>>,
     heartbeat_interval: Option<Duration>,
+    cluster_name: &'static str,
 }
 
-impl TcpSendWorker {
-    fn new(
-        stream: Option<TcpStream>,
-        peer: SocketAddr,
+impl<T, U, V, W> TcpSendWorker<T, U, V, W>
+where
+    W: Display + Clone + Send + Sync + 'static,
+    V: TcpStreamConnector<W> + Send + Sync + 'static,
+    V::Stream: IntoSplit<ReadHalf = T, WriteHalf = U>,
+    T: AsyncRead + Send + Unpin + 'static,
+    U: AsyncWrite + Send + Unpin + 'static,
+{
+    fn new<Y>(
+        stream: Option<Y>,
+        stream_connector: V,
+        endpoint: W,
         internal_addr: Address,
+        cluster_name: &'static str,
         heartbeat: Heartbeat<Vec<u8>>,
-    ) -> Self {
+    ) -> Self
+    where
+        Y: IntoSplit<ReadHalf = T, WriteHalf = U>,
+    {
         let (rx, tx) = match stream {
             Some(s) => {
                 let (rx, tx) = s.into_split();
@@ -65,37 +92,51 @@ impl TcpSendWorker {
         Self {
             rx,
             tx,
-            peer,
+            stream_connector,
+            endpoint,
             internal_addr,
             heartbeat,
             heartbeat_interval: Some(Duration::from_secs(5 * 60)),
+            cluster_name,
         }
     }
 
-    pub(crate) async fn start_pair(
+    /// Starts a pair of recv/send workers to process messages from `peer`.
+    ///
+    /// It returns a [WorkerPair] that holds the information of the pair of workers.
+    pub async fn start_pair<Y, Z>(
         ctx: &Context,
-        stream: Option<TcpStream>,
-        peer: SocketAddr,
-        hostnames: Vec<String>,
-    ) -> Result<WorkerPair> {
+        stream: Option<Y>,
+        stream_connector: V,
+        endpoint: W,
+        hostnames: Z,
+        cluster_name: &'static str,
+    ) -> Result<WorkerPair<Z, W>>
+    where
+        Y: IntoSplit<ReadHalf = T, WriteHalf = U>,
+    {
         trace!("Creating new TCP worker pair");
 
         let tx_addr = Address::random(0);
         let internal_addr = Address::random(0);
         let sender = TcpSendWorker::new(
             stream,
-            peer,
+            stream_connector,
+            endpoint.clone(),
             internal_addr.clone(),
+            cluster_name,
             Heartbeat::create(ctx, internal_addr.clone(), vec![]).await?,
         );
 
+        // TODO allocation
+        // Here the allocation is due to AdressSet: From<[Adress; 2]> or something similar not being implemented
         ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
             .await?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
             hostnames,
-            peer,
+            endpoint,
             tx_addr,
         })
     }
@@ -132,17 +173,25 @@ fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
 }
 
 #[async_trait]
-impl Worker for TcpSendWorker {
+impl<T, U, V, W, X> Worker for TcpSendWorker<T, U, V, W>
+where
+    V: TcpStreamConnector<W, Stream = X> + Send + Sync + 'static,
+    X: IntoSplit<ReadHalf = T, WriteHalf = U>,
+    T: Send + AsyncRead + Unpin + 'static,
+    U: Send + AsyncWrite + Unpin + 'static,
+    W: Clone + Send + Sync + core::fmt::Display + 'static,
+{
     type Context = Context;
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(self.cluster_name).await?;
 
         if self.tx.is_none() {
-            let (rx, tx) = TcpStream::connect(self.peer)
-                .await
-                .map_err(TransportError::from)?
+            let (rx, tx) = self
+                .stream_connector
+                .connect(self.endpoint.clone())
+                .await?
                 .into_split();
             self.tx = Some(tx);
             self.rx = Some(rx);
@@ -150,8 +199,11 @@ impl Worker for TcpSendWorker {
 
         if let Some(rx) = self.rx.take() {
             let rx_addr = Address::random(0);
-            let receiver =
-                TcpRecvProcessor::new(rx, format!("{}#{}", crate::TCP, self.peer).into());
+            let receiver = TcpRecvProcessor::new(
+                rx,
+                format!("{}#{}", crate::TCP, self.endpoint).into(),
+                self.cluster_name,
+            );
             ctx.start_processor(rx_addr.clone(), receiver).await?;
         } else {
             return Err(TransportError::GenericIo.into());
@@ -184,13 +236,13 @@ impl Worker for TcpSendWorker {
             let msg = prepare_message(msg)?;
             // Sending empty heartbeat
             if tx.write_all(&msg).await.is_err() {
-                warn!("Failed to send heartbeat to peer {}", self.peer);
+                warn!("Failed to send heartbeat to peer {}", self.endpoint);
                 ctx.stop_worker(ctx.address()).await?;
 
                 return Ok(());
             }
 
-            debug!("Sent heartbeat to peer {}", self.peer);
+            debug!("Sent heartbeat to peer {}", self.endpoint);
         } else {
             let mut msg = LocalMessage::decode(msg.payload())?.into_transport_message();
             // Remove our own address from the route so the other end
@@ -200,7 +252,7 @@ impl Worker for TcpSendWorker {
             let msg = prepare_message(msg)?;
 
             if tx.write_all(msg.as_slice()).await.is_err() {
-                warn!("Failed to send message to peer {}", self.peer);
+                warn!("Failed to send message to peer {}", self.endpoint);
                 ctx.stop_worker(ctx.address()).await?;
 
                 return Ok(());

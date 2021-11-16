@@ -8,14 +8,17 @@ homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_transport_ble"
 readme = "README.md"
 keywords = ["ockam", "crypto", "network", "bluetooth", "ble"]
-categories = ["cryptography", "asynchronous", "authentication", "embedded", "network-programming"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "embedded",
+    "network-programming",
+]
 description = """
 Bluetooth Low Energy (BLE) Transport for the Ockam Routing Protocol.
 """
-exclude = [
-    "DEVELOP.md",
-    "LICENSE"
-]
+exclude = ["DEVELOP.md", "LICENSE"]
 autoexamples = false
 
 [features]
@@ -53,26 +56,26 @@ alloc = [
 ]
 
 # Feature: Bare-metal support for ST Micro BlueNRG-MS BLE radios (server-only)
-use_bluetooth_hci = [ "bluetooth-hci", "bluenrg" ]
+use_bluetooth_hci = ["bluetooth-hci", "bluenrg"]
 
 # Feature: Multi-platform support for BLE radios (client-only)
-use_btleplug = [ "btleplug" ]
+use_btleplug = ["btleplug"]
 
 # Processor Feature: TODO move this into its own "Ockam Addon" crate
 atsame54 = [
-    "embedded-hal", # TODO atsame54_xpro declares hal::hal as private
+    "embedded-hal",  # TODO atsame54_xpro declares hal::hal as private
     "atsame54_xpro",
 ]
 
 # Processor Feature: TODO move this into its own "Ockam Addon" crate
 stm32f4 = [
-    "embedded-hal", # TODO atsame54_xpro declares hal::hal as private
+    "embedded-hal",  # TODO atsame54_xpro declares hal::hal as private
     "stm32f4xx-hal",
 ]
 
 # Processor Feature: TODO move this into its own "Ockam Addon" crate
 stm32h7 = [
-    "embedded-hal", # TODO atsame54_xpro declares hal::hal as private
+    "embedded-hal",                     # TODO atsame54_xpro declares hal::hal as private
     "stm32h7xx-hal",
     "stm32-device-signature/stm32h75x",
 ]
@@ -90,10 +93,14 @@ ockam = { path = "../ockam", default_features = false }
 ockam_core = { path = "../ockam_core", version = "^0.46.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.45.0", default_features = false }
 ockam_executor = { path = "../ockam_executor", version = "^0.15.0", default_features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.20.0", default_features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.21.0", default_features = false }
 
 futures = { version = "0.3.19", default-features = false }
-futures-util = { version = "0.3.19", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
+futures-util = { version = "0.3.19", default-features = false, features = [
+    "alloc",
+    "async-await-macro",
+    "sink",
+] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tracing = { version = "0.1", default_features = false }
 
@@ -102,8 +109,12 @@ btleplug = { version = "0.9.0", optional = true }
 uuid = { version = "0.8.2", optional = true }
 
 # Target baremetal: TODO move this into its own "Ockam Addon" crate
-bluenrg = { version = "0.1.0", default-features = false, features = ["ms"], optional = true }
-bluetooth-hci = { version = "0.1.0", default-features = false, features = ["version-4-1"], optional = true }
+bluenrg = { version = "0.1.0", default-features = false, features = [
+    "ms",
+], optional = true }
+bluetooth-hci = { version = "0.1.0", default-features = false, features = [
+    "version-4-1",
+], optional = true }
 nb = { version = "1.0.0", optional = true }
 heapless = { version = "0.7.7", optional = true }
 
@@ -113,8 +124,14 @@ embedded-hal = { version = "0.2.3", optional = true }
 
 # Processor stm32: TODO move this into its own "Ockam Addon" crate
 stm32-device-signature = { version = "0.3.3", optional = true }
-stm32f4xx-hal = { version = "0.9.0", features = ["rt", "stm32f407"], optional = true }
-stm32h7xx-hal = { version = "0.9.0", features = ["rt", "stm32h747cm7"], optional = true }
+stm32f4xx-hal = { version = "0.9.0", features = [
+    "rt",
+    "stm32f407",
+], optional = true }
+stm32h7xx-hal = { version = "0.9.0", features = [
+    "rt",
+    "stm32h747cm7",
+], optional = true }
 
 # Processor pic32: TODO move this into its own "Ockam Addon" crate
 pic32-hal = { version = "0.4.0", optional = true }
@@ -129,8 +146,8 @@ riscv = "0.7.0"
 
 [[example]]
 name = "04-routing-over-ble-transport-initiator"
-required-features = [ "std", "use_btleplug" ]
+required-features = ["std", "use_btleplug"]
 
 [[example]]
 name = "05-secure-channel-over-ble-transport-initiator"
-required-features = [ "std", "use_btleplug" ]
+required-features = ["std", "use_btleplug"]

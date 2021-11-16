@@ -4,7 +4,8 @@ use ockam_core::{route, Address, Result, Routed, Worker};
 use ockam_node::Context;
 use rand::Rng;
 
-use ockam_transport_tcp::{TcpTransport, TCP};
+use ockam_transport_core::TCP;
+use ockam_transport_tcp::TcpTransport;
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {

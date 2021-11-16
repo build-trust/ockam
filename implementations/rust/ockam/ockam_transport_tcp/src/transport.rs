@@ -1,7 +1,14 @@
-use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
+use std::net::SocketAddr;
+
+use crate::handle::{PeerResolve, TcpRouterHandle};
+use crate::{parse_socket_addr, TcpOutletListenWorker};
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
+use ockam_transport_core::tcp::traits::TokioTcpConnector;
+
+type TcpRouter =
+    ockam_transport_core::tcp::router::TcpRouter<TokioTcpConnector, SocketAddr, PeerResolve>;
 
 /// High level management interface for TCP transports
 ///
@@ -58,10 +65,10 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     pub async fn create(ctx: &Context) -> Result<Self> {
-        let router = TcpRouter::register(ctx).await?;
+        let router = TcpRouter::register(ctx, TokioTcpConnector).await?;
 
         Ok(Self {
-            router_handle: router,
+            router_handle: router.into(),
         })
     }
 
@@ -106,7 +113,8 @@ impl TcpTransport {
     /// Pair of corresponding Inlet and Outlet is called Portal.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpTransport, TCP};
+    /// use ockam_transport_tcp::TcpTransport;
+    /// use ockam_transport_core::TCP;
     /// # use ockam_node::Context;
     /// # use ockam_core::{Result, route};
     /// # async fn test(ctx: Context) -> Result<()> {
@@ -135,7 +143,8 @@ impl TcpTransport {
     /// Stop inlet at addr
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpTransport, TCP};
+    /// use ockam_transport_tcp::TcpTransport;
+    /// use ockam_transport_core::TCP;
     /// # use ockam_node::Context;
     /// # use ockam_core::{Result, route};
     /// # async fn test(ctx: Context) -> Result<()> {

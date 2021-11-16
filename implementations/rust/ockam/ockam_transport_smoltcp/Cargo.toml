@@ -1,0 +1,73 @@
+[package]
+name = "ockam_transport_smoltcp"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_smoltcp"
+readme = "README.md"
+keywords = ["ockam", "crypto", "network", "networking", "tcp"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
+rust-version = "1.56.0"
+
+exclude = ["DEVELOP.md", "LICENSE"]
+autoexamples = false
+
+[features]
+default = ["std", "pool-32"]
+std = [
+    "smoltcp/std",
+    "ockam_core/std",
+    "ockam_node/std",
+    "ockam_transport_core/std",
+    "tracing/std",
+    "rand",
+    "libc",
+    "async-io",
+]
+no_std = [
+    "ockam_core/no_std",
+    "ockam_node/no_std",
+    "ockam_transport_core/no_std",
+    "lazy_static/spin_no_std",
+]
+alloc = [
+    "smoltcp/alloc",
+    "ockam_core/alloc",
+    "ockam_node/alloc",
+    "ockam_transport_core/alloc",
+]
+pool-4 = []
+pool-8 = []
+pool-16 = []
+pool-32 = []
+
+[dependencies]
+smoltcp = { version = "0.8", default_features = false, features = [
+    "proto-ipv4",
+    "proto-ipv6",
+    "medium-ethernet",
+    "socket-tcp",
+    "async",
+] }
+ockam_core = { path = "../ockam_core", version = "0.46", default_features = false }
+ockam_node = { path = "../ockam_node", version = "0.45", default_features = false }
+tracing = { version = "0.1", default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", default-features = false, version = "0.21" }
+futures = { version = "0.3.10", default-features = false }
+lazy_static = { version = "1.4", default-features = false }
+managed = { version = "0.8", default-features = false }
+as-slice = "0.2"
+atomic-pool = "0.2.0"
+
+# Std only dependencies
+libc = { version = "0.2", optional = true }
+rand = { version = "0.8", optional = true }
+async-io = { version = "1.6", optional = true }

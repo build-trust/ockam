@@ -1,51 +1,53 @@
-use ockam_core::async_trait;
-use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
+use crate::TransportError;
+use ockam_core::compat::{boxed::Box, vec::Vec};
+use ockam_core::{
+    async_trait, Address, Decodable, LocalMessage, Processor, Result, TransportMessage,
+};
 use ockam_node::Context;
-use ockam_transport_core::TransportError;
-use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, info, trace};
+
+use crate::tcp::traits::io::{AsyncRead, AsyncReadExt};
 
 /// A TCP receiving message worker
 ///
-/// Create this worker type by calling
-/// [`start_tcp_worker`](crate::start_tcp_worker)!
+/// This type will be created by [TcpSendWorker::start_pair](super::sender::TcpSendWorker::start_pair)
 ///
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for incoming TCP packets, to relay into
 /// the node message system.
-pub(crate) struct TcpRecvProcessor {
-    rx: OwnedReadHalf,
+pub(crate) struct TcpRecvProcessor<R> {
     peer_addr: Address,
+    tcp_stream: R,
+    cluster_name: &'static str,
 }
 
-impl TcpRecvProcessor {
-    pub fn new(rx: OwnedReadHalf, peer_addr: Address) -> Self {
-        Self { rx, peer_addr }
+impl<R> TcpRecvProcessor<R> {
+    pub fn new(tcp_stream: R, peer_addr: Address, cluster_name: &'static str) -> Self {
+        Self {
+            peer_addr,
+            tcp_stream,
+            cluster_name,
+        }
     }
 }
 
 #[async_trait]
-impl Processor for TcpRecvProcessor {
+impl<R> Processor for TcpRecvProcessor<R>
+where
+    R: AsyncRead + Send + Unpin + 'static,
+{
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
+        ctx.set_cluster(self.cluster_name).await
     }
 
-    // We are using the initialize function here to run a custom loop,
-    // while never listening for messages sent to our address
-    //
-    // Note: when the loop exits, we _must_ call stop_worker(..) on
-    // Context not to spawn a zombie task.
-    //
-    // Also: we must stop the TcpReceive loop when the worker gets
-    // killed by the user or node.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
-        // Run in a loop until TcpWorkerPair::stop() is called
-        // First read a message length header...
-        let len = match self.rx.read_u16().await {
-            Ok(len) => len,
-            Err(_e) => {
+        let mut len_buf = [0; 2]; // TODO Optimization: read into unitialized buffer
+        let len = match self.tcp_stream.read_exact(&mut len_buf[..]).await {
+            Ok(_) => u16::from_be_bytes(len_buf),
+            Err(e) => {
+                trace!("Got error: {:?} while processing new tcp packets", e);
                 info!(
                     "Connection to peer '{}' was closed; dropping stream",
                     self.peer_addr
@@ -57,10 +59,11 @@ impl Processor for TcpRecvProcessor {
         trace!("Received message header for {} bytes", len);
 
         // Allocate a buffer of that size
+        // TODO allocation(Very similar case as bufer allocation for sockets[in net/stack.rs])
         let mut buf = vec![0; len as usize];
 
         // Then Read into the buffer
-        match self.rx.read_exact(&mut buf).await {
+        match self.tcp_stream.read_exact(&mut buf).await {
             Ok(_) => {}
             _ => {
                 error!("Failed to receive message of length: {}", len);

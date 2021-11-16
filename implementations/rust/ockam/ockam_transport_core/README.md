@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_core = "0.20.0"
+ockam_transport_core = "0.21.0"
 ```
 
 This crate requires the rust standard library `"std"`.
@@ -26,15 +26,11 @@ This crate requires the rust standard library `"std"`.
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-
 [crate-image]: https://img.shields.io/crates/v/ockam_transport_core.svg
 [crate-link]: https://crates.io/crates/ockam_transport_core
-
 [docs-image]: https://docs.rs/ockam_transport_core/badge.svg
 [docs-link]: https://docs.rs/ockam_transport_core
-
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE
-
 [discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
 [discuss-link]: https://github.com/ockam-network/ockam/discussions
