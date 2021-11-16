@@ -1,0 +1,3 @@
+[hub]
+host = "1.hub.ockam.network"
+port = 4000

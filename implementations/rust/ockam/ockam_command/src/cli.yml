@@ -1,0 +1,25 @@
+name: ockam
+version: "0.0"
+author: Ockam Team <dev@ockam.io>
+about: End-to-end encrypted, mutually authenticated secure channels.
+args:
+  - config:
+      short: c
+      long: config
+      value_name: CONFIG_FILE
+      help: Set a custom config file
+      takes_value: true
+      default_value: ockam
+  - secrets:
+      short: s
+      long: secrets
+      value_name: SECRETS_FILE
+      help: Set a custom secrets file
+      takes_value: true
+      default_value: ockam_secrets
+subcommands:
+  - node:
+      about: Manage Ockam Nodes
+      subcommands:
+          - create:
+                about: Create a Node
