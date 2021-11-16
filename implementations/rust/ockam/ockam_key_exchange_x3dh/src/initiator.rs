@@ -20,8 +20,8 @@ enum InitiatorState {
     Done,
 }
 
-/// The responder of X3DH receives a prekey bundle and computes the shared secret
-/// to communicate the first message to the initiator
+/// The initiator of X3DH receives a prekey bundle and computes the shared secret
+/// to communicate the first message to the responder
 pub struct Initiator<V: X3dhVault> {
     identity_key: Option<Secret>,
     ephemeral_identity_key: Option<Secret>,
