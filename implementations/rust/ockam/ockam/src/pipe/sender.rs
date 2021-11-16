@@ -40,6 +40,7 @@ impl PipeSender {
 
     /// Handle internal command payloads
     async fn handle_internal(&mut self, _ctx: &mut Context, _msg: Routed<Any>) -> Result<()> {
+        debug!("PipeSender handling internal command");
         Ok(())
     }
 
@@ -49,7 +50,12 @@ impl PipeSender {
         msg.transport_mut()
             .onward_route
             .modify()
+            .pop_front()
             .prepend_route(self.peer.clone());
+        debug!(
+            "Pipe sender forwarding message to {:?}",
+            msg.transport().onward_route
+        );
         ctx.forward(msg).await?;
         Ok(())
     }
