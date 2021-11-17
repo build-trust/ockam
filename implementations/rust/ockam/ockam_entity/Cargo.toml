@@ -21,11 +21,11 @@ lease_proto_json = ["serde_json"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_channel/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_core/std", "ockam_vault_sync_core/std", "ockam_vault/std"]
+std = ["ockam_core/std", "ockam_macros/std", "ockam_channel/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_core/std", "ockam_vault_sync_core/std", "ockam_vault/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
-no_std = ["ockam_core/no_std", "ockam_channel/no_std", "ockam_key_exchange_core/no_std", "ockam_key_exchange_xx/no_std", "ockam_node/no_std", "ockam_vault_core/no_std", "ockam_vault_sync_core/no_std", "ockam_vault/no_std"]
+no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_channel/no_std", "ockam_key_exchange_core/no_std", "ockam_key_exchange_xx/no_std", "ockam_node/no_std", "ockam_vault_core/no_std", "ockam_vault_sync_core/no_std", "ockam_vault/no_std"]
 
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.

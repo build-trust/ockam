@@ -21,11 +21,11 @@ bls = ["ockam_vault_core/bls", "signature_core", "signature_bbs_plus", "signatur
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_vault_core/std", "aes-gcm/alloc", "aes-gcm/std", "rand/std", "rand/std_rng", "tracing/std", "x25519-dalek/std", "x25519-dalek/u64_backend", "alloc"]
+std = ["ockam_core/std", "ockam_macros/std", "ockam_vault_core/std", "aes-gcm/alloc", "aes-gcm/std", "rand/std", "rand/std_rng", "tracing/std", "x25519-dalek/std", "x25519-dalek/u64_backend", "alloc"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std = ["ockam_core/no_std", "ockam_vault_core/no_std", "rand_pcg", "x25519-dalek/u32_backend", "aes-gcm/heapless", "aes-gcm/force-soft", "aes-gcm/stream"]
+no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_vault_core/no_std", "rand_pcg", "x25519-dalek/u32_backend", "aes-gcm/heapless", "aes-gcm/force-soft", "aes-gcm/stream"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_vault_core/alloc",  "aes-gcm/alloc"]

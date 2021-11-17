@@ -1576,9 +1576,9 @@ dependencies = [
  "ockam_entity",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
- "ockam_message_derive",
+ "ockam_macros",
  "ockam_node",
- "ockam_node_attribute",
+ "ockam_test_macros",
  "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_core",
@@ -1593,6 +1593,7 @@ dependencies = [
  "signature_bls",
  "signature_core",
  "tracing",
+ "trybuild",
 ]
 
 [[package]]
@@ -1629,9 +1630,9 @@ dependencies = [
  "ockam_key_exchange_core",
  "ockam_key_exchange_x3dh",
  "ockam_key_exchange_xx",
- "ockam_message_derive",
+ "ockam_macros",
  "ockam_node",
- "ockam_node_test_attribute",
+ "ockam_test_macros",
  "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
@@ -1675,8 +1676,7 @@ dependencies = [
  "hashbrown 0.11.2",
  "heapless",
  "hex",
- "ockam_macro 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ockam_message_derive",
+ "ockam_macros",
  "rand 0.8.4",
  "rand_pcg",
  "serde 1.0.130",
@@ -1696,9 +1696,9 @@ dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
- "ockam_message_derive",
+ "ockam_macros",
  "ockam_node",
- "ockam_node_test_attribute",
+ "ockam_test_macros",
  "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_core",
@@ -1778,31 +1778,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_macro"
+name = "ockam_macros"
 version = "0.1.0"
-dependencies = [
- "ockam_core",
- "proc-macro2",
- "quote",
- "syn",
- "trybuild",
-]
-
-[[package]]
-name = "ockam_macro"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a41de6e650a7d738af7c6b4bf8421a7cd9962f125ce97dc864b2411482a3a3c5"
 dependencies = [
  "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "ockam_message_derive"
-version = "0.1.0"
-dependencies = [
  "quote",
  "syn",
 ]
@@ -1823,14 +1802,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_node_attribute"
-version = "0.26.0"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
 name = "ockam_node_no_std"
 version = "0.12.0"
 dependencies = [
@@ -1838,15 +1809,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_node_test_attribute"
+name = "ockam_test_macros"
 version = "0.4.0"
 dependencies = [
- "ockam",
- "ockam_node",
  "proc-macro2",
  "quote",
  "syn",
- "trybuild",
+]
+
+[[package]]
+name = "ockam_test_macros_internal"
+version = "0.28.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1864,9 +1840,9 @@ dependencies = [
  "futures 0.3.17",
  "hashbrown 0.9.1",
  "ockam_core",
- "ockam_message_derive",
+ "ockam_macros",
  "ockam_node",
- "ockam_node_test_attribute",
+ "ockam_test_macros",
  "ockam_transport_core",
  "rand 0.7.3",
  "serde 1.0.130",
@@ -1901,9 +1877,9 @@ dependencies = [
  "ed25519-dalek",
  "hkdf",
  "ockam_core",
- "ockam_message_derive",
+ "ockam_macros",
+ "ockam_test_macros_internal",
  "ockam_vault_core",
- "ockam_vault_test_attribute",
  "ockam_vault_test_suite",
  "rand 0.8.4",
  "rand_pcg",
@@ -1934,11 +1910,11 @@ name = "ockam_vault_sync_core"
 version = "0.31.0"
 dependencies = [
  "ockam_core",
- "ockam_message_derive",
+ "ockam_macros",
  "ockam_node",
+ "ockam_test_macros_internal",
  "ockam_vault",
  "ockam_vault_core",
- "ockam_vault_test_attribute",
  "ockam_vault_test_suite",
  "rand 0.8.4",
  "rand_pcg",
@@ -1946,14 +1922,6 @@ dependencies = [
  "serde-big-array",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "ockam_vault_test_attribute"
-version = "0.28.0"
-dependencies = [
- "quote",
- "syn",
 ]
 
 [[package]]

@@ -20,13 +20,13 @@ autoexamples = false
 
 [features]
 default = ["std"]
-std = []
+std = ["ockam_macros/std"]
 alloc = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.39.0"}
 ockam_node = { path = "../ockam_node", version = "^0.38.0"}
-ockam_macros = { path = "../ockam_macros", version = "0.1.0" , default-features = false }
+ockam_macros = { path = "../ockam_macros", version = "0.1.0"}
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.13.0"}
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1.8", features = ["rt-multi-thread","sync","net","macros","time","io-util"] }
