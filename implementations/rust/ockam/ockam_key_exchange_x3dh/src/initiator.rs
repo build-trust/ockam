@@ -46,7 +46,7 @@ impl<V: X3dhVault> Initiator<V> {
     async fn prologue(&mut self) -> Result<()> {
         if self.identity_key.is_none() {
             let p_atts = SecretAttributes::new(
-                SecretType::Curve25519,
+                SecretType::X25519,
                 SecretPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH,
             );
@@ -87,7 +87,7 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
                 let ephemeral_identity_key = self
                     .vault
                     .secret_generate(SecretAttributes::new(
-                        SecretType::Curve25519,
+                        SecretType::X25519,
                         SecretPersistence::Ephemeral,
                         CURVE25519_SECRET_LENGTH,
                     ))

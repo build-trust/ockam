@@ -92,7 +92,10 @@ impl ProfileChangeHistory {
         if data.is_empty() {
             Err(EntityError::InvalidInternalState.into())
         } else {
-            Ok(PublicKey::new(data.into()))
+            Ok(PublicKey::new(
+                data.into(),
+                SecretType::Ed25519, /* FIXME: Determine type */
+            ))
         }
     }
 
@@ -114,7 +117,7 @@ impl ProfileChangeHistory {
         let key_attributes = KeyAttributes::with_attributes(
             Profile::PROFILE_UPDATE.to_string(),
             MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
-                SecretType::Curve25519,
+                SecretType::Ed25519,
                 SecretPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH,
             )),
@@ -147,6 +150,7 @@ impl ProfileChangeHistory {
 
         Ok(PublicKey::new(
             root_create_key_change.data().public_key().to_vec(),
+            SecretType::Ed25519,
         ))
     }
 
@@ -221,7 +225,10 @@ impl ProfileChangeHistory {
                     vault
                         .verify(
                             c.self_signature(),
-                            &PublicKey::new(c.data().public_key().into()),
+                            &PublicKey::new(
+                                c.data().public_key().into(),
+                                SecretType::Ed25519, /* FIXME: Determine type */
+                            ),
                             &data_hash,
                         )
                         .await?
@@ -234,7 +241,10 @@ impl ProfileChangeHistory {
                     if !vault
                         .verify(
                             c.self_signature(),
-                            &PublicKey::new(c.data().public_key().into()),
+                            &PublicKey::new(
+                                c.data().public_key().into(),
+                                SecretType::Ed25519, /* FIXME: Determine type */
+                            ),
                             &data_hash,
                         )
                         .await?

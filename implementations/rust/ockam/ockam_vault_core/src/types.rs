@@ -6,10 +6,6 @@ use zeroize::Zeroize;
 pub const CURVE25519_SECRET_LENGTH: usize = 32;
 /// Curve25519 public key length
 pub const CURVE25519_PUBLIC_LENGTH: usize = 32;
-/// P256 private key length
-pub const P256_SECRET_LENGTH: usize = 32;
-/// P256 public key length
-pub const P256_PUBLIC_LENGTH: usize = 65;
 /// AES256 private key length
 pub const AES256_SECRET_LENGTH: usize = 32;
 /// AES128 private key length
@@ -74,18 +70,32 @@ impl AsRef<[u8]> for SecretKey {
 /// A public key
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
 #[zeroize(drop)]
-pub struct PublicKey(PublicKeyVec);
+pub struct PublicKey {
+    data: PublicKeyVec,
+    stype: SecretType,
+}
+
+impl PublicKey {
+    /// Public Key data
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+    /// Corresponding secret key type
+    pub fn stype(&self) -> SecretType {
+        self.stype
+    }
+}
 
 impl PublicKey {
     /// Create a new public key
-    pub fn new(data: PublicKeyVec) -> Self {
-        Self(data)
+    pub fn new(data: PublicKeyVec, stype: SecretType) -> Self {
+        PublicKey { data, stype }
     }
 }
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] {
-        &self.0
+        &self.data
     }
 }
 
@@ -108,16 +118,16 @@ impl AsRef<[u8]> for Signature {
 }
 
 /// All possible [`SecretType`]s
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
 pub enum SecretType {
     /// Secret buffer
     Buffer,
     /// AES key
     Aes,
     /// Curve 22519 key
-    Curve25519,
-    /// P256 key
-    P256,
+    X25519,
+    /// Curve 22519 key
+    Ed25519,
     /// BLS key
     #[cfg(feature = "bls")]
     Bls,

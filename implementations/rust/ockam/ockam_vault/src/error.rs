@@ -28,10 +28,10 @@ pub enum VaultError {
     HkdfExpandError,
     /// Secret not found
     SecretNotFound,
-    /// Invalid Curve25519 secret length
-    InvalidCurve25519SecretLength,
-    /// Invalid Curve25519 secret (scalar not clamped)
-    InvalidCurve25519Secret,
+    /// Invalid X25519 secret length
+    InvalidX25519SecretLength,
+    /// Invalid Ed25519 secret
+    InvalidEd25519Secret,
     /// Invalid BLS secret length
     InvalidBlsSecretLength,
     /// Invalid BLS secret

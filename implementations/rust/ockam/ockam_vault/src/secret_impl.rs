@@ -24,7 +24,8 @@ impl SoftwareVault {
         attributes: &SecretAttributes,
     ) -> Result<Option<KeyId>> {
         Ok(match attributes.stype() {
-            SecretType::Curve25519 => {
+            SecretType::X25519 => {
+                // FIXME: Check secret length
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
                     secret,
                     0,
@@ -32,8 +33,23 @@ impl SoftwareVault {
                 ]);
                 let public = x25519_dalek::PublicKey::from(&sk);
                 Some(
-                    self.compute_key_id_for_public_key(&PublicKey::new(public.as_bytes().to_vec()))
-                        .await?,
+                    self.compute_key_id_for_public_key(&PublicKey::new(
+                        public.as_bytes().to_vec(),
+                        SecretType::X25519,
+                    ))
+                    .await?,
+                )
+            }
+            SecretType::Ed25519 => {
+                let sk = ed25519_dalek::SecretKey::from_bytes(secret)
+                    .map_err(|_| VaultError::InvalidEd25519Secret)?;
+                let public = ed25519_dalek::PublicKey::from(&sk);
+                Some(
+                    self.compute_key_id_for_public_key(&PublicKey::new(
+                        public.as_bytes().to_vec(),
+                        SecretType::Ed25519,
+                    ))
+                    .await?,
                 )
             }
             #[cfg(feature = "bls")]
@@ -45,7 +61,7 @@ impl SoftwareVault {
                     PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
                 Some(self.compute_key_id_for_public_key(&public_key).await?)
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::P256 => None,
+            SecretType::Buffer | SecretType::Aes => None,
         })
     }
 
@@ -62,11 +78,10 @@ impl SoftwareVault {
                     return Err(VaultError::InvalidBlsSecret.into());
                 }
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::Curve25519 => {
+            SecretType::Buffer | SecretType::Aes | SecretType::X25519 | SecretType::Ed25519 => {
                 // Avoid unused variable warning
                 let _ = secret;
             }
-            SecretType::P256 => { /* FIXME */ }
         }
         Ok(())
     }
@@ -77,10 +92,10 @@ impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
     async fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
         let key = match attributes.stype() {
-            SecretType::Curve25519 => {
+            SecretType::X25519 | SecretType::Ed25519 => {
                 let bytes = {
                     let mut rng = thread_rng();
-                    let mut bytes = vec![0u8; 32];
+                    let mut bytes = vec![0u8; CURVE25519_SECRET_LENGTH];
                     rng.fill_bytes(&mut bytes);
                     bytes
                 };
@@ -117,9 +132,6 @@ impl SecretVault for SoftwareVault {
                 };
 
                 SecretKey::new(key)
-            }
-            SecretType::P256 => {
-                return Err(VaultError::InvalidKeyType.into());
             }
             #[cfg(feature = "bls")]
             SecretType::Bls => {
@@ -164,19 +176,29 @@ impl SecretVault for SoftwareVault {
     async fn secret_public_key_get(&mut self, context: &Secret) -> Result<PublicKey> {
         let entry = self.get_entry(context)?;
 
-        if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH {
-            return Err(VaultError::InvalidPrivateKeyLen.into());
-        }
-
         match entry.key_attributes().stype() {
-            SecretType::Curve25519 => {
+            SecretType::X25519 => {
+                if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH {
+                    return Err(VaultError::InvalidPrivateKeyLen.into());
+                }
+
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
                     entry.key().as_ref(),
                     0,
                     CURVE25519_SECRET_LENGTH
                 ]);
                 let pk = x25519_dalek::PublicKey::from(&sk);
-                Ok(PublicKey::new(pk.to_bytes().to_vec()))
+                Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::X25519))
+            }
+            SecretType::Ed25519 => {
+                if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH {
+                    return Err(VaultError::InvalidPrivateKeyLen.into());
+                }
+
+                let sk = ed25519_dalek::SecretKey::from_bytes(entry.key().as_ref())
+                    .map_err(|_| VaultError::InvalidEd25519Secret)?;
+                let pk = ed25519_dalek::PublicKey::from(&sk);
+                Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
             }
             #[cfg(feature = "bls")]
             SecretType::Bls => {
@@ -188,9 +210,7 @@ impl SecretVault for SoftwareVault {
                     BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
                 ))
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::P256 => {
-                Err(VaultError::InvalidKeyType.into())
-            }
+            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
     }
 
@@ -227,9 +247,17 @@ mod tests {
     #[ockam_macros::vault_test]
     fn secret_attributes_get() {}
 
-    fn new_curve255519_attrs() -> Option<SecretAttributes> {
+    fn new_x255519_attrs() -> Option<SecretAttributes> {
         Some(SecretAttributes::new(
-            SecretType::Curve25519,
+            SecretType::X25519,
+            SecretPersistence::Ephemeral,
+            CURVE25519_SECRET_LENGTH,
+        ))
+    }
+
+    fn new_ed255519_attrs() -> Option<SecretAttributes> {
+        Some(SecretAttributes::new(
+            SecretType::Ed25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH,
         ))
@@ -272,7 +300,11 @@ mod tests {
 
     #[tokio::test]
     async fn secret_generate_compute_key_id() {
-        for attrs in flat_map_options(vec![new_curve255519_attrs(), new_bls_attrs()]) {
+        for attrs in flat_map_options(vec![
+            new_x255519_attrs(),
+            new_ed255519_attrs(),
+            new_bls_attrs(),
+        ]) {
             let mut vault = new_vault();
             let sec_idx = vault.secret_generate(attrs).await.unwrap();
             check_key_id_computation(vault, sec_idx).await;
@@ -281,7 +313,11 @@ mod tests {
 
     #[tokio::test]
     async fn secret_import_compute_key_id() {
-        for attrs in flat_map_options(vec![new_curve255519_attrs(), new_bls_attrs()]) {
+        for attrs in flat_map_options(vec![
+            new_x255519_attrs(),
+            new_ed255519_attrs(),
+            new_bls_attrs(),
+        ]) {
             let mut vault = new_vault();
             let sec_idx = vault.secret_generate(attrs).await.unwrap();
             let secret = vault.secret_export(&sec_idx).await.unwrap();
@@ -310,7 +346,7 @@ mod tests {
             0x00, 0x61, 0xb4, 0x01, 0xc1, 0xbf, 0x39, 0xd0, 0x8b, 0x7e, 0x4b, 0xf0, 0xa4, 0x90,
             0xbb, 0x1c, 0x91, 0x67,
         ];
-        let attrs = new_curve255519_attrs().unwrap();
+        let attrs = new_x255519_attrs().unwrap();
         let mut vault = new_vault();
         let key_id = import_key(&mut vault, bytes_c25519, attrs).await;
         assert_eq!(
