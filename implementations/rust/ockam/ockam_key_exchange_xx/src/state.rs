@@ -68,7 +68,7 @@ impl<V: XXVault> State<V> {
     /// Create a new `HandshakeState` starting with the prologue
     async fn prologue(&mut self) -> Result<()> {
         let attributes = SecretAttributes::new(
-            SecretType::Curve25519,
+            SecretType::X25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH,
         );
@@ -234,7 +234,7 @@ impl<V: XXVault> State<V> {
         let mut index_l = 0;
         let mut index_r = public_key_size;
         let re = &message[..index_r];
-        let re = PublicKey::new(re.to_vec());
+        let re = PublicKey::new(re.to_vec(), SecretType::X25519);
         index_l += public_key_size;
         index_r += public_key_size + AES_GCM_TAGSIZE;
         let encrypted_rs_and_tag = &message[index_l..index_r];
@@ -245,7 +245,7 @@ impl<V: XXVault> State<V> {
         self.remote_ephemeral_public_key = Some(re);
         let (rs, h) = self.decrypt_and_mix_hash(encrypted_rs_and_tag).await?;
         self.h = Some(h);
-        let rs = PublicKey::new(rs);
+        let rs = PublicKey::new(rs, SecretType::X25519);
         self.dh_state.dh(&ephemeral_secret_handle, &rs).await?;
         self._remote_static_public_key = Some(rs);
         self.nonce = 0;
@@ -304,7 +304,7 @@ impl<V: XXVault> State<V> {
         }
 
         let re = &message_1[..public_key_size];
-        let re = PublicKey::new(re.to_vec());
+        let re = PublicKey::new(re.to_vec(), SecretType::X25519);
         self.h = Some(self.mix_hash(re.as_ref()).await?);
         self.h = Some(self.mix_hash(&message_1[public_key_size..]).await?);
         self.remote_ephemeral_public_key = Some(re);
@@ -364,7 +364,7 @@ impl<V: XXVault> State<V> {
             .decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])
             .await?;
         self.h = Some(h);
-        let rs = PublicKey::new(rs);
+        let rs = PublicKey::new(rs, SecretType::X25519);
         self.dh_state.dh(ephemeral_secret, &rs).await?;
         self.nonce = 0;
         let (payload, h) = self
@@ -662,7 +662,7 @@ mod tests {
         ephemeral_private: &str,
     ) -> State<V> {
         let attributes = SecretAttributes::new(
-            SecretType::Curve25519,
+            SecretType::X25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH,
         );

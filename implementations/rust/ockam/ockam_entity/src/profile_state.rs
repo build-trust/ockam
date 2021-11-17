@@ -79,7 +79,7 @@ impl ProfileState {
         let key_attribs = KeyAttributes::with_attributes(
             Profile::PROFILE_UPDATE.to_string(),
             MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
-                SecretType::Curve25519,
+                SecretType::Ed25519,
                 SecretPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH,
             )),

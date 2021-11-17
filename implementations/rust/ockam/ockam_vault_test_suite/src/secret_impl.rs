@@ -6,31 +6,36 @@ use ockam_vault_core::{
 
 pub async fn new_public_keys(vault: &mut impl SecretVault) {
     let attributes = SecretAttributes::new(
-        SecretType::Curve25519,
+        SecretType::Ed25519,
         SecretPersistence::Ephemeral,
         CURVE25519_SECRET_LENGTH,
     );
 
     let res = vault.secret_generate(attributes).await;
     assert!(res.is_ok());
-    let p256_ctx_1 = res.unwrap();
+    let ed_ctx_1 = res.unwrap();
 
-    let res = vault.secret_public_key_get(&p256_ctx_1).await;
+    let res = vault.secret_public_key_get(&ed_ctx_1).await;
     assert!(res.is_ok());
     let pk_1 = res.unwrap();
     assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
 
+    let attributes = SecretAttributes::new(
+        SecretType::X25519,
+        SecretPersistence::Ephemeral,
+        CURVE25519_SECRET_LENGTH,
+    );
     let res = vault.secret_generate(attributes).await;
     assert!(res.is_ok());
-    let c25519_ctx_1 = res.unwrap();
-    let res = vault.secret_public_key_get(&c25519_ctx_1).await;
+    let x25519_ctx_1 = res.unwrap();
+    let res = vault.secret_public_key_get(&x25519_ctx_1).await;
     assert!(res.is_ok());
     let pk_1 = res.unwrap();
     assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
 }
 
 pub async fn new_secret_keys(vault: &mut impl SecretVault) {
-    let types = [(SecretType::Curve25519, 32), (SecretType::Buffer, 24)];
+    let types = [(SecretType::X25519, 32), (SecretType::Buffer, 24)];
     for (t, s) in &types {
         let attributes = SecretAttributes::new(*t, SecretPersistence::Ephemeral, *s);
         let res = vault.secret_generate(attributes).await;
@@ -44,7 +49,7 @@ pub async fn new_secret_keys(vault: &mut impl SecretVault) {
 
 pub async fn secret_import_export(vault: &mut impl SecretVault) {
     let attributes = SecretAttributes::new(
-        SecretType::Curve25519,
+        SecretType::X25519,
         SecretPersistence::Ephemeral,
         CURVE25519_SECRET_LENGTH,
     );
@@ -79,7 +84,7 @@ pub async fn secret_import_export(vault: &mut impl SecretVault) {
 
 pub async fn secret_attributes_get(vault: &mut impl SecretVault) {
     let attributes = SecretAttributes::new(
-        SecretType::Curve25519,
+        SecretType::X25519,
         SecretPersistence::Ephemeral,
         CURVE25519_SECRET_LENGTH,
     );

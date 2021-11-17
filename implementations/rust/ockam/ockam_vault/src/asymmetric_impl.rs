@@ -12,7 +12,7 @@ impl SoftwareVault {
     fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {
         let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
-            SecretType::Curve25519 => {
+            SecretType::X25519 => {
                 if peer_public_key.as_ref().len() != CURVE25519_PUBLIC_LENGTH
                     || key.as_ref().len() != CURVE25519_SECRET_LENGTH
                 {
@@ -34,7 +34,7 @@ impl SoftwareVault {
             }
             #[cfg(feature = "bls")]
             SecretType::Bls => Err(VaultError::UnknownEcdhKeyType.into()),
-            SecretType::P256 | SecretType::Buffer | SecretType::Aes => {
+            SecretType::Buffer | SecretType::Aes | SecretType::Ed25519 => {
                 Err(VaultError::UnknownEcdhKeyType.into())
             }
         }

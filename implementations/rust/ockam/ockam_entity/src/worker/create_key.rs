@@ -2,9 +2,9 @@ use crate::change_history::ProfileChangeHistory;
 use crate::profile::Profile;
 use crate::EntityError::InvalidInternalState;
 use crate::{
-    ChangeSet, EntityError, EventIdentifier, KeyAttributes, ProfileChange, ProfileChangeEvent,
-    ProfileChangeProof, ProfileChangeType, ProfileEventAttributes, ProfileState, Signature,
-    SignatureType,
+    ChangeSet, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
+    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
+    ProfileState, Signature, SignatureType,
 };
 use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
@@ -82,28 +82,33 @@ impl ProfileState {
         root_key: Option<&Secret>,
         vault: &mut VaultSync,
     ) -> ockam_core::Result<ProfileChangeEvent> {
-        // FIXME
-        cfg_if! {
-            if #[cfg(feature = "credentials")] {
-                let is_bls = key_attributes.label() == Profile::CREDENTIALS_ISSUE;
+        let secret_attributes = match key_attributes.meta() {
+            MetaKeyAttributes::SecretAttributes(attrs) => attrs.clone(),
+            MetaKeyAttributes::None => {
+                cfg_if! {
+                    if #[cfg(feature = "credentials")] {
+                        // FIXME
+                        let is_bls = key_attributes.label() == Profile::CREDENTIALS_ISSUE;
 
-                let secret_attributes = if is_bls {
-                    SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
+                        let secret_attributes = if is_bls {
+                            SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
+                        }
+                        else {
+                            SecretAttributes::new(
+                                SecretType::Ed25519,
+                                SecretPersistence::Persistent,
+                                CURVE25519_SECRET_LENGTH,
+                            )
+                        };
+                    }
+                    else {
+                        SecretAttributes::new(
+                            SecretType::Ed25519,
+                            SecretPersistence::Persistent,
+                            CURVE25519_SECRET_LENGTH,
+                        )
+                    }
                 }
-                else {
-                    SecretAttributes::new(
-                        SecretType::Curve25519,
-                        SecretPersistence::Persistent,
-                        CURVE25519_SECRET_LENGTH,
-                    )
-                };
-            }
-            else {
-                let secret_attributes = SecretAttributes::new(
-                    SecretType::Curve25519,
-                    SecretPersistence::Persistent,
-                    CURVE25519_SECRET_LENGTH,
-                );
             }
         };
 

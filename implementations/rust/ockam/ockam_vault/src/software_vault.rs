@@ -16,7 +16,7 @@ use tracing::info;
 ///     let mut vault = SoftwareVault::default();
 ///
 ///     let mut attributes = SecretAttributes::new(
-///         SecretType::Curve25519,
+///         SecretType::X25519,
 ///         SecretPersistence::Ephemeral,
 ///         CURVE25519_SECRET_LENGTH,
 ///     );

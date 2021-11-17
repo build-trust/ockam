@@ -10,7 +10,7 @@ use arrayref::array_ref;
 use core::convert::TryFrom;
 use ockam_core::{compat::vec::Vec, hex::encode, AsyncTryClone};
 use ockam_vault_core::{
-    AsymmetricVault, Hasher, PublicKey, SecretVault, Signer, SymmetricVault, Verifier,
+    AsymmetricVault, Hasher, PublicKey, SecretType, SecretVault, Signer, SymmetricVault, Verifier,
 };
 use zeroize::Zeroize;
 
@@ -84,10 +84,11 @@ impl TryFrom<&[u8]> for PreKeyBundle {
         if data.len() != Self::SIZE {
             return Err(X3DHError::MessageLenMismatch.into());
         }
-        let identity_key = PublicKey::new(array_ref![data, 0, 32].to_vec());
-        let signed_prekey = PublicKey::new(array_ref![data, 32, 32].to_vec());
+        let identity_key = PublicKey::new(array_ref![data, 0, 32].to_vec(), SecretType::X25519);
+        let signed_prekey = PublicKey::new(array_ref![data, 32, 32].to_vec(), SecretType::X25519);
         let signature_prekey = Signature(*array_ref![data, 64, 64]);
-        let one_time_prekey = PublicKey::new(array_ref![data, 128, 32].to_vec());
+        let one_time_prekey =
+            PublicKey::new(array_ref![data, 128, 32].to_vec(), SecretType::X25519);
         Ok(Self {
             identity_key,
             signed_prekey,

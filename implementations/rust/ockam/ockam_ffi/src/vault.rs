@@ -8,8 +8,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
 use ockam_vault::SoftwareVault;
 use ockam_vault_core::{
-    AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretType, SecretVault,
-    SymmetricVault,
+    AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SymmetricVault,
 };
 use ockam_vault_sync_core::VaultMutex;
 use std::future::Future;
@@ -265,23 +264,7 @@ pub extern "C" fn ockam_vault_ecdh(
             let mut v = get_vault(context).await?;
             let ctx = Secret::new(secret as usize);
             let atts = v.secret_attributes_get(&ctx).await?;
-            let pubkey = match atts.stype() {
-                SecretType::Curve25519 => {
-                    if peer_publickey.len() != 32 {
-                        Err(FfiError::InvalidPublicKey)
-                    } else {
-                        Ok(PublicKey::new(peer_publickey.to_vec()))
-                    }
-                }
-                SecretType::P256 => {
-                    if peer_publickey.len() != 65 {
-                        Err(FfiError::InvalidPublicKey)
-                    } else {
-                        Ok(PublicKey::new(peer_publickey.to_vec()))
-                    }
-                }
-                _ => Err(FfiError::UnknownPublicKeyType),
-            }?;
+            let pubkey = PublicKey::new(peer_publickey.to_vec(), atts.stype());
             let shared_ctx = v.ec_diffie_hellman(&ctx, &pubkey).await?;
             Ok::<u64, Error>(shared_ctx.index() as u64)
         })?;

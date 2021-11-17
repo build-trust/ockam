@@ -47,12 +47,12 @@ impl<V: X3dhVault> Responder<V> {
 
     async fn prologue(&mut self) -> Result<()> {
         let p_atts = SecretAttributes::new(
-            SecretType::Curve25519,
+            SecretType::X25519,
             SecretPersistence::Persistent,
             CURVE25519_SECRET_LENGTH,
         );
         let e_atts = SecretAttributes::new(
-            SecretType::Curve25519,
+            SecretType::X25519,
             SecretPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH,
         );
@@ -137,8 +137,10 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
                 }
                 self.prologue().await?;
 
-                let other_identity_pubkey = PublicKey::new(array_ref![response, 0, 32].to_vec());
-                let other_ephemeral_pubkey = PublicKey::new(array_ref![response, 32, 32].to_vec());
+                let other_identity_pubkey =
+                    PublicKey::new(array_ref![response, 0, 32].to_vec(), SecretType::X25519);
+                let other_ephemeral_pubkey =
+                    PublicKey::new(array_ref![response, 32, 32].to_vec(), SecretType::X25519);
 
                 let signed_prekey = self.signed_prekey.as_ref().ok_or(X3DHError::InvalidState)?;
                 let one_time_prekey = self
