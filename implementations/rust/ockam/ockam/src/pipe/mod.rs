@@ -1,6 +1,7 @@
 //! Ockam pipe module
 
-mod internal;
+mod behavior;
+pub use behavior::{BehaviorHook, PipeBehavior, SenderConfirm};
 
 mod listener;
 pub use listener::PipeListener;
