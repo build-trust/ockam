@@ -18,8 +18,29 @@ args:
       takes_value: true
       default_value: ockam_secrets
 subcommands:
-  - node:
-      about: Manage Ockam Nodes
+  - outlet:
+      about: Manage Ockam Outlets
       subcommands:
-          - create:
-                about: Create a Node
+        - create:
+            about: Create an Outlet
+            args:
+              - listen:
+                  short: l
+                  long: listen
+                  value_name: LISTEN
+                  help: IP and Port for Outlet.
+                  takes_value: true
+                  default_value: 127.0.0.1:4000
+              - target:
+                  short: t
+                  long: target
+                  value_name: TARGET
+                  help: Target destination host:port for the Outlet.
+                  takes_value: true
+              - name:
+                  short: n
+                  long: name
+                  value_name: NAME
+                  help: Outlet name.
+                  takes_value: true
+                  default_value: outlet

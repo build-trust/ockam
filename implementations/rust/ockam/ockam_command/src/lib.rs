@@ -11,4 +11,6 @@ pub enum AppError {
     Unknown,
     #[error("invalid command")]
     InvalidCommand,
+    #[error("invalid command")]
+    InvalidArgument,
 }

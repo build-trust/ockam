@@ -1,9 +1,11 @@
-use crate::command::node::NodeCommand;
+use crate::command::inlet::InletCommand;
+use crate::command::outlet::OutletCommand;
 use crate::AppError;
 use clap::ArgMatches;
 use std::str::FromStr;
 
-pub mod node;
+pub mod inlet;
+pub mod outlet;
 
 pub struct CommandResult {}
 
@@ -24,7 +26,7 @@ impl FromStr for Command {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "node" => Ok(Command(Box::new(NodeCommand {}))),
+            "outlet" => Ok(Command(Box::new(OutletCommand {}))),
             _ => Err(AppError::InvalidCommand),
         }
     }

@@ -1659,6 +1659,7 @@ dependencies = [
  "human-panic",
  "indicatif",
  "log",
+ "ockam",
  "predicates",
  "rustyline",
  "serde 1.0.130",
