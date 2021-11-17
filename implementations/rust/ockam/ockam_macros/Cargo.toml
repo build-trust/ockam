@@ -25,16 +25,7 @@ std = ["alloc"]
 no_std = []
 alloc = []
 
-[[test]]
-name = "tests"
-path = "tests/main.rs"
-
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0", features = ["full", "extra-traits"] }
-
-[dev-dependencies]
-ockam_core = { path = "../ockam_core" }
-ockam = { path = "../ockam" }
-trybuild = "1.0"

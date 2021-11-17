@@ -72,6 +72,10 @@ no_main = [
     "ockam_macros/no_main",
 ]
 
+[[test]]
+name = "tests"
+path = "tests/main.rs"
+
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.39.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "0.1.0" , default_features = false }
@@ -99,6 +103,7 @@ hex = { version = "0.4", default-features = false }
 [dev-dependencies]
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.31.0"}
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.32.0"}
+ockam_test_macros = { path = "../ockam_test_macros", version = "0.3.0"}
 trybuild = { version = "1.0", features = ["diff"] }
 serde_json = "1.0"
 rand_xorshift = "0.3"
