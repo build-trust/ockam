@@ -1,10 +1,8 @@
-use crate::command::inlet::InletCommand;
 use crate::command::outlet::OutletCommand;
 use crate::AppError;
 use clap::ArgMatches;
 use std::str::FromStr;
 
-pub mod inlet;
 pub mod outlet;
 
 pub struct CommandResult {}

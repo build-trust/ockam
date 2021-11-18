@@ -1,7 +1,10 @@
 use crate::command::{CommandResult, Run};
+use crate::spinner::Spinner;
 use crate::AppError;
 use clap::ArgMatches;
+use comfy_table::Table;
 use log::{error, info};
+use std::time::Duration;
 
 pub struct OutletCommand {}
 
@@ -62,6 +65,19 @@ impl OutletCommand {
             "Creating Outlet '{}' on {} with a destination of {}",
             name, listen, target
         );
+
+        let spinner = Spinner::default();
+
+        std::thread::sleep(Duration::from_secs(3));
+
+        spinner.stop("Done");
+
+        let mut table = Table::new();
+        table
+            .set_header(vec!["Outlet", "Listener", "Destination"])
+            .add_row(vec![name, listen, target]);
+
+        println!("{}", table);
 
         Ok(CommandResult {})
     }
