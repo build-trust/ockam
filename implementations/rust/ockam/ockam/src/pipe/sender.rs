@@ -1,9 +1,16 @@
+use crate::{
+    monotonic::Monotonic,
+    pipe::PipeBehavior,
+    protocols::pipe::{internal::InternalCmd, PipeMessage},
+};
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
 use ockam_node::Context;
 
 pub struct PipeSender {
     peer: Route,
     int_addr: Address,
+    index: Monotonic,
+    hooks: PipeBehavior,
 }
 
 #[ockam_core::worker]
@@ -33,30 +40,53 @@ impl PipeSender {
         peer: Route,
         addr: Address,
         int_addr: Address,
+        hooks: PipeBehavior,
     ) -> Result<()> {
-        ctx.start_worker(vec![addr, int_addr.clone()], PipeSender { peer, int_addr })
-            .await
+        ctx.start_worker(
+            vec![addr, int_addr.clone()],
+            PipeSender {
+                peer,
+                int_addr,
+                index: Monotonic::new(),
+                hooks,
+            },
+        )
+        .await
     }
 
     /// Handle internal command payloads
-    async fn handle_internal(&mut self, _ctx: &mut Context, _msg: Routed<Any>) -> Result<()> {
-        debug!("PipeSender handling internal command");
-        Ok(())
+    async fn handle_internal(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        trace!("PipeSender receiving internal command");
+        let trans = msg.into_transport_message();
+        let internal_cmd = InternalCmd::from_transport(&trans)?;
+        self.hooks
+            .internal_all(self.int_addr.clone(), self.peer.clone(), ctx, &internal_cmd)
+            .await
     }
 
     /// Handle external user messages
     async fn handle_external(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        let mut msg = msg.into_local_message();
-        msg.transport_mut()
-            .onward_route
-            .modify()
-            .pop_front()
-            .prepend_route(self.peer.clone());
+        // First manipulate the onward_route state
+        let mut msg = msg.into_transport_message();
+        msg.onward_route.modify().pop_front();
+
         debug!(
-            "Pipe sender forwarding message to {:?}",
-            msg.transport().onward_route
+            "Pipe sender dispatch {:?} -> {:?}",
+            self.peer, msg.onward_route
         );
-        ctx.forward(msg).await?;
-        Ok(())
+
+        // Then pack TransportMessage into PipeMessage
+        let index = self.index.next() as u64;
+        let pipe_msg = PipeMessage::from_transport(index, msg)?;
+
+        // Before we send we give all hooks a chance to run
+        self.hooks
+            .external_all(self.int_addr.clone(), self.peer.clone(), ctx, &pipe_msg)
+            .await?;
+
+        // Then send the message from our internal address so the
+        // receiver can send any important messages there
+        ctx.send_from_address(self.peer.clone(), pipe_msg, self.int_addr.clone())
+            .await
     }
 }

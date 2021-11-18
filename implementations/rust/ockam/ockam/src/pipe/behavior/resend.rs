@@ -9,9 +9,18 @@ use crate::{
 use ockam_core::{async_trait, compat::collections::BTreeMap, Address, Result, Route};
 use ockam_node::Context;
 
+#[derive(Default)]
 pub struct SenderConfirm {
     /// A set of message indices not confirmed yet
     on_route: BTreeMap<u64, PipeMessage>,
+}
+
+impl SenderConfirm {
+    pub fn new() -> Self {
+        Self {
+            on_route: BTreeMap::new(),
+        }
+    }
 }
 
 #[async_trait]
@@ -50,8 +59,8 @@ impl BehaviorHook for SenderConfirm {
             InternalCmd::Resend(Resend { idx }) => match self.on_route.remove(idx) {
                 Some(msg) => {
                     debug!(
-                        "Received message timeout: resending payload to peer {}",
-                        peer
+                        "Received message index '{}' timeout: resending to peer {}",
+                        idx, peer
                     );
 
                     // First re-queue another timeout event
@@ -64,12 +73,49 @@ impl BehaviorHook for SenderConfirm {
                 None => trace!("Received timeout for message, but message was acknowleged"),
             },
             InternalCmd::Ack(Ack { idx }) => {
-                debug!("Received pipe delivery ACK");
+                debug!("Received pipe delivery ACK for index {}", idx);
                 self.on_route.remove(idx);
             }
             _ => todo!(),
         }
 
         Ok(())
+    }
+}
+
+///
+pub struct ReceiverConfirm;
+
+#[async_trait]
+impl BehaviorHook for ReceiverConfirm {
+    async fn on_external(
+        &mut self,
+        _: Address,
+        sender: Route,
+        ctx: &mut Context,
+        msg: &PipeMessage,
+    ) -> Result<()> {
+        debug!(
+            "Sending delivery ACK for message index '{}'",
+            msg.index.u64()
+        );
+        ctx.send(
+            sender,
+            InternalCmd::Ack(Ack {
+                idx: msg.index.u64(),
+            }),
+        )
+        .await
+    }
+
+    async fn on_internal(
+        &mut self,
+        _: Address,
+        _: Route,
+        _: &mut Context,
+        _: &InternalCmd,
+    ) -> Result<()> {
+        // PipeReceiver does not currently receive internal messages!
+        unimplemented!()
     }
 }

@@ -1,7 +1,7 @@
 //! Pipe behavior modifiers
 
 mod resend;
-pub use resend::SenderConfirm;
+pub use resend::{ReceiverConfirm, SenderConfirm};
 
 use crate::protocols::pipe::{internal::InternalCmd, PipeMessage};
 use ockam_core::{async_trait, Address, Result, Route};
@@ -40,17 +40,21 @@ pub trait BehaviorHook {
 
 /// Structure to combine a set of pipe BehaviorHooks
 pub struct PipeBehavior {
-    hooks: Vec<Box<dyn BehaviorHook>>,
+    hooks: Vec<Box<dyn BehaviorHook + Send + 'static>>,
 }
 
 impl PipeBehavior {
-    pub fn with<T: BehaviorHook + 'static>(t: T) -> Self {
+    pub fn with<T: BehaviorHook + Send + 'static>(t: T) -> Self {
         Self {
             hooks: vec![Box::new(t)],
         }
     }
 
-    pub fn add<T: BehaviorHook + 'static>(mut self, t: T) -> Self {
+    pub fn empty() -> Self {
+        Self { hooks: vec![] }
+    }
+
+    pub fn add<T: BehaviorHook + Send + 'static>(mut self, t: T) -> Self {
         self.hooks.push(Box::new(t));
         self
     }

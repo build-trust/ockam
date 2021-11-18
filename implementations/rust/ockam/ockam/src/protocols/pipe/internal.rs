@@ -1,7 +1,7 @@
 //! Internal messaging structures
 
 use crate::Message;
-use ockam_core::Route;
+use ockam_core::{Decodable, Result, Route, TransportMessage};
 use serde::{Deserialize, Serialize};
 
 /// Internal command issued to
@@ -33,4 +33,10 @@ pub enum InternalCmd {
     Resend(Resend),
     /// Acknowlege receival of pipe message,
     Ack(Ack),
+}
+
+impl InternalCmd {
+    pub fn from_transport(msg: &TransportMessage) -> Result<Self> {
+        Self::decode(&msg.payload)
+    }
 }
