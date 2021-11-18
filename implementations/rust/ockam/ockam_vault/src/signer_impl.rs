@@ -24,7 +24,7 @@ impl Signer for SoftwareVault {
                         0,
                         CURVE25519_SECRET_LENGTH
                     ))
-                    .sign(data.as_ref(), &nonce);
+                    .xeddsa_sign(data.as_ref(), &nonce);
                     Ok(Signature::new(sig.to_vec()))
                 } else {
                     Err(VaultError::InvalidKeyType.into())

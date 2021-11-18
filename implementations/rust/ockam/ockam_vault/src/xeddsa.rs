@@ -9,15 +9,15 @@ use sha2::digest::Digest;
 use x25519_dalek::{PublicKey as XPublicKey, StaticSecret as XSecretKey};
 
 pub trait XEddsaSigner {
-    fn sign(&self, msg: &[u8], nonce: &[u8; 64]) -> [u8; 64];
+    fn xeddsa_sign(&self, msg: &[u8], nonce: &[u8; 64]) -> [u8; 64];
 }
 
 pub trait XEddsaVerifier {
-    fn verify(&self, msg: &[u8], sig: &[u8; 64]) -> bool;
+    fn xeddsa_verify(&self, msg: &[u8], sig: &[u8; 64]) -> bool;
 }
 
 impl XEddsaSigner for XSecretKey {
-    fn sign(&self, msg: &[u8], nonce: &[u8; 64]) -> [u8; 64] {
+    fn xeddsa_sign(&self, msg: &[u8], nonce: &[u8; 64]) -> [u8; 64] {
         /*
          * PREPARATION OF THE KEY MATERIAL
          *
@@ -86,7 +86,7 @@ impl XEddsaSigner for XSecretKey {
 }
 
 impl XEddsaVerifier for XPublicKey {
-    fn verify(&self, msg: &[u8], sig: &[u8; 64]) -> bool {
+    fn xeddsa_verify(&self, msg: &[u8], sig: &[u8; 64]) -> bool {
         let pt = MontgomeryPoint(self.to_bytes());
 
         if let Some(edwards) = pt.to_edwards(0) {
@@ -109,6 +109,6 @@ fn convert_test() {
     let xsecret_key = XSecretKey::from(privkey);
     let xpublic_key = XPublicKey::from(&xsecret_key);
 
-    let sig = xsecret_key.sign(&msg, &nonce);
-    assert!(xpublic_key.verify(&msg, &sig));
+    let sig = xsecret_key.xeddsa_sign(&msg, &nonce);
+    assert!(xpublic_key.xeddsa_verify(&msg, &sig));
 }

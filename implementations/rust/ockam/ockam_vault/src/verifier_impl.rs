@@ -23,7 +23,7 @@ impl Verifier for SoftwareVault {
                 0,
                 CURVE25519_PUBLIC_LENGTH
             ))
-            .verify(data.as_ref(), signature_array));
+            .xeddsa_verify(data.as_ref(), signature_array));
         }
 
         #[cfg(feature = "bls")]
