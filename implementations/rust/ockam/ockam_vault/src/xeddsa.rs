@@ -91,8 +91,7 @@ impl XEddsaVerifier for XPublicKey {
 
         if let Some(edwards) = pt.to_edwards(0) {
             if let Ok(pk) = EPublicKey::from_bytes(&edwards.compress().to_bytes()) {
-                #[allow(deprecated)]
-                let sig = Signature::new(*sig);
+                let sig = Signature::from_bytes(sig).unwrap();
                 return pk.verify(msg, &sig).is_ok();
             }
         }
