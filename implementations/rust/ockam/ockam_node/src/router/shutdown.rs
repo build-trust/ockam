@@ -98,6 +98,7 @@ pub(super) async fn graceful(
 /// shutdown hooks may be suddenly interrupted by thread-deallocation.
 pub(super) async fn immediate(router: &mut Router, reply: Sender<NodeReplyResult>) -> Result<()> {
     router.map.internal.clear();
+    router.state.kill();
     reply
         .send(NodeReply::ok())
         .await

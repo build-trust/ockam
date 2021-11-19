@@ -6,6 +6,7 @@ use crate::tokio::sync::mpsc::Sender;
 pub enum NodeState {
     Running,
     Stopping(Sender<NodeReplyResult>),
+    Dead,
 }
 
 pub struct RouterState {
@@ -24,6 +25,11 @@ impl RouterState {
     /// Toggle this router to shut down soon
     pub(super) fn shutdown(&mut self, reply: Sender<NodeReplyResult>) {
         self.node_state = NodeState::Stopping(reply)
+    }
+
+    /// Ungracefully kill the router
+    pub(super) fn kill(&mut self) {
+        self.node_state = NodeState::Dead;
     }
 
     pub(super) fn stop_reply(&self) -> Option<Sender<NodeReplyResult>> {

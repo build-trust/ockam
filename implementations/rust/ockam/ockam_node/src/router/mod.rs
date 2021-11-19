@@ -90,8 +90,27 @@ impl Router {
         self.state.sender.clone()
     }
 
-    /// Block current task running this router.  Return fatal errors
+    /// A utility fascade to hide failures that are not really failures
     pub async fn run(&mut self) -> Result<()> {
+        match self.run_inner().await {
+            // Everything is A-OK :)
+            Ok(()) => Ok(()),
+            // If the router has already shut down this failure is a
+            // red-herring and should be ignored -- we _have_ just
+            // terminated all workers and any message still in the
+            // system will crash the whole runtime.
+            Err(_) if !self.state.running() => {
+                warn!("One (or more) internal I/O failures caused by ungraceful router shutdown!");
+                Ok(())
+            }
+            // If we _are_ still actually running then this is a real
+            // failure and needs to be escalated
+            e => e,
+        }
+    }
+
+    /// Block current task running this router.  Return fatal errors
+    async fn run_inner(&mut self) -> Result<()> {
         use NodeMessage::*;
         while let Some(msg) = self.receiver.recv().await {
             match msg {

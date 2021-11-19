@@ -233,7 +233,7 @@ impl Context {
     /// [`Context::stop`](Context::stop) function instead!
     pub async fn stop_now(&mut self) -> Result<()> {
         let tx = self.sender.clone();
-        info!("Shutting down all workers");
+        info!("Immediately shutting down all workers");
         let (msg, _) = NodeMessage::stop_node(ShutdownType::Immediate);
 
         match tx.send(msg).await {

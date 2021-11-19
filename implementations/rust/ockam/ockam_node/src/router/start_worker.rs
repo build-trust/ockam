@@ -15,6 +15,7 @@ pub(super) async fn exec(
     match router.state.node_state() {
         NodeState::Running => start(router, addrs, senders, bare, reply).await,
         NodeState::Stopping(_) => reject(reply).await,
+        NodeState::Dead => unreachable!(),
     }?;
     Ok(())
 }
