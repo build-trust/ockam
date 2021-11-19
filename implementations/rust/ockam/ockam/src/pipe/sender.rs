@@ -47,7 +47,8 @@ impl PipeSender {
             PipeSender {
                 peer,
                 int_addr,
-                index: Monotonic::new(),
+                // Ordered pipes expect a 1-indexed message
+                index: Monotonic::from(1),
                 hooks,
             },
         )

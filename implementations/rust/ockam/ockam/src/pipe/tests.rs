@@ -3,6 +3,8 @@ use crate::protocols::pipe::{internal::InternalCmd, PipeMessage};
 use ockam_core::{async_trait, Address, Result, Route};
 use ockam_node::Context;
 
+use super::behavior::ReceiverOrdering;
+
 #[ockam_node_test_attribute::node_test]
 async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
     receiver(ctx, "pipe-receiver").await?;
@@ -106,7 +108,7 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     let tx = connect_static_with_behavior(
         ctx,
         vec!["pipe-receiver"],
-        PipeBehavior::with(SenderConfirm::new()).add(ConfirmTimeout),
+        PipeBehavior::with(SenderConfirm::new()).attach(ConfirmTimeout),
     )
     .await?;
 
@@ -120,4 +122,31 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     assert_eq!(invalid, "Shut it down...".to_string());
 
     ctx.stop_now().await
+}
+
+/// A simple test to ensure static ordering pipes can deliver messages
+#[ockam_node_test_attribute::node_test]
+async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
+    receiver_with_behavior(ctx, "pipe-receiver", ReceiverOrdering::new()).await?;
+    let tx = connect_static(ctx, "pipe-receiver").await?;
+
+    let sent_msg1 = String::from("Message number one");
+    info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
+    ctx.send(vec![tx.clone(), "app".into()], sent_msg1.clone())
+        .await?;
+
+    let sent_msg2 = String::from("Message number two");
+    info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
+    ctx.send(vec![tx.clone(), "app".into()], sent_msg2.clone())
+        .await?;
+
+    let msg1 = ctx.receive().await?;
+    info!("App reiceved msg: '{}'", msg1);
+    assert_eq!(msg1, sent_msg1);
+
+    let msg2 = ctx.receive().await?;
+    info!("App reiceved msg: '{}'", msg2);
+    assert_eq!(msg2, sent_msg2);
+
+    ctx.stop().await
 }

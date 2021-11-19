@@ -1,7 +1,9 @@
 //! Ockam pipe module
 
 mod behavior;
-pub use behavior::{BehaviorHook, PipeBehavior, PipeModifier, ReceiverConfirm, SenderConfirm};
+pub use behavior::{
+    BehaviorHook, PipeBehavior, PipeModifier, ReceiverConfirm, ReceiverOrdering, SenderConfirm,
+};
 
 mod listener;
 pub use listener::PipeListener;
@@ -15,7 +17,8 @@ pub use sender::PipeSender;
 #[cfg(test)]
 mod tests;
 
-use ockam_core::{Address, Result, Route};
+use crate::protocols::pipe::PipeMessage;
+use ockam_core::{Address, LocalMessage, Result, Route};
 use ockam_node::Context;
 
 const CLUSTER_NAME: &str = "_internal.pipe";
@@ -86,4 +89,9 @@ where
 pub async fn listen_for_connections(ctx: &mut Context) -> Result<Address> {
     let addr = Address::random(0);
     PipeListener::create(ctx, addr.clone()).await.map(|_| addr)
+}
+
+fn unpack_pipe_message(pipe_msg: &PipeMessage) -> Result<LocalMessage> {
+    let nested = PipeMessage::to_transport(pipe_msg)?;
+    Ok(LocalMessage::new(nested, vec![]))
 }

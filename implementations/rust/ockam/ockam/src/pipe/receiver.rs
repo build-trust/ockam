@@ -2,7 +2,7 @@ use crate::{
     pipe::{PipeBehavior, PipeModifier},
     protocols::pipe::PipeMessage,
 };
-use ockam_core::{Address, LocalMessage, Result, Routed, Worker};
+use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 
 pub struct PipeReceiver {
@@ -35,7 +35,7 @@ impl PipeReceiver {
         debug!("Received pipe message with index '{}'", msg.index.u64());
 
         // First run receiver hooks
-        let return_route = msg.return_route().clone();
+        let return_route = msg.return_route();
         let pipe_msg = msg.body();
 
         // Before we send we give all hooks a chance to run
@@ -57,8 +57,8 @@ impl PipeReceiver {
         }
 
         // If we reach this point we can safely unpack and forward
-        let nested = PipeMessage::to_transport(&pipe_msg)?;
-        debug!("Forwarding message to {:?}", nested.onward_route);
-        ctx.forward(LocalMessage::new(nested, vec![])).await
+        let msg = super::unpack_pipe_message(&pipe_msg)?;
+        debug!("Forwarding message to {:?}", msg.transport().onward_route);
+        ctx.forward(msg).await
     }
 }
