@@ -6,6 +6,7 @@ use crate::{
         PipeMessage,
     },
 };
+use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, compat::collections::BTreeMap, Address, Result, Route};
 use ockam_node::Context;
 

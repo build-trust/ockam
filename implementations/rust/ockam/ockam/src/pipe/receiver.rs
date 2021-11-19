@@ -2,6 +2,7 @@ use crate::{
     pipe::{PipeBehavior, PipeModifier},
     protocols::pipe::PipeMessage,
 };
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 

@@ -1,4 +1,5 @@
 use crate::Context;
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Any, Result, Routed, Worker};
 
 /// Listen for pipe handshakes and creates PipeReceive workers

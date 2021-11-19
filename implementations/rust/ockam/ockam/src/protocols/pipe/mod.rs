@@ -3,6 +3,7 @@
 pub mod internal;
 
 use crate::Message;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Decodable, Encodable, Result, TransportMessage, Uint};
 use serde::{Deserialize, Serialize};
 
