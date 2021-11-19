@@ -69,15 +69,15 @@ impl BehaviorHook for ConfirmTimeout {
         _: Route,
         _: &mut Context,
         _: &PipeMessage,
-    ) -> Result<()> {
-        Ok(())
+    ) -> Result<PipeModifier> {
+        Ok(PipeModifier::None)
     }
 }
 
-struct DelayDelivery;
+struct DropDelivery;
 
 #[async_trait]
-impl BehaviorHook for DelayDelivery {
+impl BehaviorHook for DropDelivery {
     async fn on_internal(
         &mut self,
         _: Address,
@@ -92,17 +92,17 @@ impl BehaviorHook for DelayDelivery {
         &mut self,
         _: Address,
         _: Route,
-        ctx: &mut Context,
+        _: &mut Context,
         _: &PipeMessage,
-    ) -> Result<()> {
-        ctx.sleep(core::time::Duration::from_secs(10)).await;
-        Ok(())
+    ) -> Result<PipeModifier> {
+        // Simply instruct the receiver to drop the message
+        Ok(PipeModifier::Drop)
     }
 }
 
 #[ockam_node_test_attribute::node_test]
 async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
-    receiver_with_behavior(ctx, "pipe-receiver", DelayDelivery).await?;
+    receiver_with_behavior(ctx, "pipe-receiver", DropDelivery).await?;
     let tx = connect_static_with_behavior(
         ctx,
         vec!["pipe-receiver"],

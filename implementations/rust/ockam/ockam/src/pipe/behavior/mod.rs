@@ -23,7 +23,7 @@ pub trait BehaviorHook {
         peer: Route,
         ctx: &mut Context,
         msg: &PipeMessage,
-    ) -> Result<()>;
+    ) -> Result<PipeModifier>;
 
     /// This function MUST be run for every incoming internal message
     ///
@@ -38,9 +38,23 @@ pub trait BehaviorHook {
     ) -> Result<()>;
 }
 
+/// Indicate to the pipe whether to modify its default behaviour
+pub enum PipeModifier {
+    /// No behaviour modification required
+    None,
+    /// Drop the currently handled message
+    Drop,
+}
+
 /// Structure to combine a set of pipe BehaviorHooks
 pub struct PipeBehavior {
     hooks: Vec<Box<dyn BehaviorHook + Send + 'static>>,
+}
+
+impl<T: BehaviorHook + Send + 'static> From<T> for PipeBehavior {
+    fn from(hook: T) -> Self {
+        Self::with(hook)
+    }
 }
 
 impl PipeBehavior {
@@ -66,13 +80,24 @@ impl PipeBehavior {
         peer: Route,
         ctx: &mut Context,
         msg: &PipeMessage,
-    ) -> Result<()> {
+    ) -> Result<PipeModifier> {
+        let mut acc = Vec::with_capacity(self.hooks.len());
         for hook in self.hooks.iter_mut() {
-            hook.on_external(this.clone(), peer.clone(), ctx, msg)
-                .await?;
+            acc.push(
+                hook.on_external(this.clone(), peer.clone(), ctx, msg)
+                    .await?,
+            );
         }
 
-        Ok(())
+        // Propagate any drop behaviour
+        use PipeModifier as Pm;
+        Ok(acc
+            .into_iter()
+            .fold(Pm::None, |acc, _mod| match (acc, _mod) {
+                (Pm::None, Pm::None) => Pm::None,
+                (_, Pm::Drop) => Pm::Drop,
+                (Pm::Drop, _) => Pm::Drop,
+            }))
     }
 
     /// Run all internal message hooks associated with this pipe

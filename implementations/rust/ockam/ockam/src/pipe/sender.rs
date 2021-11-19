@@ -80,9 +80,15 @@ impl PipeSender {
         let pipe_msg = PipeMessage::from_transport(index, msg)?;
 
         // Before we send we give all hooks a chance to run
-        self.hooks
+        if let crate::pipe::PipeModifier::Drop = self
+            .hooks
             .external_all(self.int_addr.clone(), self.peer.clone(), ctx, &pipe_msg)
-            .await?;
+            .await?
+        {
+            // Return early to prevent message sending if the
+            // behaviour stack has determined to drop the message.
+            return Ok(());
+        }
 
         // Then send the message from our internal address so the
         // receiver can send any important messages there

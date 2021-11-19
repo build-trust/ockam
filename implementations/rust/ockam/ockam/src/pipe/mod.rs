@@ -1,7 +1,7 @@
 //! Ockam pipe module
 
 mod behavior;
-pub use behavior::{BehaviorHook, PipeBehavior, ReceiverConfirm, SenderConfirm};
+pub use behavior::{BehaviorHook, PipeBehavior, PipeModifier, ReceiverConfirm, SenderConfirm};
 
 mod listener;
 pub use listener::PipeListener;

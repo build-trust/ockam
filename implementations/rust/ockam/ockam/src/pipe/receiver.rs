@@ -1,4 +1,7 @@
-use crate::{pipe::PipeBehavior, protocols::pipe::PipeMessage};
+use crate::{
+    pipe::{PipeBehavior, PipeModifier},
+    protocols::pipe::PipeMessage,
+};
 use ockam_core::{Address, LocalMessage, Result, Routed, Worker};
 use ockam_node::Context;
 
@@ -34,12 +37,23 @@ impl PipeReceiver {
         // First run receiver hooks
         let return_route = msg.return_route().clone();
         let pipe_msg = msg.body();
-        if let Err(e) = self
+
+        // Before we send we give all hooks a chance to run
+        match self
             .hooks
             .external_all(ctx.address(), return_route, ctx, &pipe_msg)
             .await
         {
-            warn!("Received message was invalid: {}!", e);
+            // Return early to prevent message sending if the
+            // behaviour stack has determined to drop the message.
+            Ok(PipeModifier::Drop) => return Ok(()),
+            // On errors: don't crash the relay
+            Err(e) => {
+                warn!("Received message was invalid: {}!", e);
+                return Ok(());
+            }
+            // Otherwise do nothing :)
+            Ok(PipeModifier::None) => {}
         }
 
         // If we reach this point we can safely unpack and forward
