@@ -1438,6 +1438,7 @@ dependencies = [
  "ockam_message_derive",
  "ockam_node",
  "ockam_node_attribute",
+ "ockam_node_test_attribute",
  "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_core",

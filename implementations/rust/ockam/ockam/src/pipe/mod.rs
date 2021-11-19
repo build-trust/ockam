@@ -45,3 +45,18 @@ pub async fn listen_for_connections(ctx: &mut Context) -> Result<Address> {
     PipeListener::create(ctx, addr.clone()).await.map(|_| addr)
 }
 
+#[ockam_node_test_attribute::node_test]
+async fn static_pipe(ctx: &mut Context) -> Result<()> {
+    receiver(ctx, "pipe-receiver").await?;
+    let tx = connect_static(ctx, vec!["pipe-receiver"]).await?;
+
+    let sent_msg = String::from("Hello Ockam!");
+    ctx.send(vec![tx.clone(), "0#app".into()], sent_msg.clone())
+        .await?;
+
+    let msg = ctx.receive().await?;
+    info!("Reiceved msg: '{}'", msg);
+    assert_eq!(msg, sent_msg);
+
+    ctx.stop().await
+}

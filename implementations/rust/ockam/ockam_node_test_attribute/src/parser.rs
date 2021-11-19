@@ -96,7 +96,7 @@ fn output_node_test(
     input.block = parse2(quote_spanned! {last_stmt_end_span=>
         {
             use core::time::Duration;
-            use tokio::time::timeout;
+            use ockam_node::tokio::time::timeout;
 
             let (mut #ctx_ident, mut executor) = ockam_node::start_node();
             executor
