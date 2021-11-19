@@ -2,15 +2,13 @@
 //!
 //! This crate contains one of the possible implementation of the vault traits
 //! which you can use with Ockam library.
-
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

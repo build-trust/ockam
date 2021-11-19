@@ -28,6 +28,8 @@ jobs:
           restore-keys: ${{ runner.os }}-cache-
 
       - name: Check Ockam no_std
+        env:
+          RUSTFLAGS: -Dwarnings
         run: |
           cd implementations/rust/ockam/ockam
           cargo check --no-default-features --features "no_std alloc software_vault"

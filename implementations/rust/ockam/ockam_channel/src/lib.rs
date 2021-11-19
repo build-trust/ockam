@@ -5,14 +5,13 @@
 //! Ockam library.
 //!
 //! The main Ockam crate re-exports types defined in this crate.
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

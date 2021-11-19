@@ -1,14 +1,13 @@
 //! Entity is an abstraction over Profiles and Vaults, easing the use of these primitives in
 //! authentication and authorization APIs.
-#![deny(
-  // prevented by big_array
-  //  missing_docs,
+#![deny(unsafe_code)]
+#![warn(
+    // prevented by big_array
+    //  missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

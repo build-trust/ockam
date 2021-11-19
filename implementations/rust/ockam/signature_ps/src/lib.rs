@@ -1,15 +1,13 @@
 //! This crate implements the Pointcheval Saunders signature
 //! as described in <https://eprint.iacr.org/2015/525.pdf>
 //! and <https://eprint.iacr.org/2017/1197.pdf>
-
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

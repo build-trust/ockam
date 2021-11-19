@@ -21,7 +21,7 @@ pub fn channel<T>(_size: usize) -> (Sender<T>, Receiver<T>) {
 
 fn channel_with_queue<T>(queue: Queue<T>) -> (Sender<T>, Receiver<T>) {
     let inner = Arc::new(Inner {
-        queue: queue,
+        queue,
         wake_sender: AtomicWaker::new(),
         wake_receiver: AtomicWaker::new(),
         sender_count: AtomicUsize::new(1),
@@ -67,7 +67,7 @@ impl<T: core::fmt::Debug> Sender<T> {
                         self.0.is_sender_closed.swap(true, Ordering::AcqRel);
                         self.0.wake_receiver.wake();
                     }
-                    self.0.wake_sender.register(&context.waker());
+                    self.0.wake_sender.register(context.waker());
                     Poll::Pending
                 }
             }
@@ -118,7 +118,7 @@ impl<T: core::fmt::Debug> Receiver<T> {
                 Poll::Ready(Some(value))
             }
             None => {
-                self.0.wake_receiver.register(&context.waker());
+                self.0.wake_receiver.register(context.waker());
                 if self.0.is_sender_closed.load(Ordering::Acquire) {
                     Poll::Ready(None)
                 } else {

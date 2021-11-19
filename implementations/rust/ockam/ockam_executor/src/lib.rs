@@ -6,17 +6,15 @@
 //!
 //! The ockam_node crate re-exports types defined in this crate when the 'std'
 //! feature is not enabled.
-#![allow(
+#![warn(
     //missing_docs,
     //trivial_casts,
     trivial_numeric_casts,
-    //unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(unused_imports)]
+#![allow(unused_imports, clippy::new_ret_no_self)]
 
 #[cfg(feature = "std")]
 #[allow(unused_imports)]

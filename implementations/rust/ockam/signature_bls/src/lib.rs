@@ -12,14 +12,13 @@
 //!
 //! but provides some optimizations when an allocator exists for verifying
 //! aggregated signatures.
-
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

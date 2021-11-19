@@ -1,11 +1,10 @@
 //! Ockam Vault Foreign Function Interface (FFI) for library integration.
-#![deny(
+#![warn(
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 

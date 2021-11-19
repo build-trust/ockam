@@ -28,7 +28,7 @@ pub fn channel<T>() -> (SyncSender<T>, Receiver<T>) {
 
 fn channel_with_queue<T>(queue: Queue<T>) -> (SyncSender<T>, Receiver<T>) {
     let sender = Arc::new(Inner {
-        queue: queue,
+        queue,
         wake_sender: AtomicWaker::new(),
         wake_receiver: AtomicWaker::new(),
         sender_count: AtomicUsize::new(1),
@@ -136,7 +136,7 @@ impl<T> Future for Receiver<T> {
                 Poll::Ready(Ok(value))
             }
             None => {
-                self.0.wake_receiver.register(&context.waker());
+                self.0.wake_receiver.register(context.waker());
                 if self.0.is_sender_closed.load(Ordering::Acquire) {
                     panic!("called after complete");
                 } else {

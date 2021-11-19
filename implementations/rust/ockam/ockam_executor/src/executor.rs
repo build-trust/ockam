@@ -139,6 +139,12 @@ impl<'a> Executor<'a> {
     }
 }
 
+impl<'a> Default for Executor<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // - Task ---------------------------------------------------------------------
 
 type Task = Node<dyn Future<Output = ()> + 'static>;
@@ -163,8 +169,7 @@ where
             let futurep = self.future.get() as *mut F;
             &mut (*futurep)
         };
-        let result = unsafe { Pin::new_unchecked(future).poll(context) };
-        result
+        unsafe { Pin::new_unchecked(future).poll(context) }
     }
 }
 
@@ -197,7 +202,8 @@ impl TaskId {
 
 struct NodeWaker;
 impl NodeWaker {
-    fn new(task_id: TaskId) -> Waker {
+    #[allow(clippy::new_ret_no_self)]
+    fn new(_task_id: TaskId) -> Waker {
         Waker::from(Arc::new(NodeWaker {}))
     }
 }

@@ -5,15 +5,13 @@
 //! the input function inside the node.
 //!
 //! The main Ockam crate re-exports this macro.
-
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 
 extern crate proc_macro;

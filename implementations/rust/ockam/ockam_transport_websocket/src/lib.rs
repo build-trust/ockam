@@ -9,14 +9,14 @@
 //! key lifecycle, credetial exchange, enrollment, etc, without having
 //! to worry about the transport specifics.
 //!
-#![deny(
-// missing_docs,
-dead_code,
-trivial_casts,
-trivial_numeric_casts,
-unsafe_code,
-unused_import_braces,
-unused_qualifications
+#![deny(unsafe_code)]
+#![warn(
+    // missing_docs,
+    dead_code,
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_import_braces,
+    unused_qualifications
 )]
 
 #[macro_use]

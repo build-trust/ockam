@@ -8,13 +8,12 @@
 //! You can use Ockam's routing mechanism for cryptographic protocols,
 //! key lifecycle, credential exchange, enrollment, etc, without having
 //! to worry about the transport specifics.
-
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     missing_docs,
     dead_code,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
     unused_qualifications
 )]

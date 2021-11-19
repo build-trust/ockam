@@ -99,6 +99,12 @@ impl<T: Send> JoinHandle<T> {
     }
 }
 
+impl<T: Send> Default for JoinHandle<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// yield_now
 pub async fn yield_now() {
     #[allow(dead_code)]

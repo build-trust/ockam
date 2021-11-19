@@ -16,6 +16,8 @@ jobs:
 
       - name: Update and Check Ockam Example
         working-directory: examples/rust/get_started
+        env:
+          RUSTFLAGS: -Dwarnings
         run: |
           rm -rf Cargo.lock
           cargo update

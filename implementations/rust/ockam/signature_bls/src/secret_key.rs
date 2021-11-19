@@ -86,6 +86,7 @@ impl SecretKey {
 
     /// Secret share this key by creating `N` shares where `T` are required
     /// to combine back into this secret
+    #[allow(unsafe_code)] // TODO
     pub fn split<R: RngCore + CryptoRng, const T: usize, const N: usize>(
         &self,
         rng: &mut R,

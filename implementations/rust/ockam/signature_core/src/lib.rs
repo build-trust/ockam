@@ -1,12 +1,10 @@
 //! A crate for common methods used by short group signatures
-
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 

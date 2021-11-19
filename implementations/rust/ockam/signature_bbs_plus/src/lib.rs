@@ -1,12 +1,11 @@
 //!
-#![deny(
+#![deny(unsafe_code)]
+#![warn(
     // TODO restore missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unsafe_code,
     unused_import_braces,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
