@@ -84,7 +84,7 @@ class CommandsPlugin implements Plugin<Project> {
           if(cargoToml.exists()) {
             (cargoToml.text =~ /(?<=path\s\=\s\")(.[^\"]*)/).findAll().flatten().unique().each {
               def p = Paths.get(Paths.get(projectDirPath, dirPath.toString(), it).toFile().getCanonicalPath())
-              paths = gatherPaths(p, paths)
+              paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
             }
           }
 
@@ -92,9 +92,9 @@ class CommandsPlugin implements Plugin<Project> {
           if(mixExs.exists()) {
             (mixExs.text =~ /(?<=path:\s\")(.[^\"]*)/).findAll().flatten().unique().each {
               def p = Paths.get(Paths.get(projectDirPath, dirPath.toString(), it).toFile().getCanonicalPath())
-              paths = gatherPaths(p, paths)
+              paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
             }
-            paths = gatherPaths('implementations/rust/ockam/ockam_ffi', paths)
+            paths << Paths.get('implementations/rust/ockam/ockam_ffi', '**')
           }
 
           ['build.gradle', 'settings.gradle'].each {
@@ -103,7 +103,7 @@ class CommandsPlugin implements Plugin<Project> {
           }
 
           def p = Paths.get(Paths.get(projectDirPath, dirPath.toString()).toFile().getCanonicalPath())
-          paths = gatherPaths(p, paths)
+          paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
 
           def templateEngine = new groovy.text.SimpleTemplateEngine()
           def templateFile = Paths.get(rootDirPath.toString(), '.github', 'workflow_template.yml').toFile()
