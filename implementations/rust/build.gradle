@@ -32,7 +32,7 @@ commands {
     lint: [
       'cargo fmt --all -- --check',
       'cargo clippy --no-deps -- -D warnings',
-      'cargo doc',
+      'cargo doc --no-deps',
       'cargo deny check licenses advisories',
     ],
     veryClean: [
