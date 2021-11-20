@@ -9,6 +9,7 @@
     unused_import_braces,
     unused_qualifications
 )]
+#![allow(clippy::question_mark)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "std")]

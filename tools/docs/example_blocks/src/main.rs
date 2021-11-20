@@ -7,7 +7,7 @@ fn print_file(file: &str) {
     let file = format!("{}/{}", examples, file);
 
     let err = format!("Can't find example source {}", file);
-    let mut file = File::open(file).unwrap_or_else(|_| { panic!("{}", err) });
+    let mut file = File::open(file).unwrap_or_else(|_| panic!("{}", err));
 
     let mut content = String::new();
     file.read_to_string(&mut content).expect("short read");
@@ -15,8 +15,7 @@ fn print_file(file: &str) {
 }
 
 fn main() {
-    let file: String = std::env::args().nth(1)
-        .expect("missing file argument");
+    let file: String = std::env::args().nth(1).expect("missing file argument");
 
     let file = File::open(file).expect("unable to open file");
     let file = BufReader::new(file);

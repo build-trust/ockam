@@ -10,7 +10,7 @@ use zeroize::Zeroize;
 /// to produce the completed key, or used for
 /// creating partial signatures which can be
 /// combined into a complete signature
-#[derive(Clone, Debug, Zeroize)]
+#[derive(Clone, Debug, Default, Zeroize)]
 pub struct SecretKeyShare(pub Share<SECRET_KEY_SHARE_BYTES>);
 
 impl Drop for SecretKeyShare {
@@ -28,12 +28,6 @@ impl From<Share<SECRET_KEY_SHARE_BYTES>> for SecretKeyShare {
 impl<'a> From<&'a Share<SECRET_KEY_SHARE_BYTES>> for SecretKeyShare {
     fn from(share: &'a Share<SECRET_KEY_SHARE_BYTES>) -> Self {
         Self(*share)
-    }
-}
-
-impl Default for SecretKeyShare {
-    fn default() -> Self {
-        Self(Share::default())
     }
 }
 

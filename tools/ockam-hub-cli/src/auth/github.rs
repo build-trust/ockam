@@ -22,6 +22,7 @@ pub async fn post(
     Ok(parsed_response)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn try_access_token<'a>(
     client: &'a reqwest::Client,
     payload: &'a HashMap<&str, &str>,

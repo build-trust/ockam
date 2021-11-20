@@ -10,18 +10,13 @@ pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_fn = parse_macro_input!(item as ItemFn);
     let original_fn_ident = original_fn.sig.ident;
     let import_test = TokenStream::from_str(
-        format!(
-            "use ockam_vault_test_suite::{};",
-            original_fn_ident
-        )
-        .as_str(),
+        format!("use ockam_vault_test_suite::{};", original_fn_ident).as_str(),
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");
-    let run_test = TokenStream::from_str(
-        format!("{}(&mut vault).await;", original_fn_ident).as_str(),
-    )
-    .unwrap();
+    let run_test =
+        TokenStream::from_str(format!("{}(&mut vault).await;", original_fn_ident).as_str())
+            .unwrap();
     let run_test: Stmt = syn::parse(run_test).expect("B");
 
     let output_function = quote! {
@@ -41,18 +36,13 @@ pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_fn = parse_macro_input!(item as ItemFn);
     let original_fn_ident = original_fn.sig.ident;
     let import_test = TokenStream::from_str(
-        format!(
-            "use ockam_vault_test_suite::{};",
-            original_fn_ident
-        )
-        .as_str(),
+        format!("use ockam_vault_test_suite::{};", original_fn_ident).as_str(),
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");
-    let run_test = TokenStream::from_str(
-        format!("{}(&mut vault).await;", original_fn_ident).as_str(),
-    )
-    .unwrap();
+    let run_test =
+        TokenStream::from_str(format!("{}(&mut vault).await;", original_fn_ident).as_str())
+            .unwrap();
     let run_test: Stmt = syn::parse(run_test).expect("B");
 
     let output_function = quote! {

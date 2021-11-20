@@ -96,8 +96,8 @@ fn run_stage(stage: Stage) -> Result<()> {
                 .unwrap();
             while !stop.load(Relaxed) {
                 match handle.try_wait() {
-                    Ok(maybe_output) => match maybe_output {
-                        Some(output) => {
+                    Ok(maybe_output) => {
+                        if let Some(output) = maybe_output {
                             println!(
                                 "Output: {}",
                                 String::from_utf8(output.clone().stdout).unwrap()
@@ -105,8 +105,7 @@ fn run_stage(stage: Stage) -> Result<()> {
                             finished.store(true, Relaxed);
                             break;
                         }
-                        _ => (),
-                    },
+                    }
                     Err(_) => {
                         std::process::exit(1);
                     }
@@ -142,8 +141,7 @@ fn run(script: Script) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let file = std::env::args().nth(1)
-        .expect("missing script file");
+    let file = std::env::args().nth(1).expect("missing script file");
     let mut file = File::open(file).expect("unable to open script");
     let mut guide = String::new();
 
