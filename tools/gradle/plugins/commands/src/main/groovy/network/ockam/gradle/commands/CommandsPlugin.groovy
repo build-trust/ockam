@@ -1,10 +1,13 @@
 package network.ockam.gradle.commands
 
+import groovy.io.FileType
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.tasks.Exec;
 import org.gradle.api.tasks.Delete;
 import java.nio.file.Paths;
+import java.io.File;
+import java.util.regex.Pattern
 
 class CommandsPluginExtension {
   String group = ""
@@ -14,6 +17,21 @@ class CommandsPluginExtension {
 }
 
 class CommandsPlugin implements Plugin<Project> {
+  def gatherPaths(p, collectedPaths) {
+    def maybeDir = new File(p.toString())
+
+    if (maybeDir.isFile()) {
+      collectedPaths << p
+      return collectedPaths
+    }
+
+    maybeDir.eachFileRecurse (FileType.FILES) { file ->
+      collectedPaths << file 
+    }
+
+    return collectedPaths
+  }
+
 
   void apply(Project project) {
 
@@ -38,7 +56,7 @@ class CommandsPlugin implements Plugin<Project> {
 
         // Loop over the list of directories to define tasks for every directory in the list
         commands.directories.each {
-          def dirPathComponents = it.path.split('/')
+          def dirPathComponents = it.path.split(Pattern.quote(File.separator))
           def dirPath = Paths.get(*dirPathComponents)
           def dirName = dirPathComponents.join('_')
           def dirTaskName = [commandTaskName, dirName].join('_')
@@ -66,7 +84,7 @@ class CommandsPlugin implements Plugin<Project> {
           if(cargoToml.exists()) {
             (cargoToml.text =~ /(?<=path\s\=\s\")(.[^\"]*)/).findAll().flatten().unique().each {
               def p = Paths.get(Paths.get(projectDirPath, dirPath.toString(), it).toFile().getCanonicalPath())
-              paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
+              paths = gatherPaths(p, paths)
             }
           }
 
@@ -74,9 +92,9 @@ class CommandsPlugin implements Plugin<Project> {
           if(mixExs.exists()) {
             (mixExs.text =~ /(?<=path:\s\")(.[^\"]*)/).findAll().flatten().unique().each {
               def p = Paths.get(Paths.get(projectDirPath, dirPath.toString(), it).toFile().getCanonicalPath())
-              paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
+              paths = gatherPaths(p, paths)
             }
-            paths << Paths.get('implementations/rust/ockam/ockam_ffi', '**')
+            paths = gatherPaths('implementations/rust/ockam/ockam_ffi', paths)
           }
 
           ['build.gradle', 'settings.gradle'].each {
@@ -85,7 +103,7 @@ class CommandsPlugin implements Plugin<Project> {
           }
 
           def p = Paths.get(Paths.get(projectDirPath, dirPath.toString()).toFile().getCanonicalPath())
-          paths << Paths.get(rootDirPath.relativize(p).toString(), '**')
+          paths = gatherPaths(p, paths)
 
           def templateEngine = new groovy.text.SimpleTemplateEngine()
           def templateFile = Paths.get(rootDirPath.toString(), '.github', 'workflow_template.yml').toFile()
