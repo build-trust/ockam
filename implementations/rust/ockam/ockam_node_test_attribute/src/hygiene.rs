@@ -137,10 +137,7 @@ impl NodeCtx {
         let ident = match pat {
             Pat::Ident(ident) => ident,
             _ => {
-                let msg = format!(
-                    "Expected an identifier, found `{}`",
-                    quote! {#pat}.to_string()
-                );
+                let msg = format!("Expected an identifier, found `{}`", quote! {#pat});
                 return Err(Error::new_spanned(pat, msg));
             }
         };

@@ -2,7 +2,7 @@
 name = "ockam_command"
 version = "0.1.0"
 edition = "2021"
-
+license = "Apache-2.0"
 
 [[bin]]
 name = "ockam"
@@ -20,5 +20,8 @@ indicatif = "0.16.2"
 log = "0.4.14"
 ockam = { version = "0.39.0", path = "../ockam" }
 serde = "1.0.130"
-stderrlog = "0.5.1"
+# FIXME: stderrlog depends on chrono, triggers:
+# - https://rustsec.org/advisories/RUSTSEC-2020-0159
+# - https://rustsec.org/advisories/RUSTSEC-2020-0071
+# stderrlog = "0.5.1"
 thiserror = "1.0.30"

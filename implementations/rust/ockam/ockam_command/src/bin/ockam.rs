@@ -1,4 +1,4 @@
-use human_panic::setup_panic;
+// use human_panic::setup_panic;
 use log::{debug, info, trace, warn};
 use ockam_command::{config::AppConfig, console::Console, AppError};
 use std::time::Duration;
@@ -15,7 +15,7 @@ struct App {
 impl Default for App {
     fn default() -> Self {
         Self::load_environment();
-        Self::init_logging();
+        // Self::init_logging();
 
         Self {
             console: Console::default(),
@@ -29,6 +29,10 @@ impl App {
         dotenv::dotenv().ok();
     }
 
+    // FIXME: stderrlog depends on chrono, triggers:
+    // - https://rustsec.org/advisories/RUSTSEC-2020-0159
+    // - https://rustsec.org/advisories/RUSTSEC-2020-0071
+    #[cfg(any())]
     pub fn init_logging() {
         setup_panic!();
 

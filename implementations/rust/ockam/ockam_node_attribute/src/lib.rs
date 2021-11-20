@@ -63,10 +63,7 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         {
             ctx_ident = ident;
         } else {
-            let message = format!(
-                "Expected an identifier, found `{}`",
-                quote! {#pat}.to_string()
-            );
+            let message = format!("Expected an identifier, found `{}`", quote! {#pat});
             return Error::new_spanned(pat, message).to_compile_error().into();
         };
 
@@ -107,7 +104,7 @@ pub fn node(_args: TokenStream, item: TokenStream) -> TokenStream {
         if !ctx_used {
             let message = format!(
                 "Unused `{}`. Passed `ockam::Context` should be used.",
-                &ctx_ident.to_string()
+                ctx_ident,
             );
             return Error::new_spanned(ctx_ident, message)
                 .to_compile_error()
