@@ -168,13 +168,13 @@ mod tests {
 
             assert_eq!(initiator.h(), responder.h());
 
-            let s1 = vault.secret_export(&initiator.encrypt_key()).await.unwrap();
-            let s2 = vault.secret_export(&responder.decrypt_key()).await.unwrap();
+            let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
+            let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
 
             assert_eq!(s1, s2);
 
-            let s1 = vault.secret_export(&initiator.decrypt_key()).await.unwrap();
-            let s2 = vault.secret_export(&responder.encrypt_key()).await.unwrap();
+            let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
+            let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
 
             assert_eq!(s1, s2);
             ctx.stop().await.unwrap();

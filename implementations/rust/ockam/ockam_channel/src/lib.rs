@@ -49,17 +49,17 @@ mod tests {
 
     #[ockam_node_test_attribute::node_test]
     async fn simplest_channel(ctx: &mut Context) -> Result<()> {
-        let vault_sync = VaultSync::create(&ctx, SoftwareVault::default()).await?;
+        let vault_sync = VaultSync::create(ctx, SoftwareVault::default()).await?;
         let new_key_exchanger = XXNewKeyExchanger::new(vault_sync.async_try_clone().await?);
         SecureChannel::create_listener_extended(
-            &ctx,
+            ctx,
             "secure_channel_listener".to_string(),
             new_key_exchanger.async_try_clone().await?,
             vault_sync.async_try_clone().await?,
         )
         .await?;
         let initiator = SecureChannel::create_extended(
-            &ctx,
+            ctx,
             Route::new().append("secure_channel_listener"),
             None,
             new_key_exchanger.initiator().await?,

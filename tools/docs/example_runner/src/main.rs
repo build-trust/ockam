@@ -124,7 +124,7 @@ fn run_stage(stage: Stage) -> Result<()> {
     }
 
     stop.store(true, Relaxed);
-    let join_handles = join_handles.clone();
+    let join_handles = join_handles;
     let mut join_handles = join_handles.lock().unwrap();
     while !join_handles.is_empty() {
         let h = join_handles.pop().unwrap();
@@ -142,9 +142,7 @@ fn run(script: Script) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let file = std::env::args()
-        .skip(1)
-        .next()
+    let file = std::env::args().nth(1)
         .expect("missing script file");
     let mut file = File::open(file).expect("unable to open script");
     let mut guide = String::new();

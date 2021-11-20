@@ -12,14 +12,14 @@ pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let import_test = TokenStream::from_str(
         format!(
             "use ockam_vault_test_suite::{};",
-            original_fn_ident.to_string()
+            original_fn_ident
         )
         .as_str(),
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");
     let run_test = TokenStream::from_str(
-        format!("{}(&mut vault).await;", original_fn_ident.to_string()).as_str(),
+        format!("{}(&mut vault).await;", original_fn_ident).as_str(),
     )
     .unwrap();
     let run_test: Stmt = syn::parse(run_test).expect("B");
@@ -43,14 +43,14 @@ pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let import_test = TokenStream::from_str(
         format!(
             "use ockam_vault_test_suite::{};",
-            original_fn_ident.to_string()
+            original_fn_ident
         )
         .as_str(),
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");
     let run_test = TokenStream::from_str(
-        format!("{}(&mut vault).await;", original_fn_ident.to_string()).as_str(),
+        format!("{}(&mut vault).await;", original_fn_ident).as_str(),
     )
     .unwrap();
     let run_test: Stmt = syn::parse(run_test).expect("B");

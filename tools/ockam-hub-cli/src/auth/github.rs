@@ -4,7 +4,7 @@ use std::future::Future;
 use std::pin::Pin;
 use webbrowser;
 
-const GITHUB_CLIENT_ID: &'static str = "609323e5ba23958cb2f5";
+const GITHUB_CLIENT_ID: &str = "609323e5ba23958cb2f5";
 
 pub async fn post(
     client: &reqwest::Client,
@@ -44,7 +44,7 @@ pub fn try_access_token<'a>(
         }
 
         println!("Access token validated!");
-        return Ok(response);
+        Ok(response)
     })
 }
 
@@ -95,7 +95,7 @@ pub async fn authenticate() -> Result<(), reqwest::Error> {
     let interval = &login_response["interval"];
     let device_code = &login_response["device_code"];
 
-    if !webbrowser::open(verification_uri).is_ok() {
+    if webbrowser::open(verification_uri).is_err() {
         println!("Error opening the browser");
     }
 
