@@ -9,7 +9,7 @@ name = "ockam"
 
 [dependencies]
 bunt = "0.2.6"
-clap = { version = "2.33.3", features = ["yaml"] }
+clap = { version = "2.33.3" }
 comfy-table = "5.0.0"
 config = { version = "0.11.0", features = ["toml"] }
 ctrlc = "3.2.1"

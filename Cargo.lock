@@ -354,7 +354,6 @@ dependencies = [
  "textwrap",
  "unicode-width",
  "vec_map",
- "yaml-rust 0.3.5",
 ]
 
 [[package]]
@@ -382,7 +381,7 @@ dependencies = [
  "serde-hjson",
  "serde_json",
  "toml",
- "yaml-rust 0.4.5",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -3352,12 +3351,6 @@ dependencies = [
  "rand_core 0.5.1",
  "zeroize",
 ]
-
-[[package]]
-name = "yaml-rust"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e66366e18dc58b46801afbf2ca7661a9f59cc8c5962c29892b6039b4f86fa992"
 
 [[package]]
 name = "yaml-rust"

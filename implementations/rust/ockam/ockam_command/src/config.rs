@@ -1,18 +1,20 @@
-use crate::command::{Command, CommandResult, Run};
+use crate::command::{CommandResult};
 use crate::AppError;
-use clap::{load_yaml, App};
-use log::{debug, warn};
 
 pub struct AppConfig {}
 
+/* WIP
 const CONFIG_ARG: &str = "config";
 const SECRETS_ARG: &str = "secrets";
 const OCKAM_ENV_PREFIX: &str = "OCKAM";
+*/
 
 impl AppConfig {
     pub fn evaluate() -> Result<CommandResult, AppError> {
-        let mut config = config::Config::default();
+        Err(AppError::Unknown)
 
+    /*
+        let mut config = config::Config::default();
         let yaml = load_yaml!("cli.yml");
         let args = App::from_yaml(yaml).get_matches();
 
@@ -47,5 +49,6 @@ impl AppConfig {
         let (command_name, command_args) = args.subcommand();
         let mut command: Command = command_name.parse()?;
         command.run(command_args)
+    */
     }
 }
