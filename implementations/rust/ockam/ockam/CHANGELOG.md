@@ -1,9 +1,33 @@
 # Changelog
+All notable changes to this project will be documented in this file.
 
-All notable changes to this crate will be documented in this file.
-
-The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## v0.40.0 - 2021-11-22
+
+
+### Added
+
+- Add pipemodifier return value to behaviour stack
+
+### Changed
+
+- Deny warnings in ci, not local development
+- Basic pipe sender implementation
+- Implement static pipes
+- Implement pipe sender resend logic
+- Implement full pipe resend behaviour
+- Move pipe tests into a separate module
+- Initial ordered pipe behaviour implementation
+- Enable pipe behavior stacks to be cloned
+- Implement dynamic pipe handshake initialisation
+
+### Fixed
+
+- Enable ockam crate to use ockam_node_test_attribute
+- Fix compilation for no_std environments
+
 
 ## v0.39.0 - 2021-11-15
 ### Changed
