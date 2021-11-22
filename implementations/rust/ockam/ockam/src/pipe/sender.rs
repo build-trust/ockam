@@ -3,14 +3,29 @@ use crate::{
     pipe::PipeBehavior,
     protocols::pipe::{internal::InternalCmd, PipeMessage},
 };
-use ockam_core::compat::boxed::Box;
+use ockam_core::compat::{boxed::Box, collections::VecDeque};
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
 use ockam_node::Context;
 
+enum PeerRoute {
+    Peer(Route),
+    Listener(Route),
+}
+
+impl PeerRoute {
+    fn peer(&self) -> &Route {
+        match self {
+            Self::Peer(ref p) => p,
+            Self::Listener(ref l) => l,
+        }
+    }
+}
+
 pub struct PipeSender {
-    peer: Route,
-    int_addr: Address,
     index: Monotonic,
+    out_buf: VecDeque<PipeMessage>,
+    peer: PeerRoute,
+    int_addr: Address,
     hooks: PipeBehavior,
 }
 
@@ -20,7 +35,16 @@ impl Worker for PipeSender {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster("_internal.messaging.pipe").await?;
+        ctx.set_cluster(crate::pipe::CLUSTER_NAME).await?;
+        if let PeerRoute::Listener(ref route) = self.peer {
+            ctx.send_from_address(
+                route.clone(),
+                InternalCmd::InitHandshake,
+                self.int_addr.clone(),
+            )
+            .await?
+        }
+
         Ok(())
     }
 
@@ -45,11 +69,36 @@ impl PipeSender {
     ) -> Result<()> {
         ctx.start_worker(
             vec![addr, int_addr.clone()],
-            PipeSender {
-                peer,
-                int_addr,
+            Self {
                 // Ordered pipes expect a 1-indexed message
                 index: Monotonic::from(1),
+                out_buf: VecDeque::new(),
+                peer: PeerRoute::Peer(peer),
+                int_addr,
+                hooks,
+            },
+        )
+        .await
+    }
+
+    /// Create a sender without a peer route
+    ///
+    /// To fully be able to use this pipe sender it needs to receive
+    /// an initialisation message from a pipe receiver.
+    pub async fn uninitialized(
+        ctx: &mut Context,
+        addr: Address,
+        int_addr: Address,
+        listener: Route,
+        hooks: PipeBehavior,
+    ) -> Result<()> {
+        ctx.start_worker(
+            vec![addr, int_addr.clone()],
+            Self {
+                index: Monotonic::from(1),
+                out_buf: VecDeque::new(),
+                peer: PeerRoute::Listener(listener),
+                int_addr,
                 hooks,
             },
         )
@@ -59,11 +108,43 @@ impl PipeSender {
     /// Handle internal command payloads
     async fn handle_internal(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         trace!("PipeSender receiving internal command");
+        let return_route = msg.return_route();
         let trans = msg.into_transport_message();
         let internal_cmd = InternalCmd::from_transport(&trans)?;
-        self.hooks
-            .internal_all(self.int_addr.clone(), self.peer.clone(), ctx, &internal_cmd)
-            .await
+
+        // Either run all internal message hooks OR fully set-up this sender
+        match self.peer {
+            PeerRoute::Peer(ref peer) => {
+                self.hooks
+                    .internal_all(self.int_addr.clone(), peer.clone(), ctx, &internal_cmd)
+                    .await?;
+            }
+
+            _ => match internal_cmd {
+                InternalCmd::InitSender => {
+                    debug!("Initialise pipe sender for route {:?}", return_route);
+                    self.peer = PeerRoute::Peer(return_route.clone());
+
+                    // Send out the out_buffer
+                    for msg in core::mem::take(&mut self.out_buf) {
+                        send_pipe_msg(
+                            &mut self.hooks,
+                            ctx,
+                            self.int_addr.clone(),
+                            return_route.clone(),
+                            msg,
+                        )
+                        .await?;
+                    }
+                }
+                cmd => warn!(
+                    "Received internal command '{:?}' for invalid state sender",
+                    cmd
+                ),
+            },
+        }
+
+        Ok(())
     }
 
     /// Handle external user messages
@@ -74,27 +155,52 @@ impl PipeSender {
 
         debug!(
             "Pipe sender dispatch {:?} -> {:?}",
-            self.peer, msg.onward_route
+            self.peer.peer(),
+            msg.onward_route
         );
 
         // Then pack TransportMessage into PipeMessage
         let index = self.index.next() as u64;
         let pipe_msg = PipeMessage::from_transport(index, msg)?;
 
-        // Before we send we give all hooks a chance to run
-        if let crate::pipe::PipeModifier::Drop = self
-            .hooks
-            .external_all(self.int_addr.clone(), self.peer.clone(), ctx, &pipe_msg)
-            .await?
-        {
-            // Return early to prevent message sending if the
-            // behaviour stack has determined to drop the message.
-            return Ok(());
+        // Check if this sender has been fully initialised already
+        match self.peer {
+            PeerRoute::Peer(ref peer) => {
+                send_pipe_msg(
+                    &mut self.hooks,
+                    ctx,
+                    self.int_addr.clone(),
+                    peer.clone(),
+                    pipe_msg,
+                )
+                .await
+            }
+            _ => {
+                self.out_buf.push_back(pipe_msg);
+                Ok(())
+            }
         }
-
-        // Then send the message from our internal address so the
-        // receiver can send any important messages there
-        ctx.send_from_address(self.peer.clone(), pipe_msg, self.int_addr.clone())
-            .await
     }
+}
+
+async fn send_pipe_msg(
+    hooks: &mut PipeBehavior,
+    ctx: &mut Context,
+    int_addr: Address,
+    peer: Route,
+    msg: PipeMessage,
+) -> Result<()> {
+    // Before we send we give all hooks a chance to run
+    if let crate::pipe::PipeModifier::Drop = hooks
+        .external_all(int_addr.clone(), peer.clone(), ctx, &msg)
+        .await?
+    {
+        // Return early to prevent message sending if the
+        // behaviour stack has determined to drop the message.
+        return Ok(());
+    }
+
+    // Then send the message from our internal address so the
+    // receiver can send any important messages there
+    ctx.send_from_address(peer, msg, int_addr).await
 }

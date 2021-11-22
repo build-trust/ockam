@@ -45,6 +45,7 @@ async fn static_confirm_pipe(ctx: &mut Context) -> Result<()> {
 }
 
 /// Create hook that sends a message when the send timeout has elapsed
+#[derive(Clone)]
 struct ConfirmTimeout;
 
 #[async_trait]
@@ -76,6 +77,7 @@ impl BehaviorHook for ConfirmTimeout {
     }
 }
 
+#[derive(Clone)]
 struct DropDelivery;
 
 #[async_trait]
@@ -147,6 +149,23 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let msg2 = ctx.receive().await?;
     info!("App reiceved msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
+
+    ctx.stop().await
+}
+
+#[ockam_node_test_attribute::node_test]
+async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
+    // Create a pipe spawn listener and connect to it via a dynamic sender
+    let listener = listen(ctx).await.unwrap();
+    let tx = connect_dynamic(ctx, listener.into()).await.unwrap();
+
+    let msg_sent = String::from("Message for my best friend");
+    info!("Sending message '{}' through pipe sender {}", msg_sent, tx);
+    ctx.send(vec![tx, "app".into()], msg_sent.clone()).await?;
+
+    let msg = ctx.receive().await?;
+    info!("App received msg: '{}'", msg);
+    assert_eq!(msg, msg_sent);
 
     ctx.stop().await
 }

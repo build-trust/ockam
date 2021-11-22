@@ -64,13 +64,27 @@ where
 }
 
 /// Connect to the pipe receive listener and then to a pipe receiver
-pub async fn connect_dynamic(_listener: Route) -> PipeSender {
-    todo!()
+pub async fn connect_dynamic(ctx: &mut Context, listener: Route) -> Result<Address> {
+    let addr = Address::random(0);
+    let int_addr = Address::random(0);
+
+    // Create an "uninitialised" PipeSender
+    PipeSender::uninitialized(
+        ctx,
+        addr.clone(),
+        int_addr.clone(),
+        listener,
+        PipeBehavior::empty(),
+    )
+    .await?;
+
+    // Then return public address
+    Ok(addr)
 }
 
 /// Create a receiver with a static address
 pub async fn receiver<I: Into<Address>>(ctx: &mut Context, addr: I) -> Result<()> {
-    PipeReceiver::create(ctx, addr.into(), PipeBehavior::empty()).await
+    PipeReceiver::create(ctx, addr.into(), Address::random(0), PipeBehavior::empty()).await
 }
 
 /// Create a new receiver with an explicit behavior manager
@@ -79,14 +93,28 @@ where
     A: Into<Address>,
     P: Into<PipeBehavior>,
 {
-    PipeReceiver::create(ctx, addr.into(), b.into()).await
+    PipeReceiver::create(ctx, addr.into(), Address::random(0), b.into()).await
+}
+
+/// Create a pipe receive listener with custom behavior
+///
+/// This special worker will create pipe receivers for any incoming
+/// connection.  The worker can simply be stopped via its address.
+pub async fn listen_with_behavior<P: Into<PipeBehavior>>(
+    ctx: &mut Context,
+    hooks: P,
+) -> Result<Address> {
+    let addr = Address::random(0);
+    PipeListener::create_with_behavior(ctx, addr.clone(), hooks.into())
+        .await
+        .map(|_| addr)
 }
 
 /// Create a pipe receive listener
 ///
 /// This special worker will create pipe receivers for any incoming
 /// connection.  The worker can simply be stopped via its address.
-pub async fn listen_for_connections(ctx: &mut Context) -> Result<Address> {
+pub async fn listen(ctx: &mut Context) -> Result<Address> {
     let addr = Address::random(0);
     PipeListener::create(ctx, addr.clone()).await.map(|_| addr)
 }
