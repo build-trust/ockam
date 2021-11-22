@@ -206,7 +206,7 @@ impl Router {
                     .map_err(|_| Error::InternalIOFailure)?,
 
                 SetCluster(addr, label, reply) => {
-                    info!("Setting cluster on address {}", addr);
+                    debug!("Setting cluster on address {}", addr);
                     let msg = self.map.set_cluster(label, addr);
                     reply
                         .send(msg)
