@@ -2571,7 +2571,7 @@ dependencies = [
 
 [[package]]
 name = "signature_ps"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
