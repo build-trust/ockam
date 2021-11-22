@@ -16,16 +16,18 @@ pub struct PipeMessage {
     pub data: Vec<u8>,
 }
 
-impl PipeMessage {
-    /// We need to manually implement clone because serde_bare::Uint
-    /// doesn't, so we can't derive it
-    pub(crate) fn clone(&self) -> Self {
+/// We need to manually implement clone because serde_bare::Uint
+/// doesn't, so we can't derive it
+impl Clone for PipeMessage {
+    fn clone(&self) -> Self {
         Self {
             index: Uint::from(self.index.u64()),
             data: self.data.clone(),
         }
     }
+}
 
+impl PipeMessage {
     pub(crate) fn from_transport(index: u64, msg: TransportMessage) -> Result<Self> {
         let data = msg.encode()?;
         Ok(Self {

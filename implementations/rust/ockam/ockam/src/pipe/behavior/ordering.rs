@@ -8,7 +8,7 @@ use ockam_core::{
 };
 use ockam_node::Context;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ReceiverOrdering {
     journal: BTreeMap<u64, PipeMessage>,
     current: u64,

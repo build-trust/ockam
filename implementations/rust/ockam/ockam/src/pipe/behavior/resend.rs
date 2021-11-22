@@ -10,7 +10,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, compat::collections::BTreeMap, Address, Result, Route};
 use ockam_node::Context;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SenderConfirm {
     /// A set of message indices not confirmed yet
     on_route: BTreeMap<u64, PipeMessage>,
@@ -85,6 +85,7 @@ impl BehaviorHook for SenderConfirm {
 }
 
 ///
+#[derive(Clone)]
 pub struct ReceiverConfirm;
 
 #[async_trait]

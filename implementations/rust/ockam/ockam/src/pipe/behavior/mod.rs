@@ -1,6 +1,7 @@
 //! Pipe behavior modifiers
 
 mod resend;
+use dyn_clone::DynClone;
 pub use resend::{ReceiverConfirm, SenderConfirm};
 
 mod ordering;
@@ -13,7 +14,7 @@ use ockam_node::Context;
 
 /// Define the behavior of a pipe
 #[async_trait]
-pub trait BehaviorHook {
+pub trait BehaviorHook: DynClone + Send {
     /// This function MUST be run for every incoming user message
     ///
     /// * Access to mutable self
@@ -42,6 +43,8 @@ pub trait BehaviorHook {
     ) -> Result<()>;
 }
 
+dyn_clone::clone_trait_object!(BehaviorHook);
+
 /// Indicate to the pipe whether to modify its default behaviour
 #[derive(Clone, Copy, Debug)]
 pub enum PipeModifier {
@@ -54,6 +57,18 @@ pub enum PipeModifier {
 /// Structure to combine a set of pipe BehaviorHooks
 pub struct PipeBehavior {
     hooks: Vec<Box<dyn BehaviorHook + Send + 'static>>,
+}
+
+impl Clone for PipeBehavior {
+    fn clone(&self) -> Self {
+        Self {
+            hooks: self
+                .hooks
+                .iter()
+                .map(|b| *dyn_clone::clone_box(&*b))
+                .collect(),
+        }
+    }
 }
 
 impl<T: BehaviorHook + Send + 'static> From<T> for PipeBehavior {
