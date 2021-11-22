@@ -75,7 +75,7 @@ no_main = [
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.40.0", default-features = false }
 ockam_message_derive = { path = "../ockam_message_derive", version = "0.1.0" , default_features = false }
-ockam_node = { path = "../ockam_node", version = "^0.38.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.39.0", default-features = false }
 ockam_node_attribute = { path = "../ockam_node_attribute", version = "0.26.0" , default_features = false }
 ockam_node_test_attribute = { path = "../ockam_node_test_attribute", version = "0.4.0" , default_features = false }
 ockam_vault_core = { path = "../ockam_vault_core", version = "^0.33.0", default_features = false }
