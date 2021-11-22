@@ -46,7 +46,7 @@ tracing = { version = "0.1", default_features = false }
 [dev-dependencies]
 ockam_vault = { path = "../ockam_vault", version = "^0.33.0"}
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.32.0"}
-ockam_key_exchange_x3dh = { path = "../ockam_key_exchange_x3dh", version = "^0.31.0"}
+ockam_key_exchange_x3dh = { path = "../ockam_key_exchange_x3dh", version = "^0.32.0"}
 ockam_node_test_attribute = { path = "../ockam_node_test_attribute", version = "^0.4.0"}
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.31.0"}
 trybuild = {version = "1.0", features = ["diff"]}
