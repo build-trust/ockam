@@ -530,6 +530,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "file_transfer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ockam",
+ "serde",
+ "structopt",
+ "tokio",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
