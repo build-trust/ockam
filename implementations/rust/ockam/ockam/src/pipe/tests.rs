@@ -1,7 +1,9 @@
-use crate::pipe::*;
-use crate::protocols::pipe::{internal::InternalCmd, PipeMessage};
+use crate::{
+    pipe::*,
+    protocols::pipe::{internal::InternalCmd, PipeMessage},
+    Context,
+};
 use ockam_core::{async_trait, Address, Result, Route};
-use ockam_node::Context;
 
 use super::behavior::ReceiverOrdering;
 

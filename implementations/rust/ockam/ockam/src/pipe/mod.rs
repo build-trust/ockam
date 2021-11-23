@@ -17,9 +17,8 @@ pub use sender::PipeSender;
 #[cfg(test)]
 mod tests;
 
-use crate::protocols::pipe::PipeMessage;
+use crate::{protocols::pipe::PipeMessage, Context};
 use ockam_core::{Address, LocalMessage, Result, Route};
-use ockam_node::Context;
 
 const CLUSTER_NAME: &str = "_internal.pipe";
 

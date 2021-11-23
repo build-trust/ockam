@@ -7,10 +7,12 @@ pub use resend::{ReceiverConfirm, SenderConfirm};
 mod ordering;
 pub use ordering::ReceiverOrdering;
 
-use crate::protocols::pipe::{internal::InternalCmd, PipeMessage};
+use crate::{
+    protocols::pipe::{internal::InternalCmd, PipeMessage},
+    Context,
+};
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Address, Result, Route};
-use ockam_node::Context;
 
 /// Define the behavior of a pipe
 #[async_trait]
