@@ -1,10 +1,10 @@
 use crate::{
     pipe::{PipeBehavior, PipeModifier},
     protocols::pipe::{internal::InternalCmd, PipeMessage},
+    Context,
 };
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Any, Decodable, Result, Routed, Worker};
-use ockam_node::Context;
 
 pub struct PipeReceiver {
     hooks: PipeBehavior,

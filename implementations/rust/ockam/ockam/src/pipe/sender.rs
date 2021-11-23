@@ -2,10 +2,10 @@ use crate::{
     monotonic::Monotonic,
     pipe::PipeBehavior,
     protocols::pipe::{internal::InternalCmd, PipeMessage},
+    Context,
 };
 use ockam_core::compat::{boxed::Box, collections::VecDeque};
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
-use ockam_node::Context;
 
 enum PeerRoute {
     Peer(Route),

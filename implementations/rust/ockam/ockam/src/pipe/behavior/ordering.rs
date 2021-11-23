@@ -1,12 +1,12 @@
 use crate::{
     pipe::{BehaviorHook, PipeModifier},
     protocols::pipe::{internal::InternalCmd, PipeMessage},
+    Context,
 };
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
     async_trait, compat::collections::BTreeMap, Address, LocalMessage, Result, Route,
 };
-use ockam_node::Context;
 
 #[derive(Default, Clone)]
 pub struct ReceiverOrdering {
