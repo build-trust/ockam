@@ -1639,6 +1639,7 @@ dependencies = [
  "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
+ "zeroize",
 ]
 
 [[package]]
