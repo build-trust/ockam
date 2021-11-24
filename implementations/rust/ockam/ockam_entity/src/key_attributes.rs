@@ -1,4 +1,4 @@
-use ockam_core::compat::string::{String, ToString};
+use ockam_core::compat::string::String;
 use ockam_vault::SecretAttributes;
 use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 /// Meta-Attributes about a key
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum MetaKeyAttributes {
-    None,
     SecretAttributes(SecretAttributes),
 }
 
@@ -15,12 +14,6 @@ pub enum MetaKeyAttributes {
 pub struct KeyAttributes {
     label: String,
     meta: MetaKeyAttributes,
-}
-
-impl From<&str> for KeyAttributes {
-    fn from(str: &str) -> Self {
-        Self::new(str.to_string())
-    }
 }
 
 impl KeyAttributes {
@@ -34,19 +27,18 @@ impl KeyAttributes {
 }
 
 impl KeyAttributes {
-    /// Create new key attributes
-    pub fn new<S: Into<String>>(label: S) -> Self {
-        Self {
-            label: label.into(),
-            meta: MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
+    pub fn default_with_label(label: impl Into<String>) -> Self {
+        Self::new(
+            label.into(),
+            MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
                 SecretType::Ed25519,
                 SecretPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH,
             )),
-        }
+        )
     }
 
-    pub fn with_attributes(label: String, meta: MetaKeyAttributes) -> Self {
+    pub fn new(label: String, meta: MetaKeyAttributes) -> Self {
         Self { label, meta }
     }
 }

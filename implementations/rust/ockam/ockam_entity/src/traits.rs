@@ -19,16 +19,16 @@ pub trait Identity: AsyncTryClone + Send + Sync + 'static {
     async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()>;
 
     /// Rotate existing key.
-    async fn rotate_profile_key(&mut self) -> Result<()>;
+    async fn rotate_root_secret_key(&mut self) -> Result<()>;
 
     /// Get [`Secret`] key.
-    async fn get_profile_secret_key(&self) -> Result<Secret>;
+    async fn get_root_secret_key(&self) -> Result<Secret>;
 
     /// Get [`Secret`] key.
     async fn get_secret_key(&self, label: String) -> Result<Secret>;
 
     /// Get [`PublicKey`].
-    async fn get_profile_public_key(&self) -> Result<PublicKey>;
+    async fn get_root_public_key(&self) -> Result<PublicKey>;
 
     /// Get [`PublicKey`].
     async fn get_public_key(&self, label: String) -> Result<PublicKey>;

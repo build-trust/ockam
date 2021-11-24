@@ -1,7 +1,7 @@
 use crate::{
-    EntityError::IdentityApiFailed, Identity, IdentityRequest, IdentityRequest::*,
-    IdentityResponse as Res, MaybeContact, Profile, ProfileChannelListener, ProfileIdentifier,
-    ProfileState, SecureChannelWorker, TrustPolicyImpl,
+    EntityError::IdentityApiFailed, IdentityRequest, IdentityRequest::*, IdentityResponse as Res,
+    MaybeContact, Profile, ProfileChannelListener, ProfileIdentifier, ProfileState,
+    SecureChannelWorker, TrustPolicyImpl,
 };
 use core::result::Result::Ok;
 use ockam_core::{
@@ -68,27 +68,29 @@ impl Worker for EntityWorker {
             CreateKey(profile_id, label) => {
                 let profile = self.profile(&profile_id);
 
-                Identity::create_key(profile, label).await
+                profile.create_key(label).await
             }
             AddKey(profile_id, label, secret) => {
                 let profile = self.profile(&profile_id);
 
-                Identity::add_key(profile, label, &secret).await
+                profile.add_key(label, &secret).await?;
+
+                ctx.send(reply, Res::AddKey).await
             }
             RotateKey(profile_id) => {
                 let profile = self.profile(&profile_id);
 
-                Identity::rotate_profile_key(profile).await
+                profile.rotate_root_secret_key().await
             }
             GetProfilePublicKey(profile_id) => {
-                if let Ok(public_key) = self.profile(&profile_id).get_profile_public_key().await {
+                if let Ok(public_key) = self.profile(&profile_id).get_root_public_key().await {
                     ctx.send(reply, Res::GetProfilePublicKey(public_key)).await
                 } else {
                     err()
                 }
             }
             GetProfileSecretKey(profile_id) => {
-                if let Ok(secret) = self.profile(&profile_id).get_profile_secret_key().await {
+                if let Ok(secret) = self.profile(&profile_id).get_root_secret_key().await {
                     ctx.send(reply, Res::GetProfileSecretKey(secret)).await
                 } else {
                     err()

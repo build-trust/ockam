@@ -1,14 +1,10 @@
 //! Profile history
 use crate::profile::Profile;
 use crate::ProfileChangeType::{CreateKey, RotateKey};
-use crate::{
-    EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileVault, SignatureType,
-};
-use ockam_core::compat::{string::ToString, vec::Vec};
-use ockam_core::{allow, deny, Encodable};
-use ockam_vault::{PublicKey, SecretAttributes};
-use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
+use crate::{EntityError, EventIdentifier, ProfileChangeEvent, ProfileVault, SignatureType};
+use ockam_core::compat::vec::Vec;
+use ockam_core::{allow, deny, Encodable, Result};
+use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Full history of [`Profile`] changes. History and corresponding secret keys are enough to recreate [`Profile`]
@@ -38,7 +34,7 @@ impl Default for ProfileChangeHistory {
 }
 
 impl ProfileChangeHistory {
-    pub(crate) fn get_last_event_id(&self) -> ockam_core::Result<EventIdentifier> {
+    pub(crate) fn get_last_event_id(&self) -> Result<EventIdentifier> {
         if let Some(e) = self.0.last() {
             Ok(e.identifier().clone())
         } else {
@@ -46,86 +42,35 @@ impl ProfileChangeHistory {
         }
     }
 
-    pub(crate) fn find_key_change_in_event<'a>(
-        event: &'a ProfileChangeEvent,
-        key_attributes: &KeyAttributes,
-    ) -> Option<&'a ProfileChange> {
-        event
-            .changes()
-            .data()
-            .iter()
-            .rev()
-            .find(|c| match c.change_type() {
-                CreateKey(change) => change.data().key_attributes() == key_attributes,
-                RotateKey(change) => change.data().key_attributes() == key_attributes, // RevokeKey(event) => {
-                                                                                       //     event.key_type() == key_type && event.key_purpose() == key_purpose && event.label() == label
-                                                                                       // }
-            })
-    }
-
     pub(crate) fn find_last_key_event<'a>(
         existing_events: &'a [ProfileChangeEvent],
-        key_attributes: &KeyAttributes,
-    ) -> ockam_core::Result<&'a ProfileChangeEvent> {
+        label: &str,
+    ) -> Result<&'a ProfileChangeEvent> {
         existing_events
             .iter()
             .rev()
-            .find(|e| Self::find_key_change_in_event(e, key_attributes).is_some())
+            .find(|e| e.change_block().change().has_label(label))
             .ok_or_else(|| EntityError::InvalidInternalState.into())
     }
 
     pub(crate) fn find_last_key_event_public_key(
         existing_events: &[ProfileChangeEvent],
-        key_attributes: &KeyAttributes,
-    ) -> ockam_core::Result<PublicKey> {
-        let last_key_event = Self::find_last_key_event(existing_events, key_attributes)?;
+        label: &str,
+    ) -> Result<PublicKey> {
+        let last_key_event = Self::find_last_key_event(existing_events, label)?;
 
-        Self::get_public_key_from_event(key_attributes, last_key_event)
-    }
-
-    pub(crate) fn get_change_public_key(change: &ProfileChange) -> ockam_core::Result<PublicKey> {
-        let data = match change.change_type() {
-            CreateKey(change) => change.data().public_key(),
-            RotateKey(change) => change.data().public_key(),
-        };
-
-        if data.is_empty() {
-            Err(EntityError::InvalidInternalState.into())
-        } else {
-            Ok(PublicKey::new(
-                data.into(),
-                SecretType::Ed25519, /* FIXME: Determine type */
-            ))
-        }
-    }
-
-    pub(crate) fn get_public_key_from_event(
-        key_attributes: &KeyAttributes,
-        event: &ProfileChangeEvent,
-    ) -> ockam_core::Result<PublicKey> {
-        let change = Self::find_key_change_in_event(event, key_attributes)
-            .ok_or(EntityError::InvalidInternalState)?;
-
-        Self::get_change_public_key(change)
+        last_key_event.change_block().change().public_key()
     }
 }
 
 impl ProfileChangeHistory {
-    pub(crate) fn get_current_profile_update_public_key(
+    pub(crate) fn get_current_root_public_key(
         existing_events: &[ProfileChangeEvent],
-    ) -> ockam_core::Result<PublicKey> {
-        let key_attributes = KeyAttributes::with_attributes(
-            Profile::PROFILE_UPDATE.to_string(),
-            MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
-                SecretType::Ed25519,
-                SecretPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH,
-            )),
-        );
-        Self::find_last_key_event_public_key(existing_events, &key_attributes)
+    ) -> Result<PublicKey> {
+        Self::find_last_key_event_public_key(existing_events, Profile::ROOT_LABEL)
     }
 
-    pub(crate) fn get_first_root_public_key(&self) -> ockam_core::Result<PublicKey> {
+    pub(crate) fn get_first_root_public_key(&self) -> Result<PublicKey> {
         // TODO: Support root key rotation
         let root_event;
         if let Some(re) = self.as_ref().first() {
@@ -134,12 +79,7 @@ impl ProfileChangeHistory {
             return Err(EntityError::InvalidInternalState.into());
         }
 
-        let root_change;
-        if let Some(rc) = root_event.changes().data().first() {
-            root_change = rc;
-        } else {
-            return Err(EntityError::InvalidInternalState.into());
-        }
+        let root_change = root_event.change_block().change();
 
         let root_create_key_change;
         if let CreateKey(c) = root_change.change_type() {
@@ -148,18 +88,19 @@ impl ProfileChangeHistory {
             return Err(EntityError::InvalidInternalState.into());
         }
 
-        Ok(PublicKey::new(
-            root_create_key_change.data().public_key().to_vec(),
-            SecretType::Ed25519,
-        ))
+        Ok(root_create_key_change.data().public_key().clone())
     }
 
-    pub(crate) fn get_public_key(
-        &self,
-        key_attributes: &KeyAttributes,
-    ) -> ockam_core::Result<PublicKey> {
-        let event = Self::find_last_key_event(self.as_ref(), key_attributes)?;
-        Self::get_public_key_from_event(key_attributes, event)
+    pub(crate) fn get_public_key_static(
+        events: &[ProfileChangeEvent],
+        label: &str,
+    ) -> Result<PublicKey> {
+        let event = Self::find_last_key_event(events, label)?;
+        event.change_block().change().public_key()
+    }
+
+    pub(crate) fn get_public_key(&self, label: &str) -> Result<PublicKey> {
+        Self::get_public_key_static(self.as_ref(), label)
     }
 }
 
@@ -167,7 +108,7 @@ impl ProfileChangeHistory {
     pub(crate) async fn verify_all_existing_events(
         &self,
         vault: &mut impl ProfileVault,
-    ) -> ockam_core::Result<bool> {
+    ) -> Result<bool> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
             let new_event = &self.as_ref()[i];
@@ -183,92 +124,81 @@ impl ProfileChangeHistory {
         existing_events: &[ProfileChangeEvent],
         new_change_event: &ProfileChangeEvent,
         vault: &mut impl ProfileVault,
-    ) -> ockam_core::Result<bool> {
-        let changes = new_change_event.changes();
-        let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
+    ) -> Result<bool> {
+        let change_block = new_change_event.change_block();
+        let change_block_binary = change_block.encode().map_err(|_| EntityError::BareError)?;
 
-        let event_id = vault.sha256(&changes_binary).await?;
+        let event_id = vault.sha256(&change_block_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
 
         if &event_id != new_change_event.identifier() {
             return deny(); // EventIdDoesNotMatch
         }
 
-        match new_change_event.proof() {
-            ProfileChangeProof::Signature(s) => match s.stype() {
-                SignatureType::RootSign => {
-                    let events_to_look = if existing_events.is_empty() {
-                        core::slice::from_ref(new_change_event)
-                    } else {
-                        existing_events
-                    };
-                    let root_public_key =
-                        Self::get_current_profile_update_public_key(events_to_look)?;
-                    if !vault
-                        .verify(s.data(), &root_public_key, event_id.as_ref())
-                        .await?
-                    {
-                        return deny();
-                    }
-                }
-            },
+        struct SignaturesCheck {
+            self_sign: u8,
+            prev_sign: u8,
+            root_sign: u8,
         }
 
-        for change in new_change_event.changes().data() {
-            if !match change.change_type() {
-                CreateKey(c) => {
-                    // Should have 1 self signature
-                    let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
-                    let data_hash = vault.sha256(data_binary.as_slice()).await?;
+        let mut signatures_check = match new_change_event.change_block().change().change_type() {
+            CreateKey(_) => {
+                // Should have self signature and root signature
+                // There is no Root signature for the very first event
+                let root_sign = if existing_events.is_empty() { 0 } else { 1 };
 
-                    // if verification failed, there is no channel back. Return bool msg?
-                    vault
-                        .verify(
-                            c.self_signature(),
-                            &PublicKey::new(
-                                c.data().public_key().into(),
-                                SecretType::Ed25519, /* FIXME: Determine type */
-                            ),
-                            &data_hash,
-                        )
-                        .await?
+                SignaturesCheck {
+                    self_sign: 1,
+                    prev_sign: 0,
+                    root_sign,
                 }
-                RotateKey(c) => {
-                    // Should have 1 self signature and 1 prev signature
-                    let data_binary = c.data().encode().map_err(|_| EntityError::BareError)?;
-                    let data_hash = vault.sha256(data_binary.as_slice()).await?;
+            }
+            RotateKey(_) => {
+                // Should have self signature, root signature, and previous key signature
+                SignaturesCheck {
+                    self_sign: 1,
+                    prev_sign: 1,
+                    root_sign: 1,
+                }
+            }
+        };
 
-                    if !vault
-                        .verify(
-                            c.self_signature(),
-                            &PublicKey::new(
-                                c.data().public_key().into(),
-                                SecretType::Ed25519, /* FIXME: Determine type */
-                            ),
-                            &data_hash,
-                        )
-                        .await?
-                    {
-                        false
-                    } else {
-                        let prev_key_event =
-                            Self::find_last_key_event(existing_events, c.data().key_attributes())?;
-                        let prev_key_change = ProfileChangeHistory::find_key_change_in_event(
-                            prev_key_event,
-                            c.data().key_attributes(),
-                        )
-                        .ok_or(EntityError::InvalidInternalState)?;
-                        let public_key =
-                            ProfileChangeHistory::get_change_public_key(prev_key_change)?;
-
-                        vault
-                            .verify(c.prev_signature(), &public_key, &data_hash)
-                            .await?
+        for signature in new_change_event.signatures() {
+            let counter;
+            let public_key = match signature.stype() {
+                SignatureType::RootSign => {
+                    if existing_events.is_empty() {
+                        return Err(EntityError::VerifyFailed.into());
                     }
+
+                    counter = &mut signatures_check.root_sign;
+                    Self::get_current_root_public_key(existing_events)?
                 }
-            } {
+                SignatureType::SelfSign => {
+                    counter = &mut signatures_check.self_sign;
+                    new_change_event.change_block().change().public_key()?
+                }
+                SignatureType::PrevSign => {
+                    counter = &mut signatures_check.prev_sign;
+                    Self::get_public_key_static(
+                        existing_events,
+                        new_change_event.change_block().change().label(),
+                    )?
+                }
+            };
+
+            if *counter == 0 {
                 return Err(EntityError::VerifyFailed.into());
             }
+
+            if !vault
+                .verify(signature.data(), &public_key, event_id.as_ref())
+                .await?
+            {
+                return deny();
+            }
+
+            *counter -= 1;
         }
 
         allow()
@@ -279,7 +209,6 @@ impl ProfileChangeHistory {
         existing_events: &[ProfileChangeEvent],
         new_events: &[ProfileChangeEvent],
     ) -> bool {
-        // TODO: add more checks: e.g. you cannot rotate the same key twice during one event
         let mut prev_event;
         if let Some(e) = existing_events.last() {
             prev_event = Some(e);
@@ -290,17 +219,12 @@ impl ProfileChangeHistory {
         for event in new_events.iter() {
             // Events should go in correct order as stated in previous_event_identifier field
             if let Some(prev) = prev_event {
-                if prev.identifier() != event.changes().previous_event_identifier() {
+                if prev.identifier() != event.change_block().previous_event_identifier() {
                     return false; // InvalidChainSequence
                 }
             }
 
             prev_event = Some(event);
-
-            // For now only allow one change at a time
-            if event.changes().data().len() != 1 {
-                return false; // InvalidChainSequence
-            }
         }
         true
     }
