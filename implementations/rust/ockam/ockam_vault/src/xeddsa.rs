@@ -4,7 +4,7 @@
 use curve25519_dalek::{
     constants::ED25519_BASEPOINT_POINT, montgomery::MontgomeryPoint, scalar::Scalar,
 };
-use ed25519_dalek::{PublicKey as EPublicKey, Signature, Verifier};
+use ed25519_dalek::{ed25519::signature::Signature, PublicKey as EPublicKey, Verifier};
 use sha2::digest::Digest;
 use x25519_dalek::{PublicKey as XPublicKey, StaticSecret as XSecretKey};
 
