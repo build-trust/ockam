@@ -12,6 +12,7 @@ use ockam_core::{compat::vec::Vec, hex::encode, AsyncTryClone};
 use ockam_vault_core::{
     AsymmetricVault, Hasher, PublicKey, SecretVault, Signer, SymmetricVault, Verifier,
 };
+use zeroize::Zeroize;
 
 mod error;
 pub use error::*;
@@ -25,7 +26,8 @@ pub use new_key_exchanger::*;
 
 /// Represents and (X)EdDSA or ECDSA signature
 /// from Ed25519 or P-256
-#[derive(Clone, Copy)]
+#[derive(Clone, Zeroize)]
+#[zeroize(drop)]
 pub struct Signature([u8; 64]);
 
 impl AsRef<[u8; 64]> for Signature {
@@ -53,7 +55,8 @@ impl core::fmt::Debug for Signature {
 }
 
 /// Represents all the keys and signature to send to an enrollee
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct PreKeyBundle {
     identity_key: PublicKey,
     signed_prekey: PublicKey,
