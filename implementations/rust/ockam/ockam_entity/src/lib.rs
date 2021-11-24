@@ -53,7 +53,7 @@ mod key_attributes;
 mod lease;
 mod profile;
 mod profile_state;
-mod proof;
+mod signature;
 mod traits;
 mod worker;
 
@@ -148,8 +148,8 @@ mod test {
             return test_error("verify_changes failed");
         }
 
-        let secret1 = profile.get_profile_secret_key().await?;
-        let public1 = profile.get_profile_public_key().await?;
+        let secret1 = profile.get_root_secret_key().await?;
+        let public1 = profile.get_root_public_key().await?;
 
         profile.create_key("Truck management".to_string()).await?;
 
@@ -170,16 +170,16 @@ mod test {
             return test_error("public did not change after create_key");
         }
 
-        profile.rotate_profile_key().await?;
+        profile.rotate_root_secret_key().await?;
 
         if !profile.verify_changes().await? {
             return test_error("verify_changes failed");
         }
 
-        let secret3 = profile.get_profile_secret_key().await?;
-        let public3 = profile.get_profile_public_key().await?;
+        let secret3 = profile.get_root_secret_key().await?;
+        let public3 = profile.get_root_public_key().await?;
 
-        profile.rotate_profile_key().await?;
+        profile.rotate_root_secret_key().await?;
 
         if !profile.verify_changes().await? {
             return test_error("verify_changes failed");
@@ -206,7 +206,7 @@ mod test {
             return test_error("bob failed to add alice");
         }
 
-        alice.rotate_profile_key().await?;
+        alice.rotate_root_secret_key().await?;
         let alice_changes = alice.get_changes().await?;
         let last_change = alice_changes.last().unwrap().clone();
 

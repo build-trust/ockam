@@ -65,7 +65,7 @@ impl Profile {
     /// Sha256 of that value is used as previous event id for first event in a [`Profile`]
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
     /// Label for [`Profile`] update key
-    pub const PROFILE_UPDATE: &'static str = "OCKAM_PUK";
+    pub const ROOT_LABEL: &'static str = "OCKAM_RK";
     /// Label for key used to issue credentials
     #[cfg(feature = "credentials")]
     pub const CREDENTIALS_ISSUE: &'static str = "OCKAM_CIK";
@@ -88,20 +88,20 @@ impl Identity for Profile {
         self.entity().await?.add_key(label, secret).await
     }
 
-    async fn rotate_profile_key(&mut self) -> Result<()> {
-        self.entity().await?.rotate_profile_key().await
+    async fn rotate_root_secret_key(&mut self) -> Result<()> {
+        self.entity().await?.rotate_root_secret_key().await
     }
 
-    async fn get_profile_secret_key(&self) -> Result<Secret> {
-        self.entity().await?.get_profile_secret_key().await
+    async fn get_root_secret_key(&self) -> Result<Secret> {
+        self.entity().await?.get_root_secret_key().await
     }
 
     async fn get_secret_key(&self, label: String) -> Result<Secret> {
         self.entity().await?.get_secret_key(label).await
     }
 
-    async fn get_profile_public_key(&self) -> Result<PublicKey> {
-        self.entity().await?.get_profile_public_key().await
+    async fn get_root_public_key(&self) -> Result<PublicKey> {
+        self.entity().await?.get_root_public_key().await
     }
 
     async fn get_public_key(&self, label: String) -> Result<PublicKey> {

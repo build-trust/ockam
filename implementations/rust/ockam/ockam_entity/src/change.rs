@@ -1,7 +1,9 @@
 use ockam_core::compat::vec::Vec;
+use ockam_core::Result;
+use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
 
-pub use crate::proof::*;
+pub use crate::signature::*;
 use crate::{CreateKeyChange, EventIdentifier, ProfileEventAttributes, RotateKeyChange};
 
 /// Pre-defined keys in [`ProfileEventAttributes`] map
@@ -51,6 +53,25 @@ impl ProfileChange {
             change_type,
         }
     }
+
+    pub fn has_label(&self, label: &str) -> bool {
+        self.label() == label
+    }
+
+    pub fn label(&self) -> &str {
+        match &self.change_type {
+            ProfileChangeType::CreateKey(change) => change.data().key_attributes().label(),
+            ProfileChangeType::RotateKey(change) => change.data().key_attributes().label(),
+        }
+    }
+
+    pub(crate) fn public_key(&self) -> Result<PublicKey> {
+        Ok(match &self.change_type {
+            ProfileChangeType::CreateKey(change) => change.data().public_key(),
+            ProfileChangeType::RotateKey(change) => change.data().public_key(),
+        }
+        .clone())
+    }
 }
 
 /// Possible types of [`crate::Profile`] changes
@@ -64,28 +85,28 @@ pub enum ProfileChangeType {
 
 /// Profile changes with a given event identifier
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChangeSet {
+pub struct ChangeBlock {
+    change: ProfileChange,
     prev_event_id: EventIdentifier,
-    data: Vec<ProfileChange>,
 }
 
-impl ChangeSet {
+impl ChangeBlock {
     /// [`EventIdentifier`] of previous event
     pub fn previous_event_identifier(&self) -> &EventIdentifier {
         &self.prev_event_id
     }
     /// Set of changes been applied
-    pub fn data(&self) -> &[ProfileChange] {
-        &self.data
+    pub fn change(&self) -> &ProfileChange {
+        &self.change
     }
 }
 
-impl ChangeSet {
+impl ChangeBlock {
     /// Create new Changes
-    pub fn new(prev_event_id: EventIdentifier, data: Vec<ProfileChange>) -> Self {
-        ChangeSet {
+    pub fn new(prev_event_id: EventIdentifier, change: ProfileChange) -> Self {
+        Self {
             prev_event_id,
-            data,
+            change,
         }
     }
 }
@@ -96,8 +117,8 @@ impl ChangeSet {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProfileChangeEvent {
     identifier: EventIdentifier,
-    changes: ChangeSet,
-    proof: ProfileChangeProof,
+    change_block: ChangeBlock,
+    signatures: Vec<Signature>,
 }
 
 pub type Changes = Vec<ProfileChangeEvent>;
@@ -108,23 +129,26 @@ impl ProfileChangeEvent {
         &self.identifier
     }
     /// Set of changes been applied
-    pub fn changes(&self) -> &ChangeSet {
-        &self.changes
+    pub fn change_block(&self) -> &ChangeBlock {
+        &self.change_block
     }
-    /// Proof is used to check whether this event comes from a party authorized to perform such updated
-    /// Individual changes may include additional proofs, if needed
-    pub fn proof(&self) -> &ProfileChangeProof {
-        &self.proof
+    /// Proof is used to check whether this event comes from a party authorized to perform such update
+    pub fn signatures(&self) -> &[Signature] {
+        &self.signatures
     }
 }
 
 impl ProfileChangeEvent {
     /// Create a new profile change event
-    pub fn new(identifier: EventIdentifier, changes: ChangeSet, proof: ProfileChangeProof) -> Self {
+    pub fn new(
+        identifier: EventIdentifier,
+        change_block: ChangeBlock,
+        signatures: Vec<Signature>,
+    ) -> Self {
         ProfileChangeEvent {
             identifier,
-            changes,
-            proof,
+            change_block,
+            signatures,
         }
     }
 }

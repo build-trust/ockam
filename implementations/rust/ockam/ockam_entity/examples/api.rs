@@ -1,8 +1,9 @@
+use ockam_core::Result;
 use ockam_entity::Entity;
 use ockam_node::Context;
 use ockam_vault_sync_core::Vault;
 
-async fn test(ctx: Context) -> ockam_core::Result<()> {
+async fn test(ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx).await.expect("failed to create vault");
 
     let mut bob = Entity::create(&ctx, &vault).await?;

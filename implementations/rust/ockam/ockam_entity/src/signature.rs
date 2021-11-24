@@ -6,13 +6,10 @@ use serde::{Deserialize, Serialize};
 pub enum SignatureType {
     /// Root signature
     RootSign,
-}
-
-/// Variants of proofs that are allowed on a [`crate::Profile`] change
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum ProfileChangeProof {
-    /// Signature change proof
-    Signature(Signature),
+    /// Self signature
+    SelfSign,
+    /// Signature using previous key
+    PrevSign,
 }
 
 /// Signature, its type and data

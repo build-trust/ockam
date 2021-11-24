@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use ockam_vault::PublicKey;
 
 use crate::change_history::ProfileChangeHistory;
-use crate::{EventIdentifier, KeyAttributes, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
+use crate::{EventIdentifier, ProfileChangeEvent, ProfileIdentifier, ProfileVault};
 
 use ockam_core::compat::vec::Vec;
-use ockam_core::{allow, deny};
+use ockam_core::{allow, deny, Result};
 
 /// Contact is an abstraction responsible for storing user's public data (mainly - public keys).
 /// It is designed to share users' public keys in cryptographically verifiable way.
@@ -52,7 +52,7 @@ impl Contact {
 
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    pub async fn verify(&self, vault: &mut impl ProfileVault) -> ockam_core::Result<bool> {
+    pub async fn verify(&self, vault: &mut impl ProfileVault) -> Result<bool> {
         if !ProfileChangeHistory::check_consistency(&[], self.change_events()) {
             return deny();
         }
@@ -84,7 +84,7 @@ impl Contact {
         &mut self,
         change_events: C,
         vault: &mut impl ProfileVault,
-    ) -> ockam_core::Result<bool> {
+    ) -> Result<bool> {
         if !ProfileChangeHistory::check_consistency(self.change_events(), change_events.as_ref()) {
             return deny();
         }
@@ -102,21 +102,21 @@ impl Contact {
 
 impl Contact {
     /// Get [`crate::Profile`] Update [`PublicKey`]
-    pub fn get_profile_update_public_key(&self) -> ockam_core::Result<PublicKey> {
-        ProfileChangeHistory::get_current_profile_update_public_key(self.change_events())
+    pub fn get_profile_update_public_key(&self) -> Result<PublicKey> {
+        ProfileChangeHistory::get_current_root_public_key(self.change_events())
     }
     /// Get [`PublicKey`]. Key is uniquely identified by label in [`KeyAttributes`]
-    pub fn get_public_key(&self, key_attributes: &KeyAttributes) -> ockam_core::Result<PublicKey> {
-        self.change_history.get_public_key(key_attributes)
+    pub fn get_public_key(&self, label: &str) -> Result<PublicKey> {
+        self.change_history.get_public_key(label)
     }
     /// Get [`EventIdentifier`] of the last known event
-    pub fn get_last_event_id(&self) -> ockam_core::Result<EventIdentifier> {
+    pub fn get_last_event_id(&self) -> Result<EventIdentifier> {
         self.change_history.get_last_event_id()
     }
     /// Get BBS+ signing public key
     #[cfg(feature = "credentials")]
-    pub fn get_signing_public_key(&self) -> ockam_core::Result<PublicKey> {
+    pub fn get_signing_public_key(&self) -> Result<PublicKey> {
         use crate::Profile;
-        self.get_public_key(&KeyAttributes::new(Profile::CREDENTIALS_ISSUE.to_string()))
+        self.get_public_key(&Profile::CREDENTIALS_ISSUE.to_string())
     }
 }

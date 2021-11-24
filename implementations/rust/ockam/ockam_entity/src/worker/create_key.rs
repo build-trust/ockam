@@ -2,18 +2,14 @@ use crate::change_history::ProfileChangeHistory;
 use crate::profile::Profile;
 use crate::EntityError::InvalidInternalState;
 use crate::{
-    ChangeSet, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
-    ProfileChangeEvent, ProfileChangeProof, ProfileChangeType, ProfileEventAttributes,
-    ProfileState, Signature, SignatureType,
+    ChangeBlock, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
+    ProfileChangeEvent, ProfileChangeType, ProfileEventAttributes, ProfileState, Signature,
+    SignatureType,
 };
-use cfg_if::cfg_if;
-use ockam_core::compat::vec::Vec;
-use ockam_core::Encodable;
+use ockam_core::{Encodable, Result};
 use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
 use ockam_vault_core::Signature as OckamVaultSignature;
-use ockam_vault_core::{
-    Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
-};
+use ockam_vault_core::{PublicKey, Secret};
 use ockam_vault_sync_core::VaultSync;
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +17,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateKeyChangeData {
     key_attributes: KeyAttributes,
-    public_key: Vec<u8>,
+    public_key: PublicKey,
 }
 
 impl CreateKeyChangeData {
@@ -30,14 +26,14 @@ impl CreateKeyChangeData {
         &self.key_attributes
     }
     /// Return public key
-    pub fn public_key(&self) -> &[u8] {
+    pub fn public_key(&self) -> &PublicKey {
         &self.public_key
     }
 }
 
 impl CreateKeyChangeData {
     /// Create new CreateKeyChangeData
-    pub fn new(key_attributes: KeyAttributes, public_key: Vec<u8>) -> Self {
+    pub fn new(key_attributes: KeyAttributes, public_key: PublicKey) -> Self {
         CreateKeyChangeData {
             key_attributes,
             public_key,
@@ -74,20 +70,37 @@ impl CreateKeyChange {
 }
 
 impl ProfileState {
-    pub async fn add_key_static(
-        secret_key: &Secret,
+    async fn generate_key_if_needed(
+        secret: Option<&Secret>,
+        key_attributes: &KeyAttributes,
+        vault: &mut VaultSync,
+    ) -> Result<Secret> {
+        if let Some(s) = secret {
+            Ok(s.clone())
+        } else {
+            let MetaKeyAttributes::SecretAttributes(secret_attributes) = key_attributes.meta();
+
+            vault.secret_generate(*secret_attributes).await
+        }
+    }
+
+    /// Create a new key
+    pub(crate) async fn make_create_key_event_static(
+        secret: Option<&Secret>,
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
         root_key: Option<&Secret>,
         vault: &mut VaultSync,
-    ) -> ockam_core::Result<ProfileChangeEvent> {
-        let public_key = vault.secret_public_key_get(secret_key).await?;
+    ) -> Result<ProfileChangeEvent> {
+        let secret_key = Self::generate_key_if_needed(secret, &key_attributes, vault).await?;
 
-        let data = CreateKeyChangeData::new(key_attributes, public_key.as_ref().to_vec());
+        let public_key = vault.secret_public_key_get(&secret_key).await?;
+
+        let data = CreateKeyChangeData::new(key_attributes, public_key);
         let data_binary = data.encode().map_err(|_| EntityError::BareError)?;
         let data_hash = vault.sha256(data_binary.as_slice()).await?;
-        let self_signature = vault.sign(secret_key, &data_hash).await?;
+        let self_signature = vault.sign(&secret_key, &data_hash).await?;
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
@@ -96,90 +109,42 @@ impl ProfileState {
             ProfileChangeType::CreateKey(change),
         );
 
-        let changes = ChangeSet::new(prev_id, vec![profile_change]);
-        let changes_binary = changes.encode().map_err(|_| EntityError::BareError)?;
+        let change_block = ChangeBlock::new(prev_id, profile_change);
+        let change_block_binary = change_block.encode().map_err(|_| EntityError::BareError)?;
 
-        let event_id = vault.sha256(&changes_binary).await?;
+        let event_id = vault.sha256(&change_block_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
+
+        let self_signature = vault.sign(&secret_key, event_id.as_ref()).await?;
+        let self_signature = Signature::new(SignatureType::SelfSign, self_signature);
+
+        let mut signatures = vec![self_signature];
 
         // If we have root_key passed we should sign using it
         // If there is no root_key - we're creating new profile, so we just generated root_key
-        let sign_key;
         if let Some(root_key) = root_key {
-            sign_key = root_key;
-        } else {
-            sign_key = secret_key;
+            let root_signature = vault.sign(root_key, event_id.as_ref()).await?;
+            let root_signature = Signature::new(SignatureType::RootSign, root_signature);
+
+            signatures.push(root_signature);
         }
 
-        let signature = vault.sign(sign_key, event_id.as_ref()).await?;
-
-        let proof =
-            ProfileChangeProof::Signature(Signature::new(SignatureType::RootSign, signature));
-        let signed_change_event = ProfileChangeEvent::new(event_id, changes, proof);
+        let signed_change_event = ProfileChangeEvent::new(event_id, change_block, signatures);
 
         Ok(signed_change_event)
     }
-    /// Create a new key
-    pub async fn create_key_static(
-        prev_id: EventIdentifier,
-        key_attributes: KeyAttributes,
-        attributes: ProfileEventAttributes,
-        root_key: Option<&Secret>,
-        vault: &mut VaultSync,
-    ) -> ockam_core::Result<ProfileChangeEvent> {
-        let secret_attributes = match key_attributes.meta() {
-            MetaKeyAttributes::SecretAttributes(attrs) => attrs.clone(),
-            MetaKeyAttributes::None => {
-                cfg_if! {
-                    if #[cfg(feature = "credentials")] {
-                        // FIXME
-                        let is_bls = key_attributes.label() == Profile::CREDENTIALS_ISSUE;
-
-                        let secret_attributes = if is_bls {
-                            SecretAttributes::new(SecretType::Bls, SecretPersistence::Persistent, 32)
-                        }
-                        else {
-                            SecretAttributes::new(
-                                SecretType::Ed25519,
-                                SecretPersistence::Persistent,
-                                CURVE25519_SECRET_LENGTH,
-                            )
-                        };
-                    }
-                    else {
-                        SecretAttributes::new(
-                            SecretType::Ed25519,
-                            SecretPersistence::Persistent,
-                            CURVE25519_SECRET_LENGTH,
-                        )
-                    }
-                }
-            }
-        };
-
-        let secret_key = vault.secret_generate(secret_attributes).await?;
-
-        Self::add_key_static(
-            &secret_key,
-            prev_id,
-            key_attributes,
-            attributes,
-            root_key,
-            vault,
-        )
-        .await
-    }
 
     /// Create a new key
-    pub(crate) async fn create_key(
+    pub(crate) async fn make_create_key_event(
         &mut self,
+        secret: Option<&Secret>,
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
-    ) -> ockam_core::Result<ProfileChangeEvent> {
+    ) -> Result<ProfileChangeEvent> {
         // Creating key after it was revoked is forbidden
         if ProfileChangeHistory::find_last_key_event(
             self.change_history().as_ref(),
-            &key_attributes,
+            key_attributes.label(),
         )
         .is_ok()
         {
@@ -191,45 +156,10 @@ impl ProfileState {
             Err(_) => EventIdentifier::initial(&mut self.vault).await,
         };
 
-        let root_secret = self.get_root_secret().await.expect("can't get root secret");
+        let root_secret = self.get_root_secret_key().await?;
         let root_key = Some(&root_secret);
 
-        Self::create_key_static(
-            prev_id,
-            key_attributes,
-            attributes,
-            root_key,
-            &mut self.vault,
-        )
-        .await
-    }
-
-    /// Create a new key
-    pub(crate) async fn add_key(
-        &mut self,
-        secret: &Secret,
-        key_attributes: KeyAttributes,
-        attributes: ProfileEventAttributes,
-    ) -> ockam_core::Result<ProfileChangeEvent> {
-        // Creating key after it was revoked is forbidden
-        if ProfileChangeHistory::find_last_key_event(
-            self.change_history().as_ref(),
-            &key_attributes,
-        )
-        .is_ok()
-        {
-            return Err(InvalidInternalState.into());
-        }
-
-        let prev_id = match self.change_history().get_last_event_id() {
-            Ok(prev_id) => prev_id,
-            Err(_) => EventIdentifier::initial(&mut self.vault).await,
-        };
-
-        let root_secret = self.get_root_secret().await.expect("can't get root secret");
-        let root_key = Some(&root_secret);
-
-        Self::add_key_static(
+        Self::make_create_key_event_static(
             secret,
             prev_id,
             key_attributes,

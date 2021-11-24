@@ -1,6 +1,6 @@
 use crate::{EntityError, ProfileVault};
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Decodable, Encodable};
+use ockam_core::{Decodable, Encodable, Result};
 use ockam_vault::{PublicKey, Secret};
 use ockam_vault_core::Signature;
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,7 @@ impl Authentication {
         channel_state: &[u8],
         secret: &Secret,
         vault: &mut V,
-    ) -> ockam_core::Result<Vec<u8>> {
+    ) -> Result<Vec<u8>> {
         let signature = vault.sign(secret, channel_state).await?;
 
         let proof = AuthenticationProof::new(signature);
@@ -42,7 +42,7 @@ impl Authentication {
         responder_public_key: &PublicKey,
         proof: &[u8],
         vault: &mut V,
-    ) -> ockam_core::Result<bool> {
+    ) -> Result<bool> {
         let proof = AuthenticationProof::decode(proof).map_err(|_| EntityError::BareError)?;
 
         vault
@@ -55,16 +55,16 @@ impl Authentication {
 mod test {
 
     use crate::{Entity, Identity};
-    use ockam_core::Error;
+    use ockam_core::{Error, Result};
     use ockam_node::Context;
     use ockam_vault_sync_core::Vault;
     use rand::{thread_rng, RngCore};
 
-    fn test_error<S: Into<String>>(error: S) -> ockam_core::Result<()> {
+    fn test_error<S: Into<String>>(error: S) -> Result<()> {
         Err(Error::new(0, error))
     }
 
-    async fn test_auth_use_case(ctx: &Context) -> ockam_core::Result<()> {
+    async fn test_auth_use_case(ctx: &Context) -> Result<()> {
         let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
@@ -122,7 +122,7 @@ mod test {
         Ok(())
     }
 
-    async fn test_key_rotation(ctx: &Context) -> ockam_core::Result<()> {
+    async fn test_key_rotation(ctx: &Context) -> Result<()> {
         let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
@@ -135,8 +135,8 @@ mod test {
         let mut bob_chat = bob.create_profile(&bob_vault).await?;
 
         // Both profiles rotate keys.
-        alice_chat.rotate_profile_key().await?;
-        bob_chat.rotate_profile_key().await?;
+        alice_chat.rotate_root_secret_key().await?;
+        bob_chat.rotate_root_secret_key().await?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice_chat.as_contact().await?;
@@ -160,7 +160,7 @@ mod test {
         Ok(())
     }
 
-    async fn test_update_contact_and_reprove(ctx: &Context) -> ockam_core::Result<()> {
+    async fn test_update_contact_and_reprove(ctx: &Context) -> Result<()> {
         let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
@@ -215,8 +215,8 @@ mod test {
             return test_error("alice's proof was invalid");
         }
 
-        alice_chat.rotate_profile_key().await?;
-        bob_chat.rotate_profile_key().await?;
+        alice_chat.rotate_root_secret_key().await?;
+        bob_chat.rotate_root_secret_key().await?;
 
         let alice_contact = alice_chat.as_contact().await?;
         let bob_contact = bob_chat.as_contact().await?;

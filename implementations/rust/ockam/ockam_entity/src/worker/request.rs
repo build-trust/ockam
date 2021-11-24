@@ -12,6 +12,7 @@ pub type EventAttributes = Vec<EventAttribute>;
 pub type ByteVec = Vec<u8>;
 pub type Id = ProfileIdentifier;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Serialize, Deserialize, Message)]
 pub enum IdentityRequest {
     CreateProfile(Address),

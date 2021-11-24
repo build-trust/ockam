@@ -100,11 +100,11 @@ impl Identity for Entity {
         }
     }
 
-    async fn rotate_profile_key(&mut self) -> Result<()> {
+    async fn rotate_root_secret_key(&mut self) -> Result<()> {
         self.cast(RotateKey(self.id())).await
     }
 
-    async fn get_profile_secret_key(&self) -> Result<Secret> {
+    async fn get_root_secret_key(&self) -> Result<Secret> {
         if let Res::GetProfileSecretKey(secret) = self.call(GetProfileSecretKey(self.id())).await? {
             Ok(secret)
         } else {
@@ -120,7 +120,7 @@ impl Identity for Entity {
         }
     }
 
-    async fn get_profile_public_key(&self) -> Result<PublicKey> {
+    async fn get_root_public_key(&self) -> Result<PublicKey> {
         if let Res::GetProfilePublicKey(public_key) =
             self.call(GetProfilePublicKey(self.id())).await?
         {
