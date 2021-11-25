@@ -20,6 +20,8 @@ defmodule Ockam.PubSubSubscriber do
   alias Ockam.Message
   alias Ockam.Router
 
+  require Logger
+
   @impl true
   def address_prefix(_options), do: "PS_"
 
@@ -42,11 +44,22 @@ defmodule Ockam.PubSubSubscriber do
   end
 
   @impl true
-  def handle_message(%{payload: _} = message, state) do
+  def handle_message(%{payload: _} = message, %{name: name, topic: topic} = state) do
     [_me | onward_route] = Message.onward_route(message)
 
     case onward_route do
       [] ->
+        expected_ok = :bare.encode("#{name}:#{topic}", :string)
+
+        case Message.payload(message) do
+          ^expected_ok ->
+            ## TODO: don't forward messages before getting this
+            Logger.debug("Subscribed to topic: #{topic} with name: #{name}")
+
+          _other ->
+            Logger.info("Unexpected message: #{inspect(message)} #{inspect(state)}")
+        end
+
         :ok
 
       route ->

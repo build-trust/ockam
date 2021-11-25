@@ -95,9 +95,17 @@ defmodule Ockam.Hub.Service.PubSub.Topic do
   end
 
   @impl true
-  def handle_call({:subscribe, name, route}, _from, state) do
-    {:reply, :ok,
-     Map.update(state, :routes, %{name => route}, fn routes -> Map.put(routes, name, route) end)}
+  def handle_call({:subscribe, name, route}, _from, %{topic: topic} = state) do
+    state =
+      Map.update(state, :routes, %{name => route}, fn routes -> Map.put(routes, name, route) end)
+
+    Ockam.Router.route(%{
+      onward_route: route,
+      return_route: [state.address],
+      payload: :bare.encode("#{name}:#{topic}", :string)
+    })
+
+    {:reply, :ok, state}
   end
 
   @impl true

@@ -23,15 +23,20 @@ defmodule Ockam.Messaging.PipeChannel.Responder do
     sender_options = Keyword.get(options, :sender_options, [])
     receiver_options = Keyword.get(options, :receiver_options, [])
 
+    address_options = Keyword.take(options, [:address, :inner_address])
+
     Session.Responder.create(
-      init_message: init_message,
-      worker_mod: PipeChannel.Simple,
-      handshake: PipeChannel.Handshake,
-      handshake_options: [
-        pipe_mod: pipe_mod,
-        sender_options: sender_options,
-        receiver_options: receiver_options
-      ]
+      address_options ++
+        [
+          init_message: init_message,
+          worker_mod: PipeChannel.Simple,
+          handshake: PipeChannel.Handshake,
+          handshake_options: [
+            pipe_mod: pipe_mod,
+            sender_options: sender_options,
+            receiver_options: receiver_options
+          ]
+        ]
     )
   end
 end
@@ -50,11 +55,16 @@ defmodule Ockam.Messaging.PipeChannel.Spawner do
   """
 
   def create(options) do
+    ## TODO: addresses for other workers
+    address_options = Keyword.take(options, [:address, :inner_address])
     responder_options = Keyword.fetch!(options, :responder_options)
 
     Ockam.Session.Spawner.create(
-      worker_mod: Ockam.Messaging.PipeChannel.Responder,
-      worker_options: responder_options
+      address_options ++
+        [
+          worker_mod: Ockam.Messaging.PipeChannel.Responder,
+          worker_options: responder_options
+        ]
     )
   end
 end
