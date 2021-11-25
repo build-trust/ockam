@@ -92,6 +92,14 @@ impl Identity for Entity {
         self.cast(CreateKey(self.id(), label)).await
     }
 
+    async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()> {
+        if let Res::AddKey = self.call(AddKey(self.id(), label, secret.clone())).await? {
+            Ok(())
+        } else {
+            err()
+        }
+    }
+
     async fn rotate_profile_key(&mut self) -> Result<()> {
         self.cast(RotateKey(self.id())).await
     }

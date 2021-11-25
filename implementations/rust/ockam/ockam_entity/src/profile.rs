@@ -84,6 +84,10 @@ impl Identity for Profile {
         self.entity().await?.create_key(label).await
     }
 
+    async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()> {
+        self.entity().await?.add_key(label, secret).await
+    }
+
     async fn rotate_profile_key(&mut self) -> Result<()> {
         self.entity().await?.rotate_profile_key().await
     }
