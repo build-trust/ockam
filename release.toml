@@ -1,0 +1,12 @@
+dev-version = false
+push = false
+tag = false
+publish = false
+verify = true
+consolidate-pushes = true
+sign-commit = true
+pre-release-commit-message = "ci: crate release {{crate_name}} version {{version}}"
+pre-release-replacements = [
+  {file="README.md", search="= \".*\"", replace="= \"{{version}}\""},
+  {file="CHANGELOG.md", search="## unreleased", replace="## {{version}} - {{date}}"},
+]
