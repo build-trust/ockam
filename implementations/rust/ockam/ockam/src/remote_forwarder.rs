@@ -39,18 +39,22 @@ pub struct RemoteForwarder {
     route: Route,
     destination: Route,
     callback_address: Address,
+    register_payload: String,
 }
 
 impl RemoteForwarder {
     fn new(
         hub_addr: impl Into<Address>,
+        service_address: impl Into<Address>,
         destination: impl Into<Address>,
         callback_address: Address,
+        register_payload: String,
     ) -> Self {
         Self {
-            route: route![hub_addr, "forwarding_service"],
+            route: route![hub_addr, service_address],
             destination: route![destination],
             callback_address,
+            register_payload,
         }
     }
 
@@ -62,8 +66,50 @@ impl RemoteForwarder {
         destination: impl Into<Address>,
     ) -> Result<RemoteForwarderInfo> {
         let address: Address = random();
+        let forwarder = Self::new(
+            hub_addr,
+            "forwarding_service",
+            destination,
+            address,
+            "register".to_string(),
+        );
+        Self::start_worker(ctx, forwarder).await
+    }
+
+    /// Create and start new pub_sub RemoteForwarder
+    /// hub_addr - address to a transport or connection to hub
+    /// destination - address to a worker that should receive forwarded messages
+    /// name - pub_sub subscription name
+    /// topic - pub_sub topic to subscribe to
+    pub async fn create_pub_sub(
+        ctx: &Context,
+        hub_addr: impl Into<Address>,
+        destination: impl Into<Address>,
+        name: impl Into<String>,
+        topic: impl Into<String>,
+    ) -> Result<RemoteForwarderInfo> {
+        let address: Address = random();
+        // TODO: there should be a better way to concat strings than this
+        let mut register_payload = String::new();
+        register_payload += &name.into();
+        register_payload += ":";
+        register_payload += &topic.into();
+        let forwarder = Self::new(
+            hub_addr,
+            "pub_sub_service",
+            destination,
+            address,
+            register_payload,
+        );
+        Self::start_worker(ctx, forwarder).await
+    }
+
+    async fn start_worker(
+        ctx: &Context,
+        forwarder: RemoteForwarder,
+    ) -> Result<RemoteForwarderInfo> {
+        let address = forwarder.callback_address.clone();
         let mut child_ctx = ctx.new_context(address).await?;
-        let forwarder = Self::new(hub_addr, destination, child_ctx.address());
 
         let worker_address: Address = random();
         debug!("Starting RemoteForwarder at {}", &worker_address);
@@ -86,13 +132,18 @@ impl Worker for RemoteForwarder {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         debug!("RemoteForwarder registering...");
-        ctx.send(self.route.clone(), "register".to_string()).await?;
+        let register_payload = &self.register_payload;
+        ctx.send(self.route.clone(), register_payload.clone())
+            .await?;
         let resp = ctx.receive::<String>().await?.take();
         let route = resp.return_route();
         let resp = resp.body();
-        match resp.as_str() {
-            "register" => self.route = route.clone(),
-            _ => return Err(OckamError::InvalidHubResponse.into()),
+        // TODO: we might want to support a different format for response
+        // other than the same payload as request
+        if resp.as_str() == register_payload {
+            self.route = route.clone();
+        } else {
+            return Err(OckamError::InvalidHubResponse.into());
         }
         info!("RemoteForwarder registered with route: {}", route);
         let address;
