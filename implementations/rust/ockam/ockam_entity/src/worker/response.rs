@@ -13,6 +13,7 @@ pub enum MaybeContact {
 
 #[derive(Serialize, Deserialize, Message)]
 pub enum IdentityResponse {
+    AddKey,
     CreateProfile(ProfileIdentifier),
     CreateAuthenticationProof(AuthenticationProof),
     GetPublicKey(PublicKey),

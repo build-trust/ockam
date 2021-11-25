@@ -4,6 +4,7 @@ use crate::{
 use cfg_if::cfg_if;
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{Address, Message, Route};
+use ockam_vault_core::Secret;
 use serde::{Deserialize, Serialize};
 
 pub type EventAttribute = (String, String);
@@ -16,6 +17,7 @@ pub enum IdentityRequest {
     CreateProfile(Address),
     CreateAuthenticationProof(Id, ByteVec),
     CreateKey(Id, String),
+    AddKey(Id, String, Secret),
     GetProfilePublicKey(Id),
     GetProfileSecretKey(Id),
     GetPublicKey(Id, String),

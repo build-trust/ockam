@@ -15,6 +15,9 @@ pub trait Identity: AsyncTryClone + Send + Sync + 'static {
     /// Create new key.
     async fn create_key(&mut self, label: String) -> Result<()>;
 
+    /// Add key that already exists in current Vault
+    async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()>;
+
     /// Rotate existing key.
     async fn rotate_profile_key(&mut self) -> Result<()>;
 

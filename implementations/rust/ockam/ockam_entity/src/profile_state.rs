@@ -162,6 +162,16 @@ impl Identity for ProfileState {
         self.add_change(event).await
     }
 
+    async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()> {
+        let key_attribs = KeyAttributes::new(label);
+
+        let event = {
+            self.add_key(secret, key_attribs, ProfileEventAttributes::new())
+                .await?
+        };
+        self.add_change(event).await
+    }
+
     async fn rotate_profile_key(&mut self) -> Result<()> {
         let event = {
             self.rotate_key(

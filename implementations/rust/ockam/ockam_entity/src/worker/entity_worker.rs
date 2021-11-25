@@ -70,6 +70,11 @@ impl Worker for EntityWorker {
 
                 Identity::create_key(profile, label).await
             }
+            AddKey(profile_id, label, secret) => {
+                let profile = self.profile(&profile_id);
+
+                Identity::add_key(profile, label, &secret).await
+            }
             RotateKey(profile_id) => {
                 let profile = self.profile(&profile_id);
 
