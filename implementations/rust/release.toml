@@ -1,8 +1,0 @@
-dev-version = false
-push = false
-tag = false
-publish = false
-verify = true
-sign-commit = true
-consolidate-pushes = true
-pre-release-commit-message = "ci: {{crate_name}} crate release {{version}}"
