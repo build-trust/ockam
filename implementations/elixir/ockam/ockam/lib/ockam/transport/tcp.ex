@@ -54,16 +54,12 @@ defmodule Ockam.Transport.TCP do
 
   @spec handle_message(Ockam.Message.t()) :: :ok | {:error, any()}
   defp handle_message(message) do
-    case get_destination_and_onward_route(message) do
-      {:ok, destination, onward_route} ->
-        ## Remove tcp address from onward route
-        ## TODO: use forwarding function
-        message_to_forward = Map.put(message, :onward_route, onward_route)
-
+    case get_destination(message) do
+      {:ok, destination} ->
         ## TODO: reuse clients when using tcp address
         with {:ok, client_address} <-
                Client.create(destination: destination) do
-          Ockam.Node.send(client_address, message_to_forward)
+          Ockam.Node.send(client_address, message)
         end
 
       e ->
@@ -73,15 +69,12 @@ defmodule Ockam.Transport.TCP do
     end
   end
 
-  defp get_destination_and_onward_route(message) do
-    {dest_address, onward_route} =
-      message
-      |> Message.onward_route()
-      |> List.pop_at(0)
+  defp get_destination(message) do
+    [dest_address | _onward_route] = Message.onward_route(message)
 
     with true <- TCPAddress.is_tcp_address(dest_address),
          {:ok, destination} <- TCPAddress.to_host_port(dest_address) do
-      {:ok, destination, onward_route}
+      {:ok, destination}
     else
       false ->
         {:error, {:invalid_address_type, dest_address}}

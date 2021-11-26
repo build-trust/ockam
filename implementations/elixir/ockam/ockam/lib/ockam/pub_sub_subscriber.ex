@@ -50,11 +50,7 @@ defmodule Ockam.PubSubSubscriber do
         :ok
 
       route ->
-        Router.route(%{
-          onward_route: route,
-          return_route: Message.return_route(message),
-          payload: Message.payload(message)
-        })
+        Router.route(Message.forward(message, route))
     end
 
     {:ok, state}

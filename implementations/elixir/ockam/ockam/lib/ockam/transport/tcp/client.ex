@@ -51,12 +51,16 @@ defmodule Ockam.Transport.TCP.Client do
 
   @impl true
   def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
-    with {:ok, message} <- Wire.decode(@wire_encoder_decoder, data),
-         {:ok, message} <- update_return_route(message, state) do
-      Ockam.Router.route(message)
-    else
-      {:error, %Wire.DecodeError{} = e} -> raise e
-      e -> raise e
+    case Wire.decode(@wire_encoder_decoder, data) do
+      {:ok, message} ->
+        forwarded_message = Message.trace_address(message, state.address)
+        Ockam.Router.route(forwarded_message)
+
+      {:error, %Wire.DecodeError{} = e} ->
+        raise e
+
+      e ->
+        raise e
     end
 
     {:noreply, state}
@@ -78,30 +82,15 @@ defmodule Ockam.Transport.TCP.Client do
   end
 
   defp encode_and_send_over_tcp(message, state) do
-    with {:ok, message} <- remove_itself_from_onward_route(message, state),
-         {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, message),
+    forwarded_message = Message.forward(message)
+
+    with {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, forwarded_message),
          :ok <- send_over_tcp(encoded_message, state) do
       :ok
     end
   end
 
-  defp remove_itself_from_onward_route(message, %{address: address}) do
-    new_onward_route =
-      case Message.onward_route(message) do
-        [^address | rest] -> rest
-        ## TODO: error message?
-        other -> other
-      end
-
-    {:ok, Map.put(message, :onward_route, new_onward_route)}
-  end
-
   defp send_over_tcp(data, %{socket: socket}) do
     :gen_tcp.send(socket, data)
-  end
-
-  defp update_return_route(message, %{address: address}) do
-    return_route = Message.return_route(message)
-    {:ok, Map.put(message, :return_route, [address | return_route])}
   end
 end

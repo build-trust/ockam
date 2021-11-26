@@ -27,13 +27,9 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   end
 
   defp encrypt_and_send_to_peer(message, state, data) do
-    ## TODO: use message forwarding fun
-    message = %{
-      message
-      | onward_route: Message.onward_route(message) |> List.pop_at(0) |> elem(1)
-    }
+    forwarded_message = Message.forward(message)
 
-    with {:ok, encoded} <- Wire.encode(message),
+    with {:ok, encoded} <- Wire.encode(forwarded_message),
          {:ok, encrypted, data} <- encrypt(encoded, data) do
       envelope = %{
         payload: encrypted,
@@ -62,11 +58,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
 
     with {:ok, decrypted, data} <- decrypt(payload, data),
          {:ok, decoded} <- Wire.decode(decrypted) do
-      ## TODO: use message forwarding fun
-      message = %{
-        decoded
-        | return_route: [data.plaintext_address | Message.return_route(decoded)]
-      }
+      message = Message.trace_address(decoded, data.plaintext_address)
 
       Router.route(message)
 

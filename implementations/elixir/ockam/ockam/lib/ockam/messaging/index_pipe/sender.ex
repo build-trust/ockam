@@ -29,13 +29,7 @@ defmodule Ockam.Messaging.IndexPipe.Sender do
 
   defp make_indexed_message(message, state) do
     {next_index, state} = next_index(state)
-    [_ | onward_route] = Message.onward_route(message)
-    ## TODO: use Ockam.Message forward function
-    forwarded_message = %Message{
-      onward_route: onward_route,
-      return_route: Message.return_route(message),
-      payload: Message.payload(message)
-    }
+    forwarded_message = Message.forward(message)
 
     indexed_message = %{
       onward_route: receiver_route(state),

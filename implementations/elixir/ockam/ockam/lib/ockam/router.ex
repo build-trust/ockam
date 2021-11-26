@@ -21,12 +21,17 @@ defmodule Ockam.Router do
           Message.t()
           | %{payload: binary(), onward_route: [Address.t()], return_route: [Address.t()]}
 
+  @dialyzer {:nowarn_function, raise_invalid_message: 1}
+
   @doc """
   Routes the given message.
+
+  Message can be Ockam.Message, or a map with payload, onward_route and optional return_route
   """
   @spec route(message()) :: :ok | {:error, reason :: any()}
 
-  def route(%Ockam.Message{} = message) do
+  def route(%Ockam.Message{payload: pl, onward_route: o_r, return_route: r_r} = message)
+      when is_binary(pl) and is_list(o_r) and is_list(r_r) do
     metadata = %{message: message}
     start_time = Telemetry.emit_start_event([__MODULE__, :route], metadata: metadata)
 
@@ -38,14 +43,31 @@ defmodule Ockam.Router do
     return_value
   end
 
-  ## TODO: optional return route?
-  def route(%{payload: _, onward_route: o_r, return_route: r_r} = message)
-      when is_list(o_r) and is_list(r_r) do
-    route(struct(Ockam.Message, message))
+  def route(%{payload: pl, onward_route: o_r} = message) when is_binary(pl) and is_list(o_r) do
+    return_route = Map.get(message, :return_route, [])
+
+    case is_list(return_route) do
+      true ->
+        route(struct(Ockam.Message, message))
+
+      false ->
+        raise_invalid_message(message)
+    end
   end
 
   def route(message) do
-    raise "Mesage needs to be Ockam.Message to be routed: #{inspect(message)}"
+    raise_invalid_message(message)
+  end
+
+  @doc """
+  Routes a message with given payload, onward_route and return_route
+  """
+  def route(payload, onward_route, return_route \\ []) do
+    route(%Message{onward_route: onward_route, return_route: return_route, payload: payload})
+  end
+
+  def raise_invalid_message(message) do
+    raise "Cannot route invalid message: #{inspect(message)}"
   end
 
   defp pick_and_invoke_handler(message) do
@@ -77,9 +99,11 @@ defmodule Ockam.Router do
 
   def get_message_handler(:default), do: Storage.get(:default_message_handler)
 
+  def get_message_handler(0), do: Storage.get(:default_message_handler)
+
   def get_message_handler(address_type) when Address.is_address_type(address_type) do
     case Storage.get({:address_type_message_handler, address_type}) do
-      nil -> get_message_handler(:default)
+      nil -> nil
       handler -> handler
     end
   end

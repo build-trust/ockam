@@ -21,11 +21,7 @@ defmodule Ockam.Router.Tests.Echo do
 
   @impl true
   def handle_message(message, state) do
-    reply = %{
-      onward_route: Message.return_route(message),
-      return_route: [state.address],
-      payload: Message.payload(message)
-    }
+    reply = Message.reply(message, state.address, Message.payload(message))
 
     Logger.info("\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
     Router.route(reply)
@@ -54,11 +50,7 @@ defmodule Ockam.Router.Tests.Forwarder do
         {:ok, state}
 
       [^address | rest] ->
-        forward = %{
-          onward_route: rest,
-          return_route: [address | Message.return_route(message)],
-          payload: Message.payload(message)
-        }
+        forward = Message.forward_trace(message, rest, address)
 
         Logger.info("\nMESSAGE: #{inspect(message)}\nFORWARD: #{inspect(forward)}")
         Router.route(forward)
@@ -90,11 +82,7 @@ defmodule Ockam.Router.Tests.PingPong do
           "ping " <> next
       end
 
-    reply = %{
-      onward_route: Message.return_route(message),
-      return_route: [state.address],
-      payload: response_payload
-    }
+    reply = Message.reply(message, state.address, response_payload)
 
     Logger.info("\nMESSAGE: #{inspect(message)}\nREPLY: #{inspect(reply)}")
     Router.route(reply)

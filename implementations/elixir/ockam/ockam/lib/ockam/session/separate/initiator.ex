@@ -112,11 +112,8 @@ defmodule Ockam.Session.Separate.Initiator do
         data_worker = Map.fetch!(state, :data_worker)
         [_me | onward_route] = Message.onward_route(message)
 
-        Router.route(%{
-          onward_route: [data_worker | onward_route],
-          return_route: Message.return_route(message),
-          payload: Message.payload(message)
-        })
+        ## TODO: forward_through
+        Router.route(Message.forward(message, [data_worker | onward_route]))
 
       _other ->
         Logger.warn("Ignoring message in data stage: #{inspect(message)}. Not implemented")

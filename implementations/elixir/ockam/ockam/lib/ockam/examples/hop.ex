@@ -8,13 +8,7 @@ defmodule Ockam.Examples.Hop do
 
   @impl true
   def handle_message(message, state) do
-    [_self | forward] = Message.onward_route(message)
-
-    Router.route(%{
-      onward_route: forward,
-      return_route: [state.address | Message.return_route(message)],
-      payload: Message.payload(message)
-    })
+    Router.route(Message.forward_trace(message, state.address))
 
     {:ok, state}
   end

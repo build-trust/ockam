@@ -8,11 +8,7 @@ defmodule Ockam.Examples.Echoer do
 
   @impl true
   def handle_message(message, state) do
-    reply = %{
-      onward_route: Message.return_route(message),
-      return_route: [state.address],
-      payload: Message.payload(message)
-    }
+    reply = Message.reply(message, state.address, Message.payload(message))
 
     Router.route(reply)
 

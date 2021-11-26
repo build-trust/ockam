@@ -47,17 +47,15 @@ defmodule Ockam.Transport.TCP.Handler do
   def handle_info({:tcp, socket, data}, %{socket: socket, address: address} = state) do
     {function_name, _} = __ENV__.function
 
-    with {:ok, decoded} <- Ockam.Wire.decode(data),
-         {:ok, decoded} <- set_return_route(decoded, address) do
-      send_to_router(decoded)
-      Telemetry.emit_event(function_name, metadata: %{name: "decoded_data"})
-    else
+    case Ockam.Wire.decode(data) do
+      {:ok, decoded} ->
+        forwarded_message = Message.trace_address(decoded, address)
+        send_to_router(forwarded_message)
+        Telemetry.emit_event(function_name, metadata: %{name: "decoded_data"})
+
       {:error, %Ockam.Wire.DecodeError{} = e} ->
         start_time = Telemetry.emit_start_event(function_name)
         Telemetry.emit_exception_event(function_name, start_time, e)
-        raise e
-
-      e ->
         raise e
     end
 
@@ -72,13 +70,15 @@ defmodule Ockam.Transport.TCP.Handler do
   end
 
   def handle_info(
-        %{payload: _payload} = message,
-        %{transport: transport, socket: socket, address: address} = state
+        %Ockam.Message{} = message,
+        %{transport: transport, socket: socket} = state
       ) do
-    with {:ok, message} <- set_onward_route(message, address),
-         {:ok, encoded} <- Ockam.Wire.encode(message) do
-      transport.send(socket, encoded)
-    else
+    forwarded_message = Message.forward(message)
+
+    case Ockam.Wire.encode(forwarded_message) do
+      {:ok, encoded} ->
+        transport.send(socket, encoded)
+
       a ->
         Logger.error("TCP transport send error #{inspect(a)}")
         raise a
@@ -90,19 +90,6 @@ defmodule Ockam.Transport.TCP.Handler do
   def handle_info(other, state) do
     Logger.warn("TCP HANDLER Received unkown message #{inspect(other)} #{inspect(state)}")
     {:noreply, state}
-  end
-
-  defp set_onward_route(message, address) do
-    onward_route =
-      message
-      |> Message.onward_route()
-      |> Enum.drop_while(fn a -> a === address end)
-
-    {:ok, %{message | onward_route: onward_route}}
-  end
-
-  defp set_return_route(%{return_route: return_route} = message, address) do
-    {:ok, %{message | return_route: [address | return_route]}}
   end
 
   defp send_to_router(message) do

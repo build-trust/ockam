@@ -8,14 +8,11 @@ defmodule Hop do
   def handle_message(message, %{address: address} = state) do
     IO.puts("Address: #{address}\t Received: #{inspect(message)}")
 
-    Router.route(%{
-      # Remove my address from beginning of onward_route.
-      onward_route: message |> Message.onward_route() |> List.delete_at(0),
-      # Add my address to beginning of return_route.
-      return_route: message |> Message.return_route() |> List.insert_at(0, address),
-      # Payload remains the same.
-      payload: Message.payload(message)
-    })
+    ## Forward mesage to the next address and trace current address
+    ## in return route.
+    forwarded_message = Message.forward_trace(message, address)
+
+    Router.route(forwarded_message)
 
     {:ok, state}
   end

@@ -61,11 +61,7 @@ defmodule Test.Hub.Service.ForwardingTestWorker do
   end
 
   defp process(message, state) when state.status == :registered do
-    msg = %{
-      onward_route: Message.return_route(message),
-      return_route: [state.address],
-      payload: "hello"
-    }
+    msg = Message.reply(message, state.address, "hello")
 
     Router.route(msg)
 

@@ -31,11 +31,7 @@ defmodule Ockam.Examples.Ping do
 
           :timer.sleep(Map.get(state, :delay))
 
-          reply = %{
-            onward_route: Message.return_route(message),
-            return_route: [state.address],
-            payload: "#{next}"
-          }
+          reply = Message.reply(message, state.address, "#{next}")
 
           Logger.info("\nSend ping #{inspect(next)}")
           Router.route(reply)
@@ -64,11 +60,7 @@ defmodule Ockam.Examples.Pong do
 
   @impl true
   def handle_message(message, state) do
-    reply = %{
-      onward_route: Message.return_route(message),
-      return_route: [state.address],
-      payload: Message.payload(message)
-    }
+    reply = Message.reply(message, state.address, Message.payload(message))
 
     :timer.sleep(Map.get(state, :delay))
 

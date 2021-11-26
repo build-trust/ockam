@@ -14,13 +14,7 @@ defmodule Ockam.Examples.Session.Routing.DataWorker do
 
   @impl true
   def handle_inner_message(message, state) do
-    [_ | onward_route] = Message.onward_route(message)
-
-    Ockam.Router.route(%{
-      onward_route: onward_route,
-      return_route: Message.return_route(message),
-      payload: Message.payload(message)
-    })
+    Ockam.Router.route(Message.forward(message))
 
     {:ok, Map.update(state, :messages, [message], fn messages -> [message | messages] end)}
   end
@@ -28,12 +22,8 @@ defmodule Ockam.Examples.Session.Routing.DataWorker do
   @impl true
   def handle_outer_message(message, state) do
     [_ | onward_route] = Message.onward_route(message)
-
-    Ockam.Router.route(%{
-      onward_route: state.route ++ onward_route,
-      return_route: Message.return_route(message),
-      payload: Message.payload(message)
-    })
+    ## TODO: add forward_through?
+    Ockam.Router.route(Message.forward(message, state.route ++ onward_route))
 
     {:ok, Map.update(state, :messages, [message], fn messages -> [message | messages] end)}
   end

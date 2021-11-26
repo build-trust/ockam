@@ -15,12 +15,6 @@ defmodule Ockam.Messaging.Delivery.Tests.Filter do
   end
 
   def forward_message(message) do
-    [me | onward_route] = Message.onward_route(message)
-
-    Ockam.Router.route(%{
-      onward_route: onward_route,
-      return_route: [me | Message.return_route(message)],
-      payload: Message.payload(message)
-    })
+    Ockam.Router.route(Message.forward_trace(message))
   end
 end

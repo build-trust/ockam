@@ -92,7 +92,7 @@ defmodule Ockam.Transport.UDP.Listener do
     {:udp, _socket, from_ip, from_port, packet} = udp_message
 
     with {:ok, decoded} <- Wire.decode(packet),
-         {:ok, message} <- set_return_route(decoded, UDPAddress.new(from_ip, from_port)),
+         message <- Message.trace_address(decoded, UDPAddress.new(from_ip, from_port)),
          :ok <- Router.route(message) do
       Telemetry.emit_event(function_name, metadata: %{name: "successfully_decoded"})
       {:ok, state}
@@ -131,10 +131,6 @@ defmodule Ockam.Transport.UDP.Listener do
       error ->
         error
     end
-  end
-
-  defp set_return_route(%Ockam.Message{return_route: return_route} = message, address) do
-    {:ok, %{message | return_route: [address | return_route]}}
   end
 
   defp default_ip do
