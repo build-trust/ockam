@@ -12,10 +12,6 @@ categories = ["network-programming", "asynchronous"]
 description = """
 WebSocket Transport for the Ockam Routing Protocol.
 """
-exclude = [
-    "DEVELOP.md",
-    "LICENSE"
-]
 
 [features]
 default = ["std"]

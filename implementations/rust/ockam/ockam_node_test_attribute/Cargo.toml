@@ -12,10 +12,6 @@ keywords = ["ockam", "crypto", "macro", "proc-macro", "attribute"]
 description = """
 Ockam node attribute proc_macros.
 """
-exclude = [
-    "DEVELOP.md",
-    "LICENSE"
-]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

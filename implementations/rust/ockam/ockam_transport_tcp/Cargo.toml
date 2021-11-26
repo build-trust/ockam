@@ -12,10 +12,6 @@ categories = ["cryptography", "asynchronous", "authentication","network-programm
 description = """
 TCP Transport for the Ockam Routing Protocol.
 """
-exclude = [
-    "DEVELOP.md",
-    "LICENSE"
-]
 autoexamples = false
 
 [features]

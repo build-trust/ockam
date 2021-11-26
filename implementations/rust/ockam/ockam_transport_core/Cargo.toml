@@ -12,10 +12,6 @@ categories = ["network-programming", "asynchronous"]
 description = """
 Generic Transport primitives.
 """
-exclude = [
-    "DEVELOP.md",
-    "LICENSE"
-]
 
 [features]
 default = ["std"]

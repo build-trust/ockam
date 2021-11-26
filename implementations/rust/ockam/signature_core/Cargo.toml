@@ -12,11 +12,6 @@ categories = ["cryptography", "asynchronous", "authentication","no-std", "algori
 description = """
 Signature core types of the Ockam library.
 """
-exclude = [
-    "DEVELOP.md",
-    "LICENSE"
-]
-
 
 [dependencies]
 blake2 = { version = "0.9", default-features = false }
