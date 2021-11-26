@@ -8,10 +8,6 @@ defmodule Ockam.Address.Tests do
       assert 0 === Address.type("test")
     end
 
-    test "first element in two tuple is treated as type if it is an integer" do
-      assert 100 === Address.type({100, 200})
-    end
-
     test "type field in address struct is an address type" do
       assert 10 == Address.type(%Address{type: 10})
     end

@@ -11,8 +11,6 @@ defmodule Ockam.Transport.UDP.Listener do
 
   require Logger
 
-  @wire_encoder_decoder Ockam.Wire.Binary.V2
-
   def start_link(options) do
     GenServer.start_link(__MODULE__, options)
   end
@@ -53,7 +51,7 @@ defmodule Ockam.Transport.UDP.Listener do
 
   defp setup_routed_message_handler(listener) do
     handler = fn message ->
-      handle_routed_message(listener, message)
+      handle_transport_message(listener, message)
     end
 
     with :ok <- Router.set_message_handler(UDPAddress.type(), handler) do
@@ -61,7 +59,7 @@ defmodule Ockam.Transport.UDP.Listener do
     end
   end
 
-  defp handle_routed_message(listener, message) do
+  defp handle_transport_message(listener, message) do
     send_message(listener, message)
   end
 
@@ -93,7 +91,7 @@ defmodule Ockam.Transport.UDP.Listener do
     {function_name, _} = __ENV__.function
     {:udp, _socket, from_ip, from_port, packet} = udp_message
 
-    with {:ok, decoded} <- Wire.decode(@wire_encoder_decoder, packet),
+    with {:ok, decoded} <- Wire.decode(packet),
          {:ok, message} <- set_return_route(decoded, UDPAddress.new(from_ip, from_port)),
          :ok <- Router.route(message) do
       Telemetry.emit_event(function_name, metadata: %{name: "successfully_decoded"})
@@ -108,7 +106,7 @@ defmodule Ockam.Transport.UDP.Listener do
     {function_name, _} = __ENV__.function
 
     with {:ok, destination, message} <- pick_destination_and_set_onward_route(message),
-         {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, message),
+         {:ok, encoded_message} <- Wire.encode(message),
          :ok <- :gen_udp.send(socket, destination.ip, destination.port, encoded_message) do
       Telemetry.emit_event(function_name, metadata: %{name: "successfully_encoded_and_sent"})
       {:ok, state}

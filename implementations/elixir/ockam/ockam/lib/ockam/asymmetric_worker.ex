@@ -104,6 +104,7 @@ defmodule Ockam.AsymmetricWorker do
 
       @doc false
       def message_type(%{onward_route: _} = message, state) do
+        ## TODO: use Address.value
         [me | _] = Message.onward_route(message)
         outer_address = state.address
         inner_address = state.inner_address

@@ -41,7 +41,7 @@ defmodule Ockam.Hub.TelemetryForwarder do
 
   @spec attach_send_to_ui(any, any, any) :: :ok | {:error, :already_exists}
   def attach_send_to_ui(host, token, _node_fqdn) do
-    event_name = [:ockam, Ockam.Node, :handle_routed_message, :start]
+    event_name = [:ockam, Ockam.Node, :handle_local_message, :start]
 
     handler = fn _event, _message, metadata, _options ->
       # 2. get message from metadata

@@ -3,8 +3,8 @@ defmodule Ockam.Wire.Binary.V2 do
 
   @behaviour Ockam.Wire
 
+  alias Ockam.Address
   alias Ockam.Message
-  alias Ockam.Wire.Binary.V2.Route
   alias Ockam.Wire.DecodeError
   alias Ockam.Wire.EncodeError
 
@@ -46,20 +46,19 @@ defmodule Ockam.Wire.Binary.V2 do
     return_route = Message.return_route(message)
     payload = Message.payload(message)
 
-    with {:ok, encoded_onward_route} <- Route.encode(onward_route),
-         {:ok, encoded_return_route} <- Route.encode(return_route),
-         encoded <-
-           :bare.encode(
-             %{
-               version: @version,
-               onward_route: encoded_onward_route,
-               return_route: encoded_return_route,
-               payload: payload
-             },
-             bare_spec(:message)
-           ) do
-      {:ok, encoded}
-    end
+    ## TODO: validate data and handle errors?
+    encoded =
+      :bare.encode(
+        %{
+          version: @version,
+          onward_route: normalize_route(onward_route),
+          return_route: normalize_route(return_route),
+          payload: payload
+        },
+        bare_spec(:message)
+      )
+
+    {:ok, encoded}
   end
 
   @doc """
@@ -72,17 +71,16 @@ defmodule Ockam.Wire.Binary.V2 do
           {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
 
   def decode(encoded) do
-    with {:ok, %{onward_route: onward_route, return_route: return_route} = decoded, _} <-
-           :bare.decode(encoded, bare_spec(:message)),
-         {:ok, decoded_onward_route} <- Route.decode(onward_route),
-         {:ok, decoded_return_route} <- Route.decode(return_route) do
-      {:ok,
-       Map.merge(decoded, %{
-         onward_route: decoded_onward_route,
-         return_route: decoded_return_route
-       })}
-    else
-      foo -> {:error, foo}
+    case :bare.decode(encoded, bare_spec(:message)) do
+      {:ok, %{onward_route: onward_route, return_route: return_route} = decoded, ""} ->
+        {:ok,
+         Map.merge(decoded, %{
+           onward_route: denormalize_route(onward_route),
+           return_route: denormalize_route(return_route)
+         })}
+
+      other ->
+        {:error, DecodeError.new(other)}
     end
   end
 
@@ -95,4 +93,13 @@ defmodule Ockam.Wire.Binary.V2 do
           formatted_error_message :: String.t()
 
   def format_error(error), do: "Unexpected error: #{inspect(error, as_binary: true)}"
+
+  def normalize_route(route) when is_list(route) do
+    ## TODO: check if all addresses are valid
+    Enum.map(route, &Address.normalize/1)
+  end
+
+  def denormalize_route(addresses) when is_list(addresses) do
+    Enum.map(addresses, &Address.denormalize/1)
+  end
 end

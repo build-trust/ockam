@@ -8,8 +8,6 @@ defmodule Ockam.Transport.TCP.Handler do
 
   require Logger
 
-  @wire_encoder_decoder Ockam.Wire.Binary.V2
-
   @address_prefix "TCP_H_"
 
   def start_link(ref, _socket, transport, opts) do
@@ -49,7 +47,7 @@ defmodule Ockam.Transport.TCP.Handler do
   def handle_info({:tcp, socket, data}, %{socket: socket, address: address} = state) do
     {function_name, _} = __ENV__.function
 
-    with {:ok, decoded} <- Ockam.Wire.decode(@wire_encoder_decoder, data),
+    with {:ok, decoded} <- Ockam.Wire.decode(data),
          {:ok, decoded} <- set_return_route(decoded, address) do
       send_to_router(decoded)
       Telemetry.emit_event(function_name, metadata: %{name: "decoded_data"})
@@ -78,7 +76,7 @@ defmodule Ockam.Transport.TCP.Handler do
         %{transport: transport, socket: socket, address: address} = state
       ) do
     with {:ok, message} <- set_onward_route(message, address),
-         {:ok, encoded} <- Ockam.Wire.encode(@wire_encoder_decoder, message) do
+         {:ok, encoded} <- Ockam.Wire.encode(message) do
       transport.send(socket, encoded)
     else
       a ->

@@ -12,8 +12,6 @@ defmodule Ockam.Stream.Client.BiDirectional do
 
   require Logger
 
-  @transport_message_encoder Ockam.Wire.Binary.V2
-
   @consumer_address_prefix "STB_C_"
 
   @doc """
@@ -81,7 +79,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
   @bare_message {:struct, [return_stream: :string, message: :data]}
 
   def encode_message(%{return_stream: stream, message: message}) do
-    with {:ok, wire_message} <- Ockam.Wire.encode(@transport_message_encoder, message) do
+    with {:ok, wire_message} <- Ockam.Wire.encode(message) do
       {:ok,
        :bare.encode(
          %{return_stream: stream, message: wire_message},
@@ -93,7 +91,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
   def decode_message(data) do
     case :bare.decode(data, @bare_message) do
       {:ok, %{return_stream: stream, message: wire_message}, ""} ->
-        case Ockam.Wire.decode(@transport_message_encoder, wire_message) do
+        case Ockam.Wire.decode(wire_message) do
           {:ok, message} ->
             {:ok, %{return_stream: stream, message: message}}
 

@@ -173,7 +173,7 @@ defmodule Ockam.Hub do
                 metadata_tag_keys: [:message, :return_value]
               },
               %{
-                name: [:ockam, Ockam.Node, :handle_routed_message, :start],
+                name: [:ockam, Ockam.Node, :handle_local_message, :start],
                 metadata_tag_keys: [:message, :return_value]
               },
               %{

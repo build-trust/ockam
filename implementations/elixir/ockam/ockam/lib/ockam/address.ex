@@ -7,10 +7,9 @@ defmodule Ockam.Address do
   @typedoc "An integer between 0 and 255 that represents the type of an address."
   @type type :: 0..255 | atom
 
-  @typedoc "Address can be a string, a {type, data} typle or a %Ockam.Address{} structure"
-  @type t() :: String.t() | {type(), binary()} | %__MODULE__{type: type(), value: binary()}
-  @type t(address_type) ::
-          {address_type, binary()} | %__MODULE__{type: address_type, value: binary()}
+  @typedoc "Address can be a string or an %Ockam.Address{} structure"
+  @type t() :: String.t() | %__MODULE__{type: type(), value: binary()}
+  @type t(address_type) :: %__MODULE__{type: address_type, value: binary()}
 
   @type route() :: [t()]
 
@@ -32,11 +31,17 @@ defmodule Ockam.Address do
   @spec type(t()) :: type()
 
   def type(string) when is_binary(string), do: 0
-  def type({type, _data}) when is_address_type(type), do: type
   def type(%__MODULE__{type: type}) when is_address_type(type), do: type
 
   @spec value(t()) :: binary()
   def value(string) when is_binary(string), do: string
-  def value({_type, value}) when is_binary(value), do: value
   def value(%__MODULE__{value: value}) when is_binary(value), do: value
+
+  def normalize(address) do
+    %{type: type(address), value: value(address)}
+  end
+
+  def denormalize(%{type: 0, value: string}), do: string
+  def denormalize(string) when is_binary(string), do: string
+  def denormalize(%{} = address), do: struct(__MODULE__, address)
 end
