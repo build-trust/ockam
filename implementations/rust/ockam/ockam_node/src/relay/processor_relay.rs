@@ -56,7 +56,7 @@ where
             // Then select over the two futures
             tokio::select! {
                 _ = shutdown_signal => {
-                    info!("Shutting down processor {}", ctx_addr);
+                    debug!("Shutting down processor {}", ctx_addr);
                 },
                 _ = run_loop => {}
             };
