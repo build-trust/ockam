@@ -27,6 +27,9 @@ trim = true
 conventional_commits = true
 # regex for parsing and grouping commits
 commit_parsers = [
+    { message = "^.*crate release", skip = true},
+    { message = "^.*update crates changelog", skip = true},
+    { message = "^ci", skip = true},
     { message = "^.*: add", group = "Added"},
     { message = "^.*: support", group = "Added"},
     { message = "^.*: remove", group = "Removed"},
@@ -34,9 +37,6 @@ commit_parsers = [
     { message = "^test", group = "Fixed"},
     { message = "^fix", group = "Fixed"},
     { message = "^.*: fix", group = "Fixed"},
-    { message = "^.*crate release", skip = true},
-    { message = "^.*update crates changelog", skip = true},
-    { message = "^ci", skip = true},
     { message = "^.*", group = "Changed"},
 ]
 # filter out the commits that are not matched by commit parsers
