@@ -8,5 +8,5 @@ sign-commit = true
 pre-release-commit-message = "ci: crate release {{crate_name}} version {{version}}"
 pre-release-replacements = [
   {file="README.md", search="= \".*\"", replace="= \"{{version}}\""},
-  {file="CHANGELOG.md", search="## unreleased", replace="## {{version}} - {{date}}"},
+  {file="CHANGELOG.md", min=0, search="## unreleased", replace="## {{version}} - {{date}}"},
 ]
