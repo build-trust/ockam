@@ -9,7 +9,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 target_include_directories(ockam_ffi_interface INTERFACE ${INCLUDE_DIR})
 
-file(COPY ../../../../../../rust/ockam/ockam_ffi/include/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
+file(COPY ../../../../../../rust/ockam/ockam_ffi/include/ockam/vault.h DESTINATION ${INCLUDE_DIR}/ockam)
 
 target_sources(
   ockam_ffi_interface
