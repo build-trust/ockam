@@ -156,6 +156,82 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
 }
 
 #[crate::test]
+async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
+    receiver_with_behavior(
+        ctx,
+        "pipe-receiver",
+        PipeBehavior::with(ReceiverConfirm).attach(ReceiverOrdering::new()),
+    )
+    .await?;
+
+    let tx = connect_static_with_behavior(
+        ctx,
+        "pipe-receiver",
+        PipeBehavior::with(SenderConfirm::new()),
+    )
+    .await?;
+
+    let sent_msg1 = String::from("Message number one");
+    info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
+    ctx.send(vec![tx.clone(), "app".into()], sent_msg1.clone())
+        .await?;
+
+    let sent_msg2 = String::from("Message number two");
+    info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
+    ctx.send(vec![tx.clone(), "app".into()], sent_msg2.clone())
+        .await?;
+
+    let msg1 = ctx.receive().await?;
+    info!("App reiceved msg: '{}'", msg1);
+    assert_eq!(msg1, sent_msg1);
+
+    let msg2 = ctx.receive().await?;
+    info!("App reiceved msg: '{}'", msg2);
+    assert_eq!(msg2, sent_msg2);
+
+    ctx.stop().await
+}
+
+/// A test for a pipe that enforces ordering _and_ sends confirm
+/// messages but with a flipped behaviour order on the receiver end
+#[crate::test]
+async fn static_confirm_ordering_pipe_reversed(ctx: &mut Context) -> Result<()> {
+    receiver_with_behavior(
+        ctx,
+        "pipe-receiver",
+        PipeBehavior::with(ReceiverOrdering::new()).attach(ReceiverConfirm),
+    )
+    .await?;
+
+    let tx = connect_static_with_behavior(
+        ctx,
+        "pipe-receiver",
+        PipeBehavior::with(SenderConfirm::new()),
+    )
+    .await?;
+
+    let sent_msg1 = String::from("Message number one");
+    info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
+    ctx.send(vec![tx.clone(), "app".into()], sent_msg1.clone())
+        .await?;
+
+    let sent_msg2 = String::from("Message number two");
+    info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
+    ctx.send(vec![tx.clone(), "app".into()], sent_msg2.clone())
+        .await?;
+
+    let msg1 = ctx.receive().await?;
+    info!("App reiceved msg: '{}'", msg1);
+    assert_eq!(msg1, sent_msg1);
+
+    let msg2 = ctx.receive().await?;
+    info!("App reiceved msg: '{}'", msg2);
+    assert_eq!(msg2, sent_msg2);
+
+    ctx.stop().await
+}
+
+#[crate::test]
 async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
     // Create a pipe spawn listener and connect to it via a dynamic sender
     let listener = listen(ctx).await.unwrap();
