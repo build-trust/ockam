@@ -171,3 +171,35 @@ async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
 
     ctx.stop().await
 }
+
+#[crate::test]
+async fn layered_pipe(ctx: &mut Context) -> Result<()> {
+    // This test creates a pipe with multiple behaviours via layered
+    // workers.
+    //
+    // /------\      /---------\       /---------\      /---------\      /---------\
+    // | app  | ---> | confirm | --->  | ordered | -->  | ordered | -->  | confirm | -->
+    // |      |      |  sender |       |  sender |      |receiver |      |receiver |
+    // \------/      \--------/        \--------/       \--------/       \--------/
+    //
+
+    // First create the ordered pipe pair
+    receiver_with_behavior(ctx, "order-receiver", ReceiverOrdering::new()).await?;
+    let ord_tx = connect_static(ctx, "order-receiver").await?;
+
+    // Then create the confirm pipe pair
+    receiver_with_behavior(ctx, "confirm-receiver", ReceiverOrdering::new()).await?;
+    let confirm_tx = connect_static(ctx, vec![ord_tx.clone(), "confirm-receiver".into()]).await?;
+
+    // Then we can send a message through this concoction
+    let msg = "Hello through nested pipes!".to_string();
+    ctx.send(vec![confirm_tx, "app".into()], msg.clone())
+        .await?;
+
+    // Wait for the message to arrive
+    let msg_recv = ctx.receive().await?;
+    info!("App received message: {}", msg_recv);
+    assert_eq!(msg_recv, msg);
+
+    ctx.stop().await
+}
