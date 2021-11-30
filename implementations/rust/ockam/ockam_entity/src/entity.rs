@@ -2,7 +2,7 @@ use crate::EntityError::IdentityApiFailed;
 use crate::{
     profile::Profile, AuthenticationProof, Changes, Contact, EntityBuilder, Identity,
     IdentityRequest, IdentityResponse, Lease, MaybeContact, ProfileChangeEvent, ProfileIdentifier,
-    TrustPolicy, TrustPolicyImpl, TTL,
+    SecureChannelRef, TrustPolicy, TrustPolicyImpl, TTL,
 };
 use ockam_core::compat::{
     string::{String, ToString},
@@ -321,7 +321,7 @@ impl Entity {
         &mut self,
         route: impl Into<Route>,
         trust_policy: impl TrustPolicy,
-    ) -> Result<Address> {
+    ) -> Result<SecureChannelRef> {
         let profile = self
             .current_profile()
             .await
@@ -329,7 +329,7 @@ impl Entity {
             .expect("no current profile");
         let ctx = self.handle.ctx();
         let trust_policy_address = TrustPolicyImpl::create_worker(ctx, trust_policy).await?;
-        if let Res::CreateSecureChannel(address) = self
+        if let Res::CreateSecureChannel(worker_ref) = self
             .call(CreateSecureChannel(
                 profile.identifier().await.expect("couldn't get profile id"),
                 route.into(),
@@ -337,7 +337,7 @@ impl Entity {
             ))
             .await?
         {
-            Ok(address)
+            Ok(worker_ref)
         } else {
             err()
         }

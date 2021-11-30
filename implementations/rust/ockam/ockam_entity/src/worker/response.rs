@@ -1,7 +1,7 @@
-use crate::{AuthenticationProof, Changes, Contact, Lease, ProfileIdentifier};
+use crate::{AuthenticationProof, Changes, Contact, Lease, ProfileIdentifier, SecureChannelRef};
 use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, Message};
+use ockam_core::Message;
 use ockam_vault::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +29,7 @@ pub enum IdentityResponse {
     VerifyChanges(bool),
     VerifyAndAddContact(bool),
     CreateSecureChannelListener,
-    CreateSecureChannel(Address),
+    CreateSecureChannel(SecureChannelRef),
     Lease(Lease),
     #[cfg(feature = "credentials")]
     CredentialResponse(IdentityCredentialResponse),

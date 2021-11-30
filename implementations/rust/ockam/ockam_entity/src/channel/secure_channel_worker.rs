@@ -1,6 +1,7 @@
 use crate::{
     EntityChannelMessage, EntityError, EntitySecureChannelLocalInfo, Identity, ProfileIdentifier,
-    SecureChannelTrustInfo, TrustPolicy,
+    SecureChannelApiRequest, SecureChannelApiResponse, SecureChannelRef, SecureChannelTrustInfo,
+    TrustPolicy,
 };
 use core::future::Future;
 use core::pin::Pin;
@@ -62,6 +63,7 @@ struct Initialized {
     local_secure_channel_address: Address,
     remote_profile_secure_channel_address: Address,
     their_profile_id: ProfileIdentifier,
+    auth_hash: [u8; 32],
 }
 
 enum State<I: Identity, T: TrustPolicy> {
@@ -76,6 +78,7 @@ pub(crate) struct SecureChannelWorker<I: Identity, T: TrustPolicy> {
     is_initiator: bool,
     self_local_address: Address,
     self_remote_address: Address,
+    self_api_address: Address,
     state: Option<State<I, T>>,
 }
 
@@ -86,7 +89,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         identity: I,
         trust_policy: T,
         vault: impl XXVault,
-    ) -> Result<Address> {
+    ) -> Result<SecureChannelRef> {
         let child_address = Address::random(0);
         let mut child_ctx = ctx.new_context(child_address.clone()).await?;
 
@@ -95,6 +98,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         // Second for remote workers to decrypt their messages
         let self_local_address: Address = random();
         let self_remote_address: Address = random();
+        let self_api_address: Address = random();
 
         let initiator = XXNewKeyExchanger::new(vault.async_try_clone().await?)
             .initiator()
@@ -124,11 +128,16 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             is_initiator: true,
             self_local_address: self_local_address.clone(),
             self_remote_address: self_remote_address.clone(),
+            self_api_address: self_api_address.clone(),
             state: Some(state),
         };
 
         ctx.start_worker(
-            vec![self_local_address.clone(), self_remote_address.clone()],
+            vec![
+                self_local_address.clone(),
+                self_remote_address.clone(),
+                self_api_address.clone(),
+            ],
             worker,
         )
         .await?;
@@ -144,7 +153,9 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             )
             .await?;
 
-        Ok(self_local_address)
+        let worker_ref = SecureChannelRef::new(self_api_address, self_local_address);
+
+        Ok(worker_ref)
     }
 
     pub(crate) async fn create_responder(
@@ -171,6 +182,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         // Second for remote workers to decrypt their messages
         let self_local_address: Address = random();
         let self_remote_address: Address = random();
+        let self_api_address: Address = random();
 
         // Change completed callback address and forward message for regular key exchange to happen
         let body = CreateResponderChannelMessage::new(
@@ -190,6 +202,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             is_initiator: false,
             self_local_address: self_local_address.clone(),
             self_remote_address: self_remote_address.clone(),
+            self_api_address: self_api_address.clone(),
             state: Some(state),
         };
 
@@ -319,6 +332,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
                 local_secure_channel_address: state.channel.address(),
                 remote_profile_secure_channel_address,
                 their_profile_id,
+                auth_hash: state.channel.auth_hash(),
             }));
 
             info!(
@@ -404,6 +418,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
                 local_secure_channel_address: state.local_secure_channel_address,
                 remote_profile_secure_channel_address,
                 their_profile_id,
+                auth_hash: state.auth_hash,
             }));
 
             info!(
@@ -522,6 +537,38 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             }
         }
     }
+
+    async fn handle_api(
+        &mut self,
+        ctx: &mut Context,
+        msg: Routed<<Self as Worker>::Message>,
+        s: State<I, T>,
+    ) -> Result<()> {
+        let return_route = msg.return_route();
+
+        let msg = SecureChannelApiRequest::decode(msg.payload())?;
+
+        match msg {
+            SecureChannelApiRequest::GetAuthHash => {
+                if let State::Initialized(s) = s {
+                    ctx.send_from_address(
+                        return_route,
+                        SecureChannelApiResponse::GetAuthHash(s.auth_hash),
+                        self.self_api_address.clone(),
+                    )
+                    .await?;
+
+                    self.state = Some(State::Initialized(s));
+                } else {
+                    self.state = Some(s);
+                    // Return error
+                    panic!()
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -556,7 +603,12 @@ impl<I: Identity, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
     ) -> Result<()> {
         let msg_addr = msg.msg_addr();
 
-        match self.take_state()? {
+        let s = self.take_state()?;
+        if msg_addr == self.self_api_address {
+            return self.handle_api(ctx, msg, s).await;
+        }
+
+        match s {
             State::InitiatorStartChannel(_) => {
                 return Err(EntityError::InvalidSecureChannelInternalState.into())
             }
