@@ -406,6 +406,11 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
                 their_profile_id,
             }));
 
+            info!(
+                "Initialized ProfileSecureChannel Responder at local: {}, remote: {}",
+                &self.self_local_address, &self.self_remote_address
+            );
+
             Ok(())
         } else {
             Err(EntityError::InvalidSecureChannelInternalState.into())
