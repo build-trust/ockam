@@ -18,7 +18,7 @@ use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 #[derive(Serialize, Deserialize, Message)]
 pub(crate) struct AuthenticationConfirmation(pub Address);
@@ -501,10 +501,18 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         let local_info = LocalInfo::new(state.their_profile_id.clone());
         let local_info = local_info.encode()?;
 
-        ctx.forward(LocalMessage::new(transport_msg, local_info))
-            .await?;
+        let msg = LocalMessage::new(transport_msg, local_info);
 
-        Ok(())
+        match ctx.forward(msg).await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                warn!(
+                    "{} forwarding decrypted message from {}",
+                    err, self.self_local_address
+                );
+                Ok(())
+            }
+        }
     }
 }
 
