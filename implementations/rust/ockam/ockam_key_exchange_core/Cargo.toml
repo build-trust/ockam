@@ -11,6 +11,7 @@ categories = ["cryptography", "asynchronous", "authentication","embedded", "no-s
 keywords = ["ockam", "crypto", "kex", "cryptography", "encryption"]
 description = """The Ockam Key Exchange trait.
 """
+publish = true
 
 [features]
 default = ["std"]

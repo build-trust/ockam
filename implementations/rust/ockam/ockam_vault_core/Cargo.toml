@@ -11,6 +11,7 @@ categories = ["cryptography", "asynchronous", "authentication","no-std","algorit
 keywords = ["ockam", "crypto", "cryptography", "authentication", "no-std"]
 description = """The Ockam Vault trait.
 """
+publish = true
 
 [features]
 default = ["std"]

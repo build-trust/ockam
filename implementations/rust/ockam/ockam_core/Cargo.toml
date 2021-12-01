@@ -12,6 +12,7 @@ keywords = ["ockam", "crypto", "p2p", "cryptography", "encryption"]
 description = """
 Core types of the Ockam library.
 """
+publish = true
 
 [features]
 default = ["std"]

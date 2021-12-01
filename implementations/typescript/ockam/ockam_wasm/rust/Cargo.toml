@@ -3,6 +3,7 @@ name = "ockam_wasm"
 version = "0.0.0"
 authors = ["Ockam Developers"]
 edition = "2018"
+publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]

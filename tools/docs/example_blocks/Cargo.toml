@@ -3,5 +3,6 @@ name = "example_blocks"
 license = "Apache-2.0"
 version = "0.1.0"
 edition = "2018"
+publish = false
 
 [dependencies]

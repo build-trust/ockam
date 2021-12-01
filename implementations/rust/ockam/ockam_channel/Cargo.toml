@@ -12,6 +12,7 @@ keywords = ["ockam", "crypto", "encryption", "authentication"]
 description = """Channel is an abstraction responsible for sending messages (usually over the network)
 in encrypted and authenticated way.
 """
+publish = true
 
 [features]
 default = ["std"]

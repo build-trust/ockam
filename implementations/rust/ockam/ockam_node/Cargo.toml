@@ -9,6 +9,7 @@ keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryptio
 license = "Apache-2.0"
 name = "ockam_node"
 version = "0.39.0"
+publish = true
 
 [features]
 default = ["std"]

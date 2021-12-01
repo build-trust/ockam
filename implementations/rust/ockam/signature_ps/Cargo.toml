@@ -11,6 +11,7 @@ categories = ["cryptography", "asynchronous", "authentication","no-std","algorit
 keywords = ["ockam", "crypto", "signature", "signing", "bls"]
 description = """The Ockam PS signature impementation.
 """
+publish = true
 
 [features]
 

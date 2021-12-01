@@ -11,6 +11,7 @@ keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryptio
 readme = "README.md"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_test_suite"
+publish = true
 
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "^0.40.0"}
