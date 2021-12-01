@@ -9,7 +9,7 @@ use crate::WebSocketError;
 #[test]
 fn code_and_domain() {
     let ws_errors_map = IntoIter::new([
-        (12, WebSocketError::Transport(TransportError::GenericIo)),
+        (13, WebSocketError::Transport(TransportError::GenericIo)),
         (0, WebSocketError::Http),
         (1, WebSocketError::Tls),
     ])

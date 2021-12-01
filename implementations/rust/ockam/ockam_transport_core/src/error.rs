@@ -4,7 +4,7 @@ use ockam_core::compat::io;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TransportError {
     /// Failed to send a malformed message
-    SendBadMessage,
+    SendBadMessage = 1,
     /// Failed to receive a malformed message
     RecvBadMessage,
     /// Failed to bind to the desired socket

@@ -6,19 +6,19 @@ use crate::TransportError;
 #[test]
 fn code_and_domain() {
     let tr_errors_map = IntoIter::new([
-        (0, TransportError::SendBadMessage),
-        (1, TransportError::RecvBadMessage),
-        (2, TransportError::BindFailed),
-        (3, TransportError::ConnectionDrop),
-        (4, TransportError::AlreadyConnected),
-        (5, TransportError::PeerNotFound),
-        (6, TransportError::PeerBusy),
-        (7, TransportError::UnknownRoute),
-        (8, TransportError::InvalidAddress),
-        (9, TransportError::Capacity),
-        (10, TransportError::Encoding),
-        (11, TransportError::Protocol),
-        (12, TransportError::GenericIo),
+        (1, TransportError::SendBadMessage),
+        (2, TransportError::RecvBadMessage),
+        (3, TransportError::BindFailed),
+        (4, TransportError::ConnectionDrop),
+        (5, TransportError::AlreadyConnected),
+        (6, TransportError::PeerNotFound),
+        (7, TransportError::PeerBusy),
+        (8, TransportError::UnknownRoute),
+        (9, TransportError::InvalidAddress),
+        (10, TransportError::Capacity),
+        (11, TransportError::Encoding),
+        (12, TransportError::Protocol),
+        (13, TransportError::GenericIo),
     ])
     .collect::<HashMap<_, _>>();
     for (expected_code, tr_err) in tr_errors_map {
