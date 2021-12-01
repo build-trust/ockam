@@ -1,6 +1,6 @@
 use crate::{
-    parse_socket_addr, PortalWorkerPair, TcpInletListenProcessor, TcpListenProcessor,
-    TcpSendWorker, WorkerPair, TCP,
+    parse_socket_addr, TcpInletListenProcessor, TcpListenProcessor, TcpPortalWorker, TcpSendWorker,
+    WorkerPair, TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -65,12 +65,13 @@ impl TcpRouterHandle {
     /// Bind an incoming portal inlet connection listener for this router
     pub async fn bind_inlet(
         &self,
-        onward_route: impl Into<Route>,
+        outlet_listener_route: impl Into<Route>,
         addr: impl Into<SocketAddr>,
     ) -> Result<Address> {
         let socket_addr = addr.into();
         let addr =
-            TcpInletListenProcessor::start(&self.ctx, onward_route.into(), socket_addr).await?;
+            TcpInletListenProcessor::start(&self.ctx, outlet_listener_route.into(), socket_addr)
+                .await?;
 
         Ok(addr)
     }
@@ -119,10 +120,14 @@ impl TcpRouterHandle {
     }
 
     /// Establish an outgoing TCP connection for Portal Outlet
-    pub async fn connect_outlet<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
-        let (peer_addr, _) = Self::resolve_peer(peer.as_ref())?;
+    pub async fn connect_outlet(
+        &self,
+        peer: impl Into<String>,
+        pong_route: Route,
+    ) -> Result<Address> {
+        let (peer_addr, _) = Self::resolve_peer(peer)?;
 
-        let address = PortalWorkerPair::new_outlet(&self.ctx, peer_addr).await?;
+        let address = TcpPortalWorker::new_outlet(&self.ctx, peer_addr, pong_route).await?;
 
         Ok(address)
     }

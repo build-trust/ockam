@@ -101,7 +101,7 @@ impl TcpTransport {
 
 impl TcpTransport {
     /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
-    /// Messages and forward them to Outlet using onward_route. Inlet is bidirectional: Ockam
+    /// Messages and forward them to Outlet using outlet_route. Inlet is bidirectional: Ockam
     /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
     /// Pair of corresponding Inlet and Outlet is called Portal.
     ///
@@ -118,15 +118,15 @@ impl TcpTransport {
     /// # tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
-    pub async fn create_inlet<S: AsRef<str>>(
+    pub async fn create_inlet(
         &self,
-        bind_addr: S,
-        onward_route: impl Into<Route>,
+        bind_addr: impl Into<String>,
+        outlet_route: impl Into<Route>,
     ) -> Result<Address> {
-        let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
+        let bind_addr = parse_socket_addr(bind_addr.into())?;
         let addr = self
             .router_handle
-            .bind_inlet(onward_route, bind_addr)
+            .bind_inlet(outlet_route, bind_addr)
             .await?;
 
         Ok(addr)
