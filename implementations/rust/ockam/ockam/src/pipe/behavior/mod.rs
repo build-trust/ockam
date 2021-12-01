@@ -58,7 +58,7 @@ pub enum PipeModifier {
 
 /// Structure to combine a set of pipe BehaviorHooks
 pub struct PipeBehavior {
-    hooks: Vec<Box<dyn BehaviorHook + Send + 'static>>,
+    hooks: Vec<Box<dyn BehaviorHook + Send + Sync + 'static>>,
 }
 
 impl Clone for PipeBehavior {
@@ -73,14 +73,14 @@ impl Clone for PipeBehavior {
     }
 }
 
-impl<T: BehaviorHook + Send + 'static> From<T> for PipeBehavior {
+impl<T: BehaviorHook + Send + Sync + 'static> From<T> for PipeBehavior {
     fn from(hook: T) -> Self {
         Self::with(hook)
     }
 }
 
 impl PipeBehavior {
-    pub fn with<T: BehaviorHook + Send + 'static>(t: T) -> Self {
+    pub fn with<T: BehaviorHook + Send + Sync + 'static>(t: T) -> Self {
         Self {
             hooks: vec![Box::new(t)],
         }
@@ -90,9 +90,15 @@ impl PipeBehavior {
         Self { hooks: vec![] }
     }
 
-    pub fn attach<T: BehaviorHook + Send + 'static>(mut self, t: T) -> Self {
-        self.hooks.push(Box::new(t));
+    /// Attach a new BehaviorHook in a chainable manner
+    pub fn attach<T: BehaviorHook + Send + Sync + 'static>(mut self, t: T) -> Self {
+        self.insert(t);
         self
+    }
+
+    /// Insert a new BehaviorHook in place
+    pub fn insert<T: BehaviorHook + Send + Sync + 'static>(&mut self, t: T) {
+        self.hooks.push(Box::new(t));
     }
 
     /// Run all external message hooks associated with this pipe

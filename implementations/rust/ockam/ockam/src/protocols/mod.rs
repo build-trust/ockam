@@ -7,6 +7,7 @@ use crate::{Message, Result};
 use ockam_core::{compat::vec::Vec, ProtocolId};
 use serde::{Deserialize, Serialize};
 
+pub mod channel;
 pub mod pipe;
 pub mod stream;
 

@@ -18,7 +18,7 @@ async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = ctx.receive().await?;
-    info!("App received msg: '{}'", msg);
+    info!("App reiceved msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
     ctx.stop().await
@@ -122,7 +122,7 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let invalid = ctx.receive::<String>().await?;
-    warn!("App received msg: '{}'", invalid);
+    warn!("App reiceved msg: '{}'", invalid);
     assert_eq!(invalid, "Shut it down...".to_string());
 
     ctx.stop().await
@@ -155,6 +155,7 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
+/// A test for a pipe that enforces ordering _and_ sends confirm messages
 #[crate::test]
 async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(

@@ -137,8 +137,15 @@ pub struct RouteBuilder<'r> {
     write_back: Option<&'r mut Route>,
 }
 
+impl Default for RouteBuilder<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RouteBuilder<'_> {
-    fn new() -> Self {
+    /// Create a new empty route builder
+    pub fn new() -> Self {
         Self {
             inner: VecDeque::new(),
             write_back: None,
