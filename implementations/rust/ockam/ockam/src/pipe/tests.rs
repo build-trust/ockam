@@ -18,7 +18,7 @@ async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg);
+    info!("App received msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
     ctx.stop().await
@@ -122,10 +122,10 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let invalid = ctx.receive::<String>().await?;
-    warn!("App reiceved msg: '{}'", invalid);
+    warn!("App received msg: '{}'", invalid);
     assert_eq!(invalid, "Shut it down...".to_string());
 
-    ctx.stop_now().await
+    ctx.stop().await
 }
 
 /// A simple test to ensure static ordering pipes can deliver messages
