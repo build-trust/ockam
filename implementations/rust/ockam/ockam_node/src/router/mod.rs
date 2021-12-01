@@ -109,122 +109,134 @@ impl Router {
         }
     }
 
-    /// Block current task running this router.  Return fatal errors
-    async fn run_inner(&mut self) -> Result<()> {
+    async fn handle_msg(&mut self, msg: NodeMessage) -> Result<bool> {
         use NodeMessage::*;
-        while let Some(msg) = self.receiver.recv().await {
-            match msg {
-                // Successful router registration command
-                Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
-                    trace!("Registering new router for type {}", tt);
+        match msg {
+            // Successful router registration command
+            Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
+                trace!("Registering new router for type {}", tt);
 
-                    self.external.insert(tt, addr);
-                    sender
-                        .send(NodeReply::ok())
-                        .await
-                        .map_err(|_| Error::InternalIOFailure)?
-                }
-                // Rejected router registration command
-                Router(_, _, sender) => sender
-                    .send(NodeReply::router_exists())
+                self.external.insert(tt, addr);
+                sender
+                    .send(NodeReply::ok())
                     .await
-                    .map_err(|_| Error::InternalIOFailure)?,
+                    .map_err(|_| Error::InternalIOFailure)?
+            }
+            // Rejected router registration command
+            Router(_, _, sender) => sender
+                .send(NodeReply::router_exists())
+                .await
+                .map_err(|_| Error::InternalIOFailure)?,
 
-                //// ==! Basic worker control
-                StartWorker {
-                    addrs,
-                    senders,
-                    bare,
-                    ref reply,
-                } => start_worker::exec(self, addrs, senders, bare, reply).await?,
-                StopWorker(ref addr, ref reply) => stop_worker::exec(self, addr, reply).await?,
+            //// ==! Basic worker control
+            StartWorker {
+                addrs,
+                senders,
+                bare,
+                ref reply,
+            } => start_worker::exec(self, addrs, senders, bare, reply).await?,
+            StopWorker(ref addr, ref reply) => stop_worker::exec(self, addr, reply).await?,
 
-                //// ==! Basic processor control
-                StartProcessor(addr, senders, ref reply) => {
-                    start_processor::exec(self, addr, senders, reply).await?
-                }
-                StopProcessor(ref addr, ref reply) => {
-                    stop_processor::exec(self, addr, reply).await?
-                }
+            //// ==! Basic processor control
+            StartProcessor(addr, senders, ref reply) => {
+                start_processor::exec(self, addr, senders, reply).await?
+            }
+            StopProcessor(ref addr, ref reply) => stop_processor::exec(self, addr, reply).await?,
 
-                //// ==! Core node controls
-                StopNode(ShutdownType::Graceful(timeout), reply) => {
-                    if shutdown::graceful(self, timeout, reply).await? {
-                        info!("No more workers left.  Goodbye!");
-                        if let Some(sender) = self.state.stop_reply() {
-                            sender
-                                .send(NodeReply::ok())
-                                .await
-                                .map_err(|_| Error::InternalIOFailure)?;
-                            break;
-                        };
-                    }
-                }
-                StopNode(ShutdownType::Immediate, reply) => {
-                    shutdown::immediate(self, reply).await?;
-                    break;
-                }
-
-                AbortNode => {
+            //// ==! Core node controls
+            StopNode(ShutdownType::Graceful(timeout), reply) => {
+                if shutdown::graceful(self, timeout, reply).await? {
+                    info!("No more workers left.  Goodbye!");
                     if let Some(sender) = self.state.stop_reply() {
                         sender
                             .send(NodeReply::ok())
                             .await
                             .map_err(|_| Error::InternalIOFailure)?;
-                        self.map.internal.clear();
+                        return Ok(true);
+                    };
+                }
+            }
+            StopNode(ShutdownType::Immediate, reply) => {
+                shutdown::immediate(self, reply).await?;
+                return Ok(true);
+            }
+
+            AbortNode => {
+                if let Some(sender) = self.state.stop_reply() {
+                    sender
+                        .send(NodeReply::ok())
+                        .await
+                        .map_err(|_| Error::InternalIOFailure)?;
+                    self.map.internal.clear();
+                    return Ok(true);
+                }
+            }
+
+            StopAck(addr) if self.state.running() => {
+                debug!("Received shutdown ACK for address {}", addr);
+                if let Some(rec) = self.map.internal.remove(&addr) {
+                    rec.address_set().iter().for_each(|addr| {
+                        self.map.addr_map.remove(addr);
+                    });
+                }
+            }
+
+            StopAck(addr) => {
+                if shutdown::ack(self, addr).await? {
+                    info!("No more workers left.  Goodbye!");
+                    if let Some(sender) = self.state.stop_reply() {
+                        sender
+                            .send(NodeReply::ok())
+                            .await
+                            .map_err(|_| Error::InternalIOFailure)?;
+                        return Ok(true);
+                    }
+                }
+            }
+
+            ListWorkers(sender) => sender
+                .send(NodeReply::workers(
+                    self.map.internal.keys().cloned().collect(),
+                ))
+                .await
+                .map_err(|_| Error::InternalIOFailure)?,
+
+            SetCluster(addr, label, reply) => {
+                debug!("Setting cluster on address {}", addr);
+                let msg = self.map.set_cluster(label, addr);
+                reply
+                    .send(msg)
+                    .await
+                    .map_err(|_| Error::InternalIOFailure)
+                    .expect("Failed to send a message for some reason,,,");
+            }
+
+            // Handle route/ sender requests
+            SenderReq(ref addr, ref reply) => match determine_type(addr) {
+                RouteType::Internal(ref addr) => utils::resolve(self, addr, reply, false).await?,
+                RouteType::External(tt) => {
+                    let addr = utils::router_addr(self, tt)?;
+                    utils::resolve(self, &addr, reply, true).await?
+                }
+            },
+        }
+
+        Ok(false)
+    }
+
+    /// Block current task running this router.  Return fatal errors
+    async fn run_inner(&mut self) -> Result<()> {
+        while let Some(msg) = self.receiver.recv().await {
+            let msg_str = format!("{}", msg);
+            match self.handle_msg(msg).await {
+                Ok(should_break) => {
+                    if should_break {
                         break;
                     }
                 }
-
-                StopAck(addr) if self.state.running() => {
-                    debug!("Received shutdown ACK for address {}", addr);
-                    if let Some(rec) = self.map.internal.remove(&addr) {
-                        rec.address_set().iter().for_each(|addr| {
-                            self.map.addr_map.remove(addr);
-                        });
-                    }
+                Err(err) => {
+                    warn!("Router error: {} while handling {}", err, msg_str);
                 }
-
-                StopAck(addr) => {
-                    if shutdown::ack(self, addr).await? {
-                        info!("No more workers left.  Goodbye!");
-                        if let Some(sender) = self.state.stop_reply() {
-                            sender
-                                .send(NodeReply::ok())
-                                .await
-                                .map_err(|_| Error::InternalIOFailure)?;
-                            break;
-                        }
-                    }
-                }
-
-                ListWorkers(sender) => sender
-                    .send(NodeReply::workers(
-                        self.map.internal.keys().cloned().collect(),
-                    ))
-                    .await
-                    .map_err(|_| Error::InternalIOFailure)?,
-
-                SetCluster(addr, label, reply) => {
-                    debug!("Setting cluster on address {}", addr);
-                    let msg = self.map.set_cluster(label, addr);
-                    reply
-                        .send(msg)
-                        .await
-                        .map_err(|_| Error::InternalIOFailure)
-                        .expect("Failed to send a message for some reason,,,");
-                }
-
-                // Handle route/ sender requests
-                SenderReq(ref addr, ref reply) => match determine_type(addr) {
-                    RouteType::Internal(ref addr) => {
-                        utils::resolve(self, addr, reply, false).await?
-                    }
-                    RouteType::External(tt) => {
-                        let addr = utils::router_addr(self, tt)?;
-                        utils::resolve(self, &addr, reply, true).await?
-                    }
-                },
             }
         }
 
