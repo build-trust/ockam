@@ -184,6 +184,12 @@ impl<M: Message> Routed<M> {
     pub fn payload(&self) -> &[u8] {
         &self.local_msg.transport().payload
     }
+
+    /// Get underlying binary message payload
+    #[inline]
+    pub fn take_payload(self) -> Vec<u8> {
+        self.local_msg.into_transport_message().payload
+    }
 }
 
 impl<M: Message> Deref for Routed<M> {
