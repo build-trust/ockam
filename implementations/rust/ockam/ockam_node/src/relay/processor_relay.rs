@@ -56,7 +56,7 @@ where
             // Then select over the two futures
             tokio::select! {
                 _ = shutdown_signal => {
-                    info!("Shutting down processor {}", ctx_addr);
+                    debug!("Shutting down processor {}", ctx_addr);
                 },
                 _ = run_loop => {}
             };
@@ -80,7 +80,7 @@ where
         // Finally send the router a stop ACK -- log errors
         trace!("Sending shutdown ACK");
         if let Err(e) = ctx.send_stop_ack().await {
-            error!("Error occured during stop ACK sending: {}", e);
+            error!("Error occurred during stop ACK sending: {}", e);
         }
     }
 

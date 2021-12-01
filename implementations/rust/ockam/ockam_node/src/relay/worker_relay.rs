@@ -136,7 +136,7 @@ where
                         Ok(false) => {
                             break;
                         },
-                        // An error occured -- log and continue
+                        // An error occurred -- log and continue
                         Err(e) => error!("Error encountered during '{}' message handling: {}", address, e),
                     }
                 },
@@ -178,7 +178,7 @@ where
         // Finally send the router a stop ACK -- log errors
         trace!("Sending shutdown ACK");
         if let Err(e) = self.ctx.send_stop_ack().await {
-            error!("Error occured during stop ACK sending: {}", e);
+            error!("Error occurred during stop ACK sending: {}", e);
         }
     }
 

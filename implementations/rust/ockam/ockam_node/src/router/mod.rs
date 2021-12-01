@@ -90,7 +90,7 @@ impl Router {
         self.state.sender.clone()
     }
 
-    /// A utility fascade to hide failures that are not really failures
+    /// A utility facade to hide failures that are not really failures
     pub async fn run(&mut self) -> Result<()> {
         match self.run_inner().await {
             // Everything is A-OK :)

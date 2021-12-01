@@ -495,7 +495,7 @@ impl Context {
         self.register_impl(type_, addr.into()).await
     }
 
-    /// Send a shutdown acknowlegement to the router
+    /// Send a shutdown acknowledgement to the router
     pub(crate) async fn send_stop_ack(&self) -> Result<()> {
         self.sender
             .send(NodeMessage::StopAck(self.address()))

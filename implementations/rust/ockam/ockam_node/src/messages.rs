@@ -1,5 +1,6 @@
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{error::Error, relay::RelayMessage, router::SenderPair};
+use core::fmt::Formatter;
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{Address, AddressSet};
 
@@ -37,6 +38,24 @@ pub enum NodeMessage {
     SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type
     Router(u8, Address, Sender<NodeReplyResult>),
+}
+
+impl core::fmt::Display for NodeMessage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match self {
+            NodeMessage::StartWorker { .. } => write!(f, "StartWorker"),
+            NodeMessage::ListWorkers(_) => write!(f, "ListWorkers"),
+            NodeMessage::SetCluster(_, _, _) => write!(f, "SetCluster"),
+            NodeMessage::StopWorker(_, _) => write!(f, "StopWorker"),
+            NodeMessage::StartProcessor(_, _, _) => write!(f, "StartProcessor"),
+            NodeMessage::StopProcessor(_, _) => write!(f, "StopProcessor"),
+            NodeMessage::StopNode(_, _) => write!(f, "StopNode"),
+            NodeMessage::AbortNode => write!(f, "AbortNode"),
+            NodeMessage::StopAck(_) => write!(f, "StopAck"),
+            NodeMessage::SenderReq(_, _) => write!(f, "SenderReq"),
+            NodeMessage::Router(_, _, _) => write!(f, "Router"),
+        }
+    }
 }
 
 impl NodeMessage {
