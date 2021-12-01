@@ -145,7 +145,7 @@ impl Worker for TcpSendWorker {
         // Create a message buffer with pre-pended length
         let msg = prepare_message(msg.body())?;
 
-        if tx.write(msg.as_slice()).await.is_err() {
+        if tx.write_all(msg.as_slice()).await.is_err() {
             warn!("Failed to send message to peer {}", self.peer);
             ctx.stop_worker(ctx.address()).await?;
         }
