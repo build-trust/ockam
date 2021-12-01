@@ -140,9 +140,13 @@ where
                         Err(e) => error!("Error encountered during '{}' message handling: {}", address, e),
                     }
                 },
-                _ = ctrl_rx.recv() => {
-                    debug!("Relay received shutdown signal, terminating!");
-                    break;
+                result = ctrl_rx.recv() => {
+                    if result.is_some() {
+                        debug!("Relay received shutdown signal, terminating!");
+                        break;
+                    }
+
+                    // We are stopping
                 }
             };
         }
@@ -155,7 +159,7 @@ where
                 Ok(false) => {
                     break;
                 }
-                // An error occured -- log and continue
+                // An error occurred -- log and continue
                 Err(e) => error!(
                     "Error encountered during '{}' message handling: {}",
                     address, e
