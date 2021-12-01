@@ -12,6 +12,7 @@ categories = ["network-programming", "asynchronous"]
 description = """
 WebSocket Transport for the Ockam Routing Protocol.
 """
+publish = true
 
 [features]
 default = ["std"]

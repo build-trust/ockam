@@ -13,6 +13,7 @@ description = """
 TCP Transport for the Ockam Routing Protocol.
 """
 autoexamples = false
+publish = true
 
 [features]
 default = ["std"]

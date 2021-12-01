@@ -12,6 +12,7 @@ categories = ["cryptography", "asynchronous", "authentication","no-std"]
 description = """
 Ockam library types that do not need `std`.
 """
+publish = true
 
 [features]
 default = ["std"]

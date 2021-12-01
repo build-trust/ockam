@@ -12,6 +12,7 @@ categories = ["network-programming", "asynchronous"]
 description = """
 Generic Transport primitives.
 """
+publish = true
 
 [features]
 default = ["std"]

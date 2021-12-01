@@ -9,6 +9,7 @@ keywords = ["ockam", "crypto", "encryption", "authentication"]
 license = "Apache-2.0"
 name = "ockam_executor"
 version = "0.9.0"
+publish = true
 
 [features]
 default = ["std"]

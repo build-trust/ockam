@@ -11,6 +11,7 @@ categories = ["cryptography", "asynchronous", "authentication","no-std","algorit
 keywords = ["ockam", "crypto", "signature", "signing", "bls"]
 description = """The Ockam BBS+ signature impementation.
 """
+publish = true
 
 [dependencies]
 bls12_381_plus = { version = "0.5", default-features = false }

@@ -9,6 +9,7 @@ license = "Apache-2.0"
 name = "ockam_examples"
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam"
+publish = false
 
 [dependencies]
 ockam = { path = "../ockam", features = ["ockam_vault", "ockam_transport_tcp"]}

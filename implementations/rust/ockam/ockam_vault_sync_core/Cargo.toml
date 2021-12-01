@@ -12,6 +12,7 @@ keywords = ["ockam", "crypto", "cryptography"]
 description = """Syncronous wrapper that allows to have multiple Vault instances,
 that talk to the same Vault implementation without need for synchronization primitives
 """
+publish = true
 
 [features]
 default = ["std"]

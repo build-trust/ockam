@@ -11,6 +11,7 @@ categories = ["cryptography", "asynchronous", "authentication","embedded", "no-s
 keywords = ["ockam", "crypto", "x3dh", "cryptography", "encryption"]
 description = """The Ockam X3DH impementation.
 """
+publish = true
 
 [features]
 default = ["std"]
