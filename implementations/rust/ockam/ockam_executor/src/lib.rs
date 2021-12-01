@@ -8,27 +8,23 @@
 //! feature is not enabled.
 #![warn(
     //missing_docs,
-    //trivial_casts,
+    trivial_casts,
     trivial_numeric_casts,
     unused_import_braces,
     unused_qualifications
 )]
+#![allow(clippy::new_ret_no_self)]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(unused_imports, clippy::new_ret_no_self)]
 
 #[cfg(feature = "std")]
-#[allow(unused_imports)]
 #[macro_use]
 extern crate core;
 
 #[cfg(feature = "alloc")]
-#[allow(unused_imports)]
-#[macro_use]
 extern crate alloc;
 
 pub mod channel;
 pub mod executor;
-pub mod oneshot;
 pub mod runtime;
 pub mod time;
 
@@ -38,7 +34,6 @@ pub mod tokio {
         pub mod mpsc {
             pub use crate::channel::*;
         }
-        pub use crate::oneshot;
     }
     pub mod task {
         pub use crate::runtime;

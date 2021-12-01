@@ -3,8 +3,7 @@
 
 use core::future::Future;
 use core::pin::Pin;
-use core::task::{Context, Poll};
-use core::task::{RawWaker, RawWakerVTable, Waker};
+use core::task::{Context, Poll, Waker};
 use ockam_core::compat::io;
 use ockam_core::compat::sync::{Arc, Mutex};
 
@@ -109,7 +108,6 @@ impl<T: Send> Default for JoinHandle<T> {
 pub async fn yield_now() {
     #[allow(dead_code)]
     struct YieldNow {
-        counter: usize,
         yielded: bool,
     }
 
@@ -127,9 +125,5 @@ pub async fn yield_now() {
         }
     }
 
-    YieldNow {
-        counter: 0,
-        yielded: false,
-    }
-    .await
+    YieldNow { yielded: false }.await
 }

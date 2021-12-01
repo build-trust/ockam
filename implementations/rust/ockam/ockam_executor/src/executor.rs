@@ -3,16 +3,13 @@ use core::future::Future;
 use core::mem::MaybeUninit;
 use core::pin::Pin;
 use core::sync::atomic::{self, AtomicBool, AtomicUsize, Ordering};
-use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+use core::task::{Context, Poll, Waker};
 
 use crossbeam_queue::SegQueue;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::sync::{Arc, Mutex, RwLock};
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::task::Wake;
-use ockam_core::compat::vec::Vec;
-
-use pin_utils::pin_mut;
 
 /// Returns current executor.
 /// WARNING: TODO this is not thread-safe
@@ -58,6 +55,7 @@ impl<'a> Executor<'a> {
     pub fn block_on<T>(&self, future: impl Future<Output = T>) -> T {
         let mut node = Node {
             id: TaskId::new(),
+            _name: "Node",
             future: UnsafeCell::new(future),
         };
         let node_waker = NodeWaker::new(node.id);
@@ -70,11 +68,21 @@ impl<'a> Executor<'a> {
                 break result;
             }
 
+            let mut last_task = node.id.0;
             let mut task_budget = self.task_queue.len();
 
             while let Some(task_id) = self.task_queue.pop() {
+                // yield to looping tasks
+                if (task_id.0) == last_task {
+                    self.task_queue.push(task_id);
+                    break;
+                } else {
+                    last_task = task_id.0;
+                }
+
                 self.poll_task(task_id);
 
+                // don't loop through all tasks more than once without running main
                 if task_budget == 0 {
                     break;
                 }
@@ -88,7 +96,7 @@ impl<'a> Executor<'a> {
     /// poll_task
     fn poll_task(&self, task_id: TaskId) {
         let tasks = unsafe {
-            let tasksp = self.tasks.get() as *mut BTreeMap<TaskId, Box<Task>>;
+            let tasksp = self.tasks.get();
             &mut (*tasksp)
         };
         let task = match tasks.get_mut(&task_id) {
@@ -100,7 +108,7 @@ impl<'a> Executor<'a> {
         };
 
         let waker_cache = unsafe {
-            let waker_cachep = self.waker_cache.get() as *mut BTreeMap<TaskId, Waker>;
+            let waker_cachep = self.waker_cache.get();
             &mut (*waker_cachep)
         };
         let waker = waker_cache
@@ -111,7 +119,9 @@ impl<'a> Executor<'a> {
         match task.poll(&mut context) {
             Poll::Ready(()) => {
                 // task completed, remove it and its cached waker
-                tasks.remove(&task_id);
+                if let Some(task) = tasks.remove(&task_id) {
+                    drop(task);
+                }
                 waker_cache.remove(&task_id);
             }
             Poll::Pending => (),
@@ -121,9 +131,23 @@ impl<'a> Executor<'a> {
     /// spawn
     pub fn spawn(&self, future: impl Future + 'static) {
         let task = Task::allocate(future);
+        debug!("[executor] spawning task: {}", task.id.0);
         self.task_queue.push(task.id);
         let tasks = unsafe {
-            let tasksp = self.tasks.get() as *mut BTreeMap<TaskId, Box<Task>>;
+            let tasksp = self.tasks.get();
+            &mut (*tasksp)
+        };
+        if tasks.insert(task.id, task).is_some() {
+            panic!("[executor] task with same id already exists");
+        }
+    }
+
+    pub fn spawn_with_name(&self, name: &'static str, future: impl Future + 'static) {
+        let task = Task::allocate_with_name(name, future);
+        debug!("[executor] spawning task: {}@{}", name, task.id.0);
+        self.task_queue.push(task.id);
+        let tasks = unsafe {
+            let tasksp = self.tasks.get();
             &mut (*tasksp)
         };
         if tasks.insert(task.id, task).is_some() {
@@ -155,6 +179,7 @@ where
     F: ?Sized,
 {
     id: TaskId,
+    _name: &'static str,
     future: UnsafeCell<F>,
     // TODO future: Pin<Box<F>>,
 }
@@ -164,9 +189,8 @@ where
     F: ?Sized + Future<Output = T>,
 {
     fn poll(&mut self, context: &mut Context) -> Poll<T> {
-        //self.future.as_mut().poll(context)
         let future = unsafe {
-            let futurep = self.future.get() as *mut F;
+            let futurep = self.future.get();
             &mut (*futurep)
         };
         unsafe { Pin::new_unchecked(future).poll(context) }
@@ -177,6 +201,19 @@ impl Task {
     fn allocate(future: impl Future + 'static) -> Box<Task> {
         Box::new(Node {
             id: TaskId::new(),
+            _name: "Task",
+            future: UnsafeCell::new(async {
+                // task terminating
+                future.await;
+            }),
+            // TODO future: Box::pin(future),
+        })
+    }
+
+    fn allocate_with_name(name: &'static str, future: impl Future + 'static) -> Box<Task> {
+        Box::new(Node {
+            id: TaskId::new(),
+            _name: name,
             future: UnsafeCell::new(async {
                 // task terminating
                 future.await;
