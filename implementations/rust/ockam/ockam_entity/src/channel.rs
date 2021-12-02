@@ -1,6 +1,3 @@
-use crate::ProfileIdentifier;
-use ockam_core::{Decodable, Message, Result, Routed};
-
 mod secure_channel_worker;
 pub(crate) use secure_channel_worker::*;
 mod listener;
@@ -12,34 +9,11 @@ pub use trust_policy::*;
 mod local_info;
 pub use local_info::*;
 
-// TODO: rename
-pub fn check_message_origin<T: Message>(
-    msg: &Routed<T>,
-    their_profile_id: &ProfileIdentifier,
-) -> Result<bool> {
-    let local_msg = msg.local_message();
-    let local_info = LocalInfo::decode(local_msg.local_info())?;
-
-    let res = local_info.their_profile_id() == their_profile_id;
-
-    Ok(res)
-}
-
-// TODO: rename
-pub fn get_secure_channel_participant_id<T: Message>(msg: &Routed<T>) -> Result<ProfileIdentifier> {
-    let local_msg = msg.local_message();
-    let local_info = LocalInfo::decode(local_msg.local_info())?;
-
-    let res = local_info.their_profile_id().clone();
-
-    Ok(res)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::{Entity, Identity};
-    use ockam_core::{route, Route};
+    use ockam_core::{route, Result, Route};
     use ockam_node::Context;
     use ockam_vault_sync_core::Vault;
 
@@ -68,7 +42,7 @@ mod test {
         .await?;
         let msg = ctx.receive::<String>().await?.take();
 
-        let local_info = LocalInfo::decode(msg.local_message().local_info())?;
+        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
         assert_eq!(local_info.their_profile_id(), &alice.identifier().await?);
 
         let return_route = msg.return_route();
@@ -78,9 +52,7 @@ mod test {
 
         let msg = ctx.receive::<String>().await?.take();
 
-        let local_info = msg.local_message().local_info();
-
-        let local_info = LocalInfo::decode(local_info)?;
+        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
         assert_eq!(local_info.their_profile_id(), &bob.identifier().await?);
 
         assert_eq!("Hello, Alice!", msg.body());

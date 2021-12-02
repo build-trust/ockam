@@ -1,5 +1,33 @@
-use crate::{compat::vec::Vec, Message, TransportMessage};
+use crate::{compat::string::String, compat::vec::Vec, Message, TransportMessage};
 use serde::{Deserialize, Serialize};
+
+/// Ockam Routing LocalInfo - metadata that can travel only inside one Ockam Node
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
+pub struct LocalInfo {
+    type_identifier: String,
+    data: Vec<u8>,
+}
+
+impl LocalInfo {
+    /// Constructor
+    pub fn new(type_identifier: String, data: Vec<u8>) -> Self {
+        LocalInfo {
+            type_identifier,
+            data,
+        }
+    }
+}
+
+impl LocalInfo {
+    /// LocalInfo unique type identifier
+    pub fn type_identifier(&self) -> &str {
+        &self.type_identifier
+    }
+    /// LocalInfo raw binary data
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
 
 /// LocalMessage is a message type that is routed locally within one node.
 ///
@@ -15,7 +43,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub struct LocalMessage {
     transport_message: TransportMessage,
-    local_info: Vec<u8>,
+    local_info: Vec<LocalInfo>,
 }
 
 impl LocalMessage {
@@ -32,14 +60,14 @@ impl LocalMessage {
         &mut self.transport_message
     }
     /// LocalInfo added by Workers within the same node
-    pub fn local_info(&self) -> &[u8] {
+    pub fn local_info(&self) -> &[LocalInfo] {
         &self.local_info
     }
 }
 
 impl LocalMessage {
     /// Constructor
-    pub fn new(transport_message: TransportMessage, local_info: Vec<u8>) -> Self {
+    pub fn new(transport_message: TransportMessage, local_info: Vec<LocalInfo>) -> Self {
         LocalMessage {
             transport_message,
             local_info,

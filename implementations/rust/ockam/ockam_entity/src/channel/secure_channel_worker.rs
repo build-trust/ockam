@@ -1,5 +1,5 @@
 use crate::{
-    EntityChannelMessage, EntityError, Identity, LocalInfo, ProfileIdentifier,
+    EntityChannelMessage, EntityError, EntitySecureChannelLocalInfo, Identity, ProfileIdentifier,
     SecureChannelTrustInfo, TrustPolicy,
 };
 use core::future::Future;
@@ -490,7 +490,9 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
             return Err(EntityError::UnknownChannelMsgDestination.into());
         }
 
-        let payload = msg.payload().to_vec();
+        let local_msg = msg.into_local_message();
+        let mut local_info = local_msg.local_info().to_vec();
+        let payload = local_msg.into_transport_message().payload;
 
         // Forward to local workers
         let _ = onward_route.step()?;
@@ -503,8 +505,9 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
         let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
-        let local_info = LocalInfo::new(state.their_profile_id.clone());
-        let local_info = local_info.encode()?;
+        local_info.push(
+            EntitySecureChannelLocalInfo::new(state.their_profile_id.clone()).to_local_info()?,
+        );
 
         let msg = LocalMessage::new(transport_msg, local_info);
 
