@@ -1,6 +1,6 @@
 use crate::{
-    CreateResponderChannelMessage, LocalInfo, SecureChannelError, SecureChannelKeyExchanger,
-    SecureChannelVault,
+    CreateResponderChannelMessage, SecureChannelError, SecureChannelKeyExchanger,
+    SecureChannelLocalInfo, SecureChannelVault,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
@@ -199,9 +199,9 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
             .modify()
             .prepend(self.address_local.clone());
 
-        let local_info = LocalInfo::new(self.key_exchange_name.clone());
+        let local_info = SecureChannelLocalInfo::new(self.key_exchange_name.clone());
 
-        let local_msg = LocalMessage::new(transport_message, local_info.encode()?);
+        let local_msg = LocalMessage::new(transport_message, vec![local_info.to_local_info()?]);
 
         ctx.forward(local_msg).await
     }
