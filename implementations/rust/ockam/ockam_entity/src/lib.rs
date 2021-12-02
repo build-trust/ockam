@@ -219,7 +219,7 @@ mod test {
         Ok(())
     }
 
-    #[ockam_test_macros::node_test]
+    #[ockam_macros::test]
     async fn async_tests(ctx: &mut Context) -> Result<()> {
         let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");

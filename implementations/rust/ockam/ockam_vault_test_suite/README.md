@@ -12,7 +12,8 @@ In order to support a variety of cryptographically capable hardware we maintain 
 
 A concrete implementation of the Vault trait is called an Ockam Vault. Over time, and with help from the Ockam open source community, we plan to add vaults for several TEEs, TPMs, HSMs, and Secure Enclaves.
 
-This crate provides a test suite for Ockam Vault implementations. Combined with the `ockam_vault_test_attribute`, this test
+This crate provides a test suite for Ockam Vault implementations. Combined with
+the `ockam_macros::vault_test` and `ockam_macros::vault_sync_test`, this test
 suite is decoupled from specific Vault implementations.
 
 The main [Ockam][main-ockam-crate-link] has optional dependency on this crate.

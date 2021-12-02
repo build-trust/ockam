@@ -33,4 +33,3 @@ tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 trybuild = { version = "1.0", features = ["diff"] }
-ockam_test_macros = { path = "../ockam_test_macros", version = "^0.5.0"}

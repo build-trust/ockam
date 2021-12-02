@@ -1,4 +1,4 @@
-use ockam_macros::AsyncTryClone;
+use ockam_core::AsyncTryClone;
 
 #[derive(AsyncTryClone)]
 pub struct Tmp1 {
@@ -17,7 +17,7 @@ pub struct Tmp2<T> {
     b: T,
 }
 
-fn assert_impl<T: ockam_core::traits::AsyncTryClone>() {}
+fn assert_impl<T: AsyncTryClone>() {}
 fn main() {
     assert_impl::<String>();
     assert_impl::<Tmp1>();

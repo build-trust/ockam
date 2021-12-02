@@ -1273,7 +1273,6 @@ dependencies = [
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
- "ockam_test_macros",
  "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_core",
@@ -1313,7 +1312,6 @@ dependencies = [
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
- "ockam_test_macros",
  "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_sync_core",
@@ -1376,7 +1374,6 @@ dependencies = [
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
- "ockam_test_macros",
  "ockam_transport_tcp",
  "ockam_vault",
  "ockam_vault_core",
@@ -1474,6 +1471,7 @@ dependencies = [
  "heapless",
  "ockam_core",
  "ockam_executor",
+ "ockam_macros",
  "ockam_node_no_std",
  "tokio",
  "tracing",
@@ -1485,23 +1483,6 @@ name = "ockam_node_no_std"
 version = "0.12.0"
 dependencies = [
  "executor",
-]
-
-[[package]]
-name = "ockam_test_macros"
-version = "0.5.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "ockam_test_macros_internal"
-version = "0.28.0"
-dependencies = [
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1521,7 +1502,6 @@ dependencies = [
  "ockam_core",
  "ockam_macros",
  "ockam_node",
- "ockam_test_macros",
  "ockam_transport_core",
  "rand 0.7.3",
  "serde 1.0.130",
@@ -1557,7 +1537,6 @@ dependencies = [
  "hkdf",
  "ockam_core",
  "ockam_macros",
- "ockam_test_macros_internal",
  "ockam_vault_core",
  "ockam_vault_test_suite",
  "rand 0.8.4",
@@ -1591,7 +1570,6 @@ dependencies = [
  "ockam_core",
  "ockam_macros",
  "ockam_node",
- "ockam_test_macros_internal",
  "ockam_vault",
  "ockam_vault_core",
  "ockam_vault_test_suite",

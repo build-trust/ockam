@@ -33,15 +33,14 @@ impl KeyIdVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::SoftwareVault;
-    use ockam_test_macros_internal::*;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
     }
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn compute_key_id_for_public_key() {}
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn get_secret_by_key_id() {}
 }

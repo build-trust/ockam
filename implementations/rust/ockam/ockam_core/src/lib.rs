@@ -39,7 +39,7 @@ pub extern crate async_trait;
 pub use async_trait::async_trait as worker;
 
 extern crate ockam_macros;
-pub use ockam_macros::AsyncTryClone;
+pub use ockam_macros::{AsyncTryClone, Message};
 
 extern crate futures_util;
 

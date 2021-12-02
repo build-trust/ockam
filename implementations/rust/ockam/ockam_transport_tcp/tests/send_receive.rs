@@ -7,7 +7,7 @@ use rand::Rng;
 
 use ockam_transport_tcp::{TcpTransport, TCP};
 
-#[ockam_test_macros::node_test(timeout = 1000)]
+#[ockam_macros::test(timeout = 1000)]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let rand_port = rand::thread_rng().gen_range(10000, 65535);
     let bind_address = format!("127.0.0.1:{}", rand_port);

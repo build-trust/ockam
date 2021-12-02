@@ -210,22 +210,21 @@ mod tests {
         KeyIdVault, Secret, SecretAttributes, SecretVault, SoftwareVault,
     };
     use cfg_if::cfg_if;
-    use ockam_test_macros_internal::*;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
     }
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn new_public_keys() {}
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn new_secret_keys() {}
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn secret_import_export() {}
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn secret_attributes_get() {}
 
     fn new_curve255519_attrs() -> Option<SecretAttributes> {

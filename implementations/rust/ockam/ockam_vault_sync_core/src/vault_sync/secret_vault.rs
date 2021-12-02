@@ -96,22 +96,21 @@ impl SecretVault for VaultSync {
 
 #[cfg(test)]
 mod tests {
-    use ockam_test_macros_internal::*;
     use ockam_vault::SoftwareVault;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
     }
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn new_public_keys() {}
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn new_secret_keys() {}
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn secret_import_export() {}
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn secret_attributes_get() {}
 }

@@ -52,5 +52,4 @@ tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.29.0"}
-ockam_test_macros_internal = { path = "../ockam_test_macros_internal", version = "0.28.0"          }
 tokio = {version = "1.8", features = ["full"]}

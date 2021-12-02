@@ -44,16 +44,15 @@ impl Hasher for VaultSync {
 
 #[cfg(test)]
 mod tests {
-    use ockam_test_macros_internal::*;
     use ockam_vault::SoftwareVault;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
     }
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn sha256() {}
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn hkdf() {}
 }

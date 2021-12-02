@@ -1,5 +1,4 @@
 use ockam_core::Message;
-use ockam_macros::Message;
 use ockam_vault_core::{
     Buffer, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, Signature, SmallBuffer,
 };

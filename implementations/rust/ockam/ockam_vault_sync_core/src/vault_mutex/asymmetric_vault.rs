@@ -21,13 +21,12 @@ impl<V: AsymmetricVault + Send> AsymmetricVault for VaultMutex<V> {
 #[cfg(test)]
 mod tests {
     use crate::VaultMutex;
-    use ockam_test_macros_internal::*;
     use ockam_vault::SoftwareVault;
 
     fn new_vault() -> VaultMutex<SoftwareVault> {
         VaultMutex::create(SoftwareVault::default())
     }
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn ec_diffie_hellman_curve25519() {}
 }

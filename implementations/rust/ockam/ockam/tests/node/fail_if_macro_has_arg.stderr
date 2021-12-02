@@ -1,13 +1,13 @@
 error: This macro doesn't accept any argument
- --> tests/node/fail_if_macro_has_arg.rs:1:22
+ --> tests/node/fail_if_macro_has_arg.rs:1:15
   |
-1 | #[ockam_macros::node(timeout = 100)]
-  |                      ^^^^^^^^^^^^^
+1 | #[ockam::node(timeout = 100)]
+  |               ^^^^^^^^^^^^^
 
 error[E0601]: `main` function not found in crate `$CRATE`
  --> tests/node/fail_if_macro_has_arg.rs:1:1
   |
-1 | / #[ockam_macros::node(timeout = 100)]
+1 | / #[ockam::node(timeout = 100)]
 2 | | async fn main(mut c: ockam::Context) {
 3 | |     c.stop().await.unwrap();
 4 | | }

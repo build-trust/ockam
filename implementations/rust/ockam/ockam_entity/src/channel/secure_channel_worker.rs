@@ -16,7 +16,6 @@ use ockam_core::{
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
-use ockam_macros::Message;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};

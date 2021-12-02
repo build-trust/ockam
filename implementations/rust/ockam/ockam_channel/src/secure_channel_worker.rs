@@ -8,7 +8,6 @@ use ockam_core::{
     Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
 };
-use ockam_macros::Message;
 use ockam_node::Context;
 use ockam_vault_core::Secret;
 use serde::{Deserialize, Serialize};

@@ -7,7 +7,7 @@ error: Input argument should be of type `ockam::Context`
 error[E0601]: `main` function not found in crate `$CRATE`
  --> tests/node/fail_if_passed_param_is_self.rs:5:1
   |
-5 | / #[ockam_macros::node]
+5 | / #[ockam::node]
 6 | | async fn main(self) {
 7 | |     let a = 1;
 8 | | }

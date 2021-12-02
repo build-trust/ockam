@@ -1,7 +1,6 @@
 use crate::Contact;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Message;
-use ockam_macros::Message;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Message)]

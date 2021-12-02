@@ -1,7 +1,7 @@
 error[E0601]: `main` function not found in crate `$CRATE`
  --> $DIR/pass_if_unused_context.rs:4:1
   |
-4 | / #[ockam_test_macros::node_test]
+4 | / #[ockam::test]
 5 | | async fn my_test(_ctx: &mut ockam_node::Context) -> ockam_core::Result<()> {
 6 | |     // _ctx.stop().unwrap();
 7 | |     let _x = 42 as u8;

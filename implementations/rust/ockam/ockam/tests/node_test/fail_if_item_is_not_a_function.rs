@@ -1,5 +1,5 @@
-// This test checks that #[ockam_test_macros::node_test] causes a compile time error
+// This test checks that #[ockam::test] causes a compile time error
 // if the item it is defined on is not a function.
 
-#[ockam_test_macros::node_test]
+#[ockam::test]
 struct A {}

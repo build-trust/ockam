@@ -9,7 +9,6 @@ use core::{
     fmt::{self, Debug, Display, Formatter},
     ops::{Deref, DerefMut},
 };
-use ockam_macros::Message;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Alias of the type used for encoded data.
@@ -228,7 +227,7 @@ impl<M: Message + Display> Display for Routed<M> {
 /// This is especially useful for implementing middleware workers
 /// which need access to the route information of a message, without
 /// understanding its payload.
-#[derive(Clone, Debug, PartialEq, Eq, Message)]
+#[derive(Clone, Debug, PartialEq, Eq, crate::Message)]
 pub struct Any;
 
 impl Display for Any {

@@ -7,6 +7,6 @@ error: Input argument should be of type `ockam::Context`
 error[E0601]: `main` function not found in crate `$CRATE`
  --> tests/node_test/fail_if_passed_param_is_self.rs:5:1
   |
-5 | / #[ockam_test_macros::node_test]
+5 | / #[ockam::test]
 6 | | async fn my_test(self) -> ockam_core::Result<()> {}
   | |___________________________________________________^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_passed_param_is_self.rs`

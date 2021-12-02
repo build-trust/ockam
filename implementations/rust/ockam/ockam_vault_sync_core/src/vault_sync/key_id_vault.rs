@@ -38,16 +38,15 @@ impl KeyIdVault for VaultSync {
 
 #[cfg(test)]
 mod tests {
-    use ockam_test_macros_internal::*;
     use ockam_vault::SoftwareVault;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
     }
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn compute_key_id_for_public_key() {}
 
-    #[vault_test_sync]
+    #[ockam_macros::vault_test_sync]
     fn get_secret_by_key_id() {}
 }

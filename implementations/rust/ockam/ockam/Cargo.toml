@@ -106,7 +106,6 @@ dyn-clone = "1.0"
 [dev-dependencies]
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.32.0"}
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.33.0"}
-ockam_test_macros = { path = "../ockam_test_macros", version = "0.5.0"}
 trybuild = { version = "1.0", features = ["diff"] }
 serde_json = "1.0"
 rand_xorshift = "0.3"

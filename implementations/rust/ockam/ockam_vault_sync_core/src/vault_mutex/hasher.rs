@@ -26,16 +26,15 @@ impl<V: Hasher + Send> Hasher for VaultMutex<V> {
 
 #[cfg(test)]
 mod tests {
-    use ockam_test_macros_internal::*;
     use ockam_vault::SoftwareVault;
 
     fn new_vault() -> SoftwareVault {
         SoftwareVault::default()
     }
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn sha256() {}
 
-    #[vault_test]
+    #[ockam_macros::vault_test]
     fn hkdf() {}
 }

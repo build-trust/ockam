@@ -25,8 +25,8 @@ extern crate tracing;
 pub extern crate hex;
 
 // ---
-// Export the ockam macros.
-pub use ockam_macros::*;
+// Export the ockam macros that aren't coming from ockam_core.
+pub use ockam_macros::{node, test};
 // ---
 
 // Export node implementation
