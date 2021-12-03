@@ -81,11 +81,19 @@ defmodule Ockam.Router do
     end
   end
 
-  defp invoke_handler(handler, message) when is_function(handler, 1) do
-    case handler.(message) do
+  defp invoke_handler(handler, message) do
+    case apply_handler(handler, message) do
       {:error, error} -> {:error, {:handler_error, error, message, handler}}
       _anything_else -> :ok
     end
+  end
+
+  defp apply_handler(handler, message) when is_function(handler, 1) do
+    apply(handler, [message])
+  end
+
+  defp apply_handler({m, f, a}, message) when is_atom(m) and is_atom(f) and is_list(a) do
+    apply(m, f, [message | a])
   end
 
   @doc """

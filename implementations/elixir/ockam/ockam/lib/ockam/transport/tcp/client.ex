@@ -16,6 +16,7 @@ defmodule Ockam.Transport.TCP.Client do
   @impl true
   def setup(options, state) do
     {host, port} = Keyword.fetch!(options, :destination)
+    heartbeat = Keyword.get(options, :heartbeat)
 
     {protocol, inet_address} =
       case host do
@@ -39,7 +40,17 @@ defmodule Ockam.Transport.TCP.Client do
          ]) do
       {:ok, socket} ->
         :gen_tcp.controlling_process(socket, self())
-        {:ok, Map.merge(state, %{socket: socket, inet_address: inet_address, port: port})}
+
+        state =
+          Map.merge(state, %{
+            socket: socket,
+            inet_address: inet_address,
+            port: port,
+            heartbeat: heartbeat
+          })
+
+        schedule_heartbeat(state)
+        {:ok, state}
 
       {:error, reason} ->
         Logger.error("Error starting TCP client: #{inspect(reason)}")
@@ -72,6 +83,33 @@ defmodule Ockam.Transport.TCP.Client do
 
   def handle_info({:tcp_error, _}, state) do
     {:stop, :normal, state}
+  end
+
+  def handle_info(:heartbeat, %{socket: socket} = state) do
+    case heartbeat_enabled?(state) do
+      true ->
+        :gen_tcp.send(socket, "")
+        schedule_heartbeat(state)
+
+      false ->
+        :ok
+    end
+
+    {:noreply, state}
+  end
+
+  def heartbeat_enabled?(%{heartbeat: heartbeat}) do
+    is_integer(heartbeat) and heartbeat > 0
+  end
+
+  def schedule_heartbeat(%{heartbeat: heartbeat} = state) do
+    case heartbeat_enabled?(state) do
+      true ->
+        Process.send_after(self(), :heartbeat, heartbeat)
+
+      false ->
+        :ok
+    end
   end
 
   ## TODO: implement Worker API

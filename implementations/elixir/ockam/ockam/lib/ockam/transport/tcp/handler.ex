@@ -44,6 +44,11 @@ defmodule Ockam.Transport.TCP.Handler do
   end
 
   @impl true
+  def handle_info({:tcp, socket, ""}, %{socket: socket} = state) do
+    ## Empty TCP payload - ignore
+    {:noreply, state}
+  end
+
   def handle_info({:tcp, socket, data}, %{socket: socket, address: address} = state) do
     {function_name, _} = __ENV__.function
 

@@ -43,8 +43,12 @@ defmodule Ockam.Transport.TCP do
   """
   @spec start(Keyword.t()) :: :ignore | {:error, any} | {:ok, any}
   def start(options \\ []) do
+    client_options = Keyword.get(options, :client_options, [])
     ## TODO: do we want to stop transports?
-    Router.set_message_handler(TCPAddress.type(), &handle_message/1)
+    Router.set_message_handler(
+      TCPAddress.type(),
+      {__MODULE__, :handle_transport_message, [client_options]}
+    )
 
     case Keyword.fetch(options, :listen) do
       {:ok, listen} -> Listener.start_link(listen)
@@ -52,13 +56,13 @@ defmodule Ockam.Transport.TCP do
     end
   end
 
-  @spec handle_message(Ockam.Message.t()) :: :ok | {:error, any()}
-  defp handle_message(message) do
+  @spec handle_transport_message(Ockam.Message.t(), Keyword.t()) :: :ok | {:error, any()}
+  def handle_transport_message(message, client_options) do
     case get_destination(message) do
       {:ok, destination} ->
         ## TODO: reuse clients when using tcp address
         with {:ok, client_address} <-
-               Client.create(destination: destination) do
+               Client.create([{:destination, destination} | client_options]) do
           Ockam.Node.send(client_address, message)
         end
 
