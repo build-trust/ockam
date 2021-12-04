@@ -1,4 +1,4 @@
-dev-version = false
+dev-version = true
 push = false
 tag = false
 publish = false
