@@ -9,11 +9,6 @@ jobs:
     name: Editorconfig
     runs-on: ubuntu-20.04
 
-    # Stop a previous run, if a new run is triggered.
-    concurrency:
-      group: editorconfig_lint-${{ github.head_ref }}
-      cancel-in-progress: true
-
     # https://gitlab.com/greut/eclint
     container:
       image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
