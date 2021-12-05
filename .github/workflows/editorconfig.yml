@@ -1,15 +1,43 @@
 name: Lint Editorconfig
-on: [push, workflow_dispatch]
+
+# https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#on
+on:
+  # Support running the workflow manually
+  # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+  workflow_dispatch:
+  # Trigger on Push or Pull Request to the develop branch
+  # But prevent it from running twice
+  # https://github.community/t/how-to-trigger-an-action-on-push-or-pull-request-but-not-both/16662/2
+  push:
+    branches:
+    - develop
+  pull_request:
+    branches:
+    - develop
+
+# Limit permissions to only read contents of the repository
+# https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
+permissions:
+  contents: read
 
 jobs:
   editorconfig_lint:
     name: Editorconfig
     runs-on: ubuntu-20.04
+
+    # Stop a previous run, if a new run is triggered.
+    # https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-concurrency-to-cancel-any-in-progress-job-or-run
+    concurrency:
+      group: ${{ github.head_ref }}
+      cancel-in-progress: true
+
+    # https://gitlab.com/greut/eclint
     container:
-      image: greut/eclint:v0.3.2@sha256:9e1d4d36f1c8ee9982e60266d984d9eb9ffdd3fc04cd2e0e70fbbbf8fd7d1f0f
+      image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
+
     steps:
       - name: Checkout
-        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
 
       - name: Lint Editorconfig
         run: eclint -color=always
