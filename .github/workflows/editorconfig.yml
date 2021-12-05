@@ -1,22 +1,6 @@
 name: Lint Editorconfig
+on: [pull_request, push, workflow_dispatch]
 
-# https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#on
-on:
-  # Support running the workflow manually
-  # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
-  workflow_dispatch:
-  # Trigger on Push or Pull Request to the develop branch
-  # But prevent it from running twice
-  # https://github.community/t/how-to-trigger-an-action-on-push-or-pull-request-but-not-both/16662/2
-  push:
-    branches:
-    - develop
-  pull_request:
-    branches:
-    - develop
-
-# Limit permissions to only read contents of the repository
-# https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
 permissions:
   contents: read
 
@@ -26,9 +10,8 @@ jobs:
     runs-on: ubuntu-20.04
 
     # Stop a previous run, if a new run is triggered.
-    # https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-concurrency-to-cancel-any-in-progress-job-or-run
     concurrency:
-      group: ${{ github.head_ref }}
+      group: editorconfig_lint-${{ github.head_ref }}
       cancel-in-progress: true
 
     # https://gitlab.com/greut/eclint
