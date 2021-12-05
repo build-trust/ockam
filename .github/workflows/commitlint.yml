@@ -1,15 +1,73 @@
 name: Lint Commit Messages
-on: [pull_request, workflow_dispatch]
+on: [pull_request, push, workflow_dispatch]
+
+permissions:
+  contents: read
 
 jobs:
   commitlint:
     name: Commitlint
     runs-on: ubuntu-20.04
+
+    # We assume that commit 2fd0d36fe6ae0c2d527368683ec3a6352617b381 will be in the history
+    # of all commits based on ockam develop branch
+    # https://github.com/ockam-network/ockam/commit/2fd0d36fe6ae0c2d527368683ec3a6352617b381
+    env:
+      START_COMMIT_HASH: 2fd0d36fe6ae0c2d527368683ec3a6352617b381
+
     steps:
       - name: Checkout
-        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # checkout full tree
 
-      - name: Commitlint
-        uses: wagoid/commitlint-github-action@baffd3c16c570c0a26bf89be729b81bb796e9bd5 # v3.1.4
+      - name: Check START_COMMIT_HASH is ancestor of HEAD
+        run: |
+          git merge-base --is-ancestor $START_COMMIT_HASH HEAD || \
+          (echo '
+            This workflow checks that all commits follow the Ockam Commit Message Convention
+            https://ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages
+
+            We check all commits from HEAD backwards till the commit with commit hash: '$START_COMMIT_HASH'.
+
+            ==> ERROR:
+            For this to work the commit with commit hash: '$START_COMMIT_HASH' should be an ancestor of HEAD
+            but it seems this is not the case with the current HEAD.
+
+            Try rebasing to the develop branch of ockam.
+          ' && exit 1)
+
+      - name: Install Commitlint
+        run: npm install -g @commitlint/cli # TODO: move to ockam/builder docker image.
+
+      - name: Lint Commits
+        run: |
+          npx commitlint \
+            --config tools/commitlint/commitlint.config.js \
+            --from $START_COMMIT_HASH \
+            --to HEAD \
+            --help-url https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages || \
+            (echo '
+              It seem the commit with the above commit message does not follow the Ockam Commit Message Convention
+              https://ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages
+
+              Our commits should have the following structure.
+
+                <type>(<scope>): <subject>
+                <BLANK LINE>
+                <body>
+                <BLANK LINE>
+                <footer>
+
+              Common errors to avoid:
+              1. The commit header <type>(<scope>): <subject> must be in lower case.
+              2. Allowed type values are: build, chore, ci, docs, feat, fix, refactor, style, test
+              3. Allowed scope values are: c, elixir, typescript, rust
+              4. Use the chore type as a last resort, prefer a more meaningful type.
+
+              The linting rules are defined in:
+              https://github.com/ockam-network/ockam/blob/develop/tools/commitlint/commitlint.config.js
+
+              More about the Ockam Commit Message Convention
+              https://ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages
+            ' && exit 1)
