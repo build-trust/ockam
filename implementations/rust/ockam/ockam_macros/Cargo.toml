@@ -10,6 +10,7 @@ homepage = "https://github.com/ockam-network/ockam"
 keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_macros"
+publish = true
 
 [lib]
 proc-macro = true
