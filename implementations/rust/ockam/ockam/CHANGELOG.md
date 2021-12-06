@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## unreleased
+
+### Changed
+
+- Merge macro crates
+- Indicate crates that are publish-able
+
+### Fixed
+
+- Change context import from ockam_node to crate
+- Fix pipe test and typos
+
+### Removed
+
+- Remove symlinks to `DEVELOP.md` and `LICENSE`
+- Remove need for separate macro crates
+
 ## v0.40.0 - 2021-11-22
 
 

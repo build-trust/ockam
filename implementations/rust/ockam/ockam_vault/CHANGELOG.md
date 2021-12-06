@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## unreleased
+
+### Changed
+
+- Merge macro crates
+- Indicate crates that are publish-able
+
+### Fixed
+
+- Import correct ed25519 signature trait
+
+### Removed
+
+- Remove symlinks to `DEVELOP.md` and `LICENSE`
+- Remove need for separate macro crates
+
 ## v0.34.0 - 2021-11-22
 
 
