@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [[bin]]
-name = "ockam"
+name = "ockam-cli"
 
 [dependencies]
 bunt = "0.2.6"
