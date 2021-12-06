@@ -31,7 +31,7 @@ no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_key_exchange_core/n
 alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchange_xx/alloc", "ockam_node/alloc", "ockam_vault_core/alloc",  "ockam_vault_sync_core/alloc", "ockam_vault/alloc", "serde/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.40.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.41.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "0.1.0" , default_features = false }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.32.0", default_features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.33.0", default_features = false, optional = true }
