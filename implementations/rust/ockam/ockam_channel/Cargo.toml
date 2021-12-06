@@ -33,7 +33,7 @@ alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchang
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.41.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "0.1.0" , default_features = false }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.32.0", default_features = false }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.33.0", default_features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.33.0", default_features = false, optional = true }
 ockam_node = { path = "../ockam_node", version = "^0.39.0", default_features = false }
 ockam_vault_core = { path = "../ockam_vault_core", version = "^0.34.0", default_features = false, optional = true }
