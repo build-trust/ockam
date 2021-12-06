@@ -6,10 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.33.0 - 2021-12-06
 
-### Changed
-
-- Indicate crates that are publish-able
-
 ### Fixed
 
 - Use `Zeroize` on sensitive values in x3dh protocol

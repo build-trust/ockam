@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Merge macro crates
 - Make secure channel print warning when destination is not available during decryption
-- Indicate crates that are publish-able
 
 ### Removed
 

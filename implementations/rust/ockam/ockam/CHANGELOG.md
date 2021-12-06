@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Merge macro crates
-- Indicate crates that are publish-able
 
 ### Fixed
 

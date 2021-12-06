@@ -8,8 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Indicate crates that are publish-able
-
 ### Removed
 
 - Remove prototypes

@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improve ockam_node logging, fix typos
 - Move and improve ockam_node tests
-- Indicate crates that are publish-able
 
 ### Fixed
 
