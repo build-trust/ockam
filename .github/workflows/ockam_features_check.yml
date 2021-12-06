@@ -1,5 +1,14 @@
 name: Ockam Features Check
-on: pull_request
+on:
+  workflow_dispatch:
+  pull_request:
+    # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
+    paths:
+      - 'implementations/rust/ockam/**'
+  push:
+    # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestpaths
+    branches:
+      - develop
 
 jobs:
   check_features:
