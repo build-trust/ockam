@@ -14,7 +14,7 @@ done
 
 for to_update in ${updated_crates[@]}; do
     if [[ $DEV_VERSION == true ]]; then
-        echo y | cargo release release --no-push --no-publish --no-tag -p $to_update --execute
+        cargo release release --no-push --no-publish --no-confirm --no-tag --package $to_update --execute
     else
 
         # If the bump version is indicated as release, we don't bump
@@ -25,6 +25,6 @@ for to_update in ${updated_crates[@]}; do
             version="${specified_crate_version[$to_update]}"
         fi
 
-        echo y | cargo release $version --no-push --no-publish --no-tag --no-dev-version -p $to_update --execute
+        cargo release $version --no-push --no-publish --no-confirm --no-tag --no-dev-version --package $to_update --execute
     fi
 done
