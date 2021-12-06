@@ -34,5 +34,5 @@ ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.3
 
 [dev-dependencies]
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.32.0"}
-ockam_vault = { path = "../ockam_vault", version = "^0.34.0"}
+ockam_vault = { path = "../ockam_vault", version = "^0.35.0"}
 ockam_node = { path = "../ockam_node" , version = "^0.40.0"}
