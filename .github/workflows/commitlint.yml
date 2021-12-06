@@ -24,18 +24,19 @@ jobs:
       - name: Check START_COMMIT_HASH is ancestor of HEAD
         run: |
           git merge-base --is-ancestor $START_COMMIT_HASH HEAD || \
-          (echo '
+          (echo "
             This workflow checks that all commits follow the Ockam Commit Message Convention
             https://ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages
 
-            We check all commits from HEAD backwards till the commit with commit hash: '$START_COMMIT_HASH'.
+            We check all commits from HEAD backwards till the commit with commit hash: ${START_COMMIT_HASH}.
 
-            ==> ERROR:
-            For this to work the commit with commit hash: '$START_COMMIT_HASH' should be an ancestor of HEAD
+            ERROR:
+            For this to work the commit with commit hash: ${START_COMMIT_HASH} should be an ancestor of HEAD
             but it seems this is not the case with the current HEAD.
 
             Try rebasing to the develop branch of ockam.
-          ' && exit 1)
+            https://github.com/ockam-network/ockam/tree/develop
+          " && exit 1)
 
       - name: Install Commitlint
         run: npm install -g @commitlint/cli # TODO: move to ockam/builder docker image.
