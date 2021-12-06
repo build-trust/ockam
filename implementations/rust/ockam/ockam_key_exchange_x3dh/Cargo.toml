@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_x3dh"
-version = "0.32.0"
+version = "0.33.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
