@@ -29,7 +29,7 @@ no_std = ["core2", "hex", "rand_pcg", "spin", "ockam_macros/no_std"]
 alloc = ["core2/alloc", "heapless", "hex/alloc", "serde/alloc", "serde_bare/alloc"]
 
 [dependencies]
-ockam_macros = { path = "../ockam_macros", version = "0.1.0"     , default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.2.0", default_features = false }
 async-trait = "0.1.42"
 hashbrown =  { version = "0.11", default-features = false, features = ["ahash", "serde"] }
 heapless = { version = "0.7.1", optional = true }
