@@ -71,6 +71,11 @@ impl Processor for TcpRecvProcessor {
         // Deserialize the message now
         let mut msg = TransportMessage::decode(&buf).map_err(|_| TransportError::RecvBadMessage)?;
 
+        // Heartbeat message
+        if msg.onward_route.next().is_err() {
+            trace!("Got heartbeat message from: {}", self.peer_addr);
+        }
+
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
         msg.return_route.modify().prepend(self.peer_addr.clone());
