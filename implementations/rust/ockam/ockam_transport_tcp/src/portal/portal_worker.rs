@@ -1,4 +1,5 @@
 use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
+use core::time::Duration;
 use ockam_core::{async_trait, compat::boxed::Box, Decodable};
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
 use ockam_node::Context;
@@ -146,58 +147,54 @@ impl TcpPortalWorker {
         // Connection was dropped on our side
         if let Some(onward_route) = onward_route {
             // Notify the other end
-            match ctx
-                .send_from_address(
-                    onward_route,
-                    PortalMessage::Disconnect,
-                    self.remote_address.clone(),
-                )
-                .await
-            {
-                Ok(_) => {
-                    debug!(
-                        "Notified the other side from {:?} at: {} about connection drop",
-                        self.type_name, self.internal_address
-                    );
-                }
-                Err(err) => {
-                    warn!(
-                        "Error sending disconnect notification the other side from {:?} at: {}, {}",
-                        self.type_name, self.internal_address, err
-                    );
-                }
-            }
+            ctx.send_from_address(
+                onward_route,
+                PortalMessage::Disconnect,
+                self.remote_address.clone(),
+            )
+            .await?;
+
+            debug!(
+                "Notified the other side from {:?} at: {} about connection drop",
+                self.type_name, self.internal_address
+            );
+
+            // TODO: Remove when we have better way to handle race condition
+
+            // Avoiding race condition when both inlet and outlet connections
+            // are dropped at the same time. In this case we want to wait for the `Disconnect`
+            // message from the other side to reach our worker, before we shut it down which
+            // leads to errors (destination Worker is already stopped)
+            ctx.sleep(Duration::from_secs(1)).await;
         }
         // Connection was dropped on the other side
         else {
-            match ctx.stop_processor(self.receiver_address.clone()).await {
-                Ok(_) => {
-                    debug!(
-                        "{:?} at: {} stopped receiver due to connection drop",
-                        self.type_name, self.internal_address
-                    );
-                }
-                Err(err) => {
-                    warn!(
-                        "Error stopping {:?} receiver at: {}, {}",
-                        self.type_name, self.internal_address, err
-                    );
-                }
-            }
-        }
+            // TODO: Remove when we have better way to handle race condition
 
-        match ctx.stop_worker(self.internal_address.clone()).await {
-            Ok(()) => {
-                info!(
-                    "{:?} at: {} stopped due to connection drop",
+            // Avoiding race condition when both inlet and outlet connections
+            // are dropped at the same time. In this case Processor may stop itself
+            // while we had `Disconnect` message from the other side. Let it stop itself,
+            // but recheck that by calling `stop_processor` and ignoring the error
+            ctx.sleep(Duration::from_secs(1)).await;
+
+            if ctx
+                .stop_processor(self.receiver_address.clone())
+                .await
+                .is_ok()
+            {
+                debug!(
+                    "{:?} at: {} stopped receiver due to connection drop",
                     self.type_name, self.internal_address
                 );
             }
-            Err(err) => {
-                info!("{}", err);
-                return Err(err);
-            }
         }
+
+        ctx.stop_worker(self.internal_address.clone()).await?;
+
+        info!(
+            "{:?} at: {} stopped due to connection drop",
+            self.type_name, self.internal_address
+        );
 
         Ok(())
     }
