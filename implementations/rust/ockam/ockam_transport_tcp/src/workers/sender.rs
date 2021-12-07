@@ -211,6 +211,9 @@ impl Worker for TcpSendWorker {
             // Sending empty heartbeat
             if tx.write_all(&msg).await.is_err() {
                 warn!("Failed to send heartbeat to peer {}", self.peer);
+                ctx.stop_worker(ctx.address()).await?;
+
+                return Ok(());
             }
 
             debug!("Sent heartbeat to peer {}", self.peer);
