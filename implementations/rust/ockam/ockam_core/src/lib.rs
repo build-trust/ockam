@@ -50,6 +50,7 @@ mod message;
 mod processor;
 mod routing;
 mod uint;
+pub mod vault;
 mod worker;
 
 pub use access_control::*;

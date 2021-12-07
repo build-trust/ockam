@@ -41,3 +41,5 @@ rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 core2 = { version = "0.3.2", default-features = false, optional = true }
 spin = { version = "0.9.1", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
 futures-util = { version = "0.3.17", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
+zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
+cfg-if = "1.0"
