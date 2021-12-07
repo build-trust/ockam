@@ -100,14 +100,14 @@ impl TcpSendWorker {
     async fn schedule_heartbeat(&mut self, ctx: &Context) -> Result<()> {
         let heartbeat_interval;
         if let Some(hi) = &self.heartbeat_interval {
-            heartbeat_interval = hi.clone();
+            heartbeat_interval = *hi;
         } else {
             return Ok(());
         }
 
         let child_ctx = ctx.new_context(Address::random(0)).await?;
         let internal_addr = self.internal_addr.clone();
-        let peer = self.peer.clone();
+        let peer = self.peer;
 
         let (handle, reg) = AbortHandle::new_pair();
         let future = Abortable::new(
