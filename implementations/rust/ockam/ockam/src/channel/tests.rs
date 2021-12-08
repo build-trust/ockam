@@ -11,7 +11,8 @@ async fn simple_channel(ctx: &mut Context) -> Result<()> {
         .create_channel_listener("my-channel-listener")
         .await?;
 
-    // Create a channel via the listener
+    // Create a channel via the listener.  We re-use the
+    // ChannelBuilder here but could also use a new one
     let ch = builder.connect(vec!["my-channel-listener"]).await?;
 
     // Send a message through the channel

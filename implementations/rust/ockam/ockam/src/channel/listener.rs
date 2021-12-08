@@ -1,18 +1,24 @@
 use crate::{
-    channel::CLUSTER_NAME,
-    pipe::{PipeBehavior, PipeReceiver, PipeSender},
-    protocols::channel::{ChannelCreationHandshake, ChannelProtocol},
+    channel::{worker::ChannelWorker, CLUSTER_NAME},
+    pipe::PipeBehavior,
+    protocols::channel::ChannelCreationHandshake,
     Context,
 };
 use ockam_core::{Address, Result, Routed, Worker};
 
 pub struct ChannelListener {
-    hooks: PipeBehavior,
+    tx_hooks: PipeBehavior,
+    rx_hooks: PipeBehavior,
 }
 
 impl ChannelListener {
-    pub async fn create(ctx: &Context, addr: Address, hooks: PipeBehavior) -> Result<()> {
-        ctx.start_worker(addr, Self { hooks }).await
+    pub async fn create(
+        ctx: &Context,
+        addr: Address,
+        tx_hooks: PipeBehavior,
+        rx_hooks: PipeBehavior,
+    ) -> Result<()> {
+        ctx.start_worker(addr, Self { tx_hooks, rx_hooks }).await
     }
 }
 
@@ -36,39 +42,29 @@ impl Worker for ChannelListener {
             msg.return_route()
         );
 
-        // First compute the route to the peer pipe receiver
-        let ChannelCreationHandshake(ref rx_addr) = dbg!(msg.as_body());
-        let peer = dbg!(msg.return_route().recipient());
-        let rx_route = dbg!(msg
+        // First compute routes to the peer's PipeSender and PipeReceiver
+        let ChannelCreationHandshake(ref rx_addr, ref tx_addr) = msg.as_body();
+        let peer_rx_route = msg
             .return_route()
             .modify()
             .pop_back()
             .append(rx_addr.clone())
-            .append(peer)
-            .into());
+            .into();
+        let peer_tx_route = msg
+            .return_route()
+            .modify()
+            .pop_back()
+            .append(tx_addr.clone())
+            .into();
 
-        // Start the PipeSender pointing at the remote receiver
-        let tx_addr = Address::random(0);
-        PipeSender::create(
+        ChannelWorker::stage2(
             ctx,
-            rx_route,
-            tx_addr.clone(),
-            Address::random(0),
-            self.hooks.clone(),
+            peer_tx_route,
+            peer_rx_route,
+            self.tx_hooks.clone(),
+            self.rx_hooks.clone(),
         )
         .await?;
-        debug!("Started PipeSender with appropriate sender route");
-
-        // Start the PipeReceiver
-        let rx_addr = Address::random(0);
-        PipeReceiver::create(ctx, rx_addr.clone(), Address::random(0), self.hooks.clone()).await?;
-
-        // Create the local channel worker
-
-        // Then message the remote Channel peer
-        ctx.send(msg.return_route(), ChannelProtocol::ReceiverReady(rx_addr))
-            .await?;
-
         Ok(())
     }
 }

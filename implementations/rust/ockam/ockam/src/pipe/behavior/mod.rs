@@ -7,6 +7,9 @@ pub use resend::{ReceiverConfirm, SenderConfirm};
 mod ordering;
 pub use ordering::ReceiverOrdering;
 
+mod handshake;
+pub use handshake::HandshakeInit;
+
 use crate::{
     protocols::pipe::{internal::InternalCmd, PipeMessage},
     Context,

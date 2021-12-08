@@ -2,7 +2,8 @@
 
 mod behavior;
 pub use behavior::{
-    BehaviorHook, PipeBehavior, PipeModifier, ReceiverConfirm, ReceiverOrdering, SenderConfirm,
+    BehaviorHook, HandshakeInit, PipeBehavior, PipeModifier, ReceiverConfirm, ReceiverOrdering,
+    SenderConfirm,
 };
 
 mod listener;

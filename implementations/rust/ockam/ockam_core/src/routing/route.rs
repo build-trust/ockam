@@ -144,7 +144,7 @@ impl Default for RouteBuilder<'_> {
 }
 
 impl RouteBuilder<'_> {
-    /// Create a new empty route builder
+    #[doc(hidden)]
     pub fn new() -> Self {
         Self {
             inner: VecDeque::new(),

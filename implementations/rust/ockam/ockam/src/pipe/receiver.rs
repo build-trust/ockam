@@ -17,8 +17,7 @@ impl Worker for PipeReceiver {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(super::CLUSTER_NAME).await?;
-        Ok(())
+        ctx.set_cluster(super::CLUSTER_NAME).await
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {

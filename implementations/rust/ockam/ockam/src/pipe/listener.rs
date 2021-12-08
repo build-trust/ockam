@@ -1,13 +1,10 @@
 use crate::{
-    pipe::{BehaviorHook, PipeBehavior, PipeModifier, PipeReceiver},
-    protocols::pipe::{
-        internal::{HandShake, InternalCmd},
-        PipeMessage,
-    },
+    pipe::{HandshakeInit, PipeBehavior, PipeReceiver},
+    protocols::pipe::internal::{Handshake, InternalCmd},
     Context,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Result, Route, Routed, Worker};
+use ockam_core::{Address, Result, Routed, Worker};
 
 /// Listen for pipe handshakes and creates PipeReceive workers
 pub struct PipeListener {
@@ -32,13 +29,13 @@ impl Worker for PipeListener {
                 // Create a new pipe receiver with a modified behavioral stack
                 let recv_addr = Address::random(0);
                 let int_addr = Address::random(0);
-                let hooks = self.hooks.clone().attach(HandshakeInit(false));
+                let hooks = self.hooks.clone().attach(HandshakeInit::default());
                 PipeReceiver::create(ctx, recv_addr.clone(), int_addr.clone(), hooks).await?;
 
                 // Then send it the handshake message
                 ctx.send(
                     vec![int_addr],
-                    InternalCmd::Handshake(HandShake { route_to_sender }),
+                    InternalCmd::Handshake(Handshake { route_to_sender }),
                 )
                 .await?;
             }
@@ -63,37 +60,5 @@ impl PipeListener {
     /// Create pipe creation listener with empty behavior hooks
     pub async fn create(ctx: &mut Context, addr: Address) -> Result<()> {
         Self::create_with_behavior(ctx, addr, PipeBehavior::empty()).await
-    }
-}
-
-#[derive(Clone)]
-struct HandshakeInit(bool);
-
-#[ockam_core::async_trait]
-impl BehaviorHook for HandshakeInit {
-    async fn on_internal(
-        &mut self,
-        _: Address,
-        _: Route,
-        ctx: &mut Context,
-        msg: &InternalCmd,
-    ) -> Result<()> {
-        if let (InternalCmd::Handshake(HandShake { route_to_sender }), false) = (msg, self.0) {
-            ctx.send(route_to_sender.clone(), InternalCmd::InitSender)
-                .await?;
-            self.0 = true;
-        }
-
-        Ok(())
-    }
-
-    async fn on_external(
-        &mut self,
-        _: Address,
-        _: Route,
-        _: &mut Context,
-        _: &PipeMessage,
-    ) -> Result<PipeModifier> {
-        Ok(PipeModifier::None)
     }
 }

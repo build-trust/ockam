@@ -28,7 +28,8 @@ impl ChannelHandle {
 /// Generalised ockam channel API
 pub struct ChannelBuilder {
     ctx: Context,
-    hooks: PipeBehavior,
+    tx_hooks: PipeBehavior,
+    rx_hooks: PipeBehavior,
 }
 
 impl ChannelBuilder {
@@ -57,28 +58,51 @@ impl ChannelBuilder {
         debug!("Creating new ChannelBuilder context...");
         ctx.new_context(Address::random(0)).await.map(|ctx| Self {
             ctx,
-            hooks: PipeBehavior::empty(),
+            tx_hooks: PipeBehavior::empty(),
+            rx_hooks: PipeBehavior::empty(),
         })
     }
 
-    /// Attach a new behavior to be used by the underlying pipes
-    pub fn attach_behavior<B: BehaviorHook + Clone + Send + Sync + 'static>(
+    /// Attach a new behavior to be used by the underlying pipe sender
+    pub fn attach_tx_behavior<B: BehaviorHook + Clone + Send + Sync + 'static>(
         mut self,
         bev: B,
     ) -> Self {
-        self.hooks.insert(bev);
+        self.tx_hooks.insert(bev);
+        self
+    }
+
+    /// Attach a new behavior to be used by the underlying pipe receiver
+    pub fn attach_rx_behavior<B: BehaviorHook + Clone + Send + Sync + 'static>(
+        mut self,
+        bev: B,
+    ) -> Self {
+        self.rx_hooks.insert(bev);
         self
     }
 
     /// Connect to a channel listener
     pub async fn connect<R: Into<Route>>(&self, listener: R) -> Result<ChannelHandle> {
         let tx = Address::random(0);
-        ChannelWorker::create(&self.ctx, tx.clone(), listener.into()).await?;
+        ChannelWorker::stage1(
+            &self.ctx,
+            tx.clone(),
+            listener.into(),
+            PipeBehavior::empty(),
+            PipeBehavior::empty(),
+        )
+        .await?;
         Ok(ChannelHandle { tx })
     }
 
     /// Create a new channel listener
     pub async fn create_channel_listener<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        ChannelListener::create(&self.ctx, addr.into(), self.hooks.clone()).await
+        ChannelListener::create(
+            &self.ctx,
+            addr.into(),
+            self.tx_hooks.clone(),
+            self.rx_hooks.clone(),
+        )
+        .await
     }
 }

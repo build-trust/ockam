@@ -18,7 +18,7 @@ pub struct Ack {
 
 /// Payload sent from handshake listener to newly spawned receiver
 #[derive(Debug, Serialize, Deserialize, Message)]
-pub struct HandShake {
+pub struct Handshake {
     pub route_to_sender: Route,
 }
 
@@ -32,7 +32,7 @@ pub enum InternalCmd {
     /// Message received by pipe spawn listener
     InitHandshake,
     /// Message sent from listener to receiver
-    Handshake(HandShake),
+    Handshake(Handshake),
     /// Initialise a pipe sender with a route
     InitSender,
 }

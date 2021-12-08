@@ -119,7 +119,6 @@ impl PipeSender {
                     .internal_all(self.int_addr.clone(), peer.clone(), ctx, &internal_cmd)
                     .await?;
             }
-
             _ => match internal_cmd {
                 InternalCmd::InitSender => {
                     debug!("Initialise pipe sender for route {:?}", return_route);
