@@ -11,6 +11,8 @@ mod any_trust_policy;
 pub use any_trust_policy::*;
 mod trust_everyone_policy;
 pub use trust_everyone_policy::*;
+mod trust_public_key_policy;
+pub use trust_public_key_policy::*;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecureChannelTrustInfo {
@@ -32,7 +34,7 @@ impl SecureChannelTrustInfo {
 
 #[async_trait]
 pub trait TrustPolicy: AsyncTryClone + Send + Sync + 'static {
-    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool>;
+    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool>;
 }
 
 pub trait ConjunctionTrustPolicy: TrustPolicy {

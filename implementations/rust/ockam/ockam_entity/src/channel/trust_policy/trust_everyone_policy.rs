@@ -7,7 +7,7 @@ pub struct TrustEveryonePolicy;
 
 #[async_trait]
 impl TrustPolicy for TrustEveryonePolicy {
-    async fn check(&self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+    async fn check(&mut self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         allow()
     }
 }

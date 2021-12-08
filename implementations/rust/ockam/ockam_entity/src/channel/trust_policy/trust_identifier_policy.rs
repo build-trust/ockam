@@ -15,7 +15,7 @@ impl TrustIdentifierPolicy {
 
 #[async_trait]
 impl TrustPolicy for TrustIdentifierPolicy {
-    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         Ok(trust_info.their_profile_id == self.their_profile_id)
     }
 }

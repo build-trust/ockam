@@ -40,7 +40,7 @@ impl TrustPolicyImpl {
 
 #[async_trait]
 impl TrustPolicy for TrustPolicyImpl {
-    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         let response: TrustPolicyResponse = self
             .handle
             .call(TrustPolicyRequest {
