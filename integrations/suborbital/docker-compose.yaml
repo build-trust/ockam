@@ -1,0 +1,27 @@
+version: "3"
+services:
+  sat:
+    image: suborbital/sat:2021.11.21-10
+    command: sat /runnables/helloworld-rs.wasm
+    environment:
+      SAT_LOG_LEVEL: debug
+      SAT_PEERS: ws://ockam-inlet:4001/meta/message
+      SAT_RUNNABLE_IDENT: com.suborbital.test
+      SAT_RUNNABLE_VERSION: v0.0.1
+    networks:
+      - suborbital-ockam
+    volumes:
+      - "./:/runnables/"
+    depends_on:
+      - ockam-inlet
+
+  ockam-inlet:
+    image: ghcr.io/ockam-network/examples/tcp_inlet_and_outlet
+    command: "04-inlet 0.0.0.0:4001 ${FORWARDING_ADDRESS}"
+    ports:
+      - "4001:4001"
+    networks:
+      - suborbital-ockam
+
+networks:
+  suborbital-ockam:

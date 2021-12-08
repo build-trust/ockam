@@ -1,0 +1,23 @@
+version: "3"
+services:
+  atmo:
+    image: suborbital/atmo-proxy:v0.4.2
+    command: atmo-proxy
+    environment:
+      ATMO_LOG_LEVEL: debug
+      ATMO_HTTP_PORT: 8080
+    networks:
+      - suborbital-ockam
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./:/home/atmo"
+
+  ockam-outlet:
+    image: ghcr.io/ockam-network/examples/tcp_inlet_and_outlet
+    command: ["04-outlet", "atmo:8080"]
+    networks:
+      - suborbital-ockam
+
+networks:
+  suborbital-ockam:
