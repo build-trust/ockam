@@ -4,17 +4,15 @@ use crate::{FfiVaultFatPointer, FfiVaultType};
 use core::convert::{TryFrom, TryInto};
 use core::slice;
 use lazy_static::lazy_static;
-use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::{Error, Result};
 use ockam_vault::SoftwareVault;
 use ockam_vault_core::{
     AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretType, SecretVault,
     SymmetricVault,
 };
-use ockam_vault_sync_core::VaultMutex;
 use std::future::Future;
 use tokio::runtime::Runtime;
-use tokio::sync::RwLock;
 use tokio::task;
 
 /// FFI Vault trait. See documentation for individual sub-traits for details.
@@ -23,7 +21,7 @@ pub trait FfiVault: SecretVault + Hasher + SymmetricVault + AsymmetricVault + Se
 impl<D> FfiVault for D where D: SecretVault + Hasher + SymmetricVault + AsymmetricVault + Send {}
 
 lazy_static! {
-    static ref SOFTWARE_VAULTS: RwLock<Vec<VaultMutex<SoftwareVault>>> = RwLock::new(vec![]);
+    static ref SOFTWARE_VAULTS: RwLock<Vec<Arc<SoftwareVault>>> = RwLock::new(vec![]);
     static ref RUNTIME: Arc<Runtime> = Arc::new(Runtime::new().unwrap());
 }
 
@@ -42,12 +40,11 @@ where
     })
 }
 
-async fn get_vault(context: FfiVaultFatPointer) -> Result<VaultMutex<SoftwareVault>> {
+fn get_vault(context: FfiVaultFatPointer) -> Result<Arc<SoftwareVault>> {
     match context.vault_type() {
         FfiVaultType::Software => {
             let item = SOFTWARE_VAULTS
                 .read()
-                .await
                 .get(context.handle() as usize)
                 .ok_or(FfiError::VaultNotFound)?
                 .clone();
@@ -62,11 +59,11 @@ async fn get_vault(context: FfiVaultFatPointer) -> Result<VaultMutex<SoftwareVau
 pub extern "C" fn ockam_vault_default_init(context: &mut FfiVaultFatPointer) -> FfiOckamError {
     handle_panics(|| {
         // TODO: handle logging
-        let handle = block_future(async move {
-            let mut write_lock = SOFTWARE_VAULTS.write().await;
-            write_lock.push(VaultMutex::create(SoftwareVault::default()));
+        let handle = {
+            let mut write_lock = SOFTWARE_VAULTS.write();
+            write_lock.push(Arc::new(SoftwareVault::default()));
             write_lock.len() - 1
-        });
+        };
 
         *context = FfiVaultFatPointer::new(handle as u64, FfiVaultType::Software);
 
@@ -90,7 +87,7 @@ pub extern "C" fn ockam_vault_sha256(
         let input = unsafe { core::slice::from_raw_parts(input, input_length as usize) };
 
         let res = block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             v.sha256(input).await
         })?;
 
@@ -111,7 +108,7 @@ pub extern "C" fn ockam_vault_secret_generate(
 ) -> FfiOckamError {
     handle_panics(|| {
         *secret = block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let atts = attributes.try_into()?;
             let ctx = v.secret_generate(atts).await?;
             Ok::<u64, Error>(ctx.index() as u64)
@@ -132,7 +129,7 @@ pub extern "C" fn ockam_vault_secret_import(
     handle_panics(|| {
         check_buffer!(input, input_length);
         *secret = block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let atts = attributes.try_into()?;
 
             let secret_data = unsafe { core::slice::from_raw_parts(input, input_length as usize) };
@@ -156,7 +153,7 @@ pub extern "C" fn ockam_vault_secret_export(
     *output_buffer_length = 0;
     handle_panics(|| {
         block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let ctx = Secret::new(secret as usize);
             let key = v.secret_export(&ctx).await?;
             if output_buffer_size < key.as_ref().len() as u32 {
@@ -189,7 +186,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
     *output_buffer_length = 0;
     handle_panics(|| {
         block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let ctx = Secret::new(secret as usize);
             let key = v.secret_public_key_get(&ctx).await?;
             if output_buffer_size < key.as_ref().len() as u32 {
@@ -219,7 +216,7 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
 ) -> FfiOckamError {
     handle_panics(|| {
         *attributes = block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let ctx = Secret::new(secret as usize);
             let atts = v.secret_attributes_get(&ctx).await?;
             Ok::<FfiSecretAttributes, Error>(atts.into())
@@ -235,7 +232,7 @@ pub extern "C" fn ockam_vault_secret_destroy(
     secret: SecretKeyHandle,
 ) -> FfiOckamError {
     match block_future(async move {
-        let mut v = get_vault(context).await?;
+        let v = get_vault(context)?;
         let ctx = Secret::new(secret as usize);
         v.secret_destroy(ctx).await?;
         Ok::<(), Error>(())
@@ -262,7 +259,7 @@ pub extern "C" fn ockam_vault_ecdh(
             unsafe { core::slice::from_raw_parts(peer_publickey, peer_publickey_length as usize) };
 
         *shared_secret = block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let ctx = Secret::new(secret as usize);
             let atts = v.secret_attributes_get(&ctx).await?;
             let pubkey = match atts.stype() {
@@ -304,7 +301,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
         let derived_outputs_count = derived_outputs_count as usize;
 
         block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let salt_ctx = Secret::new(salt as usize);
             let ikm_ctx = if input_key_material.is_null() {
                 None
@@ -380,7 +377,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
             unsafe { core::slice::from_raw_parts(plaintext, plaintext_length as usize) };
 
         block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let ctx = Secret::new(secret as usize);
             let mut nonce_vec = vec![0; 12 - 2];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
@@ -434,7 +431,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
         };
 
         block_future(async move {
-            let mut v = get_vault(context).await?;
+            let v = get_vault(context)?;
             let ctx = Secret::new(secret as usize);
             let mut nonce_vec = vec![0; 12 - 2];
             nonce_vec.extend_from_slice(&nonce.to_be_bytes());
@@ -457,20 +454,17 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
 #[no_mangle]
 pub extern "C" fn ockam_vault_deinit(context: FfiVaultFatPointer) -> FfiOckamError {
     handle_panics(|| {
-        block_future(async move {
-            match context.vault_type() {
-                FfiVaultType::Software => {
-                    let handle = context.handle() as usize;
-                    let mut v = SOFTWARE_VAULTS.write().await;
-                    if handle < v.len() {
-                        v.remove(handle);
-                        Ok(())
-                    } else {
-                        Err(FfiError::VaultNotFound)
-                    }
+        match context.vault_type() {
+            FfiVaultType::Software => {
+                let handle = context.handle() as usize;
+                let mut v = SOFTWARE_VAULTS.write();
+                if handle < v.len() {
+                    v.remove(handle);
+                } else {
+                    return Err(FfiError::VaultNotFound.into())
                 }
             }
-        })?;
+        }
         Ok(())
     })
 }

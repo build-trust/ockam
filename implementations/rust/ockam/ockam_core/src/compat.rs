@@ -214,7 +214,25 @@ pub mod sync {
 #[cfg(feature = "std")]
 pub mod sync {
     pub use std::sync::Arc;
-    pub use std::sync::{Mutex, RwLock};
+    pub use std::sync::Mutex;
+    pub use std::sync::{RwLockReadGuard, RwLockWriteGuard};
+    use std::sync::PoisonError;
+
+    // Wrapper around std::sync::RwLock to normalize poisoning. Probably temporary.
+    #[derive(Debug, Default)]
+    pub struct RwLock<T>(std::sync::RwLock<T>);
+
+    impl<T> RwLock<T> {
+        pub fn new(value: T) -> Self {
+            RwLock(std::sync::RwLock::new(value))
+        }
+        pub fn read(&self) -> RwLockReadGuard<'_, T> {
+            self.0.read().unwrap_or_else(PoisonError::into_inner)
+        }
+        pub fn write(&self) -> RwLockWriteGuard<'_, T> {
+            self.0.write().unwrap_or_else(PoisonError::into_inner)
+        }
+    }
 }
 
 /// std::task

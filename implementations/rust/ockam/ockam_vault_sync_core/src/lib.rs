@@ -12,23 +12,10 @@
     unused_qualifications
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
+use ockam_core::compat::sync::Arc;
 
 #[cfg(feature = "std")]
 extern crate core;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
-
-mod error;
-mod vault;
-#[cfg(feature = "std")]
-mod vault_mutex;
-mod vault_sync;
-mod vault_worker;
-
-pub use error::*;
-pub use vault::*;
-#[cfg(feature = "std")]
-pub use vault_mutex::*;
-pub use vault_sync::*;
-pub use vault_worker::*;

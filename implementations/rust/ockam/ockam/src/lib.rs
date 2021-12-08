@@ -73,9 +73,6 @@ pub use ockam_core::route;
 pub use ockam_key_exchange_xx::XXNewKeyExchanger;
 
 #[cfg(feature = "ockam_vault")]
-pub use ockam_vault_sync_core::{Vault, VaultSync};
-
-#[cfg(feature = "ockam_vault")]
 pub use ockam_vault::SoftwareVault;
 
 #[cfg(feature = "ockam_transport_tcp")]

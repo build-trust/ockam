@@ -16,6 +16,7 @@ pub trait VaultTrait:
     + SymmetricVault
     + Verifier
     + Send
+    + Sync
     + 'static
 {
 }
@@ -29,6 +30,7 @@ impl<V> VaultTrait for V where
         + SymmetricVault
         + Verifier
         + Send
+        + Sync
         + 'static
 {
 }

@@ -10,7 +10,7 @@ use ockam_vault_core::{PublicKey, Signature, Verifier, CURVE25519_PUBLIC_LENGTH}
 impl Verifier for SoftwareVault {
     /// Verify signature with xeddsa algorithm. Only curve25519 is supported.
     async fn verify(
-        &mut self,
+        &self,
         signature: &Signature,
         public_key: &PublicKey,
         data: &[u8],

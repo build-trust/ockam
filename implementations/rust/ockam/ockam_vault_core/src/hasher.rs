@@ -6,16 +6,32 @@ use ockam_core::{async_trait, compat::boxed::Box};
 
 /// A trait for hashing data into fixed length output
 #[async_trait]
-pub trait Hasher {
+pub trait Hasher: Send + Sync {
     /// Compute the SHA-256 digest given input `data`
-    async fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]>;
+    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]>;
     /// Derive multiple output [`Secret`]s with given attributes using the HKDF-SHA256 using
     /// specified salt, input key material and info.
     async fn hkdf_sha256(
-        &mut self,
+        &self,
         salt: &Secret,
         info: &[u8],
         ikm: Option<&Secret>,
         output_attributes: SmallBuffer<SecretAttributes>,
     ) -> Result<SmallBuffer<Secret>>;
+}
+
+#[async_trait]
+impl<V: ?Sized + Hasher> Hasher for ockam_core::compat::sync::Arc<V> {
+    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
+        V::sha256(&**self, data).await
+    }
+    async fn hkdf_sha256(
+        &self,
+        salt: &Secret,
+        info: &[u8],
+        ikm: Option<&Secret>,
+        output_attributes: SmallBuffer<SecretAttributes>,
+    ) -> Result<SmallBuffer<Secret>> {
+        V::hkdf_sha256(&**self, salt, info, ikm, output_attributes).await
+    }
 }

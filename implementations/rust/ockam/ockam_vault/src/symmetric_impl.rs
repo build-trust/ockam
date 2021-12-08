@@ -45,13 +45,14 @@ macro_rules! encrypt_impl {
 #[async_trait]
 impl SymmetricVault for SoftwareVault {
     async fn aead_aes_gcm_encrypt(
-        &mut self,
+        &self,
         context: &Secret,
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        let entry = self.get_entry(context)?;
+        let storage = self.inner.read();
+        let entry = storage.get_entry(context)?;
 
         encrypt_impl!(
             entry,
@@ -64,13 +65,14 @@ impl SymmetricVault for SoftwareVault {
     }
 
     async fn aead_aes_gcm_decrypt(
-        &mut self,
+        &self,
         context: &Secret,
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        let entry = self.get_entry(context)?;
+        let storage = self.inner.read();
+        let entry = storage.get_entry(context)?;
 
         encrypt_impl!(
             entry,

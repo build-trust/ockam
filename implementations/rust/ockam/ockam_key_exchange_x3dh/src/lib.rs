@@ -8,7 +8,7 @@ extern crate alloc;
 
 use arrayref::array_ref;
 use core::convert::TryFrom;
-use ockam_core::{compat::vec::Vec, hex::encode, AsyncTryClone};
+use ockam_core::{compat::vec::Vec, hex::encode};
 use ockam_vault_core::{
     AsymmetricVault, Hasher, PublicKey, SecretVault, Signer, SymmetricVault, Verifier,
 };
@@ -107,7 +107,6 @@ pub trait X3dhVault:
     + AsymmetricVault
     + SymmetricVault
     + Hasher
-    + AsyncTryClone
     + Send
     + Sync
     + 'static
@@ -121,9 +120,9 @@ impl<D> X3dhVault for D where
         + AsymmetricVault
         + SymmetricVault
         + Hasher
-        + AsyncTryClone
         + Send
         + Sync
+        + ?Sized
         + 'static
 {
 }
@@ -133,18 +132,16 @@ mod tests {
     use super::*;
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
     use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultSync;
+    use ockam_core::compat::sync::Arc;
 
     #[allow(non_snake_case)]
     #[test]
     fn full_flow__correct_credentials__keys_should_match() {
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let vault = Arc::new(SoftwareVault::default());
 
-            let key_exchanger = X3dhNewKeyExchanger::new(vault.async_try_clone().await.unwrap());
+            let key_exchanger = X3dhNewKeyExchanger::new(vault.clone());
 
             let mut initiator = key_exchanger.initiator().await.unwrap();
             let mut responder = key_exchanger.responder().await.unwrap();

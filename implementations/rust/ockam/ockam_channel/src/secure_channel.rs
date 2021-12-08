@@ -1,8 +1,11 @@
+use std::marker::PhantomData;
+
 use crate::{
     KeyExchangeCompleted, SecureChannelKeyExchanger, SecureChannelListener,
     SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker,
 };
 use ockam_core::compat::rand::random;
+use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -29,21 +32,21 @@ impl SecureChannelInfo {
 }
 
 /// Secure Channel
-pub struct SecureChannel;
+pub struct SecureChannel<V>(PhantomData<V>);
 
-impl SecureChannel {
+impl<V: SecureChannelVault> SecureChannel<V> {
     /// Create and start channel listener with given address using noise xx and software vault.
     #[cfg(all(feature = "software_vault", feature = "noise_xx"))]
     pub async fn create_listener<A: Into<Address>>(
         ctx: &Context,
         address: A,
-        vault: &Address,
-    ) -> Result<()> {
-        use ockam_core::AsyncTryClone;
+        vault: Arc<V>,
+    ) -> Result<()>
+    where
+        V: ockam_key_exchange_xx::XXVault,
+    {
         use ockam_key_exchange_xx::XXNewKeyExchanger;
-        use ockam_vault_sync_core::VaultSync;
-        let vault = VaultSync::create_with_worker(ctx, vault).await?;
-        let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
+        let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
         Self::create_listener_extended(ctx, address, new_key_exchanger, vault).await
     }
 
@@ -51,12 +54,11 @@ impl SecureChannel {
     pub async fn create_listener_extended<
         A: Into<Address>,
         N: SecureChannelNewKeyExchanger,
-        V: SecureChannelVault,
     >(
         ctx: &Context,
         address: A,
         new_key_exchanger: N,
-        vault: V,
+        vault: Arc<V>,
     ) -> Result<()> {
         let address = address.into();
         let channel_listener = SecureChannelListener::new(new_key_exchanger, vault);
@@ -71,14 +73,14 @@ impl SecureChannel {
     pub async fn create(
         ctx: &Context,
         route: impl Into<Route>,
-        vault: &Address,
-    ) -> Result<SecureChannelInfo> {
-        use ockam_core::AsyncTryClone;
+        vault: Arc<V>,
+    ) -> Result<SecureChannelInfo>
+    where
+        V: ockam_key_exchange_xx::XXVault
+    {
         use ockam_key_exchange_core::NewKeyExchanger;
         use ockam_key_exchange_xx::XXNewKeyExchanger;
-        use ockam_vault_sync_core::VaultSync;
-        let vault = VaultSync::create_with_worker(ctx, vault).await?;
-        let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
+        let new_key_exchanger = XXNewKeyExchanger::new(vault.clone());
         Self::create_extended(
             ctx,
             route,
@@ -95,7 +97,7 @@ impl SecureChannel {
         route: impl Into<Route>,
         first_responder_address: Option<Address>,
         key_exchanger: impl SecureChannelKeyExchanger,
-        vault: impl SecureChannelVault,
+        vault: Arc<V>,
     ) -> Result<SecureChannelInfo> {
         let address_remote: Address = random();
         let address_local: Address = random();

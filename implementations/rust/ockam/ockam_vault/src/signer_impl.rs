@@ -10,8 +10,9 @@ use ockam_vault_core::{Secret, SecretType, Signature, Signer, CURVE25519_SECRET_
 #[async_trait]
 impl Signer for SoftwareVault {
     /// Sign data with xeddsa algorithm. Only curve25519 is supported.
-    async fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
-        let entry = self.get_entry(secret_key)?;
+    async fn sign(&self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
+        let storage = self.inner.read();
+        let entry = storage.get_entry(secret_key)?;
         let key = entry.key().as_ref();
         match entry.key_attributes().stype() {
             SecretType::Curve25519 => {

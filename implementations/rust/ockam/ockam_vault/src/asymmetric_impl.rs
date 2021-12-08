@@ -44,13 +44,15 @@ impl SoftwareVault {
 #[async_trait]
 impl AsymmetricVault for SoftwareVault {
     async fn ec_diffie_hellman(
-        &mut self,
+        &self,
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        let entry = self.get_entry(context)?;
-
-        let dh = Self::ecdh_internal(entry, peer_public_key)?;
+        let dh = {
+            let storage = self.inner.read();
+            let entry = storage.get_entry(context)?;
+            Self::ecdh_internal(entry, peer_public_key)?
+        };
 
         let attributes =
             SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());

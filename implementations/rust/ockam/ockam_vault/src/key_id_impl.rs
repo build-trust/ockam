@@ -3,12 +3,12 @@ use crate::VaultError;
 use ockam_core::hex::encode;
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{Hasher, KeyId, KeyIdVault, PublicKey, Secret};
+use ockam_vault_core::{KeyId, KeyIdVault, PublicKey, Secret};
 
-#[async_trait]
-impl KeyIdVault for SoftwareVault {
-    async fn get_secret_by_key_id(&mut self, key_id: &str) -> Result<Secret> {
-        let index = self
+impl SoftwareVault {
+    pub(crate) fn get_secret_by_key_id_sync(&self, key_id: &str) -> Result<Secret> {
+        let storage = self.inner.read();
+        let index = storage
             .entries
             .iter()
             .find(|(_, entry)| {
@@ -24,9 +24,19 @@ impl KeyIdVault for SoftwareVault {
         Ok(Secret::new(*index))
     }
 
-    async fn compute_key_id_for_public_key(&mut self, public_key: &PublicKey) -> Result<KeyId> {
-        let key_id = self.sha256(public_key.as_ref()).await?;
+    pub(crate) fn compute_key_id_for_public_key_sync(&self, public_key: &PublicKey) -> Result<KeyId> {
+        let key_id = self.sha256_sync(public_key.as_ref())?;
         Ok(encode(key_id))
+    }
+}
+
+#[async_trait]
+impl KeyIdVault for SoftwareVault {
+    async fn get_secret_by_key_id(&self, key_id: &str) -> Result<Secret> {
+        self.get_secret_by_key_id_sync(key_id)
+    }
+    async fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> Result<KeyId> {
+        self.compute_key_id_for_public_key_sync(public_key)
     }
 }
 

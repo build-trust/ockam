@@ -1,5 +1,5 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE, SHA256_SIZE};
-use ockam_core::compat::vec::Vec;
+use ockam_core::compat::{vec::Vec, sync::Arc};
 use ockam_core::Result;
 use ockam_key_exchange_core::CompletedKeyExchange;
 use ockam_vault_core::{
@@ -19,10 +19,10 @@ pub(crate) struct State<V: XXVault> {
     ephemeral_public: Option<PublicKey>,
     _remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
-    dh_state: DhState<V>,
+    dh_state: DhState<Arc<V>>,
     nonce: u16,
     h: Option<[u8; SHA256_SIZE]>,
-    vault: V,
+    vault: Arc<V>,
 }
 
 impl<V: XXVault> core::fmt::Debug for State<V> {
@@ -39,7 +39,7 @@ impl<V: XXVault> core::fmt::Debug for State<V> {
 }
 
 impl<V: XXVault> State<V> {
-    pub(crate) async fn new(vault: &V) -> Result<Self> {
+    pub(crate) fn new(vault: Arc<V>) -> Result<Self> {
         Ok(Self {
             run_prologue: true,
             identity_key: None,
@@ -48,10 +48,10 @@ impl<V: XXVault> State<V> {
             ephemeral_public: None,
             _remote_static_public_key: None,
             remote_ephemeral_public_key: None,
-            dh_state: DhState::empty(vault.async_try_clone().await?),
+            dh_state: DhState::empty(vault.clone()),
             nonce: 0,
             h: None,
-            vault: vault.async_try_clone().await?,
+            vault,
         })
     }
 }
@@ -104,7 +104,7 @@ impl<V: XXVault> State<V> {
         // mix_hash(xx, NULL, 0);
         let mut h = [0u8; SHA256_SIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
-        self.dh_state = DhState::new(&h, self.vault.async_try_clone().await?).await?;
+        self.dh_state = DhState::new(&h, self.vault.clone()).await?;
         self.h = Some(self.vault.sha256(&h).await?);
 
         Ok(())
@@ -387,29 +387,26 @@ impl<V: XXVault> State<V> {
 mod tests {
     use crate::state::{DhState, State};
     use crate::{Initiator, Responder, XXVault};
-    use ockam_core::hex::{decode, encode};
+    use ockam_core::{hex::{decode, encode}, compat::sync::Arc};
     use ockam_key_exchange_core::KeyExchanger;
     use ockam_vault::SoftwareVault;
     use ockam_vault_core::{
-        SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
+        SecretAttributes, SecretPersistence, SecretType, SecretVault,
         CURVE25519_SECRET_LENGTH,
     };
-    use ockam_vault_sync_core::VaultSync;
 
     #[test]
     fn prologue() {
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let vault = Arc::new(SoftwareVault::default());
 
             let exp_h = [
                 93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79,
                 126, 100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
             ];
 
-            let mut state = State::new(&vault).await.unwrap();
+            let mut state = State::new(vault.clone()).unwrap();
             let res = state.prologue().await;
             assert!(res.is_ok());
             assert_eq!(state.h.unwrap(), exp_h);
@@ -445,12 +442,10 @@ mod tests {
 
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let vault = Arc::new(SoftwareVault::default());
 
             mock_handshake(
-                &mut vault,
+                vault,
                 INIT_STATIC,
                 INIT_EPH,
                 RESP_STATIC,
@@ -470,7 +465,7 @@ mod tests {
     }
 
     async fn mock_handshake<V: XXVault>(
-        vault: &mut V,
+        vault: Arc<V>,
         init_static: &'static str,
         init_eph: &'static str,
         resp_static: &'static str,
@@ -482,7 +477,7 @@ mod tests {
         msg_3_payload: &'static str,
         msg_3_ciphertext: &'static str,
     ) {
-        let mut initiator = mock_prologue(vault, init_static, init_eph).await;
+        let mut initiator = mock_prologue(vault.clone(), init_static, init_eph).await;
         let mut responder = mock_prologue(vault, resp_static, resp_eph).await;
 
         let res = initiator
@@ -538,12 +533,10 @@ mod tests {
 
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let vault = Arc::new(SoftwareVault::default());
 
             mock_handshake(
-                &mut vault,
+                vault,
                 INIT_STATIC,
                 INIT_EPH,
                 RESP_STATIC,
@@ -564,6 +557,7 @@ mod tests {
 
     #[test]
     fn handshake_main() {
+        use ockam_vault_core::SymmetricVault;
         const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
@@ -580,12 +574,10 @@ mod tests {
 
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let vault = Arc::new(SoftwareVault::default());
 
-            let initiator = mock_prologue(&mut vault, INIT_STATIC, INIT_EPH).await;
-            let responder = mock_prologue(&mut vault, RESP_STATIC, RESP_EPH).await;
+            let initiator = mock_prologue(vault.clone(), INIT_STATIC, INIT_EPH).await;
+            let responder = mock_prologue(vault.clone(), RESP_STATIC, RESP_EPH).await;
 
             let mut initiator = Initiator::new(initiator);
             let mut responder = Responder::new(responder);
@@ -657,7 +649,7 @@ mod tests {
     }
 
     async fn mock_prologue<V: XXVault>(
-        vault: &mut V,
+        vault: Arc<V>,
         static_private: &str,
         ephemeral_private: &str,
     ) -> State<V> {
@@ -707,11 +699,11 @@ mod tests {
             dh_state: DhState {
                 key: None,
                 ck: Some(ck),
-                vault: vault.async_try_clone().await.unwrap(),
+                vault: vault.clone(),
             },
             nonce: 0,
             h: Some(h),
-            vault: vault.async_try_clone().await.unwrap(),
+            vault,
         }
     }
 }

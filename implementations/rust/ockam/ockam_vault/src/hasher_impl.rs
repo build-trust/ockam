@@ -5,14 +5,13 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{
-    Hasher, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
+    Hasher, Secret, SecretAttributes, SecretType, AES128_SECRET_LENGTH,
     AES256_SECRET_LENGTH,
 };
 use sha2::{Digest, Sha256};
 
-#[async_trait]
-impl Hasher for SoftwareVault {
-    async fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
+impl SoftwareVault {
+    pub(crate) fn sha256_sync(&self, data: &[u8]) -> Result<[u8; 32]> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
     }
@@ -20,16 +19,17 @@ impl Hasher for SoftwareVault {
     /// Compute sha256.
     /// Salt and Ikm should be of Buffer type.
     /// Output secrets should be only of type Buffer or AES
-    async fn hkdf_sha256(
-        &mut self,
+    pub(crate) fn hkdf_sha256_sync(
+        &self,
         salt: &Secret,
         info: &[u8],
         ikm: Option<&Secret>,
         output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Secret>> {
+        let storage = self.inner.read();
         let ikm: Result<&[u8]> = match ikm {
             Some(ikm) => {
-                let ikm = self.get_entry(ikm)?;
+                let ikm = storage.get_entry(ikm)?;
                 if ikm.key_attributes().stype() == SecretType::Buffer {
                     Ok(ikm.key().as_ref())
                 } else {
@@ -41,7 +41,7 @@ impl Hasher for SoftwareVault {
 
         let ikm = ikm?;
 
-        let salt = self.get_entry(salt)?;
+        let salt = storage.get_entry(salt)?;
 
         if salt.key_attributes().stype() != SecretType::Buffer {
             return Err(VaultError::InvalidKeyType.into());
@@ -72,13 +72,29 @@ impl Hasher for SoftwareVault {
                 return Err(VaultError::InvalidHkdfOutputType.into());
             }
             let secret = &okm[index..index + length];
-            let secret = self.secret_import(secret, attributes).await?;
+            let secret = self.secret_import_sync(secret, attributes)?;
 
             secrets.push(secret);
             index += 32;
         }
 
         Ok(secrets)
+    }
+}
+
+#[async_trait]
+impl Hasher for SoftwareVault {
+    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
+        self.sha256_sync(data)
+    }
+    async fn hkdf_sha256(
+        &self,
+        salt: &Secret,
+        info: &[u8],
+        ikm: Option<&Secret>,
+        output_attributes: Vec<SecretAttributes>,
+    ) -> Result<Vec<Secret>> {
+        self.hkdf_sha256_sync(salt, info, ikm, output_attributes)
     }
 }
 

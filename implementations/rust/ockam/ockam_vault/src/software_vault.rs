@@ -2,6 +2,8 @@ use crate::VaultError;
 use ockam_core::compat::{collections::BTreeMap, string::String};
 use ockam_core::Result;
 use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
+use ockam_core::compat::sync::RwLock;
+use ockam_core::compat::sync::Arc;
 use tracing::info;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
@@ -32,10 +34,13 @@ use tracing::info;
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
 pub struct SoftwareVault {
+    pub(crate) inner: RwLock<VaultStorage>,
+}
+
+pub(crate) struct VaultStorage {
     pub(crate) entries: BTreeMap<usize, VaultEntry>,
-    pub(crate) next_id: usize,
+    next_id: usize,
 }
 
 impl SoftwareVault {
@@ -43,23 +48,48 @@ impl SoftwareVault {
     pub fn new() -> Self {
         info!("Creating vault");
         Self {
-            entries: Default::default(),
-            next_id: 0,
+            inner: RwLock::new(VaultStorage {
+                entries: BTreeMap::new(),
+                next_id: 0,
+            })
         }
+    }
+
+    /// Create a new `Arc<SoftwareVault>`
+    pub fn new_arc() -> Arc<Self> {
+        Self::new().into()
+    }
+
+    pub(crate) fn insert(&self, entry: VaultEntry) -> Secret {
+        let mut storage = self.inner.write();
+        let next_id = storage.next_id + 1;
+        storage.next_id = next_id;
+        storage.entries.insert(next_id, entry);
+        Secret::new(next_id)
+    }
+
+    pub(crate) fn remove(&self, entry: Secret) -> Option<VaultEntry> {
+        let mut storage = self.inner.write();
+        storage.entries.remove(&entry.index())
+    }
+
+    // TODO: we only need this because we don't have mapped guards on `std`.
+    pub(crate) fn with_entry<Ret, F: FnOnce(&VaultEntry) -> Ret>(&self, secret: &Secret, reader: F) -> Result<Ret, VaultError> {
+        let storage = self.inner.read();
+        let entry = storage.get_entry(&secret)?;
+        Ok(reader(entry))
+    }
+}
+
+impl VaultStorage {
+    pub(crate) fn get_entry<'a>(&'a self, secret: &Secret) -> Result<&'a VaultEntry, VaultError> {
+        self.entries.get(&secret.index()).ok_or(VaultError::EntryNotFound)
     }
 }
 
 impl Default for SoftwareVault {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl SoftwareVault {
-    pub(crate) fn get_entry(&self, context: &Secret) -> Result<&VaultEntry> {
-        self.entries
-            .get(&context.index())
-            .ok_or_else(|| VaultError::EntryNotFound.into())
     }
 }
 
@@ -99,7 +129,7 @@ mod tests {
     #[test]
     fn new_vault() {
         let vault = SoftwareVault::new();
-        assert_eq!(vault.next_id, 0);
-        assert_eq!(vault.entries.len(), 0);
+        assert_eq!(vault.inner.read().next_id, 0);
+        assert_eq!(vault.inner.read().entries.len(), 0);
     }
 }

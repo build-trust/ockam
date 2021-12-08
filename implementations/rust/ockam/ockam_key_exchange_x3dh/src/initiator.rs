@@ -3,6 +3,7 @@ use core::convert::TryFrom;
 use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
+    sync::Arc,
 };
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -27,12 +28,12 @@ pub struct Initiator<V: X3dhVault> {
     ephemeral_identity_key: Option<Secret>,
     prekey_bundle: Option<PreKeyBundle>,
     state: InitiatorState,
-    vault: V,
+    vault: Arc<V>,
     completed_key_exchange: Option<CompletedKeyExchange>,
 }
 
 impl<V: X3dhVault> Initiator<V> {
-    pub(crate) fn new(vault: V, identity_key: Option<Secret>) -> Self {
+    pub(crate) fn new(vault: Arc<V>, identity_key: Option<Secret>) -> Self {
         Self {
             identity_key,
             ephemeral_identity_key: None,

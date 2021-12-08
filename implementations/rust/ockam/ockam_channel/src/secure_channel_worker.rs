@@ -3,7 +3,7 @@ use crate::{
     SecureChannelVault,
 };
 use ockam_core::async_trait;
-use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
+use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
@@ -32,7 +32,7 @@ pub struct SecureChannelWorker<V: SecureChannelVault, K: SecureChannelKeyExchang
     key_exchange_completed_callback_route: Option<Address>,
     // Optional address to which responder can talk to after SecureChannel is created
     first_responder_address: Option<Address>,
-    vault: V,
+    vault: Arc<V>,
     key_exchanger: Option<K>,
     key_exchange_name: String,
 }
@@ -47,7 +47,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
         key_exchange_completed_callback_route: Option<Address>,
         first_responder_address: Option<Address>,
         key_exchanger: K,
-        vault: V,
+        vault: Arc<V>,
     ) -> Result<Self> {
         let key_exchange_name = key_exchanger.name().await?;
         Ok(SecureChannelWorker {
