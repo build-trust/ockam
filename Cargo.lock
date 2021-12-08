@@ -1314,8 +1314,7 @@ dependencies = [
  "hex",
  "ockam_channel",
  "ockam_core",
- "ockam_identity",
- "ockam_key_exchange_core",
+ "ockam_entity",
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
@@ -1351,7 +1350,6 @@ name = "ockam_channel"
 version = "0.41.0"
 dependencies = [
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_key_exchange_x3dh",
  "ockam_key_exchange_xx",
  "ockam_macros",
@@ -1440,7 +1438,6 @@ dependencies = [
  "heapless",
  "ockam_channel",
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
@@ -1481,7 +1478,6 @@ version = "0.37.0"
 dependencies = [
  "arrayref",
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_node",
  "ockam_vault",
  "ockam_vault_sync_core",
@@ -1493,7 +1489,6 @@ name = "ockam_key_exchange_xx"
 version = "0.38.0"
 dependencies = [
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_node",
  "ockam_vault",
  "ockam_vault_sync_core",

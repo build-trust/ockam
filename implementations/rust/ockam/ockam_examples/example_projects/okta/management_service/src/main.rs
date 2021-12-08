@@ -12,7 +12,7 @@ use owo_colors::OwoColorize;
 use isahc::prelude::*;
 // use objects::UsersInGroup;
 use ockam::{CredentialAttributeSchema, CredentialAttributeType, CredentialSchema};
-use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
+use ockam_core::key_exchange::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_x3dh::*;
 use ockam_vault::{ockam_core::vault::*, *};
 use ockam_vault_sync_core::VaultMutex;

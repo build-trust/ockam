@@ -132,7 +132,7 @@ impl<D> X3dhVault for D where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
+    use ockam_core::key_exchange::{KeyExchanger, NewKeyExchanger};
     use ockam_vault_sync_core::Vault;
 
     #[allow(non_snake_case)]

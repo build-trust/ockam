@@ -29,8 +29,6 @@ pub enum TransportError {
     Protocol,
     /// A generic I/O failure
     GenericIo,
-    /// PortalInvalidState
-    PortalInvalidState,
 }
 
 impl TransportError {

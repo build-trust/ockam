@@ -74,4 +74,3 @@ futures-util = { version = "0.3.17", default-features = false, features = [
     "sink",
 ] }
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
-cfg-if = "1.0"

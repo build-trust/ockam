@@ -1,10 +1,10 @@
 use ockam::*;
-use owo_colors::OwoColorize;
-use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
+use ockam_core::key_exchange::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_x3dh::*;
 use ockam_vault::{ockam_core::vault::*, SoftwareVault};
 use ockam_vault_sync_core::VaultMutex;
 use oktaplugin::*;
+use owo_colors::OwoColorize;
 use rand::prelude::*;
 use serde::Deserialize;
 use std::{

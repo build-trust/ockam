@@ -40,8 +40,8 @@ pub use traits::*;
 mod tests {
     use crate::SecureChannel;
     use ockam_core::compat::string::{String, ToString};
+    use ockam_core::key_exchange::NewKeyExchanger;
     use ockam_core::{AsyncTryClone, Result, Route};
-    use ockam_key_exchange_core::NewKeyExchanger;
     use ockam_key_exchange_xx::XXNewKeyExchanger;
     use ockam_node::Context;
     use ockam_vault_sync_core::Vault;

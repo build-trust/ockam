@@ -1,8 +1,7 @@
 use crate::{PortalMessage, TcpRouterHandle};
 use ockam_core::{async_trait, AsyncTryClone};
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::{route, Address, LocalMessage, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
-use ockam_transport_core::TransportError;
 use tracing::debug;
 
 pub(crate) struct TcpOutletListenWorker {
@@ -34,22 +33,16 @@ impl Worker for TcpOutletListenWorker {
 
     async fn handle_message(
         &mut self,
-        _ctx: &mut Self::Context,
+        ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let return_route = msg.return_route();
-
-        if let PortalMessage::Ping = msg.body() {
-        } else {
-            return Err(TransportError::Protocol.into());
-        }
-
-        let address = self
-            .router_handle
-            .connect_outlet(self.peer.clone(), return_route.clone())
-            .await?;
+        let address = self.router_handle.connect_outlet(self.peer.clone()).await?;
 
         debug!("Created Tcp Outlet at {}", &address);
+
+        let msg = TransportMessage::v1(route![address], msg.return_route(), msg.payload().to_vec());
+
+        ctx.forward(LocalMessage::new(msg, vec![])).await?;
 
         Ok(())
     }

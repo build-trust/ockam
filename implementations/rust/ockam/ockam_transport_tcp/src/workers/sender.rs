@@ -1,7 +1,5 @@
 use crate::TcpRecvProcessor;
-use core::time::Duration;
-use futures::future::{AbortHandle, Abortable};
-use ockam_core::{async_trait, route, Any, Decodable};
+use ockam_core::async_trait;
 use ockam_core::{Address, Encodable, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -9,7 +7,7 @@ use std::net::SocketAddr;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tracing::{debug, trace, warn};
+use tracing::{trace, warn};
 
 /// Transmit and receive peers of a TCP connection
 #[derive(Debug)]
@@ -43,13 +41,10 @@ pub(crate) struct TcpSendWorker {
     rx: Option<OwnedReadHalf>,
     tx: Option<OwnedWriteHalf>,
     peer: SocketAddr,
-    internal_addr: Address,
-    heartbeat_abort_handle: Option<AbortHandle>,
-    heartbeat_interval: Option<Duration>,
 }
 
 impl TcpSendWorker {
-    fn new(stream: Option<TcpStream>, peer: SocketAddr, internal_addr: Address) -> Self {
+    fn new(stream: Option<TcpStream>, peer: SocketAddr) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
                 let (rx, tx) = s.into_split();
@@ -58,14 +53,7 @@ impl TcpSendWorker {
             None => (None, None),
         };
 
-        Self {
-            rx,
-            tx,
-            peer,
-            internal_addr,
-            heartbeat_abort_handle: None,
-            heartbeat_interval: Some(Duration::from_secs(5 * 60)),
-        }
+        Self { rx, tx, peer }
     }
 
     pub(crate) async fn start_pair(
@@ -77,11 +65,9 @@ impl TcpSendWorker {
         trace!("Creating new TCP worker pair");
 
         let tx_addr = Address::random(0);
-        let internal_addr = Address::random(0);
-        let sender = TcpSendWorker::new(stream, peer, internal_addr.clone());
+        let sender = TcpSendWorker::new(stream, peer);
 
-        ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
-            .await?;
+        ctx.start_worker(tx_addr.clone(), sender).await?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
@@ -89,46 +75,6 @@ impl TcpSendWorker {
             peer,
             tx_addr,
         })
-    }
-
-    fn abort_heartbeat(&mut self) {
-        if let Some(handle) = self.heartbeat_abort_handle.take() {
-            handle.abort()
-        }
-    }
-
-    async fn schedule_heartbeat(&mut self, ctx: &Context) -> Result<()> {
-        let heartbeat_interval;
-        if let Some(hi) = &self.heartbeat_interval {
-            heartbeat_interval = *hi;
-        } else {
-            return Ok(());
-        }
-
-        let child_ctx = ctx.new_context(Address::random(0)).await?;
-        let internal_addr = self.internal_addr.clone();
-        let peer = self.peer;
-
-        let (handle, reg) = AbortHandle::new_pair();
-        let future = Abortable::new(
-            async move {
-                child_ctx.sleep(heartbeat_interval).await;
-
-                let res = child_ctx.send(route![internal_addr.clone()], vec![]).await;
-
-                if res.is_err() {
-                    warn!("Error sending heartbeat message at {}", internal_addr);
-                } else {
-                    debug!("Scheduled heartbeat to peer {}", peer);
-                }
-            },
-            reg,
-        );
-
-        self.heartbeat_abort_handle = Some(handle);
-        ctx.runtime().spawn(future);
-
-        Ok(())
     }
 }
 
@@ -154,7 +100,7 @@ fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
 #[async_trait]
 impl Worker for TcpSendWorker {
     type Context = Context;
-    type Message = Any;
+    type Message = TransportMessage;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
@@ -167,7 +113,6 @@ impl Worker for TcpSendWorker {
             self.tx = Some(tx);
             self.rx = Some(rx);
         }
-
         if let Some(rx) = self.rx.take() {
             let rx_addr = Address::random(0);
             let receiver =
@@ -177,14 +122,6 @@ impl Worker for TcpSendWorker {
             return Err(TransportError::GenericIo.into());
         }
 
-        self.schedule_heartbeat(ctx).await?;
-
-        Ok(())
-    }
-
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
-        self.abort_heartbeat();
-
         Ok(())
     }
 
@@ -193,47 +130,25 @@ impl Worker for TcpSendWorker {
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
-        msg: Routed<Self::Message>,
+        mut msg: Routed<TransportMessage>,
     ) -> Result<()> {
-        self.abort_heartbeat();
-
         let tx;
         if let Some(t) = &mut self.tx {
             tx = t;
         } else {
             return Err(TransportError::PeerNotFound.into());
         }
+        // Remove our own address from the route so the other end
+        // knows what to do with the incoming message
+        msg.onward_route.step()?;
 
-        let recipient = msg.msg_addr();
-        if recipient == self.internal_addr {
-            let msg = TransportMessage::v1(route![], route![], vec![]);
-            let msg = prepare_message(msg)?;
-            // Sending empty heartbeat
-            if tx.write_all(&msg).await.is_err() {
-                warn!("Failed to send heartbeat to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+        // Create a message buffer with pre-pended length
+        let msg = prepare_message(msg.body())?;
 
-                return Ok(());
-            }
-
-            debug!("Sent heartbeat to peer {}", self.peer);
-        } else {
-            let mut msg = TransportMessage::decode(msg.payload())?;
-            // Remove our own address from the route so the other end
-            // knows what to do with the incoming message
-            msg.onward_route.step()?;
-            // Create a message buffer with pre-pended length
-            let msg = prepare_message(msg)?;
-
-            if tx.write_all(msg.as_slice()).await.is_err() {
-                warn!("Failed to send message to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
-
-                return Ok(());
-            }
+        if tx.write_all(msg.as_slice()).await.is_err() {
+            warn!("Failed to send message to peer {}", self.peer);
+            ctx.stop_worker(ctx.address()).await?;
         }
-
-        self.schedule_heartbeat(ctx).await?;
 
         Ok(())
     }

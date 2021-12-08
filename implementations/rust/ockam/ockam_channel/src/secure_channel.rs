@@ -76,7 +76,7 @@ impl SecureChannel {
         route: impl Into<Route>,
         vault: &V,
     ) -> Result<SecureChannelInfo> {
-        use ockam_key_exchange_core::NewKeyExchanger;
+        use ockam_core::key_exchange::NewKeyExchanger;
         use ockam_key_exchange_xx::XXNewKeyExchanger;
         let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
         Self::create_extended(

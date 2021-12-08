@@ -70,7 +70,7 @@ pub use ockam_core::{
 
 pub use ockam_channel::SecureChannel;
 
-pub use ockam_key_exchange_core::NewKeyExchanger;
+pub use ockam_core::key_exchange::NewKeyExchanger;
 
 pub use ockam_core::route;
 
