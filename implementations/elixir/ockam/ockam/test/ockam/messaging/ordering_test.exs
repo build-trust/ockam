@@ -5,13 +5,13 @@ defmodule Ockam.Messaging.Ordering.Tests do
 
   monotonic_pipes = [Ockam.Messaging.Ordering.Monotonic.IndexPipe]
 
-  strict_pipes = [
+  continuous_pipes = [
     Ockam.Messaging.Ordering.Strict.ConfirmPipe,
     Ockam.Messaging.Ordering.Strict.IndexPipe
   ]
 
-  Enum.each(strict_pipes, fn pipe ->
-    test "Pipe #{pipe} is ordered" do
+  Enum.each(continuous_pipes, fn pipe ->
+    test "Pipe #{pipe} is continuously ordered" do
       pipe_mod = unquote(pipe)
       {:ok, me} = Ockam.Node.register_random_address()
 
@@ -35,7 +35,7 @@ defmodule Ockam.Messaging.Ordering.Tests do
           receive do
             %{payload: pl} -> String.to_integer(pl)
           after
-            1000 ->
+            2000 ->
               raise "message #{n} not received"
           end
         end)
