@@ -17,7 +17,7 @@ impl<F: TrustPolicy, S: TrustPolicy> AnyTrustPolicy<F, S> {
 
 #[async_trait]
 impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AnyTrustPolicy<F, S> {
-    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         Ok(self.first.check(trust_info).await? || self.second.check(trust_info).await?)
     }
 }
@@ -35,7 +35,7 @@ mod test {
 
         #[async_trait]
         impl TrustPolicy for TrustPolicyStub {
-            async fn check(&self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+            async fn check(&mut self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
                 Ok(self.0)
             }
         }
