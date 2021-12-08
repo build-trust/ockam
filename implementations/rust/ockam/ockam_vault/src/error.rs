@@ -36,6 +36,10 @@ pub enum VaultError {
     InvalidBlsSecretLength,
     /// Invalid BLS secret
     InvalidBlsSecret,
+    /// Invalid OpenSSH secret
+    InvalidOpenSshSecret,
+    /// Invalid OpenSSH public key
+    InvalidOpenSshPublicKey,
 }
 
 impl VaultError {

@@ -1525,6 +1525,7 @@ version = "0.36.1-dev"
 dependencies = [
  "aes-gcm",
  "arrayref",
+ "base64",
  "cfg-if",
  "curve25519-dalek",
  "ed25519-dalek",
