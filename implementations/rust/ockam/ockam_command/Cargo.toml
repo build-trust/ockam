@@ -1,6 +1,6 @@
 [package]
 name = "ockam_command"
-version = "0.2.0"
+version = "0.2.1-dev"
 edition = "2021"
 license = "Apache-2.0"
 publish = false
@@ -19,7 +19,7 @@ exitcode = "1.1.2"
 human-panic = "1.0.3"
 indicatif = "0.16.2"
 log = "0.4.14"
-ockam = { version = "^0.41.0", path = "../ockam" }
+ockam = { version = "^0.41.1-dev", path = "../ockam" }
 serde = "1.0.130"
 # FIXME: stderrlog depends on chrono, triggers:
 # - https://rustsec.org/advisories/RUSTSEC-2020-0159
