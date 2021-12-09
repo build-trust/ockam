@@ -4,6 +4,7 @@ use crate::{
     protocols::channel::ChannelCreationHandshake,
     Context,
 };
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Result, Route, Routed, Worker};
 
 pub struct ChannelListener {

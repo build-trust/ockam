@@ -7,6 +7,7 @@ use crate::{
     },
     Context,
 };
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, Worker};
 
 /// Encode the channel creation handshake stage a worker is in

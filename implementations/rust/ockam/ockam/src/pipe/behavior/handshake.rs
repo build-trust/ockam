@@ -6,6 +6,7 @@ use crate::{
     },
     Context,
 };
+use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Result, Route};
 
 #[derive(Clone, Default)]
