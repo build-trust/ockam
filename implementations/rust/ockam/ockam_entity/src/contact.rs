@@ -105,7 +105,7 @@ impl Contact {
     pub fn get_profile_update_public_key(&self) -> Result<PublicKey> {
         ProfileChangeHistory::get_current_root_public_key(self.change_events())
     }
-    /// Get [`PublicKey`]. Key is uniquely identified by label in [`KeyAttributes`]
+    /// Get [`PublicKey`]. Key is uniquely identified by the specified label.
     pub fn get_public_key(&self, label: &str) -> Result<PublicKey> {
         self.change_history.get_public_key(label)
     }
