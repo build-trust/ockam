@@ -97,10 +97,7 @@ impl PipeSender {
             Self {
                 index: Monotonic::from(1),
                 out_buf: VecDeque::new(),
-                peer: match listener {
-                    Some(route) => Some(PeerRoute::Listener(route)),
-                    None => None,
-                },
+                peer: listener.map(PeerRoute::Listener),
                 int_addr,
                 hooks,
             },
