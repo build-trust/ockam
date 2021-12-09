@@ -1,10 +1,10 @@
 use ockam_core::hex::decode;
 use ockam_vault_core::{
-    KeyIdVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    Vault, PublicKey, SecretAttributes, SecretPersistence, SecretType,
     CURVE25519_SECRET_LENGTH,
 };
 
-pub async fn compute_key_id_for_public_key(vault: &mut impl KeyIdVault) {
+pub async fn compute_key_id_for_public_key(vault: &impl Vault) {
     let public =
         decode("68858ea1ea4e1ade755df7fb6904056b291d9781eb5489932f46e32f12dd192a").unwrap();
     let public = PublicKey::new(public.to_vec());
@@ -17,7 +17,7 @@ pub async fn compute_key_id_for_public_key(vault: &mut impl KeyIdVault) {
     );
 }
 
-pub async fn get_secret_by_key_id(vault: &mut (impl KeyIdVault + SecretVault)) {
+pub async fn get_secret_by_key_id(vault: &impl Vault) {
     let attributes = SecretAttributes::new(
         SecretType::Curve25519,
         SecretPersistence::Ephemeral,

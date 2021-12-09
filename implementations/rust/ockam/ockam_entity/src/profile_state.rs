@@ -6,6 +6,7 @@ use crate::{
     EntityError::{ContactVerificationFailed, InvalidInternalState},
     EventIdentifier, Identity, KeyAttributes, Lease, MetaKeyAttributes, ProfileChangeEvent,
     ProfileEventAttributes, ProfileIdentifier, ProfileVault, TTL,
+    DynVault,
 };
 use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, CryptoRng, RngCore};
@@ -15,9 +16,8 @@ use ockam_core::compat::{
 };
 use ockam_core::{allow, deny, Address, AsyncTryClone, Result, Route};
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault::{KeyIdVault, PublicKey, Secret, SecretAttributes};
+use ockam_vault_core::{Vault, PublicKey, Secret, SecretAttributes};
 use ockam_vault_core::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
-use ockam_vault_sync_core::VaultSync;
 
 cfg_if! {
     if #[cfg(feature = "credentials")] {
@@ -32,7 +32,7 @@ pub struct ProfileState {
     id: ProfileIdentifier,
     change_history: ProfileChangeHistory,
     contacts: Contacts,
-    pub(crate) vault: VaultSync,
+    pub(crate) vault: DynVault,
     #[cfg(feature = "credentials")]
     pub(crate) rand_msg: Message,
     #[cfg(feature = "credentials")]
@@ -46,7 +46,7 @@ impl ProfileState {
         identifier: ProfileIdentifier,
         change_events: Changes,
         contacts: Contacts,
-        vault: VaultSync,
+        vault: DynVault,
         rng: impl RngCore + CryptoRng + Clone,
     ) -> Self {
         // Avoid warning
@@ -68,13 +68,13 @@ impl ProfileState {
         &self.change_history
     }
 
-    pub(crate) fn vault_address(&self) -> Address {
-        self.vault.address()
+    pub(crate) fn vault(&self) -> &DynVault {
+        &self.vault
     }
 
     /// Create ProfileState
-    pub(crate) async fn create(mut vault: VaultSync) -> Result<Self> {
-        let initial_event_id = EventIdentifier::initial(&mut vault).await;
+    pub(crate) async fn create(vault: DynVault) -> Result<Self> {
+        let initial_event_id = EventIdentifier::initial(&vault).await;
 
         let key_attribs = KeyAttributes::with_attributes(
             Profile::PROFILE_UPDATE.to_string(),
@@ -90,7 +90,7 @@ impl ProfileState {
             key_attribs.clone(),
             ProfileEventAttributes::new(),
             None,
-            &mut vault,
+            vault.clone(),
         )
         .await?;
 

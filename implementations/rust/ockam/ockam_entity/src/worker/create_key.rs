@@ -9,12 +9,11 @@ use crate::{
 use cfg_if::cfg_if;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Encodable;
-use ockam_vault::ockam_vault_core::{Hasher, SecretVault, Signer};
+use ockam_vault_core::Vault;
 use ockam_vault_core::Signature as OckamVaultSignature;
 use ockam_vault_core::{
     Secret, SecretAttributes, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH,
 };
-use ockam_vault_sync_core::VaultSync;
 use serde::{Deserialize, Serialize};
 
 /// Key change data creation
@@ -80,7 +79,7 @@ impl ProfileState {
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
         root_key: Option<&Secret>,
-        vault: &mut VaultSync,
+        vault: &dyn Vault,
     ) -> ockam_core::Result<ProfileChangeEvent> {
         // FIXME
         cfg_if! {
@@ -164,7 +163,7 @@ impl ProfileState {
 
         let prev_id = match self.change_history().get_last_event_id() {
             Ok(prev_id) => prev_id,
-            Err(_) => EventIdentifier::initial(&mut self.vault).await,
+            Err(_) => EventIdentifier::initial(&self.vault).await,
         };
 
         let root_secret = self.get_root_secret().await.expect("can't get root secret");
@@ -175,7 +174,7 @@ impl ProfileState {
             key_attributes,
             attributes,
             root_key,
-            &mut self.vault,
+            &self.vault,
         )
         .await
     }

@@ -3,13 +3,11 @@ use crate::xeddsa::XEddsaVerifier;
 use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{PublicKey, Signature, Verifier, CURVE25519_PUBLIC_LENGTH};
+use ockam_vault_core::{PublicKey, Signature, CURVE25519_PUBLIC_LENGTH};
 
-#[async_trait]
-impl Verifier for SoftwareVault {
+impl SoftwareVault {
     /// Verify signature with xeddsa algorithm. Only curve25519 is supported.
-    async fn verify(
+    pub(crate) fn verify_sync(
         &self,
         signature: &Signature,
         public_key: &PublicKey,

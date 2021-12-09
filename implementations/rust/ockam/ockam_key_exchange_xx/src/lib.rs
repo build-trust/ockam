@@ -32,22 +32,7 @@ pub const SHA256_SIZE: usize = 32;
 pub const AES_GCM_TAGSIZE: usize = 16;
 
 /// Vault with XX required functionality
-pub trait XXVault:
-    SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send + Sync + 'static
-{
-}
-
-impl<D> XXVault for D where
-    D: SecretVault
-        + Hasher
-        + AsymmetricVault
-        + SymmetricVault
-        + Send
-        + Sync
-        + ?Sized
-        + 'static
-{
-}
+pub use ockam_vault_core::Vault as XXVault;
 
 mod initiator;
 mod state;
@@ -56,7 +41,6 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
-use ockam_vault_core::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
 
 #[cfg(test)]
 mod tests {
@@ -64,7 +48,6 @@ mod tests {
     use ockam_core::compat::sync::Arc;
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
     use ockam_vault::SoftwareVault;
-    use ockam_vault_core::SecretVault;
 
     #[allow(non_snake_case)]
     #[test]

@@ -1,14 +1,29 @@
-use crate::{SoftwareVault, VaultEntry, VaultError};
+use crate::{SoftwareVault, software_vault::VaultEntry, VaultError};
 use arrayref::array_ref;
 use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::Buffer;
 use ockam_vault_core::{
-    AsymmetricVault, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
-    SecretVault, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
+    PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
+    CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 
 impl SoftwareVault {
+    pub(crate) fn ec_diffie_hellman_sync(
+        &self,
+        context: &Secret,
+        peer_public_key: &PublicKey,
+    ) -> Result<Secret> {
+        let dh = {
+            let storage = self.inner.read();
+            let entry = storage.get_entry(context)?;
+            Self::ecdh_internal(entry, peer_public_key)?
+        };
+
+        let attributes =
+            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());
+        self.secret_import_sync(&dh, attributes)
+    }
+
     fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {
         let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
@@ -39,35 +54,4 @@ impl SoftwareVault {
             }
         }
     }
-}
-
-#[async_trait]
-impl AsymmetricVault for SoftwareVault {
-    async fn ec_diffie_hellman(
-        &self,
-        context: &Secret,
-        peer_public_key: &PublicKey,
-    ) -> Result<Secret> {
-        let dh = {
-            let storage = self.inner.read();
-            let entry = storage.get_entry(context)?;
-            Self::ecdh_internal(entry, peer_public_key)?
-        };
-
-        let attributes =
-            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());
-        self.secret_import(&dh, attributes).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::SoftwareVault;
-
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
-    }
-
-    #[ockam_macros::vault_test]
-    fn ec_diffie_hellman_curve25519() {}
 }

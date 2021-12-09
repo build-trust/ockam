@@ -391,7 +391,7 @@ mod tests {
     use ockam_key_exchange_core::KeyExchanger;
     use ockam_vault::SoftwareVault;
     use ockam_vault_core::{
-        SecretAttributes, SecretPersistence, SecretType, SecretVault,
+        SecretAttributes, SecretPersistence, SecretType,
         CURVE25519_SECRET_LENGTH,
     };
 
@@ -557,7 +557,6 @@ mod tests {
 
     #[test]
     fn handshake_main() {
-        use ockam_vault_core::SymmetricVault;
         const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";

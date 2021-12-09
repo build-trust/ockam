@@ -12,10 +12,10 @@ use tracing::info;
 /// ```
 /// use ockam_vault::SoftwareVault;
 /// use ockam_core::Result;
-/// use ockam_vault_core::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, Signer, Verifier};
+/// use ockam_vault_core::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, Vault};
 ///
 /// async fn example() -> Result<()> {
-///     let mut vault = SoftwareVault::default();
+///     let vault = SoftwareVault::default();
 ///
 ///     let mut attributes = SecretAttributes::new(
 ///         SecretType::Curve25519,

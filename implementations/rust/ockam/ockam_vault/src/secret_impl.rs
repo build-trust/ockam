@@ -4,10 +4,9 @@ use arrayref::array_ref;
 use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{
     KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
-    SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
+    SecretType, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 cfg_if! {
     if #[cfg(feature = "bls")] {
@@ -143,32 +142,17 @@ impl SoftwareVault {
         let secret = self.insert(entry);
         Ok(secret)
     }
-}
 
-#[async_trait]
-impl SecretVault for SoftwareVault {
-    async fn secret_generate(&self, attributes: SecretAttributes) -> Result<Secret> {
-        self.secret_generate_sync(attributes)
-    }
-
-    async fn secret_import(
-        &self,
-        secret: &[u8],
-        attributes: SecretAttributes,
-    ) -> Result<Secret> {
-        self.secret_import_sync(secret, attributes)
-    }
-
-    async fn secret_export(&self, context: &Secret) -> Result<SecretKey> {
+    pub(crate) fn secret_export_sync(&self, context: &Secret) -> Result<SecretKey> {
         Ok(self.with_entry(context, |i| i.key().clone())?)
     }
 
-    async fn secret_attributes_get(&self, context: &Secret) -> Result<SecretAttributes> {
+    pub(crate) fn secret_attributes_get_sync(&self, context: &Secret) -> Result<SecretAttributes> {
         Ok(self.with_entry(context, |i| i.key_attributes())?)
     }
 
     /// Extract public key from secret. Only Curve25519 type is supported
-    async fn secret_public_key_get(&self, context: &Secret) -> Result<PublicKey> {
+    pub(crate) fn secret_public_key_get_sync(&self, context: &Secret) -> Result<PublicKey> {
         let entries = self.inner.read();
         let entry = entries.get_entry(context)?;
 
@@ -202,38 +186,22 @@ impl SecretVault for SoftwareVault {
         }
     }
 
-    /// Remove secret from memory
-    async fn secret_destroy(&self, context: Secret) -> Result<()> {
+    pub(crate) fn secret_destroy_sync(&self, context: Secret) -> Result<()> {
         match self.remove(context) {
             None => Err(VaultError::EntryNotFound.into()),
             Some(_) => Ok(()),
         }
     }
+
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
         ockam_vault_core::{KeyId, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH},
-        KeyIdVault, Secret, SecretAttributes, SecretVault, SoftwareVault,
+        Vault, Secret, SecretAttributes, SoftwareVault,
     };
     use cfg_if::cfg_if;
-
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
-    }
-
-    #[ockam_macros::vault_test]
-    fn new_public_keys() {}
-
-    #[ockam_macros::vault_test]
-    fn new_secret_keys() {}
-
-    #[ockam_macros::vault_test]
-    fn secret_import_export() {}
-
-    #[ockam_macros::vault_test]
-    fn secret_attributes_get() {}
 
     fn new_curve255519_attrs() -> Option<SecretAttributes> {
         Some(SecretAttributes::new(
@@ -262,9 +230,7 @@ mod tests {
     async fn check_key_id_computation(vault: SoftwareVault, sec_idx: Secret) {
         let public_key = vault.secret_public_key_get(&sec_idx).await.unwrap();
         let key_id = vault
-            .compute_key_id_for_public_key(&public_key)
-            .await
-            .unwrap();
+            .compute_key_id_for_public_key(&public_key).await.unwrap();
         let sec_idx_2 = vault.get_secret_by_key_id(&key_id).await.unwrap();
         assert_eq!(sec_idx, sec_idx_2)
     }
@@ -281,7 +247,7 @@ mod tests {
     #[tokio::test]
     async fn secret_generate_compute_key_id() {
         for attrs in flat_map_options(vec![new_curve255519_attrs(), new_bls_attrs()]) {
-            let vault = new_vault();
+            let vault = SoftwareVault::new();
             let sec_idx = vault.secret_generate(attrs).await.unwrap();
             check_key_id_computation(vault, sec_idx).await;
         }
@@ -290,19 +256,19 @@ mod tests {
     #[tokio::test]
     async fn secret_import_compute_key_id() {
         for attrs in flat_map_options(vec![new_curve255519_attrs(), new_bls_attrs()]) {
-            let vault = new_vault();
+            let vault = SoftwareVault::new();
             let sec_idx = vault.secret_generate(attrs).await.unwrap();
             let secret = vault.secret_export(&sec_idx).await.unwrap();
             drop(vault); // The first vault was only used to generate random keys
 
-            let vault = new_vault();
+            let vault = SoftwareVault::new();
             let sec_idx = vault.secret_import(secret.as_ref(), attrs).await.unwrap();
 
             check_key_id_computation(vault, sec_idx).await;
         }
     }
 
-    async fn import_key(vault: &mut SoftwareVault, bytes: &[u8], attrs: SecretAttributes) -> KeyId {
+    async fn import_key(vault: &SoftwareVault, bytes: &[u8], attrs: SecretAttributes) -> KeyId {
         let sec_idx = vault.secret_import(bytes, attrs).await.unwrap();
         let public_key = vault.secret_public_key_get(&sec_idx).await.unwrap();
         vault
@@ -319,8 +285,8 @@ mod tests {
             0xbb, 0x1c, 0x91, 0x67,
         ];
         let attrs = new_curve255519_attrs().unwrap();
-        let mut vault = new_vault();
-        let key_id = import_key(&mut vault, bytes_c25519, attrs).await;
+        let vault = SoftwareVault::new();
+        let key_id = import_key(&vault, bytes_c25519, attrs).await;
         assert_eq!(
             "f0e6821043434a9353e6c213a098f6d75ac916b23b3632c7c4c9c6d2e1fa1cf8",
             &key_id
@@ -334,8 +300,8 @@ mod tests {
                     0x18, 0xc0, 0x0e, 0x08,
                 ];
                 let attrs = new_bls_attrs().unwrap();
-                let mut vault = new_vault();
-                let key_id = import_key(&mut vault, bytes_bls, attrs).await;
+                let mut vault = SoftwareVault::new();
+                let key_id = import_key(&vault, bytes_bls, attrs).await;
                 assert_eq!(
                     "604b7cf225a832c8fa822792dc7c484f5c49fb7a70ce87f1636b294ba7dbdc7b",
                     &key_id

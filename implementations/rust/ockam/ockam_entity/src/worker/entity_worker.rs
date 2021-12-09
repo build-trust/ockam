@@ -8,8 +8,8 @@ use ockam_core::{
     async_trait::async_trait, compat::boxed::Box, compat::collections::HashMap, Address, Result,
     Routed, Worker,
 };
+use ockam_vault_core::Vault;
 use ockam_node::{Context, Handle};
-use ockam_vault_sync_core::VaultSync;
 
 #[cfg(feature = "lease_proto_json")]
 use crate::lease::json_proto::{LeaseProtocolRequest, LeaseProtocolResponse};

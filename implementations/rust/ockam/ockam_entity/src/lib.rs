@@ -29,10 +29,10 @@ pub use error::*;
 pub use identifiers::*;
 pub use key_attributes::*;
 pub use lease::*;
-use ockam_channel::SecureChannelVault;
-use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
-use ockam_core::{AsyncTryClone, Decodable, Encodable, Result};
-use ockam_vault::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
+// use ockam_channel::SecureChannelVault;
+use ockam_core::compat::{collections::HashMap, string::String, vec::Vec, sync::Arc};
+use ockam_core::{Decodable, Encodable, Result};
+use ockam_vault_core::Vault;
 pub use profile::*;
 pub use profile_state::*;
 pub use traits::*;
@@ -65,31 +65,10 @@ cfg_if! {
 }
 
 /// Traits required for a Vault implementation suitable for use in a Profile
-pub trait ProfileVault:
-    SecretVault
-    + SecureChannelVault
-    + KeyIdVault
-    + Hasher
-    + Signer
-    + Verifier
-    + AsyncTryClone
-    + Send
-    + 'static
-{
-}
+// previously `SecretVault + SecureChannelVault + KeyIdVault + Hasher + Signer + Verifier`
+pub use ockam_vault_core::Vault as ProfileVault;
 
-impl<D> ProfileVault for D where
-    D: SecretVault
-        + SecureChannelVault
-        + KeyIdVault
-        + Hasher
-        + Signer
-        + Verifier
-        + AsyncTryClone
-        + Send
-        + 'static
-{
-}
+pub(crate) type DynVault = Arc<dyn Vault>;
 
 /// Profile event attributes
 pub type ProfileEventAttributes = HashMap<String, String>;
@@ -137,7 +116,6 @@ mod test {
     use super::*;
     use ockam_core::Error;
     use ockam_node::Context;
-    use ockam_vault_sync_core::Vault;
 
     fn test_error<S: Into<String>>(msg: S) -> Result<()> {
         Err(Error::new(0, msg.into()))

@@ -1,9 +1,9 @@
 use ockam_vault_core::{
-    SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
+    SecretAttributes, SecretPersistence, SecretType, Vault,
     AES128_SECRET_LENGTH,
 };
 
-pub async fn encryption(vault: &mut (impl SymmetricVault + SecretVault)) {
+pub async fn encryption(vault: &impl Vault) {
     let message = b"Ockam Test Message";
     let nonce = b"TestingNonce";
     let aad = b"Extra payload data";

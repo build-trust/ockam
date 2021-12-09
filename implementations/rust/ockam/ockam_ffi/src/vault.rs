@@ -8,17 +8,11 @@ use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::{Error, Result};
 use ockam_vault::SoftwareVault;
 use ockam_vault_core::{
-    AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretType, SecretVault,
-    SymmetricVault,
+    PublicKey, Secret, SecretAttributes, SecretType, Vault,
 };
 use std::future::Future;
 use tokio::runtime::Runtime;
 use tokio::task;
-
-/// FFI Vault trait. See documentation for individual sub-traits for details.
-pub trait FfiVault: SecretVault + Hasher + SymmetricVault + AsymmetricVault + Send {}
-
-impl<D> FfiVault for D where D: SecretVault + Hasher + SymmetricVault + AsymmetricVault + Send {}
 
 lazy_static! {
     static ref SOFTWARE_VAULTS: RwLock<Vec<Arc<SoftwareVault>>> = RwLock::new(vec![]);

@@ -2,9 +2,8 @@ use crate::{SoftwareVault, VaultError};
 use aes_gcm::aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{
-    Buffer, Secret, SecretType, SymmetricVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
+    Buffer, Secret, SecretType, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
 };
 
 macro_rules! encrypt_op_impl {
@@ -42,9 +41,8 @@ macro_rules! encrypt_impl {
     }};
 }
 
-#[async_trait]
-impl SymmetricVault for SoftwareVault {
-    async fn aead_aes_gcm_encrypt(
+impl SoftwareVault {
+    pub(crate) fn aead_aes_gcm_encrypt_sync(
         &self,
         context: &Secret,
         plaintext: &[u8],
@@ -64,7 +62,7 @@ impl SymmetricVault for SoftwareVault {
         )
     }
 
-    async fn aead_aes_gcm_decrypt(
+    pub(crate) fn aead_aes_gcm_decrypt_sync(
         &self,
         context: &Secret,
         cipher_text: &[u8],
@@ -83,15 +81,4 @@ impl SymmetricVault for SoftwareVault {
             VaultError::AeadAesGcmDecrypt
         )
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::SoftwareVault;
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
-    }
-
-    #[ockam_macros::vault_test]
-    fn encryption() {}
 }

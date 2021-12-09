@@ -1,10 +1,10 @@
 use ockam_core::hex::{decode, encode};
 use ockam_vault_core::{
-    SecretAttributes, SecretPersistence, SecretType, SecretVault, CURVE25519_PUBLIC_LENGTH,
+    SecretAttributes, SecretPersistence, SecretType, Vault, CURVE25519_PUBLIC_LENGTH,
     CURVE25519_SECRET_LENGTH,
 };
 
-pub async fn new_public_keys(vault: &mut impl SecretVault) {
+pub async fn new_public_keys(vault: &impl Vault) {
     let attributes = SecretAttributes::new(
         SecretType::Curve25519,
         SecretPersistence::Ephemeral,
@@ -29,7 +29,7 @@ pub async fn new_public_keys(vault: &mut impl SecretVault) {
     assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
 }
 
-pub async fn new_secret_keys(vault: &mut impl SecretVault) {
+pub async fn new_secret_keys(vault: &impl Vault) {
     let types = [(SecretType::Curve25519, 32), (SecretType::Buffer, 24)];
     for (t, s) in &types {
         let attributes = SecretAttributes::new(*t, SecretPersistence::Ephemeral, *s);
@@ -42,7 +42,7 @@ pub async fn new_secret_keys(vault: &mut impl SecretVault) {
     }
 }
 
-pub async fn secret_import_export(vault: &mut impl SecretVault) {
+pub async fn secret_import_export(vault: &impl Vault) {
     let attributes = SecretAttributes::new(
         SecretType::Curve25519,
         SecretPersistence::Ephemeral,
@@ -77,7 +77,7 @@ pub async fn secret_import_export(vault: &mut impl SecretVault) {
     );
 }
 
-pub async fn secret_attributes_get(vault: &mut impl SecretVault) {
+pub async fn secret_attributes_get(vault: &impl Vault) {
     let attributes = SecretAttributes::new(
         SecretType::Curve25519,
         SecretPersistence::Ephemeral,

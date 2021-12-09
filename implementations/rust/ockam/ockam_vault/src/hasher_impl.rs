@@ -3,11 +3,11 @@ use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_vault_core::{
-    Hasher, Secret, SecretAttributes, SecretType, AES128_SECRET_LENGTH,
+    Secret, SecretAttributes, SecretType, AES128_SECRET_LENGTH,
     AES256_SECRET_LENGTH,
 };
+
 use sha2::{Digest, Sha256};
 
 impl SoftwareVault {
@@ -82,33 +82,3 @@ impl SoftwareVault {
     }
 }
 
-#[async_trait]
-impl Hasher for SoftwareVault {
-    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
-        self.sha256_sync(data)
-    }
-    async fn hkdf_sha256(
-        &self,
-        salt: &Secret,
-        info: &[u8],
-        ikm: Option<&Secret>,
-        output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Secret>> {
-        self.hkdf_sha256_sync(salt, info, ikm, output_attributes)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::SoftwareVault;
-
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
-    }
-
-    #[ockam_macros::vault_test]
-    fn sha256() {}
-
-    #[ockam_macros::vault_test]
-    fn hkdf() {}
-}

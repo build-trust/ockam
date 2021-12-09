@@ -1,9 +1,9 @@
 use ockam_vault_core::{
-    AsymmetricVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    SecretAttributes, SecretPersistence, SecretType, Vault,
     CURVE25519_SECRET_LENGTH,
 };
 
-pub async fn ec_diffie_hellman_curve25519(vault: &mut (impl AsymmetricVault + SecretVault)) {
+pub async fn ec_diffie_hellman_curve25519(vault: &impl Vault) {
     let attributes = SecretAttributes::new(
         SecretType::Curve25519,
         SecretPersistence::Ephemeral,

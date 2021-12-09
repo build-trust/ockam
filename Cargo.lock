@@ -1531,6 +1531,7 @@ version = "0.35.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
+ "async-trait",
  "cfg-if",
  "curve25519-dalek",
  "ed25519-dalek",

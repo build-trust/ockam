@@ -1,7 +1,7 @@
 use ockam_core::hex::encode;
-use ockam_vault_core::{Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use ockam_vault_core::{Vault, SecretAttributes, SecretPersistence, SecretType};
 
-pub async fn sha256(vault: &mut impl Hasher) {
+pub async fn sha256(vault: &impl Vault) {
     let res = vault.sha256(b"a").await;
     assert!(res.is_ok());
     let digest = res.unwrap();
@@ -11,7 +11,7 @@ pub async fn sha256(vault: &mut impl Hasher) {
     );
 }
 
-pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
+pub async fn hkdf(vault: &impl Vault) {
     let salt_value = b"hkdf_test";
     let attributes = SecretAttributes::new(
         SecretType::Buffer,

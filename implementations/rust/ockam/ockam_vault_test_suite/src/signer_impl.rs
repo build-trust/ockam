@@ -1,9 +1,9 @@
 use ockam_vault_core::{
-    SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier,
+    SecretAttributes, SecretPersistence, SecretType, Vault,
     CURVE25519_SECRET_LENGTH,
 };
 
-pub async fn sign(vault: &mut (impl Signer + Verifier + SecretVault)) {
+pub async fn sign(vault: &impl Vault) {
     let secret = vault
         .secret_generate(SecretAttributes::new(
             SecretType::Curve25519,

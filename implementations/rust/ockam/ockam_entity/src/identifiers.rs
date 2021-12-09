@@ -5,7 +5,7 @@ use core::fmt::{Display, Formatter};
 use ockam_core::compat::string::String;
 use ockam_core::hex::encode;
 use ockam_core::{Error, Result};
-use ockam_vault_core::{Hasher, KeyId};
+use ockam_vault_core::{Vault, KeyId};
 use serde::{Deserialize, Serialize};
 
 /// An identifier of a Profile.
@@ -71,7 +71,7 @@ impl AsRef<[u8]> for EventIdentifier {
 }
 
 impl EventIdentifier {
-    pub async fn initial(hasher: &mut (impl Hasher + Sync)) -> Self {
+    pub async fn initial(hasher: &impl Vault) -> Self {
         let h = match hasher.sha256(Profile::NO_EVENT).await {
             Ok(hash) => hash,
             Err(_) => panic!("failed to hash initial event"),

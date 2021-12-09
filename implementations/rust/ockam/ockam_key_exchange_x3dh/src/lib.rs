@@ -9,9 +9,7 @@ extern crate alloc;
 use arrayref::array_ref;
 use core::convert::TryFrom;
 use ockam_core::{compat::vec::Vec, hex::encode};
-use ockam_vault_core::{
-    AsymmetricVault, Hasher, PublicKey, SecretVault, Signer, SymmetricVault, Verifier,
-};
+use ockam_vault_core::PublicKey;
 use zeroize::Zeroize;
 
 mod error;
@@ -100,32 +98,8 @@ impl TryFrom<&[u8]> for PreKeyBundle {
 const CSUITE: &[u8] = b"X3DH_25519_AESGCM_SHA256\0\0\0\0\0\0\0\0";
 
 /// Vault with X3DH required functionality
-pub trait X3dhVault:
-    SecretVault
-    + Signer
-    + Verifier
-    + AsymmetricVault
-    + SymmetricVault
-    + Hasher
-    + Send
-    + Sync
-    + 'static
-{
-}
-
-impl<D> X3dhVault for D where
-    D: SecretVault
-        + Signer
-        + Verifier
-        + AsymmetricVault
-        + SymmetricVault
-        + Hasher
-        + Send
-        + Sync
-        + ?Sized
-        + 'static
-{
-}
+// Previoustly `SecretVault + Signer + Verifier + AsymmetricVault + SymmetricVault + Hasher`
+pub use ockam_vault_core::Vault as X3dhVault;
 
 #[cfg(test)]
 mod tests {

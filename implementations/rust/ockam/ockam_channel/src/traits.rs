@@ -1,10 +1,7 @@
 use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
-use ockam_vault_core::SymmetricVault;
 
 /// Vault with XX required functionality
-pub trait SecureChannelVault: SymmetricVault + Send + Sync + 'static {}
-
-impl<D> SecureChannelVault for D where D: SymmetricVault + Send + Sync + ?Sized + 'static {}
+pub use ockam_vault_core::Vault as SecureChannelVault;
 
 /// KeyExchanger with extra constraints
 pub trait SecureChannelKeyExchanger: KeyExchanger + Send + Sync + 'static {}
