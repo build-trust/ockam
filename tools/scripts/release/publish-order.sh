@@ -73,6 +73,6 @@ while [[ ! -z ${packages[@]} ]]; do
             echo "Packages left are ${packages[@]}"
             break
         fi
-        let "index++"
+        ((index=index+1))
     done
 done
