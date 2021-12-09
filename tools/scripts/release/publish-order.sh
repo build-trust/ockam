@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# This script shows release order of our ockam crates. Crates
+# are ordered in less-ockam-interdependent order.
+#
+# There was a bug in cargo-release https://github.com/crate-ci/cargo-release/issues/366
+# which gave wrong ordering but has been fixed, so we can use
+# cargo-release to release.
+
 val=$(eval "cargo metadata --no-deps | jq '[.packages[] | {name: .name, version: .version, dependencies: .dependencies}]'");
 length=$(eval "echo '$val' | jq '. | length' ");
 echo "$length";
@@ -12,7 +19,7 @@ declare -A sorted_packages_map
 
 for (( c=0; c<$length; c++ )); do
     crate_name=$(eval "echo '$val' | jq '.[$c].name' | tr -d '\"' ");
-    
+
     sorted_packages_map[$crate_name]=false
     packages=(${packages[@]} $crate_name)
 done

@@ -1,30 +1,28 @@
-#!/opt/homebrew/bin/bash
+#!/usr/bin/env bash
 
-# Publishes crates also taking note of Ockam inter-dependency
-# order.
-#
-# Packages are ordered in order of least dependency using publish-order.sh
-# script.
+# This script publishes crates to crates.io. Crates that are
+# not updated are excluded from cargo release.
+
+if [[ -z $PUBLISH_TOKEN ]]; then
+    echo "Publish token variable PUBLISH_TOKEN not set"
+fi
 
 source tools/scripts/release/crates-to-publish.sh
 
-declare -A crates_to_publish
+declare -A bumped_crates
 
-echo "${updated_crates[@]}"
 for crate in ${updated_crates[@]}; do
-    echo "Not Publishing $crate"
-    crates_to_publish[$crate]=true
+    bumped_crates[$crate]=true
 done
 
-source tools/scripts/release/publish-order.sh
+exclude_string=""
 
-for package in ${sorted_packages[@]}; do
-    # Check if the package is in the list of
-    # crates to be published.
-    if [[ -z ${crates_to_publish[$package]} ]]; then
-        echo "Not Publishing $package"
-        continue
+for crate in $(ls "implementations/rust/ockam"); do
+    # Add crate to excluded crate
+    if [[ -z ${bumped_crates[$crate]} ]]; then
+        echo "Excluding $crate from publishing"
+        exclude_string="$exclude_string --exclude $crate";
     fi
-
-    echo "Publishing $package"
 done
+
+echo y | cargo release release --no-tag --no-verify --no-dev-version $exclude_string --token $PUBLISH_TOKEN --execute;
