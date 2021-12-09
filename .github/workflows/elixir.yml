@@ -1,0 +1,19 @@
+name: Elixir
+on: [pull_request, push, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  elixir:
+    name: Elixir
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
+      - name: Build Elixir
+        run: ./gradlew build_elixir
