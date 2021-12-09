@@ -22,6 +22,8 @@ task lint {
     exec { commandLine cargo('fmt', '--all', '--', '--check') }
     exec { commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings') }
     exec { commandLine cargo('doc', '--no-deps') }
+
+    exec { commandLine cargo('install', '--locked', '--version', '0.11.0', 'cargo-deny') }
     exec { commandLine cargo('deny', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories') }
   }
 }
