@@ -246,7 +246,7 @@ defmodule Ockam.Router.Tests do
         Ockam.Node.stop("client_forwarder")
       end)
 
-      tcp_address = TCPAddress.new({127, 0, 0, 1}, 5000)
+      tcp_address = TCPAddress.new({127, 0, 0, 1}, 6000)
 
       # client
       request = %{
@@ -262,7 +262,7 @@ defmodule Ockam.Router.Tests do
       :erlang.trace(echo, true, [:receive])
       :erlang.trace(client_forwarder, true, [:receive])
 
-      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 5000])
+      assert {:ok, _listener_address_b} = TCP.start(listen: [port: 6000])
 
       Ockam.Router.route(request)
 

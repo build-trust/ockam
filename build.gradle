@@ -1,5 +1,5 @@
 
-['lint', 'build', 'test', 'clean', 'veryClean'].each { taskName ->
+['build', 'test', 'clean', 'veryClean'].each { taskName ->
   def taskDeps = []
 
   ['rust', 'c', 'elixir'].each { implementation ->

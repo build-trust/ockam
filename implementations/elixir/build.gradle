@@ -1,66 +1,133 @@
+import java.nio.file.Paths;
 
-plugins {
-  id 'network.ockam.gradle.commands' version '1.0.0'
-}
+ext {
+  mode = project.hasProperty('mode') ? mode.toLowerCase() : 'dev'
+  mode = (mode == 'release') ? 'prod' : mode
+  mode = (mode == 'debug') ? 'dev' : mode
 
-// collect list of all directories in ockam/
-def apps = []
+  apps = [
+    "ockam_vault_software",
+    "ockam",
+    "ockam_hub",
+    "ockam_kafka",
+    "ockam_node_web",
+  ].collect { app ->
+    Paths.get(projectDir.toPath().toString(), 'ockam', app)
+  }
 
-def ockamDir = java.nio.file.Paths.get(projectDir.toPath().toString(), 'ockam').toFile()
-ockamDir.eachFile(groovy.io.FileType.DIRECTORIES) {
-  apps << projectDir.toPath().relativize(it.toPath()).toFile()
-}
+  mix = { argument ->
+    command = ['mix']
+    command.addAll(argument.split())
 
-commands {
-  group = 'ockam'
-
-  rootDir = '../..'
-
-  list = [
-    build: [
-      'mix local.hex --force --if-missing',
-      'mix local.rebar --force',
-      'mix deps.get',
-      'mix compile'
-    ],
-    test: [
-      'mix local.hex --force --if-missing',
-      'mix local.rebar --force',
-      'mix deps.get',
-      'mix test'
-    ],
-    clean: [
-      'mix local.hex --force --if-missing',
-      'mix local.rebar --force',
-      'mix clean'
-    ],
-    lint: [
-      'mix local.hex --force --if-missing',
-      'mix local.rebar --force',
-      'mix deps.get',
-      'mix lint'
-    ],
-    dialyze: [
-      'mix local.hex --force --if-missing',
-      'mix local.rebar --force',
-      'mix deps.get',
-      'mix dialyzer.clean',
-      'mix dialyzer'
-    ],
-    veryClean: [
-      'rm -rf _build deps'
-    ]
-  ]
-
-  directories = apps
-}
-
-tasks.whenTaskAdded { task ->
-  def isVeryClean = task.name.contains('veryClean')
-  def isCleanTask = isVeryClean || task.name.contains('clean')
-  if(!isCleanTask) {
-    task.dependsOn(gradle.includedBuild('rust').task(':buildRelease_ockam_ockam_ffi'))
-  } else if (isVeryClean) {
-    task.dependsOn(gradle.includedBuild('rust').task(':clean_ockam_ockam_ffi'))
+    println "[Gradle] Command: ${command.join(' ')}"
+    return command
   }
 }
+
+task rustBuild {
+  dependsOn gradle.includedBuild('rust').task(':build')
+}
+
+task checkLocalHexAndRebar {
+  dependsOn rustBuild
+  mustRunAfter rustBuild
+  doLast {
+    exec { commandLine mix('local.hex --force --if-missing') }
+    exec { commandLine mix('local.rebar --force') }
+  }
+}
+
+task lint {
+  group project.name
+  description 'Lint the project.'
+
+  dependsOn checkLocalHexAndRebar
+  apps.each { app ->
+    doLast {
+      println "\n[Gradle] Lint: ${app}"
+      exec {
+        commandLine mix('do deps.get, lint')
+        workingDir app
+      }
+    }
+  }
+}
+
+task build {
+  group project.name
+  description 'Build the project.'
+
+  dependsOn lint
+  apps.each { app ->
+    doLast {
+      println "\n[Gradle] Build: ${app}"
+      exec {
+        commandLine mix('do deps.get, compile')
+        workingDir app
+        environment MIX_ENV: mode
+      }
+    }
+  }
+}
+
+
+
+task test {
+  group project.name
+  description 'Test the project.'
+
+  dependsOn lint
+  apps.each { app ->
+    doLast {
+      println "\n[Gradle] ${app}"
+      exec {
+        commandLine mix('do deps.get, test')
+        workingDir app
+        environment MIX_ENV: 'test'
+      }
+    }
+  }
+}
+
+task clean {
+  group project.name
+  description 'Clean the project.'
+
+  apps.each { app ->
+    doLast {
+      println "[Gradle] Clean: ${app}"
+      exec {
+        commandLine mix('clean')
+        workingDir app
+      }
+    }
+  }
+}
+
+task veryClean {
+  apps.each { app ->
+    doLast {
+      println "[Gradle] Very Clean: ${app}"
+      delete Paths.get(app.toString(), "_build")
+      delete Paths.get(app.toString(), "deps")
+    }
+  }
+}
+
+
+
+
+
+
+//       'mix dialyzer.clean',
+//       'mix dialyzer'
+
+// tasks.whenTaskAdded { task ->
+//   def isVeryClean = task.name.contains('veryClean')
+//   def isCleanTask = isVeryClean || task.name.contains('clean')
+//   if(!isCleanTask) {
+//     task.dependsOn([Gradle].includedBuild('rust').task(':buildRelease_ockam_ockam_ffi'))
+//   } else if (isVeryClean) {
+//     task.dependsOn([Gradle].includedBuild('rust').task(':clean_ockam_ockam_ffi'))
+//   }
+// }

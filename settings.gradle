@@ -1,8 +1,6 @@
 
 rootProject.name = 'ockam'
 
-includeBuild 'tools/gradle/plugins/commands'
-
 // collect list of all directories in implementations/
 def implementations = []
 new File("implementations").eachFile(groovy.io.FileType.DIRECTORIES) { implementations << it.name }

@@ -1,44 +1,66 @@
+project.buildDir = java.nio.file.Paths.get('..', '..', 'target');
 
-plugins {
-  id 'network.ockam.gradle.commands' version '1.0.0'
+ext {
+  mode = project.hasProperty('mode') ? mode.toLowerCase() : 'debug'
+
+  cargo = { String... arguments ->
+    command = ['cargo']
+    command.addAll(arguments)
+
+    if (command.contains('build') && mode == 'release') { command.add('--release') }
+
+    println "[Gradle] Command: ${command.join(' ')}"
+    return command
+  }
 }
 
-// collect list of all directories in ockam/
-def crates = []
+task lint {
+  group project.name
+  description 'Lint the project.'
 
-def ockamDir = java.nio.file.Paths.get(projectDir.toPath().toString(), 'ockam').toFile()
-ockamDir.eachFile(groovy.io.FileType.DIRECTORIES) {
-  crates << projectDir.toPath().relativize(it.toPath()).toFile()
+  doLast {
+    exec { commandLine cargo('fmt', '--all', '--', '--check') }
+    exec { commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings') }
+    exec { commandLine cargo('doc', '--no-deps') }
+    exec { commandLine cargo('deny', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories') }
+  }
 }
 
-crates << new File('../../examples/rust/get_started')
+task build {
+  group project.name
+  description 'Build the project.'
 
-commands {
-  group = 'ockam'
+  dependsOn lint
+  doLast {
+    exec { commandLine cargo('--locked', 'build') }
+    exec { commandLine cargo('--locked', 'build', '--examples') }
+  }
+}
 
-  rootDir = '../..'
+task test {
+  group project.name
+  description 'Test the project.'
 
-  list = [
-    build: [
-      'cargo --locked build',
-      'cargo --locked build --examples'
-    ],
-    buildRelease: [
-      'cargo --locked build --release',
-      'cargo --locked build --release --examples'
-    ],
-    test: 'cargo --locked test',
-    clean: 'cargo clean',
-    lint: [
-      'cargo fmt --all -- --check',
-      'cargo clippy --no-deps -- -D warnings',
-      'cargo doc --no-deps',
-      'cargo deny check licenses advisories',
-    ],
-    veryClean: [
-      'cargo clean'
-    ]
-  ]
+  doLast {
+    exec { commandLine cargo('--locked', 'test') }
+  }
+}
 
-  directories = crates
+task clean {
+  group project.name
+  description 'Clean the project.'
+
+  doLast {
+    exec { commandLine cargo('clean') }
+  }
+}
+
+task veryClean {
+  group project.name
+  description 'Clean the project.'
+
+  doLast {
+    println "[Gradle] Very Clean: ${buildDir}"
+    delete buildDir
+  }
 }
