@@ -73,7 +73,7 @@ pub async fn connect_dynamic(ctx: &mut Context, listener: Route) -> Result<Addre
         ctx,
         addr.clone(),
         int_addr.clone(),
-        listener,
+        Some(listener),
         PipeBehavior::empty(),
     )
     .await?;

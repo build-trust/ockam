@@ -24,7 +24,7 @@ impl PeerRoute {
 pub struct PipeSender {
     index: Monotonic,
     out_buf: VecDeque<PipeMessage>,
-    peer: PeerRoute,
+    peer: Option<PeerRoute>,
     int_addr: Address,
     hooks: PipeBehavior,
 }
@@ -36,7 +36,7 @@ impl Worker for PipeSender {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::pipe::CLUSTER_NAME).await?;
-        if let PeerRoute::Listener(ref route) = self.peer {
+        if let Some(PeerRoute::Listener(ref route)) = self.peer {
             ctx.send_from_address(
                 route.clone(),
                 InternalCmd::InitHandshake,
@@ -73,7 +73,7 @@ impl PipeSender {
                 // Ordered pipes expect a 1-indexed message
                 index: Monotonic::from(1),
                 out_buf: VecDeque::new(),
-                peer: PeerRoute::Peer(peer),
+                peer: Some(PeerRoute::Peer(peer)),
                 int_addr,
                 hooks,
             },
@@ -89,7 +89,7 @@ impl PipeSender {
         ctx: &mut Context,
         addr: Address,
         int_addr: Address,
-        listener: Route,
+        listener: Option<Route>,
         hooks: PipeBehavior,
     ) -> Result<()> {
         ctx.start_worker(
@@ -97,7 +97,10 @@ impl PipeSender {
             Self {
                 index: Monotonic::from(1),
                 out_buf: VecDeque::new(),
-                peer: PeerRoute::Listener(listener),
+                peer: match listener {
+                    Some(route) => Some(PeerRoute::Listener(route)),
+                    None => None,
+                },
                 int_addr,
                 hooks,
             },
@@ -114,7 +117,7 @@ impl PipeSender {
 
         // Either run all internal message hooks OR fully set-up this sender
         match self.peer {
-            PeerRoute::Peer(ref peer) => {
+            Some(PeerRoute::Peer(ref peer)) => {
                 self.hooks
                     .internal_all(self.int_addr.clone(), peer.clone(), ctx, &internal_cmd)
                     .await?;
@@ -122,7 +125,7 @@ impl PipeSender {
             _ => match internal_cmd {
                 InternalCmd::InitSender => {
                     debug!("Initialise pipe sender for route {:?}", return_route);
-                    self.peer = PeerRoute::Peer(return_route.clone());
+                    self.peer = Some(PeerRoute::Peer(return_route.clone()));
 
                     // Send out the out_buffer
                     for msg in core::mem::take(&mut self.out_buf) {
@@ -153,8 +156,9 @@ impl PipeSender {
         msg.onward_route.modify().pop_front();
 
         debug!(
-            "Pipe sender dispatch {:?} -> {:?}",
-            self.peer.peer(),
+            "Pipe sender '{:?}' dispatch {:?} -> {:?}",
+            ctx.address(),
+            self.peer.as_ref().map(|p| p.peer()),
             msg.onward_route
         );
 
@@ -164,7 +168,7 @@ impl PipeSender {
 
         // Check if this sender has been fully initialised already
         match self.peer {
-            PeerRoute::Peer(ref peer) => {
+            Some(PeerRoute::Peer(ref peer)) => {
                 send_pipe_msg(
                     &mut self.hooks,
                     ctx,
@@ -175,6 +179,7 @@ impl PipeSender {
                 .await
             }
             _ => {
+                debug!("Queue message into output buffer...");
                 self.out_buf.push_back(pipe_msg);
                 Ok(())
             }

@@ -77,7 +77,7 @@ impl BehaviorHook for SenderConfirm {
                 debug!("Received pipe delivery ACK for index {}", idx);
                 self.on_route.remove(idx);
             }
-            _ => todo!(),
+            cmd => trace!("SenderResend behavior ignoring {:?}", cmd),
         }
 
         Ok(())
@@ -118,7 +118,6 @@ impl BehaviorHook for ReceiverConfirm {
         _: &mut Context,
         _: &InternalCmd,
     ) -> Result<()> {
-        // PipeReceiver does not currently receive internal messages!
-        unimplemented!()
+        Ok(())
     }
 }

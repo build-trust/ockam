@@ -21,6 +21,7 @@ impl BehaviorHook for HandshakeInit {
         msg: &InternalCmd,
     ) -> Result<()> {
         if let (InternalCmd::Handshake(Handshake { route_to_sender }), false) = (msg, self.0) {
+            debug!("Sending InitSender request to {:?}", route_to_sender);
             ctx.send(route_to_sender.clone(), InternalCmd::InitSender)
                 .await?;
             self.0 = true;
