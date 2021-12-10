@@ -5,6 +5,7 @@
 
 if [[ -z $PUBLISH_TOKEN ]]; then
     echo "Publish token variable PUBLISH_TOKEN not set"
+    exit 1
 fi
 
 source tools/scripts/release/crates-to-publish.sh

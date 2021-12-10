@@ -8,10 +8,10 @@
 last_git_tag=$(eval "git describe --tags --abbrev=0");
 updated_crates="";
 
-for path in $(ls "implementations/rust/ockam"); do
-    if git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$path/src; then
-        git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$path/Cargo.toml || updated_crates="$updated_crates $path"
+for crate in $(ls "implementations/rust/ockam"); do
+    if git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$crate/src; then
+        git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$crate/Cargo.toml || updated_crates="$updated_crates $crate"
     else
-        updated_crates="$updated_crates $path"
+        updated_crates="$updated_crates $crate"
     fi
 done

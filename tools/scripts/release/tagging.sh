@@ -5,20 +5,24 @@
 # Commit SHA that release will be based upon.
 if [[ -z $COMMIT_SHA ]]; then
     echo "Commit sha variable COMMIT_SHA not set"
+    exit 1
 fi
 
 source tools/scripts/release/crates-to-publish.sh
 
 for crate in ${updated_crates[@]}; do
     version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
-    tag="${crate}_v${version}"
+    name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
+
+    tag="${name}_v${version}"
 
     echo "Tagging $tag"
-    git tag -s $tag -m "ci: tag $tag"
 
-    text="* [Crate](https://crates.io/crates/$crate/$version)
-    * [Documentation](https://docs.rs/$crate/$version/$crate/)
-    * [CHANGELOG](https://github.com/ockam-network/ockam/blob/${crate}_$version/implementations/rust/ockam/$crate/CHANGELOG.md)";
+    git tag -s $tag $COMMIT_SHA -m "ci: tag $tag"
 
-    gh release create --draft --notes "$text" -t "$crate v${version} (rust crate)" "$tag" --target $COMMIT_SHA
+    text="* [Crate](https://crates.io/crates/$name/$version)
+    * [Documentation](https://docs.rs/$name/$version/$name/)
+    * [CHANGELOG](https://github.com/ockam-network/ockam/blob/${name}_$version/implementations/rust/ockam/$name/CHANGELOG.md)";
+
+    gh release create --draft --notes "$text" -t "$name v${version} (rust crate)" "$tag" --target $COMMIT_SHA
 done

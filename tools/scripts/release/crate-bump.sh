@@ -15,6 +15,7 @@
 
 if [[ -z $RELEASE_VERSION && -z $DEV_VERSION ]]; then
     echo "Please set RELEASE_VERSION if you want to release crates or DEV_VERSION if this is a dev bump"
+    exit 1
 fi
 
 source tools/scripts/release/crates-to-publish.sh
