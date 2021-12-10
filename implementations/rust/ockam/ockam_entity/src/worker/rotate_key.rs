@@ -6,9 +6,8 @@ use crate::{
     SignatureType,
 };
 use ockam_core::{Encodable, Result};
-use ockam_core::compat::vec::Vec;
 use ockam_vault::ockam_core::vault::Signature as OckamVaultSignature;
-use ockam_vault::ockam_core::vault::{Hasher, SecretVault, Signer, PublicKey};
+use ockam_vault::ockam_core::vault::{Hasher, PublicKey, SecretVault, Signer};
 use serde::{Deserialize, Serialize};
 
 /// RotateKeyChangeData

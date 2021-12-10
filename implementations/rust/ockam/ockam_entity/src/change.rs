@@ -1,6 +1,6 @@
 use ockam_core::compat::vec::Vec;
+use ockam_core::vault::PublicKey;
 use ockam_core::Result;
-use ockam_vault_core::PublicKey;
 use serde::{Deserialize, Serialize};
 
 pub use crate::signature::*;

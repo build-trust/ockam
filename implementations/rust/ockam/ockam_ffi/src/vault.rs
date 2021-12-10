@@ -31,8 +31,8 @@ fn get_runtime() -> Arc<Runtime> {
 }
 
 fn block_future<F>(f: F) -> <F as Future>::Output
-    where
-        F: Future,
+where
+    F: Future,
 {
     let rt = get_runtime();
     task::block_in_place(move || {
@@ -459,8 +459,8 @@ pub extern "C" fn ockam_vault_deinit(context: FfiVaultFatPointer) -> FfiOckamErr
 }
 
 fn handle_panics<F>(f: F) -> FfiOckamError
-    where
-        F: FnOnce() -> Result<(), FfiOckamError>,
+where
+    F: FnOnce() -> Result<(), FfiOckamError>,
 {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
     match result {

@@ -1,7 +1,7 @@
 use crate::{EntityError, ProfileVault};
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Decodable, Encodable, Result};
 use ockam_core::vault::Signature;
+use ockam_core::{Decodable, Encodable, Result};
 use ockam_vault::{PublicKey, Secret};
 use serde::{Deserialize, Serialize};
 
@@ -287,6 +287,6 @@ mod test {
                 }
             }
         })
-            .unwrap();
+        .unwrap();
     }
 }
