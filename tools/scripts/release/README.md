@@ -2,7 +2,7 @@
 
 ## Changelog Generation
 
-Changelogs are automatically generated using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/ockam-network/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate and append to individual CHANGELOG.md all Ockam crates that have been updated, comparing them to the last `git tag`.
+Changelogs are generated using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/ockam-network/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate changelogs and append to their CHANGELOG.md file.
 To run changelog generator, from the Ockam root path, call
 ```bash
 tools/scripts/release/changelog.sh
@@ -11,13 +11,13 @@ tools/scripts/release/changelog.sh
 
 ## Crate Bump
 
-Crates versions are bumped using [cargo-release](https://github.com/crate-ci/cargo-release/issues). While bumping crates CHANGELOG.md and README.md files are also updated with the latest bumped version.
+Crates versions are bumped using [cargo-release](https://github.com/crate-ci/cargo-release/issues) >= v0.18.6. While bumping crates, CHANGELOG.md and README.md files are also updated with the bumped version.
 To run crate bump, from the Ockam root path, call
 ```bash
 RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
 ```
 where RELEASE_VERSION is the [version](https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md#bump-level) all crates to be bumped to.
-Crates can also be bumped to a different level, ignoring `RELEASE_VERSION`. To bump a crate to a different level, we indicate crates and the bumped level in `MODIFIED_RELEASE`
+Crates can also be bumped to a different version level, ignoring `RELEASE_VERSION`. To bump a crate to a different version, we indicate crates and the bumped version in `MODIFIED_RELEASE`
 ```bash
 MODIFIED_RELEASE="signature_core:patch ockam_entity:major" RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
 ```
@@ -40,7 +40,7 @@ PUBLISH_TOKEN=my_crates.io_token tools/scripts/release/crate-publish.sh
 
 ## Tagging
 
-We perform tag release using [gh cli](https://cli.github.com), a commit SHA is provided which all bumped crates are git tagged.
+We perform tag release using [gh cli](https://cli.github.com) and [tomlq](https://github.com/jamesmunns/tomlq), a toml processor. A commit SHA is provided which all bumped crates are git tagged against.
 To perform `git tag`
 ```bash
 COMMIT_SHA=000000000 tools/scripts/release/tagging.sh
