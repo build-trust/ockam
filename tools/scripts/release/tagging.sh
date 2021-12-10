@@ -21,8 +21,8 @@ for crate in ${updated_crates[@]}; do
     git tag -s $tag $COMMIT_SHA -m "ci: tag $tag"
 
     text="* [Crate](https://crates.io/crates/$name/$version)
-    * [Documentation](https://docs.rs/$name/$version/$name/)
-    * [CHANGELOG](https://github.com/ockam-network/ockam/blob/${name}_$version/implementations/rust/ockam/$name/CHANGELOG.md)";
+* [Documentation](https://docs.rs/$name/$version/$name/)
+* [CHANGELOG](https://github.com/ockam-network/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md)";
 
     gh release create --draft --notes "$text" -t "$name v${version} (rust crate)" "$tag" --target $COMMIT_SHA
 done
