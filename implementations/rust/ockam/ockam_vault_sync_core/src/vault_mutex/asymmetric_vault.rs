@@ -1,7 +1,7 @@
 use crate::VaultMutex;
+use ockam_core::vault::{AsymmetricVault, PublicKey, Secret};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{AsymmetricVault, PublicKey, Secret};
 
 #[async_trait]
 impl<V: AsymmetricVault + Send> AsymmetricVault for VaultMutex<V> {

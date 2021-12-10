@@ -1,10 +1,10 @@
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, rand::random};
-use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
-use ockam_node::Context;
-use ockam_vault_core::{
+use ockam_core::vault::{
     AsymmetricVault, Hasher, KeyIdVault, SecretVault, Signer, SymmetricVault, Verifier,
 };
+use ockam_core::{Address, Result, ResultMessage, Routed, Worker};
+use ockam_node::Context;
 
 /// Super-trait of traits required for a Vault Worker.
 pub trait VaultTrait:

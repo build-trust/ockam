@@ -1,12 +1,11 @@
 use crate::{SoftwareVault, VaultEntry, VaultError};
 use arrayref::array_ref;
-use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::Buffer;
-use ockam_vault_core::{
-    AsymmetricVault, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
+use ockam_core::vault::{
+    AsymmetricVault, Buffer, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
     SecretVault, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
+use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 
 impl SoftwareVault {
     fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {

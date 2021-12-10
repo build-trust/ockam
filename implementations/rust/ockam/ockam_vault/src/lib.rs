@@ -19,7 +19,7 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-pub extern crate ockam_vault_core;
+pub use ockam_core;
 
 mod asymmetric_impl;
 mod error;
@@ -33,7 +33,7 @@ mod verifier_impl;
 mod xeddsa;
 
 // Re-export types commonly used by higher level APIs
-pub use ockam_vault_core::{
+pub use ockam_core::vault::{
     Hasher, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretVault, Signer, Verifier,
 };
 

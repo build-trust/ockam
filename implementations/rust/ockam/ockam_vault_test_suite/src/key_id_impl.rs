@@ -1,5 +1,5 @@
 use ockam_core::hex::decode;
-use ockam_vault_core::{
+use ockam_core::vault::{
     KeyIdVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
     CURVE25519_SECRET_LENGTH,
 };

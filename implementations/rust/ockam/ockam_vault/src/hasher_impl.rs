@@ -2,12 +2,12 @@ use crate::software_vault::SoftwareVault;
 use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{
+use ockam_core::vault::{
     Hasher, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
     AES256_SECRET_LENGTH,
 };
+use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 use sha2::{Digest, Sha256};
 
 #[async_trait]

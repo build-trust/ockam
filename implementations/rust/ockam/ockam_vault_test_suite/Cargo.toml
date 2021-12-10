@@ -15,5 +15,4 @@ publish = true
 
 [dependencies]
 ockam_core = {path = "../ockam_core", version = "^0.41.1-dev"}
-ockam_vault_core = {path = "../ockam_vault_core", version = "^0.35.1-dev"}
 arrayref = "0.3"

@@ -9,7 +9,7 @@ extern crate alloc;
 use arrayref::array_ref;
 use core::convert::TryFrom;
 use ockam_core::{compat::vec::Vec, hex::encode, AsyncTryClone};
-use ockam_vault_core::{
+use ockam_core::vault::{
     AsymmetricVault, Hasher, PublicKey, SecretType, SecretVault, Signer, SymmetricVault, Verifier,
 };
 use zeroize::Zeroize;

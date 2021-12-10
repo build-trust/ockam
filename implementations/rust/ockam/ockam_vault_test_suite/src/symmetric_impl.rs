@@ -1,4 +1,4 @@
-use ockam_vault_core::{
+use ockam_core::vault::{
     SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
     AES128_SECRET_LENGTH,
 };

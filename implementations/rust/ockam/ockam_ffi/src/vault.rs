@@ -5,11 +5,11 @@ use core::convert::{TryFrom, TryInto};
 use core::slice;
 use lazy_static::lazy_static;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Error, Result};
-use ockam_vault::SoftwareVault;
-use ockam_vault_core::{
+use ockam_core::vault::{
     AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SymmetricVault,
 };
+use ockam_core::{Error, Result};
+use ockam_vault::SoftwareVault;
 use ockam_vault_sync_core::VaultMutex;
 use std::future::Future;
 use tokio::runtime::Runtime;
@@ -31,8 +31,8 @@ fn get_runtime() -> Arc<Runtime> {
 }
 
 fn block_future<F>(f: F) -> <F as Future>::Output
-where
-    F: Future,
+    where
+        F: Future,
 {
     let rt = get_runtime();
     task::block_in_place(move || {
@@ -459,8 +459,8 @@ pub extern "C" fn ockam_vault_deinit(context: FfiVaultFatPointer) -> FfiOckamErr
 }
 
 fn handle_panics<F>(f: F) -> FfiOckamError
-where
-    F: FnOnce() -> Result<(), FfiOckamError>,
+    where
+        F: FnOnce() -> Result<(), FfiOckamError>,
 {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
     match result {
@@ -490,6 +490,7 @@ where
 /// Correct usage should `mem::forget` this struct after the non-panicking
 /// section.
 struct AbortOnDrop;
+
 impl Drop for AbortOnDrop {
     fn drop(&mut self) {
         eprintln!("Panic from error drop, aborting!");

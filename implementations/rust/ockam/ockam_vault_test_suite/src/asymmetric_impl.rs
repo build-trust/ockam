@@ -1,4 +1,4 @@
-use ockam_vault_core::{
+use ockam_core::vault::{
     AsymmetricVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
     CURVE25519_SECRET_LENGTH,
 };

@@ -13,9 +13,9 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
+use ockam_core::vault::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
 use ockam_core::{allow, deny, Address, AsyncTryClone, Result, Route};
 use ockam_vault::{KeyIdVault, PublicKey, Secret, SecretAttributes};
-use ockam_vault_core::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
 use ockam_vault_sync_core::VaultSync;
 
 cfg_if! {

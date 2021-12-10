@@ -2,7 +2,7 @@ use crate::software_vault::SoftwareVault;
 use crate::VaultError;
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{Secret, SecretType, Signature, Signer};
+use ockam_core::vault::{Secret, SecretType, Signature, Signer};
 
 #[async_trait]
 impl Signer for SoftwareVault {
@@ -15,7 +15,7 @@ impl Signer for SoftwareVault {
                 use crate::xeddsa::XEddsaSigner;
                 use arrayref::array_ref;
                 use ockam_core::compat::rand::{thread_rng, RngCore};
-                use ockam_vault_core::CURVE25519_SECRET_LENGTH;
+                use ockam_core::vault::CURVE25519_SECRET_LENGTH;
                 if key.len() != CURVE25519_SECRET_LENGTH {
                     return Err(VaultError::InvalidX25519SecretLength.into());
                 }

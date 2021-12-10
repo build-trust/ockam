@@ -3,12 +3,12 @@ use crate::VaultError;
 use arrayref::array_ref;
 use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
-use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{
+use ockam_core::vault::{
     KeyId, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
     SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
+use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 cfg_if! {
     if #[cfg(feature = "bls")] {
         use signature_bbs_plus::PublicKey as BlsPublicKey;
@@ -226,7 +226,7 @@ impl SecretVault for SoftwareVault {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ockam_vault_core::{KeyId, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH},
+        ockam_core::vault::{KeyId, SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH},
         KeyIdVault, Secret, SecretAttributes, SecretVault, SoftwareVault,
     };
     use cfg_if::cfg_if;
