@@ -8,9 +8,9 @@ use crate::{
 };
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
+use ockam_core::vault::SecretVault;
 use ockam_core::{allow, deny, Result};
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::SecretVault;
 use rand::thread_rng;
 use sha2::digest::{generic_array::GenericArray, Digest, FixedOutput};
 use signature_bbs_plus::{Issuer as BbsIssuer, PokSignatureProof, Prover};

@@ -104,11 +104,3 @@ updates:
       prefix: "build:"
     schedule:
       interval: "daily"
-
-  # Maintain dependencies for rust ockam_vault_core crate
-  - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam/ockam_vault_core"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"

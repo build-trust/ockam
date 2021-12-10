@@ -1,4 +1,4 @@
-//! Software implementation of ockam_vault_core traits.
+//! Software implementation of ockam_core::vault traits.
 //!
 //! This crate contains one of the possible implementation of the vault traits
 //! which you can use with Ockam library.

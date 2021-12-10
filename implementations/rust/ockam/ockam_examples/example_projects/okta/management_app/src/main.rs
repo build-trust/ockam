@@ -4,7 +4,7 @@ extern crate lazy_static;
 mod config;
 
 use ockam_vault::{
-    ockam_vault_core::{
+    ockam_core::vault::{
         Hasher, Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer,
     },
     SoftwareVault,
