@@ -1,11 +1,11 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE, SHA256_SIZE};
 use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
-use ockam_key_exchange_core::CompletedKeyExchange;
-use ockam_vault_core::{
+use ockam_core::vault::{
     PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
+use ockam_core::Result;
+use ockam_key_exchange_core::CompletedKeyExchange;
 
 mod dh_state;
 pub(crate) use dh_state::*;
@@ -388,12 +388,12 @@ mod tests {
     use crate::state::{DhState, State};
     use crate::{Initiator, Responder, XXVault};
     use ockam_core::hex::{decode, encode};
-    use ockam_key_exchange_core::KeyExchanger;
-    use ockam_vault::SoftwareVault;
-    use ockam_vault_core::{
+    use ockam_core::vault::{
         SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
         CURVE25519_SECRET_LENGTH,
     };
+    use ockam_key_exchange_core::KeyExchanger;
+    use ockam_vault::SoftwareVault;
     use ockam_vault_sync_core::VaultSync;
 
     #[test]

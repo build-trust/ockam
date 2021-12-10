@@ -2,7 +2,7 @@
 
 use crate::FfiError;
 use core::convert::TryFrom;
-use ockam_vault_core::{SecretAttributes, SecretPersistence, SecretType};
+use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
 
 /// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;

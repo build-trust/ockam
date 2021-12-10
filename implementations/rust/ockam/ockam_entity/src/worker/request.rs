@@ -3,8 +3,8 @@ use crate::{
 };
 use cfg_if::cfg_if;
 use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::vault::Secret;
 use ockam_core::{Address, Message, Route};
-use ockam_vault_core::Secret;
 use serde::{Deserialize, Serialize};
 
 pub type EventAttribute = (String, String);

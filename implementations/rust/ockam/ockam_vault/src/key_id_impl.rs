@@ -1,9 +1,9 @@
 use crate::software_vault::SoftwareVault;
 use crate::VaultError;
 use ockam_core::hex::encode;
+use ockam_core::vault::{Hasher, KeyId, KeyIdVault, PublicKey, Secret};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{Hasher, KeyId, KeyIdVault, PublicKey, Secret};
 
 #[async_trait]
 impl KeyIdVault for SoftwareVault {

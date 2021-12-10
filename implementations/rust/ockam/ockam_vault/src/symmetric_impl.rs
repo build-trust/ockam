@@ -1,11 +1,11 @@
 use crate::{SoftwareVault, VaultError};
 use aes_gcm::aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
-use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{
+use ockam_core::vault::{
     Buffer, Secret, SecretType, SymmetricVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
 };
+use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
 
 macro_rules! encrypt_op_impl {
     ($a:expr,$aad:expr,$nonce:expr,$text:expr,$type:ident,$op:ident) => {{

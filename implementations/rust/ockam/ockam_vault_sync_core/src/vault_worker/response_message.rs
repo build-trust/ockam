@@ -1,7 +1,7 @@
-use ockam_core::Message;
-use ockam_vault_core::{
+use ockam_core::vault::{
     Buffer, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, Signature, SmallBuffer,
 };
+use ockam_core::Message;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]

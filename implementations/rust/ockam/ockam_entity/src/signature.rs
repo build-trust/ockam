@@ -1,4 +1,4 @@
-use ockam_vault::ockam_vault_core::Signature as OckamVaultSignature;
+use ockam_vault::ockam_core::vault::Signature as OckamVaultSignature;
 use serde::{Deserialize, Serialize};
 
 /// Types of proof signatures.

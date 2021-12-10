@@ -1,7 +1,7 @@
 use crate::VaultMutex;
+use ockam_core::vault::{KeyId, KeyIdVault, PublicKey, Secret};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{KeyId, KeyIdVault, PublicKey, Secret};
 
 #[async_trait]
 impl<V: KeyIdVault + Send> KeyIdVault for VaultMutex<V> {

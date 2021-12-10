@@ -18,23 +18,22 @@ crate-type = ["rlib"]
 
 [features]
 default = ["std"]
-bls = ["ockam_vault_core/bls", "signature_core", "signature_bbs_plus", "signature_bls"]
+bls = ["signature_core", "signature_bbs_plus", "signature_bls"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_macros/std", "ockam_vault_core/std", "aes-gcm/alloc", "aes-gcm/std", "rand/std", "rand/std_rng", "tracing/std", "x25519-dalek/std", "x25519-dalek/u64_backend", "alloc"]
+std = ["ockam_core/std", "ockam_macros/std", "aes-gcm/alloc", "aes-gcm/std", "rand/std", "rand/std_rng", "tracing/std", "x25519-dalek/std", "x25519-dalek/u64_backend", "alloc"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_vault_core/no_std", "rand_pcg", "x25519-dalek/u32_backend", "aes-gcm/heapless", "aes-gcm/force-soft", "aes-gcm/stream"]
+no_std = ["ockam_core/no_std", "ockam_macros/no_std", "rand_pcg", "x25519-dalek/u32_backend", "aes-gcm/heapless", "aes-gcm/force-soft", "aes-gcm/stream"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_vault_core/alloc",  "aes-gcm/alloc"]
+alloc = ["ockam_core/alloc", "aes-gcm/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.41.1-dev", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.2.1-dev", default-features = false }
-ockam_vault_core = { path = "../ockam_vault_core", version = "^0.35.1-dev", default_features = false }
 signature_core = { path = "../signature_core", version = "^0.31.1-dev", optional = true     }
 signature_bbs_plus = {path = "../signature_bbs_plus", version = "^0.31.1-dev", optional = true     }
 signature_bls = { path = "../signature_bls", version = "^0.29.1-dev", optional = true     }
