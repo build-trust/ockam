@@ -1,7 +1,7 @@
 use crate::VaultMutex;
+use ockam_core::vault::{Hasher, Secret, SecretAttributes, SmallBuffer};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{Hasher, Secret, SecretAttributes, SmallBuffer};
 
 #[async_trait]
 impl<V: Hasher + Send> Hasher for VaultMutex<V> {

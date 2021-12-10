@@ -1,8 +1,8 @@
 use crate::{Changes, Contact, Lease, ProfileChangeEvent, ProfileIdentifier, TTL};
 use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone};
 use ockam_core::{Result, Route};
-use ockam_vault_core::{PublicKey, Secret};
 
 pub type AuthenticationProof = Vec<u8>;
 

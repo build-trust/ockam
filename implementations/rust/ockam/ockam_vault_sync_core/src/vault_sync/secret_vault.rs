@@ -1,6 +1,6 @@
+use ockam_core::vault::{PublicKey, Secret, SecretAttributes, SecretKey, SecretVault};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{PublicKey, Secret, SecretAttributes, SecretKey, SecretVault};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 

@@ -14,7 +14,7 @@ use isahc::prelude::*;
 use ockam::{CredentialAttributeSchema, CredentialAttributeType, CredentialSchema};
 use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_x3dh::*;
-use ockam_vault::{ockam_vault_core::*, *};
+use ockam_vault::{ockam_core::vault::*, *};
 use ockam_vault_sync_core::VaultMutex;
 use oktaplugin::{Messages::OktaResponse, *};
 use rand::RngCore;
@@ -457,7 +457,7 @@ fn channel_listener() {
                                     // }
                                     let mut vault = SoftwareVault::default();
                                     let pub_key = PublicKey::new(public_key.into());
-                                    let proof = ockam_vault_core::Signature::new(proof.into());
+                                    let proof = ockam_core::vault::Signature::new(proof.into());
                                     if vault.verify(&proof, &pub_key, pub_key.as_ref()).is_err() {
                                         println!("Invalid enroller key");
                                         let msg = OktaResponse {
@@ -641,7 +641,7 @@ fn channel_listener() {
                                             for key in keys {
                                                 if xxvault
                                                     .verify(
-                                                        &ockam_vault_core::Signature::new(
+                                                        &ockam_core::vault::Signature::new(
                                                             signature.to_vec(),
                                                         ),
                                                         &PublicKey::new(key.to_vec()),

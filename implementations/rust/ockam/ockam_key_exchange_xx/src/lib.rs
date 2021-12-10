@@ -57,15 +57,15 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
-use ockam_vault_core::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
+use ockam_core::vault::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam_core::vault::SecretVault;
     use ockam_core::AsyncTryClone;
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
     use ockam_vault::SoftwareVault;
-    use ockam_vault_core::SecretVault;
     use ockam_vault_sync_core::VaultSync;
 
     #[allow(non_snake_case)]

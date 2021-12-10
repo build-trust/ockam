@@ -1,7 +1,7 @@
 use crate::VaultError;
 use ockam_core::compat::{collections::BTreeMap, string::String};
+use ockam_core::vault::{Secret, SecretAttributes, SecretKey};
 use ockam_core::Result;
-use ockam_vault_core::{Secret, SecretAttributes, SecretKey};
 use tracing::info;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
@@ -10,7 +10,7 @@ use tracing::info;
 /// ```
 /// use ockam_vault::SoftwareVault;
 /// use ockam_core::Result;
-/// use ockam_vault_core::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, Signer, Verifier};
+/// use ockam_core::vault::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, Signer, Verifier};
 ///
 /// async fn example() -> Result<()> {
 ///     let mut vault = SoftwareVault::default();

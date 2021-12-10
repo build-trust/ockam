@@ -1,7 +1,7 @@
 use crate::VaultMutex;
+use ockam_core::vault::{Buffer, Secret, SymmetricVault};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{Buffer, Secret, SymmetricVault};
 
 #[async_trait]
 impl<V: SymmetricVault + Send> SymmetricVault for VaultMutex<V> {

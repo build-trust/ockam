@@ -1,7 +1,7 @@
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
+use ockam_core::vault::{PublicKey, Signature, Verifier};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{PublicKey, Signature, Verifier};
 
 #[async_trait]
 impl Verifier for VaultSync {

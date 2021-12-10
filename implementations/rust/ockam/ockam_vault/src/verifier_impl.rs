@@ -1,8 +1,8 @@
 use crate::software_vault::SoftwareVault;
 use crate::VaultError;
+use ockam_core::vault::{PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH};
 
 #[async_trait]
 impl Verifier for SoftwareVault {

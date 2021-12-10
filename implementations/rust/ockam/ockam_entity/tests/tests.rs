@@ -1,8 +1,8 @@
+use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_core::Result;
 use ockam_entity::{Entity, Identity};
 use ockam_node::Context;
 use ockam_vault::SoftwareVault;
-use ockam_vault_core::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_vault_sync_core::VaultSync;
 
 #[ockam_macros::test(timeout = 1000)]

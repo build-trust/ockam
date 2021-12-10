@@ -4,13 +4,13 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
-use ockam_vault_core::{
+use ockam_core::vault::{
     PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_SECRET_LENGTH,
 };
+use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug)]
 enum ResponderState {

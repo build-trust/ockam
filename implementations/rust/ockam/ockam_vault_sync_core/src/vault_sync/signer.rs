@@ -1,6 +1,6 @@
+use ockam_core::vault::{Secret, Signature, Signer};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_vault_core::{Secret, Signature, Signer};
 
 use crate::{VaultRequestMessage, VaultResponseMessage, VaultSync, VaultSyncCoreError};
 
