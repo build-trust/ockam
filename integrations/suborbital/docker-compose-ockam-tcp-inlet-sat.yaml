@@ -5,7 +5,7 @@ services:
     command: sat /runnables/helloworld-rs.wasm
     environment:
       SAT_LOG_LEVEL: debug
-      SAT_PEERS: ws://ockam-inlet:4001/meta/message
+      SAT_PEERS: ws://ockam-inlet:${PORT:-4001}/meta/message
       SAT_RUNNABLE_IDENT: com.suborbital.test
       SAT_RUNNABLE_VERSION: v0.0.1
     networks:
@@ -17,9 +17,9 @@ services:
 
   ockam-inlet:
     image: ghcr.io/ockam-network/examples/tcp_inlet_and_outlet
-    command: "04-inlet 0.0.0.0:4001 ${FORWARDING_ADDRESS}"
+    command: "04-inlet 0.0.0.0:${PORT:-4001} ${FORWARDING_ADDRESS}"
     ports:
-      - "4001:4001"
+      - "${PORT:-4001}:${PORT:-4001}"
     networks:
       - suborbital-ockam
 
