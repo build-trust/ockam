@@ -8,10 +8,10 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
+use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::{Context, Handle};
-use ockam_vault::ockam_core::vault::{PublicKey, Secret};
 use IdentityRequest::*;
 use IdentityResponse as Res;
 #[derive(AsyncTryClone)]
