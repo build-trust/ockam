@@ -27,6 +27,7 @@ no_std = ["core2", "hex", "rand_pcg", "spin", "ockam_macros/no_std"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["core2/alloc", "heapless", "hex/alloc", "serde/alloc", "serde_bare/alloc"]
+bls = []
 
 [dependencies]
 ockam_macros = { path = "../ockam_macros", version = "^0.2.1-dev", default_features = false }

@@ -18,7 +18,7 @@ crate-type = ["rlib"]
 
 [features]
 default = ["std"]
-bls = ["signature_core", "signature_bbs_plus", "signature_bls"]
+bls = ["ockam_core/bls", "signature_core", "signature_bbs_plus", "signature_bls"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
