@@ -45,10 +45,8 @@ FORWARDING_ADDRESS=FWD_05ea353a2d7b8261 docker-compose -f docker-compose-ockam-t
 
 Replace `FWD_05ea353a2d7b8261` here with address from step 1.
 
----
-Send a request to the `Atmo-proxy` server
-
-```
+Send a request to the `Atmo-proxy` server:
+```bash
 curl -d "my friend" {atmo-proxy-address}:8080/hello
 hello, my friend
 ```
