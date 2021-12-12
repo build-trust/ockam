@@ -16,7 +16,14 @@ for crate in ${updated_crates[@]}; do
     bumped_crates[$crate]=true
 done
 
+crates_specified_to_be_excluded=( $EXCLUDE_CRATES )
 exclude_string=""
+
+for crate in ${crates_specified_to_be_excluded[@]}; do
+    echo "Excluding $crate from publishing as specified in env"
+    exclude_string="$exclude_string --exclude $crate"
+    bumped_crates[$crate]=false
+done
 
 for crate in $(ls "implementations/rust/ockam"); do
     # Add crate to excluded crate

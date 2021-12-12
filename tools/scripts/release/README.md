@@ -32,10 +32,11 @@ This should be called before a new `git tag` is done so that only crates that ar
 
 ## Crate Publish
 
-Crates are published to `crates.io` using [cargo-release](https://github.com/crate-ci/cargo-release/issues) right after bump. Only crates that have been updated (comparing `git diff` with last git tag) are published.
+Crates are published to `crates.io` using [cargo-release](https://github.com/crate-ci/cargo-release/issues) right after bump. Only crates that have been updated (comparing `git diff` with last git tag) are published. Crates can also be excluded from being published using the `EXCLUDE_CRATES` variable, to exclude crates, we can optionally specify crates that are to be excluded `EXCLUDE_CRATES="signature_core ockam_core"`, where `signature_core` and `ockam_core` are excluded.
+
 To publish crates
 ```bash
-PUBLISH_TOKEN=my_crates.io_token tools/scripts/release/crate-publish.sh
+PUBLISH_TOKEN=my_crates.io_token EXCLUDE_CRATES="signature_core ockam_core" tools/scripts/release/crate-publish.sh
 ```
 
 ## Tagging
