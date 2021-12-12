@@ -1,12 +1,12 @@
 version: "3"
 services:
   sat:
-    image: suborbital/sat:2021.11.21-10
-    command: sat /runnables/helloworld-rs.wasm
+    image: suborbital/sat:2021.12.12-50
+    command: sat /runnables/helloworld-rs/helloworld-rs.wasm
     environment:
-      SAT_LOG_LEVEL: debug
+      SAT_LOG_LEVEL: info
       SAT_PEERS: ws://ockam-inlet:${PORT:-4001}/meta/message
-      SAT_RUNNABLE_IDENT: com.suborbital.test
+      SAT_RUNNABLE_IDENT: com.suborbital.ockam
       SAT_RUNNABLE_VERSION: v0.0.1
     networks:
       - suborbital-ockam
