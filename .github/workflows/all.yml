@@ -1,0 +1,40 @@
+name: All Implementations
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/actions/cache'
+      - '.github/workflows/all.yml'
+  push:
+    paths:
+      - '.github/actions/cache'
+      - '.github/workflows/all.yml'
+  schedule:
+    - cron:  '0 1 * * *' # Run every day at 1am UTC https://cron.help/#0_1_*_*_*
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+      - name: Build
+        run: ./gradlew build
+
+  test:
+    name: Test
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+      - name: Test
+        run: ./gradlew test
