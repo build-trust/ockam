@@ -29,8 +29,6 @@ task rustBuild {
 }
 
 task checkLocalHexAndRebar {
-  dependsOn rustBuild
-  mustRunAfter rustBuild
   doLast {
     exec { commandLine mix('local.hex --force --if-missing') }
     exec { commandLine mix('local.rebar --force') }
@@ -70,13 +68,12 @@ task build {
   }
 }
 
-
-
 task test {
   group project.name
   description 'Test the project.'
 
   dependsOn lint
+  dependsOn rustBuild
   apps.each { app ->
     doLast {
       println "\n[Gradle] ${app}"
@@ -113,21 +110,3 @@ task veryClean {
     }
   }
 }
-
-
-
-
-
-
-//       'mix dialyzer.clean',
-//       'mix dialyzer'
-
-// tasks.whenTaskAdded { task ->
-//   def isVeryClean = task.name.contains('veryClean')
-//   def isCleanTask = isVeryClean || task.name.contains('clean')
-//   if(!isCleanTask) {
-//     task.dependsOn([Gradle].includedBuild('rust').task(':buildRelease_ockam_ockam_ffi'))
-//   } else if (isVeryClean) {
-//     task.dependsOn([Gradle].includedBuild('rust').task(':clean_ockam_ockam_ffi'))
-//   }
-// }
