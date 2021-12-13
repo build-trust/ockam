@@ -14,5 +14,5 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 publish = true
 
 [dependencies]
-ockam_core = {path = "../ockam_core", version = "^0.41.1-dev"}
+ockam_core = {path = "../ockam_core", version = "^0.42.0"}
 arrayref = "0.3"
