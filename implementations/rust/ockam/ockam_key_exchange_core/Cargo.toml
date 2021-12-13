@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_core"
-version = "0.33.1-dev"
+version = "0.34.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
