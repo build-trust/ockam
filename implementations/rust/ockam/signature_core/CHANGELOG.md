@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Change all crates to `-dev` version
+- Updated dependencies
 
 ## 0.31.0 - 2021-12-06
 

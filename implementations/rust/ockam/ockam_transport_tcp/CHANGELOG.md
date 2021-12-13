@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrade portals flow
 - Adjust portals delays to avoid race conditions
 - Stop tcp worker on hearbeat failure
-- Change all crates to `-dev` version
 
 ### Fixed
 

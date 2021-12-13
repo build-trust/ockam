@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update `LocalInfo` logic
 - Initial ockam channel implementation
 - Simplify channel creation handshake
-- Change all crates to `-dev` version
 - Move ockam_vault_core crate into ockam_core
 
 ## 0.41.0 - 2021-12-06

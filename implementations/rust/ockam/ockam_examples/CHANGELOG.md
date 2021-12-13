@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Change all crates to `-dev` version
 - Change uses of `ockam_vault_core::Foo` to use `ockam_core::vault::Foo` across crates
 
 ## 0.24.0 - 2021-12-06

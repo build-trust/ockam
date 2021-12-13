@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Upgrade portals flow
-- Change all crates to `-dev` version
 
 ## 0.15.0 - 2021-12-06
 
