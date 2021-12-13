@@ -97,7 +97,7 @@ fabric that connects them.
 
 <div>
 <hr>
-<b>Next:</b> Learn more about [Ockam](https://github.com/ockam-network/ockam#next-steps) & [Suborbital](https://suborbital.dev/atmo).
+<b>Next:</b> Learn more about <a href="https://github.com/ockam-network/ockam#next-steps">Ockam</a> and <a href="https://suborbital.dev/atmo">Suborbital</a>.
 </div>
 
 [e2ee-secure-channels]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encrypt-all-application-layer-communication#readme
