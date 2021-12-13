@@ -1,19 +1,59 @@
 name: Rust
-on: [pull_request, push, workflow_dispatch]
 
 permissions:
   contents: read
 
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/rust.yml'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
+  push:
+    paths:
+      - '.github/workflows/rust.yml'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
+  schedule:
+    - cron:  '0 1 * * *' # run every day at 1am utc cron.help/#0_1_*_*_*
+
 jobs:
-  rust:
-    name: Rust
+  build:
+    name: Build
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
-
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
-
       - name: Build Rust
         run: ./gradlew build_rust
+
+  test:
+    name: Test
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+      - name: Build Rust
+        run: ./gradlew test_rust
+
+  check_no_std:
+    name: Check Features - no_std alloc software_vault
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+      - name: Check Features - no_std alloc software_vault
+        env:
+          RUSTFLAGS: -Dwarnings
+        run: |
+          cd implementations/rust/ockam/ockam
+          cargo check --no-default-features --features "no_std alloc software_vault"
