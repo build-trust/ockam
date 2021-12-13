@@ -1,12 +1,13 @@
-name: Lint Commit Messages
-on: [pull_request, push, workflow_dispatch]
+name: Commits
 
 permissions:
   contents: read
 
+on: [pull_request, push, workflow_dispatch]
+
 jobs:
-  commitlint:
-    name: Commitlint
+  lint:
+    name: Lint
     runs-on: ubuntu-20.04
 
     # We assume that commit 2fd0d36fe6ae0c2d527368683ec3a6352617b381 will be in the history
