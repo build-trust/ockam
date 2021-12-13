@@ -1,13 +1,19 @@
 project.buildDir = java.nio.file.Paths.get('..', '..', 'target');
 
-ext {
-  mode = project.hasProperty('mode') ? mode.toLowerCase() : 'debug'
+if(project.hasProperty('mode')) {
+  ext.mode = mode.toLowerCase()
+} else {
+  ext.mode = gradle.parent != null ? 'release' : 'debug'
+}
 
+ext {
   cargo = { String... arguments ->
     command = ['cargo']
     command.addAll(arguments)
 
-    if (command.contains('build') && mode == 'release') { command.add('--release') }
+    if (command.contains('build') && mode == 'release') {
+      command.add('--release')
+    }
 
     println "[Gradle] Command: ${command.join(' ')}"
     return command
