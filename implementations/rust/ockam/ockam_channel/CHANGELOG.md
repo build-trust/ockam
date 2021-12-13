@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## unreleased
+
+### Changed
+
+- Update `LocalInfo` logic
+- Change all crates to `-dev` version
+- Change uses of `ockam_vault_core::Foo` to use `ockam_core::vault::Foo` across crates
+
 ## 0.37.0 - 2021-12-06
 
 ### Changed

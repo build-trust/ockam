@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## unreleased
+
+### Added
+
+- Add a test for full pipe behaviour stack
+
+### Changed
+
+- Introduce nested pipe behaviour test
+- Initial ockam channel implementation
+- Simplify channel creation handshake
+- Change all crates to `-dev` version
+- Change uses of `ockam_vault_core::Foo` to use `ockam_core::vault::Foo` across crates
+
+### Fixed
+
+- Fix channel channel behavior and add tests
+- Clippy style update
+- Update channels with no_std support
+
 ## 0.41.0 - 2021-12-06
 
 ### Changed

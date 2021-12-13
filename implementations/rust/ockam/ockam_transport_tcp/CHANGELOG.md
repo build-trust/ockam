@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## unreleased
+
+### Added
+
+- Add basic portal test
+- Add tcp heartbeats
+
+### Changed
+
+- Upgrade portals flow
+- Adjust portals delays to avoid race conditions
+- Stop tcp worker on hearbeat failure
+- Change all crates to `-dev` version
+
+### Fixed
+
+- Fix clippy warnings
+
 ## 0.36.0 - 2021-12-06
 
 ### Changed
