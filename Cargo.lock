@@ -1390,7 +1390,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_examples"
-version = "0.24.1-dev"
+version = "0.25.0"
 dependencies = [
  "ockam",
  "tracing",
