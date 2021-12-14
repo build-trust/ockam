@@ -7,6 +7,7 @@ To run changelog generator, from the Ockam root path, call
 ```bash
 tools/scripts/release/changelog.sh
 ```
+Generated changelogs should be reviewed and then commited before crate bump is done.
 
 ## Crate Bump
 
