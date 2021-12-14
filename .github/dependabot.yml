@@ -81,14 +81,6 @@ updates:
     schedule:
       interval: "daily"
 
-  # Maintain dependencies for rust ockam_node_no_std crate
-  - package-ecosystem: "cargo"
-    directory: "/implementations/rust/ockam/ockam_node_no_std"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-
   # Maintain dependencies for rust ockam_node_tcp crate
   - package-ecosystem: "cargo"
     directory: "/implementations/rust/ockam/ockam_node_tcp"

@@ -1,6 +1,6 @@
 //! TCP Transport utilities for Ockam's routing framework
 //!
-//! The `ockam_node` (or `ockam_node_no_std`) crate sits at the core
+//! The `ockam_node` crate sits at the core
 //! of the Ockam routing framework, with transport specific
 //! abstraction plugins.  This crate implements a TCP connection
 //! plugin for this architecture.
