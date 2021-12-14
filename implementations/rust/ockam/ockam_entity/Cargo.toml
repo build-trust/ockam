@@ -38,7 +38,7 @@ alloc = ["ockam_core/alloc","ockam_channel/alloc", "ockam_key_exchange_core/allo
 credentials = [ "ockam_vault/bls", "signature_core", "signature_bbs_plus", "signature_bls", "bls12_381_plus"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.42.0", default-features = false  }
+ockam_core = { path = "../ockam_core", version = "^0.42.1-dev", default-features = false  }
 ockam_macros = { path = "../ockam_macros", version = "^0.3.0", default-features = false }
 ockam_node = {path = "../ockam_node", version = "^0.41.0", default-features = false }
 ockam_vault_sync_core = {path = "../ockam_vault_sync_core", version = "^0.34.0", default-features = false, optional = true}
