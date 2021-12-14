@@ -1360,7 +1360,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_entity"
-version = "0.32.0"
+version = "0.32.1-dev"
 dependencies = [
  "bls12_381_plus",
  "cfg-if",
