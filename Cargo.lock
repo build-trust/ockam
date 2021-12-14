@@ -1458,7 +1458,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.41.0"
+version = "0.41.1-dev"
 dependencies = [
  "cortex-m",
  "cortex-m-semihosting",
