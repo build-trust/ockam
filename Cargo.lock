@@ -1425,7 +1425,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.34.0"
+version = "0.34.1-dev"
 dependencies = [
  "arrayref",
  "ockam_core",
