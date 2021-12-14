@@ -8,6 +8,18 @@ if [[ -z $COMMIT_SHA ]]; then
     exit 1
 fi
 
+# We tag crates using the name and version in Cargo.toml. We
+# should ensure we checkout to the specific commit SHA so that
+# we use the accurate tag name and version.
+#
+# Ensure that provided commit SHA is one that we checkout to.
+current_commit_sha=$(eval git rev-parse HEAD)
+
+if [[ $current_commit_sha != $COMMIT_SHA ]]; then
+    echo "please checkout to specified commit sha"
+    exit 1
+fi
+
 source tools/scripts/release/crates-to-publish.sh
 
 for crate in ${updated_crates[@]}; do
