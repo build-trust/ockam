@@ -23,6 +23,9 @@ extern crate core;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[macro_use]
+extern crate tracing;
+
 pub mod channel;
 pub mod executor;
 pub mod runtime;
@@ -41,48 +44,4 @@ pub mod tokio {
         pub use runtime::JoinHandle;
     }
     pub use crate::time;
-}
-
-// simple logging
-
-#[cfg(not(feature = "std"))]
-pub use ockam_core::println;
-
-#[cfg(not(feature = "std"))]
-pub mod logging_no_std {
-    /// error!
-    #[macro_export]
-    macro_rules! error {
-        ($($arg:tt)*) => (
-            ockam_core::println!($($arg)*);
-        )
-    }
-    /// warn!
-    #[macro_export]
-    macro_rules! warn {
-        ($($arg:tt)*) => (
-            ockam_core::println!($($arg)*);
-        )
-    }
-    /// info!
-    #[macro_export]
-    macro_rules! info {
-        ($($arg:tt)*) => (
-            ockam_core::println!($($arg)*);
-        )
-    }
-    /// debug!
-    #[macro_export]
-    macro_rules! debug {
-        ($($arg:tt)*) => (
-            ockam_core::println!($($arg)*);
-        )
-    }
-    /// trace!
-    #[macro_export]
-    macro_rules! trace {
-        ($($arg:tt)*) => (
-            ockam_core::println!($($arg)*);
-        )
-    }
 }

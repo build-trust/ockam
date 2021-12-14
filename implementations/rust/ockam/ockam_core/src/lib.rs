@@ -66,24 +66,14 @@ pub use worker::*;
 pub use std::println;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 /// println macro for no_std
-#[macro_export]
-macro_rules! println {
-    ($($arg:tt)*) => {{
-        // TODO replace with cortex-m-log or defmt
-        #[cfg(target_arch="arm")]
-        cortex_m_semihosting::hprintln!($($arg)*).unwrap();
-        // dummy fallback definition
-        #[cfg(not(target_arch="arm"))]
-        {
-            use ockam_core::compat::io::Write;
-            let mut buffer = [0 as u8; 1];
-            let mut cursor = ockam_core::compat::io::Cursor::new(&mut buffer[..]);
-            match write!(&mut cursor, $($arg)*) {
-                Ok(()) => (),
-                Err(_) => (),
-            }
-        }
-    }};
+pub mod println_no_std {
+    #[macro_export]
+    /// implements println for no_std by wrapping the tracing::info! macro
+    macro_rules! println {
+        ($($arg:tt)*) => {{
+            tracing::info!($($arg)*);
+        }};
+    }
 }
 
 /// Module for custom implementation of standard traits.

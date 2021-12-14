@@ -100,9 +100,13 @@ impl<'a> Executor<'a> {
             &mut (*tasksp)
         };
         let task = match tasks.get_mut(&task_id) {
-            Some(task) => task,
+            Some(task) => {
+                //let task_count = NEXT_ID.load(Ordering::Relaxed);
+                //trace!("poll task: {}@{} / {}", task.name, task.id.0, task_count);
+                task
+            }
             None => {
-                // TODO ockam_core::println!("No task for id: {:?}", task_id);
+                warn!("No task for id: {:?}", task_id);
                 return;
             }
         };
@@ -131,20 +135,20 @@ impl<'a> Executor<'a> {
     /// spawn
     pub fn spawn(&self, future: impl Future + 'static) {
         let task = Task::allocate(future);
-        debug!("[executor] spawning task: {}", task.id.0);
+        debug!("spawning task: {}", task.id.0);
         self.task_queue.push(task.id);
         let tasks = unsafe {
             let tasksp = self.tasks.get();
             &mut (*tasksp)
         };
         if tasks.insert(task.id, task).is_some() {
-            panic!("[executor] task with same id already exists");
+            panic!("task with same id already exists");
         }
     }
 
     pub fn spawn_with_name(&self, name: &'static str, future: impl Future + 'static) {
         let task = Task::allocate_with_name(name, future);
-        debug!("[executor] spawning task: {}@{}", name, task.id.0);
+        debug!("spawning task: {}@{}", name, task.id.0);
         self.task_queue.push(task.id);
         let tasks = unsafe {
             let tasksp = self.tasks.get();
@@ -182,6 +186,15 @@ where
     _name: &'static str,
     future: UnsafeCell<F>,
     // TODO future: Pin<Box<F>>,
+}
+
+impl<F> Drop for Node<F>
+where
+    F: ?Sized,
+{
+    fn drop(&mut self) {
+        debug!("dropped task: {}", self.id.0);
+    }
 }
 
 impl<F, T> Node<F>

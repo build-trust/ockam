@@ -10,7 +10,7 @@ use heapless::mpmc::MpMcQueue;
 use ockam_core::compat::sync::Arc;
 
 pub type QueueN<T, const N: usize> = MpMcQueue<T, N>;
-pub type Queue<T> = QueueN<T, QUEUE_LENGTH>;
+pub type Queue<T> = QueueN<T, 16>;
 
 pub fn channel<T>(length: usize) -> (Sender<T>, Receiver<T>) {
     let queue = Queue::new();
@@ -20,7 +20,7 @@ pub fn channel<T>(length: usize) -> (Sender<T>, Receiver<T>) {
 fn channel_with_queue<T>(length: usize, queue: Queue<T>) -> (Sender<T>, Receiver<T>) {
     let inner = Arc::new(Inner {
         _length: length,
-        queue: queue,
+        queue,
         item_count: AtomicUsize::new(0),
         wake_sender: AtomicWaker::new(),
         wake_receiver: AtomicWaker::new(),
@@ -104,7 +104,7 @@ impl<T> Drop for Sender<T> {
 
 impl<T> core::fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "Sender")
+        write!(f, "[Sender]")
     }
 }
 
@@ -132,7 +132,7 @@ where
                     Err(_) => {
                         // queue is full - TODO implement backpressure
                         {
-                            error!("[channel] queue overflowed");
+                            error!("queue overflowed");
                             self.inner.is_sender_closed.swap(true, Ordering::AcqRel);
                             self.inner.wake_receiver.wake();
                         }
@@ -141,7 +141,7 @@ where
                     }
                 }
             }
-            None => panic!("[channel] Value cannot be None"),
+            None => panic!("Value cannot be None"),
         }
     }
 }

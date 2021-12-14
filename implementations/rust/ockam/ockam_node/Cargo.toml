@@ -29,7 +29,7 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "tokio", "tracing-subscriber", "alloc"]
+std = ["ockam_core/std", "tokio", "tracing-subscriber/fmt", "tracing-subscriber/env-filter", "alloc"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -59,8 +59,3 @@ tracing-subscriber = { version = "0.3", features = [
 ], optional = true }
 heapless = { version = "0.7", features = ["mpmc_large"], optional = true }
 ockam_executor = { path = "../ockam_executor", version = "^0.11.1-dev", default-features = false, optional = true }
-
-[target.'cfg(target_arch = "arm")'.dependencies]
-# TODO replace cortex-m-semihosting with 'log'
-cortex-m = "0.7.3"
-cortex-m-semihosting = "0.3.7"
