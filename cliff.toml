@@ -30,6 +30,7 @@ commit_parsers = [
     { message = ".*crate release", skip = true},
     { message = ".*update crates changelog", skip = true},
     { message = "^ci", skip = true},
+    { message = "^chore", skip = true},
     { message = "^.*: add", group = "Added"},
     { message = "^.*: support", group = "Added"},
     { message = "^.*: remove", group = "Removed"},
