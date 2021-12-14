@@ -89,7 +89,7 @@ ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.35.1-
 ockam_entity = { path = "../ockam_entity", version = "^0.32.1-dev", default_features = false }
 arrayref = "0.3"
 bls12_381_plus = { version = "0.5", default-features = false, optional = true }
-signature_core = { version = "^0.32.0", path = "../signature_core", optional = true }
+signature_core = { version = "^0.32.1-dev", path = "../signature_core", optional = true }
 signature_bbs_plus = { version = "^0.32.1-dev", path = "../signature_bbs_plus", package = "signature_bbs_plus", optional = true }
 signature_bls = { version = "^0.30.1-dev", path = "../signature_bls", package = "signature_bls", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
