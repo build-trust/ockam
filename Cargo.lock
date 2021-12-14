@@ -1506,7 +1506,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.31.0"
+version = "0.31.1-dev"
 dependencies = [
  "futures-channel",
  "futures-util",
