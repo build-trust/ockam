@@ -21,7 +21,7 @@ error occurs.  Generally they go through the following steps.
 4. Shutdown (calls `Worker::shutdown(...)`)
 
 Workers are created and managed via an ockam node (provided by
-`ockam_node` or `ockam_node_no_std`).  A worker can register a typed
+`ockam_node`). A worker can register a typed
 message it responds to, and a handle function which is called every
 time a message is sent to that particular worker address.
 
