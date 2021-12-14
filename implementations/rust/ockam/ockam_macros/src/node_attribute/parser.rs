@@ -29,7 +29,17 @@ fn output_node(
     let err_handling = if ret_type == ReturnType::Default {
         quote! {.unwrap();}
     } else {
+        #[cfg(feature = "std")]
         quote! {?}
+
+        // For now the executor's `Executor::execute` for std returns `Result<F::Output>`
+        // while for no_std it returns `Result<()>` and always returns `Ok(())` or panics.
+        // So while it makes sense using the `?` operator in std in no_std just returning Ok(())
+        // would be enough(since execute already hides the return type) but we are letting the
+        // `Executor::execute` return bubble up to keep the code simpler.
+        // Note: This also means that for no_std `main` return type can only be `Result<()>` or nothing.
+        #[cfg(not(feature = "std"))]
+        quote! {}
     };
 
     // Assumes the target platform knows about main() functions
