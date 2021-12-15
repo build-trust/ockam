@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint
+    name: Editorconfig - Lint
     runs-on: ubuntu-20.04
     container: # gitlab.com/greut/eclint
       image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
