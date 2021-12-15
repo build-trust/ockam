@@ -30,6 +30,10 @@ on:
   schedule:
     - cron:  '0 1 * * *' # Run every day at 1am UTC cron.help/#0_1_*_*_*
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build
