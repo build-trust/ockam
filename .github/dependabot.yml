@@ -13,8 +13,8 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Rust"
 
-  # Maintain dependencies for typescript crates
-  - package-ecosystem: "yarn"
+  # Maintain dependencies for typescript packages
+  - package-ecosystem: "npm"
     directory: "/implementation/typescript"
     commit-message:
       prefix: "build:"
