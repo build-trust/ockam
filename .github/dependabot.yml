@@ -2,6 +2,17 @@
 version: 2
 updates:
 
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    commit-message:
+      prefix: "ci:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Component: CI/CD"
+
   # Maintain dependencies for rust crates
   - package-ecosystem: "cargo"
     directory: "/"
@@ -46,6 +57,7 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Elixir"
 
+  # Maintain dependencies for elixir ockam_kafka application
   - package-ecosystem: "mix"
     directory: "/implementations/elixir/ockam/ockam_kafka"
     commit-message:
