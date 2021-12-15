@@ -7,7 +7,6 @@ ockam_core -> ockam_channel [color=red];
 ockam_core -> ockam_node [color=red];
 ockam_core -> ockam_vault [color=red];
 ockam_core -> ockam_transport_tcp [color=red];
-ockam_core -> ockam_vault_core [color=red];
 ockam_core -> ockam_vault_sync_core [color=red];
 ockam_core -> ockam_vault_test_suite [color=red];
 
@@ -20,16 +19,6 @@ ockam_node -> ockam_key_exchange_x [color=green];
 ockam_node -> ockam_channel [color=green];
 ockam_node -> ockam_transport_tcp [color=green];
 ockam_node -> ockam_vault_sync_core [color=green];
-
-ockam_vault_core [color=blue];
-ockam_vault_core -> ockam [color=blue];
-ockam_vault_core -> ockam_ffi [color=blue];
-ockam_vault_core  -> ockam_key_exchange_x3dh [color=blue];
-ockam_vault_core -> ockam_channel [color=blue];
-ockam_vault_core  -> ockam_key_exchange_xx [color=blue];
-ockam_vault_core -> ockam_vault [color=blue];
-ockam_vault_core -> ockam_vault_sync_core [color=blue];
-ockam_vault_core -> ockam_vault_test_suite [color=blue];
 
 
 ockam_vault_sync_core [color=cadetblue];
