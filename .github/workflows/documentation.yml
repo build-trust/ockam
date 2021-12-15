@@ -1,0 +1,50 @@
+name: Documentation
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/documentation.yml'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
+      - 'documentation/use-cases/**.md'
+      - 'documentation/guides/rust/**.md'
+      - 'tools/docs/**'
+  push:
+    paths:
+      - '.github/workflows/documentation.yml'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
+      - 'documentation/use-cases/**.md'
+      - 'documentation/guides/rust/**.md'
+      - 'tools/docs/**'
+  schedule:
+    - cron:  '0 1 * * *' # run every day at 1am utc cron.help/#0_1_*_*_*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check_examples_in_guides:
+    name: Documentation - Check Examples
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
+      - name: Check example source and guide code blocks match
+        run: OCKAM_HOME=$PWD tools/docs/check_documentation.sh
+
+      - name: Run Get Started examples
+        run: OCKAM_HOME=$PWD tools/docs/run_examples.sh
+
+      - name: Run Kafka examples
+        run: OCKAM_HOME=$PWD tools/docs/run_kafka_example.sh
