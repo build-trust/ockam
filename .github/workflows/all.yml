@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build
+    name: All Implementations - Build
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
@@ -33,7 +33,7 @@ jobs:
         run: ./gradlew build
 
   test:
-    name: Test
+    name: All Implementations - Test
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59

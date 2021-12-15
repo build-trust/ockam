@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build
+    name: Rust - Build
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
@@ -37,7 +37,7 @@ jobs:
         run: ./gradlew build_rust
 
   test:
-    name: Test
+    name: Rust - Test
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
@@ -48,7 +48,7 @@ jobs:
         run: ./gradlew test_rust
 
   check_no_std:
-    name: Check Features - no_std alloc software_vault
+    name: Rust - Check Features - no_std alloc software_vault
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
@@ -63,7 +63,7 @@ jobs:
           cargo check --no-default-features --features "no_std alloc software_vault"
 
   check_cargo_update:
-    name: Check Cargo Update
+    name: Rust - Check Cargo Update
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
