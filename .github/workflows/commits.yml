@@ -54,7 +54,7 @@ jobs:
             --to HEAD \
             --help-url https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages || \
             (echo '
-              It seem the commit with the above commit message does not follow the Ockam Commit Message Convention
+              The commit with the above commit message does not follow the Ockam Commit Message Convention
               https://ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages
 
               Our commits should have the following structure.
@@ -67,9 +67,10 @@ jobs:
 
               Common errors to avoid:
               1. The commit header <type>(<scope>): <subject> must be in lower case.
-              2. Allowed type values are: build, chore, ci, docs, feat, fix, refactor, style, test
-              3. Allowed scope values are: c, elixir, typescript, rust
+              2. Allowed type values are: build, chore, ci, docs, feat, fix, refactor, style, test.
+              3. Allowed scope values are: c, elixir, typescript, rust.
               4. Use the chore type as a last resort, prefer a more meaningful type.
+              5. Only feat, fix, refactor type commits are included in our changelog.
 
               The linting rules are defined in:
               https://github.com/ockam-network/ockam/blob/develop/tools/commitlint/commitlint.config.js
