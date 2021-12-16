@@ -1,59 +1,59 @@
-name: Check CLA
+name: CLA
+
+permissions:
+  contents: read
+
 on:
   pull_request:
-    types: [opened]
+    types: [assigned, opened, reopened, ready_for_review]
+
 jobs:
-  check-submitter-for-cla:
-    if: github.repository_owner == 'ockam-network'
-    name: Check Sender of the Pull Request has signed CLA
-    env:
-      MESSAGE: "@${{ github.actor }}, welcome to the Ockam community and thank you for sending this pull request ❤️.\\n
-      \\n
-      Before we can merge, please accept our Contributor License Agreement (CLA).\\n
-      \\n
-      1. Read the CLA at: https://www.ockam.io/learn/how-to-guides/contributing/cla/\\n
-      2. To accept the CLA, please send a different pull request to our
-      [contributors repository](https://github.com/ockam-network/contributors) indicating that you accept the CLA by
-      adding your Git/Github details in a row at the end of the
-      [CONTRIBUTORS.csv](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv) file.\\n
-      \\n
-      We look forward to merging your first contribution!"
-    environment:
-      name: contributors
+  check-cla:
+    name: CLA - Check
     runs-on: ubuntu-20.04
     steps:
-      - name: Clone Contributors
-        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
-        with:
-          repository: ockam-network/contributors
-          path: contributors
-
-      # Gather necessary information
-      - name: Setup
+      - name: Fetch Contributors
         run: |
-          USER=${{ github.actor }}
-          # Export variable
-          # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
-          echo "USER=$USER" >> $GITHUB_ENV
+          curl --proto '=https' --tlsv1.2 -sSf \
+            --output CONTRIBUTORS.csv \
+            https://raw.githubusercontent.com/ockam-network/contributors/main/CONTRIBUTORS.csv
 
-      - name: Check Submitter
-        continue-on-error: true
-        shell: bash
+      - name: Check sender of pull request is in contributors list
+        shell: python
+        env:
+          GITHUB_EVENT_PULL_REQUEST_USER_LOGIN: ${{ github.event.pull_request.user.login }}
         run: |
-          # Below attempt is to prevent following situation
-          # https://github.community/t/github-actions-using-grep-when-no-lines-selected/126719
-          CVS_USER=$(grep --max-count=1 --only-matching ${{ env.USER }} contributors/CONTRIBUTORS.csv || echo '<MISSING>')
-          if [[ "$CVS_USER" == "<MISSING>" ]]
-          then
-            echo "CLA_NOT_SIGNED=1" >> $GITHUB_ENV
-          else
-            echo "INFO: User $USER signed the CLA"
-            echo "CLA_NOT_SIGNED=0" >> $GITHUB_ENV
-          fi
+          import csv
+          import os
+          import sys
 
-      - name: Create Comment
-        if: env.CLA_NOT_SIGNED && env.CLA_NOT_SIGNED == 1
-        run: |
-          curl -s -H "Authorization: token ${{ secrets.CONTRIBUTORS_PAT }}" \
-            -X POST -d '{ "body": "${{ env.MESSAGE }}" }' \
-            "https://api.github.com/repos/ockam-network/ockam/issues/${{ github.event.issue.number }}/comments"
+          pr_sender = os.environ['GITHUB_EVENT_PULL_REQUEST_USER_LOGIN']
+          has_accepted_cla = False
+
+          with open('CONTRIBUTORS.csv', 'r') as contributors_file:
+              reader = csv.reader(contributors_file)
+              for row in reader:
+                  if row[1] == pr_sender:
+                      has_accepted_cla = True
+                      break
+
+          if not has_accepted_cla:
+              message = """
+              {}, welcome to the Ockam community and thank you for sending this pull request ❤️.
+
+              Before we can merge, please accept our Contributor License Agreement (CLA).
+
+              1. Read the CLA at: https://www.ockam.io/learn/how-to-guides/contributing/cla
+
+              2. To accept the CLA, please send a different pull request to our
+              [contributors repository](https://github.com/ockam-network/contributors) indicating
+              that you accept the CLA by adding your Git/Github details in a row at the end of the
+              [CONTRIBUTORS.csv](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv)
+              file.
+
+              We look forward to merging your first contribution!
+              """.format(pr_sender)
+              print(message, file=sys.stderr)
+              sys.exit(1)
+
+          print("[✓] {} has accepted the Ockam CLA.".format(pr_sender))
