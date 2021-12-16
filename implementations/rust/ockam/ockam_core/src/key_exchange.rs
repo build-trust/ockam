@@ -1,10 +1,10 @@
 //! Key exchange types and traits of the Ockam library.
 //!
-//! This module contains the key exchange types of the Ockam library and is intended
+//! This crate contains the key exchange types of the Ockam library and is intended
 //! for use by other crates that provide features and add-ons to the main
 //! Ockam library.
 //!
-//! The main Ockam crate re-exports types defined in this module.
+//! The main Ockam crate re-exports types defined in this crate.
 #![deny(unsafe_code)]
 #![warn(
     missing_docs,

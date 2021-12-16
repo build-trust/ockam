@@ -5,15 +5,12 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::key_exchange::{CompletedKeyExchange, KeyExchanger};
-use ockam_core::key_exchange::{CompletedKeyExchange, KeyExchanger};
 use ockam_core::vault::Signature as GenericSignature;
 use ockam_core::vault::{
     Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_SECRET_LENGTH,
 };
 use ockam_core::Result;
-use ockam_core::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{async_trait, compat::boxed::Box};
 
 #[derive(Debug, Clone, Copy)]

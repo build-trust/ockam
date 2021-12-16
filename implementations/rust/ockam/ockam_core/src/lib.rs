@@ -18,8 +18,8 @@
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 compile_error!(r#"The "no_std" feature currently requires the "alloc" feature"#);
 
-// #[cfg(feature = "std")]
-// extern crate core;
+#[cfg(feature = "std")]
+extern crate core;
 
 #[cfg(feature = "alloc")]
 #[macro_use]
