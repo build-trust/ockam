@@ -12,48 +12,10 @@ jobs:
     name: CLA - Check
     runs-on: ubuntu-20.04
     steps:
-      - name: Fetch Contributors
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+      - name: Check sender of pull request is in contributors list
         run: |
           curl --proto '=https' --tlsv1.2 -sSf \
-            --output CONTRIBUTORS.csv \
-            https://raw.githubusercontent.com/ockam-network/contributors/main/CONTRIBUTORS.csv
-
-      - name: Check sender of pull request is in contributors list
-        shell: python
-        env:
-          GITHUB_EVENT_PULL_REQUEST_USER_LOGIN: ${{ github.event.pull_request.user.login }}
-        run: |
-          import csv
-          import os
-          import sys
-
-          pr_sender = os.environ['GITHUB_EVENT_PULL_REQUEST_USER_LOGIN']
-          has_accepted_cla = False
-
-          with open('CONTRIBUTORS.csv', 'r') as contributors_file:
-              reader = csv.reader(contributors_file)
-              for row in reader:
-                  if row[1] == pr_sender:
-                      has_accepted_cla = True
-                      break
-
-          if not has_accepted_cla:
-              message = """
-              {}, welcome to the Ockam community and thank you for sending this pull request ❤️.
-
-              Before we can merge, please accept our Contributor License Agreement (CLA).
-
-              1. Read the CLA at: https://www.ockam.io/learn/how-to-guides/contributing/cla
-
-              2. To accept the CLA, please send a different pull request to our
-              [contributors repository](https://github.com/ockam-network/contributors) indicating
-              that you accept the CLA by adding your Git/Github details in a row at the end of the
-              [CONTRIBUTORS.csv](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv)
-              file.
-
-              We look forward to merging your first contribution!
-              """.format(pr_sender)
-              print(message, file=sys.stderr)
-              sys.exit(1)
-
-          print("[✓] {} has accepted the Ockam CLA.".format(pr_sender))
+            https://raw.githubusercontent.com/ockam-network/contributors/main/CONTRIBUTORS.csv \
+            | tools/scripts/check_cla.py ${{ github.event.pull_request.user.login }}
