@@ -229,5 +229,5 @@ cargo run --example 04-routing-over-transport-two-hops-initiator
 Note how the message is routed.
 
 <div style="display: none; visibility: hidden;">
-<hr><b>Next:</b> <a href="../05-secure-channel#readme">04. Secure Channel</a>
+<hr><b>Next:</b> <a href="../05-secure-channel#readme">05. Secure Channel</a>
 </div>
