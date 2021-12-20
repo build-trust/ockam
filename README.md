@@ -63,16 +63,26 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     ```
 
-2. Setup a new cargo project to get started.
+2. Setup a new cargo project to get started (valid for Unix-like shell).
 
     ```
     cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
       echo 'ockam = "*"' >> Cargo.toml && cargo build
     ```
+  For Windows (there are two ways to proceed):
 
-    If the above instructions don't work on your machine, please
-    [post a question](https://github.com/ockam-network/ockam/discussions/1642),
-    we would love to help.
+  * Using a Unix-like shell on Windows - [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/learn/modules/get-started-with-windows-subsystem-for-linux/)  or [GitBash](https://www.atlassian.com/git/tutorials/git-bash) .
+  <br>In any of these terminals. The above command would work as expected.
+
+  * Doing it manually:
+  <br> a. Create a new cargo project ``` cargo new --lib hello_ockam ```
+  <br> b. Open the project directory ```hello_ockam``` in the editor
+  <br> c. Inside ```hello_ockam``` create a new directory called ```examples```
+  <br> d. Edit the file ```Cargo.toml``` inside ```hello_ockam```, and add ```ockam = "*"``` to the dependencies section of the ```Cargo.toml``` file
+  <br> e. Run ```cargo build``` inside the ```hello_ockam``` directory
+
+
+  If the above instructions don't work on your machine, please [post a question](https://github.com/ockam-network/ockam/discussions/1642), we would love to help.
 
 3. Create a file at `examples/hello.rs` and copy the below code snippet to it.
 
