@@ -16,9 +16,7 @@ members = [
     "examples/rust/*/examples/..",
 
     "tools/docs/example_runner",
-    "tools/docs/example_blocks"
+    "tools/docs/example_blocks",
 ]
 
-exclude = [
-    "implementations/rust/ockam/ockam_examples/example_projects",
-]
+exclude = ["implementations/rust/ockam/ockam_examples/example_projects"]

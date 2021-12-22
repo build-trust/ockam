@@ -1,18 +1,31 @@
 [package]
 name = "ockam_vault_test_suite"
-categories = ["cryptography", "asynchronous", "authentication","network-programming", "embedded"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
 description = """Ockam Vault test suite.
 """
 version = "0.31.1-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
-keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
+keywords = [
+    "ockam",
+    "crypto",
+    "cryptography",
+    "network-programming",
+    "encryption",
+]
 readme = "README.md"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault_test_suite"
 publish = true
+rust-version = "1.56.0"
 
 [dependencies]
-ockam_core = {path = "../ockam_core", version = "^0.42.1-dev"}
+ockam_core = { path = "../ockam_core", version = "^0.42.1-dev" }
 arrayref = "0.3"

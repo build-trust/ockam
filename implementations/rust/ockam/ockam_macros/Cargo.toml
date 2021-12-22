@@ -4,13 +4,26 @@ version = "0.3.1-dev"
 edition = "2018"
 license = "Apache-2.0"
 authors = ["Ockam Developers"]
-categories = ["cryptography", "asynchronous", "authentication", "network-programming", "embedded"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
 description = "End-to-end encryption and mutual authentication for distributed applications."
 homepage = "https://github.com/ockam-network/ockam"
-keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
+keywords = [
+    "ockam",
+    "crypto",
+    "cryptography",
+    "network-programming",
+    "encryption",
+]
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_macros"
 publish = true
+rust-version = "1.56.0"
 
 [lib]
 proc-macro = true

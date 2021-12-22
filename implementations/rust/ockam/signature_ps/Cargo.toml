@@ -7,11 +7,18 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/signature_ps"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","no-std","algorithms"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "no-std",
+    "algorithms",
+]
 keywords = ["ockam", "crypto", "signature", "signing", "bls"]
 description = """The Ockam PS signature impementation.
 """
 publish = true
+rust-version = "1.56.0"
 
 [features]
 

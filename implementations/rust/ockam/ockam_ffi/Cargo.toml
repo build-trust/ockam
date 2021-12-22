@@ -7,11 +7,18 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_ffi"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","external-ffi-bindings", "api-bindings"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "external-ffi-bindings",
+    "api-bindings",
+]
 keywords = ["ockam", "crypto", "ffi", "cryptography", "bindings"]
 description = """FFI layer for ockam_vault.
 """
 publish = true
+rust-version = "1.56.0"
 
 [lib]
 crate-type = ["staticlib"]
@@ -21,8 +28,8 @@ default = []
 bls = ["ockam_core/bls"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.42.1-dev"}
-ockam_vault = { path = "../ockam_vault", version = "^0.36.1-dev"}
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.34.1-dev"}
+ockam_core = { path = "../ockam_core", version = "^0.42.1-dev" }
+ockam_vault = { path = "../ockam_vault", version = "^0.36.1-dev" }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.34.1-dev" }
 lazy_static = "1.4"
-tokio = {version = "1.8", features = ["full"]}
+tokio = { version = "1.8", features = ["full"] }
