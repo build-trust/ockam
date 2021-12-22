@@ -1,6 +1,12 @@
 [package]
 authors = ["Ockam Developers"]
-categories = ["cryptography", "asynchronous", "authentication","no-std", "algorithms"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "no-std",
+    "algorithms",
+]
 description = "Ockam async executor crate"
 edition = "2018"
 homepage = "https://github.com/ockam-network/ockam"
@@ -10,25 +16,30 @@ license = "Apache-2.0"
 name = "ockam_executor"
 version = "0.11.1-dev"
 publish = true
+rust-version = "1.56.0"
 
 [features]
 default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std     = ["alloc", "futures/std", "ockam_core/std"]
+std = ["alloc", "futures/std", "ockam_core/std"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc   = ["futures/alloc", "ockam_core/alloc"]
+alloc = ["futures/alloc", "ockam_core/alloc"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std  = ["ockam_core/no_std"]
+no_std = ["ockam_core/no_std"]
 
 [dependencies]
-crossbeam-queue = { version = "0.3.2", default_features = false, features = ["alloc"] }
-futures = { version = "0.3.15", default-features = false, features = [ "async-await" ] }
-heapless = { version = "0.7", features = [ "mpmc_large" ] }
+crossbeam-queue = { version = "0.3.2", default_features = false, features = [
+    "alloc",
+] }
+futures = { version = "0.3.15", default-features = false, features = [
+    "async-await",
+] }
+heapless = { version = "0.7", features = ["mpmc_large"] }
 ockam_core = { path = "../ockam_core", version = "^0.42.1-dev", default_features = false }
 pin-project-lite = "0.2"
 pin-utils = "0.1.0"

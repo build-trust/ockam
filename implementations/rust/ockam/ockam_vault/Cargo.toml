@@ -7,26 +7,57 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","no-std", "algorithms"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "no-std",
+    "algorithms",
+]
 keywords = ["ockam", "crypto", "cryptography", "authentication", "no-std"]
 description = """A software-only Ockam Vault implementation.
 """
 publish = true
+rust-version = "1.56.0"
 
 [lib]
 crate-type = ["rlib"]
 
 [features]
 default = ["std"]
-bls = ["ockam_core/bls", "signature_core", "signature_bbs_plus", "signature_bls"]
+bls = [
+    "ockam_core/bls",
+    "signature_core",
+    "signature_bbs_plus",
+    "signature_bls",
+]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_macros/std", "aes-gcm/alloc", "aes-gcm/std", "rand/std", "rand/std_rng", "tracing/std", "x25519-dalek/std", "x25519-dalek/u64_backend", "alloc"]
+std = [
+    "ockam_core/std",
+    "ockam_macros/std",
+    "aes-gcm/alloc",
+    "aes-gcm/std",
+    "rand/std",
+    "rand/std_rng",
+    "tracing/std",
+    "x25519-dalek/std",
+    "x25519-dalek/u64_backend",
+    "alloc",
+]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std = ["ockam_core/no_std", "ockam_macros/no_std", "rand_pcg", "x25519-dalek/u32_backend", "aes-gcm/heapless", "aes-gcm/force-soft", "aes-gcm/stream"]
+no_std = [
+    "ockam_core/no_std",
+    "ockam_macros/no_std",
+    "rand_pcg",
+    "x25519-dalek/u32_backend",
+    "aes-gcm/heapless",
+    "aes-gcm/force-soft",
+    "aes-gcm/stream",
+]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "aes-gcm/alloc"]
@@ -34,9 +65,9 @@ alloc = ["ockam_core/alloc", "aes-gcm/alloc"]
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.42.1-dev", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.3.1-dev", default-features = false }
-signature_core = { path = "../signature_core", version = "^0.32.1-dev", optional = true     }
-signature_bbs_plus = {path = "../signature_bbs_plus", version = "^0.32.1-dev", optional = true     }
-signature_bls = { path = "../signature_bls", version = "^0.30.1-dev", optional = true     }
+signature_core = { path = "../signature_core", version = "^0.32.1-dev", optional = true }
+signature_bbs_plus = { path = "../signature_bbs_plus", version = "^0.32.1-dev", optional = true }
+signature_bls = { path = "../signature_bls", version = "^0.30.1-dev", optional = true }
 signature_ps = { path = "../signature_ps", version = "^0.30.1-dev", default-features = false, optional = true }
 arrayref = "0.3"
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
@@ -51,5 +82,5 @@ cfg-if = "1.0"
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.31.1-dev"}
-tokio = {version = "1.8", features = ["full"]}
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.31.1-dev" }
+tokio = { version = "1.8", features = ["full"] }

@@ -7,18 +7,29 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/signature_bls"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","no-std","algorithms"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "no-std",
+    "algorithms",
+]
 keywords = ["ockam", "crypto", "signature", "signing", "bls"]
 description = """The Ockam BLS signature impementation.
 """
 publish = true
+rust-version = "1.56.0"
 
 [features]
 default = ["alloc"]
 alloc = []
 
 [dependencies]
-bls12_381_plus = { version = "0.5", default-features = false, features = ["alloc", "hashing", "pairings"] }
+bls12_381_plus = { version = "0.5", default-features = false, features = [
+    "alloc",
+    "hashing",
+    "pairings",
+] }
 ff = { version = "0.10", default-features = false }
 group = "0.10"
 hkdf = { version = "0.11", default-features = false }
