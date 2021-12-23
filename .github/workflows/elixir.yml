@@ -11,8 +11,8 @@ on:
       - '**.ex'
       - '**.exs'
       - '**/mix.lock'
-      - 'implementations/elixir/ockam/ockam_vault_software/priv/**'
-      - 'implementations/elixir/ockam/ockam_vault_software/native/**'
+      - '**/priv/**'
+      - '**/native/**'
       - '**.rs'
       - '**.toml'
       - '**/Cargo.lock'
@@ -22,13 +22,13 @@ on:
       - '**.ex'
       - '**.exs'
       - '**/mix.lock'
-      - 'implementations/elixir/ockam/ockam_vault_software/priv/**'
-      - 'implementations/elixir/ockam/ockam_vault_software/native/**'
+      - '**/priv/**'
+      - '**/native/**'
       - '**.rs'
       - '**.toml'
       - '**/Cargo.lock'
   schedule:
-    - cron:  '0 1 * * *' # Run every day at 1am UTC cron.help/#0_1_*_*_*
+    - cron: '0 1 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,6 +43,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
       - name: Build Elixir
         run: ./gradlew build_elixir
 
@@ -54,5 +55,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
       - name: Test Elixir
         run: ./gradlew test_elixir
