@@ -1,4 +1,4 @@
-name: All Implementations
+name: All
 
 permissions:
   contents: read
@@ -7,14 +7,20 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - '.github/actions/cache'
       - '.github/workflows/all.yml'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
   push:
     paths:
-      - '.github/actions/cache'
       - '.github/workflows/all.yml'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
   schedule:
-    - cron:  '0 1 * * *' # Run every day at 1am UTC https://cron.help/#0_1_*_*_*
+    - cron: '0 1 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,23 +28,46 @@ concurrency:
 
 jobs:
   build:
-    name: All Implementations - Build
+    name: All - Build
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
     steps:
       - name: Checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
       - name: Build
         run: ./gradlew build
 
   test:
-    name: All Implementations - Test
+    name: All - Test
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
     steps:
       - name: Checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
       - name: Test
         run: ./gradlew test
+
+  list_gradle_tasks:
+    name: All - List Gradle Tasks
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-10.15, windows-2019]
+        java: [8, 11, 16, 17]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup Java
+        uses: actions/setup-java@5f00602cd1b2819185d88dc7a1b1985f598c6705
+        with:
+          distribution: 'temurin'
+          check-latest: true
+          java-version: ${{ matrix.java }}
+
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - name: List Tasks
+        run: ./gradlew tasks --all
