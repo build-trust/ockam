@@ -8,23 +8,23 @@ on:
   pull_request:
     paths:
       - '.github/workflows/documentation.yml'
-      - '**.rs'
-      - '**.toml'
-      - '**/Cargo.lock'
       - 'documentation/use-cases/**.md'
       - 'documentation/guides/rust/**.md'
       - 'tools/docs/**'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
   push:
     paths:
       - '.github/workflows/documentation.yml'
-      - '**.rs'
-      - '**.toml'
-      - '**/Cargo.lock'
       - 'documentation/use-cases/**.md'
       - 'documentation/guides/rust/**.md'
       - 'tools/docs/**'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
   schedule:
-    - cron:  '0 1 * * *' # run every day at 1am utc cron.help/#0_1_*_*_*
+    - cron: '0 1 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -40,7 +40,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
 
-      - name: Check example source and guide code blocks match
+      - name: Check that example source and guide code blocks match
         run: OCKAM_HOME=$PWD tools/docs/check_documentation.sh
 
       - name: Run Get Started examples
