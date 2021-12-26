@@ -1,0 +1,14 @@
+error: `ockam::node` does not support this syntax
+ --> tests/node/fail_if_macro_has_unsupported_syntax.rs:1:15
+  |
+1 | #[ockam::node(timeout = 100)]
+  |               ^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/node/fail_if_macro_has_unsupported_syntax.rs:1:1
+  |
+1 | / #[ockam::node(timeout = 100)]
+2 | | async fn main(mut c: ockam::Context) {
+3 | |     c.stop().await.unwrap();
+4 | | }
+  | |_^ consider adding a `main` function to `$DIR/tests/node/fail_if_macro_has_unsupported_syntax.rs`

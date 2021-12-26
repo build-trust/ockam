@@ -18,7 +18,7 @@ on:
       - '**.toml'
       - '**/Cargo.lock'
   schedule:
-    - cron:  '0 1 * * *' # run every day at 1am utc cron.help/#0_1_*_*_*
+    - cron: '0 1 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -33,6 +33,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
       - name: Build Rust
         run: ./gradlew build_rust
 
@@ -44,6 +45,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
       - name: Build Rust
         run: ./gradlew test_rust
 
@@ -55,6 +57,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
       - name: Check Features - no_std alloc software_vault
         env:
           RUSTFLAGS: -Dwarnings
@@ -70,6 +73,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+
       - name: Update and Check Ockam Example
         working-directory: examples/rust/get_started
         env:

@@ -1,6 +1,6 @@
 [package]
 name = "ockam_macros"
-version = "0.3.1-dev"
+version = "0.4.0-dev"
 edition = "2018"
 license = "Apache-2.0"
 authors = ["Ockam Developers"]
@@ -31,10 +31,6 @@ proc-macro = true
 [features]
 default = []
 
-# Feature: "no_main" allows you to define an ockam node inside your
-# own program entry-point rather than having ockam define the main()
-# function. This is particularly useful on baremetal platforms.
-no_main = []
 std = ["alloc"]
 no_std = []
 alloc = []
