@@ -15,7 +15,7 @@ pub(crate) fn node(input: ItemFn, args: AttributeArgs) -> Result<TokenStream, Er
 
 fn output_node(
     input: ItemFn,
-    _args: Args,
+    args: Args,
     ret: NodeReturn,
     ctx: NodeCtx,
 ) -> Result<TokenStream, Error> {
@@ -42,23 +42,24 @@ fn output_node(
         quote! {}
     };
 
-    // Assumes the target platform knows about main() functions
-    #[cfg(not(feature = "no_main"))]
-    let output = quote! {
-        fn main() #ret_type {
-            let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
-            executor.execute(async move #body)#err_handling
+    let output = if !args.no_main {
+        // Assumes the target platform knows about main() functions
+        quote! {
+            fn main() #ret_type {
+                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
+                executor.execute(async move #body)#err_handling
+            }
         }
-    };
-    // Assumes you will be defining the ockam node inside your own entry point
-    #[cfg(feature = "no_main")]
-    let output = quote! {
-        fn ockam_async_main() #ret_type {
-            let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
-            executor.execute(async move #body)#err_handling
+    } else {
+        // Assumes you will be defining the ockam node inside your own entry point
+        quote! {
+            fn ockam_async_main() #ret_type {
+                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
+                executor.execute(async move #body)#err_handling
+            }
+            // TODO: safe way to print the error before panicking?
+            ockam_async_main().unwrap();
         }
-        // TODO: safe way to print the error before panicking?
-        ockam_async_main().unwrap();
     };
     Ok(output.into())
 }
