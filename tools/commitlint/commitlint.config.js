@@ -27,7 +27,7 @@ module.exports = {
         // build: changes that affect our build system or external dependencies
         'build',
 
-        // chore: some minor change that doesn't fall in any of the othe types
+        // chore: some minor change that doesn't fall in any of the other types
         'chore',
 
         // ci: changes to our continuous integration configuration files
@@ -39,7 +39,7 @@ module.exports = {
         // feat: a new feature
         //
         // It is generally a good idea to add a implementation scope to a feature commit
-        // feat(c): so we can later genrate implementation specific changelogs
+        // feat(c): so we can later generate implementation specific changelogs
         //
         // If a commit affects multiple implementations, please break it into two commits.
         'feat',
@@ -47,7 +47,7 @@ module.exports = {
         // fix: a bug fix
         //
         // It is generally a good idea to add a implementation scope to a bug fix commit
-        // fix(c): so we can later genrate implementation specific changelogs
+        // fix(c): so we can later generate implementation specific changelogs
         //
         // If a commit affects multiple implementations, please break it into two commits.
         'fix',
@@ -91,5 +91,6 @@ module.exports = {
     (commit) => commit === '168029387b702b9727a5d22a41281b9bb7c152a7',
     (commit) => commit === '55d0acb15f70ae42b65c03323a8d84d527d43194',
     (commit) => commit === 'c369514fb2d7b002e8f9785ca8bb809b8c7ccc9d',
+    (commit) => commit.includes("Signed-off-by: dependabot[bot] <support@github.com>")
   ],
 };
