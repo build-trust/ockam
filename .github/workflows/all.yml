@@ -12,6 +12,7 @@ on:
       - 'tools/gradle/**'
       - 'gradlew'
       - 'gradlew.bat'
+      - '.github/actions/**'
   push:
     paths:
       - '.github/workflows/all.yml'
@@ -19,6 +20,7 @@ on:
       - 'tools/gradle/**'
       - 'gradlew'
       - 'gradlew.bat'
+      - '.github/actions/**'
   schedule:
     - cron: '0 1 * * *'
 
@@ -36,20 +38,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
 
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - uses: ./.github/actions/elixir_cache
+
       - name: Build
-        run: ./gradlew build
-
-  test:
-    name: All - Test
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
-    steps:
-      - name: Checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-
-      - name: Test
-        run: ./gradlew test
+        run: ./gradlew build -Pmode=release
 
   list_gradle_tasks:
     name: All - List Gradle Tasks
@@ -68,6 +63,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
 
       - name: List Tasks
         run: ./gradlew tasks --all
