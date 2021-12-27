@@ -16,6 +16,11 @@ on:
       - '**.rs'
       - '**.toml'
       - '**/Cargo.lock'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   push:
     paths:
       - '.github/workflows/elixir.yml'
@@ -27,6 +32,11 @@ on:
       - '**.rs'
       - '**.toml'
       - '**/Cargo.lock'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   schedule:
     - cron: '0 1 * * *'
 
@@ -44,6 +54,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
 
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - uses: ./.github/actions/elixir_cache
+
       - name: Build Elixir
         run: ./gradlew build_elixir
 
@@ -55,6 +70,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - uses: ./.github/actions/elixir_cache
 
       - name: Test Elixir
         run: ./gradlew test_elixir

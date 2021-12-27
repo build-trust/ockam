@@ -14,6 +14,11 @@ on:
       - '**.rs'
       - '**.toml'
       - '**/Cargo.lock'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   push:
     paths:
       - '.github/workflows/documentation.yml'
@@ -23,6 +28,11 @@ on:
       - '**.rs'
       - '**.toml'
       - '**/Cargo.lock'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   schedule:
     - cron: '0 1 * * *'
 
@@ -39,6 +49,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
 
       - name: Check that example source and guide code blocks match
         run: OCKAM_HOME=$PWD tools/docs/check_documentation.sh
