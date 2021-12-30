@@ -12,8 +12,8 @@ use std::convert::TryFrom;
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx).await?;
-    let mut entity = Entity::create(&ctx, &vault)?;
-    println!("Bob id: {}", entity.identifier()?);
+    let mut entity = Entity::create(&ctx, &vault).await?;
+    println!("Bob id: {}", entity.identifier().await?);
 
     println!("Enter Office id: ");
     let office_id = read_line();
@@ -29,14 +29,14 @@ async fn main(ctx: Context) -> Result<()> {
     let office_channel = entity.create_secure_channel(
         route![(TCP, OFFICE_TCP_ADDRESS), OFFICE_LISTENER_ADDRESS],
         TrustIdentifierPolicy::new(office_id.clone()),
-    )?;
+    ).await?;
 
     let credential = entity.acquire_credential(
         route![office_channel, OFFICE_ISSUER_ADDRESS],
         &office_id,
         credential_type!["TYPE_ID"; "door_id", (Number, "can_open_door")],
         credential_attribute_values![door_id.clone().to_string(), 1],
-    )?;
+    ).await?;
 
     println!("Bob got credential!");
 
@@ -45,13 +45,13 @@ async fn main(ctx: Context) -> Result<()> {
     let door_channel = entity.create_secure_channel(
         route![(TCP, DOOR_TCP_ADDRESS), DOOR_LISTENER_ADDRESS],
         TrustIdentifierPolicy::new(door_id.clone()),
-    )?;
+    ).await?;
 
     entity.present_credential(
         route![door_channel, DOOR_WORKER_ADDRESS],
         credential,
         reveal_attributes!["door_id", "can_open_door"],
-    )?;
+    ).await?;
 
     println!("Bob presented credential!");
 

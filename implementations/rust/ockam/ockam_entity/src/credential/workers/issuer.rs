@@ -1,6 +1,6 @@
 use crate::{
-    CredentialAttribute, CredentialProtocolMessage, CredentialSchema, EntityError, Issuer, OfferId,
-    Profile, ProfileIdentifier,
+    CredentialAttribute, CredentialProtocolMessage, CredentialSchema, EntityError,
+    EntitySecureChannelLocalInfo, Issuer, OfferId, Profile, ProfileIdentifier,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
@@ -64,7 +64,10 @@ impl Worker for IssuerWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        check_message_origin(&msg, &self.holder_id)?;
+        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        if self.holder_id.ne(local_info.their_profile_id()) {
+            return Err(EntityError::IssuerInvalidMessage.into());
+        }
 
         let route = msg.return_route();
         let msg = msg.body();

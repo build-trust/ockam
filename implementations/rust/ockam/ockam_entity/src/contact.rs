@@ -117,6 +117,6 @@ impl Contact {
     #[cfg(feature = "credentials")]
     pub fn get_signing_public_key(&self) -> Result<PublicKey> {
         use crate::Profile;
-        self.get_public_key(&Profile::CREDENTIALS_ISSUE.to_string())
+        self.get_public_key(Profile::CREDENTIALS_ISSUE)
     }
 }

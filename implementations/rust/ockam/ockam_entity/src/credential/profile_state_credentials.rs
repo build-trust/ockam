@@ -3,8 +3,7 @@ use crate::{
     CredentialAttributeType, CredentialError, CredentialFragment1, CredentialFragment2,
     CredentialHolder, CredentialIssuer, CredentialOffer, CredentialPresentation, CredentialRequest,
     CredentialSchema, CredentialVerifier, EntityCredential, EntityError, ExtPokSignatureProof,
-    Identity, OfferId, PresentationManifest, ProfileState, ProofBytes, ProofRequestId,
-    SigningPublicKey,
+    OfferId, PresentationManifest, ProfileState, ProofBytes, ProofRequestId, SigningPublicKey,
 };
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};

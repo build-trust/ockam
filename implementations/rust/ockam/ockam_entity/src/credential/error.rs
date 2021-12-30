@@ -5,7 +5,7 @@ use ockam_core::Error;
 #[derive(Clone, Copy, Debug)]
 pub enum CredentialError {
     /// Mismatched number of attributes in schema and provided claims to be signed
-    MismatchedAttributesAndClaims = 1,
+    MismatchedAttributesAndClaims,
     /// Mismatched attribute type and provided claim
     MismatchedAttributeClaimType,
     /// Data that cannot be converted to a claim

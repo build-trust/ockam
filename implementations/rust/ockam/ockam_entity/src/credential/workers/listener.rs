@@ -1,5 +1,5 @@
 use crate::{
-    get_secure_channel_participant_id, CredentialProtocolMessage, CredentialSchema, EntityError,
+    CredentialProtocolMessage, CredentialSchema, EntityError, EntitySecureChannelLocalInfo,
     IssuerWorker, Profile, SecureChannelTrustInfo, TrustPolicy, TrustPolicyImpl,
 };
 use ockam_core::compat::boxed::Box;
@@ -33,7 +33,8 @@ impl Worker for ListenerWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let their_profile_id = get_secure_channel_participant_id(&msg)?;
+        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        let their_profile_id = local_info.their_profile_id();
         let trust_info = SecureChannelTrustInfo::new(their_profile_id.clone());
         let res = self.trust_policy.check(&trust_info).await?;
 
@@ -53,7 +54,7 @@ impl Worker for ListenerWorker {
         let address = Address::random(0);
         let worker = IssuerWorker::new(
             self.profile.async_try_clone().await?,
-            their_profile_id,
+            their_profile_id.clone(),
             self.schema.clone(),
             return_route,
         )?;
