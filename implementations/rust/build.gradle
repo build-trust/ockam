@@ -22,39 +22,58 @@ ext {
   }
 }
 
-task lint {
-  group project.name
-  description 'Lint the project.'
-
+task lint_cargo_fmt_check {
   doLast {
     exec { commandLine cargo('fmt', '--all', '--', '--check') }
-    exec { commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings') }
-    exec { commandLine cargo('doc', '--no-deps') }
+  }
+}
 
+task lint_cargo_clippy {
+  doLast {
+    exec { commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings') }
+  }
+}
+
+task lint_cargo_deny {
+  doLast {
     exec { commandLine cargo('install', '--locked', '--version', '0.11.0', 'cargo-deny') }
     exec { commandLine cargo('deny', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories') }
   }
 }
 
-task build {
+task lint {
   group project.name
-  description 'Build the project.'
+  description 'Lint the project.'
 
-  dependsOn lint
+  dependsOn lint_cargo_fmt_check, lint_cargo_clippy, lint_cargo_deny
+}
+
+task build_docs {
+  doLast {
+    exec { commandLine cargo('doc', '--no-deps') }
+  }
+}
+
+task build {
   doLast {
     exec {
+      if (ci) {
+        environment RUSTFLAGS: "-Cdebuginfo=0"
+        environment CARGO_INCREMENTAL: "0"
+      }
       commandLine cargo('--locked', 'build')
-      if (ci) {
-        environment RUSTFLAGS: "-Cdebuginfo=0"
-        environment CARGO_INCREMENTAL: "0"
-      }
     }
+  }
+}
+
+task build_examples {
+  doLast {
     exec {
-      commandLine cargo('--locked', 'build', '--examples')
       if (ci) {
         environment RUSTFLAGS: "-Cdebuginfo=0"
         environment CARGO_INCREMENTAL: "0"
       }
+      commandLine cargo('--locked', 'build', '--examples')
     }
   }
 }

@@ -35,6 +35,70 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint_cargo_fmt_check:
+    name: Rust - Lint Formatting
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+
+      - name: Build Rust
+        run: cd implementations/rust && ../../gradlew lint_cargo_fmt_check
+
+  lint_cargo_clippy:
+    name: Rust - Lint with Cargo Clippy
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+
+      - name: Lint with Cargo Clippy
+        run: cd implementations/rust && ../../gradlew lint_cargo_clippy
+
+  lint_cargo_deny:
+    name: Rust - Lint with Cargo Deny
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+
+      - name: Lint with Cargo Deny
+        run: cd implementations/rust && ../../gradlew lint_cargo_deny
+
+  build_docs:
+    name: Rust - Build Documentation
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+
+      - name: Build Documentation
+        run: cd implementations/rust && ../../gradlew build_docs
+
   build:
     name: Rust - Build
     runs-on: ubuntu-20.04
@@ -49,7 +113,23 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
 
       - name: Build Rust
-        run: ./gradlew build_rust
+        run: cd implementations/rust && ../../gradlew build
+
+  build_examples:
+    name: Rust - Build Examples
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+
+      - name: Build Rust
+        run: cd implementations/rust && ../../gradlew build_examples
 
   test:
     name: Rust - Test
@@ -65,7 +145,7 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
 
       - name: Build Rust
-        run: ./gradlew test_rust
+        run: cd implementations/rust && ../../gradlew test
 
   check_no_std:
     name: Rust - Check Features - no_std alloc software_vault
