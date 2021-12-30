@@ -1,7 +1,7 @@
 use crate::{
-    Credential, CredentialAttribute, CredentialFragment1, CredentialProtocolMessage,
-    CredentialSchema, EntityCredential, EntityError, Holder, Identity, Profile, ProfileIdentifier,
-    SigningPublicKey,
+    Credential, CredentialAcquisitionResultMessage, CredentialAttribute, CredentialFragment1,
+    CredentialProtocolMessage, CredentialSchema, EntityCredential, EntityError,
+    EntitySecureChannelLocalInfo, Holder, Identity, Profile, ProfileIdentifier, SigningPublicKey,
 };
 use core::convert::TryInto;
 use ockam_core::async_trait;
@@ -69,7 +69,10 @@ impl Worker for HolderWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        check_message_origin(&msg, &self.issuer_id)?;
+        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        if self.issuer_id.ne(local_info.their_profile_id()) {
+            return Err(EntityError::HolderInvalidMessage.into());
+        }
 
         let route = msg.return_route();
         let msg = msg.body();
@@ -120,7 +123,11 @@ impl Worker for HolderWorker {
 
                     self.profile.add_credential(entity_credential).await?;
 
-                    ctx.send(self.callback_address.clone(), credential).await?;
+                    ctx.send(
+                        self.callback_address.clone(),
+                        CredentialAcquisitionResultMessage { credential },
+                    )
+                    .await?;
 
                     self.state = State::Done;
 

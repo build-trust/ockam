@@ -1,8 +1,8 @@
 use crate::credential::Verifier;
 use crate::{
-    get_secure_channel_participant_id, CredentialAttribute, CredentialProtocolMessage,
-    CredentialSchema, EntityError, PresentationManifest, Profile, ProfileIdentifier,
-    ProofRequestId, SigningPublicKey,
+    CredentialAttribute, CredentialProtocolMessage, CredentialSchema,
+    CredentialVerificationResultMessage, EntityError, EntitySecureChannelLocalInfo,
+    PresentationManifest, Profile, ProfileIdentifier, ProofRequestId, SigningPublicKey,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
@@ -55,10 +55,13 @@ impl Worker for VerifierWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
+        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
         if let Some(presenter_id) = &self.presenter_id {
-            check_message_origin(&msg, presenter_id)?;
+            if presenter_id.ne(local_info.their_profile_id()) {
+                return Err(EntityError::VerifierInvalidMessage.into());
+            }
         } else {
-            self.presenter_id = Some(get_secure_channel_participant_id(&msg)?);
+            self.presenter_id = Some(local_info.their_profile_id().to_owned());
         }
 
         let route = msg.return_route();
@@ -100,14 +103,17 @@ impl Worker for VerifierWorker {
                         revealed,
                     };
 
-                    let credential_is_valid = self
+                    let is_valid = self
                         .profile
                         .verify_credential_presentation(&presentation, &manifest, id.clone())
                         .await?;
 
                     // TODO: Add some mechanism to identify participant as an owner of the valid credential
-                    ctx.send(self.callback_address.clone(), credential_is_valid)
-                        .await?;
+                    ctx.send(
+                        self.callback_address.clone(),
+                        CredentialVerificationResultMessage { is_valid },
+                    )
+                    .await?;
 
                     self.state = State::Done;
 

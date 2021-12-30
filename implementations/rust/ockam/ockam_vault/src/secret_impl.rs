@@ -57,8 +57,10 @@ impl SoftwareVault {
                 use core::convert::TryInto;
 
                 let bls_secret_key = BlsSecretKey::from_bytes(secret.try_into().unwrap()).unwrap();
-                let public_key =
-                    PublicKey::new(BlsPublicKey::from(&bls_secret_key).to_bytes().into());
+                let public_key = PublicKey::new(
+                    BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
+                    SecretType::Bls,
+                );
                 Some(self.compute_key_id_for_public_key(&public_key).await?)
             }
             SecretType::Buffer | SecretType::Aes => None,
@@ -208,6 +210,7 @@ impl SecretVault for SoftwareVault {
                     BlsSecretKey::from_bytes(&entry.key().as_ref().try_into().unwrap()).unwrap();
                 Ok(PublicKey::new(
                     BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
+                    SecretType::Bls,
                 ))
             }
             SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),

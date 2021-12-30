@@ -2,9 +2,10 @@ use crate::credential::Verifier;
 use crate::EntityError::IdentityApiFailed;
 use crate::IdentityCredentialRequest::*;
 use crate::{
-    BbsCredential, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
-    CredentialOffer, CredentialPresentation, CredentialProof, CredentialProtocol,
-    CredentialPublicKey, CredentialRequest, CredentialRequestFragment, CredentialSchema, Entity,
+    BbsCredential, Credential, CredentialAcquisitionResultMessage, CredentialAttribute,
+    CredentialFragment1, CredentialFragment2, CredentialOffer, CredentialPresentation,
+    CredentialProof, CredentialProtocol, CredentialPublicKey, CredentialRequest,
+    CredentialRequestFragment, CredentialSchema, CredentialVerificationResultMessage, Entity,
     EntityCredential, Holder, HolderWorker, Identity, IdentityCredentialResponse, IdentityRequest,
     IdentityResponse, Issuer, ListenerWorker, OfferId, PresentationFinishedMessage,
     PresentationManifest, PresenterWorker, ProfileIdentifier, ProofRequestId, SigningPublicKey,
@@ -468,13 +469,13 @@ impl CredentialProtocol for Entity {
         );
         ctx.start_worker(Address::random(0), worker).await?;
 
-        let credential = ctx
-            .receive_timeout::<Credential>(120 /* FIXME */)
+        let res = ctx
+            .receive_timeout::<CredentialAcquisitionResultMessage>(120 /* FIXME */)
             .await?
             .take()
             .body();
 
-        Ok(credential)
+        Ok(res.credential)
     }
 
     async fn present_credential(
@@ -536,11 +537,11 @@ impl CredentialProtocol for Entity {
         ctx.start_worker(address, worker).await?;
 
         let res = ctx
-            .receive_timeout::<bool>(120 /* FIXME */)
+            .receive_timeout::<CredentialVerificationResultMessage>(120 /* FIXME */)
             .await?
             .take()
             .body();
 
-        Ok(res)
+        Ok(res.is_valid)
     }
 }
