@@ -3,8 +3,7 @@ description: CARGO_TARGET_DIR Cache
 runs:
   using: "composite"
   steps:
-    - name: CARGO_TARGET_DIR Cache
-      uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: target
         key: cargo-target--${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59-${{ hashFiles('**/Cargo.lock') }}
