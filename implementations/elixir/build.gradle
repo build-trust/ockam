@@ -55,7 +55,7 @@ task build {
   group project.name
   description 'Build the project.'
 
-  dependsOn lint
+  dependsOn checkLocalHexAndRebar
   apps.each { app ->
     doLast {
       println "\n[Gradle] Build: ${app}"
@@ -72,8 +72,7 @@ task test {
   group project.name
   description 'Test the project.'
 
-  dependsOn lint
-  dependsOn rustBuild
+  dependsOn checkLocalHexAndRebar, rustBuild
   apps.each { app ->
     doLast {
       println "\n[Gradle] ${app}"

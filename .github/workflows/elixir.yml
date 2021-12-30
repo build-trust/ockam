@@ -45,6 +45,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Elixir - Lint
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/elixir_cache
+
+      - name: Build Elixir
+        run: cd implementations/elixir && ../../gradlew lint
+
   build:
     name: Elixir - Build
     runs-on: ubuntu-20.04
@@ -55,12 +70,10 @@ jobs:
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
 
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - uses: ./.github/actions/cargo_target_dir_cache
       - uses: ./.github/actions/elixir_cache
 
       - name: Build Elixir
-        run: ./gradlew build_elixir
+        run: cd implementations/elixir && ../../gradlew build
 
   test:
     name: Elixir - Test
@@ -77,4 +90,4 @@ jobs:
       - uses: ./.github/actions/elixir_cache
 
       - name: Test Elixir
-        run: ./gradlew test_elixir
+        run: cd implementations/elixir && ../../gradlew test
