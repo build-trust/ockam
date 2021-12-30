@@ -7,6 +7,8 @@ if(project.hasProperty('mode')) {
 }
 
 ext {
+  ci = System.getenv('CI') == 'true'
+
   cargo = { String... arguments ->
     command = ['cargo']
     command.addAll(arguments)
@@ -40,8 +42,20 @@ task build {
 
   dependsOn lint
   doLast {
-    exec { commandLine cargo('--locked', 'build') }
-    exec { commandLine cargo('--locked', 'build', '--examples') }
+    exec {
+      commandLine cargo('--locked', 'build')
+      if (ci) {
+        environment RUSTFLAGS: "-Cdebuginfo=0"
+        environment CARGO_INCREMENTAL: "0"
+      }
+    }
+    exec {
+      commandLine cargo('--locked', 'build', '--examples')
+      if (ci) {
+        environment RUSTFLAGS: "-Cdebuginfo=0"
+        environment CARGO_INCREMENTAL: "0"
+      }
+    }
   }
 }
 
