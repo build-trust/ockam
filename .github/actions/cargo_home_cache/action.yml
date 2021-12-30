@@ -3,8 +3,7 @@ description: CARGO_HOME Cache
 runs:
   using: "composite"
   steps:
-    - name: CARGO_HOME Cache
-      uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: |
           ~/.cargo/bin
