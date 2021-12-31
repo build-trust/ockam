@@ -60,3 +60,5 @@ jobs:
 
       - name: Run Kafka examples
         run: OCKAM_HOME=$PWD tools/docs/run_kafka_example.sh
+
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
