@@ -46,6 +46,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew lint_cargo_fmt_check
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   lint_cargo_clippy:
     name: Rust - Lint with Cargo Clippy
@@ -58,6 +59,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew lint_cargo_clippy
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   lint_cargo_deny:
     name: Rust - Lint with Cargo Deny
@@ -70,6 +72,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew lint_cargo_deny
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_docs:
     name: Rust - Build Documentation
@@ -82,6 +85,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew build_docs
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build:
     name: Rust - Build
@@ -94,6 +98,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew build
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_examples:
     name: Rust - Build Examples
@@ -106,6 +111,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew build_examples
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   test:
     name: Rust - Test
@@ -118,6 +124,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew test
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_no_std:
     name: Rust - Check Features - no_std alloc software_vault
@@ -132,6 +139,7 @@ jobs:
       - run: |
           cd implementations/rust/ockam/ockam
           RUSTFLAGS='-Dwarnings' cargo check --no-default-features --features 'no_std alloc software_vault'
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_cargo_update:
     name: Rust - Check Cargo Update
@@ -148,3 +156,4 @@ jobs:
           rm -rf Cargo.lock
           cargo update
           RUSTFLAGS='-Dwarnings' cargo check
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
