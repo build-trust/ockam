@@ -6,7 +6,7 @@ runs:
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: target
-        key: cargo-target--${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: cargo-target--${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59-
+        key: cargo-target---${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: cargo-target---${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca-
 
 # https://doc.rust-lang.org/cargo/guide/build-cache.html

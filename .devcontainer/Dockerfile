@@ -1,1 +1,1 @@
-FROM ghcr.io/ockam-network/ockam/builder:latest
+FROM ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca

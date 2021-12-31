@@ -10,6 +10,6 @@ runs:
           ~/.cargo/registry/index
           ~/.cargo/registry/cache
           ~/.cargo/git/db
-        key: cargo-home-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+        key: cargo-home-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca
 
 # https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci
