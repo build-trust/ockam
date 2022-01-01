@@ -1,0 +1,15 @@
+name: CARGO_HOME Cache
+description: CARGO_HOME Cache
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      with:
+        path: |
+          ~/.cargo/bin
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+        key: cargo-home-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca
+
+# https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci

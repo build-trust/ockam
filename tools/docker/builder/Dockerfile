@@ -67,12 +67,18 @@ RUN set -xe; \
     JAVA_PACKAGE='OpenJDK11U-jdk_x64_linux_hotspot_11.0.13_8.tar.gz'; \
     curl -sSOL \
       "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.13%2B8/${JAVA_PACKAGE}"; \
-    echo "3b1c0c34be4c894e64135a454f2d5aaa4bd10aea04ec2fa0c0efe6bb26528e30  ${JAVA_PACKAGE}"; \
+    echo "3b1c0c34be4c894e64135a454f2d5aaa4bd10aea04ec2fa0c0efe6bb26528e30  ${JAVA_PACKAGE}" | sha256sum -c; \
     mv "${JAVA_PACKAGE}" openjdk.tar.gz; \
     mkdir -p "${JAVA_HOME}"; \
     cd "${JAVA_HOME}"; \
     tar -xf /tmp/openjdk.tar.gz --strip-components=1; \
-    rm -rf /tmp/openjdk.tar.gz;
+    rm -rf /tmp/openjdk.tar.gz; \
+# Setup jq
+    cd /tmp; \
+    curl -sSOL https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64; \
+    echo "af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44  jq-linux64" | sha256sum -c; \
+    mv jq-linux64 /usr/bin/jq; \
+    chmod +x /usr/bin/jq
 
 ENV PATH="${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:$PATH" \
     AR=/usr/bin/ar \

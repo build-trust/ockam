@@ -1,15 +1,28 @@
 [package]
 authors = ["Ockam Developers"]
-categories = ["cryptography", "asynchronous", "authentication","embedded", "network-programming"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "embedded",
+    "network-programming",
+]
 description = "Ockam Node implementation crate"
 edition = "2018"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_node"
-keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
+keywords = [
+    "ockam",
+    "crypto",
+    "cryptography",
+    "network-programming",
+    "encryption",
+]
 license = "Apache-2.0"
 name = "ockam_node"
 version = "0.41.1-dev"
 publish = true
+rust-version = "1.56.0"
 
 [features]
 default = ["std"]
@@ -31,11 +44,20 @@ dump_internals = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.42.1-dev", default_features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.3.1-dev"}
-tokio = {version = "1.8", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"]}
+ockam_macros = { path = "../ockam_macros", version = "^0.4.0-dev" }
+tokio = { version = "1.8", default-features = false, optional = true, features = [
+    "sync",
+    "time",
+    "rt",
+    "rt-multi-thread",
+    "macros",
+] }
 tracing = { version = "0.1", default_features = false }
-tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
-heapless = { version = "0.7", features = [ "mpmc_large" ], optional = true }
+tracing-subscriber = { version = "0.3", features = [
+    "fmt",
+    "env-filter",
+], optional = true }
+heapless = { version = "0.7", features = ["mpmc_large"], optional = true }
 ockam_executor = { path = "../ockam_executor", version = "^0.11.1-dev", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "arm")'.dependencies]

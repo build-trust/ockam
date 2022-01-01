@@ -5,6 +5,7 @@ authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
 publish = false
+rust-version = "1.56.0"
 
 [dependencies]
 ockam = { path = "../../../implementations/rust/ockam/ockam" }

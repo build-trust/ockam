@@ -5,14 +5,8 @@ ext {
   mode = (mode == 'release') ? 'prod' : mode
   mode = (mode == 'debug') ? 'dev' : mode
 
-  apps = [
-    "ockam_vault_software",
-    "ockam",
-    "ockam_hub",
-    "ockam_kafka",
-    "ockam_node_web",
-  ].collect { app ->
-    Paths.get(projectDir.toPath().toString(), 'ockam', app)
+  apps = ['ockam_vault_software', 'ockam', 'ockam_kafka', 'ockam_hub', 'ockam_node_web'].collect { app ->
+    [name: app, path: Paths.get(projectDir.toPath().toString(), 'ockam', app)]
   }
 
   mix = { argument ->
@@ -21,6 +15,16 @@ ext {
 
     println "[Gradle] Command: ${command.join(' ')}"
     return command
+  }
+
+  ordered = { taskDeps ->
+    for (int i = 0; i < taskDeps.size() - 1; i++) {
+      def current = project.tasks.named(taskDeps[i]).get()
+      def next = project.tasks.named(taskDeps[i + 1]).get()
+      next.mustRunAfter(current)
+    }
+
+    return taskDeps
   }
 }
 
@@ -35,78 +39,91 @@ task checkLocalHexAndRebar {
   }
 }
 
-task lint {
-  group project.name
-  description 'Lint the project.'
+// Define lint tasks
 
-  dependsOn checkLocalHexAndRebar
-  apps.each { app ->
+def taskDeps = ['checkLocalHexAndRebar']
+apps.each { app ->
+  task "lint_${app.name}" {
+    dependsOn checkLocalHexAndRebar
     doLast {
-      println "\n[Gradle] Lint: ${app}"
       exec {
         commandLine mix('do deps.get, lint')
-        workingDir app
+        workingDir app.path
       }
     }
   }
+  taskDeps.add("lint_${app.name}")
 }
+task lint { dependsOn ordered(taskDeps) }
 
-task build {
-  group project.name
-  description 'Build the project.'
+// Define build tasks
 
-  dependsOn lint
-  apps.each { app ->
+taskDeps = ['checkLocalHexAndRebar']
+apps.each { app ->
+  task "build_${app.name}" {
+    dependsOn checkLocalHexAndRebar
     doLast {
-      println "\n[Gradle] Build: ${app}"
       exec {
         commandLine mix('do deps.get, compile')
-        workingDir app
+        workingDir app.path
         environment MIX_ENV: mode
       }
     }
   }
+  taskDeps.add("build_${app.name}")
 }
+task build { dependsOn ordered(taskDeps) }
 
-task test {
-  group project.name
-  description 'Test the project.'
+// Define test tasks
 
-  dependsOn lint
-  dependsOn rustBuild
-  apps.each { app ->
+taskDeps = ['checkLocalHexAndRebar']
+apps.each { app ->
+  task "test_${app.name}" {
+    if(app.name == 'ockam_vault_software') {
+      dependsOn rustBuild
+    }
+    dependsOn checkLocalHexAndRebar
     doLast {
-      println "\n[Gradle] ${app}"
       exec {
         commandLine mix('do deps.get, test')
-        workingDir app
+        workingDir app.path
         environment MIX_ENV: 'test'
       }
     }
   }
+  taskDeps.add("test_${app.name}")
 }
+task test { dependsOn ordered(taskDeps) }
 
-task clean {
-  group project.name
-  description 'Clean the project.'
+// Define clean tasks
 
-  apps.each { app ->
+taskDeps = []
+apps.each { app ->
+  task "clean_${app.name}" {
+    dependsOn checkLocalHexAndRebar
     doLast {
-      println "[Gradle] Clean: ${app}"
       exec {
         commandLine mix('clean')
-        workingDir app
+        workingDir app.path
       }
     }
   }
+  taskDeps.add("clean_${app.name}")
 }
+task clean { dependsOn taskDeps }
 
-task veryClean {
-  apps.each { app ->
+// Define veryClean tasks
+
+taskDeps = []
+apps.each { app ->
+  task "veryClean_${app.name}" {
+    dependsOn checkLocalHexAndRebar
     doLast {
       println "[Gradle] Very Clean: ${app}"
-      delete Paths.get(app.toString(), "_build")
-      delete Paths.get(app.toString(), "deps")
+      delete Paths.get(app.path.toString(), '_build')
+      delete Paths.get(app.path.toString(), 'deps')
     }
   }
+  taskDeps.add("veryClean_${app.name}")
 }
+task veryClean { dependsOn taskDeps }

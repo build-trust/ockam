@@ -1,16 +1,29 @@
 [package]
 name = "ockam_macros"
-version = "0.3.1-dev"
+version = "0.4.0-dev"
 edition = "2018"
 license = "Apache-2.0"
 authors = ["Ockam Developers"]
-categories = ["cryptography", "asynchronous", "authentication", "network-programming", "embedded"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
 description = "End-to-end encryption and mutual authentication for distributed applications."
 homepage = "https://github.com/ockam-network/ockam"
-keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
+keywords = [
+    "ockam",
+    "crypto",
+    "cryptography",
+    "network-programming",
+    "encryption",
+]
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_macros"
 publish = true
+rust-version = "1.56.0"
 
 [lib]
 proc-macro = true
@@ -18,10 +31,6 @@ proc-macro = true
 [features]
 default = []
 
-# Feature: "no_main" allows you to define an ockam node inside your
-# own program entry-point rather than having ockam define the main()
-# function. This is particularly useful on baremetal platforms.
-no_main = []
 std = ["alloc"]
 no_std = []
 alloc = []

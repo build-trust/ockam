@@ -1,25 +1,48 @@
 [package]
 authors = ["Ockam Developers"]
-categories = ["cryptography", "asynchronous", "authentication", "network-programming", "embedded"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
 description = "End-to-end encryption and mutual authentication for distributed applications."
 edition = "2018"
-exclude = [
-    "tests/**"
-]
+exclude = ["tests/**"]
 homepage = "https://github.com/ockam-network/ockam"
-keywords = ["ockam", "crypto", "cryptography", "network-programming", "encryption"]
+keywords = [
+    "ockam",
+    "crypto",
+    "cryptography",
+    "network-programming",
+    "encryption",
+]
 license = "Apache-2.0"
 name = "ockam"
 readme = "README.md"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam"
-version = "0.42.1-dev"
+version = "0.43.0-dev"
+rust-version = "1.56.0"
 publish = true
 
 [features]
 default = ["std", "ockam_transport_tcp", "software_vault", "noise_xx"]
-software_vault = ["ockam_vault", "ockam_vault_sync_core", "ockam_vault_sync_core/software_vault", "ockam_channel/software_vault"]
+software_vault = [
+    "ockam_vault",
+    "ockam_vault_sync_core",
+    "ockam_vault_sync_core/software_vault",
+    "ockam_channel/software_vault",
+]
 noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
-credentials = ["ockam_entity/credentials", "ockam_vault/bls", "bls12_381_plus", "signature_core", "signature_bbs_plus", "signature_bls"]
+credentials = [
+    "ockam_entity/credentials",
+    "ockam_vault/bls",
+    "bls12_381_plus",
+    "signature_core",
+    "signature_bbs_plus",
+    "signature_bls",
+]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -49,7 +72,7 @@ no_std = [
     "ockam_channel/no_std",
     "ockam_key_exchange_core/no_std",
     "ockam_key_exchange_xx/no_std",
-    "ockam_entity/no_std"
+    "ockam_entity/no_std",
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
@@ -65,20 +88,13 @@ alloc = [
     "serde/alloc",
 ]
 
-# Feature: "no_main" allows you to define an ockam node inside your
-# own program entry-point rather than having ockam define the main()
-# function. This is particularly useful on baremetal platforms.
-no_main = [
-    "ockam_macros/no_main",
-]
-
 [[test]]
 name = "tests"
 path = "tests/main.rs"
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.42.1-dev", default-features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.3.1-dev", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.4.0-dev", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.41.1-dev", default-features = false }
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.34.1-dev", default_features = false, optional = true }
 ockam_vault = { path = "../ockam_vault", version = "^0.36.1-dev", default_features = false, optional = true }
@@ -101,8 +117,8 @@ hex = { version = "0.4", default-features = false }
 dyn-clone = "1.0"
 
 [dev-dependencies]
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.34.1-dev"}
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.35.1-dev"}
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.34.1-dev" }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.35.1-dev" }
 trybuild = { version = "1.0", features = ["diff"] }
 serde_json = "1.0"
 rand_xorshift = "0.3"

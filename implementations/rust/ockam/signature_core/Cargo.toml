@@ -8,15 +8,24 @@ homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/signatures_core"
 readme = "README.md"
 keywords = ["ockam", "crypto", "cryptography", "signatures", "signing"]
-categories = ["cryptography", "asynchronous", "authentication","no-std", "algorithms"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "no-std",
+    "algorithms",
+]
 description = """
 Signature core types of the Ockam library.
 """
 publish = true
+rust-version = "1.56.0"
 
 [dependencies]
 blake2 = { version = "0.9", default-features = false }
-bls12_381_plus = { version = "0.5", default-features = false, features = ["groups"] }
+bls12_381_plus = { version = "0.5", default-features = false, features = [
+    "groups",
+] }
 digest = { version = "0.9", default-features = false }
 ff = { version = "0.10", default-features = false }
 group = "0.10"

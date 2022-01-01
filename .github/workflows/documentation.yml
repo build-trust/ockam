@@ -8,23 +8,33 @@ on:
   pull_request:
     paths:
       - '.github/workflows/documentation.yml'
-      - '**.rs'
-      - '**.toml'
-      - '**/Cargo.lock'
       - 'documentation/use-cases/**.md'
       - 'documentation/guides/rust/**.md'
       - 'tools/docs/**'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   push:
     paths:
       - '.github/workflows/documentation.yml'
-      - '**.rs'
-      - '**.toml'
-      - '**/Cargo.lock'
       - 'documentation/use-cases/**.md'
       - 'documentation/guides/rust/**.md'
       - 'tools/docs/**'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   schedule:
-    - cron:  '0 1 * * *' # run every day at 1am utc cron.help/#0_1_*_*_*
+    - cron: '0 1 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,12 +45,14 @@ jobs:
     name: Documentation - Check Examples
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+      image: ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca
     steps:
-      - name: Checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
 
-      - name: Check example source and guide code blocks match
+      - name: Check that example source and guide code blocks match
         run: OCKAM_HOME=$PWD tools/docs/check_documentation.sh
 
       - name: Run Get Started examples
@@ -48,3 +60,5 @@ jobs:
 
       - name: Run Kafka examples
         run: OCKAM_HOME=$PWD tools/docs/run_kafka_example.sh
+
+      - uses: ./.github/actions/cargo_target_dir_pre_cache

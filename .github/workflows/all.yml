@@ -1,4 +1,4 @@
-name: All Implementations
+name: All
 
 permissions:
   contents: read
@@ -7,14 +7,22 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - '.github/actions/cache'
       - '.github/workflows/all.yml'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   push:
     paths:
-      - '.github/actions/cache'
       - '.github/workflows/all.yml'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/actions/**'
   schedule:
-    - cron:  '0 1 * * *' # Run every day at 1am UTC https://cron.help/#0_1_*_*_*
+    - cron: '0 1 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,23 +30,32 @@ concurrency:
 
 jobs:
   build:
-    name: All Implementations - Build
+    name: All - Build
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+      image: ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca
     steps:
-      - name: Checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
-      - name: Build
-        run: ./gradlew build
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - uses: ./.github/actions/elixir_cache
+      - run: ./gradlew build -Pmode=release
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
-  test:
-    name: All Implementations - Test
-    runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/ockam-network/ockam/builder@sha256:597fd3f89cfa198d9c3efc19599a3717673934bf4e23eee45be035203297cb59
+  list_gradle_tasks:
+    name: All - List Gradle Tasks
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-10.15, windows-2019]
+        java: [8, 11, 16, 17]
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # v2.4.0
-      - name: Test
-        run: ./gradlew test
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - uses: actions/setup-java@f0bb91606209742fe3ea40199be2f3ef195ecabf
+        with:
+          distribution: 'temurin'
+          check-latest: true
+          java-version: ${{ matrix.java }}
+      - uses: ./.github/actions/gradle_cache
+      - run: ./gradlew tasks --all

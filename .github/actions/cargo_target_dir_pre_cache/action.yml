@@ -1,0 +1,18 @@
+name: CARGO_TARGET_DIR Pre Cache
+description: CARGO_TARGET_DIR Pre Cache
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
+
+        for mode in debug release; do
+          for dir in deps .fingerprint; do
+            if [ -d "target/$mode/$dir" ]; then
+              cd "target/$mode/$dir"
+              for crate in "${crates[@]}"; do rm -rf $crate* lib$crate*; done
+              cd -
+            fi
+          done
+        done

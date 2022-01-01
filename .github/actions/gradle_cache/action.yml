@@ -1,0 +1,14 @@
+name: Gradle Cache
+description: Gradle Home Cache
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      with:
+        path: ~/.gradle/wrapper/dists
+        key: gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca
+        restore-keys: |
+          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:217f5dd606c71dca97bce17d2472a48b9874ff7c4bebaace7764e51377ff7eca
+          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-${{ github.job }}-
+          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-
+          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-

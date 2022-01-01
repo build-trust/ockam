@@ -7,32 +7,71 @@ license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
 readme = "README.md"
-categories = ["cryptography", "asynchronous", "authentication","no-std", "algorithms"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "no-std",
+    "algorithms",
+]
 keywords = ["ockam", "crypto", "encryption", "authentication"]
 description = """Channel is an abstraction responsible for sending messages (usually over the network)
 in encrypted and authenticated way.
 """
 publish = true
+rust-version = "1.56.0"
 
 [features]
 default = ["std"]
-software_vault = ["ockam_vault", "ockam_vault_sync_core", "ockam_vault_sync_core/software_vault"]
+software_vault = [
+    "ockam_vault",
+    "ockam_vault_sync_core",
+    "ockam_vault_sync_core/software_vault",
+]
 noise_xx = ["ockam_key_exchange_xx"]
 
 # Option (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["alloc", "ockam_core/std", "ockam_macros/std", "ockam_key_exchange_core/std", "ockam_key_exchange_xx/std", "ockam_node/std", "ockam_vault_sync_core/std", "ockam_vault/std", "rand/std", "rand/std_rng"]
+std = [
+    "alloc",
+    "ockam_core/std",
+    "ockam_macros/std",
+    "ockam_key_exchange_core/std",
+    "ockam_key_exchange_xx/std",
+    "ockam_node/std",
+    "ockam_vault_sync_core/std",
+    "ockam_vault/std",
+    "rand/std",
+    "rand/std_rng",
+]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_key_exchange_core/no_std", "ockam_key_exchange_xx/no_std", "ockam_node/no_std", "ockam_vault_sync_core/no_std", "ockam_vault/no_std", "rand_pcg"]
+no_std = [
+    "ockam_core/no_std",
+    "ockam_macros/no_std",
+    "ockam_key_exchange_core/no_std",
+    "ockam_key_exchange_xx/no_std",
+    "ockam_node/no_std",
+    "ockam_vault_sync_core/no_std",
+    "ockam_vault/no_std",
+    "rand_pcg",
+]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "ockam_key_exchange_xx/alloc", "ockam_node/alloc", "ockam_vault_sync_core/alloc", "ockam_vault/alloc", "serde/alloc"]
+alloc = [
+    "ockam_core/alloc",
+    "ockam_key_exchange_core/alloc",
+    "ockam_key_exchange_xx/alloc",
+    "ockam_node/alloc",
+    "ockam_vault_sync_core/alloc",
+    "ockam_vault/alloc",
+    "serde/alloc",
+]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.42.1-dev", default_features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.3.1-dev", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.4.0-dev", default_features = false }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.34.1-dev", default_features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.35.1-dev", default_features = false, optional = true }
 ockam_node = { path = "../ockam_node", version = "^0.41.1-dev", default_features = false }
@@ -44,9 +83,16 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 tracing = { version = "0.1", default_features = false }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.36.1-dev"}
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.35.1-dev"}
-ockam_key_exchange_x3dh = { path = "../ockam_key_exchange_x3dh", version = "^0.34.1-dev"}
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.34.1-dev"}
-trybuild = {version = "1.0", features = ["diff"]}
-tokio = { version = "1.8", features = ["rt-multi-thread","sync","net","macros","time","io-util"] }
+ockam_vault = { path = "../ockam_vault", version = "^0.36.1-dev" }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.35.1-dev" }
+ockam_key_exchange_x3dh = { path = "../ockam_key_exchange_x3dh", version = "^0.34.1-dev" }
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.34.1-dev" }
+trybuild = { version = "1.0", features = ["diff"] }
+tokio = { version = "1.8", features = [
+    "rt-multi-thread",
+    "sync",
+    "net",
+    "macros",
+    "time",
+    "io-util",
+] }
