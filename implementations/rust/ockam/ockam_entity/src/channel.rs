@@ -52,7 +52,7 @@ impl AccessControl for EntityIdAccessControl {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Entity, Identity};
+    use crate::{Identity, Profile};
     use core::sync::atomic::{AtomicU8, Ordering};
     use ockam_core::compat::sync::Arc;
     use ockam_core::{route, Any, Route, Routed, Worker};
@@ -67,8 +67,8 @@ mod test {
         let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
-        let mut alice = Entity::create(ctx, &alice_vault).await?;
-        let mut bob = Entity::create(ctx, &bob_vault).await?;
+        let mut alice = Profile::create(ctx, &alice_vault).await?;
+        let mut bob = Profile::create(ctx, &bob_vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -109,8 +109,8 @@ mod test {
     async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(ctx, &vault).await?;
-        let mut bob = Entity::create(ctx, &vault).await?;
+        let mut alice = Profile::create(ctx, &vault).await?;
+        let mut bob = Profile::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -154,8 +154,8 @@ mod test {
     async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(ctx, &vault).await?;
-        let mut bob = Entity::create(ctx, &vault).await?;
+        let mut alice = Profile::create(ctx, &vault).await?;
+        let mut bob = Profile::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -209,8 +209,8 @@ mod test {
     async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(ctx, &vault).await?;
-        let mut bob = Entity::create(ctx, &vault).await?;
+        let mut alice = Profile::create(ctx, &vault).await?;
+        let mut bob = Profile::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -282,8 +282,8 @@ mod test {
 
         let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(ctx, &vault).await?;
-        let mut bob = Entity::create(ctx, &vault).await?;
+        let mut alice = Profile::create(ctx, &vault).await?;
+        let mut bob = Profile::create(ctx, &vault).await?;
 
         let access_control = EntityAccessControlBuilder::new_with_id(alice.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)
@@ -318,8 +318,8 @@ mod test {
 
         let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(ctx, &vault).await?;
-        let mut bob = Entity::create(ctx, &vault).await?;
+        let mut alice = Profile::create(ctx, &vault).await?;
+        let mut bob = Profile::create(ctx, &vault).await?;
 
         let access_control = EntityAccessControlBuilder::new_with_id(bob.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)

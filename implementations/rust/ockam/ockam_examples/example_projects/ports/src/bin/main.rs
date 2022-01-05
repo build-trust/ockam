@@ -7,8 +7,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys
     let vault = Vault::create(&ctx).await?;
 
-    // Create an Entity to represent this machine
-    let mut fabric_machine = Entity::create(&ctx, &vault)?;
+    // Create a Profile to represent this machine
+    let mut fabric_machine = Profile::create(&ctx, &vault)?;
 
     // Initialize the TCP Transport
     let tcp = TcpTransport::create(&ctx).await?;

@@ -313,12 +313,12 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create:
     //   1. A Vault to store our cryptographic keys
-    //   2. An Entity to represent this Node
+    //   2. An Profile to represent this Node
     //   3. A Secure Channel Listener at Worker address - secure_channel_listener_service
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create(&ctx).await?;
-    let mut e = Entity::create(&ctx, &vault).await?;
+    let mut e = Profile::create(&ctx, &vault).await?;
     e.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy).await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -362,7 +362,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a Vault to store our cryptographic keys and an Entity to represent this Node.
+    // Create a Vault to store our cryptographic keys and a Profile to represent this Node.
     // Then initiate a handshake with the secure channel listener on the node that has the
     // TCP Transport Outlet.
     //
@@ -525,7 +525,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a Vault to store our cryptographic keys and an Entity to represent this Node.
+    // Create a Vault to store our cryptographic keys and a Profile to represent this Node.
     // Then initiate a handshake with the secure channel listener on the node that has the
     // TCP Transport Outlet.
     //

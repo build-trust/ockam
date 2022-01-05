@@ -54,7 +54,7 @@ impl Authentication {
 #[cfg(test)]
 mod test {
 
-    use crate::{Entity, Identity};
+    use crate::{Identity, Profile};
     use ockam_core::{Error, Result};
     use ockam_node::Context;
     use ockam_vault_sync_core::Vault;
@@ -69,29 +69,19 @@ mod test {
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(ctx, &alice_vault).await?;
-        let mut bob = Entity::create(ctx, &bob_vault).await?;
-
-        // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile(&alice_vault).await?;
-        let mut bob_chat = bob.create_profile(&bob_vault).await?;
+        let mut alice = Profile::create(ctx, &alice_vault).await?;
+        let mut bob = Profile::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create Contacts
-        let alice_contact = alice_chat.as_contact().await?;
-        let bob_contact = bob_chat.as_contact().await?;
+        let alice_contact = alice.as_contact().await?;
+        let bob_contact = bob.as_contact().await?;
 
         // Alice and Bob exchange Contacts
-        if !alice_chat
-            .verify_and_add_contact(bob_contact.clone())
-            .await?
-        {
+        if !alice.verify_and_add_contact(bob_contact.clone()).await? {
             return test_error("alice failed to add bob");
         }
 
-        if !bob_chat
-            .verify_and_add_contact(alice_contact.clone())
-            .await?
-        {
+        if !bob.verify_and_add_contact(alice_contact.clone()).await? {
             return test_error("bob failed to add alice");
         }
 
@@ -103,17 +93,17 @@ mod test {
             state
         };
 
-        let alice_proof = alice_chat.create_auth_proof(&state).await?;
-        let bob_proof = bob_chat.create_auth_proof(&state).await?;
+        let alice_proof = alice.create_auth_proof(&state).await?;
+        let bob_proof = bob.create_auth_proof(&state).await?;
 
-        if !alice_chat
+        if !alice
             .verify_auth_proof(&state, bob_contact.identifier(), &bob_proof)
             .await?
         {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat
+        if !bob
             .verify_auth_proof(&state, alice_contact.identifier(), &alice_proof)
             .await?
         {
@@ -127,33 +117,23 @@ mod test {
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Entity::create(ctx, &alice_vault).await?;
-        let mut bob = Entity::create(ctx, &bob_vault).await?;
-
-        // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile(&alice_vault).await?;
-        let mut bob_chat = bob.create_profile(&bob_vault).await?;
+        let mut alice = Profile::create(ctx, &alice_vault).await?;
+        let mut bob = Profile::create(ctx, &bob_vault).await?;
 
         // Both profiles rotate keys.
-        alice_chat.rotate_root_secret_key().await?;
-        bob_chat.rotate_root_secret_key().await?;
+        alice.rotate_root_secret_key().await?;
+        bob.rotate_root_secret_key().await?;
 
         // Alice and Bob create Contacts
-        let alice_contact = alice_chat.as_contact().await?;
-        let bob_contact = bob_chat.as_contact().await?;
+        let alice_contact = alice.as_contact().await?;
+        let bob_contact = bob.as_contact().await?;
 
         // Alice and Bob exchange Contacts. Verification still works with a rotation.
-        if !alice_chat
-            .verify_and_add_contact(bob_contact.clone())
-            .await?
-        {
+        if !alice.verify_and_add_contact(bob_contact.clone()).await? {
             return test_error("alice failed to add bob");
         }
 
-        if !bob_chat
-            .verify_and_add_contact(alice_contact.clone())
-            .await?
-        {
+        if !bob.verify_and_add_contact(alice_contact.clone()).await? {
             return test_error("bob failed to add alice");
         }
 
@@ -164,29 +144,19 @@ mod test {
         let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
         let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
 
-        let mut alice = Entity::create(ctx, &alice_vault).await?;
-        let mut bob = Entity::create(ctx, &bob_vault).await?;
-
-        // Alice and Bob create unique profiles for a Chat app.
-        let mut alice_chat = alice.create_profile(&alice_vault).await?;
-        let mut bob_chat = bob.create_profile(&bob_vault).await?;
+        let mut alice = Profile::create(ctx, &alice_vault).await?;
+        let mut bob = Profile::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create Contacts
-        let alice_contact = alice_chat.as_contact().await?;
-        let bob_contact = bob_chat.as_contact().await?;
+        let alice_contact = alice.as_contact().await?;
+        let bob_contact = bob.as_contact().await?;
 
         // Alice and Bob exchange Contacts
-        if !alice_chat
-            .verify_and_add_contact(bob_contact.clone())
-            .await?
-        {
+        if !alice.verify_and_add_contact(bob_contact.clone()).await? {
             return test_error("alice failed to add bob");
         }
 
-        if !bob_chat
-            .verify_and_add_contact(alice_contact.clone())
-            .await?
-        {
+        if !bob.verify_and_add_contact(alice_contact.clone()).await? {
             return test_error("bob failed to add alice");
         }
 
@@ -198,32 +168,32 @@ mod test {
             state
         };
 
-        let alice_proof = alice_chat.create_auth_proof(&state).await?;
-        let bob_proof = bob_chat.create_auth_proof(&state).await?;
+        let alice_proof = alice.create_auth_proof(&state).await?;
+        let bob_proof = bob.create_auth_proof(&state).await?;
 
-        if !alice_chat
+        if !alice
             .verify_auth_proof(&state, bob_contact.identifier(), &bob_proof)
             .await?
         {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat
+        if !bob
             .verify_auth_proof(&state, alice_contact.identifier(), &alice_proof)
             .await?
         {
             return test_error("alice's proof was invalid");
         }
 
-        alice_chat.rotate_root_secret_key().await?;
-        bob_chat.rotate_root_secret_key().await?;
+        alice.rotate_root_secret_key().await?;
+        bob.rotate_root_secret_key().await?;
 
-        let alice_contact = alice_chat.as_contact().await?;
-        let bob_contact = bob_chat.as_contact().await?;
+        let alice_contact = alice.as_contact().await?;
+        let bob_contact = bob.as_contact().await?;
 
         // Copy Bob's last event (the rotation) and update Alice's view of Bob's Contact.
         let bob_last_event = bob_contact.change_events().last().unwrap().clone();
-        if !alice_chat
+        if !alice
             .verify_and_update_contact(bob_contact.identifier(), &[bob_last_event])
             .await?
         {
@@ -232,7 +202,7 @@ mod test {
 
         // Copy Bob's last event (the rotation) and update Bob's view of Alice's Contact.
         let alice_last_event = alice_contact.change_events().last().unwrap().clone();
-        if !bob_chat
+        if !bob
             .verify_and_update_contact(alice_contact.identifier(), &[alice_last_event])
             .await?
         {
@@ -247,17 +217,17 @@ mod test {
             state
         };
 
-        let alice_proof = alice_chat.create_auth_proof(&state).await?;
-        let bob_proof = bob_chat.create_auth_proof(&state).await?;
+        let alice_proof = alice.create_auth_proof(&state).await?;
+        let bob_proof = bob.create_auth_proof(&state).await?;
 
-        if !alice_chat
+        if !alice
             .verify_auth_proof(&state, bob_contact.identifier(), &bob_proof)
             .await?
         {
             return test_error("bob's proof was invalid");
         }
 
-        if !bob_chat
+        if !bob
             .verify_auth_proof(&state, alice_contact.identifier(), &alice_proof)
             .await?
         {

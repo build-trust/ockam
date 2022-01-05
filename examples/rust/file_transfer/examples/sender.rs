@@ -1,7 +1,7 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
-use ockam::{route, Context, Entity, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Profile, TrustEveryonePolicy, Vault};
 use ockam::{TcpTransport, TCP};
 
 use std::path::PathBuf;
@@ -37,8 +37,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Sender.
     let vault = Vault::create(&ctx).await?;
 
-    // Create an Entity to represent Sender.
-    let mut sender = Entity::create(&ctx, &vault).await?;
+    // Create a Profile to represent Sender.
+    let mut sender = Profile::create(&ctx, &vault).await?;
 
     // This program expects that the receiver has setup a forwarding address,
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.

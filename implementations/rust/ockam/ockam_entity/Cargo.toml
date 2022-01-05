@@ -96,6 +96,7 @@ sha2 = { version = "0.9", default-features = false }
 serde-big-array = "0.3"
 rand = { version = "0.8", default-features = false }
 tracing = { version = "0.1", default_features = false }
+tokio = { version = "1.8", features = ["sync"] }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
