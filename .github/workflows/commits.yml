@@ -162,7 +162,7 @@ jobs:
         env:
           PR_SENDER: ${{ github.event.pull_request.user.login }}
         run: |
-          if grep -q -F "$PR_SENDER" 'CONTRIBUTORS_GITHUB_USERNAMES.txt'; then
+          if grep -q -iF "$PR_SENDER" 'CONTRIBUTORS_GITHUB_USERNAMES.txt'; then
             echo "[✓] Pull Request Sender $PR_SENDER has accepted the CLA."
           else
             echo "
@@ -198,14 +198,14 @@ jobs:
             committer=$(git show -s --format='%ce' $commit)
             echo "Committer: $committer"
 
-            if grep -q -F "$author" 'CONTRIBUTORS_EMAILS.txt'; then
+            if grep -q -iF "$author" 'CONTRIBUTORS_EMAILS.txt'; then
               echo "[✓] $commit author $author has accepted the CLA."
             else
               echo -e "$commit commit author $author has not accepted the CLA."
               err=true
             fi
 
-            if grep -q -F "$committer" 'CONTRIBUTORS_EMAILS.txt'; then
+            if grep -q -iF "$committer" 'CONTRIBUTORS_EMAILS.txt'; then
               echo "[✓] $commit committer $committer has accepted the CLA."
             else
               echo -r "\nERROR:\n$commit committer $committer has not accepted the CLA"
