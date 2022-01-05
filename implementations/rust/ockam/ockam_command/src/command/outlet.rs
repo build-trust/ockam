@@ -1,76 +1,26 @@
-use crate::command::{CommandResult, Run};
 use crate::spinner::Spinner;
 use crate::AppError;
-use clap::ArgMatches;
 use comfy_table::Table;
-use log::{error, info};
-use std::time::Duration;
+use ockam::{Context, TcpTransport};
 
 pub struct OutletCommand {}
 
-impl Run for OutletCommand {
-    fn run(&mut self, args: Option<&ArgMatches>) -> Result<CommandResult, AppError> {
-        if args.is_none() {
-            error!("Outlet command requires some arguments");
-            return Err(AppError::InvalidArgument);
-        }
-
-        let args = args.unwrap();
-
-        let (subcommand, sub_args) = args.subcommand();
-
-        match subcommand {
-            "create" => self.create(sub_args),
-            _ => Err(AppError::InvalidCommand),
-        }
-    }
-}
-
 impl OutletCommand {
-    pub fn create(&mut self, args: Option<&ArgMatches>) -> Result<CommandResult, AppError> {
-        if args.is_none() {
-            error!("Create Outlet requires arguments");
-            return Err(AppError::InvalidArgument);
-        }
-
-        let args = args.unwrap();
-
-        let listen = args.value_of("listen");
-
-        if listen.is_none() {
-            error!("Create Outlet requires a host argument.");
-            return Err(AppError::InvalidArgument);
-        }
-
-        let listen = listen.unwrap();
-
-        let name = args.value_of("name");
-        if name.is_none() {
-            error!("Create Outlet requires a name argument");
-            return Err(AppError::InvalidArgument);
-        }
-
-        let name = name.unwrap();
-
-        let target = args.value_of("target");
-
-        if target.is_none() {
-            error!("Create Outlet requires a target argument");
-            return Err(AppError::InvalidArgument);
-        }
-
-        let target = target.unwrap();
-
-        info!(
-            "Creating Outlet '{}' on {} with a destination of {}",
-            name, listen, target
-        );
-
+    pub async fn run(
+        ctx: &Context,
+        listen: &str,
+        name: &str,
+        target: &str,
+    ) -> Result<(), AppError> {
         let spinner = Spinner::default();
 
-        std::thread::sleep(Duration::from_secs(3));
+        let tcp = TcpTransport::create(ctx).await?;
 
-        spinner.stop("Done");
+        tcp.create_outlet(name, target).await?;
+
+        tcp.listen(listen).await?;
+
+        spinner.stop("Created outlet");
 
         let mut table = Table::new();
         table
@@ -79,6 +29,6 @@ impl OutletCommand {
 
         println!("{}", table);
 
-        Ok(CommandResult {})
+        Ok(())
     }
 }

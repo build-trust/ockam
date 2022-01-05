@@ -1,6 +1,5 @@
 pub mod command;
 pub mod config;
-pub mod console;
 pub mod spinner;
 
 pub use thiserror::Error;
@@ -11,6 +10,15 @@ pub enum AppError {
     Unknown,
     #[error("invalid command")]
     InvalidCommand,
-    #[error("invalid command")]
+    #[error("invalid argument")]
     InvalidArgument,
+
+    #[error("ockam error")]
+    Ockam(ockam::Error),
+}
+
+impl From<ockam::Error> for AppError {
+    fn from(ockam_error: ockam::Error) -> Self {
+        AppError::Ockam(ockam_error)
+    }
 }

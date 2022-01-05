@@ -1,54 +1,85 @@
-use crate::command::CommandResult;
+use crate::command::inlet::InletCommand;
+use crate::command::outlet::OutletCommand;
+use crate::config::OckamCommand::{Inlet, Outlet};
 use crate::AppError;
+use clap::Parser;
+use log::{debug, info};
+use ockam::Context;
+
+#[derive(Parser)]
+#[clap(about, version, author)]
+struct Args {
+    #[clap(short, long, default_value = "ockam.toml")]
+    config: String,
+
+    #[clap(short, long, default_value = "ockam_secrets.toml")]
+    secrets: String,
+
+    #[clap(subcommand)]
+    command: OckamCommand,
+}
+
+#[derive(clap::Subcommand)]
+enum OckamCommand {
+    Outlet {
+        #[clap(short, long)]
+        listen: String,
+
+        #[clap(short, long, default_value = "outlet")]
+        name: String,
+        #[clap(short, long)]
+        target: String,
+    },
+
+    Inlet {
+        #[clap(short, long)]
+        listen: String,
+
+        #[clap(short, long)]
+        outlet: String,
+
+        #[clap(short, long, default_value = "outlet")]
+        name_outlet: String,
+    },
+}
+
+const OCKAM_ENV_PREFIX: &str = "OCKAM";
 
 pub struct AppConfig {}
 
-/* WIP
-const CONFIG_ARG: &str = "config";
-const SECRETS_ARG: &str = "secrets";
-const OCKAM_ENV_PREFIX: &str = "OCKAM";
-*/
-
 impl AppConfig {
-    pub fn evaluate() -> Result<CommandResult, AppError> {
-        Err(AppError::Unknown)
+    pub async fn evaluate(ctx: &Context) -> Result<(), AppError> {
+        let mut config = config::Config::default();
 
-        /*
-            let mut config = config::Config::default();
-            let yaml = load_yaml!("cli.yml");
-            let args = App::from_yaml(yaml).get_matches();
+        let args = Args::parse();
 
-            let config_file = args.value_of(CONFIG_ARG);
+        if config.merge(config::File::with_name(&args.config)).is_ok() {
+            info!("Loaded settings from {}.", args.config)
+        } else {
+            debug!("No config file present.")
+        }
 
-            if let Some(config_file) = config_file {
-                if config.merge(config::File::with_name(config_file)).is_ok() {
-                    debug!("Loaded settings from {} config file", config_file)
-                } else {
-                    warn!("Unable to load settings from {}", config_file)
-                }
-            } else {
-                warn!("No config file specified.")
-            }
+        if config.merge(config::File::with_name(&args.secrets)).is_ok() {
+            info!("Loaded secrets from {}.", args.secrets)
+        } else {
+            debug!("No secrets file present.")
+        }
 
-            let secrets_file = args.value_of(SECRETS_ARG);
+        config
+            .merge(config::Environment::with_prefix(OCKAM_ENV_PREFIX))
+            .ok();
 
-            if let Some(secrets_file) = secrets_file {
-                if config.merge(config::File::with_name(secrets_file)).is_ok() {
-                    debug!("Loaded secrets from {} secrets file.", secrets_file)
-                } else {
-                    warn!("Unable to load secrets from {}", secrets_file)
-                }
-            } else {
-                debug!("No secrets file specified.")
-            }
-
-            config
-                .merge(config::Environment::with_prefix(OCKAM_ENV_PREFIX))
-                .ok();
-
-            let (command_name, command_args) = args.subcommand();
-            let mut command: Command = command_name.parse()?;
-            command.run(command_args)
-        */
+        match &args.command {
+            Outlet {
+                listen,
+                name,
+                target,
+            } => OutletCommand::run(ctx, listen, name, target).await,
+            Inlet {
+                listen,
+                outlet,
+                name_outlet: outlet_name,
+            } => InletCommand::run(ctx, listen, outlet, outlet_name).await,
+        }
     }
 }
