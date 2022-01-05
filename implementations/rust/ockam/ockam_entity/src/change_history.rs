@@ -1,7 +1,8 @@
 //! Profile history
-use crate::profile::Profile;
 use crate::ProfileChangeType::{CreateKey, RotateKey};
-use crate::{EntityError, EventIdentifier, ProfileChangeEvent, ProfileVault, SignatureType};
+use crate::{
+    EntityError, EventIdentifier, ProfileChangeEvent, ProfileState, ProfileVault, SignatureType,
+};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny, Encodable, Result};
 use ockam_vault::PublicKey;
@@ -67,7 +68,7 @@ impl ProfileChangeHistory {
     pub(crate) fn get_current_root_public_key(
         existing_events: &[ProfileChangeEvent],
     ) -> Result<PublicKey> {
-        Self::find_last_key_event_public_key(existing_events, Profile::ROOT_LABEL)
+        Self::find_last_key_event_public_key(existing_events, ProfileState::ROOT_LABEL)
     }
 
     pub(crate) fn get_first_root_public_key(&self) -> Result<PublicKey> {

@@ -1,5 +1,4 @@
 use crate::change_history::ProfileChangeHistory;
-use crate::profile::Profile;
 use crate::EntityError::InvalidInternalState;
 use crate::{
     ChangeBlock, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
@@ -104,7 +103,7 @@ impl ProfileState {
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CURRENT_CHANGE_VERSION,
+            ProfileState::CURRENT_CHANGE_VERSION,
             attributes,
             ProfileChangeType::CreateKey(change),
         );

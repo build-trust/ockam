@@ -4,7 +4,7 @@ use crate::AppError;
 use comfy_table::Table;
 use log::error;
 use ockam::{
-    AsyncTryClone, Context, Entity, EntityAccessControlBuilder, SoftwareVault, TcpTransport,
+    AsyncTryClone, Context, EntityAccessControlBuilder, Profile, SoftwareVault, TcpTransport,
     TrustPublicKeyPolicy, VaultSync,
 };
 use ockam_core::vault::{PublicKey, SecretType};
@@ -42,12 +42,12 @@ impl ChannelListenCommand {
         ctx.start_worker_with_access_control(ECHOER_SERVICE_NAME, Echoer, access_control)
             .await?;
 
-        let mut entity = Entity::create(ctx, &vault_address).await?;
+        let mut profile = Profile::create(ctx, &vault_address).await?;
 
         let trust_policy =
-            TrustPublicKeyPolicy::new(public_key, "SSH", entity.async_try_clone().await?);
+            TrustPublicKeyPolicy::new(public_key, "SSH", profile.async_try_clone().await?);
 
-        entity
+        profile
             .create_secure_channel_listener(listener_name, trust_policy)
             .await?;
 

@@ -1,6 +1,6 @@
-use crate::{Entity, EntityWorker};
+use crate::Profile;
 use ockam_core::{Address, Result};
-use ockam_node::{Context, Handle};
+use ockam_node::Context;
 
 /// Builder for `Entity`
 pub struct EntityBuilder {
@@ -20,17 +20,8 @@ impl EntityBuilder {
 
     // TODO: enable_credentials_signing_key
 
-    pub async fn build(self) -> Result<Entity> {
-        let address = Address::random(0);
-        self.ctx
-            .start_worker(&address, EntityWorker::default())
-            .await?;
-
-        let mut entity = Entity::new(Handle::new(self.ctx, address), None);
-
-        let _ = entity.create_profile(&self.vault).await?;
-
-        Ok(entity)
+    pub async fn build(self) -> Result<Profile> {
+        Profile::create(&self.ctx, &self.vault).await
     }
 }
 

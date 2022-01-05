@@ -1,7 +1,6 @@
 use crate::change_history::ProfileChangeHistory;
 use crate::{
     authentication::Authentication,
-    profile::Profile,
     AuthenticationProof, Changes, Contact, Contacts, EntityError,
     EntityError::{ContactVerificationFailed, InvalidInternalState},
     EventIdentifier, KeyAttributes, Lease, MetaKeyAttributes, ProfileChangeEvent,
@@ -14,7 +13,7 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::vault::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
-use ockam_core::{allow, deny, Address, AsyncTryClone, Result, Route};
+use ockam_core::{allow, deny, AsyncTryClone, Result, Route};
 use ockam_vault::{KeyIdVault, PublicKey, Secret, SecretAttributes};
 use ockam_vault_sync_core::VaultSync;
 
@@ -36,6 +35,18 @@ pub struct ProfileState {
     #[cfg(feature = "credentials")]
     pub(crate) credentials: Vec<EntityCredential>,
     lease: Option<Lease>,
+}
+
+impl ProfileState {
+    /// Sha256 of that value is used as previous event id for first event in a [`Profile`]
+    pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
+    /// Label for [`Profile`] update key
+    pub const ROOT_LABEL: &'static str = "OCKAM_RK";
+    /// Label for key used to issue credentials
+    #[cfg(feature = "credentials")]
+    pub const CREDENTIALS_ISSUE: &'static str = "OCKAM_CIK";
+    /// Current version of change structure
+    pub const CURRENT_CHANGE_VERSION: u8 = 1;
 }
 
 impl ProfileState {
@@ -66,16 +77,12 @@ impl ProfileState {
         &self.change_history
     }
 
-    pub(crate) fn vault_address(&self) -> Address {
-        self.vault.address()
-    }
-
     /// Create ProfileState
     pub(crate) async fn create(mut vault: VaultSync) -> Result<Self> {
         let initial_event_id = EventIdentifier::initial(&mut vault).await;
 
         let key_attribs = KeyAttributes::new(
-            Profile::ROOT_LABEL.to_string(),
+            ProfileState::ROOT_LABEL.to_string(),
             MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
                 SecretType::Ed25519,
                 SecretPersistence::Persistent,
@@ -160,7 +167,7 @@ impl ProfileState {
     pub async fn rotate_root_secret_key(&mut self) -> Result<()> {
         let event = self
             .make_rotate_key_event(
-                KeyAttributes::default_with_label(Profile::ROOT_LABEL.to_string()),
+                KeyAttributes::default_with_label(ProfileState::ROOT_LABEL.to_string()),
                 ProfileEventAttributes::new(),
             )
             .await?;
@@ -169,7 +176,8 @@ impl ProfileState {
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
     pub async fn get_root_secret_key(&self) -> Result<Secret> {
-        self.get_secret_key(Profile::ROOT_LABEL.to_string()).await
+        self.get_secret_key(ProfileState::ROOT_LABEL.to_string())
+            .await
     }
 
     pub async fn get_secret_key(&self, label: String) -> Result<Secret> {
@@ -180,7 +188,8 @@ impl ProfileState {
     }
 
     pub async fn get_root_public_key(&self) -> Result<PublicKey> {
-        self.get_public_key(Profile::ROOT_LABEL.to_string()).await
+        self.get_public_key(ProfileState::ROOT_LABEL.to_string())
+            .await
     }
 
     pub async fn get_public_key(&self, label: String) -> Result<PublicKey> {

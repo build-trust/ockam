@@ -1,4 +1,4 @@
-use ockam::{Context, Entity, Result, TrustEveryonePolicy, Vault};
+use ockam::{Context, Profile, Result, TrustEveryonePolicy, Vault};
 use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 
 struct Echoer;
@@ -26,8 +26,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create(&ctx).await?;
 
-    // Create an Entity to represent Bob.
-    let mut bob = Entity::create(&ctx, &vault).await?;
+    // Create a Profile to represent Bob.
+    let mut bob = Profile::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.

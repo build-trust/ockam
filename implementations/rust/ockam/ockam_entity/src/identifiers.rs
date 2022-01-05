@@ -1,5 +1,4 @@
-use crate::profile::Profile;
-use crate::EntityError;
+use crate::{EntityError, ProfileState};
 use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::string::String;
@@ -72,7 +71,7 @@ impl AsRef<[u8]> for EventIdentifier {
 
 impl EventIdentifier {
     pub async fn initial(hasher: &mut (impl Hasher + Sync)) -> Self {
-        let h = match hasher.sha256(Profile::NO_EVENT).await {
+        let h = match hasher.sha256(ProfileState::NO_EVENT).await {
             Ok(hash) => hash,
             Err(_) => panic!("failed to hash initial event"),
         };

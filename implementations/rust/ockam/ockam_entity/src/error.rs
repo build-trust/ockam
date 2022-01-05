@@ -27,7 +27,6 @@ pub enum EntityError {
     UnknownChannelMsgOrigin,
     InvalidLocalInfoType,
     InvalidSecureChannelInternalState,
-    IdentityApiFailed,
     ContactVerificationFailed,
     InvalidProfileId,
     DuplicateCredential,

@@ -86,8 +86,8 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
         // Create a Vault to safely store secret keys for Alice and Bob.
         let vault = Vault::create(&ctx).await?;
 
-        // Create an Entity to represent Bob.
-        let mut bob = Entity::create(&ctx, &vault).await?;
+        // Create a Profile to represent Bob.
+        let mut bob = Profile::create(&ctx, &vault).await?;
 
         // Create a secure channel listener for Bob that will wait for requests to
         // initiate an Authenticated Key Exchange.

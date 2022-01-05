@@ -1,5 +1,4 @@
 use crate::change_history::ProfileChangeHistory;
-use crate::profile::Profile;
 use crate::{
     ChangeBlock, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
     ProfileChangeEvent, ProfileChangeType, ProfileEventAttributes, ProfileState, Signature,
@@ -110,7 +109,7 @@ impl ProfileState {
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
         let profile_change = ProfileChange::new(
-            Profile::CURRENT_CHANGE_VERSION,
+            ProfileState::CURRENT_CHANGE_VERSION,
             attributes,
             ProfileChangeType::RotateKey(change),
         );

@@ -1,7 +1,7 @@
 // examples/receiver.rs
 
 use file_transfer::FileData;
-use ockam::{Context, Entity, Result, TrustEveryonePolicy, Vault};
+use ockam::{Context, Profile, Result, TrustEveryonePolicy, Vault};
 use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 
 use std::str;
@@ -86,8 +86,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Receiver.
     let vault = Vault::create(&ctx).await?;
 
-    // Create an Entity to represent Receiver.
-    let mut receiver = Entity::create(&ctx, &vault).await?;
+    // Create a Profile to represent Receiver.
+    let mut receiver = Profile::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.

@@ -38,7 +38,7 @@ Add the following code to this file:
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::{Context, Entity, Result, TcpTransport, TrustEveryonePolicy, Vault};
+use ockam::{Context, Profile, Result, TcpTransport, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -53,8 +53,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create(&ctx).await?;
 
-    // Create an Entity to represent Bob.
-    let mut bob = Entity::create(&ctx, &vault).await?;
+    // Create a Profile to represent Bob.
+    let mut bob = Profile::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
@@ -116,7 +116,7 @@ Add the following code to this file:
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
 use ockam::{route, Context, Result, TrustEveryonePolicy, Vault};
-use ockam::{Entity, TcpTransport, TCP};
+use ockam::{Profile, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -126,8 +126,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create(&ctx).await?;
 
-    // Create an Entity to represent Alice.
-    let mut alice = Entity::create(&ctx, &vault).await?;
+    // Create a Profile to represent Alice.
+    let mut alice = Profile::create(&ctx, &vault).await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let r = route![(TCP, "localhost:3000"), (TCP, "localhost:4000"), "bob_listener"];

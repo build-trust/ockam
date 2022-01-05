@@ -1,19 +1,19 @@
-use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Profile, Result, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice and Bob.
     let vault = Vault::create(&ctx).await?;
 
-    // Create an Entity to represent Bob.
-    let mut bob = Entity::create(&ctx, &vault).await?;
+    // Create a Profile to represent Bob.
+    let mut bob = Profile::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
     bob.create_secure_channel_listener("bob", TrustEveryonePolicy).await?;
 
     // Create an entity to represent Alice.
-    let mut alice = Entity::create(&ctx, &vault).await?;
+    let mut alice = Profile::create(&ctx, &vault).await?;
 
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
