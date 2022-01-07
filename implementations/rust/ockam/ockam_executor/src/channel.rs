@@ -12,16 +12,19 @@ use ockam_core::compat::sync::Arc;
 pub type QueueN<T, const N: usize> = MpMcQueue<T, N>;
 pub type Queue<T> = QueueN<T, 16>;
 
-pub fn channel<T>(length: usize) -> (Sender<T>, Receiver<T>) {
+/// At present all channels are statically allocated with a fixed size
+/// of `16`.
+///
+/// This means that the `length` parameter is not currently used and
+/// exists purely for compatibility with `tokio::sync::mpsc::channel`
+pub fn channel<T>(_length: usize) -> (Sender<T>, Receiver<T>) {
     let queue = Queue::new();
-    channel_with_queue(length, queue)
+    channel_with_queue(queue)
 }
 
-fn channel_with_queue<T>(length: usize, queue: Queue<T>) -> (Sender<T>, Receiver<T>) {
+fn channel_with_queue<T>(queue: Queue<T>) -> (Sender<T>, Receiver<T>) {
     let inner = Arc::new(Inner {
-        _length: length,
         queue,
-        item_count: AtomicUsize::new(0),
         wake_sender: AtomicWaker::new(),
         wake_receiver: AtomicWaker::new(),
         sender_count: AtomicUsize::new(1),
@@ -33,12 +36,6 @@ fn channel_with_queue<T>(length: usize, queue: Queue<T>) -> (Sender<T>, Receiver
 
 /// Inner
 struct Inner<T> {
-    /// Logical length of the underlying queue
-    _length: usize,
-
-    /// Number of items in queue
-    item_count: AtomicUsize,
-
     /// Shared instance of the underlying queue
     queue: Queue<T>,
 
@@ -57,16 +54,10 @@ struct Inner<T> {
     is_sender_closed: AtomicBool,
 }
 
-impl<T> Inner<T> {
-    fn _len(&self) -> usize {
-        self._length
-    }
-}
-
 /// Sender
 pub struct Sender<T>(Arc<Inner<T>>);
 
-impl<T: core::fmt::Debug> Sender<T> {
+impl<T> Sender<T> {
     pub async fn send(&self, value: T) -> Result<(), error::SendError<T>> {
         SendFuture {
             inner: &self.0,
@@ -113,10 +104,7 @@ pub struct SendFuture<'a, T> {
     value: Option<T>,
 }
 
-impl<'a, T> Future for SendFuture<'a, T>
-where
-    T: core::fmt::Debug,
-{
+impl<'a, T> Future for SendFuture<'a, T> {
     type Output = Result<(), error::SendError<T>>;
 
     fn poll(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
@@ -125,7 +113,6 @@ where
             Some(value) => {
                 match self.inner.queue.enqueue(value) {
                     Ok(()) => {
-                        self.inner.item_count.fetch_add(1, Ordering::Relaxed);
                         self.inner.wake_receiver.wake();
                         Poll::Ready(Ok(()))
                     }
@@ -151,7 +138,7 @@ impl<'a, T> Unpin for SendFuture<'a, T> {}
 /// Receiver
 pub struct Receiver<T>(Arc<Inner<T>>);
 
-impl<T: core::fmt::Debug> Receiver<T> {
+impl<T> Receiver<T> {
     pub async fn recv(&mut self) -> Option<T> {
         ReceiveFuture { inner: &self.0 }.await
     }
@@ -171,16 +158,12 @@ pub struct ReceiveFuture<'a, T> {
     inner: &'a Inner<T>,
 }
 
-impl<'a, T> Future for ReceiveFuture<'a, T>
-where
-    T: core::fmt::Debug,
-{
+impl<'a, T> Future for ReceiveFuture<'a, T> {
     type Output = Option<T>;
 
     fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
         match self.inner.queue.dequeue() {
             Some(value) => {
-                self.inner.item_count.fetch_sub(1, Ordering::Relaxed);
                 self.inner.wake_sender.wake();
                 Poll::Ready(Some(value))
             }
