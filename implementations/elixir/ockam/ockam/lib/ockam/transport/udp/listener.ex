@@ -54,9 +54,7 @@ defmodule Ockam.Transport.UDP.Listener do
       handle_transport_message(listener, message)
     end
 
-    with :ok <- Router.set_message_handler(UDPAddress.type(), handler) do
-      :ok
-    end
+    Router.set_message_handler(UDPAddress.type(), handler)
   end
 
   defp handle_transport_message(listener, message) do

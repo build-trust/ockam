@@ -89,7 +89,7 @@ defmodule Ockam.Router do
   end
 
   defp apply_handler(handler, message) when is_function(handler, 1) do
-    apply(handler, [message])
+    handler.(message)
   end
 
   defp apply_handler({m, f, a}, message) when is_atom(m) and is_atom(f) and is_list(a) do

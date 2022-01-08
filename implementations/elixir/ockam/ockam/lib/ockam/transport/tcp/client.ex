@@ -122,9 +122,8 @@ defmodule Ockam.Transport.TCP.Client do
   defp encode_and_send_over_tcp(message, state) do
     forwarded_message = Message.forward(message)
 
-    with {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, forwarded_message),
-         :ok <- send_over_tcp(encoded_message, state) do
-      :ok
+    with {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, forwarded_message) do
+      send_over_tcp(encoded_message, state)
     end
   end
 
