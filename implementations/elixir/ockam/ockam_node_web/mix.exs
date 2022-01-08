@@ -52,7 +52,7 @@ defmodule Ockam.Node.Web.MixProject do
       {:jason, "~> 1.2"},
       {:ockam, path: "../ockam"},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
-      {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
     ]
   end

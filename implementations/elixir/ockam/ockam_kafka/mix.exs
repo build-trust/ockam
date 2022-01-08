@@ -35,7 +35,7 @@ defmodule OckamKafka.MixProject do
        git: "https://github.com/hairyhum/brod.git", branch: "kpro-connection-timeout-3.15"},
       {:snappyer, "~> 1.2", override: true},
       # {:brod, "~> 3.14.0"},
-      {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
     ]
   end
