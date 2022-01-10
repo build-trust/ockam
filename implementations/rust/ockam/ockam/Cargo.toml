@@ -102,7 +102,7 @@ ockam_channel = { path = "../ockam_channel", version = "^0.39.0", default_featur
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.37.1-dev", optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.34.1-dev", default_features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.35.1-dev", default_features = false, optional = true }
-ockam_entity = { path = "../ockam_entity", version = "^0.32.1-dev", default_features = false }
+ockam_entity = { path = "../ockam_entity", version = "^0.33.0", default_features = false }
 arrayref = "0.3"
 bls12_381_plus = { version = "0.5", default-features = false, optional = true }
 signature_core = { version = "^0.32.1-dev", path = "../signature_core", optional = true }
