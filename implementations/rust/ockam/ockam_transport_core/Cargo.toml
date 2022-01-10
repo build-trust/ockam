@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_core"
-version = "0.16.1-dev"
+version = "0.17.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
