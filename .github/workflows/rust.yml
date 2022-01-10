@@ -179,7 +179,7 @@ jobs:
           RUSTFLAGS='-Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
-  nightly:
+  check_nightly:
     name: Rust - Nightly Check
     runs-on: ubuntu-20.04
     container:
@@ -193,6 +193,36 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: rustup default nightly
       - run: RUSTFLAGS='-Dwarnings' cargo check
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
+
+  build_nightly:
+    name: Rust - Nightly Build
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - run: rustup default nightly
       - run: cd implementations/rust && ../../gradlew build
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
+
+  test_nightly:
+    name: Rust - Nightly Test
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/gradle_cache
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - run: rustup default nightly
       - run: cd implementations/rust && ../../gradlew test
       - uses: ./.github/actions/cargo_target_dir_pre_cache
