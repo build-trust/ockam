@@ -1513,7 +1513,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_sync_core"
-version = "0.34.1-dev"
+version = "0.35.0"
 dependencies = [
  "ockam_core",
  "ockam_macros",
