@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Vault updates
 - Change uses of `ockam_vault_core::Foo` to use `ockam_core::vault::Foo` across crates
+- Improve formatting of `Cargo.toml`s  and add `rust-version` 1.56.0
 
 ## v0.32.0 - 2021-12-06
 
