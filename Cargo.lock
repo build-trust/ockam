@@ -2105,7 +2105,7 @@ dependencies = [
 
 [[package]]
 name = "signature_bls"
-version = "0.30.1-dev"
+version = "0.31.0"
 dependencies = [
  "bls12_381_plus",
  "ff",
