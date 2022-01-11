@@ -9,7 +9,7 @@ categories = [
 ]
 description = """Ockam Vault test suite.
 """
-version = "0.32.0"
+version = "0.32.1-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"

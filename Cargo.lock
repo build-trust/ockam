@@ -1530,7 +1530,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_test_suite"
-version = "0.32.0"
+version = "0.32.1-dev"
 dependencies = [
  "arrayref",
  "ockam_core",
