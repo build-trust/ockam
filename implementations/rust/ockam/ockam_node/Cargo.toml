@@ -44,7 +44,7 @@ dump_internals = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.43.1-dev", default_features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.4.0-dev" }
+ockam_macros = { path = "../ockam_macros", version = "^0.4.1-dev"}
 tokio = { version = "1.8", default-features = false, optional = true, features = [
     "sync",
     "time",
