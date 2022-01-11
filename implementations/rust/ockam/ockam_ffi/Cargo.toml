@@ -1,6 +1,6 @@
 [package]
 name = "ockam-ffi"
-version = "0.32.1"
+version = "0.32.2-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
