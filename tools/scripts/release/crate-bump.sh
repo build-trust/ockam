@@ -26,13 +26,14 @@ for word in ${crate_array[@]}; do
     specified_crate_version[$key]=$value
 done
 
-for to_update in ${updated_crates[@]}; do
+for crate in ${updated_crates[@]}; do
     version=$RELEASE_VERSION
+    name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
 
-    if [[ ! -z "${specified_crate_version[$to_update]}" ]]; then
-        echo "bumping $to_update as ${specified_crate_version[$to_update]}"
-        version="${specified_crate_version[$to_update]}"
+    if [[ ! -z "${specified_crate_version[$crate]}" ]]; then
+        echo "bumping $crate as ${specified_crate_version[$crate]}"
+        version="${specified_crate_version[$crate]}"
     fi
 
-    echo y | cargo release $version --no-push --no-publish --no-tag --no-dev-version --package $to_update --execute
+    echo y | cargo release $version --no-push --no-publish --no-tag --no-dev-version --package $name --execute
 done
