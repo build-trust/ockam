@@ -28,8 +28,9 @@ done
 for crate in $(ls "implementations/rust/ockam"); do
     # Add crate to excluded crate
     if [[ -z ${bumped_crates[$crate]} ]]; then
-        echo "Excluding $crate from publishing"
-        exclude_string="$exclude_string --exclude $crate";
+        name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
+        echo "Excluding $name from publishing"
+        exclude_string="$exclude_string --exclude $name";
     fi
 done
 
