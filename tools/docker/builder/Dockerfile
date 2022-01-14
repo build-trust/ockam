@@ -53,7 +53,7 @@ RUN set -xe; \
 # Setup rust
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
-      gcc gcc-multilib libssl-dev pkg-config procps qemu-system-arm; \
+      gcc gcc-multilib libssl-dev pkg-config procps qemu-system-arm libdbus-1-dev; \
     curl --proto '=https' --tlsv1.2 -sSOL \
       "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/x86_64-unknown-linux-gnu/rustup-init"; \
     echo "${RUSTUP_INIT_SHA256}  rustup-init" | sha256sum -c -; \
