@@ -23,6 +23,15 @@ impl AddressSet {
     pub fn first(&self) -> Address {
         self.0.first().cloned().unwrap()
     }
+
+    /// Check if an address is contained in this set
+    pub fn contains(&self, a2: &Address) -> bool {
+        self.0
+            .iter()
+            .find(|a1| a1 == &a2)
+            .map(|_| true)
+            .unwrap_or(false)
+    }
 }
 
 impl IntoIterator for AddressSet {
