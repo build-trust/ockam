@@ -22,6 +22,7 @@ pub enum OckamError {
     SecureChannelVerificationFailed,
     SecureChannelCannotBeAuthenticated,
     NoSuchProtocol,
+    SystemAddressNotBound,
 }
 
 impl OckamError {

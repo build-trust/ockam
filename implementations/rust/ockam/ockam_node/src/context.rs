@@ -12,6 +12,7 @@ use crate::{
     router::SenderPair,
     Cancel, NodeMessage, ShutdownType,
 };
+use crate::{NodeError, Reason};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
@@ -320,6 +321,24 @@ impl Context {
             .await
             .ok_or(Error::InternalIOFailure)?
             .map(|_| ())?)
+    }
+
+    /// Send a message to another address associated with this worker
+    ///
+    /// This function is a simple wrapper around `Self::send()` which
+    /// validates the address given to it and will reject invalid
+    /// addresses.
+    pub async fn send_to_self<A, M>(&self, from: A, addr: A, msg: M) -> Result<()>
+    where
+        A: Into<Address>,
+        M: Message + Send + 'static,
+    {
+        let addr = addr.into();
+        if self.address.contains(&addr) {
+            self.send_from_address(addr, msg, from.into()).await
+        } else {
+            Err(NodeError::Rejected(Reason::InvalidAddress).into())
+        }
     }
 
     /// Send a message via a fully qualified route

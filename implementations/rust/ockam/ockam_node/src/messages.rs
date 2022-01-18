@@ -174,6 +174,8 @@ pub enum Reason {
     NodeShutdown,
     /// Rejected because the worker is currently shutting down
     WorkerShutdown,
+    /// Message was addressed to an invalid address
+    InvalidAddress,
 }
 
 /// Specify the type of node shutdown
