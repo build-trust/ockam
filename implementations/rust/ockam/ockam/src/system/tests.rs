@@ -1,6 +1,7 @@
 use crate::{Context, SystemHandler, WorkerSystem};
 use ockam_core::{Address, Message, Result, Routed, Worker};
 
+#[derive(Default)]
 struct TestWorker {
     system: WorkerSystem<Self>,
 }
@@ -29,7 +30,7 @@ impl Worker for TestWorker {
     type Message = ();
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.system.setup(ctx, vec![MessageHandlerA]).await
+        self.system.attach(ctx, MessageHandlerA).await
     }
 
     async fn handle_message(
@@ -43,7 +44,10 @@ impl Worker for TestWorker {
 
 #[crate::test]
 async fn send_messages(ctx: &mut Context) -> Result<()> {
-    
-    
+    let w = TestWorker::default();
+
+    // Initialise the worker and worker system
+    ctx.start_worker("test.worker", w).await?;
+
     ctx.stop().await
 }
