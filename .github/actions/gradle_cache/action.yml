@@ -5,10 +5,10 @@ runs:
   steps:
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
-        path: ~/.gradle/wrapper/dists
-        key: gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
+        path: /root/.gradle/wrapper/dists
+        key: gradle-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
         restore-keys: |
-          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
-          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-${{ github.job }}-
-          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ github.workflow }}-
-          gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-
+          gradle-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
+          gradle-${{ github.workflow }}-${{ github.job }}-
+          gradle-${{ github.workflow }}-
+          gradle-
