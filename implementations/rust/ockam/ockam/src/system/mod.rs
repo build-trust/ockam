@@ -26,18 +26,22 @@ pub struct WorkerSystem<W: Worker> {
     map: BTreeMap<Address, Box<dyn SystemHandler<W::Context, W::Message> + Send + 'static>>,
 }
 
-impl<W: Worker> WorkerSystem<W> {
-    /// Setup this worker system state
-    pub async fn setup<I>(&mut self, ctx: &mut W::Context, iter: I) -> Result<()>
-    where
-        I: IntoIterator + Send + 'static,
-        <I as IntoIterator>::IntoIter: Send,
-        I::Item: SystemHandler<W::Context, W::Message> + Send + 'static,
-    {
-        for mut handler in iter.into_iter() {
-            let addr = handler.initialize(ctx).await?;
-            self.map.insert(addr, Box::new(handler));
+impl<W: Worker> Default for WorkerSystem<W> {
+    fn default() -> Self {
+        Self {
+            map: BTreeMap::new(),
         }
+    }
+}
+
+impl<W: Worker> WorkerSystem<W> {
+    /// Attach a system handler to this system
+    pub async fn attach<H>(&mut self, ctx: &mut W::Context, mut handler: H) -> Result<()>
+    where
+        H: SystemHandler<W::Context, W::Message> + Send + 'static,
+    {
+        let addr = handler.initialize(ctx).await?;
+        self.map.insert(addr, Box::new(handler));
 
         Ok(())
     }
