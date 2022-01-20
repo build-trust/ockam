@@ -12,7 +12,7 @@ async fn main(ctx: Context) -> Result<()> {
     //   3. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
 
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
     let mut e = Profile::create(&ctx, &vault).await?;
     e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
         .await?;

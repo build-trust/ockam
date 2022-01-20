@@ -1,26 +1,22 @@
-use crate::{
-    AuthenticationProof, Changes, Contact, Identity, Lease, ProfileChangeEvent,
-    ProfileChannelListener, ProfileIdentifier, ProfileState, SecureChannelWorker, TrustPolicy, TTL,
-};
+use crate::{AuthenticationProof, Changes, Contact, Identity, Lease, ProfileChangeEvent, ProfileChannelListener, ProfileIdentifier, ProfileState, ProfileVault, SecureChannelWorker, TrustPolicy, TTL};
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
-use ockam_vault_sync_core::VaultSync;
 use tokio::sync::RwLock;
 
 #[derive(AsyncTryClone)]
-pub struct Profile {
+pub struct Profile<V: ProfileVault> {
     ctx: Context,
-    state: Arc<RwLock<ProfileState>>,
+    state: Arc<RwLock<ProfileState<V>>>,
 }
 
-impl Profile {
-    pub async fn create(ctx: &Context, vault_address: &Address) -> Result<Self> {
+impl<V: ProfileVault> Profile<V> {
+    pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random(0)).await?;
         let state =
-            ProfileState::create(VaultSync::create_with_worker(ctx, vault_address).await?).await?;
+            ProfileState::create(vault.async_try_clone().await?).await?;
         Ok(Self {
             ctx: child_ctx,
             state: Arc::new(RwLock::new(state)),
@@ -29,7 +25,7 @@ impl Profile {
 }
 
 #[async_trait]
-impl Identity for Profile {
+impl<V: ProfileVault> Identity for Profile<V> {
     async fn identifier(&self) -> Result<ProfileIdentifier> {
         self.state.read().await.identifier().await
     }
@@ -154,7 +150,7 @@ impl Identity for Profile {
     }
 }
 
-impl Profile {
+impl<V: ProfileVault> Profile<V> {
     pub async fn create_secure_channel_listener(
         &mut self,
         address: impl Into<Address>,

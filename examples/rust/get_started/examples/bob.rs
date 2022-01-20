@@ -24,7 +24,7 @@ async fn main(ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
 
     // Create a Profile to represent Bob.
     let mut bob = Profile::create(&ctx, &vault).await?;

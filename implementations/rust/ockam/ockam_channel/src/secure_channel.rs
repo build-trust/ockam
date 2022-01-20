@@ -34,17 +34,20 @@ pub struct SecureChannel;
 impl SecureChannel {
     /// Create and start channel listener with given address using noise xx and software vault.
     #[cfg(all(feature = "software_vault", feature = "noise_xx"))]
-    pub async fn create_listener<A: Into<Address>>(
+    pub async fn create_listener<A: Into<Address>, V: SecureChannelVault>(
         ctx: &Context,
         address: A,
-        vault: &Address,
+        vault: &V,
     ) -> Result<()> {
-        use ockam_core::AsyncTryClone;
         use ockam_key_exchange_xx::XXNewKeyExchanger;
-        use ockam_vault_sync_core::VaultSync;
-        let vault = VaultSync::create_with_worker(ctx, vault).await?;
         let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
-        Self::create_listener_extended(ctx, address, new_key_exchanger, vault).await
+        Self::create_listener_extended(
+            ctx,
+            address,
+            new_key_exchanger,
+            vault.async_try_clone().await?,
+        )
+        .await
     }
 
     /// Create and start channel listener with given address.
@@ -68,23 +71,20 @@ impl SecureChannel {
 
     /// Create initiator channel with given route to a remote channel listener using noise xx and software vault.
     #[cfg(all(feature = "software_vault", feature = "noise_xx"))]
-    pub async fn create(
+    pub async fn create<V: SecureChannelVault>(
         ctx: &Context,
         route: impl Into<Route>,
-        vault: &Address,
+        vault: &V,
     ) -> Result<SecureChannelInfo> {
-        use ockam_core::AsyncTryClone;
         use ockam_key_exchange_core::NewKeyExchanger;
         use ockam_key_exchange_xx::XXNewKeyExchanger;
-        use ockam_vault_sync_core::VaultSync;
-        let vault = VaultSync::create_with_worker(ctx, vault).await?;
         let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
         Self::create_extended(
             ctx,
             route,
             None,
             new_key_exchanger.initiator().await?,
-            vault,
+            vault.async_try_clone().await?,
         )
         .await
     }

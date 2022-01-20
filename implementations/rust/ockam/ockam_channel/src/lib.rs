@@ -44,18 +44,17 @@ mod tests {
     use ockam_key_exchange_core::NewKeyExchanger;
     use ockam_key_exchange_xx::XXNewKeyExchanger;
     use ockam_node::Context;
-    use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultSync;
+    use ockam_vault_sync_core::Vault;
 
     #[ockam_macros::test]
     async fn simplest_channel(ctx: &mut Context) -> Result<()> {
-        let vault_sync = VaultSync::create(ctx, SoftwareVault::default()).await?;
-        let new_key_exchanger = XXNewKeyExchanger::new(vault_sync.async_try_clone().await?);
+        let vault = Vault::create();
+        let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
         SecureChannel::create_listener_extended(
             ctx,
             "secure_channel_listener".to_string(),
             new_key_exchanger.async_try_clone().await?,
-            vault_sync.async_try_clone().await?,
+            vault.async_try_clone().await?,
         )
         .await?;
         let initiator = SecureChannel::create_extended(
@@ -63,7 +62,7 @@ mod tests {
             Route::new().append("secure_channel_listener"),
             None,
             new_key_exchanger.initiator().await?,
-            vault_sync,
+            vault,
         )
         .await?;
 

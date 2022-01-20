@@ -2,8 +2,7 @@ use crate::service::echoer::ECHOER_SERVICE_NAME;
 use crate::AppError;
 use log::error;
 use ockam::{
-    route, Context, Identity, Profile, Result, SoftwareVault, TcpTransport, TrustEveryonePolicy,
-    VaultSync, TCP,
+    route, Context, Identity, Profile, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
 
@@ -19,9 +18,8 @@ impl ChannelCommand {
     ) -> Result<(), AppError> {
         let _tcp = TcpTransport::create(ctx).await?;
 
-        let mut vault = VaultSync::create(ctx, SoftwareVault::default()).await?;
-        let vault_address = vault.address();
-        let mut alice = Profile::create(ctx, &vault_address).await?;
+        let mut vault = Vault::create();
+        let mut alice = Profile::create(ctx, &vault).await?;
 
         let secret_key = std::fs::read_to_string(secret_key_path)?;
 

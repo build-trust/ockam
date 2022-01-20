@@ -219,8 +219,8 @@ mod test {
 
     #[ockam_macros::test]
     async fn async_tests(ctx: &mut Context) -> Result<()> {
-        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create();
+        let bob_vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &alice_vault).await?;
         let mut bob = Profile::create(ctx, &bob_vault).await?;

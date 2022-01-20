@@ -393,16 +393,13 @@ mod tests {
         CURVE25519_SECRET_LENGTH,
     };
     use ockam_key_exchange_core::KeyExchanger;
-    use ockam_vault::SoftwareVault;
-    use ockam_vault_sync_core::VaultSync;
+    use ockam_vault_sync_core::Vault;
 
     #[test]
     fn prologue() {
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let mut vault = Vault::create();
 
             let exp_h = [
                 93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79,
@@ -445,9 +442,7 @@ mod tests {
 
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let mut vault = Vault::create();
 
             mock_handshake(
                 &mut vault,
@@ -538,9 +533,7 @@ mod tests {
 
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let mut vault = Vault::create();
 
             mock_handshake(
                 &mut vault,
@@ -580,9 +573,7 @@ mod tests {
 
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = VaultSync::create(&ctx, SoftwareVault::default())
-                .await
-                .unwrap();
+            let mut vault = Vault::create();
 
             let initiator = mock_prologue(&mut vault, INIT_STATIC, INIT_EPH).await;
             let responder = mock_prologue(&mut vault, RESP_STATIC, RESP_EPH).await;

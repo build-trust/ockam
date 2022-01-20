@@ -14,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
     // over TCP at "127.0.0.1:4000" and its secure channel listener is
     // at address: "secure_channel_listener".
 
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
     let mut e = Profile::create(&ctx, &vault).await?;
     let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;

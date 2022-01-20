@@ -13,7 +13,7 @@ async fn main(ctx: Context) -> Result<()> {
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
     // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
     let mut e = Profile::create(&ctx, &vault).await?;
 
     // Expect second command line argument to be the Outlet node forwarder address

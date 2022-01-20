@@ -12,10 +12,9 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::vault::{SecretPersistence, SecretType, SecretVault, CURVE25519_SECRET_LENGTH};
-use ockam_core::{allow, deny, AsyncTryClone, Result, Route};
-use ockam_vault::{KeyIdVault, PublicKey, Secret, SecretAttributes};
-use ockam_vault_sync_core::VaultSync;
+use ockam_core::vault::{CURVE25519_SECRET_LENGTH, SecretPersistence, SecretType};
+use ockam_core::{allow, deny, Result, Route};
+use ockam_vault::{PublicKey, Secret, SecretAttributes};
 
 cfg_if! {
     if #[cfg(feature = "credentials")] {
@@ -25,11 +24,11 @@ cfg_if! {
 }
 
 /// Profile implementation
-pub struct ProfileState {
+pub struct ProfileState<V: ProfileVault> {
     id: ProfileIdentifier,
     change_history: ProfileChangeHistory,
     contacts: Contacts,
-    pub(crate) vault: VaultSync,
+    pub(crate) vault: V,
     #[cfg(feature = "credentials")]
     pub(crate) rand_msg: Message,
     #[cfg(feature = "credentials")]
@@ -37,7 +36,9 @@ pub struct ProfileState {
     lease: Option<Lease>,
 }
 
-impl ProfileState {
+pub struct ProfileStateConst;
+
+impl ProfileStateConst {
     /// Sha256 of that value is used as previous event id for first event in a [`Profile`]
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
     /// Label for [`Profile`] update key
@@ -49,13 +50,13 @@ impl ProfileState {
     pub const CURRENT_CHANGE_VERSION: u8 = 1;
 }
 
-impl ProfileState {
+impl<V: ProfileVault> ProfileState<V> {
     /// Profile constructor
     pub fn new(
         identifier: ProfileIdentifier,
         change_events: Changes,
         contacts: Contacts,
-        vault: VaultSync,
+        vault: V,
         rng: impl RngCore + CryptoRng + Clone,
     ) -> Self {
         // Avoid warning
@@ -78,11 +79,11 @@ impl ProfileState {
     }
 
     /// Create ProfileState
-    pub(crate) async fn create(mut vault: VaultSync) -> Result<Self> {
+    pub(crate) async fn create(mut vault: V) -> Result<Self> {
         let initial_event_id = EventIdentifier::initial(&mut vault).await;
 
         let key_attribs = KeyAttributes::new(
-            ProfileState::ROOT_LABEL.to_string(),
+            ProfileStateConst::ROOT_LABEL.to_string(),
             MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
                 SecretType::Ed25519,
                 SecretPersistence::Persistent,
@@ -117,7 +118,7 @@ impl ProfileState {
 
     pub(crate) async fn get_secret_key_from_event(
         event: &ProfileChangeEvent,
-        vault: &mut impl ProfileVault,
+        vault: &mut V,
     ) -> Result<Secret> {
         let public_key = event.change_block().change().public_key()?;
 
@@ -135,7 +136,7 @@ impl ProfileState {
     }
 }
 
-impl ProfileState {
+impl<V: ProfileVault> ProfileState<V> {
     pub async fn identifier(&self) -> Result<ProfileIdentifier> {
         Ok(self.id.clone())
     }
@@ -167,7 +168,7 @@ impl ProfileState {
     pub async fn rotate_root_secret_key(&mut self) -> Result<()> {
         let event = self
             .make_rotate_key_event(
-                KeyAttributes::default_with_label(ProfileState::ROOT_LABEL.to_string()),
+                KeyAttributes::default_with_label(ProfileStateConst::ROOT_LABEL.to_string()),
                 ProfileEventAttributes::new(),
             )
             .await?;
@@ -176,7 +177,7 @@ impl ProfileState {
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
     pub async fn get_root_secret_key(&self) -> Result<Secret> {
-        self.get_secret_key(ProfileState::ROOT_LABEL.to_string())
+        self.get_secret_key(ProfileStateConst::ROOT_LABEL.to_string())
             .await
     }
 
@@ -188,7 +189,7 @@ impl ProfileState {
     }
 
     pub async fn get_root_public_key(&self) -> Result<PublicKey> {
-        self.get_public_key(ProfileState::ROOT_LABEL.to_string())
+        self.get_public_key(ProfileStateConst::ROOT_LABEL.to_string())
             .await
     }
 
