@@ -293,8 +293,8 @@ In the above example, we created a mutually authenticated, end-to-end encrypted 
 (excluding comments).
 
 Ockam combines proven cryptographic building blocks into a set of reusable protocols for distributed
-applications to communicate security and privately. The above example only scratched the surface of what
-is possible with the tools that our included in the `ockam` Rust crate.
+applications to communicate securely and privately. The above example only scratched the surface of what
+is possible with the tools that are included in the `ockam` Rust crate.
 
 To learn more, please see our [step-by-step guide](../../guides/rust#step-by-step).
 
