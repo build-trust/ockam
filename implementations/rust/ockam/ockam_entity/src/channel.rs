@@ -64,8 +64,8 @@ mod test {
 
     #[ockam_macros::test]
     async fn test_channel(ctx: &mut Context) -> Result<()> {
-        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create();
+        let bob_vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &alice_vault).await?;
         let mut bob = Profile::create(ctx, &bob_vault).await?;
@@ -107,7 +107,7 @@ mod test {
 
     #[ockam_macros::test]
     async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-        let vault = Vault::create(ctx).await?;
+        let vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &vault).await?;
         let mut bob = Profile::create(ctx, &vault).await?;
@@ -152,7 +152,7 @@ mod test {
 
     #[ockam_macros::test]
     async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-        let vault = Vault::create(ctx).await?;
+        let vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &vault).await?;
         let mut bob = Profile::create(ctx, &vault).await?;
@@ -207,7 +207,7 @@ mod test {
 
     #[ockam_macros::test]
     async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
-        let vault = Vault::create(ctx).await?;
+        let vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &vault).await?;
         let mut bob = Profile::create(ctx, &vault).await?;
@@ -280,7 +280,7 @@ mod test {
             received_count: received_count.clone(),
         };
 
-        let vault = Vault::create(ctx).await?;
+        let vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &vault).await?;
         let mut bob = Profile::create(ctx, &vault).await?;
@@ -316,7 +316,7 @@ mod test {
             received_count: received_count.clone(),
         };
 
-        let vault = Vault::create(ctx).await?;
+        let vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &vault).await?;
         let mut bob = Profile::create(ctx, &vault).await?;

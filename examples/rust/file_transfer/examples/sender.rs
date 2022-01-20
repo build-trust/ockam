@@ -35,7 +35,7 @@ async fn main(ctx: Context) -> Result<()> {
     TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Sender.
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
 
     // Create a Profile to represent Sender.
     let mut sender = Profile::create(&ctx, &vault).await?;

@@ -4,7 +4,7 @@ use ockam_node::Context;
 use ockam_vault_sync_core::Vault;
 
 async fn test(ctx: Context) -> Result<()> {
-    let vault = Vault::create(&ctx).await.expect("failed to create vault");
+    let vault = Vault::create();
 
     let _bob = Profile::create(&ctx, &vault).await?;
 

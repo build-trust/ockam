@@ -1,15 +1,9 @@
 use crate::change_history::ProfileChangeHistory;
 use crate::EntityError::InvalidInternalState;
-use crate::{
-    ChangeBlock, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange,
-    ProfileChangeEvent, ProfileChangeType, ProfileEventAttributes, ProfileState, Signature,
-    SignatureType,
-};
+use crate::{ChangeBlock, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange, ProfileChangeEvent, ProfileChangeType, ProfileEventAttributes, ProfileState, ProfileStateConst, ProfileVault, Signature, SignatureType};
 use ockam_core::vault::Signature as OckamVaultSignature;
-use ockam_core::vault::{Hasher, SecretVault, Signer};
 use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{Encodable, Result};
-use ockam_vault_sync_core::VaultSync;
 use serde::{Deserialize, Serialize};
 
 /// Key change data creation
@@ -68,11 +62,11 @@ impl CreateKeyChange {
     }
 }
 
-impl ProfileState {
+impl<V: ProfileVault> ProfileState<V> {
     async fn generate_key_if_needed(
         secret: Option<&Secret>,
         key_attributes: &KeyAttributes,
-        vault: &mut VaultSync,
+        vault: &mut V,
     ) -> Result<Secret> {
         if let Some(s) = secret {
             Ok(s.clone())
@@ -90,7 +84,7 @@ impl ProfileState {
         key_attributes: KeyAttributes,
         attributes: ProfileEventAttributes,
         root_key: Option<&Secret>,
-        vault: &mut VaultSync,
+        vault: &mut V,
     ) -> Result<ProfileChangeEvent> {
         let secret_key = Self::generate_key_if_needed(secret, &key_attributes, vault).await?;
 
@@ -103,7 +97,7 @@ impl ProfileState {
         let change = CreateKeyChange::new(data, self_signature);
 
         let profile_change = ProfileChange::new(
-            ProfileState::CURRENT_CHANGE_VERSION,
+            ProfileStateConst::CURRENT_CHANGE_VERSION,
             attributes,
             ProfileChangeType::CreateKey(change),
         );

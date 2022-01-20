@@ -3,7 +3,7 @@ use ockam::{route, Context, Profile, Result, TrustEveryonePolicy, Vault};
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice and Bob.
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
 
     // Create a Profile to represent Bob.
     let mut bob = Profile::create(&ctx, &vault).await?;

@@ -9,7 +9,7 @@ async fn main(ctx: Context) -> Result<()> {
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
 
     // Create a vault
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
 
     // Create a secure channel listener at address "secure_channel_listener"
     SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;

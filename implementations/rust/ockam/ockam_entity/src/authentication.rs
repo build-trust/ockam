@@ -65,8 +65,8 @@ mod test {
     }
 
     async fn test_auth_use_case(ctx: &Context) -> Result<()> {
-        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create();
+        let bob_vault = Vault::create();
 
         // Alice and Bob are distinct Entities.
         let mut alice = Profile::create(ctx, &alice_vault).await?;
@@ -113,8 +113,8 @@ mod test {
     }
 
     async fn test_key_rotation(ctx: &Context) -> Result<()> {
-        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create();
+        let bob_vault = Vault::create();
 
         // Alice and Bob are distinct Entities.
         let mut alice = Profile::create(ctx, &alice_vault).await?;
@@ -141,8 +141,8 @@ mod test {
     }
 
     async fn test_update_contact_and_reprove(ctx: &Context) -> Result<()> {
-        let alice_vault = Vault::create(ctx).await.expect("failed to create vault");
-        let bob_vault = Vault::create(ctx).await.expect("failed to create vault");
+        let alice_vault = Vault::create();
+        let bob_vault = Vault::create();
 
         let mut alice = Profile::create(ctx, &alice_vault).await?;
         let mut bob = Profile::create(ctx, &bob_vault).await?;
