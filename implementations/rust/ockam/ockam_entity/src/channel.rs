@@ -280,10 +280,10 @@ mod test {
             received_count: received_count.clone(),
         };
 
-        let vault = Vault::create(&ctx).await?;
+        let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(&ctx, &vault).await?;
-        let mut bob = Entity::create(&ctx, &vault).await?;
+        let mut alice = Entity::create(ctx, &vault).await?;
+        let mut bob = Entity::create(ctx, &vault).await?;
 
         let access_control = EntityAccessControlBuilder::new_with_id(alice.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)
@@ -316,10 +316,10 @@ mod test {
             received_count: received_count.clone(),
         };
 
-        let vault = Vault::create(&ctx).await?;
+        let vault = Vault::create(ctx).await?;
 
-        let mut alice = Entity::create(&ctx, &vault).await?;
-        let mut bob = Entity::create(&ctx, &vault).await?;
+        let mut alice = Entity::create(ctx, &vault).await?;
+        let mut bob = Entity::create(ctx, &vault).await?;
 
         let access_control = EntityAccessControlBuilder::new_with_id(bob.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)

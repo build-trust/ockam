@@ -1,26 +1,44 @@
+use crate::command::channel::ChannelCommand;
+use crate::command::channel_listen::ChannelListenCommand;
 use crate::command::inlet::InletCommand;
 use crate::command::outlet::OutletCommand;
-use crate::config::OckamCommand::{Inlet, Outlet};
 use crate::AppError;
 use clap::Parser;
-use log::{debug, info};
+use log::error;
 use ockam::Context;
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[clap(about, version, author)]
 struct Args {
-    #[clap(short, long, default_value = "ockam.toml")]
-    config: String,
+    #[clap(long, help = "Path to file containing a SSH private key")]
+    ssh_private_key: Option<String>,
 
-    #[clap(short, long, default_value = "ockam_secrets.toml")]
-    secrets: String,
+    #[clap(long, help = "Path to file containing a SSH public key")]
+    ssh_public_key: Option<String>,
 
     #[clap(subcommand)]
     command: OckamCommand,
 }
 
-#[derive(clap::Subcommand)]
+#[derive(Debug, clap::Subcommand)]
 enum OckamCommand {
+    ChannelListen {
+        #[clap(short, long)]
+        listen: String,
+
+        #[clap(short, long, default_value = "secure_channel")]
+        name: String,
+    },
+    Channel {
+        #[clap(short, long)]
+        channel: String,
+
+        #[clap(short, long, default_value = "secure_channel")]
+        name: String,
+
+        #[clap(short, long, default_value = "Hello, Ockam!")]
+        message: String,
+    },
     Outlet {
         #[clap(short, long)]
         listen: String,
@@ -43,39 +61,54 @@ enum OckamCommand {
     },
 }
 
-const OCKAM_ENV_PREFIX: &str = "OCKAM";
-
 pub struct AppConfig {}
 
 impl AppConfig {
-    pub async fn evaluate(ctx: &Context) -> Result<(), AppError> {
+    pub async fn evaluate(ctx: &mut Context) -> Result<(), AppError> {
+        let mut args: Args = Args::parse();
         let mut config = config::Config::default();
+        let config = config
+            .merge(config::Environment::with_prefix("OCKAM"))
+            .unwrap();
 
-        let args = Args::parse();
-
-        if config.merge(config::File::with_name(&args.config)).is_ok() {
-            info!("Loaded settings from {}.", args.config)
-        } else {
-            debug!("No config file present.")
+        if args.ssh_private_key.is_none() {
+            if let Ok(private_key) = config.get_str("ssh_private_key") {
+                args.ssh_private_key = Some(private_key);
+            }
         }
 
-        if config.merge(config::File::with_name(&args.secrets)).is_ok() {
-            info!("Loaded secrets from {}.", args.secrets)
-        } else {
-            debug!("No secrets file present.")
+        if args.ssh_public_key.is_none() {
+            if let Ok(public_key) = config.get_str("ssh_public_key") {
+                args.ssh_public_key = Some(public_key);
+            }
         }
-
-        config
-            .merge(config::Environment::with_prefix(OCKAM_ENV_PREFIX))
-            .ok();
 
         match &args.command {
-            Outlet {
+            OckamCommand::ChannelListen { listen, name } => {
+                if args.ssh_public_key.is_none() {
+                    error!("Secure Channel Listener requires a public key.");
+                    return Ok(());
+                }
+                ChannelListenCommand::run(ctx, args.ssh_public_key.unwrap(), listen, name).await
+            }
+            OckamCommand::Channel {
+                channel,
+                name,
+                message,
+            } => {
+                if args.ssh_private_key.is_none() {
+                    error!("Secure Channel requires a private key.");
+                    return Ok(());
+                }
+                ChannelCommand::run(ctx, args.ssh_private_key.unwrap(), channel, name, message)
+                    .await
+            }
+            OckamCommand::Outlet {
                 listen,
                 name,
                 target,
             } => OutletCommand::run(ctx, listen, name, target).await,
-            Inlet {
+            OckamCommand::Inlet {
                 listen,
                 outlet,
                 name_outlet: outlet_name,

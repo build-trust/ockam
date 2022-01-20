@@ -44,7 +44,7 @@ impl App {
             warn!("Failed to set Ctrl-C handler");
         }
 
-        AppConfig::evaluate(&ctx).await?;
+        AppConfig::evaluate(&mut ctx).await?;
 
         while !self.is_shutdown() {
             std::thread::sleep(Duration::from_secs(1))
