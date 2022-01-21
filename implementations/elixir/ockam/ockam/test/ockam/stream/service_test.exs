@@ -78,7 +78,7 @@ defmodule Ockam.Stream.Workers.Tests do
       assert {:ok, %{stream_name: stream_name}} =
                Ockam.Protocol.decode_payload(Ockam.Protocol.Stream.Create, :response, response)
 
-      assert "generated" <> _ = stream_name
+      assert "generated" <> _name = stream_name
     end
 
     test "stream creation is idempotent", %{service: service} do

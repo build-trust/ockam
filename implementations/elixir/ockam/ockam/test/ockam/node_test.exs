@@ -23,7 +23,7 @@ defmodule Ockam.Node.Tests do
     end
 
     test "uses prefix" do
-      assert "prefix" <> _ = Node.get_random_unregistered_address("prefix_")
+      assert "prefix" <> _name = Node.get_random_unregistered_address("prefix_")
     end
   end
 end

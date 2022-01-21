@@ -2,6 +2,14 @@ defmodule Ockam.Hub.Cleanup.Kafka.TopicCleanup do
   @moduledoc """
   Helper module to cleanup idle kafka topics
   """
+
+  require Record
+
+  Record.defrecord(
+    :kafka_message,
+    Record.extract(:kafka_message, from_lib: "kafka_protocol/include/kpro_public.hrl")
+  )
+
   @fetch_options %{
     max_wait_time: 1,
     min_bytes: 1,
@@ -54,7 +62,7 @@ defmodule Ockam.Hub.Cleanup.Kafka.TopicCleanup do
   def idle_messages?(messages, expired_time) do
     Enum.all?(messages, fn message ->
       case message do
-        {:kafka_message, _, _, _, _, ts, _} ->
+        kafka_message(ts: ts) ->
           ts < expired_time
 
         _other ->

@@ -8,8 +8,10 @@ defmodule Ockam.Tests do
   end
 
   def find_child(name) do
-    {_, pid, _, _} =
-      Ockam |> Supervisor.which_children() |> Enum.find(fn {t, _, _, _} -> t == name end)
+    {_id, pid, _type, _modules} =
+      Ockam
+      |> Supervisor.which_children()
+      |> Enum.find(fn {t, _child, _type, _modules} -> t == name end)
 
     pid
   end

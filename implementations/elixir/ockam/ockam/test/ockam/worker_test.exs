@@ -45,7 +45,7 @@ defmodule Ockam.Worker.Tests do
 
     test "Can start a worker with address prefix" do
       {:ok, address} = InnerWorker.create(address_prefix: "inner_")
-      assert "inner_" <> _ = address
+      assert "inner_" <> _name = address
     end
 
     test "Explicit address overrides address prefix" do

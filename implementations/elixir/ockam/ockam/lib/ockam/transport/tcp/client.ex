@@ -23,10 +23,10 @@ defmodule Ockam.Transport.TCP.Client do
         string when is_binary(string) ->
           {:inet, to_charlist(string)}
 
-        {_, _, _, _} = ipv4 ->
+        ipv4 when is_tuple(ipv4) and tuple_size(ipv4) == 4 ->
           {:inet, ipv4}
 
-        {_, _, _, _, _, _, _, _} = ipv6 ->
+        ipv6 when is_tuple(ipv6) and tuple_size(ipv6) == 8 ->
           {:inet6, ipv6}
       end
 

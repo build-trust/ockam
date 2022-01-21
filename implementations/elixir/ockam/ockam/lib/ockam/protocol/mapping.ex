@@ -52,7 +52,7 @@ defmodule Ockam.Protocol.Mapping do
       Enum.reduce(
         protocol_specs,
         %{},
-        fn {_, mod, protocol}, mod_map ->
+        fn {_type, mod, protocol}, mod_map ->
           Map.put(mod_map, protocol.name, mod)
         end
       )
@@ -143,7 +143,7 @@ defmodule Ockam.Protocol.Mapping do
   defp check_conflicts(protocol_specs) do
     duplicate_names =
       protocol_specs
-      |> Enum.map(fn {_, _, protocol} -> protocol.name end)
+      |> Enum.map(fn {_type, _mod, protocol} -> protocol.name end)
       |> Enum.frequencies()
       |> Enum.filter(fn {_k, v} -> v > 1 end)
       |> Enum.map(fn {k, _v} -> k end)
