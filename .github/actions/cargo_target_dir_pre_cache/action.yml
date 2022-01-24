@@ -7,8 +7,14 @@ runs:
       run: |
         crates=($(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[] | split(" ")  | .[0] | gsub("-";"_")'))
 
+        # Get target folder size
+        du -sh target
+
+        rm -rf ./target/debug/examples
+        rm -rf ./target/debug/incremental
+
         for mode in debug release; do
-          for dir in deps .fingerprint; do
+          for dir in deps .fingerprint build; do
             if [ -d "target/$mode/$dir" ]; then
               cd "target/$mode/$dir"
               for crate in "${crates[@]}"; do rm -rf $crate* lib$crate*; done
@@ -16,3 +22,5 @@ runs:
             fi
           done
         done
+
+        du -sh target
