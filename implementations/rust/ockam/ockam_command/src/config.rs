@@ -36,7 +36,7 @@ enum OckamCommand {
         #[clap(short, long, default_value = "secure_channel")]
         name: String,
 
-        #[clap(short, long, default_value = "Hello, Ockam!")]
+        #[clap(short, long)]
         message: String,
     },
     Outlet {

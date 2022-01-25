@@ -16,7 +16,7 @@ pub enum AppError {
     InvalidArgument,
 
     #[error("i/o error")]
-    IOError(std::io::Error),
+    IoError(std::io::Error),
 
     #[error("ssh key error")]
     SshKey(ssh_key::Error),
@@ -33,7 +33,7 @@ impl From<ockam::Error> for AppError {
 
 impl From<std::io::Error> for AppError {
     fn from(io_error: Error) -> Self {
-        AppError::IOError(io_error)
+        AppError::IoError(io_error)
     }
 }
 

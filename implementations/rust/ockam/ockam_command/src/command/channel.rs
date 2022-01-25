@@ -1,5 +1,6 @@
 use crate::service::echoer::ECHOER_SERVICE_NAME;
 use crate::AppError;
+use log::error;
 use ockam::{
     route, Context, Entity, Identity, Result, SoftwareVault, TcpTransport, TrustEveryonePolicy,
     VaultSync, TCP,
@@ -22,15 +23,18 @@ impl ChannelCommand {
         let vault_address = vault.address();
         let mut alice = Entity::create(ctx, &vault_address).await?;
 
-        let secret_key = std::fs::read_to_string(secret_key_path).unwrap();
+        let secret_key = std::fs::read_to_string(secret_key_path)?;
 
-        let secret_key = ssh_key::PrivateKey::from_openssh(&secret_key)
-            .unwrap()
-            .key_data
-            .ed25519()
-            .unwrap()
-            .private
-            .clone();
+        let secret_key = ssh_key::PrivateKey::from_openssh(&secret_key)?;
+        let secret_key = secret_key.key_data.ed25519();
+
+        if secret_key.is_none() {
+            // TODO: This error is getting cut off when printed. It also seems to randomly not print at all
+            error!("Only Ed25519 SSH keys are currently supported.");
+            return Ok(());
+        }
+
+        let secret_key = secret_key.unwrap().private.clone();
 
         let secret_key = vault
             .secret_import(
