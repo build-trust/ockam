@@ -48,10 +48,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew lint_cargo_fmt_check
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   lint_cargo_clippy:
     name: Rust - Lint with Cargo Clippy
@@ -78,10 +75,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - uses: ./.github/actions/cargo_home_cache
-      - uses: ./.github/actions/cargo_target_dir_cache
       - run: cd implementations/rust && ../../gradlew lint_cargo_deny
-      - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_docs:
     name: Rust - Build Documentation
