@@ -1563,7 +1563,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.37.1-dev"
+version = "0.38.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
