@@ -66,4 +66,4 @@ rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 
 [dev-dependencies]
 ockam_vault = { path = "../ockam_vault", version = "^0.38.0"}
-ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.32.1-dev"}
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.33.0"}
