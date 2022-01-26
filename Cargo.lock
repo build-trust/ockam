@@ -1391,7 +1391,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.44.0"
+version = "0.44.1-dev"
 dependencies = [
  "async-trait",
  "cfg-if",

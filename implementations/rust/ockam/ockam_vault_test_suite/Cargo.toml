@@ -27,5 +27,5 @@ publish = true
 rust-version = "1.56.0"
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.44.0"}
+ockam_core = { path = "../ockam_core", version = "^0.44.1-dev"}
 arrayref = "0.3"
