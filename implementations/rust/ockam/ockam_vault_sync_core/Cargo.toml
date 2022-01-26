@@ -53,7 +53,7 @@ alloc = [
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.44.1-dev", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.5.1-dev", default_features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.38.0", default_features = false, optional = true }
+ockam_vault = { path = "../ockam_vault", version = "^0.38.1-dev", default_features = false, optional = true }
 ockam_node = { path = "../ockam_node", version = "^0.43.1-dev", default_features = false }
 tokio = { version = "1.8", default-features = false, features = [
     "sync",
@@ -65,5 +65,5 @@ rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.38.0"}
+ockam_vault = { path = "../ockam_vault", version = "^0.38.1-dev"}
 ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.33.0"}
