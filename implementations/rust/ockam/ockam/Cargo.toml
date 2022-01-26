@@ -100,7 +100,7 @@ ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.35.1-
 ockam_vault = { path = "../ockam_vault", version = "^0.37.1-dev", default_features = false, optional = true }
 ockam_channel = { path = "../ockam_channel", version = "^0.40.0", default_features = false }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.38.1-dev", optional = true }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.35.1-dev", default_features = false }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.36.0", default_features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.36.1-dev", default_features = false, optional = true }
 ockam_entity = { path = "../ockam_entity", version = "^0.34.0", default_features = false }
 arrayref = "0.3"
