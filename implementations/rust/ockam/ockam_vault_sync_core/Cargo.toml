@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_sync_core"
-version = "0.36.0"
+version = "0.36.1-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
