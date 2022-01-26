@@ -1306,7 +1306,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.44.0"
+version = "0.44.1-dev"
 dependencies = [
  "arrayref",
  "bls12_381_plus",
