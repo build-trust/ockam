@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_tcp"
-version = "0.39.0"
+version = "0.39.1-dev"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
