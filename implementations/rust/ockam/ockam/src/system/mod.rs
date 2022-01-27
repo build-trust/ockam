@@ -36,14 +36,12 @@ impl<W: Worker> Default for WorkerSystem<W> {
 
 impl<W: Worker> WorkerSystem<W> {
     /// Attach a system handler to this system
-    pub async fn attach<H>(&mut self, ctx: &mut W::Context, mut handler: H) -> Result<()>
+    pub fn attach<A, H>(&mut self, addr: A, handler: H)
     where
+        A: Into<Address>,
         H: SystemHandler<W::Context, W::Message> + Send + 'static,
     {
-        let addr = handler.initialize(ctx).await?;
-        self.map.insert(addr, Box::new(handler));
-
-        Ok(())
+        self.map.insert(addr.into(), Box::new(handler));
     }
 
     /// Handle a message via this worker system
