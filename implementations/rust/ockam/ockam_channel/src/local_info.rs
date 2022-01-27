@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// SecureChannel LocalInfo unique Identifier
 pub const SECURE_CHANNEL_IDENTIFIER: &str = "SECURE_CHANNEL_IDENTIFIER";
 
-/// Entity SecureChannel LocalInfo used for LocalMessage
+/// Identity SecureChannel LocalInfo used for LocalMessage
 #[derive(Serialize, Deserialize)]
 pub struct SecureChannelLocalInfo {
     key_exchange: String,

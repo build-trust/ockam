@@ -1,7 +1,9 @@
-#![cfg_attr(all(feature = "alloc", feature = "cortexm"), feature(alloc_error_handler))]
+#![cfg_attr(
+    all(feature = "alloc", feature = "cortexm"),
+    feature(alloc_error_handler)
+)]
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_std)]
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_main)]
-
 
 // - bare metal entrypoint ----------------------------------------------------
 
@@ -17,7 +19,7 @@ use cortex_m_semihosting::debug;
 #[cfg(feature = "cortexm")]
 use ockam::{
     compat::string::{String, ToString},
-    println
+    println,
 };
 
 #[cfg(feature = "atsame54")]
@@ -34,39 +36,42 @@ fn entry() -> ! {
 
     main().unwrap();
 
-    loop { }
+    loop {}
 }
-
 
 // - ockam::node entrypoint ---------------------------------------------------
 
-use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice and Bob.
     let vault = Vault::create(&ctx).await?;
 
-    // Create a Profile to represent Bob.
-    let mut bob = Profile::create(&ctx, &vault).await?;
+    // Create an Identity to represent Bob.
+    let mut bob = Identity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob", TrustEveryonePolicy).await?;
+    bob.create_secure_channel_listener("bob", TrustEveryonePolicy)
+        .await?;
 
-    // Create an entity to represent Alice.
-    let mut alice = Entity::create(&ctx, &vault).await?;
+    // Create an Identity to represent Alice.
+    let mut alice = Identity::create(&ctx, &vault).await?;
 
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
-    let channel = alice.create_secure_channel("bob", TrustEveryonePolicy).await?;
+    let channel = alice
+        .create_secure_channel("bob", TrustEveryonePolicy)
+        .await?;
 
     // Send a message, ** THROUGH ** the secure channel,
     // to the "app" worker on the other side.
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
-    ctx.send(route![channel, "app"], "Hello Ockam!".to_string()).await?;
+    ctx.send(route![channel, "app"], "Hello Ockam!".to_string())
+        .await?;
 
     // Wait to receive a message for the "app" worker and print it.
     let message = ctx.receive::<String>().await?;

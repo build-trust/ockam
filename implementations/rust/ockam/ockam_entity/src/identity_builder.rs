@@ -1,14 +1,14 @@
-use crate::{Profile, ProfileVault};
+use crate::{Identity, IdentityVault};
 use ockam_core::{Address, Result};
 use ockam_node::Context;
 
-/// Builder for `Entity`
-pub struct EntityBuilder<V: ProfileVault> {
+/// Builder for `Identity`
+pub struct IdentityBuilder<V: IdentityVault> {
     ctx: Context,
     vault: V,
 }
 
-impl<V: ProfileVault> EntityBuilder<V> {
+impl<V: IdentityVault> IdentityBuilder<V> {
     pub async fn new(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random(0)).await?;
 
@@ -18,16 +18,14 @@ impl<V: ProfileVault> EntityBuilder<V> {
         })
     }
 
-    // TODO: enable_credentials_signing_key
-
-    pub async fn build(self) -> Result<Profile<V>> {
-        Profile::create(&self.ctx, &self.vault).await
+    pub async fn build(self) -> Result<Identity<V>> {
+        Identity::create(&self.ctx, &self.vault).await
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::EntityBuilder;
+    use crate::IdentityBuilder;
     use ockam_vault_sync_core::Vault;
 
     #[test]
@@ -35,7 +33,7 @@ mod test {
         let (mut ctx, mut ex) = ockam_node::start_node();
         ex.execute(async move {
             let vault = Vault::create();
-            let builder = EntityBuilder::new(&ctx, &vault).await.unwrap();
+            let builder = IdentityBuilder::new(&ctx, &vault).await.unwrap();
             let _ = builder.build().await.unwrap();
 
             ctx.stop().await.unwrap();

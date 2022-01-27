@@ -1,4 +1,4 @@
-use crate::{Changes, Contact, Lease, ProfileChangeEvent, ProfileIdentifier, TTL};
+use crate::{Changes, Contact, IdentityChangeEvent, IdentityIdentifier, Lease, TTL};
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone};
@@ -8,9 +8,9 @@ pub type AuthenticationProof = Vec<u8>;
 
 /// Identity
 #[async_trait]
-pub trait Identity: AsyncTryClone + Send + Sync + 'static {
-    /// Return unique [`Profile`](crate::Profile) identifier, which is equal to sha256 of the root public key
-    async fn identifier(&self) -> Result<ProfileIdentifier>;
+pub trait IdentityTrait: AsyncTryClone + Send + Sync + 'static {
+    /// Return unique [`Identity`](crate::Identity) identifier, which is equal to sha256 of the root public key
+    async fn identifier(&self) -> Result<IdentityIdentifier>;
 
     /// Create new key.
     async fn create_key(&mut self, label: String) -> Result<()>;
@@ -36,16 +36,16 @@ pub trait Identity: AsyncTryClone + Send + Sync + 'static {
     /// Create an authentication proof based on the given state
     async fn create_auth_proof(&mut self, state_slice: &[u8]) -> Result<AuthenticationProof>;
 
-    /// Verify a proof based on the given state, proof and profile.
+    /// Verify a proof based on the given state, proof and identity.
     async fn verify_auth_proof(
         &mut self,
         state_slice: &[u8],
-        peer_id: &ProfileIdentifier,
+        peer_id: &IdentityIdentifier,
         proof_slice: &[u8],
     ) -> Result<bool>;
 
     /// Add a change event.
-    async fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()>;
+    async fn add_change(&mut self, change_event: IdentityChangeEvent) -> Result<()>;
 
     /// Return change history chain
     async fn get_changes(&self) -> Result<Changes>;
@@ -53,26 +53,26 @@ pub trait Identity: AsyncTryClone + Send + Sync + 'static {
     /// Verify the whole change event chain
     async fn verify_changes(&mut self) -> Result<bool>;
 
-    /// Return all known to this profile [`Contact`]s
+    /// Return all known to this identity [`Contact`]s
     async fn get_contacts(&self) -> Result<Vec<Contact>>;
 
-    /// Convert [`Profile`](crate::Profile) to [`Contact`]
+    /// Convert [`Identity`](crate::Identity) to [`Contact`]
     async fn as_contact(&mut self) -> Result<Contact>;
 
-    /// Return [`Contact`] with given [`ProfileIdentifier`]
-    async fn get_contact(&mut self, contact_id: &ProfileIdentifier) -> Result<Option<Contact>>;
+    /// Return [`Contact`] with given [`IdentityIdentifier`]
+    async fn get_contact(&mut self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>>;
 
     /// Verify cryptographically whole event chain. Also verify sequence correctness
     async fn verify_contact(&mut self, contact: Contact) -> Result<bool>;
 
-    /// Verify and add new [`Contact`] to [`Profile`](crate::Profile)'s Contact list
+    /// Verify and add new [`Contact`] to [`Identity`](crate::Identity)'s Contact list
     async fn verify_and_add_contact(&mut self, contact: Contact) -> Result<bool>;
 
-    /// Verify and update known [`Contact`] with new [`ProfileChangeEvent`]s
+    /// Verify and update known [`Contact`] with new [`IdentityChangeEvent`]s
     async fn verify_and_update_contact(
         &mut self,
-        contact_id: &ProfileIdentifier,
-        change_events: &[ProfileChangeEvent],
+        contact_id: &IdentityIdentifier,
+        change_events: &[IdentityChangeEvent],
     ) -> Result<bool>;
 
     async fn get_lease(

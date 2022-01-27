@@ -2,7 +2,7 @@ use crate::credential::{CredentialOffer, CredentialRequest, SigningPublicKey};
 use crate::{
     BbsCredential, Credential, CredentialAttribute, CredentialFragment1, CredentialFragment2,
     CredentialPresentation, CredentialProof, CredentialPublicKey, CredentialRequestFragment,
-    CredentialSchema, EntityCredential, OfferId, PresentationManifest, ProofRequestId,
+    CredentialSchema, IdentityCredential, OfferId, PresentationManifest, ProofRequestId,
 };
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -73,10 +73,10 @@ pub trait Holder {
     ) -> Result<CredentialPresentation>;
 
     /// Add credential that this entity possess
-    async fn add_credential(&mut self, credential: EntityCredential) -> Result<()>;
+    async fn add_credential(&mut self, credential: IdentityCredential) -> Result<()>;
 
     /// Get credential that this entity possess
-    async fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential>;
+    async fn get_credential(&mut self, credential: &Credential) -> Result<IdentityCredential>;
 }
 
 /// Verifier API

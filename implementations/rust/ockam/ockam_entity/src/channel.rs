@@ -1,4 +1,4 @@
-use crate::ProfileIdentifier;
+use crate::IdentityIdentifier;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AccessControl, LocalMessage, Result};
 
@@ -13,36 +13,36 @@ pub use trust_policy::*;
 mod local_info;
 pub use local_info::*;
 
-pub struct EntityAccessControlBuilder;
+pub struct IdentityAccessControlBuilder;
 
-impl EntityAccessControlBuilder {
-    pub fn new_with_id(their_profile_id: ProfileIdentifier) -> EntityIdAccessControl {
-        EntityIdAccessControl { their_profile_id }
+impl IdentityAccessControlBuilder {
+    pub fn new_with_id(their_identity_id: IdentityIdentifier) -> IdentityIdAccessControl {
+        IdentityIdAccessControl { their_identity_id }
     }
 
-    pub fn new_with_any_id() -> EntityAnyIdAccessControl {
-        EntityAnyIdAccessControl
+    pub fn new_with_any_id() -> IdentityAnyIdAccessControl {
+        IdentityAnyIdAccessControl
     }
 }
 
-pub struct EntityAnyIdAccessControl;
+pub struct IdentityAnyIdAccessControl;
 
 #[async_trait]
-impl AccessControl for EntityAnyIdAccessControl {
+impl AccessControl for IdentityAnyIdAccessControl {
     async fn msg_is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool> {
-        Ok(EntitySecureChannelLocalInfo::find_info(local_msg).is_ok())
+        Ok(IdentitySecureChannelLocalInfo::find_info(local_msg).is_ok())
     }
 }
 
-pub struct EntityIdAccessControl {
-    their_profile_id: ProfileIdentifier,
+pub struct IdentityIdAccessControl {
+    their_identity_id: IdentityIdentifier,
 }
 
 #[async_trait]
-impl AccessControl for EntityIdAccessControl {
+impl AccessControl for IdentityIdAccessControl {
     async fn msg_is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool> {
-        if let Ok(msg_profile_id) = EntitySecureChannelLocalInfo::find_info(local_msg) {
-            Ok(msg_profile_id.their_profile_id() == &self.their_profile_id)
+        if let Ok(msg_identity_id) = IdentitySecureChannelLocalInfo::find_info(local_msg) {
+            Ok(msg_identity_id.their_identity_id() == &self.their_identity_id)
         } else {
             Ok(false)
         }
@@ -52,7 +52,7 @@ impl AccessControl for EntityIdAccessControl {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Identity, Profile};
+    use crate::{Identity, IdentityTrait};
     use core::sync::atomic::{AtomicU8, Ordering};
     use ockam_core::compat::sync::Arc;
     use ockam_core::{route, Any, Route, Routed, Worker};
@@ -67,8 +67,8 @@ mod test {
         let alice_vault = Vault::create();
         let bob_vault = Vault::create();
 
-        let mut alice = Profile::create(ctx, &alice_vault).await?;
-        let mut bob = Profile::create(ctx, &bob_vault).await?;
+        let mut alice = Identity::create(ctx, &alice_vault).await?;
+        let mut bob = Identity::create(ctx, &bob_vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -87,8 +87,8 @@ mod test {
         .await?;
         let msg = ctx.receive::<String>().await?.take();
 
-        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        assert_eq!(local_info.their_profile_id(), &alice.identifier().await?);
+        let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        assert_eq!(local_info.their_identity_id(), &alice.identifier().await?);
 
         let return_route = msg.return_route();
         assert_eq!("Hello, Bob!", msg.body());
@@ -97,8 +97,8 @@ mod test {
 
         let msg = ctx.receive::<String>().await?.take();
 
-        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        assert_eq!(local_info.their_profile_id(), &bob.identifier().await?);
+        let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        assert_eq!(local_info.their_identity_id(), &bob.identifier().await?);
 
         assert_eq!("Hello, Alice!", msg.body());
 
@@ -109,8 +109,8 @@ mod test {
     async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
-        let mut alice = Profile::create(ctx, &vault).await?;
-        let mut bob = Profile::create(ctx, &vault).await?;
+        let mut alice = Identity::create(ctx, &vault).await?;
+        let mut bob = Identity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -154,8 +154,8 @@ mod test {
     async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
-        let mut alice = Profile::create(ctx, &vault).await?;
-        let mut bob = Profile::create(ctx, &vault).await?;
+        let mut alice = Identity::create(ctx, &vault).await?;
+        let mut bob = Identity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -209,8 +209,8 @@ mod test {
     async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
-        let mut alice = Profile::create(ctx, &vault).await?;
-        let mut bob = Profile::create(ctx, &vault).await?;
+        let mut alice = Identity::create(ctx, &vault).await?;
+        let mut bob = Identity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -282,10 +282,10 @@ mod test {
 
         let vault = Vault::create();
 
-        let mut alice = Profile::create(ctx, &vault).await?;
-        let mut bob = Profile::create(ctx, &vault).await?;
+        let mut alice = Identity::create(ctx, &vault).await?;
+        let mut bob = Identity::create(ctx, &vault).await?;
 
-        let access_control = EntityAccessControlBuilder::new_with_id(alice.identifier().await?);
+        let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)
             .await?;
 
@@ -318,10 +318,10 @@ mod test {
 
         let vault = Vault::create();
 
-        let mut alice = Profile::create(ctx, &vault).await?;
-        let mut bob = Profile::create(ctx, &vault).await?;
+        let mut alice = Identity::create(ctx, &vault).await?;
+        let mut bob = Identity::create(ctx, &vault).await?;
 
-        let access_control = EntityAccessControlBuilder::new_with_id(bob.identifier().await?);
+        let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)
             .await?;
 
@@ -352,7 +352,7 @@ mod test {
             received_count: received_count.clone(),
         };
 
-        let access_control = EntityAccessControlBuilder::new_with_id(
+        let access_control = IdentityAccessControlBuilder::new_with_id(
             "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
         );
         ctx.start_worker_with_access_control("receiver", receiver, access_control)

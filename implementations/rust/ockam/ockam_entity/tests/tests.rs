@@ -1,13 +1,13 @@
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_core::Result;
-use ockam_entity::{Identity, Profile};
+use ockam_entity::{Identity, IdentityTrait};
 use ockam_node::Context;
 use ockam_vault_sync_core::Vault;
 
 #[ockam_macros::test(timeout = 1000)]
 async fn add_key(ctx: &mut Context) -> Result<()> {
     let mut vault = Vault::create();
-    let mut e = Profile::create(&ctx, &vault).await?;
+    let mut e = Identity::create(&ctx, &vault).await?;
 
     let key = vault
         .secret_generate(SecretAttributes::new(

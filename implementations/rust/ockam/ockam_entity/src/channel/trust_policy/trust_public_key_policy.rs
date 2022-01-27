@@ -1,37 +1,37 @@
-use crate::{Identity, Profile, ProfileVault, SecureChannelTrustInfo, TrustPolicy};
+use crate::{Identity, IdentityTrait, IdentityVault, SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::compat::string::String;
 use ockam_core::vault::PublicKey;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 
 #[derive(AsyncTryClone)]
-pub struct TrustPublicKeyPolicy<V: ProfileVault> {
+pub struct TrustPublicKeyPolicy<V: IdentityVault> {
     public_key: PublicKey,
     public_key_label: String,
-    profile: Profile<V>,
+    identity: Identity<V>,
 }
 
-impl<V: ProfileVault> TrustPublicKeyPolicy<V> {
+impl<V: IdentityVault> TrustPublicKeyPolicy<V> {
     pub fn new(
         public_key: PublicKey,
         public_key_label: impl Into<String>,
-        profile: Profile<V>,
+        identity: Identity<V>,
     ) -> Self {
         Self {
             public_key,
             public_key_label: public_key_label.into(),
-            profile,
+            identity,
         }
     }
 }
 
 #[async_trait]
-impl<V: ProfileVault> TrustPolicy for TrustPublicKeyPolicy<V> {
+impl<V: IdentityVault> TrustPolicy for TrustPublicKeyPolicy<V> {
     async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         let contact;
         if let Some(c) = self
-            .profile
-            .get_contact(trust_info.their_profile_id())
+            .identity
+            .get_contact(trust_info.their_identity_id())
             .await?
         {
             contact = c;

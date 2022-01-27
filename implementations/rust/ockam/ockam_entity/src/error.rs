@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, Debug)]
-pub enum EntityError {
+pub enum IdentityError {
     BareError = 1,
     VerifyFailed,
     InvalidInternalState,
@@ -7,7 +7,7 @@ pub enum EntityError {
     ConsistencyError,
     ComplexEventsAreNotSupported,
     EventIdDoesNotMatch,
-    ProfileIdDoesNotMatch,
+    IdentityIdDoesNotMatch,
     EmptyChange,
     ContactNotFound,
     EventNotFound,
@@ -20,15 +20,15 @@ pub enum EntityError {
     SecureChannelVerificationFailed,
     SecureChannelTrustCheckFailed,
     SecureChannelCannotBeAuthenticated,
-    ProfileInvalidResponseType,
-    ProfileNotFound,
+    IdentityInvalidResponseType,
+    IdentityNotFound,
     NotImplemented,
     UnknownChannelMsgDestination,
     UnknownChannelMsgOrigin,
     InvalidLocalInfoType,
     InvalidSecureChannelInternalState,
     ContactVerificationFailed,
-    InvalidProfileId,
+    InvalidIdentityId,
     DuplicateCredential,
     CredentialNotFound,
     InvalidIssueState,
@@ -41,18 +41,18 @@ pub enum EntityError {
     VerifierInvalidMessage,
 }
 
-impl EntityError {
+impl IdentityError {
     /// Integer code associated with the error domain.
     pub const DOMAIN_CODE: u32 = 20_000;
     /// Descriptive name for the error domain.
     pub const DOMAIN_NAME: &'static str = "OCKAM_ENTITY";
 }
 
-impl From<EntityError> for ockam_core::Error {
-    fn from(e: EntityError) -> ockam_core::Error {
+impl From<IdentityError> for ockam_core::Error {
+    fn from(e: IdentityError) -> ockam_core::Error {
         ockam_core::Error::new(
-            EntityError::DOMAIN_CODE + (e as u32),
-            EntityError::DOMAIN_NAME,
+            IdentityError::DOMAIN_CODE + (e as u32),
+            IdentityError::DOMAIN_NAME,
         )
     }
 }

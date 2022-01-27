@@ -1,5 +1,9 @@
-use crate::change_history::ProfileChangeHistory;
-use crate::{ChangeBlock, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange, ProfileChangeEvent, ProfileChangeType, ProfileEventAttributes, ProfileState, ProfileStateConst, ProfileVault, Signature, SignatureType};
+use crate::change_history::IdentityChangeHistory;
+use crate::{
+    ChangeBlock, EventIdentifier, IdentityChange, IdentityChangeEvent, IdentityChangeType,
+    IdentityError, IdentityEventAttributes, IdentityState, IdentityStateConst, IdentityVault,
+    KeyAttributes, MetaKeyAttributes, Signature, SignatureType,
+};
 use ockam_core::vault::PublicKey;
 use ockam_core::vault::Signature as OckamVaultSignature;
 use ockam_core::{Encodable, Result};
@@ -71,16 +75,16 @@ impl RotateKeyChange {
     }
 }
 
-impl<V: ProfileVault> ProfileState<V> {
+impl<V: IdentityVault> IdentityState<V> {
     /// Rotate key event
     pub(crate) async fn make_rotate_key_event(
         &mut self,
         key_attributes: KeyAttributes,
-        attributes: ProfileEventAttributes,
-    ) -> Result<ProfileChangeEvent> {
+        attributes: IdentityEventAttributes,
+    ) -> Result<IdentityChangeEvent> {
         let prev_event_id = self.change_history().get_last_event_id()?;
 
-        let last_event_in_chain = ProfileChangeHistory::find_last_key_event(
+        let last_event_in_chain = IdentityChangeHistory::find_last_key_event(
             self.change_history().as_ref(),
             key_attributes.label(),
         )?
@@ -97,19 +101,21 @@ impl<V: ProfileVault> ProfileState<V> {
         let public_key = self.vault.secret_public_key_get(&secret_key).await?;
 
         let data = RotateKeyChangeData::new(key_attributes, public_key);
-        let data_binary = data.encode().map_err(|_| EntityError::BareError)?;
+        let data_binary = data.encode().map_err(|_| IdentityError::BareError)?;
         let data_hash = self.vault.sha256(data_binary.as_slice()).await?;
         let self_signature = self.vault.sign(&secret_key, &data_hash).await?;
         let prev_signature = self.vault.sign(&last_key_in_chain, &data_hash).await?;
         let change = RotateKeyChange::new(data, self_signature, prev_signature);
 
-        let profile_change = ProfileChange::new(
-            ProfileStateConst::CURRENT_CHANGE_VERSION,
+        let identity_change = IdentityChange::new(
+            IdentityStateConst::CURRENT_CHANGE_VERSION,
             attributes,
-            ProfileChangeType::RotateKey(change),
+            IdentityChangeType::RotateKey(change),
         );
-        let change_block = ChangeBlock::new(prev_event_id, profile_change);
-        let change_block_binary = change_block.encode().map_err(|_| EntityError::BareError)?;
+        let change_block = ChangeBlock::new(prev_event_id, identity_change);
+        let change_block_binary = change_block
+            .encode()
+            .map_err(|_| IdentityError::BareError)?;
 
         let event_id = self.vault.sha256(&change_block_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
@@ -123,7 +129,7 @@ impl<V: ProfileVault> ProfileState<V> {
         let root_signature = Signature::new(SignatureType::RootSign, root_signature);
 
         let signed_change_event =
-            ProfileChangeEvent::new(event_id, change_block, vec![self_signature, root_signature]);
+            IdentityChangeEvent::new(event_id, change_block, vec![self_signature, root_signature]);
 
         Ok(signed_change_event)
     }

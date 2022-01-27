@@ -1,6 +1,10 @@
-use crate::change_history::ProfileChangeHistory;
-use crate::EntityError::InvalidInternalState;
-use crate::{ChangeBlock, EntityError, EventIdentifier, KeyAttributes, MetaKeyAttributes, ProfileChange, ProfileChangeEvent, ProfileChangeType, ProfileEventAttributes, ProfileState, ProfileStateConst, ProfileVault, Signature, SignatureType};
+use crate::change_history::IdentityChangeHistory;
+use crate::IdentityError::InvalidInternalState;
+use crate::{
+    ChangeBlock, EventIdentifier, IdentityChange, IdentityChangeEvent, IdentityChangeType,
+    IdentityError, IdentityEventAttributes, IdentityState, IdentityStateConst, IdentityVault,
+    KeyAttributes, MetaKeyAttributes, Signature, SignatureType,
+};
 use ockam_core::vault::Signature as OckamVaultSignature;
 use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{Encodable, Result};
@@ -62,7 +66,7 @@ impl CreateKeyChange {
     }
 }
 
-impl<V: ProfileVault> ProfileState<V> {
+impl<V: IdentityVault> IdentityState<V> {
     async fn generate_key_if_needed(
         secret: Option<&Secret>,
         key_attributes: &KeyAttributes,
@@ -82,28 +86,30 @@ impl<V: ProfileVault> ProfileState<V> {
         secret: Option<&Secret>,
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
-        attributes: ProfileEventAttributes,
+        attributes: IdentityEventAttributes,
         root_key: Option<&Secret>,
         vault: &mut V,
-    ) -> Result<ProfileChangeEvent> {
+    ) -> Result<IdentityChangeEvent> {
         let secret_key = Self::generate_key_if_needed(secret, &key_attributes, vault).await?;
 
         let public_key = vault.secret_public_key_get(&secret_key).await?;
 
         let data = CreateKeyChangeData::new(key_attributes, public_key);
-        let data_binary = data.encode().map_err(|_| EntityError::BareError)?;
+        let data_binary = data.encode().map_err(|_| IdentityError::BareError)?;
         let data_hash = vault.sha256(data_binary.as_slice()).await?;
         let self_signature = vault.sign(&secret_key, &data_hash).await?;
         let change = CreateKeyChange::new(data, self_signature);
 
-        let profile_change = ProfileChange::new(
-            ProfileStateConst::CURRENT_CHANGE_VERSION,
+        let identity_change = IdentityChange::new(
+            IdentityStateConst::CURRENT_CHANGE_VERSION,
             attributes,
-            ProfileChangeType::CreateKey(change),
+            IdentityChangeType::CreateKey(change),
         );
 
-        let change_block = ChangeBlock::new(prev_id, profile_change);
-        let change_block_binary = change_block.encode().map_err(|_| EntityError::BareError)?;
+        let change_block = ChangeBlock::new(prev_id, identity_change);
+        let change_block_binary = change_block
+            .encode()
+            .map_err(|_| IdentityError::BareError)?;
 
         let event_id = vault.sha256(&change_block_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
@@ -114,7 +120,7 @@ impl<V: ProfileVault> ProfileState<V> {
         let mut signatures = vec![self_signature];
 
         // If we have root_key passed we should sign using it
-        // If there is no root_key - we're creating new profile, so we just generated root_key
+        // If there is no root_key - we're creating new identity, so we just generated root_key
         if let Some(root_key) = root_key {
             let root_signature = vault.sign(root_key, event_id.as_ref()).await?;
             let root_signature = Signature::new(SignatureType::RootSign, root_signature);
@@ -122,7 +128,7 @@ impl<V: ProfileVault> ProfileState<V> {
             signatures.push(root_signature);
         }
 
-        let signed_change_event = ProfileChangeEvent::new(event_id, change_block, signatures);
+        let signed_change_event = IdentityChangeEvent::new(event_id, change_block, signatures);
 
         Ok(signed_change_event)
     }
@@ -132,10 +138,10 @@ impl<V: ProfileVault> ProfileState<V> {
         &mut self,
         secret: Option<&Secret>,
         key_attributes: KeyAttributes,
-        attributes: ProfileEventAttributes,
-    ) -> Result<ProfileChangeEvent> {
+        attributes: IdentityEventAttributes,
+    ) -> Result<IdentityChangeEvent> {
         // Creating key after it was revoked is forbidden
-        if ProfileChangeHistory::find_last_key_event(
+        if IdentityChangeHistory::find_last_key_event(
             self.change_history().as_ref(),
             key_attributes.label(),
         )

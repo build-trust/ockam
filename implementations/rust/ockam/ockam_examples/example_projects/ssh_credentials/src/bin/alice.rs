@@ -1,6 +1,6 @@
 use credentials_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
 use ockam::{
-    route, Context, Entity, Identity, Result, SoftwareVault, TcpTransport, TrustEveryonePolicy,
+    route, Context, Identity, Identity, Result, SoftwareVault, TcpTransport, TrustEveryonePolicy,
     VaultSync, TCP,
 };
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
@@ -12,7 +12,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     let mut vault = VaultSync::create(&ctx, SoftwareVault::default()).await?;
     let vault_address = vault.address();
-    let mut alice = Entity::create(&ctx, &vault_address).await?;
+    let mut alice = Identity::create(&ctx, &vault_address).await?;
 
     let secret_key_path = env::var("SECRET_KEY_PATH").unwrap();
     let secret_key = fs::read_to_string(secret_key_path).unwrap();

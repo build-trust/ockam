@@ -1,12 +1,12 @@
 use ockam_core::Result;
-use ockam_entity::Profile;
+use ockam_entity::Identity;
 use ockam_node::Context;
 use ockam_vault_sync_core::Vault;
 
 async fn test(ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
-    let _bob = Profile::create(&ctx, &vault).await?;
+    let _bob = Identity::create(&ctx, &vault).await?;
 
     Ok(())
 }

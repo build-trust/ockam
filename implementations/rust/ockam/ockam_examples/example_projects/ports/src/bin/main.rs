@@ -1,14 +1,12 @@
-use ockam::{
-    route, Context, Entity, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP,
-};
+use ockam::{route, Context, Identity, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys
     let vault = Vault::create(&ctx).await?;
 
-    // Create a Profile to represent this machine
-    let mut fabric_machine = Profile::create(&ctx, &vault)?;
+    // Create an Identity to represent this machine
+    let mut fabric_machine = Identity::create(&ctx, &vault)?;
 
     // Initialize the TCP Transport
     let tcp = TcpTransport::create(&ctx).await?;

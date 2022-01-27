@@ -2,7 +2,7 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::{Context, Profile, Result, TcpTransport, TrustEveryonePolicy, Vault};
+use ockam::{Context, Identity, Result, TcpTransport, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -17,8 +17,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
 
-    // Create a Profile to represent Bob.
-    let mut bob = Profile::create(&ctx, &vault).await?;
+    // Create an Identity to represent Bob.
+    let mut bob = Identity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.

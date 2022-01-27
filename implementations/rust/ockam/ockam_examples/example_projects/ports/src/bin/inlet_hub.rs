@@ -1,8 +1,7 @@
 use ockam::compat::collections::BTreeMap;
 use ockam::compat::rand::{thread_rng, Rng};
 use ockam::{
-    Address, Context, Entity, Result, Routed, TcpTransport, TrustEveryonePolicy,
-    Vault, Worker,
+    Address, Context, Identity, Result, Routed, TcpTransport, TrustEveryonePolicy, Vault, Worker,
 };
 
 struct InletCreatorWorker {
@@ -66,7 +65,7 @@ impl Worker for InletCreatorWorker {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx).await?;
-    let mut hub = Entity::create(&ctx, &vault)?;
+    let mut hub = Identity::create(&ctx, &vault)?;
 
     hub.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)?;
 

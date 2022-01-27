@@ -1,12 +1,12 @@
 use ockam::{route, Context, Result, TcpTransport, TCP};
-use ockam::{Profile, TrustEveryonePolicy, Vault};
+use ockam::{Identity, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a Vault to store our cryptographic keys and a Profile to represent this Node.
+    // Create a Vault to store our cryptographic keys and an Identity to represent this Node.
     // Then initiate a handshake with the secure channel listener on the node that has the
     // TCP Transport Outlet.
     //
@@ -15,7 +15,7 @@ async fn main(ctx: Context) -> Result<()> {
     // at address: "secure_channel_listener".
 
     let vault = Vault::create();
-    let mut e = Profile::create(&ctx, &vault).await?;
+    let mut e = Identity::create(&ctx, &vault).await?;
     let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 

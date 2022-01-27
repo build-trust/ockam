@@ -1,4 +1,4 @@
-use crate::{EntityError, ProfileVault};
+use crate::{IdentityError, IdentityVault};
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::Signature;
 use ockam_core::{Decodable, Encodable, Result};
@@ -25,7 +25,7 @@ impl AuthenticationProof {
 pub(crate) struct Authentication {}
 
 impl Authentication {
-    pub(crate) async fn generate_proof<V: ProfileVault>(
+    pub(crate) async fn generate_proof<V: IdentityVault>(
         channel_state: &[u8],
         secret: &Secret,
         vault: &mut V,
@@ -34,16 +34,16 @@ impl Authentication {
 
         let proof = AuthenticationProof::new(signature);
 
-        proof.encode().map_err(|_| EntityError::BareError.into())
+        proof.encode().map_err(|_| IdentityError::BareError.into())
     }
 
-    pub(crate) async fn verify_proof<V: ProfileVault>(
+    pub(crate) async fn verify_proof<V: IdentityVault>(
         channel_state: &[u8],
         responder_public_key: &PublicKey,
         proof: &[u8],
         vault: &mut V,
     ) -> Result<bool> {
-        let proof = AuthenticationProof::decode(proof).map_err(|_| EntityError::BareError)?;
+        let proof = AuthenticationProof::decode(proof).map_err(|_| IdentityError::BareError)?;
 
         vault
             .verify(proof.signature(), responder_public_key, channel_state)
@@ -54,7 +54,7 @@ impl Authentication {
 #[cfg(test)]
 mod test {
 
-    use crate::{Identity, Profile};
+    use crate::{Identity, IdentityTrait};
     use ockam_core::{Error, Result};
     use ockam_node::Context;
     use ockam_vault_sync_core::Vault;
@@ -69,8 +69,8 @@ mod test {
         let bob_vault = Vault::create();
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Profile::create(ctx, &alice_vault).await?;
-        let mut bob = Profile::create(ctx, &bob_vault).await?;
+        let mut alice = Identity::create(ctx, &alice_vault).await?;
+        let mut bob = Identity::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice.as_contact().await?;
@@ -117,10 +117,10 @@ mod test {
         let bob_vault = Vault::create();
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Profile::create(ctx, &alice_vault).await?;
-        let mut bob = Profile::create(ctx, &bob_vault).await?;
+        let mut alice = Identity::create(ctx, &alice_vault).await?;
+        let mut bob = Identity::create(ctx, &bob_vault).await?;
 
-        // Both profiles rotate keys.
+        // Both identitys rotate keys.
         alice.rotate_root_secret_key().await?;
         bob.rotate_root_secret_key().await?;
 
@@ -144,8 +144,8 @@ mod test {
         let alice_vault = Vault::create();
         let bob_vault = Vault::create();
 
-        let mut alice = Profile::create(ctx, &alice_vault).await?;
-        let mut bob = Profile::create(ctx, &bob_vault).await?;
+        let mut alice = Identity::create(ctx, &alice_vault).await?;
+        let mut bob = Identity::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice.as_contact().await?;

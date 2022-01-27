@@ -1,6 +1,6 @@
 use crate::{
-    CredentialProtocolMessage, EntityCredential, EntityError, Holder, PresentationFinishedMessage,
-    PresentationManifest, Profile,
+    CredentialProtocolMessage, Holder, Identity, IdentityCredential, IdentityError,
+    PresentationFinishedMessage, PresentationManifest,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
@@ -14,24 +14,24 @@ enum State {
 
 pub struct PresenterWorker {
     state: State,
-    profile: Profile,
+    identity: Identity,
     verifier_route: Route,
-    credential: EntityCredential,
+    credential: IdentityCredential,
     reveal_attributes: Vec<String>,
     callback_address: Address,
 }
 
 impl PresenterWorker {
     pub fn new(
-        profile: Profile,
+        identity: Identity,
         verifier_route: Route,
-        credential: EntityCredential,
+        credential: IdentityCredential,
         reveal_attributes: Vec<String>,
         callback_address: Address,
     ) -> Self {
         Self {
             state: State::CreatePresentation,
-            profile,
+            identity,
             verifier_route,
             credential,
             reveal_attributes,
@@ -90,7 +90,7 @@ impl Worker for PresenterWorker {
                     };
 
                     let presentation = self
-                        .profile
+                        .identity
                         .create_credential_presentation(
                             self.credential.bbs_credential(),
                             &manifest,
@@ -111,7 +111,7 @@ impl Worker for PresenterWorker {
 
                     ctx.stop_worker(ctx.address()).await?;
                 } else {
-                    return Err(EntityError::PresenterInvalidMessage.into());
+                    return Err(IdentityError::PresenterInvalidMessage.into());
                 }
             }
             State::Done => {}

@@ -1,6 +1,6 @@
 use crate::{
-    EntityChannelMessage, EntityError, EntitySecureChannelLocalInfo, Identity, ProfileIdentifier,
-    SecureChannelTrustInfo, TrustPolicy,
+    IdentityChannelMessage, IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo,
+    IdentityTrait, SecureChannelTrustInfo, TrustPolicy,
 };
 use core::future::Future;
 use core::pin::Pin;
@@ -30,27 +30,27 @@ impl<T> StartSecureChannelFuture for T where
 {
 }
 
-struct InitiatorStartChannel<I: Identity, T: TrustPolicy> {
+struct InitiatorStartChannel<I: IdentityTrait, T: TrustPolicy> {
     channel_future: Pin<Box<dyn StartSecureChannelFuture>>, // TODO: Replace with generic
     callback_address: Address,
     identity: I,
     trust_policy: T,
 }
 
-struct ResponderWaitForKex<I: Identity, T: TrustPolicy> {
+struct ResponderWaitForKex<I: IdentityTrait, T: TrustPolicy> {
     first_responder_address: Address,
     identity: I,
     trust_policy: T,
 }
 
-struct InitiatorSendProfile<I: Identity, T: TrustPolicy> {
+struct InitiatorSendIdentity<I: IdentityTrait, T: TrustPolicy> {
     channel: SecureChannelInfo,
     callback_address: Address,
     identity: I,
     trust_policy: T,
 }
 
-struct ResponderWaitForProfile<I: Identity, T: TrustPolicy> {
+struct ResponderWaitForIdentity<I: IdentityTrait, T: TrustPolicy> {
     auth_hash: [u8; 32],
     local_secure_channel_address: Address,
     identity: I,
@@ -60,26 +60,26 @@ struct ResponderWaitForProfile<I: Identity, T: TrustPolicy> {
 #[derive(Clone)]
 struct Initialized {
     local_secure_channel_address: Address,
-    remote_profile_secure_channel_address: Address,
-    their_profile_id: ProfileIdentifier,
+    remote_identity_secure_channel_address: Address,
+    their_identity_id: IdentityIdentifier,
 }
 
-enum State<I: Identity, T: TrustPolicy> {
+enum State<I: IdentityTrait, T: TrustPolicy> {
     InitiatorStartChannel(InitiatorStartChannel<I, T>),
     ResponderWaitForKex(ResponderWaitForKex<I, T>),
-    InitiatorSendProfile(InitiatorSendProfile<I, T>),
-    ResponderWaitForProfile(ResponderWaitForProfile<I, T>),
+    InitiatorSendIdentity(InitiatorSendIdentity<I, T>),
+    ResponderWaitForIdentity(ResponderWaitForIdentity<I, T>),
     Initialized(Initialized),
 }
 
-pub(crate) struct SecureChannelWorker<I: Identity, T: TrustPolicy> {
+pub(crate) struct SecureChannelWorker<I: IdentityTrait, T: TrustPolicy> {
     is_initiator: bool,
     self_local_address: Address,
     self_remote_address: Address,
     state: Option<State<I, T>>,
 }
 
-impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
+impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
     pub async fn create_initiator(
         ctx: &Context,
         route: Route,
@@ -134,7 +134,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         .await?;
 
         debug!(
-            "Starting ProfileSecureChannel Initiator at local: {}, remote: {}",
+            "Starting IdentitySecureChannel Initiator at local: {}, remote: {}",
             &self_local_address, &self_remote_address
         );
 
@@ -164,7 +164,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         let first_responder_address = body
             .completed_callback_address()
             .clone()
-            .ok_or(EntityError::SecureChannelCannotBeAuthenticated)?;
+            .ok_or(IdentityError::SecureChannelCannotBeAuthenticated)?;
 
         // Generate 2 random fresh address for newly created SecureChannel.
         // One for local workers to encrypt their messages
@@ -200,7 +200,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         .await?;
 
         debug!(
-            "Starting ProfileSecureChannel Responder at local: {}, remote: {}",
+            "Starting IdentitySecureChannel Responder at local: {}, remote: {}",
             &self_local_address, &self_remote_address
         );
 
@@ -217,12 +217,12 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
     ) -> Result<()> {
         let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
 
-        // Prove we posses Profile key
+        // Prove we posses Identity key
         let proof = state
             .identity
             .create_auth_proof(&kex_msg.auth_hash())
             .await?;
-        let msg = EntityChannelMessage::Request {
+        let msg = IdentityChannelMessage::Request {
             contact: state.identity.as_contact().await?,
             proof,
         };
@@ -234,7 +234,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         .await?;
         debug!("Sent Authentication request");
 
-        self.state = Some(State::ResponderWaitForProfile(ResponderWaitForProfile {
+        self.state = Some(State::ResponderWaitForIdentity(ResponderWaitForIdentity {
             auth_hash: kex_msg.auth_hash(),
             local_secure_channel_address: kex_msg.address().clone(),
             identity: state.identity,
@@ -244,72 +244,72 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         Ok(())
     }
 
-    async fn handle_send_profile(
+    async fn handle_send_identity(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: InitiatorSendProfile<I, T>,
+        mut state: InitiatorSendIdentity<I, T>,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
         // Ensure message came from dedicated SecureChannel
         if return_route.next()? != &state.channel.address() {
-            return Err(EntityError::UnknownChannelMsgDestination.into());
+            return Err(IdentityError::UnknownChannelMsgDestination.into());
         }
 
-        let body = EntityChannelMessage::decode(msg.payload())?;
+        let body = IdentityChannelMessage::decode(msg.payload())?;
 
-        // Wait for responder to send us his Profile and Profile Proof.
+        // Wait for responder to send us his Identity and Identity Proof.
         // In case of using Noise XX this is m4 message.
-        if let EntityChannelMessage::Request { contact, proof } = body {
+        if let IdentityChannelMessage::Request { contact, proof } = body {
             debug!("Received Authentication request");
 
             let their_contact = contact;
-            let their_profile_id = their_contact.identifier().clone();
+            let their_identity_id = their_contact.identifier().clone();
 
-            let contact_result = state.identity.get_contact(&their_profile_id).await?;
+            let contact_result = state.identity.get_contact(&their_identity_id).await?;
 
             if contact_result.is_some() {
-                // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
+                // TODO: We're creating SecureChannel with known Identity. Need to update their Identity.
             } else {
                 state.identity.verify_and_add_contact(their_contact).await?;
             }
 
-            // Verify responder posses their Profile key
+            // Verify responder posses their Identity key
             let verified = state
                 .identity
-                .verify_auth_proof(&state.channel.auth_hash(), &their_profile_id, &proof)
+                .verify_auth_proof(&state.channel.auth_hash(), &their_identity_id, &proof)
                 .await?;
 
             if !verified {
-                return Err(EntityError::SecureChannelVerificationFailed.into());
+                return Err(IdentityError::SecureChannelVerificationFailed.into());
             }
             info!(
                 "Initiator verified SecureChannel from: {}",
-                their_profile_id
+                their_identity_id
             );
 
             // Check our TrustPolicy
-            let trust_info = SecureChannelTrustInfo::new(their_profile_id.clone());
+            let trust_info = SecureChannelTrustInfo::new(their_identity_id.clone());
             let trusted = state.trust_policy.check(&trust_info).await?;
             if !trusted {
-                return Err(EntityError::SecureChannelTrustCheckFailed.into());
+                return Err(IdentityError::SecureChannelTrustCheckFailed.into());
             }
             info!(
                 "Initiator checked trust policy for SecureChannel from: {}",
-                &their_profile_id
+                &their_identity_id
             );
 
-            // Prove we posses our Profile key
+            // Prove we posses our Identity key
             let contact = state.identity.as_contact().await?;
             let proof = state
                 .identity
                 .create_auth_proof(&state.channel.auth_hash())
                 .await?;
 
-            let auth_msg = EntityChannelMessage::Response { contact, proof };
+            let auth_msg = IdentityChannelMessage::Response { contact, proof };
 
-            let remote_profile_secure_channel_address = return_route.recipient();
+            let remote_identity_secure_channel_address = return_route.recipient();
 
             ctx.send_from_address(return_route, auth_msg, self.self_remote_address.clone())
                 .await?;
@@ -317,12 +317,12 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.channel.address(),
-                remote_profile_secure_channel_address,
-                their_profile_id,
+                remote_identity_secure_channel_address,
+                their_identity_id,
             }));
 
             info!(
-                "Initialized ProfileSecureChannel Initiator at local: {}, remote: {}",
+                "Initialized IdentitySecureChannel Initiator at local: {}, remote: {}",
                 &self.self_local_address, &self.self_remote_address
             );
 
@@ -334,37 +334,37 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
             Ok(())
         } else {
-            Err(EntityError::InvalidSecureChannelInternalState.into())
+            Err(IdentityError::InvalidSecureChannelInternalState.into())
         }
     }
 
-    async fn handle_receive_profile(
+    async fn handle_receive_identity(
         &mut self,
         _ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: ResponderWaitForProfile<I, T>,
+        mut state: ResponderWaitForIdentity<I, T>,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
         // Ensure message came from dedicated SecureChannel
         if return_route.next()? != &state.local_secure_channel_address {
-            return Err(EntityError::UnknownChannelMsgDestination.into());
+            return Err(IdentityError::UnknownChannelMsgDestination.into());
         }
 
-        let body = EntityChannelMessage::decode(msg.payload())?;
+        let body = IdentityChannelMessage::decode(msg.payload())?;
 
-        // Wait for responder to send us his Profile and Profile Proof.
+        // Wait for responder to send us his Identity and Identity Proof.
         // In case of using Noise XX this is m4 message.
-        if let EntityChannelMessage::Response { contact, proof } = body {
+        if let IdentityChannelMessage::Response { contact, proof } = body {
             debug!("Received Authentication response");
 
             let their_contact = contact;
-            let their_profile_id = their_contact.identifier().clone();
+            let their_identity_id = their_contact.identifier().clone();
 
-            let contact_result = state.identity.get_contact(&their_profile_id).await?;
+            let contact_result = state.identity.get_contact(&their_identity_id).await?;
 
             if contact_result.is_some() {
-                // TODO: We're creating SecureChannel with known Profile. Need to update their Profile.
+                // TODO: We're creating SecureChannel with known Identity. Need to update their Identity.
             } else {
                 state
                     .identity
@@ -372,48 +372,48 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
                     .await?;
             }
 
-            // Verify initiator posses their Profile key
+            // Verify initiator posses their Identity key
             let verified = state
                 .identity
-                .verify_auth_proof(&state.auth_hash, &their_profile_id, &proof)
+                .verify_auth_proof(&state.auth_hash, &their_identity_id, &proof)
                 .await?;
 
             if !verified {
-                return Err(EntityError::SecureChannelVerificationFailed.into());
+                return Err(IdentityError::SecureChannelVerificationFailed.into());
             }
 
             info!(
                 "Responder verified SecureChannel from: {}",
-                &their_profile_id
+                &their_identity_id
             );
 
             // Check our TrustPolicy
-            let trust_info = SecureChannelTrustInfo::new(their_profile_id.clone());
+            let trust_info = SecureChannelTrustInfo::new(their_identity_id.clone());
             let trusted = state.trust_policy.check(&trust_info).await?;
             if !trusted {
-                return Err(EntityError::SecureChannelTrustCheckFailed.into());
+                return Err(IdentityError::SecureChannelTrustCheckFailed.into());
             }
             info!(
                 "Responder checked trust policy for SecureChannel from: {}",
-                &their_profile_id
+                &their_identity_id
             );
 
-            let remote_profile_secure_channel_address = return_route.recipient();
+            let remote_identity_secure_channel_address = return_route.recipient();
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.local_secure_channel_address,
-                remote_profile_secure_channel_address,
-                their_profile_id,
+                remote_identity_secure_channel_address,
+                their_identity_id,
             }));
 
             info!(
-                "Initialized ProfileSecureChannel Responder at local: {}, remote: {}",
+                "Initialized IdentitySecureChannel Responder at local: {}, remote: {}",
                 &self.self_local_address, &self.self_remote_address
             );
 
             Ok(())
         } else {
-            Err(EntityError::InvalidSecureChannelInternalState.into())
+            Err(IdentityError::InvalidSecureChannelInternalState.into())
         }
     }
 
@@ -421,7 +421,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         if let Some(s) = self.state.take() {
             Ok(s)
         } else {
-            Err(EntityError::InvalidSecureChannelInternalState.into())
+            Err(IdentityError::InvalidSecureChannelInternalState.into())
         }
     }
 
@@ -432,7 +432,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         state: Initialized,
     ) -> Result<()> {
         debug!(
-            "ProfileSecureChannel {} received Encrypt",
+            "IdentitySecureChannel {} received Encrypt",
             if self.is_initiator {
                 "Initiator"
             } else {
@@ -450,7 +450,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         let _ = onward_route.step()?;
         let onward_route = onward_route
             .modify()
-            .prepend(state.remote_profile_secure_channel_address)
+            .prepend(state.remote_identity_secure_channel_address)
             .prepend(state.local_secure_channel_address);
 
         let return_route = return_route
@@ -472,7 +472,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         state: Initialized,
     ) -> Result<()> {
         debug!(
-            "ProfileSecureChannel {} received Decrypt",
+            "IdentitySecureChannel {} received Decrypt",
             if self.is_initiator {
                 "Initiator"
             } else {
@@ -487,7 +487,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 
         // Ensure message came from dedicated SecureChannel
         if return_route.next()? != &state.local_secure_channel_address {
-            return Err(EntityError::UnknownChannelMsgDestination.into());
+            return Err(IdentityError::UnknownChannelMsgDestination.into());
         }
 
         let local_msg = msg.into_local_message();
@@ -506,7 +506,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
         let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
         local_info.push(
-            EntitySecureChannelLocalInfo::new(state.their_profile_id.clone()).to_local_info()?,
+            IdentitySecureChannelLocalInfo::new(state.their_identity_id.clone()).to_local_info()?,
         );
 
         let msg = LocalMessage::new(transport_msg, local_info);
@@ -525,7 +525,7 @@ impl<I: Identity, T: TrustPolicy> SecureChannelWorker<I, T> {
 }
 
 #[async_trait]
-impl<I: Identity, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
+impl<I: IdentityTrait, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
     type Message = Any;
     type Context = Context;
 
@@ -535,14 +535,14 @@ impl<I: Identity, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
                 State::InitiatorStartChannel(s) => {
                     let channel = s.channel_future.await?;
 
-                    self.state = Some(State::InitiatorSendProfile(InitiatorSendProfile {
+                    self.state = Some(State::InitiatorSendIdentity(InitiatorSendIdentity {
                         channel,
                         callback_address: s.callback_address,
                         identity: s.identity,
                         trust_policy: s.trust_policy,
                     }));
                 }
-                _ => return Err(EntityError::InvalidSecureChannelInternalState.into()),
+                _ => return Err(IdentityError::InvalidSecureChannelInternalState.into()),
             }
         }
 
@@ -558,27 +558,27 @@ impl<I: Identity, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
 
         match self.take_state()? {
             State::InitiatorStartChannel(_) => {
-                return Err(EntityError::InvalidSecureChannelInternalState.into())
+                return Err(IdentityError::InvalidSecureChannelInternalState.into())
             }
             State::ResponderWaitForKex(s) => {
                 if msg_addr == self.self_local_address {
                     self.handle_kex_done(ctx, msg, s).await?;
                 } else {
-                    return Err(EntityError::UnknownChannelMsgDestination.into());
+                    return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
-            State::InitiatorSendProfile(s) => {
+            State::InitiatorSendIdentity(s) => {
                 if msg_addr == self.self_remote_address {
-                    self.handle_send_profile(ctx, msg, s).await?;
+                    self.handle_send_identity(ctx, msg, s).await?;
                 } else {
-                    return Err(EntityError::UnknownChannelMsgDestination.into());
+                    return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
-            State::ResponderWaitForProfile(s) => {
+            State::ResponderWaitForIdentity(s) => {
                 if msg_addr == self.self_remote_address {
-                    self.handle_receive_profile(ctx, msg, s).await?;
+                    self.handle_receive_identity(ctx, msg, s).await?;
                 } else {
-                    return Err(EntityError::UnknownChannelMsgDestination.into());
+                    return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
             State::Initialized(s) => {
@@ -587,7 +587,7 @@ impl<I: Identity, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
                 } else if msg_addr == self.self_remote_address {
                     self.handle_decrypt(ctx, msg, s).await?;
                 } else {
-                    return Err(EntityError::UnknownChannelMsgDestination.into());
+                    return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
         }

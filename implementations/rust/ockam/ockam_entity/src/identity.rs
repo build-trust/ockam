@@ -1,4 +1,8 @@
-use crate::{AuthenticationProof, Changes, Contact, Identity, Lease, ProfileChangeEvent, ProfileChannelListener, ProfileIdentifier, ProfileState, ProfileVault, SecureChannelWorker, TrustPolicy, TTL};
+use crate::{
+    AuthenticationProof, Changes, Contact, IdentityChangeEvent, IdentityChannelListener,
+    IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault, Lease, SecureChannelWorker,
+    TrustPolicy, TTL,
+};
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -7,16 +11,15 @@ use ockam_node::Context;
 use tokio::sync::RwLock;
 
 #[derive(AsyncTryClone)]
-pub struct Profile<V: ProfileVault> {
+pub struct Identity<V: IdentityVault> {
     ctx: Context,
-    state: Arc<RwLock<ProfileState<V>>>,
+    state: Arc<RwLock<IdentityState<V>>>,
 }
 
-impl<V: ProfileVault> Profile<V> {
+impl<V: IdentityVault> Identity<V> {
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random(0)).await?;
-        let state =
-            ProfileState::create(vault.async_try_clone().await?).await?;
+        let state = IdentityState::create(vault.async_try_clone().await?).await?;
         Ok(Self {
             ctx: child_ctx,
             state: Arc::new(RwLock::new(state)),
@@ -25,8 +28,8 @@ impl<V: ProfileVault> Profile<V> {
 }
 
 #[async_trait]
-impl<V: ProfileVault> Identity for Profile<V> {
-    async fn identifier(&self) -> Result<ProfileIdentifier> {
+impl<V: IdentityVault> IdentityTrait for Identity<V> {
+    async fn identifier(&self) -> Result<IdentityIdentifier> {
         self.state.read().await.identifier().await
     }
 
@@ -69,7 +72,7 @@ impl<V: ProfileVault> Identity for Profile<V> {
     async fn verify_auth_proof(
         &mut self,
         state_slice: &[u8],
-        peer_id: &ProfileIdentifier,
+        peer_id: &IdentityIdentifier,
         proof_slice: &[u8],
     ) -> Result<bool> {
         self.state
@@ -79,7 +82,7 @@ impl<V: ProfileVault> Identity for Profile<V> {
             .await
     }
 
-    async fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
+    async fn add_change(&mut self, change_event: IdentityChangeEvent) -> Result<()> {
         self.state.write().await.add_change(change_event).await
     }
 
@@ -99,7 +102,7 @@ impl<V: ProfileVault> Identity for Profile<V> {
         self.state.write().await.as_contact().await
     }
 
-    async fn get_contact(&mut self, contact_id: &ProfileIdentifier) -> Result<Option<Contact>> {
+    async fn get_contact(&mut self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>> {
         self.state.write().await.get_contact(contact_id).await
     }
 
@@ -117,13 +120,13 @@ impl<V: ProfileVault> Identity for Profile<V> {
 
     async fn verify_and_update_contact(
         &mut self,
-        profile_id: &ProfileIdentifier,
-        changes: &[ProfileChangeEvent],
+        identity_id: &IdentityIdentifier,
+        changes: &[IdentityChangeEvent],
     ) -> Result<bool> {
         self.state
             .write()
             .await
-            .verify_and_update_contact(profile_id, changes)
+            .verify_and_update_contact(identity_id, changes)
             .await
     }
 
@@ -150,15 +153,15 @@ impl<V: ProfileVault> Identity for Profile<V> {
     }
 }
 
-impl<V: ProfileVault> Profile<V> {
+impl<V: IdentityVault> Identity<V> {
     pub async fn create_secure_channel_listener(
         &mut self,
         address: impl Into<Address>,
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
         let vault = self.state.read().await.vault.async_try_clone().await?;
-        let profile_clone = self.async_try_clone().await?;
-        let listener = ProfileChannelListener::new(trust_policy, profile_clone, vault);
+        let identity_clone = self.async_try_clone().await?;
+        let listener = IdentityChannelListener::new(trust_policy, identity_clone, vault);
         self.ctx.start_worker(address.into(), listener).await?;
 
         Ok(())
@@ -170,12 +173,12 @@ impl<V: ProfileVault> Profile<V> {
         trust_policy: impl TrustPolicy,
     ) -> Result<Address> {
         let vault = self.state.read().await.vault.async_try_clone().await?;
-        let profile_clone = self.async_try_clone().await?;
+        let identity_clone = self.async_try_clone().await?;
 
         SecureChannelWorker::create_initiator(
             &self.ctx,
             route.into(),
-            profile_clone,
+            identity_clone,
             trust_policy,
             vault,
         )

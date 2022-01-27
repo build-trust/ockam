@@ -1,4 +1,4 @@
-use crate::{Identity, SecureChannelWorker, TrustPolicy};
+use crate::{IdentityTrait, SecureChannelWorker, TrustPolicy};
 use ockam_channel::{CreateResponderChannelMessage, SecureChannel};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::rand::random;
@@ -6,19 +6,19 @@ use ockam_core::{Address, Result, Routed, Worker};
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
 
-pub(crate) struct ProfileChannelListener<T: TrustPolicy, P: Identity, V: XXVault> {
+pub(crate) struct IdentityChannelListener<T: TrustPolicy, I: IdentityTrait, V: XXVault> {
     trust_policy: T,
-    profile: P,
+    identity: I,
     vault: V,
     listener_address: Address,
 }
 
-impl<T: TrustPolicy, P: Identity, V: XXVault> ProfileChannelListener<T, P, V> {
-    pub fn new(trust_policy: T, profile: P, vault: V) -> Self {
+impl<T: TrustPolicy, I: IdentityTrait, V: XXVault> IdentityChannelListener<T, I, V> {
+    pub fn new(trust_policy: T, identity: I, vault: V) -> Self {
         let listener_address: Address = random();
-        ProfileChannelListener {
+        IdentityChannelListener {
             trust_policy,
-            profile,
+            identity,
             vault,
             listener_address,
         }
@@ -26,7 +26,7 @@ impl<T: TrustPolicy, P: Identity, V: XXVault> ProfileChannelListener<T, P, V> {
 }
 
 #[ockam_core::worker]
-impl<T: TrustPolicy, P: Identity, V: XXVault> Worker for ProfileChannelListener<T, P, V> {
+impl<T: TrustPolicy, I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<T, I, V> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
@@ -57,10 +57,10 @@ impl<T: TrustPolicy, P: Identity, V: XXVault> Worker for ProfileChannelListener<
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let trust_policy = self.trust_policy.async_try_clone().await?;
-        let profile = self.profile.async_try_clone().await?;
+        let identity = self.identity.async_try_clone().await?;
         SecureChannelWorker::create_responder(
             ctx,
-            profile,
+            identity,
             trust_policy,
             self.listener_address.clone(),
             msg,

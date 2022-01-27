@@ -1,4 +1,4 @@
-use crate::ProfileIdentifier;
+use crate::IdentityIdentifier;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 use serde::{Deserialize, Serialize};
@@ -16,19 +16,19 @@ pub use trust_public_key_policy::*;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecureChannelTrustInfo {
-    their_profile_id: ProfileIdentifier,
+    their_identity_id: IdentityIdentifier,
     // TODO: credentials:
 }
 
 impl SecureChannelTrustInfo {
-    pub fn their_profile_id(&self) -> &ProfileIdentifier {
-        &self.their_profile_id
+    pub fn their_identity_id(&self) -> &IdentityIdentifier {
+        &self.their_identity_id
     }
 }
 
 impl SecureChannelTrustInfo {
-    pub fn new(their_profile_id: ProfileIdentifier) -> Self {
-        Self { their_profile_id }
+    pub fn new(their_identity_id: IdentityIdentifier) -> Self {
+        Self { their_identity_id }
     }
 }
 

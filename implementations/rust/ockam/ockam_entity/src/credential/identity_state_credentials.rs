@@ -1,9 +1,9 @@
 use crate::{
-    profile::Profile, BbsCredential, BlsPublicKey, BlsSecretKey, Credential, CredentialAttribute,
+    identity::Identity, BbsCredential, BlsPublicKey, BlsSecretKey, Credential, CredentialAttribute,
     CredentialAttributeType, CredentialError, CredentialFragment1, CredentialFragment2,
     CredentialHolder, CredentialIssuer, CredentialOffer, CredentialPresentation, CredentialRequest,
-    CredentialSchema, CredentialVerifier, EntityCredential, EntityError, ExtPokSignatureProof,
-    OfferId, PresentationManifest, ProfileState, ProofBytes, ProofRequestId, SigningPublicKey,
+    CredentialSchema, CredentialVerifier, ExtPokSignatureProof, IdentityCredential, IdentityError,
+    IdentityState, OfferId, PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
 };
 use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
@@ -17,21 +17,21 @@ use signature_bbs_plus::{MessageGenerators, ProofOfPossession};
 use signature_core::challenge::Challenge;
 use signature_core::lib::{HiddenMessage, Message, Nonce, ProofMessage};
 
-impl ProfileState {
-    pub fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
+impl IdentityState {
+    pub fn add_credential(&mut self, credential: IdentityCredential) -> Result<()> {
         if let Some(_) = self
             .credentials
             .iter()
             .find(|x| x.credential() == credential.credential())
         {
-            return Err(EntityError::DuplicateCredential.into());
+            return Err(IdentityError::DuplicateCredential.into());
         }
         self.credentials.push(credential);
 
         Ok(())
     }
 
-    pub fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential> {
+    pub fn get_credential(&mut self, credential: &Credential) -> Result<IdentityCredential> {
         if let Some(c) = self
             .credentials
             .iter()
@@ -40,15 +40,15 @@ impl ProfileState {
             return Ok(c.clone());
         }
 
-        Err(EntityError::CredentialNotFound.into())
+        Err(IdentityError::CredentialNotFound.into())
     }
 }
 
 #[async_trait]
-impl CredentialIssuer for ProfileState {
+impl CredentialIssuer for IdentityState {
     async fn get_signing_key(&mut self) -> Result<BlsSecretKey> {
         let secret = self
-            .get_secret_key(Profile::CREDENTIALS_ISSUE.into())
+            .get_secret_key(Identity::CREDENTIALS_ISSUE.into())
             .await?;
         let secret = self.vault.secret_export(&secret).await?;
         let secret = BlsSecretKey::from_bytes(&secret.as_ref().try_into().unwrap()).unwrap();
@@ -181,7 +181,7 @@ impl CredentialIssuer for ProfileState {
 pub const SECRET_ID: &str = "secret_id";
 
 #[async_trait]
-impl CredentialHolder for ProfileState {
+impl CredentialHolder for IdentityState {
     async fn accept_credential_offer(
         &mut self,
         offer: &CredentialOffer,
@@ -338,7 +338,7 @@ impl CredentialHolder for ProfileState {
 }
 
 #[async_trait]
-impl CredentialVerifier for ProfileState {
+impl CredentialVerifier for IdentityState {
     async fn create_proof_request_id(&mut self) -> Result<ProofRequestId> {
         Ok(Nonce::random(thread_rng()).to_bytes())
     }

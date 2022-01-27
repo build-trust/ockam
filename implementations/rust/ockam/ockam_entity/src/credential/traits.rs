@@ -1,7 +1,7 @@
 use crate::{
     BbsCredential, BlsSecretKey, CredentialAttribute, CredentialFragment1, CredentialFragment2,
-    CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, EntityError,
-    EntityIdentifier, OfferId, PresentationManifest, ProfileIdentifier, ProofBytes, ProofRequestId,
+    CredentialOffer, CredentialPresentation, CredentialRequest, CredentialSchema, IdentityError,
+    IdentityIdentifier, OfferId, PresentationManifest, ProofBytes, ProofRequestId,
     SigningPublicKey, TrustPolicy,
 };
 use core::convert::TryFrom;
@@ -139,7 +139,7 @@ impl TryFrom<&str> for CredentialIdentifier {
         if let Some(str) = value.strip_prefix(Self::PREFIX) {
             Ok(Self(str.into()))
         } else {
-            Err(EntityError::InvalidProfileId.into())
+            Err(IdentityError::InvalidIdentityId.into())
         }
     }
 }
@@ -155,12 +155,12 @@ impl TryFrom<String> for CredentialIdentifier {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Credential {
     id: CredentialIdentifier,
-    issuer_id: EntityIdentifier,
+    issuer_id: IdentityIdentifier,
     type_id: String,
 }
 
 impl Credential {
-    pub fn new(id: CredentialIdentifier, issuer_id: EntityIdentifier, type_id: String) -> Self {
+    pub fn new(id: CredentialIdentifier, issuer_id: IdentityIdentifier, type_id: String) -> Self {
         Credential {
             id,
             issuer_id,
@@ -173,7 +173,7 @@ impl Credential {
     pub fn id(&self) -> &CredentialIdentifier {
         &self.id
     }
-    pub fn issuer_id(&self) -> &EntityIdentifier {
+    pub fn issuer_id(&self) -> &IdentityIdentifier {
         &self.issuer_id
     }
     pub fn type_id(&self) -> &str {
@@ -182,7 +182,7 @@ impl Credential {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct EntityCredential {
+pub struct IdentityCredential {
     credential: Credential,
     bbs_credential: BbsCredential,
     #[serde(with = "BigArray")]
@@ -190,7 +190,7 @@ pub struct EntityCredential {
     schema: CredentialSchema,
 }
 
-impl EntityCredential {
+impl IdentityCredential {
     pub fn credential(&self) -> &Credential {
         &self.credential
     }
@@ -205,14 +205,14 @@ impl EntityCredential {
     }
 }
 
-impl EntityCredential {
+impl IdentityCredential {
     pub fn new(
         credential: Credential,
         bbs_credential: BbsCredential,
         issuer_pubkey: SigningPublicKey,
         schema: CredentialSchema,
     ) -> Self {
-        EntityCredential {
+        IdentityCredential {
             credential,
             bbs_credential,
             issuer_pubkey,
@@ -233,7 +233,7 @@ pub trait CredentialProtocol {
     async fn acquire_credential(
         &mut self,
         issuer_route: Route,
-        issuer_id: &ProfileIdentifier,
+        issuer_id: &IdentityIdentifier,
         schema: CredentialSchema,
         values: Vec<CredentialAttribute>,
     ) -> Result<Credential>;
@@ -248,7 +248,7 @@ pub trait CredentialProtocol {
     async fn verify_credential(
         &mut self,
         address: Address,
-        issuer_id: &ProfileIdentifier,
+        issuer_id: &IdentityIdentifier,
         schema: CredentialSchema,
         attributes_values: Vec<CredentialAttribute>,
     ) -> Result<bool>;

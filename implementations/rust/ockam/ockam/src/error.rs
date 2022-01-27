@@ -9,7 +9,7 @@ pub enum OckamError {
     ConsistencyError,
     ComplexEventsAreNotSupported,
     EventIdDoesNotMatch,
-    ProfileIdDoesNotMatch,
+    IdentityIdDoesNotMatch,
     EmptyChange,
     ContactNotFound,
     EventNotFound,
