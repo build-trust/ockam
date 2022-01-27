@@ -87,7 +87,7 @@ impl OckamMessage {
 }
 
 /// An encoding for message metadata
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Metadata(BTreeMap<String, Vec<u8>>);
 
 impl Deref for Metadata {
