@@ -24,7 +24,7 @@ impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AnyTrustPolicy<F, S> {
 
 #[cfg(test)]
 mod test {
-    use crate::{DisjunctionTrustPolicy, ProfileIdentifier, SecureChannelTrustInfo, TrustPolicy};
+    use crate::{DisjunctionTrustPolicy, IdentityIdentifier, SecureChannelTrustInfo, TrustPolicy};
     use ockam_core::Result;
     use ockam_core::{async_trait, compat::boxed::Box};
 
@@ -40,7 +40,7 @@ mod test {
             }
         }
 
-        let id = ProfileIdentifier::random();
+        let id = IdentityIdentifier::random();
         let trust_info = SecureChannelTrustInfo::new(id);
 
         assert!(TrustPolicyStub(true)

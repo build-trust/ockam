@@ -40,7 +40,6 @@ _granular authorization decisions about all incoming information and commands._
 
 * End-to-end encrypted, mutually authenticated _secure channels_.
 * Key establishment, rotation, and revocation - _for fleets, at scale_.
-* Identity profiles isolated by _privacy contexts_.
 * Attribute-based Access Control - credentials with _selective disclosure_.
 * Add-ons for a variety of operating environments, transport protocols, and _cryptographic hardware_.
 * Libraries for multiple languages - _Rust, Elixir_ (more on the roadmap).
@@ -79,22 +78,22 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
     ```rust
     // examples/hello.rs
 
-    use ockam::{route, Context, Entity, Result, TrustEveryonePolicy, Vault};
+    use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
 
     #[ockam::node]
     async fn main(mut ctx: Context) -> Result<()> {
         // Create a Vault to safely store secret keys for Alice and Bob.
-        let vault = Vault::create(&ctx).await?;
+        let vault = Vault::create();
 
-        // Create a Profile to represent Bob.
-        let mut bob = Profile::create(&ctx, &vault).await?;
+        // Create an Identity to represent Bob.
+        let mut bob = Identity::create(&ctx, &vault).await?;
 
         // Create a secure channel listener for Bob that will wait for requests to
         // initiate an Authenticated Key Exchange.
         bob.create_secure_channel_listener("bob", TrustEveryonePolicy).await?;
 
         // Create an entity to represent Alice.
-        let mut alice = Entity::create(&ctx, &vault).await?;
+        let mut alice = Identity::create(&ctx, &vault).await?;
 
         // As Alice, connect to Bob's secure channel listener and perform an
         // Authenticated Key Exchange to establish an encrypted secure channel with Bob.

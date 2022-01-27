@@ -31,7 +31,6 @@ _granular authorization decisions about all incoming information and commands._
 * End-to-end encrypted, mutually authenticated _secure channels_.
 * Multi-hop, multi-transport, application layer routing.
 * Key establishment, rotation, and revocation - _for fleets, at scale_.
-* Entities and Identity profiles isolated by _privacy contexts_.
 * Lightweight, Concurrent, Stateful Workers that enable _simple APIs_.
 * Attribute-based Access Control - credentials with _selective disclosure_.
 * Add-ons for a variety of operating environments, transport protocols, and _cryptographic hardware_.

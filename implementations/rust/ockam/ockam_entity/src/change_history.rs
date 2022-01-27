@@ -1,59 +1,62 @@
-//! Profile history
-use crate::ProfileChangeType::{CreateKey, RotateKey};
-use crate::{EntityError, EventIdentifier, ProfileChangeEvent, ProfileStateConst, ProfileVault, SignatureType};
+//! Identity history
+use crate::IdentityChangeType::{CreateKey, RotateKey};
+use crate::{
+    EventIdentifier, IdentityChangeEvent, IdentityError, IdentityStateConst, IdentityVault,
+    SignatureType,
+};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny, Encodable, Result};
 use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
-/// Full history of [`Profile`] changes. History and corresponding secret keys are enough to recreate [`Profile`]
+/// Full history of [`Identity`] changes. History and corresponding secret keys are enough to recreate [`Identity`]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct ProfileChangeHistory(Vec<ProfileChangeEvent>);
+pub(crate) struct IdentityChangeHistory(Vec<IdentityChangeEvent>);
 
-impl ProfileChangeHistory {
-    pub(crate) fn new(change_events: Vec<ProfileChangeEvent>) -> Self {
+impl IdentityChangeHistory {
+    pub(crate) fn new(change_events: Vec<IdentityChangeEvent>) -> Self {
         Self(change_events)
     }
 
-    pub(crate) fn push_event(&mut self, event: ProfileChangeEvent) {
+    pub(crate) fn push_event(&mut self, event: IdentityChangeEvent) {
         self.0.push(event)
     }
 }
 
-impl AsRef<[ProfileChangeEvent]> for ProfileChangeHistory {
-    fn as_ref(&self) -> &[ProfileChangeEvent] {
+impl AsRef<[IdentityChangeEvent]> for IdentityChangeHistory {
+    fn as_ref(&self) -> &[IdentityChangeEvent] {
         &self.0
     }
 }
 
-impl Default for ProfileChangeHistory {
+impl Default for IdentityChangeHistory {
     fn default() -> Self {
         Self::new(Vec::new())
     }
 }
 
-impl ProfileChangeHistory {
+impl IdentityChangeHistory {
     pub(crate) fn get_last_event_id(&self) -> Result<EventIdentifier> {
         if let Some(e) = self.0.last() {
             Ok(e.identifier().clone())
         } else {
-            Err(EntityError::InvalidInternalState.into())
+            Err(IdentityError::InvalidInternalState.into())
         }
     }
 
     pub(crate) fn find_last_key_event<'a>(
-        existing_events: &'a [ProfileChangeEvent],
+        existing_events: &'a [IdentityChangeEvent],
         label: &str,
-    ) -> Result<&'a ProfileChangeEvent> {
+    ) -> Result<&'a IdentityChangeEvent> {
         existing_events
             .iter()
             .rev()
             .find(|e| e.change_block().change().has_label(label))
-            .ok_or_else(|| EntityError::InvalidInternalState.into())
+            .ok_or_else(|| IdentityError::InvalidInternalState.into())
     }
 
     pub(crate) fn find_last_key_event_public_key(
-        existing_events: &[ProfileChangeEvent],
+        existing_events: &[IdentityChangeEvent],
         label: &str,
     ) -> Result<PublicKey> {
         let last_key_event = Self::find_last_key_event(existing_events, label)?;
@@ -62,11 +65,11 @@ impl ProfileChangeHistory {
     }
 }
 
-impl ProfileChangeHistory {
+impl IdentityChangeHistory {
     pub(crate) fn get_current_root_public_key(
-        existing_events: &[ProfileChangeEvent],
+        existing_events: &[IdentityChangeEvent],
     ) -> Result<PublicKey> {
-        Self::find_last_key_event_public_key(existing_events, ProfileStateConst::ROOT_LABEL)
+        Self::find_last_key_event_public_key(existing_events, IdentityStateConst::ROOT_LABEL)
     }
 
     pub(crate) fn get_first_root_public_key(&self) -> Result<PublicKey> {
@@ -75,7 +78,7 @@ impl ProfileChangeHistory {
         if let Some(re) = self.as_ref().first() {
             root_event = re;
         } else {
-            return Err(EntityError::InvalidInternalState.into());
+            return Err(IdentityError::InvalidInternalState.into());
         }
 
         let root_change = root_event.change_block().change();
@@ -84,14 +87,14 @@ impl ProfileChangeHistory {
         if let CreateKey(c) = root_change.change_type() {
             root_create_key_change = c;
         } else {
-            return Err(EntityError::InvalidInternalState.into());
+            return Err(IdentityError::InvalidInternalState.into());
         }
 
         Ok(root_create_key_change.data().public_key().clone())
     }
 
     pub(crate) fn get_public_key_static(
-        events: &[ProfileChangeEvent],
+        events: &[IdentityChangeEvent],
         label: &str,
     ) -> Result<PublicKey> {
         let event = Self::find_last_key_event(events, label)?;
@@ -103,10 +106,10 @@ impl ProfileChangeHistory {
     }
 }
 
-impl ProfileChangeHistory {
+impl IdentityChangeHistory {
     pub(crate) async fn verify_all_existing_events(
         &self,
-        vault: &mut impl ProfileVault,
+        vault: &mut impl IdentityVault,
     ) -> Result<bool> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
@@ -120,12 +123,14 @@ impl ProfileChangeHistory {
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
     pub(crate) async fn verify_event(
-        existing_events: &[ProfileChangeEvent],
-        new_change_event: &ProfileChangeEvent,
-        vault: &mut impl ProfileVault,
+        existing_events: &[IdentityChangeEvent],
+        new_change_event: &IdentityChangeEvent,
+        vault: &mut impl IdentityVault,
     ) -> Result<bool> {
         let change_block = new_change_event.change_block();
-        let change_block_binary = change_block.encode().map_err(|_| EntityError::BareError)?;
+        let change_block_binary = change_block
+            .encode()
+            .map_err(|_| IdentityError::BareError)?;
 
         let event_id = vault.sha256(&change_block_binary).await?;
         let event_id = EventIdentifier::from_hash(event_id);
@@ -167,7 +172,7 @@ impl ProfileChangeHistory {
             let public_key = match signature.stype() {
                 SignatureType::RootSign => {
                     if existing_events.is_empty() {
-                        return Err(EntityError::VerifyFailed.into());
+                        return Err(IdentityError::VerifyFailed.into());
                     }
 
                     counter = &mut signatures_check.root_sign;
@@ -187,7 +192,7 @@ impl ProfileChangeHistory {
             };
 
             if *counter == 0 {
-                return Err(EntityError::VerifyFailed.into());
+                return Err(IdentityError::VerifyFailed.into());
             }
 
             if !vault
@@ -205,8 +210,8 @@ impl ProfileChangeHistory {
 
     /// Check consistency of events that are been added
     pub(crate) fn check_consistency(
-        existing_events: &[ProfileChangeEvent],
-        new_events: &[ProfileChangeEvent],
+        existing_events: &[IdentityChangeEvent],
+        new_events: &[IdentityChangeEvent],
     ) -> bool {
         let mut prev_event;
         if let Some(e) = existing_events.last() {

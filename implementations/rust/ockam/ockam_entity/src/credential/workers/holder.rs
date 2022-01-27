@@ -1,7 +1,8 @@
 use crate::{
     Credential, CredentialAcquisitionResultMessage, CredentialAttribute, CredentialFragment1,
-    CredentialProtocolMessage, CredentialSchema, EntityCredential, EntityError,
-    EntitySecureChannelLocalInfo, Holder, Identity, Profile, ProfileIdentifier, SigningPublicKey,
+    CredentialProtocolMessage, CredentialSchema, Holder, Identity, IdentityCredential,
+    IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityTrait,
+    SigningPublicKey,
 };
 use core::convert::TryInto;
 use ockam_core::async_trait;
@@ -18,8 +19,8 @@ enum State {
 
 pub struct HolderWorker {
     state: State,
-    profile: Profile,
-    issuer_id: ProfileIdentifier,
+    identity: Identity,
+    issuer_id: IdentityIdentifier,
     issuer_route: Route,
     schema: CredentialSchema,
     values: Vec<CredentialAttribute>,
@@ -28,15 +29,15 @@ pub struct HolderWorker {
 
 impl HolderWorker {
     pub fn new(
-        profile: Profile,
-        issuer_id: ProfileIdentifier,
+        identity: Identity,
+        issuer_id: IdentityIdentifier,
         issuer_route: Route,
         schema: CredentialSchema,
         values: Vec<CredentialAttribute>,
         callback_address: Address,
     ) -> Self {
         Self {
-            profile,
+            identity,
             issuer_id,
             state: State::AcceptOffer,
             issuer_route,
@@ -69,9 +70,9 @@ impl Worker for HolderWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        if self.issuer_id.ne(local_info.their_profile_id()) {
-            return Err(EntityError::HolderInvalidMessage.into());
+        let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        if self.issuer_id.ne(local_info.their_identity_id()) {
+            return Err(IdentityError::HolderInvalidMessage.into());
         }
 
         let route = msg.return_route();
@@ -81,15 +82,15 @@ impl Worker for HolderWorker {
             State::AcceptOffer => {
                 if let CredentialProtocolMessage::IssueOffer(offer) = msg {
                     let issuer_contact;
-                    if let Some(i) = self.profile.get_contact(&self.issuer_id).await? {
+                    if let Some(i) = self.identity.get_contact(&self.issuer_id).await? {
                         issuer_contact = i;
                     } else {
-                        return Err(EntityError::ContactNotFound.into());
+                        return Err(IdentityError::ContactNotFound.into());
                     }
                     let issuer_pubkey = issuer_contact.get_signing_public_key()?;
                     let issuer_pubkey = issuer_pubkey.as_ref().try_into().unwrap();
                     let frag = self
-                        .profile
+                        .identity
                         .accept_credential_offer(&offer, issuer_pubkey)
                         .await?;
 
@@ -101,27 +102,27 @@ impl Worker for HolderWorker {
 
                     self.state = State::CombineFragments(issuer_pubkey, frag.1);
                 } else {
-                    return Err(EntityError::HolderInvalidMessage.into());
+                    return Err(IdentityError::HolderInvalidMessage.into());
                 }
             }
             State::CombineFragments(issuer_pubkey, frag1) => {
                 if let CredentialProtocolMessage::IssueResponse(frag2) = msg {
                     let bbs_credential = self
-                        .profile
+                        .identity
                         .combine_credential_fragments(frag1.clone(), frag2)
                         .await?;
 
                     let credential =
                         Credential::new(random(), self.issuer_id.clone(), self.schema.id.clone());
 
-                    let entity_credential = EntityCredential::new(
+                    let entity_credential = IdentityCredential::new(
                         credential.clone(),
                         bbs_credential,
                         issuer_pubkey.clone(),
                         self.schema.clone(),
                     );
 
-                    self.profile.add_credential(entity_credential).await?;
+                    self.identity.add_credential(entity_credential).await?;
 
                     ctx.send(
                         self.callback_address.clone(),
@@ -133,7 +134,7 @@ impl Worker for HolderWorker {
 
                     ctx.stop_worker(ctx.address()).await?;
                 } else {
-                    return Err(EntityError::HolderInvalidMessage.into());
+                    return Err(IdentityError::HolderInvalidMessage.into());
                 }
             }
             State::Done => {}

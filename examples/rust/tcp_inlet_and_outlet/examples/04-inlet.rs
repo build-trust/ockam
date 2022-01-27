@@ -1,12 +1,12 @@
 use ockam::{route, Context, Result, Route, TcpTransport, TCP};
-use ockam::{Profile, TrustEveryonePolicy, Vault};
+use ockam::{Identity, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Create a Vault to store our cryptographic keys and a Profile to represent this Node.
+    // Create a Vault to store our cryptographic keys and an Identity to represent this Node.
     // Then initiate a handshake with the secure channel listener on the node that has the
     // TCP Transport Outlet.
     //
@@ -14,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
     // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
     let vault = Vault::create();
-    let mut e = Profile::create(&ctx, &vault).await?;
+    let mut e = Identity::create(&ctx, &vault).await?;
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");

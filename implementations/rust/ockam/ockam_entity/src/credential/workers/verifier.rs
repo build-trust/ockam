@@ -1,8 +1,8 @@
 use crate::credential::Verifier;
 use crate::{
     CredentialAttribute, CredentialProtocolMessage, CredentialSchema,
-    CredentialVerificationResultMessage, EntityError, EntitySecureChannelLocalInfo,
-    PresentationManifest, Profile, ProfileIdentifier, ProofRequestId, SigningPublicKey,
+    CredentialVerificationResultMessage, Identity, IdentityError, IdentityIdentifier,
+    IdentitySecureChannelLocalInfo, PresentationManifest, ProofRequestId, SigningPublicKey,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
@@ -17,8 +17,8 @@ enum State {
 
 pub struct VerifierWorker {
     state: State,
-    profile: Profile,
-    presenter_id: Option<ProfileIdentifier>,
+    identity: Identity,
+    presenter_id: Option<IdentityIdentifier>,
     pubkey: SigningPublicKey,
     schema: CredentialSchema,
     attributes_values: Vec<CredentialAttribute>,
@@ -27,7 +27,7 @@ pub struct VerifierWorker {
 
 impl VerifierWorker {
     pub fn new(
-        profile: Profile,
+        identity: Identity,
         pubkey: SigningPublicKey,
         schema: CredentialSchema,
         attributes_values: Vec<CredentialAttribute>,
@@ -35,7 +35,7 @@ impl VerifierWorker {
     ) -> Self {
         Self {
             state: State::CreateRequestId,
-            profile,
+            identity,
             presenter_id: None,
             pubkey,
             schema,
@@ -55,13 +55,13 @@ impl Worker for VerifierWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
         if let Some(presenter_id) = &self.presenter_id {
-            if presenter_id.ne(local_info.their_profile_id()) {
-                return Err(EntityError::VerifierInvalidMessage.into());
+            if presenter_id.ne(local_info.their_identity_id()) {
+                return Err(IdentityError::VerifierInvalidMessage.into());
             }
         } else {
-            self.presenter_id = Some(local_info.their_profile_id().to_owned());
+            self.presenter_id = Some(local_info.their_identity_id().to_owned());
         }
 
         let route = msg.return_route();
@@ -70,13 +70,13 @@ impl Worker for VerifierWorker {
         match &self.state {
             State::CreateRequestId => {
                 if let CredentialProtocolMessage::PresentationOffer = msg {
-                    let id = self.profile.create_proof_request_id().await?;
+                    let id = self.identity.create_proof_request_id().await?;
                     ctx.send(route, CredentialProtocolMessage::PresentationRequest(id))
                         .await?;
 
                     self.state = State::VerifyPresentation(id);
                 } else {
-                    return Err(EntityError::VerifierInvalidMessage.into());
+                    return Err(IdentityError::VerifierInvalidMessage.into());
                 }
             }
             State::VerifyPresentation(id) => {
@@ -104,7 +104,7 @@ impl Worker for VerifierWorker {
                     };
 
                     let is_valid = self
-                        .profile
+                        .identity
                         .verify_credential_presentation(&presentation, &manifest, id.clone())
                         .await?;
 
@@ -119,7 +119,7 @@ impl Worker for VerifierWorker {
 
                     ctx.stop_worker(ctx.address()).await?;
                 } else {
-                    return Err(EntityError::VerifierInvalidMessage.into());
+                    return Err(IdentityError::VerifierInvalidMessage.into());
                 }
             }
             State::Done => {}

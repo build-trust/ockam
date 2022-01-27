@@ -1,10 +1,11 @@
-use crate::change_history::ProfileChangeHistory;
+use crate::change_history::IdentityChangeHistory;
 use crate::{
     authentication::Authentication,
-    AuthenticationProof, Changes, Contact, Contacts, EntityError,
-    EntityError::{ContactVerificationFailed, InvalidInternalState},
-    EventIdentifier, KeyAttributes, Lease, MetaKeyAttributes, ProfileChangeEvent,
-    ProfileEventAttributes, ProfileIdentifier, ProfileVault, TTL,
+    AuthenticationProof, Changes, Contact, Contacts, EventIdentifier, IdentityChangeEvent,
+    IdentityError,
+    IdentityError::{ContactVerificationFailed, InvalidInternalState},
+    IdentityEventAttributes, IdentityIdentifier, IdentityVault, KeyAttributes, Lease,
+    MetaKeyAttributes, TTL,
 };
 use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, CryptoRng, RngCore};
@@ -12,36 +13,36 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::vault::{CURVE25519_SECRET_LENGTH, SecretPersistence, SecretType};
+use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
 use ockam_core::{allow, deny, Result, Route};
 use ockam_vault::{PublicKey, Secret, SecretAttributes};
 
 cfg_if! {
     if #[cfg(feature = "credentials")] {
         use signature_core::message::Message;
-        use crate::credential::EntityCredential;
+        use crate::credential::IdentityCredential;
     }
 }
 
-/// Profile implementation
-pub struct ProfileState<V: ProfileVault> {
-    id: ProfileIdentifier,
-    change_history: ProfileChangeHistory,
+/// Identity implementation
+pub struct IdentityState<V: IdentityVault> {
+    id: IdentityIdentifier,
+    change_history: IdentityChangeHistory,
     contacts: Contacts,
     pub(crate) vault: V,
     #[cfg(feature = "credentials")]
     pub(crate) rand_msg: Message,
     #[cfg(feature = "credentials")]
-    pub(crate) credentials: Vec<EntityCredential>,
+    pub(crate) credentials: Vec<IdentityCredential>,
     lease: Option<Lease>,
 }
 
-pub struct ProfileStateConst;
+pub struct IdentityStateConst;
 
-impl ProfileStateConst {
-    /// Sha256 of that value is used as previous event id for first event in a [`Profile`]
+impl IdentityStateConst {
+    /// Sha256 of that value is used as previous event id for first event in a [`Identity`]
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
-    /// Label for [`Profile`] update key
+    /// Label for [`Identity`] update key
     pub const ROOT_LABEL: &'static str = "OCKAM_RK";
     /// Label for key used to issue credentials
     #[cfg(feature = "credentials")]
@@ -50,10 +51,10 @@ impl ProfileStateConst {
     pub const CURRENT_CHANGE_VERSION: u8 = 1;
 }
 
-impl<V: ProfileVault> ProfileState<V> {
-    /// Profile constructor
+impl<V: IdentityVault> IdentityState<V> {
+    /// Identity constructor
     pub fn new(
-        identifier: ProfileIdentifier,
+        identifier: IdentityIdentifier,
         change_events: Changes,
         contacts: Contacts,
         vault: V,
@@ -63,7 +64,7 @@ impl<V: ProfileVault> ProfileState<V> {
         let _ = rng;
         Self {
             id: identifier,
-            change_history: ProfileChangeHistory::new(change_events),
+            change_history: IdentityChangeHistory::new(change_events),
             contacts,
             vault,
             #[cfg(feature = "credentials")]
@@ -74,16 +75,16 @@ impl<V: ProfileVault> ProfileState<V> {
         }
     }
 
-    pub(crate) fn change_history(&self) -> &ProfileChangeHistory {
+    pub(crate) fn change_history(&self) -> &IdentityChangeHistory {
         &self.change_history
     }
 
-    /// Create ProfileState
+    /// Create IdentityState
     pub(crate) async fn create(mut vault: V) -> Result<Self> {
         let initial_event_id = EventIdentifier::initial(&mut vault).await;
 
         let key_attribs = KeyAttributes::new(
-            ProfileStateConst::ROOT_LABEL.to_string(),
+            IdentityStateConst::ROOT_LABEL.to_string(),
             MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
                 SecretType::Ed25519,
                 SecretPersistence::Persistent,
@@ -95,7 +96,7 @@ impl<V: ProfileVault> ProfileState<V> {
             None,
             initial_event_id,
             key_attribs.clone(),
-            ProfileEventAttributes::new(),
+            IdentityEventAttributes::new(),
             None,
             &mut vault,
         )
@@ -103,9 +104,9 @@ impl<V: ProfileVault> ProfileState<V> {
 
         let public_key = create_key_event.change_block().change().public_key()?;
         let public_key_id = vault.compute_key_id_for_public_key(&public_key).await?;
-        let public_key_id = ProfileIdentifier::from_key_id(public_key_id);
+        let public_key_id = IdentityIdentifier::from_key_id(public_key_id);
 
-        let profile = Self::new(
+        let identity = Self::new(
             public_key_id,
             vec![create_key_event],
             Default::default(),
@@ -113,11 +114,11 @@ impl<V: ProfileVault> ProfileState<V> {
             thread_rng(),
         );
 
-        Ok(profile)
+        Ok(identity)
     }
 
     pub(crate) async fn get_secret_key_from_event(
-        event: &ProfileChangeEvent,
+        event: &IdentityChangeEvent,
         vault: &mut V,
     ) -> Result<Secret> {
         let public_key = event.change_block().change().public_key()?;
@@ -136,8 +137,8 @@ impl<V: ProfileVault> ProfileState<V> {
     }
 }
 
-impl<V: ProfileVault> ProfileState<V> {
-    pub async fn identifier(&self) -> Result<ProfileIdentifier> {
+impl<V: IdentityVault> IdentityState<V> {
+    pub async fn identifier(&self) -> Result<IdentityIdentifier> {
         Ok(self.id.clone())
     }
 
@@ -145,7 +146,7 @@ impl<V: ProfileVault> ProfileState<V> {
         let key_attribs = KeyAttributes::default_with_label(label);
 
         let event = self
-            .make_create_key_event(None, key_attribs, ProfileEventAttributes::new())
+            .make_create_key_event(None, key_attribs, IdentityEventAttributes::new())
             .await?;
 
         self.add_change(event).await
@@ -159,7 +160,7 @@ impl<V: ProfileVault> ProfileState<V> {
         );
 
         let event = {
-            self.make_create_key_event(Some(secret), key_attribs, ProfileEventAttributes::new())
+            self.make_create_key_event(Some(secret), key_attribs, IdentityEventAttributes::new())
                 .await?
         };
         self.add_change(event).await
@@ -168,8 +169,8 @@ impl<V: ProfileVault> ProfileState<V> {
     pub async fn rotate_root_secret_key(&mut self) -> Result<()> {
         let event = self
             .make_rotate_key_event(
-                KeyAttributes::default_with_label(ProfileStateConst::ROOT_LABEL.to_string()),
-                ProfileEventAttributes::new(),
+                KeyAttributes::default_with_label(IdentityStateConst::ROOT_LABEL.to_string()),
+                IdentityEventAttributes::new(),
             )
             .await?;
         self.add_change(event).await
@@ -177,19 +178,19 @@ impl<V: ProfileVault> ProfileState<V> {
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
     pub async fn get_root_secret_key(&self) -> Result<Secret> {
-        self.get_secret_key(ProfileStateConst::ROOT_LABEL.to_string())
+        self.get_secret_key(IdentityStateConst::ROOT_LABEL.to_string())
             .await
     }
 
     pub async fn get_secret_key(&self, label: String) -> Result<Secret> {
         let event =
-            ProfileChangeHistory::find_last_key_event(self.change_history().as_ref(), &label)?
+            IdentityChangeHistory::find_last_key_event(self.change_history().as_ref(), &label)?
                 .clone();
         Self::get_secret_key_from_event(&event, &mut self.vault.async_try_clone().await?).await
     }
 
     pub async fn get_root_public_key(&self) -> Result<PublicKey> {
-        self.get_public_key(ProfileStateConst::ROOT_LABEL.to_string())
+        self.get_public_key(IdentityStateConst::ROOT_LABEL.to_string())
             .await
     }
 
@@ -197,38 +198,38 @@ impl<V: ProfileVault> ProfileState<V> {
         self.change_history.get_public_key(&label)
     }
 
-    /// Generate Proof of possession of [`Profile`].
+    /// Generate Proof of possession of [`Identity`].
     /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
     pub async fn create_auth_proof(&mut self, channel_state: &[u8]) -> Result<AuthenticationProof> {
         let root_secret = self.get_root_secret_key().await?;
 
         Authentication::generate_proof(channel_state, &root_secret, &mut self.vault).await
     }
-    /// Verify Proof of possession of [`Profile`] with given [`ProfileIdentifier`].
+    /// Verify Proof of possession of [`Identity`] with given [`IdentityIdentifier`].
     /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
     pub async fn verify_auth_proof(
         &mut self,
         channel_state: &[u8],
-        responder_contact_id: &ProfileIdentifier,
+        responder_contact_id: &IdentityIdentifier,
         proof: &[u8],
     ) -> Result<bool> {
         let contact = self
             .get_contact(responder_contact_id)
             .await?
-            .ok_or(EntityError::ContactNotFound)?;
+            .ok_or(IdentityError::ContactNotFound)?;
 
         Authentication::verify_proof(
             channel_state,
-            &contact.get_profile_update_public_key()?,
+            &contact.get_identity_update_public_key()?,
             proof,
             &mut self.vault,
         )
         .await
     }
 
-    pub async fn add_change(&mut self, change_event: ProfileChangeEvent) -> Result<()> {
+    pub async fn add_change(&mut self, change_event: IdentityChangeEvent) -> Result<()> {
         let slice = core::slice::from_ref(&change_event);
-        if ProfileChangeHistory::check_consistency(self.change_history.as_ref(), slice) {
+        if IdentityChangeHistory::check_consistency(self.change_history.as_ref(), slice) {
             self.change_history.push_event(change_event);
         }
         Ok(())
@@ -238,9 +239,9 @@ impl<V: ProfileVault> ProfileState<V> {
         Ok(self.change_history.as_ref().to_vec())
     }
 
-    /// Verify whole event chain of current [`Profile`]
+    /// Verify whole event chain of current [`Identity`]
     pub async fn verify_changes(&mut self) -> Result<bool> {
-        if !ProfileChangeHistory::check_consistency(&[], self.change_history().as_ref()) {
+        if !IdentityChangeHistory::check_consistency(&[], self.change_history().as_ref()) {
             return deny();
         }
 
@@ -258,10 +259,10 @@ impl<V: ProfileVault> ProfileState<V> {
             .vault
             .compute_key_id_for_public_key(&root_public_key)
             .await?;
-        let profile_id = ProfileIdentifier::from_key_id(root_key_id);
+        let identity_id = IdentityIdentifier::from_key_id(root_key_id);
 
-        if profile_id != self.identifier().await? {
-            return Err(EntityError::ProfileIdDoesNotMatch.into());
+        if identity_id != self.identifier().await? {
+            return Err(IdentityError::IdentityIdDoesNotMatch.into());
         }
 
         allow()
@@ -278,7 +279,7 @@ impl<V: ProfileVault> ProfileState<V> {
         ))
     }
 
-    pub async fn get_contact(&mut self, id: &ProfileIdentifier) -> Result<Option<Contact>> {
+    pub async fn get_contact(&mut self, id: &IdentityIdentifier) -> Result<Option<Contact>> {
         Ok(self.contacts.get(id).cloned())
     }
 
@@ -300,13 +301,13 @@ impl<V: ProfileVault> ProfileState<V> {
 
     pub async fn verify_and_update_contact(
         &mut self,
-        contact_id: &ProfileIdentifier,
-        change_events: &[ProfileChangeEvent],
+        contact_id: &IdentityIdentifier,
+        change_events: &[IdentityChangeEvent],
     ) -> Result<bool> {
         let contact = self
             .contacts
             .get_mut(contact_id)
-            .ok_or(EntityError::ContactNotFound)
+            .ok_or(IdentityError::ContactNotFound)
             .expect("contact not found");
 
         contact

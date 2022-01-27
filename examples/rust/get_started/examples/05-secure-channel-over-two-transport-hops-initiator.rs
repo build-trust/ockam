@@ -2,7 +2,7 @@
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
 use ockam::{route, Context, Result, TrustEveryonePolicy, Vault};
-use ockam::{Profile, TcpTransport, TCP};
+use ockam::{Identity, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -12,8 +12,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create();
 
-    // Create a Profile to represent Alice.
-    let mut alice = Profile::create(&ctx, &vault).await?;
+    // Create an Identity to represent Alice.
+    let mut alice = Identity::create(&ctx, &vault).await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let r = route![(TCP, "localhost:3000"), (TCP, "localhost:4000"), "bob_listener"];

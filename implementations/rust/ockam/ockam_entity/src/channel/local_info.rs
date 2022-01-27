@@ -1,32 +1,32 @@
-use crate::{EntityError, ProfileIdentifier};
+use crate::{IdentityError, IdentityIdentifier};
 use ockam_core::{Decodable, Encodable, LocalInfo, LocalMessage, Result};
 use serde::{Deserialize, Serialize};
 
-/// Entity SecureChannel LocalInfo unique Identifier
-pub const ENTITY_SECURE_CHANNEL_IDENTIFIER: &str = "ENTITY_SECURE_CHANNEL_IDENTIFIER";
+/// Identity SecureChannel LocalInfo unique Identifier
+pub const IDENTITY_SECURE_CHANNEL_IDENTIFIER: &str = "IDENTITY_SECURE_CHANNEL_IDENTIFIER";
 
-/// Entity SecureChannel LocalInfo used for LocalMessage
+/// Identity SecureChannel LocalInfo used for LocalMessage
 #[derive(Serialize, Deserialize)]
-pub struct EntitySecureChannelLocalInfo {
-    their_profile_id: ProfileIdentifier,
+pub struct IdentitySecureChannelLocalInfo {
+    their_identity_id: IdentityIdentifier,
 }
 
-impl EntitySecureChannelLocalInfo {
+impl IdentitySecureChannelLocalInfo {
     pub fn from_local_info(value: &LocalInfo) -> Result<Self> {
-        if value.type_identifier() != ENTITY_SECURE_CHANNEL_IDENTIFIER {
-            return Err(EntityError::InvalidLocalInfoType.into());
+        if value.type_identifier() != IDENTITY_SECURE_CHANNEL_IDENTIFIER {
+            return Err(IdentityError::InvalidLocalInfoType.into());
         }
 
-        if let Ok(info) = EntitySecureChannelLocalInfo::decode(value.data()) {
+        if let Ok(info) = IdentitySecureChannelLocalInfo::decode(value.data()) {
             return Ok(info);
         }
 
-        Err(EntityError::InvalidLocalInfoType.into())
+        Err(IdentityError::InvalidLocalInfoType.into())
     }
 
     pub fn to_local_info(&self) -> Result<LocalInfo> {
         Ok(LocalInfo::new(
-            ENTITY_SECURE_CHANNEL_IDENTIFIER.into(),
+            IDENTITY_SECURE_CHANNEL_IDENTIFIER.into(),
             self.encode()?,
         ))
     }
@@ -35,25 +35,25 @@ impl EntitySecureChannelLocalInfo {
         if let Some(local_info) = local_msg
             .local_info()
             .iter()
-            .find(|x| x.type_identifier() == ENTITY_SECURE_CHANNEL_IDENTIFIER)
+            .find(|x| x.type_identifier() == IDENTITY_SECURE_CHANNEL_IDENTIFIER)
         {
             Self::from_local_info(local_info)
         } else {
-            Err(EntityError::InvalidLocalInfoType.into())
+            Err(IdentityError::InvalidLocalInfoType.into())
         }
     }
 }
 
-impl EntitySecureChannelLocalInfo {
+impl IdentitySecureChannelLocalInfo {
     /// Key exchange name
-    pub fn their_profile_id(&self) -> &ProfileIdentifier {
-        &self.their_profile_id
+    pub fn their_identity_id(&self) -> &IdentityIdentifier {
+        &self.their_identity_id
     }
 }
 
-impl EntitySecureChannelLocalInfo {
+impl IdentitySecureChannelLocalInfo {
     /// Constructor
-    pub fn new(their_profile_id: ProfileIdentifier) -> Self {
-        Self { their_profile_id }
+    pub fn new(their_identity_id: IdentityIdentifier) -> Self {
+        Self { their_identity_id }
     }
 }

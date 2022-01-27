@@ -1,6 +1,6 @@
 use crate::{
-    CredentialAttribute, CredentialProtocolMessage, CredentialSchema, EntityError,
-    EntitySecureChannelLocalInfo, Issuer, OfferId, Profile, ProfileIdentifier,
+    CredentialAttribute, CredentialProtocolMessage, CredentialSchema, Identity, IdentityError,
+    IdentityIdentifier, IdentitySecureChannelLocalInfo, Issuer, OfferId,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
@@ -15,20 +15,20 @@ enum State {
 
 pub struct IssuerWorker {
     state: State,
-    profile: Profile,
-    holder_id: ProfileIdentifier,
+    identity: Identity,
+    holder_id: IdentityIdentifier,
     schema: CredentialSchema,
 }
 
 impl IssuerWorker {
     pub fn new(
-        profile: Profile,
-        holder_id: ProfileIdentifier,
+        identity: Identity,
+        holder_id: IdentityIdentifier,
         schema: CredentialSchema,
         return_route: Route,
     ) -> Result<Self> {
         let s = Self {
-            profile,
+            identity,
             state: State::CreateOffer(return_route),
             holder_id,
             schema,
@@ -45,7 +45,7 @@ impl Worker for IssuerWorker {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if let State::CreateOffer(return_route) = &self.state {
-            let offer = self.profile.create_offer(&self.schema).await?;
+            let offer = self.identity.create_offer(&self.schema).await?;
             let offer_id = offer.id.clone();
             ctx.send(
                 return_route.clone(),
@@ -64,16 +64,16 @@ impl Worker for IssuerWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let local_info = EntitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        if self.holder_id.ne(local_info.their_profile_id()) {
-            return Err(EntityError::IssuerInvalidMessage.into());
+        let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
+        if self.holder_id.ne(local_info.their_identity_id()) {
+            return Err(IdentityError::IssuerInvalidMessage.into());
         }
 
         let route = msg.return_route();
         let msg = msg.body();
 
         match &self.state {
-            State::CreateOffer(_) => return Err(EntityError::InvalidIssueState.into()),
+            State::CreateOffer(_) => return Err(IdentityError::InvalidIssueState.into()),
             State::SignRequest(offer_id) => {
                 if let CredentialProtocolMessage::IssueRequest(request, values) = msg {
                     let signing_attributes: Vec<(String, CredentialAttribute)> = self
@@ -89,7 +89,7 @@ impl Worker for IssuerWorker {
 
                     // Office signs the credentials.
                     let frag2 = self
-                        .profile
+                        .identity
                         .sign_credential_request(
                             &request,
                             &self.schema,
@@ -105,7 +105,7 @@ impl Worker for IssuerWorker {
 
                     ctx.stop_worker(ctx.address()).await?;
                 } else {
-                    return Err(EntityError::IssuerInvalidMessage.into());
+                    return Err(IdentityError::IssuerInvalidMessage.into());
                 }
             }
             State::Done => {}

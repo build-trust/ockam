@@ -1,5 +1,5 @@
 use ockam::{Context, RemoteForwarder, Result, TcpTransport, TCP};
-use ockam::{Profile, TrustEveryonePolicy, Vault};
+use ockam::{Identity, TrustEveryonePolicy, Vault};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -7,7 +7,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create();
-    let mut e = Profile::create(&ctx, &vault).await?;
+    let mut e = Identity::create(&ctx, &vault).await?;
     e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
         .await?;
 

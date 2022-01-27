@@ -1,4 +1,4 @@
-use ockam::{route, Context, Profile, Result, TrustEveryonePolicy, Vault};
+use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
 use ockam::{TcpTransport, TCP};
 use std::io;
 
@@ -10,8 +10,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create();
 
-    // Create a Profile to represent Alice.
-    let mut alice = Profile::create(&ctx, &vault).await?;
+    // Create an Identity to represent Alice.
+    let mut alice = Identity::create(&ctx, &vault).await?;
 
     // This program expects that Bob has setup a forwarding address,
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.

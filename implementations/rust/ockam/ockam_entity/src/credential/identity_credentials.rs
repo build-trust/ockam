@@ -1,14 +1,14 @@
 use crate::credential::Verifier;
-use crate::EntityError::IdentityApiFailed;
 use crate::IdentityCredentialRequest::*;
+use crate::IdentityError::IdentityApiFailed;
 use crate::{
     BbsCredential, Credential, CredentialAcquisitionResultMessage, CredentialAttribute,
     CredentialFragment1, CredentialFragment2, CredentialOffer, CredentialPresentation,
     CredentialProof, CredentialProtocol, CredentialPublicKey, CredentialRequest,
-    CredentialRequestFragment, CredentialSchema, CredentialVerificationResultMessage, Entity,
-    EntityCredential, Holder, HolderWorker, Identity, IdentityCredentialResponse, IdentityRequest,
-    IdentityResponse, Issuer, ListenerWorker, OfferId, PresentationFinishedMessage,
-    PresentationManifest, PresenterWorker, Profile, ProfileIdentifier, ProofRequestId,
+    CredentialRequestFragment, CredentialSchema, CredentialVerificationResultMessage, Holder,
+    HolderWorker, Identity, Identity, IdentityCredential, IdentityCredentialResponse,
+    IdentityIdentifier, IdentityRequest, IdentityResponse, IdentityTrait, Issuer, ListenerWorker,
+    OfferId, PresentationFinishedMessage, PresentationManifest, PresenterWorker, ProofRequestId,
     SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker,
 };
 use core::convert::TryInto;
@@ -23,17 +23,20 @@ fn err<T>() -> Result<T> {
 }
 
 #[async_trait]
-impl Issuer for Profile {
+impl Issuer for Identity {
     async fn get_signing_key(&mut self) -> Result<SecretKey> {
         // FIXME: Clone on every call
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(GetSigningKey(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
             )))
             .await?
         {
@@ -49,14 +52,17 @@ impl Issuer for Profile {
 
     async fn get_signing_public_key(&mut self) -> Result<SigningPublicKey> {
         // FIXME: Why clone?
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(GetIssuerPublicKey(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
             )))
             .await?
         {
@@ -71,14 +77,17 @@ impl Issuer for Profile {
     }
 
     async fn create_offer(&self, schema: &CredentialSchema) -> Result<CredentialOffer> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(CreateOffer(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 schema.clone(),
             )))
             .await?
@@ -94,14 +103,17 @@ impl Issuer for Profile {
     }
 
     async fn create_proof_of_possession(&self) -> Result<CredentialProof> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(CreateProofOfPossession(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
             )))
             .await?
         {
@@ -120,14 +132,17 @@ impl Issuer for Profile {
         schema: &CredentialSchema,
         attributes: &[CredentialAttribute],
     ) -> Result<BbsCredential> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(SignCredential(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 schema.clone(),
                 attributes.as_ref().to_vec(),
             )))
@@ -150,14 +165,17 @@ impl Issuer for Profile {
         attributes: &[(String, CredentialAttribute)],
         offer_id: OfferId,
     ) -> Result<CredentialFragment2> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(SignCredentialRequest(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 request.clone(),
                 schema.clone(),
                 attributes.as_ref().to_vec(),
@@ -177,20 +195,23 @@ impl Issuer for Profile {
 }
 
 #[async_trait]
-impl Holder for Profile {
+impl Holder for Identity {
     async fn accept_credential_offer(
         &self,
         offer: &CredentialOffer,
         issuer_public_key: SigningPublicKey,
     ) -> Result<CredentialRequestFragment> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(AcceptCredentialOffer(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 offer.clone(),
                 CredentialPublicKey(issuer_public_key),
             )))
@@ -211,14 +232,17 @@ impl Holder for Profile {
         credential_fragment1: CredentialFragment1,
         credential_fragment2: CredentialFragment2,
     ) -> Result<BbsCredential> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(CombineCredentialFragments(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 credential_fragment1,
                 credential_fragment2,
             )))
@@ -239,14 +263,17 @@ impl Holder for Profile {
         credential: &BbsCredential,
         verifier_key: SigningPublicKey,
     ) -> Result<bool> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(IsValidCredential(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 credential.clone(),
                 CredentialPublicKey(verifier_key),
             )))
@@ -268,14 +295,17 @@ impl Holder for Profile {
         presentation_manifests: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<CredentialPresentation> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(PresentCredential(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 credential.clone(),
                 presentation_manifests.clone(),
                 proof_request_id,
@@ -292,15 +322,18 @@ impl Holder for Profile {
         }
     }
 
-    async fn add_credential(&mut self, credential: EntityCredential) -> Result<()> {
-        let profile = self
-            .current_profile()
+    async fn add_credential(&mut self, credential: IdentityCredential) -> Result<()> {
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(AddCredential(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 credential,
             )))
             .await?
@@ -315,15 +348,18 @@ impl Holder for Profile {
         }
     }
 
-    async fn get_credential(&mut self, credential: &Credential) -> Result<EntityCredential> {
-        let profile = self
-            .current_profile()
+    async fn get_credential(&mut self, credential: &Credential) -> Result<IdentityCredential> {
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(GetCredential(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 credential.clone(),
             )))
             .await?
@@ -340,16 +376,19 @@ impl Holder for Profile {
 }
 
 #[async_trait]
-impl Verifier for Profile {
+impl Verifier for Identity {
     async fn create_proof_request_id(&self) -> Result<ProofRequestId> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(CreateProofRequestId(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
             )))
             .await?
         {
@@ -368,15 +407,18 @@ impl Verifier for Profile {
         signing_public_key: CredentialPublicKey,
         proof: CredentialProof,
     ) -> Result<bool> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
+            .expect("no current identity");
 
-        if let Res::CredentialResponse(res) = profile
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(VerifyProofOfPossession(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 signing_public_key,
                 proof,
             )))
@@ -398,14 +440,17 @@ impl Verifier for Profile {
         presentation_manifest: &PresentationManifest,
         proof_request_id: ProofRequestId,
     ) -> Result<bool> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        if let Res::CredentialResponse(res) = profile
+            .expect("no current identity");
+        if let Res::CredentialResponse(res) = identity
             .call(CredentialRequest(VerifyCredentialPresentation(
-                profile.identifier().await.expect("couldn't get profile id"),
+                identity
+                    .identifier()
+                    .await
+                    .expect("couldn't get identity id"),
                 presentation.clone(),
                 presentation_manifest.clone(),
                 proof_request_id,
@@ -424,22 +469,22 @@ impl Verifier for Profile {
 }
 
 #[async_trait]
-impl CredentialProtocol for Profile {
+impl CredentialProtocol for Identity {
     async fn create_credential_issuance_listener(
         &mut self,
         address: Address,
         schema: CredentialSchema,
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
+            .expect("no current identity");
         let trust_policy =
             TrustPolicyImpl::create_using_impl(&self.handle.ctx(), trust_policy).await?;
 
-        let worker = ListenerWorker::new(profile, schema, trust_policy);
+        let worker = ListenerWorker::new(identity, schema, trust_policy);
         self.handle.ctx().start_worker(address, worker).await?;
 
         Ok(())
@@ -448,19 +493,19 @@ impl CredentialProtocol for Profile {
     async fn acquire_credential(
         &mut self,
         issuer_route: Route,
-        issuer_id: &ProfileIdentifier,
+        issuer_id: &IdentityIdentifier,
         schema: CredentialSchema,
         values: Vec<CredentialAttribute>,
     ) -> Result<Credential> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
+            .expect("no current identity");
         let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
 
         let worker = HolderWorker::new(
-            profile,
+            identity,
             issuer_id.clone(),
             issuer_route,
             schema,
@@ -484,16 +529,16 @@ impl CredentialProtocol for Profile {
         credential: Credential,
         reveal_attributes: Vec<String>,
     ) -> Result<()> {
-        let profile = self
-            .current_profile()
+        let identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
+            .expect("no current identity");
         let credential = self.get_credential(&credential).await?;
 
         let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
         let worker = PresenterWorker::new(
-            profile,
+            identity,
             verifier_route,
             credential,
             reveal_attributes,
@@ -513,21 +558,21 @@ impl CredentialProtocol for Profile {
     async fn verify_credential(
         &mut self,
         address: Address,
-        issuer_id: &ProfileIdentifier,
+        issuer_id: &IdentityIdentifier,
         schema: CredentialSchema,
         attributes_values: Vec<CredentialAttribute>,
     ) -> Result<bool> {
-        let mut profile = self
-            .current_profile()
+        let mut identity = self
+            .current_identity()
             .await
             .unwrap()
-            .expect("no current profile");
-        let issuer = profile.get_contact(issuer_id).await?.unwrap();
+            .expect("no current identity");
+        let issuer = identity.get_contact(issuer_id).await?.unwrap();
         let pubkey = issuer.get_signing_public_key()?;
 
         let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
         let worker = VerifierWorker::new(
-            profile,
+            identity,
             pubkey.as_ref().try_into().unwrap(), // FIXME
             schema,
             attributes_values,
