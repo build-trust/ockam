@@ -26,6 +26,9 @@ pub use ockam_executor::tokio;
 #[cfg(feature = "std")]
 pub use tokio;
 
+/// Async Mutex and RwLock
+pub mod compat;
+
 mod cancel;
 mod context;
 mod error;
