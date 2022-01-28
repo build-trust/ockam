@@ -1,4 +1,5 @@
 #[cfg(feature = "std")]
+/// Async Mutex and RwLock
 pub mod asynchronous {
     pub use tokio::sync::Mutex;
     pub use tokio::sync::RwLock;
@@ -9,7 +10,7 @@ mod mutex;
 #[cfg(not(feature = "std"))]
 mod rwlock;
 
-/// async Mutex and RwLock
+/// Async Mutex and RwLock
 #[cfg(not(feature = "std"))]
 pub mod asynchronous {
     pub use super::mutex::Mutex;
