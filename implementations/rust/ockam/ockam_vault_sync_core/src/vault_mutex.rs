@@ -1,5 +1,5 @@
 use ockam_core::compat::sync::Arc;
-use tokio::sync::Mutex;
+use ockam_node::compat::asynchronous::Mutex;
 use tracing::debug;
 
 /// Vault inside Arc Mutex

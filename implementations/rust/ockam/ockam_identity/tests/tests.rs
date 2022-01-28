@@ -1,6 +1,6 @@
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_core::Result;
-use ockam_entity::{Identity, IdentityTrait};
+use ockam_identity::{Identity, IdentityTrait};
 use ockam_node::Context;
 use ockam_vault_sync_core::Vault;
 

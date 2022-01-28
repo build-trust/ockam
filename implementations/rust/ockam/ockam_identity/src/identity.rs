@@ -7,8 +7,8 @@ use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
+use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
-use tokio::sync::RwLock;
 
 #[derive(AsyncTryClone)]
 pub struct Identity<V: IdentityVault> {
