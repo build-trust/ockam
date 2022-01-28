@@ -1,7 +1,7 @@
 /// Creates a [`CredentialSchema`] containing the arguments.
 ///
 /// ```
-/// # use ockam_entity::credential_type;;
+/// # use ockam_identity::credential_type;;
 /// let schema = credential_type!["TYPE_ID"; "attribute_of_string_type", (Number, "attribute_of_number_type")];
 /// ```
 ///
@@ -32,7 +32,7 @@ macro_rules! credential_type {
 /// Creates a [`CredentialAttribute`] vector containing the arguments.
 ///
 /// ```
-/// # use ockam_entity::credential_attribute_values;;
+/// # use ockam_identity::credential_attribute_values;;
 /// let values = credential_attribute_values!["ABCD-EFGH", 1];
 /// ```
 ///
@@ -52,7 +52,7 @@ macro_rules! credential_attribute_values {
 /// Creates a list of revealed attributes containing the arguments.
 ///
 /// ```
-/// # use ockam_entity::reveal_attributes;;
+/// # use ockam_identity::reveal_attributes;;
 /// let reveal_attributes = reveal_attributes!["ABCD-EFGH", "BDC".to_string()];
 /// ```
 #[macro_export]
