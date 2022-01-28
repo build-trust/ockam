@@ -1314,7 +1314,7 @@ dependencies = [
  "hex",
  "ockam_channel",
  "ockam_core",
- "ockam_entity",
+ "ockam_identity",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
@@ -1410,7 +1410,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_entity"
+name = "ockam_examples"
+version = "0.27.1-dev"
+dependencies = [
+ "ockam",
+ "tracing",
+]
+
+[[package]]
+name = "ockam_executor"
+version = "0.13.1-dev"
+dependencies = [
+ "crossbeam-queue",
+ "futures 0.3.19",
+ "heapless",
+ "ockam_core",
+ "pin-project-lite",
+ "pin-utils",
+ "tracing",
+]
+
+[[package]]
+name = "ockam_identity"
 version = "0.34.1-dev"
 dependencies = [
  "bls12_381_plus",
@@ -1436,27 +1457,6 @@ dependencies = [
  "signature_bls",
  "signature_core",
  "tokio",
- "tracing",
-]
-
-[[package]]
-name = "ockam_examples"
-version = "0.27.1-dev"
-dependencies = [
- "ockam",
- "tracing",
-]
-
-[[package]]
-name = "ockam_executor"
-version = "0.13.1-dev"
-dependencies = [
- "crossbeam-queue",
- "futures 0.3.19",
- "heapless",
- "ockam_core",
- "pin-project-lite",
- "pin-utils",
  "tracing",
 ]
 

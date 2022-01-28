@@ -1,5 +1,5 @@
 use ockam_core::Result;
-use ockam_entity::Identity;
+use ockam_identity::Identity;
 use ockam_node::Context;
 use ockam_vault_sync_core::Vault;
 

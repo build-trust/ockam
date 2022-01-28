@@ -1,4 +1,4 @@
-# ockam_entity
+# ockam_identity
 
 [![crate][crate-image]][crate-link]
 [![docs][docs-image]][docs-link]
@@ -12,7 +12,7 @@ Identity is an abstraction easing use of authentication and authorization APIs.
 
 ## Crate Features
 
-Features of the `ockam_entity` crate:
+Features of the `ockam_identity` crate:
 - `noise_xx` - Enable Noise Protocol XX key agreement dependency.
 - `software_vault` - Enable Software Vault dependency.
 
@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_entity = "0.34.0"
+ockam_identity = "0.34.0"
 ```
 
 ## License
@@ -30,13 +30,13 @@ ockam_entity = "0.34.0"
 This code is licensed under the terms of the [Apache License 2.0][license-link].
 
 [main-ockam-crate-link]: https://crates.io/crates/ockam
-[ockam-entity-crate-link]: https://crates.io/crates/ockam_entity
+[ockam-entity-crate-link]: https://crates.io/crates/ockam_identity
 
-[crate-image]: https://img.shields.io/crates/v/ockam_entity.svg
-[crate-link]: https://crates.io/crates/ockam_entity
+[crate-image]: https://img.shields.io/crates/v/ockam_identity.svg
+[crate-link]: https://crates.io/crates/ockam_identity
 
-[docs-image]: https://docs.rs/ockam_entity/badge.svg
-[docs-link]: https://docs.rs/ockam_entity
+[docs-image]: https://docs.rs/ockam_identity/badge.svg
+[docs-link]: https://docs.rs/ockam_identity
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
 [license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE

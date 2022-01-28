@@ -50,7 +50,7 @@ pub use ockam_core::compat;
 pub use ockam_core::println;
 pub use ockam_core::worker;
 pub use ockam_core::AsyncTryClone;
-pub use ockam_entity::*;
+pub use ockam_identity::*;
 pub use protocols::*;
 pub use remote_forwarder::*;
 pub use unique::*;
