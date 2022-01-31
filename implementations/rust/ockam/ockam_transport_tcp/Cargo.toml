@@ -29,7 +29,7 @@ alloc = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.45.0"}
-ockam_node = { path = "../ockam_node", version = "^0.43.1-dev"}
+ockam_node = { path = "../ockam_node", version = "^0.44.0"}
 ockam_macros = { path = "../ockam_macros", version = "^0.6.0"}
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.18.1-dev"}
 serde = { version = "1.0", default-features = false, features = ["derive"] }
