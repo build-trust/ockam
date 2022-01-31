@@ -64,7 +64,7 @@ alloc = ["ockam_core/alloc", "aes-gcm/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.45.0", default_features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.5.1-dev", default-features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.6.0", default-features = false }
 signature_core = { path = "../signature_core", version = "^0.34.1-dev", optional = true }
 signature_bbs_plus = { path = "../signature_bbs_plus", version = "^0.34.1-dev", optional = true }
 signature_bls = { path = "../signature_bls", version = "^0.32.1-dev", optional = true }
