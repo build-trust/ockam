@@ -1,6 +1,7 @@
 use ockam_core::key_exchange::{KeyExchanger, NewKeyExchanger};
 use ockam_core::vault::SymmetricVault;
 use ockam_core::AsyncTryClone;
+use ockam_key_exchange_xx::XXVault;
 
 /// Vault with XX required functionality
 pub trait SecureChannelVault:
