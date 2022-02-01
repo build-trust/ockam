@@ -22,9 +22,9 @@ fi
 
 source tools/scripts/release/crates-to-publish.sh
 
-for crate in ${updated_crates[@]}; do
-    version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
-    name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
+tag_crate() {
+    version=$(eval "tomlq package.version -f implementations/rust/ockam/$1/Cargo.toml")
+    name=$(eval "tomlq package.name -f implementations/rust/ockam/$1/Cargo.toml")
 
     tag="${name}_v${version}"
 
@@ -37,4 +37,14 @@ for crate in ${updated_crates[@]}; do
 * [CHANGELOG](https://github.com/ockam-network/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md)";
 
     gh release create --draft --notes "$text" -t "$name v${version} (rust crate)" "$tag" --target $COMMIT_SHA
+}
+
+if [[ ! -z $TAG_SINGLE_CRATE ]]; then
+    echo "Tagging only $TAG_SINGLE_CRATE crate"
+    tag_crate $TAG_SINGLE_CRATE
+    exit 0;
+fi
+
+for crate in ${updated_crates[@]}; do
+    tag_crate $crate
 done
