@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -e
 
 # This script bumps all crates that have been updated compared to
 # last git tag. RELEASE_VERSION value is to be set to indicate the

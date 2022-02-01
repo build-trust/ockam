@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -e
 
 # This script generates changelog for all Ockam crates that
 # are to be published.

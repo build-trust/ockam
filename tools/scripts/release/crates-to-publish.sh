@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -e
 
 # This script checks for crates that have been modified
 # compared to last created tag. It is to be used with other

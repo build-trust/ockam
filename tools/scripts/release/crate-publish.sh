@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -e
 
 # This script publishes crates to crates.io. Crates that are
 # not updated are excluded from cargo release.
