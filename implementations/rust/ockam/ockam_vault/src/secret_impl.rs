@@ -54,8 +54,6 @@ impl SoftwareVault {
             }
             #[cfg(feature = "bls")]
             SecretType::Bls => {
-                use core::convert::TryInto;
-
                 let bls_secret_key = BlsSecretKey::from_bytes(secret.try_into().unwrap()).unwrap();
                 let public_key = PublicKey::new(
                     BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
@@ -72,8 +70,6 @@ impl SoftwareVault {
         match attributes.stype() {
             #[cfg(feature = "bls")]
             SecretType::Bls => {
-                use core::convert::TryInto;
-
                 let bytes = TryInto::<[u8; BlsSecretKey::BYTES]>::try_into(secret)
                     .map_err(|_| VaultError::InvalidBlsSecretLength)?;
                 if BlsSecretKey::from_bytes(&bytes).is_none().into() {
@@ -204,8 +200,6 @@ impl SecretVault for SoftwareVault {
             }
             #[cfg(feature = "bls")]
             SecretType::Bls => {
-                use core::convert::TryInto;
-
                 let bls_secret_key =
                     BlsSecretKey::from_bytes(&entry.key().as_ref().try_into().unwrap()).unwrap();
                 Ok(PublicKey::new(

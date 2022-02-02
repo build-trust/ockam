@@ -8,7 +8,7 @@ categories = [
     "embedded",
 ]
 description = "End-to-end encryption and mutual authentication for distributed applications."
-edition = "2018"
+edition = "2021"
 exclude = ["tests/**"]
 homepage = "https://github.com/ockam-network/ockam"
 keywords = [

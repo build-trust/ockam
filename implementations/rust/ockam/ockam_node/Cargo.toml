@@ -8,7 +8,7 @@ categories = [
     "network-programming",
 ]
 description = "Ockam Node implementation crate"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_node"
 keywords = [

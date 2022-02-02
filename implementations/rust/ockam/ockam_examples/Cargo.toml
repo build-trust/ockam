@@ -2,7 +2,7 @@
 authors = ["Ockam Developers"]
 description = """Example projects using the Ockam APIs"""
 version = "0.28.0"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
 keywords = ["ockam", "crypto", "cryptography"]
 license = "Apache-2.0"

@@ -2,7 +2,7 @@
 name = "signature_core"
 version = "0.35.0"
 authors = ["Ockam Deveopers"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/signatures_core"

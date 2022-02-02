@@ -1,7 +1,6 @@
 use crate::vault_types::{FfiSecretAttributes, SecretKeyHandle};
 use crate::{check_buffer, FfiError, FfiOckamError};
 use crate::{FfiVaultFatPointer, FfiVaultType};
-use core::convert::{TryFrom, TryInto};
 use core::slice;
 use lazy_static::lazy_static;
 use ockam_core::compat::sync::Arc;

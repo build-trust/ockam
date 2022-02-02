@@ -1,20 +1,19 @@
 #![allow(conflicting_repr_hints)]
 
 use crate::FfiError;
-use core::convert::TryFrom;
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
 
 /// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;
 
-#[derive(Clone, Copy, Debug)]
 #[repr(C, u8)]
+#[derive(Clone, Copy, Debug)]
 pub enum FfiVaultType {
     Software = 1,
 }
 
-#[derive(Clone, Copy, Debug)]
 #[repr(C)]
+#[derive(Clone, Copy, Debug)]
 pub struct FfiVaultFatPointer {
     handle: u64,
     vault_type: FfiVaultType,

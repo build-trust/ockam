@@ -11,7 +11,6 @@ use crate::{
     OfferId, PresentationFinishedMessage, PresentationManifest, PresenterWorker, ProofRequestId,
     SigningPublicKey, TrustPolicy, TrustPolicyImpl, VerifierWorker,
 };
-use core::convert::TryInto;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, Result, Route};
 use signature_bls::SecretKey;

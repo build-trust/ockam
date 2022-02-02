@@ -1,5 +1,4 @@
 use crate::{PreKeyBundle, X3DHError, X3dhVault, CSUITE};
-use core::convert::TryFrom;
 use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,

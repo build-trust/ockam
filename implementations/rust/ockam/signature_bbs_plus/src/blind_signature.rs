@@ -1,7 +1,6 @@
 use crate::{MessageGenerators, Signature, MAX_MSGS};
 use blake2::Blake2b;
 use bls12_381_plus::{G1Projective, Scalar};
-use core::convert::TryFrom;
 use digest::Digest;
 use ff::Field;
 use group::Curve;

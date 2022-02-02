@@ -119,8 +119,6 @@ impl SecretKey {
         }
 
         fn from_be_bytes(d: &[u8]) -> Scalar {
-            use core::convert::TryFrom;
-
             let mut t = <[u8; SecretKey::SCALAR_SIZE]>::try_from(d).expect("invalid length");
             t.reverse();
             Scalar::from_bytes(&t).unwrap()

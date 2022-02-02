@@ -1,5 +1,5 @@
 [package]
-edition = "2018"
+edition = "2021"
 name = "ockam_nodejs_native"
 version = "0.0.0"
 publish = false

@@ -1,7 +1,6 @@
 use crate::SecretKey;
 use blake2::VarBlake2b;
 use bls12_381_plus::{G1Projective, Scalar};
-use core::convert::TryFrom;
 use digest::{Update, VariableOutput};
 use group::{Curve, GroupEncoding};
 use serde::{Deserialize, Serialize};

@@ -5,7 +5,6 @@ use crate::{
     CredentialSchema, CredentialVerifier, ExtPokSignatureProof, IdentityCredential, IdentityError,
     IdentityState, OfferId, PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
 };
-use core::convert::TryInto;
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::vault::SecretVault;
 use ockam_core::{allow, deny, Result};

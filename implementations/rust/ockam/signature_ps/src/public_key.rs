@@ -107,8 +107,6 @@ impl PublicKey {
         }
 
         fn from_be_bytes(d: &[u8]) -> G2Projective {
-            use core::convert::TryFrom;
-
             let t = <[u8; PublicKey::POINT_SIZE]>::try_from(d).expect("invalid length");
             G2Affine::from_compressed(&t)
                 .map(G2Projective::from)

@@ -1,6 +1,6 @@
 [package]
 authors = ["Ockam Developers"]
-edition = "2018"
+edition = "2021"
 resolver = "2"
 readme = "README.md"
 name = "hello_ockam_no_std"

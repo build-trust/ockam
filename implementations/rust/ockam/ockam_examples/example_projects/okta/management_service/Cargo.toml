@@ -2,7 +2,7 @@
 name = "okta_example_management_service"
 version = "0.1.0"
 authors = ["Michael Lodder <mike@ockam.io>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]

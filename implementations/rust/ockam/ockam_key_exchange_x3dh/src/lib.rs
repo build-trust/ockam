@@ -7,7 +7,6 @@ extern crate core;
 extern crate alloc;
 
 use arrayref::array_ref;
-use core::convert::TryFrom;
 use ockam_core::vault::{
     AsymmetricVault, Hasher, PublicKey, SecretType, SecretVault, Signer, SymmetricVault, Verifier,
 };

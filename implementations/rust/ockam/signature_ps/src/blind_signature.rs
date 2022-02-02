@@ -1,7 +1,6 @@
 use crate::{SecretKey, Signature};
 use blake2::Blake2b;
 use bls12_381_plus::{G1Affine, G1Projective, Scalar};
-use core::convert::TryFrom;
 use digest::Digest;
 use group::Curve;
 use hmac_drbg::HmacDRBG;

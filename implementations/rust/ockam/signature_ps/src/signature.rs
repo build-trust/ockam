@@ -4,7 +4,6 @@ use bls12_381_plus::{
     multi_miller_loop, ExpandMsgXmd, G1Affine, G1Projective, G2Affine, G2Prepared, G2Projective,
     Scalar,
 };
-use core::convert::TryFrom;
 use digest::{Update, VariableOutput};
 use group::{Curve, Group};
 use serde::{

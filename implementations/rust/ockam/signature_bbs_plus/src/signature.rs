@@ -3,7 +3,6 @@ use blake2::Blake2b;
 use bls12_381_plus::{
     multi_miller_loop, G1Affine, G1Projective, G2Affine, G2Prepared, G2Projective, Scalar,
 };
-use core::convert::TryFrom;
 use core::ops::Neg;
 use digest::Digest;
 use ff::Field;

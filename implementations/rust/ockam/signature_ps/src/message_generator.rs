@@ -88,8 +88,6 @@ impl MessageGenerators {
         }
 
         fn from_be_bytes(d: &[u8]) -> G1Projective {
-            use core::convert::TryFrom;
-
             let t = <[u8; MessageGenerators::POINT_SIZE]>::try_from(d).expect("invalid length");
             G1Affine::from_compressed(&t)
                 .map(G1Projective::from)

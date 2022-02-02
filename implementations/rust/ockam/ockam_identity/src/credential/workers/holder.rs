@@ -4,7 +4,6 @@ use crate::{
     IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityTrait,
     SigningPublicKey,
 };
-use core::convert::TryInto;
 use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};

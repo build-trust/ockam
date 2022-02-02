@@ -1,7 +1,6 @@
 use crate::{SecretKeyShare, Signature};
 use bls12_381_plus::{G1Affine, G1Projective, Scalar};
 use core::{
-    convert::TryFrom,
     fmt::{self, Display},
     ops::{BitOr, Not},
 };

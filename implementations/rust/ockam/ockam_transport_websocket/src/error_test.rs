@@ -1,5 +1,3 @@
-use std::array::IntoIter;
-
 use ockam_core::compat::collections::HashMap;
 use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::{http::Response, Error as TungsteniteError};
@@ -8,11 +6,12 @@ use crate::WebSocketError;
 
 #[test]
 fn code_and_domain() {
-    let ws_errors_map = IntoIter::new([
+    let ws_errors_map = [
         (13, WebSocketError::Transport(TransportError::GenericIo)),
         (0, WebSocketError::Http),
         (1, WebSocketError::Tls),
-    ])
+    ]
+    .into_iter()
     .collect::<HashMap<_, _>>();
     for (expected_code, ws_err) in ws_errors_map {
         let err: ockam_core::Error = ws_err.into();

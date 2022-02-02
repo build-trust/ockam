@@ -2,7 +2,7 @@
 name = "tunnel_example"
 version = "0.0.0"
 authors = ["Ockam Developers"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]

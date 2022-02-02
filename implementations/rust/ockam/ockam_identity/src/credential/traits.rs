@@ -4,7 +4,6 @@ use crate::{
     IdentityIdentifier, OfferId, PresentationManifest, ProofBytes, ProofRequestId,
     SigningPublicKey, TrustPolicy,
 };
-use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::{async_trait, compat::boxed::Box};

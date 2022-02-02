@@ -5,7 +5,6 @@ use ockam::{
     credential_type, Context, CredentialProtocol, Identity, Identity, IdentityIdentifier,
     IdentityTrait, Result, TcpTransport, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
 };
-use std::convert::TryFrom;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

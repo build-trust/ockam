@@ -1,11 +1,10 @@
-use core::array::IntoIter;
 use ockam_core::compat::collections::HashMap;
 
 use crate::TransportError;
 
 #[test]
 fn code_and_domain() {
-    let tr_errors_map = IntoIter::new([
+    let tr_errors_map = [
         (1, TransportError::SendBadMessage),
         (2, TransportError::RecvBadMessage),
         (3, TransportError::BindFailed),
@@ -19,7 +18,8 @@ fn code_and_domain() {
         (11, TransportError::Encoding),
         (12, TransportError::Protocol),
         (13, TransportError::GenericIo),
-    ])
+    ]
+    .into_iter()
     .collect::<HashMap<_, _>>();
     for (expected_code, tr_err) in tr_errors_map {
         let err: ockam_core::Error = tr_err.into();
@@ -40,10 +40,11 @@ fn from_unmapped_io_error() {
 
 #[test]
 fn from_mapped_io_errors() {
-    let mapped_io_err_kinds = IntoIter::new([(
+    let mapped_io_err_kinds = [(
         std::io::ErrorKind::ConnectionRefused,
         TransportError::PeerNotFound,
-    )])
+    )]
+    .into_iter()
     .collect::<HashMap<_, _>>();
     for (io_err_kind, expected_tr_err) in mapped_io_err_kinds {
         let io_err = std::io::Error::new(io_err_kind, "io::Error");

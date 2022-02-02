@@ -1,5 +1,4 @@
 use crate::{IdentityError, IdentityStateConst};
-use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::string::String;
 use ockam_core::hex::encode;
@@ -88,7 +87,6 @@ impl EventIdentifier {
 #[cfg(test)]
 mod test {
     use super::*;
-    use core::convert::TryInto;
     use rand::{thread_rng, RngCore};
 
     impl IdentityIdentifier {
