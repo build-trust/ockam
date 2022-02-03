@@ -3,6 +3,9 @@
 mod handler;
 pub use handler::SystemHandler;
 
+mod builder;
+pub use builder::SystemBuilder;
+
 #[cfg(test)]
 mod tests;
 
