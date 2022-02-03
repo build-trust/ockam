@@ -6,9 +6,9 @@ runs:
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: /root/.gradle/wrapper/dists
-        key: cache-gradle-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
+        key: cache-gradle-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:ea810e06304a0178a8716060033524ff92dfce2d51c9b6dbc17305d11e967851
         restore-keys: |
-          cache-gradle-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae
+          cache-gradle-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:ea810e06304a0178a8716060033524ff92dfce2d51c9b6dbc17305d11e967851
           cache-gradle-${{ github.workflow }}-${{ github.job }}-
           cache-gradle-${{ github.workflow }}-
           cache-gradle-

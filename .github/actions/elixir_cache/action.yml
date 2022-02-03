@@ -6,6 +6,6 @@ runs:
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: '**/deps'
-        key: cache-elixir-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae-${{ hashFiles('**/mix.lock') }}
+        key: cache-elixir-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:ea810e06304a0178a8716060033524ff92dfce2d51c9b6dbc17305d11e967851-${{ hashFiles('**/mix.lock') }}
         restore-keys: |
-          cache-elixir-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:e874d5c6323736e18c666aa26d15188b17f2342fee41bf20bdff463ace9bc4ae-
+          cache-elixir-${{ github.workflow }}-${{ github.job }}-ghcr.io/ockam-network/ockam/builder@sha256:ea810e06304a0178a8716060033524ff92dfce2d51c9b6dbc17305d11e967851-
