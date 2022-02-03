@@ -1,4 +1,4 @@
-use crate::{Any, Context, OckamMessage, Result, Routed, SystemHandler};
+use crate::{Context, OckamMessage, Result, Routed, SystemHandler};
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap},
@@ -50,7 +50,7 @@ enum IndexState {
 
 #[async_trait]
 impl SystemHandler<Context, OckamMessage> for ReceiverOrdering {
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
         Ok(())
     }
 }
