@@ -1,5 +1,5 @@
-use ockam_core::compat::boxed::Box;
-use ockam_core::{compat::collections::BTreeMap, Address, Message, Result, Routed};
+use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
+use ockam_core::{Address, Message, Result, Routed};
 
 /// Handle a single type of message for a worker system-address
 ///

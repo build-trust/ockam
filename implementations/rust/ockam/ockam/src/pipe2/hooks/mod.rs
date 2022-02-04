@@ -1,7 +1,7 @@
 use crate::{Context, OckamError, OckamMessage, Result, Routed, SystemHandler};
 use ockam_core::{
     async_trait,
-    compat::{boxed::Box, collections::BTreeMap},
+    compat::{boxed::Box, collections::BTreeMap, string::String},
     Address,
 };
 

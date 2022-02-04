@@ -14,7 +14,10 @@ mod receiver;
 mod sender;
 
 use crate::{Context, OckamMessage, SystemHandler};
-use ockam_core::{compat::boxed::Box, Address, Result, Route};
+use ockam_core::{
+    compat::{boxed::Box, string::String, vec::Vec},
+    Address, Result, Route,
+};
 
 enum Mode {
     /// In static mode this pipe will connect to a well-known peer, or
