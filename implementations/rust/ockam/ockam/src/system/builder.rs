@@ -1,12 +1,13 @@
-use crate::SystemHandler;
-use ockam_core::{compat::collections::BTreeMap, Address, Message};
+use crate::{Result, SystemHandler, WorkerSystem};
+use ockam_core::{compat::collections::BTreeMap, Address, Message, Worker};
 
 struct HandlerData<C, M>
 where
     C: Send + 'static,
     M: Message,
 {
-    inner: Box<dyn SystemHandler<C, M>>,
+    addr: Address,
+    inner: Box<dyn SystemHandler<C, M> + Send + 'static>,
     routes: BTreeMap<String, Address>,
 }
 
@@ -16,6 +17,7 @@ where
 /// handler with the set of internal addresses that it must
 /// communicate with.  This structure aims to make initialisation
 /// easier.
+#[derive(Default)]
 pub struct SystemBuilder<C, M>
 where
     C: Send + 'static,
@@ -39,11 +41,32 @@ where
     ///
     /// You must at least provide ONE route path (via `.default(addr)`
     /// or `.condition(cond, addr)`), or else initialisation will fail.
-    pub fn add<H>(&mut self, handler: H) -> HandlerBuilder<'_, C, M>
+    pub fn add<A, H>(&mut self, addr: A, handler: H) -> HandlerBuilder<'_, C, M>
     where
-        H: SystemHandler<C, M> + 'static,
+        A: Into<Address>,
+        H: SystemHandler<C, M> + Send + 'static,
     {
-        HandlerBuilder::new(self, Box::new(handler))
+        HandlerBuilder::new(self, addr.into(), Box::new(handler))
+    }
+
+    /// Create a `WorkerSystem` and pre-initialise every SystemHandler
+    pub async fn finalise<W>(self, ctx: &mut C) -> Result<WorkerSystem<W>>
+    where
+        W: Worker<Context = C, Message = M>,
+    {
+        let mut system = WorkerSystem::default();
+
+        for HandlerData {
+            addr,
+            mut inner,
+            mut routes,
+        } in self.inner
+        {
+            inner.initialize(ctx, &mut routes).await?;
+            system.attach_boxed(addr, inner);
+        }
+
+        Ok(system)
     }
 }
 
@@ -57,7 +80,8 @@ where
     M: Message,
 {
     routes: Option<BTreeMap<String, Address>>,
-    inner: Option<Box<dyn SystemHandler<C, M>>>,
+    addr: Option<Address>,
+    inner: Option<Box<dyn SystemHandler<C, M> + Send + 'static>>,
     parent: &'paren mut SystemBuilder<C, M>,
 }
 
@@ -66,10 +90,15 @@ where
     C: Send + 'static,
     M: Message,
 {
-    fn new(parent: &'paren mut SystemBuilder<C, M>, inner: Box<dyn SystemHandler<C, M>>) -> Self {
+    fn new(
+        parent: &'paren mut SystemBuilder<C, M>,
+        addr: Address,
+        inner: Box<dyn SystemHandler<C, M> + Send + 'static>,
+    ) -> Self {
         Self {
             routes: Some(BTreeMap::new()),
             inner: Some(inner),
+            addr: Some(addr),
             parent,
         }
     }
@@ -104,8 +133,13 @@ where
     fn drop(&mut self) {
         let inner = core::mem::replace(&mut self.inner, None).unwrap();
         let routes = core::mem::replace(&mut self.routes, None).unwrap();
+        let addr = core::mem::replace(&mut self.addr, None).unwrap();
 
         assert_ne!(routes.len(), 0);
-        self.parent.inner.push(HandlerData { inner, routes })
+        self.parent.inner.push(HandlerData {
+            addr,
+            inner,
+            routes,
+        })
     }
 }

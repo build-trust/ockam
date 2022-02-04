@@ -1,4 +1,5 @@
 use crate::{Context, OckamMessage, SystemHandler, WorkerSystem};
+use ockam_core::compat::{collections::BTreeMap, string::String};
 use ockam_core::{Address, Any, Decodable, LocalMessage, Message, Result, Routed, Worker};
 
 #[derive(Default)]
@@ -20,6 +21,17 @@ impl StepHandler {
 
 #[ockam_core::async_trait]
 impl<M: Message> SystemHandler<Context, M> for StepHandler {
+    // We implement this function only to make rustc happy.  We have
+    // already been initialised fully in this test so this is not
+    // required.
+    async fn initialize(
+        &mut self,
+        _: &mut Context,
+        _: &mut BTreeMap<String, Address>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<M>) -> Result<()> {
         info!("Handling message via StepHandler");
         let mut msg = msg.into_transport_message();
@@ -87,6 +99,17 @@ impl AddMetadata {
 
 #[ockam_core::async_trait]
 impl<M: Message> SystemHandler<Context, M> for AddMetadata {
+    // We implement this function only to make rustc happy.  We have
+    // already been initialised fully in this test so this is not
+    // required.
+    async fn initialize(
+        &mut self,
+        _: &mut Context,
+        _: &mut BTreeMap<String, Address>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<M>) -> Result<()> {
         info!("Handling message for AddMetadata");
 
