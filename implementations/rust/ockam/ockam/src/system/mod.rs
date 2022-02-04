@@ -47,6 +47,15 @@ impl<W: Worker> WorkerSystem<W> {
         self.map.insert(addr.into(), Box::new(handler));
     }
 
+    /// Attach a boxed system handler to this system
+    pub fn attach_boxed<A: Into<Address>>(
+        &mut self,
+        addr: A,
+        handler: Box<dyn SystemHandler<W::Context, W::Message> + Send + 'static>,
+    ) {
+        self.map.insert(addr.into(), handler);
+    }
+
     /// Handle a message via this worker system
     pub async fn handle_message(
         &mut self,
