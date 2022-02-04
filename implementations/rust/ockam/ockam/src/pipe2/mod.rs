@@ -1,3 +1,4 @@
+#![allow(unused)] // FIXME
 // If `pipe` is so great, why is there no `pipe2`?
 //! Pipe2 composition system
 //!
@@ -91,7 +92,7 @@ impl PipeBuilder {
     /// Set this pipe to enforce the ordering of incoming messages
     pub fn enforce_ordering(mut self) -> Self {
         self.recv_hooks
-            .push(Box::new(hooks::ReceiverOrdering::new(Address::random(0))));
+            .push(Box::new(hooks::ReceiverOrdering::default()));
         self
     }
 

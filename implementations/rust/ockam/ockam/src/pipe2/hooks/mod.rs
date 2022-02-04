@@ -1,30 +1,21 @@
-use crate::{Context, OckamMessage, Result, Routed, SystemHandler};
+use crate::{Context, OckamError, OckamMessage, Result, Routed, SystemHandler};
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap},
     Address,
 };
 
+#[derive(Default)]
 pub struct ReceiverOrdering {
     /// Set of message IDs that were received out-of-order
     journal: BTreeMap<u64, OckamMessage>,
     /// The current message index
     current: u64,
     /// Forwarding address after this stage
-    next: Address,
+    next: Option<Address>,
 }
 
 impl ReceiverOrdering {
-    /// Create a new hook with an internal address to forward messages
-    /// to after processing them
-    pub fn new(next: Address) -> Self {
-        Self {
-            journal: BTreeMap::new(),
-            current: 0,
-            next,
-        }
-    }
-
     fn compare_index(&self, index: u64) -> IndexState {
         let next = self.current + 1;
 
@@ -50,6 +41,19 @@ enum IndexState {
 
 #[async_trait]
 impl SystemHandler<Context, OckamMessage> for ReceiverOrdering {
+    async fn initialize(
+        &mut self,
+        ctx: &mut Context,
+        routes: &mut BTreeMap<String, Address>,
+    ) -> Result<()> {
+        self.next = Some(
+            routes
+                .remove("default")
+                .ok_or(OckamError::SystemInvalidConfiguration)?,
+        );
+        Ok(())
+    }
+
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
         Ok(())
     }
