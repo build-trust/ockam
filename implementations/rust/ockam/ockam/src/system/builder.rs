@@ -1,5 +1,8 @@
 use crate::{Result, SystemHandler, WorkerSystem};
-use ockam_core::{compat::collections::BTreeMap, Address, Message, Worker};
+use ockam_core::{
+    compat::{boxed::Box, collections::BTreeMap, string::String, vec::Vec},
+    Address, Message, Worker,
+};
 
 struct HandlerData<C, M>
 where
@@ -17,7 +20,6 @@ where
 /// handler with the set of internal addresses that it must
 /// communicate with.  This structure aims to make initialisation
 /// easier.
-#[derive(Default)]
 pub struct SystemBuilder<C, M>
 where
     C: Send + 'static,
@@ -27,6 +29,16 @@ where
     inner: Vec<HandlerData<C, M>>,
 }
 
+impl<C, M> Default for SystemBuilder<C, M>
+where
+    C: Send + 'static,
+    M: Message,
+{
+    fn default() -> Self {
+        Self { inner: vec![] }
+    }
+}
+
 impl<C, M> SystemBuilder<C, M>
 where
     C: Send + 'static,
@@ -34,7 +46,7 @@ where
 {
     /// Create an empty SystemBuilder
     pub fn new() -> Self {
-        Self { inner: vec![] }
+        Self::default()
     }
 
     /// Add a new handler to this SystemBuilder
