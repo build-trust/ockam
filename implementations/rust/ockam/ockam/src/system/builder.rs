@@ -1,6 +1,6 @@
 use crate::{Result, SystemHandler, WorkerSystem};
 use ockam_core::{
-    compat::{boxed::Box, collections::BTreeMap, string::String, vec::Vec},
+    compat::{boxed::Box, collections::BTreeMap, string::String},
     Address, Message, Worker,
 };
 
@@ -26,7 +26,7 @@ where
     M: Message,
 {
     /// The set of handlers in this system
-    inner: Vec<HandlerData<C, M>>,
+    inner: BTreeMap<String, HandlerData<C, M>>,
 }
 
 impl<C, M> Default for SystemBuilder<C, M>
@@ -35,7 +35,9 @@ where
     M: Message,
 {
     fn default() -> Self {
-        Self { inner: vec![] }
+        Self {
+            inner: BTreeMap::new(),
+        }
     }
 }
 
@@ -52,13 +54,58 @@ where
     /// Add a new handler to this SystemBuilder
     ///
     /// You must at least provide ONE route path (via `.default(addr)`
-    /// or `.condition(cond, addr)`), or else initialisation will fail.
-    pub fn add<A, H>(&mut self, addr: A, handler: H) -> HandlerBuilder<'_, C, M>
+    /// or `.condition(cond, addr)`), or else initialisation will
+    /// fail.
+    pub fn add<A, S, H>(&mut self, addr: A, id: S, handler: H) -> HandlerBuilder<'_, C, M>
+    where
+        A: Into<Address>,
+        S: Into<String>,
+        H: SystemHandler<C, M> + Send + 'static,
+    {
+        HandlerBuilder::new(self, addr.into(), id.into(), Box::new(handler))
+    }
+
+    /// Get the address of a previously added SystemHandler
+    pub fn get_addr(&self, id: impl Into<String>) -> Option<Address> {
+        self.inner.get(&id.into()).map(|data| data.addr.clone())
+    }
+
+    /// Add a new handler to the builder, re-addressing the previous
+    /// handler's "default" route to this one
+    pub fn chain_default<A, H>(
+        &mut self,
+        addr: A,
+        prev_id: impl Into<String>,
+        id: impl Into<String>,
+        handler: H,
+    ) -> HandlerBuilder<'_, C, M>
     where
         A: Into<Address>,
         H: SystemHandler<C, M> + Send + 'static,
     {
-        HandlerBuilder::new(self, addr.into(), Box::new(handler))
+        self.chain_for("default", addr, prev_id, id, handler)
+    }
+
+    /// Add a new handler to the builder, re-addressing the previous
+    /// handler's named route to this one
+    pub fn chain_for<A, H>(
+        &mut self,
+        rule: impl Into<String>,
+        addr: A,
+        prev_id: impl Into<String>,
+        id: impl Into<String>,
+        handler: H,
+    ) -> HandlerBuilder<'_, C, M>
+    where
+        A: Into<Address>,
+        H: SystemHandler<C, M> + Send + 'static,
+    {
+        let addr = addr.into();
+        let prev_id = prev_id.into();
+        if let Some(ref mut prev) = self.inner.get_mut(&prev_id) {
+            prev.routes.insert(rule.into(), addr.clone());
+        }
+        self.add(addr, id, handler)
     }
 
     /// Create a `WorkerSystem` and pre-initialise every SystemHandler
@@ -68,11 +115,14 @@ where
     {
         let mut system = WorkerSystem::default();
 
-        for HandlerData {
-            addr,
-            mut inner,
-            mut routes,
-        } in self.inner
+        for (
+            _identifier,
+            HandlerData {
+                addr,
+                mut inner,
+                mut routes,
+            },
+        ) in self.inner
         {
             inner.initialize(ctx, &mut routes).await?;
             system.attach_boxed(addr, inner);
@@ -93,6 +143,7 @@ where
 {
     routes: Option<BTreeMap<String, Address>>,
     addr: Option<Address>,
+    id: Option<String>,
     inner: Option<Box<dyn SystemHandler<C, M> + Send + 'static>>,
     parent: &'paren mut SystemBuilder<C, M>,
 }
@@ -105,11 +156,13 @@ where
     fn new(
         parent: &'paren mut SystemBuilder<C, M>,
         addr: Address,
+        id: String,
         inner: Box<dyn SystemHandler<C, M> + Send + 'static>,
     ) -> Self {
         Self {
             routes: Some(BTreeMap::new()),
             inner: Some(inner),
+            id: Some(id),
             addr: Some(addr),
             parent,
         }
@@ -146,12 +199,16 @@ where
         let inner = core::mem::replace(&mut self.inner, None).unwrap();
         let routes = core::mem::replace(&mut self.routes, None).unwrap();
         let addr = core::mem::replace(&mut self.addr, None).unwrap();
+        let id = core::mem::replace(&mut self.id, None).unwrap();
 
         assert_ne!(routes.len(), 0);
-        self.parent.inner.push(HandlerData {
-            addr,
-            inner,
-            routes,
-        })
+        self.parent.inner.insert(
+            id,
+            HandlerData {
+                addr,
+                inner,
+                routes,
+            },
+        );
     }
 }

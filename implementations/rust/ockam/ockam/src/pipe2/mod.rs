@@ -13,7 +13,7 @@ mod hooks;
 mod receiver;
 mod sender;
 
-use crate::{Context, OckamMessage, SystemHandler};
+use crate::{Context, OckamMessage, SystemBuilder, SystemHandler};
 use ockam_core::{
     compat::{boxed::Box, string::String, vec::Vec},
     Address, Result, Route,
@@ -35,23 +35,27 @@ enum Mode {
 /// The easiest way to create a pipe is via
 /// `builder.basic().static()`.
 pub struct PipeBuilder {
-    send_hooks: Vec<Box<dyn SystemHandler<Context, OckamMessage>>>,
-    recv_hooks: Vec<Box<dyn SystemHandler<Context, OckamMessage>>>,
+    send_hooks: SystemBuilder<Context, OckamMessage>,
+    recv_hooks: SystemBuilder<Context, OckamMessage>,
     /// The selected pipe initialisation mode
     mode: Mode,
     /// Peer information
     peer: Option<Route>,
     /// Receiver information
     recv: Option<Address>,
+    /// This address is used to handle the termination point of the
+    /// worker system pipeline.
+    fin: Address,
 }
 
 impl PipeBuilder {
     fn new(mode: Mode) -> Self {
         Self {
-            send_hooks: vec![],
-            recv_hooks: vec![],
+            send_hooks: SystemBuilder::new(),
+            recv_hooks: SystemBuilder::new(),
             peer: None,
             recv: None,
+            fin: Address::random(0),
             mode,
         }
     }
@@ -94,13 +98,57 @@ impl PipeBuilder {
 
     /// Set this pipe to enforce the ordering of incoming messages
     pub fn enforce_ordering(mut self) -> Self {
+        // A pipe can currently only have two types of hooks.
+        // "Delivery" and "Ordering".  Because we want "ordering" to
+        // be applied _before_ "delivery" we need to make sure that if
+        // "delivery" has already been added, we point towards _its_
+        // address, instead of "fin".
+        let next_recv_addr = self
+            .recv_hooks
+            .get_addr("delivery")
+            .unwrap_or_else(|| self.fin.clone());
+        let next_send_addr = self
+            .send_hooks
+            .get_addr("delivery")
+            .unwrap_or_else(|| self.fin.clone());
+
+        // Then we simply add a single SystemHandler stage
         self.recv_hooks
-            .push(Box::new(hooks::ReceiverOrdering::default()));
+            .add(
+                Address::random(0),
+                "ordering",
+                hooks::ReceiverOrdering::default(),
+            )
+            .default(next_recv_addr);
+        self.send_hooks
+            .add(
+                Address::random(0),
+                "ordering",
+                hooks::SenderOrdering::default(),
+            )
+            .default(next_send_addr);
         self
     }
 
+    /// Enable the delivery guarantee behaviour on this pipe
+    ///
+    /// Additional behaviours can be added to compose a custom pipe
+    /// worker.
     pub fn delivery_ack(mut self) -> Self {
-        // todo: implement these
+        self.send_hooks
+            .add(
+                Address::random(0),
+                "delivery",
+                hooks::SenderConfirm::default(),
+            )
+            .default(self.fin.clone());
+        self.recv_hooks
+            .add(
+                Address::random(0),
+                "delivery",
+                hooks::ReceiverConfirm::default(),
+            )
+            .default(self.fin.clone());
         self
     }
 
