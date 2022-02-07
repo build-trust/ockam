@@ -1,4 +1,6 @@
-use crate::{Context, OckamError, OckamMessage, Result, Routed, SystemHandler};
+use crate::{
+    monotonic::Monotonic, Context, OckamError, OckamMessage, Result, Routed, SystemHandler,
+};
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, string::String},
@@ -51,6 +53,76 @@ impl SystemHandler<Context, OckamMessage> for ReceiverOrdering {
                 .remove("default")
                 .ok_or(OckamError::SystemInvalidConfiguration)?,
         );
+        Ok(())
+    }
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
+        Ok(())
+    }
+}
+
+pub struct SenderOrdering {
+    index: Monotonic,
+    next: Option<Address>,
+}
+
+impl Default for SenderOrdering {
+    fn default() -> Self {
+        Self {
+            index: Monotonic::from(1),
+            next: None,
+        }
+    }
+}
+
+#[async_trait]
+impl SystemHandler<Context, OckamMessage> for SenderOrdering {
+    async fn initialize(
+        &mut self,
+        ctx: &mut Context,
+        routes: &mut BTreeMap<String, Address>,
+    ) -> Result<()> {
+        self.next = Some(
+            routes
+                .remove("default")
+                .ok_or(OckamError::SystemInvalidConfiguration)?,
+        );
+        Ok(())
+    }
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+pub struct SenderConfirm {}
+
+#[async_trait]
+impl SystemHandler<Context, OckamMessage> for SenderConfirm {
+    async fn initialize(
+        &mut self,
+        ctx: &mut Context,
+        routes: &mut BTreeMap<String, Address>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+pub struct ReceiverConfirm {}
+
+#[async_trait]
+impl SystemHandler<Context, OckamMessage> for ReceiverConfirm {
+    async fn initialize(
+        &mut self,
+        ctx: &mut Context,
+        routes: &mut BTreeMap<String, Address>,
+    ) -> Result<()> {
         Ok(())
     }
 
