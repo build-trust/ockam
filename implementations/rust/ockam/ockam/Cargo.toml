@@ -88,6 +88,8 @@ alloc = [
     "serde/alloc",
 ]
 
+console = ["ockam_node/console"]
+
 [[test]]
 name = "tests"
 path = "tests/main.rs"

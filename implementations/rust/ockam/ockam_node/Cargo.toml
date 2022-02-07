@@ -42,6 +42,10 @@ alloc = ["ockam_core/alloc", "ockam_executor/alloc"]
 # workers at startup via the trace! macro.
 dump_internals = []
 
+# Feature: "console" enables the tokio-console tracing Layer.
+console = ["std"]
+
+
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.45.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.6.0"}
@@ -59,3 +63,5 @@ tracing-subscriber = { version = "0.3", features = [
 ], optional = true }
 heapless = { version = "0.7", features = ["mpmc_large"], optional = true }
 ockam_executor = { path = "../ockam_executor", version = "^0.14.0", default-features = false, optional = true }
+console-subscriber = "0.1.1"
+
