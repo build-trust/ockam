@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "ockam_core",
  "tracing",
