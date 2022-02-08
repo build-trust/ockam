@@ -35,7 +35,7 @@ no_std = ["ockam_core/no_std", "ockam_key_exchange_core/no_std"]
 alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.45.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.46.0", default_features = false }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.37.0", default_features = false }
 arrayref = "0.3"
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }

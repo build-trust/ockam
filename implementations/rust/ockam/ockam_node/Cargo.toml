@@ -43,7 +43,7 @@ alloc = ["ockam_core/alloc", "ockam_executor/alloc"]
 dump_internals = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.45.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.46.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.6.0"}
 tokio = { version = "1.8", default-features = false, optional = true, features = [
     "sync",

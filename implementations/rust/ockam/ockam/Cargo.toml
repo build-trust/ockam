@@ -93,7 +93,7 @@ name = "tests"
 path = "tests/main.rs"
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.45.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.46.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.6.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.44.0", default-features = false }
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.37.0", default_features = false, optional = true }
