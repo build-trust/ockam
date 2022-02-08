@@ -24,7 +24,7 @@ rust-version = "1.56.0"
 
 [dependencies]
 blake2 = { version = "0.9", default-features = false }
-signature_bls = { version = "^0.33.0", path = "../signature_bls" }
+signature_bls = { version = "^0.34.0", path = "../signature_bls" }
 bls12_381_plus = { version = "0.5", default-features = false }
 digest = { version = "0.9", default-features = false }
 ff = { version = "0.10", default-features = false }

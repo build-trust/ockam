@@ -67,7 +67,7 @@ ockam_core = { path = "../ockam_core", version = "^0.46.0", default_features = f
 ockam_macros = { path = "../ockam_macros", version = "^0.7.0", default-features = false }
 signature_core = { path = "../signature_core", version = "^0.35.0", optional = true }
 signature_bbs_plus = { path = "../signature_bbs_plus", version = "^0.36.0", optional = true }
-signature_bls = { path = "../signature_bls", version = "^0.33.0", optional = true }
+signature_bls = { path = "../signature_bls", version = "^0.34.0", optional = true }
 signature_ps = { path = "../signature_ps", version = "^0.33.0", default-features = false, optional = true }
 arrayref = "0.3"
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
