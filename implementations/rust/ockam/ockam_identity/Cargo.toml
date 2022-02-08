@@ -79,7 +79,7 @@ ockam_core = { path = "../ockam_core", version = "^0.46.0", default-features = f
 ockam_macros = { path = "../ockam_macros", version = "^0.7.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.45.0", default-features = false }
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.37.0", default-features = false, optional = true }
-ockam_vault = { path = "../ockam_vault", version = "^0.39.0", default-features = false, optional = true }
+ockam_vault = { path = "../ockam_vault", version = "^0.40.0", default-features = false, optional = true }
 ockam_channel = { path = "../ockam_channel", version = "^0.42.0", default-features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.39.0", default-features = false, optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.38.0", default-features = false }
@@ -99,7 +99,7 @@ tracing = { version = "0.1", default_features = false }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
-ockam_vault = { path = "../ockam_vault", version = "^0.39.0"}
+ockam_vault = { path = "../ockam_vault", version = "^0.40.0"}
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.37.0"}
 rand_xorshift = "0"
 tokio = { version = "1.8", features = ["full"] }
