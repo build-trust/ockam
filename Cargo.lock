@@ -1368,7 +1368,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bunt",
  "clap 3.0.13",
