@@ -1,6 +1,6 @@
 [package]
 name = "signature_bbs_plus"
-version = "0.35.0"
+version = "0.36.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"

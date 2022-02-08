@@ -106,7 +106,7 @@ ockam_identity = { path = "../ockam_identity", version = "^0.36.0", default_feat
 arrayref = "0.3"
 bls12_381_plus = { version = "0.5", default-features = false, optional = true }
 signature_core = { version = "^0.35.0", path = "../signature_core", optional = true }
-signature_bbs_plus = { version = "^0.35.0", path = "../signature_bbs_plus", package = "signature_bbs_plus", optional = true }
+signature_bbs_plus = { version = "^0.36.0", path = "../signature_bbs_plus", package = "signature_bbs_plus", optional = true }
 signature_bls = { version = "^0.33.0", path = "../signature_bls", package = "signature_bls", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"
