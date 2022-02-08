@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_websocket = "0.34.0"
+ockam_transport_websocket = "0.35.0"
 ```
 
 This crate requires the rust standard library `"std"`.
