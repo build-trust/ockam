@@ -58,4 +58,4 @@ tracing-subscriber = { version = "0.3", features = [
     "env-filter",
 ], optional = true }
 heapless = { version = "0.7", features = ["mpmc_large"], optional = true }
-ockam_executor = { path = "../ockam_executor", version = "^0.14.0", default-features = false, optional = true }
+ockam_executor = { path = "../ockam_executor", version = "^0.15.0", default-features = false, optional = true }
