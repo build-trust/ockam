@@ -62,5 +62,5 @@ rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 
 [dev-dependencies]
 ockam_vault = { path = "../ockam_vault", version = "^0.40.0"}
-ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.34.0"}
+ockam_vault_test_suite = { path = "../ockam_vault_test_suite", version = "^0.35.0"}
 tokio = { version = "1.8", default-features = false, features = ["sync"]}
