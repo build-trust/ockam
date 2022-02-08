@@ -50,7 +50,7 @@ alloc = [
 bls = []
 
 [dependencies]
-ockam_macros = { path = "../ockam_macros", version = "^0.6.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.7.0", default_features = false }
 async-trait = "0.1.42"
 hashbrown = { version = "0.11", default-features = false, features = [
     "ahash",
