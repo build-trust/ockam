@@ -36,7 +36,7 @@ alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.46.0", default_features = false }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.37.0", default_features = false }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.38.0", default_features = false }
 
 [dev-dependencies]
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.37.0"}
