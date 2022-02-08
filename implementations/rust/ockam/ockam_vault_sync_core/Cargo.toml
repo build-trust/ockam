@@ -53,7 +53,7 @@ alloc = [
 ockam_core = { path = "../ockam_core", version = "^0.46.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.7.0", default_features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.39.0", default_features = false, optional = true }
-ockam_node = { path = "../ockam_node", version = "^0.44.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.45.0", default_features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde-big-array = "0.3"
 tracing = { version = "0.1", default_features = false }
