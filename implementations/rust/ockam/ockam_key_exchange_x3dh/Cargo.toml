@@ -41,6 +41,6 @@ arrayref = "0.3"
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.37.0"}
+ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.38.0"}
 ockam_vault = { path = "../ockam_vault", version = "^0.40.0"}
 ockam_node = { path = "../ockam_node", version = "^0.45.0"}
