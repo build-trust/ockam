@@ -1,18 +1,16 @@
-use credentials_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
 use ockam::{
-    route, Context, Identity, Identity, Result, SoftwareVault, TcpTransport, TrustEveryonePolicy,
-    VaultSync, TCP,
+    route, Context, Identity, IdentityTrait, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP,
 };
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use ssh_credentials_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
 use std::{env, fs};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let mut vault = VaultSync::create(&ctx, SoftwareVault::default()).await?;
-    let vault_address = vault.address();
-    let mut alice = Identity::create(&ctx, &vault_address).await?;
+    let mut vault = Vault::create();
+    let mut alice = Identity::create(&ctx, &vault).await?;
 
     let secret_key_path = env::var("SECRET_KEY_PATH").unwrap();
     let secret_key = fs::read_to_string(secret_key_path).unwrap();

@@ -2,11 +2,17 @@ use core::time::Duration;
 use ockam::compat::collections::VecDeque;
 use ockam::compat::rand::{thread_rng, Rng};
 use ockam::{
-    route, Address, Context, DelayedEvent, Identity, Result, Routed, TcpTransport,
-    TrustEveryonePolicy, Vault, Worker,
+    route, Address, AsyncTryClone, Context, DelayedEvent, Identity, Message, Result, Routed,
+    TcpTransport, TrustEveryonePolicy, Vault, Worker,
 };
+use serde::{Deserialize, Serialize};
 use std::env;
 use tracing::info;
+
+#[derive(Serialize, Deserialize, Message)]
+struct Msg {
+    port: u32,
+}
 
 struct TcpInletService {
     tcp: TcpTransport,
@@ -112,14 +118,15 @@ impl Worker for TcpInletService {
 
         self.inlet_registry.push_back((port, address.clone()));
 
-        ctx.send(return_route, port).await?;
+        ctx.send(return_route, Msg { port }).await?;
 
         if let Some(inlet_ttl) = self.inlet_ttl_secs {
             DelayedEvent::new(
                 ctx,
                 route![self.internal_address.clone()],
                 address.to_string(),
-            )?
+            )
+            .await?
             .with_duration(inlet_ttl)
             .spawn();
         }
@@ -187,10 +194,11 @@ impl Config {
 async fn main(ctx: Context) -> Result<()> {
     let config = Config::new();
 
-    let vault = Vault::create(&ctx).await?;
-    let mut hub = Identity::create(&ctx, &vault)?;
+    let vault = Vault::create();
+    let mut hub = Identity::create(&ctx, &vault).await?;
 
-    hub.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)?;
+    hub.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)
+        .await?;
 
     let tcp = TcpTransport::create(&ctx).await?;
 
@@ -199,7 +207,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let internal_address = Address::random(0);
     let fabric_worker = TcpInletService::new(
-        tcp.clone(),
+        tcp.async_try_clone().await?,
         internal_address.clone(),
         available_inlet_ports,
         config.inlet_ttl_secs,

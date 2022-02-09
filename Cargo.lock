@@ -1010,6 +1010,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acd94fdbe1d4ff688b67b04eee2e17bd50995534a61539e45adfefb45e5e5503"
 
 [[package]]
+name = "hub_inlet"
+version = "0.1.0"
+dependencies = [
+ "ockam",
+ "serde 1.0.136",
+ "tracing",
+]
+
+[[package]]
 name = "human-panic"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1239,6 +1248,15 @@ dependencies = [
  "cfg-if",
  "libc",
  "memoffset",
+]
+
+[[package]]
+name = "node_examples"
+version = "0.0.0"
+dependencies = [
+ "ockam",
+ "ockam_node",
+ "serde 1.0.136",
 ]
 
 [[package]]
@@ -2277,6 +2295,16 @@ dependencies = [
  "base64ct",
  "sec1",
  "zeroize",
+]
+
+[[package]]
+name = "ssh_credentials_example"
+version = "0.1.0"
+dependencies = [
+ "ockam",
+ "ockam_core",
+ "ockam_vault",
+ "ssh-key",
 ]
 
 [[package]]

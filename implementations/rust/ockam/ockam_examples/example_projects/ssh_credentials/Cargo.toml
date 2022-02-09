@@ -1,5 +1,5 @@
 [package]
-name = "credentials_example"
+name = "ssh_credentials_example"
 version = "0.1.0"
 authors = ["Ockam Developers"]
 edition = "2021"

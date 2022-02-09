@@ -11,4 +11,5 @@ publish = false
 
 [dependencies]
 ockam = {  path = "../../../ockam" }
+serde = "1.0.136"
 tracing = { version = "0.1", default_features = false }

@@ -1,10 +1,10 @@
-use credentials_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
 use ockam::{
-    Context, Identity, IdentityAccessControlBuilder, Result, Routed, SoftwareVault, TcpTransport,
-    TrustPublicKeyPolicy, VaultSync, Worker,
+    Context, Identity, IdentityAccessControlBuilder, Result, Routed, TcpTransport,
+    TrustPublicKeyPolicy, Vault, Worker,
 };
 use ockam_core::vault::{PublicKey, SecretType};
 use ockam_core::AsyncTryClone;
+use ssh_credentials_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
 use std::{env, fs};
 
 pub struct Echoer;
@@ -24,14 +24,13 @@ impl Worker for Echoer {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let vault = VaultSync::create(&ctx, SoftwareVault::default()).await?;
-    let vault_address = vault.address();
+    let vault = Vault::create();
 
     let access_control = IdentityAccessControlBuilder::new_with_any_id();
     ctx.start_worker_with_access_control(ECHOER, Echoer, access_control)
         .await?;
 
-    let mut bob = Identity::create(&ctx, &vault_address).await?;
+    let mut bob = Identity::create(&ctx, &vault).await?;
 
     let public_key_path = env::var("PUBLIC_KEY_PATH").unwrap();
     let public_key = fs::read_to_string(public_key_path).unwrap();
