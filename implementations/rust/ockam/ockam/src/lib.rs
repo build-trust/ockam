@@ -43,6 +43,7 @@ mod protocols;
 mod remote_forwarder;
 mod system;
 mod unique;
+mod workers;
 
 pub use delay::*;
 pub use error::*;
@@ -58,6 +59,7 @@ pub use protocols::*;
 pub use remote_forwarder::*;
 pub use system::*;
 pub use unique::*;
+pub use workers::*;
 
 pub mod channel;
 pub mod pipe;
