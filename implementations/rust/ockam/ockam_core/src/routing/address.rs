@@ -257,6 +257,12 @@ impl<'a> From<(u8, &'a str)> for Address {
     }
 }
 
+impl From<(u8, String)> for Address {
+    fn from((tt, inner): (u8, String)) -> Self {
+        Self::from((tt, inner.as_str()))
+    }
+}
+
 impl<'a> From<&'a [u8]> for Address {
     fn from(inner: &'a [u8]) -> Self {
         Self {
