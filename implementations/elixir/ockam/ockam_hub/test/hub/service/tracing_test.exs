@@ -1,9 +1,6 @@
 defmodule Test.Hub.Service.TracingTest do
   use ExUnit.Case
 
-  alias Ockam.Router
-  alias Test.Utils
-
   test "trace payloads" do
     Ockam.Hub.Service.Tracing.create(address: "tracing_service")
     Ockam.Hub.Service.Echo.create(address: "echo_service")
@@ -25,7 +22,7 @@ defmodule Test.Hub.Service.TracingTest do
 
     payload = "Hello!"
     echo_request = %{onward_route: [tracing_address, "echo_service"], payload: payload}
-    echo_reply = Ockam.Workers.Call.call(echo_request)
+    Ockam.Workers.Call.call(echo_request)
 
     # Receive outgoing message
     receive do

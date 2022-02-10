@@ -9,9 +9,11 @@ defmodule Ockam.Hub.Service.Provider.Routing do
   alias Ockam.Hub.Service.Echo, as: EchoService
   alias Ockam.Hub.Service.Forwarding, as: ForwardingService
   alias Ockam.Hub.Service.PubSub, as: PubSubService
+  alias Ockam.Hub.Service.StaticForwarding, as: StaticForwardingService
   alias Ockam.Hub.Service.Tracing, as: TracingService
 
-  @services [:echo, :forwarding, :pub_sub, :tracing]
+  ## TODO: API to start all services in a provider?
+  @services [:echo, :forwarding, :static_forwarding, :pub_sub, :tracing]
 
   @impl true
   def services() do
@@ -26,6 +28,12 @@ defmodule Ockam.Hub.Service.Provider.Routing do
 
   def start_service(:forwarding, args) do
     ForwardingService.create(Keyword.merge([address: "forwarding_service"], args))
+  end
+
+  def start_service(:static_forwarding, args) do
+    StaticForwardingService.create(
+      Keyword.merge([address: "static_forwarding_service", prefix: "forward_to"], args)
+    )
   end
 
   def start_service(:pub_sub, args) do
@@ -43,6 +51,11 @@ defmodule Ockam.Hub.Service.Provider.Routing do
 
   def child_spec(:forwarding, args) do
     {ForwardingService, Keyword.merge([address: "forwarding_service"], args)}
+  end
+
+  def child_spec(:static_forwarding, args) do
+    {StaticForwardingService,
+     Keyword.merge([address: "static_forwarding_service", prefix: "forward_to"], args)}
   end
 
   def child_spec(:pub_sub, args) do
