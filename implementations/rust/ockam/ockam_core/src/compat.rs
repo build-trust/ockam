@@ -36,7 +36,7 @@ pub mod collections {
 pub mod error {
     #[cfg(not(feature = "std"))]
     pub trait Error: core::fmt::Debug + core::fmt::Display {
-        fn source(&self) -> Option<&(dyn Error + 'static)> {
+        fn cause(&self) -> Option<&(dyn Error + 'static)> {
             None
         }
     }
@@ -232,6 +232,13 @@ pub mod task {
 
 /// std::vec
 pub mod vec {
+    #[cfg(feature = "alloc")]
+    pub use alloc::vec::*;
+    #[cfg(not(feature = "alloc"))]
+    pub type Vec<T> = heapless::Vec<T, 64>;
+}
+pub mod fmt {
+    pub use alloc::fmt::*;
     #[cfg(feature = "alloc")]
     pub use alloc::vec::*;
     #[cfg(not(feature = "alloc"))]

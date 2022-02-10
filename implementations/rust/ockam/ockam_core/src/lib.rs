@@ -25,6 +25,10 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
+// Allow use of logging macros directly.
+#[macro_use]
+extern crate tracing;
+
 pub use async_trait::async_trait;
 
 pub extern crate hashbrown;
@@ -45,13 +49,15 @@ extern crate futures_util;
 
 mod access_control;
 pub mod compat;
-mod error;
+pub mod error;
 mod message;
 mod processor;
 mod routing;
 mod uint;
 pub mod vault;
 mod worker;
+
+mod old_error;
 
 pub use access_control::*;
 pub use error::*;
@@ -61,6 +67,8 @@ pub use routing::*;
 pub use traits::*;
 pub use uint::*;
 pub use worker::*;
+
+pub use old_error::*;
 
 #[cfg(feature = "std")]
 pub use std::println;
@@ -79,7 +87,7 @@ pub mod println_no_std {
 /// Module for custom implementation of standard traits.
 pub mod traits {
     use crate::compat::boxed::Box;
-    use crate::error::Result;
+    use crate::Result;
 
     /// Clone trait for async structs.
     #[async_trait]

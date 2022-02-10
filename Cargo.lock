@@ -158,6 +158,7 @@ dependencies = [
  "miniz_oxide",
  "object",
  "rustc-demangle",
+ "serde 1.0.136",
 ]
 
 [[package]]
@@ -1394,6 +1395,7 @@ name = "ockam_core"
 version = "0.46.0"
 dependencies = [
  "async-trait",
+ "backtrace",
  "cfg-if",
  "core2",
  "futures-util",
@@ -1401,11 +1403,14 @@ dependencies = [
  "heapless",
  "hex",
  "ockam_macros",
+ "once_cell",
  "rand 0.8.4",
  "rand_pcg",
  "serde 1.0.136",
  "serde_bare",
  "spin",
+ "tracing",
+ "tracing-error",
  "zeroize",
 ]
 
@@ -2530,7 +2535,19 @@ checksum = "375a639232caf30edfc78e8d89b2d4c375515393e7af7e16f01cd96917fb2105"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
+ "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8276d9a4a3a558d7b7ad5303ad50b53d58264641b82914b7ada36bd762e7a716"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2540,6 +2557,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "tracing-error"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d686ec1c0f384b1277f097b2f279a2ecc11afe8c133c1aabf036a27cb4cd206e"
+dependencies = [
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

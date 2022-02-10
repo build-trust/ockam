@@ -1,4 +1,6 @@
-//! Error and Result types
+//! Legacy Error and Result types.
+//!
+//! Over time we will be migrating away from this.
 
 use crate::compat::string::String;
 use core::fmt::{self, Display, Formatter};
