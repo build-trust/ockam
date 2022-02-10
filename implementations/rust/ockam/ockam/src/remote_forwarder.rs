@@ -256,3 +256,91 @@ impl Worker for RemoteForwarder {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::workers::Echoer;
+    use ockam_transport_tcp::{TcpTransport, TCP};
+    use std::env;
+
+    fn get_cloud_address() -> Option<String> {
+        if let Ok(v) = env::var("CLOUD_ADDRESS") {
+            if !v.is_empty() {
+                return Some(v);
+            }
+        }
+
+        warn!("No CLOUD_ADDRESS specified, skipping the test");
+
+        None
+    }
+
+    #[allow(non_snake_case)]
+    #[ockam_macros::test]
+    async fn forwarding__ephemeral_address__should_respond(ctx: &mut Context) -> Result<()> {
+        let cloud_address;
+        if let Some(c) = get_cloud_address() {
+            cloud_address = c;
+        } else {
+            ctx.stop().await?;
+            return Ok(());
+        }
+
+        ctx.start_worker("echoer", Echoer).await?;
+
+        TcpTransport::create(&ctx).await?;
+
+        let node_in_hub = (TCP, cloud_address);
+        let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone()).await?;
+
+        let mut child_ctx = ctx.new_context(Address::random(0)).await?;
+
+        child_ctx
+            .send(
+                route![node_in_hub, remote_info.remote_address(), "echoer"],
+                "Hello".to_string(),
+            )
+            .await?;
+
+        let resp = child_ctx.receive::<String>().await?.take().body();
+
+        assert_eq!(resp, "Hello");
+
+        ctx.stop().await
+    }
+
+    #[allow(non_snake_case)]
+    #[ockam_macros::test]
+    async fn forwarding__static_address__should_respond(ctx: &mut Context) -> Result<()> {
+        let cloud_address;
+        if let Some(c) = get_cloud_address() {
+            cloud_address = c;
+        } else {
+            ctx.stop().await?;
+            return Ok(());
+        }
+
+        ctx.start_worker("echoer", Echoer).await?;
+
+        TcpTransport::create(&ctx).await?;
+
+        let node_in_hub = (TCP, cloud_address);
+        let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias").await?;
+
+        let mut child_ctx = ctx.new_context(Address::random(0)).await?;
+
+        child_ctx
+            .send(
+                route![node_in_hub, "forward_to_alias", "echoer"],
+                "Hello".to_string(),
+            )
+            .await?;
+
+        let resp = child_ctx.receive::<String>().await?.take().body();
+
+        assert_eq!(resp, "Hello");
+
+        ctx.stop().await
+    }
+}
