@@ -48,7 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Receiver's secure channel listener.
-    let route_to_receiver_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address];
+    let route_to_receiver_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
 
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.

@@ -160,7 +160,7 @@ async fn main(ctx: Context) -> Result<()> {
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, "listener").await?;
+    let forwarder = RemoteForwarder::create(&ctx, node_in_hub).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());
@@ -207,7 +207,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Bob's secure channel listener.
-    let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address];
+    let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
 
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
