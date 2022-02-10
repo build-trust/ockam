@@ -37,8 +37,7 @@ pub mod error {
     #[cfg(not(feature = "std"))]
     /// A `no_std` compatible definition of the `std::error::Error` trait.
     pub trait Error: core::fmt::Debug + core::fmt::Display {
-        /// The lower-level source of this error, if any.
-        fn source(&self) -> Option<&(dyn Error + 'static)> {
+        fn cause(&self) -> Option<&(dyn Error + 'static)> {
             None
         }
     }
@@ -259,6 +258,13 @@ pub use std::task;
 
 /// Provides `std::vec`.
 pub mod vec {
+    #[cfg(feature = "alloc")]
+    pub use alloc::vec::*;
+    #[cfg(not(feature = "alloc"))]
+    pub type Vec<T> = heapless::Vec<T, 64>;
+}
+pub mod fmt {
+    pub use alloc::fmt::*;
     #[cfg(feature = "alloc")]
     pub use alloc::vec::*;
     #[cfg(not(feature = "alloc"))]

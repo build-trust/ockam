@@ -16,8 +16,8 @@ use crate::{NodeError, Reason};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
-    AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, LocalMessage, Message, Processor,
-    Result, Route, TransportMessage, TransportType, Worker,
+    traits::AsyncTryClone, AccessControl, Address, AddressSet, AllowAll, LocalMessage, Message,
+    Processor, Result, Route, TransportMessage, TransportType, Worker,
 };
 
 /// A default timeout in seconds

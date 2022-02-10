@@ -25,6 +25,10 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
+// Allow use of logging macros directly.
+#[macro_use]
+extern crate tracing;
+
 pub use async_trait::async_trait;
 
 #[allow(unused_imports)]
@@ -46,27 +50,63 @@ extern crate futures_util;
 
 mod access_control;
 pub mod compat;
-mod error;
+pub mod error;
 mod message;
 mod processor;
 mod routing;
-pub mod traits;
 mod uint;
 pub mod vault;
 mod worker;
 
+mod old_error;
+
 pub use access_control::*;
-pub use error::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
-pub use traits::*;
 pub use uint::*;
 pub use worker::*;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 #[doc(hidden)]
 pub use compat::println;
+
+pub use old_error::*;
+
 #[cfg(feature = "std")]
 #[doc(hidden)]
 pub use std::println;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+/// println macro for no_std
+pub mod println_no_std {
+    #[macro_export]
+    /// implements println for no_std by wrapping the tracing::info! macro
+    macro_rules! println {
+        ($($arg:tt)*) => {{
+            tracing::info!($($arg)*);
+        }};
+    }
+}
+
+/// Module for custom implementation of standard traits.
+pub mod traits {
+    use crate::compat::boxed::Box;
+    use crate::Result;
+
+    /// Clone trait for async structs.
+    #[async_trait]
+    pub trait AsyncTryClone: Sized {
+        /// Try cloning a object and return an `Err` in case of failure.
+        async fn async_try_clone(&self) -> Result<Self>;
+    }
+    #[async_trait]
+    impl<D> AsyncTryClone for D
+    where
+        D: Clone + Sync,
+    {
+        async fn async_try_clone(&self) -> Result<Self> {
+            Ok(self.clone())
+        }
+    }
+}

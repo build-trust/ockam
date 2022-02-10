@@ -22,7 +22,7 @@ publish = true
 rust-version = "1.56.0"
 
 [features]
-default = ["std"]
+default = ["std", "error-traces"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -33,6 +33,7 @@ std = [
     "rand/std_rng",
     "serde_bare/std",
     "ockam_macros/std",
+    "once_cell/std",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -48,6 +49,10 @@ alloc = [
     "serde_bare/alloc",
 ]
 bls = []
+
+# Error traces cover whether not our errors capture backtraces and/or spantraces
+# by default.
+error-traces = ["backtrace", "tracing-error", "once_cell"]
 
 [dependencies]
 ockam_macros = { path = "../ockam_macros", version = "^0.12.0", default_features = false }
@@ -76,3 +81,7 @@ futures-util = { version = "0.3.17", default-features = false, features = [
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 cfg-if = "1.0"
 subtle = { version = "2", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
+tracing-error = { version = "0.2", default-features = false, optional = true }
+backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
+once_cell = { version = "1", optional = true, default-features = false }
