@@ -127,6 +127,11 @@ jobs:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/ockam-network/ockam/builder@sha256:ea810e06304a0178a8716060033524ff92dfce2d51c9b6dbc17305d11e967851
+    services:
+      ockam_cloud:
+        image: ghcr.io/ockam-network/ockam/hub:0.8.8
+    env:
+      CLOUD_ADDRESS: ockam_cloud:4000
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
         with:
