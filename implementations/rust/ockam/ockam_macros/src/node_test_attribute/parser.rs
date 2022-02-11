@@ -55,12 +55,18 @@ fn output_node_test(
             let (mut #ctx_ident, mut executor) = ockam_node::start_node();
             executor
                 .execute(async move {
-                    match timeout(Duration::from_millis(#timeout_ms as u64), #test_input_ident(&mut #ctx_ident)).await.expect("Failed to run timeout") {
-                        Err(err) => {
-                            #ctx_stop_stmt
-                            Err(err)
+                    match timeout(Duration::from_millis(#timeout_ms as u64), #test_input_ident(&mut #ctx_ident)).await {
+                        Ok(r) => match r {
+                            Err(err) => {
+                                #ctx_stop_stmt
+                                Err(err)
+                            },
+                            Ok(_) => Ok(())
                         },
-                        Ok(_) => Ok(()),
+                        Err(_) => {
+                            #ctx_stop_stmt
+                            panic!("Test timeout")
+                        }
                     }
                 })
                 .expect("Executor should not fail")
