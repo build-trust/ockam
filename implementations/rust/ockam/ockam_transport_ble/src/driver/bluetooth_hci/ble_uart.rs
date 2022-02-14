@@ -33,6 +33,7 @@ use bluenrg::hal::Commands as HalCommands;
 use super::embedded_hal;
 use crate::error::BleError;
 use crate::BleAddr;
+use crate::driver;
 
 type Packet = bluetooth_hci::host::uart::Packet<BlueNRGEvent>;
 pub type Event = bluetooth_hci::event::Event<BlueNRGEvent>;
@@ -237,26 +238,13 @@ where
     OutputPin2::Error: Debug,
     InputPin1::Error: Debug,
 {
-    debug!("nble_uart::add_uart_service");
-
-    const UUID: Uuid = Uuid128([
-        0x66, 0x9a, 0x0c, 0x20, 0x00, 0x08, 0x96, 0x9e, 0xe2, 0x11, 0x9e, 0xb1, 0xe0, 0xf2, 0x73,
-        0xd9,
-    ]);
-    const UUID_TX: Uuid = Uuid128([
-        0x66, 0x9a, 0x0c, 0x20, 0x00, 0x08, 0x96, 0x9e, 0xe2, 0x11, 0x9e, 0xb1, 0xe1, 0xf2, 0x73,
-        0xd9,
-    ]);
-    const UUID_RX: Uuid = Uuid128([
-        0x66, 0x9a, 0x0c, 0x20, 0x00, 0x08, 0x96, 0x9e, 0xe2, 0x11, 0x9e, 0xb1, 0xe2, 0xf2, 0x73,
-        0xd9,
-    ]);
+    debug!("ble_uart::add_uart_service");
 
     // add uart service
     debug!("\tadd uart service");
     block!(bluetooth.with_spi(spi, |controller| {
         controller.add_service(&AddServiceParameters {
-            uuid: UUID,
+            uuid: Uuid128(driver::uuid::SERVICE.to_le_bytes()),
             service_type: ServiceType::Primary,
             max_attribute_records: 9, // TODO
         })
@@ -283,7 +271,7 @@ where
             service_handle: ble_context
                 .uart_service_handle
                 .expect("uart service handle has not been set"),
-            characteristic_uuid: UUID_TX,
+            characteristic_uuid: Uuid128(driver::uuid::WRITE.to_le_bytes()),
             characteristic_value_len: crate::driver::CHARACTERISTIC_VALUE_LENGTH,
             characteristic_properties: CharacteristicProperty::NOTIFY,
 
@@ -326,7 +314,7 @@ where
             service_handle: ble_context
                 .uart_service_handle
                 .expect("uart service handle has not been set"),
-            characteristic_uuid: UUID_RX,
+            characteristic_uuid: Uuid128(driver::uuid::READ.to_le_bytes()),
             characteristic_value_len: crate::driver::CHARACTERISTIC_VALUE_LENGTH,
             characteristic_properties: CharacteristicProperty::WRITE
                 | CharacteristicProperty::WRITE_WITHOUT_RESPONSE,

@@ -14,15 +14,15 @@ use uuid::Uuid;
 
 use ockam_core::async_trait;
 
-use crate::driver::BleEvent;
+use crate::driver::{self, BleEvent};
 use crate::driver::{BleClientDriver, BleStreamDriver};
 use crate::error::BleError;
 use crate::BleAddr;
 
 /// UUID's
-pub const UUID: Uuid = Uuid::from_u128_le(0x669a0c20_0008_969e_e211_9eb1e0f273d9);
-pub const RX_UUID: Uuid = Uuid::from_u128_le(0x669a0c20_0008_969e_e211_9eb1e1f273d9);
-pub const TX_UUID: Uuid = Uuid::from_u128_le(0x669a0c20_0008_969e_e211_9eb1e2f273d9);
+pub const UUID: Uuid = Uuid::from_u128(driver::uuid::SERVICE);
+const RX_UUID: Uuid = Uuid::from_u128(driver::uuid::WRITE);
+const TX_UUID: Uuid = Uuid::from_u128(driver::uuid::READ);
 
 /// Convert btleplug::Error to BleError
 impl From<btleplug::Error> for BleError {
@@ -155,7 +155,7 @@ impl BleClientDriver for BleAdapter {
         }
 
         if self.rx.is_none() || self.tx.is_none() {
-            debug!("No compatible devices found");
+            error!("No compatible devices found");
             return Err(BleError::NotSupported.into());
         }
 

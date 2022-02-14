@@ -36,8 +36,33 @@ pub const MTU: usize = 23;
 /// MTU - 5 (packet fields) = 18 bytes of payload
 pub const CHARACTERISTIC_VALUE_LENGTH: usize = MTU - 5;
 
-/// maximum length of ockam messages
+/// Maximum length of ockam messages
 pub const MAX_OCKAM_MESSAGE_LENGTH: usize = 1024;
+
+/// Ockam BLE service and endpoints are encoded as UUID v5 identifiers
+/// within the ns:OID namespace:
+///
+///     iso.identified-organization.ockam.transport.ble (1.3.214.9.4)
+///
+/// Ockam OID information can be obtained at:
+///
+///     http://oid-info.com/get/1.3.214.9.4
+pub mod uuid {
+    /// BLE Service UUID (rfc1700 / big-endian)
+    /// Namespace: ns:OID
+    /// Name: iso.identified-organization.ockam.transport.ble.service (1.3.214.9.4.1)
+    pub const SERVICE: u128 = 0x424c001f_48f6_5fff_bc3e_84e00c335dbb;
+
+    /// BLE Read UUID (rfc1700 / big-endian)
+    /// Namespace: ns:OID
+    /// Name: iso.identified-organization.ockam.transport.ble.read (1.3.214.9.4.2)
+    pub const READ: u128 = 0xbc911b36_320c_5d3f_90ed_842a6e57cefb;
+
+    /// Default BLE Write UUID (rfc1700 / big-endian)
+    /// Namespace: ns:OID
+    /// Name: iso.identified-organization.ockam.transport.ble.write (1.3.214.9.4.3)
+    pub const WRITE: u128 = 0x18c90ff2_8d94_5f20_8084_c16ae3f6a9a2;
+}
 
 /// BleEvent
 #[derive(Debug)]
