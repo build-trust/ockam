@@ -1,5 +1,4 @@
 use core::iter;
-use std::time::Duration;
 
 use ockam_core::{route, Address, Result, Routed, Worker};
 use ockam_node::Context;
@@ -7,7 +6,7 @@ use rand::Rng;
 
 use ockam_transport_tcp::{TcpTransport, TCP};
 
-#[ockam_macros::test(timeout = 1000)]
+#[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let rand_port = rand::thread_rng().gen_range(10000, 65535);
     let bind_address = format!("127.0.0.1:{}", rand_port);
@@ -18,7 +17,6 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
         transport.listen(bind_address).await?;
         ctx.start_worker("echoer", Echoer).await?;
     };
-    tokio::time::sleep(Duration::from_millis(500)).await;
 
     let _sender = {
         let mut ctx = ctx.new_context(Address::random(0)).await?;
