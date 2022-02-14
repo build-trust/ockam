@@ -4,7 +4,7 @@ defmodule Test.Hub.Service.TracingTest do
   test "trace payloads" do
     Ockam.Hub.Service.Tracing.create(address: "tracing_service")
     Ockam.Hub.Service.Echo.create(address: "echo_service")
-    Ockam.Node.register_address("TEST", self())
+    Ockam.Node.register_address("TEST")
 
     Ockam.Router.route(%{
       onward_route: ["tracing_service"],

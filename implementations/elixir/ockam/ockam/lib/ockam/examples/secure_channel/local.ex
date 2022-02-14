@@ -34,7 +34,7 @@ defmodule Ockam.Examples.SecureChannel.Local do
 
     ## Register this process to receive messages
     my_address = "example_run"
-    Ockam.Node.register_address(my_address, self())
+    Ockam.Node.register_address(my_address)
 
     send_and_wait(channel, "Hello secure channel!", my_address)
 

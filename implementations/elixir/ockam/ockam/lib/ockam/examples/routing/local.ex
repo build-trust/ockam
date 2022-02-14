@@ -16,7 +16,7 @@ defmodule Ockam.Examples.Routing.Local do
 
     ## Register this process to receive messages
     my_address = "example_run"
-    Ockam.Node.register_address(my_address, self())
+    Ockam.Node.register_address(my_address)
 
     message = %{
       ## Route message through hop to echoer

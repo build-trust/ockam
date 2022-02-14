@@ -44,6 +44,9 @@ defmodule Ockam.Node.Registry do
   # See the "Name registration" section of the `GenServer` module.
   def unregister_name(address), do: Registry.unregister_name({__MODULE__, address})
 
+  @doc false
+  def update_value(address, value), do: Registry.update_value(__MODULE__, address, value)
+
   @spec addresses(pid) :: [any]
 
   def addresses(pid), do: Registry.keys(__MODULE__, pid)
@@ -59,4 +62,38 @@ defmodule Ockam.Node.Registry do
   List all registered worker names
   """
   def list_names(), do: Registry.select(__MODULE__, [{{:"$1", :_, :_}, [], [:"$1"]}])
+
+  @spec register(any(), any()) :: :ok | {:error, reason :: any()}
+  @doc false
+  # This function is used in custom process registration
+  #
+  # Module should be the worker implementation module
+  def register(address, module) do
+    case Registry.register(__MODULE__, address, module) do
+      {:ok, _owner} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @spec set_module(any(), module()) :: :ok | :error
+  @doc false
+  # Set worker module for the current process
+  #
+  # This function is called from the worker behaviour
+  # Module is not set when registering with register_name from `:via` option
+  # so this function needs to be called to set it after the process is created
+  def set_module(address, module) do
+    case Registry.update_value(__MODULE__, address, fn _old -> module end) do
+      :error -> :error
+      {_new, _old} -> :ok
+    end
+  end
+
+  @spec lookup(address :: any()) :: {:ok, pid, module} | :error
+  def lookup(address) do
+    case Registry.lookup(__MODULE__, address) do
+      [{pid, module}] -> {:ok, pid, module}
+      [] -> :error
+    end
+  end
 end

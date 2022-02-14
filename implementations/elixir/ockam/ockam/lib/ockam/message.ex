@@ -68,10 +68,14 @@ defmodule Ockam.Message do
   end
 
   @doc "Get onward_route from the message"
-  def onward_route(%Ockam.Message{onward_route: onward_route}), do: onward_route
+  def onward_route(%Ockam.Message{onward_route: onward_route}) when is_list(onward_route),
+    do: onward_route
 
   @doc "Get return_route from the message"
-  def return_route(%Ockam.Message{return_route: return_route}), do: return_route
+  def return_route(%Ockam.Message{return_route: return_route}) when is_list(return_route),
+    do: return_route
+
+  def return_route(%Ockam.Message{return_route: nil}), do: []
 
   @doc "Get payload from the message"
   def payload(%Ockam.Message{payload: payload}), do: payload

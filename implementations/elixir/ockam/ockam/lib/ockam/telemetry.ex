@@ -49,6 +49,11 @@ if Code.ensure_loaded?(:telemetry) do
       measurements = Keyword.get(options, :measurements, %{})
       metadata = Keyword.get(options, :metadata, %{})
 
+      emit_event(event_name, measurements, metadata)
+    end
+
+    def emit_event([first | _rest] = event_name, measurements, metadata)
+        when is_list(event_name) and is_atom(first) and is_map(measurements) and is_map(metadata) do
       :ok = :telemetry.execute([:ockam] ++ event_name, measurements, metadata)
     end
 
@@ -89,7 +94,7 @@ if Code.ensure_loaded?(:telemetry) do
       measurements = Map.merge(measurements, %{system_time: System.system_time()})
 
       event_name = Enum.reverse([:start | Enum.reverse(event_name)])
-      :ok = :telemetry.execute([:ockam] ++ event_name, measurements, metadata)
+      :ok = emit_event(event_name, measurements, metadata)
 
       start_time
     end
@@ -133,7 +138,7 @@ if Code.ensure_loaded?(:telemetry) do
       measurements = Map.merge(measurements, %{duration: end_time - start_time})
 
       event_name = Enum.reverse([:stop | Enum.reverse(event_name)])
-      :ok = :telemetry.execute([:ockam] ++ event_name, measurements, metadata)
+      emit_event(event_name, measurements, metadata)
     end
 
     @doc """
@@ -200,7 +205,7 @@ if Code.ensure_loaded?(:telemetry) do
       measurements = Map.merge(measurements, %{duration: end_time - start_time})
 
       event_name = Enum.reverse([:exception | Enum.reverse(event_name)])
-      :ok = :telemetry.execute([:ockam] ++ event_name, measurements, metadata)
+      emit_event(event_name, measurements, metadata)
     end
   end
 else

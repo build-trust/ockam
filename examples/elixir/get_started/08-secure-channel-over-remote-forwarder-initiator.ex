@@ -1,7 +1,7 @@
 ["setup.exs", "waiter.exs"] |> Enum.map(&Code.require_file/1)
 
 # Register this process as worker address "app".
-Ockam.Node.register_address("app", self())
+Ockam.Node.register_address("app")
 
 # Start the TCP Transport Add-on for Ockam Routing.
 Ockam.Transport.TCP.start()

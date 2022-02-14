@@ -1,7 +1,7 @@
 ["setup.exs", "echoer.exs"] |> Enum.map(&Code.require_file/1)
 
 # Register this process as worker address "app".
-Ockam.Node.register_address("app", self())
+Ockam.Node.register_address("app")
 
 # Create a Echoer type worker at address "echoer".
 {:ok, _echoer} = Echoer.create(address: "echoer")

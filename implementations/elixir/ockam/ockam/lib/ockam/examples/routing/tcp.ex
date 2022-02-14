@@ -30,7 +30,7 @@ defmodule Ockam.Examples.Routing.TCP do
 
     ## Register this process to receive messages
     my_address = "example_run"
-    Ockam.Node.register_address(my_address, self())
+    Ockam.Node.register_address(my_address)
 
     Ockam.Router.route(%{
       onward_route: [server_host_address, "echoer"],

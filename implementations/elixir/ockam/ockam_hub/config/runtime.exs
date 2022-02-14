@@ -46,49 +46,7 @@ config :ockam_hub, :postgres,
   password: System.get_env("POSTGRES_PASSWORD"),
   database: System.get_env("POSTGRES_DATABASE")
 
-ui_auth_message =
-  with true <- File.exists?("/mnt/secrets/auth/message"),
-       {:ok, contents} <- File.read("/mnt/secrets/auth/message"),
-       client_secret <- String.trim(contents) do
-    client_secret
-  else
-    false ->
-      System.get_env("AUTH_MESSAGE") || "devsecret"
-
-    {:error, :enoent} ->
-      System.get_env("AUTH_MESSAGE") || "devsecret"
-  end
-
-ui_auth_host =
-  with true <- File.exists?("/mnt/secrets/auth/host"),
-       {:ok, contents} <- File.read("/mnt/secrets/auth/host"),
-       client_secret <- String.trim(contents) do
-    client_secret
-  else
-    false ->
-      System.get_env("AUTH_HOST") || "http://localhost:4002"
-
-    {:error, :enoent} ->
-      System.get_env("AUTH_HOST") || "http://localhost:4002"
-  end
-
-node_fqdn =
-  case System.get_env("NODE_FQDN") do
-    fqdn when is_binary(fqdn) and fqdn != "" ->
-      fqdn
-
-    _ ->
-      case config_env() do
-        :dev -> "localhost"
-        :test -> "localhost"
-        _ -> nil
-      end
-  end
-
 config :ockam_hub,
-  auth_message: ui_auth_message,
-  auth_host: ui_auth_host,
-  node_fqdn: node_fqdn,
   tcp_transport_port: 4000,
   udp_transport_port: 7000
 

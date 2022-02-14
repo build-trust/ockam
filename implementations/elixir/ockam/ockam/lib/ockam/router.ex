@@ -84,6 +84,7 @@ defmodule Ockam.Router do
   defp invoke_handler(handler, message) do
     case apply_handler(handler, message) do
       {:error, error} -> {:error, {:handler_error, error, message, handler}}
+      ## TODO: require and match :ok result
       _anything_else -> :ok
     end
   end

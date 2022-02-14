@@ -1,6 +1,8 @@
 defmodule Ockam.Worker do
   @moduledoc false
 
+  alias Ockam.Telemetry
+
   @callback setup(options :: Keyword.t(), initial_state :: map()) ::
               {:ok, state :: map()} | {:error, reason :: any()}
 
@@ -51,7 +53,6 @@ defmodule Ockam.Worker do
 
       alias Ockam.Node
       alias Ockam.Router
-      alias Ockam.Telemetry
 
       def create(options \\ []) when is_list(options) do
         address_prefix = Keyword.get(options, :address_prefix, address_prefix(options))
@@ -97,14 +98,15 @@ defmodule Ockam.Worker do
       @doc false
       @impl true
       def handle_info(%Ockam.Message{} = message, state) do
-        metadata = %{message: message}
-        start_time = Telemetry.emit_start_event([__MODULE__, :handle_message], metadata: metadata)
+        ## TODO: improve metadata
+        metadata = %{message: message, address: Map.get(state, :address), module: __MODULE__}
+
+        start_time = Ockam.Worker.emit_handle_message_start(metadata)
 
         ## TODO: error handling
         return_value = handle_message(message, state)
 
-        metadata = Map.put(metadata, :return_value, return_value)
-        Telemetry.emit_stop_event([__MODULE__, :handle_message], start_time, metadata: metadata)
+        Ockam.Worker.emit_handle_message_stop(metadata, start_time, return_value)
 
         last_message_ts = System.os_time(:millisecond)
 
@@ -124,15 +126,21 @@ defmodule Ockam.Worker do
       @doc false
       @impl true
       def handle_continue(:post_init, options) do
-        metadata = %{address: Keyword.get(options, :address)}
-        start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
+        Node.set_address_module(Keyword.fetch!(options, :address), __MODULE__)
 
         with {:ok, address} <- get_from_options(:address, options) do
+          metadata = %{
+            address: Keyword.get(options, :address),
+            options: options,
+            module: __MODULE__
+          }
+
+          start_time = Ockam.Worker.emit_init_start(metadata)
+
           base_state = %{address: address, module: __MODULE__, last_message_ts: nil}
           return_value = setup(options, base_state)
 
-          metadata = Map.put(metadata, :return_value, return_value)
-          Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
+          Ockam.Worker.emit_init_stop(metadata, start_time, return_value)
 
           case return_value do
             {:ok, state} ->
@@ -160,5 +168,60 @@ defmodule Ockam.Worker do
 
       defoverridable setup: 2, address_prefix: 1
     end
+  end
+
+  ## Metrics functions
+
+  def emit_handle_message_start(metadata) do
+    start_time =
+      Telemetry.emit_start_event([Map.get(metadata, :module), :handle_message], metadata: metadata)
+
+    Telemetry.emit_event([Ockam.Worker, :handle_message, :start],
+      metadata: metadata,
+      measurements: %{system_time: System.system_time()}
+    )
+
+    start_time
+  end
+
+  def emit_handle_message_stop(metadata, start_time, return_value) do
+    result =
+      case return_value do
+        {:ok, _result} -> :ok
+        {:stop, _reason, _state} -> :stop
+        {:error, _reason} -> :error
+      end
+
+    metadata = Map.merge(metadata, %{result: result, return_value: return_value})
+
+    Telemetry.emit_stop_event([Map.get(metadata, :module), :handle_message], start_time,
+      metadata: metadata
+    )
+
+    Telemetry.emit_stop_event([Ockam.Worker, :handle_message], start_time, metadata: metadata)
+  end
+
+  def emit_init_start(metadata) do
+    start_time =
+      Telemetry.emit_start_event([Map.get(metadata, :module), :init], metadata: metadata)
+
+    Telemetry.emit_event([Ockam.Worker, :init, :start],
+      metadata: metadata,
+      measurements: %{system_time: System.system_time()}
+    )
+
+    start_time
+  end
+
+  def emit_init_stop(metadata, start_time, return_value) do
+    result =
+      case return_value do
+        {:ok, _state} -> :ok
+        {:error, _reason} -> :error
+      end
+
+    metadata = Map.merge(metadata, %{result: result, return_value: return_value})
+    Telemetry.emit_stop_event([Map.get(metadata, :module), :init], start_time, metadata: metadata)
+    Telemetry.emit_stop_event([Ockam.Worker, :init], start_time, metadata: metadata)
   end
 end

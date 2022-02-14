@@ -32,7 +32,7 @@ defmodule Ockam.SecureChannel.Tests do
   alias Ockam.Vault.Software, as: SoftwareVault
 
   setup do
-    Node.register_address("test", self())
+    Node.register_address("test")
     on_exit(fn -> Node.unregister_address("test") end)
   end
 

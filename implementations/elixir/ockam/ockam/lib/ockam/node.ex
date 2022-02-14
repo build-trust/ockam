@@ -33,24 +33,49 @@ defmodule Ockam.Node do
     end
   end
 
-  def register_address(address) do
-    Registry.register_name(address, self())
+  @spec register_address(any(), module()) :: :ok | {:error, any()}
+  @doc """
+  Registers the address of the current process with optional module name
+  """
+  def register_address(address, module \\ nil) do
+    Registry.register(address, module)
   end
 
+  @spec set_address_module(any(), module()) :: :ok | :error
   @doc """
-  Registers the address of a `pid`.
+  Sets module name for already registered process
   """
-  defdelegate register_address(address, pid), to: Registry, as: :register_name
+  def set_address_module(address, module) do
+    Registry.set_module(address, module)
+  end
 
+  @spec unregister_address(any()) :: :ok
   @doc """
   Unregisters an address.
   """
   defdelegate unregister_address(address), to: Registry, as: :unregister_name
 
+  @spec list_addresses() :: [address :: any()]
   @doc """
   Lists all registered addresses
   """
   defdelegate list_addresses(), to: Registry, as: :list_names
+
+  @spec list_workers() :: [{address :: any(), pid(), module()}]
+  @doc """
+  Lists all workers with their primary address, worker pid and module
+  """
+  ## TODO: currently taking just one random address per pid, make sure it's primary
+  def list_workers() do
+    list_addresses()
+    |> Enum.flat_map(fn address ->
+      case Registry.lookup(address) do
+        {:ok, pid, module} -> [{address, pid, module}]
+        :error -> []
+      end
+    end)
+    |> Enum.uniq_by(fn {_address, pid, _module} -> pid end)
+  end
 
   @doc """
   Send a message to the process registered with an address.
@@ -58,21 +83,51 @@ defmodule Ockam.Node do
   def send(address, %Ockam.Message{} = message) do
     case Registry.whereis_name(address) do
       # dead letters
-      :undefined -> :ok
-      _pid -> Registry.send(address, message)
+      :undefined ->
+        report_message(:unsent, address, message)
+        :ok
+
+      _pid ->
+        Registry.send(address, message)
+        report_message(:sent, address, message)
+        :ok
     end
   end
 
-  def register_random_address(prefix \\ "", length_in_bytes \\ @default_address_length_in_bytes) do
+  @spec report_message(:sent | :unsent, any(), Ockam.Message.t()) :: :ok
+  def report_message(sent_status, address, message) do
+    from = Enum.at(Message.return_route(message), 0)
+
+    metadata = %{from: from, to: address, message: message}
+
+    Telemetry.emit_event([__MODULE__, :message, sent_status],
+      measurements: %{count: 1},
+      metadata: metadata
+    )
+  end
+
+  @spec register_random_address(prefix :: String.t(), module(), length_in_bytes :: integer()) ::
+          {:ok, address :: any()} | {:error, any()}
+  @doc """
+  Registers random address of certain length using set prefix and module name
+  """
+  ## TODO: make address actually fit into length in bytes
+  def register_random_address(
+        prefix \\ "",
+        module \\ nil,
+        length_in_bytes \\ @default_address_length_in_bytes
+      ) do
     address = get_random_unregistered_address(prefix, length_in_bytes)
 
-    case register_address(address) do
-      :yes -> {:ok, address}
+    case register_address(address, module) do
+      :ok -> {:ok, address}
       ## TODO: recursion limit
-      :no -> register_random_address(prefix, length_in_bytes)
+      {:error, _reason} -> register_random_address(prefix, module, length_in_bytes)
     end
   end
 
+  @spec get_random_unregistered_address(prefix :: String.t(), length_in_bytes :: integer()) ::
+          binary()
   @doc """
   Returns a random address that is currently not registed on the node.
   """
@@ -149,27 +204,16 @@ defmodule Ockam.Node do
   end
 
   def handle_local_message(%Ockam.Message{} = message) do
-    metadata = %{message: message}
+    case Message.onward_route(message) do
+      [] ->
+        report_message(:unsent, nil, message)
+        # Logger.warn("Routing message with no onward_route: #{inspect(message)}")
+        :ok
 
-    start_time =
-      Telemetry.emit_start_event([__MODULE__, :handle_local_message], metadata: metadata)
-
-    return_value =
-      case Message.onward_route(message) do
-        [] ->
-          # Logger.warn("Routing message with no onward_route: #{inspect(message)}")
-          :ok
-
-        [first | _rest] ->
-          0 = Address.type(first)
-          local_address = Address.value(first)
-          __MODULE__.send(local_address, message)
-      end
-
-    metadata = Map.put(metadata, :return_value, return_value)
-
-    Telemetry.emit_stop_event([__MODULE__, :handle_local_message], start_time, metadata: metadata)
-
-    return_value
+      [first | _rest] ->
+        0 = Address.type(first)
+        local_address = Address.value(first)
+        __MODULE__.send(local_address, message)
+    end
   end
 end

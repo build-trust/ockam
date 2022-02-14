@@ -44,7 +44,7 @@ defmodule Ockam.Examples.Forwarding do
     TCP.start()
     forwarding_route = [@hub_address, "forwarding_service"]
 
-    Ockam.Node.register_address("example_responder", self())
+    Ockam.Node.register_address("example_responder")
 
     with {:ok, forwarder_address} <-
            ServiceApi.register_self(forwarding_route, "example_responder") do
@@ -63,7 +63,7 @@ defmodule Ockam.Examples.Forwarding do
     TCP.start()
     forwarder_route = [@hub_address, forwarder_address]
 
-    Ockam.Node.register_address("example_initiator", self())
+    Ockam.Node.register_address("example_initiator")
 
     Ockam.Router.route(%{
       onward_route: forwarder_route,

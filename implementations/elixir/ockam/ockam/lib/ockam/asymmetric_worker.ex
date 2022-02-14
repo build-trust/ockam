@@ -83,12 +83,12 @@ defmodule Ockam.AsymmetricWorker do
       def register_inner_address(options, state) do
         case Keyword.get(options, :inner_address) do
           nil ->
-            Ockam.Node.register_random_address()
+            Ockam.Node.register_random_address(address_prefix(options), __MODULE__)
 
           inner_address ->
-            case Ockam.Node.register_address(inner_address) do
-              :yes -> {:ok, inner_address}
-              :no -> {:error, :inner_address_already_taken}
+            case Ockam.Node.register_address(inner_address, __MODULE__) do
+              :ok -> {:ok, inner_address}
+              {:error, _reason} -> {:error, :inner_address_already_taken}
             end
         end
       end

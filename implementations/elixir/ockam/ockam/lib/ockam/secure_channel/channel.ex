@@ -113,7 +113,7 @@ defmodule Ockam.SecureChannel.Channel do
     address_prefix = Keyword.get(options, :address_prefix, "")
     ciphertext_address = Node.get_random_unregistered_address(address_prefix)
 
-    with :yes <- Node.register_address(ciphertext_address, self()) do
+    with :ok <- Node.register_address(ciphertext_address, __MODULE__) do
       {:ok, Map.put(data, :ciphertext_address, ciphertext_address)}
     end
   end
