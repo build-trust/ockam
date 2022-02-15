@@ -1,7 +1,7 @@
 use crate::TcpRecvProcessor;
 use core::time::Duration;
 use futures::future::{AbortHandle, Abortable};
-use ockam_core::{async_trait, route, Any, Decodable};
+use ockam_core::{async_trait, route, Any, Decodable, LocalMessage};
 use ockam_core::{Address, Encodable, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -218,7 +218,7 @@ impl Worker for TcpSendWorker {
 
             debug!("Sent heartbeat to peer {}", self.peer);
         } else {
-            let mut msg = TransportMessage::decode(msg.payload())?;
+            let mut msg = LocalMessage::decode(msg.payload())?.into_transport_message();
             // Remove our own address from the route so the other end
             // knows what to do with the incoming message
             msg.onward_route.step()?;
