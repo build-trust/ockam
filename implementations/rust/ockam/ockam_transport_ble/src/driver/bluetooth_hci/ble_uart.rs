@@ -31,9 +31,9 @@ use bluenrg::gatt::Commands as GattCommands;
 use bluenrg::hal::Commands as HalCommands;
 
 use super::embedded_hal;
+use crate::driver;
 use crate::error::BleError;
 use crate::BleAddr;
-use crate::driver;
 
 type Packet = bluetooth_hci::host::uart::Packet<BlueNRGEvent>;
 pub type Event = bluetooth_hci::event::Event<BlueNRGEvent>;
@@ -67,7 +67,7 @@ pub const FW_VERSION_BEFORE_V72: bool = true;
 pub fn setup<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>(
     spi: &mut SPI,
     bluetooth: &mut BlueNRG<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>,
-) -> Result<(), bluenrg::Error<SPI::Error, GpioError>>
+) -> Result<(), BleError>
 where
     SPI: blocking::spi::transfer::Default<u8> + blocking::spi::write::Default<u8>,
     OutputPin1: OutputPin<Error = GpioError>,
@@ -87,11 +87,14 @@ where
     // read first reset response (Command complete)
     match block!(bluetooth.with_spi(spi, |controller| controller.read())) {
         Ok(Packet::Event(event)) => debug!("\t=> controller reset: {:?}", event),
-        Err(e) => error!("controller reset error: {:?}", e),
+        Err(e) => {
+            error!("controller reset error: {:?}", e);
+            return Err(e.into());
+        }
     }
 
     // read second reset response (HAL initialized)
-    controller_read(spi, bluetooth);
+    controller_read(spi, bluetooth)?;
 
     // configure public address
     let bd_addr = super::get_bd_addr();
@@ -99,14 +102,14 @@ where
     block!(bluetooth.with_spi(spi, |controller| {
         controller.write_config_data(&ConfigData::public_address(bd_addr).build())
     }))?;
-    controller_read(spi, bluetooth);
+    controller_read(spi, bluetooth)?;
 
     // set power level
     debug!("\tset_tx_power_level");
     block!(bluetooth.with_spi(spi, |controller| {
         controller.set_tx_power_level(bluenrg::hal::PowerLevel::Dbm8_0)
     }))?;
-    controller_read(spi, bluetooth);
+    controller_read(spi, bluetooth)?;
 
     Ok(())
 }
@@ -116,7 +119,7 @@ pub fn initialize_gatt_and_gap<'buf, SPI, OutputPin1, OutputPin2, InputPin1, Gpi
     spi: &mut SPI,
     bluetooth: &mut BlueNRG<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>,
     ble_addr: &BleAddr,
-) -> Result<BleContext, bluenrg::Error<SPI::Error, GpioError>>
+) -> Result<BleContext, BleError>
 where
     SPI: blocking::spi::transfer::Default<u8> + blocking::spi::write::Default<u8>,
     OutputPin1: OutputPin<Error = GpioError>,
@@ -132,7 +135,7 @@ where
     // init gatt
     debug!("\tinit_gatt");
     block!(bluetooth.with_spi(spi, |controller| { controller.init_gatt() }))?;
-    controller_read(spi, bluetooth);
+    controller_read(spi, bluetooth)?;
 
     // ble_context
     let mut ble_context = BleContext::default();
@@ -156,7 +159,10 @@ where
             }
             _ => debug!("\t=> unknown event: {:?}", event),
         },
-        Err(e) => debug!("controller.reset error: {:?}", e),
+        Err(e) => {
+            error!("controller.reset error: {:?}", e);
+            return Err(e.into());
+        }
     }
 
     debug!("\tupdate_characteristic_value -> {:?}", ble_context);
@@ -171,9 +177,8 @@ where
             offset: 0x00,
             value: ble_addr.device_name.as_bytes(),
         })
-    }))
-    .unwrap();
-    controller_read(spi, bluetooth);
+    }))?;
+    controller_read(spi, bluetooth)?;
 
     Ok(ble_context)
 }
@@ -183,7 +188,7 @@ pub fn initialize_uart<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>(
     spi: &mut SPI,
     bluetooth: &mut BlueNRG<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>,
     ble_context: &mut BleContext,
-) -> Result<(), bluenrg::Error<SPI::Error, GpioError>>
+) -> Result<(), BleError>
 where
     SPI: blocking::spi::transfer::Default<u8> + blocking::spi::write::Default<u8>,
     OutputPin1: OutputPin<Error = GpioError>,
@@ -206,13 +211,12 @@ where
             fixed_pin: bluenrg::gap::Pin::Fixed(123456),
             bonding_required: true,
         })
-    }))
-    .unwrap();
+    }))?;
 
     // wait for command to complete
     crate::wait_ms!(200);
 
-    controller_read(spi, bluetooth);
+    controller_read(spi, bluetooth)?;
 
     // add services
     if ROLE == bluenrg::gap::Role::PERIPHERAL {
@@ -227,7 +231,7 @@ pub fn add_uart_service<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>
     spi: &mut SPI,
     bluetooth: &mut BlueNRG<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>,
     ble_context: &mut BleContext,
-) -> Result<(), bluenrg::Error<SPI::Error, GpioError>>
+) -> Result<(), BleError>
 where
     SPI: blocking::spi::transfer::Default<u8> + blocking::spi::write::Default<u8>,
     OutputPin1: OutputPin<Error = GpioError>,
@@ -248,8 +252,7 @@ where
             service_type: ServiceType::Primary,
             max_attribute_records: 9, // TODO
         })
-    }))
-    .unwrap();
+    }))?;
     match block!(bluetooth.with_spi(spi, |controller| controller.read())) {
         Ok(Packet::Event(event)) => match event {
             Event::CommandComplete(CommandComplete {
@@ -261,7 +264,10 @@ where
             }
             _ => debug!("\t=> unknown event: {:?}", event),
         },
-        Err(e) => debug!("controller.add_service error: {:?}", e),
+        Err(e) => {
+            error!("controller.add_service error: {:?}", e);
+            return Err(e.into());
+        }
     }
 
     // add uart service tx characteristic: notify
@@ -288,8 +294,7 @@ where
             is_variable: true,
             fw_version_before_v72: FW_VERSION_BEFORE_V72,
         })
-    }))
-    .unwrap();
+    }))?;
     ble_context.uart_tx_handle = handle_event(spi, bluetooth, |event| match event {
         Event::CommandComplete(CommandComplete {
             return_params: Vendor(Parameters::GattAddCharacteristic(characteristic)),
@@ -330,8 +335,7 @@ where
             is_variable: true,
             fw_version_before_v72: FW_VERSION_BEFORE_V72,
         })
-    }))
-    .unwrap();
+    }))?;
     match block!(bluetooth.with_spi(spi, |controller| controller.read())) {
         Ok(Packet::Event(event)) => match event {
             Event::CommandComplete(CommandComplete {
@@ -346,7 +350,10 @@ where
             }
             _ => debug!("\t=> unknown event: {:?}", event),
         },
-        Err(e) => debug!("controller.add_characteristic error: {:?}", e),
+        Err(e) => {
+            error!("controller.add_characteristic error: {:?}", e);
+            return Err(e.into());
+        }
     }
 
     Ok(())
@@ -358,7 +365,7 @@ pub fn start_advertising<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError
     bluetooth: &mut BlueNRG<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>,
     _context: &mut BleContext,
     ble_addr: &BleAddr,
-) -> Result<(), bluenrg::Error<SPI::Error, GpioError>>
+) -> Result<(), BleError>
 where
     SPI: blocking::spi::transfer::Default<u8> + blocking::spi::write::Default<u8>,
     OutputPin1: OutputPin<Error = GpioError>,
@@ -374,12 +381,11 @@ where
     debug!("\tle_set_scan_response_data (disable scan response)");
     block!(bluetooth.with_spi(spi, |controller| {
         controller.le_set_scan_response_data(&[])
-    }))
-    .unwrap();
-    controller_read(spi, bluetooth);
+    }))?;
+    controller_read(spi, bluetooth)?;
 
     debug!("\tset_discoverable (put the device in a non-connectable mode)");
-    let result = block!(bluetooth.with_spi(spi, |controller| {
+    block!(bluetooth.with_spi(spi, |controller| {
         controller.set_discoverable(&DiscoverableParameters {
             advertising_type: bluenrg::AdvertisingType::ConnectableUndirected,
             advertising_interval: Some((Duration::from_millis(250), Duration::from_millis(1000))),
@@ -391,12 +397,8 @@ where
             advertising_data: &[],
             conn_interval: (None, None),
         })
-    }));
-    match result {
-        Ok(_) => (),
-        Err(e) => debug!("failed to block on set_discoverable: {:?}", e),
-    };
-    controller_read(spi, bluetooth);
+    }))?;
+    controller_read(spi, bluetooth)?;
 
     // delete some ad types to make space
     debug!("\tdelete_ad_type");
@@ -404,12 +406,12 @@ where
     block!(bluetooth.with_spi(spi, |controller| {
         controller.delete_ad_type(bluenrg::gap::AdvertisingDataType::TxPowerLevel)
     }))?;
-    controller_read(spi, bluetooth);
+    controller_read(spi, bluetooth)?;
 
     block!(bluetooth.with_spi(spi, |controller| {
         controller.delete_ad_type(bluenrg::gap::AdvertisingDataType::PeripheralConnectionInterval)
     }))?;
-    controller_read(spi, bluetooth);
+    controller_read(spi, bluetooth)?;
 
     Ok(())
 }
@@ -434,7 +436,7 @@ where
     match block!(bluetooth.with_spi(spi, |controller| controller.read())) {
         Ok(Packet::Event(event)) => handler(&event),
         Err(e) => {
-            debug!("controller_read error: {:?}", e);
+            error!("error handling event: {:?}", e);
             None
         }
     }
@@ -444,7 +446,8 @@ where
 pub fn controller_read<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>(
     spi: &mut SPI,
     bluetooth: &mut BlueNRG<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>,
-) where
+) -> Result<(), BleError>
+where
     SPI: blocking::spi::transfer::Default<u8> + blocking::spi::write::Default<u8>,
     OutputPin1: OutputPin<Error = GpioError>,
     OutputPin2: OutputPin<Error = GpioError>,
@@ -463,11 +466,14 @@ pub fn controller_read<'buf, SPI, OutputPin1, OutputPin2, InputPin1, GpioError>(
                 debug!("\t=> Vendor::HalInitialized -> {:?}", reason);
             }
             _ => {
-                debug!("\t=> {:?}", event);
+                debug!("\t=> unknown event -> {:?}", event);
             }
         },
-        Err(e) => debug!("controller_read error: {:?}", e),
+        Err(e) => {
+            return Err(e.into());
+        }
     }
+    Ok(())
 }
 
 /// Read local version information of device
@@ -485,7 +491,7 @@ where
     OutputPin2::Error: Debug,
     InputPin::Error: Debug,
 {
-    debug!("\n\tread bluenrg-ms local version information");
+    debug!("\tread bluenrg-ms local version information");
     bluetooth.with_spi(spi, |controller| {
         block!(controller.read_local_version_information())
     })?;
@@ -504,14 +510,17 @@ where
                     return Ok(());
                 }
                 _ => {
-                    debug!("\tunknown event => {:?}", event);
+                    error!(
+                        "\tread_local_version_information received an unknown event: {:?}",
+                        event
+                    );
                     return Err(BleError::HardwareError);
                 }
             }
         }
         Err(e) => {
-            debug!("read_local_version_information error: {:?}", e);
-            return Err(BleError::HardwareError);
+            error!("read_local_version_information error: {:?}", e);
+            return Err(e.into());
         }
     }
 }

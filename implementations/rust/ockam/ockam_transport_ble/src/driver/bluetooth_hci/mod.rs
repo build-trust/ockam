@@ -336,26 +336,72 @@ where
     }
 }
 
+/// Map bluetooth_hci::host::Error to BleError
+impl<E, VS> From<bluetooth_hci::host::Error<E, VS>> for BleError
+where
+    E: core::fmt::Debug,
+    VS: core::fmt::Debug,
+{
+    fn from(e: bluetooth_hci::host::Error<E, VS>) -> Self {
+        trace!("bluetooth_hci::host::Error error: {:?}", e);
+        Self::HardwareError
+    }
+}
+
+/// Map bluetooth_hci::host::uart::Error to BleError
+impl<E, VS> From<bluetooth_hci::host::uart::Error<E, VS>> for BleError
+where
+    E: core::fmt::Debug,
+    VS: core::fmt::Debug,
+{
+    fn from(e: bluetooth_hci::host::uart::Error<E, VS>) -> Self {
+        trace!("bluetooth_hci::host::uart::Error error: {:?}", e);
+        Self::HardwareError
+    }
+}
+
 /// Map bluenrg::Error to BleError
-impl<SpiError, GpioError> From<bluenrg::Error<SpiError, GpioError>> for BleError {
+impl<SpiError, GpioError> From<bluenrg::Error<SpiError, GpioError>> for BleError
+where
+    SpiError: core::fmt::Debug,
+    GpioError: core::fmt::Debug,
+{
     fn from(e: bluenrg::Error<SpiError, GpioError>) -> Self {
-        match e {
-            bluenrg::Error::Spi(_e) => Self::HardwareError,
-            bluenrg::Error::Gpio(_e) => Self::HardwareError,
-        }
+        trace!("bluenrg::Error error: {:?}", e);
+        Self::HardwareError
+    }
+}
+
+/// Map bluenrg::gap::Error to BleError
+impl<E> From<bluenrg::gap::Error<E>> for BleError
+where
+    E: core::fmt::Debug,
+{
+    fn from(e: bluenrg::gap::Error<E>) -> Self {
+        trace!("bluenrg::gap error: {:?}", e);
+        Self::HardwareError
+    }
+}
+
+/// Map bluenrg::gatt::Error to BleError
+impl<E> From<bluenrg::gatt::Error<E>> for BleError
+where
+    E: core::fmt::Debug,
+{
+    fn from(e: bluenrg::gatt::Error<E>) -> Self {
+        trace!("bluenrg::gatt error: {:?}", e);
+        Self::HardwareError
     }
 }
 
 /// Map nb::Error to BleError
-impl<GpioError> From<nb::Error<GpioError>> for BleError {
+impl<GpioError> From<nb::Error<GpioError>> for BleError
+where
+    GpioError: core::fmt::Debug,
+{
     fn from(e: nb::Error<GpioError>) -> Self {
-        match e {
-            nb::Error::Other(_e) => Self::HardwareError,
-            nb::Error::WouldBlock => {
-                error!("ble.rs wouldblock");
-                Self::HardwareError
-            }
-        }
+        trace!("bluenrg::gatt error: {:?}", e);
+        Self::HardwareError
     }
 }
 
