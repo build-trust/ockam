@@ -8,10 +8,7 @@ use super::mutex::Mutex;
 
 use crate::driver::BleStreamDriver;
 
-pub(crate) struct AsyncStream<A>
-where
-    A: BleStreamDriver + Send,
-{
+pub(crate) struct AsyncStream<A> {
     inner: Arc<Mutex<A>>,
 }
 
@@ -66,10 +63,7 @@ where
 }
 
 /// A Sink for writing data buffers to the Ble adapter
-pub(crate) struct Sink<A>
-where
-    A: BleStreamDriver + Send,
-{
+pub(crate) struct Sink<A> {
     inner: Arc<AsyncStream<A>>,
 }
 
@@ -83,10 +77,7 @@ where
 }
 
 /// A Source for reading data buffers from the Ble adapter
-pub(crate) struct Source<A>
-where
-    A: BleStreamDriver + Send,
-{
+pub(crate) struct Source<A> {
     inner: Arc<AsyncStream<A>>,
 }
 

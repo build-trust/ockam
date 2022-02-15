@@ -13,10 +13,7 @@ use crate::driver::{BleEvent, BleStreamDriver, PacketBuffer};
 /// This half of the worker is created when spawning a new worker
 /// pair, and listens for incoming BLE events, to relay into the node
 /// message system.
-pub struct BleRecvProcessor<A>
-where
-    A: BleStreamDriver + Send + 'static,
-{
+pub struct BleRecvProcessor<A> {
     rx_stream: Source<A>,
     peer_addr: Address,
     packet_buffer: PacketBuffer,

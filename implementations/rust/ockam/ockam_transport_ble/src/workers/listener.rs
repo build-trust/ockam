@@ -10,10 +10,7 @@ use crate::workers::sender::BleSendWorker;
 use crate::BleAddr;
 
 /// BleListenProcessor
-pub struct BleListenProcessor<A>
-where
-    A: BleServerDriver + BleStreamDriver + Send + 'static,
-{
+pub struct BleListenProcessor<A> {
     inner: Option<BleServer<A>>,
     router_handle: BleRouterHandle,
 }

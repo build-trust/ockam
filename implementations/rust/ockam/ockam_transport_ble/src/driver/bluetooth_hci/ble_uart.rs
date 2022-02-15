@@ -74,9 +74,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin1::Error: Debug,
+    GpioError: Debug,
 {
     debug!("\tsoftware controller reset");
     block!(bluetooth.with_spi(spi, |controller| { controller.reset() }))?;
@@ -126,9 +124,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin1::Error: Debug,
+    GpioError: Debug,
 {
     debug!("ble_uartinitialize_gatt_and_gap");
 
@@ -139,7 +135,8 @@ where
 
     // ble_context
     let mut ble_context = BleContext::default();
-    ble_context.uart_rx_attribute_handle = Some(AttributeHandle(17)); // TODO
+    // TODO figure out why the bluenrg returns an invalid rx attribute handle
+    ble_context.uart_rx_attribute_handle = Some(AttributeHandle(17));
 
     // init gap
     debug!("\tinit_gap");
@@ -195,9 +192,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin1::Error: Debug,
+    GpioError: Debug,
 {
     debug!("ble_uart::initialize_uart");
 
@@ -208,6 +203,7 @@ where
             mitm_protection_required: true,
             out_of_band_auth: OutOfBandAuthentication::Disabled,
             encryption_key_size_range: (7, 16),
+            // we use a non-connectable mode so this pin is arbitrary
             fixed_pin: bluenrg::gap::Pin::Fixed(123456),
             bonding_required: true,
         })
@@ -238,9 +234,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin1::Error: Debug,
+    GpioError: Debug,
 {
     debug!("ble_uart::add_uart_service");
 
@@ -372,9 +366,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin1::Error: Debug,
+    GpioError: Debug,
 {
     debug!("ble_uart::start_advertising");
 
@@ -429,9 +421,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin1::Error: Debug,
+    GpioError: Debug,
 {
     match block!(bluetooth.with_spi(spi, |controller| controller.read())) {
         Ok(Packet::Event(event)) => handler(&event),
@@ -453,9 +443,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin1::Error: Debug,
+    GpioError: Debug,
 {
     match block!(bluetooth.with_spi(spi, |controller| controller.read())) {
         Ok(Packet::Event(event)) => match event {
@@ -487,9 +475,7 @@ where
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin: embedded_hal::digital::v2::InputPin<Error = GpioError>,
     SPI::Error: Debug,
-    OutputPin1::Error: Debug,
-    OutputPin2::Error: Debug,
-    InputPin::Error: Debug,
+    GpioError: Debug,
 {
     debug!("\tread bluenrg-ms local version information");
     bluetooth.with_spi(spi, |controller| {

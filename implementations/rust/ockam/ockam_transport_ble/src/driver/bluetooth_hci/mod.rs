@@ -26,7 +26,7 @@ use hal::time::Milliseconds as MilliSeconds;
 
 mod ble_uart;
 
-use core::fmt;
+use core::fmt::Debug;
 use embedded_hal::{
     blocking,
     digital::v2::{InputPin, OutputPin},
@@ -75,10 +75,8 @@ where
     OutputPin1: OutputPin<Error = GpioError>,
     OutputPin2: OutputPin<Error = GpioError>,
     InputPin1: InputPin<Error = GpioError>,
-    SPI::Error: fmt::Debug,
-    OutputPin1::Error: fmt::Debug,
-    OutputPin2::Error: fmt::Debug,
-    InputPin1::Error: fmt::Debug,
+    SPI::Error: Debug,
+    GpioError: Debug,
 {
     pub fn with_interface(
         spi: SPI,
@@ -159,11 +157,8 @@ where
     OutputPin1: OutputPin<Error = GpioError> + Send,
     OutputPin2: OutputPin<Error = GpioError> + Send,
     InputPin1: InputPin<Error = GpioError> + Send,
-    SPI::Error: fmt::Debug,
-    OutputPin1::Error: fmt::Debug,
-    OutputPin2::Error: fmt::Debug,
-    InputPin1::Error: fmt::Debug,
-    GpioError: Send,
+    SPI::Error: Debug,
+    GpioError: Debug + Send,
 {
     async fn bind(&mut self, ble_addr: &BleAddr) -> ockam::Result<()> {
         self.ble_addr = ble_addr.clone();
@@ -210,11 +205,8 @@ where
     OutputPin1: OutputPin<Error = GpioError> + Send,
     OutputPin2: OutputPin<Error = GpioError> + Send,
     InputPin1: InputPin<Error = GpioError> + Send,
-    SPI::Error: fmt::Debug,
-    OutputPin1::Error: fmt::Debug,
-    OutputPin2::Error: fmt::Debug,
-    InputPin1::Error: fmt::Debug,
-    GpioError: Send,
+    SPI::Error: Debug,
+    GpioError: Debug + Send,
 {
     async fn poll<'b>(&mut self, out_fragment: &'b mut [u8]) -> ockam::Result<BleEvent<'b>> {
         // avoid deadlocking the caller
@@ -269,7 +261,8 @@ where
                         let fragment = event.data();
                         let fragment_len = event.data().len();
                         if fragment_len > out_fragment.len() {
-                            panic!("fragment too long");
+                            error!("response fragment too long");
+                            return Err(BleError::ReadError.into());
                         }
 
                         let out_fragment = &mut out_fragment[..fragment_len];
@@ -339,8 +332,8 @@ where
 /// Map bluetooth_hci::host::Error to BleError
 impl<E, VS> From<bluetooth_hci::host::Error<E, VS>> for BleError
 where
-    E: core::fmt::Debug,
-    VS: core::fmt::Debug,
+    E: Debug,
+    VS: Debug,
 {
     fn from(e: bluetooth_hci::host::Error<E, VS>) -> Self {
         trace!("bluetooth_hci::host::Error error: {:?}", e);
@@ -351,8 +344,8 @@ where
 /// Map bluetooth_hci::host::uart::Error to BleError
 impl<E, VS> From<bluetooth_hci::host::uart::Error<E, VS>> for BleError
 where
-    E: core::fmt::Debug,
-    VS: core::fmt::Debug,
+    E: Debug,
+    VS: Debug,
 {
     fn from(e: bluetooth_hci::host::uart::Error<E, VS>) -> Self {
         trace!("bluetooth_hci::host::uart::Error error: {:?}", e);
@@ -363,8 +356,8 @@ where
 /// Map bluenrg::Error to BleError
 impl<SpiError, GpioError> From<bluenrg::Error<SpiError, GpioError>> for BleError
 where
-    SpiError: core::fmt::Debug,
-    GpioError: core::fmt::Debug,
+    SpiError: Debug,
+    GpioError: Debug,
 {
     fn from(e: bluenrg::Error<SpiError, GpioError>) -> Self {
         trace!("bluenrg::Error error: {:?}", e);
@@ -375,7 +368,7 @@ where
 /// Map bluenrg::gap::Error to BleError
 impl<E> From<bluenrg::gap::Error<E>> for BleError
 where
-    E: core::fmt::Debug,
+    E: Debug,
 {
     fn from(e: bluenrg::gap::Error<E>) -> Self {
         trace!("bluenrg::gap error: {:?}", e);
@@ -386,7 +379,7 @@ where
 /// Map bluenrg::gatt::Error to BleError
 impl<E> From<bluenrg::gatt::Error<E>> for BleError
 where
-    E: core::fmt::Debug,
+    E: Debug,
 {
     fn from(e: bluenrg::gatt::Error<E>) -> Self {
         trace!("bluenrg::gatt error: {:?}", e);
@@ -397,7 +390,7 @@ where
 /// Map nb::Error to BleError
 impl<GpioError> From<nb::Error<GpioError>> for BleError
 where
-    GpioError: core::fmt::Debug,
+    GpioError: Debug,
 {
     fn from(e: nb::Error<GpioError>) -> Self {
         trace!("bluenrg::gatt error: {:?}", e);

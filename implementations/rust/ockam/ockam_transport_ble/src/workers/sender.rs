@@ -32,10 +32,7 @@ impl WorkerPair {
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
-pub(crate) struct BleSendWorker<A>
-where
-    A: BleStreamDriver + Send + 'static,
-{
+pub(crate) struct BleSendWorker<A> {
     rx_stream: Option<Source<A>>,
     tx_stream: Option<Sink<A>>,
     peer: BleAddr,

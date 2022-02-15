@@ -42,11 +42,9 @@ pub const MAX_OCKAM_MESSAGE_LENGTH: usize = 1024;
 /// Ockam BLE service and endpoints are encoded as UUID v5 identifiers
 /// within the ns:OID namespace:
 ///
-///     iso.identified-organization.ockam.transport.ble (1.3.214.9.4)
+/// iso.identified-organization.ockam.transport.ble (1.3.214.9.4)
 ///
-/// Ockam OID information can be obtained at:
-///
-///     http://oid-info.com/get/1.3.214.9.4
+/// Ockam OID information can be obtained at: http://oid-info.com/get/1.3.214.9.4
 pub mod uuid {
     /// BLE Service UUID (rfc1700 / big-endian)
     /// Namespace: ns:OID
@@ -100,10 +98,7 @@ pub trait BleStreamDriver {
 
 /// A BLE client that initiates GATT commands and requests, and
 /// accepts responses from a BLE server.
-pub struct BleClient<A>
-where
-    A: BleClientDriver + BleStreamDriver + Send,
-{
+pub struct BleClient<A> {
     inner: A,
 }
 
@@ -146,10 +141,7 @@ where
 
 /// A BLE server that receives GATT commands and requests, and returns
 /// responses to a BLE client.
-pub struct BleServer<A>
-where
-    A: BleServerDriver + BleStreamDriver + Send,
-{
+pub struct BleServer<A> {
     inner: A,
 }
 

@@ -101,7 +101,7 @@ impl PacketBuffer {
             return None;
         }
 
-        // TODO Currently we only support packet lenghts up to 2^16
+        // TODO Currently we only support packet lengths up to 2^16
         // bits long.
         //
         // The reason for this is that I'm too lazy right now to setup
@@ -109,6 +109,8 @@ impl PacketBuffer {
         // instead rely on the probability of receiving an 8 byte long
         // packet consisting of 6 zero bytes followed by two bytes
         // that can be non-zero.
+        //
+        // https://github.com/ockam-network/ockam/issues/2514
         if packet_len > (2 << 16) {
             error!(
                 "Packet is too long for this implementation.\n \
