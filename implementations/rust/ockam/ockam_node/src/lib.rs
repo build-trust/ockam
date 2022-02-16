@@ -34,6 +34,7 @@ mod context;
 mod error;
 mod executor;
 mod handle;
+mod heartbeat;
 mod messages;
 mod node;
 mod parser;
@@ -44,6 +45,7 @@ pub use cancel::*;
 pub use context::*;
 pub use executor::*;
 pub use handle::*;
+pub use heartbeat::*;
 pub use messages::*;
 
 pub use node::{start_node, NullWorker};
