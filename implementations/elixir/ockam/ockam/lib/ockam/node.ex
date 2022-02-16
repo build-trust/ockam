@@ -92,9 +92,11 @@ defmodule Ockam.Node do
 
   @doc false
   def start_supervised(module, options) do
+    restart_type = Keyword.get(options, :restart_type, :transient)
+
     DynamicSupervisor.start_child(
       @processes_supervisor,
-      Supervisor.child_spec({module, options}, restart: :transient)
+      Supervisor.child_spec({module, options}, restart: restart_type)
     )
   end
 
