@@ -1,9 +1,8 @@
 use crate::TcpRecvProcessor;
 use core::time::Duration;
-use futures::future::{AbortHandle, Abortable};
 use ockam_core::{async_trait, route, Any, Decodable};
 use ockam_core::{Address, Encodable, Result, Routed, TransportMessage, Worker};
-use ockam_node::Context;
+use ockam_node::{Context, Heartbeat};
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::io::AsyncWriteExt;
@@ -44,12 +43,17 @@ pub(crate) struct TcpSendWorker {
     tx: Option<OwnedWriteHalf>,
     peer: SocketAddr,
     internal_addr: Address,
-    heartbeat_abort_handle: Option<AbortHandle>,
+    heartbeat: Heartbeat<Vec<u8>>,
     heartbeat_interval: Option<Duration>,
 }
 
 impl TcpSendWorker {
-    fn new(stream: Option<TcpStream>, peer: SocketAddr, internal_addr: Address) -> Self {
+    fn new(
+        stream: Option<TcpStream>,
+        peer: SocketAddr,
+        internal_addr: Address,
+        heartbeat: Heartbeat<Vec<u8>>,
+    ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
                 let (rx, tx) = s.into_split();
@@ -63,7 +67,7 @@ impl TcpSendWorker {
             tx,
             peer,
             internal_addr,
-            heartbeat_abort_handle: None,
+            heartbeat,
             heartbeat_interval: Some(Duration::from_secs(5 * 60)),
         }
     }
@@ -78,7 +82,12 @@ impl TcpSendWorker {
 
         let tx_addr = Address::random(0);
         let internal_addr = Address::random(0);
-        let sender = TcpSendWorker::new(stream, peer, internal_addr.clone());
+        let sender = TcpSendWorker::new(
+            stream,
+            peer,
+            internal_addr.clone(),
+            Heartbeat::create(ctx, internal_addr.clone(), vec![]).await?,
+        );
 
         ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
             .await?;
@@ -91,13 +100,7 @@ impl TcpSendWorker {
         })
     }
 
-    fn abort_heartbeat(&mut self) {
-        if let Some(handle) = self.heartbeat_abort_handle.take() {
-            handle.abort()
-        }
-    }
-
-    async fn schedule_heartbeat(&mut self, ctx: &Context) -> Result<()> {
+    async fn schedule_heartbeat(&mut self) -> Result<()> {
         let heartbeat_interval;
         if let Some(hi) = &self.heartbeat_interval {
             heartbeat_interval = *hi;
@@ -105,30 +108,7 @@ impl TcpSendWorker {
             return Ok(());
         }
 
-        let child_ctx = ctx.new_context(Address::random(0)).await?;
-        let internal_addr = self.internal_addr.clone();
-        let peer = self.peer;
-
-        let (handle, reg) = AbortHandle::new_pair();
-        let future = Abortable::new(
-            async move {
-                child_ctx.sleep(heartbeat_interval).await;
-
-                let res = child_ctx.send(route![internal_addr.clone()], vec![]).await;
-
-                if res.is_err() {
-                    warn!("Error sending heartbeat message at {}", internal_addr);
-                } else {
-                    debug!("Scheduled heartbeat to peer {}", peer);
-                }
-            },
-            reg,
-        );
-
-        self.heartbeat_abort_handle = Some(handle);
-        ctx.runtime().spawn(future);
-
-        Ok(())
+        self.heartbeat.schedule(heartbeat_interval).await
     }
 }
 
@@ -177,13 +157,7 @@ impl Worker for TcpSendWorker {
             return Err(TransportError::GenericIo.into());
         }
 
-        self.schedule_heartbeat(ctx).await?;
-
-        Ok(())
-    }
-
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
-        self.abort_heartbeat();
+        self.schedule_heartbeat().await?;
 
         Ok(())
     }
@@ -195,7 +169,7 @@ impl Worker for TcpSendWorker {
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        self.abort_heartbeat();
+        self.heartbeat.cancel();
 
         let tx;
         if let Some(t) = &mut self.tx {
@@ -233,7 +207,7 @@ impl Worker for TcpSendWorker {
             }
         }
 
-        self.schedule_heartbeat(ctx).await?;
+        self.schedule_heartbeat().await?;
 
         Ok(())
     }
