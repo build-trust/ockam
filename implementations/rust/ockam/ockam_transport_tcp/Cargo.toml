@@ -41,7 +41,6 @@ tokio = { version = "1.8", features = [
     "time",
     "io-util",
 ] }
-futures = "0.3.10"
 rand = "0.7"
 hashbrown = { version = "0.9" }
 tracing = { version = "0.1", default-features = false }
