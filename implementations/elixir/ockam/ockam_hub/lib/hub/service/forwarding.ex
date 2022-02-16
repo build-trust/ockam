@@ -69,15 +69,14 @@ defmodule Ockam.Hub.Service.Forwarding.Forwarder do
 
   @impl true
   def handle_message(message, %{forward_route: route} = state) do
-    send_forward(route, message)
+    [_me | onward_route] = Message.onward_route(message)
+
+    route_to_forward = route ++ onward_route
+    Logger.info("Alias forward #{inspect(message)} to #{inspect(route_to_forward)}")
+
+    Router.route(Message.forward(message, route_to_forward))
 
     {:ok, state}
-  end
-
-  def send_forward(route, message) do
-    Logger.info("Alias forward #{inspect(message)} to #{inspect(route)}")
-
-    Router.route(Message.forward(message, route))
   end
 
   def send_registration_ok(forward_route, registration_payload, state) do
