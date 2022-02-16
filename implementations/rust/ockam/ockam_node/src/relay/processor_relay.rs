@@ -36,6 +36,10 @@ where
             }
         }
 
+        if let Err(e) = ctx.set_ready().await {
+            error!("Failed to mark processor '{}' as 'ready': {}", ctx_addr, e);
+        }
+
         // This future encodes the main processor run loop logic
         let run_loop = async {
             loop {

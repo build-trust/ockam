@@ -16,7 +16,7 @@ pub(super) async fn exec(
         primary_address = p.clone();
     } else {
         reply
-            .send(NodeReply::no_such_worker(addr.clone()))
+            .send(NodeReply::no_such_address(addr.clone()))
             .await
             .map_err(|_| Error::InternalIOFailure)?;
 
@@ -29,7 +29,7 @@ pub(super) async fn exec(
     } else {
         // Actually should not happen
         reply
-            .send(NodeReply::no_such_worker(addr.clone()))
+            .send(NodeReply::no_such_address(addr.clone()))
             .await
             .map_err(|_| Error::InternalIOFailure)?;
 

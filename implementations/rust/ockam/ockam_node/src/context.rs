@@ -627,4 +627,27 @@ impl Context {
     pub async fn set_access_control(&mut self) -> Result<()> {
         unimplemented!()
     }
+
+    /// This function is called by Relay to indicate a worker is initialised
+    pub(crate) async fn set_ready(&mut self) -> Result<()> {
+        self.sender
+            .send(NodeMessage::set_ready(self.address()))
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
+        Ok(())
+    }
+
+    /// Wait for a particular address to become "ready"
+    pub async fn wait_for<A: Into<Address>>(&mut self, addr: A) -> Result<()> {
+        let (msg, mut reply) = NodeMessage::get_ready(addr.into());
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|_| Error::InternalIOFailure)?;
+
+        // This call blocks until the address has become ready or is
+        // dropped
+        reply.recv().await.ok_or(Error::InternalIOFailure)??;
+        Ok(())
+    }
 }

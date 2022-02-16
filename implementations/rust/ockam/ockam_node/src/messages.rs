@@ -38,6 +38,10 @@ pub enum NodeMessage {
     SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type
     Router(u8, Address, Sender<NodeReplyResult>),
+    /// Message the router to set an address as "ready"
+    SetReady(Address),
+    /// Check whether an address has been marked as "ready"
+    CheckReady(Address, Sender<NodeReplyResult>),
 }
 
 impl core::fmt::Display for NodeMessage {
@@ -54,6 +58,8 @@ impl core::fmt::Display for NodeMessage {
             NodeMessage::StopAck(_) => write!(f, "StopAck"),
             NodeMessage::SenderReq(_, _) => write!(f, "SenderReq"),
             NodeMessage::Router(_, _, _) => write!(f, "Router"),
+            NodeMessage::SetReady(_) => write!(f, "SetReady"),
+            NodeMessage::CheckReady(_, _) => write!(f, "CheckReady"),
         }
     }
 }
@@ -128,6 +134,17 @@ impl NodeMessage {
         let (tx, rx) = channel(1);
         (Self::SenderReq(route, tx), rx)
     }
+
+    /// Create a SetReady message and reply receiver
+    pub fn set_ready(addr: Address) -> Self {
+        Self::SetReady(addr)
+    }
+
+    /// Create a GetReady message and reply receiver
+    pub fn get_ready(addr: Address) -> (Self, Receiver<NodeReplyResult>) {
+        let (tx, rx) = channel(1);
+        (Self::CheckReady(addr, tx), rx)
+    }
 }
 
 /// The reply/result of a Node
@@ -150,15 +167,15 @@ pub enum NodeReply {
         /// with router wrapping.
         wrap: bool,
     },
+    /// Indicate the 'ready' state of an address
+    State(bool),
 }
 
 /// Failure states from a router command
 #[derive(Debug)]
 pub enum NodeError {
-    /// No such worker
-    NoSuchWorker(Address),
-    /// No such processor
-    NoSuchProcessor(Address),
+    /// No such address existst (for either workers or processors)
+    NoSuchAddress(Address),
     /// Worker already exists
     WorkerExists(Address),
     /// Router already exists
@@ -227,14 +244,14 @@ impl NodeReply {
         Ok(NodeReply::Ok)
     }
 
-    /// Return [NodeError::NoSuchWorker]
-    pub fn no_such_worker(a: Address) -> NodeReplyResult {
-        Err(NodeError::NoSuchWorker(a))
+    /// Return [NodeReply::State]
+    pub fn state(b: bool) -> NodeReplyResult {
+        Ok(NodeReply::State(b))
     }
 
-    /// Return [NodeError::NoSuchProcessor]
-    pub fn no_such_processor(a: Address) -> NodeReplyResult {
-        Err(NodeError::NoSuchProcessor(a))
+    /// Return [NodeError::NoSuchWorker]
+    pub fn no_such_address(a: Address) -> NodeReplyResult {
+        Err(NodeError::NoSuchAddress(a))
     }
 
     /// Return [NodeError::WorkerExists] for the given address
@@ -274,6 +291,14 @@ impl NodeReply {
     pub fn take_workers(self) -> Result<Vec<Address>, Error> {
         match self {
             Self::Workers(w) => Ok(w),
+            _ => Err(Error::InternalIOFailure),
+        }
+    }
+
+    /// Consume the wrapper and return [NodeReply::State]
+    pub fn take_state(self) -> Result<bool, Error> {
+        match self {
+            Self::State(b) => Ok(b),
             _ => Err(Error::InternalIOFailure),
         }
     }

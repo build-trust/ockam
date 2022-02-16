@@ -125,6 +125,10 @@ where
 
         let address = self.ctx.address();
 
+        if let Err(e) = self.ctx.set_ready().await {
+            error!("Failed to mark worker '{}' as 'ready': {}", address, e);
+        }
+
         #[cfg(feature = "std")]
         loop {
             let _ = crate::tokio::select! {
