@@ -31,7 +31,7 @@ impl InternalMap {
         let rec = self
             .internal
             .get(&primary)
-            .ok_or(NodeError::NoSuchWorker(primary))?;
+            .ok_or(NodeError::NoSuchAddress(primary))?;
 
         // If this is the first time we see this cluster ID
         if !self.clusters.contains_key(&label) {
@@ -48,6 +48,22 @@ impl InternalMap {
         }
 
         NodeReply::ok()
+    }
+
+    /// Set an address as ready and return the list of waiting pollers
+    pub(super) fn set_ready(&mut self, addr: Address) -> Result<Vec<Sender<NodeReplyResult>>> {
+        let addr_record = self
+            .internal
+            .get_mut(&addr)
+            .ok_or(NodeError::NoSuchAddress(addr))?;
+        Ok(addr_record.set_ready())
+    }
+
+    /// Get the ready state of an address
+    pub(super) fn get_ready(&mut self, addr: Address, reply: Sender<NodeReplyResult>) -> bool {
+        self.internal
+            .get_mut(&addr)
+            .map_or(false, |rec| rec.ready(reply))
     }
 
     /// Retrieve the next cluster in reverse-initialsation order
@@ -126,6 +142,7 @@ pub struct AddressRecord {
     sender: Option<Sender<RelayMessage>>,
     ctrl_tx: Sender<CtrlSignal>,
     state: AddressState,
+    ready: ReadyState,
     meta: AddressMeta,
 }
 
@@ -147,6 +164,7 @@ impl AddressRecord {
             sender: Some(sender),
             ctrl_tx,
             state: AddressState::Running,
+            ready: ReadyState::Initialising(vec![]),
             meta,
         }
     }
@@ -169,20 +187,46 @@ impl AddressRecord {
     pub fn check(&self) -> bool {
         self.state == AddressState::Running
     }
+
+    /// Check whether this address has been marked as ready yet and if
+    /// it hasn't we register our sender for future notification
+    pub fn ready(&mut self, reply: Sender<NodeReplyResult>) -> bool {
+        match self.ready {
+            ReadyState::Ready => true,
+            ReadyState::Initialising(ref mut vec) => {
+                vec.push(reply);
+                false
+            }
+        }
+    }
+
+    /// Mark this address as 'ready' and return the list of active pollers
+    pub fn set_ready(&mut self) -> Vec<Sender<NodeReplyResult>> {
+        let waiting = core::mem::replace(&mut self.ready, ReadyState::Ready);
+        match waiting {
+            ReadyState::Initialising(vec) => vec,
+            ReadyState::Ready => vec![],
+        }
+    }
 }
 
 /// Encode the run states a worker or processor can be in
-///
-/// * Running - the runner is looping in its main body (either
-///   handling messages or a manual run-loop)
-/// * Stopping - the runner was signalled to shut-down (running `shutdown()`)
-/// * Faulty - the runner has experienced an error and is waiting for
-///   supervisor intervention
 #[derive(Debug, PartialEq)]
 pub enum AddressState {
+    /// The runner is looping in its main body (either handling messages or a manual run-loop)
     Running,
+    /// The runner was signalled to shut-down (running `shutdown()`)
     Stopping,
-    // Will be used with the supervisor system
+    /// The runner has experienced an error and is waiting for supervisor intervention
     #[allow(unused)]
     Faulty,
+}
+
+/// Encode the ready state of a worker or processor
+#[derive(Debug)]
+pub enum ReadyState {
+    /// THe runner is fully ready
+    Ready,
+    /// The runner is still processing user init code and contains a list of waiting polling addresses
+    Initialising(Vec<Sender<NodeReplyResult>>),
 }

@@ -16,7 +16,7 @@ pub(super) async fn exec(
         Some(proc) => proc,
         None => {
             reply
-                .send(NodeReply::no_such_processor(main_addr.clone()))
+                .send(NodeReply::no_such_address(main_addr.clone()))
                 .await
                 .map_err(|_| Error::InternalIOFailure)?;
 

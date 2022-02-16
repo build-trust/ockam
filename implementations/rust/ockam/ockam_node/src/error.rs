@@ -13,10 +13,8 @@ pub enum Error {
     FailedStartProcessor,
     /// Worker start failed because the address was already taken
     WorkerAddressTaken,
-    /// The requested worker address is unknown
-    UnknownWorker,
-    /// The requested processor address is unknown
-    UnknownProcessor,
+    /// The requested address is unknown
+    UnknownAddress,
     /// Unable to stop a worker
     FailedStopWorker,
     /// Unable to list available workers
@@ -58,8 +56,7 @@ impl From<crate::NodeError> for ockam_core::Error {
     fn from(err: crate::NodeError) -> Self {
         use crate::NodeError::*;
         match err {
-            NoSuchWorker(_) => Error::UnknownWorker,
-            NoSuchProcessor(_) => Error::UnknownProcessor,
+            NoSuchAddress(_) => Error::UnknownAddress,
             WorkerExists(_) => Error::WorkerAddressTaken,
             RouterExists => Error::InternalIOFailure,
             Rejected(_) => Error::CommandRejected,

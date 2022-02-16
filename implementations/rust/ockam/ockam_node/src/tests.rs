@@ -355,3 +355,38 @@ fn abort_blocked_shutdown() {
         .unwrap()
         .unwrap();
 }
+
+struct WaitForWorker;
+
+#[ockam_core::worker]
+impl Worker for WaitForWorker {
+    type Context = Context;
+    type Message = ();
+
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        info!("This worker initialises a bit slow");
+        ctx.sleep(Duration::from_secs(1)).await;
+        info!("Worker done");
+        Ok(())
+    }
+}
+
+#[test]
+fn wait_for_worker() {
+    let (mut ctx, mut executor) = start_node();
+    executor
+        .execute(async move {
+            let t1 = tokio::time::Instant::now();
+            ctx.start_worker("slow", WaitForWorker).await.unwrap();
+
+            info!("Waiting for worker...");
+            ctx.wait_for("slow").await.unwrap();
+            info!("Done waiting :)");
+
+            let t2 = tokio::time::Instant::now();
+            assert!((t2 - t1) > Duration::from_secs(1));
+
+            ctx.stop().await.unwrap();
+        })
+        .unwrap();
+}

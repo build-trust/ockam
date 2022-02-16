@@ -207,8 +207,32 @@ impl Router {
                 reply
                     .send(msg)
                     .await
-                    .map_err(|_| Error::InternalIOFailure)
-                    .expect("Failed to send a message for some reason,,,");
+                    .map_err(|_| Error::InternalIOFailure)?;
+            }
+
+            SetReady(addr) => {
+                trace!("Marking address {} as ready!", addr);
+                match self.map.set_ready(addr) {
+                    Err(e) => warn!("Failed to set address as ready: {}", e),
+                    Ok(waiting) => {
+                        for sender in waiting {
+                            sender
+                                .send(NodeReply::ok())
+                                .await
+                                .map_err(|_| Error::InternalIOFailure)?;
+                        }
+                    }
+                }
+            }
+
+            CheckReady(addr, reply) => {
+                let ready = self.map.get_ready(addr, reply.clone());
+                if ready {
+                    reply
+                        .send(NodeReply::ok())
+                        .await
+                        .map_err(|_| Error::InternalIOFailure)?;
+                }
             }
 
             // Handle route/ sender requests

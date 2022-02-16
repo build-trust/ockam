@@ -23,7 +23,7 @@ pub(super) async fn resolve(
     } else {
         trace!("{} FAILED; no such worker", base);
         reply
-            .send(NodeReply::no_such_worker(addr.clone()))
+            .send(NodeReply::no_such_address(addr.clone()))
             .await
             .map_err(|_| Error::InternalIOFailure)?;
 
@@ -41,7 +41,7 @@ pub(super) async fn resolve(
         }
         None => {
             trace!("{} FAILED; no such worker", base);
-            reply.send(NodeReply::no_such_worker(addr.clone()))
+            reply.send(NodeReply::no_such_address(addr.clone()))
         }
     }
     .await
