@@ -29,14 +29,14 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "tokio", "tracing-subscriber/fmt", "tracing-subscriber/env-filter", "alloc"]
+std = ["ockam_core/std", "tokio", "tracing-subscriber/fmt", "tracing-subscriber/env-filter", "alloc", "futures/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = ["ockam_core/no_std", "heapless"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_executor/alloc"]
+alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc"]
 
 # Feature: "dump_internals" when set, will dump the internal state of
 # workers at startup via the trace! macro.
@@ -52,6 +52,7 @@ tokio = { version = "1.8", default-features = false, optional = true, features =
     "rt-multi-thread",
     "macros",
 ] }
+futures = { version = "0.3.21", default-features = false }
 tracing = { version = "0.1", default_features = false }
 tracing-subscriber = { version = "0.3", features = [
     "fmt",
