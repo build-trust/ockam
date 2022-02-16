@@ -32,8 +32,53 @@ enum Mode {
 
 /// A builder structure for pipes
 ///
-/// The easiest way to create a pipe is via
-/// `builder.basic().static()`.
+/// A pipe is a unidirectional message sending abstraction, which
+/// optionally provides ordering and delivery guarantees.  The two
+/// basic pipe initialisation modes are `Fixed`, connecting to a
+/// specific peer route, and `Dynamic`, connecting to a handshake
+/// worker which then creates a remote peer dynamically.
+///
+/// ## Static example
+///
+/// The easiest way to get started with pipes is with a static route.
+/// This requires a running `PipeReceiver` worker on a remote system.
+///
+/// Code on machine A:
+///
+/// ```rust
+/// # use ockam::{Context, Result, Address, pipe2::PipeBuilder};
+/// # async fn pipes_example_no_run(ctx: &mut Context) -> Result<()> {
+/// # let (tcp_connection, my_pipe) = (Address::random(0), Address::random(0));
+/// let result = PipeBuilder::fixed()
+///     .connect(vec![tcp_connection, my_pipe])
+///     .build(ctx)
+///     .await?;
+///
+/// ctx.send(
+///     vec![result.addr(), "app".into()], // Send a message through the pipe to "app"
+///     String::from("Hello you on the other end of this pipe!"),
+/// )
+/// .await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Code on machine B:
+///
+/// ```rust
+/// # use ockam::{Context, Result, Address, pipe2::PipeBuilder};
+/// # async fn pipes_example_no_run(ctx: &mut Context) -> Result<()> {
+/// # let my_pipe = Address::random(0);
+/// let receive = PipeBuilder::fixed()
+///     .receive(my_pipe)
+///     .build(ctx)
+///     .await?;
+///
+/// let msg = ctx.receive::<String>().await?;
+/// println!("Message from pipe: {}", msg);
+/// # Ok(())
+/// # }
+/// ```
 pub struct PipeBuilder {
     send_hooks: SystemBuilder<Context, OckamMessage>,
     recv_hooks: SystemBuilder<Context, OckamMessage>,
@@ -46,6 +91,44 @@ pub struct PipeBuilder {
     /// This address is used to handle the termination point of the
     /// worker system pipeline.
     fin: Address,
+}
+
+/// Represent the result of a successful PipeBuilder invocation
+///
+/// When connecting to a remote pipe receiver `tx()` returns the
+/// associated sending address.  When creating a receiver `rx()`
+/// returns the associated receiver address.
+///
+/// In case you only created one of them you may call `addr()` to
+/// fetch the only valid address.  But this will panic if both
+/// addresses are set!
+pub struct BuilderResult {
+    tx: Option<Address>,
+    rx: Option<Address>,
+}
+
+impl BuilderResult {
+    /// Return the sender address
+    pub fn tx(&self) -> Option<&Address> {
+        self.tx.as_ref()
+    }
+
+    /// Return the receiver address
+    pub fn rx(&self) -> Option<&Address> {
+        self.rx.as_ref()
+    }
+
+    /// Return the only valid address in this result
+    ///
+    /// Panics if two valid addresses exist!
+    pub fn addr(&self) -> Address {
+        match (&self.tx, &self.rx) {
+            (Some(tx), None) => tx.clone(),
+            (None, Some(rx)) => rx.clone(),
+            (Some(_), Some(_)) => panic!("Called `addr()` on ambiguous BuilderResult!"),
+            (None, None) => unreachable!(),
+        }
+    }
 }
 
 impl PipeBuilder {
@@ -153,7 +236,7 @@ impl PipeBuilder {
     }
 
     /// Consume this builder and construct a set of pipes
-    pub async fn build(self, ctx: &mut Context) -> Result<()> {
-        Ok(())
+    pub async fn build(self, ctx: &mut Context) -> Result<BuilderResult> {
+        todo!()
     }
 }
