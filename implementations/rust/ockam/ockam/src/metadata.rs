@@ -84,6 +84,10 @@ impl OckamMessage {
         peeled.generic = generic;
         Ok(peeled)
     }
+
+    pub fn data<M: Message>(&self) -> Result<M> {
+        Ok(M::decode(&self.data)?)
+    }
 }
 
 /// An encoding for message metadata
