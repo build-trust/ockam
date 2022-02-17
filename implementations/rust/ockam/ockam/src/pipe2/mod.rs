@@ -13,11 +13,13 @@ mod hooks;
 mod receiver;
 mod sender;
 
-use crate::{Context, OckamMessage, SystemBuilder, SystemHandler};
+use crate::{pipe::receiver, Context, OckamMessage, SystemBuilder, SystemHandler};
 use ockam_core::{
     compat::{boxed::Box, string::String, vec::Vec},
     Address, Result, Route,
 };
+
+const CLUSTER_NAME: &str = "_internal.pipe2";
 
 enum Mode {
     /// In static mode this pipe will connect to a well-known peer, or
@@ -237,6 +239,53 @@ impl PipeBuilder {
 
     /// Consume this builder and construct a set of pipes
     pub async fn build(self, ctx: &mut Context) -> Result<BuilderResult> {
-        todo!()
+        let mut tx_addr = None;
+        let mut rx_addr = None;
+
+        // Create a sender
+        if let Some(peer) = self.peer {
+            let (addr, int_addr) = (Address::random(0), Address::random(0));
+            let sender = sender::PipeSender::new(peer, addr.clone(), int_addr.clone());
+            ctx.start_worker(vec![addr.clone(), int_addr], sender)
+                .await?;
+            tx_addr = Some(addr);
+        };
+
+        if let Some(addr) = self.recv {
+            let receiver = receiver::PipeReceiver::new(Address::random(0));
+            ctx.start_worker(addr.clone(), receiver).await?;
+            rx_addr = Some(addr);
+        }
+
+        Ok(BuilderResult {
+            tx: tx_addr,
+            rx: rx_addr,
+        })
     }
+}
+
+#[crate::test]
+async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
+    let rx_addr = Address::random(0);
+    let tx_addr = Address::random(0);
+
+    // Start a static receiver
+    PipeBuilder::fixed()
+        .receive(rx_addr.clone())
+        .build(ctx)
+        .await?;
+
+    // Connect to a static receiver
+    let sender = PipeBuilder::fixed()
+        .connect(vec![rx_addr])
+        .build(ctx)
+        .await?;
+
+    let msg = String::from("Hello through the pipe");
+    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
+        .await?;
+
+    let msg2 = ctx.receive::<String>().await?;
+    assert_eq!(msg, *msg2);
+    ctx.stop().await
 }
