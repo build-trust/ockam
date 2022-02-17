@@ -11,7 +11,7 @@ mod tests;
 
 use crate::OckamError;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap};
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::{Address, Message, Result, Routed};
 
 /// A componasble worker system type
 ///
@@ -25,11 +25,11 @@ use ockam_core::{Address, Result, Routed, Worker};
 ///
 /// The advantage of a worker system over a full set of workers is a
 /// lower memory overhead for resource constrained devices.
-pub struct WorkerSystem<W: Worker> {
-    map: BTreeMap<Address, Box<dyn SystemHandler<W::Context, W::Message> + Send + 'static>>,
+pub struct WorkerSystem<C: Send + 'static, M: Message> {
+    map: BTreeMap<Address, Box<dyn SystemHandler<C, M> + Send + 'static>>,
 }
 
-impl<W: Worker> Default for WorkerSystem<W> {
+impl<C: Send + 'static, M: Message> Default for WorkerSystem<C, M> {
     fn default() -> Self {
         Self {
             map: BTreeMap::new(),
@@ -37,12 +37,12 @@ impl<W: Worker> Default for WorkerSystem<W> {
     }
 }
 
-impl<W: Worker> WorkerSystem<W> {
+impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
     /// Attach a system handler to this system
     pub fn attach<A, H>(&mut self, addr: A, handler: H)
     where
         A: Into<Address>,
-        H: SystemHandler<W::Context, W::Message> + Send + 'static,
+        H: SystemHandler<C, M> + Send + 'static,
     {
         self.map.insert(addr.into(), Box::new(handler));
     }
@@ -51,17 +51,13 @@ impl<W: Worker> WorkerSystem<W> {
     pub fn attach_boxed<A: Into<Address>>(
         &mut self,
         addr: A,
-        handler: Box<dyn SystemHandler<W::Context, W::Message> + Send + 'static>,
+        handler: Box<dyn SystemHandler<C, M> + Send + 'static>,
     ) {
         self.map.insert(addr.into(), handler);
     }
 
     /// Handle a message via this worker system
-    pub async fn handle_message(
-        &mut self,
-        ctx: &mut W::Context,
-        msg: Routed<W::Message>,
-    ) -> Result<()> {
+    pub async fn handle_message(&mut self, ctx: &mut C, msg: Routed<M>) -> Result<()> {
         let addr = msg.msg_addr();
         match self.map.get_mut(&addr) {
             Some(handle) => handle.handle_message(ctx, msg).await,

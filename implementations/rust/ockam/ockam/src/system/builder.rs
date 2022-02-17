@@ -1,7 +1,7 @@
 use crate::{Result, SystemHandler, WorkerSystem};
 use ockam_core::{
     compat::{boxed::Box, collections::BTreeMap, string::String},
-    Address, Message, Worker,
+    Address, Message,
 };
 
 struct HandlerData<C, M>
@@ -109,10 +109,7 @@ where
     }
 
     /// Create a `WorkerSystem` and pre-initialise every SystemHandler
-    pub async fn finalise<W>(self, ctx: &mut C) -> Result<WorkerSystem<W>>
-    where
-        W: Worker<Context = C, Message = M>,
-    {
+    pub async fn finalise(self, ctx: &mut C) -> Result<WorkerSystem<C, M>> {
         let mut system = WorkerSystem::default();
 
         for (
