@@ -4,7 +4,7 @@ use ockam_core::{Address, Any, Decodable, LocalMessage, Message, Result, Routed,
 
 #[derive(Default)]
 struct TestWorker {
-    system: WorkerSystem<Self>,
+    system: WorkerSystem<Context, Any>,
 }
 
 /// A very simple System Handler which takes incoming messages and
