@@ -121,8 +121,6 @@ impl Worker for TcpRouter {
     type Message = RouterMessage;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        trace!("Registering TCP router for type = {}", TCP);
-        ctx.register(TCP, ctx.address()).await?;
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
         Ok(())
     }
@@ -168,6 +166,8 @@ impl TcpRouter {
         let handle = router.create_self_handle(ctx).await?;
 
         ctx.start_worker(addr.clone(), router).await?;
+        trace!("Registering TCP router for type = {}", TCP);
+        ctx.register(TCP, addr).await?;
 
         Ok(handle)
     }
