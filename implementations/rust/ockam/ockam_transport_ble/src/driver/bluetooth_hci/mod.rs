@@ -402,15 +402,9 @@ where
 /// get a unique hardware address for device
 pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
     let sn: [u8; 16] = atsame54_xpro::serial_number();
-    let bytes: [u8; 6] = [
-        sn[0] ^ sn[3] ^ sn[6] ^ sn[9] ^ sn[12] ^ sn[15],
-        sn[1] ^ sn[4] ^ sn[7] ^ sn[10] ^ sn[13],
-        sn[2] ^ sn[5] ^ sn[8] ^ sn[11] ^ sn[14],
-        // https://www.adminsub.net/mac-address-finder/microchip
-        0x39,
-        0x80,
-        0xD8,
-    ];
+    let id: [u8; 3] = fletcher_24(&sn);
+    // https://www.adminsub.net/mac-address-finder/microchip
+    let bytes: [u8; 6] = [id[0], id[1], id[2], 0x39, 0x80, 0xD8];
     bluetooth_hci::BdAddr(bytes)
 }
 
@@ -418,15 +412,9 @@ pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
 /// get a unique hardware address for device
 pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
     let sn: &[u8; 12] = stm32_device_signature::device_id();
-    let bytes: [u8; 6] = [
-        sn[0] ^ sn[3] ^ sn[6] ^ sn[9],
-        sn[1] ^ sn[4] ^ sn[7] ^ sn[10],
-        sn[2] ^ sn[5] ^ sn[8] ^ sn[11],
-        // https://www.adminsub.net/mac-address-finder/stmicroelectronics
-        0xE1,
-        0x80,
-        0x00,
-    ];
+    let id: [u8; 3] = fletcher_24(&sn);
+    // https://www.adminsub.net/mac-address-finder/stmicroelectronics
+    let bytes: [u8; 6] = [id[0], id[1], id[2], 0xE1, 0x80, 0x00];
     bluetooth_hci::BdAddr(bytes)
 }
 
@@ -437,13 +425,20 @@ pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
         // TODO get serial number from processor
         01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12,
     ];
-    let bytes: [u8; 6] = [
-        sn[0] ^ sn[3] ^ sn[6] ^ sn[9],
-        sn[1] ^ sn[4] ^ sn[7] ^ sn[10],
-        sn[2] ^ sn[5] ^ sn[8] ^ sn[11],
-        0x39,
-        0x80,
-        0xD8,
-    ];
+    let id: [u8; 3] = fletcher_24(&sn);
+    // https://www.adminsub.net/mac-address-finder/microchip
+    let bytes: [u8; 6] = [id[0], id[1], id[2], 0x39, 0x80, 0xD8];
     bluetooth_hci::BdAddr(bytes)
+}
+
+/// Generate a 24 bit Fletcher checksum for the given input
+pub fn fletcher_24(key: &[u8]) -> [u8; 3] {
+    let mut sum_1: u32 = 0;
+    let mut sum_2: u32 = 0;
+    for byte in key {
+        sum_1 = (sum_1 + *byte as u32).rem_euclid(4095);
+        sum_2 = (sum_2 + sum_1).rem_euclid(4095);
+    }
+    let n = ((sum_2 << 12) | sum_1).to_le_bytes();
+    [n[2], n[1], n[0]]
 }
