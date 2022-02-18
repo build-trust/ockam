@@ -6,6 +6,8 @@ pub use handler::SystemHandler;
 mod builder;
 pub use builder::SystemBuilder;
 
+pub mod hooks;
+
 #[cfg(test)]
 mod tests;
 
