@@ -94,39 +94,3 @@ impl SystemHandler<Context, OckamMessage> for SenderOrdering {
         Ok(())
     }
 }
-
-#[derive(Default)]
-pub struct SenderConfirm {}
-
-#[async_trait]
-impl SystemHandler<Context, OckamMessage> for SenderConfirm {
-    async fn initialize(
-        &mut self,
-        ctx: &mut Context,
-        routes: &mut BTreeMap<String, Address>,
-    ) -> Result<()> {
-        Ok(())
-    }
-
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-pub struct ReceiverConfirm {}
-
-#[async_trait]
-impl SystemHandler<Context, OckamMessage> for ReceiverConfirm {
-    async fn initialize(
-        &mut self,
-        ctx: &mut Context,
-        routes: &mut BTreeMap<String, Address>,
-    ) -> Result<()> {
-        Ok(())
-    }
-
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
-        Ok(())
-    }
-}

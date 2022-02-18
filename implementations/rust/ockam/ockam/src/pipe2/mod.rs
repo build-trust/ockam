@@ -9,11 +9,14 @@
 //! This module is a replacement for [`pipe`](crate::pipe) and should
 //! replace it at some point in the future.
 
-mod hooks;
 mod receiver;
 mod sender;
 
-use crate::{pipe::receiver, Context, OckamMessage, SystemBuilder, SystemHandler};
+use crate::{
+    hooks::pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm, SenderOrdering},
+    pipe::receiver,
+    Context, OckamMessage, SystemBuilder, SystemHandler,
+};
 use ockam_core::{
     compat::{boxed::Box, string::String, vec::Vec},
     Address, Result, Route,
@@ -199,18 +202,10 @@ impl PipeBuilder {
 
         // Then we simply add a single SystemHandler stage
         self.recv_hooks
-            .add(
-                Address::random(0),
-                "ordering",
-                hooks::ReceiverOrdering::default(),
-            )
+            .add(Address::random(0), "ordering", ReceiverOrdering::default())
             .default(next_recv_addr);
         self.send_hooks
-            .add(
-                Address::random(0),
-                "ordering",
-                hooks::SenderOrdering::default(),
-            )
+            .add(Address::random(0), "ordering", SenderOrdering::default())
             .default(next_send_addr);
         self
     }
@@ -221,18 +216,10 @@ impl PipeBuilder {
     /// worker.
     pub fn delivery_ack(mut self) -> Self {
         self.send_hooks
-            .add(
-                Address::random(0),
-                "delivery",
-                hooks::SenderConfirm::default(),
-            )
+            .add(Address::random(0), "delivery", SenderConfirm::default())
             .default(self.fin.clone());
         self.recv_hooks
-            .add(
-                Address::random(0),
-                "delivery",
-                hooks::ReceiverConfirm::default(),
-            )
+            .add(Address::random(0), "delivery", ReceiverConfirm::default())
             .default(self.fin.clone());
         self
     }
