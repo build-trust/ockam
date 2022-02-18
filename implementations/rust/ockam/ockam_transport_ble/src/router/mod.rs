@@ -88,8 +88,6 @@ impl Worker for BleRouter {
     type Message = RouterMessage;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        debug!("Registering Ble router for type = {}", crate::BLE);
-        ctx.register(crate::BLE, ctx.address()).await?;
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
         Ok(())
     }
@@ -134,8 +132,11 @@ impl BleRouter {
 
         let handle = router.create_self_handle(ctx).await?;
 
-        trace!("BleRouter start_worker({:?})", addr.clone());
+        trace!("Start Ble router for address = {:?}", addr.clone());
         ctx.start_worker(addr.clone(), router).await?;
+
+        trace!("Registering Ble router for type = {}", crate::BLE);
+        ctx.register(crate::BLE, ctx.address()).await?;
 
         Ok(handle)
     }
