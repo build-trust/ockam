@@ -51,7 +51,7 @@ impl OckamMessage {
 
     /// Create a new OckamMessage from an untyped Any message
     pub fn from_any(msg: Routed<Any>) -> Result<Self> {
-        Ok(Self::decode(&msg.payload())?)
+        Self::decode(msg.payload())
     }
 
     /// Create a new `OckamMessage` by nesting a previous one
@@ -107,7 +107,7 @@ impl OckamMessage {
 
     /// Decode the data section of this OckamMessage
     pub fn data<M: Message>(&self) -> Result<M> {
-        Ok(M::decode(&self.data)?)
+        M::decode(&self.data)
     }
 }
 
