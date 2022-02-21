@@ -7,7 +7,7 @@ use ockam_core::{
     Address,
 };
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ReceiverOrdering {
     /// Set of message IDs that were received out-of-order
     journal: BTreeMap<u64, OckamMessage>,
@@ -72,6 +72,12 @@ impl Default for SenderOrdering {
             index: Monotonic::from(1),
             next: None,
         }
+    }
+}
+
+impl Clone for SenderOrdering {
+    fn clone(&self) -> Self {
+        Self::default()
     }
 }
 

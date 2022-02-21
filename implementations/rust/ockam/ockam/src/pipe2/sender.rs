@@ -1,6 +1,6 @@
 //! Pipe2 Send worker
 
-use crate::{Context, OckamMessage, SystemHandler, WorkerSystem};
+use crate::{pipe2::PipeSystem, Context, OckamMessage};
 use ockam_core::{compat::collections::VecDeque, Address, Any, Result, Route, Routed, Worker};
 
 enum PeerRoute {
@@ -18,11 +18,11 @@ impl PeerRoute {
 }
 
 pub struct PipeSender {
-    system: WorkerSystem<Context, OckamMessage>,
+    system: PipeSystem,
     out_buf: VecDeque<OckamMessage>,
     peer: Option<PeerRoute>,
     api_addr: Address,
-    int_addr: Address,
+    fin_addr: Address,
 }
 
 #[crate::worker]
@@ -37,43 +37,90 @@ impl Worker for PipeSender {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        // For now we only send messages onward if they were sent to the public address
-        if msg.msg_addr() == self.api_addr {
-            debug!("Receiving message for pipe sender API address...");
-
-            // Turn the user message into an OckamMessage
-            let mut inner = msg.into_transport_message();
-            inner.onward_route.modify().pop_front();
-            let ockam_msg = OckamMessage::new(inner)?;
-
-            // TODO: check worker system here
-
-            match self.peer {
-                Some(PeerRoute::Peer(ref peer)) => {
-                    ctx.send_from_address(peer.clone(), ockam_msg, self.int_addr.clone())
-                        .await?;
-                }
-                _ => self.out_buf.push_back(ockam_msg),
+        match msg.msg_addr() {
+            // Messages sent by users
+            addr if addr == self.api_addr => self.handle_api_msg(ctx, msg).await,
+            // The end point of the worker system routes
+            addr if addr == self.fin_addr => {
+                self.handle_fin_msg(ctx, OckamMessage::from_any(msg)?).await
             }
+            // These messages are most likely intra-system
+            _ => self.system.handle_message(ctx, msg.cast()?).await,
         }
-
-        Ok(())
     }
 }
 
 impl PipeSender {
-    pub fn new(peer: Route, api_addr: Address, int_addr: Address) -> Self {
+    pub fn new(system: PipeSystem, peer: Route, api_addr: Address, fin_addr: Address) -> Self {
         Self {
-            system: WorkerSystem::default(),
             out_buf: VecDeque::default(),
             peer: Some(PeerRoute::Peer(peer)),
+            system,
             api_addr,
-            int_addr,
+            fin_addr,
         }
     }
 
-    async fn send(&self, peer: &Route, ctx: &mut Context, msg: OckamMessage) -> Result<()> {
-        ctx.send_from_address(peer.clone(), msg, self.int_addr.clone())
-            .await
+    /// An API message is a user-payload that was sent to this sender.
+    /// As the first step we wrap the user message in an OckamMessage
+    /// type and then dispatch it into the worker system.
+    async fn handle_api_msg(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        trace!(
+            "PipeSender '{}' handling initial user message stage...",
+            ctx.address()
+        );
+
+        // Grab data from the Routed wrapper
+        let msg_addr = msg.msg_addr().clone();
+        let onward_route = msg.onward_route();
+        let return_route = msg.return_route();
+
+        // Grab the internal message and edit its route info
+        let mut inner = msg.into_transport_message();
+        inner.onward_route.modify().pop_front();
+
+        // Then wrap the message in an OckamMessage and dispatch
+        let ockam_msg = OckamMessage::new(inner)?;
+
+        if self.system.is_empty() {
+            self.handle_fin_msg(ctx, ockam_msg).await?;
+        } else {
+            let routed = ockam_msg.into_routed(msg_addr, onward_route, return_route)?;
+            self.system.dispatch_entry(ctx, routed).await?;
+        }
+
+        Ok(())
+    }
+
+    /// A "fin" message just came out of the worker system and can
+    /// simply be sent to our remote peer.  Any additional behaviour
+    /// and encodings has now been set-up.
+    async fn handle_fin_msg(&mut self, ctx: &mut Context, msg: OckamMessage) -> Result<()> {
+        trace!(
+            "PipeSender '{}' handling final user message stage...",
+            ctx.address()
+        );
+
+        // TODO: get the address we're supposed to use from the
+        // OckamMessage global metadata section and remove it
+        match self.peer {
+            Some(PeerRoute::Peer(ref peer)) => {
+                // If messages are in out_buf then we send those first
+                // TODO: maybe move this to the handshake logic?
+                for msg in core::mem::replace(&mut self.out_buf, vec![].into()) {
+                    ctx.send(peer.clone(), msg).await?;
+                }
+
+                // Then we send the actual message we handled
+                ctx.send(peer.clone(), msg).await?;
+            }
+            // If field is None or PeerRoute::Listener we are not yet
+            // ready to send messages and store them for later
+            _ => {
+                self.out_buf.push_back(msg);
+            }
+        }
+
+        Ok(())
     }
 }
