@@ -73,9 +73,8 @@ where
     }
 
     /// Specify an entry-point for the soon-to-be-built system
-    pub fn set_entry<A: Into<Address>>(mut self, addr: A) -> Self {
+    pub fn set_entry<A: Into<Address>>(&mut self, addr: A) {
         self.entry = Some(addr.into());
-        self
     }
 
     /// Add a new handler to the builder, re-addressing the previous

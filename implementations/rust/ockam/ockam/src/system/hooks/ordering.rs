@@ -56,7 +56,12 @@ impl SystemHandler<Context, OckamMessage> for ReceiverOrdering {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        self_addr: Address,
+        ctx: &mut Context,
+        msg: Routed<OckamMessage>,
+    ) -> Result<()> {
         Ok(())
     }
 }
@@ -96,7 +101,12 @@ impl SystemHandler<Context, OckamMessage> for SenderOrdering {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        self_addr: Address,
+        ctx: &mut Context,
+        msg: Routed<OckamMessage>,
+    ) -> Result<()> {
         Ok(())
     }
 }

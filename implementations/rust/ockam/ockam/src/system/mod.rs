@@ -12,7 +12,7 @@ pub mod hooks;
 mod tests;
 
 use crate::OckamError;
-use ockam_core::compat::{boxed::Box, collections::BTreeMap};
+use ockam_core::compat::{boxed::Box, collections::BTreeMap, vec::Vec};
 use ockam_core::{Address, Message, Result, Routed};
 
 /// A componasble worker system type
@@ -60,6 +60,11 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
         self.map.is_empty()
     }
 
+    /// Return the set of used addresses in this system
+    pub fn addresses(&self) -> Vec<Address> {
+        self.map.keys().map(Clone::clone).collect()
+    }
+
     /// Attach a system handler to this system
     pub fn attach<A, H>(&mut self, addr: A, handler: H)
     where
@@ -100,9 +105,9 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
         match self
             .entry
             .as_ref()
-            .and_then(|entry| self.map.get_mut(entry))
+            .and_then(|entry| self.map.get_mut(entry).map(|h| (entry, h)))
         {
-            Some(handle) => handle.handle_message(ctx, msg).await,
+            Some((addr, handle)) => handle.handle_message(addr.clone(), ctx, msg).await,
             None => Err(OckamError::SystemAddressNotBound.into()),
         }
     }
@@ -111,7 +116,7 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
     pub async fn handle_message(&mut self, ctx: &mut C, msg: Routed<M>) -> Result<()> {
         let addr = msg.msg_addr();
         match self.map.get_mut(&addr) {
-            Some(handle) => handle.handle_message(ctx, msg).await,
+            Some(handle) => handle.handle_message(addr, ctx, msg).await,
             None => Err(OckamError::SystemAddressNotBound.into()),
         }
     }
