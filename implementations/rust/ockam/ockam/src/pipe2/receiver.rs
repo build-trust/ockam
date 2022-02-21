@@ -1,9 +1,9 @@
-use crate::{Context, OckamMessage, WorkerSystem};
-use ockam_core::{Address, Any, LocalMessage, Result, Routed, TransportMessage, Worker};
+use crate::{pipe2::PipeSystem, Context, OckamMessage};
+use ockam_core::{Address, LocalMessage, Result, Routed, TransportMessage, Worker};
 
 pub struct PipeReceiver {
-    system: WorkerSystem<Context, OckamMessage>,
-    int_addr: Address,
+    system: PipeSystem,
+    api_addr: Address,
 }
 
 #[crate::worker]
@@ -23,10 +23,7 @@ impl Worker for PipeReceiver {
 }
 
 impl PipeReceiver {
-    pub fn new(int_addr: Address) -> Self {
-        Self {
-            system: WorkerSystem::default(),
-            int_addr,
-        }
+    pub fn new(system: PipeSystem, api_addr: Address) -> Self {
+        Self { system, api_addr }
     }
 }

@@ -1,3 +1,5 @@
+use dyn_clonable::*;
+use dyn_clone::DynClone;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::{Address, Message, Result, Routed};
 
@@ -6,8 +8,9 @@ use ockam_core::{Address, Message, Result, Routed};
 /// A handle may re-emit messages to the worker system, or to the
 /// Ockam runtime.  All state associated with a particular protocol
 /// must be contained in the type that implements this trait.
+#[clonable]
 #[ockam_core::async_trait]
-pub trait SystemHandler<C, M>
+pub trait SystemHandler<C, M>: Clone + DynClone
 where
     C: Send + 'static,
     M: Message,

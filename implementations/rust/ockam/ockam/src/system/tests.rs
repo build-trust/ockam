@@ -9,6 +9,7 @@ struct TestWorker {
 
 /// A very simple System Handler which takes incoming messages and
 /// forwards them to the next handler in their chain.
+#[derive(Clone)]
 struct StepHandler {
     next: Address,
 }
@@ -83,6 +84,7 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
+#[derive(Clone)]
 struct AddMetadata {
     data: (String, Vec<u8>),
     next: Address,

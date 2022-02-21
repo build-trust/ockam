@@ -209,6 +209,18 @@ impl<M: Message> Routed<M> {
     }
 }
 
+impl Routed<Any> {
+    /// Try to cast an `Any` message into another valid message type
+    pub fn cast<M: Message>(self) -> Result<Routed<M>> {
+        let inner = M::decode(&self.local_msg.transport().payload)?;
+        Ok(Routed {
+            inner,
+            msg_addr: self.msg_addr,
+            local_msg: self.local_msg,
+        })
+    }
+}
+
 impl<M: Message> Deref for Routed<M> {
     type Target = M;
 
