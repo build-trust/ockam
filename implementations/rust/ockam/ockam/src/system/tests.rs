@@ -33,7 +33,12 @@ impl<M: Message> SystemHandler<Context, M> for StepHandler {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<M>) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        _self_addr: Address,
+        ctx: &mut Context,
+        msg: Routed<M>,
+    ) -> Result<()> {
         info!("Handling message via StepHandler");
         let mut msg = msg.into_transport_message();
         msg.onward_route
@@ -112,7 +117,12 @@ impl<M: Message> SystemHandler<Context, M> for AddMetadata {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<M>) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        _self_addr: Address,
+        ctx: &mut Context,
+        msg: Routed<M>,
+    ) -> Result<()> {
         info!("Handling message for AddMetadata");
 
         // Decode the message payload as an OckamMessage and add generic metadata to it

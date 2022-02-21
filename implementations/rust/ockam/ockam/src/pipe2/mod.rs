@@ -247,6 +247,26 @@ impl PipeBuilder {
                 });
         }
 
+        // Before we are done we need to update entry points depending
+        // on which hooks were selected
+        match (
+            send_hooks.get_addr("ordering"),
+            send_hooks.get_addr("delivery"),
+        ) {
+            (Some(ord), _) => send_hooks.set_entry(ord),
+            (None, Some(ack)) => send_hooks.set_entry(ack),
+            (None, None) => {}
+        }
+
+        match (
+            recv_hooks.get_addr("ordering"),
+            recv_hooks.get_addr("delivery"),
+        ) {
+            (_, Some(ack)) => recv_hooks.set_entry(ack),
+            (Some(ord), None) => recv_hooks.set_entry(ord),
+            (None, None) => {}
+        }
+
         Ok((
             send_hooks.finalise(ctx).await?,
             recv_hooks.finalise(ctx).await?,
@@ -266,8 +286,10 @@ impl PipeBuilder {
         if let Some(peer) = self.peer {
             let addr = Address::random(0);
             tx_addr = Some(addr.clone());
+            let mut addr_set = vec![addr.clone(), self.tx_fin.clone()];
+            addr_set.append(&mut tx_sys.addresses());
             ctx.start_worker(
-                vec![addr.clone(), self.tx_fin.clone()],
+                addr_set,
                 PipeSender::new(tx_sys, PeerRoute::Peer(peer), addr, self.tx_fin.clone()),
             )
             .await?;
@@ -275,10 +297,14 @@ impl PipeBuilder {
 
         // Create a receiver
         if let Some(addr) = self.recv {
-            let receiver = PipeReceiver::new(rx_sys, Address::random(0), None);
-            ctx.start_worker(vec![addr.clone(), self.rx_fin.clone()], receiver)
-                .await?;
-            rx_addr = Some(addr);
+            rx_addr = Some(addr.clone());
+            let mut addr_set = vec![addr.clone(), self.rx_fin.clone()];
+            addr_set.append(&mut rx_sys.addresses());
+            ctx.start_worker(
+                addr_set,
+                PipeReceiver::new(rx_sys, self.rx_fin.clone(), None),
+            )
+            .await?;
         }
 
         Ok(BuilderResult {
@@ -328,6 +354,7 @@ impl PipeBuilder {
     pub async fn build(self, ctx: &mut Context) -> Result<BuilderResult> {
         let (tx_sys, rx_sys) = self.build_systems(ctx).await?;
 
+        debug!("Built both TX and RX system frames");
         match self.mode {
             Mode::Static => self.build_fixed(ctx, tx_sys, rx_sys).await,
             Mode::Dynamic => self.build_dynamic(ctx, tx_sys, rx_sys).await,
@@ -337,6 +364,7 @@ impl PipeBuilder {
 
 #[crate::test]
 async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
+    info!("Starting the test...");
     let rx_addr = Address::random(0);
 
     // Start a static receiver
@@ -382,5 +410,37 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
+    ctx.stop().await
+}
+
+#[crate::test]
+async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
+    let rx_addr = Address::random(0);
+
+    // Start a static receiver
+    let rx = PipeBuilder::fixed()
+        .receive(rx_addr.clone())
+        .delivery_ack()
+        .build(ctx)
+        .await?;
+    info!("Created receiver pipe: {}", rx.addr());
+
+    // Connect to a static receiver
+    let sender = PipeBuilder::fixed()
+        .connect(vec![rx_addr])
+        .delivery_ack()
+        .build(ctx)
+        .await?;
+
+    info!("Created sender pipe: {}", sender.addr());
+
+    let msg = String::from("Hello through the pipe");
+    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
+        .await?;
+
+    let msg2 = ctx.receive::<String>().await?;
+    assert_eq!(msg, *msg2);
+
+    ctx.sleep(core::time::Duration::from_millis(100)).await;
     ctx.stop().await
 }

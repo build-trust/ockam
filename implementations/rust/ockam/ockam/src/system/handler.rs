@@ -38,5 +38,10 @@ where
     ) -> Result<()>;
 
     /// Called for every message addressed to the system handler
-    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<M>) -> Result<()>;
+    async fn handle_message(
+        &mut self,
+        self_addr: Address,
+        ctx: &mut C,
+        msg: Routed<M>,
+    ) -> Result<()>;
 }
