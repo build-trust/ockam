@@ -38,6 +38,11 @@ impl Worker for PipeSender {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        debug!(
+            "PipeSender: handling incoming message to {}",
+            msg.onward_route()
+        );
+
         match (msg.msg_addr(), self.peer.as_ref()) {
             (ref addr, Some(&PeerRoute::Listener(_, ref _self))) if addr == _self => {
                 let return_route = msg.return_route();
@@ -52,10 +57,12 @@ impl Worker for PipeSender {
 
             // Messages sent by users
             (addr, _) if addr == self.api_addr => self.handle_api_msg(ctx, msg).await,
+
             // The end point of the worker system routes
             (addr, _) if addr == self.fin_addr => {
                 self.handle_fin_msg(ctx, OckamMessage::from_any(msg)?).await
             }
+
             // These messages are most likely intra-system
             _ => self.system.handle_message(ctx, msg.cast()?).await,
         }
@@ -94,6 +101,7 @@ impl PipeSender {
         // Then wrap the message in an OckamMessage and dispatch
         let ockam_msg = OckamMessage::new(inner)?;
 
+        // Either dispatch a message into the worker system or to the "fin" address
         if self.system.is_empty() {
             self.handle_fin_msg(ctx, ockam_msg).await?;
         } else {

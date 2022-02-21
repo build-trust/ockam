@@ -7,7 +7,7 @@ use ockam_core::{
 #[allow(unused)]
 pub struct PipeReceiver {
     system: PipeSystem,
-    api_addr: Address,
+    fin_addr: Address,
     init_addr: Option<Address>,
 }
 
@@ -22,6 +22,11 @@ impl Worker for PipeReceiver {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
+        debug!(
+            "PipeReceiver: received message to address: {}",
+            msg.msg_addr()
+        );
+
         match (msg.msg_addr(), &self.init_addr) {
             (ref addr, Some(ref init)) if addr == init => {
                 let peer_route = match msg.body().scope.get(0) {
@@ -29,22 +34,40 @@ impl Worker for PipeReceiver {
                     None => return Err(OckamError::InvalidParameter.into()),
                 };
 
-                ctx.send(peer_route, OckamMessage::new(Any)?).await?;
-                Ok(())
+                ctx.send(peer_route, OckamMessage::new(Any)?).await
             }
-            _ => {
+
+            // Messagess addressed to the "fin" address can simply be forwarded
+            (addr, _) if addr == self.fin_addr => {
                 let inner: TransportMessage = msg.body().data()?;
                 ctx.forward(LocalMessage::new(inner, vec![])).await
+            }
+
+            // For any other address we pass the message to the worker system
+            (addr, _) => {
+                // If the system is empty we can skip right to "fin"
+                if self.system.is_empty() {
+                    let inner: TransportMessage = msg.body().data()?;
+                    ctx.forward(LocalMessage::new(inner, vec![])).await
+                }
+                // Otherwise we submit to the system
+                else if addr == ctx.address() {
+                    trace!("Initial dispatch to worker system: {}", addr);
+                    self.system.dispatch_entry(ctx, msg).await
+                } else {
+                    trace!("Forwarding message to worker system: {}", addr);
+                    self.system.handle_message(ctx, msg).await
+                }
             }
         }
     }
 }
 
 impl PipeReceiver {
-    pub fn new(system: PipeSystem, api_addr: Address, init_addr: Option<Address>) -> Self {
+    pub fn new(system: PipeSystem, fin_addr: Address, init_addr: Option<Address>) -> Self {
         Self {
             system,
-            api_addr,
+            fin_addr,
             init_addr,
         }
     }
