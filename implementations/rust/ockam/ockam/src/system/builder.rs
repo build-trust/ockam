@@ -27,6 +27,7 @@ where
 {
     /// The set of handlers in this system
     inner: BTreeMap<String, HandlerData<C, M>>,
+    entry: Option<Address>,
 }
 
 impl<C, M> Default for SystemBuilder<C, M>
@@ -37,6 +38,7 @@ where
     fn default() -> Self {
         Self {
             inner: BTreeMap::new(),
+            entry: None,
         }
     }
 }
@@ -68,6 +70,12 @@ where
     /// Get the address of a previously added SystemHandler
     pub fn get_addr(&self, id: impl Into<String>) -> Option<Address> {
         self.inner.get(&id.into()).map(|data| data.addr.clone())
+    }
+
+    /// Specify an entry-point for the soon-to-be-built system
+    pub fn set_entry<A: Into<Address>>(mut self, addr: A) -> Self {
+        self.entry = Some(addr.into());
+        self
     }
 
     /// Add a new handler to the builder, re-addressing the previous
@@ -111,6 +119,9 @@ where
     /// Create a `WorkerSystem` and pre-initialise every SystemHandler
     pub async fn finalise(self, ctx: &mut C) -> Result<WorkerSystem<C, M>> {
         let mut system = WorkerSystem::default();
+        if let Some(addr) = self.entry {
+            system.set_entry(addr);
+        }
 
         for (
             _identifier,

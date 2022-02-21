@@ -115,6 +115,7 @@ tracing = { version = "0.1", default-features = false }
 rand = { version = "0.8", default-features = false }
 hex = { version = "0.4", default-features = false }
 dyn-clone = "1.0"
+dyn-clonable = "0.9"
 
 [dev-dependencies]
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.40.0"}

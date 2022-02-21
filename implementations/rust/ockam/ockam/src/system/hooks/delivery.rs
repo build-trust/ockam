@@ -5,7 +5,7 @@ use ockam_core::{
     Address, Decodable, Encodable,
 };
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SenderConfirm {
     next: Option<Address>,
     journal: BTreeMap<Address, OckamMessage>,
@@ -96,7 +96,7 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ReceiverConfirm {}
 
 #[async_trait]

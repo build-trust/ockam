@@ -1,7 +1,8 @@
 use core::ops::{Deref, DerefMut};
 use ockam_core::{
     compat::{collections::BTreeMap, string::String, vec::Vec},
-    Decodable, Encodable, Message, Result,
+    Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
+    TransportMessage,
 };
 use serde::{Deserialize, Serialize};
 
@@ -48,6 +49,11 @@ impl OckamMessage {
         })
     }
 
+    /// Create a new OckamMessage from an untyped Any message
+    pub fn from_any(msg: Routed<Any>) -> Result<Self> {
+        Ok(Self::decode(&msg.payload())?)
+    }
+
     /// Create a new `OckamMessage` by nesting a previous one
     pub fn wrap(mut prev: Self) -> Result<Self> {
         let generic = core::mem::replace(&mut prev.generic, None);
@@ -56,6 +62,20 @@ impl OckamMessage {
             scope: vec![],
             generic,
         })
+    }
+
+    /// Wrap this OckamMessage with a new `Routed` message type
+    pub fn into_routed(
+        self,
+        msg_addr: Address,
+        onward_route: Route,
+        return_route: Route,
+    ) -> Result<Routed<Self>> {
+        let local = LocalMessage::new(
+            TransportMessage::v1(onward_route, return_route, self.encode()?),
+            vec![],
+        );
+        Ok(Routed::new(self, msg_addr, local))
     }
 
     /// Add some metadata to this scope

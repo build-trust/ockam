@@ -6,22 +6,22 @@ pub enum OckamError {
     VerifyFailed,
     InvalidInternalState,
     InvalidProof,
-    ConsistencyError,
+    ConsistencyError, // 5
     ComplexEventsAreNotSupported,
     EventIdDoesNotMatch,
     IdentityIdDoesNotMatch,
     EmptyChange,
-    ContactNotFound,
+    ContactNotFound, // 10
     EventNotFound,
     InvalidChainSequence,
     InvalidEventId,
     AttestationRequesterDoesNotMatch,
-    AttestationNonceDoesNotMatch,
+    AttestationNonceDoesNotMatch, // 15
     InvalidHubResponse,
     InvalidParameter,
     SecureChannelVerificationFailed,
     SecureChannelCannotBeAuthenticated,
-    NoSuchProtocol,
+    NoSuchProtocol, // 20
     SystemAddressNotBound,
     SystemInvalidConfiguration,
 }

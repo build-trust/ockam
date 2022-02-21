@@ -1,5 +1,3 @@
-#![allow(unused)] // FIXME
-// If `pipe` is so great, why is there no `pipe2`?
 //! Pipe2 composition system
 //!
 //! Pipe2 offers the ability to compose pipe workers with different
@@ -14,15 +12,17 @@ mod sender;
 
 use crate::{
     hooks::pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm, SenderOrdering},
-    pipe::receiver,
-    Context, OckamMessage, SystemBuilder, SystemHandler,
+    Context, OckamMessage, SystemBuilder, WorkerSystem,
 };
 use ockam_core::{
-    compat::{boxed::Box, string::String, vec::Vec},
+    compat::{collections::BTreeSet, string::String},
     Address, Result, Route,
 };
+pub use receiver::PipeReceiver;
+pub use sender::PipeSender;
 
 const CLUSTER_NAME: &str = "_internal.pipe2";
+type PipeSystem = WorkerSystem<Context, OckamMessage>;
 
 enum Mode {
     /// In static mode this pipe will connect to a well-known peer, or
@@ -85,17 +85,24 @@ enum Mode {
 /// # }
 /// ```
 pub struct PipeBuilder {
-    send_hooks: SystemBuilder<Context, OckamMessage>,
-    recv_hooks: SystemBuilder<Context, OckamMessage>,
+    hooks: BTreeSet<PipeHook>,
     /// The selected pipe initialisation mode
     mode: Mode,
     /// Peer information
     peer: Option<Route>,
     /// Receiver information
     recv: Option<Address>,
-    /// This address is used to handle the termination point of the
-    /// worker system pipeline.
-    fin: Address,
+    /// "Fin" address on the sender
+    tx_fin: Address,
+    /// "Fin" address on the receiver
+    rx_fin: Address,
+}
+
+/// A simple wrapper around possible pipe hooks
+#[derive(PartialOrd, Ord, PartialEq, Eq)]
+enum PipeHook {
+    Ordering,
+    Delivery,
 }
 
 /// Represent the result of a successful PipeBuilder invocation
@@ -139,11 +146,11 @@ impl BuilderResult {
 impl PipeBuilder {
     fn new(mode: Mode) -> Self {
         Self {
-            send_hooks: SystemBuilder::new(),
-            recv_hooks: SystemBuilder::new(),
+            hooks: BTreeSet::new(),
             peer: None,
             recv: None,
-            fin: Address::random(0),
+            tx_fin: Address::random(0),
+            rx_fin: Address::random(0),
             mode,
         }
     }
@@ -186,27 +193,7 @@ impl PipeBuilder {
 
     /// Set this pipe to enforce the ordering of incoming messages
     pub fn enforce_ordering(mut self) -> Self {
-        // A pipe can currently only have two types of hooks.
-        // "Delivery" and "Ordering".  Because we want "ordering" to
-        // be applied _before_ "delivery" we need to make sure that if
-        // "delivery" has already been added, we point towards _its_
-        // address, instead of "fin".
-        let next_recv_addr = self
-            .recv_hooks
-            .get_addr("delivery")
-            .unwrap_or_else(|| self.fin.clone());
-        let next_send_addr = self
-            .send_hooks
-            .get_addr("delivery")
-            .unwrap_or_else(|| self.fin.clone());
-
-        // Then we simply add a single SystemHandler stage
-        self.recv_hooks
-            .add(Address::random(0), "ordering", ReceiverOrdering::default())
-            .default(next_recv_addr);
-        self.send_hooks
-            .add(Address::random(0), "ordering", SenderOrdering::default())
-            .default(next_send_addr);
+        self.hooks.insert(PipeHook::Ordering);
         self
     }
 
@@ -215,32 +202,78 @@ impl PipeBuilder {
     /// Additional behaviours can be added to compose a custom pipe
     /// worker.
     pub fn delivery_ack(mut self) -> Self {
-        self.send_hooks
-            .add(Address::random(0), "delivery", SenderConfirm::default())
-            .default(self.fin.clone());
-        self.recv_hooks
-            .add(Address::random(0), "delivery", ReceiverConfirm::default())
-            .default(self.fin.clone());
+        self.hooks.insert(PipeHook::Delivery);
         self
     }
 
-    /// Consume this builder and construct a set of pipes
-    pub async fn build(self, ctx: &mut Context) -> Result<BuilderResult> {
+    async fn build_systems(&self, ctx: &mut Context) -> Result<(PipeSystem, PipeSystem)> {
+        let mut send_hooks = SystemBuilder::new();
+        let mut recv_hooks = SystemBuilder::new();
+
+        let (ord_tx_addr, ord_rx_addr) = (Address::random(0), Address::random(0));
+        let (ack_tx_addr, ack_rx_addr) = (Address::random(0), Address::random(0));
+
+        // Setup ordering enforcement hooks
+        if self.hooks.contains(&PipeHook::Ordering) {
+            // Setup the sender ordering hook
+            send_hooks
+                .add(ord_tx_addr.clone(), "ordering", SenderOrdering::default())
+                .default(if self.hooks.contains(&PipeHook::Delivery) {
+                    ack_tx_addr.clone()
+                } else {
+                    self.tx_fin.clone()
+                });
+
+            // Setup the receiver ordering hook
+            recv_hooks
+                .add(ord_rx_addr.clone(), "ordering", ReceiverOrdering::default())
+                .default(self.rx_fin.clone());
+        }
+
+        // Setup delivery confirmation hooks
+        if self.hooks.contains(&PipeHook::Delivery) {
+            send_hooks
+                .add(ack_tx_addr.clone(), "delivery", SenderConfirm::default())
+                .default(self.tx_fin.clone());
+
+            recv_hooks
+                .add(ack_rx_addr.clone(), "delivery", ReceiverConfirm::default())
+                .default(if self.hooks.contains(&PipeHook::Ordering) {
+                    ord_rx_addr.clone()
+                } else {
+                    self.rx_fin.clone()
+                });
+        }
+
+        Ok((
+            send_hooks.finalise(ctx).await?,
+            recv_hooks.finalise(ctx).await?,
+        ))
+    }
+
+    async fn build_fixed(
+        self,
+        ctx: &mut Context,
+        tx_sys: PipeSystem,
+        rx_sys: PipeSystem,
+    ) -> Result<BuilderResult> {
         let mut tx_addr = None;
         let mut rx_addr = None;
 
         // Create a sender
         if let Some(peer) = self.peer {
             let (addr, int_addr) = (Address::random(0), Address::random(0));
-            let sender = sender::PipeSender::new(peer, addr.clone(), int_addr.clone());
-            ctx.start_worker(vec![addr.clone(), int_addr], sender)
+            let sender = PipeSender::new(tx_sys, peer, addr.clone(), int_addr.clone());
+            ctx.start_worker(vec![addr.clone(), int_addr, self.tx_fin.clone()], sender)
                 .await?;
             tx_addr = Some(addr);
         };
 
+        // Create a receiver
         if let Some(addr) = self.recv {
-            let receiver = receiver::PipeReceiver::new(Address::random(0));
-            ctx.start_worker(addr.clone(), receiver).await?;
+            let receiver = PipeReceiver::new(rx_sys, Address::random(0));
+            ctx.start_worker(vec![addr.clone(), self.rx_fin.clone()], receiver)
+                .await?;
             rx_addr = Some(addr);
         }
 
@@ -249,24 +282,44 @@ impl PipeBuilder {
             rx: rx_addr,
         })
     }
+
+    async fn build_dynamic(
+        self,
+        ctx: &mut Context,
+        tx_sys: PipeSystem,
+        rx_sys: PipeSystem,
+    ) -> Result<BuilderResult> {
+        todo!()
+    }
+
+    /// Consume this builder and construct a set of pipes
+    pub async fn build(self, ctx: &mut Context) -> Result<BuilderResult> {
+        let (tx_sys, rx_sys) = self.build_systems(ctx).await?;
+
+        match self.mode {
+            Mode::Static => self.build_fixed(ctx, tx_sys, rx_sys).await,
+            Mode::Dynamic => self.build_dynamic(ctx, tx_sys, rx_sys).await,
+        }
+    }
 }
 
 #[crate::test]
 async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     let rx_addr = Address::random(0);
-    let tx_addr = Address::random(0);
 
     // Start a static receiver
-    PipeBuilder::fixed()
+    let rx = PipeBuilder::fixed()
         .receive(rx_addr.clone())
         .build(ctx)
         .await?;
+    info!("Created receiver pipe: {}", rx.addr());
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
         .connect(vec![rx_addr])
         .build(ctx)
         .await?;
+    info!("Created sender pipe: {}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
     ctx.send(vec![sender.addr(), "app".into()], msg.clone())
