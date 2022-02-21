@@ -7,11 +7,13 @@
 //! This module is a replacement for [`pipe`](crate::pipe) and should
 //! replace it at some point in the future.
 
+mod listener;
 mod receiver;
 mod sender;
 
 use crate::{
     hooks::pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm, SenderOrdering},
+    pipe2::{listener::PipeListener, sender::PeerRoute},
     Context, OckamMessage, SystemBuilder, WorkerSystem,
 };
 use ockam_core::{
@@ -262,16 +264,18 @@ impl PipeBuilder {
 
         // Create a sender
         if let Some(peer) = self.peer {
-            let (addr, int_addr) = (Address::random(0), Address::random(0));
-            let sender = PipeSender::new(tx_sys, peer, addr.clone(), int_addr.clone());
-            ctx.start_worker(vec![addr.clone(), int_addr, self.tx_fin.clone()], sender)
-                .await?;
-            tx_addr = Some(addr);
+            let addr = Address::random(0);
+            tx_addr = Some(addr.clone());
+            ctx.start_worker(
+                vec![addr.clone(), self.tx_fin.clone()],
+                PipeSender::new(tx_sys, PeerRoute::Peer(peer), addr, self.tx_fin.clone()),
+            )
+            .await?;
         };
 
         // Create a receiver
         if let Some(addr) = self.recv {
-            let receiver = PipeReceiver::new(rx_sys, Address::random(0));
+            let receiver = PipeReceiver::new(rx_sys, Address::random(0), None);
             ctx.start_worker(vec![addr.clone(), self.rx_fin.clone()], receiver)
                 .await?;
             rx_addr = Some(addr);
@@ -289,7 +293,35 @@ impl PipeBuilder {
         tx_sys: PipeSystem,
         rx_sys: PipeSystem,
     ) -> Result<BuilderResult> {
-        todo!()
+        let mut tx_addr = None;
+        let mut rx_addr = None;
+
+        if let Some(peer) = self.peer {
+            let (addr, init_addr) = (Address::random(0), Address::random(0));
+            tx_addr = Some(addr.clone());
+
+            ctx.start_worker(
+                vec![addr.clone(), init_addr.clone(), self.tx_fin.clone()],
+                PipeSender::new(
+                    tx_sys,
+                    PeerRoute::Listener(peer, init_addr),
+                    addr,
+                    self.tx_fin.clone(),
+                ),
+            )
+            .await?;
+        }
+
+        if let Some(addr) = self.recv {
+            let listener = PipeListener::new(rx_sys);
+            ctx.start_worker(addr.clone(), listener).await?;
+            rx_addr = Some(addr);
+        }
+
+        Ok(BuilderResult {
+            tx: tx_addr,
+            rx: rx_addr,
+        })
     }
 
     /// Consume this builder and construct a set of pipes
@@ -327,5 +359,28 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
+    ctx.stop().await
+}
+
+#[crate::test]
+async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
+    let listener = PipeBuilder::dynamic()
+        .receive("my-pipe-listener")
+        .build(ctx)
+        .await?;
+
+    // Point the sender to the listener which will spawn a receiver
+    let sender = PipeBuilder::dynamic()
+        .connect(listener.addr())
+        .build(ctx)
+        .await?;
+
+    let msg = String::from("Hello through the pipe");
+    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
+        .await?;
+
+    let msg2 = ctx.receive::<String>().await?;
+    assert_eq!(msg, *msg2);
+
     ctx.stop().await
 }

@@ -1,20 +1,14 @@
 //! Pipe2 Send worker
 
 use crate::{pipe2::PipeSystem, Context, OckamMessage};
-use ockam_core::{compat::collections::VecDeque, Address, Any, Result, Route, Routed, Worker};
+use ockam_core::{
+    compat::{boxed::Box, collections::VecDeque},
+    Address, Any, Result, Route, Routed, Worker,
+};
 
-enum PeerRoute {
+pub enum PeerRoute {
     Peer(Route),
-    Listener(Route),
-}
-
-impl PeerRoute {
-    fn peer(&self) -> &Route {
-        match self {
-            Self::Peer(ref p) => p,
-            Self::Listener(ref l) => l,
-        }
-    }
+    Listener(Route, Address),
 }
 
 pub struct PipeSender {
@@ -32,16 +26,34 @@ impl Worker for PipeSender {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::pipe2::CLUSTER_NAME).await?;
-        // TODO: start handshake here
+
+        // If the worker was initialised with a "Listener" peer we
+        // subsequently start the handshake to create a pipe receiver
+        if let Some(PeerRoute::Listener(ref route, ref addr)) = self.peer {
+            ctx.send_from_address(route.clone(), OckamMessage::new(Any)?, addr.clone())
+                .await?;
+        }
+
         Ok(())
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        match msg.msg_addr() {
+        match (msg.msg_addr(), self.peer.as_ref()) {
+            (ref addr, Some(&PeerRoute::Listener(_, ref _self))) if addr == _self => {
+                let return_route = msg.return_route();
+                self.peer = Some(PeerRoute::Peer(return_route.clone()));
+
+                for msg in core::mem::replace(&mut self.out_buf, vec![].into()) {
+                    ctx.send(return_route.clone(), msg).await?;
+                }
+
+                Ok(())
+            }
+
             // Messages sent by users
-            addr if addr == self.api_addr => self.handle_api_msg(ctx, msg).await,
+            (addr, _) if addr == self.api_addr => self.handle_api_msg(ctx, msg).await,
             // The end point of the worker system routes
-            addr if addr == self.fin_addr => {
+            (addr, _) if addr == self.fin_addr => {
                 self.handle_fin_msg(ctx, OckamMessage::from_any(msg)?).await
             }
             // These messages are most likely intra-system
@@ -51,10 +63,10 @@ impl Worker for PipeSender {
 }
 
 impl PipeSender {
-    pub fn new(system: PipeSystem, peer: Route, api_addr: Address, fin_addr: Address) -> Self {
+    pub fn new(system: PipeSystem, peer: PeerRoute, api_addr: Address, fin_addr: Address) -> Self {
         Self {
             out_buf: VecDeque::default(),
-            peer: Some(PeerRoute::Peer(peer)),
+            peer: Some(peer),
             system,
             api_addr,
             fin_addr,
@@ -104,21 +116,11 @@ impl PipeSender {
         // TODO: get the address we're supposed to use from the
         // OckamMessage global metadata section and remove it
         match self.peer {
-            Some(PeerRoute::Peer(ref peer)) => {
-                // If messages are in out_buf then we send those first
-                // TODO: maybe move this to the handshake logic?
-                for msg in core::mem::replace(&mut self.out_buf, vec![].into()) {
-                    ctx.send(peer.clone(), msg).await?;
-                }
+            Some(PeerRoute::Peer(ref peer)) => ctx.send(peer.clone(), msg).await?,
 
-                // Then we send the actual message we handled
-                ctx.send(peer.clone(), msg).await?;
-            }
             // If field is None or PeerRoute::Listener we are not yet
             // ready to send messages and store them for later
-            _ => {
-                self.out_buf.push_back(msg);
-            }
+            _ => self.out_buf.push_back(msg),
         }
 
         Ok(())
