@@ -1,4 +1,4 @@
-use crate::{Context, OckamError, OckamMessage, Result, Routed, SystemHandler};
+use crate::{Context, DelayedEvent, OckamError, OckamMessage, Result, Routed, SystemHandler};
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, string::String, vec::Vec},
@@ -57,7 +57,18 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
                     .scope_data(self_addr.encode()?);
                 self.journal.insert(ack_id, outer_msg.clone());
 
-                // TODO: register notify event
+                // Register a delayed event to check whether we
+                // received an ACK for this message.  TODO: replace
+                // this with ockam_core::Heartbeat?
+                DelayedEvent::new(ctx, vec![self_addr.clone()].into(), {
+                    OckamMessage::new(Any)?.generic_data(
+                        "ockam.pipe.type",
+                        "ockam.pipe.resend_notify".as_bytes().to_vec(),
+                    )
+                })
+                .await?
+                .with_seconds(5)
+                .spawn();
 
                 // Forward the new message to the next address
                 ctx.send(self.next.as_ref().unwrap().clone(), outer_msg)
