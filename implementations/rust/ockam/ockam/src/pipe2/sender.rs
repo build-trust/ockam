@@ -30,6 +30,7 @@ impl Worker for PipeSender {
         // If the worker was initialised with a "Listener" peer we
         // subsequently start the handshake to create a pipe receiver
         if let Some(PeerRoute::Listener(ref route, ref addr)) = self.peer {
+            debug!("Sending pipe2 handshake request to listener: {}", route);
             ctx.send_from_address(route.clone(), OckamMessage::new(Any)?, addr.clone())
                 .await?;
         }
@@ -39,7 +40,8 @@ impl Worker for PipeSender {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         debug!(
-            "PipeSender: handling incoming message to {}",
+            "PipeSender '{}': handling incoming message to {}",
+            ctx.address(),
             msg.onward_route()
         );
 
