@@ -97,6 +97,11 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
         self.entry = Some(addr.into());
     }
 
+    /// Get an optional reference to the entry point of this system
+    pub fn entrypoint(&self) -> Option<&Address> {
+        self.entry.as_ref()
+    }
+
     /// Dispatch a message to the pre-configured system entry point
     ///
     /// This function returns an error if no entry point was

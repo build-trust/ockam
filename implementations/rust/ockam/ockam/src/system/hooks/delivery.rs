@@ -39,6 +39,8 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
         ctx: &mut Context,
         msg: Routed<OckamMessage>,
     ) -> Result<()> {
+        trace!("SenderDelivery '{}' handling incoming message", self_addr);
+
         match msg
             .generic
             .as_ref()
@@ -132,6 +134,8 @@ impl SystemHandler<Context, OckamMessage> for ReceiverConfirm {
         ctx: &mut Context,
         msg: Routed<OckamMessage>,
     ) -> Result<()> {
+        trace!("ReceiverDelivery '{}' handling incoming message", self_addr);
+
         // First grab the return route so we may edit it later
         let mut return_route = msg.return_route();
 
