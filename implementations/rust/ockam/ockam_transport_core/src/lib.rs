@@ -13,5 +13,3 @@ pub mod tcp;
 
 /// TCP address type constant
 pub const TCP: u8 = 1;
-
-pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";

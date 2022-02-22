@@ -5,7 +5,6 @@ use super::traits::TcpStreamConnector;
 mod handle;
 use super::workers::TcpSendWorker;
 use crate::TransportError;
-use crate::CLUSTER_NAME;
 use crate::TCP;
 use core::fmt::Display;
 use core::iter::Iterator;
@@ -50,7 +49,7 @@ where
 {
     async fn create_self_handle(&self, ctx: &Context) -> Result<TcpRouterHandle<P>> {
         let handle_ctx = ctx.new_context(Address::random(0)).await?;
-        let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone());
+        let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone(), self.cluster_name);
         Ok(handle)
     }
 
@@ -152,7 +151,11 @@ where
     ///
     /// To also handle incoming connections, use
     /// [`TcpRouterHandle::bind`](TcpRouterHandle::bind)
-    pub async fn register(ctx: &Context, stream_connector: T) -> Result<TcpRouterHandle<P>> {
+    pub async fn register(
+        ctx: &Context,
+        stream_connector: T,
+        cluster_name: &'static str,
+    ) -> Result<TcpRouterHandle<P>> {
         let addr = Address::random(0);
         debug!("Initialising new TcpRouter with address {}", &addr);
 
@@ -163,7 +166,7 @@ where
             addr: addr.clone(),
             map: BTreeMap::new(),
             allow_auto_connection: true,
-            cluster_name: CLUSTER_NAME,
+            cluster_name,
             stream_connector,
             _marker: PhantomData,
         };
@@ -194,7 +197,7 @@ where
     type Message = RouterMessage;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(self.cluster_name).await?;
         Ok(())
     }
 

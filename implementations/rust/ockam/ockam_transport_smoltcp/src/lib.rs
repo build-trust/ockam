@@ -22,3 +22,5 @@ pub use net::{Clock, Device, Instant, InterfaceConfiguration, StackFacade};
 pub use ockam_transport_core::TCP;
 pub use port_provider::PortProvider;
 pub use transport::*;
+
+pub(crate) const CLUSTER_NAME: &str = "_internals.transport.smoltcp";

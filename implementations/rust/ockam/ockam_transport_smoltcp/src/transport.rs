@@ -166,8 +166,13 @@ where
         if let Some(clock) = clock {
             stack.run(clock).await;
         }
-        let router_handle =
-            TcpRouter::<_, _, SmolTcpEndpointResolver<P>>::register(ctx, stack).await?;
+        let router_handle = TcpRouter::<_, _, SmolTcpEndpointResolver<P>>::register(
+            ctx,
+            stack,
+            crate::CLUSTER_NAME,
+        )
+        .await?;
+
         Ok(Self {
             router_handle,
             stack,

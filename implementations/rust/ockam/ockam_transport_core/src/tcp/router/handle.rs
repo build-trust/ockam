@@ -20,6 +20,7 @@ pub struct TcpRouterHandle<E> {
     ctx: Context,
     addr: Address,
     _endpoint_resolver: PhantomData<E>,
+    cluster_name: &'static str,
 }
 
 #[async_trait]
@@ -32,7 +33,7 @@ where
 {
     async fn async_try_clone(&self) -> Result<Self> {
         let child_ctx = self.ctx.new_context(Address::random(0)).await?;
-        Ok(Self::new(child_ctx, self.addr.clone()))
+        Ok(Self::new(child_ctx, self.addr.clone(), self.cluster_name))
     }
 }
 
@@ -58,7 +59,7 @@ where
             self.async_try_clone().await?,
             bind_addr,
             binder,
-            crate::CLUSTER_NAME,
+            self.cluster_name,
         )
         .await
     }
@@ -71,10 +72,11 @@ where
     E::Peer: Clone + Display + Send + Sync + 'static,
     V: Display,
 {
-    pub(crate) fn new(ctx: Context, addr: Address) -> Self {
+    pub(crate) fn new(ctx: Context, addr: Address, cluster_name: &'static str) -> Self {
         Self {
             ctx,
             addr,
+            cluster_name,
             _endpoint_resolver: PhantomData,
         }
     }
@@ -141,7 +143,7 @@ where
             stream_connector,
             endpoint,
             hostnames,
-            crate::CLUSTER_NAME,
+            self.cluster_name,
         )
         .await?;
 

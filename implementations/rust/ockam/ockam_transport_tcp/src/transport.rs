@@ -65,7 +65,7 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     pub async fn create(ctx: &Context) -> Result<Self> {
-        let router = TcpRouter::register(ctx, TokioTcpConnector).await?;
+        let router = TcpRouter::register(ctx, TokioTcpConnector, crate::CLUSTER_NAME).await?;
 
         Ok(Self {
             router_handle: router.into(),
