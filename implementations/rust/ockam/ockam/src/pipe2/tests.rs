@@ -79,8 +79,6 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
-
-    ctx.sleep(core::time::Duration::from_millis(100)).await;
     ctx.stop().await
 }
 
@@ -106,5 +104,35 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
+    ctx.stop().await
+}
+
+#[crate::test]
+async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
+    let rx_addr = Address::random(0);
+
+    // Start a static receiver
+    let rx = PipeBuilder::fixed()
+        .receive(rx_addr.clone())
+        .enforce_ordering()
+        .build(ctx)
+        .await?;
+    info!("Created receiver pipe: {}", rx.addr());
+
+    // Connect to a static receiver
+    let sender = PipeBuilder::fixed()
+        .connect(vec![rx_addr])
+        .enforce_ordering()
+        .build(ctx)
+        .await?;
+
+    info!("Created sender pipe: {}", sender.addr());
+
+    let msg = String::from("Hello through the pipe");
+    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
+        .await?;
+
+    let msg2 = ctx.receive::<String>().await?;
+    assert_eq!(msg, *msg2);
     ctx.stop().await
 }
