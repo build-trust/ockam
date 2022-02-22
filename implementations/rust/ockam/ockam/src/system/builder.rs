@@ -14,6 +14,20 @@ where
     routes: BTreeMap<String, Address>,
 }
 
+impl<C, M> Clone for HandlerData<C, M>
+where
+    C: Send + 'static,
+    M: Message,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: dyn_clone::clone_box(&*self.inner),
+            addr: self.addr.clone(),
+            routes: self.routes.clone(),
+        }
+    }
+}
+
 /// An abstraction to build a worker system graph
 ///
 /// When creating a worker system it's important to initialise each
@@ -28,6 +42,19 @@ where
     /// The set of handlers in this system
     inner: BTreeMap<String, HandlerData<C, M>>,
     entry: Option<Address>,
+}
+
+impl<C, M> Clone for SystemBuilder<C, M>
+where
+    C: Send + 'static,
+    M: Message,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            entry: self.entry.clone(),
+        }
+    }
 }
 
 impl<C, M> Default for SystemBuilder<C, M>
@@ -113,6 +140,54 @@ where
             prev.routes.insert(rule.into(), addr.clone());
         }
         self.add(addr, id, handler)
+    }
+
+    /// Re-address every system handler in order to clone it
+    ///
+    /// When initialising a worker system builder you setup handlers
+    /// and routes between them.  However when cloning the worker
+    /// system all addresses need to be re-addressed in order to allow
+    /// a second instance of every address to exist on the same node.
+    ///
+    /// This problem may be solved by having scoped addresses in the
+    /// future.
+    ///
+    /// This function assigns a new address to every handler and then
+    /// changes routes that point to the old addresses.  Any route
+    /// that is not in the internal set (i.e. the fin address routes)
+    /// are replaced with the externally provided fin-address.
+    pub fn readdress(&mut self, fin_addr: &Address) {
+        // Generate a lookup-table first with new addresses to replace
+        // the old addresses
+        let addrs: BTreeMap<_, _> = self
+            .inner
+            .iter()
+            .map(|(_, data)| (data.addr.clone(), Address::random(0)))
+            .collect();
+
+        // Small utility function that will either return the the new
+        // address if it is within the system, or the new provided fin
+        // address if it external (this only supports _one_ fin
+        // endpoint)
+        fn get_addr(
+            addrs: &BTreeMap<Address, Address>,
+            prev: &Address,
+            fin_addr: &Address,
+        ) -> Address {
+            addrs.get(prev).unwrap_or(fin_addr).clone()
+        }
+
+        // Fix the entry point
+        if let Some(entry) = core::mem::replace(&mut self.entry, None) {
+            self.entry = addrs.get(&entry).cloned();
+        }
+
+        self.inner.iter_mut().for_each(|(_, data)| {
+            data.addr = get_addr(&addrs, &data.addr, fin_addr);
+            data.routes.iter_mut().for_each(|(_id, route_addr)| {
+                *route_addr = get_addr(&addrs, route_addr, fin_addr);
+            });
+        });
     }
 
     /// Create a `WorkerSystem` and pre-initialise every SystemHandler

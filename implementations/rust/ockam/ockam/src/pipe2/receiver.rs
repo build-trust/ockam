@@ -18,6 +18,12 @@ impl Worker for PipeReceiver {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::pipe2::CLUSTER_NAME).await?;
+        if self.init_addr.is_some() {
+            debug!(
+                "PipeReceiver '{}' waiting for initialisation message",
+                ctx.address()
+            );
+        }
         Ok(())
     }
 
@@ -33,7 +39,7 @@ impl Worker for PipeReceiver {
                     Some(data) => Route::decode(data)?,
                     None => return Err(OckamError::InvalidParameter.into()),
                 };
-
+                trace!("Successfully initialised PipeReceiver!");
                 ctx.send(peer_route, OckamMessage::new(Any)?).await
             }
 
@@ -52,8 +58,15 @@ impl Worker for PipeReceiver {
                 }
                 // Otherwise we submit to the system
                 else if addr == ctx.address() {
-                    trace!("Initial dispatch to worker system: {}", addr);
-                    self.system.dispatch_entry(ctx, msg).await
+                    trace!(
+                        "Initial dispatch to worker system: {:?}",
+                        self.system.entrypoint()
+                    );
+                    if let Err(e) = self.system.dispatch_entry(ctx, msg).await {
+                        error!("Dispatch entry error: {}", e);
+                        return Err(e);
+                    }
+                    Ok(())
                 } else {
                     trace!("Forwarding message to worker system: {}", addr);
                     self.system.handle_message(ctx, msg).await
