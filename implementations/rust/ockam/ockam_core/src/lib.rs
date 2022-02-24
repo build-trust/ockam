@@ -35,7 +35,9 @@ pub extern crate hex;
 
 #[allow(unused_imports)]
 #[macro_use]
+/// Re-export of the `async_trait` macro crate.
 pub extern crate async_trait;
+/// Mark an Ockam Worker implementation.
 pub use async_trait::async_trait as worker;
 
 extern crate ockam_macros;
@@ -63,12 +65,14 @@ pub use uint::*;
 pub use worker::*;
 
 #[cfg(feature = "std")]
+#[doc(hidden)]
 pub use std::println;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-/// println macro for no_std
+#[doc(hidden)]
+/// The `println_no_std` module provides a `println` macro for `no_std` targets.
 pub mod println_no_std {
     #[macro_export]
-    /// implements println for no_std by wrapping the tracing::info! macro
+    /// Implementation of println for `no_std` by wrapping the `tracing::info!` macro.
     macro_rules! println {
         ($($arg:tt)*) => {{
             tracing::info!($($arg)*);
@@ -76,7 +80,7 @@ pub mod println_no_std {
     }
 }
 
-/// Module for custom implementation of standard traits.
+/// The traits module provides extended implementations of standard traits.
 pub mod traits {
     use crate::compat::boxed::Box;
     use crate::error::Result;

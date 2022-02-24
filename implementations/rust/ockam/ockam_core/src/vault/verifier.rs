@@ -2,10 +2,10 @@ use crate::vault::{PublicKey, Signature};
 use crate::Result;
 use crate::{async_trait, compat::boxed::Box};
 
-/// Signature verification functionality
+/// Defines the Vault interface for `Signature` verification.
 #[async_trait]
 pub trait Verifier {
-    /// Verify a signature for given data using given public key
+    /// Verify a signature for the given data using the given public key.
     async fn verify(
         &mut self,
         signature: &Signature,

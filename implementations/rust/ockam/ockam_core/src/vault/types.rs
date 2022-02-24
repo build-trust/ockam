@@ -2,27 +2,28 @@ use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-/// Curve25519 private key length
+/// Curve25519 private key length.
 pub const CURVE25519_SECRET_LENGTH: usize = 32;
-/// Curve25519 public key length
+/// Curve25519 public key length.
 pub const CURVE25519_PUBLIC_LENGTH: usize = 32;
-/// AES256 private key length
+/// AES256 private key length.
 pub const AES256_SECRET_LENGTH: usize = 32;
-/// AES128 private key length
+/// AES128 private key length.
 pub const AES128_SECRET_LENGTH: usize = 16;
 
 cfg_if! {
     if #[cfg(not(feature = "alloc"))] {
-        /// Secret Key Vector
+        /// Secret Key Vector. The maximum size is 32 bytes.
         pub type SecretKeyVec = heapless::Vec<u8, 32>;
-        /// Public Key Vector
+        /// Public Key Vector. The maximum size is 65 bytes.
         pub type PublicKeyVec = heapless::Vec<u8, 65>;
-        /// Bufer for small vectors (e.g. array of attributes). Max size - 4
+        /// Bufer for small vectors (e.g. an array of attributes). The maximum length is 4 elements.
         pub type SmallBuffer<T> = heapless::Vec<T, 4>;
-        /// Buffer for large binaries (e.g. encrypted data). Max size - 512
+        /// Buffer for large binaries (e.g. encrypted data). The maximum length is 512 elements.
         pub type Buffer<T> = heapless::Vec<T, 512>;
+        /// Signature Vector. The maximum length is 64 characters.
         pub type KeyId = heapless::String<64>;
-        /// Signature Vector. Max size - 112
+        /// Signature Vector. The maximum size is 112 bytes.
         pub type SignatureVec = heapless::Vec<u8, 112>;
 
         impl From<&str> for KeyId {
@@ -34,17 +35,17 @@ cfg_if! {
     else {
         use alloc::vec::Vec;
         use alloc::string::String;
-        /// Secret Key Vector
+        /// Secret Key Vector.
         pub type SecretKeyVec = Vec<u8>;
-        /// Public Key Vector
+        /// Public Key Vector.
         pub type PublicKeyVec = Vec<u8>;
-        /// Buffer for small vectors (e.g. array of attributes)
+        /// Buffer for small vectors. (e.g. an array of attributes)
         pub type SmallBuffer<T> = Vec<T>;
-        /// Buffer for large binaries (e.g. encrypted data)
+        /// Buffer for large binaries. (e.g. encrypted data)
         pub type Buffer<T> = Vec<T>;
-        /// ID of a Key
+        /// ID of a Key.
         pub type KeyId = String;
-        ///Signature Vector
+        /// Signature Vector.
         pub type SignatureVec = Vec<u8>;
     }
 }
@@ -55,7 +56,7 @@ cfg_if! {
 pub struct SecretKey(SecretKeyVec);
 
 impl SecretKey {
-    /// Create a new secret key
+    /// Create a new secret key.
     pub fn new(data: SecretKeyVec) -> Self {
         Self(data)
     }
@@ -67,7 +68,7 @@ impl AsRef<[u8]> for SecretKey {
     }
 }
 
-/// A public key
+/// A public key.
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
 #[zeroize(drop)]
 pub struct PublicKey {
@@ -76,18 +77,18 @@ pub struct PublicKey {
 }
 
 impl PublicKey {
-    /// Public Key data
+    /// Public Key data.
     pub fn data(&self) -> &[u8] {
         &self.data
     }
-    /// Corresponding secret key type
+    /// Corresponding secret key type.
     pub fn stype(&self) -> SecretType {
         self.stype
     }
 }
 
 impl PublicKey {
-    /// Create a new public key
+    /// Create a new public key.
     pub fn new(data: PublicKeyVec, stype: SecretType) -> Self {
         PublicKey { data, stype }
     }
@@ -99,13 +100,13 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
-///Binary representation of Signature
+/// Binary representation of Signature.
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
 #[zeroize(drop)]
 pub struct Signature(SignatureVec);
 
 impl Signature {
-    /// Create a new signature
+    /// Create a new signature.
     pub fn new(data: SignatureVec) -> Self {
         Self(data)
     }
@@ -133,7 +134,7 @@ pub enum SecretType {
     Bls,
 }
 
-/// Possible [`SecretKey`]'s persistence
+/// All possible [`SecretKey`] persistence types
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SecretPersistence {
     /// An ephemeral/temporary secret
@@ -142,7 +143,7 @@ pub enum SecretPersistence {
     Persistent,
 }
 
-/// Attributes for a specific vault [`SecretKey`]
+/// Attributes for a specific vault.
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub struct SecretAttributes {
     stype: SecretType,
@@ -151,22 +152,22 @@ pub struct SecretAttributes {
 }
 
 impl SecretAttributes {
-    /// Return the type of secret
+    /// Return the type of the secret.
     pub fn stype(&self) -> SecretType {
         self.stype
     }
-    /// Return the persistence of the secret
+    /// Return the persistence of the secret.
     pub fn persistence(&self) -> SecretPersistence {
         self.persistence
     }
-    /// Return the length of the secret
+    /// Return the length of the secret.
     pub fn length(&self) -> usize {
         self.length
     }
 }
 
 impl SecretAttributes {
-    /// Create a new secret attribute
+    /// Create a new secret attribute.
     pub fn new(stype: SecretType, persistence: SecretPersistence, length: usize) -> Self {
         SecretAttributes {
             stype,

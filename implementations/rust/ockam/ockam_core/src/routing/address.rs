@@ -9,7 +9,7 @@ use core::ops::Deref;
 use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
 
-/// A collection of Addresses
+/// A read-only set containing a `Vec` of [`Address`] structures.
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AddressSet(Vec<Address>);
 
@@ -24,7 +24,7 @@ impl AddressSet {
         self.0.first().cloned().unwrap()
     }
 
-    /// Check if an address is contained in this set
+    /// Check if an address is contained in this set.
     pub fn contains(&self, a2: &Address) -> bool {
         self.0
             .iter()
@@ -85,7 +85,7 @@ impl<'a> From<&'a str> for AddressSet {
     }
 }
 
-/// A generic component address
+/// A generic address type.
 ///
 /// The address type is parsed by routers to determine the next local
 /// hop in the router chain to resolve a route to a remote connection.
@@ -93,41 +93,51 @@ impl<'a> From<&'a str> for AddressSet {
 /// ## Parsing addresses
 ///
 /// While addresses are concrete types, creating them from strings is
-/// possible for ergonomics reasons.  When parsing an address from a
-/// string, the first `#` symbol is used to separate the type from the
-/// rest of the address.  If no `#` symbol is found, the address is
-/// assumed to be of `tt = 0` (local worker).
+/// possible for ergonomic reasons.
+///
+/// When parsing an address from a string, the first `#` symbol is
+/// used to separate the transport type from the rest of the address.
+/// If no `#` symbol is found, the address is assumed to be of `tt =
+/// 0` (local worker).
+///
+/// For example:
+/// * `0#a4855dd8d16cd23cae533f9651e95676` represents the local worker address: \
+///   `a4855dd8d16cd23cae533f9651e95676`.
+/// * `1#localhost:3000` represents a TCP transport address for the host `localhost` on port `3000`.
 #[derive(Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Address {
-    /// The address type
+    /// The transport type
     pub tt: u8,
     inner: Vec<u8>,
 }
-/// An error which is returned when address parsing from string fails
+
+/// An error which is returned when address parsing from string fails.
 #[derive(Debug)]
 pub struct AddressParseError {
     kind: AddressParseErrorKind,
 }
-/// Enum to store the cause of address parsing failure
+
+/// Enum to store the cause of an address parsing failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AddressParseErrorKind {
-    /// Unable to parse address num in the address string
+    /// Unable to parse address num in the address string.
     InvalidType(core::num::ParseIntError),
-    /// Address string has more than one '#' separator
+    /// Address string has more than one '#' separator.
     MultipleSep,
 }
 
 impl AddressParseError {
-    /// Create new instance
+    /// Create new address parse error instance.
     pub fn new(kind: AddressParseErrorKind) -> Self {
         Self { kind }
     }
-    /// Gets the cause of address parsing failure.
+    /// Return the cause of the address parsing failure.
     pub fn kind(&self) -> &AddressParseErrorKind {
         &self.kind
     }
 }
+
 impl Display for AddressParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
@@ -143,9 +153,11 @@ impl Display for AddressParseError {
         }
     }
 }
+
 impl crate::compat::error::Error for AddressParseError {}
+
 impl Address {
-    /// Create a new address from separate type and data parts
+    /// Creates a new address from separate type and data parts.
     pub fn new<S: Into<String>>(tt: u8, inner: S) -> Self {
         Self {
             tt,
@@ -153,9 +165,9 @@ impl Address {
         }
     }
 
-    /// Parse an address from a string
+    /// Parses an address from a string.
     ///
-    /// See type documentation for more detail
+    /// See type documentation for more detail.
     pub fn from_string<S: Into<String>>(s: S) -> Self {
         match s.into().parse::<Address>() {
             Ok(a) => a,
@@ -164,16 +176,17 @@ impl Address {
             }
         }
     }
-    /// Generate a random address with a specific type
+    /// Generate a random address with the given type.
     pub fn random(tt: u8) -> Self {
         Self { tt, ..random() }
     }
 }
+
 impl core::str::FromStr for Address {
     type Err = AddressParseError;
-    /// Parse an address from a string
+    /// Parse an address from a string.
     ///
-    /// See type documentation for more detail
+    /// See type documentation for more detail.
     fn from_str(s: &str) -> Result<Address, Self::Err> {
         let buf: String = s.into();
         let mut vec: Vec<_> = buf.split('#').collect();
@@ -203,6 +216,7 @@ impl core::str::FromStr for Address {
         }
     }
 }
+
 impl Display for Address {
     fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
         let inner: &'a str = from_utf8(self.inner.as_slice()).unwrap_or("Invalid UTF-8");

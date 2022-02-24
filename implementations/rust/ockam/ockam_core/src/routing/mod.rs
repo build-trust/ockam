@@ -1,4 +1,4 @@
-//! Submodule to handle transport-channel generic routing
+//! Submodule to expose transport-channel generic routing.
 
 mod error;
 pub use error::*;

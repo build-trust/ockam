@@ -1,3 +1,5 @@
+//! Submodule to expose routing message types.
+
 mod transport_message;
 pub use transport_message::*;
 
