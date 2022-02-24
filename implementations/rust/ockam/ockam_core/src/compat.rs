@@ -1,5 +1,5 @@
-//! A facade around the various collections and primitives needed
-//! when using "std", "no_std + alloc" or "no_std" targets.
+//! A facade around the various collections and primitives needed to
+//! support `std`, `no_std + alloc` or `no_std` targets.
 //!
 //! When importing from the standard library:
 //!
@@ -9,22 +9,22 @@
 //!      possible. (e.g. std::sync::Arc -> ockam_core::compat::sync::Arc)
 //!   3. if you need to add new items to compat, follow the originating
 //!      namespace. (e.g. compat::vec::Vec and not compat::Vec)
-#![allow(missing_docs)]
 
-/// std::borrow
+/// Provides `std::borrow` for `alloc` targets.
 #[cfg(feature = "alloc")]
 pub use alloc::borrow;
 
 #[doc(hidden)]
 pub use futures_util::try_join;
 
-/// std::boxed
+/// Provides `std::boxed` for `alloc` targets.
 pub mod boxed {
     #[cfg(feature = "alloc")]
     pub use alloc::boxed::Box;
 }
 
-/// std::collections
+/// Provides `std::collections` and alternate `hashbrown` map and set
+/// implementations.
 pub mod collections {
     #[cfg(feature = "alloc")]
     pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
@@ -32,10 +32,12 @@ pub mod collections {
     pub use hashbrown::{HashMap, HashSet};
 }
 
-/// std::error::Error trait
+/// Provides a `std::error::Error` trait.
 pub mod error {
     #[cfg(not(feature = "std"))]
+    /// A `no_std` compatible definition of the `std::error::Error` trait.
     pub trait Error: core::fmt::Debug + core::fmt::Display {
+        /// The lower-level source of this error, if any.
         fn source(&self) -> Option<&(dyn Error + 'static)> {
             None
         }
@@ -44,21 +46,21 @@ pub mod error {
     pub use std::error::Error;
 }
 
-/// std::format
+/// Provides `std::format` for `alloc` targets.
 #[cfg(feature = "alloc")]
 pub use alloc::format;
 
-/// std::io
+/// Provides `std::io`.
 #[cfg(not(feature = "std"))]
 pub use core2::io;
 #[cfg(feature = "std")]
 pub use std::io;
 
-/// std::net
+/// Provides `std::net`.
 #[cfg(feature = "std")]
 pub use std::net;
 
-/// rand
+/// Provides `rand`.
 pub mod rand {
     pub use rand::distributions;
     pub use rand::prelude;
@@ -81,6 +83,10 @@ pub mod rand {
     #[cfg(feature = "std")]
     pub use rand::rngs;
     #[cfg(not(feature = "std"))]
+    /// A placeholder implementation of the `rand::rngs` generators module.
+    ///
+    /// WARNING: This implementation does NOT generate true random
+    /// values, please do not try to use it in production.
     pub mod rngs {
         pub use super::not_random::OsRng;
     }
@@ -88,8 +94,8 @@ pub mod rand {
     /// Placeholders for various features from 'rand' that are not
     /// supported on no_std targets.
     ///
-    /// WARNING: These implementations are NOT random, please do not
-    /// try to use these in production!
+    /// WARNING: This implementation does NOT generate true random
+    /// values, please do not try to use any of these in production.
     #[cfg(not(feature = "std"))]
     mod not_random {
         use super::*;
@@ -119,12 +125,14 @@ pub mod rand {
             }
         }
 
-        /// rand::thread_rng()
-        /// WARNING: This implementation is neither random nor thread-local.
+        /// An implementation of `rand::thread_rng()` not intended for
+        /// production use.
+        ///
+        /// WARNING: This implementation is neither random nor
+        /// thread-local.
         #[allow(unsafe_code)]
         pub fn thread_rng() -> FakeRng {
             use rand::SeedableRng;
-            // TODO safety
             static mut RNG: Option<rand_pcg::Lcg64Xsh32> = None;
             unsafe {
                 if RNG.is_none() {
@@ -136,7 +144,8 @@ pub mod rand {
             FakeRng(lcg)
         }
 
-        /// rand::random()
+        /// An implementation of `rand::random()` not intended for
+        /// production use.
         pub fn random<T>() -> T
         where
             rand::distributions::Standard: rand::prelude::Distribution<T>,
@@ -145,7 +154,7 @@ pub mod rand {
             rng.gen()
         }
 
-        /// rand::OsRng
+        /// `rand::OsRng`
         pub struct OsRng;
 
         impl CryptoRng for OsRng {}
@@ -175,7 +184,7 @@ pub mod rand {
     }
 }
 
-/// std::string
+/// Provides `std::string`.
 pub mod string {
     #[cfg(feature = "alloc")]
     pub use alloc::string::{String, ToString};
@@ -183,18 +192,20 @@ pub mod string {
     use heapless::String as ByteString;
 }
 
-/// std::sync
+/// Provides `std::sync` for `no_std` targets.
 #[cfg(not(feature = "std"))]
 pub mod sync {
     pub use alloc::sync::Arc;
     pub use spin::RwLock;
 
-    /// spin::Mutex.lock() does not return Option<T>
+    /// Wrap `spin::Mutex.lock()` as it does not return Option<T> like `std::sync::Mutex`.
     pub struct Mutex<T>(spin::Mutex<T>);
     impl<T> Mutex<T> {
+        /// Creates a new mutex in an unlocked state ready for use.
         pub fn new(value: T) -> Self {
             Mutex(spin::Mutex::new(value))
         }
+        /// Acquires a mutex, blocking the current thread until it is able to do so.
         pub fn lock(&self) -> Option<spin::MutexGuard<'_, T>> {
             Some(self.0.lock())
         }
@@ -211,16 +222,14 @@ pub mod sync {
         }
     }
 }
+/// Provides `std::sync` for `std` targets.
 #[cfg(feature = "std")]
 pub mod sync {
     pub use std::sync::Arc;
     pub use std::sync::{Mutex, RwLock};
 }
 
-/// std::task
-#[cfg(feature = "std")]
-pub use std::task;
-
+/// Provides `std::task` for `no_std` targets.
 #[cfg(not(feature = "std"))]
 pub mod task {
     // Include both `alloc::task::*` and `core::task::*` for a better
@@ -230,7 +239,11 @@ pub mod task {
     pub use core::task::*;
 }
 
-/// std::vec
+/// Provides `std::task` for `std` targets.
+#[cfg(feature = "std")]
+pub use std::task;
+
+/// Provides `std::vec`.
 pub mod vec {
     #[cfg(feature = "alloc")]
     pub use alloc::vec::*;

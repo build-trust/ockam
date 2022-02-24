@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 impl<M: Message + Serialize + DeserializeOwned> Message for ResultMessage<M> {}
 
-/// Message that is meant to be sent between workers if Error-handling is needed.
+/// A `ResultMessage` is used between workers when Error-handling is needed.
 #[derive(Serialize, Deserialize)]
 pub struct ResultMessage<M: Message>(Result<M>);
 
@@ -12,7 +12,7 @@ impl<M> ResultMessage<M>
 where
     M: Message,
 {
-    /// Constructor
+    /// Creates a new `ResultMessage<R>` suitable for holding a value of type `M`.
     pub fn new(inner: Result<M>) -> Self {
         Self(inner)
     }

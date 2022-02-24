@@ -1,6 +1,7 @@
-/// Creates a [`Route`] containing the arguments.
+/// Creates a new [`Route`] from a comma-delimited list of [`Address`]es.
 ///
-/// `route!` allows `Route`s to be defined with the same syntax as array expressions.
+/// The `route!` macro allows a `Route` to be defined with the same
+/// syntax as array expressions:
 ///
 /// ```
 /// # use ockam_core::{Route, route, Address};
@@ -9,6 +10,7 @@
 /// let route = route!["address1", "address2", "address3".to_string(), address4];
 /// ```
 ///
+/// [`Address`]: crate::Address
 /// [`Route`]: crate::Route
 #[macro_export]
 macro_rules! route {

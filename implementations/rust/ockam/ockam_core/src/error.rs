@@ -13,14 +13,14 @@ use serde::{Deserialize, Serialize};
 /// When the `"std"` feature is enabled and the Rust Standard Library is
 /// available, the `Error` stores:
 ///
-/// 1. __Error Code__: A `u32` representing the the presise error.
+/// 1. __Error Code__: A `u32` representing the precise error.
 /// 2. __Error Domain__: An error domain string.
 ///
 /// # no_std
 /// When the `"std"` feature is not enabled we assume that the Rust Standard
 /// Library is not available, the `Error` stores:
 ///
-/// 1. __Error Code__: A `u32` representing the the presise error.
+/// 1. __Error Code__: A `u32` representing the precise error.
 ///
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Error {
@@ -30,15 +30,15 @@ pub struct Error {
     domain: String,
 }
 
-/// The type returned by Ockam functions.
+/// The result type returned by Ockam functions.
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
-/// Produces Ok(false), which reads confusingly in auth code.
+/// Produces Ok(false) to avoid an ambiguous reading from using the unadorned value in auth code.
 pub fn deny() -> Result<bool> {
     Ok(false)
 }
 
-/// Produces Ok(true), which reads confusingly in auth code.
+/// Produces Ok(true) to avoid an ambiguous reading from using the unadorned value in auth code.
 pub fn allow() -> Result<bool> {
     Ok(true)
 }
@@ -59,14 +59,14 @@ impl Error {
         }
     }
 
-    /// Returns an error's domain.
+    /// Return an error's domain.
     #[inline]
     #[cfg(feature = "alloc")]
     pub fn domain(&self) -> &String {
         &self.domain
     }
 
-    /// Returns an error's code.
+    /// Return an error's code.
     #[inline]
     pub fn code(&self) -> u32 {
         self.code
@@ -138,8 +138,8 @@ mod std_test {
 #[cfg(not(feature = "alloc"))]
 #[cfg(test)]
 mod no_std_test {
-    // These following tests are run for no_std targets without
-    // support for heap allocation:
+    // The following tests are run for no_std targets without support
+    // for heap allocation:
     //
     //     cargo test --no-default-features --features="no_std"
     use super::*;

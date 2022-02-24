@@ -28,7 +28,7 @@ ockam_core = "0.49.0"
 
 The `ockam_core` crate has a Cargo feature named `"std"` that is enabled by
 default. In order to use this crate in a `no_std` context this feature can
-disabled as follows
+be disabled as follows
 
 ```
 [dependencies]

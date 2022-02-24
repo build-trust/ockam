@@ -1,6 +1,6 @@
 use crate::Error;
 
-/// A routing specific error type
+/// A routing specific error type.
 #[derive(Clone, Copy, Debug)]
 pub enum RouteError {
     /// Message had an incomplete route

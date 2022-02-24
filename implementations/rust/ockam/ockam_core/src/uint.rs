@@ -1,11 +1,16 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// UInt that supports serde_bare serialization as uint (opposed to rust fixed-size integers)
+/// Unsigned integer implementation that supports serde_bare
+/// serialization as a 64 bit `uint` type.
+///
+/// This is to avoid cross-platform and cross-language compatibility
+/// inconsistencies that may be encountered by using Rust fixed-size
+/// integers.
 #[derive(Debug, PartialEq)]
 pub struct Uint(serde_bare::Uint);
 
 impl Uint {
-    /// Return underlying integer
+    /// Return the underlying integer.
     pub fn u64(&self) -> u64 {
         self.0 .0
     }

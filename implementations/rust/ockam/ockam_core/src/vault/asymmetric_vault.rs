@@ -2,11 +2,11 @@ use crate::vault::{PublicKey, Secret};
 use crate::Result;
 use crate::{async_trait, compat::boxed::Box};
 
-/// Vault with asymmetric encryption functionality
+/// Defines the Vault interface for asymmetric encryption.
 #[async_trait]
 pub trait AsymmetricVault {
     /// Compute Elliptic-Curve Diffie-Hellman using this secret key
-    /// and the specified uncompressed public key
+    /// and the specified uncompressed public key.
     async fn ec_diffie_hellman(
         &mut self,
         context: &Secret,

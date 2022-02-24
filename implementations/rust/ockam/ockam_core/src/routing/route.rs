@@ -5,20 +5,20 @@ use crate::{
 use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
 
-/// A full route to a peer
+/// A full route to a peer.
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Route {
     inner: VecDeque<Address>,
 }
 
 impl Route {
-    /// Create an empty RouteBuilder
+    /// Create an empty `RouteBuilder`.
     #[allow(clippy::new_ret_no_self)]
     pub fn new() -> RouteBuilder<'static> {
         RouteBuilder::new()
     }
 
-    /// Create a route from a Vec of addresses
+    /// Create a route from a `Vec` of [`Address`].
     pub fn create<T: Into<Address>>(vt: Vec<T>) -> Self {
         let mut route = Route::new();
         for addr in vt {
@@ -27,7 +27,7 @@ impl Route {
         route.into()
     }
 
-    /// Parse a route from a string
+    /// Parse a route from a string.
     pub fn parse<S: Into<String>>(s: S) -> Option<Route> {
         let s = s.into();
         if s.is_empty() {
@@ -49,7 +49,7 @@ impl Route {
         )
     }
 
-    /// Create a new [`RouteBuilder`] from the current Route
+    /// Create a new `RouteBuilder` from the current [`Route`].
     ///
     /// [`RouteBuilder`]: crate::RouteBuilder
     pub fn modify(&mut self) -> RouteBuilder {
@@ -59,21 +59,26 @@ impl Route {
         }
     }
 
-    /// Get the next item from this route
+    /// Return the next `Address` and remove it from this route.
     pub fn step(&mut self) -> Result<Address> {
         self.inner
             .pop_front()
             .ok_or_else(|| RouteError::IncompleteRoute.into())
     }
 
-    /// Get the next item from this route without removing it
+    /// Return the next `Address` from this route without removing it.
     pub fn next(&self) -> Result<&Address> {
         self.inner
             .front()
             .ok_or_else(|| RouteError::IncompleteRoute.into())
     }
 
-    /// Get the final recipient address
+    /// Return the final recipient address.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if passed an empty route.
+    ///
     pub fn recipient(&self) -> Address {
         self.inner
             .back()
@@ -96,7 +101,7 @@ impl Display for Route {
     }
 }
 
-// Easily turn a RouteBuilder into a Route
+// Convert a `RouteBuilder` into a `Route`.
 impl From<RouteBuilder<'_>> for Route {
     fn from(RouteBuilder { ref inner, .. }: RouteBuilder) -> Self {
         Self {
@@ -105,7 +110,9 @@ impl From<RouteBuilder<'_>> for Route {
     }
 }
 
-// A single address is a valid route. TODO Using Into<Address> here is incompatible with the From<Vec<T>> below. Why?
+// Convert an `Address` into a `Route`.
+//
+// A single address can represent a valid route.
 impl From<Address> for Route {
     fn from(address: Address) -> Self {
         let addr: Address = address;
@@ -113,14 +120,21 @@ impl From<Address> for Route {
     }
 }
 
-// TODO this should be covered by Into<Address>, hack for the above.
+// Convert a `&str` into a `Route`.
+//
+// A string-slice reference can represent a valid route.
 impl From<&str> for Route {
     fn from(s: &str) -> Self {
         Address::from(s).into()
     }
 }
 
-// A Vec of addresses is a valid route (if it is assumed vec index order is route order)
+/// Convert a A `Vec` of `Address`es into a `Route`.
+///
+/// A vector of addresses can represent a valid route.
+///
+/// Note that this only holds if the vector index order is in the same
+/// order as the expected route.
 impl<T: Into<Address>> From<Vec<T>> for Route {
     fn from(vt: Vec<T>) -> Self {
         let mut route = Route::new();
@@ -131,7 +145,7 @@ impl<T: Into<Address>> From<Vec<T>> for Route {
     }
 }
 
-/// Utility type to build and manipulate routes
+/// A utility type for building and manipulating routes.
 pub struct RouteBuilder<'r> {
     inner: VecDeque<Address>,
     write_back: Option<&'r mut Route>,
@@ -152,26 +166,26 @@ impl RouteBuilder<'_> {
         }
     }
 
-    /// Push a new item to the back of the route
+    /// Push a new item to the back of the route.
     pub fn append<A: Into<Address>>(mut self, addr: A) -> Self {
         self.inner.push_back(addr.into());
         self
     }
 
-    /// Push an item with an explicit type to the back of the route
+    /// Push an item with an explicit type to the back of the route.
     pub fn append_t<A: Into<String>>(mut self, t: u8, addr: A) -> Self {
         self.inner
             .push_back(format!("{}#{}", t, addr.into()).into());
         self
     }
 
-    /// Push a new item to the front of the route
+    /// Push a new item to the front of the route.
     pub fn prepend<A: Into<Address>>(mut self, addr: A) -> Self {
         self.inner.push_front(addr.into());
         self
     }
 
-    /// Prepend a full route to an existing route
+    /// Prepend a full route to an existing route.
     pub fn prepend_route(mut self, route: Route) -> Self {
         route
             .inner
@@ -181,7 +195,7 @@ impl RouteBuilder<'_> {
         self
     }
 
-    /// Replace the next item in the route with a new address
+    /// Replace the next item in the route with a new address.
     ///
     /// Similar to [`Self::prepend(...)`](RouteBuilder::prepend), but
     /// drops the previous HEAD value.
@@ -191,13 +205,13 @@ impl RouteBuilder<'_> {
         self
     }
 
-    /// Pop front
+    /// Pop the front item from the route.
     pub fn pop_front(mut self) -> Self {
         self.inner.pop_front();
         self
     }
 
-    /// Pop back
+    /// Pop the back item from the route.
     pub fn pop_back(mut self) -> Self {
         self.inner.pop_back();
         self
