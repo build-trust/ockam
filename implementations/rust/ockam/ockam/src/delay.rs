@@ -1,4 +1,4 @@
-use crate::{spawn, Address, Context, Message, Result, Route};
+use crate::{Address, Context, Message, Result, Route};
 use core::time::Duration;
 
 /// Send a delayed event to a worker
@@ -43,7 +43,7 @@ impl<M: Message> DelayedEvent<M> {
     /// Run this delayed event
     pub(crate) fn spawn(self) {
         let Self { route, ctx, d, msg } = self;
-        spawn(async move {
+        ockam_node::spawn(async move {
             ctx.sleep(d).await;
             if let Err(e) = ctx.send(route, msg).await {
                 error!("Failed to send delayed message: {}", e);

@@ -1,10 +1,9 @@
 use crate::service::echoer::ECHOER_SERVICE_NAME;
 use crate::AppError;
 use log::error;
-use ockam::{
-    route, Context, Identity, IdentityTrait, Result, TcpTransport, TrustEveryonePolicy, Vault, TCP,
-};
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use ockam::identity::{Identity, IdentityTrait, TrustEveryonePolicy};
+use ockam::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault, Vault};
+use ockam::{route, Context, Result, TcpTransport, TCP};
 
 pub struct ChannelCommand {}
 

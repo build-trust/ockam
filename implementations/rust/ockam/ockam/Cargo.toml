@@ -26,6 +26,10 @@ version = "0.51.0"
 rust-version = "1.56.0"
 publish = true
 
+[package.metadata.docs.rs]
+all-features = false
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["std", "ockam_transport_tcp", "software_vault", "noise_xx"]
 software_vault = [

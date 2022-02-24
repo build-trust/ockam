@@ -1332,6 +1332,7 @@ checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
 name = "hello_ockam"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "ockam",
  "ockam_transport_websocket",
  "rand 0.8.5",

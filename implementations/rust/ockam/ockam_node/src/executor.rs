@@ -16,8 +16,6 @@ use ockam_core::compat::sync::Arc;
 /// (`tokio` by default) and the Ockam router.  In most cases it is
 /// recommended you use the [ockam::node](ockam::node) function
 /// annotation instead!
-///
-///
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
     rt: Arc<Runtime>,

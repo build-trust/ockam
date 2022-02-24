@@ -1,4 +1,5 @@
-//! Worker system module
+//! Types and traits for workers which act as a cluster of workers,
+//! [`WorkerSystem`]s.
 
 mod handler;
 pub use handler::SystemHandler;
@@ -15,7 +16,7 @@ use crate::OckamError;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, vec::Vec};
 use ockam_core::{Address, Message, Result, Routed};
 
-/// A componasble worker system type
+/// A composable worker system type.
 ///
 /// A worker system is a single worker which can act as a full cluster
 /// of workers.  This is achieved via the `send_to_self(...)` API

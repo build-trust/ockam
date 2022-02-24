@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-/// A simple monotonic ID generator
+/// A simple monotonic ID generator. Not public.
 pub(crate) struct Monotonic {
     inner: AtomicUsize,
 }

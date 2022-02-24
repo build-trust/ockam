@@ -41,6 +41,7 @@ pub struct OckamMessage {
 }
 
 impl OckamMessage {
+    /// Create a new [`OckamMessage`] with the data from `msg`.
     pub fn new<M: Message>(msg: M) -> Result<Self> {
         Ok(Self {
             data: msg.encode()?,

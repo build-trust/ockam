@@ -4,10 +4,10 @@ use crate::AppError;
 use comfy_table::Table;
 use log::error;
 use ockam::{
-    AsyncTryClone, Context, Identity, IdentityAccessControlBuilder, TcpTransport,
-    TrustPublicKeyPolicy, Vault,
+    identity::{Identity, IdentityAccessControlBuilder, TrustPublicKeyPolicy},
+    vault::{PublicKey, SecretType, Vault},
+    AsyncTryClone, Context, TcpTransport,
 };
-use ockam_core::vault::{PublicKey, SecretType};
 
 pub struct ChannelListenCommand {}
 

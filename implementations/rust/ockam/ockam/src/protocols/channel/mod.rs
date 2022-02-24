@@ -1,3 +1,4 @@
+//! Ockam channel protocol structures
 use crate::Message;
 use ockam_core::Address;
 use serde::{Deserialize, Serialize};

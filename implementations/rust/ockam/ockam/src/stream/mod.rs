@@ -1,3 +1,4 @@
+//! Module containing types for managing [`Stream`]s.
 mod cmd;
 pub use cmd::StreamWorkerCmd;
 
@@ -21,8 +22,6 @@ use ockam_core::{Decodable, RouteBuilder};
 /// Each stream has a sending and consuming worker (publisher and
 /// consumer) that are created and managed on the fly by this
 /// abstraction.
-///
-///
 pub struct Stream {
     ctx: Context,
     interval: Duration,
@@ -60,6 +59,7 @@ impl From<SenderAddress> for Route {
     }
 }
 
+/// The reciever half of [`SenderAddress`].
 pub struct ReceiverAddress {
     ctx: Context,
     _inner: Address,

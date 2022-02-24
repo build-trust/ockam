@@ -11,15 +11,17 @@ pub mod channel;
 pub mod pipe;
 pub mod stream;
 
-/// A protocol payload wrapper for pre-parsing
+/// A protocol payload wrapper for pre-parsing.
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct ProtocolPayload {
+    /// The type of protocol, which specifies how `data` is encoded.
     pub protocol: ProtocolId,
+    /// The payload, encoded in a way determined by `protocol`.
     pub data: Vec<u8>,
 }
 
 impl ProtocolPayload {
-    /// Take an encodable message type and wrap it into a protocol payload
+    /// Take an encodable message type and wrap it into a protocol payload.
     ///
     /// ## Decoding payloads
     ///
@@ -34,7 +36,7 @@ impl ProtocolPayload {
     }
 }
 
-/// Map a `ProtocolPayload` to a protocol specific type
+/// Map a `ProtocolPayload` to a protocol specific type.
 ///
 /// This trait should be implemented for the facade enum-type of a
 /// protocol, meaning that the usage will look something like this.
@@ -54,5 +56,7 @@ pub trait ProtocolParser: Sized {
     /// Internally it's recommended to use static strings and a set
     /// operation to speed up repeated queries.
     fn check_id(id: &str) -> bool;
+    /// Parse a [ProtocolPayload], which must have a [type](ProtocolId)
+    /// supported by this parser.
     fn parse(pp: ProtocolPayload) -> Result<Self>;
 }

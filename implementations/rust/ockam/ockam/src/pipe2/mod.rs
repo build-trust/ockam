@@ -15,12 +15,12 @@ mod sender;
 mod tests;
 
 use crate::{
-    hooks::pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm, SenderOrdering},
     pipe2::{
         listener::PipeListener,
         receiver::PipeReceiver,
         sender::{PeerRoute, PipeSender},
     },
+    system::hooks::pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm, SenderOrdering},
     Context, OckamMessage, SystemBuilder, WorkerSystem,
 };
 use ockam_core::{compat::collections::BTreeSet, Address, Result, Route};

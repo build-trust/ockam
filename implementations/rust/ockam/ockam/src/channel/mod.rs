@@ -10,20 +10,13 @@ use crate::{
 };
 use ockam_core::{Address, Result, Route, RouteBuilder};
 
+#[doc(inline)]
+pub use ockam_channel::SecureChannel;
+
 #[cfg(test)]
 mod tests;
 
 const CLUSTER_NAME: &str = "ockam.channel";
-
-pub struct ChannelHandle {
-    tx: Address,
-}
-
-impl ChannelHandle {
-    pub fn tx(&self) -> RouteBuilder {
-        RouteBuilder::new().prepend_route(self.tx.clone().into())
-    }
-}
 
 /// Generalised ockam channel API
 pub struct ChannelBuilder {
@@ -104,5 +97,16 @@ impl ChannelBuilder {
             self.rx_hooks.clone(),
         )
         .await
+    }
+}
+
+pub struct ChannelHandle {
+    tx: Address,
+}
+
+impl ChannelHandle {
+    /// Returns a route-builder for sending data through this channel.
+    pub fn tx(&self) -> RouteBuilder {
+        RouteBuilder::new().prepend_route(self.tx.clone().into())
     }
 }

@@ -1,3 +1,4 @@
+//! Registration with Ockam Hub, and forwarding to local workers.
 #![deny(missing_docs)]
 
 use crate::{route, Context, Message, OckamError};
