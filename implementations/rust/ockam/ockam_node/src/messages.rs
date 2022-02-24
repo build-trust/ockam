@@ -249,7 +249,7 @@ impl NodeReply {
         Ok(NodeReply::State(b))
     }
 
-    /// Return [NodeError::NoSuchWorker]
+    /// Return [NodeError::NoSuchAddress]
     pub fn no_such_address(a: Address) -> NodeReplyResult {
         Err(NodeError::NoSuchAddress(a))
     }

@@ -40,9 +40,10 @@ pub struct IdentityState<V: IdentityVault> {
 pub struct IdentityStateConst;
 
 impl IdentityStateConst {
-    /// Sha256 of that value is used as previous event id for first event in a [`Identity`]
+    /// Sha256 of that value is used as previous event id for first event in a
+    /// [`crate::Identity`]
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
-    /// Label for [`Identity`] update key
+    /// Label for [`crate::Identity`] update key
     pub const ROOT_LABEL: &'static str = "OCKAM_RK";
     /// Label for key used to issue credentials
     #[cfg(feature = "credentials")]
@@ -198,15 +199,17 @@ impl<V: IdentityVault> IdentityState<V> {
         self.change_history.get_public_key(&label)
     }
 
-    /// Generate Proof of possession of [`Identity`].
+    /// Generate Proof of possession of [`crate::Identity`].
+    ///
     /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
     pub async fn create_auth_proof(&mut self, channel_state: &[u8]) -> Result<AuthenticationProof> {
         let root_secret = self.get_root_secret_key().await?;
 
         Authentication::generate_proof(channel_state, &root_secret, &mut self.vault).await
     }
-    /// Verify Proof of possession of [`Identity`] with given [`IdentityIdentifier`].
-    /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
+    /// Verify Proof of possession of [`Identity`](crate::Identity) with given
+    /// [`IdentityIdentifier`]. channel_state should be tied to channel's
+    /// cryptographical material (e.g. h value for Noise XX)
     pub async fn verify_auth_proof(
         &mut self,
         channel_state: &[u8],
@@ -239,7 +242,7 @@ impl<V: IdentityVault> IdentityState<V> {
         Ok(self.change_history.as_ref().to_vec())
     }
 
-    /// Verify whole event chain of current [`Identity`]
+    /// Verify whole event chain of current [`Identity`](crate::Identity)
     pub async fn verify_changes(&mut self) -> Result<bool> {
         if !IdentityChangeHistory::check_consistency(&[], self.change_history().as_ref()) {
             return deny();

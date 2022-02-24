@@ -40,6 +40,7 @@ pub struct OckamMessage {
 }
 
 impl OckamMessage {
+    /// Create a new [`OckamMessage`] with the data from `msg`.
     pub fn new<M: Message>(msg: M) -> Result<Self> {
         Ok(Self {
             data: msg.encode()?,
@@ -48,7 +49,7 @@ impl OckamMessage {
         })
     }
 
-    /// Create a new `OckamMessage` by nesting a previous one
+    /// Create a new [`OckamMessage`] by nesting a previous one
     pub fn wrap(mut prev: Self) -> Result<Self> {
         let generic = core::mem::replace(&mut prev.generic, None);
         Ok(Self {

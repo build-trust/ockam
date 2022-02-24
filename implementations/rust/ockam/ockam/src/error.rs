@@ -1,5 +1,10 @@
 #![deny(missing_docs)]
 #![allow(missing_docs)] // Contents are self describing for now.
+
+/// An enumeration describing some of the error types emitted by this library.
+///
+/// Most user code should use [`crate::Error`] instead.
+// FIXME: use updated ockam_core::Error...
 #[derive(Clone, Copy, Debug)]
 pub enum OckamError {
     BareError = 1,
