@@ -1,6 +1,11 @@
 # Ockam Scripts
 
 This folder contains scripts to release Ockam Rust crates. Note, to run these scripts you need to run Bash version 4 upwards. All commands should be called from the Ockam root path.
+To perform release, release scripts automatically check for updated crates using `recently created git tags`, we can override the default setting if want to track updated crates with a more recent tag. To specify a `git tag`, we can define a variable `GIT_TAG` to any of the scripts. For example to generate changelog using a more recent `git tag` we can call the following command below
+```bash
+GIT_TAG="a_more_recent_git_tag_v0.0.0" tools/scripts/release/changelog.sh
+```
+This is same for crate bump, crate publish and tagging scripts.
 
 ## Changelog Generation
 
