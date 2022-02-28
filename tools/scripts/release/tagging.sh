@@ -30,6 +30,14 @@ tag_crate() {
 
     echo "Tagging $tag"
 
+    # Check if tag was recently created locally and delete if so.
+    # `Draft release` tags are not created upstream till `Release`
+    # so we can delete them locally and re-upload on a re-run.
+    if git show-ref --tags "$tag" --quiet; then
+        echo "Git tag was created recently, deleting now.";
+        git tag -d $tag
+    fi
+
     git tag -s $tag $COMMIT_SHA -m "ci: tag $tag"
 
     text="* [Crate](https://crates.io/crates/$name/$version)
