@@ -8,6 +8,17 @@
 last_git_tag=$(eval "git describe --tags --abbrev=0");
 updated_crates="";
 
+if [[ ! -z $GIT_TAG ]]; then
+    # Check if git tag is valid.
+    if git show-ref --tags $GIT_TAG --quiet; then
+        echo "Specified $GIT_TAG as tag to track updated crates.";
+        last_git_tag=$GIT_TAG
+    else
+        echo "Specified git tag used to track updated crates invalid."
+        exit 1
+    fi
+fi
+
 for crate in $(ls "implementations/rust/ockam"); do
     if git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$crate/src; then
         git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$crate/Cargo.toml || updated_crates="$updated_crates $crate"
