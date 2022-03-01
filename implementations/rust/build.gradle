@@ -37,7 +37,7 @@ task lint_cargo_clippy {
 task lint_cargo_deny {
   doLast {
     exec { commandLine cargo('install', '--locked', '--version', '0.11.0', 'cargo-deny') }
-    exec { commandLine cargo('deny', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories') }
+    exec { commandLine cargo('deny', '--all-features', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories') }
   }
 }
 
