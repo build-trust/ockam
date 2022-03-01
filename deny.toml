@@ -20,3 +20,6 @@ allow = [
 unmaintained = "deny"
 vulnerability = "deny"
 yanked = "warn"
+ignore = [
+    "RUSTSEC-2020-0159"
+]
