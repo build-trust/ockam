@@ -21,5 +21,6 @@ unmaintained = "deny"
 vulnerability = "deny"
 yanked = "warn"
 ignore = [
-    "RUSTSEC-2020-0159"
+    "RUSTSEC-2020-0159",
+    "RUSTSEC-2022-0008"
 ]
