@@ -5,25 +5,25 @@ use crate::{LocalMessage, Result};
 #[async_trait]
 pub trait AccessControl: Send + Sync + 'static {
     /// Return true if the message is allowed to pass, and false if not.
-    async fn msg_is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool>;
+    async fn is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool>;
 }
 
 /// An Access Control type that allows all messages to pass through.
-pub struct Passthrough;
+pub struct AllowAll;
 
 #[async_trait]
-impl AccessControl for Passthrough {
-    async fn msg_is_authorized(&mut self, _local_msg: &LocalMessage) -> Result<bool> {
-        Ok(true)
+impl AccessControl for AllowAll {
+    async fn is_authorized(&mut self, _local_msg: &LocalMessage) -> Result<bool> {
+        crate::allow()
     }
 }
 
 /// An Access Control type that blocks all messages from passing through.
-pub struct NoAccess;
+pub struct DenyAll;
 
 #[async_trait]
-impl AccessControl for NoAccess {
-    async fn msg_is_authorized(&mut self, _local_msg: &LocalMessage) -> Result<bool> {
-        Ok(false)
+impl AccessControl for DenyAll {
+    async fn is_authorized(&mut self, _local_msg: &LocalMessage) -> Result<bool> {
+        crate::deny()
     }
 }
