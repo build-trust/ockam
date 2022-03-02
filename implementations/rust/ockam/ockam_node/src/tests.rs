@@ -371,22 +371,20 @@ impl Worker for WaitForWorker {
     }
 }
 
-#[test]
-fn wait_for_worker() {
-    let (mut ctx, mut executor) = start_node();
-    executor
-        .execute(async move {
-            let t1 = tokio::time::Instant::now();
-            ctx.start_worker("slow", WaitForWorker).await.unwrap();
+#[ockam_macros::test]
+async fn wait_for_worker(ctx: &mut Context) -> Result<()> {
+    let t1 = tokio::time::Instant::now();
+    ctx.start_worker("slow", WaitForWorker).await.unwrap();
 
-            info!("Waiting for worker...");
-            ctx.wait_for("slow").await.unwrap();
-            info!("Done waiting :)");
+    info!("Waiting for worker...");
+    ctx.wait_for("slow").await.unwrap();
+    info!("Done waiting :)");
 
-            let t2 = tokio::time::Instant::now();
-            assert!((t2 - t1) > Duration::from_secs(1));
+    let t2 = tokio::time::Instant::now();
+    assert!((t2 - t1) > Duration::from_secs(1));
 
-            ctx.stop().await.unwrap();
-        })
-        .unwrap();
+    if let Err(e) = ctx.stop().await {
+        println!("Unclean stop: {}", e)
+    }
+    Ok(())
 }

@@ -27,8 +27,7 @@ pub(crate) fn node_test(input: ItemFn, args: AttributeArgs) -> Result<TokenStrea
             .into_iter();
         // `Span` on stable Rust has a limitation that only points to the first
         // token, not the whole tokens. We can work around this limitation by
-        // using the first/last span of the tokens like
-        // `Error::new_spanned` does.
+        // using the first/last span of the tokens like `Error::new_spanned` does.
         let start = last_stmt.next().map_or_else(Span::call_site, |t| t.span());
         last_stmt.last().map_or(start, |t| t.span())
     };
@@ -50,9 +49,8 @@ fn output_node_test(
     input.block = parse2(quote_spanned! {last_stmt_end_span=>
         {
             use core::time::Duration;
-            use ockam_node::tokio::time::timeout;
 
-            let (mut #ctx_ident, mut executor) = ockam_node::start_node();
+            let (mut #ctx_ident, mut executor) = start_node();
             executor
                 .execute(async move {
                     match timeout(Duration::from_millis(#timeout_ms as u64), #test_input_ident(&mut #ctx_ident)).await {
