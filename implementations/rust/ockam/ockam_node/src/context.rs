@@ -16,8 +16,8 @@ use crate::{NodeError, Reason};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
-    AccessControl, Address, AddressSet, AsyncTryClone, LocalMessage, Message, Passthrough,
-    Processor, Result, Route, TransportMessage, Worker,
+    AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, LocalMessage, Message, Processor,
+    Result, Route, TransportMessage, Worker,
 };
 
 /// A default timeout in seconds
@@ -72,7 +72,7 @@ impl Context {
             }
 
             if let RelayPayload::Direct(local_msg) = &relay_msg.data {
-                if !self.access_control.msg_is_authorized(local_msg).await? {
+                if !self.access_control.is_authorized(local_msg).await? {
                     warn!("Message for {} did not pass access control", relay_msg.addr);
                     continue;
                 }
@@ -139,7 +139,7 @@ impl Context {
             Arc::clone(&self.rt),
             self.sender.clone(),
             addr.clone().into(),
-            Passthrough,
+            AllowAll,
         );
 
         // Create a "bare relay" and register it with the router
@@ -163,7 +163,7 @@ impl Context {
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        self.start_worker_impl(address.into(), worker, Passthrough)
+        self.start_worker_impl(address.into(), worker, AllowAll)
             .await
     }
 
@@ -235,12 +235,8 @@ impl Context {
     {
         let addr = address.clone();
 
-        let (ctx, senders, ctrl_rx) = Context::new(
-            self.rt.clone(),
-            self.sender.clone(),
-            addr.into(),
-            Passthrough,
-        );
+        let (ctx, senders, ctrl_rx) =
+            Context::new(self.rt.clone(), self.sender.clone(), addr.into(), AllowAll);
 
         // Initialise the processor relay with the ctrl receiver
         ProcessorRelay::<P>::init(self.rt.as_ref(), processor, ctx, ctrl_rx);
