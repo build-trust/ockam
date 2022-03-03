@@ -22,6 +22,7 @@ pub async fn run(args: InletOpts, ctx: Context) -> anyhow::Result<()> {
         )
         .await?;
 
-    tcp.create_inlet(&args.inlet_address, route![channel, "outlet"]).await?;
+    tcp.create_inlet(&args.inlet_address, route![channel, "outlet"])
+        .await?;
     Ok(())
 }

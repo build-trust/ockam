@@ -14,10 +14,12 @@ pub async fn run(args: IdentityOpts, mut ctx: Context) -> anyhow::Result<()> {
             );
         }
         if vault_path.exists() {
-            std::fs::remove_file(&vault_path).with_context(|| format!("Failed to remove {:?}", vault_path))?;
+            std::fs::remove_file(&vault_path)
+                .with_context(|| format!("Failed to remove {:?}", vault_path))?;
         }
         if id_path.exists() {
-            std::fs::remove_file(&id_path).with_context(|| format!("Failed to remove {:?}", id_path))?;
+            std::fs::remove_file(&id_path)
+                .with_context(|| format!("Failed to remove {:?}", id_path))?;
         }
     }
     let vault = Vault::create();
@@ -26,7 +28,11 @@ pub async fn run(args: IdentityOpts, mut ctx: Context) -> anyhow::Result<()> {
     let identifier = exported.id.clone();
     tracing::info!("Saving new identity: {:?}", identifier.key_id());
     save_identity(&ockam_dir, &exported, &vault).await?;
-    println!("Initialized {:?} with identity {:?}.", ockam_dir, identifier.key_id());
+    println!(
+        "Initialized {:?} with identity {:?}.",
+        ockam_dir,
+        identifier.key_id()
+    );
     ctx.stop().await?;
     Ok(())
 }

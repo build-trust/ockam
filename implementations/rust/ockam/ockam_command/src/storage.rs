@@ -9,7 +9,9 @@ fn config_home() -> Option<PathBuf> {
         // Use ~/.config/ockam on macOS too to avoid surprise differences
         // between dev/prod. By default, `dirs` wants to put it inside
         // ~/Library/Preferences which is clearly wrong for us anyway.
-        dirs::home_dir().map(|d| d.join(".config")).or_else(dirs::config_dir)
+        dirs::home_dir()
+            .map(|d| d.join(".config"))
+            .or_else(dirs::config_dir)
     } else {
         dirs::config_dir()
     }
@@ -21,7 +23,10 @@ pub fn get_ockam_dir() -> Result<PathBuf> {
     let ockam_dir = if let Some(s) = std::env::var_os("OCKAM_DIR") {
         let pb = PathBuf::from(s);
         if !pb.is_absolute() || pb.parent().is_none() {
-            anyhow::bail!("`OCKAM_DIR` must be an non-root absolute path, got: `{}`", pb.display())
+            anyhow::bail!(
+                "`OCKAM_DIR` must be an non-root absolute path, got: `{}`",
+                pb.display()
+            )
         }
         pb
     } else if let Some(cfg) = config_home() {
@@ -44,7 +49,9 @@ pub fn get_ockam_dir() -> Result<PathBuf> {
 pub fn ensure_identity_exists(expect_trusted: bool) -> Result<()> {
     let dir = get_ockam_dir()?;
     if !dir.exists() {
-        anyhow::bail!("Failed to locate the ockam directory. Do you need to run `ockam create-identity`?");
+        anyhow::bail!(
+            "Failed to locate the ockam directory. Do you need to run `ockam create-identity`?"
+        );
     }
     if !dir.join("identity.json").exists() || !dir.join("vault.json").exists() {
         anyhow::bail!(
@@ -79,14 +86,17 @@ pub fn init_ockam_dir() -> Result<std::path::PathBuf> {
         let parent = parent.unwrap();
         if !parent.exists() {
             eprintln!("Creating parent of ockam directory at: {:?}", path);
-            std::fs::create_dir_all(parent)
-                .with_context(|| format!("failed to create ockam directory's parent at `{parent:?}`"))?;
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("failed to create ockam directory's parent at `{parent:?}`")
+            })?;
         }
         eprintln!("Creating ockam directory at {:?}", path);
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&path)
-            .with_context(|| format!("failed to create path to ockam data and vault at `{path:?}/vault`"))?;
+            .with_context(|| {
+                format!("failed to create path to ockam data and vault at `{path:?}/vault`")
+            })?;
     } else {
         tracing::debug!("Ockam directory exists at {:?}.", path);
         let verify_mode = false;
@@ -98,8 +108,9 @@ pub fn init_ockam_dir() -> Result<std::path::PathBuf> {
                     "Ockam directory at {:?} can be read/written by other users. Restricting...",
                     path
                 );
-                std::fs::set_permissions(&path, PermissionsExt::from_mode(0o700))
-                    .with_context(|| format!("failed to update permissions for ockam data at `{path:?}`"))?;
+                std::fs::set_permissions(&path, PermissionsExt::from_mode(0o700)).with_context(
+                    || format!("failed to update permissions for ockam data at `{path:?}`"),
+                )?;
             }
         }
     }
@@ -131,12 +142,16 @@ pub fn write(path: &std::path::Path, data: &[u8]) -> anyhow::Result<()> {
         .with_context(|| format!("Failed to open file at {:?}", path))?;
     file.write_all(data)
         .with_context(|| format!("Failed to write file at {:?}", path))?;
-    file.flush().with_context(|| format!("could not flush {path:?}"))?;
-    file.sync_all().with_context(|| format!("could not fsync {path:?}"))?;
+    file.flush()
+        .with_context(|| format!("could not flush {path:?}"))?;
+    file.sync_all()
+        .with_context(|| format!("could not fsync {path:?}"))?;
     Ok(())
 }
 
-pub fn load_trust_policy(ockam_dir: &std::path::Path) -> anyhow::Result<TrustMultiIdentifiersPolicy> {
+pub fn load_trust_policy(
+    ockam_dir: &std::path::Path,
+) -> anyhow::Result<TrustMultiIdentifiersPolicy> {
     let path = ockam_dir.join("trusted");
     let idents = crate::identity::read_trusted_idents_from_file(&path)?;
     eprintln!(

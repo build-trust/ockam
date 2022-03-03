@@ -88,7 +88,6 @@ impl SoftwareVault {
 #[async_trait]
 impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
-    #[tracing::instrument(skip_all, err)]
     async fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
         let key = match attributes.stype() {
             SecretType::X25519 | SecretType::Ed25519 => {

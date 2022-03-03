@@ -9,6 +9,7 @@ pub struct IdentityFile {
     version: u32,
     identity: ExportedIdentity,
 }
+
 // #[tracing::instrument(level = "debug", err)]
 pub fn load_identity(identity_json: &std::path::Path) -> anyhow::Result<ExportedIdentity> {
     let ident_bytes = std::fs::read(&identity_json)
@@ -23,10 +24,12 @@ pub fn load_identity(identity_json: &std::path::Path) -> anyhow::Result<Exported
 }
 
 #[tracing::instrument(level = "debug", err)]
-pub fn load_identity_and_vault(ockam_dir: &std::path::Path) -> anyhow::Result<(ExportedIdentity, OckamVault)> {
+pub fn load_identity_and_vault(
+    ockam_dir: &std::path::Path,
+) -> anyhow::Result<(ExportedIdentity, OckamVault)> {
     let vault_path = ockam_dir.join("vault.json");
-    let vault_bytes =
-        std::fs::read(&vault_path).with_context(|| format!("Failed to open vault.json from {vault_path:?}"))?;
+    let vault_bytes = std::fs::read(&vault_path)
+        .with_context(|| format!("Failed to open vault.json from {vault_path:?}"))?;
     let vault = Vault::deserialize(&vault_bytes[..])
         .with_context(|| format!("Failed to load the ockam vault at {vault_path:?}"))?;
     let ident_path = ockam_dir.join("identity.json");
@@ -73,13 +76,15 @@ pub fn is_valid_ident(s: &str) -> bool {
     matches!(hex::decode(s), Ok(v) if v.len() == 32)
 }
 
-pub fn read_trusted_idents_from_file(path: &std::path::Path) -> anyhow::Result<Vec<IdentityIdentifier>> {
+pub fn read_trusted_idents_from_file(
+    path: &std::path::Path,
+) -> anyhow::Result<Vec<IdentityIdentifier>> {
     // No TOCTOU here, this is just for a better error message.
     if !path.exists() {
         anyhow::bail!("No trusted identifiers list exists at {path:?}.");
     }
-    let data =
-        std::fs::read_to_string(path).with_context(|| format!("failed to open trusted identifier file `{path:?}`"))?;
+    let data = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to open trusted identifier file `{path:?}`"))?;
     let lines = data
         .lines()
         .enumerate()

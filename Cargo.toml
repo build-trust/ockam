@@ -17,7 +17,6 @@ members = [
 
     "tools/docs/example_runner",
     "tools/docs/example_blocks",
-    "integrations/suborbital/demo",
 ]
 
 exclude = ["implementations/rust/ockam/ockam_examples/example_projects"]
