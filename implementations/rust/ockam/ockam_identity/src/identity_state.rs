@@ -279,7 +279,7 @@ impl<V: IdentityVault> IdentityState<V> {
         ))
     }
 
-    pub async fn get_contact(&mut self, id: &IdentityIdentifier) -> Result<Option<Contact>> {
+    pub async fn get_contact(&self, id: &IdentityIdentifier) -> Result<Option<Contact>> {
         Ok(self.contacts.get(id).cloned())
     }
 

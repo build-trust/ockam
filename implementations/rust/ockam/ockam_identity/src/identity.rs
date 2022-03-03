@@ -102,7 +102,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.write().await.as_contact().await
     }
 
-    async fn get_contact(&mut self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>> {
+    async fn get_contact(&self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>> {
         self.state.write().await.get_contact(contact_id).await
     }
 
@@ -179,7 +179,7 @@ impl<V: IdentityVault> Identity<V> {
             &self.ctx,
             route.into(),
             identity_clone,
-            trust_policy,
+            Arc::new(trust_policy),
             vault,
         )
         .await

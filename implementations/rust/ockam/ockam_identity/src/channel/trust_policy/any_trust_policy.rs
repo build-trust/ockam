@@ -17,14 +17,15 @@ impl<F: TrustPolicy, S: TrustPolicy> AnyTrustPolicy<F, S> {
 
 #[async_trait]
 impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AnyTrustPolicy<F, S> {
-    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+        // TODO: is the short circuit here a side channel?
         Ok(self.first.check(trust_info).await? || self.second.check(trust_info).await?)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{DisjunctionTrustPolicy, IdentityIdentifier, SecureChannelTrustInfo, TrustPolicy};
+    use crate::{IdentityIdentifier, SecureChannelTrustInfo, TrustPolicy};
     use ockam_core::Result;
     use ockam_core::{async_trait, compat::boxed::Box};
 
@@ -35,7 +36,7 @@ mod test {
 
         #[async_trait]
         impl TrustPolicy for TrustPolicyStub {
-            async fn check(&mut self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+            async fn check(&self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
                 Ok(self.0)
             }
         }
