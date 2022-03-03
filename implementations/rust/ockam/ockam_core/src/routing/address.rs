@@ -230,6 +230,12 @@ impl From<String> for Address {
     }
 }
 
+impl From<&String> for Address {
+    fn from(s: &String) -> Self {
+        Self::from_string(s.as_str())
+    }
+}
+
 impl<'a> From<&'a str> for Address {
     fn from(s: &'a str) -> Self {
         Self::from_string(s)
@@ -254,6 +260,12 @@ impl<'a> From<(u8, &'a str)> for Address {
             tt,
             inner: inner.as_bytes().to_vec(),
         }
+    }
+}
+
+impl<'a> From<(u8, &'a String)> for Address {
+    fn from((tt, inner): (u8, &'a String)) -> Self {
+        Self::from((tt, inner.as_str()))
     }
 }
 

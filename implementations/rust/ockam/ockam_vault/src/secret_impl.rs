@@ -145,13 +145,7 @@ impl SecretVault for SoftwareVault {
         self.data
             .entries
             .insert(self.data.next_id, VaultEntry::new(key_id, attributes, key));
-        match self.save().await {
-            Ok(_) => Ok(Secret::new(self.data.next_id)),
-            Err(e) => {
-                tracing::error!("Failed to persist vault after secret generation: {}", e);
-                Err(crate::VaultError::StorageError.into())
-            }
-        }
+        Ok(Secret::new(self.data.next_id))
     }
 
     #[tracing::instrument(skip_all, err)]
@@ -167,13 +161,7 @@ impl SecretVault for SoftwareVault {
             self.data.next_id,
             VaultEntry::new(key_id_opt, attributes, SecretKey::new(secret.to_vec())),
         );
-        match self.save().await {
-            Ok(_) => Ok(Secret::new(self.data.next_id)),
-            Err(e) => {
-                tracing::error!("Failed to persist vault after secret import: {}", e);
-                Err(crate::VaultError::StorageError.into())
-            }
-        }
+        Ok(Secret::new(self.data.next_id))
     }
 
     async fn secret_export(&mut self, context: &Secret) -> Result<SecretKey> {
@@ -230,13 +218,7 @@ impl SecretVault for SoftwareVault {
     async fn secret_destroy(&mut self, context: Secret) -> Result<()> {
         match self.data.entries.remove(&context.index()) {
             None => Err(VaultError::EntryNotFound.into()),
-            Some(_) => match self.save().await {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    tracing::error!("Failed to persist vault after secret removal: {}", e);
-                    Err(crate::VaultError::StorageError.into())
-                }
-            },
+            Some(_) => Ok(()),
         }
     }
 }

@@ -80,7 +80,7 @@ pub use ockam_core::route;
 pub use ockam_key_exchange_xx::XXNewKeyExchanger;
 
 #[cfg(feature = "ockam_vault")]
-pub use ockam_vault_sync_core::Vault;
+pub use ockam_vault_sync_core::{Vault, VaultMutex};
 
 #[cfg(feature = "ockam_vault")]
 pub use ockam_vault::SoftwareVault;

@@ -1812,6 +1812,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam-cli-demo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap 3.1.6",
+ "dirs",
+ "hex",
+ "ockam",
+ "ockam_core",
+ "ockam_vault",
+ "rand 0.8.5",
+ "serde 1.0.136",
+ "serde_json",
+ "subtle",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zeroize",
+]
+
+[[package]]
 name = "ockam-ffi"
 version = "0.36.0"
 dependencies = [
@@ -2442,7 +2464,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "528532f3d801c87aec9def2add9ca802fe569e44a544afe633765267840abe64"
 dependencies = [
- "getrandom 0.2.4",
+ "getrandom 0.2.5",
  "redox_syscall",
 ]
 
@@ -3009,18 +3031,6 @@ dependencies = [
  "quote",
  "rustversion",
  "syn",
-]
-
-[[package]]
-name = "suborbital_demo"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap 3.1.0",
- "dirs",
- "ockam",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
