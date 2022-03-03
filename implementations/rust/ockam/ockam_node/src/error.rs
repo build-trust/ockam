@@ -58,7 +58,6 @@ impl From<Error> for ockam_core::Error {
 impl From<crate::NodeError> for ockam_core::Error {
     fn from(err: crate::NodeError) -> Self {
         use crate::NodeError::*;
-        tracing::error!("node error: {:?}", err);
         match err {
             NoSuchAddress(_) => Error::UnknownAddress,
             WorkerExists(_) => Error::WorkerAddressTaken,
