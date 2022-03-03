@@ -97,7 +97,7 @@ impl<'a> From<&'a str> for AddressSet {
 ///
 /// When parsing an address from a string, the first `#` symbol is
 /// used to separate the transport type from the rest of the address.
-/// If no `#` symbol is found, the address is assumed to be of `tt =
+/// If no `#` symbol is found, the address is assumed to be of `transport =
 /// 0` (local worker).
 ///
 /// For example:
@@ -157,11 +157,11 @@ impl Display for AddressParseError {
 impl crate::compat::error::Error for AddressParseError {}
 
 impl Address {
-    /// Creates a new address from separate type and data parts.
-    pub fn new<S: Into<String>>(tt: u8, inner: S) -> Self {
+    /// Creates a new address from separate transport type and data parts.
+    pub fn new<S: Into<String>>(transport: u8, data: S) -> Self {
         Self {
-            tt,
-            inner: inner.into().as_bytes().to_vec(),
+            tt: transport,
+            inner: data.into().as_bytes().to_vec(),
         }
     }
 
@@ -176,9 +176,12 @@ impl Address {
             }
         }
     }
-    /// Generate a random address with the given type.
-    pub fn random(tt: u8) -> Self {
-        Self { tt, ..random() }
+    /// Generate a random address with the given transport type.
+    pub fn random(transport: u8) -> Self {
+        Self {
+            tt: transport,
+            ..random()
+        }
     }
 }
 
@@ -251,53 +254,56 @@ impl<'a> From<&'a str> for Address {
 }
 
 impl From<Vec<u8>> for Address {
-    fn from(inner: Vec<u8>) -> Self {
-        Self { tt: 0, inner }
+    fn from(data: Vec<u8>) -> Self {
+        Self { tt: 0, inner: data }
     }
 }
 
 impl From<(u8, Vec<u8>)> for Address {
-    fn from((tt, inner): (u8, Vec<u8>)) -> Self {
-        Self { tt, inner }
+    fn from((transport, data): (u8, Vec<u8>)) -> Self {
+        Self {
+            tt: transport,
+            inner: data,
+        }
     }
 }
 
 impl<'a> From<(u8, &'a str)> for Address {
-    fn from((tt, inner): (u8, &'a str)) -> Self {
+    fn from((transport, data): (u8, &'a str)) -> Self {
         Self {
-            tt,
-            inner: inner.as_bytes().to_vec(),
+            tt: transport,
+            inner: data.as_bytes().to_vec(),
         }
     }
 }
 
 impl From<(u8, String)> for Address {
-    fn from((tt, inner): (u8, String)) -> Self {
-        Self::from((tt, inner.as_str()))
+    fn from((transport, data): (u8, String)) -> Self {
+        Self::from((transport, data.as_str()))
     }
 }
 
 impl<'a> From<&'a [u8]> for Address {
-    fn from(inner: &'a [u8]) -> Self {
+    fn from(data: &'a [u8]) -> Self {
         Self {
             tt: 0,
-            inner: inner.to_vec(),
+            inner: data.to_vec(),
         }
     }
 }
 
 impl<'a> From<&'a [&u8]> for Address {
-    fn from(inner: &'a [&u8]) -> Self {
+    fn from(data: &'a [&u8]) -> Self {
         Self {
             tt: 0,
-            inner: inner.iter().map(|x| **x).collect(),
+            inner: data.iter().map(|x| **x).collect(),
         }
     }
 }
 
 impl From<Address> for String {
-    fn from(addr: Address) -> Self {
-        addr.to_string()
+    fn from(address: Address) -> Self {
+        address.to_string()
     }
 }
 
