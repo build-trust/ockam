@@ -5,9 +5,15 @@ authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
 publish = false
-rust-version = "1.56.0"
-
-[workspace]
+rust-version = "1.58.0"
 
 [dependencies]
-ockam = { path = "../../../implementations/rust/ockam/ockam" }
+anyhow = "1"
+dirs = "4.0.0"
+clap = { version = "3", features = ["derive"] }
+tracing = "0.1.31"
+tracing-subscriber = "0.3.9"
+
+[dependencies.ockam]
+path = "../../../implementations/rust/ockam/ockam"
+features = ["no_init_tracing", "software_vault_storage"]

@@ -88,6 +88,7 @@ impl SoftwareVault {
 #[async_trait]
 impl SecretVault for SoftwareVault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
+    #[tracing::instrument(skip_all, err)]
     async fn secret_generate(&mut self, attributes: SecretAttributes) -> Result<Secret> {
         let key = match attributes.stype() {
             SecretType::X25519 | SecretType::Ed25519 => {
@@ -140,13 +141,20 @@ impl SecretVault for SoftwareVault {
             }
         };
         let key_id = self.compute_key_id(key.as_ref(), &attributes).await?;
-        self.next_id += 1;
-        self.entries
-            .insert(self.next_id, VaultEntry::new(key_id, attributes, key));
-
-        Ok(Secret::new(self.next_id))
+        self.data.next_id += 1;
+        self.data
+            .entries
+            .insert(self.data.next_id, VaultEntry::new(key_id, attributes, key));
+        match self.save().await {
+            Ok(_) => Ok(Secret::new(self.data.next_id)),
+            Err(e) => {
+                tracing::error!("Failed to persist vault after secret generation: {}", e);
+                Err(crate::VaultError::StorageError.into())
+            }
+        }
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn secret_import(
         &mut self,
         secret: &[u8],
@@ -154,12 +162,18 @@ impl SecretVault for SoftwareVault {
     ) -> Result<Secret> {
         self.check_secret(secret, &attributes)?;
         let key_id_opt = self.compute_key_id(secret, &attributes).await?;
-        self.next_id += 1;
-        self.entries.insert(
-            self.next_id,
+        self.data.next_id += 1;
+        self.data.entries.insert(
+            self.data.next_id,
             VaultEntry::new(key_id_opt, attributes, SecretKey::new(secret.to_vec())),
         );
-        Ok(Secret::new(self.next_id))
+        match self.save().await {
+            Ok(_) => Ok(Secret::new(self.data.next_id)),
+            Err(e) => {
+                tracing::error!("Failed to persist vault after secret import: {}", e);
+                Err(crate::VaultError::StorageError.into())
+            }
+        }
     }
 
     async fn secret_export(&mut self, context: &Secret) -> Result<SecretKey> {
@@ -212,10 +226,17 @@ impl SecretVault for SoftwareVault {
     }
 
     /// Remove secret from memory
+    #[tracing::instrument(skip_all, err)]
     async fn secret_destroy(&mut self, context: Secret) -> Result<()> {
-        match self.entries.remove(&context.index()) {
+        match self.data.entries.remove(&context.index()) {
             None => Err(VaultError::EntryNotFound.into()),
-            Some(_) => Ok(()),
+            Some(_) => match self.save().await {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    tracing::error!("Failed to persist vault after secret removal: {}", e);
+                    Err(crate::VaultError::StorageError.into())
+                }
+            },
         }
     }
 }

@@ -36,6 +36,8 @@ pub enum VaultError {
     InvalidBlsSecretLength,
     /// Invalid BLS secret
     InvalidBlsSecret,
+    /// IO error when saving
+    StorageError,
 }
 
 impl VaultError {
