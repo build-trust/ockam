@@ -17,14 +17,14 @@ impl<F: TrustPolicy, S: TrustPolicy> AllTrustPolicy<F, S> {
 
 #[async_trait]
 impl<F: TrustPolicy, S: TrustPolicy> TrustPolicy for AllTrustPolicy<F, S> {
-    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         Ok(self.first.check(trust_info).await? && self.second.check(trust_info).await?)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{ConjunctionTrustPolicy, IdentityIdentifier, SecureChannelTrustInfo, TrustPolicy};
+    use crate::{IdentityIdentifier, SecureChannelTrustInfo, TrustPolicy};
     use ockam_core::Result;
     use ockam_core::{async_trait, compat::boxed::Box};
 
@@ -35,7 +35,7 @@ mod test {
 
         #[async_trait]
         impl TrustPolicy for TrustPolicyStub {
-            async fn check(&mut self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+            async fn check(&self, _trust_info: &SecureChannelTrustInfo) -> Result<bool> {
                 Ok(self.0)
             }
         }

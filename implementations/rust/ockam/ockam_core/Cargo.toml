@@ -75,3 +75,4 @@ futures-util = { version = "0.3.17", default-features = false, features = [
 ] }
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 cfg-if = "1.0"
+subtle = { version = "2", default-features = false }
