@@ -1,7 +1,7 @@
 use crate::{
-    AuthenticationProof, Changes, Contact, IdentityChangeEvent, IdentityChannelListener,
-    IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault, Lease, SecureChannelWorker,
-    TrustPolicy, TTL,
+    AuthenticationProof, Changes, Contact, ExportedIdentity, IdentityChangeEvent,
+    IdentityChannelListener, IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault,
+    Lease, SecureChannelWorker, TrustPolicy, TTL,
 };
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::{PublicKey, Secret};
@@ -20,6 +20,19 @@ impl<V: IdentityVault> Identity<V> {
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random(0)).await?;
         let state = IdentityState::create(vault.async_try_clone().await?).await?;
+        Ok(Self {
+            ctx: child_ctx,
+            state: Arc::new(RwLock::new(state)),
+        })
+    }
+
+    pub async fn export(&self) -> ExportedIdentity {
+        self.state.read().await.export()
+    }
+
+    pub async fn import(ctx: &Context, vault: &V, exported: ExportedIdentity) -> Result<Self> {
+        let child_ctx = ctx.new_context(Address::random(0)).await?;
+        let state = IdentityState::import(vault.async_try_clone().await?, exported);
         Ok(Self {
             ctx: child_ctx,
             state: Arc::new(RwLock::new(state)),

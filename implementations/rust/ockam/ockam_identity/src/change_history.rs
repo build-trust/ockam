@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 /// Full history of [`Identity`] changes. History and corresponding secret keys are enough to recreate [`Identity`]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct IdentityChangeHistory(Vec<IdentityChangeEvent>);
+pub struct IdentityChangeHistory(Vec<IdentityChangeEvent>);
 
 impl IdentityChangeHistory {
     pub(crate) fn new(change_events: Vec<IdentityChangeEvent>) -> Self {

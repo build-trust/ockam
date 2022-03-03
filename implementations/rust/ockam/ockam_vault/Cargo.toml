@@ -62,7 +62,7 @@ no_std = [
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "aes-gcm/alloc"]
 
-storage = ["std", "tokio", "serde", "serde_json"]
+storage = ["std", "serde", "serde_json"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.48.0", default_features = false }
@@ -82,7 +82,7 @@ sha2 = { version = "0.9", default-features = false }
 x25519-dalek = { version = "1.0", default_features = false }
 cfg-if = "1.0"
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
-tokio = { version = "1.8", features = ["fs", "io-std", "io-util"], optional = true }
+# tokio = { version = "1.8", features = ["fs", "io-std", "io-util"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 

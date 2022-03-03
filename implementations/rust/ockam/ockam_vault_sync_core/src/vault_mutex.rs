@@ -11,6 +11,13 @@ impl<V> Clone for VaultMutex<V> {
     }
 }
 
+impl<V> core::ops::Deref for VaultMutex<V> {
+    type Target = Mutex<V>;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
 impl<V> VaultMutex<V> {
     /// Create and start a new Vault using Mutex.
     pub fn create(vault: V) -> Self {
