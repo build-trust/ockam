@@ -24,7 +24,7 @@ rust-version = "1.56.0"
 crate-type = ["rlib"]
 
 [features]
-default = ["std"]
+default = ["std", "storage"]
 bls = [
     "ockam_core/bls",
     "signature_core",
@@ -62,6 +62,8 @@ no_std = [
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "aes-gcm/alloc"]
 
+storage = ["std", "serde", "serde_json"]
+
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.50.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.11.0", default-features = false }
@@ -79,8 +81,10 @@ rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 sha2 = { version = "0.9", default-features = false }
 x25519-dalek = { version = "1.0", default_features = false }
 cfg-if = "1.0"
-tracing = { version = "0.1", default-features = false }
 hex = { version = "0.4", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.8", features = ["full"] }

@@ -52,7 +52,7 @@ impl From<IdentityError> for ockam_core::Error {
     fn from(e: IdentityError) -> ockam_core::Error {
         ockam_core::Error::new(
             IdentityError::DOMAIN_CODE + (e as u32),
-            format!("{}::{:?}", module_path!(), e),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
         )
     }
 }

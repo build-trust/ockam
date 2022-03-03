@@ -51,7 +51,7 @@ cfg_if! {
 }
 
 /// Binary representation of a Secret.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Clone, Zeroize)]
 #[zeroize(drop)]
 pub struct SecretKey(SecretKeyVec);
 
@@ -62,6 +62,19 @@ impl SecretKey {
     }
 }
 
+impl core::fmt::Debug for SecretKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.pad("<secret key omitted>")
+    }
+}
+
+impl Eq for SecretKey {}
+impl PartialEq for SecretKey {
+    fn eq(&self, o: &Self) -> bool {
+        subtle::ConstantTimeEq::ct_eq(&self.0[..], &o.0[..]).into()
+    }
+}
+
 impl AsRef<[u8]> for SecretKey {
     fn as_ref(&self) -> &[u8] {
         &self.0
@@ -69,11 +82,19 @@ impl AsRef<[u8]> for SecretKey {
 }
 
 /// A public key.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct PublicKey {
     data: PublicKeyVec,
     stype: SecretType,
+}
+
+impl Eq for PublicKey {}
+impl PartialEq for PublicKey {
+    fn eq(&self, o: &Self) -> bool {
+        let choice = subtle::ConstantTimeEq::ct_eq(&self.data[..], &o.data[..]);
+        choice.into() && self.stype == o.stype
+    }
 }
 
 impl PublicKey {
@@ -101,7 +122,7 @@ impl AsRef<[u8]> for PublicKey {
 }
 
 /// Binary representation of Signature.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct Signature(SignatureVec);
 
@@ -115,6 +136,13 @@ impl Signature {
 impl AsRef<[u8]> for Signature {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl Eq for Signature {}
+impl PartialEq for Signature {
+    fn eq(&self, o: &Self) -> bool {
+        subtle::ConstantTimeEq::ct_eq(&self.0[..], &o.0[..]).into()
     }
 }
 

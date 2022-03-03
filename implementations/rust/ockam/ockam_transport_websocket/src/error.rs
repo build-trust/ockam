@@ -41,7 +41,7 @@ impl Display for WebSocketError {
 
 impl From<WebSocketError> for Error {
     fn from(e: WebSocketError) -> Error {
-        let info = format!("{}::{:?}", module_path!(), e);
+        let info = ockam_core::compat::format!("{}::{:?}", module_path!(), e);
         match e {
             WebSocketError::Transport(e) => e.into(),
             e => Error::new(WebSocketError::DOMAIN_CODE + e.code(), info),

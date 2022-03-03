@@ -6,7 +6,8 @@ use ockam_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 /// An identifier of an Identity.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
+#[allow(clippy::derive_hash_xor_eq)] // we manually implement a constant time Eq
+#[derive(Clone, Debug, Hash, Serialize, Deserialize, Default, PartialOrd, Ord)]
 pub struct IdentityIdentifier(KeyId);
 
 /// Unique [`crate::Identity`] identifier, computed as SHA256 of root public key
@@ -19,6 +20,18 @@ impl IdentityIdentifier {
     /// Return the wrapped KeyId
     pub fn key_id(&self) -> &KeyId {
         &self.0
+    }
+    pub(crate) fn ct_eq(&self, o: &Self) -> subtle::Choice {
+        use subtle::ConstantTimeEq;
+        self.0.as_bytes().ct_eq(o.0.as_bytes())
+    }
+}
+
+impl Eq for IdentityIdentifier {}
+
+impl PartialEq for IdentityIdentifier {
+    fn eq(&self, o: &Self) -> bool {
+        self.ct_eq(o).into()
     }
 }
 

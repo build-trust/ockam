@@ -59,34 +59,30 @@ impl From<BleError> for ockam_core::Error {
     fn from(e: BleError) -> ockam_core::Error {
         ockam_core::Error::new(
             BleError::DOMAIN_CODE + (e as u32),
-            format!("{}::{:?}", module_path!(), e),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
         )
     }
 }
 
 #[test]
 fn code_and_domain() {
-    use ockam_core::compat::collections::HashMap;
-
-    let ble_errors_map = IntoIterator::into_iter([
-        (000, BleError::PermissionDenied),
-        (001, BleError::NotSupported),
-        (002, BleError::HardwareError),
-        (003, BleError::NotFound),
-        (004, BleError::TimedOut),
-        (005, BleError::NotConnected),
-        (006, BleError::ConfigurationFailed),
-        (007, BleError::AdvertisingFailure),
-        (008, BleError::ConnectionClosed),
-        (009, BleError::ReadError),
-        (010, BleError::WriteError),
-        (011, BleError::Other),
-        (012, BleError::Unknown),
-    ])
-    .collect::<HashMap<u32, BleError>>();
+    let ble_errors_map = [
+        (000_u32, BleError::PermissionDenied),
+        (001_u32, BleError::NotSupported),
+        (002_u32, BleError::HardwareError),
+        (003_u32, BleError::NotFound),
+        (004_u32, BleError::TimedOut),
+        (005_u32, BleError::NotConnected),
+        (006_u32, BleError::ConfigurationFailed),
+        (007_u32, BleError::AdvertisingFailure),
+        (008_u32, BleError::ConnectionClosed),
+        (009_u32, BleError::ReadError),
+        (010_u32, BleError::WriteError),
+        (011_u32, BleError::Other),
+        (012_u32, BleError::Unknown),
+    ];
     for (expected_code, ble_err) in ble_errors_map {
         let err: ockam_core::Error = ble_err.into();
-        // assert_eq!(err.domain(), BleError::DOMAIN_NAME);
         assert_eq!(err.code(), BleError::DOMAIN_CODE + expected_code);
     }
 }

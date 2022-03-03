@@ -1,23 +1,23 @@
 use crate::{IdentityTrait, SecureChannelWorker, TrustPolicy};
 use ockam_channel::{CreateResponderChannelMessage, SecureChannel};
-use ockam_core::compat::boxed::Box;
 use ockam_core::compat::rand::random;
+use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
 use ockam_node::Context;
 
-pub(crate) struct IdentityChannelListener<T: TrustPolicy, I: IdentityTrait, V: XXVault> {
-    trust_policy: T,
+pub(crate) struct IdentityChannelListener<I: IdentityTrait, V: XXVault> {
+    trust_policy: Arc<dyn TrustPolicy>,
     identity: I,
     vault: V,
     listener_address: Address,
 }
 
-impl<T: TrustPolicy, I: IdentityTrait, V: XXVault> IdentityChannelListener<T, I, V> {
-    pub fn new(trust_policy: T, identity: I, vault: V) -> Self {
+impl<I: IdentityTrait, V: XXVault> IdentityChannelListener<I, V> {
+    pub fn new(trust_policy: impl TrustPolicy, identity: I, vault: V) -> Self {
         let listener_address: Address = random();
         IdentityChannelListener {
-            trust_policy,
+            trust_policy: Arc::new(trust_policy),
             identity,
             vault,
             listener_address,
@@ -26,7 +26,7 @@ impl<T: TrustPolicy, I: IdentityTrait, V: XXVault> IdentityChannelListener<T, I,
 }
 
 #[ockam_core::worker]
-impl<T: TrustPolicy, I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<T, I, V> {
+impl<I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<I, V> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
@@ -56,7 +56,7 @@ impl<T: TrustPolicy, I: IdentityTrait, V: XXVault> Worker for IdentityChannelLis
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let trust_policy = self.trust_policy.async_try_clone().await?;
+        let trust_policy = Arc::clone(&self.trust_policy);
         let identity = self.identity.async_try_clone().await?;
         SecureChannelWorker::create_responder(
             ctx,

@@ -27,7 +27,7 @@ impl<V: IdentityVault> TrustPublicKeyPolicy<V> {
 
 #[async_trait]
 impl<V: IdentityVault> TrustPolicy for TrustPublicKeyPolicy<V> {
-    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         let contact;
         if let Some(c) = self
             .identity

@@ -8,6 +8,7 @@ use ockam_core::{async_trait, compat::boxed::Box};
 impl KeyIdVault for SoftwareVault {
     async fn secret_by_key_id(&mut self, key_id: &str) -> Result<Secret> {
         let index = self
+            .data
             .entries
             .iter()
             .find(|(_, entry)| {

@@ -42,7 +42,7 @@ impl From<OckamError> for ockam_core::Error {
     fn from(e: OckamError) -> ockam_core::Error {
         ockam_core::Error::new(
             OckamError::DOMAIN_CODE + (e as u32),
-            format!("{}::{:?}", module_path!(), e),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
         )
     }
 }

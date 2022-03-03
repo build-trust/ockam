@@ -38,6 +38,11 @@ no_std = ["ockam_core/no_std", "heapless"]
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc"]
 
+# Hacky feature to prevent auto-initializing tracing-subscriber. TODO: This
+# absolutely should not be a feature, and should instead just be configured when
+# starting the node.
+no_init_tracing = []
+
 # Feature: "dump_internals" when set, will dump the internal state of
 # workers at startup via the trace! macro.
 dump_internals = []

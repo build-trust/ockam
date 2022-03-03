@@ -15,7 +15,7 @@
 pub use alloc::borrow;
 
 #[doc(hidden)]
-pub use futures_util::try_join;
+pub use futures_util::{join, try_join};
 
 /// Provides `std::boxed` for `alloc` targets.
 pub mod boxed {

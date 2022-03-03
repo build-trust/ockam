@@ -24,6 +24,19 @@ cfg_if! {
     }
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ExportedIdentity {
+    pub id: IdentityIdentifier,
+    pub contacts: Contacts,
+    pub change_history: IdentityChangeHistory,
+    // #[cfg(feature = "credentials")]
+    // #[serde(default)]
+    // pub rand_msg: Option<Message>,
+    // #[cfg(feature = "credentials")]
+    // #[serde(default)]
+    // pub credentials: Vec<IdentityCredential>,
+}
+
 /// Identity implementation
 pub struct IdentityState<V: IdentityVault> {
     id: IdentityIdentifier,
@@ -76,10 +89,35 @@ impl<V: IdentityVault> IdentityState<V> {
         }
     }
 
+    pub(crate) fn export(&self) -> ExportedIdentity {
+        ExportedIdentity {
+            id: self.id.clone(),
+            contacts: self.contacts.clone(),
+            change_history: self.change_history.clone(),
+            // #[cfg(feature = "credentials")]
+            // rand_msg: self.rand_msg.clone(),
+            // #[cfg(feature = "credentials")]
+            // credentials: self.credentials.clone(),
+        }
+    }
+
     pub(crate) fn change_history(&self) -> &IdentityChangeHistory {
         &self.change_history
     }
-
+    /// Create IdentityState
+    pub(crate) fn import(vault: V, identity: ExportedIdentity) -> Self {
+        Self {
+            id: identity.id,
+            change_history: identity.change_history,
+            contacts: identity.contacts,
+            vault,
+            #[cfg(feature = "credentials")]
+            rand_msg: Message::random(thread_rng()),
+            #[cfg(feature = "credentials")]
+            credentials: vec![],
+            lease: None,
+        }
+    }
     /// Create IdentityState
     pub(crate) async fn create(mut vault: V) -> Result<Self> {
         let initial_event_id = EventIdentifier::initial(&mut vault).await;
@@ -282,7 +320,7 @@ impl<V: IdentityVault> IdentityState<V> {
         ))
     }
 
-    pub async fn get_contact(&mut self, id: &IdentityIdentifier) -> Result<Option<Contact>> {
+    pub async fn get_contact(&self, id: &IdentityIdentifier) -> Result<Option<Contact>> {
         Ok(self.contacts.get(id).cloned())
     }
 

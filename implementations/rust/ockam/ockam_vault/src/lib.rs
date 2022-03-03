@@ -28,6 +28,8 @@ mod key_id_impl;
 mod secret_impl;
 mod signer_impl;
 mod software_vault;
+#[cfg(feature = "storage")]
+pub(crate) mod storage;
 mod symmetric_impl;
 mod verifier_impl;
 mod xeddsa;

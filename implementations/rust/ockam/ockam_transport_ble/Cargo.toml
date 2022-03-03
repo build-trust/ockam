@@ -2,7 +2,7 @@
 name = "ockam_transport_ble"
 version = "0.6.0"
 authors = ["Ockam Developers"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 homepage = "https://github.com/ockam-network/ockam"
 repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_transport_ble"

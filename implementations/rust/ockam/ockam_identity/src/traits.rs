@@ -60,7 +60,7 @@ pub trait IdentityTrait: AsyncTryClone + Send + Sync + 'static {
     async fn as_contact(&mut self) -> Result<Contact>;
 
     /// Return [`Contact`] with given [`IdentityIdentifier`]
-    async fn get_contact(&mut self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>>;
+    async fn get_contact(&self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>>;
 
     /// Verify cryptographically whole event chain. Also verify sequence correctness
     async fn verify_contact(&mut self, contact: Contact) -> Result<bool>;

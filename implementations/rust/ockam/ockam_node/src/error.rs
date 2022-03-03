@@ -50,7 +50,7 @@ impl From<Error> for ockam_core::Error {
     fn from(e: Error) -> ockam_core::Error {
         ockam_core::Error::new(
             Error::DOMAIN_CODE + (e as u32),
-            format!("{}::{:?}", module_path!(), e),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
         )
     }
 }
@@ -58,7 +58,6 @@ impl From<Error> for ockam_core::Error {
 impl From<crate::NodeError> for ockam_core::Error {
     fn from(err: crate::NodeError) -> Self {
         use crate::NodeError::*;
-        tracing::error!("node error: {:?}", err);
         match err {
             NoSuchAddress(_) => Error::UnknownAddress,
             WorkerExists(_) => Error::WorkerAddressTaken,

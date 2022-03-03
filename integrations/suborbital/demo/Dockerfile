@@ -1,8 +1,9 @@
-FROM ghcr.io/ockam-network/ockam/builder@sha256:ea810e06304a0178a8716060033524ff92dfce2d51c9b6dbc17305d11e967851 as builder
+FROM ghcr.io/ockam-network/ockam/builder@sha256:a7d3dca4d7ec4385a12a81534524831030650aeb8dc4e820733e6bdb9e6bfd6a as builder
 COPY . .
-RUN set -xe; cd integrations/suborbital/demo; cargo build --release --example ockam_tcp_outlet
+RUN set -xe; cd integrations/suborbital/demo; cargo build --release --bin ockam_tcp_outlet
 
-FROM ghcr.io/ockam-network/ockam/base@sha256:ea156477d425e92640ec8574663f598bc019269a12ed0fefb5ad48256afff4e0
-COPY --from=builder /work/integrations/suborbital/demo/target/release/examples/ockam_tcp_outlet /usr/bin/
+# Note(thom): previously was ea156477d425e92640ec8574663f598bc019269a12ed0fefb5ad48256afff4e0, this is later, though.
+FROM ghcr.io/ockam-network/ockam/base@sha256:cf180692c3d5ab50b42d3a63067b7b2f8445d2dc0fd365913c2224450ee36a65
+COPY --from=builder /work/target/release/ockam_tcp_outlet /usr/bin/
 
 ENTRYPOINT ["/usr/bin/ockam_tcp_outlet"]

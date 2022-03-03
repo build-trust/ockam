@@ -36,6 +36,8 @@ pub enum VaultError {
     InvalidBlsSecretLength,
     /// Invalid BLS secret
     InvalidBlsSecret,
+    /// IO error when saving
+    StorageError,
 }
 
 impl VaultError {
@@ -49,7 +51,7 @@ impl From<VaultError> for Error {
     fn from(err: VaultError) -> Self {
         Self::new(
             VaultError::DOMAIN_CODE + (err as u32),
-            format!("{}::{:?}", module_path!(), err),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), err),
         )
     }
 }

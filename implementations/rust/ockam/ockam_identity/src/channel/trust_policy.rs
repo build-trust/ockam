@@ -1,10 +1,15 @@
 use crate::IdentityIdentifier;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{AsyncTryClone, Result};
+use ockam_core::{
+    async_trait,
+    compat::{boxed::Box, sync::Arc},
+    Result,
+};
 use serde::{Deserialize, Serialize};
 
 mod trust_identifier_policy;
 pub use trust_identifier_policy::*;
+mod trust_multi_identifier_policy;
+pub use trust_multi_identifier_policy::*;
 mod all_trust_policy;
 pub use all_trust_policy::*;
 mod any_trust_policy;
@@ -33,22 +38,35 @@ impl SecureChannelTrustInfo {
 }
 
 #[async_trait]
-pub trait TrustPolicy: AsyncTryClone + Send + Sync + 'static {
-    async fn check(&mut self, trust_info: &SecureChannelTrustInfo) -> Result<bool>;
-}
+pub trait TrustPolicy: Send + Sync + 'static {
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool>;
 
-pub trait ConjunctionTrustPolicy: TrustPolicy {
-    fn and<O: TrustPolicy>(self, other: O) -> AllTrustPolicy<Self, O> {
+    fn and<O: TrustPolicy>(self, other: O) -> AllTrustPolicy<Self, O>
+    where
+        Self: Sized,
+    {
         AllTrustPolicy::new(self, other)
     }
-}
 
-impl<T> ConjunctionTrustPolicy for T where T: TrustPolicy {}
-
-pub trait DisjunctionTrustPolicy: TrustPolicy {
-    fn or<O: TrustPolicy>(self, other: O) -> AnyTrustPolicy<Self, O> {
+    fn or<O: TrustPolicy>(self, other: O) -> AnyTrustPolicy<Self, O>
+    where
+        Self: Sized,
+    {
         AnyTrustPolicy::new(self, other)
     }
 }
 
-impl<T> DisjunctionTrustPolicy for T where T: TrustPolicy {}
+// Allow `Box<dyn TrustPolicy>` to be used as a valid TrustPolicy
+#[async_trait]
+impl<T: TrustPolicy + ?Sized> TrustPolicy for Box<T> {
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+        T::check(&**self, trust_info).await
+    }
+}
+
+#[async_trait]
+impl<T: TrustPolicy + ?Sized> TrustPolicy for Arc<T> {
+    async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
+        T::check(&**self, trust_info).await
+    }
+}

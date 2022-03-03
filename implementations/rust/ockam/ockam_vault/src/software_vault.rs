@@ -1,8 +1,9 @@
+#[cfg(feature = "storage")]
+use crate::storage::*;
 use crate::VaultError;
 use ockam_core::compat::{collections::BTreeMap, string::String};
 use ockam_core::vault::{Secret, SecretAttributes, SecretKey};
 use ockam_core::Result;
-use tracing::info;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
 ///
@@ -32,8 +33,13 @@ use tracing::info;
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
 pub struct SoftwareVault {
+    pub(crate) data: VaultData,
+}
+
+#[derive(Default)]
+pub(crate) struct VaultData {
+    // TODO: make these private, and save automatically on modification.
     pub(crate) entries: BTreeMap<usize, VaultEntry>,
     pub(crate) next_id: usize,
 }
@@ -41,11 +47,27 @@ pub struct SoftwareVault {
 impl SoftwareVault {
     /// Create a new SoftwareVault
     pub fn new() -> Self {
-        info!("Creating vault");
         Self {
-            entries: Default::default(),
-            next_id: 0,
+            data: Default::default(),
         }
+    }
+
+    /// Serialize a vault to bytes which may later be restored using
+    /// `SoftwareVault::deserialize`.
+    #[cfg(feature = "storage")]
+    pub fn serialize(&self) -> Vec<u8> {
+        serialize(&self.data)
+    }
+
+    /// Load a vault from the serialized format produced by `SoftwareVault::serialize`.
+    #[cfg(feature = "storage")]
+    #[tracing::instrument(err, skip_all)]
+    pub fn deserialize(data: &[u8]) -> Result<Self> {
+        let data = deserialize(data).map_err(|e| {
+            tracing::error!("Data loaded from vault failed to parse: {:?}", e);
+            VaultError::StorageError
+        })?;
+        Ok(Self { data })
     }
 }
 
@@ -57,13 +79,15 @@ impl Default for SoftwareVault {
 
 impl SoftwareVault {
     pub(crate) fn get_entry(&self, context: &Secret) -> Result<&VaultEntry> {
-        self.entries
+        self.data
+            .entries
             .get(&context.index())
             .ok_or_else(|| VaultError::EntryNotFound.into())
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
+#[cfg_attr(feature = "storage", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct VaultEntry {
     key_id: Option<String>,
     key_attributes: SecretAttributes,
@@ -99,7 +123,7 @@ mod tests {
     #[test]
     fn new_vault() {
         let vault = SoftwareVault::new();
-        assert_eq!(vault.next_id, 0);
-        assert_eq!(vault.entries.len(), 0);
+        assert_eq!(vault.data.next_id, 0);
+        assert_eq!(vault.data.entries.len(), 0);
     }
 }

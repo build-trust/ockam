@@ -19,7 +19,7 @@ impl From<VaultSyncCoreError> for Error {
     fn from(err: VaultSyncCoreError) -> Self {
         Self::new(
             VaultSyncCoreError::DOMAIN_CODE + (err as u32),
-            format!("{}::{:?}", module_path!(), err),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), err),
         )
     }
 }

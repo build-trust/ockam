@@ -31,13 +31,14 @@ all-features = false
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "ockam_transport_tcp", "software_vault", "noise_xx"]
+default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage", "noise_xx"]
 software_vault = [
     "ockam_vault",
     "ockam_vault_sync_core",
     "ockam_vault_sync_core/software_vault",
     "ockam_channel/software_vault",
 ]
+software_vault_storage = ["software_vault", "ockam_vault/storage", "ockam_vault_sync_core/software_vault_storage"]
 noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
 credentials = [
     "ockam_identity/credentials",
@@ -91,6 +92,10 @@ alloc = [
     "ockam_identity/alloc",
     "serde/alloc",
 ]
+
+# As in `ockam_node`. TODO: This absolutely should not be a feature, and should
+# instead just be configured when starting the node.
+no_init_tracing = ["ockam_node/no_init_tracing"]
 
 [[test]]
 name = "tests"

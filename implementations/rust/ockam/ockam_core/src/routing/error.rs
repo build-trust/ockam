@@ -18,7 +18,7 @@ impl From<RouteError> for Error {
     fn from(e: RouteError) -> Error {
         Error::new(
             RouteError::DOMAIN_CODE + (e as u32),
-            format!("{}::{:?}", module_path!(), e),
+            crate::compat::format!("{}::{:?}", module_path!(), e),
         )
     }
 }

@@ -286,6 +286,12 @@ impl From<String> for Address {
     }
 }
 
+impl From<&String> for Address {
+    fn from(s: &String) -> Self {
+        Self::from_string(s.as_str())
+    }
+}
+
 impl<'a> From<&'a str> for Address {
     fn from(s: &'a str) -> Self {
         Self::from_string(s)
@@ -316,9 +322,15 @@ impl<'a> From<(TransportType, &'a str)> for Address {
     }
 }
 
+impl<'a> From<(TransportType, &'a String)> for Address {
+    fn from((tt, inner): (TransportType, &'a String)) -> Self {
+        Self::from((tt, inner.as_str()))
+    }
+}
+
 impl From<(TransportType, String)> for Address {
-    fn from((tt, data): (TransportType, String)) -> Self {
-        Self::from((tt, data.as_str()))
+    fn from((transport, data): (TransportType, String)) -> Self {
+        Self::from((transport, data.as_str()))
     }
 }
 

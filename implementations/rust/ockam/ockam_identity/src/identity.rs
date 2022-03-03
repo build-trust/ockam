@@ -1,7 +1,7 @@
 use crate::{
-    AuthenticationProof, Changes, Contact, IdentityChangeEvent, IdentityChannelListener,
-    IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault, Lease, SecureChannelWorker,
-    TrustPolicy, TTL,
+    AuthenticationProof, Changes, Contact, ExportedIdentity, IdentityChangeEvent,
+    IdentityChannelListener, IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault,
+    Lease, SecureChannelWorker, TrustPolicy, TTL,
 };
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::{PublicKey, Secret};
@@ -20,6 +20,19 @@ impl<V: IdentityVault> Identity<V> {
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random_local()).await?;
         let state = IdentityState::create(vault.async_try_clone().await?).await?;
+        Ok(Self {
+            ctx: child_ctx,
+            state: Arc::new(RwLock::new(state)),
+        })
+    }
+
+    pub async fn export(&self) -> ExportedIdentity {
+        self.state.read().await.export()
+    }
+
+    pub async fn import(ctx: &Context, vault: &V, exported: ExportedIdentity) -> Result<Self> {
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
+        let state = IdentityState::import(vault.async_try_clone().await?, exported);
         Ok(Self {
             ctx: child_ctx,
             state: Arc::new(RwLock::new(state)),
@@ -102,7 +115,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.write().await.as_contact().await
     }
 
-    async fn get_contact(&mut self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>> {
+    async fn get_contact(&self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>> {
         self.state.write().await.get_contact(contact_id).await
     }
 
@@ -179,7 +192,7 @@ impl<V: IdentityVault> Identity<V> {
             &self.ctx,
             route.into(),
             identity_clone,
-            trust_policy,
+            Arc::new(trust_policy),
             vault,
         )
         .await

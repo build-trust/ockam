@@ -21,7 +21,7 @@ impl From<X3DHError> for Error {
     fn from(err: X3DHError) -> Self {
         Self::new(
             X3DHError::DOMAIN_CODE + (err as u32),
-            format!("{}::{:?}", module_path!(), err),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), err),
         )
     }
 }

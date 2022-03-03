@@ -1,7 +1,5 @@
 use crate::{Context, Executor};
 use ockam_core::{Address, AllowAll};
-#[cfg(feature = "std")]
-use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -30,18 +28,26 @@ pub fn start_node() -> (Context, Executor) {
     (ctx, exe)
 }
 
-/// Utility to setup tracing-subscriber from the environment
+/// Utility to setup tracing-subscriber from the environment.
+///
+/// Does nothing if the `no_init_tracing` feature is enabled (for now -- this
+/// should be improved, though).
 fn setup_tracing() {
     #[cfg(feature = "std")]
-    {
-        let filter = EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
-            EnvFilter::default()
-                .add_directive(LevelFilter::INFO.into())
-                .add_directive("ockam_node=info".parse().unwrap())
+    if !cfg!(feature = "no_init_tracing") {
+        use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
+        static ONCE: std::sync::Once = std::sync::Once::new();
+        ONCE.call_once(|| {
+            let filter = EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
+                EnvFilter::default()
+                    .add_directive(LevelFilter::INFO.into())
+                    .add_directive("ockam_node=info".parse().unwrap())
+            });
+            if fmt().with_env_filter(filter).try_init().is_err() {
+                debug!("Failed to initialise tracing_subscriber. Is an instance already running?");
+            }
         });
-
-        if fmt().with_env_filter(filter).try_init().is_err() {
-            debug!("Failed to initialise tracing_subscriber.  Is an instance already running?");
-        }
+    } else {
+        info!("Logging auto-init disabled, assuming it's initialized separately")
     }
 }

@@ -95,7 +95,7 @@ pub mod vault {
     //! Types and traits relating to ockam vaults.
     pub use ockam_core::vault::*;
     pub use ockam_vault::SoftwareVault;
-    pub use ockam_vault_sync_core::Vault;
+    pub use ockam_vault_sync_core::{Vault, VaultMutex};
 }
 
 #[cfg(feature = "ockam_transport_tcp")]

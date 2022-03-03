@@ -899,6 +899,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
+dependencies = [
+ "libc",
+ "redox_users",
+ "winapi",
+]
+
+[[package]]
 name = "dissimilar"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1822,6 +1842,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam-cli-demo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap 3.1.6",
+ "dirs",
+ "hex",
+ "ockam",
+ "ockam_core",
+ "ockam_vault",
+ "rand 0.8.5",
+ "serde 1.0.136",
+ "serde_json",
+ "subtle",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zeroize",
+]
+
+[[package]]
 name = "ockam-ffi"
 version = "0.39.0"
 dependencies = [
@@ -1892,6 +1934,7 @@ dependencies = [
  "serde 1.0.136",
  "serde_bare",
  "spin",
+ "subtle",
  "zeroize",
 ]
 
@@ -1943,6 +1986,7 @@ dependencies = [
  "signature_bbs_plus",
  "signature_bls",
  "signature_core",
+ "subtle",
  "tokio",
  "tracing",
 ]
@@ -2098,6 +2142,8 @@ dependencies = [
  "ockam_macros",
  "rand 0.8.5",
  "rand_pcg",
+ "serde 1.0.136",
+ "serde_json",
  "sha2",
  "signature_bbs_plus",
  "signature_bls",
@@ -2419,6 +2465,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ae183fc1b06c149f0c1793e1eb447c8b04bfe46d48e9e48bfb8d2d7ed64ecf0"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "redox_users"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7776223e2696f1aa4c6b0170e83212f47296a00424305117d013dfe86fb0fe55"
+dependencies = [
+ "getrandom 0.2.6",
+ "redox_syscall",
+ "thiserror",
 ]
 
 [[package]]

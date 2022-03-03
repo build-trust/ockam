@@ -9,7 +9,7 @@ use ockam_channel::{
 };
 use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
-use ockam_core::compat::{boxed::Box, vec::Vec};
+use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
@@ -30,31 +30,31 @@ impl<T> StartSecureChannelFuture for T where
 {
 }
 
-struct InitiatorStartChannel<I: IdentityTrait, T: TrustPolicy> {
+struct InitiatorStartChannel<I: IdentityTrait> {
     channel_future: Pin<Box<dyn StartSecureChannelFuture>>, // TODO: Replace with generic
     callback_address: Address,
     identity: I,
-    trust_policy: T,
+    trust_policy: Arc<dyn TrustPolicy>,
 }
 
-struct ResponderWaitForKex<I: IdentityTrait, T: TrustPolicy> {
+struct ResponderWaitForKex<I: IdentityTrait> {
     first_responder_address: Address,
     identity: I,
-    trust_policy: T,
+    trust_policy: Arc<dyn TrustPolicy>,
 }
 
-struct InitiatorSendIdentity<I: IdentityTrait, T: TrustPolicy> {
+struct InitiatorSendIdentity<I: IdentityTrait> {
     channel: SecureChannelInfo,
     callback_address: Address,
     identity: I,
-    trust_policy: T,
+    trust_policy: Arc<dyn TrustPolicy>,
 }
 
-struct ResponderWaitForIdentity<I: IdentityTrait, T: TrustPolicy> {
+struct ResponderWaitForIdentity<I: IdentityTrait> {
     auth_hash: [u8; 32],
     local_secure_channel_address: Address,
     identity: I,
-    trust_policy: T,
+    trust_policy: Arc<dyn TrustPolicy>,
 }
 
 #[derive(Clone)]
@@ -64,27 +64,27 @@ struct Initialized {
     their_identity_id: IdentityIdentifier,
 }
 
-enum State<I: IdentityTrait, T: TrustPolicy> {
-    InitiatorStartChannel(InitiatorStartChannel<I, T>),
-    ResponderWaitForKex(ResponderWaitForKex<I, T>),
-    InitiatorSendIdentity(InitiatorSendIdentity<I, T>),
-    ResponderWaitForIdentity(ResponderWaitForIdentity<I, T>),
+enum State<I: IdentityTrait> {
+    InitiatorStartChannel(InitiatorStartChannel<I>),
+    ResponderWaitForKex(ResponderWaitForKex<I>),
+    InitiatorSendIdentity(InitiatorSendIdentity<I>),
+    ResponderWaitForIdentity(ResponderWaitForIdentity<I>),
     Initialized(Initialized),
 }
 
-pub(crate) struct SecureChannelWorker<I: IdentityTrait, T: TrustPolicy> {
+pub(crate) struct SecureChannelWorker<I: IdentityTrait> {
     is_initiator: bool,
     self_local_address: Address,
     self_remote_address: Address,
-    state: Option<State<I, T>>,
+    state: Option<State<I>>,
 }
 
-impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
+impl<I: IdentityTrait> SecureChannelWorker<I> {
     pub async fn create_initiator(
         ctx: &Context,
         route: Route,
         identity: I,
-        trust_policy: T,
+        trust_policy: Arc<dyn TrustPolicy>,
         vault: impl XXVault,
     ) -> Result<Address> {
         let child_address = Address::random_local();
@@ -150,7 +150,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
     pub(crate) async fn create_responder(
         ctx: &Context,
         identity: I,
-        trust_policy: T,
+        trust_policy: Arc<dyn TrustPolicy>,
         listener_address: Address,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
@@ -213,7 +213,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: ResponderWaitForKex<I, T>,
+        mut state: ResponderWaitForKex<I>,
     ) -> Result<()> {
         let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
 
@@ -238,7 +238,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
             auth_hash: kex_msg.auth_hash(),
             local_secure_channel_address: kex_msg.address().clone(),
             identity: state.identity,
-            trust_policy: state.trust_policy,
+            trust_policy: Arc::clone(&state.trust_policy),
         }));
 
         Ok(())
@@ -248,7 +248,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: InitiatorSendIdentity<I, T>,
+        mut state: InitiatorSendIdentity<I>,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
@@ -342,7 +342,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
         &mut self,
         _ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: ResponderWaitForIdentity<I, T>,
+        mut state: ResponderWaitForIdentity<I>,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
@@ -417,7 +417,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
         }
     }
 
-    fn take_state(&mut self) -> Result<State<I, T>> {
+    fn take_state(&mut self) -> Result<State<I>> {
         if let Some(s) = self.state.take() {
             Ok(s)
         } else {
@@ -525,7 +525,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
 }
 
 #[async_trait]
-impl<I: IdentityTrait, T: TrustPolicy> Worker for SecureChannelWorker<I, T> {
+impl<I: IdentityTrait> Worker for SecureChannelWorker<I> {
     type Message = Any;
     type Context = Context;
 
