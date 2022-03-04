@@ -19,6 +19,6 @@ fn node_test() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/node_test/fail*.rs");
     // When the node_test macro is compiled successfully, it will return the error "the main function doesn't exist" because this macro
-    // is only valid within a test context. Therefore, the "pass" tests is considered valid if it returns only that error.
+    // is only valid within a test context. Therefore, the "pass" tests is considered valid only if it returns that specific error.
     t.compile_fail("tests/node_test/pass*.rs");
 }

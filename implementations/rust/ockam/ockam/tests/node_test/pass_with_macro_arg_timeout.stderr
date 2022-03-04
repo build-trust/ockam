@@ -1,8 +1,8 @@
 error[E0601]: `main` function not found in crate `$CRATE`
- --> $DIR/pass_macro_with_timeout_arg.rs:1:1
+ --> $DIR/pass_with_macro_arg_timeout.rs:1:1
   |
 1 | / #[ockam::test(timeout = 1000)]
 2 | | async fn my_test(ctx: &mut ockam_node::Context) -> ockam_core::Result<()> {
 3 | |     ctx.stop().await
 4 | | }
-  | |_^ consider adding a `main` function to `$DIR/tests/node_test/pass_macro_with_timeout_arg.rs`
+  | |_^ consider adding a `main` function to `$DIR/tests/node_test/pass_with_macro_arg_timeout.rs`

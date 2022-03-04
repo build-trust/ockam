@@ -38,6 +38,14 @@ pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 /// Marks an async test function to be run in an ockam node.
+///
+/// The macro supports the following attributes:
+///
+/// - #[ockam::test(crate = "..."]: specify a path to the crate that will be used to import the functions required
+/// by the macro. This can be helpful when using the macro from an internal `ockam` crate. Defaults to `ockam_node`.
+///
+/// - #[ockam::test(timeout = 1000]: the macro executes the test with a timeout interval (in milliseconds) to avoid
+/// blocking the test indefinitely. If the test times out it will panic. Defaults to 30000 (30 seconds).
 #[proc_macro_attribute]
 pub fn test(args: TokenStream, item: TokenStream) -> TokenStream {
     node_test_attribute::entry(args, item)
