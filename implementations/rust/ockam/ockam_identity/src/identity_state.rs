@@ -125,7 +125,7 @@ impl<V: IdentityVault> IdentityState<V> {
 
         let public_key_id = vault.compute_key_id_for_public_key(&public_key).await?;
 
-        vault.get_secret_by_key_id(&public_key_id).await
+        vault.secret_by_key_id(&public_key_id).await
     }
 
     pub fn has_lease(&self) -> bool {
