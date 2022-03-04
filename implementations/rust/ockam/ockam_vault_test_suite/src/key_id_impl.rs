@@ -17,7 +17,7 @@ pub async fn compute_key_id_for_public_key(vault: &mut impl KeyIdVault) {
     );
 }
 
-pub async fn get_secret_by_key_id(vault: &mut (impl KeyIdVault + SecretVault)) {
+pub async fn secret_by_key_id(vault: &mut (impl KeyIdVault + SecretVault)) {
     let attributes_set = [
         SecretAttributes::new(
             SecretType::X25519,
@@ -36,7 +36,7 @@ pub async fn get_secret_by_key_id(vault: &mut (impl KeyIdVault + SecretVault)) {
         let public = vault.secret_public_key_get(&secret).await.unwrap();
 
         let key_id = vault.compute_key_id_for_public_key(&public).await.unwrap();
-        let secret2 = vault.get_secret_by_key_id(&key_id).await.unwrap();
+        let secret2 = vault.secret_by_key_id(&key_id).await.unwrap();
 
         assert_eq!(secret.index(), secret2.index());
     }

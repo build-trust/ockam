@@ -282,7 +282,7 @@ mod tests {
             .compute_key_id_for_public_key(&public_key)
             .await
             .unwrap();
-        let sec_idx_2 = vault.get_secret_by_key_id(&key_id).await.unwrap();
+        let sec_idx_2 = vault.secret_by_key_id(&key_id).await.unwrap();
         assert_eq!(sec_idx, sec_idx_2)
     }
 

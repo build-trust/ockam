@@ -7,7 +7,7 @@ use ockam_core::{async_trait, compat::boxed::Box};
 
 #[async_trait]
 impl KeyIdVault for SoftwareVault {
-    async fn get_secret_by_key_id(&mut self, key_id: &str) -> Result<Secret> {
+    async fn secret_by_key_id(&mut self, key_id: &str) -> Result<Secret> {
         let index = self
             .entries
             .iter()
@@ -42,5 +42,5 @@ mod tests {
     fn compute_key_id_for_public_key() {}
 
     #[ockam_macros::vault_test]
-    fn get_secret_by_key_id() {}
+    fn secret_by_key_id() {}
 }
