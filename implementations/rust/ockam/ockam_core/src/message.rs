@@ -250,6 +250,39 @@ impl<M: Message + Display> Display for Routed<M> {
 /// This is especially useful for implementing middleware workers
 /// which need access to the route information of a message, without
 /// understanding its payload.
+///
+/// # Examples
+///
+/// ```ignore
+/// use ockam::{hex, Any, Context, Result, Routed, Worker};
+///
+/// pub struct Logger;
+///
+/// #[ockam::worker]
+/// impl Worker for Logger {
+///     type Context = Context;
+///     type Message = Any;
+///
+///     /// This Worker will take any incoming message, print out the payload
+///     /// and then forward it to the next hop in its onward route.
+///     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+///         let mut local_msg = msg.into_local_message();
+///         let transport_msg = local_msg.transport_mut();
+///         transport_msg.onward_route.step()?;
+///         transport_msg.return_route.modify().prepend(ctx.address());
+///
+///         let payload = transport_msg.payload.clone();
+///
+///         if let Ok(str) = String::from_utf8(payload.clone()) {
+///             println!("Address: {}, Received string: {}", ctx.address(), str);
+///         } else {
+///             println!("Address: {}, Received binary: {}", ctx.address(), hex::encode(&payload));
+///         }
+///
+///         ctx.forward(local_msg).await
+///     }
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq, crate::Message)]
 pub struct Any;
 

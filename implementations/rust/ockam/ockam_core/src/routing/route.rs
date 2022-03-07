@@ -12,13 +12,40 @@ pub struct Route {
 }
 
 impl Route {
-    /// Create an empty `RouteBuilder`.
+    /// Create an empty [`RouteBuilder`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::Route;
+    /// # pub const TCP: u8 = 1;
+    /// // ["1#alice", "0#bob"]
+    /// let route: Route = Route::new()
+    ///     .append_t(TCP, "alice")
+    ///     .append("bob")
+    ///     .into();
+    /// ```
+    ///
     #[allow(clippy::new_ret_no_self)]
     pub fn new() -> RouteBuilder<'static> {
         RouteBuilder::new()
     }
 
     /// Create a route from a `Vec` of [`Address`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{Address, Route};
+    /// # pub const TCP: u8 = 1;
+    /// // ["1#alice", "0#bob"]
+    /// let route: Route = vec![
+    ///     Address::new(TCP, "alice"),
+    ///     "bob".into(),
+    /// ]
+    /// .into();
+    /// ```
+    ///
     pub fn create<T: Into<Address>>(vt: Vec<T>) -> Self {
         let mut route = Route::new();
         for addr in vt {
@@ -28,6 +55,18 @@ impl Route {
     }
 
     /// Parse a route from a string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::Route;
+    /// if let Some(route) = Route::parse("1#alice => bob") {
+    ///     // ["1#alice", "0#bob"]
+    ///     route
+    /// # ;
+    /// }
+    /// ```
+    ///
     pub fn parse<S: Into<String>>(s: S) -> Option<Route> {
         let s = s.into();
         if s.is_empty() {
@@ -49,9 +88,20 @@ impl Route {
         )
     }
 
-    /// Create a new `RouteBuilder` from the current [`Route`].
+    /// Create a new [`RouteBuilder`] from the current `Route`.
     ///
-    /// [`RouteBuilder`]: crate::RouteBuilder
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Route};
+    /// let mut route: Route = route!["1#alice", "bob"];
+    ///
+    /// // ["1#alice", "0#bob", "0#carol"]
+    /// let route: Route = route.modify()
+    ///     .append("carol")
+    ///     .into();
+    /// ```
+    ///
     pub fn modify(&mut self) -> RouteBuilder {
         RouteBuilder {
             inner: self.inner.clone(),
@@ -60,6 +110,24 @@ impl Route {
     }
 
     /// Return the next `Address` and remove it from this route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Address, Result, Route};
+    /// # fn main() -> Result<()> {
+    /// let mut route: Route = route!["1#alice", "bob"];
+    ///
+    /// // "1#alice"
+    /// let next_hop: Address = route.step()?;
+    ///
+    /// // ["0#bob"]
+    /// route
+    /// # ;
+    /// #     Ok(())
+    /// # }
+    /// ```
+    ///
     pub fn step(&mut self) -> Result<Address> {
         self.inner
             .pop_front()
@@ -67,6 +135,24 @@ impl Route {
     }
 
     /// Return the next `Address` from this route without removing it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Address, Result, Route};
+    /// # fn main() -> Result<()> {
+    /// let route: Route = route!["1#alice", "bob"];
+    ///
+    /// // "1#alice"
+    /// let next_hop: &Address = route.next()?;
+    ///
+    /// // ["1#alice", "0#bob"]
+    /// route
+    /// # ;
+    /// #     Ok(())
+    /// # }
+    /// ```
+    ///
     pub fn next(&self) -> Result<&Address> {
         self.inner
             .front()
@@ -78,6 +164,23 @@ impl Route {
     /// # Panics
     ///
     /// This function will panic if passed an empty route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Address, Result, Route};
+    /// # fn main() -> Result<()> {
+    /// let route: Route = route!["1#alice", "bob"];
+    ///
+    /// // "0#bob"
+    /// let final_hop: Address = route.recipient();
+    ///
+    /// // ["1#alice", "0#bob"]
+    /// route
+    /// # ;
+    /// #     Ok(())
+    /// # }
+    /// ```
     ///
     /// `TODO` For consistency we should not panic and return a
     /// Result<&Address> instead of an Address.clone().
@@ -169,12 +272,39 @@ impl RouteBuilder<'_> {
     }
 
     /// Push a new item to the back of the route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{Route, RouteBuilder};
+    /// let builder: RouteBuilder = Route::new()
+    ///     .append("1#alice")
+    ///     .append("bob");
+    ///
+    /// // ["1#alice, "0#bob"]
+    /// let route: Route = builder.into();
+    /// ```
+    ///
     pub fn append<A: Into<Address>>(mut self, addr: A) -> Self {
         self.inner.push_back(addr.into());
         self
     }
 
     /// Push an item with an explicit type to the back of the route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{Route, RouteBuilder};
+    /// # pub const TCP: u8 = 1;
+    /// let builder: RouteBuilder = Route::new()
+    ///     .append_t(TCP, "alice")
+    ///     .append_t(0, "bob");
+    ///
+    /// // ["1#alice", "0#bob"]
+    /// let route: Route = builder.into();
+    /// ```
+    ///
     pub fn append_t<A: Into<String>>(mut self, t: u8, addr: A) -> Self {
         self.inner
             .push_back(format!("{}#{}", t, addr.into()).into());
@@ -182,12 +312,39 @@ impl RouteBuilder<'_> {
     }
 
     /// Push a new item to the front of the route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{Route, RouteBuilder};
+    /// let builder: RouteBuilder = Route::new()
+    ///     .prepend("1#alice")
+    ///     .prepend("0#bob");
+    ///
+    /// // ["0#bob", "1#alice"]
+    /// let route: Route = builder.into();
+    /// ```
+    ///
     pub fn prepend<A: Into<Address>>(mut self, addr: A) -> Self {
         self.inner.push_front(addr.into());
         self
     }
 
     /// Prepend a full route to an existing route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Route, RouteBuilder};
+    /// let mut route_a: Route = route!["1#alice", "bob"];
+    /// let route_b: Route = route!["1#carol", "dave"];
+    ///
+    /// // ["1#carol", "0#dave", "1#alice", "0#bob"]
+    /// let route: Route = route_a.modify()
+    ///     .prepend_route(route_b)
+    ///     .into();
+    /// ```
+    ///
     pub fn prepend_route(mut self, route: Route) -> Self {
         route
             .inner
@@ -201,6 +358,19 @@ impl RouteBuilder<'_> {
     ///
     /// Similar to [`Self::prepend(...)`](RouteBuilder::prepend), but
     /// drops the previous HEAD value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Route, RouteBuilder};
+    /// let mut route: Route = route!["1#alice", "bob"];
+    ///
+    /// // ["1#carol", "0#bob"]
+    /// let route: Route = route.modify()
+    ///     .replace("1#carol")
+    ///     .into();
+    /// ```
+    ///
     pub fn replace<A: Into<Address>>(mut self, addr: A) -> Self {
         self.inner.pop_front();
         self.inner.push_front(addr.into());
@@ -208,12 +378,38 @@ impl RouteBuilder<'_> {
     }
 
     /// Pop the front item from the route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Address, Route};
+    /// let mut route: Route = route!["1#alice", "bob", "carol"];
+    ///
+    /// // ["0#bob", "carol"]
+    /// let route: Route = route.modify()
+    ///     .pop_front()
+    ///     .into();
+    /// ```
+    ///
     pub fn pop_front(mut self) -> Self {
         self.inner.pop_front();
         self
     }
 
     /// Pop the back item from the route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Address, Route};
+    /// let mut route: Route = route!["1#alice", "bob", "carol"];
+    ///
+    /// // ["1#alice", "0#bob"]
+    /// let route: Route = route.modify()
+    ///     .pop_back()
+    ///     .into();
+    /// ```
+    ///
     pub fn pop_back(mut self) -> Self {
         self.inner.pop_back();
         self
