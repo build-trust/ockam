@@ -10,6 +10,11 @@ use serde::{Deserialize, Serialize};
 ///
 /// Casual users of Ockam should never have to interact with this type
 /// directly.
+///
+/// # Examples
+///
+/// See `ockam_transport_tcp::workers::sender::TcpSendWorker` for a usage example.
+///
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub struct TransportMessage {
     /// The transport protocol version.

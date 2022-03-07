@@ -98,12 +98,12 @@ impl<'a> From<&'a str> for AddressSet {
 /// When parsing an address from a string, the first `#` symbol is
 /// used to separate the transport type from the rest of the address.
 /// If no `#` symbol is found, the address is assumed to be of `transport =
-/// 0` (local worker).
+/// 0`, the Local Worker transport type.
 ///
 /// For example:
-/// * `0#a4855dd8d16cd23cae533f9651e95676` represents the local worker address: \
-///   `a4855dd8d16cd23cae533f9651e95676`.
-/// * `1#localhost:3000` represents a TCP transport address for the host `localhost` on port `3000`.
+/// * `"0#alice"` represents a local worker with the address: `alice`.
+/// * `"1#carol"` represents a remote worker with the address `carol`, reachable over TCP transport.
+///
 #[derive(Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Address {
     /// The transport type
@@ -158,6 +158,15 @@ impl crate::compat::error::Error for AddressParseError {}
 
 impl Address {
     /// Creates a new address from separate transport type and data parts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::Address;
+    /// # pub const TCP: u8 = 1;
+    /// // create a new remote worker address from a transport type and data
+    /// let tcp_worker: Address = Address::new(TCP, "carol");
+    /// ```
     pub fn new<S: Into<String>>(transport: u8, data: S) -> Self {
         Self {
             tt: transport,
@@ -167,7 +176,20 @@ impl Address {
 
     /// Parses an address from a string.
     ///
-    /// See type documentation for more detail.
+    /// # Panics
+    ///
+    /// This function will panic if passed an invalid address string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::Address;
+    /// // parse a local worker address
+    /// let local_worker: Address = Address::from_string("alice");
+    ///
+    /// // parse a remote worker address reachable over tcp transport
+    /// let tcp_worker: Address = Address::from_string("1#carol");
+    /// ```
     pub fn from_string<S: Into<String>>(s: S) -> Self {
         match s.into().parse::<Address>() {
             Ok(a) => a,
@@ -176,7 +198,16 @@ impl Address {
             }
         }
     }
+
     /// Generate a random address with the given transport type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::Address;
+    /// // generate a random local address
+    /// let local_worker: Address = Address::random(0);
+    /// ```
     pub fn random(transport: u8) -> Self {
         Self {
             tt: transport,
