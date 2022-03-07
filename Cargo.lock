@@ -2026,7 +2026,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.42.0"
+version = "0.43.0"
 dependencies = [
  "hashbrown 0.9.1",
  "ockam_core",
