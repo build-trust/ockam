@@ -22,3 +22,23 @@ impl From<RouteError> for Error {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::RouteError;
+    use crate::{compat::collections::HashMap, Error};
+    use core::array::IntoIter;
+
+    #[test]
+    fn code_and_domain() {
+        let errors_map =
+            IntoIter::new([(000, RouteError::IncompleteRoute)]).collect::<HashMap<_, _>>();
+
+        for (expected_code, err) in errors_map {
+            let err: Error = err.into();
+            #[cfg(feature = "alloc")]
+            assert_eq!(err.domain(), RouteError::DOMAIN_NAME);
+            assert_eq!(err.code(), RouteError::DOMAIN_CODE + expected_code);
+        }
+    }
+}
