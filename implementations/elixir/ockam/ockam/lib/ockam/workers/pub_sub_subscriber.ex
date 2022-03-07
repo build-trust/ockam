@@ -1,4 +1,4 @@
-defmodule Ockam.PubSubSubscriber do
+defmodule Ockam.Workers.PubSubSubscriber do
   @moduledoc """
   Worker to maintain Ockam.Hub pub_sub_service subscription
 

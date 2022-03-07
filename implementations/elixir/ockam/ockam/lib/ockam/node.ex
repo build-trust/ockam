@@ -78,6 +78,11 @@ defmodule Ockam.Node do
   end
 
   @doc """
+  List all registered addresses for a worker
+  """
+  defdelegate list_addresses(pid), to: Registry, as: :addresses
+
+  @doc """
   Send a message to the process registered with an address.
   """
   def send(address, %Ockam.Message{} = message) do

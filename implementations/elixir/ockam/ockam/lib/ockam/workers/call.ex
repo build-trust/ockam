@@ -8,6 +8,42 @@ defmodule Ockam.Workers.Call do
 
   require Logger
 
+  def call_on_current_process(payload, onward_route, timeout \\ 20_000) do
+    {:ok, call_address} = Ockam.Node.register_random_address()
+    Ockam.Router.route(payload, onward_route, [call_address])
+
+    result =
+      receive do
+        %Ockam.Message{
+          onward_route: [^call_address]
+        } = message ->
+          {:ok, message}
+      after
+        timeout ->
+          {:error, :timeout}
+      end
+
+    Ockam.Node.unregister_address(call_address)
+
+    ## There is a short time frame after timeout and before we unregister address
+    ## The mailbox might contain the message we're waiting for
+    case result do
+      {:error, :timeout} ->
+        receive do
+          %Ockam.Message{
+            onward_route: [^call_address]
+          } = message ->
+            {:ok, message}
+        after
+          0 ->
+            {:error, :timeout}
+        end
+
+      other ->
+        other
+    end
+  end
+
   def call(call, options \\ [], timeout \\ 20_000) do
     {:ok, address} = __MODULE__.create(Keyword.merge(options, call: call))
 

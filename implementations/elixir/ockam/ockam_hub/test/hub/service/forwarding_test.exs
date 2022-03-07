@@ -5,6 +5,8 @@ defmodule Test.Hub.Service.ForwardingTest do
 
   alias Ockam.Node
   alias Ockam.Router
+  alias Ockam.Workers.RemoteForwarder
+
   alias Test.Utils
 
   test "forwarding" do
@@ -31,9 +33,9 @@ defmodule Test.Hub.Service.ForwardingTest do
     {:ok, me} = Node.register_random_address()
 
     {:ok, forwarder} =
-      Ockam.RemoteForwarder.create(service_route: [service_address], forward_to: [me])
+      RemoteForwarder.create(service_route: [service_address], forward_to: [me])
 
-    forwarder_address = Ockam.RemoteForwarder.forwarder_address(forwarder)
+    forwarder_address = RemoteForwarder.forwarder_address(forwarder)
 
     on_exit(fn ->
       Node.stop(service_address)

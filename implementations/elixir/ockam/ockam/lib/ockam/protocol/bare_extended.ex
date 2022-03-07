@@ -61,6 +61,7 @@ defmodule Ockam.Bare.Extended do
     {:ok, decoded}
   end
 
+  ## TODO: recursive tagged union: make it a part of bare.erl
   @spec to_bare_schema(extended_schema()) :: schema()
   def to_bare_schema(extended_schema) when is_list(extended_schema) do
     {:union, Keyword.values(extended_schema)}

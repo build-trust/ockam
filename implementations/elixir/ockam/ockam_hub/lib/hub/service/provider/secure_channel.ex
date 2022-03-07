@@ -1,7 +1,7 @@
 defmodule Ockam.Hub.Service.Provider.SecureChannel do
   @moduledoc """
   Implementation for Ockam.Hub.Service.Provider
-  providing basic ockam routing services, :echo and :forwarding
+  providing secure channel service
   """
 
   @behaviour Ockam.Hub.Service.Provider
@@ -12,13 +12,6 @@ defmodule Ockam.Hub.Service.Provider.SecureChannel do
   @impl true
   def services() do
     @services
-  end
-
-  @impl true
-  def start_service(service_name, args) do
-    options = service_options(service_name, args)
-    mod = service_mod(service_name)
-    mod.create(options)
   end
 
   @impl true

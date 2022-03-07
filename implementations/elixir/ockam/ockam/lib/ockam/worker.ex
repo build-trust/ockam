@@ -26,6 +26,10 @@ defmodule Ockam.Worker do
     end
   end
 
+  def get_address(worker, timeout \\ 5000) do
+    call(worker, :get_address, timeout)
+  end
+
   defmacro __using__(_options) do
     quote do
       # use GenServer, makes this module a GenServer.
@@ -128,7 +132,10 @@ defmodule Ockam.Worker do
       def handle_continue(:post_init, options) do
         Node.set_address_module(Keyword.fetch!(options, :address), __MODULE__)
 
-        with {:ok, address} <- get_from_options(:address, options) do
+        extra_address = Keyword.get(options, :extra_addresses, [])
+
+        with :ok <- Ockam.Worker.register_extra_addresses(options),
+             {:ok, address} <- get_from_options(:address, options) do
           metadata = %{
             address: Keyword.get(options, :address),
             options: options,
@@ -152,6 +159,11 @@ defmodule Ockam.Worker do
         end
       end
 
+      @impl true
+      def handle_call(:get_address, _from, %{address: address} = state) do
+        {:reply, address, state}
+      end
+
       @doc false
       def get_from_options(key, options) do
         case Keyword.get(options, key) do
@@ -167,6 +179,24 @@ defmodule Ockam.Worker do
       def address_prefix(_options), do: ""
 
       defoverridable setup: 2, address_prefix: 1
+    end
+  end
+
+  def register_extra_addresses(extra_addresses) do
+    failed_addresses =
+      extra_addresses
+      |> Enum.map(fn extra_address ->
+        {extra_address, Ockam.Node.register_address(extra_address)}
+      end)
+      |> Enum.filter(fn
+        {_address, :no} -> true
+        _ok -> false
+      end)
+      |> Enum.map(fn {address, _} -> address end)
+
+    case failed_addresses do
+      [] -> :ok
+      failed -> {:error, {:cannot_register_addresses, failed}}
     end
   end
 

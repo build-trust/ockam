@@ -88,6 +88,7 @@ defmodule Ockam.Hub.MixProject do
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",
       lint: ["lint.format", "lint.credo"],
+      test: "test --no-start",
       "test.cover": "test --no-start --cover"
     ]
   end

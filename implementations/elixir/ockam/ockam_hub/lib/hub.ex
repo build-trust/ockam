@@ -21,9 +21,6 @@ defmodule Ockam.Hub do
     tcp_transport_port = Application.get_env(:ockam_hub, :tcp_transport_port)
     udp_transport_port = Application.get_env(:ockam_hub, :udp_transport_port)
 
-    ## Get configured services child specs
-    {:ok, services_specs} = Ockam.Hub.Service.Provider.configured_child_specs()
-
     schedule_specs = cleanup_schedule(Application.get_env(:ockam_hub, :cleanup))
 
     # Specifications of child processes that will be started and supervised.
@@ -48,9 +45,9 @@ defmodule Ockam.Hub do
         {Ockam.Transport.UDP.Listener,
          [
            port: udp_transport_port
-         ]}
+         ]},
+        Ockam.Hub.Service.Provider
       ] ++
-        services_specs ++
         schedule_specs ++
         if Application.get_env(:telemetry_influxdb, :host, nil) do
           [Ockam.Hub.Metrics.TelemetryInfluxDB.child_spec()]

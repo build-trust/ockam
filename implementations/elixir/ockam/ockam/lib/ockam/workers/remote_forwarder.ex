@@ -1,4 +1,4 @@
-defmodule Ockam.RemoteForwarder do
+defmodule Ockam.Workers.RemoteForwarder do
   @moduledoc """
   Ockam worker to handle forwarding from the Ockam Hub forwarding service `Ockam.Hub.Service.Forwarding`
 

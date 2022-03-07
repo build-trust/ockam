@@ -11,13 +11,6 @@ defmodule Ockam.TokenLeaseManager.Hub.Service.Provider do
   end
 
   @impl true
-  def start_service(service_name, args) do
-    options = service_options(service_name, args)
-    mod = service_mod(service_name)
-    mod.create(options)
-  end
-
-  @impl true
   def child_spec(service_name, args) do
     options = service_options(service_name, args)
     mod = service_mod(service_name)

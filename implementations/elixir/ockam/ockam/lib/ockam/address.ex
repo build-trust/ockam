@@ -31,12 +31,24 @@ defmodule Ockam.Address do
   @spec type(t()) :: type()
 
   def type(string) when is_binary(string), do: 0
-  def type(%__MODULE__{type: type}) when is_address_type(type), do: type
+  def type(%{type: type}) when is_address_type(type), do: type
 
   @spec value(t()) :: binary()
   def value(string) when is_binary(string), do: string
-  def value(%__MODULE__{value: value}) when is_binary(value), do: value
+  def value(%{value: value}) when is_binary(value), do: value
 
+  def parse_route!(string_route) do
+    ## TODO: handle errors
+    string_route
+    |> String.split(";")
+    |> Enum.map(fn address ->
+      [type, value] = String.split(address, "#", parts: 2)
+      type = String.to_integer(type)
+      %__MODULE__{type: type, value: value}
+    end)
+  end
+
+  ## TODO: figure out a better API for address representation
   def normalize(address) do
     %{type: type(address), value: value(address)}
   end

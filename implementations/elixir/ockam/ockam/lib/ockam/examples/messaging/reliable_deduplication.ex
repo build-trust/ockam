@@ -17,7 +17,7 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
 
   alias Ockam.Messaging.PipeChannel
 
-  alias Ockam.PubSubSubscriber
+  alias Ockam.Workers.PubSubSubscriber
 
   alias Ockam.Transport.TCP.RecoverableClient
 

@@ -1,5 +1,4 @@
 Application.ensure_all_started(:ockam)
-Application.ensure_all_started(:ockam_hub)
 
 defmodule Test.Utils do
   @moduledoc """
