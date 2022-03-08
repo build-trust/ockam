@@ -17,6 +17,7 @@ exclude = [
     "LICENSE"
 ]
 autoexamples = false
+publish = true
 
 [features]
 default = ["std", "use_btleplug", "ockam/software_vault"]
