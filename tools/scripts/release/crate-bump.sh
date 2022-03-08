@@ -26,12 +26,37 @@ done
 
 declare -A bumped_crates
 
-bump_crate() {
-    source tools/scripts/release/crates-to-publish.sh
+recently_updated_crates=""
 
-    echo "Bumping crates with updated dependency. Note crates whose version has been updated recently will be omitted"
-    echo "$updated_crates"
+source tools/scripts/release/crates-to-publish.sh
 
+# (will remove comment)
+# With special case like below
+# crateA -> crateB -> crateC -> crateD
+# Where -> means "is a dependency of", we need to still bump crates 
+# whose cyclic dependency is updated.
+# We keep a state of recently updated crates and then recursively match
+# it with the new state of updated crate and only exit if all crates have 
+# been bumped.
+#
+# If crate A version is bumped and its updated version is changed in the
+# Cargo.toml of crateB, this script then re-runs, checking if there are any
+# recently updated crate also keeping the data of recently updated crates (crateA)
+# we then compare the new state of updated crates with that of the old one and
+# in this scenario getting crateB whose inter-dep was recently modified. Seeing there's an
+# updated crate (crateB) we then bump all crates ignoring recently bumped
+# crates (crateA so as not to bump twice) then we recursively check again if there
+# are any newly updated/modified crates whose version has not been bumped till new
+# state is same as old state.
+#
+# Case 2
+# crateF -> crateC
+# crateA -> crateB -> crateC
+# The script bumps (crateF and crateA) version and (crateC and crateB) `inter-dep version`,
+# on the second iteration, (crateC and crateB) version is then bumped, on the third iteration
+# we do not bump crateC version even though its inter-dep has been modified as it's version has already
+# been bumped for a release.
+while [[ $updated_crates != $recently_updated_crates ]]; do
     for crate in ${updated_crates[@]}; do
         version=$RELEASE_VERSION
         name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
@@ -52,11 +77,9 @@ bump_crate() {
         echo "Bumping $crate crate"
         echo y | cargo release $version --no-push --no-publish --no-tag --no-dev-version --package $name --execute
     done
-}
 
-bump_crate
+    recently_updated_crates=$updated_crates
+    source tools/scripts/release/crates-to-publish.sh
+done
 
-# Bump crates that cargo release has modified/updated it's dependencies in `cargo.toml`.
-#
-# Get crates whose cargo.toml file has been updated omitting recently updated crates.
-bump_crate
+echo "Bumped crates $recently_updated_crates"
