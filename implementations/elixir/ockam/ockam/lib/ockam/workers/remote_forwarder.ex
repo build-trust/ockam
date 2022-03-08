@@ -9,6 +9,7 @@ defmodule Ockam.Workers.RemoteForwarder do
 
   `service_route` - a route to the forwarding service
   `forward_to` - a route to forward messages from the hub forwarder to
+  `register_payload` - (defaults to "register") payload to use when registering a forwarder
 
   Usage:
 
@@ -49,8 +50,9 @@ defmodule Ockam.Workers.RemoteForwarder do
   def setup(options, state) do
     service_route = Keyword.fetch!(options, :service_route)
     forward_to = Keyword.fetch!(options, :forward_to)
+    register_payload = Keyword.get(options, :register_payload, "register")
 
-    case register(service_route, state.address) do
+    case register(service_route, state.address, register_payload) do
       {:ok, forwarder_address} ->
         {:ok, Map.merge(state, %{forward_to: forward_to, forwarder_address: forwarder_address})}
 
@@ -75,17 +77,17 @@ defmodule Ockam.Workers.RemoteForwarder do
     {:reply, Map.get(state, :forwarder_address), state}
   end
 
-  def register(service_route, self_address, timeout \\ 60_000) do
+  def register(service_route, self_address, register_payload, timeout \\ 60_000) do
     # Send 'register' message to forwarding service with the own address in the return_route
     Router.route(%{
       onward_route: service_route,
       return_route: [self_address],
-      payload: "register"
+      payload: register_payload
     })
 
     # Route to remote forwarder is the return_route of the reply
     receive do
-      %{onward_route: [^self_address], return_route: forwarder_route, payload: "register"} ->
+      %{onward_route: [^self_address], return_route: forwarder_route, payload: ^register_payload} ->
         {:ok, List.last(forwarder_route)}
     after
       timeout ->

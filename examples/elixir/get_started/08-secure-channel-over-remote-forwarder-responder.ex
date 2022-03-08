@@ -14,15 +14,16 @@ Ockam.SecureChannel.create_listener(vault: vault, identity_keypair: identity, ad
 Ockam.Transport.TCP.start()
 
 alias Ockam.Transport.TCPAddress
+alias Ockam.Workers.RemoteForwarder
 
 # Create a remote forwarder for the "app" on the node at TCPAddress - ("1.node.ockam.network", 4000)
-{:ok, forwarder} = Ockam.Workers.RemoteForwarder.create(
+{:ok, forwarder} = RemoteForwarder.create(
   # Route to forwarding service
   service_route: [TCPAddress.new("1.node.ockam.network", 4000), "forwarding_service"],
   # Route to worker to forward to
   forward_to: ["secure_channel_listener"]
 )
 
-forwarder_address = Ockam.Workers.RemoteForwarder.forwarder_address(forwarder)
+forwarder_address = RemoteForwarder.forwarder_address(forwarder)
 
 IO.puts("Forwarder address to secure channel listener: #{inspect(forwarder_address)}")
