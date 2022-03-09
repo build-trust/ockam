@@ -40,12 +40,10 @@ impl Display for WebSocketError {
 
 impl From<WebSocketError> for Error {
     fn from(e: WebSocketError) -> Error {
+        let info = format!("{}::{:?}", module_path!(), e);
         match e {
             WebSocketError::Transport(e) => e.into(),
-            _ => Error::new(
-                WebSocketError::DOMAIN_CODE + e.code(),
-                WebSocketError::DOMAIN_NAME,
-            ),
+            e => Error::new(WebSocketError::DOMAIN_CODE + e.code(), info),
         }
     }
 }

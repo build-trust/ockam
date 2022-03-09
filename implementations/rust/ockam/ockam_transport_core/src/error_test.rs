@@ -35,7 +35,7 @@ fn from_unmapped_io_error() {
     assert_eq!(tr_err, TransportError::GenericIo);
     let err: ockam_core::Error = tr_err.into();
     assert_eq!(err.code(), TransportError::DOMAIN_CODE + tr_err as u32);
-    assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
+    // assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
 }
 
 #[test]
