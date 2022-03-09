@@ -44,7 +44,7 @@ impl From<TransportError> for ockam_core::Error {
     fn from(e: TransportError) -> ockam_core::Error {
         ockam_core::Error::new(
             TransportError::DOMAIN_CODE + (e as u32),
-            TransportError::DOMAIN_NAME,
+            format!("{}::{:?}", module_path!(), e),
         )
     }
 }
