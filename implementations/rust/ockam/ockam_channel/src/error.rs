@@ -1,6 +1,7 @@
 use ockam_core::Error;
 
 /// Types of errors that may occur constructing a secure channel.
+#[derive(Debug, Clone, Copy)]
 pub enum SecureChannelError {
     /// The key exchange process failed.
     KeyExchange = 1,
@@ -23,9 +24,11 @@ impl SecureChannelError {
     pub const DOMAIN_NAME: &'static str = "OCKAM_SECURE_CHANNEL";
 }
 
-#[allow(clippy::from_over_into)]
-impl Into<Error> for SecureChannelError {
-    fn into(self) -> Error {
-        Error::new(Self::DOMAIN_CODE + (self as u32), Self::DOMAIN_NAME)
+impl From<SecureChannelError> for Error {
+    fn from(e: SecureChannelError) -> Error {
+        Error::new(
+            SecureChannelError::DOMAIN_CODE + (e as u32),
+            format!("{}::{:?}", module_path!(), e),
+        )
     }
 }

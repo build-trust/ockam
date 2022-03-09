@@ -18,7 +18,7 @@ impl From<RouteError> for Error {
     fn from(e: RouteError) -> Error {
         Error::new(
             RouteError::DOMAIN_CODE + (e as u32),
-            RouteError::DOMAIN_NAME,
+            format!("{}::{:?}", module_path!(), e),
         )
     }
 }
@@ -26,18 +26,14 @@ impl From<RouteError> for Error {
 #[cfg(test)]
 mod tests {
     use super::RouteError;
-    use crate::{compat::collections::HashMap, Error};
+    use crate::Error;
 
     #[test]
     fn code_and_domain() {
-        let errors_map = [(000, RouteError::IncompleteRoute)]
-            .into_iter()
-            .collect::<HashMap<_, _>>();
+        let errors_map = [(000, RouteError::IncompleteRoute)].into_iter();
 
         for (expected_code, err) in errors_map {
             let err: Error = err.into();
-            #[cfg(feature = "alloc")]
-            assert_eq!(err.domain(), RouteError::DOMAIN_NAME);
             assert_eq!(err.code(), RouteError::DOMAIN_CODE + expected_code);
         }
     }

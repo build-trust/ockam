@@ -19,7 +19,7 @@ impl From<VaultSyncCoreError> for Error {
     fn from(err: VaultSyncCoreError) -> Self {
         Self::new(
             VaultSyncCoreError::DOMAIN_CODE + (err as u32),
-            VaultSyncCoreError::DOMAIN_NAME,
+            format!("{}::{:?}", module_path!(), err),
         )
     }
 }

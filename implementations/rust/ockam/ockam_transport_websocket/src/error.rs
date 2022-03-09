@@ -41,12 +41,10 @@ impl Display for WebSocketError {
 
 impl From<WebSocketError> for Error {
     fn from(e: WebSocketError) -> Error {
+        let info = format!("{}::{:?}", module_path!(), e);
         match e {
             WebSocketError::Transport(e) => e.into(),
-            _ => Error::new(
-                WebSocketError::DOMAIN_CODE + e.code(),
-                WebSocketError::DOMAIN_NAME,
-            ),
+            e => Error::new(WebSocketError::DOMAIN_CODE + e.code(), info),
         }
     }
 }
@@ -83,9 +81,8 @@ impl From<futures_channel::mpsc::SendError> for WebSocketError {
 
 #[cfg(test)]
 mod test {
-    use tokio_tungstenite::tungstenite::http::Response;
-
     use super::*;
+    use tokio_tungstenite::tungstenite::http::Response;
 
     #[test]
     fn code_and_domain() {
@@ -99,11 +96,9 @@ mod test {
             let err: Error = ws_err.into();
             match ws_err {
                 WebSocketError::Transport(_) => {
-                    assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
                     assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_code);
                 }
                 _ => {
-                    assert_eq!(err.domain(), WebSocketError::DOMAIN_NAME);
                     assert_eq!(err.code(), WebSocketError::DOMAIN_CODE + expected_code);
                 }
             }
@@ -116,7 +111,6 @@ mod test {
         let ws_err: WebSocketError = ts_err.into();
         let err: Error = ws_err.into();
         let expected_err_code = TransportError::ConnectionDrop as u32;
-        assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
         assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_err_code);
     }
 
@@ -126,7 +120,6 @@ mod test {
         let ws_err: WebSocketError = ts_err.into();
         let err: Error = ws_err.into();
         let expected_err_code = (WebSocketError::Http).code();
-        assert_eq!(err.domain(), WebSocketError::DOMAIN_NAME);
         assert_eq!(err.code(), WebSocketError::DOMAIN_CODE + expected_err_code);
     }
 }

@@ -46,7 +46,7 @@ impl From<TransportError> for ockam_core::Error {
     fn from(e: TransportError) -> ockam_core::Error {
         ockam_core::Error::new(
             TransportError::DOMAIN_CODE + (e as u32),
-            TransportError::DOMAIN_NAME,
+            format!("{}::{:?}", module_path!(), e),
         )
     }
 }
@@ -62,8 +62,6 @@ impl From<io::Error> for TransportError {
 
 #[cfg(test)]
 mod test {
-    use ockam_core::compat::collections::HashMap;
-
     use crate::TransportError;
 
     #[test]
@@ -84,11 +82,9 @@ mod test {
             (13, TransportError::GenericIo),
             (14, TransportError::PortalInvalidState),
         ]
-        .into_iter()
-        .collect::<HashMap<_, _>>();
+        .into_iter();
         for (expected_code, tr_err) in tr_errors_map {
             let err: ockam_core::Error = tr_err.into();
-            assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
             assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_code);
         }
     }
@@ -100,7 +96,6 @@ mod test {
         assert_eq!(tr_err, TransportError::GenericIo);
         let err: ockam_core::Error = tr_err.into();
         assert_eq!(err.code(), TransportError::DOMAIN_CODE + tr_err as u32);
-        assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
     }
 
     #[test]
@@ -109,8 +104,7 @@ mod test {
             std::io::ErrorKind::ConnectionRefused,
             TransportError::PeerNotFound,
         )]
-        .into_iter()
-        .collect::<HashMap<_, _>>();
+        .into_iter();
         for (io_err_kind, expected_tr_err) in mapped_io_err_kinds {
             let io_err = std::io::Error::new(io_err_kind, "io::Error");
             let tr_err: TransportError = io_err.into();
@@ -120,7 +114,6 @@ mod test {
                 err.code(),
                 TransportError::DOMAIN_CODE + expected_tr_err as u32
             );
-            assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
         }
     }
 }

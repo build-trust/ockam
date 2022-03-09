@@ -81,7 +81,12 @@ where
     T: Serialize,
 {
     fn encode(&self) -> Result<Encoded> {
-        Ok(serde_bare::to_vec(self)?)
+        serde_bare::to_vec(self).map_err(|e| {
+            crate::Error::new(
+                2,
+                format!("error encoding `{}`: {:?}", core::any::type_name::<T>(), e),
+            )
+        })
     }
 }
 
@@ -91,13 +96,18 @@ where
     T: DeserializeOwned,
 {
     fn decode(encoded: &[u8]) -> Result<Self> {
-        Ok(serde_bare::from_slice(encoded)?)
+        serde_bare::from_slice(encoded).map_err(|e| {
+            crate::Error::new(
+                1,
+                format!("error decoding `{}`: {:?}", core::any::type_name::<T>(), e),
+            )
+        })
     }
 }
 
 impl From<serde_bare::error::Error> for crate::Error {
-    fn from(_: serde_bare::error::Error) -> Self {
-        Self::new(1, "serde_bare")
+    fn from(e: serde_bare::error::Error) -> Self {
+        Self::new(1, format!("serde_bare::error::{:?}", e))
     }
 }
 

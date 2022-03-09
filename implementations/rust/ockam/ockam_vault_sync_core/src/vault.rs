@@ -1,3 +1,4 @@
+#[cfg(feature = "software_vault")]
 use crate::VaultMutex;
 
 /// Vault allows to start Vault Worker.
