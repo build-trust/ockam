@@ -16,6 +16,7 @@ mod message_derive;
 mod node_attribute;
 mod node_test_attribute;
 mod vault_test_attribute;
+mod vault_test_sync_attribute;
 
 /// Custom derive for the `ockam_core::AsyncTryClone` trait.
 #[proc_macro_derive(AsyncTryClone)]
@@ -54,11 +55,11 @@ pub fn test(args: TokenStream, item: TokenStream) -> TokenStream {
 /// Expands to a test suite for a custom implementation of the vault traits.
 #[proc_macro_attribute]
 pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    vault_test_attribute::vault_test_entry(_attr, item)
+    vault_test_attribute::entry(_attr, item)
 }
 
 /// Expands to a test suite for a custom implementation of the vault traits.
 #[proc_macro_attribute]
 pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    vault_test_attribute::vault_test_sync_entry(_attr, item)
+    vault_test_sync_attribute::entry(_attr, item)
 }

@@ -13,11 +13,20 @@ fn parse(input: ItemFn) -> Result<TokenStream, Error> {
     let import_test = quote! { use ockam_vault_test_suite::#original_fn_ident; };
     let run_test = quote! { #original_fn_ident(&mut vault).await; };
     let output = quote! {
-        #[tokio::test]
-        async fn #original_fn_ident() {
+        #[test]
+        fn #original_fn_ident() {
             #import_test
-            let mut vault = new_vault();
-            #run_test
+            use crate::{Vault, VaultSync};
+
+            let (mut ctx, mut executor) = ockam_node::start_node();
+            executor
+            .execute(async move {
+                let vault = new_vault();
+                let mut vault = VaultSync::create(&ctx, vault).await.unwrap();
+                #run_test
+                ctx.stop().await.unwrap()
+            })
+         .unwrap();
         }
     };
     Ok(output.into())
