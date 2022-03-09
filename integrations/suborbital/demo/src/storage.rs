@@ -30,7 +30,7 @@ pub fn get_ockam_dir() -> Result<PathBuf> {
     }
 }
 
-pub fn ensure_identity_exists() -> Result<()> {
+pub fn ensure_identity_exists(expect_trusted: bool) -> Result<()> {
     let dir = get_ockam_dir()?;
     if !dir.exists() {
         anyhow::bail!("Failed to locate the ockam directory. Do you need to run `ockam create-identity`?");
@@ -43,7 +43,7 @@ pub fn ensure_identity_exists() -> Result<()> {
             instead.",
         );
     }
-    if !dir.join("trusted").exists() {
+    if expect_trusted && !dir.join("trusted").exists() {
         tracing::warn!(
             "The ockam directory does not have a list of trusted identifiers at `{}/trusted`. \
              This may indicate a configuration error",
@@ -124,31 +124,14 @@ pub fn write(path: &std::path::Path, data: &[u8]) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn read_trusted_idents(path: &std::path::Path) -> anyhow::Result<Vec<IdentityIdentifier>> {
-    // No TOCTOU here, this is just for a better error message.
-    if !path.exists() {
-        anyhow::bail!("No trusted identifiers list exists at {path:?}.");
-    }
-    let data =
-        std::fs::read_to_string(path).with_context(|| format!("failed to open trusted identifier file `{path:?}`"))?;
-    let lines = data
-        .lines()
-        .enumerate()
-        .map(|l| (l.0, l.1.trim()))
-        .filter(|(_, l)| !l.is_empty())
-        .map(|(n, id)| (n, id.strip_prefix('P').unwrap_or(id)));
-    let mut idents = vec![];
-    for (num, line) in lines {
-        if !matches!(ockam::hex::decode(line), Ok(v) if v.len() == 32) {
-            anyhow::bail!(
-                "Failed to parse '{path:?}'. Line {num} is not a valid identifier. \
-                Expected 64 ascii hex chars, but got: {line:?}",
-            );
-        }
-        let ident = IdentityIdentifier::from_key_id(line.into());
-        tracing::debug!("Trusting: {:?}", ident);
-        idents.push(ident);
-    }
-    tracing::info!("Read {:?} trusted identifiers from list at '{:?}'", idents.len(), path);
-    Ok(idents)
+pub fn load_trust_policy(ockam_dir: &std::path::Path) -> anyhow::Result<ockam::TrustMultiIdentifiersPolicy> {
+    let path = ockam_dir.join("trusted");
+    let idents = crate::identity::read_trusted_idents_from_file(&path)?;
+    tracing::info!(
+        "Loaded {:?} trusted identifiers from list at '{:?}'",
+        idents.len(),
+        path,
+    );
+    tracing::debug!("Trusting identifiers: {:?}", idents);
+    Ok(ockam::TrustMultiIdentifiersPolicy::new(idents))
 }

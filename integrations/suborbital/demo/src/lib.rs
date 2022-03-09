@@ -1,7 +1,11 @@
 #![allow(unused)]
 use self::args::*;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
+use identity::load_identity;
+use ockam::IdentityIdentifier;
+use std::collections::BTreeSet;
+use storage::{ensure_identity_exists, get_ockam_dir};
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub(crate) mod args;
@@ -25,7 +29,81 @@ pub fn run_main() {
         args::Command::CreateIdentity(arg) => node_subcommand(verbose > 0, arg, cmd::identity::run),
         args::Command::CreateInlet(arg) => node_subcommand(verbose > 0, arg, cmd::inlet::run),
         args::Command::CreateOutlet(arg) => node_subcommand(verbose > 0, arg, cmd::outlet::run),
+        args::Command::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
+        args::Command::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
     }
+}
+
+fn print_identity() -> anyhow::Result<()> {
+    ensure_identity_exists(false)?;
+    let dir = get_ockam_dir()?;
+    let identity = load_identity(&dir.join("identity.json"))?;
+    println!("{}", identity.id.key_id());
+    Ok(())
+}
+
+fn add_trusted(arg: AddTrustedIdentityOpts) -> anyhow::Result<()> {
+    // Parse args before we start complaining about the directory.
+    let to_trust = crate::identity::parse_identities(&arg.to_trust)?;
+    ensure_identity_exists(false)?;
+    let ockam_dir = get_ockam_dir()?;
+    let trusted_file = ockam_dir.join("trusted");
+    if to_trust.is_empty() && !arg.only {
+        eprintln!(
+            "No change to {} needed, no identities were \
+            provided (and `--only` is not in use).",
+            trusted_file.display(),
+        );
+        return Ok(());
+    }
+    let existing = if trusted_file.exists() && !arg.only {
+        crate::identity::read_trusted_idents_from_file(&trusted_file)?
+    } else {
+        vec![]
+    };
+    let need = to_trust
+        .clone()
+        .into_iter()
+        .filter(|id| !existing.contains(&id))
+        .collect::<Vec<_>>();
+    if need.is_empty() && !arg.only {
+        eprintln!(
+            "No change to {} needed, all identities already \
+            trusted (and `--only` is not in use).",
+            trusted_file.display(),
+        );
+        return Ok(());
+    }
+    let all: Vec<_> = existing.iter().chain(need.iter()).cloned().collect();
+    let all_dedup = all.iter().cloned().collect::<BTreeSet<IdentityIdentifier>>();
+    // Keep user-provided order if no duplicates.
+    let idents_to_write = if all_dedup.len() == all.len() {
+        all
+    } else {
+        all_dedup.into_iter().collect::<Vec<_>>()
+    };
+    if idents_to_write == existing && !arg.only {
+        eprintln!(
+            "No change to {} needed. New and old trusted lists \
+            would be identical (and `--only` is not in use).",
+            trusted_file.display(),
+        );
+        return Ok(());
+    }
+    let strings_to_write = idents_to_write
+        .into_iter()
+        .map(|s| s.key_id().clone())
+        .collect::<Vec<String>>();
+    let new_contents = strings_to_write.join("\n");
+
+    crate::storage::write(&trusted_file, new_contents.as_bytes())
+        .with_context(|| format!("Writing updated list of trusted identities to {:?}", trusted_file))?;
+    eprintln!(
+        "Wrote updated list to {}, containing {} identities.",
+        trusted_file.display(),
+        strings_to_write.len(),
+    );
+    Ok(())
 }
 
 fn node_subcommand<A, F, Fut>(verbose: bool, arg: A, f: F)
@@ -37,30 +115,31 @@ where
     let (ctx, mut executor) = ockam::start_node();
     let res = executor.execute(async move {
         if let Err(e) = f(arg, ctx).await {
-            eprintln!("Error during execution: {}", message(verbose, &e));
-            for cause in e.chain().skip(1) {
-                eprintln!("- caused by: {}", message(verbose, cause));
-            }
-            std::process::exit(1);
+            print_error_and_exit(verbose, e);
         }
     });
     if let Err(e) = res {
         eprintln!(
-            "Ockam node failed at last minute. TODO: find out something smarter to do if this happens: {:?}",
-            e
+            "Ockam node failed at last minute. TODO: find out something \
+            smarter to do if this happens: {:?}",
+            e,
         );
     }
 }
 
+fn print_error_and_exit(v: bool, e: anyhow::Error) -> ! {
+    tracing::trace!("Exiting with error {:?}", e);
+    eprintln!("Error: {}", message(v, &e));
+    for cause in e.chain().skip(1) {
+        eprintln!("- caused by: {}", message(v, cause));
+    }
+    std::process::exit(1);
+}
+
 fn exit_with_result(verbose: bool, result: Result<()>) -> ! {
     if let Err(e) = result {
-        eprintln!("Error during execution: {}", message(verbose, &e));
-        for cause in e.chain().skip(1) {
-            eprintln!("- caused by: {}", message(verbose, cause));
-        }
-        std::process::exit(1);
+        print_error_and_exit(verbose, e);
     } else {
-        tracing::info!("Exiting (success)");
         std::process::exit(0);
     }
 }

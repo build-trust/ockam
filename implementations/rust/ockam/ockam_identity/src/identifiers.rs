@@ -7,7 +7,7 @@ use ockam_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 /// An identifier of an Identity.
-#[derive(Clone, Debug, Hash, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Hash, Serialize, Deserialize, Default, PartialOrd, Ord)]
 pub struct IdentityIdentifier(KeyId);
 
 /// Unique [`crate::Identity`] identifier, computed as SHA256 of root public key
