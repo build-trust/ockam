@@ -7,6 +7,7 @@ use ockam_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 /// An identifier of an Identity.
+#[allow(clippy::derive_hash_xor_eq)] // we manually implement a constant time Eq
 #[derive(Clone, Debug, Hash, Serialize, Deserialize, Default, PartialOrd, Ord)]
 pub struct IdentityIdentifier(KeyId);
 

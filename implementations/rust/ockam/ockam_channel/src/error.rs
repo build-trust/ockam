@@ -28,7 +28,7 @@ impl From<SecureChannelError> for Error {
     fn from(e: SecureChannelError) -> Error {
         Error::new(
             SecureChannelError::DOMAIN_CODE + (e as u32),
-            format!("{}::{:?}", module_path!(), e),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
         )
     }
 }

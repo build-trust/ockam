@@ -23,7 +23,7 @@ impl From<XXError> for Error {
     fn from(err: XXError) -> Self {
         Self::new(
             XXError::DOMAIN_CODE + (err as u32),
-            format!("{}::{:?}", module_path!(), err),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), err),
         )
     }
 }

@@ -56,7 +56,7 @@ impl From<CredentialError> for Error {
         let t = v.as_u32();
         Error::new(
             CredentialError::DOMAIN_CODE + t,
-            format!("{}::{:?}", module_path!(), v),
+            ockam_core::compat::format!("{}::{:?}", module_path!(), v),
         )
     }
 }
