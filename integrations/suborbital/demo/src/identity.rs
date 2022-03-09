@@ -1,8 +1,6 @@
-use crate::storage::*;
+use crate::OckamVault;
 use anyhow::{Context, Result};
 use ockam::{ExportedIdentity, IdentityIdentifier};
-use std::collections::BTreeSet;
-pub type OckamVault = ockam::VaultMutex<ockam_vault::SoftwareVault>;
 
 const VERSION: u32 = 1;
 

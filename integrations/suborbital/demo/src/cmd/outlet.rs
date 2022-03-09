@@ -1,15 +1,12 @@
-use crate::storage::*;
-use ockam::{
-    AsyncTryClone, Context, Identity, RemoteForwarder, TcpTransport, TrustEveryonePolicy, TrustMultiIdentifiersPolicy,
-    TCP,
-};
+use crate::{args::OutletOpts, identity, storage};
+use ockam::{Context, Identity, RemoteForwarder, TcpTransport, TCP};
 
-pub async fn run(args: crate::args::OutletOpts, ctx: Context) -> anyhow::Result<()> {
+pub async fn run(args: OutletOpts, ctx: Context) -> anyhow::Result<()> {
     crate::storage::ensure_identity_exists(true)?;
-    let ockam_dir = crate::storage::get_ockam_dir()?;
+    let ockam_dir = storage::get_ockam_dir()?;
 
-    let (exported_ident, vault) = crate::identity::load_identity_and_vault(&ockam_dir)?;
-    let policy = crate::storage::load_trust_policy(&ockam_dir)?;
+    let (exported_ident, vault) = identity::load_identity_and_vault(&ockam_dir)?;
+    let policy = storage::load_trust_policy(&ockam_dir)?;
 
     let tcp = TcpTransport::create(&ctx).await?;
 

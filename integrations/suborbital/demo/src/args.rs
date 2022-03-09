@@ -1,18 +1,20 @@
-use std::path::PathBuf;
-
-use clap::{ArgEnum, Parser};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Clone, Debug, Parser)]
 #[clap(name = "ockam", version)]
-pub struct Args {
+pub struct CliArgs {
     #[clap(subcommand)]
     pub command: Command,
     /// Increase verbosity of logging output.
+    ///
+    ///   `-v` => Info level, and output extra debug information.
+    ///   `-vv` => Debug level.
+    ///   `-vvv` => Trace level.
     #[clap(long, short, parse(from_occurrences))]
     pub verbose: u8,
 }
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, Args)]
 pub struct InletOpts {
     /// Ockam's cloud node address
     pub cloud_addr: String,
@@ -22,7 +24,7 @@ pub struct InletOpts {
     pub inlet_address: String,
 }
 
-#[derive(Clone, Debug, clap::Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum Command {
     /// Start an outlet.
     #[clap(display_order = 1000)]
@@ -35,16 +37,24 @@ pub enum Command {
     CreateIdentity(IdentityOpts),
     /// Add an identity (or multiple) to the trusted list.
     ///
-    /// This is equivalent to adding the identifier to the end of the
-    /// the list in `~/.config/ockam/trusted` (or `$OCKAM_DIR/trusted`).
+    /// This is equivalent to adding the identifier to the end of the the list
+    /// in `<ockam_dir>/trusted` (`~/.config/ockam/trusted` by default, but
+    /// code that `$OCKAM_DIR/trusted` if overwritten).
     #[clap(display_order = 1003)]
     AddTrustedIdentity(AddTrustedIdentityOpts),
     /// Print the identifier for the currently configured identity.
     #[clap(display_order = 1004)]
     PrintIdentity,
+    /// Print path to the ockam directory.
+    ///
+    /// This is usually `$OCKAM_DIR` or `~/.config/ockam`, but in some cases can
+    /// be different, such as on Windows, unixes where `$XDG_CONFIG_HOME` has
+    /// been modified, etc.
+    #[clap(display_order = 1005)]
+    PrintPath,
 }
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, Args)]
 pub struct OutletOpts {
     /// Ockam's cloud node address
     pub cloud_addr: String,
@@ -55,22 +65,29 @@ pub struct OutletOpts {
     pub outlet_target: String,
 }
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, Args)]
 pub struct IdentityOpts {
-    /// If an ockam identity already exists, overwrite it. This is a destructive
-    /// operation and cannot be undone.
+    /// If an ockam identity already exists, overwrite it.
+    ///
+    /// This is a destructive operation and cannot be undone.
+    ///
+    /// Note: This only applies to the `<ockam_dir>/vault.json` and
+    /// `<ockam_dir>/identity.json` files, and not to `<ockam_dir>/trusted`,
+    /// which is left as-is must be managed manually. For example, with the
+    /// `ockam add-trusted-identity` subcommand)
     #[clap(long)]
     pub overwrite: bool,
 }
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, Args)]
 pub struct AddTrustedIdentityOpts {
     /// Discard any identities currently in `~/.config/ockam/trusted`, and
     /// replace them with the ones provided by this command.
     #[clap(long)]
     pub only: bool,
-    /// Identity to trust, or space/comma-separated list of identities.
+    /// The identity to trust, or space/comma-separated list of identities.
     ///
-    /// Multiple identities may be passed in, separated by whitespace or commas.
+    /// Some effort is taken to avoid writing the file when not necessary, and
+    /// to avoid adding duplicates entries in the file. Note that
     pub to_trust: String,
 }

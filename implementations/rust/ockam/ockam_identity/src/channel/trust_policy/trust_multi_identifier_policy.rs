@@ -1,5 +1,9 @@
 use crate::{IdentityIdentifier, SecureChannelTrustInfo, TrustPolicy};
-use ockam_core::{async_trait, compat::boxed::Box, Result};
+use ockam_core::{
+    async_trait,
+    compat::{boxed::Box, vec::Vec},
+    Result,
+};
 
 #[derive(Clone)]
 pub struct TrustMultiIdentifiersPolicy {
@@ -24,6 +28,6 @@ impl TrustMultiIdentifiersPolicy {
 #[async_trait]
 impl TrustPolicy for TrustMultiIdentifiersPolicy {
     async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
-        Ok(self.contains(trust_info.their_identity_id()).into())
+        Ok(self.contains(trust_info.their_identity_id()))
     }
 }

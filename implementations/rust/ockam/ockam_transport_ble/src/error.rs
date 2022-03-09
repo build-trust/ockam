@@ -66,23 +66,22 @@ impl From<BleError> for ockam_core::Error {
 
 #[test]
 fn code_and_domain() {
-    use core::array::IntoIter;
     use ockam_core::compat::collections::HashMap;
 
     let ble_errors_map = [
-        (000, BleError::PermissionDenied),
-        (001, BleError::NotSupported),
-        (002, BleError::HardwareError),
-        (003, BleError::NotFound),
-        (004, BleError::TimedOut),
-        (005, BleError::NotConnected),
-        (006, BleError::ConfigurationFailed),
-        (007, BleError::AdvertisingFailure),
-        (008, BleError::ConnectionClosed),
-        (009, BleError::ReadError),
-        (010, BleError::WriteError),
-        (011, BleError::Other),
-        (012, BleError::Unknown),
+        (000_u32, BleError::PermissionDenied),
+        (001_u32, BleError::NotSupported),
+        (002_u32, BleError::HardwareError),
+        (003_u32, BleError::NotFound),
+        (004_u32, BleError::TimedOut),
+        (005_u32, BleError::NotConnected),
+        (006_u32, BleError::ConfigurationFailed),
+        (007_u32, BleError::AdvertisingFailure),
+        (008_u32, BleError::ConnectionClosed),
+        (009_u32, BleError::ReadError),
+        (010_u32, BleError::WriteError),
+        (011_u32, BleError::Other),
+        (012_u32, BleError::Unknown),
     ]
     .into_iter()
     .collect::<HashMap<_, _>>();

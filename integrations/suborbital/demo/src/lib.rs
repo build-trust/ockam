@@ -1,4 +1,3 @@
-#![allow(unused)]
 use self::args::*;
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -8,10 +7,11 @@ use std::collections::BTreeSet;
 use storage::{ensure_identity_exists, get_ockam_dir};
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
+pub(crate) type OckamVault = ockam::VaultMutex<ockam_vault::SoftwareVault>;
+
 pub(crate) mod args;
 pub(crate) mod identity;
 pub(crate) mod storage;
-pub(crate) mod vault;
 pub(crate) mod cmd {
     pub(crate) mod identity;
     pub(crate) mod inlet;
@@ -20,7 +20,7 @@ pub(crate) mod cmd {
 
 // This should be this library's only public function.
 pub fn run_main() {
-    let args = Args::parse();
+    let args = CliArgs::parse();
     let verbose = args.verbose;
     init_logging(verbose);
     tracing::debug!("Parsed arguments (outlet) {:?}", args);
@@ -29,8 +29,9 @@ pub fn run_main() {
         args::Command::CreateIdentity(arg) => node_subcommand(verbose > 0, arg, cmd::identity::run),
         args::Command::CreateInlet(arg) => node_subcommand(verbose > 0, arg, cmd::inlet::run),
         args::Command::CreateOutlet(arg) => node_subcommand(verbose > 0, arg, cmd::outlet::run),
-        args::Command::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
         args::Command::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
+        args::Command::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
+        args::Command::PrintPath => exit_with_result(verbose > 0, print_ockam_dir()),
     }
 }
 
@@ -40,6 +41,25 @@ fn print_identity() -> anyhow::Result<()> {
     let identity = load_identity(&dir.join("identity.json"))?;
     println!("{}", identity.id.key_id());
     Ok(())
+}
+
+fn print_ockam_dir() -> anyhow::Result<()> {
+    match get_ockam_dir() {
+        Ok(path) => {
+            // We'd rather panic than print a lossy (and thus possibly wrong)
+            // path. But `get_ockam_dir()` checks this.
+            println!("{}", path.to_str().expect("bug in `get_ockam_dir`"));
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!(
+                "Failed to locate the ockam directory (or it was invalid). \
+                Hint: try providing `$OCKAM_DIR` explicitly, or changing the \
+                value of `$OCKAM_DIR` if it is already set in your environment.",
+            );
+            Err(e)
+        }
+    }
 }
 
 fn add_trusted(arg: AddTrustedIdentityOpts) -> anyhow::Result<()> {
@@ -62,9 +82,8 @@ fn add_trusted(arg: AddTrustedIdentityOpts) -> anyhow::Result<()> {
         vec![]
     };
     let need = to_trust
-        .clone()
         .into_iter()
-        .filter(|id| !existing.contains(&id))
+        .filter(|id| !existing.contains(id))
         .collect::<Vec<_>>();
     if need.is_empty() && !arg.only {
         eprintln!(

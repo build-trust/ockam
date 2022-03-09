@@ -1,16 +1,9 @@
-use std::path::Path;
-
-use crate::{identity::save_identity, storage::*};
+use crate::{args::IdentityOpts, identity::save_identity, storage};
 use anyhow::Context as Ctx;
-use ockam::{
-    Context, ExportedIdentity, Identity, IdentityTrait, RemoteForwarder, TcpTransport, TrustEveryonePolicy, TCP,
-};
-use ockam_core::vault::*;
-use serde::{Deserialize, Serialize};
+use ockam::{Context, Identity};
 
-pub async fn run(args: crate::args::IdentityOpts, mut ctx: Context) -> anyhow::Result<()> {
-    use ockam::IdentityTrait;
-    let ockam_dir = init_ockam_dir()?;
+pub async fn run(args: IdentityOpts, mut ctx: Context) -> anyhow::Result<()> {
+    let ockam_dir = storage::init_ockam_dir()?;
     let id_path = ockam_dir.join("identity.json");
     let vault_path = ockam_dir.join("vault.json");
     if id_path.exists() || vault_path.exists() {
