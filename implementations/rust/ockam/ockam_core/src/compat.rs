@@ -60,6 +60,18 @@ pub use std::io;
 #[cfg(feature = "std")]
 pub use std::net;
 
+/// Provides a `println!` wrapper around `tracing::info!` for `no_std` targets
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub mod println {
+    #[macro_export]
+    /// Implementation of println for `no_std` by wrapping the `tracing::info!` macro.
+    macro_rules! println {
+        ($($arg:tt)*) => {{
+            tracing::info!($($arg)*);
+        }};
+    }
+}
+
 /// Provides `rand`.
 pub mod rand {
     pub use rand::distributions;
