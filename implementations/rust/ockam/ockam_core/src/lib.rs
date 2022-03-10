@@ -65,18 +65,9 @@ pub use traits::*;
 pub use uint::*;
 pub use worker::*;
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[doc(hidden)]
+pub use compat::println;
 #[cfg(feature = "std")]
 #[doc(hidden)]
 pub use std::println;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-#[doc(hidden)]
-/// The `println_no_std` module provides a `println` macro for `no_std` targets.
-pub mod println_no_std {
-    #[macro_export]
-    /// Implementation of println for `no_std` by wrapping the `tracing::info!` macro.
-    macro_rules! println {
-        ($($arg:tt)*) => {{
-            tracing::info!($($arg)*);
-        }};
-    }
-}
