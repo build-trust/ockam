@@ -134,7 +134,7 @@ defmodule Ockam.Worker do
 
         extra_address = Keyword.get(options, :extra_addresses, [])
 
-        with :ok <- Ockam.Worker.register_extra_addresses(options),
+        with :ok <- Ockam.Worker.register_extra_addresses(options, __MODULE__),
              {:ok, address} <- get_from_options(:address, options) do
           metadata = %{
             address: Keyword.get(options, :address),
@@ -182,11 +182,13 @@ defmodule Ockam.Worker do
     end
   end
 
-  def register_extra_addresses(extra_addresses) do
+  def register_extra_addresses(options, module) do
+    extra_addresses = Keyword.get(options, :extra_addresses, [])
+
     failed_addresses =
       extra_addresses
       |> Enum.map(fn extra_address ->
-        {extra_address, Ockam.Node.register_address(extra_address)}
+        {extra_address, Ockam.Node.register_address(extra_address, module)}
       end)
       |> Enum.filter(fn
         {_address, :no} -> true

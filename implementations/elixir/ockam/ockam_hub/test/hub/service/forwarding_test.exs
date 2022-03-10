@@ -32,8 +32,7 @@ defmodule Test.Hub.Service.ForwardingTest do
 
     {:ok, me} = Node.register_random_address()
 
-    {:ok, forwarder} =
-      RemoteForwarder.create(service_route: [service_address], forward_to: [me])
+    {:ok, forwarder} = RemoteForwarder.create(service_route: [service_address], forward_to: [me])
 
     forwarder_address = RemoteForwarder.forwarder_address(forwarder)
 

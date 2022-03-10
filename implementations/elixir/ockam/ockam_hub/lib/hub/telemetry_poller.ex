@@ -15,6 +15,13 @@ defmodule Ockam.Hub.TelemetryPoller do
         measurements: %{count: Enum.count(workers)},
         metadata: %{type: type_str}
       )
+
+      Enum.each(workers, fn address ->
+        Telemetry.emit_event([:workers, :address],
+          measurements: %{count: 1},
+          metadata: %{type: type_str, address: address}
+        )
+      end)
     end)
   end
 

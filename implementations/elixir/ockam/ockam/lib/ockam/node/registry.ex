@@ -26,7 +26,10 @@ defmodule Ockam.Node.Registry do
   #
   # The Gen* modules expect this function to be exported.
   # See the "Name registration" section of the `GenServer` module.
-  def register_name(address, pid), do: Registry.register_name({__MODULE__, address}, pid)
+  # def register_name(address, pid), do: Registry.register_name({__MODULE__, address}, pid)
+  def register_name(address, pid) do
+    Registry.register_name({__MODULE__, address}, pid)
+  end
 
   @spec whereis_name(any) :: :undefined | pid
   @doc false
