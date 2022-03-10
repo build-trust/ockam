@@ -2077,6 +2077,7 @@ dependencies = [
  "signature_ps",
  "tokio",
  "tracing",
+ "trybuild",
  "x25519-dalek",
 ]
 
