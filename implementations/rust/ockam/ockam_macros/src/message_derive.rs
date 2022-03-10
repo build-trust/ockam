@@ -18,8 +18,8 @@ fn parse(input: &DeriveInput) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let gen = quote! {
+    let output = quote! {
         impl #impl_generics Message for #name #ty_generics #where_clause {}
     };
-    gen.into()
+    output.into()
 }

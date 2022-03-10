@@ -1,12 +1,12 @@
 use ockam_core::AsyncTryClone;
 
 #[derive(AsyncTryClone)]
-pub struct Tmp1 {
+pub struct Tmp {
     a: u32,
 }
 
 #[derive(AsyncTryClone)]
-pub struct Tmp<T> {
+pub struct Tmp1<T> {
     a: u32,
     b: Vec<T>,
 }
@@ -20,8 +20,8 @@ pub struct Tmp2<T> {
 fn assert_impl<T: AsyncTryClone>() {}
 fn main() {
     assert_impl::<String>();
-    assert_impl::<Tmp1>();
-    assert_impl::<Tmp<usize>>();
-    assert_impl::<Tmp2<Tmp1>>();
-    assert_impl::<Tmp2<Tmp<String>>>();
+    assert_impl::<Tmp>();
+    assert_impl::<Tmp1<usize>>();
+    assert_impl::<Tmp2<Tmp>>();
+    assert_impl::<Tmp2<Tmp1<String>>>();
 }

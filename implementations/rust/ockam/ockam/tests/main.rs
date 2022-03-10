@@ -5,6 +5,12 @@ fn async_try_clone() {
 }
 
 #[test]
+fn message_derive() {
+    let t = trybuild::TestCases::new();
+    t.pass("tests/message_derive/test.rs");
+}
+
+#[test]
 fn node() {
     #[cfg(not(feature = "no_main"))]
     {
