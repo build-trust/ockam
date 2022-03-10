@@ -79,6 +79,8 @@ impl Route {
     ///
     /// This function will panic if passed an empty route.
     ///
+    /// `TODO` For consistency we should not panic and return a
+    /// Result<&Address> instead of an Address.clone().
     pub fn recipient(&self) -> Address {
         self.inner
             .back()
