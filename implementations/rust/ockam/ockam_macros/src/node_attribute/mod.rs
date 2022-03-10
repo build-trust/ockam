@@ -1,7 +1,3 @@
-//! The `#[node]` macro transform an async input main function into a regular
-//! output main function that sets up an ockam node and executes the body of
-//! the input function inside the node.
-
 use proc_macro::TokenStream;
 
 mod args;

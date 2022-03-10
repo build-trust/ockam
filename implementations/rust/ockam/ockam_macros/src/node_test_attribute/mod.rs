@@ -1,7 +1,3 @@
-//! The `#[ockam::test]` macro transforms an async input function into a test
-//! output function that sets up an ockam node and executes the body of
-//! the input function inside the node.
-
 use proc_macro::TokenStream;
 
 mod args;
