@@ -26,7 +26,7 @@ fn output_node(
     let ctx_mut = &ctx.mutability;
 
     // Handles error if inner function returns Result, unwraps it otherwise.
-    let err_handling = if ret_type == ReturnType::Default {
+    let err_handling = if matches!(ret_type, ReturnType::Default) {
         quote! {.unwrap();}
     } else {
         #[cfg(feature = "std")]

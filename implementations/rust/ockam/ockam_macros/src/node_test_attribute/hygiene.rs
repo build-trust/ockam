@@ -50,7 +50,7 @@ impl NodeReturn {
 
     fn returns_result(&self, input: &ItemFn) -> Result<(), Error> {
         let msg = "The function must have a return type";
-        if self.ty == ReturnType::Default {
+        if matches!(self.ty, ReturnType::Default) {
             return Err(Error::new_spanned(input.sig.fn_token, msg));
         }
         match &self.ty {
@@ -145,12 +145,14 @@ impl NodeCtx {
                 if let Type::Path(TypePath { qself: _, path }) = &*ty.elem {
                     Ok(parse_path(path)?)
                 } else {
-                    let msg = format!("Unexpected argument type {:?}", &self.ty);
+                    let ty = &self.ty;
+                    let msg = format!("Unexpected argument type {}", quote! {#ty});
                     Err(Error::new_spanned(ty, msg))
                 }
             }
             _ => {
-                let msg = format!("Unexpected argument type {:?}", &self.ty);
+                let ty = &self.ty;
+                let msg = format!("Unexpected argument type {}", quote! {#ty});
                 Err(Error::new_spanned(&self.ty, msg))
             }
         }

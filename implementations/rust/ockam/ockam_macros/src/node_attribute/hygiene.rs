@@ -114,12 +114,12 @@ impl NodeCtx {
                 if let Type::Path(type_path) = &*type_ref.elem {
                     Ok(type_path.clone())
                 } else {
-                    let msg = format!("Unexpected argument type {:?}", ty);
+                    let msg = format!("Unexpected argument type {}", quote! {#ty});
                     Err(Error::new_spanned(ty, msg))
                 }
             }
             _ => {
-                let msg = format!("Unexpected argument type {:?}", ty);
+                let msg = format!("Unexpected argument type {}", quote! {#ty});
                 Err(Error::new_spanned(ty, msg))
             }
         }
@@ -155,12 +155,14 @@ impl NodeCtx {
                 if let Type::Path(TypePath { qself: _, path }) = &*ty.elem {
                     Ok(parse_path(path)?)
                 } else {
-                    let msg = format!("Unexpected argument type {:?}", &self.ty);
+                    let ty = &self.ty;
+                    let msg = format!("Unexpected argument type {}", quote! {#ty});
                     Err(Error::new_spanned(ty, msg))
                 }
             }
             _ => {
-                let msg = format!("Unexpected argument type {:?}", &self.ty);
+                let ty = &self.ty;
+                let msg = format!("Unexpected argument type {}", quote! {#ty});
                 Err(Error::new_spanned(&self.ty, msg))
             }
         }
