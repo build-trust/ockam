@@ -63,7 +63,7 @@ pub fn message_derive(input: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// #[ockam::node]
-/// async fn main(mut ctx: ockam::Context) -> ockam_core::Result<()> {
+/// async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
 ///     ctx.stop().await
 /// }
 /// ```
@@ -89,7 +89,7 @@ pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// #[ockam::node]
-/// async fn main(mut ctx: ockam::Context) -> ockam_core::Result<()> {
+/// async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
 ///     ctx.stop().await
 /// }
 /// ```
