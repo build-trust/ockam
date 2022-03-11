@@ -3,12 +3,3 @@ error: Failed to parse value of `crate` as string.
   |
 1 | #[ockam::test(crate = 1000)]
   |                       ^^^^
-
-error[E0601]: `main` function not found in crate `$CRATE`
- --> tests/node_test/fail_if_invalid_macro_arg_crate.rs:1:1
-  |
-1 | / #[ockam::test(crate = 1000)]
-2 | | async fn my_test(ctx: &mut ockam_node::Context) -> ockam_core::Result<()> {
-3 | |     ctx.stop().await
-4 | | }
-  | |_^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_invalid_macro_arg_crate.rs`

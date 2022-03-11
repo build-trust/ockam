@@ -3,12 +3,3 @@ error: The function must have a return type
   |
 2 | async fn my_test(ctx: &mut ockam_node::Context) -> String {
   |       ^^
-
-error[E0601]: `main` function not found in crate `$CRATE`
- --> tests/node_test/fail_if_does_not_return_result.rs:1:1
-  |
-1 | / #[ockam::test]
-2 | | async fn my_test(ctx: &mut ockam_node::Context) -> String {
-3 | |     ctx.address();
-4 | | }
-  | |_^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_does_not_return_result.rs`

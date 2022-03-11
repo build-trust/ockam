@@ -12,11 +12,11 @@ fn message_derive() {
 
 #[test]
 fn node() {
-    #[cfg(not(feature = "no_main"))]
+    #[cfg(feature = "std")]
     {
         let t = trybuild::TestCases::new();
-        t.compile_fail("tests/node/fail*.rs");
-        t.pass("tests/node/pass*.rs");
+        t.compile_fail("tests/node/std/fail*.rs");
+        t.pass("tests/node/std/pass*.rs");
     };
 }
 

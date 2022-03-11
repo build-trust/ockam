@@ -6,7 +6,7 @@ pub(crate) fn node_test(args: syn::AttributeArgs) -> Result<TestArgs, syn::Error
     for arg in args {
         match arg {
             syn::NestedMeta::Meta(syn::Meta::NameValue(namevalue)) => {
-                let ident = namevalue
+                let name = namevalue
                     .path
                     .get_ident()
                     .ok_or_else(|| {
@@ -14,18 +14,14 @@ pub(crate) fn node_test(args: syn::AttributeArgs) -> Result<TestArgs, syn::Error
                     })?
                     .to_string()
                     .to_lowercase();
-                match ident.as_str() {
+                match name.as_str() {
                     "crate" => {
-                        parsed_args.set_crate(
-                            namevalue.lit.clone(),
-                            syn::spanned::Spanned::span(&namevalue.lit),
-                        )?;
+                        let span = syn::spanned::Spanned::span(&namevalue.lit);
+                        parsed_args.set_crate(namevalue.lit, span)?;
                     }
                     "timeout" => {
-                        parsed_args.set_timeout(
-                            namevalue.lit.clone(),
-                            syn::spanned::Spanned::span(&namevalue.lit),
-                        )?;
+                        let span = syn::spanned::Spanned::span(&namevalue.lit);
+                        parsed_args.set_timeout(namevalue.lit, span)?;
                     }
                     name => {
                         let msg = format!(

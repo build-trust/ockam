@@ -3,12 +3,3 @@ error: The context argument must be passed as reference
   |
 2 | async fn my_test(ctx: Context) -> ockam_core::Result<()> {
   |       ^^
-
-error[E0601]: `main` function not found in crate `$CRATE`
- --> $DIR/fail_with_owned_context.rs:1:1
-  |
-1 | / #[ockam::test]
-2 | | async fn my_test(ctx: Context) -> ockam_core::Result<()> {
-3 | |     ctx.stop().await.unwrap();
-4 | | }
-  | |_^ consider adding a `main` function to `$DIR/tests/node_test/fail_with_owned_context.rs`

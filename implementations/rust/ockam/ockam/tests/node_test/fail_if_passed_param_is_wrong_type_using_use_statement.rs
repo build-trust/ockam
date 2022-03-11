@@ -4,3 +4,5 @@
 
 #[ockam::test]
 async fn my_test(ctx: String) -> ockam_core::Result<()> {}
+
+fn main() {}

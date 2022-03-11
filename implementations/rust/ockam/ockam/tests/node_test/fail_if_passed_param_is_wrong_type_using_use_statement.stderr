@@ -3,10 +3,3 @@ error: Expected `ockam::Context` found `String`
   |
 6 | async fn my_test(ctx: String) -> ockam_core::Result<()> {}
   |                       ^^^^^^
-
-error[E0601]: `main` function not found in crate `$CRATE`
- --> tests/node_test/fail_if_passed_param_is_wrong_type_using_use_statement.rs:5:1
-  |
-5 | / #[ockam::test]
-6 | | async fn my_test(ctx: String) -> ockam_core::Result<()> {}
-  | |__________________________________________________________^ consider adding a `main` function to `$DIR/tests/node_test/fail_if_passed_param_is_wrong_type_using_use_statement.rs`
