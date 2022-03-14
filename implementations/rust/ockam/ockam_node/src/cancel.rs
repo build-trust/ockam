@@ -1,8 +1,8 @@
 use crate::Context;
 use core::fmt::{self, Debug, Display, Formatter};
-use ockam_core::{Address, LocalMessage, Message, Routed};
+use ockam_core::{Address, LocalMessage, Message, Result, Routed};
 
-/// A message wraper type that allows users to cancel message receival
+/// A message wrapper type that allows users to cancel message receival
 ///
 /// A worker can block in place to wait for a message.  If the next
 /// message is not the desired type, it can be cancelled which
@@ -30,7 +30,23 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     }
 
     /// Cancel this message
-    pub async fn cancel(self) -> ockam_core::Result<()> {
+    ///
+    /// This results in the message being re-queued at the back of the
+    /// worker's mailbox so that it can be handled by a future
+    /// handle_message call
+    ///
+    /// ```rust
+    /// use ockam_node::Context;
+    /// use ockam_core::Result;
+    /// # async fn test(ctx: &mut Context) -> Result<()> {
+    /// let msg = ctx.receive::<String>().await?;
+    /// if &*msg != "hello ockam" {
+    ///     msg.cancel().await?;
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn cancel(self) -> Result<()> {
         self.ctx.forward(self.local_msg).await?;
 
         Ok(())
