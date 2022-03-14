@@ -36,7 +36,6 @@ mod cancel;
 mod context;
 mod error;
 mod executor;
-mod handle;
 mod heartbeat;
 mod messages;
 mod node;
@@ -47,7 +46,6 @@ mod router;
 pub use cancel::*;
 pub use context::*;
 pub use executor::*;
-pub use handle::*;
 pub use heartbeat::*;
 pub use messages::*;
 
