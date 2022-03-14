@@ -14,6 +14,11 @@ if [[ -z $RELEASE_VERSION ]]; then
     exit 1
 fi
 
+if [[ -z $BUMPED_DEP_CRATES_VERSION ]]; then
+    echo "Version of bumped transitive dependencies set to minor"
+    BUMPED_DEP_CRATES_VERSION="minor"
+fi
+
 declare -A specified_crate_version
 
 crate_array=($MODIFIED_RELEASE)
@@ -29,21 +34,21 @@ declare -A bumped_crates
 recently_updated_crates=""
 
 source tools/scripts/release/crates-to-publish.sh
+bumping_transitive_deps=false
 
-# (will remove comment)
 # With special case like below
 # crateA -> crateB -> crateC -> crateD
-# Where -> means "is a dependency of", we need to still bump crates 
-# whose cyclic dependency is updated.
+# Where -> means "is a dependency of", we need to still bump crates
+# whose transitive dependency is updated.
 # We keep a state of recently updated crates and then recursively match
-# it with the new state of updated crate and only exit if all crates have 
+# it with the new state of updated crate and only exit if all crates have
 # been bumped.
 #
 # If crate A version is bumped and its updated version is changed in the
 # Cargo.toml of crateB, this script then re-runs, checking if there are any
 # recently updated crate also keeping the data of recently updated crates (crateA)
 # we then compare the new state of updated crates with that of the old one and
-# in this scenario getting crateB whose inter-dep was recently modified. Seeing there's an
+# in this scenario getting crateB whose deps were recently modified. Seeing there's an
 # updated crate (crateB) we then bump all crates ignoring recently bumped
 # crates (crateA so as not to bump twice) then we recursively check again if there
 # are any newly updated/modified crates whose version has not been bumped till new
@@ -52,24 +57,29 @@ source tools/scripts/release/crates-to-publish.sh
 # Case 2
 # crateF -> crateC
 # crateA -> crateB -> crateC
-# The script bumps (crateF and crateA) version and (crateC and crateB) `inter-dep version`,
+# The script bumps (crateF and crateA) version and (crateC and crateB) `deps version`,
 # on the second iteration, (crateC and crateB) version is then bumped, on the third iteration
-# we do not bump crateC version even though its inter-dep has been modified as it's version has already
+# we do not bump crateC version even though its dep has been modified as it's version has already
 # been bumped for a release.
 while [[ $updated_crates != $recently_updated_crates ]]; do
     for crate in ${updated_crates[@]}; do
+        if [[ ! -z "${bumped_crates[$crate]}" ]]; then
+            echo "===> $crate has been bumped recently ignoring"
+            continue
+        fi
+
         version=$RELEASE_VERSION
+        if [[ $bumping_transitive_deps == true ]]; then
+            version=$BUMPED_DEP_CRATES_VERSION
+            echo "Bumping transitive dependent crate $crate version to $version"
+        fi
+
         name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
 
         # Check if crate version was specified manually
         if [[ ! -z "${specified_crate_version[$crate]}" ]]; then
             echo "Bumping $crate version specified manually as ${specified_crate_version[$crate]}"
             version="${specified_crate_version[$crate]}"
-        fi
-
-        if [[ ! -z "${bumped_crates[$crate]}" ]]; then
-            echo "$crate has been bumped recently ignoring"
-            continue
         fi
 
         bumped_crates[$crate]=true
@@ -79,7 +89,10 @@ while [[ $updated_crates != $recently_updated_crates ]]; do
     done
 
     recently_updated_crates=$updated_crates
+    bumping_transitive_deps=true
+
     source tools/scripts/release/crates-to-publish.sh
+    echo "Recently bumped crates are $recently_updated_crates \n updated crates are $updated_crates"
 done
 
 echo "Bumped crates $recently_updated_crates"
