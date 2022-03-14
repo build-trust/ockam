@@ -2,7 +2,7 @@ use crate::{spawn, Address, Context, Message, Result, Route};
 use core::time::Duration;
 
 /// Send a delayed event to a worker
-pub struct DelayedEvent<M: Message> {
+pub(crate) struct DelayedEvent<M: Message> {
     route: Route,
     ctx: Context,
     d: Duration,
@@ -32,26 +32,10 @@ impl<M: Message> DelayedEvent<M> {
         Self { d, ..self }
     }
 
-    /// Adjust the delay time in milliseconds
-    pub fn with_millis(self, millis: u64) -> Self {
-        Self {
-            d: Duration::from_millis(millis),
-            ..self
-        }
-    }
-
     /// Adjust the delay time in seconds
     pub fn with_seconds(self, secs: u64) -> Self {
         Self {
             d: Duration::from_secs(secs),
-            ..self
-        }
-    }
-
-    /// Adjust the delay time in minutes
-    pub fn with_minutes(self, mins: u64) -> Self {
-        Self {
-            d: Duration::from_secs(mins * 60),
             ..self
         }
     }

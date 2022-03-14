@@ -1,4 +1,5 @@
 use crate::{
+    delay::DelayedEvent,
     monotonic::Monotonic,
     protocols::{
         stream::{
@@ -8,7 +9,7 @@ use crate::{
         ProtocolParser,
     },
     stream::StreamWorkerCmd,
-    DelayedEvent, OckamError, ProtocolPayload, TransportMessage,
+    OckamError, ProtocolPayload, TransportMessage,
 };
 use crate::{Address, Any, Context, Result, Route, Routed, Worker};
 use core::time::Duration;

@@ -2,7 +2,7 @@ use crate::TcpRecvProcessor;
 use core::time::Duration;
 use ockam_core::{async_trait, route, Any, Decodable, LocalMessage};
 use ockam_core::{Address, Encodable, Result, Routed, TransportMessage, Worker};
-use ockam_node::{Context, Heartbeat};
+use ockam_node::{Context, DelayedEvent};
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::io::AsyncWriteExt;
@@ -43,7 +43,7 @@ pub(crate) struct TcpSendWorker {
     tx: Option<OwnedWriteHalf>,
     peer: SocketAddr,
     internal_addr: Address,
-    heartbeat: Heartbeat<Vec<u8>>,
+    heartbeat: DelayedEvent<Vec<u8>>,
     heartbeat_interval: Option<Duration>,
 }
 
@@ -52,7 +52,7 @@ impl TcpSendWorker {
         stream: Option<TcpStream>,
         peer: SocketAddr,
         internal_addr: Address,
-        heartbeat: Heartbeat<Vec<u8>>,
+        heartbeat: DelayedEvent<Vec<u8>>,
     ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
@@ -86,7 +86,7 @@ impl TcpSendWorker {
             stream,
             peer,
             internal_addr.clone(),
-            Heartbeat::create(ctx, internal_addr.clone(), vec![]).await?,
+            DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
         );
 
         ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)

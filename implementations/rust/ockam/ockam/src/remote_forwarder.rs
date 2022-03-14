@@ -9,7 +9,7 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::{Address, AddressSet, Any, Decodable, Result, Route, Routed, Worker};
-use ockam_node::Heartbeat;
+use ockam_node::DelayedEvent;
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -69,7 +69,7 @@ pub struct RemoteForwarder {
     registration_payload: String,
     callback_address: Option<Address>,
     // We only use Heartbeat for static RemoteForwarder
-    heartbeat: Option<Heartbeat<Vec<u8>>>,
+    heartbeat: Option<DelayedEvent<Vec<u8>>>,
     heartbeat_interval: Duration,
 }
 
@@ -79,7 +79,7 @@ impl RemoteForwarder {
         registration_route: Route,
         registration_payload: String,
         callback_address: Address,
-        heartbeat: Option<Heartbeat<Vec<u8>>>,
+        heartbeat: Option<DelayedEvent<Vec<u8>>>,
         heartbeat_interval: Duration,
     ) -> Self {
         Self {
@@ -103,7 +103,8 @@ impl RemoteForwarder {
 
         let addresses: Addresses = random();
 
-        let heartbeat = Heartbeat::create(ctx, addresses.heartbeat_address.clone(), vec![]).await?;
+        let heartbeat =
+            DelayedEvent::create(ctx, addresses.heartbeat_address.clone(), vec![]).await?;
         let forwarder = Self::new(
             addresses.clone(),
             route![hub_addr.into(), "static_forwarding_service"],
