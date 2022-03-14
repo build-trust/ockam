@@ -7,15 +7,6 @@ GIT_TAG="a_more_recent_git_tag_v0.0.0" tools/scripts/release/changelog.sh
 ```
 This is same for crate bump, crate publish and tagging scripts.
 
-## Changelog Generation
-
-Changelogs are generated using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/ockam-network/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate changelogs and append to their CHANGELOG.md file.
-To run changelog generator, from the Ockam root path, call
-```bash
-tools/scripts/release/changelog.sh
-```
-Generated changelogs should be reviewed and then commited before crate bump is done.
-
 ## Crate Bump
 
 Crates versions are bumped using [cargo-release](https://github.com/crate-ci/cargo-release/issues) >= v0.18.6. While bumping crates, CHANGELOG.md and README.md files are also updated with the bumped version.
@@ -43,6 +34,15 @@ BUMPED_DEP_CRATES_VERSION=patch RELEASE_VERSION=minor tools/scripts/release/crat
 ```
 If `BUMPED_DEP_CRATES_VERSION` is not defined then transitive dependent crates are bumped as `minor`.
 
+## Changelog Generation (Requires zsh)
+
+Changelogs are generated using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/ockam-network/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate changelogs and append to their CHANGELOG.md file.
+To run changelog generator, from the Ockam root path, call
+```bash
+tools/scripts/release/changelog.sh
+```
+Generated changelogs should be called after `crate-bump` so we can log crates whose dependencies was only bumped.
+We can also generate changelog from a referenced `git tag`, changelog should be reviewed before commit.
 
 ## Crate Publish
 
@@ -71,7 +71,7 @@ TAG_SINGLE_CRATE=ockam COMMIT_SHA=000000000 tools/scripts/release/tagging.sh
 
 For a manual release to be done, we should
 
-- Generate Changelogs
 - Bump Crates
+- Generate Changelogs
 - Publish Crates
 - Tag Crates
