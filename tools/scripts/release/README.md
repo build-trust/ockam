@@ -37,6 +37,12 @@ MODIFIED_RELEASE="signature_core:patch ockam_entity:major" RELEASE_VERSION=relea
 ```
 only signature_core and ockam_entity crates are bumped.
 
+Crates whose transitive dependencies were `only` bumped can be version-bumped with a specified version using the `BUMPED_DEP_CRATES_VERSION` definition so as to follow a different release version
+```bash
+BUMPED_DEP_CRATES_VERSION=patch RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
+```
+If `BUMPED_DEP_CRATES_VERSION` is not defined then transitive dependent crates are bumped as `minor`.
+
 
 ## Crate Publish
 
