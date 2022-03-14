@@ -45,7 +45,6 @@ mod system;
 mod unique;
 mod workers;
 
-pub use delay::*;
 pub use error::*;
 pub use forwarder::*;
 pub use lease::*;

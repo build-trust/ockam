@@ -6,20 +6,20 @@ use ockam_core::{Address, Message, Result};
 /// Allow to send message to destination address periodically after some delay
 /// Only one scheduled heartbeat allowed at a time
 /// Dropping this handle cancels scheduled heartbeat
-pub struct Heartbeat<M: Message + Clone> {
+pub struct DelayedEvent<M: Message + Clone> {
     ctx: Context,
     destination_addr: Address,
     msg: M,
     abort_handle: Option<AbortHandle>,
 }
 
-impl<M: Message + Clone> Drop for Heartbeat<M> {
+impl<M: Message + Clone> Drop for DelayedEvent<M> {
     fn drop(&mut self) {
         self.cancel()
     }
 }
 
-impl<M: Message + Clone> Heartbeat<M> {
+impl<M: Message + Clone> DelayedEvent<M> {
     /// Create a heartbeat
     pub async fn create(
         ctx: &Context,
@@ -39,7 +39,7 @@ impl<M: Message + Clone> Heartbeat<M> {
     }
 }
 
-impl<M: Message + Clone> Heartbeat<M> {
+impl<M: Message + Clone> DelayedEvent<M> {
     /// Cancel heartbeat
     pub fn cancel(&mut self) {
         if let Some(handle) = self.abort_handle.take() {
@@ -80,7 +80,7 @@ impl<M: Message + Clone> Heartbeat<M> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{start_node, Context, Heartbeat};
+    use crate::{start_node, Context, DelayedEvent};
     use core::sync::atomic::Ordering;
     use core::time::Duration;
     use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc};
@@ -116,9 +116,10 @@ mod tests {
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat = Heartbeat::create(&ctx, "counting_worker", "Hello".to_string())
-                    .await
-                    .unwrap();
+                let mut heartbeat =
+                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                        .await
+                        .unwrap();
 
                 let worker = CountingWorker {
                     msgs_count: msgs_count.clone(),
@@ -158,9 +159,10 @@ mod tests {
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat = Heartbeat::create(&ctx, "counting_worker", "Hello".to_string())
-                    .await
-                    .unwrap();
+                let mut heartbeat =
+                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                        .await
+                        .unwrap();
 
                 let worker = CountingWorker {
                     msgs_count: msgs_count.clone(),
@@ -198,9 +200,10 @@ mod tests {
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat = Heartbeat::create(&ctx, "counting_worker", "Hello".to_string())
-                    .await
-                    .unwrap();
+                let mut heartbeat =
+                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                        .await
+                        .unwrap();
 
                 let worker = CountingWorker {
                     msgs_count: msgs_count.clone(),
@@ -237,9 +240,10 @@ mod tests {
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat = Heartbeat::create(&ctx, "counting_worker", "Hello".to_string())
-                    .await
-                    .unwrap();
+                let mut heartbeat =
+                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                        .await
+                        .unwrap();
 
                 let worker = CountingWorker {
                     msgs_count: msgs_count.clone(),

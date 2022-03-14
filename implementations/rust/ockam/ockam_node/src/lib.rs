@@ -34,9 +34,9 @@ pub mod compat;
 
 mod cancel;
 mod context;
+mod delayed;
 mod error;
 mod executor;
-mod heartbeat;
 mod messages;
 mod node;
 mod parser;
@@ -45,8 +45,8 @@ mod router;
 
 pub use cancel::*;
 pub use context::*;
+pub use delayed::*;
 pub use executor::*;
-pub use heartbeat::*;
 pub use messages::*;
 
 pub use node::{start_node, NullWorker};
