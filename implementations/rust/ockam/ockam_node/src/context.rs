@@ -112,12 +112,12 @@ impl Context {
         )
     }
 
-    /// Return the primary worker address
+    /// Return the primary address of the current worker
     pub fn address(&self) -> Address {
         self.address.first()
     }
 
-    /// Return all addresses of this worker
+    /// Return all addresses of the current worker
     pub fn aliases(&self) -> AddressSet {
         self.address.clone().into_iter().skip(1).collect()
     }
@@ -129,6 +129,10 @@ impl Context {
     }
 
     /// Create a new context without spawning a full worker
+    ///
+    /// Note: this function is very low-level.  For most users
+    /// [`start_worker()`](Self::start_worker) is the recommended to
+    /// way to create a new worker context.
     pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
         self.new_context_impl(addr.into()).await
     }
@@ -156,7 +160,37 @@ impl Context {
             .map(|_| ctx)?)
     }
 
-    /// Start a new worker handle at [`Address`](ockam_core::Address)
+    /// Start a new worker instance at the given address set
+    ///
+    /// A worker is an asynchronous piece of code that can send and
+    /// receive messages of a specific type.  This type is encoded via
+    /// the [`Worker`](ockam_core::Worker) trait.  If your code relies
+    /// on a manual run-loop you may want to use
+    /// [`start_processor()`](Self::start_processor) instead!
+    ///
+    /// Each address in the set must be unique and unused on the
+    /// current node.  Workers must implement the Worker trait and be
+    /// thread-safe.  Workers run asynchronously and will be scheduled
+    /// independently of each other.  To wait for the initialisation
+    /// of your worker to complete you can use
+    /// [`wait_for()`](Self::wait_for).
+    ///
+    /// ```rust
+    /// use ockam_core::{Result, Worker, worker};
+    /// use ockam_node::Context;
+    ///
+    /// struct MyWorker;
+    ///
+    /// #[worker]
+    /// impl Worker for MyWorker {
+    ///     type Context = Context;
+    ///     type Message = String;
+    /// }
+    ///
+    /// async fn start_my_worker(ctx: &mut Context) -> Result<()> {
+    ///     ctx.start_worker("my-worker-address", MyWorker).await
+    /// }
+    /// ```
     pub async fn start_worker<NM, NW, S>(&self, address: S, worker: NW) -> Result<()>
     where
         S: Into<AddressSet>,
@@ -167,7 +201,9 @@ impl Context {
             .await
     }
 
-    /// TODO: Worker builder?
+    /// Start a new worker instance with explicit access controls
+    // TODO: Worker builder?
+    // TODO: how is this meant to be used?
     pub async fn start_worker_with_access_control<NM, NW, NA, S>(
         &self,
         address: S,
@@ -221,7 +257,13 @@ impl Context {
             .map(|_| ())?)
     }
 
-    /// Start a new processor at [`Address`](ockam_core::Address)
+    /// Start a new processor instance at the given address set
+    ///
+    /// A processor is an asynchronous piece of code that runs a
+    /// custom run loop, with access to a worker context to send and
+    /// receive messages.  If your code is built around responding to
+    /// message events, consider using
+    /// [`start_worker()`](Self::start_processor) instead!
     pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,
@@ -260,12 +302,12 @@ impl Context {
             .map(|_| ())?)
     }
 
-    /// Shut down a worker by its primary address
+    /// Shut down a local worker by its primary address
     pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
         self.stop_address(addr.into(), AddressType::Worker).await
     }
 
-    /// Shut down a processor by its address
+    /// Shut down a local processor by its address
     pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
         self.stop_address(addr.into(), AddressType::Processor).await
     }
@@ -348,7 +390,7 @@ impl Context {
         }
     }
 
-    /// Send a message via a fully qualified route
+    /// Send a message to an address or via a fully-qualified route
     ///
     /// Routes can be constructed from a set of [`Address`]es, or via
     /// the [`RouteBuilder`] type.  Routes can contain middleware
@@ -357,6 +399,26 @@ impl Context {
     ///
     /// [`Address`]: ockam_core::Address
     /// [`RouteBuilder`]: ockam_core::RouteBuilder
+    ///
+    /// ```rust
+    /// # use {ockam_node::Context, ockam_core::Result};
+    /// # async fn test(ctx: &mut Context) -> Result<()> {
+    /// use ockam_core::Message;
+    /// use serde::{Serialize, Deserialize};
+    ///
+    /// #[derive(Message, Serialize, Deserialize)]
+    /// struct MyMessage(String);
+    ///
+    /// impl MyMessage {
+    ///     fn new(s: &str) -> Self {
+    ///         Self(s.into())
+    ///     }
+    /// }
+    ///
+    /// ctx.send("my-test-worker", MyMessage::new("Hello you there :)")).await?;
+    /// Ok(())
+    /// # }
+    /// ```
     pub async fn send<R, M>(&self, route: R, msg: M) -> Result<()>
     where
         R: Into<Route>,
@@ -366,7 +428,7 @@ impl Context {
             .await
     }
 
-    /// Send a message via a fully qualified route using specific Worker address
+    /// Send a message to an address or via a fully-qualified route
     ///
     /// Routes can be constructed from a set of [`Address`]es, or via
     /// the [`RouteBuilder`] type.  Routes can contain middleware
@@ -375,6 +437,10 @@ impl Context {
     ///
     /// [`Address`]: ockam_core::Address
     /// [`RouteBuilder`]: ockam_core::RouteBuilder
+    ///
+    /// This function additionally takes the sending address
+    /// parameter, to specify which of a worker's (or processor's)
+    /// addresses should be used.
     pub async fn send_from_address<R, M>(
         &self,
         route: R,
@@ -472,7 +538,12 @@ impl Context {
         Ok(())
     }
 
-    /// Receive a message without a timeout
+    /// Block the current worker to wait for a typed message
+    ///
+    /// **Warning** this function will wait until its running ockam
+    /// node is shut down.  A safer variant of this function is
+    /// [`receive`](Self::receive) and
+    /// [`receive_timeout`](Self::receive_timeout).
     pub async fn receive_block<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
         let (msg, data, addr) = self.next_from_mailbox().await?;
         Ok(Cancel::new(msg, data, addr, self))
@@ -492,7 +563,9 @@ impl Context {
         self.receive_timeout(DEFAULT_TIMEOUT).await
     }
 
-    /// Block to wait for a typed message, with explicit timeout
+    /// Wait to receive a message up to a specified timeout
+    ///
+    /// See [`receive`](Self::receive) for more details.
     pub async fn receive_timeout<M: Message>(
         &mut self,
         timeout_secs: u64,
@@ -511,8 +584,8 @@ impl Context {
     /// stopped, or the underlying node has shut down.  This operation
     /// has a [default timeout](DEFAULT_TIMEOUT).
     ///
-    /// Internally this function calls `receive` and `.cancel()` in a
-    /// loop until a matching message is found.
+    /// Internally this function uses [`receive`](Self::receive), so
+    /// is subject to the same timeout.
     pub async fn receive_match<M, F>(&mut self, check: F) -> Result<Cancel<'_, M>>
     where
         M: Message,
