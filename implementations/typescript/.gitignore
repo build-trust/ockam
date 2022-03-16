@@ -10,3 +10,4 @@ lib
 *.tsbuildinfo
 target
 *.node
+**node_modules
