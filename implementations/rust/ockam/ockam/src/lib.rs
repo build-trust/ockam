@@ -22,7 +22,7 @@ extern crate tracing;
 
 #[allow(unused_imports)]
 #[macro_use]
-pub extern crate hex;
+// pub extern crate hex;
 
 // ---
 // Export the ockam macros that aren't coming from ockam_core.

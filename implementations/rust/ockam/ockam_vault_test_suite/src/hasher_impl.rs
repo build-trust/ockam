@@ -1,4 +1,4 @@
-use ockam_core::hex::encode;
+use hex::encode;
 use ockam_core::vault::{Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 
 pub async fn sha256(vault: &mut impl Hasher) {

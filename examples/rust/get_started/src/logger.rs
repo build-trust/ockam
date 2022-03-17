@@ -1,4 +1,5 @@
-use ockam::{hex, Any, Context, Result, Routed, Worker};
+use hex;
+use ockam::{Any, Context, Result, Routed, Worker};
 
 pub struct Logger;
 

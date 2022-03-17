@@ -1,7 +1,7 @@
 use crate::{IdentityError, IdentityStateConst};
 use core::fmt::{Display, Formatter};
+use hex::encode;
 use ockam_core::compat::string::String;
-use ockam_core::hex::encode;
 use ockam_core::vault::{Hasher, KeyId};
 use ockam_core::{Error, Result};
 use serde::{Deserialize, Serialize};
