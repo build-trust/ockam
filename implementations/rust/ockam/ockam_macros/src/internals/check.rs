@@ -57,15 +57,26 @@ pub mod item_fn {
         match &input_fn.sig.output {
             // If the return type is the default type `()`, an error is registered.
             ReturnType::Default => {
-                ctx.error_spanned_by(&input_fn.sig.output, msg);
+                ctx.error_spanned_by(&input_fn.sig, msg);
             }
             ReturnType::Type(_, ret_ty) => match ret_ty.as_ref() {
-                // If it's a Path, then return type is valid. We can't check the ident
-                // because it could be named arbitrarily by the user.
-                Type::Path(_) => {}
+                // If it's a Path we check its identifier.
+                Type::Path(ty_p) => {
+                    // Return error if the return type is not a type that
+                    // contains `Result` in its identifier.
+                    if ty_p
+                        .path
+                        .segments
+                        .iter()
+                        .find(|s| s.ident.to_string().contains("Result"))
+                        .is_none()
+                    {
+                        ctx.error_spanned_by(&ret_ty, msg);
+                    }
+                }
                 // In any other case, the return type is not valid.
                 _ => {
-                    ctx.error_spanned_by(&input_fn.sig.output, msg);
+                    ctx.error_spanned_by(&ret_ty, msg);
                 }
             },
         }

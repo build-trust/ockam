@@ -1,0 +1,5 @@
+error: the function has no `Context` argument
+ --> tests/node_test/fail_if_arg_is_self.rs:2:18
+  |
+2 | async fn my_test(self) -> ockam_core::Result<()> {}
+  |                  ^^^^

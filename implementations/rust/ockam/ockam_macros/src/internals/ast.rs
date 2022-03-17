@@ -1,7 +1,8 @@
+use proc_macro2::Ident;
 use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::token::{And, Comma, Mut};
-use syn::{FnArg, ItemFn, Pat, PatIdent, Type, TypePath};
+use syn::{FnArg, ItemFn, Pat, Type, TypePath};
 
 use crate::internals::ctx::Context;
 
@@ -24,7 +25,7 @@ use crate::internals::ctx::Context;
 #[derive(Debug)]
 pub struct FnVariable<'a> {
     pub arg: &'a FnArg,
-    pub ident: &'a PatIdent,
+    pub ident: &'a Ident,
     pub path: &'a TypePath,
     pub and_token: Option<And>,
     pub mutability: Option<Mut>,
@@ -72,7 +73,7 @@ impl<'a> FnVariable<'a> {
                     };
                     vars.push(FnVariable {
                         arg,
-                        ident,
+                        ident: &ident.ident,
                         path,
                         and_token,
                         mutability,

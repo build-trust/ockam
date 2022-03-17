@@ -1,5 +1,5 @@
 error: the `async` keyword is missing from the function declaration
- --> $DIR/fail_if_function_is_not_async.rs:5:1
+ --> tests/node_test/fail_if_function_is_not_async.rs:2:1
   |
-5 | fn my_test(c: &mut ockam_node::Context) -> ockam_core::Result<()> {
+2 | fn my_test(c: &mut ockam_node::Context) -> ockam_core::Result<()> {
   | ^^

@@ -1,0 +1,5 @@
+error: the function has no `Context` argument
+ --> tests/node_test/fail_if_arg_is_wrong_type.rs:2:18
+  |
+2 | async fn my_test(ctx: std::string::String) -> ockam_core::Result<()> {}
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^

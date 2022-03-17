@@ -1,5 +1,5 @@
 error: expected `fn`
- --> $DIR/fail_if_item_is_not_a_function.rs:5:1
+ --> tests/node_test/fail_if_item_is_not_a_function.rs:2:1
   |
-5 | struct A {}
+2 | struct A {}
   | ^^^^^^
