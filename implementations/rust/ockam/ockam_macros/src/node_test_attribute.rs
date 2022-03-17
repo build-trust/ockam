@@ -139,9 +139,9 @@ impl<'a> Container<'a> {
         cont
     }
 
-    /// Compared to the `node` macro, this macro is more constrained to ensure that a test doesn't run indefinitely.
-    /// Most of the checks validate that the ockam context is defined properly in the input function so that it
-    /// can be stopped after the test is completed.
+    // Compared to the `node` macro, this macro is more constrained to ensure that a test doesn't run indefinitely.
+    // Most of the checks validate that the ockam context is defined properly in the input function so that it
+    // can be stopped after the test is finished or after it times out.
     fn check(&self, ctx: &Context) {
         check::item_fn::is_async(ctx, self.test_fn);
         check::item_fn::returns_result(ctx, self.test_fn);
