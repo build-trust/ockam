@@ -1,5 +1,8 @@
-use crate::software_vault::*;
-use ockam_core::compat::collections::BTreeMap;
+use crate::vault::*;
+use core::sync::atomic::Ordering;
+use ockam_core::compat::{collections::BTreeMap, sync::Arc};
+use ockam_node::compat::asynchronous::RwLock;
+use std::sync::atomic::AtomicUsize;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "version")]
@@ -11,16 +14,18 @@ enum SerializedVault {
     },
 }
 
-impl From<&VaultData> for SerializedVault {
-    fn from(d: &VaultData) -> SerializedVault {
+impl SerializedVault {
+    async fn from_vault_data(d: &VaultData) -> SerializedVault {
         let entries = d
             .entries
+            .read()
+            .await
             .iter()
             .map(|(sid, data)| (*sid, data.clone()))
             .collect();
         SerializedVault::V1 {
             entries,
-            next_id: d.next_id,
+            next_id: d.next_id.load(Ordering::Relaxed),
         }
     }
 }
@@ -53,16 +58,16 @@ impl TryFrom<SerializedVault> for VaultData {
                     return Err(crate::error::VaultError::StorageError);
                 };
                 Ok(Self {
-                    entries: map,
-                    next_id,
+                    entries: Arc::new(RwLock::new(map)),
+                    next_id: Arc::new(AtomicUsize::new(next_id)),
                 })
             }
         }
     }
 }
 
-pub(crate) fn serialize(d: &VaultData) -> Vec<u8> {
-    let d = SerializedVault::from(d);
+pub(crate) async fn serialize(d: &VaultData) -> Vec<u8> {
+    let d = SerializedVault::from_vault_data(d).await;
     serde_json::to_vec(&d).expect("VaultData is always serializable")
 }
 

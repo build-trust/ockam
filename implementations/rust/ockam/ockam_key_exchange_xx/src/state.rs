@@ -393,13 +393,13 @@ mod tests {
         CURVE25519_SECRET_LENGTH,
     };
     use ockam_key_exchange_core::KeyExchanger;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault::Vault;
 
     #[test]
     fn prologue() {
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = Vault::create();
+            let vault = Vault::create();
 
             let exp_h = [
                 93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79,

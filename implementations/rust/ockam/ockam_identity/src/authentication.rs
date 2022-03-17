@@ -57,7 +57,7 @@ mod test {
     use crate::{Identity, IdentityTrait};
     use ockam_core::{Error, Result};
     use ockam_node::Context;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault::Vault;
     use rand::{thread_rng, RngCore};
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {

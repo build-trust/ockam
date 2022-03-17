@@ -137,7 +137,7 @@ mod test {
     use super::*;
     use ockam_core::Error;
     use ockam_node::Context;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault::Vault;
 
     fn test_error<S: Into<String>>(msg: S) -> Result<()> {
         Err(Error::new(0, msg.into()))

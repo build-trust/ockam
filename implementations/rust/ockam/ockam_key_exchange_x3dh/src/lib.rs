@@ -132,14 +132,14 @@ impl<D> X3dhVault for D where
 mod tests {
     use super::*;
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault::Vault;
 
     #[allow(non_snake_case)]
     #[test]
     fn full_flow__correct_credentials__keys_should_match() {
         let (mut ctx, mut exec) = ockam_node::start_node();
         exec.execute(async move {
-            let mut vault = Vault::create();
+            let vault = Vault::create();
 
             let key_exchanger = X3dhNewKeyExchanger::new(vault.async_try_clone().await.unwrap());
 

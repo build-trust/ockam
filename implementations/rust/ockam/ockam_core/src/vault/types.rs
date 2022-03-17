@@ -1,3 +1,4 @@
+use crate::vault::Secret;
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -202,5 +203,31 @@ impl SecretAttributes {
             persistence,
             length,
         }
+    }
+}
+
+/// A public key
+#[derive(Clone, Debug, Zeroize)]
+#[zeroize(drop)]
+pub struct KeyPair {
+    secret: Secret,
+    public: PublicKey,
+}
+
+impl KeyPair {
+    /// Secret key
+    pub fn secret(&self) -> &Secret {
+        &self.secret
+    }
+    /// Public Key
+    pub fn public(&self) -> &PublicKey {
+        &self.public
+    }
+}
+
+impl KeyPair {
+    /// Create a new key pair
+    pub fn new(secret: Secret, public: PublicKey) -> Self {
+        Self { secret, public }
     }
 }

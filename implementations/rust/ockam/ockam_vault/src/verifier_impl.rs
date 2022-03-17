@@ -1,14 +1,14 @@
-use crate::software_vault::SoftwareVault;
+use crate::vault::Vault;
 use crate::VaultError;
 use ockam_core::vault::{PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
 
 #[async_trait]
-impl Verifier for SoftwareVault {
+impl Verifier for Vault {
     /// Verify signature
     async fn verify(
-        &mut self,
+        &self,
         signature: &Signature,
         public_key: &PublicKey,
         data: &[u8],

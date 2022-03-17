@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use storage::{ensure_identity_exists, get_ockam_dir};
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
-pub(crate) type OckamVault = ockam::vault::VaultMutex<ockam_vault::SoftwareVault>;
+pub(crate) type OckamVault = ockam::vault::Vault;
 
 pub(crate) mod args;
 pub(crate) mod identity;

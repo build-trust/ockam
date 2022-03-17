@@ -1,20 +1,22 @@
 #[cfg(feature = "storage")]
 use crate::storage::*;
 use crate::VaultError;
-use ockam_core::compat::{collections::BTreeMap, string::String};
-use ockam_core::vault::{Secret, SecretAttributes, SecretKey};
+use core::sync::atomic::AtomicUsize;
+use ockam_core::compat::{collections::BTreeMap, string::String, sync::Arc};
+use ockam_core::vault::{SecretAttributes, SecretKey};
 use ockam_core::Result;
+use ockam_node::compat::asynchronous::RwLock;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
 ///
 /// # Examples
 /// ```
-/// use ockam_vault::SoftwareVault;
+/// use ockam_vault::Vault;
 /// use ockam_core::Result;
 /// use ockam_core::vault::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, Signer, Verifier};
 ///
 /// async fn example() -> Result<()> {
-///     let mut vault = SoftwareVault::default();
+///     let mut vault = Vault::default();
 ///
 ///     let mut attributes = SecretAttributes::new(
 ///         SecretType::X25519,
@@ -33,18 +35,19 @@ use ockam_core::Result;
 ///     Ok(())
 /// }
 /// ```
-pub struct SoftwareVault {
+#[derive(Default, Clone)]
+pub struct Vault {
     pub(crate) data: VaultData,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct VaultData {
     // TODO: make these private, and save automatically on modification.
-    pub(crate) entries: BTreeMap<usize, VaultEntry>,
-    pub(crate) next_id: usize,
+    pub(crate) entries: Arc<RwLock<BTreeMap<usize, VaultEntry>>>,
+    pub(crate) next_id: Arc<AtomicUsize>,
 }
 
-impl SoftwareVault {
+impl Vault {
     /// Create a new SoftwareVault
     pub fn new() -> Self {
         Self {
@@ -55,8 +58,8 @@ impl SoftwareVault {
     /// Serialize a vault to bytes which may later be restored using
     /// `SoftwareVault::deserialize`.
     #[cfg(feature = "storage")]
-    pub fn serialize(&self) -> Vec<u8> {
-        serialize(&self.data)
+    pub async fn serialize(&self) -> Vec<u8> {
+        serialize(&self.data).await
     }
 
     /// Load a vault from the serialized format produced by `SoftwareVault::serialize`.
@@ -69,20 +72,10 @@ impl SoftwareVault {
         })?;
         Ok(Self { data })
     }
-}
 
-impl Default for SoftwareVault {
-    fn default() -> Self {
+    /// Same as ```Vault::new()```
+    pub fn create() -> Self {
         Self::new()
-    }
-}
-
-impl SoftwareVault {
-    pub(crate) fn get_entry(&self, context: &Secret) -> Result<&VaultEntry> {
-        self.data
-            .entries
-            .get(&context.index())
-            .ok_or_else(|| VaultError::EntryNotFound.into())
     }
 }
 
@@ -118,12 +111,13 @@ impl VaultEntry {
 
 #[cfg(test)]
 mod tests {
-    use crate::SoftwareVault;
+    use crate::Vault;
+    use std::sync::atomic::Ordering;
 
-    #[test]
-    fn new_vault() {
-        let vault = SoftwareVault::new();
-        assert_eq!(vault.data.next_id, 0);
-        assert_eq!(vault.data.entries.len(), 0);
+    #[tokio::test]
+    async fn new_vault() {
+        let vault = Vault::new();
+        assert_eq!(vault.data.next_id.load(Ordering::Relaxed), 0);
+        assert_eq!(vault.data.entries.read().await.len(), 0);
     }
 }

@@ -26,7 +26,7 @@ impl<V: IdentityVault> IdentityBuilder<V> {
 #[cfg(test)]
 mod test {
     use crate::IdentityBuilder;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault::Vault;
 
     #[test]
     fn test_builder() {

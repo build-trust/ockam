@@ -27,10 +27,12 @@ mod hasher_impl;
 mod key_id_impl;
 mod secret_impl;
 mod signer_impl;
-mod software_vault;
+
 #[cfg(feature = "storage")]
 pub(crate) mod storage;
+
 mod symmetric_impl;
+mod vault;
 mod verifier_impl;
 mod xeddsa;
 
@@ -45,6 +47,6 @@ pub use hasher_impl::*;
 pub use key_id_impl::*;
 pub use secret_impl::*;
 pub use signer_impl::*;
-pub use software_vault::*;
 pub use symmetric_impl::*;
+pub use vault::*;
 pub use verifier_impl::*;

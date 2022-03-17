@@ -7,7 +7,7 @@ use crate::{async_trait, compat::boxed::Box};
 pub trait SymmetricVault {
     /// Encrypt a payload using AES-GCM.
     async fn aead_aes_gcm_encrypt(
-        &mut self,
+        &self,
         context: &Secret,
         plaintext: &[u8],
         nonce: &[u8],
@@ -16,7 +16,7 @@ pub trait SymmetricVault {
 
     /// Decrypt a payload using AES-GCM.
     async fn aead_aes_gcm_decrypt(
-        &mut self,
+        &self,
         context: &Secret,
         cipher_text: &[u8],
         nonce: &[u8],

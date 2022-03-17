@@ -44,7 +44,7 @@ pub async fn save_identity(
     i: &ExportedIdentity,
     vault: &OckamVault,
 ) -> anyhow::Result<()> {
-    let vault_bytes = vault.lock().await.serialize();
+    let vault_bytes = vault.serialize().await;
     let ident_bytes = serde_json::to_string(&IdentityFile {
         version: VERSION,
         identity: i.clone(),

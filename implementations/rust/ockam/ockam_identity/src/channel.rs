@@ -57,7 +57,7 @@ mod test {
     use ockam_core::compat::sync::Arc;
     use ockam_core::{route, Any, Route, Routed, Worker};
     use ockam_node::Context;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault::Vault;
     use std::time::Duration;
     use tokio::time::sleep;
 

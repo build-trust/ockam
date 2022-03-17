@@ -19,7 +19,6 @@ mod message_derive;
 mod node_attribute;
 mod node_test_attribute;
 mod vault_test_attribute;
-mod vault_test_sync_attribute;
 
 /// Custom derive for the `ockam_core::AsyncTryClone` trait.
 ///
@@ -138,28 +137,6 @@ pub fn test(args: TokenStream, item: TokenStream) -> TokenStream {
 pub fn vault_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     vault_test_attribute::expand(input_fn).unwrap_or_else(to_compile_error)
-}
-
-/// Expands to a test suite for a custom implementation of the vault traits.
-///
-/// The name of the test function must match one of the functions from the `ockam_vault_test_suite` crate.
-///
-/// Example of use:
-///
-/// ```ignore
-/// use ockam_vault::SoftwareVault;
-///
-/// fn new_vault() -> SoftwareVault {
-///     SoftwareVault::default()
-/// }
-///
-/// #[ockam_macros::vault_test_sync]
-/// fn hkdf() {}
-/// ```
-#[proc_macro_attribute]
-pub fn vault_test_sync(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(item as ItemFn);
-    vault_test_sync_attribute::expand(input_fn).unwrap_or_else(to_compile_error)
 }
 
 fn to_compile_errors(errors: Vec<syn::Error>) -> proc_macro2::TokenStream {
