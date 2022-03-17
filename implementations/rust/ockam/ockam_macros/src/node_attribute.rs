@@ -95,13 +95,6 @@ impl<'a> Container<'a> {
     fn check(&self, ctx: &Context) {
         #[cfg(not(feature = "no_main"))]
         check::item_fn::ident_is_main(ctx, self.original_fn);
-
-        // TODO: removed checks -- too aggressive and not really mandatory, without them the output is still functional.
-        // check::item_fn::is_async(ctx, self.original_fn); // if the code is not async it should still run.
-        // check::item_fn::has_ockam_ctx_arg(ctx, &self.data.ockam_ctx); // if the user wants to
-        // check::item_fn::body_is_not_empty(self.original);
-        // check::item_fn::has_one_arg(self.original);
-        // check::item_fn::ockam_context_is_used(self.original, self.data.ockam_ctx);
     }
 }
 
