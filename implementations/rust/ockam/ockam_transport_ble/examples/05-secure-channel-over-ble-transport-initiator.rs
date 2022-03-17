@@ -19,7 +19,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Entity to represent Alice.
-    let mut alice = Identity::create(&ctx, &vault).await?;
+    let alice = Identity::create(&ctx, &vault).await?;
 
     // Connect to BLE Server
     ble.connect(ble_client, "ockam_ble_1".to_string()).await?;

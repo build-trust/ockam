@@ -33,15 +33,15 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.read().await.identifier().await
     }
 
-    async fn create_key(&mut self, label: String) -> Result<()> {
+    async fn create_key(&self, label: String) -> Result<()> {
         self.state.write().await.create_key(label).await
     }
 
-    async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()> {
+    async fn add_key(&self, label: String, secret: &Secret) -> Result<()> {
         self.state.write().await.add_key(label, secret).await
     }
 
-    async fn rotate_root_secret_key(&mut self) -> Result<()> {
+    async fn rotate_root_secret_key(&self) -> Result<()> {
         self.state.write().await.rotate_root_secret_key().await
     }
 
@@ -61,7 +61,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.read().await.get_public_key(label).await
     }
 
-    async fn create_auth_proof(&mut self, state_slice: &[u8]) -> Result<AuthenticationProof> {
+    async fn create_auth_proof(&self, state_slice: &[u8]) -> Result<AuthenticationProof> {
         self.state
             .write()
             .await
@@ -70,7 +70,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
     }
 
     async fn verify_auth_proof(
-        &mut self,
+        &self,
         state_slice: &[u8],
         peer_id: &IdentityIdentifier,
         proof_slice: &[u8],
@@ -82,7 +82,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
             .await
     }
 
-    async fn add_change(&mut self, change_event: IdentityChangeEvent) -> Result<()> {
+    async fn add_change(&self, change_event: IdentityChangeEvent) -> Result<()> {
         self.state.write().await.add_change(change_event).await
     }
 
@@ -90,7 +90,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.read().await.get_changes().await
     }
 
-    async fn verify_changes(&mut self) -> Result<bool> {
+    async fn verify_changes(&self) -> Result<bool> {
         self.state.write().await.verify_changes().await
     }
 
@@ -98,19 +98,19 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.read().await.get_contacts().await
     }
 
-    async fn as_contact(&mut self) -> Result<Contact> {
+    async fn as_contact(&self) -> Result<Contact> {
         self.state.write().await.as_contact().await
     }
 
-    async fn get_contact(&mut self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>> {
+    async fn get_contact(&self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>> {
         self.state.write().await.get_contact(contact_id).await
     }
 
-    async fn verify_contact(&mut self, contact: Contact) -> Result<bool> {
+    async fn verify_contact(&self, contact: Contact) -> Result<bool> {
         self.state.write().await.verify_contact(contact).await
     }
 
-    async fn verify_and_add_contact(&mut self, contact: Contact) -> Result<bool> {
+    async fn verify_and_add_contact(&self, contact: Contact) -> Result<bool> {
         self.state
             .write()
             .await
@@ -119,7 +119,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
     }
 
     async fn verify_and_update_contact(
-        &mut self,
+        &self,
         identity_id: &IdentityIdentifier,
         changes: &[IdentityChangeEvent],
     ) -> Result<bool> {
@@ -144,7 +144,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
             .await
     }
 
-    async fn revoke_lease(&mut self, lease_manager_route: &Route, lease: Lease) -> Result<()> {
+    async fn revoke_lease(&self, lease_manager_route: &Route, lease: Lease) -> Result<()> {
         self.state
             .write()
             .await
@@ -155,7 +155,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
 
 impl<V: IdentityVault> Identity<V> {
     pub async fn create_secure_channel_listener(
-        &mut self,
+        &self,
         address: impl Into<Address>,
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
@@ -168,7 +168,7 @@ impl<V: IdentityVault> Identity<V> {
     }
 
     pub async fn create_secure_channel(
-        &mut self,
+        &self,
         route: impl Into<Route>,
         trust_policy: impl TrustPolicy,
     ) -> Result<Address> {

@@ -87,7 +87,7 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity to represent Receiver.
-    let mut receiver = Identity::create(&ctx, &vault).await?;
+    let receiver = Identity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.

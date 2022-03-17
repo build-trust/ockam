@@ -213,7 +213,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: ResponderWaitForKex<I, T>,
+        state: ResponderWaitForKex<I, T>,
     ) -> Result<()> {
         let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
 

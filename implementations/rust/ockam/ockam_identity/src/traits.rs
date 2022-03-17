@@ -13,13 +13,13 @@ pub trait IdentityTrait: AsyncTryClone + Send + Sync + 'static {
     async fn identifier(&self) -> Result<IdentityIdentifier>;
 
     /// Create new key.
-    async fn create_key(&mut self, label: String) -> Result<()>;
+    async fn create_key(&self, label: String) -> Result<()>;
 
     /// Add key that already exists in current Vault
-    async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()>;
+    async fn add_key(&self, label: String, secret: &Secret) -> Result<()>;
 
     /// Rotate existing key.
-    async fn rotate_root_secret_key(&mut self) -> Result<()>;
+    async fn rotate_root_secret_key(&self) -> Result<()>;
 
     /// Get [`Secret`] key.
     async fn get_root_secret_key(&self) -> Result<Secret>;
@@ -34,43 +34,43 @@ pub trait IdentityTrait: AsyncTryClone + Send + Sync + 'static {
     async fn get_public_key(&self, label: String) -> Result<PublicKey>;
 
     /// Create an authentication proof based on the given state
-    async fn create_auth_proof(&mut self, state_slice: &[u8]) -> Result<AuthenticationProof>;
+    async fn create_auth_proof(&self, state_slice: &[u8]) -> Result<AuthenticationProof>;
 
     /// Verify a proof based on the given state, proof and identity.
     async fn verify_auth_proof(
-        &mut self,
+        &self,
         state_slice: &[u8],
         peer_id: &IdentityIdentifier,
         proof_slice: &[u8],
     ) -> Result<bool>;
 
     /// Add a change event.
-    async fn add_change(&mut self, change_event: IdentityChangeEvent) -> Result<()>;
+    async fn add_change(&self, change_event: IdentityChangeEvent) -> Result<()>;
 
     /// Return change history chain
     async fn get_changes(&self) -> Result<Changes>;
 
     /// Verify the whole change event chain
-    async fn verify_changes(&mut self) -> Result<bool>;
+    async fn verify_changes(&self) -> Result<bool>;
 
     /// Return all known to this identity [`Contact`]s
     async fn get_contacts(&self) -> Result<Vec<Contact>>;
 
     /// Convert [`Identity`](crate::Identity) to [`Contact`]
-    async fn as_contact(&mut self) -> Result<Contact>;
+    async fn as_contact(&self) -> Result<Contact>;
 
     /// Return [`Contact`] with given [`IdentityIdentifier`]
-    async fn get_contact(&mut self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>>;
+    async fn get_contact(&self, contact_id: &IdentityIdentifier) -> Result<Option<Contact>>;
 
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    async fn verify_contact(&mut self, contact: Contact) -> Result<bool>;
+    async fn verify_contact(&self, contact: Contact) -> Result<bool>;
 
     /// Verify and add new [`Contact`] to [`Identity`](crate::Identity)'s Contact list
-    async fn verify_and_add_contact(&mut self, contact: Contact) -> Result<bool>;
+    async fn verify_and_add_contact(&self, contact: Contact) -> Result<bool>;
 
     /// Verify and update known [`Contact`] with new [`IdentityChangeEvent`]s
     async fn verify_and_update_contact(
-        &mut self,
+        &self,
         contact_id: &IdentityIdentifier,
         change_events: &[IdentityChangeEvent],
     ) -> Result<bool>;
@@ -83,5 +83,5 @@ pub trait IdentityTrait: AsyncTryClone + Send + Sync + 'static {
         ttl: TTL,
     ) -> Result<Lease>;
 
-    async fn revoke_lease(&mut self, lease_manager_route: &Route, lease: Lease) -> Result<()>;
+    async fn revoke_lease(&self, lease_manager_route: &Route, lease: Lease) -> Result<()>;
 }

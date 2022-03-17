@@ -27,7 +27,7 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity to represent Bob.
-    let mut bob = Identity::create(&ctx, &vault).await?;
+    let bob = Identity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.

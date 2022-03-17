@@ -11,7 +11,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity to represent Alice.
-    let mut alice = Identity::create(&ctx, &vault).await?;
+    let alice = Identity::create(&ctx, &vault).await?;
 
     // This program expects that Bob has setup a forwarding address,
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.

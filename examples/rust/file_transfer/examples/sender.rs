@@ -38,7 +38,7 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity to represent Sender.
-    let mut sender = Identity::create(&ctx, &vault).await?;
+    let sender = Identity::create(&ctx, &vault).await?;
 
     // This program expects that the receiver has setup a forwarding address,
     // for his secure channel listener, on the Ockam node at 1.node.ockam.network:4000.

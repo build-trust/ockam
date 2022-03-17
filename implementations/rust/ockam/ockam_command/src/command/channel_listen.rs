@@ -41,7 +41,7 @@ impl ChannelListenCommand {
         ctx.start_worker_with_access_control(ECHOER_SERVICE_NAME, Echoer, access_control)
             .await?;
 
-        let mut identity = Identity::create(ctx, &vault).await?;
+        let identity = Identity::create(ctx, &vault).await?;
 
         let trust_policy =
             TrustPublicKeyPolicy::new(public_key, "SSH", identity.async_try_clone().await?);

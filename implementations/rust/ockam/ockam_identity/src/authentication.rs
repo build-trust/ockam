@@ -69,8 +69,8 @@ mod test {
         let bob_vault = Vault::create();
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Identity::create(ctx, &alice_vault).await?;
-        let mut bob = Identity::create(ctx, &bob_vault).await?;
+        let alice = Identity::create(ctx, &alice_vault).await?;
+        let bob = Identity::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice.as_contact().await?;
@@ -117,8 +117,8 @@ mod test {
         let bob_vault = Vault::create();
 
         // Alice and Bob are distinct Entities.
-        let mut alice = Identity::create(ctx, &alice_vault).await?;
-        let mut bob = Identity::create(ctx, &bob_vault).await?;
+        let alice = Identity::create(ctx, &alice_vault).await?;
+        let bob = Identity::create(ctx, &bob_vault).await?;
 
         // Both identitys rotate keys.
         alice.rotate_root_secret_key().await?;
@@ -144,8 +144,8 @@ mod test {
         let alice_vault = Vault::create();
         let bob_vault = Vault::create();
 
-        let mut alice = Identity::create(ctx, &alice_vault).await?;
-        let mut bob = Identity::create(ctx, &bob_vault).await?;
+        let alice = Identity::create(ctx, &alice_vault).await?;
+        let bob = Identity::create(ctx, &bob_vault).await?;
 
         // Alice and Bob create Contacts
         let alice_contact = alice.as_contact().await?;

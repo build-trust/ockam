@@ -66,8 +66,8 @@ mod test {
         let alice_vault = Vault::create();
         let bob_vault = Vault::create();
 
-        let mut alice = Identity::create(ctx, &alice_vault).await?;
-        let mut bob = Identity::create(ctx, &bob_vault).await?;
+        let alice = Identity::create(ctx, &alice_vault).await?;
+        let bob = Identity::create(ctx, &bob_vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -108,8 +108,8 @@ mod test {
     async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
-        let mut alice = Identity::create(ctx, &vault).await?;
-        let mut bob = Identity::create(ctx, &vault).await?;
+        let alice = Identity::create(ctx, &vault).await?;
+        let bob = Identity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -153,8 +153,8 @@ mod test {
     async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
-        let mut alice = Identity::create(ctx, &vault).await?;
-        let mut bob = Identity::create(ctx, &vault).await?;
+        let alice = Identity::create(ctx, &vault).await?;
+        let bob = Identity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -208,8 +208,8 @@ mod test {
     async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
-        let mut alice = Identity::create(ctx, &vault).await?;
-        let mut bob = Identity::create(ctx, &vault).await?;
+        let alice = Identity::create(ctx, &vault).await?;
+        let bob = Identity::create(ctx, &vault).await?;
 
         let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
         let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
@@ -281,8 +281,8 @@ mod test {
 
         let vault = Vault::create();
 
-        let mut alice = Identity::create(ctx, &vault).await?;
-        let mut bob = Identity::create(ctx, &vault).await?;
+        let alice = Identity::create(ctx, &vault).await?;
+        let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)
@@ -317,8 +317,8 @@ mod test {
 
         let vault = Vault::create();
 
-        let mut alice = Identity::create(ctx, &vault).await?;
-        let mut bob = Identity::create(ctx, &vault).await?;
+        let alice = Identity::create(ctx, &vault).await?;
+        let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().await?);
         ctx.start_worker_with_access_control("receiver", receiver, access_control)

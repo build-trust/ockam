@@ -19,7 +19,7 @@ impl ChannelCommand {
         let _tcp = TcpTransport::create(ctx).await?;
 
         let vault = Vault::create();
-        let mut alice = Identity::create(ctx, &vault).await?;
+        let alice = Identity::create(ctx, &vault).await?;
 
         let secret_key = std::fs::read_to_string(secret_key_path)?;
 
