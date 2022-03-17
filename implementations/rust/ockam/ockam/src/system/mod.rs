@@ -1,16 +1,28 @@
 //! Worker system module
 
-mod handler;
-pub use handler::SystemHandler;
-
 #[cfg(test)]
 mod tests;
 
 use crate::OckamError;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap};
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::{Address, Message, Result, Routed, Worker};
 
-/// A componasble worker system type
+/// Handle a single type of message for a worker system-address
+///
+/// A handle may re-emit messages to the worker system, or to the
+/// Ockam runtime.  All state associated with a particular protocol
+/// must be contained in the type that implements this trait.
+#[ockam_core::async_trait]
+pub trait SystemHandler<C, M>
+where
+    C: Send + 'static,
+    M: Message,
+{
+    /// Called for every message addressed to the system handler
+    async fn handle_message(&mut self, ctx: &mut C, msg: Routed<M>) -> Result<()>;
+}
+
+/// A composable worker system type
 ///
 /// A worker system is a single worker which can act as a full cluster
 /// of workers.  This is achieved via the `send_to_self(...)` API
