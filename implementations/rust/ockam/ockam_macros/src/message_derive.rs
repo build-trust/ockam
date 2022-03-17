@@ -7,19 +7,14 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{DeriveInput, Error};
 
-pub(crate) fn entry(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    parse(&input)
-}
-
-fn parse(input: &DeriveInput) -> TokenStream {
+pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream, Error> {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let output = quote! {
         impl #impl_generics Message for #name #ty_generics #where_clause {}
     };
-    output.into()
+    Ok(output.into())
 }

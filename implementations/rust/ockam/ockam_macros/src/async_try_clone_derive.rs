@@ -1,17 +1,9 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{
-    parse_macro_input, parse_quote, Attribute, Data::Struct, DeriveInput, Error, GenericParam,
-    Ident, Type,
-};
+use syn::{parse_quote, Attribute, Data::Struct, DeriveInput, Error, GenericParam, Ident, Type};
 
-pub(crate) fn entry(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    parse(input).unwrap_or_else(|e| e.to_compile_error().into())
-}
-
-fn parse(input: DeriveInput) -> Result<TokenStream, Error> {
+pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream, Error> {
     let struct_data = match input.data {
         Struct(s) => s,
         _ => {
