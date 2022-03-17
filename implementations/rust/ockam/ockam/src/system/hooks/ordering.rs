@@ -8,6 +8,7 @@ use ockam_core::{
 };
 use serde::{Deserialize, Serialize};
 
+/// A small metadata type to encode the message index
 #[derive(Message, Serialize, Deserialize)]
 struct Index(u64);
 
@@ -57,7 +58,7 @@ impl ReceiverOrdering {
     async fn forward(
         &mut self,
         ctx: &mut Context,
-        mut index: u64,
+        index: u64,
         msg: OckamMessage,
     ) -> Result<()> {
         debug!("Forwarding message with index {}", index);
@@ -90,7 +91,7 @@ enum IndexState {
 impl SystemHandler<Context, OckamMessage> for ReceiverOrdering {
     async fn initialize(
         &mut self,
-        ctx: &mut Context,
+        _: &mut Context,
         routes: &mut BTreeMap<String, Address>,
     ) -> Result<()> {
         self.next = Some(
@@ -103,7 +104,7 @@ impl SystemHandler<Context, OckamMessage> for ReceiverOrdering {
 
     async fn handle_message(
         &mut self,
-        self_addr: Address,
+        _self_addr: Address,
         ctx: &mut Context,
         msg: Routed<OckamMessage>,
     ) -> Result<()> {
@@ -152,7 +153,7 @@ impl Clone for SenderOrdering {
 impl SystemHandler<Context, OckamMessage> for SenderOrdering {
     async fn initialize(
         &mut self,
-        ctx: &mut Context,
+        _: &mut Context,
         routes: &mut BTreeMap<String, Address>,
     ) -> Result<()> {
         self.next = Some(
@@ -165,7 +166,7 @@ impl SystemHandler<Context, OckamMessage> for SenderOrdering {
 
     async fn handle_message(
         &mut self,
-        self_addr: Address,
+        _self_addr: Address,
         ctx: &mut Context,
         msg: Routed<OckamMessage>,
     ) -> Result<()> {
