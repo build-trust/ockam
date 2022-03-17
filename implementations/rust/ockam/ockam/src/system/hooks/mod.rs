@@ -1,4 +1,3 @@
-#![allow(unused)] // FIXME
 //! A set of Ockam system handlers
 
 mod delivery;
