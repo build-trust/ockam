@@ -27,8 +27,6 @@ extern crate alloc;
 
 pub use async_trait::async_trait;
 
-pub extern crate hashbrown;
-
 #[allow(unused_imports)]
 #[macro_use]
 pub extern crate hex;
