@@ -1,6 +1,6 @@
-pub mod ast;
-pub mod attr;
-pub mod check;
-pub mod ctx;
-pub mod respan;
-pub mod symbol;
+pub(crate) mod ast;
+pub(crate) mod attr;
+pub(crate) mod check;
+pub(crate) mod ctx;
+pub(crate) mod respan;
+pub(crate) mod symbol;

@@ -64,12 +64,11 @@ pub mod item_fn {
                 Type::Path(ty_p) => {
                     // Return error if the return type is not a type that
                     // contains `Result` in its identifier.
-                    if ty_p
+                    if !ty_p
                         .path
                         .segments
                         .iter()
-                        .find(|s| s.ident.to_string().contains("Result"))
-                        .is_none()
+                        .any(|s| s.ident.to_string().contains("Result"))
                     {
                         ctx.error_spanned_by(&ret_ty, msg);
                     }
