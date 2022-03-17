@@ -318,7 +318,7 @@ async fn main(ctx: Context) -> Result<()> {
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
     e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
         .await?;
 
@@ -372,7 +372,7 @@ async fn main(ctx: Context) -> Result<()> {
     // at address: "secure_channel_listener".
 
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
     let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
@@ -477,7 +477,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
     e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
         .await?;
 
@@ -539,7 +539,7 @@ async fn main(ctx: Context) -> Result<()> {
     // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
