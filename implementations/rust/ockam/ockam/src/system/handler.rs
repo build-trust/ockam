@@ -8,6 +8,19 @@ use ockam_core::{Address, Message, Result, Routed};
 /// A handle may re-emit messages to the worker system, or to the
 /// Ockam runtime.  All state associated with a particular protocol
 /// must be contained in the type that implements this trait.
+///
+/// A SystemHandler is able to send messages to both external workers,
+/// and other internal handlers.  To allow workers to create behaviour
+/// pipelines, we need to pre-define "routes" for a SystemHandler
+/// (i.e. where is a message sent after it is done processing it).
+///
+/// In most cases this only requires a "default" route, but may use
+/// different routing labels in more complicated setups (to build
+/// processing graphs, instead of pipelines).
+///
+/// It is highly recommended to use the
+/// [SystemBuilder](crate::SystemBuilder) utility to generate this
+/// information.
 #[clonable]
 #[ockam_core::async_trait]
 pub trait SystemHandler<C, M>: Clone + DynClone
@@ -15,22 +28,11 @@ where
     C: Send + 'static,
     M: Message,
 {
-    /// This function is called once during initialisation to setup
-    /// the internal route path
+    /// Setup internal route path for this handler
     ///
-    /// A SystemHandler is able to send messages to both external
-    /// workers, and other internal handlers.  To allow workers to
-    /// create behaviour pipelines, we need to pre-define "routes" for
-    /// a SystemHandler (i.e. where is a message sent after it is done
-    /// processing it).
-    ///
-    /// In most cases this only requires a "default" route, but may
-    /// use different routing labels in more complicated setups (to
-    /// build processing graphs, instead of pipelines).
-    ///
-    /// It is highly recommended to use the
-    /// [SystemBuilder](crate::SystemBuilder) utility to generate this
-    /// information.
+    /// This function is only called once with a route map.  To
+    /// generate this route map see the
+    /// [SystemBuilder](crate::SystemBuilder) utility.
     async fn initialize(
         &mut self,
         ctx: &mut C,
