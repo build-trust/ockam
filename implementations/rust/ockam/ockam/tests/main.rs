@@ -17,6 +17,10 @@ fn node() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/node/std/fail*.rs");
         t.pass("tests/node/std/pass*.rs");
+        // Untested cases:
+        //  - Empty body or unused context: this two cases can't be tested because
+        //    they would run indefinitely. The unused context variant also includes
+        //    tests where no `Context` argument is passed in the input function.
     };
 }
 
