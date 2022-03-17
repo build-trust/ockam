@@ -10,7 +10,14 @@ use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
 
-/// Ockam node and worker executor
+/// Underlying Ockam node executor
+///
+/// This type is a small wrapper around an inner async runtime
+/// (`tokio` by default) and the Ockam router.  In most cases it is
+/// recommended you use the [ockam::node](ockam::node) function
+/// annotation instead!
+///
+///
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
     rt: Arc<Runtime>,
@@ -27,28 +34,34 @@ impl Default for Executor {
 }
 
 impl Executor {
-    /// Create a new [`Executor`].
+    /// Create a new Ockam node [`Executor`] instance
     pub fn new() -> Self {
         Executor::default()
     }
 
-    /// Sender
-    pub fn sender(&self) -> Sender<NodeMessage> {
+    /// Get access to the internal message sender
+    pub(crate) fn sender(&self) -> Sender<NodeMessage> {
         self.router.sender()
     }
 
-    /// Runtime
-    pub fn runtime(&self) -> Arc<Runtime> {
+    /// Get access to the underlying async runtime (by default `tokio`)
+    pub(crate) fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
     }
 
     /// Initialize the root application worker
-    pub fn initialize_system<S: Into<Address>>(&mut self, address: S, senders: SenderPair) {
+    pub(crate) fn initialize_system<S: Into<Address>>(&mut self, address: S, senders: SenderPair) {
         trace!("Initializing node executor");
         self.router.init(address.into(), senders);
     }
 
-    /// Execute a future
+    /// Initialise and run the Ockam node executor context
+    ///
+    /// In this background this launches async execution of the Ockam
+    /// router, while blocking execution on the provided future.
+    ///
+    /// Any errors encountered by the router or provided application
+    /// code will be returned from this function.
     #[cfg(feature = "std")]
     pub fn execute<F>(&mut self, future: F) -> Result<F::Output>
     where
@@ -67,8 +80,14 @@ impl Executor {
     }
 
     #[cfg(not(feature = "std"))]
-    /// Execute a future
-    /// TODO @antoinevg - support @thomm join & merge with std version
+    /// Initialise and run the Ockam node executor context
+    ///
+    /// In this background this launches async execution of the Ockam
+    /// router, while blocking execution on the provided future.
+    ///
+    /// Any errors encountered by the router or provided application
+    /// code will be returned from this function.
+    // TODO @antoinevg - support @thomm join & merge with std version
     pub fn execute<F>(&mut self, future: F) -> Result<()>
     where
         F: Future + Send + 'static,
