@@ -1,5 +1,0 @@
-error: Failed to parse value of `crate` as string.
- --> tests/node_test/fail_if_invalid_macro_arg_crate.rs:1:23
-  |
-1 | #[ockam::test(crate = 1000)]
-  |                       ^^^^

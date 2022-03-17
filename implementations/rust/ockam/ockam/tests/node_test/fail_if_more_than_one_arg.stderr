@@ -1,5 +1,11 @@
 error: the function must have exactly one argument
- --> $DIR/fail_if_more_than_one_arg.rs:4:7
+ --> tests/node_test/fail_if_more_than_one_arg.rs:2:18
   |
-4 | async fn my_test(mut c: ockam_node::Context, _x: u64) -> ockam_core::Result<()> {
-  |       ^^
+2 | async fn my_test(mut c: ockam_node::Context, _x: u64) -> ockam_core::Result<()> {
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `Context` argument must be passed as reference
+ --> tests/node_test/fail_if_more_than_one_arg.rs:2:18
+  |
+2 | async fn my_test(mut c: ockam_node::Context, _x: u64) -> ockam_core::Result<()> {
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^

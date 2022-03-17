@@ -1,0 +1,5 @@
+error: expected crate attribute to be a string: `crate = "..."`
+ --> tests/node_test/fail_if_invalid_macro_attr_crate.rs:1:23
+  |
+1 | #[ockam::test(crate = 1000)]
+  |                       ^^^^

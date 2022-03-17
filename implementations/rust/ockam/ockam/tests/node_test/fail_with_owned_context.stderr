@@ -1,5 +1,11 @@
-error: The context argument must be passed as reference
- --> $DIR/fail_with_owned_context.rs:2:7
+error: the `Context` argument must be passed as reference
+ --> tests/node_test/fail_with_owned_context.rs:2:18
   |
 2 | async fn my_test(ctx: Context) -> ockam_core::Result<()> {
-  |       ^^
+  |                  ^^^^^^^^^^^^
+
+error: the `Context` argument must be mutable
+ --> tests/node_test/fail_with_owned_context.rs:2:18
+  |
+2 | async fn my_test(ctx: Context) -> ockam_core::Result<()> {
+  |                  ^^^^^^^^^^^^

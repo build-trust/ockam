@@ -1,5 +1,5 @@
-error: The function must have a return type
- --> $DIR/fail_if_does_not_have_return_type.rs:2:7
+error: the function must have a return type
+ --> tests/node_test/fail_if_does_not_have_return_type.rs:2:1
   |
 2 | async fn my_test(ctx: &mut ockam_node::Context) {
-  |       ^^
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
