@@ -1,11 +1,11 @@
-error: The function name must be `main`
- --> $DIR/tests/node/std/fail_if_function_is_not_named_main.rs:2:1
+error: the function name must be `main`
+ --> tests/node/std/fail_if_function_is_not_named_main.rs:2:4
   |
 2 | fn foo(mut c: ockam::Context) {
-  | ^^
+  |    ^^^
 
 error[E0601]: `main` function not found in crate `$CRATE`
- --> $DIR/tests/node/std/fail_if_function_is_not_named_main.rs:1:1
+ --> tests/node/std/fail_if_function_is_not_named_main.rs:1:1
   |
 1 | / #[ockam::node]
 2 | | fn foo(mut c: ockam::Context) {

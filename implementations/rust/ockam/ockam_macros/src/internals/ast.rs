@@ -22,7 +22,6 @@ use crate::internals::ctx::Context;
 /// - The type path: `std::str::Bytes`.
 /// - The reference token: `&`.
 /// - The mutability token: `mut`.
-#[derive(Debug)]
 pub struct FnVariable<'a> {
     pub arg: &'a FnArg,
     pub ident: &'a Ident,

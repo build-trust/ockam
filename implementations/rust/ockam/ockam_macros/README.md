@@ -19,6 +19,12 @@ Add this to your `Cargo.toml`:
 ockam_macros = "0.10.0"
 ```
 
+## Develop
+
+Due to dependencies constraints, the tests for all the macros contained in this crate are located in the `ockam` crate.
+
+To test changes done in any of the macros you can use the `macro_expand_playground` from the `ockam` crate.
+
 ## License
 
 This code is licensed under the terms of the [Apache License 2.0][license-link].
