@@ -8,6 +8,12 @@ use syn::parse::Parse;
 
 use crate::internals::{ctx::Context, respan::respan, symbol::Symbol};
 
+/// A macro attribute.
+///
+/// From `ockam::test(timeout = 1000)`, an `Attr` instance
+/// will contain:
+/// - The name: `timeout`.
+/// - The value: `1000`.
 pub struct Attr<'c, T> {
     ctx: &'c Context,
     name: Symbol,

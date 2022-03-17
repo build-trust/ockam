@@ -1,6 +1,7 @@
 use std::fmt::{self, Display};
 use syn::{Ident, Path};
 
+/// A type to represent the name of a macro attribute.
 #[derive(Copy, Clone)]
 pub struct Symbol(&'static str);
 

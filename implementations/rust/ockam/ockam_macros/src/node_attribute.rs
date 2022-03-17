@@ -84,14 +84,14 @@ impl<'a> Container<'a> {
         cont
     }
 
-    /// The macro should not prevent the user from using an input function with the following features:
-    ///   - without ockam context, not using the ockam context, empty body: in any of these cases, the node
-    ///     will just run indefinitely, which is also OK.
-    ///   - non async: the user might want to run a dummy node without any async code.
-    ///   - multiple arguments: only the ockam context will be used. The other arguments will be ignored.
-    ///
-    /// Therefore, the macro tries to be as permissive as possible and only checks critical things that
-    /// would not compile.
+    // The macro should not prevent the user from using an input function with the following features:
+    //   - without ockam context, not using the ockam context, empty body: in any of these cases, the node
+    //     will just run indefinitely, which is also OK.
+    //   - non async: the user might want to run a dummy node without any async code.
+    //   - multiple arguments: only the ockam context will be used. The other arguments will be ignored.
+    //
+    // Therefore, the macro tries to be as permissive as possible and only checks critical things that
+    // would not compile.
     fn check(&self, ctx: &Context) {
         #[cfg(not(feature = "no_main"))]
         check::item_fn::ident_is_main(ctx, self.original_fn);

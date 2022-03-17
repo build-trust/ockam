@@ -5,6 +5,22 @@ use syn::{FnArg, ItemFn, Pat, PatIdent, Type, TypePath};
 
 use crate::internals::ctx::Context;
 
+/// A representation of a function argument that we want to use
+/// as a variable when expanding a macro.
+///
+/// Example:
+///
+/// If a macro receives an `InputFn` like the following:
+/// ```ignore
+/// fn foo(arg: &mut std::str::Bytes) {}
+/// ```
+///
+/// An `FnVariable` will contain the following data:
+/// - The original `FnArg` that was used to extract the data from.
+/// - The identifier: `arg`.
+/// - The type path: `std::str::Bytes`.
+/// - The reference token: `&`.
+/// - The mutability token: `mut`.
 #[derive(Debug)]
 pub struct FnVariable<'a> {
     pub arg: &'a FnArg,
@@ -15,6 +31,8 @@ pub struct FnVariable<'a> {
 }
 
 impl<'a> FnVariable<'a> {
+    /// Extracts a list of `FnVariable` items out from a list of `FnArg`,
+    /// generally provided by the `InputFn`'s `sig.inputs` attribute.
     pub fn from_fn_args(
         ctx: &Context,
         args: &'a Punctuated<FnArg, Comma>,
@@ -66,6 +84,9 @@ impl<'a> FnVariable<'a> {
     }
 }
 
+/// This is a specific use case where we want to extract only
+/// the `ockam::Context` variable from all the arguments available
+/// in the `InputFn`.
 pub fn ockam_context_variable_from_input_fn<'a>(
     ctx: &Context,
     input_fn: &'a ItemFn,
