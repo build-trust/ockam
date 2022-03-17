@@ -19,7 +19,7 @@ fn to_str(v: &[u8]) -> &str {
 impl SystemHandler<Context, OckamMessage> for SenderConfirm {
     async fn initialize(
         &mut self,
-        ctx: &mut Context,
+        _: &mut Context,
         routes: &mut BTreeMap<String, Address>,
     ) -> Result<()> {
         self.next = Some(
@@ -128,7 +128,7 @@ fn addr_from_scope(idx: usize, scope: &[Vec<u8>]) -> Result<Address> {
 impl SystemHandler<Context, OckamMessage> for ReceiverConfirm {
     async fn initialize(
         &mut self,
-        ctx: &mut Context,
+        _: &mut Context,
         routes: &mut BTreeMap<String, Address>,
     ) -> Result<()> {
         self.next = Some(
