@@ -1,7 +1,7 @@
-use ockam_vault::SoftwareVault;
+use ockam_vault::Vault;
 
-fn new_vault() -> SoftwareVault {
-    SoftwareVault::default()
+fn new_vault() -> Vault {
+    Vault::default()
 }
 
 #[ockam_macros::vault_test]

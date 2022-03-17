@@ -18,7 +18,7 @@ impl ChannelCommand {
     ) -> Result<(), AppError> {
         let _tcp = TcpTransport::create(ctx).await?;
 
-        let mut vault = Vault::create();
+        let vault = Vault::create();
         let mut alice = Identity::create(ctx, &vault).await?;
 
         let secret_key = std::fs::read_to_string(secret_key_path)?;

@@ -44,7 +44,7 @@ mod tests {
     use ockam_key_exchange_core::NewKeyExchanger;
     use ockam_key_exchange_xx::XXNewKeyExchanger;
     use ockam_node::Context;
-    use ockam_vault_sync_core::Vault;
+    use ockam_vault::Vault;
 
     #[ockam_macros::test]
     async fn simplest_channel(ctx: &mut Context) -> Result<()> {

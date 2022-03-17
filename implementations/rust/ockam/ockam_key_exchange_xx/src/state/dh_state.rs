@@ -19,7 +19,7 @@ impl<V: XXVault> DhState<V> {
         }
     }
 
-    pub(crate) async fn new(protocol_name: &[u8; 32], mut vault: V) -> Result<Self> {
+    pub(crate) async fn new(protocol_name: &[u8; 32], vault: V) -> Result<Self> {
         let attributes = SecretAttributes::new(
             SecretType::Buffer,
             SecretPersistence::Ephemeral,

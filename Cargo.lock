@@ -1777,7 +1777,6 @@ dependencies = [
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
- "ockam_vault_sync_core",
  "rand 0.8.5",
  "rand_xorshift",
  "serde 1.0.136",
@@ -1798,7 +1797,6 @@ dependencies = [
  "lazy_static",
  "ockam_core",
  "ockam_vault",
- "ockam_vault_sync_core",
  "tokio",
 ]
 
@@ -1813,7 +1811,6 @@ dependencies = [
  "ockam_macros",
  "ockam_node",
  "ockam_vault",
- "ockam_vault_sync_core",
  "rand 0.8.5",
  "rand_pcg",
  "serde 1.0.136",
@@ -1902,7 +1899,6 @@ dependencies = [
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
- "ockam_vault_sync_core",
  "rand 0.8.5",
  "rand_xorshift",
  "serde 1.0.136",
@@ -1940,7 +1936,6 @@ dependencies = [
  "ockam_key_exchange_core",
  "ockam_node",
  "ockam_vault",
- "ockam_vault_sync_core",
  "zeroize",
 ]
 
@@ -1952,7 +1947,6 @@ dependencies = [
  "ockam_key_exchange_core",
  "ockam_node",
  "ockam_vault",
- "ockam_vault_sync_core",
 ]
 
 [[package]]
@@ -2059,6 +2053,7 @@ dependencies = [
  "hkdf",
  "ockam_core",
  "ockam_macros",
+ "ockam_node",
  "rand 0.8.5",
  "rand_pcg",
  "sha2",
@@ -2070,22 +2065,6 @@ dependencies = [
  "tracing",
  "trybuild",
  "x25519-dalek",
-]
-
-[[package]]
-name = "ockam_vault_sync_core"
-version = "0.40.0"
-dependencies = [
- "ockam_core",
- "ockam_macros",
- "ockam_node",
- "ockam_vault",
- "rand 0.8.5",
- "rand_pcg",
- "serde 1.0.136",
- "serde-big-array",
- "tokio",
- "tracing",
 ]
 
 [[package]]

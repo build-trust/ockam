@@ -1,4 +1,4 @@
-use crate::software_vault::SoftwareVault;
+use crate::vault::Vault;
 use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
@@ -11,8 +11,8 @@ use ockam_core::{async_trait, compat::boxed::Box};
 use sha2::{Digest, Sha256};
 
 #[async_trait]
-impl Hasher for SoftwareVault {
-    async fn sha256(&mut self, data: &[u8]) -> Result<[u8; 32]> {
+impl Hasher for Vault {
+    async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
         let digest = Sha256::digest(data);
         Ok(*array_ref![digest, 0, 32])
     }
@@ -21,15 +21,17 @@ impl Hasher for SoftwareVault {
     /// Salt and Ikm should be of Buffer type.
     /// Output secrets should be only of type Buffer or AES
     async fn hkdf_sha256(
-        &mut self,
+        &self,
         salt: &Secret,
         info: &[u8],
         ikm: Option<&Secret>,
         output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<Secret>> {
+        let entries = self.entries.read().await;
+
         let ikm: Result<&[u8]> = match ikm {
             Some(ikm) => {
-                let ikm = self.get_entry(ikm)?;
+                let ikm = entries.get(&ikm.index()).ok_or(VaultError::EntryNotFound)?;
                 if ikm.key_attributes().stype() == SecretType::Buffer {
                     Ok(ikm.key().as_ref())
                 } else {
@@ -41,7 +43,9 @@ impl Hasher for SoftwareVault {
 
         let ikm = ikm?;
 
-        let salt = self.get_entry(salt)?;
+        let salt = entries
+            .get(&salt.index())
+            .ok_or(VaultError::EntryNotFound)?;
 
         if salt.key_attributes().stype() != SecretType::Buffer {
             return Err(VaultError::InvalidKeyType.into());
@@ -58,6 +62,9 @@ impl Hasher for SoftwareVault {
                 .map_err(|_| Into::<ockam_core::Error>::into(VaultError::HkdfExpandError))?;
             okm
         };
+
+        // Prevent dead-lock by freeing entries lock, since we don't need it
+        drop(entries);
 
         let mut secrets = Vec::<Secret>::new();
         let mut index = 0;
@@ -84,10 +91,10 @@ impl Hasher for SoftwareVault {
 
 #[cfg(test)]
 mod tests {
-    use crate::SoftwareVault;
+    use crate::Vault;
 
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
+    fn new_vault() -> Vault {
+        Vault::default()
     }
 
     #[ockam_macros::vault_test]

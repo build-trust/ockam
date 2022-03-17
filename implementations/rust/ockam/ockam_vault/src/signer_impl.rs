@@ -1,14 +1,18 @@
-use crate::software_vault::SoftwareVault;
+use crate::vault::Vault;
 use crate::VaultError;
 use ockam_core::vault::{Secret, SecretType, Signature, Signer};
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
 
 #[async_trait]
-impl Signer for SoftwareVault {
+impl Signer for Vault {
     /// Sign data with xeddsa algorithm. Only curve25519 is supported.
-    async fn sign(&mut self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
-        let entry = self.get_entry(secret_key)?;
+    async fn sign(&self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
+        let entries = self.entries.read().await;
+        let entry = entries
+            .get(&secret_key.index())
+            .ok_or(VaultError::EntryNotFound)?;
+
         let key = entry.key().as_ref();
         match entry.key_attributes().stype() {
             SecretType::X25519 => {
@@ -65,10 +69,10 @@ impl Signer for SoftwareVault {
 
 #[cfg(test)]
 mod tests {
-    use crate::SoftwareVault;
+    use crate::Vault;
 
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
+    fn new_vault() -> Vault {
+        Vault::default()
     }
 
     #[ockam_macros::vault_test]

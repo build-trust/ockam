@@ -7,7 +7,7 @@ use crate::{async_trait, compat::boxed::Box};
 pub trait Verifier {
     /// Verify a signature for the given data using the given public key.
     async fn verify(
-        &mut self,
+        &self,
         signature: &Signature,
         public_key: &PublicKey,
         data: &[u8],

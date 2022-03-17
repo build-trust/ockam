@@ -1,4 +1,4 @@
-use crate::{SoftwareVault, VaultError};
+use crate::{Vault, VaultError};
 use aes_gcm::aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use ockam_core::vault::{
@@ -43,15 +43,18 @@ macro_rules! encrypt_impl {
 }
 
 #[async_trait]
-impl SymmetricVault for SoftwareVault {
+impl SymmetricVault for Vault {
     async fn aead_aes_gcm_encrypt(
-        &mut self,
+        &self,
         context: &Secret,
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        let entry = self.get_entry(context)?;
+        let entries = self.entries.read().await;
+        let entry = entries
+            .get(&context.index())
+            .ok_or(VaultError::EntryNotFound)?;
 
         encrypt_impl!(
             entry,
@@ -64,13 +67,16 @@ impl SymmetricVault for SoftwareVault {
     }
 
     async fn aead_aes_gcm_decrypt(
-        &mut self,
+        &self,
         context: &Secret,
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
-        let entry = self.get_entry(context)?;
+        let entries = self.entries.read().await;
+        let entry = entries
+            .get(&context.index())
+            .ok_or(VaultError::EntryNotFound)?;
 
         encrypt_impl!(
             entry,
@@ -85,9 +91,9 @@ impl SymmetricVault for SoftwareVault {
 
 #[cfg(test)]
 mod tests {
-    use crate::SoftwareVault;
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
+    use crate::Vault;
+    fn new_vault() -> Vault {
+        Vault::default()
     }
 
     #[ockam_macros::vault_test]

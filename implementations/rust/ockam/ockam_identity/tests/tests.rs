@@ -2,11 +2,11 @@ use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretV
 use ockam_core::Result;
 use ockam_identity::{Identity, IdentityTrait};
 use ockam_node::Context;
-use ockam_vault_sync_core::Vault;
+use ockam_vault::Vault;
 
 #[ockam_macros::test(timeout = 1000)]
 async fn add_key(ctx: &mut Context) -> Result<()> {
-    let mut vault = Vault::create();
+    let vault = Vault::create();
     let mut e = Identity::create(&ctx, &vault).await?;
 
     let key = vault

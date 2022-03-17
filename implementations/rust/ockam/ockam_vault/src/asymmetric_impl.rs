@@ -1,4 +1,4 @@
-use crate::{SoftwareVault, VaultEntry, VaultError};
+use crate::{Vault, VaultEntry, VaultError};
 use arrayref::array_ref;
 use ockam_core::vault::{
     AsymmetricVault, Buffer, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
@@ -7,7 +7,7 @@ use ockam_core::vault::{
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
 
-impl SoftwareVault {
+impl Vault {
     fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {
         let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
@@ -41,15 +41,21 @@ impl SoftwareVault {
 }
 
 #[async_trait]
-impl AsymmetricVault for SoftwareVault {
+impl AsymmetricVault for Vault {
     async fn ec_diffie_hellman(
-        &mut self,
+        &self,
         context: &Secret,
         peer_public_key: &PublicKey,
     ) -> Result<Secret> {
-        let entry = self.get_entry(context)?;
+        let entries = self.entries.read().await;
+        let entry = entries
+            .get(&context.index())
+            .ok_or(VaultError::EntryNotFound)?;
 
         let dh = Self::ecdh_internal(entry, peer_public_key)?;
+
+        // Prevent dead-lock by freeing entries lock, since we don't need it
+        drop(entries);
 
         let attributes =
             SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());
@@ -59,10 +65,10 @@ impl AsymmetricVault for SoftwareVault {
 
 #[cfg(test)]
 mod tests {
-    use crate::SoftwareVault;
+    use crate::Vault;
 
-    fn new_vault() -> SoftwareVault {
-        SoftwareVault::default()
+    fn new_vault() -> Vault {
+        Vault::default()
     }
 
     #[ockam_macros::vault_test]
