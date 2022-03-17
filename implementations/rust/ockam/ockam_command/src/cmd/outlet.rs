@@ -14,7 +14,7 @@ pub async fn run(args: OutletOpts, ctx: Context) -> anyhow::Result<()> {
 
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let mut identity = Identity::import(&ctx, &vault, exported_ident).await?;
+    let identity = Identity::import(&ctx, &vault, exported_ident).await?;
     identity
         .create_secure_channel_listener("secure_channel_listener", policy)
         .await?;

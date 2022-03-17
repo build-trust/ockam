@@ -7,7 +7,7 @@ use ockam_vault::Vault;
 #[ockam_macros::test(timeout = 1000)]
 async fn add_key(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
 
     let key = vault
         .secret_generate(SecretAttributes::new(

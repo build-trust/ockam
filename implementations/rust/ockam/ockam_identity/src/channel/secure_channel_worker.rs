@@ -213,7 +213,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: ResponderWaitForKex<I>,
+        state: ResponderWaitForKex<I>,
     ) -> Result<()> {
         let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
 
@@ -248,7 +248,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: InitiatorSendIdentity<I>,
+        state: InitiatorSendIdentity<I>,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
@@ -342,7 +342,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         &mut self,
         _ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        mut state: ResponderWaitForIdentity<I>,
+        state: ResponderWaitForIdentity<I>,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
