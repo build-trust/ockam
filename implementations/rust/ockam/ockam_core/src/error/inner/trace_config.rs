@@ -43,7 +43,7 @@ impl TraceConfig {
 fn check_env_vars(vars: &[&str]) -> Option<bool> {
     vars.iter()
         .copied()
-        .find_map(|name| std::env::var_os(name))
+        .find_map(std::env::var_os)
         .map(|val| val != "0")
 }
 

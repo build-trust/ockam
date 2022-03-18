@@ -1,5 +1,5 @@
-use super::code::ErrorCode;
-use crate::compat::{boxed::Box, error::Error as ErrorTrait, string::String};
+use crate::compat::{boxed::Box, error::Error as ErrorTrait, string::String, vec::Vec};
+use crate::{alloc::borrow::ToOwned, error::code::ErrorCode};
 use serde::{Deserialize, Serialize};
 
 mod formatting;
@@ -120,8 +120,8 @@ impl From<&core::panic::Location<'_>> for Location {
     fn from(p: &core::panic::Location<'_>) -> Self {
         Self {
             file: p.file().into(),
-            line: p.line().into(),
-            column: p.column().into(),
+            line: p.line(),
+            column: p.column(),
         }
     }
 }

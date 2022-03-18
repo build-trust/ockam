@@ -101,6 +101,7 @@ impl core::fmt::Display for Error2 {
     }
 }
 
+#[cfg(feature = "std")]
 impl ErrorTrait for Error2 {
     fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
         if let Some(e) = self.0.cause() {
