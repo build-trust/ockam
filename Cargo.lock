@@ -2067,7 +2067,6 @@ dependencies = [
  "hkdf",
  "ockam_core",
  "ockam_macros",
- "ockam_vault_test_suite",
  "rand 0.8.5",
  "rand_pcg",
  "sha2",
@@ -2088,21 +2087,12 @@ dependencies = [
  "ockam_macros",
  "ockam_node",
  "ockam_vault",
- "ockam_vault_test_suite",
  "rand 0.8.5",
  "rand_pcg",
  "serde 1.0.136",
  "serde-big-array",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "ockam_vault_test_suite"
-version = "0.36.0"
-dependencies = [
- "arrayref",
- "ockam_core",
 ]
 
 [[package]]
