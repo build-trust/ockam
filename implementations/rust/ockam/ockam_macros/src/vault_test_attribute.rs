@@ -8,7 +8,7 @@ pub fn vault_test_entry(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_fn = parse_macro_input!(item as ItemFn);
     let original_fn_ident = original_fn.sig.ident;
     let import_test = TokenStream::from_str(
-        format!("use ockam_vault_test_suite::{};", original_fn_ident).as_str(),
+        format!("use ockam_core::test_support::{};", original_fn_ident).as_str(),
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");
@@ -33,7 +33,7 @@ pub fn vault_test_sync_entry(_attr: TokenStream, item: TokenStream) -> TokenStre
     let original_fn = parse_macro_input!(item as ItemFn);
     let original_fn_ident = original_fn.sig.ident;
     let import_test = TokenStream::from_str(
-        format!("use ockam_vault_test_suite::{};", original_fn_ident).as_str(),
+        format!("use ockam_core::test_support::{};", original_fn_ident).as_str(),
     )
     .unwrap();
     let import_test: Stmt = syn::parse(import_test).expect("B");

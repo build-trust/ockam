@@ -52,6 +52,7 @@ mod routing;
 mod uint;
 pub mod vault;
 mod worker;
+pub mod test_support;
 
 pub use access_control::*;
 pub use error::*;

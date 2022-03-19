@@ -1,7 +1,7 @@
-use ockam_core::hex::decode;
-use ockam_core::vault::{
-    KeyIdVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
-    CURVE25519_SECRET_LENGTH,
+use hex::decode;
+use crate::vault::{
+    CURVE25519_SECRET_LENGTH, KeyIdVault, PublicKey, SecretAttributes, SecretPersistence,
+    SecretType, SecretVault
 };
 
 pub async fn compute_key_id_for_public_key(vault: &mut impl KeyIdVault) {

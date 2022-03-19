@@ -1,3 +1,6 @@
+//! Various functions to help with testing implementations of the traits in
+//! [`ockam_core::vault`](crate::vault).
+#![allow(missing_docs)]
 mod asymmetric_impl;
 mod hasher_impl;
 mod key_id_impl;

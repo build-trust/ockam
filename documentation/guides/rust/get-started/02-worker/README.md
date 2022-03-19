@@ -76,7 +76,7 @@ To make this Echoer type accessible to our main program, export it
 from `src/lib.rs` file by adding the following to it:
 
 ```rust
-// src/lib.rs
+// src/mod
 
 mod echoer;
 pub use echoer::*;

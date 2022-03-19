@@ -1,7 +1,4 @@
-use ockam_core::vault::{
-    SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier,
-    CURVE25519_SECRET_LENGTH,
-};
+use crate::vault::{CURVE25519_SECRET_LENGTH, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier};
 
 pub async fn sign(vault: &mut (impl Signer + Verifier + SecretVault)) {
     for attributes in [

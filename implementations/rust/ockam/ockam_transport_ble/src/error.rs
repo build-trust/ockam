@@ -81,7 +81,7 @@ fn code_and_domain() {
         (011, BleError::Other),
         (012, BleError::Unknown),
     ])
-    .collect::<HashMap<_, _>>();
+        .collect::<HashMap<_, _>>();
     for (expected_code, ble_err) in ble_errors_map {
         let err: ockam_core::Error = ble_err.into();
         assert_eq!(err.domain(), BleError::DOMAIN_NAME);
