@@ -63,10 +63,9 @@ impl From<BleError> for ockam_core::Error {
 
 #[test]
 fn code_and_domain() {
-    use core::array::IntoIter;
     use ockam_core::compat::collections::HashMap;
 
-    let ble_errors_map = IntoIter::new([
+    let ble_errors_map = IntoIterator::into_iter([
         (000, BleError::PermissionDenied),
         (001, BleError::NotSupported),
         (002, BleError::HardwareError),
@@ -81,7 +80,7 @@ fn code_and_domain() {
         (011, BleError::Other),
         (012, BleError::Unknown),
     ])
-        .collect::<HashMap<_, _>>();
+        .collect::<HashMap<u32, BleError>>();
     for (expected_code, ble_err) in ble_errors_map {
         let err: ockam_core::Error = ble_err.into();
         assert_eq!(err.domain(), BleError::DOMAIN_NAME);
