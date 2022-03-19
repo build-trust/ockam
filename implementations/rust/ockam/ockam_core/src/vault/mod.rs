@@ -14,6 +14,8 @@ mod symmetric_vault;
 mod types;
 mod verifier;
 
+pub mod test_support;
+
 pub use asymmetric_vault::*;
 pub use hasher::*;
 pub use key_id_vault::*;

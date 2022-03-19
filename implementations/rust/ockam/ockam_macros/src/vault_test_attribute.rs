@@ -10,7 +10,7 @@ pub(crate) fn entry(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 fn parse(input: ItemFn) -> Result<TokenStream, Error> {
     let original_fn_ident = input.sig.ident;
-    let import_test = quote! { use ockam_vault_test_suite::#original_fn_ident; };
+    let import_test = quote! { use ockam_core::vault::test_support::#original_fn_ident; };
     let run_test = quote! { #original_fn_ident(&mut vault).await; };
     let output = quote! {
         #[tokio::test]
