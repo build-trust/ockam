@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_ble"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Ockam Developers"]
 edition = "2018"
 license = "Apache-2.0"
