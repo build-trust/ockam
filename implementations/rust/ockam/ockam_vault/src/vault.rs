@@ -32,7 +32,7 @@ use tracing::info;
 ///     Ok(())
 /// }
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Vault {
     pub(crate) entries: Arc<RwLock<BTreeMap<usize, VaultEntry>>>,
     pub(crate) next_id: Arc<AtomicUsize>,
@@ -60,7 +60,7 @@ impl Default for Vault {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub(crate) struct VaultEntry {
     key_id: Option<String>,
     key_attributes: SecretAttributes,

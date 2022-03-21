@@ -52,7 +52,7 @@ cfg_if! {
 }
 
 /// Binary representation of a Secret.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Clone, Eq, PartialEq, Zeroize)]
 #[zeroize(drop)]
 pub struct SecretKey(SecretKeyVec);
 

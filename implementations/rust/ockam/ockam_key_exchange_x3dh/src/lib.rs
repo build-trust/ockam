@@ -171,12 +171,12 @@ mod tests {
             let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
             let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
 
-            assert_eq!(s1, s2);
+            assert_eq!(s1.as_ref(), s2.as_ref());
 
             let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
             let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
 
-            assert_eq!(s1, s2);
+            assert_eq!(s1.as_ref(), s2.as_ref());
             ctx.stop().await.unwrap();
         })
         .unwrap();
