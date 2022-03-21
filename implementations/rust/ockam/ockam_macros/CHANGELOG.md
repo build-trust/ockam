@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## unreleased
+
+### Changed
+
+- Improve error handling and make "entry" functions "pub(crate)"
+- Rust docs for public functions in `ockam_macros`
+
+### Fixed
+
+- Message_derive macro
+- Vault_test_sync macro
+- Clean up node_test tests
+
+### Removed
+
+- Remove syn's `extra-traits` feature in `ockam_macro`
+
 ## 0.9.0 - 2022-03-07
 
 ### Added
