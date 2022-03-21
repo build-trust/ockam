@@ -34,7 +34,9 @@ mod vault_test_sync_attribute;
 #[proc_macro_derive(AsyncTryClone)]
 pub fn async_try_clone_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    async_try_clone_derive::expand(input).unwrap_or_else(to_compile_error)
+    async_try_clone_derive::expand(input)
+        .unwrap_or_else(to_compile_errors)
+        .into()
 }
 
 /// Implements Message trait for a type.

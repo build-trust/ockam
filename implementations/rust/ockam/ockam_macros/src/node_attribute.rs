@@ -75,7 +75,7 @@ struct Container<'a> {
 }
 
 impl<'a> Container<'a> {
-    pub fn from_ast(ctx: &Context, input_fn: &'a ItemFn, attrs: &'a AttributeArgs) -> Self {
+    fn from_ast(ctx: &Context, input_fn: &'a ItemFn, attrs: &'a AttributeArgs) -> Self {
         let cont = Self {
             data: Data::from_ast(ctx, input_fn, attrs),
             original_fn: input_fn,
