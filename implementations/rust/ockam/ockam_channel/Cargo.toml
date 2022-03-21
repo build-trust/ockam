@@ -1,6 +1,6 @@
 [package]
 name = "ockam_channel"
-version = "0.43.0"
+version = "0.44.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
