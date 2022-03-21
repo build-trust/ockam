@@ -46,6 +46,6 @@ function check_directory {
 check_directory $GUIDE_DOCS $GUIDE_EXAMPLES
 check_directory $KAFKA_DOCS $KAFKA_EXAMPLES
 check_directory $E2E_DOCS $E2E_EXAMPLES
-check_directory $INLET_SOURCE $INLET_EXAMPLES
+check_directory $INLET_DOCS $INLET_EXAMPLES
 
 exit $ERR
